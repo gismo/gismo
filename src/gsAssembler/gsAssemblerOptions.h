@@ -272,8 +272,8 @@ public:
     // If set to a value different than zero, it controls the
     // allocation of the sparse matrix, ie. the maximum number of
     // non-zero entries per column (set to: A * p + B)
-    double bdA;
-    int    bdB;
+    double  bdA;
+    int bdB;
 
     // more memory is allocated then required for efficency reasons,
     // more precise, (1+memOverhead) times the original memory is allocated
@@ -284,8 +284,8 @@ public:
     // integral computations will be set to the integer which is
     // closest to (A * p + B), where \a p is the (coordinate-wise)
     // degree of the basis
-    double quA;
-    int    quB;
+    double  quA;
+    int quB;
 
 public: // Utility functions that return values implied by the settings
 
@@ -299,7 +299,7 @@ public: // Utility functions that return values implied by the settings
                               double _quA, int _quB)
     {
         index_t res = 1;
-        for( int i=0; i<b.domainDim(); ++i )
+        for(short_t i=0; i<b.domainDim(); ++i )
         {
             res *= static_cast<index_t>(_quA * b.degree(i) + _quB + 0.5);
         }
@@ -317,7 +317,7 @@ public: // Utility functions that return values implied by the settings
                             double _bdA, int _bdB, double _mem)
     {
         index_t nz = 1;
-        for (int i = 0; i != b.dim(); ++i)
+        for (short_t i = 0; i != b.dim(); ++i)
             nz *= static_cast<index_t>(_bdA * b.degree(i) + _bdB + 0.5);
         return static_cast<index_t>(nz*(1.0+_mem));
     }

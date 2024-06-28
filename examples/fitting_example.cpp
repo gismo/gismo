@@ -19,14 +19,15 @@ int main(int argc, char *argv[])
 {
     // Options with default values
     bool save     = false;
-    int numURef   = 3;
-    int iter      = 2;
-    int deg_x     = 2;
-    int deg_y     = 2;
+    index_t numURef   = 3;
+    index_t iter      = 2;
+    index_t deg_x     = 2;
+    index_t deg_y     = 2;
+    index_t maxPcIter = 1;
     real_t lambda = 1e-07;
     real_t threshold = 1e-02;
     real_t tolerance = 1e-02;
-    int extension = 2;
+    index_t extension = 2;
     real_t refPercent = 0.1;
     std::string fn = "fitting/deepdrawingC.xml";
 
@@ -36,6 +37,7 @@ int main(int argc, char *argv[])
             "Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a "
             "3 x N matrix. Every column represents a point (x,y,z) in space.");
     cmd.addSwitch("save", "Save result in XML format", save);
+    cmd.addInt("c", "parcor", "Steps of parameter correction", maxPcIter);
     cmd.addInt("i", "iter", "number of iterations", iter);
     cmd.addInt("x", "deg_x", "degree in x direction", deg_x);
     cmd.addInt("y", "deg_y", "degree in y direction", deg_y);
@@ -134,7 +136,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Iteration "<<i<<".."<<"\n";
 
         time.restart();
-        ref.nextIteration(tolerance, threshold);
+        ref.nextIteration(tolerance, threshold, maxPcIter);
         time.stop();
         gsInfo<<"Fitting time: "<< time <<"\n";
 
@@ -150,16 +152,18 @@ int main(int argc, char *argv[])
         }
     }
 
-    gsInfo<<"----------------\nFinished.\n";
+    gsInfo<<"----------------\n";
 
     if ( save )
     {
-        gsInfo<<"Writing fitting_out.xml"<<"\n";
+        gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
         fd << *ref.result() ;
 
         fd.dump("fitting_out");
     }
+    else
+        gsInfo << "Done. No output created, re-run with --save to get a xml "
+                  "file containing the solution.\n";
 
     return 0;
 }
-

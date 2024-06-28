@@ -43,7 +43,7 @@ public:
     gsPoissonPde(const gsMultiPatch<T>         &domain,
                  const gsBoundaryConditions<T> &bc,
                  const gsPiecewiseFunction<T>  &rhs,
-                 const gsFunction<T>           *sol = NULL)
+                 const gsFunction<T>           * = NULL)
     : gsPde<T>(domain,bc), m_rhs(rhs)
     {
         m_unknownDim.setOnes(1);
@@ -53,7 +53,7 @@ public:
     GISMO_DEPRECATED
     gsPoissonPde(const gsFunction<T>  &rhs,
                  int                   domdim,
-                 const gsFunction<T>  &sol)
+                 const gsFunction<T>  &)
     : m_compat_dim(domdim), m_rhs(rhs)
     {
         m_unknownDim.setOnes(1);
@@ -107,11 +107,6 @@ public:
         return new gsPoissonPde<T>(m_domain.patch(np),bc,m_rhs);
     }
 
-    virtual T getCoeffForIETI(unsigned np) const {
-        if(np==0)
-            gsWarn<<"gsPoissonPde::getCoeffForIETI: Assume homogeneous coefficient alpha==1\n";
-        return 1;
-    }
 protected:
     using gsPde<T>::m_unknownDim;
     using gsPde<T>::m_domain;

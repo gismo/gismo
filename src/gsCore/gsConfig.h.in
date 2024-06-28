@@ -23,10 +23,16 @@
 #define GISMO_PATCH      @gismo_VERSION_PATCH@
 
 /** Define default coefficient type. */
-#define real_t           @GISMO_COEFF_TYPE@
+#define GISMO_COEFF_TYPE @GISMO_COEFF_TYPE@
+#ifndef real_t
+#define real_t           GISMO_COEFF_TYPE
+#endif
 
 /** Define default index type. */
 #define index_t          @GISMO_INDEX_TYPE@
+
+/** Define default dimension type. */
+#define short_t          @GISMO_SHORT_TYPE@
 
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
@@ -38,46 +44,28 @@
 #define GISMO_CONFIG_DIR "@GISMO_CONFIG_DIR@"
 
 /* Enabled Extensions */
+#include <gsCore/gsConfigExt.h>
 #cmakedefine GISMO_WITH_ADIFF
-#cmakedefine GISMO_WITH_CODIPACK
-#cmakedefine GISMO_WITH_FDBB
-#cmakedefine GISMO_WITH_IPOPT
-#cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_MPI
-#cmakedefine GISMO_WITH_MPQ
-#cmakedefine GISMO_WITH_ONURBS
 #cmakedefine GISMO_WITH_PARDISO
 #cmakedefine GISMO_WITH_PASTIX
 #cmakedefine GISMO_WITH_PSOLID
 #cmakedefine GISMO_WITH_SPECTRA
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_TAUCS
-#cmakedefine GISMO_WITH_TRILINOS
 #cmakedefine GISMO_WITH_UMFPACK
-#cmakedefine GISMO_WITH_UNUM
 
-#cmakedefine MKL_ILP64
-
-#ifdef GISMO_WITH_MPFR
-#include <mpreal.h>
-#endif
-
-#ifdef GISMO_WITH_MPQ
-#include <gmpxx.h>
-#include <unsupported/Eigen/MPQClassExtra>
-#endif
-
-#ifdef GISMO_WITH_UNUM
-#include <gsUnum/gsUnum.h>
-#endif
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
+/* Determine if Python module should be built. */
+#cmakedefine GISMO_WITH_PYBIND11
+
 /* Debug settings. */
-#cmakedefine GISMO_EXTRA_DEBUG
-#cmakedefine GISMO_WARNINGS
+#cmakedefine GISMO_WITH_XDEBUG
+#cmakedefine GISMO_WITH_WARNINGS
 
 /**
  * @name Eigen options - MUST be defined before Eigen is included
@@ -124,4 +112,6 @@
     See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html */
 #cmakedefine EIGEN_USE_MKL_ALL
 
+#cmakedefine EIGEN_DONT_VECTORIZE
+#cmakedefine EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 /**@}*/

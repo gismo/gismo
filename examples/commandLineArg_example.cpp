@@ -11,7 +11,6 @@
     Author(s): J. Speh
 */
 
-#include <iostream>
 #include <string>
 #include <gismo.h>
 
@@ -22,9 +21,11 @@ int main(int argc, char* argv[])
     // Variables that will take values from the command line
     std::string string("none");  // string variable default value
     real_t flNumber = 1.0;       // flNumber variable default value
-    int number = 1;              // number variable default value
+    index_t number = 1;          // number variable default value
     bool boolean = false;        // boolean variable default value
     std::string plainString;     // argument of reading plain string
+
+    std::vector<index_t> intvec;
 
     // -----------------------------------------------------------------
     // First we Initialize the object that sets up and parses command line arguments
@@ -58,11 +59,16 @@ int main(int argc, char* argv[])
                   string);
 
     // -----------------------------------------------------------------
-    // Adding a string argument, given by the "-i" (or "--num") flag
+    // Adding an integer argument, given by the "-i" (or "--num") flag
     // If set, number is updated to the input value, otherwise number remains untouched
     cmd.addInt   ("i", "num",
                   "Description of int command line argument",
                   number);
+
+    /// Add another integer, this time without a reference to a local variable
+    cmd.addNewInt ("j", "numj",
+                   "Description of another int command line argument",
+                   2);
 
     // -----------------------------------------------------------------
     // Adding a float argument, given by the "-r" (or "--real") flag
@@ -86,6 +92,7 @@ int main(int argc, char* argv[])
     // cmd.addMultiString, cmd.addMultiInt and cmd.addMultiReal
     // allow one to register flags that can be used several times.
     // They store the data in a vector.
+    cmd.addMultiInt("m", "multiint", "Description of multiint command line argument.", intvec);
 
     // -----------------------------------------------------------------
     // Read the arguments and update with the inputs, if given.
@@ -93,19 +100,30 @@ int main(int argc, char* argv[])
     // or the user invoked "--help" or "--version"
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsInfo << "Printing command line arguments:\n\n\n"
-           << "Plain string: " << plainString << "\n\n"
-           << "String:       " << string << "\n\n"
-           << "Float:        " << flNumber << "\n\n"
-           << "Integer:      " << number << "\n\n"
-           << "Switch:       " << boolean << "\n\n";
+    // Print out the version information
+    cmd.printVersion();
+            
+    gsInfo << "\nPrinting command line arguments:\n\n"
+           << "Plain string: " << plainString << "\n"
+           << "String:       " << string << "\n"
+           << "Float:        " << flNumber << "\n"
+           << "Integer:      " << number << "\n"
+           << "Switch:       " << boolean << "\n"
+           << "MultiInt      {";
+    std::copy(intvec.begin(), intvec.end(),
+              std::ostream_iterator<int>(gsInfo,", "));
+    gsInfo << "}\n\n";
+
+    gsInfo << "\nPrinting command line arguments again (using names):\n\n"
+    << "Plain string: " << cmd.getString("plain") << "\n"
+    << "String:       " << cmd.getString("stringArg") << "\n"
+    << "Float:        " << cmd.getReal("real") << "\n"
+    << "Integer:      " << cmd.getInt("num") << "\n"
+    << "Another one:  " << cmd.getInt("numj") << "\n"
+    << "Switch:       " << cmd.getSwitch("bool") << "\n"
+    ;
+
+    gsInfo<<"\nPrint out as an Option list. "<< cmd <<"\n";
 
     return 0;
 }
-
-
-
-
-
-
-

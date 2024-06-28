@@ -18,7 +18,7 @@
 using namespace gismo;
 
 int main(int argc, char**argv)
-{
+{     
     gsCmdLine cmd("Tutorial on matrix operations and linear algebra.");
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -35,16 +35,24 @@ int main(int argc, char**argv)
 
     // A matrix with entries of type real_t, and allocated size 3x3
     gsMatrix<real_t> A (3,3);
-    // The comman initializer lets us fill the matrix. Note that the
+    // The comman initializer lets us fill the matrix ROW-WISE. Note that the
     // matrix must have the correct size for this to work
     A << 2,2,3,  4,5,6,  7,8,10;
     A(0,0) -= 1 ;
 
+    gsInfo << "A=\n"<< A <<"\n";
+
+    gsInfo<< math::isnan(A(0,0)) <<"\n";
+    gsInfo<< math::isinf(A(0,0)) <<"\n";
+            
+            
     // If the type of the entries of the matrix is not given, the
     // default type is real_t (e.g. double)
     gsMatrix<> E (3,1);
     gsVector<> c (3);
     E << 2,2,3 ;
+
+    gsInfo<< "Cross Product (for 3D columns): "<< E.col3d(0).cross(c.col3d(0)) <<"\n";
 
     // Even if two matrices do not have the same size we can assign one
     // to the other and the result will be two identical matrices
@@ -173,7 +181,7 @@ int main(int argc, char**argv)
     r.setRandom(2,2); // SLE_11_SP4
     gsInfo <<"Set matrix to random entires setRandom():\n"<< r <<"\n";
 
-#ifndef GISMO_WITH_MPQ // eigenvalues will not work for rational arithmetic types
+#ifndef gsGmp_ENABLED // eigenvalues will not work for rational arithmetic types
 
     gsInfo << " Eigenvalues of non-symmetric matrix: "<< A.eigenvalues().transpose() << "\n";
     gsInfo << " Eigenvectors of non-symmetric matrix: \n"

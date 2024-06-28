@@ -23,7 +23,7 @@ namespace gismo
 {
   
 template<class T>
-gsCurveLoop<T>::gsCurveLoop(const std::vector<gsVector3d<T> *> points3D, const std::vector<bool> isConvex, T margin, gsVector3d<T> *outNormal)
+gsCurveLoop<T>::gsCurveLoop(const std::vector<gsVector3d<T> *> points3D, const std::vector<bool> , T margin, gsVector3d<T> *outNormal)
 {
     // attempt to choose a curve loop by using the plane of best fit
     gsVector3d<T> resultNormal = initFrom3DPlaneFit(points3D, margin);
@@ -107,8 +107,8 @@ void gsCurveLoop<T>::reverse()
               m_curves.begin(); it!= m_curves.end() ; it++ )
         (*it)->reverse();
     gsCurve<T>* swap;
-    std::size_t size=m_curves.size();
-    for ( std::size_t i=0;i<size/2;i++)
+    size_t size=m_curves.size();
+    for ( size_t i=0;i<size/2;i++)
     {
         swap = m_curves[i];
         m_curves[i]=m_curves[size-i-1];
@@ -244,7 +244,7 @@ gsMatrix<T> gsCurveLoop<T>::sample(int npoints, int numEndPoints) const
         interval = (*it)->parameterRange();
         a = interval(0,0);
         b = interval(0,1);
-        for (int ii=firstInd;ii<=secondInd;ii++) pts(0,ii-firstInd)= a + T(ii)*(b-a)/(npoints-1);
+        for (int ii=firstInd;ii<=secondInd;ii++) pts(0,ii-firstInd)= a + (T)(ii)*(b-a)/(T)(npoints-1);
         (*it)->eval_into( pts, uCols );
         u.middleCols( i * np,np ) = uCols;
         i++ ;
@@ -295,11 +295,11 @@ bool gsCurveLoop<T>::approximatingPolygon(const std::vector<T> &signedAngles, co
     }
     // Scale the turning angles so they add to 2 * pi. These will be the
     // angles we use at each vertex in the domain.
-    T angleScale = T(2.0 * EIGEN_PI / totalAngle);
+    T angleScale = (T)(2.0 * EIGEN_PI) / totalAngle;
     for(size_t i = 0; i < n; i++)
     {
         scaledAngles[i] *= angleScale;
-        if(math::abs(scaledAngles[i]) >= EIGEN_PI)
+        if(math::abs(scaledAngles[i]) >= (T)(EIGEN_PI))
         {
             gsWarn << "Scaled turning angle exceeded pi, treatment of this has not been implemented.\n";
             return false;
@@ -332,7 +332,7 @@ bool gsCurveLoop<T>::approximatingPolygon(const std::vector<T> &signedAngles, co
     invL.setZero();
     for(size_t i = 0; i < n; i++)
     {
-        invL(i, i) = 1 / lengths[i];
+        invL(i, i) = (T)(1) / lengths[i];
     }
     gsMatrix<T> ones(n, 1);
     ones.setOnes();
@@ -392,8 +392,8 @@ void gsCurveLoop<T>::adjustPolygonToUnitSquare(gsMatrix<T> &corners, T const mar
     T maxy = corners.col(1).maxCoeff();
     
     T scaleFactor(1);
-    scaleFactor += margin * 2;
-    scaleFactor = 1 / scaleFactor / std::max(maxx - minx, maxy - miny);
+    scaleFactor += margin * (T)(2);
+    scaleFactor = (T)(1) / scaleFactor / std::max(maxx - minx, maxy - miny);
     gsMatrix<T> shiftVector(1, 2);
     shiftVector << 0.5 - 0.5 * scaleFactor * (maxx + minx), 0.5 - 0.5 * scaleFactor * (maxy + miny);
     for(size_t i = 0; i < n; i++)
@@ -431,8 +431,8 @@ gsVector3d<T> gsCurveLoop<T>::initFrom3DPlaneFit(const std::vector<gsVector3d<T>
     }
 
     // compute a singular value decomposition
-    Eigen::JacobiSVD< Eigen::Matrix<T, Dynamic, Dynamic> > svd(
-        shiftedPoints * shiftedPoints.transpose(), Eigen::ComputeFullU);
+    gsEigen::JacobiSVD< gsEigen::Matrix<T, Dynamic, Dynamic> > svd(
+        shiftedPoints * shiftedPoints.transpose(), gsEigen::ComputeFullU);
 
     // extract plane projection matrix from the svd
     gsMatrix<T> svd_u(svd.matrixU());
@@ -454,7 +454,7 @@ gsVector3d<T> gsCurveLoop<T>::initFrom3DPlaneFit(const std::vector<gsVector3d<T>
     }
 
     // scale and shift so everything fits inside the bounding box minus margin.
-    T scale = (1 - 2 * margin) / std::max((bbox(0, 1) - bbox(0, 0)), bbox(1, 1) - bbox(1, 0));
+    T scale = (T(1) - (T)(2) * margin) / std::max((bbox(0, 1) - bbox(0, 0)), bbox(1, 1) - bbox(1, 0));
     gsVector<T> shift(2);
     shift << margin - scale * bbox(0, 0), margin - scale * bbox(1, 0);
     for(size_t i = 0; i < n; i++)
@@ -518,7 +518,7 @@ void gsCurveLoop<T>::initFromIsConvex(const std::vector<bool> isConvex, T margin
     gsMatrix<T> corners(np, 2);
     for(size_t i = 0; i < np; i++)
     {
-        T angle = (T)i * (T)EIGEN_PI * 2 / np;
+        T angle = (T)i * (T)EIGEN_PI * (T)(2) / (T)(np);
         corners(i, 0) = math::cos(angle);
         corners(i, 1) = math::sin(angle);
     }
@@ -587,7 +587,7 @@ bool gsCurveLoop<T>::initFrom3DByAngles(const std::vector<T>& angles3D, const st
     std::vector<T> signedAngles(n);
     for(size_t i = 0; i < n; i++)
     {
-        signedAngles[i] = (isConvex[i]? 1: -1) * angles3D[i];
+        signedAngles[i] = (T)(isConvex[i]? 1: -1) * angles3D[i];
     }
     
     gsMatrix<T> corners;
@@ -621,8 +621,9 @@ void gsCurveLoop<T>::flip1(T minu, T maxu)
 }
   
 template<class T>
-gsMatrix<T> gsCurveLoop<T>::splitCurve(std::size_t curveId, T lengthRatio)
+gsMatrix<T> gsCurveLoop<T>::splitCurve(size_t curveId, T lengthRatio)
 {
+    GISMO_UNUSED(lengthRatio);
     GISMO_ASSERT(lengthRatio>0 && lengthRatio<1, "the second parameter *lengthRatio* must be between 0 and 1");
     GISMO_ASSERT(curveId < m_curves.size(), "the first parameter *curveID* exceeds the number of curves of the loop");
     // the two vertices a and b of the curve curveId, counting counterclockwise from z+
@@ -640,7 +641,7 @@ gsMatrix<T> gsCurveLoop<T>::splitCurve(std::size_t curveId, T lengthRatio)
     gsMatrix<T> supp = curve(curveId).support();
     GISMO_ASSERT(supp.rows() == 1 && supp.cols() == 2, "Unexpected support matrix");
     gsMatrix<T> u(1, 1);
-    u << (supp(0, 0) + supp(0, 1)) / 2;
+    u << (supp(0, 0) + supp(0, 1)) / (T)(2);
     curve(curveId).eval_into (u, n);
     n.transposeInPlace();
     // create the two new curves

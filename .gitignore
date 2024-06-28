@@ -1,0 +1,39 @@
+# Submodule files
+submodules.txt
+
+# CLion user-specific files
+.idea
+
+# Binary directories
+cmake-build-*/
+build/
+
+# Files with ending ~ (backup files from some editors)
+**/*~
+
+# QtCreator user file
+CMakeLists.txt.user
+
+# Visual Studio
+/CMakeSettings.json*
+/.vs
+**/.vscode
+/build*
+.vscode/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+/.cmake/
+
+# Patch Files
+*.patch
+*.rej
+
+# paraview result files
+*.vtp
+*.pvd
+
+
+#Mac OS
+**/.DS_Store

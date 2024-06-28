@@ -94,7 +94,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega
                 compute_ObjectiveFunction(basis,&deriv_coefs2,omega1,omega2,m_value2);
 
                 //initialize the gradient
-                m_gradient(j,k)=(m_value1-m_value2)/(2*delta);
+                m_gradient(j,k)=(m_value1-m_value2)/((T)(2)*delta);
             }
         }
 
@@ -138,7 +138,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega
                     compute_ObjectiveFunction(basis,&deriv_coefs4,omega1,omega2,m_value2);
 
                     //initialize the gradient
-                    m_gradient2(j,k)=(m_value1-m_value2)/(2*delta);
+                    m_gradient2(j,k)=(m_value1-m_value2)/((T)(2)*delta);
                 }
             }
 
@@ -150,7 +150,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega
             for(index_t j=0;j<m_gradient.rows();j++){
                 for(index_t k=0;k<m_gradient.cols();k++){
                     if(j<m_degree){  // do not forget we have multiple coefficients
-                        helpcond+=2*m_gradient(j,k)*m_gradient(j,k);
+                      helpcond+=(T)(2)*m_gradient(j,k)*m_gradient(j,k);
                     }
                     else{
                         helpcond+=m_gradient(j,k)*m_gradient(j,k);
@@ -164,7 +164,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega
             for(index_t j=0;j<m_gradient.rows();j++){
                 for(index_t k=0;k<m_gradient.cols();k++){
                     if(j<m_degree){  // do not forget we have multiple coefficients
-                        cond21+=2*m_gradient(j,k)*m_gradient2(j,k);
+                      cond21+=(T)(2)*m_gradient(j,k)*m_gradient2(j,k);
                     }
                     else{
                         cond21+=m_gradient(j,k)*m_gradient2(j,k);
@@ -257,7 +257,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, co
                 compute_ObjectiveFunction(basis,&deriv_coefs2,omega1,omega2,m_value2);
 
                 //initialize the gradient
-                m_gradient(j,k)=(m_value1-m_value2)/(2*delta);
+                m_gradient(j,k)=(m_value1-m_value2)/((T)(2)*delta);
             }
         }
 
@@ -360,7 +360,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, co
                 compute_ObjectiveFunction(basis,&deriv_coefs2,omega1,omega2,m_value2);
 
                 //initialize the gradient
-                m_gradient(j,k)=(m_value1-m_value2)/(2*delta);
+                m_gradient(j,k)=(m_value1-m_value2)/((T)(2)*delta);
             }
         }
         //iteration step for a given lamda
@@ -559,7 +559,7 @@ void gsCurvatureSmoothing<T>::smoothAllHadenfeld(const unsigned smooth_degree, c
     // construct the new smoother B-spline curve
     reset( new gsBSpline<T>(m_knots, give(m_coefs)) );
 
-};
+}
 
 template< class T>
 void gsCurvatureSmoothing<T>::write(std::ostream &os)
@@ -572,7 +572,7 @@ void gsCurvatureSmoothing<T>::write(std::ostream &os)
    }
    os << "{" << m_coefs(num_rows-1,0) << "," << m_coefs(num_rows-1,1) << "}}\n";
 
-};
+}
 
 template<class T>
 void gsCurvatureSmoothing<T>::computeApproxError(T & error)
@@ -593,7 +593,7 @@ void gsCurvatureSmoothing<T>::computeApproxErrorL2(T & error)
     error=0;
     // uses the approximation error. Since the the parameter domain is [0,1] of the function the L^2 error = (approx.error/points)^{1/2}
     computeApproxError(error);
-    error= math::sqrt( error / m_points.rows() );
+    error= math::sqrt( error / static_cast<T>(m_points.rows()) );
 }
 
 
@@ -607,7 +607,7 @@ void gsCurvatureSmoothing<T>::computeApproxErrorLMax(T & error)
     //computing the Lmax approximation error
     for(index_t k=0;k<m_points.rows();k++)
     {
-        error= math::max(error,math::sqrt(math::pow(m_points(k,0)-results(k,0),2)+math::pow(m_points(k,1)-results(k,1),2)));
+        error= math::max(error,(T)math::sqrt(math::pow(m_points(k,0)-results(k,0),2)+math::pow(m_points(k,1)-results(k,1),2)));
     }
 }
 
@@ -652,7 +652,7 @@ void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMat
 
     std::vector<gsMatrix<T> > m_results;
     gsMatrix<T> m_results1;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     basis->evalAllDers_into(u,3,m_results);
     basis->active_into(u,actives);
 
@@ -679,7 +679,7 @@ void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMat
             values3.col(i)+=coefs->row(actives(k,i))*m_results[3](k,i);
         }
 
-};
+}
 
 
 template<class T>
@@ -703,10 +703,10 @@ void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis
         objective1+=math::pow(m_values0(0,i)-m_points(i,0),2)+math::pow(m_values0(1,i)-m_points(i,1),2);
 
         objective2+= math::abs( 6.0*(m_values1(1,i)*m_values2(0,i) - m_values1(0,i)*m_values2(1,i))*(m_values1(0,i)*m_values2(0,i) + m_values1(1,i)*m_values2(1,i)) +
-                          2*( (math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2)) * ((-1.0)*m_values1(1,i)*m_values3(0,i)+ m_values1(0,i)*m_values3(1,i))  )    )/
-                (2*math::pow( math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2) ,2.5)   );
+                          (T)(2)*( (math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2)) * ((-1.0)*m_values1(1,i)*m_values3(0,i)+ m_values1(0,i)*m_values3(1,i))  )    )/
+                ((T)(2)*math::pow( math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2) ,2.5)   );
     }
-    objective2=objective2/(0.0+m_param_values.rows());
+    objective2=objective2/((T)(0.0+m_param_values.rows()));
 
     // the objective function
     value=omega1*objective1+omega2*objective2;
@@ -714,4 +714,4 @@ void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis
 
 
 
-}; // namespace gismo
+} // namespace gismo

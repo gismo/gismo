@@ -133,7 +133,7 @@ public:
      *
      * This assumes that this number doesn't change for different parameters.
      */
-    inline unsigned numActive() const { return this->source().numActive(); }
+    inline index_t numActive() const { return this->source().numActive(); }
 
     /// Returns the index of the first active (ie. non-zero) basis
     /// function at all columns (points) of u
@@ -159,8 +159,9 @@ public:
     }
   
     /// Refine the basis uniformly by inserting \a numKnots new knots per knot span.
-    void uniformRefine(int numKnots = 1, int mul=1)
+    void uniformRefine(int numKnots = 1, int mul=1, int dir = -1)
     { 
+        GISMO_UNUSED(dir);
         // TO DO ; replace this with global refinemnt by
         // Lane-Riesenfeld-like  Algorithm
         std::vector<T> newKnots;
@@ -175,7 +176,7 @@ public:
         //m_knots->degreeElevate(i);
         //m_knots->uniformRefine();
     };
-  
+
 }; // class gsNurbsBasis
 
 

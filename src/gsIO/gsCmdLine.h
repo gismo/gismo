@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
@@ -52,8 +53,10 @@ class gsCmdLinePrivate;
  *
  *  \ingroup IO
  */
-class GISMO_EXPORT gsCmdLine
+class GISMO_EXPORT gsCmdLine : public gsOptionList //TODO: better name: gsCmdOptionList
 {
+    typedef index_t intVal_t;
+
 public:
     ///
     /// @brief Command line constructor. Defines how the arguments will be
@@ -61,7 +64,7 @@ public:
     ///
     /// @param message        The message to be used in the usage output.
     /// @param delimiter      The character that is used to separate
-    ///                       the argument flag/name from the value. 
+    ///                       the argument flag/name from the value.
     ///                       Defaults to ' ' (space).
     /// @param helpAndVersion Whether or not to create the Help and
     ///                       Version switches. Defaults to true.
@@ -91,7 +94,21 @@ public:
     void addInt(const std::string& flag,
                 const std::string& name,
                 const std::string& desc,
-                int              & value);
+                intVal_t         & value); //TODO: rename as argInt
+
+    /// Second version: unbinded integer command-line argument
+    void addNewInt(const std::string& flag,
+                   const std::string& name,
+                   const std::string& desc,
+                   intVal_t          value) //TODO: rename as addInt
+    {
+        gsOptionList::addInt(name, desc, value); //add new option
+        addInt(flag, name, desc, getIntRef(name) );    //bind cmd arg
+    }
+
+    // Third (inherited) version: add int option which is NOT a
+    // command-line argument
+    using gsOptionList::addInt;
 
     /// @brief Register an int option for the command line, which can be assigned more than once
     ///
@@ -105,11 +122,13 @@ public:
     ///
     /// If the flag is "n", the user might call "-n 10" at the command line.
     /// It the name is "size", the user might call "--size 10" at the command line.
-    void addMultiInt(const std::string& flag,
-                     const std::string& name,
-                     const std::string& desc,
-                     std::vector<int> & value);
+    void addMultiInt(const std::string    & flag,
+                     const std::string    & name,
+                     const std::string    & desc,
+                     std::vector<intVal_t>& value);
 
+    //using gsOptionList::addMultiInt;
+        
     /// @brief Register a real option for the command line
     ///
     /// @param flag       One character flag for using the option.
@@ -123,10 +142,12 @@ public:
     ///
     /// If the flag is "t", the user might call "-t .5" at the command line.
     /// It the name is "tau", the user might call "--tau .5" at the command line.
-     void addReal(const std::string& flag,
-                  const std::string& name,
-                  const std::string& desc,
-                  real_t           & value);
+    void addReal(const std::string& flag,
+                 const std::string& name,
+                 const std::string& desc,
+                 real_t           & value);
+    
+    //using gsOptionList::addReal;
 
     /// @brief Register a real option for the command line, which can be assigned more than once
     ///
@@ -144,6 +165,8 @@ public:
                       const std::string  & name,
                       const std::string  & desc,
                       std::vector<real_t>& value);
+
+    //using gsOptionList::addMultiReal;
 
     /// @brief Register a string option for the command line
     ///
@@ -163,6 +186,8 @@ public:
                    const std::string& desc,
                    std::string      & value);
 
+    //using gsOptionList::addString;
+
     /// @brief Register a string option for the command line, which can be assigned more than once
     ///
     /// @param flag       One character flag for using the option.
@@ -180,13 +205,15 @@ public:
                        const std::string       & desc,
                        std::vector<std::string>& value);
 
+    //using gsOptionList::addMultiString;
+
     /// @brief Register a switch option for the command line
     ///
     /// @param flag       One character flag for using the option.
     ///                   If empty, no such flag can be used.
     /// @param name       Long form of the flag.
     /// @param desc       Description (printed if --help is invoked)
-    /// @param value      This should be a non-const bool variable.  
+    /// @param value      This should be a non-const bool variable.
     ///                   When \ref getValues is invoked and the user
     ///                   has added the switch on the command line,
     ///                   the \a value is toggled (i.e. if false it
@@ -205,7 +232,11 @@ public:
     ///
     void addSwitch(const std::string& name,
                    const std::string& desc,
-                   bool             & value) { addSwitch("",name,desc,value); }
+                   bool             & value)
+    {
+        gsOptionList::addSwitch(name, desc, value); //add new option
+        addSwitch("",name,desc,value);
+    }
 
     /// @brief Register a string parameter that has to be given directly (not
     /// as an option, i.e., not after a flag starting with "-" or "--")
@@ -233,15 +264,6 @@ public:
     /// If the parsing did non succeed, the function throws.
     void getValues(int argc, char *argv[]);
 
-    /// Writes all given options (as specified by \a addInt, \a addReal,
-    /// \a addString or \a addSwitch or \a addPlainString) into a
-    /// gsOptionList object.
-    ///
-    /// Must be invoked after \a getValues. This function takes its values
-    /// from the registered variables, so changes in thoes are taken into
-    /// account.
-    gsOptionList getOptionList();
-
     /// Prints the version information
     static void printVersion();
 
@@ -264,9 +286,32 @@ public:
     ~gsCmdLine();
 
 private:
+    /// Writes all given options (as specified by \a addInt, \a addReal,
+    /// \a addString or \a addSwitch or \a addPlainString) into the
+    /// gsOptionList base object.
+    void updateOptionList();
+
+private:
 
     gsCmdLinePrivate * my;
 
 }; // class gsCmdLine
 
-}; // namespace gismo
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsCmdLine
+   */
+  void pybind11_init_gsCmdLine(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
+namespace internal
+{
+
+template<>
+class GISMO_EXPORT gsXml<gsCmdLine> : public gsXml<gsOptionList> { };
+
+}
+
+} // namespace gismo

@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
     // writing to paraview
     // ======================================================================
 
-    if (output != "")
+    if (!output.empty())
     {
         //! [write to paraview]
         std::string out = output + "Geometry";
@@ -171,6 +171,9 @@ int main(int argc, char* argv[])
         gsWriteParaview(mesh, out);
         //! [write to paraview]
     }
+    else
+        gsInfo << "Done. No output created, re-run with --output <fn> to get a ParaView "
+                  "file containing the solution.\n";
 
     return 0;
 }

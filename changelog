@@ -38,3 +38,118 @@ v0.8.3 (https://github.com/gismo/gismo/releases/tag/v0.8.3)
   - OpenMP features (Pardiso options, use in assemblers)
   - Memory and pointer handling
   - Performance bug in gsFitting
+
+v0.8.4 (https://github.com/gismo/gismo/releases/tag/v0.8.4)
+------
+* NEW
+  - gsParametrization
+  - gsHalfEdgeMesh
+  - Matlab plugin
+  - MultiPrecision extension
+  - Automated submodule system
+  - Isogeometric preconditioners for spline patches
+* IMPROVED
+  - gsOptionList, added MultiInt
+  - Many vectors now have a reserve before call of push_back
+  - External codes are downloaded at configure time
+  - Remove gsFunctionSet::compute(const gsMapData & in, gsFuncData & out)
+  - Remove unimplemented gsBulk::toMesh and gsVolume::toMesh
+  - Multiple arithmetic type adaptors are included in gsFunctionExpr
+  - Configurable file-write precision
+  - Doxygen documentation
+* FIXED
+  - gsMesh, fixed gsMesh::cleanMesh, fixed copy constructor
+  - -Wextra and -Wunused_parameter Warnings
+  - Several bug-fixes
+
+v21.12.0 (https://github.com/gismo/gismo/releases/tag/v21.12.0)
+------
+* NEW
+  - Change versioning scheme to YEAR.MONTH
+  - Docker image support
+  - Added submodule system with automated download and deployment
+  - New optional submodules: gsElasticity, gsExaStencils, gsCodiPack, gsCompFlow, gsStructuralAnalysis, gsKLShell, gsMultiPrecision, gsSpectra, gsOpenCascade, gsUnum
+  - Added reader for IGES files
+  - New example files and codes: gsMakeMultiPatch, ieti_example, ieti2_example, kirchhoff-Love_example, quadrature_example, quasiInterpolation_example, constrained_fitting
+  - Few new assemblers and better patch interface computations
+  - New modules included in the sources: gsIeti module, gsMsplines module
+* IMPROVED
+  - Improved FindXX.cmake and other CMake scripts
+  - Better unit-tests
+  - Advanced Doxygen documentation
+  - Better CI testing on several platforms (added gitlab-ci, Jenkins, upgraded ctest_script.cmake)
+  - Removed deprecated classes (eg. gsGeometryEvaluator,gsNorms)
+  - Fix many warnings and other issues
+
+
+v23.09.0 (https://github.com/gismo/gismo/releases/tag/v23.09.0)
+------
+* NEW
+  - module system using module download at configure time (not using git submodules)
+  - module gsMSplines that allows to incorporate general spline spaces over multipatch geometry
+  - module gsOptimizer for solving optimization problems, featuring gradient descent, HLBFGS, etc
+  - initial module gsPreCICE
+  - python bindings using pybind11 for a basic subset of G+Smo
+  - interface and boundary integrals are added to gsExprAssembler
+  - unrefinement functions added to hierarchical splines
+  - Solvers gsBiCgStab and gsMinResQLP added
+  - p-multigrid method added
+  - Converting meshes to linear multipatches added (#592)
+  - add gsParaviewDataSet and gsParaviewCollection (#604) for better interaction to Paraview (#572)
+  - new mesh class using halfedges
+  - new domain parameterization techniques (#624)
+  - Newton-Cotes (commit 8ff2ee1) and patch-wise (#435) quadrature rules
+  - Handling of boundary labels in gsMultiPatch XML reads (#591)
+* IMPROVED
+  - optimize for achitecture scripts
+  - Expresesion assembler is greatly improved, including handling non-linear problems
+  - Several new geometries added in the gsNurbsCreator
+  - CI tests on various platforms, improved docker support
+  - OpenCascade for CAD file format I/O
+  - Spectra eigenvalue solvers
+  - gsIeti module
+  - Haussdorf distance added in gsGeometry (#611)
+* FIXED
+  - bug fix in gsTensorNurbs::insertKnot() (#589)
+  - namespace problem when G+Smo is used aside to other Eigen library versions
+  - fixed I/O from Parasolid and 3dm
+* API
+  - Minimum C++ version compatibility is now C++11
+  - gsMultiBasis uses the full NURBS basis by default (commit 1a5ff6f)
+  - Add small functions needed for the gsStructuralAnalysis and gsKLShell
+  - Several API changes in expressions
+  - Eigen library version used is now 3.4.0
+  - ExprTk library updated
+
+
+v23.12.0 (https://github.com/gismo/gismo/releases/tag/v23.12.0)
+------
+* NEW
+  - Floating point precision showcase, quadrature lookup guard
+  - Introduce gsFunction::recoverPoints, moved includes of third parties
+  - Biharmonic equation assembler
+  - Unittest gsGeometry_test
+  - Example file: precision_example
+  - Labels and file includes in XML file format
+
+* IMPROVED
+  - Python bindings (pygismo)
+  - XML file indenting
+  - Add unittests for spectra
+  - ACC3 scheme for boudaries
+  - gsFuncCoordinate is now more general
+  - Option to keep Sparsity Pattern when reseting the sparse matrix in gsExpAssembler
+  - Parallelization structs (gsParallel)
+  - Optional gsSpectra module
+  - Several fixes in expressions
+* FIXED
+  - CI scripts
+  - Header only and mpfr compilation
+  - Linking of MPFR with gcc
+  - Replace 'sprintf' by 'snprintf' as the former is marked deprecated
+  - Checking if the Eigen symlink already exists before creating a new one
+  - Static linking for pygismo
+  - Make G+Smo compile on Ookami (Fujitsu A64FX)
+
+* API
+  - Several changes in expressions

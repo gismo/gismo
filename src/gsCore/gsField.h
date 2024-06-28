@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the Field class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -17,11 +17,10 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
-#include <gsUtils/gsNorms.h>
+#include <gsUtils/gsPointGrid.h>
 
 namespace gismo
 {
-
 /**
  * \brief A scalar of vector field defined on a m_parametric geometry.
  *
@@ -54,36 +53,37 @@ namespace gismo
 template<class T>
 class gsField
 {
+
 public:
     typedef memory::shared_ptr< gsField >  Ptr;// todo: remove
     typedef memory::unique_ptr< gsField >  uPtr;// todo: remove
 
     gsField(): m_patches(NULL) { }
 
-    gsField( const gsFunctionSet<T> & mp, 
-             typename gsFunctionSet<T>::Ptr fs, 
+    gsField( const gsFunctionSet<T> & mp,
+             typename gsFunctionSet<T>::Ptr fs,
              const bool isparam)
     : m_patches(&mp), m_fields(fs), m_parametric(isparam)
     { }
 
-    gsField( const gsGeometry<T> & sp, const gsFunctionSet<T> & pf, const bool isparam = false) 
+    gsField( const gsGeometry<T> & sp, const gsFunctionSet<T> & pf, const bool isparam = false)
     : m_patches(&sp), m_fields(memory::make_shared_not_owned(&pf)), m_parametric(isparam)
     { }
 
-    gsField( const gsGeometry<T> & sp, const gsGeometry<T> & pf) 
+    gsField( const gsGeometry<T> & sp, const gsGeometry<T> & pf)
     : m_patches(&sp), m_fields(memory::make_shared_not_owned(&pf)), m_parametric(true)
     { }
 
-    gsField( const gsMultiPatch<T> & mp, const gsFunctionSet<T> & f, const bool isparam = false) 
+    gsField( const gsMultiPatch<T> & mp, const gsFunctionSet<T> & f, const bool isparam = false)
     : m_patches(&mp), m_fields(memory::make_shared_not_owned(&f)), m_parametric(isparam)
     { }
 
-    gsField( const gsMultiPatch<T> & mp, const gsMultiPatch<T> & f) 
+    gsField( const gsMultiPatch<T> & mp, const gsMultiPatch<T> & f)
     : m_patches(&mp), m_fields(memory::make_shared_not_owned(&f)), m_parametric(true)
     { }
 
 public:
-    
+
 // TO DO:
 
 // EVAL_physical_position
@@ -126,120 +126,80 @@ public:
             : m_fields->piece(i).eval( point(u, i) );
     }
 
-    // Return the value of the Field at physical value u 
+    // Return the value of the Field at physical value u
     // TO DO: rename to evalPhys()
     gsMatrix<T> pvalue(const gsMatrix<T>& u, int i)  const
     {
         GISMO_ASSERT(!m_parametric, "Cannot compute physical value");
-        return ( m_fields->piece(i).eval(u) ); 
+        return ( m_fields->piece(i).eval(u) );
     }
 
     /// Computes the L2-distance between the two fields, on the physical domain
-    T distanceL2(gsField<T> const & field, int numEvals= 1000) const 
-    {
-        return computeL2Distance(*this, field, numEvals);
-    }
+    T distanceL2(gsField<T> const & field, int numEvals= 1000) const;
 
     /// Computes the L2-distance between the field and a function \a func on the physical domain
-    T distanceL2(gsFunction<T> const & func, 
+    T distanceL2(gsFunctionSet<T> const & func,
                  bool isFunc_param = false,
-                 int numEvals=1000) const 
-    {
-        if ( m_parametric ) // isogeometric field
-            return igaFieldL2Distance(*this, func, isFunc_param);
-        else
-            return computeL2Distance(*this, func, isFunc_param,  numEvals);
-    }
+                 int numEvals=1000) const;
 
     /// Computes the L2-distance between the field and a function \a
     /// func on the physical domain, using mesh from B
-    T distanceL2(gsFunction<T> const & func,
+    T distanceL2(gsFunctionSet<T> const & func,
                  gsMultiBasis<T> const & B,
                  bool isFunc_param = false,
-                 int numEvals=1000) const
-    {
-        if ( m_parametric ) // isogeometric field
-            return igaFieldL2Distance(*this, func, B,isFunc_param);
-        else
-            return computeL2Distance(*this, func, isFunc_param,  numEvals);
-    }
+                 int numEvals=1000) const;
 
-    /// Computes the H1-distance between the field and a function \a
+    /// Computes the H1-seminorm of the diff. between the field and a function \a
     /// func on the physical domain
-    T distanceH1(gsFunction<T> const & func, 
+    T distanceH1(gsFunctionSet<T> const & func,
                  bool isFunc_param = false,
-                 int numEvals=1000) const 
-    {
-        if ( m_parametric ) // isogeometric field
-            return igaFieldH1Distance(*this, func, isFunc_param);
-        else
-        {
-            GISMO_UNUSED(numEvals);
-            gsWarn <<"H1 seminorm not implemented.\n";
-            return -1;
-        }
-    }
+                 int = 1000) const;
 
-    /// Computes the H1-distance between the field and a function \a
+    /// Computes the H1-seminorm of the diff. between the field and a function \a
     /// func on the physical domain, using mesh from B
-    T distanceH1(gsFunction<T> const & func,
+    T distanceH1(gsFunctionSet<T> const & func,
                  gsMultiBasis<T> const & B,
                  bool isFunc_param = false,
-                 int numEvals=1000) const
-    {
-        if ( m_parametric ) // isogeometric field
-            return igaFieldH1Distance(*this, func, B,isFunc_param);
-        else
-        {
-            GISMO_UNUSED(numEvals);
-            gsWarn <<"H1 seminorm not implemented.\n";
-            return -1;
-        }
-    }
+                 int = 1000) const;
+
+    /// Computes the H2-seminorm of the diff. between the field and a function \a
+    /// func on the physical domain, using mesh from B
+    T distanceH2(gsFunctionSet<T> const & func,
+                 bool isFunc_param = false) const;
 
     /// Computes the DG-distance between the field and a function \a
     /// func on the physical domain
-    T distanceDG(gsFunction<T> const & func, 
+    T distanceDG(gsFunctionSet<T> const & func,
                  bool isFunc_param = false,
-                 int numEvals=1000) const 
-    {
-        if ( m_parametric ) // isogeometric field
-            return igaFieldDGDistance(*this, func, isFunc_param);
-        else
-        {
-            GISMO_UNUSED(numEvals);
-            gsWarn <<"DG norm not implemented.\n";
-            return -1;
-        }
-    }
-    
+                 int = 1000) const;
+
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-    { 
-        os << ( m_parametric ? "Parameterized f" : "F") 
+    {
+        os << ( m_parametric ? "Parameterized f" : "F")
            << "unction field.\n Defined on " << m_patches;
-        return os; 
+        return os;
     }
-    
+
     /// \brief Returns the dimension of the parameter domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 2).
-    int parDim() const { return m_patches->domainDim(); }
+    short_t parDim() const { return m_patches->domainDim(); }
 
     /// \brief Returns the dimension of the physical domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 3).
-    int geoDim() const { return m_patches->targetDim(); }
+    short_t geoDim() const { return m_patches->targetDim(); }
 
     /// \brief Returns the dimension of the physical domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 3).
-    int dim() const { return m_fields->targetDim(); }
+    short_t dim() const { return m_fields->targetDim(); }
 
     /// Returns the number of patches.
-    GISMO_DEPRECATED int nPatches()  const { return m_patches->nPieces(); }
+    GISMO_DEPRECATED index_t nPatches()  const { return m_patches->nPieces(); }
 
     /// Returns the number of pieces.
     int nPieces()  const { return m_patches->nPieces(); }
 
-    const gsGeometry<T> & geometry() const 
+    const gsGeometry<T> & geometry() const
     {
         GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(m_patches),
                      "No geometry in field. The domain is"<< *m_patches);
@@ -247,15 +207,18 @@ public:
     }
 
     /// Returns gsMultiPatch containing the geometric information on the domain.
-    const gsMultiPatch<T> & patches() const    
-    { 
+    const gsMultiPatch<T> & patches() const
+    {
         GISMO_ASSERT(dynamic_cast<const gsMultiPatch<T>*>(m_patches),
                      "No patches in field. The field domain is "<< *m_patches);
         return *static_cast<const gsMultiPatch<T>*>(m_patches);
     }
 
+    /// Returns the fields (defined per patch)
+    const gsFunctionSet<T> & fields() const { return *m_fields; }
+
     /// Returns the gsGeometry of patch \a i.
-    const gsGeometry<T> & patch(int i=0) const 
+    const gsGeometry<T> & patch(int i=0) const
     {
         GISMO_ASSERT( i<nPieces(),
                       "gsField: Invalid patch index.");
@@ -265,11 +228,11 @@ public:
     }
 
     /// Returns the gsFunction of patch \a i.
-    const gsFunction<T> & function(int i=0) const  
-    { 
-        GISMO_ASSERT(dynamic_cast<const gsFunction<T>*>(&m_patches->piece(i)),
+    const gsFunction<T> & function(int i=0) const
+    {
+        GISMO_ASSERT(dynamic_cast<const gsFunction<T>*>(&m_fields->piece(i)),
                      "No function in field. The domain is"<< m_patches->piece(i));
-        return static_cast<const gsFunction<T>&>(m_fields->piece(i)); 
+        return static_cast<const gsFunction<T>&>(m_fields->piece(i));
     }
 
     /// Attempts to return an Isogeometric function for patch i
@@ -287,20 +250,20 @@ public:
     /// True if the field function is defined on parametric
     /// coordinates (i.e. the same coordinate system as the patches)
     bool isParametric() const { return m_parametric; }
-    
+
     /// True if the field function is parametrized by a set of basis
     /// functions in parametric coordinates (i.e. the same coordinate
     /// system as the patches)
-    bool isParametrized() const 
+    bool isParametrized() const
     { return m_parametric && dynamic_cast<const gsGeometry<T>*>(&m_fields->piece(0));}
 
     /** \brief Returns the coefficient vector (if it exists)
         corresponding to the function field for patch \a i.
-    
+
     Returns the coefficients of the field corresponding to the \a i-th
     patch. This is only possible in the case when the field is defined
     in terms of basis functions (ie. it derives from gsGeometry).
-    
+
     */
     const gsMatrix<T> & coefficientVector(int i=0) const
     {
@@ -343,3 +306,7 @@ std::ostream &operator<<(std::ostream &os, const gsField<T>& b)
 
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsField.hpp)
+#endif

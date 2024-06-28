@@ -1,15 +1,20 @@
 ######################################################################
-## FindPardiso.cmake ---
-## This file is part of the G+Smo library. 
+## FindPardiso.cmake
+## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 RICAM-Linz.
+## Author: Angelos Mantzaflaris
 ######################################################################
-
 
 # First try: Pardiso compiled with Intel fortran
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-   find_library(PARDISO_LIBRARY NAMES pardiso500-INTEL1301-X86-64 pardiso412-INTEL120-X86-64 pardiso411-INTEL101-X86-64 HINTS ${CMAKE_BINARY_DIR}/lib ${Pardiso_DIR} ${Pardiso_DIR}/lib)
+  string(TOUPPER ${CMAKE_SYSTEM_PROCESSOR} ARCH)
+  string(REPLACE "_" "-" ARCH ${ARCH})
+  file(GLOB pardiso_names "${Pardiso_DIR}/libpardiso*INTEL*${ARCH}*${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  list(GET pardiso_names 0 pardiso_first)
+  get_filename_component(pardiso_name ${pardiso_first} NAME)
+  find_library(PARDISO_LIBRARY NAMES ${pardiso_name}
+    #pardiso500-INTEL1301-X86-64 pardiso412-INTEL120-X86-64 pardiso411-INTEL101-X86-64
+    HINTS ${CMAKE_BINARY_DIR}/lib ${Pardiso_DIR} ${Pardiso_DIR}/lib)
 
 if(PARDISO_LIBRARY)
 
@@ -28,7 +33,6 @@ if(PARDISO_LIBRARY)
    set_target_properties(Pardiso PROPERTIES IMPORTED_LINK_INTERFACE_LIBRARIES "${LAPACK_LIBRARIES}")
 
 
-
   # Note libmkl_intel.so or libmkl_intel_lp64.so contains "pardiso/pardiso64"
 
    set(Pardiso_FOUND TRUE)
@@ -39,9 +43,15 @@ endif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 
 # Second try: Pardiso compiled with GNU GCC
 if(NOT Pardiso_FOUND)
-
-   find_library(PARDISO_LIBRARY NAMES pardiso500-GNU481-X86-64 pardiso500-GNU472-X86-64 pardiso412-GNU450-X86-64 pardiso412-GNU430-X86-64 pardiso411-GNU443-X86-64 pardiso500-MACOS-X86-64 libpardiso500-WIN-X86-64 libpardiso412-WIN-X86-64 libpardiso412-WIN-X86  # pardiso500-MPI-GNU472-X86-64
-             HINTS ${CMAKE_BINARY_DIR}/lib ${Pardiso_DIR} ${Pardiso_DIR}/lib)
+  string(TOUPPER ${CMAKE_SYSTEM_PROCESSOR} ARCH)
+  string(REPLACE "_" "-" ARCH ${ARCH})
+  file(GLOB pardiso_names "${Pardiso_DIR}/libpardiso*GNU*${ARCH}*${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                          "${Pardiso_DIR}/libpardiso*MACOS*${ARCH}*${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  list(GET pardiso_names 0 pardiso_first)
+  get_filename_component(pardiso_name ${pardiso_first} NAME)
+  find_library(PARDISO_LIBRARY NAMES ${pardiso_name}
+    #pardiso600-GNU720-X86-64 pardiso500-GNU481-X86-64 pardiso500-GNU472-X86-64 pardiso412-GNU450-X86-64 pardiso412-GNU430-X86-64 pardiso411-GNU443-X86-64 pardiso500-MACOS-X86-64 libpardiso500-WIN-X86-64 libpardiso412-WIN-X86-64 libpardiso412-WIN-X86 pardiso500-MPI-GNU472-X86-64
+    HINTS ${CMAKE_BINARY_DIR}/lib ${Pardiso_DIR} ${Pardiso_DIR}/lib)
 
   if(PARDISO_LIBRARY)
      add_library(Pardiso SHARED IMPORTED)
@@ -54,6 +64,8 @@ if(NOT Pardiso_FOUND)
 
    #find_package(OpenMP)
    #set_target_properties(Pardiso IMPORTED_LINK_INTERFACE_LIBRARIES ${OpenMP_CXX_FLAGS})
+
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgfortran")
 
   endif(PARDISO_LIBRARY)
 

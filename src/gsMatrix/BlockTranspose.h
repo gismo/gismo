@@ -176,9 +176,8 @@ protected:
 
 } // namespace internal
 
-/**
+/** \memberof gsEigen::MatrixBase
   * \return an expression of block-wise transposed tiled matrix
-  *
   */
 template<typename Derived>
 const typename MatrixBase<Derived>::BlockTransposeReturnType
@@ -186,7 +185,6 @@ MatrixBase<Derived>::blockTranspose(Index numBlocks) const
 {
   return BlockTranspose<Derived,Dynamic>(derived(),numBlocks);
 }
-
 
 
 }

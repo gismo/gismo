@@ -1,6 +1,7 @@
 /** @file gsAxelPlugin.h
 
-    @brief This file provides declaration of the G+Smo plugin for Axel modeler.
+    @brief This file provides declaration of the G+Smo plugin for Axel
+    modeler.
 
     This file is part of the G+Smo library. 
 
@@ -20,6 +21,7 @@
 #include "gsGeometryCreator.h"
 #include "gsGeometryDialog.h"
 #include "gsReaderXml.h"
+#include "gsReaderAxl.h"
 
 //#include "gsGeometryConverter.h"// Using an actor instead
 
@@ -90,6 +92,9 @@ bool gsAxelPlugin::initialize(void)
     if(!gsReaderXml::registered())
 	std::cout << "Unable to register gsReaderXml type";
 
+    if(!gsReaderAxl::registered())
+        std::cout << "Unable to register gsReaderAxl type";
+
     if(!gsBasisData::registered())
     	std::cout << "Unable to register gsBasisData";
     
@@ -102,7 +107,7 @@ bool gsAxelPlugin::initialize(void)
     // if(!gsGeometryWriter::registered())
     //     dtkWarn() << "Unable to register gsGeometryWriter type";    
 
-    std::cout << "G+Smo Plugin for Axel is loaded.\n";
+    std::cout << "G+Smo Plugin for Axel is loaded."<< std::endl;
     return true;
 }
 
@@ -111,11 +116,15 @@ void gsAxelPlugin::setupGismoMenu(void)
     d->gismoMenu = new QMenu("G+Smo"); 
 
     QAction * a;
+
+    // a = new QAction(tr("Geometry Creator"), this);
+    // d->gismoMenu->addAction(a);
+    // connect(a, SIGNAL(triggered()), this, SLOT(creategsGeometryCreator));
     
     a = new QAction(tr("Refine at selection"), this);
     d->gismoMenu->addAction(a);
     a->setEnabled(false);
-    
+
     d->gismoMenu->addSeparator();
     a = new QAction(tr("A&bout G+Smo"), this);
     a->setShortcuts(QKeySequence::New);
@@ -131,8 +140,8 @@ void gsAxelPlugin::aboutGismo(void)
                " G+Smo \n\n"
                "Geometry plus Simulation modules\n"
                "Version " GISMO_VERSION "\n"
-               "http://gs.jku.at/gismo \n");
-    QMessageBox::about(d->gismoMenu, trUtf8("About G+Smo plugin"), gs);
+               "https://github.com/gismo/gismo \n");
+    QMessageBox::about(d->gismoMenu, tr("About G+Smo plugin"), gs);
 }
 
 bool gsAxelPlugin::uninitialize(void)
@@ -147,7 +156,7 @@ QString gsAxelPlugin::name(void) const
 
 QString gsAxelPlugin::description(void) const
 {
-    return "G+Smo plugin. Geometry + Simulation modules, www.gs.jku.at/gismo";
+    return "G+Smo plugin. Geometry + Simulation modules, https://github.com/gismo/gismo";
 }
 
 QStringList gsAxelPlugin::tags(void) const

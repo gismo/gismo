@@ -17,7 +17,7 @@
 //#include <vector>
 //#include <algorithm>			// For lower_bound
 
-
+#ifndef TORCH_VERSION
 namespace std
 {
 
@@ -30,6 +30,7 @@ std::ostream& operator << ( std::ostream& os,
 }
 
 }//namespace std
+#endif
 
 namespace gismo {
 
@@ -247,7 +248,7 @@ public:
       }
 
     // Same as find_it_or_fail but return an index instead of an iterator
-    std::size_t getIndex(const T& key ) const
+    size_t getIndex(const T& key ) const
     {
         return find_it_or_fail(key) - inherited::begin();
     }
@@ -311,7 +312,7 @@ public:
             gsWarn<<"gsSortedVector is not sorted, uniqueSize()"
                   << "is not guaranteed to be correct.\n";
 
-        std::size_t cnt = 1;
+        size_t cnt = 1;
         for (const_iterator it = inherited::begin()+1; it != inherited::end(); ++it)
             if ( *(it-1) != *(it) ) ++cnt;
 

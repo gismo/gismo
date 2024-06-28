@@ -124,14 +124,14 @@ public: // iterator ends
     reverse_iterator       rend()    const;
 
     /// Returns an iterator pointing to the first appearance of the
-    /// knot with cardinal index (ie. unique, counted without
-    /// repetitions) equal to \a upos.
-    iterator               beginAt(const mult_t upos)   const;
+    /// knot with unique index (ie. counted without repetitions, left
+    /// ghosts mapped to negatives) equal to \a upos.
+    iterator               beginAt(mult_t upos)   const;
 
     /// Returns an iterator pointing one past the last appearance of
-    /// the knot with cardinal index (ie. unique, counted without
-    /// repetitions) equal to \a upos.
-    iterator               endAt(const mult_t upos)     const;    
+    /// the knot with cardinal index (ie. counted without repetitions,
+    /// left ghosts mapped to negatives) equal to \a upos.
+    iterator               endAt(mult_t upos)     const;    
     
     /// Returns unique iterator pointing to the beginning of the unique knots.
     uiterator              ubegin()  const;
@@ -160,7 +160,7 @@ public: // constructors
     /// Constructs knot vector from the given \a knots (repeated
     /// according to multiplicities) and deduces the degree from the
     /// multiplicity of the endknots.
-    explicit gsKnotVector(knotContainer knots, int degree = -1 );
+    explicit gsKnotVector(knotContainer knots, short_t degree = -1 );
 
     /// Swaps with \a other knot vector.
     void swap( gsKnotVector& other );
@@ -220,6 +220,12 @@ public: // multiplicities
     /// Returns the multiplicity of the last knot
     mult_t multLast() const { return m_multSum.back() - m_multSum.end()[-2]; }
 
+    /// Returns the maximum multiplicity in the interior
+    mult_t maxInteriorMultiplicity() const;
+
+    /// Returns the minimum multiplicity in the interior
+    mult_t minInteriorMultiplicity() const;
+
     /// Returns the multiplicity of the knot number \a i (counter with
     /// repetitions).
     mult_t multiplicityIndex( mult_t i ) const;
@@ -239,12 +245,24 @@ public: // queries
     inline size_t uSize() const { return m_multSum.size(); }
 
     /// Provides the i-th knot (numbered including repetitions).
-    const T& operator[]( const mult_t i ) const
+    const T& operator[](const mult_t i) const
     {
         GISMO_ASSERT( static_cast<size_t>(i) < m_repKnots.size(),
-                      "Index " << i << " not in the knot vector." );
+                      "Index "<<i<<" not in the knot vector.");
         return m_repKnots[i];
     }
+
+    /// Provides the knot with unique index \a i
+    const T& operator()(const mult_t i) const
+    {
+        GISMO_ASSERT(i+numLeftGhosts() >=0  && static_cast<size_t>(i+numLeftGhosts()) < uSize(),
+                              "Unique index "<<i<<" not in the knot vector.");
+        return *( this->ubegin()+(numLeftGhosts()+i) );
+    }
+
+    /// Provides the knot with unique index \a i
+    inline T  uValue(const size_t & i) const
+    { return this->operator()(i); }
 
     /// Number of knot intervals inside domain.
     inline size_t numElements() const { return (domainUEnd() - domainUBegin()); }
@@ -370,6 +388,22 @@ public: // miscellaneous
     /// Removes the right-most \a numKnots from the knot-vector
     void trimRight(const mult_t numKnots);
 
+    /// Computes the number of left ghosts, i.e., of the knots to the
+    /// left of the domain beginning.
+    index_t numLeftGhosts() const
+    {
+        smart_iterator it(*this,0,0);
+        it += math::min( (size_t)m_deg, size() );
+        return std::distance( uiterator(*this,0,0), it.uIterator() );
+    }
+
+    /// Computes the number of right ghosts, i.e., of the knots to the
+    /// right of the domain end.
+    index_t numRightGhosts() const
+    {
+        return std::distance(domainUEnd(), uend()) - 1;
+    }
+
 public:
 
     /// Sanity check.
@@ -409,7 +443,7 @@ private: // members
 public: // Deprecated functions required by gsKnotVector.
 
     /// Sets the degree and leaves the knots uninitialized.
-    explicit gsKnotVector(int degree)
+    explicit gsKnotVector(short_t degree)
     {
         m_deg = degree;
     }
@@ -425,7 +459,7 @@ public: // Deprecated functions required by gsKnotVector.
                   unsigned interior,
                   mult_t mult_ends=1,
                   mult_t mult_interior=1,
-                  int degree = -1 );
+                  short_t degree = -1 );
 
     /// Constructs knot vector from the given degree and iterators marking its endpoints.
     /// \param deg Degree of the knot.
@@ -434,10 +468,10 @@ public: // Deprecated functions required by gsKnotVector.
     /// The knots between \a begOfKnots and \a endOfKnots are assumed to be repeated
     /// according to their multiplicities and sorted.
     template<typename iterType>
-    gsKnotVector(int deg, const iterType begOfKnots, const iterType endOfKnots)
+    gsKnotVector(short_t deg, const iterType begOfKnots, const iterType endOfKnots)
     {
         insert(begOfKnots,endOfKnots);
-        m_deg = deg;
+        m_deg = (deg == - 1 ? deduceDegree() : deg);
     }
 
 public:
@@ -452,7 +486,7 @@ public:
                       unsigned interior,
                       unsigned mult_ends,
                       unsigned mult_interior,
-                      int degree=-1);
+                      short_t degree=-1);
 
     /// Resets the knot vector so that it has \a numKnots knots
     /// between 0 and 1, each repeated \a mult_interior times (whereas
@@ -461,7 +495,7 @@ public:
     void initUniform( unsigned numKnots,
                       unsigned mult_ends,
                       unsigned mult_interior = 1,
-                      int degree = - 1)
+                      short_t degree = - 1)
     {
         initUniform(0.0, 1.0, numKnots - 2, mult_ends, mult_interior, degree );
     }
@@ -486,7 +520,7 @@ public:
         m_repKnots.reserve( 2*(m_deg+1) + interior*mult_interior );
         m_multSum .reserve(interior+2);
 
-        const T h = (u1-u0) / (interior+1);
+        const T h = (u1-u0) / (T)(interior+1);
 
         m_repKnots.insert(m_repKnots.begin(), m_deg+1, u0);
         m_multSum .push_back(m_deg+1);
@@ -494,7 +528,7 @@ public:
         for ( unsigned i=1; i<=interior; i++ )
         {
             m_repKnots.insert(m_repKnots.end(), mult_interior,
-                              math::pow(i*h, 1.0/grading) );
+                              math::pow(T(i)*h, 1.0/grading) );
             m_multSum .push_back( mult_interior + m_multSum.back() );
         }
         m_repKnots.insert(m_repKnots.end(), m_deg+1, u1);
@@ -503,11 +537,10 @@ public:
 
     /// Returns the greville points of the B-splines defined on this
     /// knot vector.
-    gsMatrix<T> * greville() const
+    gsMatrix<T> greville() const
     {
-        gsMatrix<T> * gr;
-        gr = new gsMatrix<T>( 1,this->size() - m_deg - 1 );
-        this->greville_into(*gr);
+        gsMatrix<T> gr( 1,this->size() - m_deg - 1 );
+        this->greville_into(gr);
         return gr;
     }
 
@@ -539,7 +572,7 @@ public:
         m_repKnots.resize( k - m_repKnots.begin() );
         m_multSum .resize( m - m_multSum .begin() );
     }
-//*/
+*/
 
 
 
@@ -595,14 +628,14 @@ public:
     }
 
     /// Sets the degree to \a p.
-    void set_degree(int p)
+    void set_degree(short_t p)
     {
         m_deg = p;
     }
 
     /// Writes unique indices of the knots of the endpoints of \a
     /// i - th B-spline defined on this knot vector to \a result.
-    void supportIndex_into(const mult_t &i, gsMatrix<unsigned>& result) const;
+    void supportIndex_into(const mult_t &i, gsMatrix<index_t>& result) const;
     // TODO: If the function stays, make a unit test from what is in unifiedKnotVector.cpp.
 
     /// Inserts \a numKnots (and each of them \a mult - times) between
@@ -630,7 +663,7 @@ public:
             {
                 spanBegin =*(this->ubegin()+*it);
                 spanEnd  =*(this->ubegin()+*it+1);
-                newKnot = ( (segmentsPerSpan-k) * spanBegin + k * spanEnd ) / segmentsPerSpan;
+                newKnot = ( (segmentsPerSpan-(T)(k)) * spanBegin + (T)(k) * spanEnd ) / segmentsPerSpan;
                 newKnots.push_back( newKnot );
             }
 
@@ -639,6 +672,9 @@ public:
 
     /// Adds \a amount to all the knots.
     void addConstant( T amount );
+
+    /// Adds \a amount to all the knots, starting at knot \a start.
+    void addConstant( T start, T amount );
 
 public: // things required by gsKnotVector
 
@@ -729,19 +765,28 @@ public: // things required by gsKnotVector
 
         // update multiplicity sum
         std::transform(m_multSum.begin(), m_multSum.end(), m_multSum.begin(),
-                       std::bind2nd(std::plus<mult_t>(), i) );
+                       GS_BIND2ND(std::plus<mult_t>(), i) );
         m_multSum.back() += i;
 
         m_deg += i;
     }
 
     /// Inverse of degreeIncrease.
-    void degreeDecrease(int const & i = 1 )
+    void degreeDecrease(int const & i = 1, bool updateInterior = false)
     {
-        // note: multiplicities are already updated after each call
         remove( ubegin()  , i );
         remove( uend() - 1, i );
         m_deg -= i;
+
+        if (updateInterior)
+        {        
+            if ( m_deg <= 0 )
+                initUniform(first(), last(), 0, 1, 0, 0);
+            else
+                for (uiterator itr = ubegin()+1; itr != uend()-1; ++itr)
+                    if ( itr.multiplicity() > m_deg )
+                        remove( itr, itr.multiplicity() - m_deg );
+        }
     }
 
     /// Increase the multiplicity of all the knots by \a i. If \a
@@ -777,11 +822,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
         // equivalent:
         // return 0 != multiplicity(knot);
     }
-     
-    /// Returns the value of the \a i - th unique index
-    inline T  uValue(const size_t & i) const
-    { return *(ubegin()+i); }
-     
+
     /// Get the multiplicity of the unique knot indexed \a i
     /// \param i index of the knot (without repetitions)
     unsigned u_multiplicityIndex(size_t const & i) const
@@ -831,7 +872,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
     {
         const T df = *(ubegin() + 1) - *ubegin();
         for( uiterator uit = ubegin() + 1; uit != uend(); ++uit )
-            if( math::abs(*uit - (*uit-1) - df) > tol )
+            if( math::abs(*uit - (*uit-(T)(1)) - df) > tol )
                 return false;
         return true;
     }
@@ -877,10 +918,10 @@ public: // others
 
     /// Elevate the degree. I.e., increase the multiplicity of all the
     /// knots by one and increment the degree.
-    void degreeElevate(int const & i = 1);
+    void degreeElevate(const short_t & i = 1);
 
     /// Converse to degreeElevate.
-    void degreeReduce(int const & i);
+    void degreeReduce(const short_t & i);
 
     /// Coarsen the knot vector: for each group of \a knotRemove
     /// consecutive interior unique knots, reduce their multiplicity
@@ -889,13 +930,13 @@ public: // others
     ///
     /// @param knotRemove    Number of consecutive knots to remove
     /// @param knotSkip      Number of consecutive knots which stay untouched in between
-    /// @param mRemove       Multiplicity drop for each processed knot (or -1, full remove)
+    /// @param mul           Multiplicity drop for each processed knot (or -1, full remove)
     std::vector<T> coarsen(index_t knotRemove = 1, index_t knotSkip = 1, mult_t  mul = -1);
 
 public: // members
 
     // TODO remove!
-    int m_deg;
+    short_t m_deg;
 };
 
 template<typename T>
@@ -904,6 +945,16 @@ std::ostream& operator << (std::ostream& out, const gsKnotVector<T> KV )
     KV.print(out);
     return out;
 }
+
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsKnotVector
+   */
+  void pybind11_init_gsKnotVector(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

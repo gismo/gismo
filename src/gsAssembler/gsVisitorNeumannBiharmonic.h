@@ -2,12 +2,12 @@
 
     @brief Neumann conditions visitor for 4th order problems.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris, J. Sogn
 */
 
@@ -16,31 +16,43 @@
 namespace gismo
 {
 
-/** \brief Visitor for Neumann boundary condition for the biharmonic equation.
- *
- * Visitor for boundary condition term of the form:\n
- * Let g be the function given BVP formulation, typically
- * \f[ g = \Delta u\f].
- * Then this visitor adds the follow term on the right-hand side.
- * \f[ (g, \nabla v \cdot \mathbf{n})_\Gamma \f]
- * Where v is the test function and \f[ \Gamma \f] is the boundary.
- */
+   /** @brief Visitor for Neumann boundary condition for the biharmonic equation.
+     *
+     * Visitor for boundary condition term of the form:
+     *
+     * Let g be the function given BVP formulation, typically
+     * \f[ g = \Delta u. \f]
+     * Then this visitor adds the following term on the right-hand side:
+     * \f[ (g, \nabla v \cdot \mathbf{n})_\Gamma, \f]
+     * where v is the test function and \f$ \Gamma \f$ is the boundary.
+     *
+     * @ingroup Assembler
+     */
+
 template <class T>
 class gsVisitorNeumannBiharmonic
 {
 public:
 
-    gsVisitorNeumannBiharmonic(const gsPde<T> & pde, const boundary_condition<T> & s) 
-    : neudata_ptr( s.function().get() ), side(s.side())
+    /// @brief Constructor
+    ///
+    /// @param pde     Reference to \a gsPde object (is ignored)
+    /// @param bc      The boundary condition to be realized
+    gsVisitorNeumannBiharmonic(const gsPde<T> & pde, const boundary_condition<T> & bc)
+    : neudata_ptr( bc.function().get() ), side(bc.side())
+    { GISMO_UNUSED(pde); }
+
+    /// @brief Constructor
+    ///
+    /// @param neudata Neumann boundary function
+    /// @param s       Side of the geometry where neumann BC is prescribed
+    gsVisitorNeumannBiharmonic(const gsFunction<T> & neudata, boxSide s)
+    : neudata_ptr(&neudata), side(s)
     { }
 
-    gsVisitorNeumannBiharmonic(const gsFunction<T> & neudata, boxSide s) :
-    neudata_ptr(&neudata), side(s)
-    { }
-
-    void initialize(const gsBasis<T> & basis, 
-                    gsQuadRule<T>    & rule, 
-                    unsigned         & evFlags )
+    /// Initialize
+    void initialize(const gsBasis<T> & basis,
+                    gsQuadRule<T>    & rule)
     {
         const int dir = side.direction();
         gsVector<int> numQuadNodes ( basis.dim() );
@@ -52,15 +64,15 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM ;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM ;
 
     }
 
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
-                    const gsOptionList & options, 
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    const index_t ,
+                    const gsOptionList & options,
+                    gsQuadRule<T>    & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
         rule = gsGaussRule<T>(basis, options.getReal("quA"),
@@ -68,55 +80,57 @@ public:
                               side.direction() );
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
-    // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
+    /// Evaluate on element
+    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
                          gsMatrix<T>            & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(quNodes.col(0), actives);
+        basis.active_into(md.points.col(0), actives);
         numActive = actives.rows();
 
         // Evaluate basis gradients on element
-        basis.deriv_into( quNodes, basisGrads);
+        basis.deriv_into( md.points, basisGrads);
 
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         // Evaluate the Neumann data
-        neudata_ptr->eval_into(geoEval.values(), neuData);
+        neudata_ptr->eval_into(md.values[0], neuData);
 
         // Initialize local matrix/rhs
         localRhs.setZero(numActive, neudata_ptr->targetDim() );
     }
 
-    inline void assemble(gsDomainIterator<T>    & element, 
-                         gsGeometryEvaluator<T> & geoEval,
+    /// Assemble on element
+    inline void assemble(gsDomainIterator<T>    & ,
                          gsVector<T> const      & quWeights)
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector on the side
-            geoEval.outerNormal(k, side, unormal);
-            
+            outerNormal(md, k, side, unormal);
+
             // Multiply quadrature weight by the measure of normal
             const T weight = quWeights[k] * unormal.norm();
             unormal.normalize();
             //Get gradients of the physical space
-            geoEval.transformGradients(k, basisGrads, physBasisGrad);
+            transformGradients(md, k, basisGrads, physBasisGrad);
 
             localRhs.noalias() += weight *(( physBasisGrad.transpose() * unormal )* neuData.col(k).transpose());
         }
     }
-    
-    inline void localToGlobal(const int patchIndex,
-                              const std::vector<gsMatrix<T> >    & eliminatedDofs,
-                              gsSparseSystem<T>     & system)
+
+    /// Adds the contributions to the sparse system
+    inline void localToGlobal(const index_t                     patchIndex,
+                              const std::vector<gsMatrix<T> > & ,
+                              gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
@@ -126,11 +140,11 @@ public:
     }
 
     /*
-    void localToGlobal(const gsDofMapper  & mapper,
-                       const gsMatrix<T>     & eliminatedDofs,
-                       const int patchIndex,
-                       gsSparseMatrix<T>     & sysMatrix,
-                       gsMatrix<T>           & rhsMatrix )
+    void localToGlobal(const gsDofMapper & mapper,
+                       const gsMatrix<T> & eliminatedDofs,
+                       const index_t       patchIndex,
+                       gsSparseMatrix<T> & sysMatrix,
+                       gsMatrix<T>       & rhsMatrix )
     {
         // Local DoFs to global DoFs
         mapper.localToGlobal(actives, patchIndex, actives);
@@ -150,14 +164,14 @@ public:
 
 protected:
 
-    
+
     // Neumann function
-    const gsFunction<T> * neudata_ptr;
+    const gsFunctionSet<T> * neudata_ptr;
     boxSide side;
 
     // Basis values
     gsMatrix<T> basisGrads;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // Normal and Neumann values
     gsMatrix<T>        physBasisGrad;
@@ -170,6 +184,7 @@ protected:
     // Local matrix and rhs
     gsMatrix<T> localRhs;
 
+    gsMapData<T> md;
 };
 
 

@@ -67,8 +67,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): Programmed during the workshop
-               http://www.gs.jku.at/gismo/wiki/WikiStart/gs2015
+    Author(s): Programmed during the workshop https://github.com/gismo/gismo/wiki/G-Smo-developer-days-2015
 */
 
 #include <gismo.h>
@@ -149,7 +148,9 @@ int main(int argc, char* argv[])
 
     // Save the result as an XML file
     gsFileData<> fd;
-    fd << *interpolant;
+    gsMultiPatch<> mp;
+    mp.addPatch(give(interpolant));
+    fd << mp;
     std::string remark("Made by interpolation from function: ( ");
     for (index_t i = 0; i<3; ++i)
     {

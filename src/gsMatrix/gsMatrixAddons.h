@@ -47,3 +47,45 @@ void gaussElim()
         M.col(piv).tail(br).setZero();
     }
 }
+
+
+/**
+  * \brief Inversion for small matrices using Cramer's Rule
+  */
+inline Matrix<Scalar, Dynamic, Dynamic> cramerInverse() const
+{
+    const Derived & M = derived();
+    eigen_assert(M.rows() == M.cols() && "Matrix is not square.");
+
+    Matrix<Scalar, Dynamic, Dynamic> rvo1(M.rows(), M.rows());
+    switch (M.rows())
+    {
+        case 1:
+            rvo1 = M.template topLeftCorner<1, 1>().inverse();
+            break;
+        case 2:
+            rvo1 = M.template topLeftCorner<2, 2>().inverse();
+            break;
+        case 3:
+            rvo1 = M.template topLeftCorner<3, 3>().inverse();
+            break;
+        case 4:
+            rvo1 = M.template topLeftCorner<4, 4>().inverse();
+            break;
+        default:
+            gsWarn<<"Inversion by LU for matrix of size "<<M.rows()<<"\n";
+            M.inverse();
+            break;
+    };
+    return rvo1;
+}
+
+/**
+  * \brief Inplace inversion for small matrices using Cramer's Rule
+  */
+inline void cramerInverseInPlace()
+{
+//    derived() = cramerInverse().eval();
+    derived().swap(cramerInverse().eval());
+}
+

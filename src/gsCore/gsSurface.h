@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsGeometryEvaluator.h>
+#include <gsCore/gsGeometry.h>
 
 namespace gismo
 {
@@ -63,11 +63,9 @@ public:
 private: virtual gsSurface * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
-    int domainDim() const { return 2; }
+    short_t domainDim() const { return 2; }
 
     void toMesh(gsMesh<T> & msh, int npoints = 625) const;
-
-    virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;
 
 }; // class gsSurface
 

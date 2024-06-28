@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsTrilinos/gsTrilinos.h>
 
 using namespace gismo;
 
@@ -39,7 +38,7 @@ void poissonDiscretization(gsSparseMatrix<> & mat, gsVector<> & rhs, index_t N);
  *
  *  To get an overview of the command line arguments run
  *
- *  ./gsTrilinos_test -s <SOLVER> -p <PRECONDITIONER> --verbose
+ *  ./trilinos_example -s <SOLVER> -p <PRECONDITIONER> --verbose
  *
  *  where <SOLVER> is one of "Amesos", "Aztec", and "Belos" and
  *  <PRECONDITIONER> is either "" or "ML". This will run the selected
@@ -51,20 +50,22 @@ void poissonDiscretization(gsSparseMatrix<> & mat, gsVector<> & rhs, index_t N);
  *  Many solvers can be further controlled by passing a specific typer
  *  type, again using the particular default option, e.g.
  *
- *  ./gsTrilinos_test -s "Belos:BiCGStab"
+ *  ./trilinos_example -s "Belos:BiCGStab"
  *
  *  which selects the BiCGStab solver from the Belos package.
  *
  *  More fine-grained control is possible by passing solver-specific
  *  parameters, e.g.
  *
- *  ./gsTrilinos_test -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12"
+ *  ./trilinos_example -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12"
  *
  *  This will set the convergence tolerance to 1e-12 of type
  *  double. The expression follows the CMake pattern
  *  NAME:TYPE=VALUE. Multiple parameters can be separated by ";", e.g.
  *
- *  ./gsTrilinos_test -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12;Maximum Iterations:INT=100"
+ *  ./trilinos_example -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12;Maximum Iterations:INT=100"
+ *
+ * To test MPI on several nodes try: mpirun -np 3 ./bin/trilinos_example
  */
 int main(int argc, char**argv)
 {
@@ -72,8 +73,8 @@ int main(int argc, char**argv)
     bool verbose = false;
     bool status = false;
     bool timing = false;
-    std::string solver = "";
-    std::string preconditioner = "";
+    std::string solver = "Aztec:Gmres";
+    std::string preconditioner = "ML:DD";
     std::string amesos_options = "";
     std::string aztec_options = "";
     std::string belos_options = "";
@@ -139,7 +140,7 @@ int main(int argc, char**argv)
             gsInfo << "x = "<< x.transpose() <<"\n\n";
     }
 
-#ifdef GISMO_WITH_TRILINOS
+#ifdef gsTrilinos_ENABLED
 
     // Converting Eigen-Matrix to Trilinos/Epetra
     trilinos::SparseMatrix t_A(A);
@@ -201,14 +202,15 @@ int main(int argc, char**argv)
         if (verbose) gsInfo << t_solver.currentParams();
 
         /// Compute solution
-        const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        t_solver.solve(t_b);
 
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
         if (timing) gsInfo << t_solver.timing();
 
         /// Check error
-        GISMO_UNUSED(t_vx);
+        //GISMO_UNUSED(t_vx);
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -275,14 +277,15 @@ int main(int argc, char**argv)
         if (verbose) gsInfo << t_solver.currentParams();
 
         /// Compute solution
-        const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        t_solver.solve(t_b);
 
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
         if (timing) gsInfo << t_solver.timing();
 
         /// Check error
-        GISMO_UNUSED(t_vx);
+        //GISMO_UNUSED(t_vx);
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -364,7 +367,8 @@ int main(int argc, char**argv)
         t_solver.setPreconditioner(t_precond);
 
         /// Compute solution
-        const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        t_solver.solve(t_b);
 
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
@@ -374,7 +378,7 @@ int main(int argc, char**argv)
         if (timing) gsInfo << t_precond.timing();
 
         /// Check error
-        GISMO_UNUSED(t_vx);
+        //GISMO_UNUSED(t_vx);
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -456,14 +460,15 @@ int main(int argc, char**argv)
         if (verbose) gsInfo << t_solver.currentParams();
 
         /// Compute solution
-        const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        t_solver.solve(t_b);
 
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
         if (timing) gsInfo << t_solver.timing();
 
         /// Check error
-        GISMO_UNUSED(t_vx);
+        //GISMO_UNUSED(t_vx);
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -490,14 +495,15 @@ int main(int argc, char**argv)
     //     if (verbose) gsInfo << t_solver.currentParams();
 
     //     /// Compute solution
-    //     const trilinos::Vector & t_vx = t_solver.solve(t_b);
+    //     //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+    //     t_solver.solve(t_b);
 
     //     /// Get solver status and timing
     //     if (status) gsInfo << t_solver.status();
     //     if (timing) gsInfo << t_solver.timing();
 
     //     /// Check error
-    //     GISMO_UNUSED(t_vx);
+    //     //GISMO_UNUSED(t_vx);
     //     bool OK = false;
     //     gsVector<> t_x;
     //     t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -603,8 +609,9 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsVector<> &rhs, index_t N)
     }
 
     const real_t meshSize = (real_t)1/(N+1);
+    const real_t pi2 = EIGEN_PI*EIGEN_PI;
     for (index_t k = 0; k < N; ++k)
-        rhs(k) = EIGEN_PI*EIGEN_PI*meshSize*meshSize*math::cos(meshSize*(1+k)*EIGEN_PI);
+      rhs(k) = pi2*meshSize*meshSize*math::cos(meshSize*(1+k)*EIGEN_PI);
 
     //Compress the matrix
     mat.makeCompressed();
@@ -622,7 +629,7 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsVector<> &rhs, index_t N)
 template<typename Solver>
 void configureSolver(Solver & solver, const std::string & str)
 {
-    std::size_t npos=0, nlen=0;
+    size_t npos=0, nlen=0;
     while (nlen < str.length())
     {
         // Get token NAME:TYPE=VALUE
@@ -631,9 +638,9 @@ void configureSolver(Solver & solver, const std::string & str)
         npos+=nlen+1;
 
         // Split token into NAME
-        std::size_t mlen = token.find_last_of(":");
+        size_t mlen = token.find_last_of(":");
         std::string name = token.substr(0,mlen);
-        std::size_t mpos = mlen+1;
+        size_t mpos = mlen+1;
 
         /// ... TYPE
         mlen = token.substr(mpos).find_last_of("=");

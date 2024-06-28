@@ -139,7 +139,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             mwIndex dir = (mwIndex) mxGetScalar(prhs[3]);
             // Call the method
-            gsMatrix<real_t> vals = instance->hess(pts, dir-1);
+            gsMatrix<real_t> vals = instance->hessian(pts, dir-1);
             // Copy result to output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<real_t>(vals);
 

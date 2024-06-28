@@ -2,19 +2,19 @@
 
     @brief Provides declaration of iterator of hierarchical domain.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): J. Speh
 */
 
 #pragma once
 
 #include <gsHSplines/gsHDomain.h>
-
+#include <gsHSplines/gsKdNode.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsCore/gsDomainIterator.h>
@@ -25,7 +25,7 @@ namespace gismo
 // Documentation in gsDomainIterator
 /** @brief Re-implements gsDomainIterator for iteration over all boundary
   * elements of a <b>hierarchical</b> parameter domain.
-  * 
+  *
   * <em>See
   * gsDomainIterator for more detailed documentation and an example of
   * the typical use!!!</em>\n Used, e.g., for basis of classes
@@ -39,13 +39,13 @@ class gsHDomainIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef kdnode<d, unsigned> node;
+    typedef gsKdNode<d, index_t> node;
 
-    typedef typename node::point point; 
+    typedef typename node::point point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHDomain<d,unsigned> hDomain;
+    typedef gsHDomain<d,index_t> hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 
@@ -57,7 +57,7 @@ public:
         // Initialize mesh data
         m_meshStart.resize(d);
         m_meshEnd  .resize(d);
-        
+
         // Initialize cell data
         m_curElement.resize(d);
         m_lower     .resize(d);
@@ -65,9 +65,6 @@ public:
 
         // Allocate breaks
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
-
-        // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
 
         m_leaf = hbs.tree().beginLeafIterator();
         updateLeaf();
@@ -87,7 +84,8 @@ public:
             if (this->m_isGood)
                 updateElement();
         }
-        
+
+        ++m_id; //increment id
         return this->m_isGood;
     }
 
@@ -104,9 +102,10 @@ public:
         if (this->m_isGood)
             updateElement();
 
+        m_id += increment; //increment id
         return this->m_isGood;
     }
-    
+
     /// Resets the iterator so that it can be used for another
     /// iteration through all boundary elements.
     void reset()
@@ -116,37 +115,6 @@ public:
         updateLeaf();
         updateElement();
     }
-    
-    // ---> Documentation in gsDomainIterator.h Compute a suitable
-    // quadrature rule of the given order for the current element
-    GISMO_DEPRECATED void computeQuadratureRule(const gsVector<int>& numIntNodes)
-    {
-        m_quadrature.setNodes(numIntNodes);
-        m_quadrature.mapTo(m_lower, m_upper, this->quNodes, this->quWeights);
-    }
-
-    GISMO_DEPRECATED void computeQuadratureRuleDefault()
-    {
-        // uses same formula as gsGaussAssembler::getNumIntNodesFor( gsBasis )
-        gsVector<int> numIntNodes( m_basis->dim() );
-        for (int i = 0; i < m_basis->dim(); ++i)
-            numIntNodes[i] = m_basis->degree(i) + 1;
-
-        computeQuadratureRule( numIntNodes );
-    }
-    
-    // get the basis function indices which are active in the current
-    // element
-    void getActiveFunctions(gsMatrix<unsigned>& act)
-    {
-        this->m_basis->active_into(center, act);
-    }
-    
-    const gsMatrix<unsigned>& computeActiveFunctions()
-    {
-        this->m_basis->active_into(center, this->activeFuncs);
-        return this->activeFuncs;
-    }
 
     const gsVector<T>& lowerCorner() const { return m_lower; }
 
@@ -155,6 +123,18 @@ public:
     int getLevel() const
     {
         return m_leaf.level();
+    }
+
+    // Returns the element multi-index at the current level
+    // If you need the element at the level above, divide this all indices by 2
+    gsVector<index_t> elementMultiIndex() const
+    {
+        gsVector<index_t> res(d);
+        for (index_t i = 0; i!=d; ++i)
+        {
+            res[i] =  std::distance(m_breaks[i].begin(), m_curElement[i]);
+        }
+        return res;
     }
 
 private:
@@ -179,7 +159,7 @@ private:
     {
         const point & lower = m_leaf.lowerCorner();
         const point & upper = m_leaf.upperCorner();
-        // gsDebug<<"leaf "<<  lower.transpose() <<", " 
+        // gsDebug<<"leaf "<<  lower.transpose() <<", "
         //        << upper.transpose() <<"\n";
 
         const int level2 = m_leaf.level();
@@ -187,8 +167,16 @@ private:
         // Update leaf box
         for (unsigned dim = 0; dim < d; ++dim)
         {
-            const unsigned start = lower(dim);
-            const unsigned end  = upper(dim) ;
+            index_t start = lower(dim);
+            index_t end  = upper(dim) ;
+
+            if (basis().manualLevels() )
+            {
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                    _diadicIndexToKnotIndex(level2,dim,start);
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                    _diadicIndexToKnotIndex(level2,dim,end);
+            }
 
             const gsKnotVector<T> & kv =
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
@@ -197,10 +185,10 @@ private:
             // knotVals = kv.unique()
 
             m_breaks[dim].clear();
-            for (unsigned index = start; index <= end; ++index)
-                m_breaks[dim].push_back(kv.uValue(index));
+            for (index_t index = start; index <= end; ++index)
+                m_breaks[dim].push_back( kv(index) );// unique index
 
-            m_curElement(dim) = 
+            m_curElement(dim) =
             m_meshStart(dim)  = m_breaks[dim].begin();
 
             // for n breaks, we have n - 1 elements (spans)
@@ -218,26 +206,27 @@ private:
         {
             m_lower[i]  = *m_curElement[i];
             m_upper[i]  = *(m_curElement[i]+1);
-            center[i] = T(0.5) * (m_lower[i] + m_upper[i]);
+            center[i] = (T)(0.5) * (m_lower[i] + m_upper[i]);
         }
-
-        // Update quadrature rule
-        m_quadrature.mapTo(m_lower, m_upper, this->quNodes, this->quWeights);
-
-        // Update Active basis functions
-        computeActiveFunctions();
     }
 
 // =============================================================================
 // members
 // =============================================================================
 
+    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
+
 public:
 
     using gsDomainIterator<T>::center;
     using gsDomainIterator<T>::m_basis;
 
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
+
+protected:
+    using gsDomainIterator<T>::m_id;
 
 private:
 
@@ -256,10 +245,6 @@ private:
 
     // parameter coordinates of current grid cell
     gsVector<T> m_lower, m_upper;
-
-    // Quadrature rule
-    gsGaussRule<T> m_quadrature;
-
 };
 
 } // end namespace gismo

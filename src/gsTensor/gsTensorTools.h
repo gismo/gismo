@@ -46,7 +46,7 @@ int fromTensorIndex(const gsVector<unsigned, d>& idx, const gsVector<unsigned, d
     
     \ingroup Tensor
  */
-template <unsigned d, typename T>
+template <short_t d, typename T>
 void tensorCombineTransferMatrices(
     gsSparseMatrix<T,RowMajor> B[d],
     gsSparseMatrix<T,RowMajor> & transfer)
@@ -75,7 +75,7 @@ void tensorCombineTransferMatrices(
         bool more;
         do {
             // get the old tensor index
-            T contrib = T(1);
+            T contrib = (T)(1);
             for (unsigned i = 0; i < d; ++i)
             {
                 contrib *= it[i].value();

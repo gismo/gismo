@@ -15,10 +15,10 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 
-//#define _USE_MATH_DEFINES
 #include <cmath>
+#include <complex>
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
@@ -58,8 +58,11 @@ using std::sinh;
 using std::sqrt;
 using std::tan;
 using std::tanh;
+using std::real;
+using std::imag;
+using std::conj;
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
 using codi::abs;
 using codi::acos;
 using codi::asin;
@@ -82,35 +85,52 @@ using codi::sinh;
 using codi::sqrt;
 using codi::tan;
 using codi::tanh;
+using codi::isnan;
+using codi::isfinite;
+using codi::isinf;
+//using codi::real;
+//using codi::imag;
+//using codi::conj;
 #endif
 
-#ifdef GISMO_WITH_UNUM
-using sw::unum::abs;
-using sw::unum::acos;
-using sw::unum::asin;
-using sw::unum::atan2;
-using sw::unum::atan;
-using sw::unum::ceil;
-using sw::unum::cos;
-using sw::unum::cosh;
-using sw::unum::exp;
-using sw::unum::floor;
-//using sw::unum::frexp;
-//using sw::unum::ldexp;
-using sw::unum::log10;
-using sw::unum::log;
-using sw::unum::max;
-using sw::unum::min;
-using sw::unum::pow;
-using sw::unum::sin;
-using sw::unum::sinh;
-using sw::unum::sqrt;
-using sw::unum::tan;
-using sw::unum::tanh;
+#ifdef gsUniversal_ENABLED
+using sw::universal::abs;
+using sw::universal::acos;
+using sw::universal::asin;
+using sw::universal::atan2;
+using sw::universal::atan;
+using sw::universal::ceil;
+using sw::universal::cos;
+using sw::universal::cosh;
+using sw::universal::exp;
+using sw::universal::floor;
+//using sw::universal::frexp;
+//using sw::universal::ldexp;
+using sw::universal::log10;
+using sw::universal::log;
+using sw::universal::max;
+using sw::universal::min;
+using sw::universal::pow;
+using sw::universal::sin;
+using sw::universal::sinh;
+using sw::universal::sqrt;
+using sw::universal::tan;
+using sw::universal::tanh;
 
-using sw::unum::isnan;
-using sw::unum::isfinite;
-using sw::unum::isinf;
+// dummy
+template<size_t nbits, size_t es>
+inline sw::universal::posit<nbits,es> frexp(const sw::universal::posit<nbits,es> & a, int* b) {return  a;}
+
+template<size_t nbits, size_t es>
+inline sw::universal::posit<nbits,es> ldexp(const sw::universal::posit<nbits,es> & a, int b ) {return  a;}
+
+using sw::universal::isnan;
+using sw::universal::isfinite;
+using sw::universal::isinf;
+
+using sw::universal::real;
+using sw::universal::imag;
+using sw::universal::conj;
 
 #endif
 
@@ -136,7 +156,7 @@ inline T nextafter(T x, T y)
 #   endif
 }
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 template<>
 inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
 {
@@ -144,7 +164,7 @@ inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
 }
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef gsGmp_ENABLED
 template<>
 inline mpq_class nextafter(mpq_class x, mpq_class y)
 {
@@ -152,21 +172,21 @@ inline mpq_class nextafter(mpq_class x, mpq_class y)
 }
 #endif
 
-#ifdef GISMO_WITH_UNUM
+#ifdef gsUniversal_ENABLED
 template<size_t nbits, size_t es>
-inline sw::unum::posit<nbits,es> nextafter(sw::unum::posit<nbits, es> x,
-                                           sw::unum::posit<nbits,es>  y)
+inline sw::universal::posit<nbits,es> nextafter(sw::universal::posit<nbits,es> x,
+                                           sw::universal::posit<nbits,es>  y)
 {
-    return sw::unum::nextafter(x,y);
+    return sw::universal::nextafter(x,y);
 }
 #endif
 
 // inline real_t nextafter(real_t x, real_t y)
 // {
-// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
+// #   if defined(gsMpfr_ENABLED) || defined(gsGmp_ENABLED)
 //     return x + ( y < x ? -1e-16 : 1e-16 );
-// #   elif defined(GISMO_WITH_UNUM)
-//     return sw::unum::nextafter(x,y);
+// #   elif defined(gsUniversal_ENABLED)
+//     return sw::universal::nextafter(x,y);
 // #   elif defined(_MSC_VER) && _MSC_VER < 1800
 //     return _nextafter(x,y);
 // #   else
@@ -188,7 +208,7 @@ struct numeric_limits
     { return std::numeric_limits<T>::digits10; }
 };
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 template <>
 struct numeric_limits<mpfr::mpreal>
 {
@@ -200,7 +220,7 @@ struct numeric_limits<mpfr::mpreal>
 };
 #endif
 
-//#ifdef GISMO_WITH_MPFR
+//#ifdef gsMpfr_ENABLED
 //#  define REAL_DIG std::numeric_limits<real_t>::digits10()
 //#else
 //#  define REAL_DIG std::numeric_limits<real_t>::digits10
@@ -219,8 +239,8 @@ template <typename T>
 int isfinite(T a)
 {return _finite(a);}
 //bool isfinite(T a)  {(a - a) == (a - a);} //equiv.
-//template <typename T>
-//bool isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
+template <typename T>
+bool isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
 
 #ifndef NAN
 // MSVC doesn't have the NAN constant in cmath, so we use the C++
@@ -238,7 +258,7 @@ using std::isinf;
 #endif
 #endif
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 // Math functions for MPFR
 using mpfr::abs;
 using mpfr::acos;
@@ -250,6 +270,7 @@ using mpfr::cos;
 using mpfr::cosh;
 using mpfr::floor;
 using mpfr::log;
+using mpfr::log10;
 using mpfr::pow;
 using mpfr::sin;
 using mpfr::sinh;
@@ -267,7 +288,7 @@ using mpfr::isnan;
 
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef gsGmp_ENABLED
 // Math functions for GMP/mpq_class
 using ::abs;
 using ::acos;
@@ -279,7 +300,7 @@ using ::cos;
 using ::cosh;
 using ::exp;
 using ::floor;
-using ::log10;
+inline mpq_class log10(const mpq_class & a) { return log(a)/log(10); }
 using ::log;
 using ::pow;
 using ::sin;
@@ -303,7 +324,16 @@ inline mpq_class ldexp(const mpq_class & a, int b ) {return  a;}
 /// Returns the sign of \a val
 template <typename T> int getSign(T val)
 {
-    return (T(0) < val) - (val < T(0));
+    return (T(0) < val) - (val < (T)(0));
+}
+
+/// Return smallest difference between two (integer)T numbers as unsigned T
+/// especially the case abs_diff(INT32_MAX, INT32_MIN) := UINT32_MAX is correct
+template <typename T>
+inline typename util::make_unsigned<T>::type abs_diff(T a, T b)
+{
+    typedef typename util::make_unsigned<T>::type unsignedT;
+    return a > b ? unsignedT(a) - unsignedT(b) : unsignedT(b) - unsignedT(a);
 }
 
 /// integer power
@@ -339,7 +369,7 @@ inline T mix(T const & a, T const & b, T const & t)
 // numerical comparison
 template<class T>
 inline bool lessthan (T const  a, T const  b)
-{ return ( b-a > math::limits::epsilon); }
+{ return ( b-a > math::limits::epsilon()); }
 
 // numerical equality with \a prec decimal digits
 template<int prec, class T>

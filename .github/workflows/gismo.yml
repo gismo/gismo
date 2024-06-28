@@ -1,0 +1,39 @@
+name: gismo
+
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  push:
+    branches:
+      - stable
+  pull_request:
+    branches:
+      - stable
+  # Also trigger on page_build, as well as release created events
+  page_build:
+  release:
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: RelWithDebInfo
+  GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  build:
+    name: "Run for ${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Running ctest
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      run: |
+        export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
+        ctest -S gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$GITHUB_RUN_NUMBER-${{ matrix.os }}[${{ github.event.number }}]" -D CTEST_SITE="$GIT_BRANCH-$GIT_COMMIT [github]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11;-DGISMO_WITH_XDEBUG=ON;-DGISMO_BUILD_UNITTESTS=ON" -D GISMO_OPTIONAL="gsOpennurbs" -D CTEST_BUILD_JOBS=4 -Q

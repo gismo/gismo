@@ -2,12 +2,12 @@
 
     @brief Provides declaration of Vector class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -21,7 +21,7 @@ namespace gismo
 /** @brief
     A vector with arbitrary coefficient type and fixed or dynamic size.
 
-    This class is based on Eigen::Matrix from the Eigen
+    This class is based on gsEigen::Matrix from the Eigen
     linear algebra library. Most operations from Eigen are supported
     on a gsVector. See therefore also the Eigen documentation,
     http://eigen.tuxfamily.org/dox/.
@@ -38,15 +38,20 @@ class gsVector : public gsMatrix<T, _Rows, 1, _Options>
 public:
     typedef gsMatrix<T,_Rows,1,_Options> gsBase;
     //typedef gsMatrix<T,_Rows,(_Rows!=-1 ? 1 : -1), _Options> gsBase;
-    
+
     // Base is the single-column dense matrix class of Eigen
     typedef typename gsBase::Base Base;
+
+    // Self type
+    typedef gsVector<T,_Rows, _Options> Self;
+
+    typedef typename gsEigen::aligned_allocator<Self> aalloc;
 
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
 
     // Type pointing to a block of the vector
-    typedef typename Eigen::Block<Base> Block;
+    typedef typename gsEigen::Block<Base> Block;
 
     // Type pointing to a block view of the vector
     typedef gsMatrixBlockView<Base> BlockView;
@@ -58,14 +63,14 @@ public:
     typedef memory::unique_ptr< gsVector > uPtr;
 
     // Type for copying a vector as a permutation matrix
-    typedef Eigen::PermutationMatrix<_Rows,Base::SizeAtCompileTime,index_t> Permutation;
+    typedef gsEigen::PermutationMatrix<_Rows,Base::SizeAtCompileTime,index_t> Permutation;
 
     // Type for treating a vector as a permutation matrix
-    typedef Eigen::PermutationWrapper<Base> PermutationWrap;
+    typedef gsEigen::PermutationWrapper<Base> PermutationWrap;
 
-    typedef Eigen::Ref<Base> Ref;
+    typedef gsEigen::Ref<Base> Ref;
 
-    typedef const Eigen::Ref<const Base> ConstRef;
+    typedef const gsEigen::Ref<const Base> ConstRef;
 
     // Type for a vector of dimension one less
     typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, ColMajor> Projection_t;
@@ -97,25 +102,32 @@ public:
     // implicitly deleted in C++11
     //gsVector(const gsVector& a) : gsBase(a) { }
 
-    explicit gsVector(int dimension) ;
+    explicit gsVector(index_t dimension) ;
+
+    // To enable pybind11 in gsPointLoads
+    explicit gsVector(index_t _rows, index_t _cols)
+    : gsVector(_rows)
+    {
+        GISMO_ASSERT(1==_cols,"Columns should be 1");
+    }
 
     inline operator Ref () { return Ref(*this); }
 
     inline operator const ConstRef () { return ConstRef(*this); }
 
     void clear() { this->resize(0); }
-    
-    // This constructor allows constructing a gsVector from Eigen expressions
-    template<typename OtherDerived>
-    gsVector(const Eigen::EigenBase<OtherDerived>& other) : gsBase(other) { }
 
     // This constructor allows constructing a gsVector from Eigen expressions
     template<typename OtherDerived>
-    gsVector(const Eigen::MatrixBase<OtherDerived>& other) : gsBase(other) { }
+    gsVector(const gsEigen::EigenBase<OtherDerived>& other) : gsBase(other) { }
 
     // This constructor allows constructing a gsVector from Eigen expressions
     template<typename OtherDerived>
-    gsVector(const Eigen::ReturnByValue<OtherDerived>& other) : gsBase(other) { }
+    gsVector(const gsEigen::MatrixBase<OtherDerived>& other) : gsBase(other) { }
+
+    // This constructor allows constructing a gsVector from Eigen expressions
+    template<typename OtherDerived>
+    gsVector(const gsEigen::ReturnByValue<OtherDerived>& other) : gsBase(other) { }
 
     static gsVector<T,2> vec( T x, T y)
     {
@@ -127,12 +139,20 @@ public:
         return typename gsVector<T,3>::Base(x, y, z);
     }
 
+    template<class iterator> void
+    assign(iterator from, iterator to)
+    {
+        this->resize(std::distance(from,to));
+        T * a = this->data();
+        for(iterator it = from; it!=to; ++it) *(a++) = *it;
+    }
+
 /*
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER
     template <class EigenExpr>
-    gsVector& operator= (const EigenExpr & other) 
+    gsVector& operator= (const EigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
@@ -142,7 +162,7 @@ public:
 #endif
 */
 #if !EIGEN_HAS_RVALUE_REFERENCES
-    gsVector & operator=(typename Eigen::internal::conditional<
+    gsVector & operator=(typename gsEigen::internal::conditional<
                          -1==_Rows,gsVector, const gsVector &>::type other)
     {
         if (-1==_Rows)
@@ -152,7 +172,7 @@ public:
         return *this;
     }
 #endif
-    
+
     /// \brief Returns the \a i-th element of the vector
     inline T at(index_t i) const { return *(this->data()+i);}
 
@@ -180,7 +200,7 @@ public:
         GISMO_ASSERT( i < this->size(), "Invalid vector element." );
         const T * ce = this->data() + this->size();
         for ( T * c = this->data()+i+1; c!= ce; ++c ) *(c-1) = *c;
-        this->conservativeResize(this->size()-1,Eigen::NoChange);
+        this->conservativeResize(this->size()-1,gsEigen::NoChange);
     }
 
 }; // class gsVector
@@ -195,11 +215,11 @@ public:
     \ingroup Matrix
 */
 template<class T>
-class gsVector3d : public Eigen::Matrix<T,3,1>
+class gsVector3d : public gsEigen::Matrix<T,3,1>
 {
 public:
     typedef T scalar_t;
-    typedef Eigen::Matrix<T,3,1> Base ;
+    typedef gsEigen::Matrix<T,3,1> Base ;
 
     /// Shared pointer for gsVector3d
     typedef memory::shared_ptr< gsVector3d > Ptr;
@@ -217,14 +237,19 @@ public:
 
     /// This constructor allows constructing a gsVector3d from Eigen expressions
     template<typename OtherDerived>
-    gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+    gsVector3d(const gsEigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+
+    T angle(const gsVector3d<T> & other)
+    {
+        return math::acos(this->normalized().dot(other.normalized()));
+    }
 
     /*
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER
     template <class EigenExpr>
-    gsVector3d& operator= (const EigenExpr & other) 
+    gsVector3d& operator= (const EigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
@@ -233,7 +258,7 @@ public:
     using Base::operator=;
 #endif
     */
-    
+
     // implicitly deleted in C++11
     gsVector3d & operator=(const gsVector3d & other)
     {
@@ -260,27 +285,27 @@ template<class T, int _Rows, int _Options> inline
 gsVector<T,_Rows,_Options>::gsVector(const Base& a): gsBase(a) { }
 
 template<class T, int _Rows, int _Options> inline
-gsVector<T,_Rows,_Options>::gsVector(int dimension): gsBase(dimension,1) { }
+gsVector<T,_Rows,_Options>::gsVector(index_t dimension): gsBase(dimension,1) { }
 
 template<class T> inline
 gsVector3d<T>::gsVector3d() : Base() { }
 
 template<class T> inline
-gsVector3d<T>::gsVector3d(scalar_t x, scalar_t y,scalar_t z ) 
+gsVector3d<T>::gsVector3d(scalar_t x, scalar_t y,scalar_t z )
         {
             (*this)(0,0)=x;
             (*this)(1,0)=y;
-            (*this)(2,0)=z; 
+            (*this)(2,0)=z;
         }
 
 template<class T> inline
 gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 
-// template<class T>   
+// template<class T>
 // template<typename OtherDerived> inline
-// gsVector3d<T>::gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
-    
-    
+// gsVector3d<T>::gsVector3d(const gsEigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+
+
 // template<class T> inline
 //     inline T   gsVector3d<T>::x () const { return (*this)(0); }
 // template<class T> inline
@@ -294,6 +319,30 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 // template<class T> inline
 //     inline T & gsVector3d<T>::z () { return (*this)(2); }
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsVector
+   */
+  namespace py = pybind11;
+
+  template<typename T>
+  void pybind11_init_gsVector(pybind11::module &m, const std::string & typestr)
+  {
+    using Class = gsVector<T>;
+    std::string pyclass_name = std::string("gsVector") + typestr;
+    py::class_<Class>(m, pyclass_name.c_str(), py::buffer_protocol(), py::dynamic_attr())
+    // Constructors
+    .def(py::init<>())
+    .def(py::init<index_t, index_t>())
+    // Member functions
+    .def("size",       &Class::size)
+    .def("rows",       &Class::rows)
+    // .def("transpose",  &Class::transpose)
+    ;
+  }
+
+#endif // GISMO_WITH_PYBIND11
 
 
 

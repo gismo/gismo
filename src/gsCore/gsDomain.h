@@ -46,15 +46,13 @@ public:
 public:
 
     /// dimension of the domain
-    virtual int dim() const
+    virtual short_t dim() const
     { gsWarn << "gsDomain: dimension() not defined at "<< *this << "\n"; return 0; }
 
     /// Returns a bounding box for the domain
     /// eg. This coincides to the domain in case of tensor-product domains
     virtual gsMatrix<T> boundingBox()
-    {
-        GISMO_NO_IMPLEMENTATION
-    }
+    {GISMO_NO_IMPLEMENTATION}
 
     /// Returns a list of elements
     virtual gsMatrix<T> elements()
@@ -88,10 +86,6 @@ public:
     { gsWarn<<"gsDomain: merge(..) was not defined in "<< *this <<"\n"; return;}
 
 }; // class gsDomain
-
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 /// Print (as string) operator to be used by all derived classes
 template<class T>

@@ -24,7 +24,7 @@ namespace gismo
 template <typename T>
 const gsGeometry<T> & gsCrossApPatch<T>::compute()
 {
-    const int dim = m_boundary.dim();
+    const short_t dim = m_boundary.dim();
 
     delete m_result;
     m_result = NULL;
@@ -85,7 +85,7 @@ void gsCrossApPatch<T>::compute_impl()
         cross(0,1) = tmp0(0      ,1);
         cross(1,1) = tmp0(sz[0]-1,1);
 
-        if ( math::abs(cross.determinant()) < 1e-11 )
+        if ( math::abs(cross.determinant()) < (T)(1e-11) )
         {
             gsWarn <<"Corner data is rank-deficient ("<<i<<")\n";
             //gsDebugVar(cross);

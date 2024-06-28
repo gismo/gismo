@@ -88,7 +88,7 @@ struct gsJITCompilerConfig
         std::swap(temp , other.temp );
     }
             
-#   if __cplusplus >= 201103L
+#   if __cplusplus >= 201103L || _MSC_VER >= 1600
 
     /// Constructor (copy)
     gsJITCompilerConfig(gsJITCompilerConfig const& other)
@@ -265,22 +265,43 @@ struct gsJITCompilerConfig
         switch(lang)
         {
         case (gsJITLang::C) :
+#if         defined(_WIN32)
+            return gsJITCompilerConfig("icl",
+                                       "/O3 /dll",
+                                       "c",
+                                       "/Fo");//no space
+#           else
             return gsJITCompilerConfig("icc",
                                        "-O3 -shared",
                                        "c",
                                        "-o ");
+#           endif
             break;
         case (gsJITLang::CXX) :
+#if         defined(_WIN32)
+            return gsJITCompilerConfig("icl",
+                                       "/O3 /dll",
+                                       "c",
+                                       "/Fo");//no space
+#           else
             return gsJITCompilerConfig("icpc",
                                        "-O3 -shared",
                                        "cxx",
                                        "-o ");
+#           endif
             break;
         case (gsJITLang::Fortran) :
+#if         defined(_WIN32)
+            return gsJITCompilerConfig("ifort",
+                                       "/O3 /dll",
+                                       "F90",
+                                       "/Fo");//no space
+#           else
             return gsJITCompilerConfig("ifort",
                                        "-O3 -shared",
                                        "F90",
                                        "-o ");
+#           endif
             break;
         default :
             GISMO_ERROR("Error : Invalid compiler language.");
@@ -410,11 +431,11 @@ struct gsJITCompilerConfig
         return pgi();
         
 #       elif defined(__SUNPRO_C)
-        return sunstudio(gsJITLang::C)
+        return sunstudio(gsJITLang::C);
 #       elif defined(__SUNPRO_CC)
-        return sunstudio(gsJITLang::CXX)
+        return sunstudio(gsJITLang::CXX);
 #       elif defined(__SUNPRO_F90) || defined(__SUNPRO_F95)
-            return sunstudio(gsJITLang::Fortran)
+        return sunstudio(gsJITLang::Fortran);
             
 #       else
         GISMO_ERROR("Compiler not known");
@@ -439,8 +460,9 @@ private:
 };
 
 /// Print (as string) operator to be used by all derived classes
-std::ostream &operator<<(std::ostream &os, const gsJITCompilerConfig& c)
-{return c.print(os); }
+inline std::ostream &operator<<(std::ostream &os,
+                                const gsJITCompilerConfig& c)
+{ return c.print(os); }
 
 namespace internal
 {
@@ -510,6 +532,8 @@ public:
 struct gsDynamicLibrary
 {
 public:
+    /// Default Constructor
+    gsDynamicLibrary() {}
 
     /// Constructor (using file name)
     gsDynamicLibrary(const char* filename, int flag)
@@ -604,7 +628,7 @@ public:
         return *this;
     }
 
-#   if __cplusplus >= 201103L
+#   if __cplusplus >= 201103L || _MSC_VER >= 1600
     /// Constructor (move)
     gsJITCompiler(gsJITCompiler && other)
     : //kernel(std::move(other.kernel)),
@@ -640,8 +664,10 @@ public:
     /// (determine filename from hash of kernel source code)
     gsDynamicLibrary build(bool force = false)
     {
-#       if __cplusplus >= 201103L
-        std::size_t h = std::hash<std::string>()(getKernel().str());
+#       if __cplusplus >= 201103L || _MSC_VER >= 1600
+        size_t h = std::hash<std::string>()(getKernel().str() +
+                                            config.getCmd()+config.getFlags() +
+                                            config.getLang());
         return build(std::to_string(h), force);
 #       else
         return build("JIT", true);
@@ -656,15 +682,15 @@ public:
         std::stringstream libName;
 
 #       if   defined(_WIN32)
-        libName << config.getTemp() << "\\." << name << ".dll";
+        libName << config.getTemp() << "." << name << ".dll";
         //(void)std::system("del /f " + libName);
         //force = true;
 #       elif defined(__APPLE__)
-        libName << config.getTemp() << "/.lib" << name << ".dylib";
+        libName << config.getTemp() << ".lib" << name << ".dylib";
 #       elif defined(unix) || defined(__unix__) || defined(__unix)
-        libName << config.getTemp() << "/.lib" << name << ".so";
+        libName << config.getTemp() << ".lib" << name << ".so";
 #       else
-#       error("Unrecognized OS")
+#       error("Unsupported operating system")
 #       endif
         
         // Compile library (if required)
@@ -680,7 +706,7 @@ public:
             file << "#define EXPORT extern \"C\" __declspec(dllexport)\n";
             file << "#endif\n";
 #           else
-            srcName<< config.getTemp() << "/." << name << "." << config.getLang();
+            srcName<< config.getTemp() << "." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
             file << "#ifdef __cplusplus\n";
             file << "#define EXPORT extern \"C\"\n";
@@ -752,7 +778,7 @@ private:
 };
 
 /// Print (as string) operator to be used by all derived classes
-std::ostream &operator<<(std::ostream &os, const gsJITCompiler& c)
+inline std::ostream &operator<<(std::ostream &os, const gsJITCompiler& c)
 { return c.print(os); }
 
 namespace internal

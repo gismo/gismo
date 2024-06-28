@@ -1,7 +1,8 @@
 namespace gismo {
 
 /** 
-  \defgroup Nurbs NURBS module
+  \defgroup Nurbs Nurbs module
+\ingroup Modules
 
 This module contains the B-spline and NURBS basis functions.
 
@@ -16,29 +17,29 @@ should help you in find the proper one for you.
 
 Name of procedure        | Which basis function | Evaluate what
 -------------------------|----------------------|-------------------------------
-\c eval(u)                 | all active at u        | value
-\c evalSingle(i, u)	       | basis function i	    | value
-\c deriv(u)		           | all active at u	    | first derivative(s)
-\c derivSingle(i, u)       | basis function i	    | first derivative(s)
-\c deriv2(u)		       | all active at u	    | second derivative(s)
-\c deriv2Single(i, u)	   | basis function i	    | second derivative(s)
-\c evalAllDers(u, k)       | all active at u        | value and all derivatives up to order k
-\c evalAllDersSingle(i,u,k)| basis function i       | value and all derivatives up to order k
-\c evalDerSingle(i, u, k)  | basis function i 	    | k-th derivative (k=0, ... , p-1)
+\c eval(u)               | all active at u      | value
+\c evalSingle(i, u)      | basis function i	| value
+\c deriv(u)	         | all active at u	| first derivative(s)
+\c derivSingle(i, u)     | basis function i	| first derivative(s)
+\c deriv2(u)		 | all active at u	| second derivative(s)
+\c deriv2Single(i, u)	 | basis function i	| second derivative(s)
+\c evalAllDers(u, k)     | all active at u      | value and all derivatives up to order k
+\c evalAllDersSingle(i,u,k)| basis function i   | value and all derivatives up to order k
+\c evalDerSingle(i, u, k)  | basis function i 	| k-th derivative (k=0, ... , p-1)
 
 <!--\c evalDer(i,u, k)         | all active at u 	    | k-th derivative (k=0, ... , p-1)-->
-
-All above functions return by a unique pointer. Also, for all
-functions there is version suffixed with \c _into, for example \c eval_into,
-\c deriv2Single_into, and so on, which return \c void, take an additional
-matrix \c result as argument and write the result in that matrix.
 
 Here \c u is a matrix of values, and every column corresponds to one
 evaluation point.
 
+All the above functions return a unique pointer. Also, for each of these
+functions there is a variant suffixed with \c _into, for example \c eval_into,
+\c deriv2Single_into, and so on, that returns \c void, takes an additional
+matrix \c result as argument, and writes the result in that matrix.
+
 One of the lovely things about G+Smo is that it in works nicely in arbitrary dimension and the functions look virtually the same.
 So if you work with a tensor-product basis, your matrix \c u has to have exactly as many rows as the number of variables and then
-it is used the same way as in univariate case.
+it is used the same way as in the univariate case.
 
 The price you pay for arbitrary dimension is that the results are returned in a somehow magical manner.
 That is, every column of \c result then contains values of **active functions** in ascending order. Thus it is usually used together
@@ -48,9 +49,12 @@ with \c active_into. See the following example.
 
 We create a bivariate quadratic tensor-product basis and evaluate the basis functions in several points. First, we need knot vectors:
 \verbatim
-gsKnotVector<> kv0(0,1,1,3); //start,end,interior knots, start/end multiplicites of knots
+gsKnotVector<> kv0(0,1,1,3); //start, end, interior knots, multiplicities of start/end knots
 gsKnotVector<> kv1(0,1,1,3);
 \endverbatim
+The Greville abscissae are 0, 0.25, 0.75 and 1.
+\todo Check these numbers; correct or update picture?
+
 Then we create the basis by
 \verbatim
 gsTensorBSplineBasis<2,double> tbas (new gsBSplineBasis< double >(kv0), new gsBSplineBasis< double >(kv1));
@@ -69,7 +73,8 @@ and the matrices for results by
 gsMatrix< unsigned > actRes;
 gsMatrix< double > valRes;
 \endverbatim
-\b Tipp: Note that \c actRes requires a matrix of \c unsigned, otherwise you obtain a hardly comprehensible error.
+\note 
+Note that \c actRes requires a matrix of \c unsigned, otherwise you obtain a hardly comprehensible error.
 This situation is good to remember in similar cases.
 
 Now we ask for the evaluation and printing of the results
@@ -110,7 +115,8 @@ In (0.1, 0) we have more active functions; value of the 0th is equal to 0.64, 1t
 worry about that, the evaluation point is at the border of their supports). Interesting is the fourth column: we may see that in the middle of
 the domain there are four nonzero functions, their indices are 5, 6, 9 and 10 and all the values are equal to 0.25.
 
-\b Tipp: You may observe the partition of unity. Sum of all the entries in each column should be equal to one.
+\note
+You may observe the partition of unity. The sum of all the entries in each column should be equal to one.
 
 Evaluation of derivatives goes along similar lines and we invite you to play around with them
 in your test file.

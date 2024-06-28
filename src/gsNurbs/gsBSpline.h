@@ -22,6 +22,14 @@
 
 #include <gsUtils/gsPointGrid.h>
 
+namespace gismo {
+namespace internal {
+
+template<class T>
+struct gsCurveIntersectionResult;
+
+} // namespace internal
+} // namespace gismo
 
 namespace gismo
 {
@@ -75,7 +83,7 @@ public:
     {
         this->m_basis = new Basis(give(KV));
         m_coefs.swap(coefs);
-            
+
         if( periodic )
         {
             const index_t sz = this->basis().size();
@@ -97,8 +105,8 @@ public:
         }
         else // non-periodic
         {
-            if( this->m_coefs.rows() + KV.degree() + 1 != static_cast<int>( KV.size() ) )
-                gsWarn << "gsBSpline Warning: #Knots="<< KV.size()<< ", #coefs="<< this->m_coefs.rows() <<"\n";
+            if( this->m_coefs.rows() + KV.degree() + 1 != static_cast<int>( this->knots().size() ) )
+                gsWarn << "gsBSpline Warning: #Knots="<< this->knots().size()<< ", #coefs="<< this->m_coefs.rows() <<"\n";
         }
     }
     
@@ -153,85 +161,88 @@ public:
     }
     
     /// Returns the starting value of the domain of the basis
-    T domainStart() const { return this->basis().knots().first(); }
+    T domainStart() const { return *this->basis().knots().domainBegin(); }
     
     /// Returns the end value of the domain of the basis
-    T domainEnd() const { return this->basis().knots().last(); }
+    T domainEnd() const { return *this->basis().knots().domainEnd(); }
     
     /// Returns a reference to the knot vector
     KnotVectorType & knots(const int i = 0) 
     {
+        GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
-        return this->basis().knots(); 
+        return this->basis().knots();
     }
 
     /// Returns a (const )reference to the knot vector
     const KnotVectorType & knots(const int i = 0) const 
-    { 
+    {
+        GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
         return this->basis().knots(); 
     }
 
     /// Returns the degree of the B-spline
-    int degree(int i = 0) const 
-    { 
+    short_t degree(short_t i = 0) const
+    {
+        GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
         return this->basis().degree(); 
     }
     
     // compatible curves: same degree, same first/last p+1 knots
-    void isCompatible( gsGeometry<T> * other )
+    void isCompatible( gsGeometry<T> * )
     { GISMO_NO_IMPLEMENTATION }
     
     // compatible curves: same degree, same first/last p+1 knots
-    void makeCompatible( gsGeometry<T> * other )
+    void makeCompatible( gsGeometry<T> * )
     { GISMO_NO_IMPLEMENTATION }
 
 
     /// Merge other B-spline into this one.
     void merge( gsGeometry<T> * otherG );
 
-    /// Insert the given new knot (multiplicity \a i) without changing the curve.
-    void insertKnot( T knot, int i = 1)
-    {
-        if (i==0) return;
-        //if ( i==1)
-        //single knot insertion: Boehm's algorithm
-        //else
-        //knot with multiplicity:   Oslo algorithm
-        if( this->basis().isPeriodic() )
-        {
-            int borderKnotMult = this->basis().borderKnotMult();
-            KnotVectorType & knots = this->knots();
-            unsigned deg = this->basis().degree();
+    /// Segment this BSpline curve between u0 and u1. Either of these values
+    /// can be outside the parameter range of the curve, but u1 must be
+    /// greater than u0. The degree of the curve is not modified.
+    /// \param u0 starting parameter
+    /// \param u1 end parameter
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    gsBSpline<T> segmentFromTo(T u0, T u1, T tolerance=1e-15) const;
 
+    /// Split this BSpline curve at u0. This value must be inside the
+    /// parameter range of the curve.
+    /// \param u0 split parameter
+    /// \param left curve segment from the left of parameter domain to u0
+    /// \param right curve segment from u0 to the right of parameter domain
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    void splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance=1e-15) const;
 
-            GISMO_ASSERT( knot != knots[deg] && knot != knots[knots.size() - deg - 1],
-                          "You are trying to increase the multiplicity of the p+1st knot but the code is not ready for that.\n");
+    /// Convert BSpline curve into Bezier segments
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    /// @note: parameter range do NOT change, extra knots().affineTransform() needed
+    gsMultiPatch<T> toBezier(T tolerance=1e-15) const;
 
-            // If we would be inserting to "passive" regions, we rather insert the knot into the mirrored part.
-            // Adjustment of the mirrored knots is then desirable.
-            if( knot < knots[deg - borderKnotMult + 1] )
-            {
-                knot += this->basis()._activeLength();
-            }
-            else if( knot > knots[knots.size() - deg + borderKnotMult - 2] )
-            {
-                knot -= this->basis()._activeLength();
-            }
-            // If necessary, we update the mirrored part of the knot vector.
-            if((knot < knots[2*deg + 1 - borderKnotMult]) || (knot >= knots[knots.size() - 2*deg - 2 + borderKnotMult]))
-                this->basis().enforceOuterKnotsPeriodic();
+    /// Compute all intersections with another B-Spline curve
+    /// \param other the other B-Spline curve
+    /// \param tolerance the tolerance for computing the intersection
+    /// \param curvatureTolerance the curvature tolerance for the splitting stage
+    /// @note curvatureTolerance should be slightly greater than 1.0, e.g., 1+1e-6
+    /// \return a vector of intersection results
+    std::vector<internal::gsCurveIntersectionResult<T>> intersect(const gsBSpline<T>& other, T tolerance = 1e-5, T curvatureTolerance=1+1e-6) const;
 
-            // We copy some of the control points to pretend for a while that the basis is not periodic.
-            //gsMatrix<T> trueCoefs = this->basis().perCoefs( this->coefs() );
-            gsBoehm( this->basis().knots(), this->coefs(), knot, i );
-            //this->coefs() = trueCoefs;
-            //this->coefs().conservativeResize( this->basis().size(), this->coefs().cols() );
-        }
-        else // non-periodic
-            gsBoehm( this->basis().knots(), this->coefs() , knot, i);
-    }
+    /// calculates curvature approximation for a B-spline curve by dividing
+    /// the total length of the polyline formed by its control points by
+    /// the direct distance between the first and last control point
+    T pseudoCurvature() const;
+
+    /// Insert the given new knot (multiplicity \a i) without changing
+    /// the curve.
+    void insertKnot( T knot, index_t i = 1);
+private:
+    // Resolve hidden overload w.r.t. gsGeometry
+    virtual void insertKnot( T knot, index_t dir, index_t i = 1);
+public:
 
     /// Insert the given new knots in the range \a [\em inBegin .. \em inEend )
     /// without changing the curve.
@@ -294,7 +305,7 @@ public:
     }
 
     // Look at gsGeometry class for a description
-    void degreeElevate(int const i = 1, int const dir = -1);
+    void degreeElevate(short_t const i = 1, short_t const dir = -1);
 
     /// @brief Returns true iff the point p is contained (approximately) on
     /// the curve, with the given tolerance.
@@ -304,7 +315,7 @@ public:
             assert( p.cols()==1 );
             gsBSplineSolver<T> slv;
             std::vector<T> roots;
-            int dim = this->geoDim();
+            short_t dim = this->geoDim();
             gsMatrix<T> ev, tmp(1,1);
             int i(1);
 
@@ -378,15 +389,24 @@ public:
     void setFurthestCorner(gsMatrix<T> const &v);
 
     void swapDirections(const unsigned i, const unsigned j);
-    
+
 protected:
     
     using Base::m_coefs;
     
     // TODO Check function
     // check function: check the coefficient number, degree, knot vector ...
-
 }; // class gsBSpline
+
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsBSpline
+   */
+  void pybind11_init_gsBSpline(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 
 /*

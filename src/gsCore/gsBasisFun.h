@@ -54,10 +54,17 @@ public:
     GISMO_CLONE_FUNCTION(gsBasisFun)
 
 public:
-  
-    int domainDim () const {return m_basis.domainDim();}
 
-    int targetDim () const {return m_basis.targetDim();}
+    /// Prints the object as a string.
+    virtual std::ostream &print(std::ostream &os) const
+    {
+        os << "gsBasisFun"; return os;
+    }
+
+
+    short_t domainDim () const {return m_basis.domainDim();}
+
+    short_t targetDim () const {return m_basis.targetDim();}
 
     gsMatrix<T> support() const;
 
@@ -82,7 +89,7 @@ public:
     unsigned index() const { return m_index; }
     
     // temporary hack
-    virtual const gsBasisFun & piece(const index_t k) const
+    virtual const gsBasisFun & piece(const index_t) const
     {
         return *this; 
     }
@@ -146,5 +153,13 @@ gsBasisFun<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result )  const
     m_basis.derivSingle_into(m_index, u, result);
 }
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsGeometry
+   */
+  void pybind11_init_gsBasisFun(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

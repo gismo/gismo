@@ -32,7 +32,7 @@ namespace gismo
     The first kind of BCs
     Dirichlet: Enforce \f$v = 0 \f$ on the boundary
     Neumann: Add \f$ (g,v)_\Gamma \f$ on the right-hand side,
-    where \f$g = -\nable \Delta u \cdot \mathbf{n}\f$
+    where \f$g = -\nabla \Delta u \cdot \mathbf{n}\f$
 
     The second kind of BCs
     Dirichlet: Enforce \f$ \nabla v \cdot \mathbf{n} = 0 \f$ on the boundary

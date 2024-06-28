@@ -44,7 +44,7 @@ gsXmlAttribute * makeAttribute( const std::string & name, const std::string & va
 gsXmlAttribute * makeAttribute( const std::string & name, const unsigned & value, gsXmlTree & data)
 {
     char tmp[16];
-    sprintf (tmp,"%d",value);
+    snprintf (tmp,16,"%d",value);
     return data.allocate_attribute( 
 	   data.allocate_string(name.c_str() ), 
 	   data.allocate_string(tmp) );
@@ -74,7 +74,7 @@ gsXmlNode * makeComment(const std::string & comment, gsXmlTree & data)
 std::string to_string(const unsigned & i)
 {
     char tmp[4];
-    sprintf (tmp,"%d",i);
+    snprintf (tmp,4,"%d",i);
     return tmp;
 }
 
@@ -200,6 +200,7 @@ void appendBoxTopology(const gsBoxTopology& topology,
                 << it->dirOrientation().transpose() << "\n";
         }
         node->append_node(internal::makeNode("interfaces", oss.str(), data));
+        // todo: add export per group of interfaces
         oss.clear();
         oss.str("");
     }
@@ -228,11 +229,15 @@ void getInterfaces(gsXmlNode* node,
     // temporaries for interface reading
     gsVector<index_t> dirMap(d);
     gsVector<bool>    dirOrient(d);
+    std::string name;
+    const gsXmlAttribute * name_att = node->first_attribute("name");
+    if (NULL != name_att)
+        name = name_att->value();
 
     std::istringstream iss;
     iss.str( node->value() );
     
-    gsVector<int> p(4); // { patch, side, patch, side }
+    gsVector<short_t> p(4); // { patch, side, patch, side }
     
     // Read interface (groups or size 4 + 2*d)
     while ( iss >> std::ws >> p[0] ) // While there are more ints (groups or size 4+d-1)
@@ -267,7 +272,7 @@ void getInterfaces(gsXmlNode* node,
             }
         }
         
-        result.push_back( boundaryInterface(p, dirMap, dirOrient) );
+        result.push_back( boundaryInterface(p, dirMap, dirOrient,name) );
         
 //            // OLD format: read in Orientation flags
 //            gsVector<bool> orient(d-1);// orientation flags
@@ -291,6 +296,10 @@ void getBoundaries(gsXmlNode * node, std::map<int, int> & ids,
     std::istringstream iss;
     iss.str(node->value());
     int patch, side;
+    std::string name;
+    const gsXmlAttribute * name_att = node->first_attribute("name");
+    if (NULL != name_att)
+        name = name_att->value();
     
     while (iss >> std::ws >> patch)
     {
@@ -299,7 +308,7 @@ void getBoundaries(gsXmlNode * node, std::map<int, int> & ids,
             patch = ids[patch];
         }
         iss >> std::ws >> side;
-        result.push_back(patchSide(patch, side));
+        result.push_back(patchSide(patch, side, name));
     }
 }
 

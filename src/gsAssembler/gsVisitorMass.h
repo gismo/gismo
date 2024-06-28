@@ -15,106 +15,109 @@
 
 namespace gismo
 {
-/** 
-    @brief The visitor computes element mass integrals
 
-    It sets up an assembler and assembles the mass matrix element-wise and
-    combines the patch-local mass matrices into a global matrix.
-      
-    \ingroup Assembler
-*/
+   /**  @brief The visitor computes element mass integrals
+     *
+     *  Assembles the bilinear term
+     *  \f[ (u,v)_\Omega, \f]
+     *  where \f$u\f$ is the trial function and \f$v\f$ is the test function.
+     *
+     *  @ingroup Assembler
+     */
+
 template <class T>
 class gsVisitorMass
 {
 public:
 
+    /// Constructor
     gsVisitorMass()
     { }
 
-    /** \brief Visitor for assembling the mass matrix
-     *  
-     * \f[ (u, v) \f]  
-     */
+    /// @brief Constructor
+    ///
+    /// @param pde     Reference to \a gsPde object (is ignored)
     gsVisitorMass(const gsPde<T> & pde)
-    { }
+    { GISMO_UNUSED(pde); }
 
-    void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
-                    const gsOptionList & options, 
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+    /// Initialize
+    void initialize(const gsBasis<T>   & basis,
+                    const index_t ,
+                    const gsOptionList & options,
+                    gsQuadRule<T>      & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE;
+        md.flags = NEED_MEASURE;
     }
 
-    // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
+    /// Evaluate on element
+    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
                          gsMatrix<T>            & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0) , actives);
+        basis.active_into(md.points.col(0), actives);
         const index_t numActive = actives.rows();
- 
+
         // Evaluate basis functions on element
-        basis.eval_into(quNodes, basisData);
+        basis.eval_into(md.points, basisData);
 
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element, 
-                         gsGeometryEvaluator<T> & geoEval,
+    /// Assemble on element
+    inline void assemble(gsDomainIterator<T>    & ,
                          gsVector<T> const      & quWeights)
     {
-        localMat.noalias() = 
-            basisData * quWeights.asDiagonal() * 
-            geoEval.measures().asDiagonal() * basisData.transpose();
+        localMat.noalias() =
+            basisData * quWeights.asDiagonal() *
+            md.measures.asDiagonal() * basisData.transpose();
     }
 
-    inline void localToGlobal(const int patchIndex,
-                              const std::vector<gsMatrix<T> >    & eliminatedDofs,
-                              gsSparseSystem<T>     & system)
+    /// Adds the contributions to the sparse system
+    inline void localToGlobal(const index_t                     patchIndex,
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
 
         // Add contributions to the system matrix
-        system.pushToMatrix(localMat, actives, 0, 0);
+        system.pushToMatrix(localMat, actives, eliminatedDofs.front(), 0, 0);
     }
 
 /* -----------------------  to be removed later*/
 
-    static void initialize(const gsBasis<T> & basis, 
-                           gsQuadRule<T> & rule, 
-                           unsigned & evFlags )
+    void initialize(const gsBasis<T>    & basis,
+                          gsQuadRule<T> & rule)
     {
-        gsVector<index_t> numQuadNodes( basis.dim() );
-        for (int i = 0; i < basis.dim(); ++i)
+        gsVector<short_t> numQuadNodes( basis.dim() );
+        for (short_t i = 0; i < basis.dim(); ++i)
             numQuadNodes[i] = basis.degree(i) + 1;
-        
+
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE;
+        md.flags = NEED_MEASURE;
     }
 
 
-    void localToGlobal(const gsDofMapper     & mapper,
-                       const gsMatrix<T>     & eliminatedDofs,
-                       const int               patchIndex,
-                       gsSparseMatrix<T>     & sysMatrix,
-                       gsMatrix<T>           & rhsMatrix )
+    void localToGlobal(const gsDofMapper & mapper,
+                       const gsMatrix<T> & eliminatedDofs,
+                       const index_t       patchIndex,
+                       gsSparseMatrix<T> & sysMatrix,
+                       gsMatrix<T>       & rhsMatrix )
     {
         mapper.localToGlobal(actives, patchIndex, actives);
 
@@ -123,7 +126,7 @@ public:
         for (index_t i = 0; i < numActive; ++i)
         {
             const int ii = actives(i,0); // N_i
-            
+
             if ( mapper.is_free_index(ii) )
             {
                 for (index_t j = 0; j < numActive; ++j)
@@ -142,12 +145,13 @@ protected:
 
     // Basis values
     gsMatrix<T>      basisData;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // Local matrix
     gsMatrix<T> localMat;
+
+    gsMapData<T> md;
 };
 
 
 } // namespace gismo
-

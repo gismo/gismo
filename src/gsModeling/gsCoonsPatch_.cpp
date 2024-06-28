@@ -19,4 +19,24 @@ namespace gismo
 
 CLASS_TEMPLATE_INST gsCoonsPatch<real_t>;
 
+
+#ifdef GISMO_WITH_PYBIND11
+
+namespace py = pybind11;
+
+void pybind11_init_gsCoonsPatch(py::module &m)
+{
+    using Class = gsCoonsPatch<real_t>;
+    py::class_<Class>(m, "gsCoonsPatch")
+
+    // Constructors
+    .def(py::init<const gsMultiPatch<real_t> &>()) //default arguments
+
+    // Member functions
+    .def("compute", &Class::compute, "Computes the Coons patch.")
+    .def("result", &Class::result, "Gets the resulting Coons patch.")
+    ;
+}
+#endif
+
 } // namespace gismo

@@ -200,7 +200,7 @@ protected:
 
 } // namespace internal
 
-/**
+/** \memberof gsEigen::MatrixBase
   * \return an expression of the replication of \c *this
   *
   * Example: \include MatrixBase_blockDiag_int_int.cpp
@@ -214,6 +214,5 @@ MatrixBase<Derived>::blockDiag(Index numBlocks) const
 {
   return BlockDiag<Derived,Dynamic>(derived(),numBlocks);
 }
-
 
 } // namespace eigen

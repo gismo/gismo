@@ -33,7 +33,7 @@ class GSAXELPLUGIN_EXPORT gsAxelPlugin : public dtkPlugin
 {
     Q_OBJECT
     Q_INTERFACES(dtkPlugin)
-    Q_PLUGIN_METADATA(IID "at.jku.Gismo" FILE "gsAxelPlugin.json")
+    Q_PLUGIN_METADATA(IID "gismo.github.io" FILE "gsAxelPlugin.json")
 
 public:
     gsAxelPlugin(QObject *parent = 0);

@@ -66,7 +66,7 @@ public:
 
     /// Set options based on a gsOptionList object
     // This implementation does not read any input
-    virtual void setOptions(const gsOptionList & opt)  {}
+    virtual void setOptions(const gsOptionList &)  {}
 
 }; // gsLinearOperator
 
@@ -74,7 +74,7 @@ public:
 ///
 /// \ingroup Solver
 template<class T>
-class gsScaledOp : public gsLinearOperator<T>
+class gsScaledOp GISMO_FINAL : public gsLinearOperator<T>
 {
 public:
     /// Shared pointer for gsScaledOp
@@ -115,7 +115,7 @@ private:
 ///
 /// \ingroup Solver
 template<class T>
-class gsIdentityOp : public gsLinearOperator<T>
+class gsIdentityOp GISMO_FINAL : public gsLinearOperator<T>
 {
 public:
 
@@ -143,5 +143,41 @@ public:
 private:
     const index_t m_dim;
 };
+
+/// @brief Wrapper that allows to use lambdas as a gsLinearOperator
+///
+/// \ingroup Solver
+template<class T, class L>
+class gsLinearLambdaOp GISMO_FINAL : public gsLinearOperator<T>
+{
+public:
+    /// Constructor; see \ref makeLinearOp for details
+    gsLinearLambdaOp(L lambda, index_t rows, index_t cols)
+        : m_lambda(lambda), m_rows(rows), m_cols(cols) {}
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+    {
+        m_lambda(input, x);
+    }
+    index_t rows() const {return m_rows;}
+    index_t cols() const {return m_cols;}
+private:
+    L m_lambda;
+    index_t m_rows, m_cols;
+};
+
+/// @brief Wrapper that allows to use lambdas as a gsLinearOperator
+///
+/// @param lambda   A lambda object such that \p lambda(input, x) is valid if
+///                 \p input and \p x are of type \a gsMatrix<T>
+/// @param rows     The number of rows
+/// @param cols     The number of columns
+///
+/// \relates gsLinearLambdaOp
+template<class T=real_t, class L>
+typename gsLinearOperator<T>::uPtr makeLinearOp(L lambda, index_t rows, index_t cols)
+{
+    return typename gsLinearOperator<T>::uPtr(new gsLinearLambdaOp<T,L>(lambda,rows,cols));
+}
+
 
 } // namespace gismo

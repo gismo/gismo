@@ -16,6 +16,7 @@
 
 using namespace gismo;
 
+
 int main(int argc, char *argv[])
 {
     bool plot = false;
@@ -28,7 +29,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Source function is: "<< f << "\n";
 
     // Define Geometry, must be a gsMultiPatch object
-    gsMultiPatch<> patches(*gsNurbsCreator<>::BSplineSquare(2));
+    gsMultiPatch<> patches(*gsNurbsCreator<>::BSplineSquareDeg(2));
     patches.computeTopology();
 
     // Boundary conditions
@@ -53,7 +54,7 @@ int main(int argc, char *argv[])
     {
         // Find maximum degree with respect to all the variables
         int tmp = refine_bases.maxDegree(0);
-        for (index_t j = 1; j < patches.parDim(); ++j )
+        for (short_t j = 1; j < patches.parDim(); ++j )
             if ( tmp < refine_bases.maxDegree(j) )
                 tmp = refine_bases.maxDegree(j);
 
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
     gsPoissonAssembler<> stationary(pde, refine_bases);
     stationary.options().setInt("DirichletStrategy", dirichlet::elimination);
     stationary.options().setInt("InterfaceStrategy", iFace::glue);
-    gsHeatEquation<real_t> assembler(stationary, stationary.options());
+    gsHeatEquation<real_t> assembler(stationary);
     assembler.setTheta(theta);
     gsInfo<<assembler.options()<<"\n";
 
@@ -96,16 +97,17 @@ int main(int argc, char *argv[])
 
     const std::string baseName("heat_eq_solution");
     gsParaviewCollection collection(baseName);
+    collection.options().setInt("numPoints", 1000);
+    collection.options().setInt("precision", 5);
 
-    std::string fileName;
-
-    if ( plot)
+    if ( plot )
     {
         //sol = assembler.constructSolution(Sol); // same as next line
         gsField<> sol = stationary.constructSolution(Sol);
-        fileName = baseName + "0";
-        gsWriteParaview<>(sol, fileName, 1000, true);
-        collection.addTimestep(fileName,0,"0.vts");
+
+        collection.newTimeStep(&patches);
+        collection.addField(sol, "Temperature");
+        collection.saveTimeStep();
     }
 
     for ( int i = 1; i<=numSteps; ++i) // for all timesteps
@@ -121,22 +123,25 @@ int main(int argc, char *argv[])
         //sol = assembler.constructSolution(Sol); // same as next line
         gsField<> sol = stationary.constructSolution(Sol);
 
-        if ( plot)
+        if ( plot )
         {
             // Plot the snapshot to paraview
-            fileName = baseName + util::to_string(i);
-            gsWriteParaview<>(sol, fileName, 1000, true);
-            collection.addTimestep(fileName,i,"0.vts");
+            collection.newTimeStep(&patches);
+            collection.addField(sol, "Temperature");
+            collection.saveTimeStep();
         }
     }
 
     //gsInfo<< " time = "<<endTime<<"\n";
 
-    if ( plot)
+    if ( plot )
     {
         collection.save();
         gsFileManager::open("heat_eq_solution.pvd");
     }
+    else
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
 
     return  EXIT_SUCCESS;
 }

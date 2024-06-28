@@ -3,12 +3,12 @@
     @brief Constructs a patch (surface, volume,..) from a set of
     boundaries.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -20,7 +20,7 @@ using namespace gismo;
 int main(int argc, char* argv[])
 {
     bool save      = false;
-    int method     = 0;
+    index_t method = 0;
     real_t tol = 1e-4;
     std::string fn = "curves3d/curve_boundary.xml";
 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     boundary.computeTopology(tol);
     GISMO_ENSURE( boundary.isClosed(), "The boundary is not closed, adjust tolerance.");
     boundary.closeGaps(tol);
-    
+
     switch (method)
     {
     case 1:
@@ -67,8 +67,11 @@ int main(int argc, char* argv[])
         if (save) gsWrite(coons.result(), "result_patch");
         break;
     }
-    
-    if (save) gsInfo << "Result saved to result_patch.xml\n";
+
+    if (save)
+        gsInfo << "Result saved to result_patch.xml\n";
+    else
+        gsInfo << "Done. No output created, re-run with --save to get xml "
+                  "file containing the data.\n";
     return 0;
 }
-

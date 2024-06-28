@@ -22,7 +22,7 @@ namespace gismo
 {
 
 /*
-template<unsigned d, class T>
+template<short_t d, class T>
 gsHBSplineBasis<d,T>::gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis)
     : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis) )
 {
@@ -35,11 +35,11 @@ gsHBSplineBasis<d,T>::gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis)
 }
 */
 
-template<unsigned d, class T>
+template<short_t d, class T>
 typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
-    GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
+    GISMO_ASSERT(dir_fixed>=0 && static_cast<index_t>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
     const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType::uPtr bBSplineBasis =
             this->m_bases[0]->boundaryBasis(side);
@@ -48,7 +48,7 @@ typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSl
 
     if(d!=1)
     {
-        std::vector<unsigned> boxes;
+        std::vector<index_t> boxes;
         this->getBoxesAlongSlice(dir_fixed,par,boxes);
         bBasis->refineElements(boxes);
     }
@@ -56,7 +56,7 @@ typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSl
     return bBasis;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 std::ostream & gsHBSplineBasis<d,T>::print(std::ostream &os) const
 {
     os << "Hierarchical B-spline ";
@@ -66,44 +66,44 @@ std::ostream & gsHBSplineBasis<d,T>::print(std::ostream &os) const
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::initialize()
 {
     // Sets everything related to gsHTensorBasis
     // this->update_structure(); // base class update
 }
 
-template<unsigned d, class T>
-void gsHBSplineBasis<d,T>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+template<short_t d, class T>
+void gsHBSplineBasis<d,T>::evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     int lvl = this->levelOf(i);
     this->m_bases[lvl]->evalSingle_into( 
         this->m_xmatrix[lvl][ i - this->m_xmatrix_offset[lvl] ], u, result);
 }
 
-template<unsigned d, class T>
-void gsHBSplineBasis<d,T>::derivSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+template<short_t d, class T>
+void gsHBSplineBasis<d,T>::derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     int lvl = this->levelOf(i);
     this->m_bases[lvl]->derivSingle_into( 
         this->m_xmatrix[lvl][ i - this->m_xmatrix_offset[lvl] ], u, result);
 }
 
-template<unsigned d, class T>
-void gsHBSplineBasis<d,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+template<short_t d, class T>
+void gsHBSplineBasis<d,T>::deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     int lvl = this->levelOf(i);
     this->m_bases[lvl]->deriv2Single_into( 
         this->m_xmatrix[lvl][ i - this->m_xmatrix_offset[lvl] ], u, result);
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    gsVector<unsigned> nact;
-    gsMatrix<unsigned> act;
+    gsVector<index_t> nact;
+    gsMatrix<index_t> act;
     // Get the number of active functions
-    this->numActive(u, nact);
+    this->numActive_into(u, nact);
     // Set everything to zero
     result.setZero(nact.maxCoeff(), u.cols());
     
@@ -124,13 +124,13 @@ void gsHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result)
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    gsVector<unsigned> nact;
-    gsMatrix<unsigned> act;
+    gsVector<index_t> nact;
+    gsMatrix<index_t> act;
     // Get the number of active functions
-    this->numActive(u, nact);
+    this->numActive_into(u, nact);
     // Set everything to zero
     result.setZero( d*nact.maxCoeff(), u.cols() );
     
@@ -151,16 +151,16 @@ void gsHBSplineBasis<d,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    gsVector<unsigned> nact;
-    gsMatrix<unsigned> act;
+    gsVector<index_t> nact;
+    gsMatrix<index_t> act;
 
     const int blocksize = d*(d + 1)/2;
 
     // Get the number of active functions
-    this->numActive(u, nact);
+    this->numActive_into(u, nact);
     result.resize( blocksize * nact.maxCoeff(), u.cols() );
     // Set everything to zero
     result.setZero();
@@ -184,12 +184,12 @@ void gsHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resul
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& result)
 {
     result.clear();
-    //gsVector<unsigned> level;
-    //gsMatrix<unsigned> b1, b2; //boxes in highest level numbering
+    //gsVector<index_t> level;
+    //gsMatrix<index_t> b1, b2; //boxes in highest level numbering
     //this->m_tree.getBoxesInLevelIndex(b1, b2, level);//return boxes in level indices
     tensorBasis curTensorlvl = this->tensorLevel(0);
     //std::vector< gsSparseMatrix<T,RowMajor> > transfer(this->maxLevel());
@@ -224,8 +224,8 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resul
 }
 
 
-template<unsigned d, class T>
-gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
+template<short_t d, class T>
+gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
 {
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -286,8 +286,8 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVe
     return result;
 }
 
-template<unsigned d, class T>
-gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
+template<short_t d, class T>
+gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -383,9 +383,9 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsS
     return result;
 }
 
-template<unsigned d, class T>
-gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
-                                                     const std::vector<gsSortedVector<unsigned> >& n,
+template<short_t d, class T>
+gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
+                                                     const std::vector<gsSortedVector<index_t> >& n,
                                                      const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     int size1 = 0, size2 = 0;
@@ -438,10 +438,10 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gs
             else
             {
 
-                gsMatrix<unsigned, d, 2> supp(d, 2);
+                gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 //gsDebug<<"supp "<< supp<<std::endl;
-                //unsigned max_lvl = math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+                //unsigned max_lvl = math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
                 gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
                 t.setZero();
                 t[old_ij] = 1;
@@ -497,7 +497,7 @@ namespace internal
 {
 
 /// Get a Hierarchical B-spline basis from XML data
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsHBSplineBasis<d,T> >
 {
 private:

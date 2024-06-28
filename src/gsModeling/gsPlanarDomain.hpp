@@ -37,7 +37,7 @@ gsPlanarDomain<T>::gsPlanarDomain( std::vector< gsCurveLoop<T> *> const & loops)
     if(!loops[0]->is_ccw())
         loops[0]->reverse();
     m_loops.push_back(loops[0]);
-    for(std::size_t i=1; i<loops.size();i++ )
+    for(size_t i=1; i<loops.size();i++ )
     {
 
         if( loops[i]->is_ccw() )
@@ -58,7 +58,7 @@ gsMatrix<T> gsPlanarDomain<T>::averageValue( std::vector<gsFunction<T>*> const &
     gsMatrix<T> xev,B (f.size(),1);
     B.setZero();
     iteratedGaussRule(ngrid, wgrid, 2, breaks);
-    for(std::size_t i=0; i<f.size();i++)
+    for(size_t i=0; i<f.size();i++)
     {
         for(int k=0; k<ngrid.cols();k++) //for all quadrature points
         {
@@ -82,7 +82,7 @@ bool gsPlanarDomain<T>::inDomain( gsMatrix<T> const & u, int direction)
     std::vector<T> tmp = m_loops[0]->lineIntersections(direction, u(direction,0) );
 
     //   gsDebug<< "intersections:\n";
-    //   for( std::size_t i = 0; i!=tmp.size(); ++i)
+    //   for( size_t i = 0; i!=tmp.size(); ++i)
     //     gsDebug<< " "<< tmp[i];
     //   gsDebug<<"\n";
 
@@ -202,7 +202,7 @@ void gsPlanarDomain<T>::sampleLoop_into( int loopID, int npoints, int numEndPoin
         //gsMatrix<T> * interval = (*it)->parameterRange();
         //gsMatrix<T> *  pts = gsPointGrid( interval->at(0), interval->at(1), npoints );
         pts.resize(1,np);
-        for (int ii=firstInd;ii<=secondInd;ii++) pts(0,ii-firstInd)= T(ii)/(npoints-1);
+        for (int ii=firstInd;ii<=secondInd;ii++) pts(0,ii-firstInd)= (T)(ii)/(T)(npoints-1);
         uCols.resize(2,np);
         (*it)->eval_into( pts, uCols );
         u.middleCols( i * np,np ) = uCols;
@@ -215,12 +215,12 @@ void gsPlanarDomain<T>::sampleLoop_into( int loopID, int npoints, int numEndPoin
 template <class T>
 T getDistance(gsVertex<T>* v1,gsVertex<T>* v2)  // todo: move as member of gsVertex 
 {
-    T x1=(v1->coords.x());
-    T x2=(v2->coords.x());
-    T y1=(v1->coords.y());
-    T y2=(v2->coords.y());
-    T z1=(v1->coords.z());
-    T z2=(v2->coords.z());
+    T x1=(v1->x());
+    T x2=(v2->x());
+    T y1=(v1->y());
+    T y2=(v2->y());
+    T z1=(v1->z());
+    T z2=(v2->z());
     T dist=sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
     return  dist;
 }
@@ -238,7 +238,7 @@ void gsPlanarDomain<T>::sampleCurve_into( int loopID, int curveID, int npoints, 
         //gsMatrix<T> *  pts = gsPointGrid( interval->at(0), interval->at(1), npoints );
         gsMatrix<T> pts(1,npoints);
         for (int ii=0;ii<=npoints-1;ii++)
-        { pts(0,ii)= T(ii)/(npoints-1); }; // todo: use gsPointGrid
+        { pts(0,ii)= (T)(ii)/(T)(npoints-1); }; // todo: use gsPointGrid
         (*it)->eval_into( pts, u );
     }
 }
@@ -456,7 +456,7 @@ memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     
     return m;
 #endif
     T bbox_length_y =m_bbox(1,1)-m_bbox(1,0);
-    int yPoints = cast<T,int>( npoints*bbox_length_y) ;
+    int yPoints = cast<T,int>( (T)(npoints)*bbox_length_y) ;
     int lb_yPoints=25;
     if(yPoints<lb_yPoints)
     {
@@ -511,7 +511,7 @@ memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     
 
                 gsAsMatrix<T> xx(x);
                 gsMatrix<T> e = curve->eval( xx );
-                for (std::size_t k=0;k<x.size();k++)
+                for (size_t k=0;k<x.size();k++)
                 {
                     x_all.push_back(e(0,k));
                 }
@@ -522,7 +522,7 @@ memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     
         int k(0);
         for ( typename std::vector<T>::const_iterator it = x_all.begin();
               it < x_all.end(); it += 2 )
-            numPoints[k++] = cast<T,int>( (*(it+1) - *it)* npoints );
+            numPoints[k++] = cast<T,int>( (*(it+1) - *it)* (T)(npoints) );
 
         std::vector<VertexHandle> x_line;
         std::vector<VertexHandle> intersection_vec;
@@ -533,7 +533,7 @@ memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     
 
             for(k=0; k<numPoints[j]; k++)
             {
-                x_line.push_back(m->addVertex(x_all[j*2]*(numPoints[j]-k)/(numPoints[j]+1)+x_all[j*2+1]*(k+1)/(numPoints[j]+1),y_samples(0,i)));
+                x_line.push_back(m->addVertex(x_all[j*2]*(T)(numPoints[j]-k)/(T)(numPoints[j]+1)+x_all[j*2+1]*(T)(k+1)/(T)(numPoints[j]+1),y_samples(0,i)));
             }
             x_line.push_back(m->addVertex(x_all[j*2+1],y_samples(0,i)));
             intersection_vec.push_back(m->addVertex(x_all[j*2+1],y_samples(0,i)));
@@ -541,11 +541,11 @@ memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     
         samples.push_back(x_line);
         intersections.push_back(intersection_vec);
     }
-    T checkDist=(y_samples(0,1)-y_samples(0,0))*5;
+    T checkDist=(y_samples(0,1)-y_samples(0,0))*(T)(5);
     for(size_t i=0;i<intersections.size()-1;i++)
     {
-        std::size_t currentTop=0;
-        std::size_t currentBot=0;
+        size_t currentTop=0;
+        size_t currentBot=0;
 
         T topToBotDist=0;
         T botToTopDist=0;
@@ -610,7 +610,7 @@ memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     
     //                // TO DO
     //                // ( ll[v/2] / ltotal )*k samples here
     //                for( int j = 1; j!= k+1; ++j)
-    //                    x_line.push_back( m->addVertex(x[v] + T(j) * ll[v/2] / T(k+1), y_samples(0,i)) );
+    //                    x_line.push_back( m->addVertex(x[v] + (T)(j) * ll[v/2] / (T)(k+1), y_samples(0,i)) );
 
     //                x_line.push_back( m->addVertex(x[v+1], y_samples(0,i) ) );
     //            }

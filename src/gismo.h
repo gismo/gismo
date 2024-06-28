@@ -2,12 +2,12 @@
 
     @brief Main header to be included by clients using the G+Smo library.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -24,14 +24,14 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 namespace gismo
-{ 
+{
 
 /** @namespace gismo::internal
 
     @brief
-    This namespace contains functionalities that is internal to the library.
+    This namespace contains functionalities that are internal to the library.
 */
-namespace internal 
+namespace internal
 { }
 
 }
@@ -54,6 +54,7 @@ namespace internal
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
+#include <gsCore/gsGeometryTransform.h>
 #include <gsCore/gsCurve.h>
 #include <gsCore/gsSurface.h>
 #include <gsCore/gsVolume.h>
@@ -64,6 +65,7 @@ namespace internal
 #include <gsCore/gsAffineFunction.h>
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsBasisFun.h>
+#include <gsCore/gsFuncCoordinate.h>
 
 #include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsMultiPatch.h>
@@ -75,7 +77,9 @@ namespace internal
 
 #include <gsCore/gsDomainIterator.h>
 
-#include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsSysInfo.h>
+
+// #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
 // Tensors
 #include <gsTensor/gsTensorDomainIterator.h>
@@ -95,6 +99,7 @@ namespace internal
 #include <gsNurbs/gsTensorNurbsBasis.h>
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbsCreator.h>
+#include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
 #include <gsHSplines/gsHBSplineBasis.h>
@@ -102,21 +107,38 @@ namespace internal
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
+#include <gsHSplines/gsHBox.h>
+#include <gsHSplines/gsHBoxContainer.h>
+
+/* ----------- Mesh ----------- */
+#include <gsMesh2/gsSurfMesh.h>
+
+/* ----------- MSplines ----------- */
+#include <gsMSplines/gsMappedBasis.h>
+#include <gsMSplines/gsMappedSpline.h>
 
 /* ----------- Modeling ----------- */
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsCurveLoop.h>
 #include <gsModeling/gsPlanarDomain.h>
-#include <gsModeling/gsSolid.h> 
+#include <gsModeling/gsSolid.h>
 #include <gsUtils/gsMesh/gsMesh.h>
+#include <gsUtils/gsMesh/gsHalfEdgeMesh.h>
 #include <gsModeling/gsTriMeshToSolid.h>
-//#include <gsSegment/gsVolumeSegment.h> 
+//#include <gsSegment/gsVolumeSegment.h>
 #include <gsModeling/gsFitting.h>
 #include <gsModeling/gsCurveFitting.h>
 
 #include <gsModeling/gsSpringPatch.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsModeling/gsCrossApPatch.h>
+#include <gsModeling/gsBarrierPatch.h>
+
+#include <gsModeling/gsLineSegment.h>
+#include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsPeriodicParametrization.h>
+#include <gsModeling/gsPeriodicOverlap.h>
+#include <gsModeling/gsPeriodicStitch.h>
 
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
@@ -124,18 +146,12 @@ namespace internal
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
+#include <gsPde/gsPointLoads.h>
 //#include <gsPde/gsNewtonIterator.h>
 
 /* ----------- MultiGrid ----------- */
 #include <gsMultiGrid/gsMultiGrid.h>
 #include <gsMultiGrid/gsGridHierarchy.h>
-
-/* ----------- Norms ----------- */
-#include <gsAssembler/gsNorm.h>
-#include <gsAssembler/gsNormL2.h>
-#include <gsAssembler/gsNormL2Boundary.h>
-#include <gsAssembler/gsSeminormH1.h>
-#include <gsAssembler/gsSeminormH2.h>
 
 /* ----------- Quadrature ----------- */
 #include <gsAssembler/gsQuadRule.h>
@@ -145,6 +161,7 @@ namespace internal
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
+#include <gsAssembler/gsBiharmonicExprAssembler.h>
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
@@ -152,20 +169,33 @@ namespace internal
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
 
+#include <gsAssembler/gsAdaptiveMeshing.h>
+#include <gsAssembler/gsAdaptiveMeshingUtils.h>
+
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMinimalResidual.h>
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsConjugateGradient.h>
+#include <gsSolver/gsBiCgStab.h>
 #include <gsSolver/gsPreconditioner.h>
+#include <gsSolver/gsAdditiveOp.h>
 #include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsCompositePrecOp.h>
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsSimplePreconditioners.h>
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsKroneckerOp.h>
+#include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
+#include <gsSolver/gsMinResQLP.h>
+
+/* ----------- Ieti ----------- */
+#include <gsIeti/gsIetiMapper.h>
+#include <gsIeti/gsIetiSystem.h>
+#include <gsIeti/gsPrimalSystem.h>
+#include <gsIeti/gsScaledDirichletPrec.h>
 
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
@@ -174,22 +204,28 @@ namespace internal
 #include <gsIO/gsFileManager.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsParaviewCollection.h>
+#include <gsIO/gsParaviewDataSet.h>
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
 
-/* ----------- MPI ----------- */
-#include <gsMpi/gsMpi.h>
+/* ----------- Parallel ----------- */
+#include <gsParallel/gsMpi.h>
 
 /* ----------- Utilities ----------- */
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
-#include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
+#include <gsUtils/gsQuasiInterpolate.h>
+#include <gsUtils/gsL2Projection.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
 #include <gsAutoDiff.h>
+#endif
+
+#ifdef gsTrilinos_ENABLED
+#include <gsTrilinos/gsTrilinos.h>
 #endif
 
 /*

@@ -2,12 +2,12 @@
 
     @brief Iterator over the elements of a tensor-structured grid
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): C. Hofreither, A. Mantzaflaris
 */
 
@@ -24,7 +24,7 @@ namespace gismo
 // Documentation in gsDomainIterator.h
 // Class which enables iteration over all elements of a tensor product parameter domain
 
-/** 
+/**
  * @brief Re-implements gsDomainIterator for iteration over all elements of a <b>tensor product</b> parameter domain.\n
  * <em>See gsDomainIterator for more detailed documentation and an example of the typical use!!!</em>
  *
@@ -51,7 +51,7 @@ public:
         meshEnd.resize(d);
         curElement.resize(d);
         breaks = breaks_;
-        for (int i=0; i < d; ++i) 
+        for (int i=0; i < d; ++i)
         {
             meshEnd[i]   = breaks[i].end() - 1;
             curElement[i] = meshStart[i] = breaks[i].begin();
@@ -59,9 +59,6 @@ public:
             if (meshEnd[i] == meshStart[i])
                 m_isGood = false;
         }
-        
-        // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
 
         if (m_isGood)
             update();
@@ -73,14 +70,14 @@ public:
         : gsDomainIterator<T>( b ),
           d( m_basis->dim() ),
           lower ( gsVector<T, D>::Zero(d) ),
-          upper ( gsVector<T, D>::Zero(d) ) 
+          upper ( gsVector<T, D>::Zero(d) )
     {
         // compute breaks and mesh size
         meshStart.resize(d);
         meshEnd.resize(d);
         curElement.resize(d);
         breaks.reserve(d);
-        for (int i=0; i < d; ++i) 
+        for (int i=0; i < d; ++i)
         {
             breaks.push_back( m_basis->component(i).domain()->breaks() );
             // for n breaks, we have n-1 elements (spans)
@@ -90,9 +87,6 @@ public:
             if (meshEnd[i] == meshStart[i])
                 m_isGood = false;
         }
-        
-        // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
 
         if (m_isGood)
             update();
@@ -103,7 +97,10 @@ public:
     {
         m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
         if (m_isGood)
+        {
             update();
+            ++m_id; //increment id
+        }
         return m_isGood;
     }
 
@@ -113,7 +110,10 @@ public:
         for (index_t i = 0; i < increment; i++)
             m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
         if (m_isGood)
+        {
             update();
+            m_id += increment; //increment id
+        }
         return m_isGood;
     }
 
@@ -132,36 +132,12 @@ public:
         gsVector<unsigned, D> curr_index(d);
         for (int i = 0; i < d; ++i)
             curr_index[i]  = curElement[i] - breaks[i].begin();
-        return curr_index; 
+        return curr_index;
     }
 
-    // Documentation in gsDomainIterator.h
-    // compute a tensor Gauss quadrature rule of the given order for
-    // the domain elements
-    void computeQuadratureRule(const gsVector<int>& numIntNodes)
+    void getVertices(gsMatrix<T>& result)
     {
-        m_quadrature.setNodes(numIntNodes);
-        m_quadrature.mapTo(lower, upper, this->quNodes, this->quWeights);
-    }
-
-    // get the basis function indices which are active in the current element
-    void getActiveFunctions(gsMatrix<unsigned>& act)
-    {
-        if ( m_basis != NULL )
-            m_basis->active_into(center, act);
-    }
-
-    const gsMatrix<unsigned>& computeActiveFunctions()
-    {
-        if ( m_basis != NULL )
-            m_basis->active_into(center, this->activeFuncs);
-
-        return this->activeFuncs;
-    }
-
-    void getVertices(gsMatrix<T>& result) 
-    {
-        result.resize( D, 1 << D); 
+        result.resize( D, 1 << D);
 
         gsVector<T,D> v, l, u;
         l.setZero();
@@ -174,12 +150,23 @@ public:
         }
         while ( nextCubeVertex(v, l, u) );
     }
-    
+
     const gsVector<T> & lowerCorner() const
     { return lower; }
 
     const gsVector<T> & upperCorner() const
     { return upper; }
+
+    bool isBoundaryElement() const
+    {
+        for (int i = 0; i< D; ++i)
+            if ((lower[i]-*meshStart[i]==0) ||
+                (*meshEnd[0]-upper[0] ==0)  )
+                return true;
+        return false;
+    }
+
+    index_t domainDim() const {return d;}
 
 private:
 
@@ -192,19 +179,21 @@ private:
         {
             lower[i]  = *curElement[i];
             upper[i]  = *(curElement[i]+1);
-            center[i] = T(0.5) * (lower[i] + upper[i]);
+            center[i] = (T)(0.5) * (lower[i] + upper[i]);
         }
-
-        // Update quadrature rule
-        m_quadrature.mapTo(lower, upper, this->quNodes, this->quWeights);
-        computeActiveFunctions();
     }
 
+//    size_t numElements() const
+//    {
+//
+//    }
+  
 // Data members
 public:
     using gsDomainIterator<T>::center;
 
 protected:
+    using gsDomainIterator<T>::m_id;
     using gsDomainIterator<T>::m_basis;
     using gsDomainIterator<T>::m_isGood;
 
@@ -214,9 +203,6 @@ private:
 
     // coordinates of the grid cell boundaries
     std::vector< std::vector<T> > breaks;
-
-    // Quadrature rule
-    gsGaussRule<T> m_quadrature;
 
     // Extent of the tensor grid
     gsVector<uiter, D> meshStart, meshEnd;
@@ -228,7 +214,9 @@ private:
     gsVector<T> lower, upper;
 
 public:
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 }; // class gsTensorDomainIterator
 
 

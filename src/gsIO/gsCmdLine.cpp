@@ -14,7 +14,7 @@
 #include <gsIO/gsCmdLine.h>
 
 // --- start External files
-#include <tclap/CmdLine.h>   
+#include <tclap/CmdLine.h>
 #include <tclap/ValueArg.h>
 //#include <tclap/UnlabeledValueArg.h>
 //#include <tclap/MultiArg.h>
@@ -23,6 +23,7 @@
 //#include <tclap/MultiSwitchArg.h>
 // --- end External files
 
+#include <gsCore/gsSysInfo.h>
 #include <gsIO/gsOptionList.h>
 
 namespace gismo
@@ -30,10 +31,11 @@ namespace gismo
 
 class gsCmdLinePrivate
 {
+    typedef index_t intVal_t;
 public:
     /*
     typedef TCLAP::Arg                             Arg;
-    typedef TCLAP::ValueArg<int>                   IntArg;
+    typedef TCLAP::ValueArg<intVal_t>              IntArg;
     typedef TCLAP::ValueArg<real_t>                RealArg;
     typedef TCLAP::ValueArg<std::string>           StrArg;
     typedef TCLAP::SwitchArg                       SwitchArg;
@@ -76,12 +78,12 @@ public:
     TCLAP::CmdLine cmd;
 
     // Stores integer arguments
-    std::vector<TCLAP::ValueArg<int>*>         intVals;
-    std::vector<int*>                          intRes;
+    std::vector<TCLAP::ValueArg<intVal_t>*>    intVals;
+    std::vector<intVal_t*>                     intRes;
 
     // Stores multi integer arguments
-    std::vector<TCLAP::MultiArg<int>*>         multiIntVals;
-    std::vector<std::vector<int>*>             multiIntRes;
+    std::vector<TCLAP::MultiArg<intVal_t>*>    multiIntVals;
+    std::vector<std::vector<intVal_t>*>        multiIntRes;
 
     // Stores real_t arguments
     std::vector<TCLAP::ValueArg<real_t>*>      realVals;
@@ -121,9 +123,9 @@ public:
     class GismoNullOut : public TCLAP::CmdLineOutput
     {
     public:
-        void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e) { }
-        void usage(TCLAP::CmdLineInterface& c)  { }
-        void version(TCLAP::CmdLineInterface& c) { }
+        void failure(TCLAP::CmdLineInterface& , TCLAP::ArgException& ) { }
+        void usage(TCLAP::CmdLineInterface& )  { }
+        void version(TCLAP::CmdLineInterface& ) { }
     };
 
 
@@ -153,86 +155,93 @@ gsCmdLine::gsCmdLine( const std::string& message,
     */
 }
 
-void gsCmdLine::addInt( const std::string& flag, 
-                        const std::string& name, 
-                        const std::string& desc, 
-                        int              & value)
+void gsCmdLine::addInt( const std::string& flag,
+                        const std::string& name,
+                        const std::string& desc,
+                        intVal_t         & value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    my->intVals.push_back(new TCLAP::ValueArg<int>(flag,name,desc,false,value,"int",my->cmd) );
+    my->intVals.push_back(new TCLAP::ValueArg<intVal_t>(flag,name,desc,false,value,"int",my->cmd) );
     my->intRes.push_back(&value);
 }
 
-void gsCmdLine::addMultiInt( const std::string& flag, 
-                             const std::string& name, 
-                             const std::string& desc, 
-                             std::vector<int> & value)
+void gsCmdLine::addMultiInt( const std::string    & flag,
+                             const std::string    & name,
+                             const std::string    & desc,
+                             std::vector<intVal_t>& value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    my->multiIntVals.push_back(new TCLAP::MultiArg<int>(flag,name,desc,false,"int",my->cmd) );
+    my->multiIntVals.push_back(new TCLAP::MultiArg<intVal_t>(flag,name,desc,false,"int",my->cmd) );
     my->multiIntRes.push_back(&value);
 }
 
-void gsCmdLine::addReal( const std::string& flag, 
-                         const std::string& name, 
-                         const std::string& desc, 
+void gsCmdLine::addReal( const std::string& flag,
+                         const std::string& name,
+                         const std::string& desc,
                          real_t           & value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->realVals.push_back(new TCLAP::ValueArg<real_t>(flag,name,desc,false,value,"float",my->cmd) );
     my->realRes.push_back(&value);
 }
 
-void gsCmdLine::addMultiReal( const std::string  & flag, 
-                              const std::string  & name, 
-                              const std::string  & desc, 
+void gsCmdLine::addMultiReal( const std::string  & flag,
+                              const std::string  & name,
+                              const std::string  & desc,
                               std::vector<real_t>& value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->multiRealVals.push_back(new TCLAP::MultiArg<real_t>(flag,name,desc,false,"float",my->cmd) );
     my->multiRealRes.push_back(&value);
 }
 
-void gsCmdLine::addString( const std::string& flag, 
-                           const std::string& name, 
-                           const std::string& desc, 
+void gsCmdLine::addString( const std::string& flag,
+                           const std::string& name,
+                           const std::string& desc,
                            std::string      & value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->stringVals.push_back(new TCLAP::ValueArg<std::string>(flag,name,desc,false,value,"string",my->cmd));
     my->stringRes.push_back(&value);
 }
 
-void gsCmdLine::addMultiString( const std::string       & flag, 
-                                const std::string       & name, 
-                                const std::string       & desc, 
+void gsCmdLine::addMultiString( const std::string       & flag,
+                                const std::string       & name,
+                                const std::string       & desc,
                                 std::vector<std::string>& value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->multiStringVals.push_back(new TCLAP::MultiArg<std::string>(flag,name,desc,false,"string",my->cmd) );
     my->multiStringRes.push_back(&value);
 }
 
-void gsCmdLine::addSwitch( const std::string& flag, 
-                           const std::string& name, 
-                           const std::string& desc, 
+void gsCmdLine::addSwitch( const std::string& flag,
+                           const std::string& name,
+                           const std::string& desc,
                            bool             & value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->switchVals.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
     my->switchRes.push_back(&value);
 }
 
-void gsCmdLine::addPlainString( const std::string& name, 
-                                const std::string& desc, 
-                                std::string & value)
+void gsCmdLine::addPlainString( const std::string& name,
+                                const std::string& desc,
+                                std::string      & value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
@@ -244,7 +253,7 @@ void gsCmdLine::addPlainString( const std::string& name,
 }
 
 
-bool gsCmdLine::valid(int argc, char *argv[]) const 
+bool gsCmdLine::valid(int argc, char *argv[]) const
 {
     const bool eh = my->cmd.getExceptionHandling();
     TCLAP::CmdLineOutput * o = my->cmd.getOutput();
@@ -275,33 +284,35 @@ void gsCmdLine::getValues(int argc, char *argv[])
 
     my->cmd.parse(argc,argv);
 
-    for( std::size_t i=0; i!=my->intVals.size(); ++i)
+    for( size_t i=0; i!=my->intVals.size(); ++i)
         *my->intRes[i] = my->intVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->realVals.size(); ++i)
+    for( size_t i=0; i!=my->realVals.size(); ++i)
         *my->realRes[i] = my->realVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->stringVals.size(); ++i)
+    for( size_t i=0; i!=my->stringVals.size(); ++i)
         *my->stringRes[i] = my->stringVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->switchVals.size(); ++i)
+    for( size_t i=0; i!=my->switchVals.size(); ++i)
         // Toggle switch-result if switch is present
         *my->switchRes[i] ^= my->switchVals[i]->getValue();
 
     if ( my->plainStringVal )
         *my->plainStringRes = my->plainStringVal->getValue();
 
-    for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
+    for( size_t i=0; i!=my->multiIntVals.size(); ++i)
         if( my->multiIntVals[i]->isSet() )
             *my->multiIntRes[i] = my->multiIntVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
+    for( size_t i=0; i!=my->multiRealVals.size(); ++i)
         if( my->multiRealVals[i]->isSet() )
             *my->multiRealRes[i] = my->multiRealVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
+    for( size_t i=0; i!=my->multiStringVals.size(); ++i)
         if( my->multiStringVals[i]->isSet() )
             *my->multiStringRes[i] = my->multiStringVals[i]->getValue();
+
+    updateOptionList();
 }
 
 void gsCmdLine::setExceptionHandling(const bool state)
@@ -317,39 +328,40 @@ bool gsCmdLine::getExceptionHandling() const
 #define ADD_OPTION_LIST_ENTRY(res,vals,addFct)                                      \
 {                                                                                   \
     std::string nm = (vals)->getName() + ".";                                       \
-    std::size_t sz = (res).size();                                                  \
-    for ( std::size_t j=0; j<sz; ++j )                                              \
+    index_t sz = static_cast<index_t>((res).size());                                \
+    for ( index_t j=0; j<sz; ++j )                                                  \
     { result.addFct( nm+util::to_string(j), (vals)->getDescription(), (res)[j] ); } \
     result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
 }
 
-gsOptionList gsCmdLine::getOptionList()
+void gsCmdLine::updateOptionList()
 {
     GISMO_ASSERT( my->didParseCmdLine, "gsCmdLine::getOptionList can be called only after gsCmdLine::getValues." );
 
-    gsOptionList result;
-    for( std::size_t i=0; i!=my->intVals.size(); ++i)
+    gsOptionList & result = *this;
+    for( size_t i=0; i!=my->intVals.size(); ++i)
         result.addInt( my->intVals[i]->getName(), my->intVals[i]->getDescription(), *my->intRes[i] );
-    for( std::size_t i=0; i!=my->realVals.size(); ++i)
+    for( size_t i=0; i!=my->realVals.size(); ++i)
         result.addReal( my->realVals[i]->getName(), my->realVals[i]->getDescription(), *my->realRes[i] );
-    for( std::size_t i=0; i!=my->stringVals.size(); ++i)
+    for( size_t i=0; i!=my->stringVals.size(); ++i)
         result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), *my->stringRes[i] );
-    for( std::size_t i=0; i!=my->switchVals.size(); ++i)
+    for( size_t i=0; i!=my->switchVals.size(); ++i)
         result.addSwitch( my->switchVals[i]->getName(), my->switchVals[i]->getDescription(), *my->switchRes[i] );
-    for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
+
+    for( size_t i=0; i!=my->multiIntVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(*my->multiIntRes[i],my->multiIntVals[i],addInt)
-    for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
+    for( size_t i=0; i!=my->multiRealVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(*my->multiRealRes[i],my->multiRealVals[i],addReal)
-    for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
+    for( size_t i=0; i!=my->multiStringVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(*my->multiStringRes[i],my->multiStringVals[i],addString)
     if ( my->plainStringVal )
         result.addString( my->plainStringVal->getName(), my->plainStringVal->getDescription(), *my->plainStringRes );
-    return result;
+
 }
 
 #undef ADD_OPTION_LIST_ENTRY
 
-gsCmdLine::~gsCmdLine() 
+gsCmdLine::~gsCmdLine()
 {
     delete my;
 }
@@ -376,11 +388,11 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
     TCLAP::XorHandler xorHandler   = c.getXorHandler();
     std::vector< std::vector<TCLAP::Arg*> > xorList = xorHandler.getXorList();
 
-    // first the xor 
-    for ( int i = 0; static_cast<unsigned int>(i) < xorList.size(); i++ )
+    // first the xor
+    for ( size_t i = 0; static_cast<unsigned int>(i) < xorList.size(); i++ )
     {
-        for ( TCLAP::ArgVectorIterator it = xorList[i].begin(); 
-                it != xorList[i].end(); 
+        for ( TCLAP::ArgVectorIterator it = xorList[i].begin();
+                it != xorList[i].end();
                 it++
             )
         {
@@ -394,19 +406,18 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
     }
 
     // then the rest
-    for (TCLAP::ArgListIterator it = argList.begin(); it != argList.end(); it++)
-    if ( !xorHandler.contains( (*it) ) )
-    {
-        spacePrint( gsInfo, (*it)->longID(), 75, 3, 3 ); 
-        spacePrint( gsInfo, (*it)->getDescription(), 75, 5, 0 ); 
-        gsInfo << std::endl;
-    }
+    for (std::list<TCLAP::Arg*>::reverse_iterator it = argList.rbegin(); it != argList.rend(); it++)
+        if ( !xorHandler.contains( (*it) ) )
+        {
+            spacePrint( gsInfo, (*it)->longID(), 75, 3, 3 );
+            spacePrint( gsInfo, (*it)->getDescription(), 75, 5, 0 );
+            gsInfo << std::endl;
+        }
 }
 
 
-void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
+void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface&)
 {
-    GISMO_UNUSED(c);
     gsCmdLine::printVersion();
 }
 
@@ -416,59 +427,95 @@ void gsCmdLine::printVersion()
     gsInfo << "\n";
     gsInfo << "                   G+Smo \n";
     gsInfo << "      Geometry plus Simulation modules\n";
-    gsInfo << "               version "<< GISMO_VERSION<<"\n";
-    gsInfo << "Compiled by ";
-//https://sourceforge.net/p/predef/wiki/Compilers, see also boost/predef.h
-#if defined(_MSC_VER)
-    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<__cplusplus <<", ";
-#elif defined(__clang__ )
-    gsInfo << "Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
-#elif defined(_INTEL_COMPILER)
-    gsInfo << "Intel C++ "<<__INTEL_COMPILER<<" ("<<__cplusplus <<", ";
-#elif defined(__MINGW64__)
-    gsInfo << "MinGW "<<__MINGW64_VERSION_MAJOR<<"."<<__MINGW64_VERSION_MINOR<<" ("<<__cplusplus <<", ";
-#elif defined(__SUNPRO_CC)
-    gsInfo << "Solaris Studio "<<__SUNPRO_CC<<" ("<<__cplusplus <<", ";
-#elif defined(__GNUG__)
-    gsInfo << "GNU GCC "<<__GNUC__<<"."<<__GNUC_MINOR__<<"."<<__GNUC_PATCHLEVEL__<<" ("<<__cplusplus <<", ";
-#else
-    gsInfo << "C++ ("<<__cplusplus <<", ";
-#endif
-
-#ifdef __INTEL_MKL__
-    gsInfo << "MKL "<<INTEL_MKL_VERSION<<", ";
-#endif
-
-#ifdef _LIBCPP_VERSION
-    gsInfo << "libc++ "<<_LIBCPP_VERSION <<")\n";
-#  elif defined(__GLIBCXX__)
-    gsInfo << "glibc++ "<< __GLIBCXX__ <<")\n";
-#  elif defined(__GLIBCPP__)
-    gsInfo << "glibc++ "<< __GLIBCPP__ <<")\n";
-#elif defined(__LIBCOMO__)
-    gsInfo << "Comeau STL "<< __LIBCOMO__ <<")\n";
-#  elif defined(__STL_CONFIG_H)
-    gsInfo << "SGI STL)\n";
-#  elif defined(__MSL_CPP__)
-    gsInfo << "MSL standard lib)\n";
-#  elif defined(__IBMCPP__)
-    gsInfo << "VACPP STL)\n";
-#  elif defined(MSIPL_COMPILE_H)
-    gsInfo << "Modena C++ STL)\n";
-#  elif (defined(_YVALS) && !defined(__IBMCPP__)) || defined(_CPPLIB_VER)
-    gsInfo << "Dinkumware STL "<< _CPPLIB_VER<<")\n";
-#  elif defined(__STD_RWCOMPILER_H__) || defined(_RWSTD_VER)
-    gsInfo << "Rogue Wave lib "<<_RWSTD_VER<<")\n";
-#else
-    gsInfo << "Unknown-STD)\n";
-#endif
-    //gsInfo << "Eigen "<< EIGEN_WORLD_VERSION<<"."<<EIGEN_MAJOR_VERSION<<"."<<EIGEN_MINOR_VERSION<<"\n";
-    gsInfo << "RICAM-Linz 2012 - 2017, http://gs.jku.at/gismo\n";
+    gsInfo << "               version "<< gsSysInfo::getGismoVersion() << "\n";
+    gsInfo << "Compiled by " << gsSysInfo::getCompilerVersion()
+           << " (" << gsSysInfo::getCppVersion()
+           << ", " << gsSysInfo::getStdLibVersion()
+           << ", eigen " << gsSysInfo::getEigenVersion()
+           << (gsSysInfo::getExtraLibsVersion().empty() ? ")\n"
+               : ", "+gsSysInfo::getExtraLibsVersion()+")\n");
+    gsInfo << "Running on " << gsSysInfo::getCpuInfo()
+           << " (memory " << gsSysInfo::getMemoryInfo() << ")"
+           << " with real_t:" << util::type<real_t>::name()
+           << ", index_t:" << util::type<index_t>::name()
+           << ", short_t:" << util::type<short_t>::name() << "\n";
+    gsInfo << "web: http://github.com/gismo\n";
 }
 
 std::string & gsCmdLine::getMessage()
 {
     return my->cmd.getMessage();
 }
+
+#ifdef GISMO_WITH_PYBIND11
+
+namespace py = pybind11;
+void pybind11_init_gsCmdLine(py::module &m)
+{
+  using gsClass = gsCmdLine;
+
+  py::class_<gsClass>(m, "gsCmdLine")
+
+    // Constructors
+    .def(py::init<const std::string&>())
+
+    .def(py::init<const std::string&,
+         const char>())
+
+    .def(py::init<const std::string&,
+         const char,
+         bool>())
+
+    // Member functions
+    .def("addNewInt", &gsClass::addNewInt)
+    .def("getInt", &gsClass::getInt)
+
+     .def("addMultiInt", &gsClass::addMultiInt)
+
+    .def("addReal", &gsClass::addReal)
+    .def("addMultiReal", &gsClass::addMultiReal)
+
+    .def("addString", &gsClass::addString)
+    .def("getString", &gsClass::getString)
+
+    .def("addMultiString", &gsClass::addMultiString)
+    .def("getMultiString", &gsClass::getMultiString)
+
+    .def("addSwitch",
+         (void (gsClass::*)(const std::string&, const std::string&, const std::string&, bool&))
+         &gsClass::addSwitch)
+
+    .def("addSwitch",
+         (void (gsClass::*)(const std::string&, const std::string&, bool&))
+         &gsClass::addSwitch)
+
+    .def("addPlainString", &gsClass::addPlainString)
+
+    .def("getValues", [](gsClass& self,
+                         std::vector<std::string> args) {
+                        std::vector<char *> cstrs;
+                        cstrs.reserve(args.size());
+                        for (auto &s : args) cstrs.push_back(const_cast<char *>(s.c_str()));
+                        self.getValues(cstrs.size(), cstrs.data());
+                      })
+
+    .def_static("printVersion", &gsClass::printVersion)
+
+    .def("getMessage", &gsClass::getMessage)
+
+    .def("valid", [](gsClass self,
+                     std::vector<std::string> args) {
+                    std::vector<char *> cstrs;
+                    cstrs.reserve(args.size());
+                    for (auto &s : args) cstrs.push_back(const_cast<char *>(s.c_str()));
+                    return self.valid(cstrs.size(), cstrs.data());
+                  })
+
+    .def("setExceptionHandling", &gsClass::setExceptionHandling)
+    .def("getExceptionHandling", &gsClass::getExceptionHandling)
+    ;
+}
+
+#endif // GISMO_WITH_PYBIND11
 
 } //namespace gismo

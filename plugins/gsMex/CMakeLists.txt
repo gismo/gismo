@@ -1,12 +1,16 @@
 ######################################################################
-## CMakeLists.txt
+## CMakeLists.txt --- gsMex
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012-2018 - RICAM-Linz.
 ######################################################################
 
 project( gsMex )
+
+#Test architecture is none
+if(NOT "x${TARGET_ARCHITECTURE}" STREQUAL "xnone")
+  message(WARNING "Target architecture is ${TARGET_ARCHITECTURE}, use TARGET_ARCHITECTURE=none for Matlab plugin to work.")
+endif()
 
 #For El Capitan
 #see https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
@@ -22,10 +26,11 @@ message("Matlab_MEX_EXTENSION ${Matlab_MEX_EXTENSION}")
 #octave
 #set( Matlab_MEX_COMPILER "mkoctfile --mex" CACHE STRING "path to Mex generator")
 
-#############
-list( GET GISMO_INCLUDE_DIRS 0 GISMO_INCLUDE_DIR )
-set( GISMO_INCLUDE_EXTERNAL ${gismo_SOURCE_DIR}/external)
-set( GISMO_INCLUDE_BINARY ${gismo_BINARY_DIR})
+# Construct the compiler string for the include directories.
+unset(INCLUDE_COMPILER_STRING)
+foreach(dir ${GISMO_INCLUDE_DIRS})
+  string(APPEND INCLUDE_COMPILER_STRING "-I${dir};")
+endforeach()
 
 # Fetch all .cpp files to be mex'ed, and loop over these to set up
 # mex-targets.
@@ -38,17 +43,16 @@ foreach(f ${CXX_SRCS})
 
   #matlab_add_mex(-- todo
   add_custom_command(OUTPUT "${fmex}"
-      COMMAND ${Matlab_MEX_COMPILER} #-v 
+      COMMAND ${Matlab_MEX_COMPILER} ${INCLUDE_COMPILER_STRING} -v 
       -cxx
-      -I${GISMO_INCLUDE_DIR}
-      -I${GISMO_INCLUDE_EXTERNAL}
-      -I${GISMO_INCLUDE_BINARY}
-      -I${gsMex_SOURCE_DIR}/include
+      #-I${gsMex_SOURCE_DIR}/include does not exist
       -L${CMAKE_BINARY_DIR}/lib -lgismo
       -output ${fout} ${f}
       #&& install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
       DEPENDS ${f} src/mex_common.h
-      COMMENT "Building MEX object ${fmex}" )
+      COMMENT "Building MEX object ${fmex}"
+      COMMAND_EXPAND_LISTS
+      )
 
   list(APPEND MEX_OUTS ${fmex})
 
@@ -61,7 +65,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER
 add_custom_command(TARGET ${PROJECT_NAME}
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E echo 'To get started in Matlab execute set_path.m from  ${CMAKE_CURRENT_BINARY_DIR}'
-  COMMAND ${CMAKE_COMMAND} -E echo 'Tests are located at ${CMAKE_CURRENT_SOURCE_DIR}/tests'
+  COMMAND ${CMAKE_COMMAND} -E echo 'Tests are located at ${CMAKE_CURRENT_SOURCE_DIR}/test'
   )
       
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/set_path.m.in" "${CMAKE_CURRENT_BINARY_DIR}/set_path.m")

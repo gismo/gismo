@@ -20,6 +20,7 @@
 #include <map>
 #include <stack>
 #include <algorithm>
+#include <functional>
 #include <limits>
 
 #include <gsCore/gsConfig.h>
@@ -27,6 +28,30 @@
 //#include <gsCore/gsExport.h>  // included by gsMemory.h
 #include <gsCore/gsMemory.h>
 #include <gsUtils/gsUtils.h>
+
+#ifdef gsMpfr_ENABLED
+#include <mpreal.h>
+#endif
+
+#ifdef gsGmp_ENABLED
+#include <gmpxx.h>
+#include <unsupported/Eigen/MPQClassExtra>
+#endif
+
+#ifdef gsUniversal_ENABLED
+#include <gsUniversal/gsUniversal.h>
+#endif
+
+#ifdef gsCoDiPack_ENABLED
+#include <gsCoDiPack/gsCoDiPack.h>
+#endif
+
+#ifdef GISMO_WITH_PYBIND11
+#include <pybind11/iostream.h>
+#include <pybind11/operators.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#endif
 
 namespace gismo
 {
@@ -43,18 +68,19 @@ enum gsNeedEnum
     NEED_VALUE             = 1U << 0, ///< Value of the object
     NEED_DERIV             = 1U << 1, ///< Gradient of the object
     NEED_GRAD              = NEED_DERIV,
-    NEED_JACOBIAN          = 1U << 2, ///< Jacobian of the object
+    NEED_JACOBIAN          = NEED_DERIV, ///< Jacobian of the object
     NEED_MEASURE           = 1U << 3, ///< The density of the measure pull back
     NEED_GRAD_TRANSFORM    = 1U << 4, ///< Gradient transformation matrix
     NEED_DIV               = 1U << 5, ///< Div operator
     NEED_CURL              = 1U << 6, ///< Curl operator
     NEED_DERIV2            = 1U << 7, ///< Second derivatives
     NEED_2ND_DER           = NEED_DERIV2,
-    NEED_HESSIAN           = 1U << 8, ///< Hessian matrix
+    NEED_HESSIAN           = NEED_DERIV2, ///< Hessian matrix
     NEED_LAPLACIAN         = 1U << 9, ///< Laplacian
     NEED_ACTIVE            = 1U <<10, ///< Active function ids
     NEED_NORMAL            = 1U <<11, ///< Normal vector of the object
     NEED_OUTER_NORMAL      = 1U <<12, ///< Outward normal on the boundary
+    NEED_2ND_FFORM         = 1U <<13, ///< Second fundamental form
 
     SAME_ELEMENT           = 1U <<15  ///< Enable optimizations based on the assumption that all evaluation points are in the same bezier domain
 };
@@ -72,8 +98,7 @@ enum gsNeedEnum
 template <class T=real_t>                class gsBasis;
 template <class T=real_t>                class gsGeometry;
 template <class T=real_t>                class gsGeometrySlice;
-template <unsigned d, class T=real_t>    class gsGenericGeometry;
-template <class T=real_t>                class gsGeometryEvaluator;
+template <short_t d, class T=real_t>     class gsGenericGeometry;
 template <class T=real_t>                class gsConstantBasis;
 template <class T=real_t>                class gsBasisFun;
 
@@ -81,6 +106,9 @@ class  gsBoxTopology;
 class  boxSide;
 struct patchSide;
 struct boxCorner;
+struct patchCorner;
+struct boxComponent;
+struct patchComponent;
 struct boundaryInterface;
 
 template <class T=real_t>                class gsCurve;
@@ -98,6 +126,7 @@ template <class T, int D=-1, class uiter=typename std::vector<T>::const_iterator
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;
 template <class T=real_t>                class gsFunction;
+template <class T=real_t>                class gsFuncCoordinate;
 template <class T=real_t>                class gsFuncData;
 template <class T=real_t>                class gsMapData;
 template <class T=real_t>                class gsFunctionExpr;
@@ -108,48 +137,51 @@ template <class T=real_t>                class gsMultiPatch;
 
 // Bases
 template <class basis_t >                class gsRationalBasis;
-template <unsigned d, class T=real_t>    class gsTensorBasis;
-template <unsigned d, class T=real_t>    class gsHTensorBasis;
+template <short_t d, class T=real_t>     class gsTensorBasis;
+template <short_t d, class T=real_t>     class gsHTensorBasis;
+template <short_t d, class T=real_t>     class gsMappedBasis;
 
 template <class T=real_t>                class gsKnotVector;
 //template <class T=real_t>              class gsCompactKnotVector;
 template <class T=real_t>                class gsBSplineBasis;
 template <class T=real_t>                class gsNurbsBasis;
-template <unsigned d, class T=real_t>    class gsTensorBSplineBasis;
-template <unsigned d, class T=real_t>    class gsTensorNurbsBasis;
-template <unsigned d, class T=real_t>   struct gsBSplineTraits;
+template <short_t d, class T=real_t>     class gsTensorBSplineBasis;
+template <short_t d, class T=real_t>     class gsTensorNurbsBasis;
+template <short_t d, class T=real_t>     struct gsBSplineTraits;
 
-template <unsigned d, class T=real_t>    class gsCompositeIncrSmoothnessBasis;
-template <unsigned d, class T=real_t>    class gsCompositeGeom;
+template <short_t d, class T=real_t>     class gsCompositeIncrSmoothnessBasis;
+template <short_t d, class T=real_t>     class gsCompositeGeom;
 
 template <class T=real_t>                class gsBernsteinBasis;
-template <unsigned d, class T=real_t>    class gsTensorBernsteinBasis;
+template <short_t d, class T=real_t>     class gsTensorBernsteinBasis;
 
 //template <class T=real_t>              class gsHKnotVector;
-template <unsigned d, class T=real_t>    class gsHBSplineBasis;
-template <unsigned d, class T=real_t>    class gsTHBSplineBasis;
-template <unsigned d, class T=real_t>    class gsTHBSpline;
+template <short_t d, class T=real_t>     class gsHBSplineBasis;
+template <short_t d, class T=real_t>     class gsTHBSplineBasis;
+template <short_t d, class T=real_t>     class gsTHBSpline;
 
 // Geometries
 template <class T=real_t>                class gsBSpline;
 template <class T=real_t>                class gsNurbs;
 template <class T=real_t>                class gsBezier;
-template <unsigned d, class T=real_t>    class gsTensorBSpline;
-template <unsigned d, class T=real_t>    class gsTensorNurbs;
-template <unsigned d, class T=real_t>    class gsTensorBezier;
-template <unsigned d, class T=real_t>    class gsHBSpline;
+template <short_t d, class T=real_t>     class gsTensorBSpline;
+template <short_t d, class T=real_t>     class gsTensorNurbs;
+template <short_t d, class T=real_t>     class gsTensorBezier;
+template <short_t d, class T=real_t>     class gsHBSpline;
 template <class T=real_t>                class gsTrimSurface;
+template <short_t d, class T=real_t>     class gsMappedSpline;
 
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;
 template <class T=real_t>                class gsGaussRule;
+template <class T=real_t>                class gsNewtonCotesRule;
 template <class T=real_t>                class gsGalerkinMethod;
 
 // Domains
 // template <class T=real_t>             class gsTensorDomain;
-template <unsigned d, class T=real_t>    class gsHFitting;
+template <short_t d, class T=real_t>     class gsHFitting;
 
-template <class Z, int mode, int d=-1,
+template <class Z, int mode, short_t d=-1,
          bool = //std::is_integral<Z>::value>
          std::numeric_limits<Z>::is_integer && mode!=3>
                                          class gsGridIterator;
@@ -177,6 +209,8 @@ template <class T=real_t>                class gsPlanarDomain;
 template <class T=real_t>                class gsField;
 template <class T=real_t>                class gsMesh;
 template <class T=real_t>                class gsHeMesh;
+
+template <int d, class T=real_t>         class gsLineSegment;
 
 template <class T=real_t>                class gsFileData;
 class gsFileManager;
@@ -226,7 +260,7 @@ template <class T=real_t>               struct gsFieldCreator;
 
 class gsOptionList;
 
-template<class T = real_t, int _Rows=-1, int _Cols=-1, 
+template<class T = real_t, int _Rows=-1, int _Cols=-1,
          int _Options  = 0|((_Rows==1 && _Cols!=1)?0x1:0)> class gsMatrix;
 template<class T = real_t, int _Rows=-1, int _Options = 0> class gsVector;
 
@@ -255,16 +289,50 @@ template <class T=real_t>                class gsIdentityOp;
 template <class T=real_t>                class gsPreconditionerOp;
 template <class T=real_t>                class gsPreconditionerFromOp;
 
+template <class T=real_t>                class gsAdditiveOp;
 template <class T=real_t>                class gsSumOp;
 template <class T=real_t>                class gsProductOp;
 template <class T=real_t>                class gsCompositePrecOp;
 template <class T=real_t>                class gsKroneckerOp;
 template <class T=real_t>                class gsBlockOp;
+template <class T=real_t>                class gsPatchPreconditionersCreator;
 
 // gsMultiGrid
 
 template <class T=real_t>                class gsMultiGridOp;
 template <class T=real_t>                class gsGridHierarchy;
+
+// gsIeti
+
+template <class T=real_t>                class gsIetiMapper;
+template <class T=real_t>                class gsIetiSystem;
+template <class T=real_t>                class gsPrimalSystem;
+template <class T=real_t>                class gsScaledDirichletPrec;
+
+template <short_t d, class T=real_t>     struct gsHBoxUtils;
+template <short_t d, class T=real_t>     struct gsHBoxContains;
+template <short_t d, class T=real_t>     struct gsHBoxIsContained;
+template <short_t d, class T=real_t>     struct gsHBoxCompare;
+template <short_t d, class T=real_t>     struct gsHBoxEqual;
+
+template <short_t d, class T=real_t>     class gsHBox;
+template <short_t d, class T=real_t>     class gsHBoxContainer;
+
+class gsParaviewDataSet;
+class gsSurfMesh;
+
+// gsIO
+
+template<class T>
+void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+                           gsMatrix<T> const& data,
+                           const gsVector<index_t> & np,
+                           std::string const & fn);
+
+template <class T>
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
+
+
 
 /// @endcond
 

@@ -3,17 +3,17 @@ namespace gismo {
 /**
   \page Wiki \gismo Wiki
 
-  The <a href="http://gs.jku.at/trac/gismo/wiki" target="_parent"><b>online wiki pages</b></a> provide general information, including:
+  The <a href="https://github.com/gismo/gismo/wiki" target="_parent"><b>online wiki pages</b></a> provide general information, including:
 
-  - <a href="http://gs.jku.at/trac/gismo/wiki/public/About#AboutGSmo" target="_parent">About \gismo</a>
+  - <a href="https://github.com/gismo/gismo/wiki/About--G-Smo" target="_parent">About \gismo</a>
 
-  - <a href="http://gs.jku.at/trac/gismo/wiki/public/FreqAsked#GSmoFAQ" target="_parent">Frequently Asked Questions</a>
- 
-  - <a href="http://gs.jku.at/trac/gismo/wiki/public/Compiling#Compiling" target="_parent">Compiling the library</a>
+  - <a href="https://github.com/gismo/gismo/wiki/Frequently-asked-questions" target="_parent">Frequently Asked Questions</a>
 
-  - <a href="http://gs.jku.at/trac/gismo/wiki/public/Compiling#Configurationoptions" target="_parent">CMake configuration options</a>
+  - <a href="https://github.com/gismo/gismo/wiki/Compiling" target="_parent">Compiling the library</a>
 
-  - <a href="http://gs.jku.at/trac/gismo/wiki/public/Contributing#Contributing" target="_parent">Contributing to <b>\gismo</b></a>
+  - <a href="https://github.com/gismo/gismo/wiki/Compiling#configuration-options">Configuring the build process</a>
+
+  - <a href="https://github.com/gismo/gismo/wiki/Contributing" target="_parent">Contributing to <b>\gismo</b></a>
 
 */
 }

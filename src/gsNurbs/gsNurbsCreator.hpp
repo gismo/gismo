@@ -2,12 +2,12 @@
 
     @brief Provides implementation of the NurbsCreator struct.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -19,6 +19,7 @@
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsBSpline.h>
+#include <math.h>
 
 namespace gismo
 {
@@ -26,6 +27,234 @@ namespace gismo
 /*
    @brief Class gsNurbsCreator provides some simple examples of Nurbs Geometries
 */
+
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::rotate2D(gsTensorBSpline<2,T> const & geo, const T turndeg, const T Tx, const T Ty)
+{
+    GISMO_ASSERT(geo.geoDim() >= 2,"Geometry must be 2D or higher");
+
+    const T pi = 3.1415926535897932384626433832795;
+    T r = turndeg / 180 * pi;
+    T tx, ty;
+
+    gsMatrix<T> newcoefs = geo.coefs();
+
+
+    for(index_t i =0; i < geo.coefs().rows(); i++)
+    {
+        tx = newcoefs(i,0);
+        ty = newcoefs(i,1);
+        newcoefs(i,0) = math::cos(r) * (tx-Tx) - math::sin(r) * (ty-Ty) + Tx;
+        newcoefs(i,1) = math::sin(r) * (tx-Tx) + math::cos(r) * (ty-Ty) + Ty;
+    }
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T>
+void gsNurbsCreator<T>::rotate2D(gsGeometry<T> & geo, const T turndeg, const T Tx, const T Ty)
+{
+    const T pi = 3.1415926535897932384626433832795;
+    T r = turndeg / 180 * pi;
+
+    T tx, ty;
+    for(index_t i =0; i < geo.coefs().rows(); i++)
+    {
+        tx = geo.coefs()(i,0);
+        ty = geo.coefs()(i,1);
+        geo.coefs()(i,0) = math::cos(r) * (tx-Tx) - math::sin(r) * (ty-Ty) + Tx;
+        geo.coefs()(i,1) = math::sin(r) * (tx-Tx) + math::cos(r) * (ty-Ty) + Ty;
+    }
+}
+
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::shift2D(gsTensorBSpline<2,T> const & geo, const T dx, const T dy, const T dz)
+{
+    GISMO_ASSERT(geo.geoDim() >= 2,"Geometry must be 2D or higher");
+    gsMatrix<T> newcoefs = geo.coefs();
+
+    newcoefs.col(0) += gsVector<T>::Ones(newcoefs.rows())*dx;
+    newcoefs.col(1) += gsVector<T>::Ones(newcoefs.rows())*dy;
+    if (newcoefs.cols()==3)
+        newcoefs.col(2) += gsVector<T>::Ones(newcoefs.rows())*dz;
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T>
+void gsNurbsCreator<T>::shift2D(gsGeometry<T> & geo, const T dx, const T dy, const T dz)
+{
+    geo.coefs().col(0) += gsVector<T>::Ones(geo.coefs().rows())*dx;
+    geo.coefs().col(1) += gsVector<T>::Ones(geo.coefs().rows())*dy;
+    if (geo.coefs().cols()==3)
+        geo.coefs().col(2) += gsVector<T>::Ones(geo.coefs().rows())*dz;
+}
+
+template<class T>
+void gsNurbsCreator<T>::shift2D(gsMultiPatch<T> & mp, const T dx, const T dy, const T dz)
+{
+    for (size_t k = 0; k!=mp.nPatches(); k++)
+        shift2D(mp.patch(k),dx,dy,dz);
+}
+
+template <class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::mirror2D(gsTensorBSpline<2,T> & geo, bool axis)
+{
+    gsMatrix<T> newcoefs = geo.coefs();
+
+    T mid = newcoefs.col(!axis).maxCoeff() - newcoefs.col(!axis).minCoeff();
+    newcoefs.col(!axis) -= gsVector<T>::Ones(newcoefs.rows())*mid;
+    newcoefs.col(!axis) *= -1;
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T>
+void gsNurbsCreator<T>::mirror2D(gsGeometry<T> & geo, bool axis)
+{
+    T mid = geo.coefs().col(!axis).maxCoeff() - geo.coefs().col(!axis).minCoeff();
+    geo.coefs().col(!axis) -= gsVector<T>::Ones(geo.coefs().rows())*mid;
+    geo.coefs().col(!axis) *= -1;
+
+}
+
+template <class T>
+void gsNurbsCreator<T>::mirror2D(gsMultiPatch<T> & mp, bool axis)
+{
+    gsMatrix<T> bbox;
+    mp.boundingBox(bbox);
+
+    T mid = (bbox(!axis,1)+bbox(!axis,0))/2;
+    for (size_t p = 0; p!=mp.nPatches(); p++)
+    {
+        mp.patch(p).coefs().col(!axis) -= gsVector<T>::Ones(mp.patch(p).coefs().rows())*mid;
+        mp.patch(p).coefs().col(!axis) *= -1;
+    }
+}
+
+template <class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::scale2D(gsTensorBSpline<2,T> const & geo, T factor)
+{
+    gsMatrix<T> newcoefs = geo.coefs();
+    for (index_t k = 0; k!= newcoefs.cols(); k++)
+    {
+        newcoefs.col(k) *= factor;
+    }
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::scale2D(gsTensorBSpline<2,T> const & geo, std::vector<T> factors)
+{
+    gsMatrix<T> newcoefs = geo.coefs();
+    GISMO_ENSURE(factors.size()==static_cast<size_t>(newcoefs.cols()),"Number of scaling factors must be the same as the number of dimensions");
+    for (index_t k = 0; k!= newcoefs.cols(); k++)
+    {
+        newcoefs.col(k) *= factors.at(k);
+    }
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T>
+void gsNurbsCreator<T>::scale2D(gsGeometry<T> & geo, T factor)
+{
+    for (index_t k = 0; k!= geo.coefs().cols(); k++)
+    {
+        geo.coefs().col(k) *= factor;
+    }
+}
+
+template <class T>
+void gsNurbsCreator<T>::scale2D(gsGeometry<T> & geo, std::vector<T> factors)
+{
+    GISMO_ENSURE(factors.size()==static_cast<size_t>(geo.coefs().cols()),"Number of scaling factors must be the same as the number of dimensions");
+    for (index_t k = 0; k!= geo.coefs().cols(); k++)
+    {
+        geo.coefs().col(k) *= factors.at(k);
+    }
+}
+
+template <class T>
+void gsNurbsCreator<T>::scale2D(gsMultiPatch<T> & mp,  T factor)
+{
+    for (size_t p = 0; p!=mp.nPatches(); p++)
+        scale2D(mp.patch(p),factor);
+}
+
+template <class T>
+void gsNurbsCreator<T>::scale2D(gsMultiPatch<T> & mp, std::vector<T> factors)
+{
+    for (size_t p = 0; p!=mp.nPatches(); p++)
+        scale2D(mp.patch(p),factors);
+}
+
+template <typename T>
+void gsNurbsCreator<T>::makeGrid(gsMultiPatch<T> & mp, const index_t M, const index_t N)
+{
+    gsMultiPatch<T> mp_ori(mp);
+    gsMatrix<T> bbox;
+    mp.boundingBox(bbox);
+
+    T L = bbox(0,1)-bbox(0,0);
+    T H = bbox(1,1)-bbox(1,0);
+
+    mp.clear();
+    for (index_t m = 0; m!=M; m++)
+        for (index_t n = 0; n!=N; n++)
+        {
+            gsMultiPatch<T> mp_tmp(mp_ori);
+            shift2D(mp_tmp,(m)*L,(n)*H);
+            for (size_t k=0; k!=mp_tmp.nPatches(); k++)
+                mp.addPatch(mp_tmp.patch(k));
+        }
+    mp.computeTopology();
+}
+
+template <typename T>
+gsMultiPatch<T> gsNurbsCreator<T>::makeGrid(std::vector<gsMultiPatch<T>> & mps, const index_t M, const index_t N)
+{
+    gsMultiPatch<T> mp;
+
+    std::vector<gsMultiPatch<T>> mps_ori(mps);
+    std::vector<T> Hs,Ls;
+    Hs.reserve(mps.size());
+    Ls.reserve(mps.size());
+    gsMatrix<T> bbox;
+    for (typename std::vector<gsMultiPatch<T>>::iterator it = mps.begin(); it!=mps.end(); it++)
+    {
+        it->boundingBox(bbox);
+        Ls.push_back(bbox(0,1)-bbox(0,0));
+        Hs.push_back(bbox(1,1)-bbox(1,0));
+    }
+
+    typename std::vector<gsMultiPatch<T>>::iterator mp_it = mps.begin();
+    typename std::vector<T>::iterator L_it = Ls.begin();
+    typename std::vector<T>::iterator H_it = Hs.begin();
+    for (index_t m = 0; m!=M; m++)
+    {
+        for (index_t n = 0; n!=N; n++)
+        {
+            gsMultiPatch<T> mp_tmp(*mp_it);
+            shift2D(mp_tmp,(m)*(*L_it),(n)*(*H_it));
+            for (size_t k=0; k!=mp_tmp.nPatches(); k++)
+                mp.addPatch(mp_tmp.patch(k));
+
+            mp_it==mps.end()-1 ? mp_it = mps.begin() : mp_it++;
+            L_it==Ls.end()-1 ? L_it = Ls.begin() : L_it++;
+            H_it==Hs.end()-1 ? H_it = Hs.begin() : H_it++;
+        }
+
+        // if the size of mps is and if n is even, we need to add to the iterators to make sure the pattern is alternating
+        if (mps.size() % 2 == 0 && N % 2 == 0)
+        {
+            mp_it==mps.end()-1 ? mp_it = mps.begin() : mp_it++;
+            L_it==Ls.end()-1 ? L_it = Ls.begin() : L_it++;
+            H_it==Hs.end()-1 ? H_it = Hs.begin() : H_it++;
+        }
+    }
+    mp.computeTopology();
+    return mp;
+}
 
 template<class T> typename gsNurbsCreator<T>::TensorBSpline3Ptr
 gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)
@@ -42,7 +271,7 @@ gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)
     // Embed in 3D if needed
     if (newcoefs.cols() == 2 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 3);
+        newcoefs.conservativeResize( gsEigen::NoChange, 3);
         newcoefs.col(2).setZero();
     }
 
@@ -54,7 +283,7 @@ gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)
                                     KV, give(newcoefs) ));
 }
 
-    
+
 template<class T> typename gsNurbsCreator<T>::TensorBSpline4Ptr
 gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
 {
@@ -70,7 +299,7 @@ gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
     // Embed in 4D if needed
     if (newcoefs.cols() == 3 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 4);
+        newcoefs.conservativeResize( gsEigen::NoChange, 4);
         newcoefs.col(3).setZero();
     }
 
@@ -81,6 +310,71 @@ gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
                                     geo.basis().knots(1),
                                     geo.basis().knots(2),
                                     KV, give(newcoefs) ));
+}
+
+
+template<class T> typename gsNurbsCreator<T>::TensorNurbs3Ptr
+gsNurbsCreator<T>::lift3D( gsTensorNurbs<2,T> const & geo, T z)
+{
+    gsKnotVector<T> KV(0, 1, 0, 2);
+    const int sz = geo.basis().size();
+
+    gsMatrix<T> newweights(2*sz, 1), newcoefs( 2*sz, geo.geoDim() ) ;
+
+    // Copy coefficients
+    newcoefs.topRows(sz)    =
+    newcoefs.bottomRows(sz) = geo.coefs();
+
+    // Copy weights
+    newweights.topRows(sz)    =
+    newweights.bottomRows(sz) = geo.basis().weights();
+
+    // Embed in 3D if needed
+    if (newcoefs.cols() == 2 )
+    {
+        newcoefs.conservativeResize( gsEigen::NoChange, 3);
+        newcoefs.col(2).setZero();
+    }
+
+    // Lift
+    newcoefs.col(2).bottomRows(sz).array() += z;
+
+    return TensorNurbs3Ptr(new gsTensorNurbs<3,T>(geo.basis().knots(0),
+                                                      geo.basis().knots(1),
+                                                      KV, give(newcoefs), give(newweights) ));
+}
+
+
+template<class T> typename gsNurbsCreator<T>::TensorNurbs4Ptr
+gsNurbsCreator<T>::lift4D( gsTensorNurbs<3,T> const & geo, T z)
+{
+    gsKnotVector<T> KV(0, 1, 0, 2);
+    const int sz = geo.basis().size();
+
+    gsMatrix<T> newweights(2*sz, 1), newcoefs(2*sz, geo.geoDim());
+
+    // Copy coefficients
+    newcoefs.topRows(sz)    =
+    newcoefs.bottomRows(sz) = geo.coefs();
+
+    // Copy weights
+    newweights.topRows(sz)    =
+    newweights.bottomRows(sz) = geo.basis().weights();
+
+    // Embed in 4D if needed
+    if (newcoefs.cols() == 3 )
+    {
+        newcoefs.conservativeResize( gsEigen::NoChange, 4);
+        newcoefs.col(3).setZero();
+    }
+
+    // Lift
+    newcoefs.col(3).bottomRows(sz).array() += z;
+
+    return TensorNurbs4Ptr(new gsTensorNurbs<4,T>(geo.basis().knots(0),
+                                                      geo.basis().knots(1),
+                                                      geo.basis().knots(2),
+                                                      KV, give(newcoefs), give(newweights) ));
 }
 
 /* * Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
@@ -141,12 +435,12 @@ gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
 */
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineUnitInterval(int deg)
+gsNurbsCreator<T>::BSplineUnitInterval(short_t deg)
 {
     gsKnotVector<T> KV(0,1, 0,deg+1);
     gsMatrix<T> C(deg+1, 1);
-    for (int i = 0; i <= deg; ++i)
-        C(i) = i / static_cast<T>(deg);
+    for (short_t i = 0; i <= deg; ++i)
+        C(i) = static_cast<T>(i) / static_cast<T>(deg);
     return BSplinePtr(new gsBSpline<T>(KV, give(C)));
 }
 
@@ -163,7 +457,7 @@ gsNurbsCreator<T>::BSplineRectangle( T const & low_x,
 
     const T pi = 3.1415926535897932384626433832795;
 
-    T r = turndeg / 180 * pi;
+    T r = turndeg / (T)(180) * pi;
 
     C <<  low_x, low_y ,
         upp_x, low_y,
@@ -186,14 +480,75 @@ gsNurbsCreator<T>::BSplineRectangle( T const & low_x,
     D(6,0) = C(2,0); D(6,1) = C(2,1);
     D(8,0) = C(3,0); D(8,1) = C(3,1);
 
-    D(1,0) = (C(0,0)+C(1,0))/2; D(1,1) = (C(0,1)+C(1,1))/2;
-    D(3,0) = (C(0,0)+C(2,0))/2; D(3,1) = (C(0,1)+C(2,1))/2;
-    D(5,0) = (C(3,0)+C(1,0))/2; D(5,1) = (C(3,1)+C(1,1))/2;
-    D(7,0) = (C(2,0)+C(3,0))/2; D(7,1) = (C(2,1)+C(3,1))/2;
-    D(4,0) = (C(0,0)+C(3,0))/2; D(4,1) = (C(0,1)+C(3,1))/2;
+    D(1,0) = (C(0,0)+C(1,0))/(T)(2); D(1,1) = (C(0,1)+C(1,1))/(T)(2);
+    D(3,0) = (C(0,0)+C(2,0))/(T)(2); D(3,1) = (C(0,1)+C(2,1))/(T)(2);
+    D(5,0) = (C(3,0)+C(1,0))/(T)(2); D(5,1) = (C(3,1)+C(1,1))/(T)(2);
+    D(7,0) = (C(2,0)+C(3,0))/(T)(2); D(7,1) = (C(2,1)+C(3,1))/(T)(2);
+    D(4,0) = (C(0,0)+C(3,0))/(T)(2); D(4,1) = (C(0,1)+C(3,1))/(T)(2);
 
     return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KV,KV, give(D)));
 
+}
+
+/*
+                    Ltop
+          <-------------------->
+        C *--------------------* D
+         /           ^           \
+        /            | H          \
+    A *---------------------------* B
+      <->
+       d
+      <--------------------------->
+                   Lbot
+ */
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::BSplineTrapezium( T const & Ax, T const & Ay,
+                                     T const & Bx, T const & By,
+                                     T const & Cx, T const & Cy,
+                                     T const & Dx, T const & Dy,
+                                     T const & turndeg)
+{
+
+    gsKnotVector<T> KV (0,1,0,2) ;
+    gsMatrix<T> C(4,2);
+
+    const T pi = 3.1415926535897932384626433832795;
+
+    T r = turndeg / 180. * pi;
+
+    C <<    Ax, Ay,
+            Bx, By,
+            Cx, Cy,
+            Dx, Dy;
+
+    T tx;
+    T ty;
+    for(int i =0; i < 4; i++)
+    {
+        tx = C(i,0); ty = C(i,1);
+        C(i,0) = math::cos(r) * tx - math::sin(r) * ty;
+        C(i,1) = math::sin(r) * tx + math::cos(r) * ty;
+    }
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KV,KV, give(C)));
+
+}
+
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::BSplineTrapezium( T const & Lbot,
+                                     T const & Ltop,
+                                     T const & H,
+                                     T const & d, T const & turndeg)
+{
+    T Ax,Ay,Bx,By,Cx,Cy,Dx,Dy;
+    Ax = Ay = By = 0.0;
+    Bx = Lbot;
+    Cx = d;
+    Dx = d+Ltop;
+    Cy = Dy = H;
+
+    return BSplineTrapezium(Ax,Ay,Bx,By,Cx,Cy,Dx,Dy,turndeg);
 }
 
 
@@ -213,10 +568,94 @@ gsNurbsCreator<T>::BSplineRectangleWithPara( T low_x, T low_y, T upp_x, T upp_y)
     return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KVx, KVy, give(C)));
 }
 
+/*
+                    Ltop
+          <-------------------->
+        C *--------------------* D *
+         /           ^           \
+         *           |   *        \
+        /            | H          \
+    A *--------------*------------* B
+      <->
+       d
+      <--------------------------->
+                   Lbot
+
+                   Where BD is an arc
+ */
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsArcTrapezium( T const & Ax, T const & Ay,
+                                     T const & Bx, T const & By,
+                                     T const & Cx, T const & Cy,
+                                     T const & Dx, T const & Dy,
+                                     T const & turndeg)
+{
+
+    gsKnotVector<T> KV1 (0,1,0,2);
+    gsKnotVector<T> KV2 (0,1,0,3);
+    gsMatrix<T> C(4,2);
+
+    const T pi = 3.1415926535897932384626433832795;
+
+    T r = turndeg / 180 * pi;
+
+    C <<    Ax, Ay,
+            Bx, By,
+            Cx, Cy,
+            Dx, Dy;
+
+    gsDebugVar(C);
+
+
+    gsMatrix<T> D(6,2);
+    D.setZero();
+    D(0,0) = C(0,0); D(0,1) = C(0,1);
+    D(1,0) = C(1,0); D(1,1) = C(1,1);
+    D(4,0) = C(2,0); D(4,1) = C(2,1);
+    D(5,0) = C(3,0); D(5,1) = C(3,1);
+
+    D(2,0) = (C(0,0)+C(2,0))/2; D(2,1) = (C(0,1)+C(2,1))/2;
+    D(3,0) = C(3,0);            D(3,1) = C(0,0);
+
+    gsDebugVar(D);
+
+    T tx;
+    T ty;
+    for(int i =0; i < 6; i++)
+    {
+        tx = D(i,0); ty = D(i,1);
+        D(i,0) = math::cos(r) * tx - math::sin(r) * ty;
+        D(i,1) = math::sin(r) * tx + math::cos(r) * ty;
+    }
+
+    gsMatrix<T> newweights(6, 1);
+    newweights.setOnes();
+    newweights(3,0) = 0.7071;
+
+    return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KV1,KV2, give(D),newweights));
+
+}
+
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsArcTrapezium( T const & Lbot,
+                                     T const & Ltop,
+                                     T const & H,
+                                     T const & d, T const & turndeg)
+{
+    T Ax,Ay,Bx,By,Cx,Cy,Dx,Dy;
+    Ax = Ay = By = 0.0;
+    Bx = Lbot;
+    Cx = d;
+    Dx = d+Ltop;
+    Cy = Dy = H;
+
+    return NurbsArcTrapezium(Ax,Ay,Bx,By,Cx,Cy,Dx,Dy,turndeg);
+}
+
 
 /// Square of side \a r, with lower left corner at (x,y)
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
-gsNurbsCreator<T>::BSplineSquare( T const & r, 
+gsNurbsCreator<T>::BSplineSquare( T const & r,
                                   T const & x,
                                   T const & y)
 {
@@ -249,9 +688,9 @@ gsNurbsCreator<T>::BSplineSquare( T const & r,
 /// \param lx x-coordinate for lower left corner of the rectangle.
 /// \param ly y-coordinate for lower left corner of the rectangle.
 template<class T> gsMultiPatch<T>
-gsNurbsCreator<T>::BSplineSquareGrid(int n, int m, 
+gsNurbsCreator<T>::BSplineSquareGrid(int n, int m,
                                      T const & r,
-                                     T const & lx, 
+                                     T const & lx,
                                      T const & ly)
 {
     gsMultiPatch<T> mp;
@@ -259,7 +698,7 @@ gsNurbsCreator<T>::BSplineSquareGrid(int n, int m,
     for(int i = 0; i < n; i++)
         for(int j = 0; j < m; j++)
         {
-            mp.addPatch(BSplineSquare(r,lx + r*i ,ly + r*j)) ;
+            mp.addPatch(BSplineSquare(r,lx + r*(T)(i) ,ly + r*(T)(j))) ;
         }
     mp.computeTopology();
     return mp;
@@ -279,7 +718,7 @@ gsNurbsCreator<T>::BSplineSquare( gsMatrix<T> const & Box)
 
 // The unit square represented as a tensor B-spline of degree \a deg
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
-gsNurbsCreator<T>::BSplineSquare(int deg, T scale)
+gsNurbsCreator<T>::BSplineSquareDeg(short_t deg, T scale)
 {
     GISMO_ASSERT(deg>0,"Degree must be at least one.");
     TensorBSpline2Ptr res = BSplineSquare(scale, 0.0, 0.0);
@@ -311,7 +750,7 @@ gsNurbsCreator<T>::BSplineCube( T const & r, T const & x,
 //
 /// The unit cube represented as a tensor B-spline of degree \a deg
 template<class T> typename gsNurbsCreator<T>::TensorBSpline3Ptr
-gsNurbsCreator<T>::BSplineCube(int deg)
+gsNurbsCreator<T>::BSplineCube(short_t deg)
 {
     const int n = (deg + 1) * (deg + 1) * (deg + 1);        // number of basis functions
 
@@ -323,9 +762,9 @@ gsNurbsCreator<T>::BSplineCube(int deg)
         for (int j = 0; j <= deg; ++j)
             for (int i = 0; i <= deg; ++i)
             {
-                C(r, 0) = ((T) i) / deg;
-                C(r, 1) = ((T) j) / deg;
-                C(r, 2) = ((T) k) / deg;
+                C(r, 0) = ((T) i) / (T)(deg);
+                C(r, 1) = ((T) j) / (T)(deg);
+                C(r, 2) = ((T) k) / (T)(deg);
                 ++r;
             }
 
@@ -346,7 +785,7 @@ gsNurbsCreator<T>::BSplineCubeGrid(int n, int m,int p,
         for(int j = 0; j < m; j++)
             for(int k = 0; k < p; k++)
         {
-            mp.addPatch(BSplineCube(r,lx + r*i ,ly + r*j,lz+r*k)) ;
+            mp.addPatch(BSplineCube(r, r*(T)(0.5) + lx + r*(T)(i), r*(T)(0.5) + ly + r*(T)(j), r*(T)(0.5) + lz+r*(T)(k))) ;
         }
     mp.computeTopology();
     return mp;
@@ -381,10 +820,10 @@ gsNurbsCreator<T>::NurbsCube( T const & r, T const & x,
         , 0 , r , 0, r , r , 0
         , 0 , 0 , r, r , 0 , r
         , 0 , r , r, r , r , r ;
-        
+
     C.col(0).array() += x;
     C.col(1).array() += y;
-    C.col(2).array() += z;        
+    C.col(2).array() += z;
 
     return TensorNurbs3Ptr(new gsTensorNurbs<3,T>(KV,KV,KV, give(C)));
 }
@@ -408,9 +847,45 @@ gsNurbsCreator<T>::NurbsQuarterAnnulus( T const & r0, T const & r1)
     return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KVx,KVy, give(C), give(ww)));
 }
 
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsAnnulus( T const & r0, T const & r1)
+{
+    gsKnotVector<T> KVx (0,1,3,3,2) ;
+    gsKnotVector<T> KVy (0,1,0,2) ;
+    gsMatrix<T> C(18,2) ;
+    
+    C <<    r0, 0,
+            r0, r0,
+            0, r0,
+            -r0, r0,
+            -r0, 0,
+            -r0,-r0,
+            0,-r0,
+            r0,-r0,
+            r0, 0,
+            r1, 0,
+            r1, r1,
+            0, r1,
+            -r1, r1,
+            -r1, 0,
+            -r1,-r1,
+            0,-r1,
+            r1,-r1,
+            r1, 0;
+    // C *= r;
+
+    // C.col(0).array() += x;
+    // C.col(1).array() += y;
+
+    gsMatrix<T> ww(18,1) ;
+    ww<< 1, 0.707106781186548, 1, 0.707106781186548,1, 0.707106781186548,1, 0.707106781186548, 1, 1, 0.707106781186548, 1, 0.707106781186548,1, 0.707106781186548,1, 0.707106781186548, 1  ;
+
+    return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KVx,KVy, give(C), give(ww)));
+}
+
 /// Inexact annulus using B-splines
 template<class T> typename gsNurbsCreator<T>::GeometryPtr
-gsNurbsCreator<T>::BSplineQuarterAnnulus(int const & deg)
+gsNurbsCreator<T>::BSplineQuarterAnnulus(const short_t & deg)
 {
     GeometryPtr quann = gsNurbsCreator<T>::NurbsQuarterAnnulus();
 
@@ -427,7 +902,6 @@ gsNurbsCreator<T>::BSplineSaddle()
 {
     return TensorNurbs3Ptr(); //TODO
 }
-
 
 /*
 template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
@@ -471,9 +945,6 @@ gsNurbsCreator<T>::BSplineQuarterAnnulusMixedWithLShape(int const & deg) {
 }
 */
 
-/// Fat annulus using B-splines, discarding the weights of the exact NURBS
-/// Analytical formulation (when r0 = 1 and r1 = 2):
-/// (x, y) = (1 + s - s*t*t - t*t, 2*s*t -s*t*t + 2*t - t*t)
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
 gsNurbsCreator<T>::BSplineFatQuarterAnnulus( T const & r0, T const & r1)
 {
@@ -496,24 +967,24 @@ gsNurbsCreator<T>::BSplineFatQuarterAnnulus( T const & r0, T const & r1)
 
 
 template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
-gsNurbsCreator<T>::NurbsSphere( T const & r, T const & x, 
+gsNurbsCreator<T>::NurbsSphere( T const & r, T const & x,
                                 T const & y, T const & z)
 {
-    gsKnotVector<T> KV1 (0,2,1,3,2) ;
-    gsKnotVector<T> KV2 (0,4,3,3,2) ;
+    gsKnotVector<T> KV1 (0,1,1,3,2) ;
+    gsKnotVector<T> KV2 (0,1,3,3,2) ;
     gsMatrix<T> C(45,3) ;
     C<<
         2, 0, 0, 2, 2, 0, 0, 2, 0,-2, 2, 0,-2, 0, 0,
-        2, 0, 2, 2, 2, 2, 0, 0, 2, -2, 2, 2,-2,0, 2,
-        0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0,0, 2,
-        2, 0, 2, 2,-2, 2, 0,-2, 2,-2,-2, 2,-2,0, 2,
+        2, 0, 2, 2, 2, 2, 0, 2, 2,-2, 2, 2,-2, 0, 2,
+        0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2,
+        2, 0, 2, 2,-2, 2, 0,-2, 2,-2,-2, 2,-2, 0, 2,
         2, 0, 0, 2,-2, 0, 0,-2, 0,-2,-2, 0,-2, 0, 0,
         2, 0,-2, 2,-2,-2, 0,-2,-2,-2,-2,-2,-2, 0,-2,
         0, 0,-2, 0, 0,-2, 0, 0,-2, 0, 0,-2, 0, 0,-2,
         2, 0,-2, 2, 2,-2, 0, 2,-2,-2, 2,-2,-2, 0,-2,
         2, 0, 0, 2, 2, 0, 0, 2, 0,-2, 2, 0,-2, 0, 0;
 
-    C *= r;
+    C *= r/2.;
 
     gsMatrix<T> W(45,1) ;
     W <<          1, 0.707106781186548,                 1, 0.707106781186548,                  1,
@@ -528,8 +999,8 @@ gsNurbsCreator<T>::NurbsSphere( T const & r, T const & x,
 
     C.col(0).array() += x;
     C.col(1).array() += y;
-    C.col(2).array() += z; 
-    
+    C.col(2).array() += z;
+
     return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KV1,KV2, give(C), give(W)));
 }
 
@@ -551,8 +1022,8 @@ gsNurbsCreator<T>::NurbsCircle( T const & r, T const & x, T const & y)
     C *= r;
 
     C.col(0).array() += x;
-    C.col(1).array() += y;    
-    
+    C.col(1).array() += y;
+
     gsMatrix<T> ww(9,1) ;
     ww<< 1, 0.707106781186548, 1, 0.707106781186548,1, 0.707106781186548,1, 0.707106781186548, 1 ;
 
@@ -574,10 +1045,10 @@ gsNurbsCreator<T>::BSplineFatCircle( T const & r, T const & x, T const & y)
         1,-1,
         1, 0;
     C *= r;
-    
+
     C.col(0).array() += x;
     C.col(1).array() += y;
-    
+
     return BSplinePtr(new gsBSpline<T>(KV2, give(C)));
 }
 
@@ -592,7 +1063,7 @@ gsNurbsCreator<T>::BSplineFatDisk (T const & r, T const & x, T const & y)
 
     C.col(0).array() += x;
     C.col(1).array() += y;
-    
+
     return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KV,KV, give(C)));
 }
 
@@ -616,9 +1087,9 @@ gsNurbsCreator<T>::NurbsCurve1 (T const & r, T const & x, T const & y)
         -0.5,   -1,
         0,   -1;
     C *= r;
-    
+
     C.col(0).array() += x;
-    C.col(1).array() += y;    
+    C.col(1).array() += y;
 
     gsMatrix<T> ww(13,1) ;
     ww<< 1, 0.853553, 0.853553, 1, 0.853553, 0.853553, 1, 0.853553,
@@ -648,7 +1119,7 @@ gsNurbsCreator<T>::NurbsCurve2 (T const & r, T const & x, T const & y)
 
     C.col(0).array() += x;
     C.col(1).array() += y;
-    
+
     gsMatrix<T> ww( 9, 1 ) ;
     ww(0)= 1;
     ww(1)= 0.20 ;
@@ -665,7 +1136,7 @@ gsNurbsCreator<T>::NurbsCurve2 (T const & r, T const & x, T const & y)
 
 
 template<class T> typename gsNurbsCreator<T>::NurbsPtr
-gsNurbsCreator<T>::NurbsBean(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::NurbsBean(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,12,3,1,2);
     gsMatrix<T> C(15,2);
@@ -684,9 +1155,9 @@ gsNurbsCreator<T>::NurbsBean(T const & r, T const & x, T const & y)
         0,-2,
         1,-1,
         1,0;
-        
+
     C.col(0).array() += x;
-    C.col(1).array() += y;         
+    C.col(1).array() += y;
 
     gsMatrix<T> ww( 15, 1 ) ;
     ww.setOnes();
@@ -695,7 +1166,7 @@ gsNurbsCreator<T>::NurbsBean(T const & r, T const & x, T const & y)
 
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineE (T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineE (T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,22,4,1,3);
     gsMatrix<T> C(26,2);
@@ -726,13 +1197,13 @@ gsNurbsCreator<T>::BSplineE (T const & r, T const & x, T const & y)
         -2,0;
 
     C.col(0).array() += x;
-    C.col(1).array() += y;         
+    C.col(1).array() += y;
 
     return BSplinePtr(new gsBSpline<T>(kv, give(C)));
 }
 
 template<class T> typename gsNurbsCreator<T>::NurbsPtr
-gsNurbsCreator<T>::NurbsAmoebaFull(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::NurbsAmoebaFull(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,19,3,1,2);
     gsMatrix<T> C(22,2);
@@ -760,8 +1231,8 @@ gsNurbsCreator<T>::NurbsAmoebaFull(T const & r, T const & x, T const & y)
         -10,-2;
 
     C.col(0).array() += x;
-    C.col(1).array() += y;   
-    
+    C.col(1).array() += y;
+
     gsMatrix<T> ww(22, 1 ) ;
     ww.setOnes();
     return NurbsPtr(new gsNurbs<T>(kv, give(ww), give(C)));
@@ -782,7 +1253,7 @@ template<class T> typename gsNurbsCreator<T>::BSplinePtr
 gsNurbsCreator<T>::BSplineSegment(T const u0, T const u1)
 {
     gsKnotVector<T> kv(u0, u1, 0, 2);
-    gsBSplineBasis<T> bsb(kv);    
+    gsBSplineBasis<T> bsb(kv);
     return BSplinePtr(new gsBSpline<T>(bsb, bsb.anchors().transpose()) );
 }
 
@@ -904,7 +1375,7 @@ gsNurbsCreator<T>::BSplineLShapeMultiPatch_p2()
 }
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineAmoeba(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineAmoeba(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,19,3,1,2);
     gsMatrix<T> C(22,2);
@@ -935,7 +1406,7 @@ gsNurbsCreator<T>::BSplineAmoeba(T const & r, T const & x, T const & y)
     C /= 2;
 
     C.col(0).array() += x;
-    C.col(1).array() += y;    
+    C.col(1).array() += y;
 
     gsBSpline<T> *B =new gsBSpline<T>(kv, give(C));
     B->reverse();
@@ -943,7 +1414,7 @@ gsNurbsCreator<T>::BSplineAmoeba(T const & r, T const & x, T const & y)
 }
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineAmoebaBig(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineAmoebaBig(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,19,3,1,2);
     gsMatrix<T> C(22,2);
@@ -972,7 +1443,7 @@ gsNurbsCreator<T>::BSplineAmoebaBig(T const & r, T const & x, T const & y)
         -10,-2;
 
     C.col(0).array() += x;
-    C.col(1).array() += y;        
+    C.col(1).array() += y;
 
     gsBSpline<T> *B =new gsBSpline<T>(kv, give(C));
     B->reverse();
@@ -980,7 +1451,7 @@ gsNurbsCreator<T>::BSplineAmoebaBig(T const & r, T const & x, T const & y)
 }
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineAustria(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineAustria(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,31,3,1,2);
     gsMatrix<T> C(34,2);
@@ -1022,7 +1493,7 @@ gsNurbsCreator<T>::BSplineAustria(T const & r, T const & x, T const & y)
 
     C.col(0).array() += x;
     C.col(1).array() += y;
-    
+
     gsBSpline<T> *B =new gsBSpline<T>(kv, give(C));
     B->reverse();
     return BSplinePtr(B);
@@ -1030,7 +1501,7 @@ gsNurbsCreator<T>::BSplineAustria(T const & r, T const & x, T const & y)
 
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineFish(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineFish(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,13,3,1,2);
     gsMatrix<T> C(16,2);
@@ -1053,13 +1524,13 @@ gsNurbsCreator<T>::BSplineFish(T const & r, T const & x, T const & y)
         -3,0;
     C.col(0).array() += x;
     C.col(1).array() += y;
-    
+
     gsBSpline<T> *B =new gsBSpline<T>(kv, give(C));
     return BSplinePtr(B);
 }
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineAmoeba3degree(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineAmoeba3degree(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,18,4,1,3);
     gsMatrix<T> C(22,2);
@@ -1090,7 +1561,7 @@ gsNurbsCreator<T>::BSplineAmoeba3degree(T const & r, T const & x, T const & y)
 
     C.col(0).array() += x;
     C.col(1).array() += y;
-    
+
     gsBSpline<T> *B =new gsBSpline<T>(kv, give(C));
     B->reverse();
     return BSplinePtr(B);
@@ -1111,7 +1582,7 @@ gsNurbsCreator<T>::NurbsDisk(T const & r, T const & x, T const & y)
 
     C.col(0).array() += x;
     C.col(1).array() += y;
-    
+
     gsMatrix<T> ww(9, 1 ) ;
     ww(0)= 1;
     ww(1)= 0.707106781186548 ;
@@ -1160,5 +1631,45 @@ gsNurbsCreator<T>::NurbsQrtPlateWHoleC0()
 
 }
 
+/// Triangle of height \a H and width \a W with the bottom side centered at 0,0
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::BSplineTriangle( T const & H,
+                                    T const & W)
+{
+    gsKnotVector<T> KV (0,1,0,2) ;
+    gsMatrix<T> C(4,2) ;
+
+    C.col(0) << 0 , 0 , 0.5*W, W;
+    C.col(1) << H , 0 , 0.5*H, 0 ;
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KV,KV, give(C)));
+}
+
+/// Star with \a N points. Each point is located \a R0 from the center. The other corners are located \a R1 from the center
+template<class T> gsMultiPatch<T>
+gsNurbsCreator<T>::BSplineStar( index_t const & N,
+                                    T const & R0,
+                                    T const & R1)
+{
+    GISMO_ENSURE(N>2,"Star must have at least 3 points.");
+
+    const T pi = 3.1415926535897932384626433832795;
+    const T theta = 2*pi/N;
+    gsKnotVector<T> KV(0,1,0,2);
+    gsMatrix<T> coefs(4,2);
+    coefs<< 0,                      0,
+             R1*math::cos(pi/2-theta/2), R1*math::sin(pi/2-theta/2),
+            -R1*math::cos(pi/2-theta/2), R1*math::sin(pi/2-theta/2),
+            0,                      R0;
+
+    gsTensorBSpline<2,T> bspline(KV,KV,coefs);
+    gsMultiPatch<T> result;
+    for (index_t p=0; p!=N; p++)
+    {
+        result.addPatch(bspline);
+        bspline = *(rotate2D(bspline,theta*360/(2*pi)));
+    }
+    return result;
+}
 
 } // namespace gismo

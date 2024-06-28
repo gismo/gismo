@@ -181,13 +181,13 @@ public:
         // merge coefficients
         int n= this->coefsSize();
         int skip = continuous ? 1 : 0;
-        this->m_coefs.conservativeResize( n + other->coefsSize() -skip, Eigen::NoChange ) ;
+        this->m_coefs.conservativeResize( n + other->coefsSize() -skip, gsEigen::NoChange ) ;
 
         this->m_coefs.block( n,0,other->coefsSize()-skip,other->geoDim() ) =
             other->m_coefs.block( 1,0,other->coefsSize()-skip,other->geoDim() ) ;
 
         // merge Weights
-        this->weights().conservativeResize( n + other->coefsSize() -skip, Eigen::NoChange ) ;
+        this->weights().conservativeResize( n + other->coefsSize() -skip, gsEigen::NoChange ) ;
             
         this->weights().block( n,0,other->coefsSize()-skip,1 ) =
             other->weights().block( 1,0,other->coefsSize()-skip, 1 ) ;
@@ -231,6 +231,10 @@ protected:
     // TODO Check function
     // check function: check the coefficient number, degree, knot vector ...
 
+private:
+
+    // Avoid hidden overloads w.r.t. gsGeometry
+    using Base::insertKnot;
 
 // Data members
 private:

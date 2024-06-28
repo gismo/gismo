@@ -47,7 +47,7 @@ namespace rapidxml
         // Copy characters from given range to given output iterator and expand
         // characters into references (&lt; &gt; &apos; &quot; &amp;)
         template<class OutIt, class Ch>
-        inline OutIt copy_and_expand_chars(const Ch *begin, const Ch *end, Ch noexpand, OutIt out)
+        inline OutIt copy_and_expand_chars(const Ch *begin, const Ch *end, Ch noexpand, OutIt out, int indent=0)
         {
             while (begin != end)
             {
@@ -59,6 +59,11 @@ namespace rapidxml
                 {
                     switch (*begin)
                     {
+                    case Ch('\n'):
+                        *out++ = Ch('\n');
+                        for (int i = 0; i < indent - (int)( begin == std::prev(end) ); ++i)
+                            *out++ = Ch(tab_);
+                        break;
                     case Ch('<'):
                         *out++ = Ch('&'); *out++ = Ch('l'); *out++ = Ch('t'); *out++ = Ch(';');
                         break;
@@ -121,7 +126,7 @@ namespace rapidxml
 
         // Print attributes of the node
         template<class OutIt, class Ch>
-        inline OutIt print_attributes(OutIt out, const xml_node<Ch> *node, int flags)
+        inline OutIt print_attributes(OutIt out, const xml_node<Ch> *node)
         {
             for (xml_attribute<Ch> *attribute = node->first_attribute(); attribute; attribute = attribute->next_attribute())
             {
@@ -194,7 +199,7 @@ namespace rapidxml
                 out = fill_chars(out, indent, Ch(tab_));
             *out = Ch('<'), ++out;
             out = copy_chars(node->name(), node->name() + node->name_size(), out);
-            out = print_attributes(out, node, flags);
+            out = print_attributes(out, node);
             
             // If node is childless
             if (node->value_size() == 0 && !node->first_node())
@@ -213,7 +218,7 @@ namespace rapidxml
                 if (!child)
                 {
                     // If node has no children, only print its value without indenting
-                    out = copy_and_expand_chars(node->value(), node->value() + node->value_size(), Ch(0), out);
+                    out = copy_and_expand_chars(node->value(), node->value() + node->value_size(), Ch(0), out, indent+1);
                 }
                 else if (child->next_sibling() == 0 && child->type() == node_data)
                 {
@@ -253,7 +258,7 @@ namespace rapidxml
             *out = Ch('l'), ++out;
 
             // Print attributes
-            out = print_attributes(out, node, flags);
+            out = print_attributes(out, node);
             
             // Print declaration end
             *out = Ch('?'), ++out;

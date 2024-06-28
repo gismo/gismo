@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsGeometryEvaluator.h>
+#include <gsCore/gsGeometry.h>
 
 namespace gismo
 {
@@ -61,14 +61,11 @@ public:
 private: virtual gsCurve * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
-    int domainDim() const { return 1; }
+    short_t domainDim() const { return 1; }
     
-    int degree() const;
+    short_t degree() const;
 
     void toMesh(gsMesh<T> & msh, int npoints = 100) const;
-
-    virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;
-
 
     /// Reverse the coefficients
     void reverse()
@@ -77,7 +74,7 @@ public: inline uPtr clone() const { return uPtr(clone_impl()); }
         this->basis().reverse();
     }
 
-    virtual bool isOn(gsMatrix<T> const &u, T tol = 1e-3) const
+    virtual bool isOn(gsMatrix<T> const &, T = 1e-3) const
     { GISMO_NO_IMPLEMENTATION }
 
 }; // class gsCurve

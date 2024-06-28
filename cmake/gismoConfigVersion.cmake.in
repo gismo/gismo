@@ -1,7 +1,15 @@
-#
+######################################################################
+## gismoConfigVersion.cmake --- G+Smo CMake Configuration file
+## This file is part of the G+Smo library.
+##
+## https://github.com/gismo/gismo
+## https://gismo.github.io/
+##
+## Author: Angelos Mantzaflaris
+######################################################################
 
-set(PACKAGE_VERSION "@GISMO_VERSION@")
- 
+set(PACKAGE_VERSION "@gismo_VERSION@")
+
 # Check whether the requested PACKAGE_FIND_VERSION is compatible
 if("${PACKAGE_VERSION}" VERSION_LESS "${PACKAGE_FIND_VERSION}")
   set(PACKAGE_VERSION_COMPATIBLE FALSE)

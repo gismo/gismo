@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsHSplines/gsHDomain.h>
-
+#include <gsHSplines/gsKdNode.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsCore/gsDomainIterator.h>
@@ -41,13 +41,13 @@ class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef kdnode<d, unsigned> node;
+    typedef gsKdNode<d, index_t> node;
 
     typedef typename node::point point; 
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHDomain<d,unsigned> hDomain;
+    typedef gsHDomain<d,index_t> hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 
@@ -70,7 +70,7 @@ public:
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
 
         // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
+        m_quadrature.setNodes( gsVector<index_t>::Ones(d) );
 
         // Get the side information
         par = s.parameter();
@@ -112,41 +112,6 @@ public:
     {
         const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
         initLeaf(hbs->tree());
-    }
-    
-    // ---> Documentation in gsDomainIterator.h Compute a suitable
-    // quadrature rule of the given order for the current element
-    void computeQuadratureRule(const gsVector<int>& numIntNodes)
-    {
-        GISMO_ASSERT( numIntNodes[dir]==1, 
-                      "Can only use one point in the fixed direction." );
-
-        m_quadrature.setNodes(numIntNodes);
-        m_quadrature.mapTo(m_lower, m_upper, this->quNodes, this->quWeights);
-    }
-
-    void computeQuadratureRuleDefault()
-    {
-        // uses same formula as gsGaussAssembler::getNumIntNodesFor( gsBasis )
-        gsVector<int> numIntNodes( m_basis->dim() );
-        for (int i = 0; i < m_basis->dim(); ++i)
-            numIntNodes[i] = m_basis->degree(i) + 1;
-
-        numIntNodes[dir] = 1;
-        computeQuadratureRule( numIntNodes );
-    }
-    
-    // get the basis function indices which are active in the current
-    // element
-    void getActiveFunctions(gsMatrix<unsigned>& act)
-    {
-        this->m_basis->active_into(center, act);
-    }
-    
-    const gsMatrix<unsigned>& computeActiveFunctions()
-    {
-        this->m_basis->active_into(center, this->activeFuncs);
-        return this->activeFuncs;
     }
 
     const gsVector<T>& lowerCorner() const { return m_lower; }
@@ -202,11 +167,21 @@ private:
         if ( par )
         {
             // AM: a little ugly for now, to be improved
-            return 
-                static_cast<size_t>(m_leaf.upperCorner().at(dir) )
-                == 
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)
-                ->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;// todo: more efficient
+            size_t diadicSize;
+            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(m_basis);
+            if (basis().manualLevels() )
+            {
+                gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.level()).knots(dir);
+                index_t start = 0;
+                index_t end  = kv.uSize()-1;
+                hbasis->_knotIndexToDiadicIndex(m_leaf.level(),dir,start);
+                hbasis->_knotIndexToDiadicIndex(m_leaf.level(),dir,end);
+                diadicSize = end - start;
+            }
+            else
+                diadicSize = static_cast<const gsHTensorBasis<d,T>*>(m_basis)->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;
+
+            return static_cast<size_t>(m_leaf.upperCorner().at(dir) ) == diadicSize;// todo: more efficient
         }
         else
         {
@@ -229,36 +204,39 @@ private:
         // Update leaf box
         for (unsigned dim = 0; dim < d; ++dim)
         {
-            const unsigned start = lower(dim);
-            const unsigned end  = upper(dim) ;
+            index_t start = lower(dim);
+            index_t end  = upper(dim) ;
+
+            if (basis().manualLevels() )
+            {
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                    _diadicIndexToKnotIndex(level2,dim,start);
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                    _diadicIndexToKnotIndex(level2,dim,end);
+            }
 
             const gsKnotVector<T> & kv =
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
                 ->tensorLevel(level2).component(dim).knots();
-
-            // knotVals = kv.unique()
 
             m_breaks[dim].clear();
             if ( dim == dir )
             {
                 if ( par )
                 {
-                    m_breaks[dim].push_back(kv.uValue(end-1));
-                    m_breaks[dim].push_back(kv.uValue(end  ));
-
-                    //  = knotValues.begin() + end -1;
-                    //  = knotValues.begin() + end   ;
+                    m_breaks[dim].push_back( kv(end-1) );
+                    m_breaks[dim].push_back( kv(end  ) );
                 }
                 else
                 {
-                    m_breaks[dim].push_back(kv.uValue(start));
-                    m_breaks[dim].push_back(kv.uValue(start+1));
+                    m_breaks[dim].push_back( kv(start)   );
+                    m_breaks[dim].push_back( kv(start+1) );
                 }
             }
             else
             {
-                for (unsigned index = start; index <= end; ++index)
-                    m_breaks[dim].push_back(kv.uValue(index));
+                for (index_t index = start; index <= end; ++index)
+                    m_breaks[dim].push_back( kv(index) );// unique index
             }
 
             m_curElement(dim) = 
@@ -283,7 +261,7 @@ private:
         {
             m_lower[i]  = *m_curElement[i];
             m_upper[i]  = *(m_curElement[i]+1);
-            center[i] = T(0.5) * (m_lower[i] + m_upper[i]);
+            center[i] = (T)(0.5) * (m_lower[i] + m_upper[i]);
         }
         m_lower[dir] = 
         m_upper[dir] =
@@ -292,26 +270,24 @@ private:
         {
             m_lower[i] = *m_curElement[i];
             m_upper[i] = *(m_curElement[i]+1);
-            center [i] = T(0.5) * (m_lower[i] + m_upper[i]);
+            center [i] = (T)(0.5) * (m_lower[i] + m_upper[i]);
         }
-
-        // Update quadrature rule
-        m_quadrature.mapTo(m_lower, m_upper, this->quNodes, this->quWeights);
-
-        // Update Active basis functions
-        computeActiveFunctions();
     }
 
 // =============================================================================
 // members
 // =============================================================================
 
+    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
+
 public:
 
     using gsDomainIterator<T>::center;
     using gsDomainIterator<T>::m_basis;
 
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
 private:
 

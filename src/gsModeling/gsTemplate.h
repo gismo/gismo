@@ -344,7 +344,9 @@ public:
 
 
     /// square template constructed providing the 4 corners Bb matrix (2,4) (x and y coord.)
-    gsTemplate(int r, bool square) : Base()
+    gsTemplate(int  r,
+               bool ) //square)
+    : Base()
     {
 
         gsMatrix<T> Bb(2,4);
@@ -583,10 +585,10 @@ public:
         return os; 
     }
 
-    int parDim() const { return dim; }   
+    short_t parDim() const { return dim(); }
 
     /// Number of patches    
-    int nPatches() const { return this->size(); } 
+    index_t nPatches() const { return this->size(); }
 
     void addPatch( gsMatrix<T>* c) 
     { 
@@ -603,7 +605,7 @@ public:
         return m_skeleton;
     }
     
-    gsBSpline<T> * skeleton(std::size_t const & i) 
+    gsBSpline<T> * skeleton(size_t const & i)
     { 
         return m_skeleton[i];
     }
@@ -643,15 +645,13 @@ private:
     
 public:
     // Needed since m_pdomain is 16B aligned
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
 }; // class gsTemplate
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-/// Print (as string) a tamplate
+/// Print (as string) a template
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsTemplate<T>& b)
 {return b.print(os); }

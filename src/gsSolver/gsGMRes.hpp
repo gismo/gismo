@@ -1,4 +1,4 @@
-/** @file gsGMRes.cpp
+/** @file gsGMRes.hpp
 
     @brief Preconditioned iterative solver using the generalized minimal residual method.
 
@@ -80,9 +80,9 @@ void gsGMRes<T>::finalizeIteration( typename gsGMRes<T>::VectorType& x )
 }
 
 template<class T>
-bool gsGMRes<T>::step( typename gsGMRes<T>::VectorType& x )
+bool gsGMRes<T>::step( typename gsGMRes<T>::VectorType& )
 {
-    GISMO_UNUSED(x); // The iterate x is never updated! Use finalizeIteration to obtain x.
+    // The iterate x is never updated! Use finalizeIteration to obtain x.
     const index_t k = m_num_iter-1;
     H.setZero(k+2,k+1);
     h_tmp.setZero(k+2,1);

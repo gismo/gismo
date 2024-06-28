@@ -2,12 +2,12 @@
 
     @brief Provides declaration of input/output XML utilities struct.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -25,10 +25,11 @@
 //#include <rapidxml/rapidxml_utils.hpp>     // External file
 //#include <rapidxml/rapidxml_iterators.hpp> // External file
 
+#include <cstring>
 
 /*
 // Forward declare rapidxml structures
-namespace rapidxml 
+namespace rapidxml
 {
     template<class Ch> class xml_node;
     template<class Ch> class xml_attribute;
@@ -48,7 +49,9 @@ namespace rapidxml
     static obj * getAny (gsXmlNode * node)      \
     { return get(anyByTag(tag(), node)); }      \
     static  obj * getId (gsXmlNode * node, int id) \
-    { return getById< obj >(node, id); }
+    { return getById< obj >(node, id); }                            \
+    static  obj * getLabel(gsXmlNode * node, const std::string & label) \
+    { return getByLabel< obj >(node, label); }
 
 #define GSXML_GET_POINTER(obj)          \
     static obj * get (gsXmlNode * node) \
@@ -56,14 +59,18 @@ namespace rapidxml
         get_into(node, *result);        \
         return result; }
 
-#define TMPLA2(t1,t2)    t1,t2
-#define TMPLA3(t1,t2,t3) t1,t2,t3
-#define FILE_PRECISION 16
+#define GSXML_GET_INTO(obj)          \
+    static void get_into (gsXmlNode * node, obj & result) \
+    {   result = *get(node); }
 
-#ifdef GISMO_WITH_MPQ
+#define TMPLA2(t1,t2)             t1,t2
+#define TMPLA3(t1,t2,t3)          t1,t2,t3
+#define TMPLA4(t1,t2,t3,t4)       t1,t2,t3,t4
+
+#ifdef gsGmp_ENABLED
 // Specialize file I/O to floating point format
 #include<sstream>
-inline std::istringstream & 
+inline std::istringstream &
 operator>>(std::istringstream & is, mpq_class & var)
 {
     // read as decimal
@@ -71,13 +78,13 @@ operator>>(std::istringstream & is, mpq_class & var)
     if ( !(is >> dn) ) return is;
     const std::string::size_type comma( dn.find(".") );
     if( comma != std::string::npos )
-    {   
+    {
         const std::string::size_type exp = dn.size() - comma - 1;
         const mpz_class num( dn.erase(comma,1), 10);
         mpz_class den;
         mpz_ui_pow_ui(den.get_mpz_t(),10,exp);
         var = mpq_class(num, den);
-    } 
+    }
     else // integer or rational
         var.set_str(dn,10);
 
@@ -94,7 +101,7 @@ operator>>(std::istringstream & is, mpq_class & var)
 template <class U> inline std::ofstream & operator<<
 (std::ofstream &fs, __gmp_expr<U,U> & var)
 {
-    fs<<var.get_d(); 
+    fs<<var.get_d();
     // write as rational
     //os << var.get_str(10);
     return fs;
@@ -132,7 +139,7 @@ inline bool gsGetInt(std::istream & is, Z & var)
   return !(is >> var).fail();
 }
 
-#ifdef GISMO_WITH_MPQ
+#ifdef gsGmp_ENABLED
 template<>
 inline bool gsGetReal(std::istream & is, mpq_class & var)
 {
@@ -148,7 +155,7 @@ inline bool gsGetReal(std::istream & is, mpq_class & var)
         mpz_class den;
         mpz_ui_pow_ui(den.get_mpz_t(),10,exp);
         var = mpq_class(num, den);
-    } 
+    }
     else // integer or rational
     {
         if ('+'==dn[0]) dn.erase(0, 1);
@@ -191,14 +198,14 @@ class gsXml
 private:
     gsXml() { }// Disallow instantization
 public:
-    
+
     static std::string tag ();
 /*    {   // Next line will produce compile-time error
         // when class is not specialized for Object
         Object::Object_does_not_exist_ERROR;
         return "";
     }
-//*/
+*/
     static std::string type ();
     static Object * get      (gsXmlNode * node);
     static void     get_into (gsXmlNode * node, Object & result);
@@ -213,7 +220,69 @@ public:
     //static void     getAny_into   (gsXmlNode * node);
     static Object * getId    (gsXmlNode * node, int id);
     //static void     getId_into   (gsXmlNode * node, int id, Object & result);
+    static Object * getLabel(gsXmlNode * node, const std::string & label);
 };
+
+/// Helper to fetch a node with a certain \em attribute value.
+/// \param root parent node, we check if it's children attribute value matches the given \em value
+/// \param attr_name Attribute's name
+/// \param value the attribute's value number which is seeked for
+/// \param tag_name Limit search to tags named \em tag_name .
+inline gsXmlNode * searchNode(gsXmlNode * root,
+                              const std::string & attr_name,
+                              const std::string & value,
+                              const char *tag_name = NULL )
+{
+    for (gsXmlNode * child = root->first_node(tag_name);
+         child; child = child->next_sibling(tag_name))
+    {
+        const gsXmlAttribute * attribute = child->first_attribute(attr_name.c_str());
+        if ( attribute &&  !strcmp(attribute->value(),value.c_str()) )
+            return child;
+        else if ( attribute && "time"==attr_name && atof(value.c_str()) == atof(attribute->value()) )
+            return child;
+    }
+    gsWarn <<"gsXmlUtils: No "<< tag_name <<" object with attribute '"<<attr_name<<" = "<< value<<"' found.\n";
+    return NULL;
+}
+
+/// Helper to fetch a node with a certain \em id value.
+/// \param root parent node, we check his children for the given \em id
+/// \param id the ID number which is seeked for
+/// \param tag_name Limit search to tags named \em tag_name .
+/// \param print_warning Print warning if search was not successful
+inline gsXmlNode* searchId(const int id, gsXmlNode* root,
+                           const char* tag_name = NULL,
+                           const bool print_warning = true) {
+  for (gsXmlNode* child = root->first_node(tag_name); child;
+       child = child->next_sibling(tag_name)) {
+    const gsXmlAttribute* id_at = child->first_attribute("id");
+    if (id_at && atoi(id_at->value()) == id) return child;
+  }
+  if (print_warning) {
+    gsWarn << "gsXmlUtils: No object with id = " << id << " found.\n";
+  }
+  return NULL;
+}
+
+/// Helper to read an object by a given \em label :
+/// \param node parent node, we check his children to get the given \em label
+/// \param label
+template<class Object>
+Object * getByLabel(gsXmlNode * node, const std::string & label)
+{
+    std::string tag = internal::gsXml<Object>::tag();
+    gsXmlNode * nd  = searchNode(node, "label", label, tag.c_str());
+    if (nd)
+    {
+        return internal::gsXml<Object>::get(nd);
+    }
+    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
+             <<" with label="<<label<<" not found.\n";
+    return NULL;
+}
+
+
 
 /// Helper to read an object by a given \em id value:
 /// \param node parent node, we check his children to get the given \em id
@@ -222,36 +291,22 @@ template<class Object>
 Object * getById(gsXmlNode * node, const int & id)
 {
     std::string tag = internal::gsXml<Object>::tag();
-    for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
-         child; child = child->next_sibling(tag.c_str()))
+    gsXmlNode * nd  = searchId(id, node, tag.c_str());
+    if (nd)
     {
-        const gsXmlAttribute * id_at = child->first_attribute("id");
-        if (id_at && atoi(id_at->value()) == id )
-            return internal::gsXml<Object>::get(child);
+        return internal::gsXml<Object>::get(nd);
     }
-    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag() 
+    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
              <<" with id="<<id<<" not found.\n";
     return NULL;
 }
-
-/// Helper to fetch a node with a certain \em id value.
-/// \param root parent node, we check his children for the given \em id
-/// \param id the ID number which is seeked for
-inline gsXmlNode * searchId(const int id, gsXmlNode * root)
-{
-    for (gsXmlNode * child = root->first_node();
-         child; child = child->next_sibling())
-    {
-        const gsXmlAttribute * id_at = child->first_attribute("id");
-        if ( id_at &&  atoi(id_at->value()) == id )
-            return child;
-    }
-    gsWarn <<"gsXmlUtils: No object with id = "<<id<<" found.\n";
-    return NULL;
-}
-
 /// Helper to allocate XML value
 GISMO_EXPORT char * makeValue( const std::string & value, gsXmlTree & data);
+
+/// Helper to allocate matrix in XML pool
+template<class T>
+char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
+                 bool transposed);
 
 /// Helper to allocate XML attribute
 GISMO_EXPORT gsXmlAttribute *  makeAttribute( const std::string & name,
@@ -280,8 +335,8 @@ GISMO_EXPORT int countByTag(const std::string & tag, gsXmlNode * root );
 
 /// Helper to count the number of Objects (by name and type) that
 /// exist in the XML tree
-GISMO_EXPORT int  countByTagType(const std::string & tag, 
-                                 const std::string & type, 
+GISMO_EXPORT int  countByTagType(const std::string & tag,
+                                 const std::string & type,
                                  gsXmlNode * root );
 
 /// Helper to get the first object (by tag) if one exists in
@@ -292,7 +347,7 @@ GISMO_EXPORT gsXmlNode * firstByTag(const std::string & tag,
 /// Helper to get the first object (by tag and type) if one exists in
 /// the XML tree
 GISMO_EXPORT gsXmlNode * firstByTagType(const std::string & tag,
-                                         const std::string & type, 
+                                         const std::string & type,
                                          gsXmlNode * root );
 
 // Helper which finds a node matching \a tag and \a type in the XML
@@ -305,7 +360,7 @@ GISMO_EXPORT gsXmlNode * firstByTagType(const std::string & tag,
 GISMO_EXPORT gsXmlNode * anyByTag(const std::string & tag,
                                   gsXmlNode * root );
 
-GISMO_EXPORT void getBoundaries(gsXmlNode                * node, 
+GISMO_EXPORT void getBoundaries(gsXmlNode                * node,
                                 std::map<int, int>       & ids,
                                 std::vector< patchSide > & result);
 
@@ -320,35 +375,29 @@ GISMO_EXPORT void appendBoxTopology(const gsBoxTopology& topology,
 
 /// Helper to allocate XML node with gsMatrix value
 template<class T>
-gsXmlNode * makeNode( const std::string & name, 
+gsXmlNode * makeNode( const std::string & name,
                       const gsMatrix<T> & value, gsXmlTree & data,
                       bool transposed = false );
 
-/// Helper to fetch functions
-///\todo read gsFunction instead
-template<class T>
-void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result );
-
 /// Helper to fetch matrices
-template<class T>
-void getMatrixFromXml ( gsXmlNode * node, 
-                        unsigned const & rows, 
-                        unsigned const & cols, 
-                        gsMatrix<T> & result );
+template <class T>
+void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
+                      unsigned const& cols, gsMatrix<T>& result,
+                      const std::string& base_type_flag = "ascii");
 
 /// Helper to insert matrices into XML
 template<class T>
-gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, 
+gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat,
                              gsXmlTree & data, std::string name = "Matrix");
 
 /// Helper to fetch sparse entries
 template<class T>
-void getSparseEntriesFromXml ( gsXmlNode * node, 
+void getSparseEntriesFromXml ( gsXmlNode * node,
                                gsSparseEntries<T> & result );
 
 /// Helper to insert sparse matrices into XML
 template<class T>
-gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat, 
+gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat,
                                    gsXmlTree & data, std::string name = "SparseMatrix");
 
 }// end namespace internal

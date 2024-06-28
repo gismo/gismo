@@ -1,0 +1,37 @@
+solid patch
+  facet normal 0 0 0
+    outer loop
+      vertex 4 1 2.5
+      vertex 4.5 3.5 2
+      vertex 6 3.25 4
+    endloop
+  endfacet
+  facet normal 0 0 0
+    outer loop
+      vertex 4 1 2.5
+      vertex 6 3.25 4
+      vertex 6 1 3.5
+    endloop
+  endfacet
+  facet normal 0 0 0
+    outer loop
+      vertex 6 3.25 4
+      vertex 4.5 3.5 2
+      vertex 5.75 5 3 
+    endloop
+  endfacet
+  facet normal 0 0 0
+    outer loop
+      vertex 6 3.25 4 
+      vertex 5.75 5 3
+      vertex 7 5.9 3.75
+    endloop
+  endfacet
+  facet normal 0 0 0
+    outer loop
+      vertex 6 1 3.5
+      vertex 6 3.25 4
+      vertex 7 5.9 3.75
+    endloop
+  endfacet
+endsolid patch

@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page fileIo_example fileIo_example.cpp
+
+
+<!-- more info on the file goes here -->
+
+
+\section fileIo_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/fileIo_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include fileIo_example.cpp
+
+*/
+
+}

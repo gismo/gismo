@@ -104,7 +104,7 @@ public:
 
     inline int nVertices()	const { return vertex.size();}
 
-    inline std::size_t nHalfEdges()    const { return edge.size();}
+    inline size_t nHalfEdges()    const { return edge.size();}
 
     inline bool isFaceCCW()    const { return FaceCCW;}
 
@@ -123,11 +123,7 @@ public:
 // Non-constant members
 public:
     /// add coords to gsHeVertex, not yet pointers to HEs
-    void addHeVertex(scalar_t const& x, scalar_t const& y, scalar_t const& z=0);  
-
-    /// todo: each element of holeV is the pointer to a list of vertices of outer boundary and holes
-    gsSolidHalfFaceHandle addFace(std::vector< std::vector<gsSolidHeVertexHandle>* > holeV)
-    { return NULL; }
+    void addHeVertex(scalar_t const& x, scalar_t const& y, scalar_t const& z=0);
 
     /// add one face as a trimmed surface, the order of the vertices
     /// in *V* must be either CCW or CW when viewing from infinity for
@@ -200,14 +196,12 @@ public:
 
     /// \brief Insert a new vertex to an edge of the volume.
     /// \param he       the half-edge into which to insert the vertex
-    /// \param option   choice of method of inserting the new vertex:
-    ///         option = 0 (default): new vertex = midpoint of the edge
     /// \note This insertion only affects the volume containing the HE.
-    void insertNewVertex(gsSolidHalfEdgeHandle he, int const & option=0);
+    void insertNewVertex(gsSolidHalfEdgeHandle he);
     	
     /// @brief If there are impeding edges that make the solid inseparatable along a given HE \a he, this routine
     /// will create a new vertex on each impeding edges.
-    void handleImpedingEdges(gsSolidHalfEdgeHandle he, int const & option=0);
+    void handleImpedingEdges(gsSolidHalfEdgeHandle he);
 
     //void addPatch(gsPatch<T> *f) { this->addFace(f) ;};
     //void addCurve(gsCurve<T> *f) { this->addEdge(f) ;};      

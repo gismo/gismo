@@ -63,7 +63,7 @@ namespace gismo
     The dimension \em n of the resulting geometry,
     i.e., of the image of the geometry map, is defined by the
     size of the given coefficients, and may be larger than \em d
-    (see gsGeometry::geoDim()). $\,$
+    (see gsGeometry::geoDim()).
 
     For instance, for a B-spline basis (<em>d = 1</em>), we could
     have coefficients of dimension <em>n = 1</em>, which results
@@ -101,8 +101,6 @@ public:
 
     typedef T Scalar_t;
 
-    typedef memory::unique_ptr<gsGeometryEvaluator<T> > Evaluator;
-
 public:
 
     /// @name Constructors
@@ -128,23 +126,10 @@ public:
     }
 
     /// @brief Copy Constructor
-    gsGeometry(const gsGeometry & o) 
-    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
-    { }
-
+    gsGeometry(const gsGeometry & o);
     /// @}
 
-    gsGeometry& operator=( const gsGeometry & o)
-    {
-        if ( this != &o )
-        {
-            m_coefs = o.m_coefs;
-            delete m_basis;
-            m_basis = o.basis().clone().release() ;
-            m_id = o.m_id;
-        }
-        return *this;
-    }
+    gsGeometry& operator=( const gsGeometry & o);
     
     virtual ~gsGeometry() 
     {
@@ -163,6 +148,7 @@ public:
         m_coefs.swap(other.m_coefs); other.m_coefs.clear();
         delete m_basis;
         m_basis = other.m_basis; other.m_basis = NULL;
+        m_id = std::move(other.m_id);
         return *this;
     }
 #endif
@@ -189,8 +175,7 @@ public:
      * respective valuation point.
      */
     // Look at gsFunction class for documentation
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().evalFunc_into(u, m_coefs, result); }
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     /** \brief Evaluate derivatives of the function
      * \f$f:\mathbb{R}^d\rightarrow\mathbb{R}^n\f$
@@ -236,8 +221,7 @@ public:
      * classes to get proper results.
      */
     // Look at gsFunction class for documentation
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().derivFunc_into(u, m_coefs, result); }
+    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
 
     /** @brief Evaluate second derivatives of the function at points \a u into \a result.
@@ -259,14 +243,15 @@ public:
      * classes to get proper results.
      */
     // Look at gsFunctionSet class for documentation
-    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().deriv2Func_into(u, m_coefs, result); }
+    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-    /// @}
-
+    virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const;
 
     // Look at gsFunctionSet for documentation
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
+
+    /// @}
 
     /// \brief Evaluates if the geometry orientation coincide with the
     /// ambient orientation.
@@ -277,13 +262,13 @@ public:
     {
         if ( parDim() == geoDim() )
         {
-            const T val = gsFunction<T>::jacobian( parameterCenter() ).determinant();
-            return (T(0) < val) - (val < T(0));
+            const T val = gsFunction<T>::jacobian( this->parameterCenter() ).determinant();
+            return (T(0) < val) - (val < (T)(0));
         }
         return 1;
     }
 
-    /// @}
+    virtual void toggleOrientation();
 
     /*************************************************************************/
 
@@ -299,44 +284,43 @@ public:
     virtual       gsBasis<T> & basis()       = 0;
 
     /// Dimension of the ambient physical space (overriding gsFunction::targetDim())
-    int targetDim() const { return this->coefDim(); }
+    short_t targetDim() const { return this->coefDim(); }
 
     /// Dimension \em n of the coefficients (control points)
-    int coefDim() const { return m_coefs.cols(); }
+    short_t coefDim() const { return static_cast<short_t>(m_coefs.cols()); }
 
     /// Dimension \em n of the absent physical space
-    int geoDim() const { return this->coefDim(); }
+    short_t geoDim() const { return this->coefDim(); }
 
     /// Dimension \em d of the parameter domain (overriding gsFunction::domainDim()).
-    virtual int domainDim() const { return this->basis().domainDim(); }
+    virtual short_t domainDim() const;
 
     /// Dimension \em d of the parameter domain (same as domainDim()).
-    int parDim() const { return this->basis().domainDim(); }
+    short_t parDim() const;
 
     /// Co-dimension of the geometric object
-    int coDim() const { return coefDim()-this->basis().domainDim(); }
+    short_t coDim() const;
 
     /// Returns the range of parameters (same as parameterRange())
-    gsMatrix<T> support() const
-    { return this->basis().support(); }
+    gsMatrix<T> support() const;
 
     /// Returns the range of parameters as a matrix with two columns, [lower upper]
-    gsMatrix<T> parameterRange() const
-    { return this->basis().support(); }
+    gsMatrix<T> parameterRange() const;
 
-    /// Returns a "central" point inside inside the parameter domain
-    virtual gsMatrix<T> parameterCenter() const
-    { 
-        // default impl. assumes convex support
-        gsMatrix<T> S = this->basis().support();
-        return ( S.col(0) + S.col(1) ) * T(0.5);
-    }
+    /// Get back the side of point \a u
+    //boxSide sideOf(const gsVector<T> & u); //
 
-    /// Get coordinates of the boxCorner \a bc in the parameter domain
-    gsMatrix<T> parameterCenter( const boxCorner& bc );
-
-    /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
-    gsMatrix<T> parameterCenter( const boxSide& bs );
+    /// Check if points \a u also lie on the geometry and if required computes the if the points in \a u lie on one of the boundaries of the geometry
+    /**
+     *
+     * @param u Matrix of points of the form geoDim() x #points
+     * @param onG2 gsVector of booleans which indicate if the point is in the domain or outside
+     * @param preIm Matrix of preimages of the points u
+     * @param lookForBoundary if required the boundaries are computed the points in u lie on
+     * @return A std::vector of boxSides containing the numbers of the sides or zero if the points are in the interior
+     * If the flag lookForBoundary is not set then a vector containing anything will be returned
+     */
+    std::vector<boxSide> locateOn(const gsMatrix<T> & u, gsVector<bool> & onG2, gsMatrix<T> & preIm, bool lookForBoundary = false, real_t tol = 1.e-6) const; //
 
     // Whether the coefficients of this geometry are stored in projective or affine form
     //virtual bool isProjective() const = 0;
@@ -385,7 +369,7 @@ public:
     void setCoefs(gsMatrix<T> cc) { this->m_coefs.swap(cc); }
 
     /// Return the number of coefficients (control points)
-    unsigned coefsSize() const { return m_coefs.rows(); }
+    index_t coefsSize() const { return m_coefs.rows(); }
     // Warning: This can cause some clash while using periodic basis, since the ghost coefs are stored but ignored.
 
 
@@ -411,8 +395,8 @@ public:
     void rotate(T angle, const gsVector<T,3> & axis )
     {
         assert( geoDim() == 3 );
-        Eigen::Transform<T,3,Eigen::Affine> 
-            rot( Eigen::AngleAxis<T> (angle,axis.normalized()) );
+        gsEigen::Transform<T,3,gsEigen::Affine> 
+            rot( gsEigen::AngleAxis<T> (angle,axis.normalized()) );
         // To do: Simpler way to use transforms ?
         this->m_coefs = (this->m_coefs.rowwise().homogeneous() * 
                          rot.matrix().transpose() ).leftCols(3) ;
@@ -422,7 +406,7 @@ public:
     void rotate(T angle)
     {
         GISMO_ASSERT( geoDim() == 2, "Only for 2D");
-        Eigen::Rotation2D<T> rot(angle);
+        gsEigen::Rotation2D<T> rot(angle);
         this->m_coefs *= rot.matrix().transpose();
     }
 
@@ -438,9 +422,8 @@ public:
     /// Apply Scaling coord-wise by a vector v
     void scale(gsVector<T> const & v)
     {
-        this->m_coefs.col(0) *= v[0];
-        this->m_coefs.col(1) *= v[1];
-        this->m_coefs.col(2) *= v[2];
+        GISMO_ASSERT( v.rows() == this->m_coefs.cols(), "Sizes do not agree." );
+        this->m_coefs.array().rowwise() *= v.array().transpose();
     }
 
     /// Apply translation by vector v
@@ -465,68 +448,91 @@ public:
     /// @{
 
     /// Refine the geometry uniformly, inserting \a numKnots new knots into each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1) // todo: int dir = -1
-    {
-        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
-    }
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1); // todo: int dir = -1
+
+    /// Coarsen the geometry uniformly, removing \a numKnots new knots into each knot span
+    virtual void uniformCoarsen(int numKnots = 1); // todo: int dir = -1
 
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
      *
      * The syntax of \em boxes depends on the implementation in the
      * underlying basis. See gsBasis::refineElements_withCoefs() for details.
      */
-    void refineElements( std::vector<unsigned> const & boxes )
-    {
-        this->basis().refineElements_withCoefs(this->m_coefs, boxes );
-    }
+    void refineElements( std::vector<index_t> const & boxes );
 
+    void unrefineElements( std::vector<index_t> const & boxes );
+
+    typename gsGeometry::uPtr coord(const index_t c) const;
+    
     /// Embeds coefficients in 3D
     void embed3d()
     {
         embed(3);
     }
 
-    /// Embeds coefficients in \a N dimension
-    void embed(index_t N)
-    { 
+    /// \brief Embeds coefficients in \a N dimensions
+    ///For the new dimensions zeros are added (or removed) on the
+    /// right (if \a pad_right is true) or on the left (if \a
+    /// pad_right is false)
+    void embed(index_t N, bool pad_right = true)
+    {
         GISMO_ASSERT( N > 0, "Embed dimension must be positive");
 
         const index_t nc = N - m_coefs.cols();
+        if ( nc == 0 ) return;
 
-        if ( nc != 0 )
+        if (!pad_right && nc<0)
+            m_coefs.leftCols(N) = m_coefs.rightCols(N);
+        m_coefs.conservativeResize(gsEigen::NoChange, N);
+
+        if ( nc > 0 )
         {
-            m_coefs.conservativeResize(Eigen::NoChange, N);
-            if ( nc > 0 )
+            if (pad_right)
                 m_coefs.rightCols(nc).setZero();
-            else // nc < 0
+            else
             {
-                gsWarn<<"Coefficients projected (deleted)..\n";
+                m_coefs.rightCols(N-nc) = m_coefs.leftCols(N-nc);
+                m_coefs.leftCols(nc).setZero();
             }
         }
+#       ifndef NDEBUG
+        else gsWarn<<"Coefficients projected (deleted)..\n";
+#       endif
     }
 
     /// \brief Returns the degree wrt direction i
-    int degree(const unsigned & i) const
-     //{ return this->basisComponent(i).degree(); };
-     { return this->basis().degree(i); }
+    short_t degree(const short_t & i) const;
+
+    /// Inserts knot \a knot at direction \a dir, \a i times
+    virtual void insertKnot( T knot, index_t dir, index_t i = 1);
 
     /// \brief Elevate the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree elevation is
-    /// done for all directions
-    virtual void degreeElevate(int const i = 1, int const dir = -1);
+    /// done for all directions. Uses \ref gsBasis<T>::degreeElevate
+    virtual void degreeElevate(short_t const i = 1, short_t const dir = -1);
+
+    /// \brief Elevate the degree by the given amount \a i for the
+    /// direction \a dir. If \a dir is -1 then degree elevation is
+    /// done for all directions. Uses \ref gsBasis<T>::degreeIncrease
+    virtual void degreeIncrease(short_t const i = 1, short_t const dir = -1);
 
     /// \brief Reduces the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree reduction is
-    /// done for all directions
-    virtual void degreeReduce(int const i = 1, int const dir = -1);
+    /// done for all directions. Uses \ref gsBasis<T>::degreeReduce
+    virtual void degreeReduce(short_t const i = 1, short_t const dir = -1);
+
+    /// \brief Reduces the degree by the given amount \a i for the
+    /// direction \a dir. If \a dir is -1 then degree reduction is
+    /// done for all directions. Uses \ref gsBasis<T>::degreeDecrease
+    virtual void degreeDecrease(short_t const i = 1, short_t const dir = -1);
     
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
-    virtual gsMatrix<T> hessian(const gsMatrix<T>& u, unsigned coord) const;
+    virtual void hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
+                              index_t coord) const;
     
     /// Return the control net of the geometry
-    void controlNet( gsMesh<T> & mesh) const
-    { basis().connectivity(m_coefs, mesh); }
+    void controlNet( gsMesh<T> & mesh) const;
 
     /// @brief Computes the outer normals at parametric points \a u.
     ///
@@ -537,28 +543,26 @@ public:
     std::vector<gsGeometry *> boundary() const;
 
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
-    typename gsGeometry::uPtr boundary(boxSide const& s) const;
+    virtual typename gsGeometry::uPtr boundary(boxSide const& s) const;
+
+    /// Computes and returns the interface with \a other as a new geometry
+    virtual typename gsGeometry::uPtr iface(const boundaryInterface & bi,
+                                            const gsGeometry & other) const;
+
+    /// Get parametrization of box component \a bc as a new gsGeometry uPtr.
+    typename gsGeometry::uPtr component(boxComponent const& bc) const;
 
     GISMO_UPTR_FUNCTION_PURE(gsGeometry, clone)
 
     /// Prints the object as a string.
-    virtual std::ostream &print(std::ostream &os) const
-    {
-        os << "Geometry "<< "R^"<< this->parDim() << 
-            " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
-            ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
-        os<<"\nBasis:\n" << this->basis() ;
-        return os; 
-    }
-
-    /// Returns an evaluator object with the given \a flags that
-    /// provides geometry-related intrinsics
-    virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;
+    virtual std::ostream &print(std::ostream &os) const;
 
     /// Merge the given \a other geometry into this one.
     virtual void merge( gsGeometry * other );
 
     virtual void toMesh(gsMesh<T> & msh, int npoints) const;
+
+    typename gsGeometry::uPtr approximateLinearly() const;
 
     /// Updates the vertices of input \a mesh by evaluating the
     /// geometry at vertices.
@@ -580,18 +584,31 @@ public:
     /// \a par in direction \a dim_fixed as an gsGeometrySlice object.
     gsGeometrySlice<T> getIsoParametricSlice(index_t dir_fixed, T par) const;
 
-    /// Takes the physical \a points and computes the corresponding
-    /// parameter values.  If the point cannot be inverted (eg. is not
-    /// part of the geometry) the corresponding parameter values will be undefined
-    virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
-                              const T accuracy = 1e-6) const;
+    /// Returns the parameters of closest point to \a pt as an argument, and the
+    /// Euclidean distance as a return value
+    T closestPointTo(const gsVector<T> & pt,
+                        gsVector<T> & result,
+                        const T accuracy = 1e-6,
+                        const bool useInitialPoint = false) const;
+
+    /// Computes the Hausdorff distance in a single direction from *this to \a other.
+    /// The Hausdorff distance is computed by taking the maximum of the shortest distances
+    /// between points of this and \a other.
+    T directedHausdorffDistance(const gsGeometry & other,
+                                const index_t nsamples = 1000,
+                                const T accuracy = 1e-6) const;
+
+    /// Computes the Hausdorff distance between *this to \a other.
+    T HausdorffDistance(        const gsGeometry & other,
+                                const index_t nsamples = 1000,
+                                const T accuracy = 1e-6,
+                                const bool directed=false) const;
 
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }
 
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
-
 
 protected:
     void swap(gsGeometry & other)
@@ -632,7 +649,7 @@ namespace gismo
 {
 
 // Generic traits for geometry with dimension known at compile time
-template <unsigned d, typename T>
+template <short_t d, typename T>
 struct gsGeoTraits
 {
     typedef gsGeometry<T> GeometryBase;
@@ -665,6 +682,15 @@ struct gsGeoTraits<4,T>
 {
     typedef gsBulk<T> GeometryBase;
 };
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsGeometry
+   */
+  void pybind11_init_gsGeometry(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

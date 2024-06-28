@@ -1,9 +1,8 @@
 ######################################################################
-## gsJITConfigXml ---
+## gsJITConfigXml.cmake
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Matthias Moeller
-## Copyright (C) 2012 - 2017 RICAM-Linz.
 ######################################################################
 
 ## This macro defines the following variables:
@@ -16,23 +15,48 @@
 
 macro(gsJITConfigXml source_file target_file)
 
-  # Gather information of programming languages not enabled by defualt
-  # with G+Smo (CUDA and Fortran)
-  include(CheckLanguage)
-  check_language(CUDA)
-# check_language(Fortran)
+  set(extra_macro_args ${ARGN})
+  list(LENGTH extra_macro_args num_extra_macro_args)
+
+  if(${num_extra_macro_args} GREATER 0)
+    
+    # Gather information of programming languages not enabled by
+    # default with G+Smo (CUDA and Fortran)
+    include(CheckLanguage)
+
+    foreach(extra_macro_arg ${extra_macro_args})
+      if("${extra_macro_arg}" STREQUAL "CUDA")
+        # Check for CUDA 
+        check_language(CUDA)
+        if(CMAKE_CUDA_COMPILER)
+          enable_language(Fortran)
+        endif()
+      elseif("${extra_macro_arg}" STREQUAL "FORTRAN")
+        # Check for Fortran
+        check_language(Fortran)
+        if(CMAKE_Fortran_COMPILER)
+          enable_language(Fortran)
+        endif()
+      else()
+        message(FATAL_ERROR "Unsupport optional argument ${extra_macro_arg}.")
+      endif()
+    endforeach()
+  endif()
   
   # Set JIT compiler command
   set(JIT_C_COMPILER       ${CMAKE_C_COMPILER})  
   set(JIT_CXX_COMPILER     ${CMAKE_CXX_COMPILER})
   set(JIT_CUDA_COMPILER    ${CUDA_NVCC_EXECUTABLE})
   set(JIT_Fortran_COMPILER ${CMAKE_Fortran_COMPILER})
+
+  # Get build-type as upper-case string
+  string(TOUPPER ${CMAKE_BUILD_TYPE} JIT_BUILD_TYPE)
   
   # Set JIT compiler flags (build-type dependent)
-  set(JIT_C_FLAGS       ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}})
-  set(JIT_CXX_FLAGS     ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}})
-  set(JIT_CUDA_FLAGS    ${CUDA_NVCC_FLAGS_${CMAKE_BUILD_TYPE}})
-  set(JIT_Fortran_FLAGS ${CMAKE_Fortran_FLAGS_DEBUG})
+  set(JIT_C_FLAGS       ${CMAKE_C_FLAGS_${JIT_BUILD_TYPE}})
+  set(JIT_CXX_FLAGS     ${CMAKE_CXX_FLAGS_${JIT_BUILD_TYPE}})
+  set(JIT_CUDA_FLAGS    ${CUDA_NVCC_FLAGS_${JIT_BUILD_TYPE}})
+  set(JIT_Fortran_FLAGS ${CMAKE_Fortran_FLAGS_${JIT_BUILD_TYPE}})
 
   # Add JIT compiler flags (all build types)
   set(JIT_C_FLAGS "${JIT_C_FLAGS} ${CMAKE_C_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
@@ -78,10 +102,12 @@ macro(gsJITConfigXml source_file target_file)
   string(REPLACE "-fvisibility-inlines-hidden" "" JIT_CXX_FLAGS ${JIT_CXX_FLAGS})
 
   # Set includes
-  string(REPLACE ";" " -I" JIT_INCLUDES "-I${GISMO_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR} -I${CMAKE_CURRENT_SOURCE_DIR}/src  -I${CMAKE_BINARY_DIR}")
+  string(REPLACE ";" " -I" JIT_INCLUDES "-I${GISMO_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR} -I${CMAKE_CURRENT_SOURCE_DIR}/src  -I${gismo_BINARY_DIR}")
 
   # Set (extra) library directories
-  string(REPLACE ";" " -L" JIT_LIBRARIES "-L${GISMO_LIBRARY_DIR}")
+  if(GISMO_LIBRARY_DIR)
+    string(REPLACE ";" " -L" JIT_LIBRARIES "-L${GISMO_LIBRARY_DIR}")
+  endif()
 
   foreach(lib ${GISMO_LIBRARIES} ${gismo_LINKER})
     if (NOT IS_ABSOLUTE ${lib})

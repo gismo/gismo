@@ -2,12 +2,12 @@
 
     @brief Wraps a matrix and attaches a block structure to it.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -21,21 +21,20 @@ namespace gismo {
  *
  * The blocks are references to the matrix segments. Each block
  * can be seen a a standalone matrix.
- * 
+ *
  * \tparam T coefficient type
  * \ingroup Matrix
  */
-    
+
 // isConst .. to do
 template <typename MatrixType, bool isConst = false>
 class gsMatrixBlockView
 {
 public:
-    typedef Eigen::Block<MatrixType>   block_t    ;
-    typedef Eigen::Block<MatrixType> * block_ptr_t;
-    typedef typename std::size_t       size_t     ;
- 
-    typedef Eigen::Matrix<index_t,Eigen::Dynamic, 1, Eigen::ColMajor> Vector_t;
+    typedef gsEigen::Block<MatrixType>   block_t    ;
+    typedef gsEigen::Block<MatrixType> * block_ptr_t;
+
+    typedef gsEigen::Matrix<index_t,gsEigen::Dynamic, 1, gsEigen::ColMajor> Vector_t;
 
 public:
 
@@ -46,14 +45,14 @@ public:
      *
      * The blocks are references to the matrix segments. Each block
      * can be seen a a standalone matrix.
-     * 
+     *
      * \param[in] matrix   the matrix to be "partitioned" into blocks
      * \param[in] rowSizes the sizes of the row blocks, must sum up to matrix.rows()
      * \param[in] colSizes the sizes of the column blocks, must sum up to matrix.cols()
      */
-    gsMatrixBlockView(MatrixType & matrix, 
-                      const Vector_t & rowSizes, 
-                      const Vector_t & colSizes) 
+    gsMatrixBlockView(MatrixType & matrix,
+                      const Vector_t & rowSizes,
+                      const Vector_t & colSizes)
     : m_rowSize(rowSizes.size()),
       m_colSize(colSizes.size())
     {
@@ -79,7 +78,7 @@ public:
                                  );
 
                 m_blocks.push_back(tmp);
-                
+
                 row += rowSizes[i];
             }
             col += colSizes[j];
@@ -91,12 +90,12 @@ public:
      * This constructor is suitable for vectors,
      * The blocks are references to the matrix segments. Each block
      * can be seen a a standalone matrix.
-     * 
+     *
      * \param[in] matrix the matrix to be "partitioned" into blocks
      * \param[in] rowSizes the sizes of the row blocks, must sum up to matrix.rows()
      */
-    gsMatrixBlockView(MatrixType & matrix, 
-                      const Vector_t & rowSizes) 
+    gsMatrixBlockView(MatrixType & matrix,
+                      const Vector_t & rowSizes)
     : m_rowSize(rowSizes.size()),
       m_colSize(1)
     {
@@ -116,14 +115,14 @@ public:
             tmp = new block_t( matrix.block(row, 0, rowSizes[i], cols ) );
 
             m_blocks.push_back(tmp);
-            
+
             row += rowSizes[i];
         }
     }
 
     /// Combatibility constuctor giving the \a matrix as a block
     gsMatrixBlockView(const MatrixType & matrix)
-    : m_rowSize(1),    
+    : m_rowSize(1),
       m_colSize(1)
     {
         m_blocks.push_back( new block_t(matrix.topRows(matrix.rows())) );
@@ -147,8 +146,8 @@ public:
         }
     }
 
-    ~gsMatrixBlockView() 
-     { 
+    ~gsMatrixBlockView()
+     {
          freeAll(m_blocks);
      }
 
@@ -165,10 +164,10 @@ public:
 
     /// Returns the block indexed \a i (row) and \a j (column)
     block_t & operator () ( index_t i, index_t j = 0) const
-    { 
+    {
         GISMO_ASSERT( i < m_rowSize && j < m_colSize ,
                       "Invalid block requested.");
-        
+
         return *m_blocks[j*m_rowSize+i];
     }
 
@@ -185,11 +184,9 @@ public:
         return *this;
     }
 
-
-
     /// Overwrites the contents of block (i,j) with matrix \a other
 	template<typename OtherDerived>
-    void assign(index_t i, index_t j, const Eigen::EigenBase<OtherDerived>& other)
+    void assign(index_t i, index_t j, const gsEigen::EigenBase<OtherDerived>& other)
     {
         GISMO_ASSERT( i < m_rowSize && j < m_colSize ,
                       "Assign to invalid block requested.");
@@ -201,7 +198,7 @@ public:
     /// Prints the block structure
     friend std::ostream & operator << (std::ostream & os, const gsMatrixBlockView & mv)
     {
-        os<< "Matrix block-view size: "<< mv.m_rowSize <<"x"<< mv.m_colSize 
+        os<< "Matrix block-view size: "<< mv.m_rowSize <<"x"<< mv.m_colSize
           <<" blocks. Structure:\n";
 
         for ( index_t i = 0; i<mv.m_rowSize; ++i )

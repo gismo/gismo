@@ -2,12 +2,12 @@
 
     @brief Boehm's algorithm for knot insertion
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): J. Speh
 */
 
@@ -39,7 +39,7 @@ void gsBoehm(
     if (r==1)
         return gsBoehmSingle(knots, coefs, val, update_knots);
 
-    GISMO_ASSERT( coefs.rows() == index_t(knots.size() - knots.degree()-1),
+    GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - knots.degree()-1),
                   "Incompatible coefficients("<<coefs.rows()
                   <<")/knots("<<knots.size()<<")/degree("<<knots.degree()<<")" ) ;
 
@@ -47,7 +47,7 @@ void gsBoehm(
     typename KnotVectorType::uiterator kit = knots.uFind(val);
     const int k = kit.lastAppearance();
     // current multiplicity of val
-    const int s = (*kit == val || *(++kit)==val ? kit.multiplicity() : 0 ); 
+    const int s = (*kit == val || *(++kit)==val ? kit.multiplicity() : 0 );
     /*
       typename KnotVectorType::uiterator kit = knots.uFind(val);
       int k = knots.iFind(val) - knots.begin();
@@ -56,7 +56,7 @@ void gsBoehm(
 
     GISMO_ASSERT( s + r < p + 2  , "Multiplicity can be at most deg+1 ("<<p+1<<")" );
     int np= coefs.rows()-1;
-    
+
     Mat tmp = coefs.middleRows(k-p, p+1);
     // resize coefficient matrix
     coefs.conservativeResize( coefs.rows()+r, coefs.cols() );
@@ -78,12 +78,12 @@ void gsBoehm(
             tmp.row(i) = a * tmp.row(i+1) + (1.0-a) * tmp.row(i);
         }
         coefs.row(L)= tmp.row(0);
-        coefs.row(k+r-j-s)= tmp.row(math::max(p-j-s,0));
+        coefs.row(k+r-j-s)= tmp.row(math::max(p-j-s,(index_t)0));
     }
     for( index_t i = L+1; i<k-s; ++i )
         coefs.row(i) = tmp.row(i-L);
     //coefs.middleRows(L+1, k-s-L-1) = tmp.
-    
+
     // Update knot vector
     if ( update_knots )
         knots.insert(val,r);
@@ -100,14 +100,14 @@ void gsBoehmSingle(
     )
 {
 
-    GISMO_ASSERT( coefs.rows() == index_t(knots.size() - knots.degree()-1),
+    GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - knots.degree()-1),
                   "Incompatible coefficients/knots" ) ;
 
     int k = knots.iFind(val)-knots.begin();
     int p = knots.degree();
 
     coefs.duplicateRow( k );
-    //// resize coefficient matrix
+    // // resize coefficient matrix
     //coefs.conservativeResize(coefs.rows() + 1, coefs.cols());
     //
     //for (index_t i = coefs.rows() - 1; i >= k+1; --i)
@@ -118,7 +118,7 @@ void gsBoehmSingle(
     for( index_t i = k; i>=k-p+1; --i )
     {
         a = (val - knots[i]) / (knots[i+p] - knots[i]);
-        coefs.row(i) = (1-a) * coefs.row(i-1) + a * coefs.row(i);
+        coefs.row(i) = (T(1)-a) * coefs.row(i-1) + a * coefs.row(i);
     }
 
     // Update knot vector
@@ -152,7 +152,7 @@ void gsBoehmSingle( iter knot,   // Knot iterator
     for( index_t i = p ; i>=1; --i )
     {
         a = (val - *knot) / ( *(knot+p) - *knot );
-        coefs.row(i) = (1-a) * coefs.row(i-1) + a * coefs.row(i);
+        coefs.row(i) = (T(1)-a) * coefs.row(i-1) + a * coefs.row(i);
         knot++;
     }
 }
@@ -167,7 +167,7 @@ void gsBoehmRefine( KnotVectorType & knots,
                     bool update_knots)
 {
     if ( valBegin == valEnd ) return;
-        
+
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
     GISMO_ASSERT( (*valBegin >= knots[p]), "Value is before first knot: "
@@ -222,7 +222,7 @@ void gsBoehmRefine( KnotVectorType & knots,
 
             T alfa = nknots[k+l] - newKnot;
 
-            if( math::abs(alfa) == 0.0 )
+            if( math::abs(alfa) == T(0.0) )
                 coefs.row(ind-1) = coefs.row(ind);
             else
             {
@@ -473,7 +473,7 @@ void gsTensorBoehmRefine(
                 const T alfa = alpha[j][ell - 1];
                 const int index = k - p + ell;
 
-                if (math::abs(alfa) == 0.0)
+                if (math::abs(alfa) == T(0.0))
                     new_coefs.row(new_ind + (index - 1) * new_step) =
                             new_coefs.row(new_ind + index * new_step);
                 else
@@ -497,49 +497,51 @@ void gsTensorBoehmRefine(
 }
 
 
-template <unsigned d, typename KnotVectorType, typename Mat, typename ValIt>
+template <short_t d, typename KnotVectorType, typename Mat, typename ValIt>
 void gsTensorBoehmRefineLocal(KnotVectorType& knots,
         const unsigned index,
         Mat& coefs,
-        gsVector<unsigned, d> &nmb_of_coefs,
-        const gsVector<unsigned, d> &act_size_of_coefs,
-        const gsVector<unsigned, d> &size_of_coefs,
+        gsVector<index_t, d> &nmb_of_coefs,
+        const gsVector<index_t, d> &act_size_of_coefs,
+        const gsVector<index_t, d> &size_of_coefs,
         const unsigned direction,
         ValIt valBegin,
         ValIt valEnd,
         const bool update_knots)
 {
 
+    if (valBegin==valEnd)
+        return;
+
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
-    const int nik = std::distance(valBegin, valEnd); // number of inserted knots
-    const int p = knots.degree(); // degree
+    const index_t nik = std::distance(valBegin, valEnd); // number of inserted knots
+    const index_t p = knots.degree(); // degree
     // number of original (not local) points
-    const unsigned nopts = knots.size() - p - 1;
+    const index_t nopts = knots.size() - p - 1;
     //const int d = size_of_coefs.size();    // dimension
 
 
-    const int a =  knots.iFind(*valBegin)     - knots.begin();
-    const int b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
-
+    const index_t a =  knots.iFind(*valBegin)     - knots.begin();
+    const index_t b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
 
     // allocate a memory for new knots and new control points
     gsSparseVector<T> nknots(b + p + nik);
 
 
-    gsVector<unsigned, d> position(d); // position old points
+    gsVector<index_t, d> position(d); // position old points
     position.fill(0);
 
-    gsVector<unsigned, d> first_point(position); // first point of a cube
-    gsVector<unsigned, d> last_point(d); // last point of a cube (old points)
+    gsVector<index_t, d> first_point(position); // first point of a cube
+    gsVector<index_t, d> last_point(d); // last point of a cube (old points)
     bspline::getLastIndexLocal<d>(nmb_of_coefs, last_point);
     last_point[direction] = 0;
 
     // build strides
-    gsVector<unsigned, d> act_str(d);
+    gsVector<index_t, d> act_str(d);
     bspline::buildCoeffsStrides<d>(act_size_of_coefs, act_str);
 
-    const int step = act_str[direction];
+    const index_t step = act_str[direction];
 
     gsMatrix<T> zero(1, coefs.cols());
     zero.fill(0.0);
@@ -562,15 +564,15 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 
         ValIt valEndCopy = valEnd;
 
-        int ind = bspline::getIndex<d>(act_str, position);
+        index_t ind = bspline::getIndex<d>(act_str, position);
 
-        for (unsigned j = b - 1; j < nopts; j++)
+        for (index_t j = b - 1; j < nopts; j++)
         {
-            int indx1 = j + nik - index;
-            int indx2 = j - index;
+            index_t indx1 = j + nik - index;
+            index_t indx2 = j - index;
 
             if (0 <= indx1 &&
-                    static_cast<unsigned>(indx1) < act_size_of_coefs[direction])
+                    indx1 < act_size_of_coefs[direction])
             {
                 if (indx2 < 0)
                     coefs.row(ind + indx1 * step) = zero.row(0);
@@ -590,11 +592,10 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 
             while ((newKnot <= knots[i]) && (a < i))
             {
-                int indx1 = k - p - 1 - index;
-                int indx2 = i - p - 1 - index;
+                index_t indx1 = k - p - 1 - index;
+                index_t indx2 = i - p - 1 - index;
 
-                if (indx1 < 0 || act_size_of_coefs[direction] <=
-                        static_cast<unsigned>(indx1))
+                if (indx1 < 0 || act_size_of_coefs[direction] <= indx1)
                 {
                     k--;
                     i--;
@@ -614,32 +615,29 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                 i--;
             }
 
-            int indx1 = k - p - 1 - index;
+            index_t indx1 = k - p - 1 - index;
 
-            if (0 <= indx1 && static_cast<unsigned>(indx1 + 1) <
-                    act_size_of_coefs[direction])
+            if (0 <= indx1 && (indx1 + 1) < act_size_of_coefs[direction])
                 coefs.row(ind + indx1 * step) =
                         coefs.row(ind + (indx1 + 1) * step);
 
-            if (static_cast<unsigned>(indx1) == act_size_of_coefs[direction] - 1)
+            if (indx1 == act_size_of_coefs[direction] - 1)
                 coefs.row(ind + indx1 * step) = zero.row(0);
 
             for (int ell = 1; ell <= p; ell++)
             {
                 const T alfa = alpha[j][ell - 1];
-                const int mindex = k - p + ell - index;
+                const index_t mindex = k - p + ell - index;
 
                 if (mindex <= 0)
                     continue;
 
-                if (act_size_of_coefs[direction] <
-                        static_cast<unsigned>(mindex))
+                if (act_size_of_coefs[direction] < mindex)
                     break;
 
-                if (math::abs(alfa) == 0.0)
+                if (math::abs(alfa) == T(0.0))
                 {
-                    if (static_cast<unsigned>(mindex) ==
-                            act_size_of_coefs[direction])
+                    if (mindex == act_size_of_coefs[direction])
                         coefs.row(ind + (mindex - 1) * step) = zero.row(0);
                     else
                         coefs.row(ind + (mindex - 1) * step) =
@@ -647,8 +645,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                 }
                 else
                 {
-                    if (static_cast<unsigned>(mindex) ==
-                            act_size_of_coefs[direction])
+                    if (mindex == act_size_of_coefs[direction])
                         coefs.row(ind + (mindex - 1) * step) =
                                 alfa * coefs.row(ind + (mindex - 1) * step);
                     else
@@ -659,7 +656,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
             }
             k--;
         }
-    } while(nextCubePoint<gsVector<unsigned, d> >(position, first_point,
+    } while(nextCubePoint<gsVector<index_t, d> >(position, first_point,
                                                   last_point));
 
     nmb_of_coefs[direction] = size_of_coefs[direction];
@@ -674,7 +671,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 /*
 This function performs local Tensor Boehm algorithm. It works.
 
-template <unsigned d, typename T, typename KnotVectorType, typename Mat>
+template <short_t d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorBoehmLocal(
         const KnotVectorType& knots,
         unsigned index,
@@ -756,15 +753,15 @@ void gsTensorBoehmLocal(
 */
 
 
-template <unsigned d, typename T, typename KnotVectorType, typename Mat>
+template <short_t d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
         const KnotVectorType& knots,
         Mat& coefs,
-        const gsVector<unsigned, d>& size_of_coefs,
+        const gsVector<index_t, d>& size_of_coefs,
         T val,
         unsigned direction,
-        gsVector<unsigned, d>& start,
-        gsVector<unsigned, d>& end)
+        gsVector<index_t, d>& start,
+        gsVector<index_t, d>& end)
 {
     int k = knots.iFind(val) - knots.begin();
     int s = knots.multiplicity(val);
@@ -779,12 +776,12 @@ void gsTensorInsertKnotDegreeTimes(
     std::vector<std::vector<T> > alpha(r, std::vector<T> (p - s));
     computeAlpha<T, KnotVectorType>(alpha, knots, val, r, k, p, s);
 
-    gsVector<unsigned, d> coefs_str(d);
+    gsVector<index_t, d> coefs_str(d);
     bspline::buildCoeffsStrides<d>(size_of_coefs, coefs_str);
 
     start(direction) = 0;
     end(direction) = 0;
-    gsVector<unsigned, d> position(start);
+    gsVector<index_t, d> position(start);
 
     unsigned step = coefs_str[direction];
 
@@ -801,9 +798,7 @@ void gsTensorInsertKnotDegreeTimes(
                         (1.0 - alfa) * coefs.row(flat_ind + i * step);
             }
         }
-    } while(nextCubePoint<gsVector<unsigned, d> >(position, start, end));
+    } while(nextCubePoint<gsVector<index_t, d> >(position, start, end));
 }
 
 } // namespace gismo
-
-

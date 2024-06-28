@@ -13,11 +13,9 @@
 
 #pragma once
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsIO/gsBase64.h>
 #include <gsIO/gsXml.h>
-
-#include <numeric>
-
+#include <gsNurbs/gsKnotVector.h>
 
 namespace gismo
 {
@@ -44,15 +42,44 @@ public:
     {
         // TODO: make it unused when possible.
         int p = atoi(node->first_attribute("degree")->value() );
-        //GISMO_UNUSED(p);
 
         typename gsKnotVector<T>::knotContainer knotValues;
 
-        std::istringstream str;
-        str.str( node->value() );
-        for (T knot; gsGetReal(str, knot);)
-            knotValues.push_back(knot);
+        gsXmlAttribute * mode = node->first_attribute("mode");
+        
+        // Generate Knotvectors based on key
+        // mode: uniform, graded, ..
+        if (mode)
+        {
+            if ( !strcmp( mode->value(),"uniform") )
+            {
+                gsXmlAttribute * szc = node->first_attribute("csize");
+                GISMO_ENSURE(szc, "size of knot-vector coefficients is missing (csize attribute).");
+                index_t sz = atoi(szc->value());
 
+                //gsXmlAttribute * mlt = node->first_attribute("mult");
+                //if mlt
+
+                result = gsKnotVector<T>(0.0, 1.0, sz-p-1, p+1, 1, p);
+                return;
+            }
+        }
+
+        // Read knots from list
+        gsXmlAttribute* format = node->first_attribute("format");
+        std::string format_flag = format ? format->value() : "ascii";
+        std::transform(format_flag.cbegin(), format_flag.cend(),
+                       format_flag.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+
+        if (format_flag == "ascii") {
+            // Case: mode: none/default
+            std::istringstream str;
+            str.str(node->value());
+            for (T knot; gsGetReal(str, knot);) knotValues.push_back(knot);
+        } else {
+            Base64::DecodeIntoGsType(node->value(), format_flag, knotValues);
+        }
         result = gsKnotVector<T>(give(knotValues), p);
     }
 
@@ -101,15 +128,17 @@ typename gsKnotVector<T>::iterator gsKnotVector<T>::end()    const
 }
 
 template<typename T>
-typename gsKnotVector<T>::iterator gsKnotVector<T>::beginAt(const mult_t upos)  const
+typename gsKnotVector<T>::iterator gsKnotVector<T>::beginAt(mult_t upos)  const
 {
+    upos += numLeftGhosts();
     return m_repKnots.begin() + (0 == upos ? 0 : m_multSum[upos-1]);
     //return m_repKnots.data() + (0 == upos ? 0 : m_multSum[upos-1]);
 }
 
 template<typename T>
-typename gsKnotVector<T>::iterator gsKnotVector<T>::endAt(const mult_t upos)    const
+typename gsKnotVector<T>::iterator gsKnotVector<T>::endAt(mult_t upos)    const
 {
+    upos += numLeftGhosts();
     return m_repKnots.begin() + m_multSum[upos];
     //return m_repKnots.data() + m_multSum[upos];
 }
@@ -148,7 +177,7 @@ void gsKnotVector<T>::symDifference(const gsKnotVector<T> & other,
     // result.reserve(std::abs(other.size()-size()));
     const int sz = other.size() - size();
     result.reserve( std::abs(sz) );
-    
+
     std::set_symmetric_difference(begin(), end(),
                                   other.begin(), other.end(),
                                   std::back_inserter(result));
@@ -193,7 +222,7 @@ const gsKnotVector<T> & gsKnotVector<T>::trimDomain(const T dbegin, const T dend
 
     return *this;
 }
-//*/
+*/
 
 
 template<typename T>
@@ -205,7 +234,7 @@ typename gsKnotVector<T>::reverse_iterator gsKnotVector<T>::rend()    const
 template<typename T>
 typename gsKnotVector<T>::uiterator gsKnotVector<T>::ubegin() const
 {
-    return uiterator(*this);
+    return uiterator(*this,0,numLeftGhosts());
 }
 
 template<typename T>
@@ -229,7 +258,7 @@ typename gsKnotVector<T>::reverse_uiterator gsKnotVector<T>::urend()   const
 template<typename T>
 typename gsKnotVector<T>::smart_iterator gsKnotVector<T>::sbegin() const
 {
-    return smart_iterator(*this);
+    return smart_iterator(*this,0,numLeftGhosts());
 }
 
 template<typename T>
@@ -257,7 +286,7 @@ typename gsKnotVector<T>::reverse_smart_iterator gsKnotVector<T>::rsend()   cons
 
 
 template<typename T>
-gsKnotVector<T>::gsKnotVector( knotContainer knots, int degree)
+gsKnotVector<T>::gsKnotVector( knotContainer knots, short_t degree)
 {
     knots.swap(m_repKnots);
     rebuildMultSum();
@@ -301,36 +330,36 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
 
     uiterator uit = std::lower_bound(ubegin(), uend(), knot);
     const mult_t fa = uit.firstAppearance();
-    
+
     // update multiplicity sums
-    nonConstMultIterator upos = m_multSum.begin() + uit.uIndex();
+    nonConstMultIterator upos = m_multSum.begin() + uit.uCardinalIndex();
     if (upos==m_multSum.end() || *uit != knot) // knot value does not exist ?
         upos = m_multSum.insert(upos, fa );
-    std::transform(upos, m_multSum.end(), upos, std::bind1st(std::plus<mult_t>(), mult));
+    std::transform(upos, m_multSum.end(), upos, GS_BIND1ST(std::plus<mult_t>(), mult));
 
     // insert repeated knots
     m_repKnots.insert(m_repKnots.begin() + fa, mult, knot);
-    
+
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 }
 
 template<typename T>
 void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
 {
-    GISMO_ASSERT( uit.m_mlt == multSumData(), 
+    GISMO_ASSERT( uit.m_mlt == multSumData(),
                   "The iterator is invalid for this knot vector." );
 
     mult_t knotMult = uit.multiplicity();
     mult_t toRemove = (std::min<mult_t>)(mult, knotMult);
-    nonConstMultIterator upos = m_multSum.begin()  + uit.uIndex();
+    nonConstMultIterator upos = m_multSum.begin()  + uit.uCardinalIndex();
 
-    nonConstIterator pos = m_repKnots.begin() + uit.firstAppearance(); 
+    nonConstIterator pos = m_repKnots.begin() + uit.firstAppearance();
     m_repKnots.erase(pos, pos+toRemove);
 
     if( toRemove ==  knotMult )
         upos = m_multSum.erase( upos );
 
-    std::transform(upos, m_multSum.end(), upos, std::bind2nd(std::minus<mult_t>(),toRemove));
+    std::transform(upos, m_multSum.end(), upos, GS_BIND2ND(std::minus<mult_t>(),toRemove));
 }
 
 template<typename T>
@@ -354,7 +383,7 @@ void gsKnotVector<T>::erase(const mult_t first, const mult_t last)
     const mult_t numKnots = last - first;
     *fpos = m_multSum.back() - numKnots;
     lpos  = m_multSum.erase(fpos + 1, lpos);
-    std::transform(lpos, m_multSum.end(), lpos, std::bind2nd(std::minus<mult_t>(),numKnots));  
+    std::transform(lpos, m_multSum.end(), lpos, GS_BIND2ND(std::minus<mult_t>(),numKnots));
 }
 
 template<typename T>
@@ -367,7 +396,7 @@ void gsKnotVector<T>::trimLeft(const mult_t numKnots)
     nonConstMultIterator upos =
         std::upper_bound(m_multSum.begin(), m_multSum.end(), numKnots);
     upos = m_multSum.erase(m_multSum.begin(), upos);
-    std::transform(upos, m_multSum.end(), upos, std::bind2nd(std::minus<mult_t>(),numKnots));
+    std::transform(upos, m_multSum.end(), upos, GS_BIND2ND(std::minus<mult_t>(),numKnots));
 }
 
 template<typename T>
@@ -405,9 +434,9 @@ typename gsKnotVector<T>::mult_t gsKnotVector<T>::multiplicityIndex( mult_t knot
                   << m_repKnots.size() << ")." );
 
     iterator it = begin() + knotIndex;
-    iterator L  = std::find_if(it,end(),std::bind1st(std::not_equal_to<T>(),*it));
+    iterator L  = std::find_if(it,end(),GS_BIND1ST(std::not_equal_to<T>(),*it));
     reverse_iterator F = std::find_if(reverse_iterator(it),rend(),
-                                      std::bind1st(std::not_equal_to<T>(),*it));
+                                      GS_BIND1ST(std::not_equal_to<T>(),*it));
     return L-F.base();
     // equivalent:
     //return (sbegin() + knotIndex).multiplicity();
@@ -420,7 +449,7 @@ typename gsKnotVector<T>::mult_t gsKnotVector<T>::multiplicityIndex( mult_t knot
 template<typename T>
 void gsKnotVector<T>::affineTransformTo(T newBeg, T newEnd)
 {
-    GISMO_ASSERT(newEnd > newBeg+0.00001, 
+    GISMO_ASSERT(newEnd > newBeg+0.00001,
                  "Cannot transform the knot-vector to invalid interval ["<<newBeg<<","<<newEnd<<"].\n");
 
     const T beg   = m_repKnots.front();
@@ -440,11 +469,11 @@ void gsKnotVector<T>::reverse()
 {
     // Not implemented using affineTransformTo() because of efficiency
     // and also to prevent accidental reversing.
-    
+
     // reverse the multiplicity
     std::reverse  (m_multSum.begin(), m_multSum.end()-1);
-    std::transform(m_multSum.begin(), m_multSum.end()-1, m_multSum.begin(), 
-                   std::bind1st(std::minus<mult_t>(), m_multSum.back() ) );
+    std::transform(m_multSum.begin(), m_multSum.end()-1, m_multSum.begin(),
+                   GS_BIND1ST(std::minus<mult_t>(), m_multSum.back() ) );
 
     // reverse the knots
     std::reverse(m_repKnots.begin(), m_repKnots.end());
@@ -463,7 +492,7 @@ void gsKnotVector<T>::reverse()
 template <typename T>
 std::ostream & gsKnotVector<T>::print(std::ostream &os) const
 {
-    os << "[ " ; 
+    os << "[ " ;
     if ( size() > static_cast<size_t>(2*m_deg+8) )
     {
         for (iterator itr = begin(); itr != begin()+m_deg+3; ++itr)
@@ -479,7 +508,7 @@ std::ostream & gsKnotVector<T>::print(std::ostream &os) const
     }
     os << "] (deg=" << degree()
        << ", size=" << size()
-       << ", minSpan=" << minIntervalLength() 
+       << ", minSpan=" << minIntervalLength()
        << ", maxSpan=" << maxIntervalLength()
        << ")";
     return os;
@@ -554,7 +583,7 @@ void gsKnotVector<T>::rebuildMultSum()
 
     while(it!=ee)
     {
-        it = std::find_if(it,ee,std::bind1st(std::not_equal_to<T>(),*it));
+        it = std::find_if(it,ee,GS_BIND1ST(std::not_equal_to<T>(),*it));
         m_multSum.push_back(it-bb);
     }
 }
@@ -565,7 +594,7 @@ gsKnotVector<T>::gsKnotVector( T first,
                                unsigned interior,
                                mult_t mult_ends,
                                mult_t mult_interior,
-                               int degree)
+                               short_t degree)
 {
     initUniform( first, last, interior, mult_ends, mult_interior, degree );
 }
@@ -616,7 +645,7 @@ void gsKnotVector<T>::initUniform( T first,
                                    unsigned interior,
                                    unsigned mult_ends,
                                    unsigned mult_interior,
-                                   int degree)
+                                   short_t degree)
 {
     m_deg = (degree == - 1 ? mult_ends-1 : degree);
 
@@ -631,20 +660,20 @@ void gsKnotVector<T>::initUniform( T first,
     m_multSum .clear();
     m_multSum .reserve(interior+2);
 
-    const T h = (last-first) / (interior+1);
+    const T h = (last-first) / (T)(interior+1);
 
-    for(unsigned i = m_deg - mult_ends + 1; i!= 0; --i)
+    for(unsigned i = m_deg - mult_ends + 1, j=1; i!= 0; --i, ++j)
     {   // add left ghost knots
-        m_repKnots.push_back(first-i*h);
-        m_multSum .push_back(1);
+        m_repKnots.push_back(first-(T)(i)*h);
+        m_multSum .push_back(j);
     }
 
-    m_repKnots.insert(m_repKnots.begin(), mult_ends, first);
-    m_multSum .push_back(mult_ends);
+    m_repKnots.insert(m_repKnots.end(), mult_ends, first);
+    m_multSum .push_back(mult_ends + (m_multSum.empty() ? 0 : m_multSum.back()));
 
     for( unsigned i=1; i<=interior; ++i)
     {
-        m_repKnots.insert( m_repKnots.end(), mult_interior, first + i*h );
+        m_repKnots.insert( m_repKnots.end(), mult_interior, first + (T)(i)*h );
         m_multSum .push_back( mult_interior + m_multSum.back() );
     }
 
@@ -653,10 +682,10 @@ void gsKnotVector<T>::initUniform( T first,
 
     for(unsigned i = 1; i!=m_deg - mult_ends + 2; ++i)
     {   // add right ghost knots
-        m_repKnots.push_back(last+i*h);
-        m_multSum .push_back(1);
+        m_repKnots.push_back(last+(T)(i)*h);
+        m_multSum .push_back(m_multSum.back() + 1);
     }
-        
+
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 }
 
@@ -692,18 +721,40 @@ typename gsKnotVector<T>::multContainer gsKnotVector<T>::multiplicities() const
 }
 
 template<typename T>
+typename gsKnotVector<T>::mult_t gsKnotVector<T>::maxInteriorMultiplicity() const
+{
+    mult_t result = 0;
+    for( uiterator uit = std::next(ubegin()); uit != std::prev(uend()); ++uit )
+        result = std::max(result,uit.multiplicity());
+    return result;
+}
+
+template<typename T>
+typename gsKnotVector<T>::mult_t gsKnotVector<T>::minInteriorMultiplicity() const
+{
+    // No interior knots
+    if (uSize()==2) 
+        return 0;
+
+    mult_t result = m_deg+2;
+    for( uiterator uit = std::next(ubegin()); uit != std::prev(uend()); ++uit )
+        result = std::min(result,uit.multiplicity());
+    return result;
+}
+
+template<typename T>
 typename gsKnotVector<T>::uiterator
 gsKnotVector<T>::uFind( const T u ) const
 {
     GISMO_ASSERT(size()>1,"Not enough knots."); // todo: check() --> size() > 2*m_deg+1
-    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+    GISMO_ASSERT(inDomain(u), "Point "<< u <<" outside active area of the knot vector");
 
     // The last element is closed from both sides.
     uiterator dend = domainUEnd();
 
-    if (u==*dend) // knot at domain end ? 
+    if (u==*dend) // knot at domain end ?
         return --dend;
-    else 
+    else
         return std::upper_bound( domainUBegin(), dend, u ) - 1;
 }
 
@@ -724,9 +775,9 @@ gsKnotVector<T>::uLowerBound( const T u ) const
 }
 
 template<typename T>
-typename gsKnotVector<T>::iterator 
+typename gsKnotVector<T>::iterator
 gsKnotVector<T>::iFind( const T u ) const
-{ 
+{
     // GISMO_ASSERT done in uFind().
     return begin() + uFind(u).lastAppearance();
 
@@ -755,11 +806,11 @@ std::string gsKnotVector<T>::detail() const
     {
         osk << itr.value()        << " ";
         osm << itr.multiplicity() << " ";
-    } 
+    }
     osm <<")\n";
     osk << "] ~ ";
     osm << "deg="<<m_deg<< ", size="<<size() << ", uSize="<< uSize()
-        <<", minSpan="<< minIntervalLength() 
+        <<", minSpan="<< minIntervalLength()
         <<", maxSpan="<< maxIntervalLength() <<"\n";
 
     return osk.str() + osm.str();
@@ -791,8 +842,32 @@ void gsKnotVector<T>::addConstant( T amount )
     // With C++11, you can use:
     // std::for_each( m_repKnots.begin(), m_repKnots.end(),  [amount](T& k){ k+= amount;} );
 
-    std::transform( m_repKnots.begin(), m_repKnots.end(), m_repKnots.begin(), 
-                    std::bind1st(std::plus<T>(),amount) );
+    std::transform( m_repKnots.begin(), m_repKnots.end(), m_repKnots.begin(),
+                    GS_BIND1ST(std::plus<T>(),amount) );
+}
+
+template<typename T>
+void gsKnotVector<T>::addConstant(T start, T amount)
+{
+    typename std::vector<T>::iterator beg   = m_repKnots.begin();
+    while (*beg < start)
+        beg++;
+
+    // The last element is closed from both sides.
+    uiterator dend = domainUEnd();
+
+    // If statement is needed because uFind gives back an iterator to the n-1 entry while the nth is required
+    if (start!=*dend)
+    {
+        uiterator uit = uFind(start);
+        for (; uit != uend(); ++uit)
+            uit.setValue(*uit + amount);
+    }
+    else
+        dend.setValue(*dend + amount);
+
+
+    GISMO_ASSERT( check(), "addConstant() has produced an invalid knot vector.");
 }
 
 template<typename T>
@@ -817,7 +892,7 @@ void gsKnotVector<T>::increaseMultiplicity(const mult_t i, bool boundary)
     tmp.insert(tmp.end(), uit.multiplicity() + (boundary ? i : 0) , *uit);
 
     m_repKnots.swap(tmp);
-    
+
     // update multiplicity sums
     mult_t r = ( boundary ?  1 : 0 );
     for (nonConstMultIterator m = m_multSum.begin(); m != m_multSum.end()-1; ++m)
@@ -860,14 +935,14 @@ void gsKnotVector<T>::reduceMultiplicity(const mult_t i, bool boundary)
 }
 
 template<typename T>
-void gsKnotVector<T>::degreeElevate(int const & i)
+void gsKnotVector<T>::degreeElevate(const short_t & i)
 {
     increaseMultiplicity(i,true);
     m_deg += i;
 }
 
 template<typename T>
-void gsKnotVector<T>::degreeReduce(int const & i)
+void gsKnotVector<T>::degreeReduce(const short_t & i)
 {
     reduceMultiplicity(i,true);
     m_deg -= i;
@@ -881,13 +956,13 @@ coarsen(index_t knotRemove, index_t knotSkip, mult_t mul)
 
     // Special value -1
     if (-1==mul) mul = m_deg+1;
-        
+
     std::vector<T> coarseKnots, removedKnots;
     if (0==knotRemove) return removedKnots;
-    
+
     // knots to be removed
     removedKnots.reserve( knotRemove * this->uSize() / (knotRemove+knotSkip) );
-    
+
     uiterator it   = domainUBegin() + 1;
     uiterator last = domainUEnd();
 
@@ -898,7 +973,7 @@ coarsen(index_t knotRemove, index_t knotSkip, mult_t mul)
                 (std::min<mult_t>)( mul, it.multiplicity() ),
                 it.value()
             );
-    
+
     // copy non-removed knots into coarseKnots
     coarseKnots.reserve(m_repKnots.size()-removedKnots.size());
     std::set_difference( m_repKnots.begin(), m_repKnots.end(),
@@ -922,18 +997,18 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
 
     if ( m_deg!=0)
     {
-        result(0,0) = std::accumulate( itr, itr+m_deg, T(0.0) ) / m_deg ;
+        result(0,0) = std::accumulate( itr, itr+m_deg, (T)(0.0) ) / (T)(m_deg) ;
 
         if ( result(0,0) < *(itr-1) )// Ensure that the point is in range
             result(0,0) = *(itr-1);
 
         for (++itr; itr != end()-m_deg; ++itr, ++i )
         {
-            result(0,i) = std::accumulate( itr, itr+m_deg, T(0.0) ) / m_deg ;
+            result(0,i) = std::accumulate( itr, itr+m_deg, (T)(0.0) ) / (T)(m_deg) ;
             if ( result(0,i) == result(0,i-1) )
             {
                 // perturbe point to remain inside the needed support
-                result(0,i-1) -= 1/T(10000000000); // =mpq_class(1,10000000000);
+                result(0,i-1) -= (T)(1)/(T)(1000000000); // =mpq_class(1,1000000000);
                 //to try: result(0,i-1) = math::nextafter(result(0,i-1), *result.data() );
             }
         }
@@ -953,7 +1028,7 @@ void gsKnotVector<T>::centers_into(gsMatrix<T> & result) const
     result.resize(1, numElements());
     index_t i = 0;
     for (uiterator it = domainUBegin(); it != domainUEnd(); ++it, ++i)
-        result.at(i) = (*(it+1) + *it) / 2;
+        result.at(i) = (*(it+1) + *it) / (T)(2);
 }
 
 template <class T>
@@ -964,7 +1039,7 @@ T gsKnotVector<T>::greville(int i) const
                  "Index of Greville point is out of range.");
     iterator itr = begin() + 1;
     return ( m_deg==0 ? *(itr+i-1) :
-             std::accumulate( itr+i, itr+i+m_deg, T(0.0) ) / m_deg
+             std::accumulate( itr+i, itr+i+m_deg, (T)(0.0) ) / (T)(m_deg)
              // Special case C^{-1}
              - (*(itr+i) == *(itr+i+m_deg) ? 1e-10 : 0 )
         );
@@ -973,7 +1048,7 @@ T gsKnotVector<T>::greville(int i) const
 template <class T>
 void gsKnotVector<T>::getUniformRefinementKnots(mult_t knotsPerSpan, knotContainer& result, mult_t mult) const
 {
-    // forward iterator ? 
+    // forward iterator ?
 
     result.clear();
     result.reserve( (uSize()-1) * knotsPerSpan * mult );
@@ -981,24 +1056,22 @@ void gsKnotVector<T>::getUniformRefinementKnots(mult_t knotsPerSpan, knotContain
     T prev = m_repKnots.front();
     for( uiterator uit = ubegin()+1; uit != uend(); ++uit )
     {
-        const T step = (*uit - prev)/T(knotsPerSpan+1);
+        const T step = (*uit - prev)/(T)(knotsPerSpan+1);
         for( mult_t i = 1; i <= knotsPerSpan; ++ i)
-            result.insert( result.end(), mult, prev + i*step );
+            result.insert( result.end(), mult, prev + (T)(i)*step );
         prev=*uit;
     }
 }
 
 template< typename T>
 void gsKnotVector<T>::supportIndex_into(const mult_t& i,
-                                        gsMatrix<unsigned>& result) const
+                                        gsMatrix<index_t>& result) const
 {
-    T suppBeg=*(this->begin()+i);
-    T suppEnd=*(this->begin()+i+m_deg+1);
-    uiterator ubeg   = this->ubegin();
-    uiterator indBeg = uFind(suppBeg);
-    uiterator indEnd = std::find_if(indBeg, this->uend(), std::bind2nd(std::greater_equal<T>(), suppEnd));
     result.resize(1,2);
-    result<<indBeg-ubeg,indEnd-ubeg;
+    smart_iterator it = sbegin() + i;
+    result.at(0) = it.uIndex();
+    it += m_deg+1;
+    result.at(1) = it.uIndex();
 }
 
 } // namespace gismo

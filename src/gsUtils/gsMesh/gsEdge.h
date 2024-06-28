@@ -2,12 +2,12 @@
 
     @brief Provides gsEdge class for an edge of a gsMesh.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris, D. Mayer
 */
 
@@ -27,23 +27,23 @@ public:
     typedef typename MeshElement::gsEdgeHandle gsEdgeHandle;
     typedef typename MeshElement::gsFaceHandle gsFaceHandle;
     typedef gsVector3d<T> gsVector;
-    typedef gsVector * gsVectorHandle;     
+    typedef gsVector * gsVectorHandle;
 
 public:
-  gsEdge() { }; // gsmesheölem...
-  
-  gsEdge(gsVertexHandle const & v0, gsVertexHandle const & v1 ): 
-    source(v0), target(v1)
-    { 
+  gsEdge() { } // : MeshElement()
+
+  gsEdge(gsVertexHandle const & v0, gsVertexHandle const & v1 ):
+  source(v0), target(v1), sharp(false)
+    {
 //      faceId1=0;
 //      faceId2=0;
       // next = 0;
-      // prev = 0;	    
+      // prev = 0;
     }
-  
-  
+
+
   virtual ~gsEdge(){ }
-  
+
   std::ostream &print(std::ostream &os) const
     {
       os<<"gsEdge from "<< *source<<" to "<<*target ;
@@ -53,7 +53,7 @@ public:
 
   void orderVertices()
     {
-      if ( Xless<T>(source,target) ) 
+      if ( Xless<T>(source,target) )
 	   std::swap(source,target);
     }
 
@@ -86,9 +86,9 @@ bool operator != (gsEdge const & rhs) const
 {
     return !(*this==rhs);
 }
-  
+
 public:
-  
+
   gsVertexHandle source, target;
   std::vector<gsFaceHandle> nFaces;
   bool sharp;
@@ -96,4 +96,3 @@ public:
 };
 
 } //namespace gismo
-

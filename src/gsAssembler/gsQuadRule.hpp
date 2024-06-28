@@ -10,7 +10,7 @@
 
     Author(s): A. Mantzaflaris
 */
- 
+
 #pragma once
 
 #include <gsUtils/gsPointGrid.h>
@@ -25,17 +25,28 @@ gsQuadRule<T>::mapTo( T startVal, T endVal,
                       gsMatrix<T> & nodes, gsVector<T> & weights ) const
 {
     GISMO_ASSERT( 1 == m_nodes.rows(), "Inconsistent quadrature mapping");
-    
-    // the factor 0.5 is due to the fact that the one-dimensional
-    // reference interval is [-1,1].
-    const T h = ( startVal != endVal ? 0.5 * (endVal-startVal) : T(0.5) );
-  
+
+    const T h = (endVal-startVal) / (T)(2);
+
     // Linear map from [-1,1]^d to [startVal,endVal]
-    nodes  = (h * m_nodes).array() + 0.5*(startVal+endVal);
-    
+    nodes = (h * (m_nodes.array()+1)) + startVal;
+
     // Adjust the weights (multiply by the Jacobian of the linear map)
-    weights.noalias() = h * m_weights;
+    weights.noalias() = (0==h?T(0.5):h) * m_weights;
 }
+
+// Note: left here for inlining
+template<class T> void
+gsQuadRule<T>::mapTo( const gsMatrix<T>& ab,
+                      gsMatrix<T> & nodes) const
+{
+    GISMO_ASSERT( ab.rows() == m_nodes.rows(), "Inconsistent quadrature mapping");
+    nodes.resize( m_nodes.rows(), m_nodes.cols() );
+    nodes.setZero();
+    const gsVector<T> h = (ab.col(1)-ab.col(0)) / (T)(2) ;
+    nodes.noalias() = ( h.asDiagonal() * (m_nodes.array()+1).matrix() ).colwise() + ab.col(0);
+}
+
 
 template<class T> void
 gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
@@ -46,7 +57,7 @@ gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
 
     const size_t nint    = breaks.size() - 1;
     const index_t nnodes = numNodes();
-        
+
     nodes  .resize(1, nint*nnodes);
     weights.resize( nint*nnodes );
 
@@ -54,47 +65,53 @@ gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
     {
         const T startVal = breaks[i ];
         const T endVal   = breaks[i+1];
+        const T h = (endVal-startVal) / (T)(2);
 
-        // the factor 0.5 is due to the fact that the one-dimensional
-        // reference interval is [-1,1].
-        const T h = ( startVal != endVal ? 0.5 * (endVal-startVal) : T(0.5) );
-        
         // Linear map from [-1,1]^d to [startVal,endVal]
-        nodes.middleCols(i*nnodes,nnodes) = (h * m_nodes).array() + 0.5*(startVal+endVal);
-        
+        nodes.middleCols(i*nnodes,nnodes) = (h * (m_nodes.array()+1)) + startVal;
+
         // Adjust the weights (multiply by the Jacobian of the linear map)
-        weights.segment(i*nnodes,nnodes)  = h * m_weights;
+        weights.segment(i*nnodes,nnodes)  = (0==h?T(0.5):h) * m_weights;
     }
 }
 
 
 template<class T> void
-gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes, 
+gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
                                         const std::vector<gsVector<T> > & weights)
 {
-    const int d  = nodes.size();
-    GISMO_ASSERT( static_cast<std::size_t>(d) == weights.size(), 
+    this->computeTensorProductRule_into(nodes,weights,m_nodes,m_weights);
+}
+
+template<class T> void
+gsQuadRule<T>::computeTensorProductRule_into(const std::vector<gsVector<T> > & nodes,
+                                             const std::vector<gsVector<T> > & weights,
+                                             gsMatrix<T> & targetNodes,
+                                             gsVector<T> & targetWeights) const
+{
+    const short_t d  = static_cast<short_t>(nodes.size());
+    GISMO_ASSERT( static_cast<size_t>(d) == weights.size(),
                   "Nodes and weights do not agree." );
 
     // compute the tensor quadrature rule
-    gsPointGrid(nodes, m_nodes);
-    
+    gsPointGrid(nodes, targetNodes);
+
     gsVector<index_t> numNodes(d);
-    for( int i=0; i<d; ++i )
+    for( short_t i=0; i<d; ++i )
         numNodes[i] = weights[i].rows();
 
-    GISMO_ASSERT( m_nodes.cols() == numNodes.prod(), 
+    GISMO_ASSERT( targetNodes.cols() == numNodes.prod(),
                   "Inconsistent sizes in nodes and weights.");
-    
+
     // Compute weight products
-    m_weights.resize( m_nodes.cols() );
-    unsigned r = 0;
+    targetWeights.resize( targetNodes.cols() );
+    size_t r = 0;
     gsVector<index_t> curr(d);
     curr.setZero();
     do {
-        m_weights[r] = weights[0][curr[0]];
-        for (int i=1; i<d; ++i)
-            m_weights[r] *= weights[i][curr[i]];
+        targetWeights[r] = weights[0][curr[0]];
+        for (short_t i=1; i<d; ++i)
+            targetWeights[r] *= weights[i][curr[i]];
         ++r;
     } while (nextLexicographic(curr, numNodes));
 }

@@ -16,6 +16,8 @@ In the gismo/examples sub-directory we find:
 
 - \subpage biharmonic_example
 
+- \subpage biharmonic2_example
+
 - \subpage bSplineBasis_example
 
 - \subpage bSplineCurve_example
@@ -23,6 +25,8 @@ In the gismo/examples sub-directory we find:
 - \subpage bSplineSurface_example
 
 - \subpage commandLineArg_example
+
+- \subpage fileIo_example
 
 - \subpage fitting_example
 
@@ -34,23 +38,35 @@ In the gismo/examples sub-directory we find:
 
 - \subpage gsInterpolateMap
 
+- \subpage ieti_example
+
+- \subpage ieti2_example
+
 - \subpage knotVector_example
 
-- \subpage linearAlgebra_example
+- \subpage kirchhoff-Love_example
 
+- \subpage linearAlgebra_example
+  
 - \subpage linearSolvers_example
 
 - \subpage mpi_example
 
 - \subpage multiGrid_example
 
+- \subpage pMultiGrid_example
+
+<!--
 - \subpage poisson_example
+-->
 
 - \subpage poisson2_example
 
-- \subpage poisson_exampleThb
+- \subpage poissonTHB_example
 
 - \subpage sparseSolvers_example
+
+- \subpage stokes_ieti_example
 
 - \subpage thbRefinement_example
 

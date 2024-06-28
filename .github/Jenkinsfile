@@ -1,0 +1,34 @@
+// Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
+
+def labels = ['gismo-ubuntu', 'gismo-mac1015', 'gismo-fedora'] //'gismo-centos',
+def builders = [:]
+
+for (label in labels)
+{
+    builders[label] =
+    {
+        node(label)
+        {
+            dir('gismo_src') { checkout scm }
+            cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build -D CTEST_SITE=$NODE_NAME-$BUILD_ID-[jenkins] "
+        }
+    }
+}
+
+def label = 'gismo-win10'
+builders[label] =
+{
+    node(label)
+    {
+	dir('gismo_src') { checkout scm }
+	cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build -D CTEST_SITE=$NODE_NAME-$BUILD_ID-[jenkins] "
+	cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./buildmgw -D CTEST_CMAKE_GENERATOR=\"MinGW Makefiles\" -D CTEST_SITE=$NODE_NAME-MinGW-$BUILD_ID-[jenkins] "
+    }
+}
+
+// Start all builders
+parallel builders
+
+// Cross-platform cmd
+def cmd (acmd) { if (isUnix()) { sh acmd } else { bat acmd} }
+//for(e in env) {echo e + " is " + ${e}}

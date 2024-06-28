@@ -40,7 +40,7 @@ namespace gismo
  * \ingroup Solver
  */
 template<class T>
-class gsBlockOp : public gsLinearOperator<T>
+class gsBlockOp GISMO_FINAL : public gsLinearOperator<T>
 {
 public:
 
@@ -96,7 +96,7 @@ public:
 
 private:
 
-    Eigen::Array<BasePtr, Dynamic, Dynamic> m_blockPrec;
+    gsEigen::Array<BasePtr, Dynamic, Dynamic> m_blockPrec;
 
     //Contains the size of the target vector for each block
     gsVector<index_t> m_blockTargetPositions;

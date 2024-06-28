@@ -7,12 +7,12 @@
     Hadenfeld, Iteratives Glätten von B-Spline Kurven und B-Spline Flächen,
     Shaker Verlag, PhD Thesis)
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): M. Kapl
 */
 
@@ -32,7 +32,7 @@ namespace gismo
 
     i.e. some
     kind of smoothing the curvature of the curve with the help of two different methods
-    
+
     \ingroup Modeling
 */
 
@@ -136,7 +136,7 @@ private:
 
 }; // class gsCurvatureSmoothing
 
-}; // namespace gismo
+} // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsCurvatureSmoothing.hpp)

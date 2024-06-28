@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the MultiPatch class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -24,8 +24,19 @@ namespace gismo
 {
 
 template<class T>
+gsMultiPatch<T> gsMultiPatch<T>::coord(const index_t c) const
+{
+    gsMultiPatch<T> result;
+    for ( const_iterator it = m_patches.begin(); it != m_patches.end(); ++it )
+    {
+        result.addPatch( (*it)->coord(c) );
+    }
+    return result;
+}
+
+template<class T>
 gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
-    : gsBoxTopology( geo.parDim() )
+    : BaseA( geo.parDim() )
 {
     m_patches.push_back(geo.clone().release());
     //m_patches[0]->setId(0); // Note: for the single-patch constructor the id remains unchanged
@@ -35,7 +46,7 @@ gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch( const gsMultiPatch& other )
-    : gsBoxTopology( other ), m_patches( other.m_patches.size() )
+    : BaseA( other ), BaseB( other ), m_patches( other.m_patches.size() )
 {
     // clone all geometries
     cloneAll( other.m_patches.begin(), other.m_patches.end(),
@@ -50,7 +61,7 @@ gsMultiPatch<T>& gsMultiPatch<T>::operator=( const gsMultiPatch& other )
     if (this!=&other)
     {
         freeAll(m_patches);
-        Base::operator=(other);
+        BaseA::operator=(other);
         m_patches.resize(other.m_patches.size());
         // clone all geometries
         cloneAll( other.m_patches.begin(), other.m_patches.end(),
@@ -63,7 +74,7 @@ template<class T>
 gsMultiPatch<T>& gsMultiPatch<T>::operator=( gsMultiPatch&& other )
 {
     freeAll(m_patches);
-    Base::operator=(give(other));
+    BaseA::operator=(give(other));
     m_patches = give(other.m_patches);
     return *this;
 }
@@ -73,7 +84,7 @@ gsMultiPatch<T>& gsMultiPatch<T>::operator=( gsMultiPatch&& other )
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch(PatchContainer & patches )
-    : gsBoxTopology( patches[0]->parDim(), patches.size() )
+    : BaseA( patches[0]->parDim(), patches.size() )
 {
     m_patches.swap(patches); // patches are consumed
     setIds();
@@ -84,7 +95,7 @@ template<class T>
 gsMultiPatch<T>::gsMultiPatch( PatchContainer& patches,
                                const std::vector<patchSide>& boundary,
                                const std::vector<boundaryInterface>& interfaces )
-    : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces )
+    : BaseA( patches[0]->parDim(), patches.size(), boundary, interfaces )
 {
     m_patches.swap(patches); // patches are consumed
     setIds();
@@ -100,14 +111,14 @@ template<class T>
 void gsMultiPatch<T>::setIds()
 {
     size_t id = 0;
-    for ( iterator it = m_patches.begin(); it != m_patches.end(); ++it ) 
+    for ( iterator it = m_patches.begin(); it != m_patches.end(); ++it )
     {
         ( *it )->setId( id++ );
     }
 }
 
 template<class T>
-std::ostream& gsMultiPatch<T>::print(std::ostream& os) const 
+std::ostream& gsMultiPatch<T>::print(std::ostream& os) const
 {
     if ( !this->empty() ) {
         os << "gsMultiPatch (" << this->nPatches() << "): ";
@@ -120,33 +131,33 @@ std::ostream& gsMultiPatch<T>::print(std::ostream& os) const
 }
 
 template<class T>
-std::string gsMultiPatch<T>::detail() const 
+std::string gsMultiPatch<T>::detail() const
 {
     std::ostringstream os;
     print(os);
-    if ( nPatches() > 0 ) 
+    if ( nPatches() > 0 )
     {
-        gsBoxTopology::print( os );
+        BaseA::print( os );
     }
     return os.str();
 }
 
 template<class T>
-int gsMultiPatch<T>::geoDim() const 
+short_t gsMultiPatch<T>::geoDim() const
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
     return m_patches[0]->geoDim();
 }
 
 template<class T>
-int gsMultiPatch<T>::coDim() const 
+short_t gsMultiPatch<T>::coDim() const
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
     return m_patches[0]->geoDim() - m_dim;
 }
 
 template<class T>
-gsMatrix<T> 
+gsMatrix<T>
 gsMultiPatch<T>::parameterRange(int i) const
 {
     return m_patches[i]->basis().support();
@@ -154,7 +165,7 @@ gsMultiPatch<T>::parameterRange(int i) const
 
 template<class T>
 gsBasis<T> &
-gsMultiPatch<T>::basis( std::size_t i ) const
+gsMultiPatch<T>::basis( size_t i ) const
 {
     GISMO_ASSERT( i < m_patches.size(), "Invalid patch index requested from gsMultiPatch" );
     return m_patches[i]->basis();
@@ -169,7 +180,7 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy(bool NoRational) const
     if (NoRational)
     {
         for ( const_iterator it = m_patches.begin();
-              it != m_patches.end(); ++it ) 
+              it != m_patches.end(); ++it )
         {
             bb.push_back( (*it)->basis().source().clone().release() );
         }
@@ -177,7 +188,7 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy(bool NoRational) const
     else
     {
         for ( const_iterator it = m_patches.begin();
-              it != m_patches.end(); ++it ) 
+              it != m_patches.end(); ++it )
         {
             bb.push_back( (*it)->basis().clone().release() );
         }
@@ -186,14 +197,14 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy(bool NoRational) const
 }
 
 template<class T>
-void gsMultiPatch<T>::permute(const std::vector<int> & perm)
+void gsMultiPatch<T>::permute(const std::vector<short_t> & perm)
 {
     gsAsVector<gsGeometry<T>*> a (m_patches);
-    a = gsVector<>::Permutation(gsAsConstVector<int>(perm)) * a;
+    a = gsEigen::PermutationMatrix<-1,-1,short_t>(gsAsConstVector<short_t>(perm)) * a;
 }
 
 template<class T>
-void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
+index_t gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
 {
     if ( m_dim == -1 )
     {
@@ -203,19 +214,21 @@ void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
         GISMO_ASSERT( m_dim == g->parDim(),
                       "Tried to add a patch of different dimension in a multipatch." );
     }
-    g->setId( m_patches.size() );
+    index_t index = m_patches.size();
+    g->setId(index);
     m_patches.push_back( g.release() ) ;
     addBox();
+    return index;
 }
 
 template<class T>
-inline void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
+inline index_t gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
 {
-    addPatch(g.clone());
+    return addPatch(g.clone());
 }
 
 template<class T>
-int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const 
+size_t gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const
 {
     const_iterator it
         = std::find( m_patches.begin(), m_patches.end(), g );
@@ -230,7 +243,7 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
 {
     int p1 = findPatchIndex( g1 );
     int p2 = findPatchIndex( g2 );
-    gsBoxTopology::addInterface( p1, s1, p2, s2 );
+    BaseA::addInterface( p1, s1, p2, s2 );
 }
 
 template<class T>
@@ -260,16 +273,46 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
     }
 }
 
+
 template<class T>
-void gsMultiPatch<T>::degreeElevate(int elevationSteps)
+void gsMultiPatch<T>::degreeElevate(short_t const elevationSteps, short_t const dir)
 {
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
-        ( *it )->degreeElevate(elevationSteps, -1);
+        ( *it )->degreeElevate(elevationSteps, dir);
     }
 }
 
+template<class T>
+void gsMultiPatch<T>::degreeIncrease(short_t const elevationSteps, short_t const dir)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->degreeIncrease(elevationSteps, dir);
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::degreeReduce(int elevationSteps)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->degreeReduce(elevationSteps, -1);
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::uniformCoarsen(int numKnots)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->uniformCoarsen(numKnots);
+    }
+}
 
 template<class T>
 void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
@@ -291,16 +334,20 @@ void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
 }
 
 template<class T>
-gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
+gsMultiPatch<T> gsMultiPatch<T>::uniformSplit(index_t dir) const
 {
-    int n = math::exp2(parDim());
-    std::vector<gsGeometry<T>* > result;
-    result.reserve(nPatches()*n);
+    int n;
+    if (dir == -1)
+        n = math::exp2(parDim());
+    else
+        n = 2;
+    std::vector<gsGeometry<T>*> result;
+    result.reserve(nPatches() * n);
 
-    for(size_t np = 0; np<nPatches();++np)
+    for (size_t np = 0; np < nPatches(); ++np)
     {
-        std::vector<gsGeometry<T>* > result_temp = m_patches[np]->uniformSplit();
-        result.insert(result.end(),result_temp.begin(),result_temp.end());
+        std::vector<gsGeometry<T>*> result_temp = m_patches[np]->uniformSplit(dir);
+        result.insert(result.end(), result_temp.begin(), result_temp.end());
     }
     gsMultiPatch<T> mp(result);
     mp.computeTopology();
@@ -313,15 +360,15 @@ gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
   side and thus it implicitly assumes that the patch faces match
 */
 template<class T>
-bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
+bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
 {
-    gsBoxTopology::clearTopology();
+    BaseA::clearTopology();
 
     const size_t   np    = m_patches.size();
     const index_t  nCorP = 1 << m_dim;     // corners per patch
     const index_t  nCorS = 1 << (m_dim-1); // corners per side
 
-    gsMatrix<T> supp, 
+    gsMatrix<T> supp,
     // Parametric coordinates of the reference points. These points
     // are used to decide if two sides match.
     // Currently these are the corner points and the side-centers
@@ -330,15 +377,16 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
         coor.resize(m_dim,nCorP);
     else
         coor.resize(m_dim,nCorP + 2*m_dim);
-    
+
     gsVector<bool> boxPar(m_dim);
 
     // each matrix contains the physical coordinates of the reference points
-    std::vector<gsMatrix<T> > pCorners(np); 
+    std::vector<gsMatrix<T> > pCorners(np);
 
     std::vector<patchSide> pSide; // list of all candidate patchSides to compare
     pSide.reserve(np * 2 * m_dim);
 
+//#   pragma omp parallel for private(supp, boxPar, !coor)
     for (size_t p=0; p<np; ++p)
     {
         supp = m_patches[p]->parameterRange(); // the parameter domain of patch i
@@ -350,7 +398,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
             for (index_t i=0; i<m_dim;++i)
                 coor(i,c-1) = boxPar(i) ? supp(i,1) : supp(i,0);
         }
-        
+
         if (!cornersOnly)
         {
             // Sides' centers parametric coordinates
@@ -359,7 +407,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
             {
                 const index_t dir = c.direction();
                 const index_t s   = static_cast<index_t>(c.parameter());// 0 or 1
-                
+
                 for (index_t i=0; i<m_dim;++i)
                     coor(i,l) = ( dir==i ?  supp(i,s) :
                                   (supp(i,1)+supp(i,0))/2.0 );
@@ -381,59 +429,78 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
     cId1.reserve(nCorS);
     cId2.reserve(nCorS);
 
-    while ( pSide.size() != 0 )
+    std::set<index_t> found;
+    for (size_t sideind=0; sideind<pSide.size(); ++sideind)
     {
-        bool done = false;
-        const patchSide side = pSide.back();
-        pSide.pop_back();
-        for (size_t other=0; other<pSide.size(); ++other)
+        const patchSide & side = pSide[sideind];
+        for (size_t other=sideind+1; other<pSide.size(); ++other)
         {
             side        .getContainedCorners(m_dim,cId1);
             pSide[other].getContainedCorners(m_dim,cId2);
             matched.setConstant(false);
-            
+
             // Check whether the side center matches
             if (!cornersOnly)
                 if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
                        pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
                          ).norm() >= tol )
                     continue;
-            
-            // Check whether the vertices match and compute direction map and orientation
-            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0, 
-                                      pCorners[pSide[other].patch], cId2, 
+
+            //t-junction
+            // check for matching vertices else
+            // invert the vertices of first side on the second and vise-versa
+            // if at least one vertex is found (at most 2^(d-1)), mark as interface
+
+            // Check whether the vertices match and compute direction
+            // map and orientation
+            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
+                                      pCorners[pSide[other].patch], cId2,
                                       matched, dirMap, dirOr, tol ) )
             {
                 dirMap(side.direction()) = pSide[other].direction();
                 dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
-                gsBoxTopology::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
-                // done with pSide[other], remove it from candidate list
-                std::swap( pSide[other], pSide.back() );
-                pSide.pop_back();
-                done=true;
-                break;//for (size_t other=0..)
+                BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
+                found.insert(sideind);
+                found.insert(other);
             }
         }
-        if (!done) // not an interface ?
-            gsBoxTopology::addBoundary( side );
+    }
+
+    index_t k = 0;
+    found.insert(found.end(), pSide.size());
+    for (const auto & s : found)
+    {
+        for (;k<s;++k)
+            BaseA::addBoundary( pSide[k] );
+        ++k;
     }
 
     return true;
 }
 
+template <class T>
+void gsMultiPatch<T>::fixOrientation()
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+        if ( -1 == (*it)->orientation() )
+            (*it)->toggleOrientation();
+    
+    if (this->nInterfaces() || this->nBoundary() )
+        this->computeTopology();
+}
 
 template <class T>
 bool gsMultiPatch<T>::matchVerticesOnSide (
     const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
-    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
-    gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
-    T tol,
-    index_t reference)
+    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2,
+    const gsVector<bool> &matched, gsVector<index_t> &dirMap,
+    gsVector<bool> &dirO, T tol, index_t reference)
 {
     const bool computeOrientation = !(start&(start-1)) && (start != 0); // true if start is a power of 2
     const bool setReference       = start==0;          // if we search for the first point then we set the reference
 
-    const int dim = cc1.rows();
+    const short_t dim = static_cast<short_t>(cc1.rows());
 
     index_t o_dir = 0, d_dir = 0;
 
@@ -492,12 +559,11 @@ bool gsMultiPatch<T>::matchVerticesOnSide (
 }
 
 
-template<class T> 
+template<class T>
 void gsMultiPatch<T>::closeGaps(T tol)
 {
     const T tol2 = tol*tol;
-    //GISMO_UNUSED(tol);
-    gsMatrix<unsigned> bdr1, bdr2; // indices of the boundary control points
+    gsMatrix<index_t> bdr1, bdr2; // indices of the boundary control points
 
     // Create a map which assigns to all meeting patch-local indices a
     // unique global id
@@ -515,17 +581,24 @@ void gsMultiPatch<T>::closeGaps(T tol)
 
         // Grab boundary control points in matching configuration
         p1.basis().matchWith(*it, p2.basis(), bdr1, bdr2);
-        
+
+        bool warn = true;
         //mapper.matchDofs(it->first().patch, bdr1, it->second().patch, bdr2);
         for (index_t i = 0; i!= bdr1.size(); ++i )
         {
             if ( ( p1.coef(bdr1(i)) - p2.coef(bdr2(i)) ).squaredNorm() > tol2 )
-                gsWarn<<"Big gap detected between patches "<< it->first().patch 
-                      <<" and "<<it->second().patch <<"\n";
-
+            {
+                if (warn)
+                {
+                    gsWarn<<"Big gap detected between patches "<< it->first().patch
+                          <<" and "<<it->second().patch <<"\n";
+                    warn = false;
+                }
+            }
+            else
             // Match the dofs on the interface
             mapper.matchDof(it->first().patch, bdr1(i,0), it->second().patch, bdr2(i,0) );
-        }        
+        }
     }
 
     // Finalize the mapper. At this point all patch-local dofs are
@@ -533,7 +606,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
     mapper.finalize();
 
     gsMatrix<T> meanVal;
-    std::vector<std::pair<index_t,index_t> > dof; 
+    std::vector<std::pair<index_t,index_t> > dof;
     const index_t start = mapper.freeSize() - mapper.coupledSize();
     const index_t end   = mapper.freeSize();
 
@@ -547,7 +620,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
         for (size_t k = 1; k!=dof.size(); ++k)
             meanVal += m_patches[dof[k].first]->coef(dof[k].second);
         meanVal.array() /= dof.size();
-        
+
         // Set involved control points equal to their average value
         for (size_t k = 0; k!=dof.size(); ++k)
             m_patches[dof[k].first]->coef(dof[k].second) = meanVal;
@@ -581,73 +654,65 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
 }
 
 template<class T>
-void gsMultiPatch<T>::repairInterfaces()
+gsMultiPatch<T> gsMultiPatch<T>::approximateLinearly(index_t nsamples) const
 {
-    // A bit crude to create a new gsMultiBasis, but this is the fastest
-    // way to re-use the already existing functions of gsMultiBasis
-    gsMultiBasis<T> multiBasis(*this);
-    std::vector< boundaryInterface > bivec = interfaces();
-
-    size_t kmax = 2*bivec.size();
-    size_t k = 0;
-    bool sthChanged = false;
-    bool changed = false;
-
-    do
+    gsMultiPatch<T> result;
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
     {
-        sthChanged = false;
-        //...keep repairing until nothing changes any more
-
-        // loop over all interfaces
-        for( size_t i = 0; i < size_t( bivec.size() ); i++ )
-        {
-            changed = false;
-
-            std::vector<unsigned> refEltsFirst;
-            std::vector<unsigned> refEltsSecond;
-
-            // For each interface, find the areas/elements that do not match...
-            switch( this->dim() )
-            {
-            case 2:
-                changed = multiBasis.template repairInterfaceFindElements<2>( bivec[i], refEltsFirst, refEltsSecond );
-                break;
-            case 3:
-                changed = multiBasis.template repairInterfaceFindElements<3>( bivec[i], refEltsFirst, refEltsSecond );
-                break;
-            default:
-                GISMO_ASSERT(false,"wrong dimension");
-            }
-
-            // ...and if there are any found, refine the bases accordingly
-            if( changed )
-            {
-                if( refEltsFirst.size() > 0 )
-                {
-                    int pi( bivec[i].first().patch );
-                    patch(pi).basis().refineElements_withCoefs( patch(pi).coefs(), refEltsFirst );
-                }
-                if( refEltsSecond.size() > 0 )
-                {
-                    int pi( bivec[i].second().patch );
-                    patch(pi).basis().refineElements_withCoefs( patch(pi).coefs(), refEltsSecond );
-                }
-            }
-
-            sthChanged = sthChanged || changed;
-        }
-        k++; // just to be sure this loop cannot go on infinitely
+        result.addPatch( (*it)->approximateLinearly() );
     }
-    while( sthChanged && k <= kmax );
+
+    result.gsBoxTopology::operator=(*this);//copy the original topology
+    return result;
 }
 
+template<class T>
+bool gsMultiPatch<T>::repairInterface( const boundaryInterface & bi )
+{
+    gsMultiBasis<T> multiBasis(*this);
+    bool changed = false;
+
+    std::vector<index_t> refEltsFirst;
+    std::vector<index_t> refEltsSecond;
+
+    // Find the areas/elements that do not match...
+    switch( this->dim() )
+    {
+    case 2:
+        changed = multiBasis.template repairInterfaceFindElements<2>( bi, refEltsFirst, refEltsSecond );
+        break;
+    case 3:
+        changed = multiBasis.template repairInterfaceFindElements<3>( bi, refEltsFirst, refEltsSecond );
+        break;
+    default:
+        GISMO_ASSERT(false,"wrong dimension");
+    }
+
+    // ...and if there are any found, refine the bases accordingly
+    if( changed )
+    {
+        if( refEltsFirst.size() > 0 )
+        {
+            int pi( bi.first().patch );
+            patch(pi).basis().refineElements_withCoefs( patch(pi).coefs(), refEltsFirst );
+        }
+        if( refEltsSecond.size() > 0 )
+        {
+            int pi( bi.second().patch );
+            patch(pi).basis().refineElements_withCoefs( patch(pi).coefs(), refEltsSecond );
+        }
+    }
+
+    return changed;
+}
 
 
 
 template<class T>
 void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
                                    gsVector<index_t> & pids,
-                                   gsMatrix<T> & preim) const
+                                   gsMatrix<T> & preim, const T accuracy) const
 {
     pids.resize(points.cols());
     pids.setConstant(-1); // -1 implies not in the domain
@@ -657,11 +722,11 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
     for (index_t i = 0; i!=pids.size(); ++i)
     {
         pt = points.col(i);
-        
-        for (std::size_t k = 0; k!= m_patches.size(); ++k)
+
+        for (size_t k = 0; k!= m_patches.size(); ++k)
         {
             pr = m_patches[k]->parameterRange();
-            m_patches[k]->invertPoints(pt, tmp);
+            m_patches[k]->invertPoints(pt, tmp, accuracy);
             if ( (tmp.array() >= pr.col(0).array()).all()
                  && (tmp.array() <= pr.col(1).array()).all() )
             {
@@ -671,6 +736,196 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
             }
         }
     }
+}
+
+template<class T>
+void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points, index_t pid1,
+                                   gsVector<index_t> & pid2, gsMatrix<T> & preim) const
+{
+    // Assumes points are found on pid1 and possibly on one more patch
+    pid2.resize(points.cols());
+    pid2.setConstant(-1); // -1 implies not in the domain
+    preim.resize(parDim(), points.cols());//uninitialized by default
+    gsMatrix<T> pt, pr, tmp;
+
+    for (index_t i = 0; i!=pid2.size(); ++i)
+    {
+        pt = points.col(i);
+
+        for (size_t k = 0; k!= m_patches.size(); ++k)
+        {
+            if (pid1==(index_t)k) continue; // skip pid1
+
+            pr = m_patches[k]->parameterRange();
+            m_patches[k]->invertPoints(pt, tmp);
+            if ( (tmp.array() >= pr.col(0).array()).all()
+                 && (tmp.array() <= pr.col(1).array()).all() )
+            {
+                pid2[i] = k;
+                preim.col(i) = tmp;
+                break;
+            }
+        }
+    }
+}
+
+namespace
+{
+struct __closestPointHelper
+{
+    __closestPointHelper() : dist(math::limits::max()), pid(-1) { }
+    real_t dist;
+    index_t pid;
+    gsVector<> preim;
+};
+}
+
+template<class T> std::pair<index_t,gsVector<T> >
+gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
+                                const T accuracy) const
+{
+    std::pair<index_t,gsVector<T> > result;
+    this->closestDistance(pt,result,accuracy);
+    return result;
+}
+
+
+template<class T>
+T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
+                                std::pair<index_t,gsVector<T> > & result,
+                                const T accuracy) const
+{
+    GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
+                  pt.rows() <<"!="<< targetDim() );
+
+    gsVector<T> tmp;
+
+#ifndef _MSC_VER
+#   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
+    struct __closestPointHelper cph;
+#   pragma omp parallel for default(shared) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
+#else
+    struct __closestPointHelper cph;
+#endif
+    for (size_t k = 0; k < m_patches.size(); ++k)
+    {
+        // possible improvement: approximate dist: eval patch on a
+        // grid. find min distance between grid and pt
+
+        const T val = this->patch(k).closestPointTo(pt, tmp, accuracy);
+        if (cph.dist>val)
+        {
+            cph.dist = val; //need to be all in one struct for OMP
+            cph.pid = k;
+            cph.preim = tmp;
+        }
+    }
+    //gsInfo <<"--Pid="<<cph.pid<<", Dist("<<pt.transpose()<<"): "<< cph.dist <<"\n";
+    result = std::make_pair(cph.pid, give(cph.preim));
+    return cph.dist;
+}
+
+template<class T>
+std::vector<T> gsMultiPatch<T>::HausdorffDistance(  const gsMultiPatch<T> & other,
+                                                    const index_t nsamples,
+                                                    const T accuracy,
+                                                    const bool directed)
+{
+    GISMO_ASSERT(this->nPatches()==other.nPatches(),"Number of patches should be the same, but this->nPatches()!=other.nPatches() -> "<<this->nPatches()<<"!="<<other.nPatches());
+    std::vector<T> result(this->nPatches());
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+#   ifdef _OPENMP
+    for ( size_t p=tid; p<this->nPatches(); p+=nt )
+#   else
+    for ( size_t p=0; p<this->nPatches(); p++ )
+#   endif
+    {
+        result.at(p) = this->patch(p).HausdorffDistance(other.patch(p),nsamples,accuracy,directed);
+    }
+}//omp parallel
+    return result;
+}
+
+template<class T>
+T gsMultiPatch<T>::averageHausdorffDistance(  const gsMultiPatch<T> & other,
+                                                    const index_t nsamples,
+                                                    const T accuracy,
+                                                    bool directed)
+{
+    std::vector<T> distances = HausdorffDistance(other,nsamples,accuracy,directed);
+    return std::accumulate(distances.begin(), distances.end(), (T)( 0 ) ) / distances.size();
+}
+
+template<class T>
+void gsMultiPatch<T>::constructInterfaceRep()
+{
+    m_ifaces.clear();
+    for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        const gsGeometry<T> & p2 = *m_patches[it->second().patch];
+        m_ifaces[*it] = p1.iface(*it,p2);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructBoundaryRep()
+{
+    m_bdr.clear();
+    for ( biterator it = bBegin(); it != bEnd(); ++it ) // for all boundaries
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->patch];
+        m_bdr[*it] = p1.boundary(*it);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructInterfaceRep(const std::string l)
+{
+    m_ifaces.clear();
+    ifContainer ifaces = this->interfaces(l);
+    for ( iiterator it = ifaces.begin(); it != ifaces.end(); ++it ) // for all interfaces
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        const gsGeometry<T> & p2 = *m_patches[it->second().patch];
+        m_ifaces[*it] = p1.iface(*it,p2);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructBoundaryRep(const std::string l)
+{
+    m_bdr.clear();
+    bContainer bdrs = this->boundaries(l);
+    for ( biterator it = bdrs.begin(); it != bdrs.end(); ++it ) // for all boundaries
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->patch];
+        m_bdr[*it] = p1.boundary(*it);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructSides()
+{
+    for ( biterator it = bBegin(); it != bEnd(); ++it ) // for all boundaries
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->patch];
+        m_sides[*it] = p1.boundary(*it);
+    }//end for
+
+    for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        const gsGeometry<T> & p2 = *m_patches[it->second().patch];
+        m_sides[it->first()] = p1.boundary(it->first());
+        m_sides[it->second()] = p2.boundary(it->second());
+    }//end for
 }
 
 

@@ -5,8 +5,8 @@ namespace gismo {
 In this tutorial we collect some tips and guidelines for writing code
 in \gismo.
 
-Information regarding code formatting are found in 
-<a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/Contributing#Codestyleandformatting" target="_parent"> the wiki</a>.
+Information regarding code formatting are found in
+<a href="https://github.com/gismo/gismo/wiki/Contributing#code-style-and-formatting" target="_parent"> the wiki</a>.
 
 
 \section conf04 Configuration options
@@ -26,58 +26,57 @@ Configuration:
 The full list of options can be accessed using the \b cmake-gui
 utility, or using the command-line version:
 
-\verbatim 
+\verbatim
 ccmake .
-\endverbatim 
+\endverbatim
 
 inside the build folder.
 
 
--   CMAKE_BUILD_TYPE 
+-   CMAKE_BUILD_TYPE
 
     Available values are the standard CMake build configurations:
     Debug, Release, RelWithDebInfo?, MinSizeRel?.
 
--   GISMO_COEFF_TYPE 
+-   GISMO_COEFF_TYPE
 
     The arithmetic type to be used for all computations. Available
     options include double, long double, float. This is the type is
     alias as \a real_t.
 
--   GISMO_EXTRA_DEBUG 
+-   GISMO_WITH_XDEBUG
 
     If set to ON additional debugging tools are enabled during
     compilation. These include checked iterators for GCC and MSVC
     compilers and call stack back-trace printout when a runtime
     exception occurs.
 
--   GISMO_BUILD_LIB 
+-   GISMO_BUILD_LIB
 
     If enabled a dynamic library is created using GISMO_COEFF_TYPE
     arithmetic. A target for a static library named gismo_static is
     also created but not compiled by default.
 
--   GISMO_BUILD_EXAMPLES 
+-   GISMO_BUILD_EXAMPLES
 
     If enabled the programs in the examples folder are compiled, and
     executables are created in build-folder/bin.
 
--   GISMO_BUILD_AXL 
+-   GISMO_PLUGIN_AXL
 
     If enabled the plugin for Axel modeler is compiled (requires
     Axel).
 
--   GISMO_WITH_PSOLID 
+-   GISMO_WITH_PSOLID
 
     If enabled the extensions using functionalities of Parasolid
     geometric kernel are compiled.(requires Parasolid).
 
--   GISMO_WITH_ONURBS 
+-   gsOpennurbs
 
-    If enabled the extension for reading and writing of Rhinoceros'
-    3DM is compiled.
+    Extension for reading and writing of Rhinoceros' 3DM.
 
--   CMAKE_INSTALL_PREFIX 
+-   CMAKE_INSTALL_PREFIX
 
     The location for installation of the library, e.g. /usr/local on
     some Linux systems.
@@ -93,14 +92,14 @@ There are 2 main tools for debugging C++ code:
 - The memory checker, for instance valgrind on linux or the C Run-Time
   Libraries (CRT) on Visual studio.
 
-If the CMake option GISMO_EXTRA_DEBUG is set to ON, more checks are
+If the CMake option GISMO_WITH_XDEBUG is set to ON, more checks are
 performed while running the code. In particular the Standard library
 containers are checked for invalid access, invalid iterators, and so
 on. Also upon failure of the program the call stack is printed on the
-screen. 
+screen.
 
 \note
-The setting GISMO_EXTRA_DEBUG replaces the standard containers, for
+The setting GISMO_WITH_XDEBUG replaces the standard containers, for
 instance std::vector with debug types, eg std::debug_vector. This can
 cause problems when linking the resulting dynamic library with
 third-party codes which is not compiled with the same
@@ -119,7 +118,7 @@ Problems or bugs might also be related to the platform or operating
 system. Nightly compilations and tests on several systems detects such
 problems. The CDash server:
 
-https://cdash.ricam.oeaw.ac.at/index.php?project=Gismo-stable
+https://cdash-ci.irisa.fr/index.php?project=Gismo
 
 collects the result of compilation and testing from compilation nodes.
 To Submit your compilation and test log to the CDash server you can type:
@@ -138,7 +137,7 @@ with different datatypes and maybe architectures.
 To ensure this, and still be able to use some of the benefits of newer
 compilers like C++11, there are some helping functions inside gsUtils and
 gsMemory that should be used instead of native C++11 calls. It is helpful
-to keep in mind, that real_t and size_t are definitions, that will be
+to keep in mind that real_t and size_t are definitions that will be
 exchanged by cmake and should be used instead of double and int.
 
 Cxx(11)                             | Gismo
@@ -146,12 +145,12 @@ Cxx(11)                             | Gismo
 std::move(...)                      | give(...)
 double                              | real_t
 int                                 | index_t
-std::unique_ptr                     | memory::unique_ptr or gs...::uPtr
-std::shared_ptr                     | memory::shared_ptr or gs...::Ptr
+std::unique_ptr                     | memory::unique_ptr or gs...\::uPtr
+std::shared_ptr                     | memory::shared_ptr or gs...\::Ptr
 std::to_string                      | util::to_string
 
-Also keep in mind, that C++98 std::ios doesn't like "strings". Therefore,
-just call .c_str() if you give a string to a fstream (like ofstream::open).
+Also keep in mind that C++98 std::ios doesn't like "strings". Therefore,
+just call .c_str() if you give a string to an fstream (like ofstream::open).
 
 And please don't use auto and the fancy new foreach loop.
 
@@ -183,13 +182,13 @@ And please don't use auto and the fancy new foreach loop.
 
 
 - Try to fit your work in the general framework of Gismo, and derive
-  your classes from the existing Core classes. FOr instance, if you
+  your classes from the existing Core classes. For instance, if you
   implement a different function type, inherit from gsFunction and
   implement the evaluation interface.
 
 
 - Add Doxygen comments to all of your functions and classes. There are
-  a lot of resources online in using doxygen documentation.  The basic
+  a lot of resources online in using Doxygen documentation.  The basic
   usage is quite straightforward.
 
   + <a href="https://www.stack.nl/~dimitri/doxygen/manual/markdown.html" target="_blank">Doxygen manual pages</a>.
@@ -212,9 +211,8 @@ And please don't use auto and the fancy new foreach loop.
    */
    \endverbatim
 
-- Get in touch with other developers in the mailing list
-  gismo@ricam.oeaw.ac.at for discussions/ideas/changes/comments about the code.
-  Issues can be also discussed on Github: https://github.com/filiatra/gismo/issues
+- Get in touch with us on Github wiki: https://github.com/gismo/gismo/wiki
+  and issues: https://github.com/gismo/gismo/issues
 
 */
 }

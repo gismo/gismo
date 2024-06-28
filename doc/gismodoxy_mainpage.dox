@@ -3,9 +3,9 @@ namespace gismo {
 /**
   \mainpage \gismo
 
-These pages were created on \today. The latest revision of this manual is <a href="http://gs.jku.at/trac/gismo/wiki/public/Doxygen" target="_parent">available online</a>.
+These pages were created on \today. The latest revision of this manual is <a href="https://gismo.github.io" target="_parent">available online</a>.
 
-\gismo (Geometry + Simulation Modules, pronounced "gismo") is an open-source C++ library that brings together mathematical tools for geometric design and numerical simulation. It implements the relatively new paradigm of isogeometric analysis, which suggests the use of a unified framework in the design and analysis pipeline. \gismo is an object-oriented, cross-platform, template C++ library and follows the generic programming principle, with a focus on both efficiency and ease of use. The library has been developed within the homonym research network supported by the Austrian Science Fund and aims at providing access to high quality, open-source software to the forming isogeometric numerical simulation community and beyond.
+\gismo (Geometry + Simulation Modules, pronounced "gismo") is an open-source C++ library that brings together mathematical tools for geometric design and numerical simulation. It implements the relatively new paradigm of isogeometric analysis, which suggests the use of a unified framework in the design and analysis pipeline. \gismo is an object-oriented, cross-platform, template C++ library and follows the generic programming principle, with a focus on both efficiency and ease of use. The library aims at providing access to high quality, open-source software to the forming isogeometric numerical simulation community and beyond.
 
 The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla Public License Version 2.0</a>.
 
@@ -15,13 +15,15 @@ The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" targ
 
 - The list of \subpage Examples.
 
-- The library is partitioned into smaller entities called <a href="usergroup0.html"><b>modules</b></a>. See section <a href="usergroup0.html"><b>\gismo modules</b></a> for an overview of available modules.
+- The library is partitioned into smaller entities called <a href="group__Modules.html"><b>modules</b></a>. See section <a href="group__Modules.html"><b>\gismo modules</b></a> for an overview of available modules.
 
 - Object hierarchies and groups of classes that are related or
-implement the same concept are <a href="usergroup1.html"><b>listed
+implement the same concept are <a href="usergroup0.html"><b>listed
 here.</b></a>
 
 - The full <a href="annotated.html"><b>list of classes</b></a> is available.
+
+- Instructions for using <a href="python.html"><b>\gismo in Python</b></a>.
 
 <h2>Wiki pages</h2>
 

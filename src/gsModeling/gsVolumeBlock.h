@@ -19,6 +19,7 @@
 #include <gsModeling/gsFitting.h>
 
 #include <gsCore/gsVolume.h>
+#include <gsCore/gsBoundary.h>
 
 
 
@@ -77,7 +78,7 @@ public:
 
         int sideIndex = -1; // resulting index of side - 1
 
-        for (std::size_t edgeIndx = 0; edgeIndx < hex.size(); edgeIndx++)
+        for (size_t edgeIndx = 0; edgeIndx < hex.size(); edgeIndx++)
         {
             HalfEdge* faceEdge = hex[edgeIndx];
 

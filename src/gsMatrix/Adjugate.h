@@ -51,7 +51,7 @@ struct compute_adjugate
 template<typename MatrixType, typename ResultType>
 struct compute_adjugate<MatrixType, ResultType, 1>
 {
-    static inline void run(const MatrixType& matrix, ResultType& result)
+    static inline void run(const MatrixType& , ResultType& result)
     {
         result.coeffRef(0,0) = typename ResultType::Scalar(1);
     }
@@ -155,6 +155,7 @@ struct traits<adjugate_impl<MatrixType> >
 
 // ***  Implementation of MatrixBase::adjugate()
 
+/// @memberof gsEigen::MatrixBase
 template<typename Derived>
 inline const internal::adjugate_impl<Derived>
 MatrixBase<Derived>::adjugate() const
@@ -163,11 +164,11 @@ MatrixBase<Derived>::adjugate() const
     return internal::adjugate_impl<Derived>(derived());
 }
 
+/// @memberof gsEigen::MatrixBase
 template<typename Derived>
 inline void MatrixBase<Derived>::adjugateInPlace()
 {
     derived() = adjugate().eval();
 }
-
 
 }

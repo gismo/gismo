@@ -1,12 +1,9 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- external
+## This file is part of the G+Smo library.
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2018 - RICAM-Linz.
 ######################################################################
-
-## #################################################################
-## Collect Headers
-## #################################################################
 
 set(${PROJECT_NAME}_externals "${CMAKE_CURRENT_SOURCE_DIR}"
     CACHE INTERNAL "Externals directory")
@@ -32,6 +29,5 @@ endif(GISMO_BUILD_CPPLOT)
 
 #add_subdirectory(Eigen)
 #add_subdirectory(rapidxml)
-
 
 #include_directories(${CMAKE_CURRENT_SOURCE_DIR})

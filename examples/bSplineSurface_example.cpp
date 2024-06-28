@@ -23,20 +23,20 @@ const double PI = 3.14159265;
 
 int main(int argc, char* argv[])
 {
-    int n = 5;
-    int m = 5;
-    int degree = 3;
+    index_t n = 5;
+    index_t m = 5;
+    index_t degree = 3;
     std::string output("");
 
     gsCmdLine cmd("Tutorial on gsTensorBSpline class.");
-    cmd.addInt   ("n", "n", "Number of basis function in one direction"  , n);
-    cmd.addInt   ("m", "m", "Number of basis function in other direction", m);
+    cmd.addInt   ("n", "dof1", "Number of basis function in one direction"  , n);
+    cmd.addInt   ("m", "dof2", "Number of basis function in other direction", m);
     cmd.addInt   ("d", "degree", "Degree of a surface", degree);
     cmd.addString("o", "output", "Name of the output file.", output);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Adjust values to the minimum required
-    degree = math::max(0, degree    );
+    degree = math::max( (index_t)(0), degree    );
     n      = math::max(n, degree + 1);
     m      = math::max(m, degree + 1);
 
@@ -96,8 +96,11 @@ int main(int argc, char* argv[])
         surface.controlNet(mesh);
         gsWriteParaview(mesh, out);
     }
+    else
+    {
+        gsInfo << "Done. No output created, re-run with --output <filename> to get a ParaView "
+                  "file containing the solution.\n";
+    }
 
     return 0;
 }
-
-

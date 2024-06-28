@@ -29,6 +29,26 @@
 // memory::unique_ptr (aka. uPtr) of the correct type. If casts are needed
 // afterward, use memory::convert_ptr<toType>(from).
 
+// NOTE: One has to add for the DOXYGEN documentation the signature by hand
+// and "comment out" the _impl method in the hpp file. This can be done with
+// the preprocessor definition __DOXYGEN__. Commenting out is done with @cond
+// till @endcond as a doxygen comment.
+
+// Example:
+
+// #ifdef __DOXYGEN__
+// /// @briefSome Method
+// /// @param a
+// /// @param b
+// /// @return gsBasis<T>::uPtr
+// gsBasis<T>::uPtr someMethod(int a, const int b)
+// #endif
+//
+// GISMO_UPTR_FUNCTION_PURE(gsBasis<T>, someMethod, int, const int)
+
+// /// @cond
+// gsBasis<T>* someClass<T>::someMethod_impl(int a, const int b) { .... }
+// /// @endcond
 
 // Helper macros for counting arguments, works till highest number in PP_RSEQ_N
 // Call with PP_NARG(__VA_ARGS__)
@@ -109,6 +129,13 @@
 #define GISMO_CLONE_FUNCTION(type) \
         __DEC0(type, clone, void) { return new type(*this); } \
         __DEF0(type, clone, void)
+
+// Declaration, definition and implementation of clone function which overrides
+// 1st: return type
+#define GISMO_OVERRIDE_CLONE_FUNCTION(type) \
+        __DEC0(type, clone, void) override { return new type(*this); } \
+        __DEF0(type, clone, void)
+
 
 namespace gismo {
 
@@ -191,25 +218,29 @@ template <typename T>
 class gsFunctionSet
 {
 public:
+
     /// Shared pointer for gsFunctionSet
     typedef memory::shared_ptr< gsFunctionSet > Ptr;
 
     /// Unique pointer for gsFunctionSet
     typedef memory::unique_ptr< gsFunctionSet > uPtr;
 
-    typedef std::pair<int,int> dim_t;
 public:
 
     gsFunctionSet();
 
-    gsFunctionSet(const gsFunctionSet & o);
+    gsFunctionSet(const gsFunctionSet &);
 
     virtual ~gsFunctionSet();
 
+#ifdef __DOXYGEN__
+    /// @brief Clone methode. Produceds a deep copy inside a uPtr.
+    uPtr clone();
+#endif
     GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
-    virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
+    virtual const gsFunctionSet & piece(const index_t) const {return *this;}
 
     /// @brief Helper which casts and returns the k-th piece of this
     /// function set as a gsFunction
@@ -231,6 +262,7 @@ public:
      of definition is the whole of \f$R^{domainDim}\f$
     */
     virtual gsMatrix<T> support() const;
+    virtual gsMatrix<T> support(const index_t & i) const;
 
     /**
       @brief Indices of active (non-zero) function(s) for each point.
@@ -243,7 +275,7 @@ public:
       @param u
       @param result
      */
-    virtual void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const;
+    virtual void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const;
     
 public:
     /**
@@ -379,6 +411,9 @@ public:
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> > & result) const;
 
+    /// Evaluate all derivatives upto order \a n, \see evalAllDers_into
+    std::vector<gsMatrix<T> > evalAllDers(const gsMatrix<T> & u, int n) const;
+
     /// Evaluate the function, \see eval_into()
     gsMatrix<T> eval(const gsMatrix<T>& u) const;
 
@@ -402,9 +437,9 @@ public:
     /// @brief Returns the indices of active (nonzero) functions at
     /// points \a u, as a list of indices.
     /// \sa active_into()
-    gsMatrix<unsigned> active(const gsMatrix<T> & u) const
+    gsMatrix<index_t> active(const gsMatrix<T> & u) const
     {
-        gsMatrix<unsigned> rvo;
+        gsMatrix<index_t> rvo;
         this->active_into(u, rvo);
         return rvo;
     }
@@ -498,41 +533,24 @@ public:
      */
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
 
-    /**
-       @brief Computes function data
-
-       This function evaluates the functions and their derivatives at
-       the points contained in the gsMapData geo. The computed values
-       are written in the corresponding fields of \a result.  Which
-       field to write (and what to compute) is controlled by the \a
-       out.flags (see also gsFuncData).  Contrarily to
-       compute(const gsMatrix<T> &, gsFuncData<T> &) where the caller
-       must provide either parametric or physical points this call
-       differenciate automatically.  
-
-       @param[in] in 
-       @param[out] out
-     */
-    virtual void compute(const gsMapData<T> & in, gsFuncData<T> & out) const;
-
 public:
     /**
        @brief Dimension of the (source) domain.
        @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$, returns \f$n\f$.
      */
-    virtual int domainDim () const = 0;
+    virtual short_t domainDim () const = 0;
 
     /**
        @brief Dimension of the target space.
        @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$, returns \f$m\f$.
      */
-    virtual int targetDim () const {return 1;}
+    virtual short_t targetDim () const {return 1;}
 
     /*
       @brief Dimension of domain and target
       @return the pair of integers domainDim() and targetDim()
     */
-    dim_t dimensions() const {return std::make_pair(domainDim(),targetDim());}
+    std::pair<short_t, short_t> dimensions() const {return std::make_pair(domainDim(),targetDim());}
     
     /**
       @brief size
@@ -565,6 +583,15 @@ public:
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFunctionSet<T>& b)
 {return b.print(os); }
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsFunction
+   */
+  void pybind11_init_gsFunctionSet(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

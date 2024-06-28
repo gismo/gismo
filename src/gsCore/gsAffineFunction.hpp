@@ -16,6 +16,9 @@ namespace gismo {
 
 template <typename T>
 gsAffineFunction<T>::gsAffineFunction(const gsVector<index_t> &dir, const gsVector<bool> &o, const gsMatrix<T> &box1, const gsMatrix<T> &box2)
+:
+m_box1(box1),
+m_box2(box2)
 {
     GISMO_ASSERT(box1.rows()==box2.rows(),
                  "The two boxes must be subset of Rn for the same n (same number of rows)");
@@ -29,7 +32,7 @@ gsAffineFunction<T>::gsAffineFunction(const gsVector<index_t> &dir, const gsVect
     m_trans.resize(dim);
     for (index_t i=0; i<dim; ++i)
     {
-        const T ratio = size1[i]==0 ? T(1) : size2(dir[i])/size1[i];
+        const T ratio = size1[i]==0 ? (T)(1) : size2(dir[i])/size1[i];
         m_mat(dir(i),i) = o[i] ? ratio : -ratio;
         m_trans(dir(i)) = o[i] ? box2(dir[i],0) : box2(dir[i],1);
     }
@@ -46,13 +49,13 @@ gsAffineFunction<T>::gsAffineFunction(const gsMatrix<T> mat, const gsVector<T> t
 }
 
 template <typename T>
-int gsAffineFunction<T>::domainDim() const
+short_t gsAffineFunction<T>::domainDim() const
 {
     return m_mat.cols();
 }
 
 template <typename T>
-int gsAffineFunction<T>::targetDim() const
+short_t gsAffineFunction<T>::targetDim() const
 {
     return m_mat.rows();
 }
@@ -61,6 +64,8 @@ template <typename T>
 void gsAffineFunction<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     result = (m_mat*u).colwise()+m_trans;
+    for (index_t k=0; k!=result.rows(); k++)
+        result.row(k) = result.row(k).cwiseMax(m_box2(k,0)).cwiseMin(m_box2(k,1));
 }
 
 template <typename T>

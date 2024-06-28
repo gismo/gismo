@@ -4,7 +4,7 @@
     set and accessed easily
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -31,14 +31,17 @@ std::string gsOptionList::getString(const std::string & label) const
     return it->second.first;
 }
 
-int gsOptionList::getInt(const std::string & label) const
+index_t & gsOptionList::getIntRef(const std::string & label)
+{ return const_cast<index_t &>(getInt(label)); }
+
+const index_t & gsOptionList::getInt(const std::string & label) const
 {
     IntTable::const_iterator it = m_ints.find(label);
     GISMO_ENSURE(it!=m_ints.end(), "Invalid request (getInt): "<<label<<" is not not an int; it is "<<getInfo(label)<<".");
     return it->second.first;
 }
 
-real_t gsOptionList::getReal(const std::string & label) const
+gsOptionList::Real gsOptionList::getReal(const std::string & label) const
 {
     RealTable::const_iterator it = m_reals.find(label);
     GISMO_ENSURE(it!=m_reals.end(), "Invalid request (getReal): "<<label<<" is not a real; it is "<<getInfo(label)<<".");
@@ -52,22 +55,70 @@ bool gsOptionList::getSwitch(const std::string & label) const
     return it->second.first;
 }
 
+std::vector<std::string> gsOptionList::getMultiString(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiString): The group " + gn + " does not exist.");
+
+    std::vector<std::string> result;
+    const std::string search = gn + ".";
+    size_t sz = static_cast<size_t>(getInt(search + "Size"));
+    result.reserve(sz);
+    // add strings to vector
+    for (size_t i = 0; i < sz; ++i)
+        result.push_back(getString(search + util::to_string(i)));
+
+    return result;
+}
+
+std::vector<index_t> gsOptionList::getMultiInt(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiInt): The group " + gn + " does not exist.");
+
+    std::vector<index_t> result;
+
+    const std::string search = gn + ".";
+
+    // add integers to vector
+    for (IntTable::const_iterator it = m_ints.begin(); it != m_ints.end(); it++)
+        if (util::starts_with(it->first, search) && !util::ends_with(it->first, "Size"))
+            result.push_back(it->second.first);
+
+    return result;
+}
+
+std::vector<gsOptionList::Real>
+gsOptionList::getMultiReal(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiReal): The group " + gn + " does not exist.");
+
+    std::vector<Real> result;
+
+    const std::string search = gn + ".";
+
+    // add reals to vector
+    for (RealTable::const_iterator it = m_reals.begin(); it != m_reals.end(); it++)
+        if (util::starts_with(it->first, search) && !util::ends_with(it->first, "Size"))
+            result.push_back(it->second.first);
+
+    return result;
+}
+
 std::string gsOptionList::askString(const std::string & label,
                                     const std::string & value) const
 {
     StringTable::const_iterator it = m_strings.find(label);
-#if defined(GISMO_EXTRA_DEBUG)
+#if defined(GISMO_WITH_XDEBUG)
     if ( it == m_strings.end() && exists(label) )
         gsWarn << "Invalid request (askString): "<<label<<" is given, but not a string; it is "<<getInfo(label)<<".\n";
 #endif
     return ( it == m_strings.end() ? value : it->second.first);
 }
 
-int gsOptionList::askInt(const std::string & label,
-                         const int & value) const
+index_t gsOptionList::askInt(const std::string & label,
+                         const index_t & value) const
 {
     IntTable::const_iterator it = m_ints.find(label);
-#if defined(GISMO_EXTRA_DEBUG)
+#if defined(GISMO_WITH_XDEBUG)
     if ( it == m_ints.end() && exists(label) )
         gsWarn << "Invalid request (askInt): "<<label<<" is given, but not an int; it is "<<getInfo(label)<<".\n";
 #endif
@@ -78,18 +129,18 @@ bool gsOptionList::askSwitch(const std::string & label,
                              const bool & value) const
 {
     SwitchTable::const_iterator it = m_switches.find(label);
-#if defined(GISMO_EXTRA_DEBUG)
+#if defined(GISMO_WITH_XDEBUG)
     if ( it == m_switches.end() && exists(label) )
         gsWarn << "Invalid request (askSwitch): "<<label<<" is given, but not a switch; it is "<<getInfo(label)<<".\n";
 #endif
     return ( it == m_switches.end() ? value : it->second.first);
 }
 
-real_t gsOptionList::askReal(const std::string & label,
-                             const real_t & value) const
+gsOptionList::Real gsOptionList::askReal(const std::string & label,
+                             const Real & value) const
 {
     RealTable::const_iterator it = m_reals.find(label);
-#if defined(GISMO_EXTRA_DEBUG)
+#if defined(GISMO_WITH_XDEBUG)
     if ( it == m_reals.end() && exists(label) )
         gsWarn << "Invalid request (askReal): "<<label<<" is given, but not a real; it is "<<getInfo(label)<<".\n";
 #endif
@@ -105,7 +156,7 @@ void gsOptionList::setString(const std::string & label,
 }
 
 void gsOptionList::setInt(const std::string & label,
-                          const int & value)
+                          const index_t & value)
 {
     IntTable::iterator it = m_ints.find(label);
     GISMO_ENSURE(it!=m_ints.end(), "Invalid request (setInt): "<<label<<" is not a int; it is "<<getInfo(label)<<".");
@@ -113,7 +164,7 @@ void gsOptionList::setInt(const std::string & label,
 }
 
 void gsOptionList::setReal(const std::string & label,
-                           const real_t & value)
+                           const Real & value)
 {
     RealTable::iterator it = m_reals.find(label);
     GISMO_ENSURE(it!=m_reals.end(), "Invalid request (setReal): "<<label<<" is not a real; it is "<<getInfo(label)<<".");
@@ -128,6 +179,14 @@ void gsOptionList::setSwitch(const std::string & label,
     it->second.first = value;
 }
 
+void gsOptionList::toggleSwitch( const std::string & label )
+{
+    SwitchTable::iterator it = m_switches.find(label);
+    GISMO_ENSURE(it!=m_switches.end(), "Invalid request (setSwitch): "<<label<<" is not a switch; it is "<<getInfo(label)<<".");
+    it->second.first = !(it->second.first);
+}
+
+
 void gsOptionList::addString(const std::string & label,
                              const std::string & desc,
                              const std::string & value)
@@ -141,7 +200,7 @@ void gsOptionList::addString(const std::string & label,
 
 void gsOptionList::addInt(const std::string & label,
                           const std::string & desc,
-                          const int & value)
+                          const index_t & value)
 {
     GISMO_ENSURE( !( isString(label) || isReal(label) || isSwitch(label) ),
         "Invalid request (addInt): Option "<<label<<" already exists, but not as an int; it is "<<getInfo(label)<<"." );
@@ -151,12 +210,26 @@ void gsOptionList::addInt(const std::string & label,
 
 void gsOptionList::addReal(const std::string & label,
                            const std::string & desc,
-                           const real_t & value)
+                           const Real& value)
 {
     GISMO_ENSURE( !( isString(label) || isInt(label) || isSwitch(label) ),
          "Invalid request (addReal): Option "<<label<<" already exists, but not as a real; it is "<<getInfo(label)<<"." );
     //GISMO_ASSERT( !exists(label), "Option "<<label<<" already exists." );
     m_reals[label] = std::make_pair(value,desc);
+}
+
+void gsOptionList::addMultiInt(const std::string & label,
+                               const std::string & desc,
+                               const std::vector<index_t> & values)
+{
+    GISMO_ENSURE( !( isString(label) || isReal(label) || isSwitch(label) ),
+                  "Invalid request (addMultiInt): Option "<<label<<" already exists, but not as an multiint; it is "<<getInfo(label)<<"." );
+
+    for (size_t i = 0; i < values.size(); ++i)
+    {
+        addInt(label + "." + util::to_string(i), desc, values[i]);
+    }
+    addInt(label + ".Size", desc, values.size());
 }
 
 void gsOptionList::addSwitch(const std::string & label,
@@ -352,9 +425,8 @@ std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
     return result;
 }
 
-std::ostream & gsOptionList::OptionListEntry::print(std::ostream & os) const
+std::ostream & gsOptionList::OptionListEntry::print(std::ostream & os, index_t slot_label) const
 {
-    const index_t slot_label = 19;
     const index_t slot_val = 8;
     const index_t sz_label = label.size();
     const index_t sz_val = val.size();
@@ -373,8 +445,12 @@ std::ostream & gsOptionList::print(std::ostream & os) const
     DataTable data = getAllEntries();
     os<<"Options ("<<data.size()<<"):\n";
     std::sort( data.begin(), data.end() );
+    index_t slot_label = 15;
     for ( DataTable::const_iterator it = data.begin(); it != data.end(); it++ )
-        it->print(os);
+        slot_label = std::max( slot_label, (index_t)it->label.size() );
+    slot_label = std::min( slot_label, (index_t)35 );
+    for ( DataTable::const_iterator it = data.begin(); it != data.end(); it++ )
+        it->print(os, slot_label);
     return os;
 }
 
@@ -453,7 +529,7 @@ void gsXml<gsOptionList>::get_into(gsXmlNode * node, gsOptionList & result)
         {
             std::istringstream str;
             str.str( val );
-            int myVal;
+            index_t myVal;
             gsGetInt(str, myVal);
             result.addInt(label, desc, myVal);
         }
@@ -469,7 +545,7 @@ void gsXml<gsOptionList>::get_into(gsXmlNode * node, gsOptionList & result)
         {
             std::istringstream str;
             str.str( val );
-            int myVal;
+            index_t myVal;
             gsGetInt(str, myVal);
             result.addSwitch(label, desc, (0 != myVal) );
         }
@@ -557,11 +633,123 @@ gsXml<gsOptionList>::put (const gsOptionList & obj, gsXmlTree & data)
       optionList->insert_node(0, tmp);
       }
     */
-        
+
     return optionList;
 }
 
 
 } // namespace internal
+
+#ifdef GISMO_WITH_PYBIND11
+
+namespace py = pybind11;
+void pybind11_init_gsOptionList(py::module &m) {
+
+  py::class_<gsOptionList> ol(m, "gsOptionList");
+
+  ol.def("getString", &gsOptionList::getString)
+    .def("getInt",    &gsOptionList::getInt)
+    .def("getReal",   &gsOptionList::getReal)
+    .def("getSwitch", &gsOptionList::getSwitch)
+
+    .def("getMultiString", &gsOptionList::getMultiString)
+    .def("getMultiInt",    &gsOptionList::getMultiInt)
+    .def("getMultiReal",   &gsOptionList::getMultiReal)
+
+    .def("askString", (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askString)
+    .def("askString", (std::string (gsOptionList::*)(const std::string&,
+                                                     const std::string&)) &gsOptionList::askString)
+    .def("askInt",    (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askInt)
+    .def("askInt",    (std::string (gsOptionList::*)(const std::string&,
+                                                     const int&))         &gsOptionList::askInt)
+    .def("askReal",   (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askReal)
+    .def("askReal",   (std::string (gsOptionList::*)(const std::string&,
+                                                     const real_t&))      &gsOptionList::askReal)
+    .def("askSwitch", (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askSwitch)
+    .def("askSwitch", (std::string (gsOptionList::*)(const std::string&,
+                                                     const bool&))        &gsOptionList::askSwitch)
+
+    .def("setString", &gsOptionList::setString)
+    .def("setInt",    &gsOptionList::setInt)
+    .def("setReal",   &gsOptionList::setReal)
+    .def("setSwitch", &gsOptionList::setSwitch)
+
+    .def("addString", &gsOptionList::addString)
+    .def("addInt",    &gsOptionList::addInt)
+    .def("addReal",   &gsOptionList::addReal)
+    .def("addSwitch", &gsOptionList::addSwitch)
+
+    .def("addMultiInt", &gsOptionList::addMultiInt)
+
+    .def("remove",     &gsOptionList::remove)
+    .def("update",     (void (gsOptionList::*)(const gsOptionList&)) &gsOptionList::update)
+    .def("update",     (void (gsOptionList::*)(const gsOptionList&,
+                                               gsOptionList::updateType)) &gsOptionList::update)
+    .def("hasGlobals", &gsOptionList::hasGlobals)
+
+    .def("wrapIntoGroup", &gsOptionList::wrapIntoGroup)
+    .def("getGroup",      &gsOptionList::getGroup)
+    .def("hasGroup",      &gsOptionList::hasGroup)
+
+    .def("print", &gsOptionList::print)
+    .def("size",  &gsOptionList::size)
+    .def("swap",  &gsOptionList::swap)
+
+    .def("getAllEntries", &gsOptionList::getAllEntries)
+
+    .def(py::init<>())
+    .def("assign", &gsOptionList::operator=)
+
+#if EIGEN_HAS_RVALUE_REFERENCES
+    .def(py::init<const gsOptionList&>())
+    .def(py::init<gsOptionList&&>())
+#endif
+
+    .def("__repr__",
+         [](const gsOptionList &obj) {
+           std::stringstream os;
+           os << obj;
+           return os.str();
+         })
+    ;
+
+  py::enum_<gsOptionList::updateType>(ol, "updateType")
+    .value("ignoreIfUnknown", gsOptionList::updateType::ignoreIfUnknown)
+    .value("addIfUnknown",    gsOptionList::updateType::addIfUnknown)
+    .export_values()
+    ;
+
+  py::class_<gsOptionList::OptionListEntry>(m, "gsOptionListOptionListEntry")
+    .def(py::init<>())
+
+    .def_readwrite("type",  &gsOptionList::OptionListEntry::type)
+    .def_readwrite("label", &gsOptionList::OptionListEntry::label)
+    .def_readwrite("desc",  &gsOptionList::OptionListEntry::desc)
+    .def_readwrite("val",   &gsOptionList::OptionListEntry::val)
+
+    .def("print", (std::ostream& (gsOptionList::OptionListEntry::*)(std::ostream&))
+         &gsOptionList::OptionListEntry::print)
+    .def("print", (std::ostream& (gsOptionList::OptionListEntry::*)(std::ostream&,
+                                                                    index_t))
+         &gsOptionList::OptionListEntry::print)
+
+    .def("__repr__",
+         [](const gsOptionList::OptionListEntry &obj) {
+           std::stringstream os;
+           os << obj;
+           return os.str();
+         })
+
+    .def("__lt__",
+         [](const gsOptionList::OptionListEntry &obj,
+            const gsOptionList::OptionListEntry &other) {
+           return obj < other;
+         })
+    ;
+
+
+}
+
+#endif // GISMO_WITH_PYBIND11
 
 } //namespace gismo

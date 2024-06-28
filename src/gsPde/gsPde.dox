@@ -1,7 +1,7 @@
 namespace gismo {
 
 /** \defgroup Pde PDE module
-
+\ingroup Modules
     This module contains definitions of PDEs and related structures,
     for instance boundary conditions.
 

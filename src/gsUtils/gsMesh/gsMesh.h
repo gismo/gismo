@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the Mesh class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris, D. Mayer
 */
 
@@ -24,7 +24,7 @@ namespace gismo {
 
 /**
    \brief Class Representing a triangle mesh with 3D vertices.
-   
+
    \ingroup Utils
 */
 template <class T>
@@ -44,10 +44,54 @@ public:
 
 public:
 
-    gsMesh() : MeshElement(), numVertices(0), numEdges(0), numFaces(0) 
+    gsMesh() : MeshElement()
     { }
 
-    gsMesh(const gsBasis<T> & basis, int n = 0);
+    gsMesh(const gsMesh<T> & mesh) : MeshElement()
+    {
+        this->operator=(mesh);
+    }
+
+    gsMesh& operator=(const gsMesh& other)
+    {
+        if (this!=&other)
+        {
+            // Assert a already cleared gsMesh (getId)
+            cloneAll(other.m_vertex, m_vertex);  // fine, new pointers for all vertices
+
+            // copy all pointers to it's original counterpart in face
+            cloneAll(other.m_face, m_face);
+            for (size_t i = 0; i < other.m_face.size(); ++i)
+            {
+                for (size_t j = 0; j != other.m_face[i]->vertices.size(); ++j)
+                {
+                    GISMO_ASSERT(m_vertex[other.m_face[i]->vertices[j]->getId()]->getId() == other.m_face[i]->vertices[j]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and face don't match");
+                    m_face[i]->vertices[j] = m_vertex[other.m_face[i]->vertices[j]->getId()];
+                }
+            }
+
+            // iterate over all edges and make them new
+            m_edge = other.m_edge;
+            for (size_t i = 0; i != other.m_edge.size(); ++i)
+            {
+                // The two GISMO_ASSERTS were removed as part of PR #448, which got integrated into PR #421.
+                //GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.source don't match");
+                m_edge[i].source = m_vertex[other.m_edge[i].source->getId()];
+
+                //GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.target don't match");
+                m_edge[i].target = m_vertex[other.m_edge[i].target->getId()];
+            }
+        }
+        return *this;
+    }
+
+    /// Create a mesh corresponding to the parametric domain of the
+    /// basis \a basis.
+    /// @param basis Basis whose parametric domain should be meshed.
+    /// @param midPts Number of intermediate vertices to be inserted
+    /// to each element side. Cf. gsMesh::addLine(VertexHandle,
+    /// VertexHandle, int).
+    explicit gsMesh(const gsBasis<T> & basis, int midPts = 0);
 
     virtual ~gsMesh();
 
@@ -81,27 +125,27 @@ public:
     VertexHandle addVertex(scalar_t const& x, scalar_t const& y, scalar_t const& z=0);
 
     VertexHandle addVertex(gsVector<T> const & u);
-    
-    void addEdge(VertexHandle v0, VertexHandle v1);
-    
-    void addEdge(int const & vind0, int const & vind1);
 
-    void addEdge(gsVector<T> const & u0, 
+    void addEdge(VertexHandle v0, VertexHandle v1);
+
+    void addEdge(int const vind0, int const vind1);
+
+    void addEdge(gsVector<T> const & u0,
                  gsVector<T> const & u1 );
 
     FaceHandle addFace(std::vector<VertexHandle> const & vert);
 
-    FaceHandle addFace(VertexHandle const & v0, VertexHandle const & v1, 
+    FaceHandle addFace(VertexHandle const & v0, VertexHandle const & v1,
                        VertexHandle const & v2);
 
-    FaceHandle addFace(VertexHandle const & v0, VertexHandle const & v1, 
+    FaceHandle addFace(VertexHandle const & v0, VertexHandle const & v1,
                        VertexHandle const & v2,  VertexHandle const & v3);
 
     FaceHandle addFace(std::vector<int> const & vert);
-    
-    FaceHandle addFace(const int & v0, const int & v1, const int & v2);
 
-    FaceHandle addFace(const int & v0, const int & v1, const int & v2, const int & v3);
+    FaceHandle addFace(const int v0, const int v1, const int v2);
+
+    FaceHandle addFace(const int v0, const int v1, const int v2, const int v3);
 
     /// Add to the mesh a list of vertices connected with edges
     /// One edges are added between two successive vertices in the input.
@@ -111,17 +155,11 @@ public:
     void addLine(gsMatrix<T> const & points);
 
     /// Inserts a straight line in the mesh, between \a v0 and \a v1,
-    /// with n intermediate edges distributed linearly between \a v0
-    /// and \a v1 (used for plotting)
-    void addLine(VertexHandle v0, VertexHandle v1, int n = 0);    
-
-    //unsigned numVertices() { return vertex.size(); };x
-    //unsigned numFaces() { return face.size(); };
-
+    /// with \a midPts intermediate vertices distributed linearly
+    /// between \a v0 and \a v1 (used for plotting).
+    void addLine(VertexHandle v0, VertexHandle v1, int midPts = 0);
 
     std::ostream &print(std::ostream &os) const;
-
-
 
 //    bool getTurnDirection(gsVector3d<T> A, gsVector3d<T> B, gsVector3d<T> C)
 //    {
@@ -138,24 +176,55 @@ public:
 //        }
 //    }
 
-    /** \brief reorders the vertices of all faces of an .stl mesh, such that only 1 vertex is used instead of #(adjacent triangles) vertices
+    /** \brief reorders the vertices of all faces of an .stl mesh,
+     * such that only 1 vertex is used instead of #(adjacent
+     * triangles) vertices
      */
-    void cleanStlMesh();
+    gsMesh& cleanMesh();
 
+    gsMesh& reserve(size_t vertex, size_t face, size_t edge);
 
-public:
+    size_t numVertices() const { return m_vertex.size(); }
+    size_t numEdges()    const { return m_edge.size(); }
+    size_t numFaces()    const { return m_face.size(); }
 
-    int numVertices;
-    int numEdges;
-    int numFaces;
-    //int numCells;
+    const std::vector<VertexHandle > & vertices() const
+    { return m_vertex; }
 
-    std::vector<VertexHandle > vertex;
-    std::vector<FaceHandle >  face;
-    //std::vector<Edge > edge;
-    gsSortedVector<Edge> edge;
+    const std::vector<Edge > & edges() const
+    { return m_edge; }
 
-    //gsBoundingBox<scalar_t> bb;
+    const std::vector<FaceHandle > & faces() const
+    { return m_face; }
+
+    const Vertex & vertex(size_t i) const { return *m_vertex[i]; }
+    Vertex & vertex(size_t i) { return *m_vertex[i]; }
+
+    const FaceHandle & face(size_t i) const { return m_face[i]; }
+    FaceHandle & face(size_t i) { return m_face[i]; }
+
+    const Edge & edge(size_t i) const { return m_edge[i]; }
+    Edge & edge(size_t i) { return m_edge[i]; }
+
+    gsVector<index_t> faceIndices(size_t i) const
+    {
+        const FaceHandle & f = face(i);
+        gsVector<index_t> res(f->vertices.size());
+        typename std::vector<VertexHandle >::const_iterator v;
+        for (size_t j = 0; j!=f->vertices.size(); ++j)
+        {
+            v = std::find(m_vertex.begin(), m_vertex.end(), f->vertices[j] );
+            //
+            res[j] = std::distance(m_vertex.begin(),v);
+        }
+        return res;
+    }
+
+public: //protected: -- todo
+
+    std::vector<VertexHandle > m_vertex;
+    std::vector<FaceHandle >  m_face;
+    gsSortedVector<Edge> m_edge;
 };
 
 

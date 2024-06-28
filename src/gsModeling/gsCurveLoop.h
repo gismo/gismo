@@ -32,7 +32,8 @@ namespace gismo
     \ingroup Modeling
 */
 
-template<class T> class gsCurveLoop
+template<class T>
+class gsCurveLoop
 {
 
 public:
@@ -194,7 +195,7 @@ public:
     /// split the \a curveId^th curve in the loop into two curves. Return the point where it splits.
     /// \param curveId
     /// \param lengthRatio    the ratio between the lengths of the first new curve and that of the original curve
-    gsMatrix<T> splitCurve(std::size_t curveId, T lengthRatio=.5);
+    gsMatrix<T> splitCurve(size_t curveId, T lengthRatio=.5);
 
     /// Initialize a curve loop from some 3d vertices by projecting them onto the plane of best fit and constructing a polygon
     gsVector3d<T> initFrom3DPlaneFit(const std::vector<gsVector3d<T> *> points3D, T margin);
@@ -225,15 +226,10 @@ private:
 
 }; // class gsCurveLoop
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
 template<class T>
-bool gsCurveLoop<T>::isInterior ( gsVector<T> const & p, const T& tol)
+bool gsCurveLoop<T>::isInterior ( gsVector<T> const &, const T&)
 {
-    // to do
-    return false;
+    GISMO_NO_IMPLEMENTATION
 }
 
 /// Print (as string) operator to be used by all derived classes

@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris, D. Mokris
 */
 
-#pragma once 
+#pragma once
 
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsBSplineAlgorithms.h>
@@ -49,19 +49,42 @@ gsTensorBSplineBasis<1,T>::New(std::vector<gsBasis<T>*> & bb )
 }
 
 template <class T>
-int gsTensorBSplineBasis<1,T>::elementIndex(const gsVector<T> & u ) const
+size_t gsTensorBSplineBasis<1,T>::elementIndex(const gsVector<T> & u ) const
 {
     return m_knots.uFind(u(0,0)).uIndex();
 }
 
 template <class T>
-int gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
+size_t gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
 {
     return m_knots.uFind( u ).uIndex();
 }
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes, 
+gsMatrix<T> gsTensorBSplineBasis<1,T>::elementInSupportOf(index_t j) const
+{
+    typename KnotVectorType::smart_iterator it = m_knots.sbegin() + j;
+    index_t v = ( (it+m_knots.degree()+1).uIndex() - it.uIndex() ) / 2 ;
+    it.uAdd(v);
+    gsMatrix<T> rvo(1,2);
+    rvo(0,0) = it.value();
+    it.uNext();
+    rvo(0,1) = it.value();
+    // // take indexed support
+    // gsMatrix<index_t,1,2> isup(1,2);
+    // this->elementSupport_into(i, isup);
+    // // take the middle element
+    // isup.at(0) = (isup.at(0)+isup.at(1))/2;
+    // isup.at(1) =  isup.at(0)+1;
+    // // take coordinates
+    // gsMatrix<T> rvo(1,2);
+    // rvo(0,0) = m_knots.uValue(isup.at(0));
+    // rvo(0,1) = m_knots.uValue(isup.at(1));
+    return rvo;
+}
+
+template <class T>
+void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes,
                                              gsMesh<T> & mesh) const
 {
     const index_t sz  = size();
@@ -85,8 +108,8 @@ void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes,
 template <class T>
 void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
                                           const gsBasis<T> & other,
-                                          gsMatrix<unsigned> & bndThis,
-                                          gsMatrix<unsigned> & bndOther) const
+                                          gsMatrix<index_t> & bndThis,
+                                          gsMatrix<index_t> & bndOther) const
 {
     if ( const TensorSelf_t * _other = dynamic_cast<const TensorSelf_t*>(&other) )
     {
@@ -101,17 +124,17 @@ void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
 }
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u, 
-                                            gsMatrix<unsigned>& result ) const 
+void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
+                                            gsMatrix<index_t>& result ) const
 {
     result.resize(m_p+1, u.cols());
-    
+
     if ( m_periodic )
     {
         // We want to keep the non-periodic case unaffected wrt
         // complexity, therefore we keep the modulo operation of the
         // periodic case separate
-        const int s = size();
+        const index_t s = size();
         for (index_t j = 0; j < u.cols(); ++j)
         {
             unsigned first = firstActive(u(0,j));
@@ -131,26 +154,26 @@ void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
 }
 
 template <class T>
-bool gsTensorBSplineBasis<1,T>::isActive(const unsigned i, const gsVector<T>& u) const 
+bool gsTensorBSplineBasis<1,T>::isActive(const index_t i, const gsVector<T>& u) const
 {
     GISMO_ASSERT( u.rows() == 1, "Invalid input.");
     // Note: right end of the support will be considered active
     return( (u.value() >= m_knots[i]) && (u.value() <= m_knots[i+m_p+1]) );
 }
 
-template <class T> 
-gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::allBoundary() const
+template <class T>
+gsMatrix<index_t> gsTensorBSplineBasis<1,T>::allBoundary() const
 {
     if( m_periodic ) // Periodic basis does not have such things as boundaries.
     {
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
         // return NULL;
-        gsMatrix<unsigned> matrix;
+        gsMatrix<index_t> matrix;
         return matrix;
     }
     else
     {
-        gsMatrix<unsigned> res(2,1);
+        gsMatrix<index_t> res(2,1);
         res(0,0) = 0;
         res(1,0) = m_knots.size()-m_p-2;
         return res;
@@ -158,15 +181,15 @@ gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::allBoundary() const
 }
 
 
-template <class T> 
-gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
-                                                               unsigned offset ) const
+template <class T>
+gsMatrix<index_t> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
+                                                               index_t offset ) const
 {
     if( m_periodic )
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
 
-    gsMatrix<unsigned> res(1,1);
-    GISMO_ASSERT(offset+m_p+1 < static_cast<unsigned>(m_knots.size()),
+    gsMatrix<index_t> res(1,1);
+    GISMO_ASSERT(offset+m_p+1 < static_cast<index_t>(m_knots.size()),
                  "Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
     switch (s) {
     case boundary::left : // left
@@ -181,14 +204,16 @@ gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
     return res;
 }
 
+/// @cond
 template <class T>
-gsConstantBasis<T> * gsTensorBSplineBasis<1,T>::boundaryBasis_impl(boxSide const & s) const
-{ 
+gsConstantBasis<T> * gsTensorBSplineBasis<1,T>::boundaryBasis_impl(boxSide const &) const
+{
     return new gsConstantBasis<T>(1.0);
 }
+/// @endcond
 
 template <class T>
-gsMatrix<T> gsTensorBSplineBasis<1,T>::support() const 
+gsMatrix<T> gsTensorBSplineBasis<1,T>::support() const
 {
     // The support of a the whole B-spline basis is the interval
     // between m_knots[m_p] and m_knots[i+m_p+1].
@@ -200,53 +225,53 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support() const
 }
 
 template <class T>
-gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const unsigned & i) const 
+gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const index_t & i) const
 {
-    // Note: in the periodic case last index is 
+    // Note: in the periodic case last index is
     // m_knots.size() - m_p - 1 - m_periodic
     // but we may still accept the original index of the basis function.
     // One issue is that in the periodic case the basis function
     // support has two connected components, so probably one should
     // call this function with twice for the two twins
 
-    GISMO_ASSERT( i < static_cast<unsigned>(m_knots.size()-m_p-1),
+    GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,
                   "Invalid index of basis function." );
     gsMatrix<T> res(1,2);
-    res << ( i > static_cast<unsigned>(m_p) ? m_knots[i] : m_knots[m_p] ),
-        ( i < static_cast<unsigned>(m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
+    res << ( i > m_p ? m_knots[i] : m_knots[m_p] ),
+        ( static_cast<size_t>(i) < (m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
           m_knots[m_knots.size()-m_p-1] );
     return res ;
 }
 
 template <class T>
-unsigned gsTensorBSplineBasis<1,T>::twin(unsigned i) const 
+index_t gsTensorBSplineBasis<1,T>::twin(index_t i) const
 {
     if( m_periodic == 0 )
         return i;
-    const unsigned s = size();
-    if ( i < static_cast<unsigned>(m_periodic) ) 
+    const index_t s = size();
+    if ( i < static_cast<index_t>(m_periodic) )
         i += s;
     else if ( i > s )
         i -= s;
     return i;
 }
 
-template <class T> 
-void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const 
+template <class T>
+void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     result.resize(m_p+1, u.cols() );
 
 #if (FALSE)
 
     typename KnotVectorType::const_iterator kspan;
-  
+
     // Low degree specializations
     switch (m_p)
     {
     case 0: // constant B-splines
         result.setOnes();
         return;
-        
+
     case 1:
         for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
             if ( ! inDomain( u(0,v) ) )
@@ -256,7 +281,7 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
                 kspan = m_knots.findspanIter ( u(0,v) );
                 bspline::evalDeg1Basis( u(0,v), kspan, m_p, result.col(v) );
             }
-        return;           
+        return;
     case 2:
         for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
             if ( ! inDomain( u(0,v) ) )
@@ -266,7 +291,7 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
                 kspan = m_knots.findspanIter ( u(0,v) );
                 bspline::evalDeg2Basis( u(0,v), kspan, m_p, result.col(v) );
             }
-        return;     
+        return;
     case 3:
         for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
             if ( ! inDomain( u(0,v) ) )
@@ -314,20 +339,20 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
         }
 
         // Run evaluation algorithm
-    
+
         // Get span of absissae
         unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin() ;
 
-        //ndu[0]   = T(1);  // 0-th degree function value
-        result(0,v)= T(1);  // 0-th degree function value
+        //ndu[0]   = (T)(1);  // 0-th degree function value
+        result(0,v)= (T)(1);  // 0-th degree function value
 
-        for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
+        for(int j=1; j<= m_p; ++j) // For all degrees ( ndu column)
         {
             left[j]  = u(0,v) - m_knots[span+1-j];
             right[j] = m_knots[span+j] - u(0,v);
-            T saved = T(0) ;
+            T saved = (T)(0) ;
 
-            for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
+            for(int r=0; r!=j ; ++r) // For all (except the last)  basis functions of degree j ( ndu row)
             {
                 // Strictly lower triangular part: Knot differences of distance j
                 //ndu[j*p1 + r] = right[r+1]+left[j-r] ;
@@ -338,7 +363,7 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
                 //ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
                 result(r,v)     = saved + right[r+1] * temp ;// r-th function value of degree j
                 saved = left[j-r] * temp ;
-            }  
+            }
             //ndu[j*p1 + j] = saved ;// Diagonal: j-th (last) function value of degree j
             result(j,v)     = saved;
         }
@@ -348,12 +373,12 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
 }
 
 
-template <class T> 
-void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i, 
-                                                const gsMatrix<T> & u, 
-                                                gsMatrix<T>& result) const 
+template <class T>
+void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
+                                                const gsMatrix<T> & u,
+                                                gsMatrix<T>& result) const
 {
-    GISMO_ASSERT( i < unsigned(m_knots.size()-m_p-1),"Invalid index of basis function." );
+    GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,"Invalid index of basis function." );
 
     result.resize(1, u.cols() );
     STACK_ARRAY(T, N, m_p + 1);
@@ -376,17 +401,17 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i,
         }
 
         // Special case of C^{-1} on right end of support
-        if ( (i== unsigned(m_knots.size()-m_p-2)) && 
+        if ( (static_cast<size_t>(i) == m_knots.size()-m_p-2) &&
              (u(0,s) == m_knots.last()) &&  (u(0,s)== m_knots[m_knots.size()-m_p-1]) )
         {
-            result(0,s)= T(1.0);
+            result(0,s)= (T)(1.0);
             continue;
         }
 
         // Locality property
         if ( (u(0,s) < m_knots[i]) || (u(0,s) >= m_knots[i+m_p+1]) )
         {
-            result(0,s)= T(0.0);
+            result(0,s)= (T)(0.0);
             continue;
         }
 
@@ -396,25 +421,25 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i,
         // Initialize zeroth degree functions
         for (int j=0;j<=m_p; ++j)
             if ( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
-                N[j] = T(1.0);
+                N[j] = (T)(1.0);
             else
-                N[j] = T(0.0);
+                N[j] = (T)(0.0);
         // Compute according to the trangular table
         for (int k=1;k<=m_p; ++k)
         {
             T saved;
-            if (N[0]==0) 
-                saved= 0.0;
+            if (N[0] == (T)(0.0))
+              saved = (T)(0.0);
             else
                 saved= ((u(0,s) - m_knots[i] )* N[0]) / (m_knots[k+i] - m_knots[i]);
             for (int j=0;j<m_p-k+1; ++j)
             {
                 const T kleft  = m_knots[i+j+1];
                 const T kright = m_knots[i+j+k+1];
-                if ( N[j+1] == 0.0 )
+                if ( N[j+1] == (T)(0.0) )
                 {
-                    N[j] = saved; 
-                    saved = 0.0 ;
+                    N[j] = saved;
+                    saved = (T)(0.0);
                 }
                 else
                 {
@@ -424,14 +449,14 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i,
                 }
             }
         }
-        result(0,s)= N[0];
+        result(0,s) = N[0];
     }
 }
 
-template <class T> 
-void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i, 
-                                                   const gsMatrix<T> & u, 
-                                                   int n, 
+template <class T>
+void gsTensorBSplineBasis<1,T>::evalDerSingle_into(index_t i,
+                                                   const gsMatrix<T> & u,
+                                                   int n,
                                                    gsMatrix<T>& result) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
@@ -531,13 +556,13 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i,
                 Uright = m_knots[i+j+m_p-n+jj+1];
                 if( ND[j+1] == 0 )
                 {
-                    ND[j] = (m_p-n+jj)*saved;
+                    ND[j] = static_cast<T>(m_p-n+jj)*saved;
                     saved = 0;
                 }
                 else
                 {
                     temp = ND[j+1]/(Uright - Uleft);
-                    ND[j] = (m_p-n+jj)*(saved - temp);
+                    ND[j] = static_cast<T>(m_p-n+jj)*(saved - temp);
                     saved = temp;
                 }
             }
@@ -550,9 +575,9 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i,
 }
 
 template <class T> inline
-void gsTensorBSplineBasis<1,T>::evalFunc_into(const gsMatrix<T> &u, 
-                                              const gsMatrix<T> & coefs, 
-                                              gsMatrix<T>& result) const 
+void gsTensorBSplineBasis<1,T>::evalFunc_into(const gsMatrix<T> &u,
+                                              const gsMatrix<T> & coefs,
+                                              gsMatrix<T>& result) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate (got "
                   <<u.rows()<<").");
@@ -567,7 +592,7 @@ void gsTensorBSplineBasis<1,T>::evalFunc_into(const gsMatrix<T> &u,
 
 
 template <class T> inline
-void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const 
+void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
 
@@ -577,7 +602,7 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
     STACK_ARRAY(T, left , p1 );
     STACK_ARRAY(T, right, p1 );
 
-    result.resize( m_p + 1, u.cols() ) ;  
+    result.resize( m_p + 1, u.cols() ) ;
 
     for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
     {
@@ -588,13 +613,13 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
             result.col(v).setZero();
             continue;
         }
-      
+
         // Run evaluation algorithm and keep first derivative
-      
+
         // Get span of absissae
         typename KnotVectorType::iterator span = m_knots.iFind( u(0,v) );
 
-        ndu[0]  = T(1); // 0-th degree function value
+        ndu[0]  = (T)(1); // 0-th degree function value
         left[0] = 0;
 
         for(int j=1; j<m_p ; j++) // For all degrees
@@ -604,13 +629,13 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
             right[j] = *(span+j) - u(0,v);
 
             // Compute Basis functions of degree m_p-1 ( ndu[] )
-            T saved = T(0) ; 
+            T saved = (T)(0) ;
             for(int r=0; r<j ; r++) // For all (except the last) basis functions of degree 1..j
             {
                 const T temp = ndu[r] / ( right[r+1] + left[j-r] ) ;
                 ndu[r] = saved + right[r+1] * temp ;// r-th function value of degree 1..j
                 saved = left[j-r] * temp ;
-            }  
+            }
             ndu[j] = saved ;// last function value of degree 1..j
         }
 
@@ -619,22 +644,22 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
         right[m_p] = *(span+m_p) - u(0,v);
 
         // Compute the first derivatives (using ndu[] and left+right)
-        right[0] = right[1]+left[m_p] ;   
-        result(0  , v) = - m_p * ndu[0]  /  right[0] ;
+        right[0] = right[1]+left[m_p] ;
+        result(0  , v) = - static_cast<T>(m_p) * ndu[0]  /  right[0] ;
         for(int r = 1; r < m_p; r++)
-        { 
+        {
             // Compute knot difference r of distance m_p (overwrite right[])
             right[r] = right[r+1]+left[m_p-r] ;
-            result(r, v)  = m_p * (  ndu[r-1] / right[r-1] - ndu[r]  /  right[r] );
+            result(r, v)  = static_cast<T>(m_p) * (  ndu[r-1] / right[r-1] - ndu[r]  /  right[r] );
         }
-        result(m_p, v) =   m_p * ndu[pk] / right[pk];        
+        result(m_p, v) = static_cast<T>(m_p) * ndu[pk] / right[pk];
 
     }// end for all columns v
 }
 
 template <class T> inline
-void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, 
-                                            gsMatrix<T>& result ) const 
+void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u,
+                                            gsMatrix<T>& result ) const
 {
     std::vector<gsMatrix<T> > ev;
     this->evalAllDers_into(u, 2, ev);
@@ -642,35 +667,35 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u,
 }
 
 template <class T>  inline
-void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i, 
-                                                 const gsMatrix<T> & u, 
-                                                 gsMatrix<T>& result ) const 
+void gsTensorBSplineBasis<1,T>::derivSingle_into(index_t i,
+                                                 const gsMatrix<T> & u,
+                                                 gsMatrix<T>& result ) const
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
     result.resize(1, u.cols() );
     gsMatrix<T> tmp;
     gsTensorBSplineBasis<1,T>::deriv_into(u, tmp);
-    
+
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        const unsigned first = firstActive(u(0,j));
+        const index_t first = firstActive(u(0,j));
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else
-            result(0,j) = T(0.0);
+            result(0,j) = (T)(0.0);
     }
 }
 
 template <class T>  inline
-void 
-gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
+void
+gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
                                                   const gsMatrix<T> & u,
                                                   int n,
                                                   gsMatrix<T>& result) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
     //gsWarn << "You're about to use evalAllDersSingle_into(...) that has not been tested at all.\n";
-    
+
     // Notation from the NURBS book:
     // p - degree
     // U = {u[0],...,u[m]} the knot vector
@@ -763,13 +788,13 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
                     Uright = m_knots[i+j+m_p-k+jj+1];
                     if( ND[j+1] == 0 )
                     {
-                        ND[j] = (m_p-k+jj)*saved;
+                        ND[j] = static_cast<T>(m_p-k+jj)*saved;
                         saved = 0;
                     }
                     else
                     {
                         temp = ND[j+1]/(Uright - Uleft);
-                        ND[j] = (m_p-k+jj)*(saved - temp);
+                        ND[j] = static_cast<T>(m_p-k+jj)*(saved - temp);
                         saved = temp;
                     }
                 }
@@ -794,9 +819,9 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
 }
 
 
-template <class T> inline 
+template <class T> inline
 void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
-{ 
+{
     // TO DO specialized computation for gsBSplineBasis
     if( m_periodic == 0 )
         gsBasis<T>::derivFunc_into(u, coefs, result);
@@ -804,9 +829,9 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, const gsMatrix
         gsBasis<T>::derivFunc_into(u, perCoefs(coefs), result);
 }
 
-template <class T> inline 
-void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const 
-{ 
+template <class T> inline
+void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
+{
     // TO DO specialized computation for gsBSplineBasis
     if( m_periodic == 0 )
         gsBasis<T>::deriv2Func_into(u, coefs, result);
@@ -815,7 +840,7 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, const gsMatri
 }
 
 template <class T>  inline
-void gsTensorBSplineBasis<1,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const 
+void gsTensorBSplineBasis<1,T>::deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
     result.resize(1, u.cols() );
@@ -824,11 +849,11 @@ void gsTensorBSplineBasis<1,T>::deriv2Single_into(unsigned i, const gsMatrix<T> 
 
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        const unsigned first = firstActive(u(0,j));
+        const index_t first = firstActive(u(0,j));
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else
-            result(0,j) = T(0.0);
+            result(0,j) = (T)(0.0);
     }
 }
 
@@ -842,8 +867,8 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::laplacian(const gsMatrix<T> & u ) const
 
 template <class T>
 typename gsBasis<T>::uPtr
-gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const 
-{ 
+gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const
+{
     typename Self_t::uPtr ptr1 = memory::convert_ptr<Self_t>(other.clone());
 
     if ( ptr1 )
@@ -863,7 +888,7 @@ memory::unique_ptr<gsGeometry<T> > gsBSplineBasis<T>::makeGeometry( gsMatrix<T> 
 
 template <class T>
 void gsTensorBSplineBasis<1,T>::
-evalAllDers_into(const gsMatrix<T> & u, int n, 
+evalAllDers_into(const gsMatrix<T> & u, int n,
                  std::vector<gsMatrix<T> >& result) const
 {
     // TO DO : Use less memory proportionally to n
@@ -899,7 +924,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
 
         // Run evaluation algorithm and keep the function values triangle & the knot differences
         unsigned span = m_knots.findspan( u(0,v) ) ;     // Get span of absissae
-    
+
         for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
         {
             // Compute knot splits
@@ -907,15 +932,15 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
             right[j] = m_knots[span+j] - u(0,v);
         }
 
-        ndu[0] = T(1) ; // 0-th degree function value
-        T saved = T(0) ;
+        ndu[0] = (T)(1) ; // 0-th degree function value
+        T saved = (T)(0) ;
         // Compute Basis functions of degree m_p-n ( ndu[] )
         for(int r=0; r<pn ; r++) // For all (except the last) basis functions of degree m_p-n
         {
             const T temp = ndu[r*p1 + pn -1] / ( right[r+1] + left[pn-r] ) ;
             ndu[r*p1 + pn] = saved + right[r+1] * temp ;// r-th function value of degree j
             saved = left[pn-r] * temp ;
-        }  
+        }
         ndu[pn*p1 + pn] = saved ;
 
         // Compute n-th derivative and continue to n-1 ... 0
@@ -928,20 +953,20 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
             // Upper triangular part: Basis functions of degree j
             ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
             saved = left[j-r] * temp ;
-        }  
+        }
         // Diagonal: j-th (last) function value of degree j
         ndu[j*p1 + j] = saved ;
     }
-    
+
 #endif
 
     for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
     {
-
         // Check if the point is in the domain
         if ( ! inDomain( u(0,v) ) )
         {
-            // gsWarn<< "Point "<< u(0,s) <<" not in the BSpline domain.\n";
+            //gsDebug<< "Point "<< u(0,v) <<" not in the BSpline domain ["
+            //      << *(m_knots.begin()+m_p)<< ", "<<*(m_knots.end()-m_p-1)<<"].\n";
             for(int k=0; k<=n; k++)
                 result[k].col(v).setZero();
             continue;
@@ -949,15 +974,15 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
 
         // Run evaluation algorithm and keep the function values triangle & the knot differences
         typename KnotVectorType::iterator span = m_knots.iFind( u(0,v) );
-    
-        ndu[0] = T(1) ; // 0-th degree function value
+
+        ndu[0] = (T)(1) ; // 0-th degree function value
         for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
         {
             // Compute knot splits
             left[j] = u(0,v) - *(span+1-j);
             right[j] = *(span+j) - u(0,v);
 
-            T saved = T(0) ;
+            T saved = (T)(0) ;
 
             for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
             {
@@ -967,16 +992,16 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
                 // Upper triangular part: Basis functions of degree j
                 ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
                 saved = left[j-r] * temp ;
-            }  
+            }
             // Diagonal: j-th (last) function value of degree j
             ndu[j*p1 + j] = saved ;
         }
-    
+
         // Assign 0-derivative equal to function values
         //result.front().block(0,v, p1,1) = ndu.col(m_p);
         for (int j=0; j <= m_p ; ++j )
             result.front()(j,v) = ndu[j*p1 + m_p];
-    
+
         // Compute the derivatives
         for(int r = 0; r <= m_p; r++)
         {
@@ -984,7 +1009,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
             T* a1 = &a[0];
             T* a2 = &a[p1];
 
-            a1[0] = T(1) ;
+            a1[0] = (T)(1) ;
 
             // Compute the k-th derivative of the r-th basis function
             for(int k=1; k<=n; k++)
@@ -992,22 +1017,22 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
                 int rk,pk,j1,j2 ;
                 T d(0) ;
                 rk = r-k ; pk = m_p-k ;
-        
+
                 if(r >= k)
                 {
                     a2[0] = a1[0] / ndu[ (pk+1)*p1 + rk] ;
                     d = a2[0] * ndu[rk*p1 + pk] ;
                 }
-        
-                j1 = ( rk >= -1  ? 1   : -rk     ); 
+
+                j1 = ( rk >= -1  ? 1   : -rk     );
                 j2 = ( r-1 <= pk ? k-1 : m_p - r );
-	    
+
                 for(int j = j1; j <= j2; j++)
                 {
                     a2[j] = (a1[j] - a1[j-1]) / ndu[(pk+1)*p1 + rk+j] ;
                     d += a2[j] * ndu[(rk+j)*p1 + pk] ;
                 }
-        
+
                 if(r <= pk)
                 {
                     a2[k] = -a1[k-1] / ndu[(pk+1)*p1 + r] ;
@@ -1025,7 +1050,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
     int r = m_p ;
     for(int k=1; k<=n; k++)
     {
-        result[k].array() *= T(r) ;
+        result[k].array() *= (T)(r) ;
         r *= m_p - k ;
     }
 }
@@ -1052,7 +1077,7 @@ void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> &
 
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
+void gsTensorBSplineBasis<1,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int )
 {
     // See remark about periodic basis in refine_withCoefs, please.
     std::vector<T> newKnots;
@@ -1080,7 +1105,7 @@ void gsTensorBSplineBasis<1,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,Row
 }
 
 template <class T>
-unsigned gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
+index_t gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
 {
     GISMO_ASSERT(c<3,"Invalid corner for 1D basis.");
     return ( c == 1 ? 0 : this->size()-1);
@@ -1151,7 +1176,7 @@ void gsTensorBSplineBasis<1,T>::_convertToPeriodic()
             // Compare the knot intervals in the beginning with the corresponding knot intervals at the end.
             i1 = m_knots[i] - m_knots[i-1];
             i2 = m_knots[m_knots.size() - (2*m_p) + i - 2 + borderKnotMult] - m_knots[m_knots.size() - (2*m_p) + i - 3 + borderKnotMult];
-            if( math::abs( i1 - i2 ) > 1e-8 )
+            if( math::abs( i1 - i2 ) > (T)(1e-8) )
             {
                 gsWarn << "Your basis cannot be changed into periodic:\n Trouble stretching interior knots.\n";
                 //std::cerr << "i: " << i << ", i1: " << i1 << ", i2: " << i2 << std::endl;
@@ -1212,15 +1237,17 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T>
-gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
+gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i)
 {
+    GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
     return const_cast<gsBSplineBasis&>(*this);
 }
 
 template <class T>
-const gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i) const
+const gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i) const
 {
+    GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
     return const_cast<gsBSplineBasis&>(*this);
 }
@@ -1243,34 +1270,34 @@ public:
     static gsBSplineBasis<T> * get (gsXmlNode * node)
     {
         GISMO_ASSERT( !strcmp( node->name(),"Basis"), "Wrong tag." );
-        
+
         if (!strcmp(node->first_attribute("type")->value(),"TensorBSplineBasis1"))
             node = node->first_node("BSplineBasis");
-        
+
         GISMO_ASSERT( !strcmp(node->first_attribute("type")->value(),"BSplineBasis"),
                       "Wrong XML type, expected BSplineBasis." );
-        
+
         gsXmlNode * tmp = node->first_node("KnotVector");
-        // if type: == Plain, == Compact .. 
+        // if type: == Plain, == Compact ..
         GISMO_ASSERT(tmp, "Did not find a KnotVector tag in the Xml file.");
         gsKnotVector<T> kv;
         gsXml<gsKnotVector<T> >::get_into(tmp, kv);
-        
+
         return new gsBSplineBasis<T>( kv );
     }
-    
-    static gsXmlNode * put (const gsBSplineBasis<T> & obj, 
+
+    static gsXmlNode * put (const gsBSplineBasis<T> & obj,
                             gsXmlTree & data)
     {
         // Add a new node for obj (without data)
-        gsXmlNode* bs_node = internal::makeNode("Basis" , data);        
+        gsXmlNode* bs_node = internal::makeNode("Basis" , data);
         bs_node->append_attribute( makeAttribute("type", "BSplineBasis", data) );
-        
+
         // Write the knot vector
-        gsXmlNode* tmp = 
+        gsXmlNode* tmp =
             internal::gsXml<gsKnotVector<T> >::put(obj.knots(), data );
         bs_node->append_node(tmp);
-        
+
         // All set, return the BSPlineBasis node
         return bs_node;
     }

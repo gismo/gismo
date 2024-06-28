@@ -1,0 +1,67 @@
+namespace gismo {
+/**
+
+\page optimizer_example optimizer_example.cpp
+
+Consider the following optimization problem
+\f{align*}{
+    \min_x f(x) &= -(x1-2)^2, \: \text{s.t.}\\
+    0&= 0 = x_0^2 + x_1 - 1\\
+    -1 &<= x0 <= 1
+\f}
+
+We want to solve this using the \ref gsOptimizer and \ref gsOptProblem classes.
+
+The definition of the derived class \a gsOptProblemExample is given by the \a OptProblemExample class
+
+\snippet optimizer_example.cpp OptProblemExample Class
+
+In this class, the constructor is defined as:
+
+\snippet optimizer_example.cpp OptProblemExample Constructor
+
+Here, it can be seen that the member \a m_numDesignVars is defined, representing the number of design variables, as well as the members \a m_numConstraints and \a m_numConJacNonzero which respectively represent the number of constraints and the number of non-zeros in the Jacobian matrix. In addition, the members \a m_desLowerBounds and \a m_desUpperBounds respectively give the lower and upper bounds of the design variables. Similarly, the constraint bounds can be defined by \a m_conLowerBounds and \a m_conUpperBounds.
+
+In addition, the evaluation of the objective function is defined as follows:
+
+\snippet optimizer_example.cpp OptProblemExample evalObj
+
+And the gradient is defined below
+
+\snippet optimizer_example.cpp OptProblemExample gradObj_into
+
+The evaluation of the constraint function is
+
+\snippet optimizer_example.cpp OptProblemExample evalCon_into
+
+As well as its Jacobian
+
+\snippet optimizer_example.cpp OptProblemExample jacobCon_into
+
+In the main part of the code, the optimizers can be defined. Since \ref gsOptimizer serves as a base class, they can be allocated by pointers; based on a small switch-case statement:
+
+\snippet optimizer_example.cpp Optimizer selection
+
+Accordingly, the initial solution can be defined
+
+\snippet optimizer_example.cpp Initial solution
+
+And the problem can be solved
+
+\snippet optimizer_example.cpp Solve
+
+The output is printed as follows
+
+\snippet optimizer_example.cpp Output
+
+
+\section optimizer_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/optimizer_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include optimizer_example.cpp
+
+*/
+
+}

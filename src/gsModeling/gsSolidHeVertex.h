@@ -24,7 +24,9 @@ template <class T>
 class gsSolidHeVertex  : public gsSolidElement<T>
 {
 public:
+    #   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
     typedef T scalar_t;
     typedef gsSolidElement<T> SolidElement;
     typedef typename SolidElement::gsSolidHeVertexHandle gsSolidHeVertexHandle;
@@ -33,7 +35,7 @@ public:
     
 // Data members    
 public:
-    gsVector3d<T> coords;
+    gsVector3d<T> coords; // TODO: should be inherited instead, makes it more naturally
     // halfedge out of this vertex
     gsSolidHalfEdgeHandle hed;    
     

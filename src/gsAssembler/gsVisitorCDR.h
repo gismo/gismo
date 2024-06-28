@@ -16,41 +16,44 @@
 namespace gismo
 {
 
-/** \brief Visitor for the convection-diffusion-reaction equation.
- *
- * Visitor for PDEs of the form\n
- * Find \f$ u: \mathbb R^d \rightarrow \mathbb R^d\f$
- * \f[ -\mathrm{div}( A \nabla u ) + b\cdot \nabla u + c u = f \f]
- * (+ boundary conditions), where\n
- * \f$ A \f$ (diffusion coefficient) is a \f$d\times d\f$-matrix,\n
- * \f$ b \f$ (convection velocity) is a \f$d\times 1\f$-vector,\n
- * \f$ c \f$ (reaction coefficient) is a scalar
- *
- * The coefficients are given as gsFunction with vector-valued return.\n
- * See the constructor gsVisitorCDR() for details on their format!
- *
- * Obviously, setting \f$ A= I\f$, \f$ b= 0\f$, and \f$c = 0\f$ results
- * in the special case of the Poisson equation.
- *
- */
-
+   /** @brief Visitor for the convection-diffusion-reaction equation.
+     *
+     * Visitor for PDEs of the form\n
+     * Find \f$ u: \mathbb R^d \rightarrow \mathbb R^d\f$
+     * \f[ -\mathrm{div}( A \nabla u ) + b\cdot \nabla u + c u = f \f]
+     * (+ boundary conditions), where\n
+     * \f$ A \f$ (diffusion coefficient) is a \f$d\times d\f$-matrix,\n
+     * \f$ b \f$ (convection velocity) is a \f$d\times 1\f$-vector,\n
+     * \f$ c \f$ (reaction coefficient) is a scalar
+     *
+     * The coefficients are given as gsFunction with vector-valued return.\n
+     * See the constructor gsVisitorCDR() for details on their format!
+     *
+     * Obviously, setting \f$ A = I\f$, \f$ b = 0\f$, and \f$c = 0\f$ results
+     * in the special case of the Poisson equation.
+     *
+     * @ingroup Assembler
+     */
 template <class T>
 class gsVisitorCDR
 {
 public:
 
+    /// @brief Constructor
+    ///
+    /// @param pde  Reference to \a gsConvDiffRePde object
     gsVisitorCDR(const gsPde<T> & pde)
-    { 
+    {
         const gsConvDiffRePde<T>* cdr =
             static_cast<const gsConvDiffRePde<T>*>(&pde);
-        
+
         coeff_A_ptr = cdr->diffusion ();
         coeff_b_ptr = cdr->convection();
         coeff_c_ptr = cdr->reaction  ();
         rhs_ptr     = cdr->rhs       ();
 
-        flagStabType = 0;
-        
+        flagStabType = stabilizerCDR::none;
+
         GISMO_ASSERT( rhs_ptr->targetDim() == 1 ,
                       "Not yet tested for multiple right-hand-sides");
     }
@@ -76,64 +79,66 @@ public:
                  const gsFunction<T> & coeff_A,
                  const gsFunction<T> & coeff_b,
                  const gsFunction<T> & coeff_c,
-                 unsigned flagStabilization = 1) :
+                 stabilizerCDR::method flagStabilization = stabilizerCDR::SUPG) :
         rhs_ptr(&rhs),
         coeff_A_ptr( & coeff_A),coeff_b_ptr( & coeff_b),coeff_c_ptr( & coeff_c),
         flagStabType( flagStabilization )
     {
         GISMO_ASSERT( rhs.targetDim() == 1 ,"Not yet tested for multiple right-hand-sides");
-        GISMO_ASSERT( flagStabilization == 0 || flagStabilization == 1, "flagStabilization not known");
+        GISMO_ASSERT( flagStabilization == stabilizerCDR::none || flagStabilization == stabilizerCDR::SUPG, "flagStabilization not known");
     }
 
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
+                    const index_t ,
                     const gsOptionList & options,
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         //flagStabType = static_cast<unsigned>(options.askSwitch("SUPG", false));
-        flagStabType = static_cast<unsigned>(options.askInt("Stabilization", 0));
-    
+        flagStabType = static_cast<stabilizerCDR::method>(options.askInt("Stabilization", stabilizerCDR::none));
+
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
-    // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsMatrix<T>            & quNodes)
+    /// Evaluate on element
+    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         const gsGeometry<T>    & geo,
+                         const gsMatrix<T>      & quNodes)
     {
+        base = &geo;
+        md.points = quNodes;
+
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(quNodes.col(0), actives);
+        basis.active_into(md.points.col(0), actives);
         numActive = actives.rows();
-        
+
         // Evaluate basis functions on element
-        basis.evalAllDers_into( quNodes, 2, basisData);
-        
+        basis.evalAllDers_into(md.points, 2, basisData);
+
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
-        geoEval.evaluateAt(quNodes);// is this generic ??
-        
+        geo.computeMap(md);
+
         // Evaluate the coefficients
-        coeff_A_ptr->eval_into( geoEval.values(), coeff_A_vals );
-        coeff_b_ptr->eval_into( geoEval.values(), coeff_b_vals );
-        coeff_c_ptr->eval_into( geoEval.values(), coeff_c_vals );
+        coeff_A_ptr->eval_into(md.values[0], coeff_A_vals);
+        coeff_b_ptr->eval_into(md.values[0], coeff_b_vals);
+        coeff_c_ptr->eval_into(md.values[0], coeff_c_vals);
 
         // Evaluate right-hand side at the geometry points
-        rhs_ptr->eval_into( geoEval.values(), rhsVals ); // to do: parametric rhs ?
-        
+        rhs_ptr->eval_into(md.values[0], rhsVals); // to do: parametric rhs ?
+
         // Initialize local matrix/rhs
-        localMat.setZero(numActive, numActive      );
-        localRhs.setZero(numActive, rhsVals.rows() );//multiple right-hand sides
+        localMat.setZero(numActive, numActive);
+        localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
     }
 
-    
-    inline void assemble(gsDomainIterator<T>    & element, 
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsVector<T> const      & quWeights)
+    /// Assemble
+    inline void assemble(gsDomainIterator<T>    & element,
+                         const gsVector<T>      & quWeights)
     {
 
         const index_t N = numActive;
@@ -155,12 +160,11 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
-            const T weight = quWeights[k] * geoEval.measure(k);
+            const T weight = quWeights[k] * md.measure(k);
 
             // Compute physical gradients at k as a Dim x numActive matrix
-            geoEval.transformGradients(k, basisGrads, physBasisGrad);
-
-            // ...just to make sure... tracking the dimensions of the terms involved...
+            transformGradients   (md, k, basisGrads, physBasisGrad);
+            transformDeriv2Hgrad (md, k, basisGrads, basis2ndDerivs, physBasisd2);
 
             // d ... dim
             // N ... numActive
@@ -189,13 +193,10 @@ public:
             localMat.noalias() += weight * coeff_c_vals(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
 
 
-            if( flagStabType == 1 ) // 1: SUPG
+            if( flagStabType == stabilizerCDR::SUPG ) // 1: SUPG
             {
-
-                // auxiliary variable, number of second derivatives
-                const index_t d2_offsetter = d*(d+1)/2;
-
-                const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k);
+                //const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k); //todo: correct?
+                const typename gsFuncData<T>::matrixTransposeView J = md.jacobian(k);
                 gsMatrix<T> Jinv = J.inverse();
 
                 gsMatrix<T> grad_b_basisGradsT(N,d);
@@ -206,38 +207,34 @@ public:
                 {
                     gsMatrix<T> tmp_basis2ndDerivs(d,d);
                     tmp_basis2ndDerivs.setZero();
-
                     if( d == 2 )
                     {
-                        tmp_basis2ndDerivs(0,0) = basis2ndDerivs(fct_i*d2_offsetter  , k);
-                        tmp_basis2ndDerivs(0,1) = basis2ndDerivs(fct_i*d2_offsetter+2, k);
-                        tmp_basis2ndDerivs(1,0) = basis2ndDerivs(fct_i*d2_offsetter+2, k);
-                        tmp_basis2ndDerivs(1,1) = basis2ndDerivs(fct_i*d2_offsetter+1, k);
+                        tmp_basis2ndDerivs(0,0) = physBasisd2(fct_i, 0);
+                        tmp_basis2ndDerivs(1,1) = physBasisd2(fct_i, 1);
+                        tmp_basis2ndDerivs(0,1) =
+                        tmp_basis2ndDerivs(1,0) = physBasisd2(fct_i, 2);
                     }
                     else if (d == 3 )
                     {
-                        tmp_basis2ndDerivs(0,0) = basis2ndDerivs(fct_i*d2_offsetter, k);
-                        tmp_basis2ndDerivs(0,1) = basis2ndDerivs(fct_i*d2_offsetter+3, k);
-                        tmp_basis2ndDerivs(0,2) = basis2ndDerivs(fct_i*d2_offsetter+4, k);
-                        tmp_basis2ndDerivs(1,0) = basis2ndDerivs(fct_i*d2_offsetter+3, k);
-                        tmp_basis2ndDerivs(1,1) = basis2ndDerivs(fct_i*d2_offsetter+1, k);
-                        tmp_basis2ndDerivs(1,2) = basis2ndDerivs(fct_i*d2_offsetter+5, k);
-                        tmp_basis2ndDerivs(2,0) = basis2ndDerivs(fct_i*d2_offsetter+4, k);
-                        tmp_basis2ndDerivs(2,1) = basis2ndDerivs(fct_i*d2_offsetter+5, k);
-                        tmp_basis2ndDerivs(2,2) = basis2ndDerivs(fct_i*d2_offsetter+2, k);
+                        tmp_basis2ndDerivs(0,0) = physBasisd2(fct_i, 0);
+                        tmp_basis2ndDerivs(1,1) = physBasisd2(fct_i, 1);
+                        tmp_basis2ndDerivs(2,2) = physBasisd2(fct_i, 2);
+                        tmp_basis2ndDerivs(0,1) =
+                        tmp_basis2ndDerivs(1,0) = physBasisd2(fct_i, 3);
+                        tmp_basis2ndDerivs(0,2) =
+                        tmp_basis2ndDerivs(2,0) = physBasisd2(fct_i, 4);
+                        tmp_basis2ndDerivs(1,2) =
+                        tmp_basis2ndDerivs(2,1) = physBasisd2(fct_i, 5);
                     }
                     else
                     {
                         GISMO_ERROR("What kind of dimension are you using? Should be 2 or 3.");
                     }
-                    // d x d-matrix
-                    tmp_basis2ndDerivs.noalias() = (Jinv.transpose() * tmp_basis2ndDerivs) * Jinv;
 
-
+                    //grad_b_basisGradsT.row(fct_i) = (tmp_basis2ndDerivs * coeff_b_vals.col(k) ).transpose();
                     for( unsigned i = 0; i < d; ++i )
                         for( unsigned j = 0; j < d; ++j )
                             grad_b_basisGradsT(fct_i, i) += coeff_b_vals(j,k) * tmp_basis2ndDerivs(j,i);
-
                 }
 
                 supgMat.noalias() += weight * grad_b_basisGradsT * ( tmp_A * physBasisGrad );
@@ -247,21 +244,20 @@ public:
             }
         }
 
-        if( flagStabType == 1 ) // 1: SUPG
+        if( flagStabType == stabilizerCDR::SUPG ) // 1: SUPG
         {
-            // Calling getSUPGParameter re-evaluates the gsGeometryEvaluator.
-            // Thus, it has to be called AFTER geoEval has been used.
+            // Calling getSUPGParameter re-evaluates the (*base) geometry. // todo: is that correct so?
+            // Thus, it has to be called AFTER geo (*base) has been used.
             T supgParam = getSUPGParameter( element.lowerCorner(),
-                                            element.upperCorner(),
-                                            geoEval);
+                                            element.upperCorner());
             // Add the contributions from the SUPG-stabilization.
             localMat.noalias() += supgParam * supgMat;
         }
     }
 
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
-                              gsSparseSystem<T>     & system)
+                              gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
@@ -270,11 +266,11 @@ public:
         system.push(localMat, localRhs, actives, eliminatedDofs.front(), 0, 0);
     }
 
+    /// Returns the parameter required for SUPG
     T getSUPGParameter( const gsVector<T> & lo,
-                        const gsVector<T> & up,
-                        gsGeometryEvaluator<T> & geoEval )
+                        const gsVector<T> & up)
     {
-        const int N = 2;
+        const index_t N = 2;
 
         const index_t d = lo.size();
 
@@ -283,39 +279,37 @@ public:
         // compute the center point of the cell...
 
         // ...get the points map it to the physical space...
-        gsMatrix<T> phys_pts = geoEval.values();
+        gsMatrix<T> phys_pts = md.values[0];
         // ...evaluate the convection coefficient there, ...
         coeff_b_ptr->eval_into( phys_pts, b_at_phys_pts );
         // ...and get it's norm.
         T b_norm = 0;
-        for( int i=0; i < d; i++)
+        for( index_t i=0; i < d; i++)
             b_norm += b_at_phys_pts(i,0) * b_at_phys_pts(i,0);
         b_norm = math::sqrt( b_norm );
 
-        T SUPG_param = T(0.0);
+        T SUPG_param = (T)(0.0);
         if( b_norm > 0 )
         {
-
-            gsMatrix<T> bdryPts;
             gsMatrix<T> aMat;
 
             if( d == 2 )
             {
-                int N1 = N+1;
-                bdryPts.resize( 2, 4*N1 );
+                index_t N1 = N+1;
+                md.points.resize( 2, 4*N1 );
                 aMat.resize( 2, 4*N1 );
 
-                for( int i = 0; i <= N; ++i )
+                for( index_t i = 0; i <= N; ++i )
                 {
-                    T a = T(i)/T(N);
+                    T a = (T)(i)/(T)(N);
                     aMat(0,i) = a;
-                    aMat(1,i) = T(0.0);
+                    aMat(1,i) = (T)(0.0);
                     aMat(0,i+N1) = a;
-                    aMat(1,i+N1) = T(1.0);
+                    aMat(1,i+N1) = (T)(1.0);
 
-                    aMat(0,i+2*N1) = T(0.0);
+                    aMat(0,i+2*N1) = (T)(0.0);
                     aMat(1,i+2*N1) = a;
-                    aMat(0,i+3*N1) = T(1.0);
+                    aMat(0,i+3*N1) = (T)(1.0);
                     aMat(1,i+3*N1) = a;
                 }
             }
@@ -325,25 +319,25 @@ public:
                 GISMO_ASSERT(false,"NOT IMLEMENTED YET, Mark m271");
 
                 /*
-                bdryPts.resize( 3, 6*(N+1)*(N+1) );
+                md.points.resize( 3, 6*(N+1)*(N+1) );
                 aMat.resize( 3, 6*(N+1)*(N+1) );
 
-                int N1 = N+1;
-                bdryPts.resize( 2, 4*N1 );
+                index_t N1 = N+1;
+                md.points.resize( 2, 4*N1 );
                 aMat.resize( 2, 4*N1 );
 
-                int ij = 0;
-                for( int i = 0; i <= N; ++i )
-                    for( int j = 0; j <= N; ++j )
+                index_t ij = 0;
+                for( index_t i = 0; i <= N; ++i )
+                    for( index_t j = 0; j <= N; ++j )
                     {
-                        T ai = T(i)/T(N);
-                        T aj = T(j)/T(N);
-                        aMat(0,ij) = T(0.0);
-                        aMat(1,ij) = T(0.0);
-                        aMat(2,ij) = T(0.0);
-                        aMat(0,ij+N1) = T(1.0);
-                        aMat(1,ij+N1) = T(1.0);
-                        aMat(1,ij+N1) = T(1.0);
+                        T ai = (T)(i)/(T)(N);
+                        T aj = (T)(j)/(T)(N);
+                        aMat(0,ij) = (T)(0.0);
+                        aMat(1,ij) = (T)(0.0);
+                        aMat(2,ij) = (T)(0.0);
+                        aMat(0,ij+N1) = (T)(1.0);
+                        aMat(1,ij+N1) = (T)(1.0);
+                        aMat(1,ij+N1) = (T)(1.0);
 
                     }
                 */
@@ -358,11 +352,11 @@ public:
             for( index_t di = 0; di < d; ++di )
                 for( index_t i = 0; i < aMat.cols(); ++i)
                 {
-                    bdryPts(di,i) = ( 1 - aMat(di,i) )*lo[di] + aMat(di,i) * up[di];
+                    md.points(di,i) = ( (T)(1) - aMat(di,i) )*lo[di] + aMat(di,i) * up[di];
                 }
 
-            geoEval.evaluateAt( bdryPts );
-            gsMatrix<T> b_proj = geoEval.values().transpose() * b_at_phys_pts;
+            base->computeMap(md);
+            gsMatrix<T> b_proj = md.values[0].transpose() * b_at_phys_pts;
 
             T b_proj_min = b_proj(0,0);
             T b_proj_max = b_proj(0,0);
@@ -373,7 +367,7 @@ public:
                 if( b_proj_max < b_proj(i) )
                     b_proj_max = b_proj(i);
             }
-            SUPG_param = ( b_proj_max - b_proj_min ) / ( 2 * b_norm );
+            SUPG_param = ( b_proj_max - b_proj_min ) / ( (T)(2) * b_norm );
         }
 
         return SUPG_param;
@@ -389,13 +383,13 @@ protected:
     const gsFunction<T> * coeff_b_ptr;
     const gsFunction<T> * coeff_c_ptr;
     // flag for stabilization method
-    unsigned flagStabType;
+    stabilizerCDR::method flagStabType;
 
 protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
-    gsMatrix<T>        physBasisGrad;
-    gsMatrix<unsigned> actives;
+    gsMatrix<T>        physBasisGrad, physBasisd2;
+    gsMatrix<index_t> actives;
     index_t numActive;
 
     gsMatrix<T> coeff_A_vals;
@@ -410,8 +404,10 @@ protected:
     // Local matrices
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
+
+    const gsGeometry<T> * base;
+    gsMapData<T> md;
 };
 
 
 } // namespace gismo
-

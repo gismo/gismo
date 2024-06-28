@@ -13,7 +13,9 @@
 
 #include <gsIO/gsXml.h>
 #include <gsCore/gsFunctionExpr.h>
+#include <gsCore/gsConstantFunction.h>
 #include <gsUtils/gsSortedVector.h>
+#include <gsIO/gsXmlGenericUtils.hpp>
 
 namespace gismo
 {
@@ -40,6 +42,62 @@ public:
         GISMO_ASSERT(!strcmp(node->name(), tag().c_str()),
                 "Something went wrong. Expected tag "<< tag());
 
+        std::istringstream str;
+        std::map<int, int> ids;
+
+        // Check if any of the BCs is defined on a boundary set name
+        const int mp_index = atoi(node->first_attribute("multipatch")->value());
+        gsXmlNode* toplevel = node->parent();
+        std::vector< patchSide > allboundaries;
+        for (gsXmlNode * child = node->first_node("bc"); child;
+                child = child->next_sibling("bc"))
+        {
+            std::map<int, int> tmp_ids;;
+
+            const gsXmlAttribute * att_name = child->first_attribute("name");
+            if (NULL != att_name)
+            {
+                gsXmlNode* mp_node = searchId(mp_index, toplevel);
+                GISMO_ASSERT( mp_node != NULL,
+                              "No Multipatch with Id "<<mp_index<<" found in the XML data.");
+
+                gsXmlNode * tmp = mp_node->first_node("patches");
+                std::istringstream tmp_str ;
+                tmp_str.str( tmp->value() );
+                // Handle id_range or id_index for multipatches. This is needed to assign the right indices for the BCs
+                if ( ! strcmp( tmp->first_attribute("type")->value(),"id_range") )
+                {
+                    int first, last;
+                    gsGetInt(tmp_str, first);
+                    gsGetInt(tmp_str, last);
+                    for ( int i = first; i<=last; ++i )
+                        tmp_ids[i] = i - first;
+                }
+                else if ( ! strcmp( tmp->first_attribute("type")->value(),"id_index") )
+                {
+                    int c = 0;
+                    for (int pindex; gsGetInt(tmp_str, pindex);)
+                        tmp_ids[pindex] = c++;
+                }
+                else
+                {
+                    gsWarn<<"Unknown tag in XML multipatch object.\n";
+                }
+
+                for (gsXmlNode * child = mp_node->first_node("boundary"); child;
+                        child = child->next_sibling("boundary"))
+                {
+                    std::vector< patchSide > tmp_boundaries;
+                    if (child)
+                    {
+                        getBoundaries(child, tmp_ids, tmp_boundaries);
+                        allboundaries.insert( allboundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
+                    }
+                }
+                break;
+            }
+        }
+
         //gsXmlNode * tmp = node->first_node("patches");
         //GISMO_ASSERT(tmp, "No pathes tag");
 //
@@ -65,41 +123,62 @@ public:
 //        {
 //            gsWarn<<"Incomplete tag \"patch\" in boundaryConditions.\n";
 //        }
-        std::istringstream str;
-        std::map<int, int> ids;
 
-        // Read function inventory
-        int count = countByTag("Function", node);
-        std::vector<typename gsFunctionExpr<T>::Ptr> func(count); // todo: gsFunction::Ptr
-        for (gsXmlNode * child = node->first_node("Function"); child; child =
-                child->next_sibling("Function"))
-        {
-            const int i = atoi(child->first_attribute("index")->value());
-            func[i] = memory::make_shared(new gsFunctionExpr<T>);
-            getFunctionFromXml(child, *func[i]);
+        // Read function inventory using a map, in case indices are not
+        // consecutive
+        std::map<int, typename gsFunctionExpr<T>::Ptr> function_map{};
+        for (gsXmlNode* child = node->first_node("Function"); child;
+             child = child->next_sibling("Function")) {
+          const int function_index =
+              atoi(child->first_attribute("index")->value());
+          function_map[function_index] =
+              memory::make_shared(new gsFunctionExpr<T>);
+          internal::gsXml<gsFunctionExpr<T> >::get_into(
+              child, *function_map[function_index]);
         }
 
         // Read boundary conditions
         std::vector<patchSide> boundaries;
-        for (gsXmlNode * child = node->first_node("bc"); child;
-                child = child->next_sibling("bc"))
-        {
-            const int uIndex = atoi(child->first_attribute("unknown")->value());
-            const int fIndex = atoi(
-                    child->first_attribute("function")->value());
-            //const int cIndex = atoi( child->first_attribute("comp")->value() );
+        for (gsXmlNode* child = node->first_node("bc"); child;
+             child = child->next_sibling("bc")) {
+          const int uIndex = atoi(child->first_attribute("unknown")->value());
+          const int fIndex = atoi(child->first_attribute("function")->value());
 
+          const gsXmlAttribute* comp = child->first_attribute("component");
+          int cIndex = -1;
+          if (NULL != comp) cIndex = atoi(comp->value());
+
+          const gsXmlAttribute* att_ispar =
+              child->first_attribute("parametric");
+          bool ispar = false;
+          if (NULL != att_ispar) ispar = atoi(att_ispar->value());
+
+          const gsXmlAttribute* att_name = child->first_attribute("name");
+          if (NULL != att_name) {
+            boundaries.clear();
+            std::string name = att_name->value();
+            for (typename std::vector<patchSide>::const_iterator it =
+                     allboundaries.begin();
+                 it != allboundaries.end(); it++)
+              if (it->label() == name) boundaries.push_back(*it);
+          } else
             getBoundaries(child, ids, boundaries);
-            
-            const gsXmlAttribute * bcat = child->first_attribute("type");
-            GISMO_ASSERT(NULL != bcat, "No type provided");
-            const char * bctype = bcat->value();
-            for (std::vector<patchSide>::const_iterator it = boundaries.begin();
-                    it != boundaries.end(); ++it)
-                result.add(it->patch, it->side(), bctype, func[fIndex], uIndex,
-                        false);        //parametric
+
+          if (boundaries.size() == 0) {
+            gsWarn << "Boundary condition without boundary to apply to. The"
+                      " following bc will be unused\n"
+                   << *child << std::endl;
+          }
+
+          const gsXmlAttribute* bcat = child->first_attribute("type");
+          GISMO_ASSERT(NULL != bcat, "No type provided");
+          const char* bctype = bcat->value();
+          for (std::vector<patchSide>::const_iterator it = boundaries.begin();
+               it != boundaries.end(); ++it)
+            result.add(it->patch, it->side(), bctype, function_map[fIndex], uIndex,
+                       cIndex, ispar);
         }
-        
+
         T val(0);
         for (gsXmlNode * child = node->first_node("cv"); child;
                 child = child->next_sibling("cv"))
@@ -107,15 +186,26 @@ public:
             str.clear();
             str.str(child->value());
             GISMO_ENSURE(gsGetReal(str, val), "No value");
-            const int uIndex = atoi(child->first_attribute("unknown")->value());
-            const int cIndex = atoi(child->first_attribute("corner")->value());
+
+            // Unknown is optional, otherwise 0
+            const gsXmlAttribute * unk = child->first_attribute("unknown");
+            int uIndex = 0;
+            if (NULL != unk)
+                uIndex = atoi( unk->value() );
+
+            // Component is optional, otherwise -1
+            const gsXmlAttribute * comp = child->first_attribute("component");
+            int cIndex = -1;
+            if (NULL != comp)
+                cIndex = atoi( comp->value() );
+
+            const int cornIndex = atoi(child->first_attribute("corner")->value());
             int pIndex = atoi(child->first_attribute("patch")->value());
-            pIndex = ids[pIndex];
-            
-            result.addCornerValue(cIndex, val, pIndex, uIndex);
+
+            result.addCornerValue(cornIndex, val, pIndex, uIndex, cIndex);
         }
     }
-    
+
     static gsXmlNode * put(const Object & obj, gsXmlTree & data)
     {
         // Check if the last node is a multipatch
@@ -132,7 +222,7 @@ public:
         typedef typename gsBoundaryConditions<T>::const_bciterator bctype_it;
         typedef typename Object::const_iterator bc_it;
 
-        std::vector<typename gsFunction<T>::Ptr> fun;
+        std::vector<typename gsFunctionSet<T>::Ptr> fun;
         //gsSortedVector<typename gsFunction<T>::Ptr> fun;
         typedef typename std::vector<const boundary_condition<T>*> bctype_vec;
         typedef typename std::map<int, bctype_vec> bctype_map;
@@ -144,7 +234,7 @@ public:
             bctype_map map;
             for (bc_it bc = it->second.begin(); bc != it->second.end(); ++bc)
             {
-                typename gsFunction<T>::Ptr ptr = bc->function();
+                typename gsFunctionSet<T>::Ptr ptr = bc->function();
                 bool contains = std::find(fun.begin(), fun.end(), ptr)
                         != fun.end();
                 if (!contains)
@@ -165,10 +255,10 @@ public:
         }
 
         int count = 0;
-        typedef typename std::vector<typename gsFunction<T>::Ptr>::const_iterator fun_it;
+        typedef typename std::vector<typename gsFunctionSet<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
-            gsXmlNode * ff = putFunctionFromXml(*fit, data, count);
+            gsXmlNode * ff = putFunctionToXml<T>(*fit, data, count);
             BCs->append_node(ff);
             ++count;
         }
@@ -209,6 +299,9 @@ public:
                     {
                         gsXmlAttribute * unknownNode = internal::makeAttribute(
                                 "unknown", b.m_unknown, data);
+                        gsXmlAttribute * componentNode = internal::makeAttribute("component",
+                                b.unkComponent(), data);
+                        bcNode->append_attribute(componentNode);
                         bcNode->append_attribute(unknownNode);
                         first = false;
                     }
@@ -232,11 +325,14 @@ public:
             gsXmlNode * cvNode = internal::makeNode("cv", data);
             gsXmlAttribute * unknownNode = internal::makeAttribute("unknown",
                     c.unknown, data);
+            gsXmlAttribute * componentNode = internal::makeAttribute("component",
+                    c.component, data);
             gsXmlAttribute * patchNode = internal::makeAttribute("patch",
                     c.patch, data);
             gsXmlAttribute * cornerNode = internal::makeAttribute("corner",
                     c.corner.m_index, data);
             cvNode->append_attribute(unknownNode);
+            cvNode->append_attribute(componentNode);
             cvNode->append_attribute(patchNode);
             cvNode->append_attribute(cornerNode);
             std::ostringstream oss;
@@ -248,53 +344,6 @@ public:
         }
         return BCs;
     }
-
-private:
-    static gsXmlNode * putFunctionFromXml(
-            const typename gsFunction<T>::Ptr & obj, gsXmlTree & data,
-            int index)
-    {
-        gsXmlNode * result = internal::makeNode("Function", data);
-        if (typeid(*obj) == typeid(gsFunctionExpr<T> ))
-        {
-            gsFunctionExpr<T> * ptr2 =
-                    dynamic_cast<gsFunctionExpr<T> *>(obj.get());
-            gsFunctionExpr<T> expr = *ptr2;
-            result = putFunctionExprFromXml(expr, result, data);
-        }
-        gsXmlAttribute * indexNode = internal::makeAttribute("index", index,
-                data);
-        result->append_attribute(indexNode);
-        return result;
-    }
-
-    static gsXmlNode * putFunctionExprFromXml(const gsFunctionExpr<T> & obj,
-            gsXmlNode * result, gsXmlTree & data)
-    {
-        std::string typeStr = gsXml<gsFunctionExpr<T> >::type();
-        gsXmlAttribute * type = internal::makeAttribute("type", typeStr, data);
-        result->append_attribute(type);
-        gsXmlAttribute * dim = internal::makeAttribute("dim", obj.domainDim(),
-                data);
-        result->append_attribute(dim);
-        // set value
-        std::ostringstream stream;
-        bool first = true;
-        for (int i = 0; i < obj.targetDim(); ++i)
-        {
-            if (!first)
-            {
-                stream << ", ";
-            }
-            stream << obj.expression(i);
-            first = false;
-        }
-        //val = stream.str();
-        char * value = data.allocate_string(stream.str().c_str());
-        result->value(value);
-        return result;
-    }
-
 };
 
 } // end namespace internal

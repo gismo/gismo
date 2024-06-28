@@ -40,7 +40,7 @@ public:
     /// Unique pointer for gsConstantBasis
     typedef memory::unique_ptr< gsConstantBasis > uPtr;
 
-    gsConstantBasis(T x , int domainDim  = 1)
+    gsConstantBasis(T x , short_t domainDim  = 1)
     : m_val(x), m_domainDim(domainDim)
     { }
 
@@ -65,11 +65,11 @@ public:
 
 public:
 
-    int domainDim() const   { return m_domainDim; }
+    short_t domainDim() const   { return m_domainDim; }
 
     index_t size() const   { return 1; }
 
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     {
         result.setZero(1,u.cols());
     }
@@ -113,7 +113,7 @@ private:
 
     T m_val;
 
-    int m_domainDim;
+    short_t m_domainDim;
 };
 
 

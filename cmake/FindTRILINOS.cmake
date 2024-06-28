@@ -3,7 +3,6 @@
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2016 RICAM-Linz.
 ##
 ## Required TRILINOS packages are:
 ## - Epetra
@@ -90,8 +89,8 @@ IF(TEUCHOSKOKKOSCOMM_LIBRARY)
 	SET(HAVE_KOKKOSCOMM YES)
 ENDIF()
 
-find_package_handle_standard_args(EPETRA DEFAULT_MSG EPETRA_LIBRARY)
-find_package_handle_standard_args(TEUCHOS DEFAULT_MSG TEUCHOS_LIBRARY)
+#find_package_handle_standard_args(EPETRA DEFAULT_MSG EPETRA_LIBRARY)
+#find_package_handle_standard_args(TEUCHOS DEFAULT_MSG TEUCHOS_LIBRARY)
 
 IF(AMESOS_INCLUDE_PATH AND AMESOS_LIBRARY)
 	SET(TRILINOS_INCLUDE_DIR ${TRILINOS_INCLUDE_DIR} ${AMESOS_INCLUDE_PATH})

@@ -171,6 +171,11 @@ int main(int argc, char *argv[])
         gsFileManager::open("poisson2d.pvd");
         //! [Plot in Paraview]
     }
+    else
+    {
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
+    }
 
     return 0;
 }

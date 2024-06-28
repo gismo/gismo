@@ -1,0 +1,47 @@
+version: 2.0
+
+jobs:
+  x86_64_xcode15.4_cxx14_release:
+    macos:
+      xcode: "15.4.0"
+    resource_class: macos.m1.large.gen1
+    working_directory: ~/gismo
+    environment:
+      MAKEJOBS: 4
+    steps:
+      - run:
+          name: Install dependencies
+          command: brew install cmake
+      - checkout
+      - run:
+          name: Configure G+Smo on MacOS
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="$CIRCLE_JOB[$CIRCLE_PR_NUMBER]" -DSITE="$CIRCLE_BRANCH-$(git rev-parse --short "$CIRCLE_SHA1")_[circleci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_OPTIONAL="gsOpennurbs"
+      - run:
+          name: Build and test G+Smo on MacOS (x86_64)
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
+
+  x86_64_xcode14.3_cxx17_release:
+    macos:
+      xcode: "14.3.1"
+    resource_class: macos.m1.medium.gen1
+    working_directory: ~/gismo
+    environment:
+      MAKEJOBS: 4
+    steps:
+      - run:
+          name: Install dependencies
+          command: brew install cmake
+      - checkout
+      - run:
+          name: Configure G+Smo on MacOS
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="$CIRCLE_JOB[$CIRCLE_PR_NUMBER]" -DSITE="$CIRCLE_BRANCH-$(git rev-parse --short "$CIRCLE_SHA1")_[circleci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_OPTIONAL="gsOpennurbs"
+      - run:
+          name: Build and test G+Smo on MacOS (x86_64)
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
+          
+workflows:
+  version: 2
+  build:
+    jobs:
+      - x86_64_xcode15.4_cxx14_release
+      - x86_64_xcode14.3_cxx17_release

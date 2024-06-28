@@ -85,7 +85,7 @@ public:
     
     gsBasis<T> & basis() const { return m_surface->basis(); }
 
-    int geoDim() const { return m_surface->geoDim(); }
+    short_t geoDim() const { return m_surface->geoDim(); }
 
     //bool isProjective() const { return m_surface->isProjective(); }
     
@@ -191,7 +191,7 @@ public:
     /// \param loopId specifies the loop
     /// \param curveId specifies the curve in the loop
     /// \param lengthRatio   the ratio of the lengths of the first new curve and of the original curve
-    gsMatrix<T> splitCurve(std::size_t loopId, std::size_t curveId, T lengthRatio=.5)
+    gsMatrix<T> splitCurve(size_t loopId, size_t curveId, T lengthRatio=.5)
     {return m_domain->splitCurve(loopId,curveId,lengthRatio);}
     
     /// Compute the partial derivatives of the surface parametrization at a corner point of a trimmed patch 
@@ -242,16 +242,11 @@ public:
     /// Compute the unit normal vector of the trimmed surface at a point in the parameter domain
     gsMatrix<T> unitNormal(gsMatrix<T> point) const
     {
-      gsMatrix<T> Jacobian = m_surface->jacobian(point);
-            
-      gsMatrix<T> sigma_u = Jacobian.col(0);
-      gsMatrix<T> sigma_v = Jacobian.col(1);
-      gsMatrix<T> un= (gsVector3d<T>(sigma_u)).cross( gsVector3d<T>(sigma_v) );     
-      un.normalize();
-      
-      return un;
+        gsMatrix<T,3> Jacobian = m_surface->jacobian(point);
+        gsMatrix<T,3> res = Jacobian.col(0).cross(Jacobian.col(1)).normalized();
+        return res;
     }
-    
+
     /// sample standard unit normals along a trimming curve
     gsMatrix<T> sampleNormal(int loopNumber, int curveNumber, size_t npoints) const
     {
@@ -294,6 +289,7 @@ public:
 
     void cleanEndpoints(T eps)
     {
+      GISMO_UNUSED(eps);
       gsMatrix<T> supp = this->m_surface->support();
       size_t n = domain().loop(0).curves().size();
       for(size_t i = 0; i < n; i++)
@@ -354,7 +350,7 @@ public:
                 {
                     termFromSurfaceCurvature(idxJ, 0) = surfDeriv2(idxJ * 3) * curveDeriv(0, 0) * curveDeriv(0, 0) +
                             surfDeriv2(idxJ * 3 + 1) * curveDeriv(1, 0) * curveDeriv(1, 0) +
-                            2 * surfDeriv2(idxJ * 3 + 2) * curveDeriv(0, 0) * curveDeriv(1, 0);
+                            (T)(2) * surfDeriv2(idxJ * 3 + 2) * curveDeriv(0, 0) * curveDeriv(1, 0);
                 }
                 gsMatrix<T> sqDistDeriv2Term1 = (surfDeriv * curveDeriv).transpose();
                 sqDistDeriv2Term1 *= (surfDeriv * curveDeriv);

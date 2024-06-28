@@ -1,12 +1,8 @@
 ######################################################################
-## gsIntall.cmake ---
+## gsInstall.cmake
 ## This file is part of the G+Smo library.
-## 
-## Author: Angelos Mantzaflaris 
-## Author: Harald Weiner
-## Copyright (C) 2012-2015 - RICAM-Linz.
-######################################################################
-## Installation
+##
+## Authors: Angelos Mantzaflaris, Harald Weiner
 ######################################################################
 
 message ("  CMAKE_INSTALL_PREFIX    ${CMAKE_INSTALL_PREFIX}")
@@ -24,11 +20,11 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 
 # Set CMake installation directory
 if(WIN32 AND NOT CYGWIN)
-  set(DEF_INSTALL_CMAKE_DIR ${LIB_INSTALL_DIR}/cmake)
+  set(DEF_CMAKE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake)
 else()
-   set(DEF_INSTALL_CMAKE_DIR ${LIB_INSTALL_DIR})
+   set(DEF_CMAKE_INSTALL_DIR ${LIB_INSTALL_DIR}/gismo)
 endif()
-set(CMAKE_INSTALL_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE STRING
+set(CMAKE_INSTALL_DIR ${DEF_CMAKE_INSTALL_DIR} CACHE STRING
     "Installation directory for CMake files")
 
 # Make relative paths absolute (needed later on)
@@ -41,7 +37,7 @@ endforeach()
 
 # Add all targets to the build-tree export set
 if(GISMO_BUILD_LIB)
-export(TARGETS ${PROJECT_NAME}
+export(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_static
   FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
 endif()
 
@@ -57,18 +53,21 @@ export(PACKAGE gismo)
 # Create the gismoConfig.cmake and gismoConfigVersion.cmake files
 
 # ... for the build tree
-set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}"
-                      "${PROJECT_BINARY_DIR}" )
+set(CONF_PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/gismo.h")
+set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}")
 set(CONF_LIB_DIRS     "${CMAKE_BINARY_DIR}/lib")
+set(CONF_MODULE_PATH  "${gismo_SOURCE_DIR}/cmake")
 set(CONF_USE_FILE     "${CMAKE_BINARY_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
               "${CMAKE_BINARY_DIR}/gismoConfig.cmake" @ONLY)
 file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_DIR})
 
 # ... for the install tree
+set(CONF_PUBLIC_HEADER "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}/gismo.h")
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 set(CONF_LIB_DIRS     "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
-set(CONF_USE_FILE     "${INSTALL_CMAKE_DIR}/gismoUse.cmake")
+set(CONF_MODULE_PATH  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}")
+set(CONF_USE_FILE     "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
                "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake" @ONLY)
 
@@ -86,14 +85,14 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
         DESTINATION include/${PROJECT_NAME}/gsCore )
 
 # For gsLinearAlgebra.h
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/gsEigen
         DESTINATION include/${PROJECT_NAME}
         PATTERN "*.txt" EXCLUDE
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
-        DESTINATION include/${PROJECT_NAME} 
+        DESTINATION include/${PROJECT_NAME}
         FILES_MATCHING
         PATTERN "*.h"
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
@@ -102,11 +101,19 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
 install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
         DESTINATION include/${PROJECT_NAME})
 
+# For gdcpp.h
+install(FILES ${PROJECT_SOURCE_DIR}/external/gdcpp.h
+        DESTINATION include/${PROJECT_NAME})
+
 # For gsXmlUtils.h
 install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
-              ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp  
+              ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
         DESTINATION include/${PROJECT_NAME}/rapidxml/ )
 
+if (GISMO_WITH_ADIFF)
+  install(FILES ${PROJECT_SOURCE_DIR}/external/gsAutoDiff.h
+    DESTINATION include/${PROJECT_NAME}/)
+ endif()
 
 # For pure install
 #install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/rapidxml
@@ -123,39 +130,56 @@ set(GISMO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/share/gismodata/)
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h" )
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
-        DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
+  DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
+install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfigExt.h
+  DESTINATION include/${PROJECT_NAME}/gsCore/)
 
 # Install cmake files
 install(FILES
-        "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
-        "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
-        "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
-        DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT devel)
- 
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
+  "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsConfig.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsDebugExtra.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddCXXCompileOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/AddCXXCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/CheckCXXCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/AutodetectArm.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/AutodetectPpc.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/AutodetectX86.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/ChecksArm.txt"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/ChecksX86.txt"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/CommonMacros.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/HandleArmOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/HandlePpcOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/HandleX86Options.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/cpuinfo_x86.cxx"
+  DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
+
 # Install the export set for use with the install-tree
 #install(EXPORT gismoTargets DESTINATION
-#  "${INSTALL_CMAKE_DIR}" COMPONENT devel)
+#  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 else(GISMO_BUILD_LIB)
    message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
 endif(GISMO_BUILD_LIB)
 
-# Install docs (if available)
-set(DOC_SRC_DIR "${PROJECT_BINARY_DIR}/doc/html/")
-#message("DOC_SRC_DIR='${DOC_SRC_DIR}'")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/ofa"
+        COMPONENT devel
+        DESTINATION "${CMAKE_INSTALL_DIR}/"
+        USE_SOURCE_PERMISSIONS)
 
-set(TMP_VERSION "${gismo_VERSION}")
-string(REGEX REPLACE "[a-zA-Z]+" "" TMP_VERSION ${TMP_VERSION})
-#message("TMP_VERSION='${TMP_VERSION}'")
-set(DOC_INSTALL_DIR share/doc/gismo-${TMP_VERSION} CACHE PATH 
+# Install docs (if available/generated)
+set(DOC_INSTALL_DIR share/doc/gismo CACHE PATH #-${GISMO_VERSION}
     "Installation directory for documentation")
-#message("DOC_INSTALL_DIR='${DOC_INSTALL_DIR}'")
-
-install(DIRECTORY "${DOC_SRC_DIR}"
+install(DIRECTORY "${PROJECT_BINARY_DIR}/doc/html/"
         COMPONENT doc
         DESTINATION "${DOC_INSTALL_DIR}/"
         USE_SOURCE_PERMISSIONS
-        OPTIONAL 
+        OPTIONAL
         FILES_MATCHING
         PATTERN "*.css"
         PATTERN "*.html"
