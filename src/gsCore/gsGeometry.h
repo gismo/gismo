@@ -576,7 +576,7 @@ public:
     ///
     /// { geom(v) | v vertex of input mesh }
     ///
-    void evaluateMesh(gsMesh<T>& mesh) const;
+    virtual void evaluateMesh(gsMesh<T>& mesh) const;
 
 
     /// Splits the geometry 2^d parts, where each direction is divided into two parts in

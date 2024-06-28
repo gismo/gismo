@@ -16,6 +16,8 @@
 #include <gsUtils/gsPointGrid.h>
 #include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsExprHelper.h>
+#include <gsCore/gsComposedBasis.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsAssembler/gsCPPInterface.h>
 
@@ -801,6 +803,15 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
             if (m_exprdata->points().cols()==0)
                 continue;
+
+            if (const gsComposedBasis<T> * cb = dynamic_cast<const gsComposedBasis<T> *>(&m_exprdata->multiBasis().basis(patchInd)))
+            {
+                gsMatrix<T> quPointsInv = gsMatrix<T>::Zero(m_exprdata->points().rows(),m_exprdata->points().cols());
+                quPointsInv.colwise() = domIt->centerPoint(); // Initialize with the centerpoint
+                cb->composition()->invertPoints(m_exprdata->points(),quPointsInv,1e-4,true);
+                GISMO_ASSERT(!(quPointsInv.array()==std::numeric_limits<T>::infinity()).any(),"Point inversion failed");
+                quPointsInv.swap(m_exprdata->points());
+            }
 
 // Activate the try-catch only if G+Smo is not in DEBUG
 #ifdef NDEBUG

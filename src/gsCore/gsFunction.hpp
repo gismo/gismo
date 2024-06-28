@@ -293,7 +293,7 @@ int gsFunction<T>::newtonRaphson_impl(
     gsMatrix<T,_Dim,(_Dim==-1?-1:1)> delta , residual;
     gsMatrix<T,_Dim,_Dim> jac;
 
-    if (withSupport)
+    if (withSupport && support().cols()==2)
     {
         supp = support();
         GISMO_ASSERT( (arg.array()>=supp.col(0).array()).all() &&
@@ -360,7 +360,7 @@ int gsFunction<T>::newtonRaphson_impl(
         // update arg
         arg += damping_factor * delta;
 
-        if ( withSupport )
+        if ( withSupport  && support().cols()==2)
         {
             if ( delta.norm()<accuracy )
             {

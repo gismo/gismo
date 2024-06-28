@@ -77,19 +77,19 @@ public:
 
     gsMatrix<T> support(const index_t & i) const override
     {
-        // gsMatrix<T> supp = m_basis->support(i);
-        // gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
-        // supp = pt.toMatrix();
-        // gsMatrix<T> result = supp;
+        gsMatrix<T> supp = m_basis->support(i);
+        gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
+        supp = pt.toMatrix();
+        gsMatrix<T> result = supp;
 
-        // m_composition->invertPoints(supp,result,1e-10,true);
+        m_composition->invertPoints(supp,result,1e-4,true);
 
-        // supp.conservativeResize(this->domainDim(),2);
-        // for (size_t d=0; d!=this->domainDim(); d++)
-        //     supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
+        supp.conservativeResize(this->domainDim(),2);
+        for (size_t d=0; d!=this->domainDim(); d++)
+            supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
 
-        // return supp;
-        return this->support();
+        return supp;
+        // return this->support();
     } // This should be the inverse map
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override
@@ -265,7 +265,10 @@ public:
         for (size_t i = 0; i!= mesh.numVertices(); ++i)
         {
             point = tmp = mesh.vertex(i).topRows(pDim);
-            m_composition->invertPoints(point,tmp,1e-6,true);
+            // m_composition->invertPoints(point,tmp,1e-2,true);
+            // gsDebugVar(point);
+            // gsDebugVar(tmp);
+            m_composition->eval_into(point,tmp);
             mesh.vertex(i).topRows(pDim) = tmp.topRows(pDim);
         }
     }
@@ -296,6 +299,18 @@ private:
             coords.col(k) = coords.col(k).cwiseMax(m_basis->support().col(0));
             coords.col(k) = coords.col(k).cwiseMin(m_basis->support().col(1));
         }
+
+// #ifndef _NDEBUG
+//         for (size_t d=0; d!=m_basis->domainDim(); d++)
+//             if( (coords.row(d).array() < m_basis->support()(d,0)).any() ||
+//                 (coords.row(d).array() > m_basis->support()(d,1)).any()   )
+//             {
+//                 gsDebugVar(coords.row(d).array());
+//                 gsDebugVar(coords.row(d).array()-1);
+//                 // GISMO_ERROR("Evaluation outside the domain.\n result.row(d) = " << result.row(d));
+//             }
+// #endif
+
     }
 
 protected:

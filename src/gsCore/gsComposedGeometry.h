@@ -171,6 +171,33 @@ public:
         }
     }
 
+    /// Evaluates the mesh
+    void evaluateMesh(gsMesh<T>& mesh) const override
+    {
+        const int pDim = this->parDim();
+        const int gDim = this->geoDim();
+
+        gsMatrix<T> tmp;
+
+        // For all vertices of the mesh, push forward the value by the
+        // geometry mapping
+        if (1==gDim && 3>pDim) // Plot a graph
+            for (size_t i = 0; i!= mesh.numVertices(); ++i)
+            {
+                m_composition->invertPoints(tmp,tmp);
+                this->eval_into( mesh.vertex(i).topRows(pDim), tmp );
+                mesh.vertex(i).middleRows(pDim, gDim) = tmp;
+            }
+        else // Plot mesh on a mapping
+            for (size_t i = 0; i!= mesh.numVertices(); ++i)
+            {
+                this->eval_into( mesh.vertex(i).topRows(pDim), tmp );
+                m_composition->invertPoints(tmp,tmp);
+                const index_t gd = math::min(3,gDim);
+                mesh.vertex(i).topRows(gd) = tmp.topRows(gd);
+            }
+    }
+
     using Base::targetDim;
 
     GISMO_OVERRIDE_BASIS_ACCESSORS;

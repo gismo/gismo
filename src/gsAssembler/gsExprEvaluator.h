@@ -18,6 +18,7 @@
 #include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include <gsAssembler/gsCPPInterface.h>
+#include <gsCore/gsComposedBasis.h>
 //#include <gsIO/gsWriteParaview.h>
 
 namespace gismo
@@ -429,6 +430,16 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                           m_exprdata->points(), quWeights);
+
+
+            if (const gsComposedBasis<T> * cb = dynamic_cast<const gsComposedBasis<T> *>(&m_exprdata->multiBasis().basis(patchInd)))
+            {
+                gsMatrix<T> quPointsInv = gsMatrix<T>::Zero(m_exprdata->points().rows(),m_exprdata->points().cols());
+                quPointsInv.colwise() = domIt->centerPoint(); // Initialize with the centerpoint
+                cb->composition()->invertPoints(m_exprdata->points(),quPointsInv,1e-4,true);
+                GISMO_ASSERT(!(quPointsInv.array()==std::numeric_limits<T>::infinity()).any(),"Point inversion failed");
+                quPointsInv.swap(m_exprdata->points());
+            }
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(patchInd);

@@ -114,8 +114,9 @@ public:
     }
 
     /// Returns the controls of the function
-    // const gsAsVector<T> controls() const override { return gsAsVector<T>(m_domain.coefs(),m_indices); };
-          gsAsVector<T> controls()       override { return gsAsVector<T>(m_domain.coefs(),m_indices); };
+    // DO NOT WORK YET
+        //   gsAsConstVector<T> controls() const override { return gsAsConstVector<T>(m_domain.coefs(),m_indices); };
+        //   gsAsVector<T>      controls()       override { return gsAsVector<T>     (m_domain.coefs(),m_indices); };  
 
     /// Returns the \a i th control of the function
     // const typename gsMatrix<T>::CoeffReturnType & control(index_t i) const override { return gsAsConstVector<T>(m_parameters.data(),m_parameters.size())(i);}
