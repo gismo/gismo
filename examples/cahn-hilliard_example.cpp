@@ -22,6 +22,14 @@
     Run a simple Cahn-Hilliard example with a random normal initial concentration distribution of mean 0.0 until (almost) equilibrium (Nitsche)
     ./bin/cahn-hilliard_example --plot -N 1000 --nitsche --initial --plot
     
+
+    -----------------------------------------------------------------------
+    TODO;
+    - Change hmax to a gsExprAssembler<>::element el; el.diam();
+    -----------------------------------------------------------------------
+
+
+
 */
 
 //! [Include namespace]
@@ -35,17 +43,14 @@ int main(int argc, char *argv[])
     real_t dt = 1e-3;
     index_t maxSteps = 10;
 
-    bool output = true;
-
     index_t plotmod = 1;
 
     //! [Parse command line]
     bool plot = false;
     index_t numRefine  = 1;
     index_t numElevate = 1;
-    bool last = false;
-    real_t mean = 0.0;
 
+    index_t verbose = 1;
     bool random = false;
 
     std::string fn("pde/cahn_hilliard_bvp.xml");
@@ -57,8 +62,8 @@ int main(int argc, char *argv[])
     cmd.addReal( "t", "dt","dt parameter",dt); // -t () or --dt ()
     cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
     cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
+    cmd.addInt ( "v", "verbose", "Verbosity level",  verbose );
     cmd.addString( "f", "file", "Input XML file", fn );
-    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("random", "Random initial condition of the CH problem", random);
 
@@ -151,35 +156,13 @@ int main(int argc, char *argv[])
                   lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
     K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
-
-    // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
-    // auto dmu_c= 1.0 / (2.0*theta) * igrad(c,G) / (c - c*c).val() - 2.0 * igrad(c,G);
-
-     // auto mu_c = pow(c,3).val() - c.val();
-    // auto dmu_c= igrad(c,G) * (- 1.0 + 3.0 * (c*c).val());
-
-    // auto mu_c= -c.val() * (1.0 - (c*c).val());
-    // auto dmu_c = -igrad(c,G) * (1.0 - (c*c).val()) - c.val() * (1.0 - 2.0 * c.val() * igrad(c,G));
-    // auto M_c  = M0 * c * (1.0-c.val());
-    // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G);
-
     // Derivatives of the double well potential (Gomez et al., 2008)
     auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
     auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
 
     // Mobility
-    auto M_c  = 1.0 + 0.0*c.val();
-    auto dM_c = 0.0 * igrad(c,G);
-
-    // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
-    //                 lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
-    // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
-    //                     lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
-    // // auto residual = w*dc + // M
-    //                 igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar
-    //                 //igrad(w,G)  * (-1) * igrad(c,G).tr() + // F_bar
-    //                 // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
-    //                 ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
+    auto M_c  = 1.0 + 0.0*c.val(); // replace with const_expr(1.0) instead of using 0*c
+    auto dM_c = 0.0 * igrad(c,G); // replace with const_expr(1.0) instead of using 0*c!!
 
     auto residual = w*dc + // M
                     M_c.val() * igrad(w,G)  * dmu_c * igrad(c,G).tr() + // F_bar
@@ -223,8 +206,8 @@ int main(int argc, char *argv[])
     {
         // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-        Cold = tmp.array()*CHopt.askReal("ampl"); //random uniform variable in [-0.05,0.05]
-        Cold.array() += CHopt.askReal("mean"); // 0.45
+        Cold = tmp.array()*CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
+        Cold.array() += CHopt.askReal("mean",0.0); // 0.45
     }
     else
     {
@@ -233,28 +216,27 @@ int main(int argc, char *argv[])
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
         real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
-        // gsInfo << "L2 projection error "<<error<<"\n";
+        if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
         for (index_t i = 0; i < dbasis.basis(0).size(); i++)
             if (w.mapper().is_free(i))
                 Cold(w.mapper().index(i),0) = tmp(i,0);
     }
-    
+
     Calpha = Cold;
     dCold.setZero(A.numDofs(),1);
 
     real_t Q0norm = 1, Qnorm = 10;
-    real_t tol = 1e-4;
+    real_t tol = TIMEopt.askReal("tol",1e-4);
 
     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 1000);
+    collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
 
     real_t dt_old = dt;
     real_t t_rho = TIMEopt.askReal("t_rho",0.9);
     real_t t_err = 1;
     index_t lmax = 1;
-    real_t TOL = 1e-3;
     std::vector<gsMatrix<>> Csols(2);
 
     real_t tmp_alpha_m = 1;
@@ -270,7 +252,7 @@ int main(int argc, char *argv[])
     {
         for (index_t dt_it = 0; dt_it != lmax; dt_it++)
         {
-            gsInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
+            if (verbose>0) gsInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
             tmp_alpha_m = tmp_alpha_f = tmp_gamma = 1;
 
             for (index_t k = 0; k!=2; k++)
@@ -284,18 +266,18 @@ int main(int argc, char *argv[])
 
                 Q0norm = 1;
                 Qnorm = 10;
-                
+
                 for (index_t it = 0; it!= maxIt; it++)
                 {
                     A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
                     Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
                     dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
-                    
+
                     A.assemble(residual * meas(G));
                     Q = A.rhs();
 
                     if (bc.get("Neumann").size()!=0)
-                    {      
+                    {
                         Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
                         // Old code lines:
                         // A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G) * lambda * ilapl(c,G).val()); // consistency term
@@ -306,24 +288,24 @@ int main(int argc, char *argv[])
                     if (it == 0) Q0norm = Q.norm();
                     else         Qnorm = Q.norm();
 
-                    gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
-                    
+                    if (verbose==2) gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
+
                     if (it>0 && Qnorm/Q0norm < tol)
                     {
-                        gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
+                        if (verbose>0) gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
                         converged = true;
                         break;
                     }
                     else if (it==maxIt-1)
                     {
-                        gsInfo<<"\t\t"<<method<<"did not converge!\n";
+                        if (verbose>0) gsInfo<<"\t\t"<<method<<"did not converge!\n";
                         converged = false;
                         break;
                     }
 
                     // // gsInfo<<"Assembly K_m\n";
                     // A.assembleJacobian( residual * meas(G), dc );
-                    // K_m = tmp_alpha_m * A.matrix(); 
+                    // K_m = tmp_alpha_m * A.matrix();
 
                     // // gsInfo<<"Assembly K_f\n";
                     // A.assembleJacobian( residual * meas(G), c );
@@ -343,10 +325,10 @@ int main(int argc, char *argv[])
                     A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
                                         (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
                                         ddmu_c * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
-                                        lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian                    
+                                        lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
                                         // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-                    
-                    K = A.matrix(); 
+
+                    K = A.matrix();
 
                     if (bc.get("Neumann").size()!=0)
                         K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
