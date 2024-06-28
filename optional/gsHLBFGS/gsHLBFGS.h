@@ -8,11 +8,6 @@
 #include <gsOptimizer/gsOptimizer.h>
 
 #include "HLBFGS/HLBFGS.h"
-/*
-To do:
-- Use Eigen
-- change T, int
-*/
 
 // https://xueyuhanlang.github.io/software/HLBFGS/
 
@@ -78,6 +73,10 @@ protected:
         Base::defaultOptions();
         // See https://xueyuhanlang.github.io/software/HLBFGS/
 
+        // DEPRECATED  
+        m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
+        m_options.addReal("MinStepLength","Minimal step length",1e-9);
+
         // Options from PARAMETERS
         m_options.addReal("tolF","Function tolerance (default 1e-4)",1e-4);
         m_options.addReal("tolL","Line search tolerance (default 1e-16)",1e-16);
@@ -106,14 +105,22 @@ protected:
     {
         Base::getOptions();
 
+        T minGradientLength = m_options.askReal("MinGradientLength",-1);
+        if (minGradientLength==-1)
+            gsWarn<<"The option 'MinGradientLength' is deprecated, pease use 'tolRelG' instead\n";
+
+        T minStepLength = m_options.askReal("MinStepLength",-1);
+        if (minStepLength==-1)
+            gsWarn<<"The option 'MinStepLength' is deprecated, pease use 'tolG' instead\n";
+
         // PARAMETERS
         m_hlbfgs_pars[0] = m_options.getReal("tolF");
         m_hlbfgs_pars[1] = m_options.getReal("tolL");
         m_hlbfgs_pars[2] = m_options.getReal("tolLG");
         m_hlbfgs_pars[3] = m_options.getReal("minStepL");
         m_hlbfgs_pars[4] = m_options.getReal("maxStepL");
-        m_hlbfgs_pars[5] = m_options.getReal("tolRelG");
-        m_hlbfgs_pars[6] = m_options.getReal("tolG");
+        m_hlbfgs_pars[5] = (minGradientLength==-1) ? m_options.getReal("tolRelG") : minGradientLength;
+        m_hlbfgs_pars[6] = (minStepLength==-1) ? m_options.getReal("tolG") : minStepLength;
 
         // INFO
         //      INFO[1,2] are output, INFO[4,5] come from Base
