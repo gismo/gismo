@@ -204,6 +204,11 @@ if (";${GISMO_OPTIONAL};" MATCHES ";gsCoDiPack;")
   gismo_fetch_module(gsCoDiPack)
 endif()
 
+# WHY IS THIS NEEDED HERE????
+if (";${GISMO_OPTIONAL};" MATCHES ";gsOptim;")
+  gismo_fetch_module(gsOptim)
+endif()
+
 #first time
 include_directories(${GISMO_INCLUDE_DIRS})
 

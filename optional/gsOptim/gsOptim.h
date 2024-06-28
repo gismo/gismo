@@ -295,8 +295,7 @@ public:
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
-    {   gsDebugVar(x);
-        return optim::lbfgs(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
+    { return optim::lbfgs(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     void defaultOptions() override
     {

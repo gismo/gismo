@@ -70,15 +70,15 @@ public:
         m_desUpperBounds.resize(m_numDesignVars);
         
         // x0 has a lower bound of -1 and an upper bound of 1
-        m_desLowerBounds[0] = -1.0;
+        m_desLowerBounds[0] = -1.0; 
         m_desUpperBounds[0] =  1.0;
         
         // x1 has no upper or lower bound, so we set them to
         // a large negative and a large positive number.
         // The value that is interpretted as -/+infinity can be
         // set in the options, but it defaults to -/+1e19
-        m_desLowerBounds[1] = -1.0e19;
-        m_desUpperBounds[1] =  1.0e19;
+        m_desLowerBounds[1] = -1.0e5;
+        m_desUpperBounds[1] =  1.0e5;
 
         m_conLowerBounds.resize(m_numConstraints);
         m_conUpperBounds.resize(m_numConstraints);
@@ -234,7 +234,7 @@ int main(int argc, char* argv[])
 #endif
 #ifdef gsOptim_ENABLED
         case 3 :
-        optimizer = new gsOptim<real_t>(&problem);
+        optimizer = new gsOptim<real_t>::LBFGS(&problem);
         break;
 #endif
         default:

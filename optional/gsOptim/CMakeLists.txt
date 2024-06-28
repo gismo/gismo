@@ -44,15 +44,15 @@ execute_process (
 set(OPTIM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/optim/header_only_version CACHE INTERNAL "")
 # Add optim include directory to G+Smo standard include directories
 set(GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OPTIM_INCLUDE_DIR}
-    CACHE INTERNAL "Gismo include directories")
+    CACHE INTERNAL "Gismo include directories" FORCE)
 
 message(${GISMO_INCLUDE_DIRS})
 
 include_directories(${GISMO_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} INTERFACE)
-
-# add_dependencies(${PROJECT_NAME} optim)
+target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
+add_dependencies(${PROJECT_NAME} optim)
 
 # Set standard properties for all G+Smo extensions
 set_target_properties(${PROJECT_NAME} PROPERTIES
