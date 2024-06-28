@@ -38,7 +38,7 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addInt("ff_MaxIterations",
                  "Max iterations for quality improvement",
                  1e4);
-  options.addReal("ff_MinGradientLength",
+  options.addReal("ff_tolRelG",
                   "Min gradient length for foldover-free optimization",
                   1e-20);
   options.addReal("ff_MinStepLength",
@@ -49,7 +49,7 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addInt("qi_MaxIterations",
                  "Max iterations for quality improvement",
                  1e4);
-  options.addReal("qi_MinGradientLength",
+  options.addReal("qi_tolRelG",
                   "Min gradient length for quality improvement",
                   1e-4);
   options.addReal("qi_MinStepLength",
@@ -326,8 +326,8 @@ void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T> &mp,
   gsHLBFGS<T> optFoldoverFree(&objFoldoverFree);
   optFoldoverFree.options().setInt("MaxIterations",
                                    options.askInt("ff_MaxIterations", 1e4));
-  optFoldoverFree.options().setReal("MinGradientLength",
-                                    options.askReal("ff_MinGradientLength",
+  optFoldoverFree.options().setReal("tolRelG",
+                                    options.askReal("ff_tolRelG",
                                                     1e-12));
   optFoldoverFree.options().setReal("MinStepLength",
                                     options.askReal("ff_MinStepLength", 1e-12));
