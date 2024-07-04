@@ -170,7 +170,8 @@ int main(int argc, char *argv[])
     const char* obstypes[] = {
         "0",
         "if(x<1/16.,1,0) + if((x>4/16.)&(x<5/16.),1,0) + if((x>12/16.)&(x<13/16.),1,0) + if(x>15/16.,1,0) ",
-        "1"
+        "1",
+        "if(x<1/16.,1,0) + if((x>12/16.)&(x<13/16.),1,0) ",
     };
 
     gsMultiPatch<> geos[] = {
