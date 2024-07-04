@@ -16,7 +16,6 @@
 
 using namespace gismo;
 
-#define debugMat(m) gsInfo<<#m<<":"<<(m).rows()<<"x"<<(m).cols()<<"\n"
 //#define printMat(m) gsInfo << #m << " (" << m.rows() << "x" << m.cols() << "):\n\n"; for (int i=0; i<m.rows(); ++i) {for (int j=0; j<m.cols(); ++j) gsInfo << m(i,j) << "\t"; gsInfo << "\n";} gsInfo << "\n\n";
 #define printMat(m)
 
@@ -135,9 +134,9 @@ int main(int argc, char *argv[])
     real_t tolerance = 1.e-6;
     real_t alpha = 1.;
     real_t kappa = 0.01;
-    index_t obs = 1;
+    index_t obsTypeIdx = 1;
     index_t maxIterations = 100;
-    index_t pcType = 1;
+    index_t pcTypeIdx = 1;
     index_t preSmooth = 1;
     index_t postSmooth = 1;
     index_t cycles = 1;
@@ -145,6 +144,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     bool randRhs = false;
     index_t desiredStateIdx = 0;
+    index_t controlSpaceIdx = 0;
 
     gsCmdLine cmd("parabolic_oc_example");
     cmd.addInt   ("g", "Geometry",              "0=Rectangle, 1=Quarter Annulus", geoIdx);
@@ -153,14 +153,15 @@ int main(int argc, char *argv[])
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addReal  ("a", "Alpha",                 "Regularization parameter", alpha);
     cmd.addReal  ("k", "Kappa",                 "Diffusion parameter", kappa);
-    cmd.addInt   ("o", "ObservationType",       "0=no observation, 1=limited observation, 2=full observation", obs);
+    cmd.addInt   ("o", "ObservationType",       "0=no observation, 1=limited observation, 2=full observation", obsTypeIdx);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre smoothing steps (only for mg)", preSmooth);
     cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post smoothing steps (only for mg)", postSmooth);
     cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
-    cmd.addInt   ("y", "PreconderType",         "0=Direct, 1=FD in time and direct in space, 2=FD in time and multigrid in space", pcType);
+    cmd.addInt   ("y", "PreconderType",         "0=Direct, 1=FD in time and direct in space, 2=FD in time and multigrid in space", pcTypeIdx);
     cmd.addInt   ("d", "DesiredState",          "0=const (like i.c), 1=follows parabolic proces", desiredStateIdx);
+    cmd.addInt   ("",  "ControlSpace",          "0=Reduced continuity (1 for time, 2 for space); 1=equal to state space", controlSpaceIdx);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -179,10 +180,11 @@ int main(int argc, char *argv[])
         *gsNurbsCreator<>::BSplineQuarterAnnulus()
     };
 
-    if (geoIdx<0          || geoIdx>(int)(util::size(geos)-1)    ) { gsInfo << "Unfeasible choice for --Geometry (-g).\n";        ok=false; }
-    if (obs   <0          || obs   >(int)(util::size(obstypes)-1)) { gsInfo << "Unfeasible choice for --ObservationType (-o).\n"; ok=false; }
-    if (pcType<0          || pcType>2                            ) { gsInfo << "Unfeasible choice for --PreconderType (-y).\n";   ok=false; }
-    if (desiredStateIdx<0 || desiredStateIdx>1                   ) { gsInfo << "Unfeasible choice for --DesiredState (-d).\n";    ok=false; }
+    if (geoIdx<0          || geoIdx>=(int)(util::size(geos))         ) { gsInfo << "Unfeasible choice for --Geometry (-g).\n";        ok=false; }
+    if (obsTypeIdx<0      || obsTypeIdx>=(int)(util::size(obstypes)) ) { gsInfo << "Unfeasible choice for --ObservationType (-o).\n"; ok=false; }
+    if (pcTypeIdx<0       || pcTypeIdx>2                             ) { gsInfo << "Unfeasible choice for --PreconderType (-y).\n";   ok=false; }
+    if (desiredStateIdx<0 || desiredStateIdx>1                       ) { gsInfo << "Unfeasible choice for --DesiredState (-d).\n";    ok=false; }
+    if (controlSpaceIdx<0 || controlSpaceIdx>1                       ) { gsInfo << "Unfeasible choice for --ControlSpace.\n";         ok=false; }
     if (!ok) return -1;
 
     gsInfo << "Run parabolic_oc_example with options:\n" << cmd << std::endl;
@@ -238,8 +240,9 @@ int main(int argc, char *argv[])
         mbU.uniformRefine();
     }
 
-    for ( size_t i = 0; i < mbU.nBases(); ++ i )
-        mbU[i].reduceContinuity(2);
+    if (controlSpaceIdx==0)
+        for ( size_t i = 0; i < mbU.nBases(); ++ i )
+            mbU[i].reduceContinuity(2);
 
 
     for ( size_t i = 0; i < tiY.nBases(); ++ i )
@@ -254,8 +257,9 @@ int main(int argc, char *argv[])
         tiU.uniformRefine();
     }
 
-    for ( size_t i = 0; i < tiU.nBases(); ++ i )
-        tiU[i].reduceContinuity(1);
+    if (controlSpaceIdx==0)
+        for ( size_t i = 0; i < tiU.nBases(); ++ i )
+            tiU[i].reduceContinuity(1);
 
     gsInfo << "done.\n";
 
@@ -376,7 +380,7 @@ int main(int argc, char *argv[])
         icY.setGeoMap(ti);
         YY.setup(icY, dirichlet::interpolation, 0);
         assembler.initSystem();
-        gsFunctionExpr<> limobs( obstypes[obs], 1);
+        gsFunctionExpr<> limobs( obstypes[obsTypeIdx], 1);
         gsExprAssembler<>::variable vlimobs = assembler.getCoeff(limobs);
         assembler.assemble( YY * vlimobs.asDiag() * YY.tr() * meas(G) );
         time_massYo = assembler.matrix();
@@ -515,11 +519,11 @@ int main(int argc, char *argv[])
     gsLinearOperator<>::Ptr schur = gsSumOp<>::make( Mo, gsScaledOp<>::make( gsProductOp<>::make( LhT, MuInv, Lh ), alpha ) );
 
     gsLinearOperator<>::Ptr schurPreconder;
-    if (pcType==0)
+    if (pcTypeIdx==0)
         schurPreconder = makeSparseCholeskySolver(gsSparseMatrix<>(gsSparseMatrix<>(time_massYo+alpha*time_stiffY).kron( space_massY ) + (kappa*kappa*alpha)*time_massY.kron(space_biharmY)));
-    else if (pcType==1)
+    else if (pcTypeIdx==1)
         schurPreconder = fastDiagnonalization( time_massYo+alpha*time_stiffY, space_massY, (kappa*kappa*alpha)*time_massY, space_biharmY, gsSolverOp<gsSparseSolver<>::SimplicialLDLT>::make);
-    else // if (pcType==2)
+    else // if (pcTypeIdx==2)
         schurPreconder = fastDiagnonalization( time_massYo+alpha*time_stiffY, space_massY, (kappa*kappa*alpha)*time_massY, space_biharmY, makeMultiGridSolver{mbY, bcY, time_massY.rows(), cmd.getGroup("MG")});
 
 
@@ -542,11 +546,11 @@ int main(int argc, char *argv[])
         {
             // desired state follows parabolic process with 0 rhs
             gsLinearOperator<>::Ptr fwPreconder;
-            if (pcType==0)
+            if (pcTypeIdx==0)
                 fwPreconder = makeSparseCholeskySolver(gsSparseMatrix<>(gsSparseMatrix<>(time_stiffY).kron( space_massY ) + (kappa*kappa)*time_massY.kron(space_biharmY)));
-            else if (pcType==1)
+            else if (pcTypeIdx==1)
                 fwPreconder = fastDiagnonalization( time_stiffY, space_massY, (kappa*kappa)*time_massY, space_biharmY, gsSolverOp<gsSparseSolver<>::SimplicialLDLT>::make);
-            else // if (pcType==2)
+            else // if (pcTypeIdx==2)
                 fwPreconder = fastDiagnonalization( time_stiffY, space_massY, (kappa*kappa)*time_massY, space_biharmY, makeMultiGridSolver{mbY, bcY, time_massY.rows(), cmd.getGroup("MG")});
             gsInfo << "Compute parabolic desired state..." << std::flush;
             gsMatrix<> rhs;
@@ -728,9 +732,11 @@ int main(int argc, char *argv[])
         if (!exists)
             outfile << "parabolic_oc_example\t"
                 "geoIdx\t"
-                "obs\t"
+                "obsType\t"
                 "alpha\t"
                 "kappa\t"
+                "controlSpace\t"
+                "desiredState\t"
                 "refinementsX\t"
                 "refinementsT\t"
                 "degree\t"
@@ -746,17 +752,19 @@ int main(int argc, char *argv[])
 
         outfile << "parabolic_oc_example\t"
             << geoIdx << "\t"
-            << obs << "\t"
+            << obsTypeIdx << "\t"
             << alpha << "\t"
             << kappa << "\t"
+            << controlSpaceIdx << "\t"
+            << desiredStateIdx << "\t"
             << refinementsX << "\t"
             << refinementsT << "\t"
             << degree << "\t";
-        if (pcType==0)
+        if (pcTypeIdx==0)
             outfile << "direct\t";
-        else if (pcType==1)
+        else if (pcTypeIdx==1)
             outfile << "fd-d\t";
-        else //if (pcType==2)
+        else //if (pcTypeIdx==2)
             outfile << "fd-mg-" << cycles << "-" << preSmooth << "-" << postSmooth << "\t";
         outfile
             << iter1 << "\t"
