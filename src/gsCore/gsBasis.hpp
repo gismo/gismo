@@ -175,34 +175,6 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
             }
 }
 
-template <typename T>
-void gsBasis<T>::computeSingle(index_t i, const gsMatrix<T> & in,
-                               gsFuncData<T> & out   ) const
-{
-    const unsigned flags = out.flags;
-
-    out.dim = this->dimensions();
-
-    const int md = out.maxDeriv();
-    if (md != -1)
-        evalAllDersSingle_into(i, in, md, out.values);
-
-    if (flags & NEED_ACTIVE)
-        out.actives.setConstant(i);
-
-    // if ( flags & NEED_DIV )
-    //     convertValue<T>::derivToDiv(out.values[1], out.divs, info());
-    // if ( flags & NEED_CURL )
-    //     convertValue<T>::derivToCurl(out.values[1], out.curls, info());
-    if (flags & NEED_LAPLACIAN)
-    {
-        const index_t dsz    = out.deriv2Size();
-        out.laplacians.resize(1, in.cols());
-        out.laplacians.row(0) = out.values[2].middleRows(dsz*0,out.dim.first).colwise().sum();
-    }
-}
-
-
 template<class T>
 inline gsMatrix<T> gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 {
