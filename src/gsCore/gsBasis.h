@@ -405,23 +405,6 @@ public:
 
     /// @}
 
-    /**
-       @brief Computes function data for basis function \a i
-
-       This function evaluates the function \a i and its derivatives at
-       the points \a in and writes them in the corresponding fields of \a out.
-       Which field to write (and what to compute) is controlled
-       by the \a out.flags (see also gsFuncData).
-
-       The input points \a in are expected to be compatible with the
-       implementation/representation of the function, i.e. they should
-       be points inside the domain of definitition of the function
-
-       @param[in] i
-       @param[in] in
-       @param[out] out
-     */
-    virtual void computeSingle(index_t i, const gsMatrix<T> & in, gsFuncData<T> & out) const;
 
     inline short_t dim() const {return this->domainDim();}
 
