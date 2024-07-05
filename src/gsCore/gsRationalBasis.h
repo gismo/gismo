@@ -136,7 +136,7 @@ public:
 
     index_t size() const { return m_src->size(); }
 
-    int size(int const& k) const{ return m_src->size(k); }
+    index_t size(index_t const& k) const{ return m_src->size(k); }
 
     size_t numElements() const { return m_src->numElements(); }
     size_t numElements(boxSide const & s) const { return m_src->numElements(s); }
@@ -144,6 +144,9 @@ public:
 
     /// See \ref gsBasis for a description
     size_t elementIndex(const gsVector<T> & u ) const { return m_src->elementIndex(u); }
+
+    /// See \ref gsBasis for a description
+    gsMatrix<T> elementInSupportOf(index_t j) const { return m_src->elementInSupportOf(j); }
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
