@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): H.M. Verhelst
 */
 
 #include <gsCore/gsLinearAlgebra.h>
@@ -45,6 +45,12 @@ template <typename T> class gsOptimSUMT;
  * - What to do with root finding
  */
 
+
+/**
+ * @brief      Wraps the objective of an optimization problem to a function accepted by Optim
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 struct gsOptimWrapper
 {
@@ -69,6 +75,11 @@ private:
     gsOptProblem<T> & m_op;
 };
 
+/**
+ * @brief      Wraps the constraint of an optimization problem to a function accepted by Optim
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 struct gsOptimWrapperConstraint
 {
@@ -109,6 +120,11 @@ private:
 };
 
 
+/**
+ * @brief      Base class for the Optim wrapper
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptim : public gsOptimizer<T>
 {
@@ -131,8 +147,15 @@ public:
 
 public:
 
+    /// Empty constructor
     gsOptim() {};
 
+
+    /**
+     * @brief      Constructor with a \ref gsOptProblem
+     *
+     * @param      problem  The optimization problem, see \ref gsOptProblem
+     */
     gsOptim(gsOptProblem<T> * problem)
     :
     Base(problem),
@@ -141,6 +164,14 @@ public:
         this->defaultOptions();
     }
 
+    /**
+     * @brief      Getter for a specific solver
+     *
+     * @param[in]  slv      The solver name
+     * @param      problem  The optimization problem
+     *
+     * @return     Pointer to the solver
+     */
     static uPtr get(const std::string & slv, gsOptProblem<T> * problem)
     {
         if (slv=="BFGS") return uPtr(new BFGS(problem));
@@ -157,6 +188,7 @@ public:
         GISMO_ERROR("Solver \'"<< slv << "\' not known to G+Smo");
     }
 
+    /// Default options
     virtual void defaultOptions()
     {
         Base::defaultOptions();
@@ -165,13 +197,9 @@ public:
         m_options.addReal("GradErrTol","Gradient error tolerance (default: 1e-8)",1e-8);
         m_options.addReal("RelSolChangeTol","Relative solution change tolerance (default: 1e-14)",1e-14);
         m_options.addReal("RelObjFnChangeTol","Relative objective function change tolerance (default: 1e-8)",1e-8);
-
-
-        // m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
-        // m_options.addReal("MinStepLength","Minimal step length",1e-9);
-        // m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
     }
 
+    /// Options getter
     virtual void getOptions()
     {
         Base::getOptions();
@@ -196,6 +224,7 @@ public:
         // See solve function
     }
 
+    /// Solve, see \ref gsOptimizer
     virtual void solve(const gsMatrix<T> & initialGuess)
     {
         // Get the bounds
@@ -209,12 +238,16 @@ public:
         m_finalObjective = m_optimSettings.opt_fn_value;
     }
 
+
+    /// Function returning true when optimization was successful
     bool success() { return m_success; }
 
 protected:
 
+    /// Misc function to call optim
     virtual bool callOptim(gsVector<T> & initialGuess, gsOptProblem<T> & op, optim::algo_settings_t & settings) = 0;
 
+    /// Sets the box constraints
     void setConstraints()
     {
         if(m_op->desLowerBounds().size()!=0)
@@ -244,6 +277,11 @@ protected:
     bool m_success;
 };
 
+/**
+ * @brief      Binding to Optim's BFGS solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimBFGS : public gsOptim<T>
 {
@@ -252,16 +290,19 @@ public:
 
 public:
 
+    /// See \ref gsOptim
     gsOptimBFGS(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::bfgs(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
+    /// See \ref gsOptim
     void defaultOptions() override
     {
         Base::defaultOptions();
@@ -269,6 +310,7 @@ public:
         m_options.addReal("WolfeCons2","Line search tuning parameter that controls the tolerance on the curvature condition.",0.9);
     }
 
+    /// See \ref gsOptim
     void getOptions() override
     {
         Base::getOptions();
@@ -282,6 +324,11 @@ protected:
     using Base::m_optimSettings;
 };
 
+/**
+ * @brief      Binding to Optim's LBFGS solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimLBFGS : public gsOptim<T>
 {
@@ -290,16 +337,19 @@ public:
 
 public:
 
+    /// See \ref gsOptim
     gsOptimLBFGS(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::lbfgs(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
+    /// See \ref gsOptim
     void defaultOptions() override
     {
         Base::defaultOptions();
@@ -308,6 +358,7 @@ public:
         m_options.addReal("WolfeCons2","Line search tuning parameter that controls the tolerance on the curvature condition.",0.9);
     }
 
+    /// See \ref gsOptim
     void getOptions() override
     {
         Base::getOptions();
@@ -322,6 +373,11 @@ protected:
     using Base::m_optimSettings;
 };
 
+/**
+ * @brief      Binding to Optim's CG solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimCG : public gsOptim<T>
 {
@@ -330,16 +386,19 @@ public:
 
 public:
 
+    /// See \ref gsOptim
     gsOptimCG(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::cg(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
+    /// See \ref gsOptim
     void defaultOptions() override
     {
         Base::defaultOptions();
@@ -350,6 +409,7 @@ public:
         m_options.addReal("WolfeCons2","Line search tuning parameter that controls the tolerance on the curvature condition.",0.9);
     }
 
+    /// See \ref gsOptim
     void getOptions() override
     {
         Base::getOptions();
@@ -366,6 +426,11 @@ protected:
     using Base::m_optimSettings;
 };
 
+/**
+ * @brief      Binding to Optim's GD solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimGD : public gsOptim<T>
 {
@@ -374,16 +439,19 @@ public:
 
 public:
 
+    /// See \ref gsOptim
     gsOptimGD(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::gd(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
+    /// See \ref gsOptim
     void defaultOptions() override
     {
         Base::defaultOptions();
@@ -406,6 +474,7 @@ public:
         m_options.addReal("ClipNormBound","The bound for the norm used for clipping.",5.0);
     }
 
+    /// See \ref gsOptim
     void getOptions() override
     {
         Base::getOptions();
@@ -472,6 +541,11 @@ protected:
 //     using Base::m_optimSettings;
 // };
 
+/**
+ * @brief      Binding to Optim's NM solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimNM : public gsOptim<T>
 {
@@ -480,16 +554,19 @@ public:
 
 public:
 
+    /// See \ref gsOptim
     gsOptimNM(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::nm(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
+    /// See \ref gsOptim
     void defaultOptions() override
     {
         Base::defaultOptions();
@@ -509,6 +586,7 @@ public:
         m_optimSettings.nm_settings.initial_simplex_points = points;
     }
 
+    /// See \ref gsOptim
     void getOptions() override
     {
         Base::getOptions();
@@ -528,6 +606,11 @@ protected:
     using Base::m_optimSettings;
 };
 
+/**
+ * @brief      Binding to Optim's DE solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimDE : public gsOptim<T>
 {
@@ -536,16 +619,19 @@ public:
 
 public:
 
+    /// See \ref gsOptim
     gsOptimDE(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::de(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
+    /// See \ref gsOptim
     void defaultOptions() override
     {
         Base::defaultOptions();
@@ -573,12 +659,14 @@ public:
         m_optimSettings.de_settings.initial_ub = bounds.col(1);
     }
 
+    /// Gets the population matrix
     gsMatrix<T> getPopulationMatrix()
     {
         GISMO_ASSERT(m_optimSettings.de_settings.return_population_mat,"The option ReturnPopulationMat was not set to true.");
         return m_optimSettings.de_settings.population_mat;
     }
 
+    /// See \ref gsOptim
     void getOptions() override
     {
         Base::getOptions();
@@ -619,6 +707,11 @@ protected:
     using Base::m_optimSettings;
 };
 
+/**
+ * @brief      Binding to Optim's DEPRMM solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimDEPRMM : public gsOptimDE<T>
 {
@@ -629,12 +722,18 @@ public:
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::de_prmm(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 };
 
+/**
+ * @brief      Binding to Optim's PSO solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimPSO : public gsOptim<T>
 {
@@ -643,16 +742,19 @@ public:
 
 public:
 
+    /// See \ref gsOptim
     gsOptimPSO(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::pso(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
+    /// See \ref gsOptim
     void defaultOptions() override
     {
         Base::defaultOptions();
@@ -683,12 +785,14 @@ public:
         m_optimSettings.pso_settings.initial_ub = bounds.col(1);
     }
 
+    /// Gets the population matrix
     gsMatrix<T> getPopulationMatrix()
     {
         GISMO_ASSERT(m_optimSettings.pso_settings.return_position_mat,"The option ReturnPopulationMat was not set to true.");
         return m_optimSettings.pso_settings.position_mat;
     }
 
+    /// See \ref gsOptim
     void getOptions() override
     {
         Base::getOptions();
@@ -724,23 +828,35 @@ protected:
     using Base::m_optimSettings;
 };
 
+/**
+ * @brief      Binding to Optim's PSODV solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimPSODV : public gsOptimPSO<T>
 {
     using Base = gsOptimPSO<T>;
 public:
 
+    /// See \ref gsOptim
     gsOptimPSODV(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::pso_dv(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 };
 
+/**
+ * @brief      Binding to Optim's SUMT solver
+ *
+ * @tparam     T     real type
+ */
 template <typename T>
 class gsOptimSUMT : public gsOptim<T>
 {
@@ -749,16 +865,19 @@ public:
 
 public:
 
+    /// See \ref gsOptim
     gsOptimSUMT(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
     }
 
+    /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
     { return optim::sumt(x, gsOptimWrapper<T>(op),nullptr,gsOptimWrapperConstraint<T>(op),nullptr,optimSettings); }
 
+    /// See \ref gsOptim
     void solve(const gsMatrix<T> & initialGuess) override
     {
         // Get the bounds
@@ -772,12 +891,14 @@ public:
         m_finalObjective = m_optimSettings.opt_fn_value;
     }
 
+    /// See \ref gsOptim
     void defaultOptions() override
     {
         Base::defaultOptions();
         m_options.addReal("ParEta","eta parameter.",10.0);
     }
 
+    /// See \ref gsOptim
     void getOptions() override
     {
         Base::getOptions();
