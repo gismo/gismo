@@ -66,7 +66,7 @@
     <int label="numMaxRef" desc="Maximum number of refinements of the parallel-in-time multigrid solver" value="1"/>
     <int label="numRelax" desc="Number of relaxation steps of the parallel-in-time multigrid solver" value="1"/>
     <int label="numStorage" desc="Number of storage of the parallel-in-time multigrid solver" value="-1"/>
-    <int label="print" desc="Print level (no output [=0], runtime inforation [=1], run statistics [=2(default)], debug [=3])" value="2"/>
+    <int label="print" desc="Print level (no output [=0], runtime inforation [=1], run statistics [=2(default)], debug [=3])" value="3"/>
     <real label="absTol" desc="Absolute tolerance of the parallel-in-time multigrid solver" value="1e-10"/>
     <real label="relTol" desc="Relative tolerance of the parallel-in-time multigrid solver" value="1e-3"/>
     <bool label="fmg" desc="Perform full multigrid (default is off)" value="0"/>
