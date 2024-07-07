@@ -1,6 +1,6 @@
-/** @file
+/** @file optim_test.cpp
 
-    @brief
+    @brief test file for the optim binding
 
     This file is part of the G+Smo library.
 
