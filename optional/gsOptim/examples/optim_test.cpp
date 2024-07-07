@@ -23,7 +23,10 @@ template <class T>
 class ackley : public gsOptProblem<T>
 {
 public:
-    ackley() {}
+    ackley() 
+    {
+        this->m_numDesignVars = 2;
+    }
 
     T evalObj(const gsAsConstVector<T> & u) const
     {
@@ -40,7 +43,10 @@ template <class T>
 class rastrigin : public gsOptProblem<T>
 {
 public:
-    rastrigin() {}
+    rastrigin() 
+    {
+        this->m_numDesignVars = 2;
+    }
 
     T evalObj(const gsAsConstVector<T> & u) const
     {
@@ -58,7 +64,10 @@ template <class T>
 class sphere : public gsOptProblem<T>
 {
 public:
-    sphere() {}
+    sphere() 
+    {
+        this->m_numDesignVars = 2;
+    }
 
     T evalObj(const gsAsConstVector<T> & u) const
     {
@@ -77,7 +86,10 @@ template <class T>
 class booth : public gsOptProblem<T>
 {
 public:
-    booth() {}
+    booth() 
+    {
+        this->m_numDesignVars = 2;
+    }
 
     T evalObj(const gsAsConstVector<T> & u) const
     {
@@ -95,6 +107,51 @@ public:
 
         result(0) = 2*(x_1 + 2*x_2 - 7.0) + 2*(2*x_1 + x_2 - 5.0)*2;
         result(1) = 2*(x_1 + 2*x_2 - 7.0)*2 + 2*(2*x_1 + x_2 - 5.0);
+    }
+};
+
+template <class T>
+class constr : public gsOptProblem<T>
+{
+public:
+    constr() 
+    {
+        this->m_numConstraints = 1;
+        this->m_numDesignVars = 2;
+        this->computeJacStructure();
+    }
+
+    T evalObj(const gsAsConstVector<T> & u) const
+    {
+        real_t x_1 = u(0);
+        real_t x_2 = u(1);
+
+        real_t obj_val = std::pow(x_1 - 5.0,2) + std::pow(x_2 - 4.0,2);
+        return obj_val;;
+    }
+
+    void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const
+    {
+        real_t x_1 = u(0);
+        real_t x_2 = u(1);
+
+        result(0) = 2.0*(x_1 - 5.0);
+        result(1) = 2.0*(x_2 - 4.0);
+    }
+
+    void evalCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
+    {
+        real_t x_1 = u(0);
+        real_t x_2 = u(1);
+
+        result(0) = -2*x_1 - x_2 + 14.0;
+    }
+
+    void jacobCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
+    {
+        result.resize(2);
+        result(0) = -2.0;
+        result(1) = -1.0;
     }
 };
 
@@ -146,6 +203,17 @@ int main()
         solver->solve(x);
         x = solver->currentDesign();
         gsInfo<<*m <<" solver: solution to Booth's test:\n" << x << "\n";
+    }
+
+    methods = {"SUMT"};
+    for (typename std::vector<std::string>::const_iterator m = methods.begin(); m!=methods.end(); m++)
+    {
+        constr<real_t> problem;
+        gsOptim<real_t>::uPtr solver = gsOptim<real_t>::get(*m,&problem);
+        x = gsVector<real_t>::Ones(2); // initial values: (2,2)
+        solver->solve(x);
+        x = solver->currentDesign();
+        gsInfo<<*m <<" solver: solution to Constrained optimization problem 1:\n" << x << "\n";
     }
     return 0;
 }

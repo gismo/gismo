@@ -87,7 +87,10 @@ struct gsOptimWrapperConstraint
             m_op.jacobCon_into(in, jacOut);
 
             /// WRITE TO MATRIX
-            jacob_out->resize(vals_in.size(),m_op.numConstraints());
+            // The matrix is organized as follows (see gsOptProblem.h, computeJacStructure):
+            // - row i, constraint i
+            // - col j, design variable j
+            jacob_out->resize(m_op.numConstraints(),vals_in.size());
             gsAsMatrix<T> out(jacob_out->data(),jacob_out->rows(),jacob_out->cols());
             out.setZero();
             std::vector<index_t> conJacRows = m_op.conJacRows();
@@ -214,7 +217,7 @@ protected:
 
     void setConstraints()
     {
-        if(m_op->numConstraints()!=0)
+        if(m_op->desLowerBounds().size()!=0)
         {
             m_optimSettings.lower_bounds = m_op->desLowerBounds();
             m_optimSettings.upper_bounds = m_op->desUpperBounds();
