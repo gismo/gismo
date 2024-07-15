@@ -205,7 +205,7 @@ void solve( gsMultiPatch<T> & mp,
             if (w.mapper().is_free(i))
                 Cold(w.mapper().index(i),0) = tmp(i,0);
     }
-
+    
     Calpha = Cold;
     dCold.setZero(A.numDofs(),1);
 
@@ -422,7 +422,7 @@ void solve( gsMultiPatch<T> & mp,
                 gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCold_,dColdF);
                 gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
                 gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
-
+                
                 // Setup the space to obtain a new DoF mapper
                 w.setup(bc, dirichlet::l2Projection, 0);
                 // Resize the new solution vectors (which exclude eliminated DoFs)
@@ -481,15 +481,21 @@ void solve( gsMultiPatch<T> & mp,
             gsGeometry<>::uPtr Cnew_ = dbasis.basis(0).makeGeometry(give(CnewF));
             gsGeometry<>::uPtr dCnew_ = dbasis.basis(0).makeGeometry(give(dCnewF));
 
+            gsMultiBasis<> fine_basis = dbasis.basis(0);
+
             // Refine dbasis
             if (verbose>1) gsInfo<<"Basis before coarsening:\n "<<dbasis.basis(0)<<"\n";
             mesher.unrefine(coarsen);
             if (verbose>1) gsInfo<<"Basis after coarsening:\n "<<dbasis.basis(0)<<"\n";
 
             // Project the old and new solutions onto the new basis
-            gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
-            gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
-
+            // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
+            // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
+          
+            // Input: coarse basis, fine geometry (to get coeffs), result (projected on coarse mesh)
+            gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*Cnew_,mp,CnewF);
+            gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*dCnew_,mp,dCnewF);
+           
             // Setup the space to obtain a new DoF mapper
             w.setup(bc, dirichlet::l2Projection, 0);
             // Resize the new solution vectors (which exclude eliminated DoFs)
@@ -517,13 +523,14 @@ void solve( gsMultiPatch<T> & mp,
             // Export the mesh
             collection.newTimeStep(&mp);
             collection.addField(cnew,"numerical solution");
-
+            gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
             collection.saveTimeStep();
         }
     }
     if (plot)
     {
         collection.save();
+        
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
