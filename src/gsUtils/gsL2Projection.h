@@ -149,6 +149,26 @@ public:
      *
      * @return     The L2 error of the projection
      */
+    
+    static T projectFunction(   const gsMultiBasis<T>   & intbasis,
+                                const gsMultiBasis<T> & basis,
+                                const gsFunctionSet<T>  & source,
+                                const gsMultiPatch<T>   & geometry,
+                                gsMatrix<T> & result);
+
+    /**
+     * @brief      Projects a \a source geometry onto \a basis and returns it in
+     *             \a result. Fixes the boundaries
+     *
+     * @param[in]  intbasis  The integration basis  
+     * @param[in]  basis     The basis to project on
+     * @param[in]  source    The function to be projected
+     * @param[in]  geometry  The geometry
+     * @param      result    The coefficients of the new geometry on \a basis
+     *
+     * @return     The L2 error of the projection
+     */
+
     static T projectGeometryBoundaries( const gsMultiBasis<T> & basis,
                                         const gsMultiPatch<T> & geometry,
                                         gsMultiPatch<T> & result);

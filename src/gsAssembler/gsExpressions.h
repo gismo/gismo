@@ -3941,9 +3941,9 @@ public:
 
     typedef typename E1::Scalar Scalar;
 
-    ternary_expr(_expr<E1> const& c,
-                _expr<E2> const& t,
-                _expr<E3> const& f)
+    ternary_expr(const E1 & c,
+                 const E2 & t,
+                 const E3 & f)
     : _c(c), _t(t), _f(f)
     {
         GISMO_ASSERT(E1::ScalarValued, "Condition must be scalar valued");
@@ -4580,6 +4580,9 @@ EIGEN_STRONG_INLINE constMat_expr mat(const gsMatrix<real_t> mat) { return const
 // Returns the unit as an expression
 //EIGEN_STRONG_INLINE _expr<real_t> one() { return _expr<real_t,true>(1); }
 
+/// Constant value
+template<class T>
+_expr<T> constant(const T & c) { return _expr<T>(c); }
 
 /// Absolute value
 template<class E> EIGEN_STRONG_INLINE
