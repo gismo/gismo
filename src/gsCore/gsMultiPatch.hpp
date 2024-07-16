@@ -19,7 +19,9 @@
 #include <gsCore/gsAffineFunction.h>
 
 #include <gsUtils/gsCombinatorics.h>
+
 #include <gsMesh2/gsSurfMesh.h>
+#include <gsTensor/gsTensorBasis.h>
 
 namespace gismo
 {
@@ -638,8 +640,53 @@ gsDofMapper gsMultiPatch<T>::getMapper(T tol) const
 template<class T>
 gsSurfMesh gsMultiPatch<T>::toMesh() const
 {
+    GISMO_ASSERT(2==parDim(), "Works for surfaces only.");
+    gsDofMapper mapper = getMapper((T)1e-7);
+    gsSurfMesh mesh;
+    auto pid = mesh.add_vertex_property<index_t>("v:patch");
+    auto anchor = mesh.add_vertex_property<index_t>("v:anchor");
+    gsSurfMesh::Vertex v;
+    std::vector<std::pair<index_t,index_t> > pi = mapper.anyPreImages();
+    //std::pair<index_t,index_t> pi;
+    for (index_t j = 0; j!= mapper.size(); ++j)
+    {
+        //pi = mapper.anyPreImage(j);
+        gsGeometry<> &  pp = patch(pi[j].first);
+        v = mesh.add_vertex( pp.eval( pp.basis().anchor(pi[j].second) ) );
+        pid[v]  = pi[j].first;
+        anchor[v] = pi[j].second;
+    }
 
-    return gsSurfMesh();
+    size_t np = nPatches();
+    gsMatrix<> supp, coor;
+    gsVector<bool> boxPar(m_dim);
+    gsVector<index_t,2>  cur, csize, strides;
+    GISMO_ENSURE( dynamic_cast<gsTensorBasis<2>*>(&patch(0).basis()), "Not a tensor basis");
+    static_cast<gsTensorBasis<2>&>(patch(0).basis()).stride_cwise(strides);
+    static_cast<gsTensorBasis<2>&>(patch(0).basis()).size_cwise  (csize);
+    csize.array() -= 2;
+    gsSurfMesh::Vertex v1, v2, v3, v4;
+    for (size_t p=0; p<np; ++p)
+    {
+        // todo: basis->connectivityAtAnchors  ++  basis->controlPolytope
+        gsTensorBasis<2>& pp = static_cast<gsTensorBasis<2>&>(patch(p).basis());
+        cur.setZero(2);
+        do
+        {
+            index_t ci = pp.index(cur);
+            v1 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            ci += strides[0];
+            v2 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            ci += strides[1];
+            v3 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            ci -= strides[0];
+            v4 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            mesh.add_quad(v1,v2,v3,v4);
+        } while (nextCubePoint(cur, csize));
+
+    }
+
+    return mesh;
 }
 
 template<class T> // to do: move to boundaryInterface

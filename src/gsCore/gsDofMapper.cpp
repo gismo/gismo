@@ -522,6 +522,30 @@ std::pair<index_t,index_t> gsDofMapper::anyPreImage(const index_t gl) const
     GISMO_ERROR("The global index "<< gl <<" is not valid");
 }
 
+std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp) const
+{
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
+    typedef std::vector<index_t>::const_iterator citer;
+    const std::vector<index_t> & dofs = m_dofs[comp];
+    size_t cur = 0;//local offsetted index
+
+    std::vector<std::pair<index_t,index_t> > result(dofs.size(), {-1,0});
+
+    for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
+    {
+        if ( -1 == result[*it].first )
+        {
+            // Get the patch index of "cur" by "un-offsetting"
+            const index_t patch = std::upper_bound(m_offset.begin(), m_offset.end(), cur)
+                - m_offset.begin() - 1;
+
+            // Found a patch-dof pair
+            result[*it] = std::make_pair(patch, cur - m_offset[patch] - m_shift);
+        }
+    }
+    return result;
+}
+
 gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
 {
     GISMO_ASSERT(comp>-1,"Component is invalid");

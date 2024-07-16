@@ -500,6 +500,10 @@ public:
     /// pair (patch,dof) that maps to \a gl
     std::pair<index_t,index_t> anyPreImage(index_t gl) const;
 
+    /// \brief For all global index, this function assigns
+    /// a pair (patch,dof) that maps to that global index
+    std::vector<std::pair<index_t,index_t> > anyPreImages(index_t comp = 0) const;
+    
     /// \brief Produces the inverse of the mapping on patch \a k
     /// assuming that the map is invertible on that patch
     std::map<index_t,index_t> inverseOnPatch(const index_t k) const;
