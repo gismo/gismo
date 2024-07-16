@@ -56,6 +56,13 @@ void solve( gsMultiPatch<T> & mp,
             bool & random)
 {
 
+    real_t assemblyTime = 0;
+    real_t solverTime = 0;
+    real_t projectionTime = 0;
+    index_t nSolves = 0;
+
+    gsStopwatch clock;
+
     real_t theta    = CHopt.askReal("theta",1.5);
     real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
     real_t M0       = CHopt.askReal("M0",0.005);
@@ -69,27 +76,37 @@ void solve( gsMultiPatch<T> & mp,
     // where p is the highest degree in the bases
     dbasis_tmp.setDegree( dbasis_tmp.maxCwiseDegree() + numElevate);
 
+    if (MESHopt.askSwitch("Adaptive",true))
+        MESHopt.setSwitch("THB",true);
 
-    gsDebugVar(dbasis_tmp);
-    // Cast every basis of dbasis to a gsTHBSplineBasis
-    for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
+    if (MESHopt.askSwitch("THB",true))
     {
-        // TODO: Make dimension-independent over the template
-        if (gsTensorBSplineBasis<dim,real_t> * b = dynamic_cast<gsTensorBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
-            dbasis.addBasis(new gsTHBSplineBasis<dim,real_t>(*b));
-        else if (gsTHBSplineBasis<dim,real_t> * b = dynamic_cast<gsTHBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
-            dbasis.addBasis(b->clone());
-        else
-            GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
+        // Cast every basis of dbasis to a gsTHBSplineBasis
+        for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
+        {
+            // TODO: Make dimension-independent over the template
+            if (gsTensorBSplineBasis<dim,real_t> * b = dynamic_cast<gsTensorBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
+                dbasis.addBasis(new gsTHBSplineBasis<dim,real_t>(*b));
+            else if (gsTHBSplineBasis<dim,real_t> * b = dynamic_cast<gsTHBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
+                dbasis.addBasis(b->clone());
+            else
+                GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
 
-        // Refine the basis for `numRefine` levels
-        gsMatrix<> box = dbasis.basis(p).support();
-        for (index_t r = 0; r!=numRefine; r++)
-            dbasis.basis(p).refine(box);
+            // Refine the basis for `numRefine` levels
+            gsMatrix<> box = dbasis.basis(p).support();
+            for (index_t r = 0; r!=numRefine; r++)
+                dbasis.basis(p).refine(box);
+        }
     }
-
-
-
+    else
+    {
+        for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
+        {
+            dbasis.addBasis(dbasis_tmp.basis(p).clone());
+            for (index_t r = 0; r!=numRefine; r++)
+                dbasis.basis(p).uniformRefine();
+        }
+    }
 
     // Determine maximum mesh size
     real_t hmax = 0;
@@ -205,7 +222,7 @@ void solve( gsMultiPatch<T> & mp,
             if (w.mapper().is_free(i))
                 Cold(w.mapper().index(i),0) = tmp(i,0);
     }
-    
+
     Calpha = Cold;
     dCold.setZero(A.numDofs(),1);
 
@@ -241,15 +258,20 @@ void solve( gsMultiPatch<T> & mp,
     //     mesher = new gsAdaptiveMeshing<dim,real_t>(dbasis);
     // else if(mp.geoDim()==2)
     //     mesher = new gsAdaptiveMeshing<dim,real_t>(dbasis);
-    gsAdaptiveMeshing<dim,real_t> mesher(dbasis);
-    mesher.options().setInt("RefineRule",MESHopt.askInt("RefineRule",1));
-    mesher.options().setInt("CoarsenRule",MESHopt.askInt("CoarsenRule",1));
-    mesher.options().setReal("RefineParam",MESHopt.askReal("RefineParam",0.1));
-    mesher.options().setReal("CoarsenParam",MESHopt.askReal("CoarsenParam",0.1));
-    mesher.options().setSwitch("Admissible",MESHopt.askSwitch("Admissible",false));
-    mesher.options().setInt("MaxLevel",numRefine);
-    mesher.options().setSwitch("Absolute",MESHopt.askSwitch("Absolute",true));
-    mesher.getOptions();
+
+    gsAdaptiveMeshing<dim,real_t> mesher;
+    if (MESHopt.askSwitch("Adaptive",true))
+    {
+        mesher = gsAdaptiveMeshing<dim,real_t>(dbasis);
+        mesher.options().setInt("RefineRule",MESHopt.askInt("RefineRule",1));
+        mesher.options().setInt("CoarsenRule",MESHopt.askInt("CoarsenRule",1));
+        mesher.options().setReal("RefineParam",MESHopt.askReal("RefineParam",0.1));
+        mesher.options().setReal("CoarsenParam",MESHopt.askReal("CoarsenParam",0.1));
+        mesher.options().setSwitch("Admissible",MESHopt.askSwitch("Admissible",false));
+        mesher.options().setInt("MaxLevel",numRefine);
+        mesher.options().setSwitch("Absolute",MESHopt.askSwitch("Absolute",true));
+        mesher.getOptions();
+    }
     // ! [Load mesher options]
 
 
@@ -259,7 +281,8 @@ void solve( gsMultiPatch<T> & mp,
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
             // Resize the data structure inside the mesher
-            mesher.rebuild();
+            if (MESHopt.askSwitch("Adaptive",true))
+                mesher.rebuild();
 
             // Reset the assembler
             A.initSystem();
@@ -291,16 +314,21 @@ void solve( gsMultiPatch<T> & mp,
                         Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
                         dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
 
+                        clock.restart();
                         // Assemble the RHS
                         A.assemble(residual * meas(G));
+                        assemblyTime += clock.stop();
+
                         Q = A.rhs();
 
                         // Assemble the Nitsche BC on the sides with Neumann condition
                         // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
                         A.initMatrix();
+                        clock.restart();
                         A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                                     penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                                     lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+                        assemblyTime += clock.stop();
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
                         if (bc.get("Neumann").size()!=0) 
@@ -327,16 +355,19 @@ void solve( gsMultiPatch<T> & mp,
 
                         A.initMatrix();
                         // Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
+                        clock.restart();
                         A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
                                             (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
                                             ddmu_c * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
                                             lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
                                             // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
+                        assemblyTime += clock.stop();
 
                         K = A.giveMatrix();
                         if (bc.get("Neumann").size()!=0)
                             K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
 
+                        clock.restart();
     #ifdef GISMO_WITH_SUPERLU
                         if (0==k)
                             solver.analyzePattern(K);
@@ -345,6 +376,8 @@ void solve( gsMultiPatch<T> & mp,
                         solver.compute(K);
     #endif
                         dCupdate = solver.solve(-Q);
+                        solverTime += clock.stop();
+                        nSolves++;
 
                         dCnew += dCupdate;
                         Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
@@ -377,7 +410,89 @@ void solve( gsMultiPatch<T> & mp,
                 //     // dt *= t_rho;
                 // }
             }// time step adaptivity
-            // -------------REFINEMENT-------------------
+
+            if (MESHopt.askSwitch("Adaptive",true))
+            {
+                // -------------REFINEMENT-------------------
+                // Compute the integral of c over each element
+                ev.integralElWise(meas(G) * cnew);
+                std::vector<real_t> cInt = ev.elementwise();
+                gsAsVector<real_t> cvec(cInt.data(),cInt.size());  // Temporary Eigen::Map
+                // Compute the area of each element
+                ev.integralElWise(meas(G));
+                std::vector<real_t> areas = ev.elementwise();
+                gsAsVector<real_t> avec(areas.data(),areas.size()); // Temporary Eigen::Map
+
+                // Invert and normalize the element-wise average (c/area), as:
+                // err = 1-|c|/a;
+                cvec.array() = 1-(cvec.array().abs()/avec.array());
+
+                // Mark the elements for refinement
+                gsHBoxContainer<dim,real_t> refine;//, coarsen;
+                mesher.markRef_into(cInt,refine);
+
+                // If elements are marked for refinement
+                if (refine.totalSize()!=0)
+                {
+                    // Store the old and new solutions on the previous (SINGLE PATCH ASSUMPTION)
+                    // Take their full coefficient vector (including eliminated DoFs)
+                    gsMatrix<> CnewF, dCnewF, ColdF, dColdF;
+                    cold.extractFull(ColdF);
+                    dcold.extractFull(dColdF);
+                    cnew.extractFull(CnewF);
+                    dcnew.extractFull(dCnewF);
+
+                    // Create the geometry objects
+                    gsGeometry<>::uPtr Cold_ = dbasis.basis(0).makeGeometry(give(ColdF));
+                    gsGeometry<>::uPtr dCold_ = dbasis.basis(0).makeGeometry(give(dColdF));
+                    gsGeometry<>::uPtr Cnew_ = dbasis.basis(0).makeGeometry(give(CnewF));
+                    gsGeometry<>::uPtr dCnew_ = dbasis.basis(0).makeGeometry(give(dCnewF));
+
+                    // Refine dbasis
+                    if (verbose>1) gsInfo<<"Basis before refinement:\n "<<dbasis.basis(0)<<"\n";
+                    mesher.refine(refine);
+                    if (verbose>1) gsInfo<<"Basis after refinement:\n "<<dbasis.basis(0)<<"\n";
+
+                    // Project the old and new solutions onto the new basis
+                    clock.restart();
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cold_,ColdF);
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCold_,dColdF);
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
+                    projectionTime += clock.stop();
+
+                    // Setup the space to obtain a new DoF mapper
+                    w.setup(bc, dirichlet::l2Projection, 0);
+                    // Resize the new solution vectors (which exclude eliminated DoFs)
+                    Cold.resize(w.mapper().freeSize(),1);
+                    dCold.resize(w.mapper().freeSize(),1);
+                    Cnew.resize(w.mapper().freeSize(),1);
+                    dCnew.resize(w.mapper().freeSize(),1);
+
+                    // Insert the interpolated coefficients inside the solution objects
+                    for (index_t i = 0; i < dbasis.basis(0).size(); i++)
+                        if (w.mapper().is_free(i))
+                        {
+                            Cold(w.mapper().index(i),0) = ColdF(i,0);
+                            dCold(w.mapper().index(i),0) = dColdF(i,0);
+                            Cnew(w.mapper().index(i),0) = CnewF(i,0);
+                            dCnew(w.mapper().index(i),0) = dCnewF(i,0);
+                        }
+                }// refine
+                else
+                    break;
+            } // refinement switch
+            else
+                break; // break the refinement loop
+        }// mesh adaptivity
+
+        if (MESHopt.askSwitch("Adaptive",true))
+        {
+            // If the mesh adaptivity is converged, we perform a coarsening step
+            // -------------COARSENING-------------------
+            // Resize the mesher data structure
+            mesher.rebuild();
+
             // Compute the integral of c over each element
             ev.integralElWise(meas(G) * cnew);
             std::vector<real_t> cInt = ev.elementwise();
@@ -391,43 +506,43 @@ void solve( gsMultiPatch<T> & mp,
             // err = 1-|c|/a;
             cvec.array() = 1-(cvec.array().abs()/avec.array());
 
-            // Mark the elements for refinement
-            gsHBoxContainer<dim,real_t> refine;//, coarsen;
-            mesher.markRef_into(cInt,refine);
+            // Coarsen everything above threshold (opposite of refinement)
+            gsHBoxContainer<dim,real_t> coarsen;
+            mesher.markCrs_into(cInt,coarsen);
 
             // If elements are marked for refinement
-            if (refine.totalSize()!=0)
+            if (coarsen.totalSize()!=0)
             {
                 // Store the old and new solutions on the previous (SINGLE PATCH ASSUMPTION)
                 // Take their full coefficient vector (including eliminated DoFs)
                 gsMatrix<> CnewF, dCnewF, ColdF, dColdF;
-                cold.extractFull(ColdF);
-                dcold.extractFull(dColdF);
                 cnew.extractFull(CnewF);
                 dcnew.extractFull(dCnewF);
 
                 // Create the geometry objects
-                gsGeometry<>::uPtr Cold_ = dbasis.basis(0).makeGeometry(give(ColdF));
-                gsGeometry<>::uPtr dCold_ = dbasis.basis(0).makeGeometry(give(dColdF));
                 gsGeometry<>::uPtr Cnew_ = dbasis.basis(0).makeGeometry(give(CnewF));
                 gsGeometry<>::uPtr dCnew_ = dbasis.basis(0).makeGeometry(give(dCnewF));
 
+                gsMultiBasis<> fine_basis = dbasis.basis(0);
+
                 // Refine dbasis
-                if (verbose>1) gsInfo<<"Basis before refinement:\n "<<dbasis.basis(0)<<"\n";
-                mesher.refine(refine);
-                if (verbose>1) gsInfo<<"Basis after refinement:\n "<<dbasis.basis(0)<<"\n";
+                if (verbose>1) gsInfo<<"Basis before coarsening:\n "<<dbasis.basis(0)<<"\n";
+                mesher.unrefine(coarsen);
+                if (verbose>1) gsInfo<<"Basis after coarsening:\n "<<dbasis.basis(0)<<"\n";
 
                 // Project the old and new solutions onto the new basis
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cold_,ColdF);
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCold_,dColdF);
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
-                
+                clock.restart();
+                // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
+                // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
+
+                // Input: coarse basis, fine geometry (to get coeffs), result (projected on coarse mesh)
+                gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*Cnew_,mp,CnewF);
+                gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*dCnew_,mp,dCnewF);
+                projectionTime += clock.stop();
+
                 // Setup the space to obtain a new DoF mapper
                 w.setup(bc, dirichlet::l2Projection, 0);
                 // Resize the new solution vectors (which exclude eliminated DoFs)
-                Cold.resize(w.mapper().freeSize(),1);
-                dCold.resize(w.mapper().freeSize(),1);
                 Cnew.resize(w.mapper().freeSize(),1);
                 dCnew.resize(w.mapper().freeSize(),1);
 
@@ -435,81 +550,11 @@ void solve( gsMultiPatch<T> & mp,
                 for (index_t i = 0; i < dbasis.basis(0).size(); i++)
                     if (w.mapper().is_free(i))
                     {
-                        Cold(w.mapper().index(i),0) = ColdF(i,0);
-                        dCold(w.mapper().index(i),0) = dColdF(i,0);
                         Cnew(w.mapper().index(i),0) = CnewF(i,0);
                         dCnew(w.mapper().index(i),0) = dCnewF(i,0);
                     }
-            }// refine
-            else
-                break;
-
-        }// mesh adaptivity
-
-        // If the mesh adaptivity is converged, we perform a coarsening step
-        // -------------COARSENING-------------------
-        // Resize the mesher data structure
-        mesher.rebuild();
-
-        // Compute the integral of c over each element
-        ev.integralElWise(meas(G) * cnew);
-        std::vector<real_t> cInt = ev.elementwise();
-        gsAsVector<real_t> cvec(cInt.data(),cInt.size());  // Temporary Eigen::Map
-        // Compute the area of each element
-        ev.integralElWise(meas(G));
-        std::vector<real_t> areas = ev.elementwise();
-        gsAsVector<real_t> avec(areas.data(),areas.size()); // Temporary Eigen::Map
-
-        // Invert and normalize the element-wise average (c/area), as:
-        // err = 1-|c|/a;
-        cvec.array() = 1-(cvec.array().abs()/avec.array());
-
-        // Coarsen everything above threshold (opposite of refinement)
-        gsHBoxContainer<dim,real_t> coarsen;
-        mesher.markCrs_into(cInt,coarsen);
-
-        // If elements are marked for refinement
-        if (coarsen.totalSize()!=0)
-        {
-            // Store the old and new solutions on the previous (SINGLE PATCH ASSUMPTION)
-            // Take their full coefficient vector (including eliminated DoFs)
-            gsMatrix<> CnewF, dCnewF, ColdF, dColdF;
-            cnew.extractFull(CnewF);
-            dcnew.extractFull(dCnewF);
-
-            // Create the geometry objects
-            gsGeometry<>::uPtr Cnew_ = dbasis.basis(0).makeGeometry(give(CnewF));
-            gsGeometry<>::uPtr dCnew_ = dbasis.basis(0).makeGeometry(give(dCnewF));
-
-            gsMultiBasis<> fine_basis = dbasis.basis(0);
-
-            // Refine dbasis
-            if (verbose>1) gsInfo<<"Basis before coarsening:\n "<<dbasis.basis(0)<<"\n";
-            mesher.unrefine(coarsen);
-            if (verbose>1) gsInfo<<"Basis after coarsening:\n "<<dbasis.basis(0)<<"\n";
-
-            // Project the old and new solutions onto the new basis
-            // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
-            // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
-          
-            // Input: coarse basis, fine geometry (to get coeffs), result (projected on coarse mesh)
-            gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*Cnew_,mp,CnewF);
-            gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*dCnew_,mp,dCnewF);
-           
-            // Setup the space to obtain a new DoF mapper
-            w.setup(bc, dirichlet::l2Projection, 0);
-            // Resize the new solution vectors (which exclude eliminated DoFs)
-            Cnew.resize(w.mapper().freeSize(),1);
-            dCnew.resize(w.mapper().freeSize(),1);
-
-            // Insert the interpolated coefficients inside the solution objects
-            for (index_t i = 0; i < dbasis.basis(0).size(); i++)
-                if (w.mapper().is_free(i))
-                {
-                    Cnew(w.mapper().index(i),0) = CnewF(i,0);
-                    dCnew(w.mapper().index(i),0) = dCnewF(i,0);
-                }
-        }// coarsen
+            }// coarsen
+        } // coarsening switch
 
 
         // Update time and old solutions
@@ -530,12 +575,16 @@ void solve( gsMultiPatch<T> & mp,
     if (plot)
     {
         collection.save();
-        
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
 
+
+    gsInfo<<"[CLOCK] --- Time for assembly: "<<assemblyTime<<" [s]\n";
+    gsInfo<<"[CLOCK] --- Time for solver: "<<solverTime<<" [s]\n";
+    gsInfo<<"[CLOCK] --- Time for projection: "<<projectionTime<<" [s]\n";
+    gsInfo<<"[CLOCK] --- Number of solves: "<<nSolves<<"\n";
 
 }
 
