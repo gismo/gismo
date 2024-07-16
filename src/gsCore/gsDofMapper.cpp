@@ -500,6 +500,27 @@ void gsDofMapper::preImage(const index_t gl,
     }
 }
 
+std::pair<index_t,index_t> gsDofMapper::anyPreImage(const index_t gl) const
+{
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
+    typedef std::vector<index_t>::const_iterator citer;
+    const std::vector<index_t> & dofs = m_dofs[componentOf(gl)];
+    size_t cur = 0;//local offsetted index
+
+    for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
+    {
+        if ( *it == gl )
+        {
+            // Get the patch index of "cur" by "un-offsetting"
+            const index_t patch = std::upper_bound(m_offset.begin(), m_offset.end(), cur)
+                                - m_offset.begin() - 1;
+
+            // Found a patch-dof pair
+            return std::make_pair(patch, cur - m_offset[patch] - m_shift);
+        }
+    }
+}
+
 gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
 {
     GISMO_ASSERT(comp>-1,"Component is invalid");

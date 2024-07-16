@@ -496,6 +496,10 @@ public:
     /// map to \a gl
     void preImage(index_t gl, std::vector<std::pair<index_t,index_t> > & result) const;
 
+    /// \brief For \a gl being a global index, this function returns a
+    /// pair (patch,dof) that maps to \a gl
+    std::pair<index_t,index_t> anyPreImage(index_t gl) const;
+
     /// \brief Produces the inverse of the mapping on patch \a k
     /// assuming that the map is invertible on that patch
     std::map<index_t,index_t> inverseOnPatch(const index_t k) const;
