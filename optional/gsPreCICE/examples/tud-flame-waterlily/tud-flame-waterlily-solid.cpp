@@ -252,15 +252,25 @@ int main(int argc, char *argv[])
     // Add all BCs
     // Coupling interface
     // bcInfo.addCondition(0, boundary::north,  condition_type::neumann , &g_C);
+    bcInfo.addCondition(0, couplingInterfaces[0],  condition_type::neumann  , &g_C, -1, true);
     bcInfo.addCondition(0, couplingInterfaces[1],  condition_type::neumann  , &g_C, -1, true);
     bcInfo.addCondition(0, couplingInterfaces[2],  condition_type::neumann  , &g_C, -1, true);
-    bcInfo.addCondition(0, couplingInterfaces[3],  condition_type::neumann  , &g_C, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[3],  condition_type::neumann  , &g_C, -1, true);
 
-    bcInfo.addCondition(0, couplingInterfaces[0],  condition_type::dirichlet  , &g_D, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[4],  condition_type::neumann  , &g_C, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[5],  condition_type::neumann  , &g_C, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[6],  condition_type::neumann  , &g_C, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[8],  condition_type::neumann  , &g_C, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[9],  condition_type::neumann  , &g_C, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[10],  condition_type::neumann  , &g_C, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[11],  condition_type::neumann  , &g_C, -1, true);
+    // bcInfo.addCondition(0, couplingInterfaces[3],  condition_type::neumann  , &g_C, -1, true);
+
+    bcInfo.addCondition(0, couplingInterfaces[7],  condition_type::dirichlet  , &g_D, -1, true);
     // bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_C);
     // East side (prescribed temp)
-    bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &g_D, 0);
-    bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &g_D, 1);
+    // bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &g_D, 0);
+    // bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &g_D, 1);
     // Assign geometry map
     bcInfo.setGeoMap(patches);
 
@@ -278,6 +288,13 @@ int main(int argc, char *argv[])
     // Pre-calculate total size N to resize derived_knots just once.
     for(index_t i= 0; i < couplingInterfaces.size();++i)
     {
+        // for (index_t j = 0; j < patches.nPatches(); ++j) 
+        // {
+        //     boundaries[i] = patches.patch(j).boundary(couplingInterfaces[i].side()); // Add boundary coefficients to a vector
+        //     auto& basis_temp = boundaries[i]->basis(); // Assuming this returns a pointer to gsBasis
+        //     boundaryBases.addBasis(&basis_temp);
+        //     N += knotsToVector(boundaryBases.basis(i)).size();
+        // }
         boundaries[i] = patches.patch(0).boundary(couplingInterfaces[i].side()); // Add boundary coefficients to a vector
         auto& basis_temp = boundaries[i]->basis(); // Assuming this returns a pointer to gsBasis
         boundaryBases.addBasis(&basis_temp);
@@ -331,21 +348,29 @@ int main(int argc, char *argv[])
         controlpoint_offset += temp_control_points.rows();
     }   
 
-    gsDebugVar(derived_control_points); 
+    gsMatrix<> controlPoints(derived_control_points.rows(),derived_control_points.cols()-1);
+    controlPoints.col(0) << derived_control_points.col(0);
+    controlPoints.col(1) << derived_control_points.col(1);
+    // gsMatrix<> controlPoints = derived_control_points;
+    
+    gsDebugVar(controlPoints);
+
+    // gsDebugVar(derived_control_points); 
 
     // Step 1: write the meshes to PreCICE
     // Step 1a: KnotMesh
     // get the knots in a matrix, using the utility function knotsToMatrix
-    gsMatrix<> knots = knotsToMatrix(bases.basis(0)); //
+
+    // gsMatrix<> knots = knotsToMatrix(bases.basis(0)); 
     participant.addMesh(KnotMesh,derived_knots.transpose());
 
     // Step 1b: ControlPointMesh
     // get the control points, in the format where every column is a control point
     gsVector<index_t> controlPointIDs; // needed for writing
-    gsMatrix<> controlPoints = derived_control_points;
-    // gsDebugVar(controlPoints);
 
-    participant.addMesh(ControlPointMesh,derived_control_points.transpose(),controlPointIDs);
+
+
+    participant.addMesh(ControlPointMesh,controlPoints.transpose(),controlPointIDs);
 
     // Step 1c: ForceMesh
     // Get the quadrature nodes on the coupling interface
@@ -353,9 +378,9 @@ int main(int argc, char *argv[])
 
     // Get the quadrature points
     gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions,couplingInterfaces);
-    gsDebugVar(quadPoints.dim());
+
+
     participant.addMesh(ForceMesh,quadPoints);
-    gsDebugVar(quadPoints);
 
     // Step 2 (not needed???)
     // Needed for direct mesh coupling
@@ -404,7 +429,6 @@ int main(int argc, char *argv[])
     assembler.options().setReal("PoissonsRatio",nu);
     assembler.options().setInt("MaterialLaw",material_law::hooke);
     assembler.assemble();
-    gsInfo << "Hello, there!\n";
 
 
     gsMatrix<real_t> Minv;
