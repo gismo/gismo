@@ -19,6 +19,7 @@
 #include <gsCore/gsAffineFunction.h>
 
 #include <gsUtils/gsCombinatorics.h>
+#include <gsMesh2/gsSurfMesh.h>
 
 namespace gismo
 {
@@ -562,6 +563,33 @@ bool gsMultiPatch<T>::matchVerticesOnSide (
 template<class T>
 void gsMultiPatch<T>::closeGaps(T tol)
 {
+    gsDofMapper mapper = getMapper(tol);
+
+    gsMatrix<T> meanVal;
+    std::vector<std::pair<index_t,index_t> > dof;
+    const index_t start = mapper.freeSize() - mapper.coupledSize();
+    const index_t end   = mapper.freeSize();
+
+    for (index_t i = start; i!= end; ++i) // For all coupled DoFs
+    {
+        // Get the preimages of this global dof (as pairs (patch,index) )
+        mapper.preImage(i, dof);
+
+        // Compute the mean value
+        meanVal = m_patches[dof.front().first]->coef(dof.front().second);
+        for (size_t k = 1; k!=dof.size(); ++k)
+            meanVal += m_patches[dof[k].first]->coef(dof[k].second);
+        meanVal.array() /= dof.size();
+
+        // Set involved control points equal to their average value
+        for (size_t k = 0; k!=dof.size(); ++k)
+            m_patches[dof[k].first]->coef(dof[k].second) = meanVal;
+    }
+}
+
+template<class T>
+gsDofMapper gsMultiPatch<T>::getMapper(T tol) const
+{
     const T tol2 = tol*tol;
     gsMatrix<index_t> bdr1, bdr2; // indices of the boundary control points
 
@@ -574,7 +602,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
 
     gsDofMapper mapper(patchSizes);
 
-    for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
+    for ( const_iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
     {
         const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
         const gsGeometry<T> & p2 = *m_patches[it->second().patch];
@@ -604,29 +632,15 @@ void gsMultiPatch<T>::closeGaps(T tol)
     // Finalize the mapper. At this point all patch-local dofs are
     // mapped to unique global indices
     mapper.finalize();
-
-    gsMatrix<T> meanVal;
-    std::vector<std::pair<index_t,index_t> > dof;
-    const index_t start = mapper.freeSize() - mapper.coupledSize();
-    const index_t end   = mapper.freeSize();
-
-    for (index_t i = start; i!= end; ++i) // For all coupled DoFs
-    {
-        // Get the preimages of this global dof (as pairs (patch,index) )
-        mapper.preImage(i, dof);
-
-        // Compute the mean value
-        meanVal = m_patches[dof.front().first]->coef(dof.front().second);
-        for (size_t k = 1; k!=dof.size(); ++k)
-            meanVal += m_patches[dof[k].first]->coef(dof[k].second);
-        meanVal.array() /= dof.size();
-
-        // Set involved control points equal to their average value
-        for (size_t k = 0; k!=dof.size(); ++k)
-            m_patches[dof[k].first]->coef(dof[k].second) = meanVal;
-    }
+    return mapper;
 }
 
+template<class T>
+gsSurfMesh gsMultiPatch<T>::toMesh() const
+{
+
+    return gsSurfMesh();
+}
 
 template<class T> // to do: move to boundaryInterface
 gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface &bi, T scaling) const

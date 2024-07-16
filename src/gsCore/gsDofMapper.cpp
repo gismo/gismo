@@ -519,6 +519,7 @@ std::pair<index_t,index_t> gsDofMapper::anyPreImage(const index_t gl) const
             return std::make_pair(patch, cur - m_offset[patch] - m_shift);
         }
     }
+    GISMO_ERROR("The global index "<< gl <<" is not valid");
 }
 
 gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const

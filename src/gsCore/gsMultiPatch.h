@@ -309,6 +309,12 @@ public:
     /// called.
     void closeGaps( T tol = 1e-4 );
 
+    /// Used to get a mapper with unique vertices
+    gsDofMapper getMapper(T tol) const;
+
+    /// Creates a surface mesh out of this multipatch
+    gsSurfMesh toMesh() const;
+    
     /// Clear (delete) all patches
     void clear()
     {
