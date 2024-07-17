@@ -50,7 +50,7 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     tensorBasis & tpBasis = this->basis().tensorLevel(this->basis().maxLevel());
 
     // makeGeometry returns an abstract class, therefore we need to cast to the particular.
-    result = *(static_cast< gsTensorBSpline<d, T> *>(tpBasis.makeGeometry(this->coefs()).release()));
+    result = give( static_cast<gsTensorBSpline<d,T>&>(*tpBasis.makeGeometry(this->coefs())) );
 }
 
 template<short_t d, class T>
