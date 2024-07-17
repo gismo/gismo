@@ -1,10 +1,10 @@
 version: 2.0
 
 jobs:
-  x86_64_xcode14.2_cxx14_release:
+  x86_64_xcode15.4_cxx14_release:
     macos:
-      xcode: "14.2.0"
-    resource_class: macos.x86.medium.gen2
+      xcode: "15.4.0"
+    resource_class: macos.m1.large.gen1
     working_directory: ~/gismo
     environment:
       MAKEJOBS: 4
@@ -23,7 +23,7 @@ jobs:
   x86_64_xcode14.3_cxx17_release:
     macos:
       xcode: "14.3.1"
-    resource_class: macos.x86.medium.gen2
+    resource_class: macos.m1.medium.gen1
     working_directory: ~/gismo
     environment:
       MAKEJOBS: 4
@@ -43,5 +43,5 @@ workflows:
   version: 2
   build:
     jobs:
-      - x86_64_xcode14.2_cxx14_release
+      - x86_64_xcode15.4_cxx14_release
       - x86_64_xcode14.3_cxx17_release

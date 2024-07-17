@@ -23,10 +23,9 @@ char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
                  bool transposed);
 
 TEMPLATE_INST
-void getMatrixFromXml ( gsXmlNode * node,
-                        unsigned const & rows,
-                        unsigned const & cols,
-                        gsMatrix<T> & result );
+void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
+                      unsigned const& cols, gsMatrix<T>& result,
+                      const std::string& base_type_flag);
 
 TEMPLATE_INST
 gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat,
@@ -57,10 +56,9 @@ char * makeValue(const gsMatrix<index_t> & value, gsXmlTree & data,
                       bool transposed);
 
 TEMPLATE_INST
-void getMatrixFromXml ( gsXmlNode * node,
-                        unsigned const & rows,
-                        unsigned const & cols,
-                        gsMatrix<index_t> & result );
+void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
+                      unsigned const& cols, gsMatrix<index_t>& result,
+                      const std::string& base_type_flag);
 
 TEMPLATE_INST
 gsXmlNode * putMatrixToXml ( gsMatrix<index_t> const & mat,
