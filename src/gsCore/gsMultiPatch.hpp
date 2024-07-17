@@ -646,13 +646,17 @@ gsSurfMesh gsMultiPatch<T>::toMesh() const
     auto pid = mesh.add_vertex_property<index_t>("v:patch");
     auto anchor = mesh.add_vertex_property<index_t>("v:anchor");
     gsSurfMesh::Vertex v;
+    gsSurfMesh::Point pt(0,0,0);
+    const index_t gd = geoDim();
     std::vector<std::pair<index_t,index_t> > pi = mapper.anyPreImages();
     //std::pair<index_t,index_t> pi;
+
     for (index_t j = 0; j!= mapper.size(); ++j)
     {
         //pi = mapper.anyPreImage(j);
         gsGeometry<> &  pp = patch(pi[j].first);
-        v = mesh.add_vertex( pp.eval( pp.basis().anchor(pi[j].second) ) );
+        pt.topRows(gd) = pp.eval( pp.basis().anchor(pi[j].second) );
+        v = mesh.add_vertex( pt );
         pid[v]  = pi[j].first;
         anchor[v] = pi[j].second;
     }
