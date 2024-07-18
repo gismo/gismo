@@ -5,6 +5,7 @@
 
 using namespace gismo;
 
+#define VTK_BEZIER_QUADRILATERAL 77
 
 /// @brief ID transformation between G+Smo and vtk  control point IDs 
 /// @param nU Number of control points in u parametric direction
@@ -127,6 +128,7 @@ std::string toDataArray(index_t num, std::map<std::string, std::string> attribut
     return stream.str();
 }
 
+//TODO Delete at some point
 std::string bez2vtk( gsTensorBSpline<2,real_t> bezier)
 {
     GISMO_ENSURE(bezier.parDim() == 2, "Bezier Paraview Output only implemented for bi-variate splines!");
@@ -168,7 +170,7 @@ std::string bez2vtk( gsTensorBSpline<2,real_t> bezier)
     return stream.str();
 }
 
-std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> origCoefs)
+std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> geomCoefs)
 {
     // Number of all control points of resulting Bezier elements of this block
     index_t totalPoints = ((ElBlock.PR+1) * (ElBlock.PS+1)) * ElBlock.numElements;
@@ -190,18 +192,18 @@ std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> origCoefs)
 
     gsMatrix<index_t> types(1,ElBlock.numElements);
     types.setOnes();
-    types*= 77;
+    types*= VTK_BEZIER_QUADRILATERAL;
 
     // Loop over all elements of the Element Block
     auto Ait = ElBlock.actives.begin();        // Actives Iterator
     auto Cit = ElBlock.coefVectors.begin();    // Coefficients Iteratos
 
     index_t i = 0;
-    gsMatrix<real_t> newCoefs(totalPoints, origCoefs.cols());
+    gsMatrix<real_t> newCoefs(totalPoints, geomCoefs.cols());
     for(; Ait != ElBlock.actives.end() && Cit != ElBlock.coefVectors.end(); ++Ait, ++Cit)
     {
         newCoefs.middleRows(i*(ElBlock.PR+1) * (ElBlock.PS+1),(ElBlock.PR+1) * (ElBlock.PS+1)) =
-             T * *Cit * origCoefs(Ait->asVector(),gsEigen::all);
+             T * *Cit * geomCoefs(Ait->asVector(),gsEigen::all);
         // ID transform * bezier extraction operator * original control points
         ++i;
     } 
