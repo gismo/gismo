@@ -56,10 +56,10 @@ std::string toDataArray(gsMatrix<index_t> mat, std::map<std::string, std::string
     // stream << std::setfill('0') << std::setw(16);
     // Format as vtk xml string
     stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
-    for (auto const& pair : attributes)
+    for (auto const& block : attributes)
     {
-        if (pair.first!="")
-        stream << pair.first <<"=\""<< pair.second <<"\" ";
+        if (block.first!="")
+        stream << block.first <<"=\""<< block.second <<"\" ";
     }
     stream <<">\n";
     // For every point
@@ -86,10 +86,10 @@ std::string toDataArray(gsMatrix<real_t> mat, std::map<std::string, std::string>
     // Format as vtk xml string
     stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
     stream << "NumberOfComponents=\""<< /* TODO mat.cols() */ 3 << "\" ";
-    for (auto const& pair : attributes)
+    for (auto const& block : attributes)
     {
-        if (pair.first!="")
-        stream << pair.first <<"=\""<< pair.second <<"\" ";
+        if (block.first!="")
+        stream << block.first <<"=\""<< block.second <<"\" ";
     }
     stream <<">\n";
     // For every point
@@ -115,10 +115,10 @@ std::string toDataArray(index_t num, std::map<std::string, std::string> attribut
     // stream << std::setfill('0') << std::setw(16);
     // Format as vtk xml string
     stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
-    for (auto const& pair : attributes)
+    for (auto const& block : attributes)
     {
-        if (pair.first!="")
-        stream << pair.first <<"=\""<< pair.second <<"\" ";
+        if (block.first!="")
+        stream << block.first <<"=\""<< block.second <<"\" ";
     }
     stream <<">\n";
     stream << num ;
@@ -139,25 +139,25 @@ std::string bez2vtk( gsTensorBSpline<2,real_t> bezier)
     gsMatrix<> newCoefs = T * bezier.coefs();
     gsMatrix<index_t> connectivity(1,bezier.coefsSize());
 
-    stream << "\t\t<Piece NumberOfPoints=\""<< bezier.coefsSize()<<"\" NumberOfCells=\"1\">\n";
+    stream << "<Piece NumberOfPoints=\""<< bezier.coefsSize()<<"\" NumberOfCells=\"1\">\n";
     
     // TODO remove
     stream << "<PointData>\n";
     stream << toDataArray( newCoefs, {{"Name","Position"}});
     stream << "</PointData>\n";
 
-    stream << "\t\t\t<CellData HigherOrderDegrees=\"HigherOrderDegrees\">\n";
+    stream << "<CellData HigherOrderDegrees=\"HigherOrderDegrees\">\n";
     gsMatrix<index_t> degrees(1,3);
     degrees << bezier.degree(0), bezier.degree(1), 0; 
     // TODO: Handle indentation in a neat way
-    stream << "\t\t\t\t" << toDataArray(degrees,{{"Name","HigherOrderDegrees"},{"NumberOfComponents","3"}});
-    stream << "\t\t\t</CellData>\n";
-    stream << "\t\t\t<Points>\n";
+    stream << "" << toDataArray(degrees,{{"Name","HigherOrderDegrees"},{"NumberOfComponents","3"}});
+    stream << "</CellData>\n";
+    stream << "<Points>\n";
     
-    stream << "\t\t\t\t"<< toDataArray( newCoefs, {{"Name","Points"}});
-    stream << "\t\t\t</Points>\n";
+    stream << ""<< toDataArray( newCoefs, {{"Name","Points"}});
+    stream << "</Points>\n";
 
-    stream << "\t\t\t<Cells>\n";
+    stream << "<Cells>\n";
     connectivity.asVector().setLinSpaced(0,bezier.coefsSize()-1);
     stream << toDataArray(connectivity, {{"Name","connectivity"}});
     stream << toDataArray(bezier.coefsSize(), {{"Name","offsets"}});
@@ -168,70 +168,97 @@ std::string bez2vtk( gsTensorBSpline<2,real_t> bezier)
     return stream.str();
 }
 
+std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> origCoefs)
+{
+    // Number of all control points of resulting Bezier elements of this block
+    index_t totalPoints = ((ElBlock.PR+1) * (ElBlock.PS+1)) * ElBlock.numElements;
+    std::stringstream stream;
+
+    // Control point ID transformation matrix
+    // from G+Smo notation to Paraview notation
+    gsSparseMatrix<> T = gs2vtk(ElBlock.PR+1, ElBlock.PS+1);
+
+    // Setup matrices with Cell data
+    gsMatrix<index_t> degrees(ElBlock.numElements,3);
+    degrees.rowwise() = (gsVector3d<index_t>()<< ElBlock.PR, ElBlock.PS, 0).finished().transpose();
+
+    gsMatrix<index_t> connectivity(1,totalPoints);
+    connectivity.asVector().setLinSpaced(0,totalPoints-1);
+
+    gsMatrix<index_t> offsets(1,ElBlock.numElements);
+    offsets.asVector().setLinSpaced((ElBlock.PR+1) * (ElBlock.PS+1),totalPoints);
+
+    gsMatrix<index_t> types(1,ElBlock.numElements);
+    types.setOnes();
+    types*= 77;
+
+    // Loop over all elements of the Element Block
+    auto Ait = ElBlock.actives.begin();        // Actives Iterator
+    auto Cit = ElBlock.coefVectors.begin();    // Coefficients Iteratos
+
+    index_t i = 0;
+    gsMatrix<real_t> newCoefs(totalPoints, origCoefs.cols());
+    for(; Ait != ElBlock.actives.end() && Cit != ElBlock.coefVectors.end(); ++Ait, ++Cit)
+    {
+        newCoefs.middleRows(i*(ElBlock.PR+1) * (ElBlock.PS+1),(ElBlock.PR+1) * (ElBlock.PS+1)) =
+             T * *Cit * origCoefs(Ait->asVector(),gsEigen::all);
+        // ID transform * bezier extraction operator * original control points
+        ++i;
+    } 
+
+    // Format to xml
+    stream << "<Piece NumberOfPoints=\""<< totalPoints<<"\" NumberOfCells=\""<<ElBlock.numElements<<"\">\n";
+    
+    // TODO remove
+    stream << "<PointData>\n";
+    stream << toDataArray( newCoefs, {{"Name","Position"}});
+    stream << "</PointData>\n";
+
+    stream << "<CellData HigherOrderDegrees=\"HigherOrderDegrees\">\n";
+    stream << "" << toDataArray(degrees,{{"Name","HigherOrderDegrees"},{"NumberOfComponents","3"}});
+    stream << "</CellData>\n";
+
+    stream << "<Points>\n";
+    stream << ""<< toDataArray( newCoefs, {{"Name","Points"}});
+    stream << "</Points>\n";
+
+    stream << "<Cells>\n";
+    stream << toDataArray(connectivity, {{"Name","connectivity"}});
+    stream << toDataArray(offsets, {{"Name","offsets"}});
+    stream << toDataArray(types, {{"Name","types"}});
+    stream << "</Cells>\n";
+    stream << "</Piece>\n";
+
+    return stream.str(); 
+     // TODO: Handle indentation in a neat way
+}
+
 int main(int argc, char* argv[])
 {
-    // gsTensorBSpline<2> bezier(*gsNurbsCreator<>::BSplineSquare(10, 0, 0).get());
-    // gsTensorBSpline<2> bezier(*gsNurbsCreator<>::BSplineFatQuarterAnnulus().get());
-    gsFileData<> inFile("/Users/ck/Documents/ParaViewBezier/filedata/surfaces/thbs_face_3levels.xml");
-    gsTHBSpline<2> bezier;
-    inFile.getId(0, bezier);
+    // gsTensorBSpline<2> geom(*gsNurbsCreator<>::BSplineSquare(10, 0, 0).get());
+    // gsTensorBSpline<2> geom(*gsNurbsCreator<>::BSplineFatQuarterAnnulus().get());
+    gsFileData<> inFile("surfaces/thbs_face_3levels.xml");
+    gsTHBSpline<2> geom;
+    inFile.getId(0, geom);
 
-    // bezier.degreeElevate(1);
-    // bezier.uniformRefine(2);
+    // geom.degreeElevate(2);
+    // geom.uniformRefine(4);
 
-    std::map<index_t, ElementBlock> ElBlocks = BezierOperator<2>(bezier.basis() );
+    std::map<index_t, ElementBlock> ElBlocks = BezierOperator<2>(geom.basis() );
     std::ofstream out;
-    out.open("/Users/ck/Desktop/bezier.vtu");
+    out.open("./bezier.vtu");
 
     out << "<?xml version=\"1.0\"?>\n"
         << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n"
-        << "\t<UnstructuredGrid>\n";
+        << "<UnstructuredGrid>\n";
 
-    for (auto const& pair : ElBlocks)
+
+    for (auto const& block : ElBlocks)
     {
-        // gsInfo << "Actives size (nctrlpts): " << pair.first << "\n";
-        // gsInfo << "NumElements: " << pair.second.numElements << "\n";
-        // gsInfo << "Actives:\n" << pair.second.actives.back().transpose()<< "\n";
-        // gsInfo << "CoefVecs:\n (" << pair.second.coefVectors.front().rows()
-        //         << "," << pair.second.coefVectors.front().cols()<< ")\n";
-        // gsInfo << "PR, PS, PT: " << pair.second.PR << "," << pair.second.PS << "," << pair.second.PT <<'\n';
-        // gsInfo << pair.second.coefVectors.front() << "\n";
-
-        // for each element
-        gsKnotVector<> kvR(pair.second.PR);
-        kvR.initClamped(pair.second.PR);
-        gsKnotVector<> kvS(pair.second.PS);
-        kvS.initClamped(pair.second.PS);
-        gsDebugVar(kvR);
-        gsDebugVar(kvS);
-
-        gsMatrix<> dummCoeffs=gsMatrix<>::Zero( (pair.second.PR+1)*(pair.second.PS+1), bezier.geoDim());
-        gsTensorBSpline<2> bez(kvR,kvS,dummCoeffs);
-
-
-        auto Ait = pair.second.actives.begin(); // Actives Iterator
-        auto Cit = pair.second.coefVectors.begin();    // Coefficients Iteratos
-
-        for(; Ait != pair.second.actives.end() && Cit != pair.second.coefVectors.end(); ++Ait, ++Cit)
-        {
-            bez.coefs() = *Cit * bezier.coefs()(Ait->asVector(),gsEigen::all);
-            out << bez2vtk(bez) << "\n";
-
-        }
+        out << elblock2vtk(block.second, geom.coefs());
     }
     out << "</UnstructuredGrid>\n";
     out << "</VTKFile>\n";
     out.close();
 
-/* 
-    gsMatrix<> dumb(bezier.basis().size(), 1);
-    dumb.asVector().setLinSpaced(1,dumb.rows() );
-    gsInfo << dumb.transpose() << "\n";
-
-
-    std::ofstream out;
-    out.open("/Users/ck/Desktop/bezier.vtu");
-    out << bez2vtk(bezier);
-    out.close();
-*/
 }
