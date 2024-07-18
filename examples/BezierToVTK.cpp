@@ -11,7 +11,7 @@ using namespace gismo;
 /// @param nU Number of control points in u parametric direction
 /// @param nV Number of control points in u parametric direction
 /// @return 
-gsSparseMatrix<> gs2vtk(index_t nU, index_t nV)
+gsSparseMatrix<> vtkIDTransform(index_t nU, index_t nV)
 {
     // T converts coefs from G+Smo's convetnion to ParaView's convention
     gsSparseMatrix<> T(nU*nV, nU*nV);
@@ -137,7 +137,7 @@ std::string bez2vtk( gsTensorBSpline<2,real_t> bezier)
                   bezier.basis().component(1).size() == bezier.degree(1)+1,
                   "The patch is not Bezier!");
     std::stringstream stream;
-    gsSparseMatrix<> T = gs2vtk(bezier.degree(0)+1, bezier.degree(1)+1);
+    gsSparseMatrix<> T = vtkIDTransform(bezier.degree(0)+1, bezier.degree(1)+1);
     gsMatrix<> newCoefs = T * bezier.coefs();
     gsMatrix<index_t> connectivity(1,bezier.coefsSize());
 
@@ -178,7 +178,7 @@ std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> geomCoefs)
 
     // Control point ID transformation matrix
     // from G+Smo notation to Paraview notation
-    gsSparseMatrix<> T = gs2vtk(ElBlock.PR+1, ElBlock.PS+1);
+    gsSparseMatrix<> T = vtkIDTransform(ElBlock.PR+1, ElBlock.PS+1);
 
     // Setup matrices with Cell data
     gsMatrix<index_t> degrees(ElBlock.numElements,3);
