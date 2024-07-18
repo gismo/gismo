@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 21.12.0-->
+<xml>
+ <Geometry type="BSpline" id="0">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="3">0 0 0.4000
+         0 0.1000 0.3000
+         0 0.4000 0.2000
+         0 0.6000 0.2000
+         0 0.9000 0.3000
+         0 1.0000 0.4000
+  </coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="1">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="3">
+    0.1875         0    0.3500
+    0.1875    0.1000    0.3000
+    0.1875    0.4000    0.2500
+    0.1875    0.6000    0.2800
+    0.1875    0.9000    0.3000
+    0.1875    1.0000    0.3700
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="2">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="3">0.3663         0    0.3000
+    0.3675    0.2000    0.2500
+    0.3663    0.3500    0.3800
+    0.3675    0.6500    0.3700
+    0.3625    0.8000    0.2000
+    0.4000    1.0000    0.3000
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="3">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="3">0.6875         0    0.2000
+    0.5687    0.2100    0.3300
+    0.7000    0.4000    0.4000
+    0.7063    0.7000    0.3900
+    0.5837    0.8900    0.2300
+    0.5750    1.0000    0.2000
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="4">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="3">1.0000         0    0.2000
+    0.9000    0.2000    0.2500
+    1.0000    0.4000    0.4000
+    1.0000    0.7000    0.4000
+    1.0000    0.8000    0.2500
+    1.0000    0.9000    0.2000
+</coefs>
+ </Geometry>
+ <MultiPatch parDim="1" id="5">
+  <patches type="id_range">0 4</patches>
+ </MultiPatch>
+</xml>
