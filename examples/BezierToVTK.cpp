@@ -6,6 +6,7 @@
 using namespace gismo;
 
 #define VTK_BEZIER_QUADRILATERAL 77
+#define INDENT(i) std::string(i, '\t')
 
 /// @brief ID transformation between G+Smo and vtk  control point IDs 
 /// @param nU Number of control points in u parametric direction
@@ -48,36 +49,38 @@ gsSparseMatrix<> vtkIDTransform(index_t nU, index_t nV)
 }
 
 
-std::string toDataArray(gsMatrix<index_t> mat, std::map<std::string, std::string> attributes={{"",""}})
+std::string toDataArray(gsMatrix<index_t> mat, std::map<std::string, std::string> attributes={{"",""}}, index_t ind=0)
 {
     std::stringstream stream;
-
     stream.setf(std::ios::fixed);  // write floating point values in fixed-point notation.
     // stream.precision(5);
     // stream << std::setfill('0') << std::setw(16);
     // Format as vtk xml string
-    stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
+    stream << INDENT(ind)  << "<DataArray type=\"Float32\" format=\"ascii\" ";
     for (auto const& block : attributes)
     {
         if (block.first!="")
         stream << block.first <<"=\""<< block.second <<"\" ";
     }
     stream <<">\n";
+    ++ind;
     // For every point
     for (index_t i = 0; i < mat.rows(); ++i)
     {
+        stream << INDENT(ind);
         for (index_t j = 0; j != mat.cols(); ++j)
             stream << mat(i, j) << " ";
         for (index_t j = mat.cols(); j < 3; ++j) stream << "0 ";
         if (mat.rows()-1==i) break;
         stream << "\n";
     }
-    stream << "\n</DataArray>\n";
+    --ind;
+    stream << "\n"<<INDENT(ind)<<"</DataArray>\n";
 
     return stream.str();
 }
 
-std::string toDataArray(gsMatrix<real_t> mat, std::map<std::string, std::string> attributes={{"",""}})
+std::string toDataArray(gsMatrix<real_t> mat, std::map<std::string, std::string> attributes={{"",""}}, index_t ind=0)
 {
     std::stringstream stream;
 
@@ -85,7 +88,7 @@ std::string toDataArray(gsMatrix<real_t> mat, std::map<std::string, std::string>
     // stream.precision(5);
     // stream << std::setfill('0') << std::setw(16);
     // Format as vtk xml string
-    stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
+    stream << INDENT(ind) <<"<DataArray type=\"Float32\" format=\"ascii\" ";
     stream << "NumberOfComponents=\""<< /* TODO mat.cols() */ 3 << "\" ";
     for (auto const& block : attributes)
     {
@@ -93,21 +96,24 @@ std::string toDataArray(gsMatrix<real_t> mat, std::map<std::string, std::string>
         stream << block.first <<"=\""<< block.second <<"\" ";
     }
     stream <<">\n";
+    ++ ind; 
     // For every point
     for (index_t i = 0; i < mat.rows(); ++i)
     {
+        stream << INDENT(ind);
         for (index_t j = 0; j != mat.cols(); ++j)
             stream << mat(i, j) << " ";
         for (index_t j = mat.cols(); j < 3; ++j) stream << "0 ";
         if (mat.rows()-1==i) break;
         stream << "\n";
     }
-    stream << "\n</DataArray>\n";
+    --ind;
+    stream << "\n"<<INDENT(ind)<<"</DataArray>\n";
 
     return stream.str();
 }
 
-std::string toDataArray(index_t num, std::map<std::string, std::string> attributes={{"",""}})
+std::string toDataArray(index_t num, std::map<std::string, std::string> attributes={{"",""}}, index_t ind=0)
 {
     std::stringstream stream;
 
@@ -115,15 +121,14 @@ std::string toDataArray(index_t num, std::map<std::string, std::string> attribut
     // stream.precision(5);
     // stream << std::setfill('0') << std::setw(16);
     // Format as vtk xml string
-    stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
+    stream << INDENT(ind) <<"<DataArray type=\"Float32\" format=\"ascii\" ";
+    ++ ind;
     for (auto const& block : attributes)
     {
         if (block.first!="")
         stream << block.first <<"=\""<< block.second <<"\" ";
     }
-    stream <<">\n";
-    stream << num ;
-    stream << "\n</DataArray>\n";
+    stream <<">\n" << INDENT(ind) << num << "\n</DataArray>\n";
 
     return stream.str();
 }
@@ -209,27 +214,29 @@ std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> geomCoefs)
     } 
 
     // Format to xml
-    stream << "<Piece NumberOfPoints=\""<< totalPoints<<"\" NumberOfCells=\""<<ElBlock.numElements<<"\">\n";
-    
+    index_t ind=2;
+    stream << INDENT(ind) <<"<Piece NumberOfPoints=\""<< totalPoints<<"\" NumberOfCells=\""<<ElBlock.numElements<<"\">\n";
+    ++ind;
     // TODO remove
-    stream << "<PointData>\n";
-    stream << toDataArray( newCoefs, {{"Name","Position"}});
-    stream << "</PointData>\n";
+    stream << INDENT(ind) << "<PointData>\n";
+    stream << toDataArray( newCoefs, {{"Name","Position"}}, ind+1);
+    stream << INDENT(ind) << "</PointData>\n";
 
-    stream << "<CellData HigherOrderDegrees=\"HigherOrderDegrees\">\n";
-    stream << "" << toDataArray(degrees,{{"Name","HigherOrderDegrees"},{"NumberOfComponents","3"}});
-    stream << "</CellData>\n";
+    stream << INDENT(ind) << "<CellData HigherOrderDegrees=\"HigherOrderDegrees\">\n";
+    stream << "" << toDataArray(degrees,{{"Name","HigherOrderDegrees"},{"NumberOfComponents","3"}}, ind+1);
+    stream << INDENT(ind) << "</CellData>\n";
 
-    stream << "<Points>\n";
-    stream << ""<< toDataArray( newCoefs, {{"Name","Points"}});
-    stream << "</Points>\n";
+    stream << INDENT(ind) << "<Points>\n";
+    stream << ""<< toDataArray( newCoefs, {{"Name","Points"}},ind+1);
+    stream << INDENT(ind) << "</Points>\n";
 
-    stream << "<Cells>\n";
-    stream << toDataArray(connectivity, {{"Name","connectivity"}});
-    stream << toDataArray(offsets, {{"Name","offsets"}});
-    stream << toDataArray(types, {{"Name","types"}});
-    stream << "</Cells>\n";
-    stream << "</Piece>\n";
+    stream << INDENT(ind) << "<Cells>\n";
+    stream << toDataArray(connectivity, {{"Name","connectivity"}}, ind+1);
+    stream << toDataArray(offsets, {{"Name","offsets"}},ind+1);
+    stream << toDataArray(types, {{"Name","types"}},ind+1);
+    stream << INDENT(ind) << "</Cells>\n";
+    --ind;
+    stream << INDENT(ind) << "</Piece>\n";
 
     return stream.str(); 
      // TODO: Handle indentation in a neat way
@@ -252,14 +259,14 @@ int main(int argc, char* argv[])
 
     out << "<?xml version=\"1.0\"?>\n"
         << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n"
-        << "<UnstructuredGrid>\n";
+        << "\t<UnstructuredGrid>\n";
 
 
-    for (auto const& block : ElBlocks)
+    for (auto const& pair : ElBlocks)
     {
-        out << elblock2vtk(block.second, geom.coefs());
+        out << elblock2vtk(pair.second, geom.coefs());
     }
-    out << "</UnstructuredGrid>\n";
+    out << "\t</UnstructuredGrid>\n";
     out << "</VTKFile>\n";
     out.close();
 
