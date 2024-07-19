@@ -20,12 +20,10 @@ gismo_fetch_directory(optim
   URL https://github.com/kthohr/optim/archive/refs/heads/master.zip
   DESTINATION    external)
 
-IF(NOT EXISTS ${gismo_externals}/optim/include/BaseMatrixOps)
-  gismo_fetch_directory(BaseMatrixOps
-    URL https://github.com/kthohr/BaseMatrixOps/archive/refs/heads/main.zip
-    DESTINATION    external)
-
-  file(RENAME ${gismo_externals}/BaseMatrixOps ${gismo_externals}/optim/include/BaseMatrixOps)
+IF(NOT EXISTS ${gismo_externals}/optim/include/BaseMatrixOps/include)
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init"
+	ERROR_QUIET
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/external/optim)
 ENDIF()
 
 ## CALL ./configure --header-only-version
