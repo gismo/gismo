@@ -102,12 +102,13 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
 template<typename T>
 void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> & coefs)
 {
-    const gsBSplineBasis<T> & b = dynamic_cast<const gsBSplineBasis<T> &>(bb);
+    const gsBSplineBasis<T>*b = dynamic_cast<const gsBSplineBasis<T> *>(&bb); // cast bb to a gsBSplineBasis
+    GISMO_ASSERT(b != nullptr, "Basis should be a gsBSplineBasis"); // assertion to ensure that b is a gsBSplineBasis
     // ONLY 1D
 
-    const gsKnotVector<T> & kv = b.knots();
-    int deg = b.degree();
-    gsMatrix<T> xj = b.anchors();
+    const gsKnotVector<T> & kv = b->knots();
+    int deg = b->degree();
+    gsMatrix<T> xj = b->anchors();
 
     int n = xj.size();
     int dim = fun.targetDim();
@@ -155,11 +156,12 @@ gsQuasiInterpolate<T>::Schoenberg(const gsBasis<T> &b,
 template<typename T>
 void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> &fun, const bool specialCase, gsMatrix<T> &coefs)
 {
-    const gsBSplineBasis<T> & b = dynamic_cast<const gsBSplineBasis<T> &>(bb);
+    const gsBSplineBasis<T>* b = dynamic_cast<const gsBSplineBasis<T> *>(&bb); // cast bb to a gsBSplineBasis
+    GISMO_ASSERT(b != nullptr, "Basis should be a gsBSplineBasis"); // assertion to ensure that b is a gsBSplineBasis
     // ONLY 1D
 
-    const gsKnotVector<T> & kv = b.knots();
-    const int n = b.size();
+    const gsKnotVector<T> & kv = b->knots();
+    const int n = b->size();
     //gsDebugVar(kv);
 
     coefs.resize(n, fun.targetDim());
@@ -173,7 +175,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
     int type = 0;
     if(specialCase)
     {
-        type = b.degree();
+        type = b->degree();
         GISMO_ASSERT( (type == 1 || type == 2 || type == 3),
                       "quasiInterpolateEvalBased is implemented for special cases of deg 1, 2 or 3!");
     }
