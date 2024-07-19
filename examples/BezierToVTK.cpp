@@ -175,7 +175,7 @@ std::string bez2vtk( gsTensorBSpline<2,real_t> bezier)
     return stream.str();
 }
 
-std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> geomCoefs)
+std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> geomCoefs, index_t ind=0)
 {
     // Number of all control points of resulting Bezier elements of this block
     index_t totalPoints = ((ElBlock.PR+1) * (ElBlock.PS+1)) * ElBlock.numElements;
@@ -214,7 +214,6 @@ std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> geomCoefs)
     } 
 
     // Format to xml
-    index_t ind=2;
     stream << INDENT(ind) <<"<Piece NumberOfPoints=\""<< totalPoints<<"\" NumberOfCells=\""<<ElBlock.numElements<<"\">\n";
     ++ind;
     // TODO remove
@@ -239,7 +238,6 @@ std::string elblock2vtk( ElementBlock ElBlock, const gsMatrix<> geomCoefs)
     stream << INDENT(ind) << "</Piece>\n";
 
     return stream.str(); 
-     // TODO: Handle indentation in a neat way
 }
 
 int main(int argc, char* argv[])
@@ -264,7 +262,7 @@ int main(int argc, char* argv[])
 
     for (auto const& pair : ElBlocks)
     {
-        out << elblock2vtk(pair.second, geom.coefs());
+        out << elblock2vtk(pair.second, geom.coefs()),2;
     }
     out << "\t</UnstructuredGrid>\n";
     out << "</VTKFile>\n";
