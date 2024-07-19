@@ -111,10 +111,10 @@ void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
 
 template <class T>
 std::vector<gsMatrix<T> >
-gsFunctionSet<T>::evalAllDers(const gsMatrix<T>& u, int n) const
+gsFunctionSet<T>::evalAllDers(const gsMatrix<T>& u, int n, bool sameElement) const
 {
     std::vector<gsMatrix<T> > result;
-    this->evalAllDers_into( u, n, result );
+    this->evalAllDers_into( u, n, result, sameElement);
     return result;
 }
 

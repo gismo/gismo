@@ -413,7 +413,7 @@ public:
                                   bool sameElement = false) const;
 
     /// Evaluate all derivatives upto order \a n, \see evalAllDers_into
-    std::vector<gsMatrix<T> > evalAllDers(const gsMatrix<T> & u, int n) const;
+    std::vector<gsMatrix<T> > evalAllDers(const gsMatrix<T> & u, int n, bool sameElement = false) const;
 
     /// Evaluate the function, \see eval_into()
     gsMatrix<T> eval(const gsMatrix<T>& u) const;

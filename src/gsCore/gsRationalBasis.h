@@ -274,7 +274,7 @@ public:
     void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
 
     //void evalAllDers_into(const gsMatrix<T> & u, int n,
-    //                      std::vector<gsMatrix<T> >& result) const;
+    //                      std::vector<gsMatrix<T> >& result, bool sameElement = false) const;
 
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
@@ -434,13 +434,13 @@ void gsRationalBasis<SrcT>::evalFunc_into(const gsMatrix<T> & u, const gsMatrix<
 /* TODO
 template<class SrcT>
 void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                             std::vector<gsMatrix<T> >& result) const
+                                             std::vector<gsMatrix<T> >& result, bool sameElement = false) const
 {
     result.resize(n+1);
 
     std::vector<gsMatrix<T> > ev(n+1);
 
-    m_src->evalAllDers_into(u, n, ev);
+    m_src->evalAllDers_into(u, n, ev, sameElement);
 
     // find active basis functions
     gsMatrix<index_t> act;

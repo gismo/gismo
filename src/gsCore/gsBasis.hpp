@@ -523,10 +523,6 @@ gsBasis<T>::makeDomainIterator(const boxSide &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-size_t gsBasis<T>::numElements() const
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
 size_t gsBasis<T>::numElements(boxSide const &) const
 { GISMO_NO_IMPLEMENTATION }
 

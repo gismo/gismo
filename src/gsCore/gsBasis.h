@@ -763,12 +763,8 @@ public:
       Member functions that may be implemented or not in the derived class
     */
 
-    /// @brief The number of elements.
-    virtual size_t numElements() const;
-
     /// @brief The number of elements on side \a s.
-    // fixme: default arg = none
-    virtual size_t numElements(boxSide const & s) const; // = none
+    virtual size_t numElements(boxSide const & s = 0) const; // = none
 
     /// @brief Returns an index for the element which contains point \a u
     virtual size_t elementIndex(const gsVector<T> & u ) const;
