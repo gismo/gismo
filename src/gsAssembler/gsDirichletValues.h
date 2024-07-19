@@ -339,7 +339,6 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
 
                 mapper.localToGlobal(globBasisAct, patchIdx, globIdxAct,r);
 
-
                 // Out of the active functions/DOFs on this element, collect all those
                 // which correspond to a boundary DOF.
                 // This is checked by calling mapper.is_boundary_index( global Index )
@@ -384,6 +383,9 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                 GISMO_ASSERT((com!=-1) || rhsVals.rows() == u.dim(),
                     "If no component is specified for Dirichlet boundary, "
                     "target dimension must match field dimension.");
+                GISMO_ASSERT((com==-1) || rhsVals.rows() == 1,
+                    "If the component is specified for Dirichlet boundary, "
+                    "then a scalar function is expected.");
 
                 // Do the actual assembly:
                 for (index_t k = 0; k < md.points.cols(); k++)
@@ -411,7 +413,8 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                             projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
                         } // for j
 
-                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(r,k);
+                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals( (-1==com?r:0) ,k);
+                        //globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(r ,k);
 
                     } // for i
                 } // for k

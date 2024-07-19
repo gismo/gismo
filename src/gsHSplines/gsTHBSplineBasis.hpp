@@ -26,6 +26,7 @@
 namespace gismo
 {
 
+
 template<short_t d, class T>
 gsMatrix<index_t>  gsTHBSplineBasis<d,T>::
 boundaryOffset(boxSide const & s,index_t offset) const
@@ -1170,9 +1171,7 @@ void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
     {
 
         unsigned level = this->m_is_truncated[i];
-
         const gsSparseVector<T>& coefs = getCoefs(i);
-
         const gsTensorBSplineBasis<d, T>& base =
             *this->m_bases[level];
 
@@ -1307,6 +1306,140 @@ void gsTHBSplineBasis<d,T>::derivSingle_into(index_t i,
 
 
 template<short_t d, class T>
+void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
+                                           std::vector<gsMatrix<T> >& result) const
+{
+    //gsBasis<T>::evalAllDers_into(u,n,result); return;
+    result.resize(n+1);
+
+    gsMatrix<index_t> ind, indices;
+    gsMatrix<T> tmp(1,1);
+    std::vector<gsMatrix<T> > cw(d), cwb, cwt(d);
+    for ( short_t k=0; k<d; ++k)
+        cw[k].resize(n+1,1);
+    gsVector<index_t, d> ti;
+    gsVector<index_t> str(n+1);
+
+    this->active_into(u, indices);
+    for (int l = 0; l <= n; l++)
+    {
+        str[l] = numCompositions(l,d);
+        result[l].setZero(indices.rows() * str[l], u.cols());
+    }
+
+    for (index_t i = 0; i < indices.cols(); i++) // for all points
+    {
+        for (index_t j = 0; j < indices.rows(); j++) // for all active functions
+        {
+            const index_t index = indices(j, i);
+            if (j != 0 && index == 0)
+                break;
+
+            const index_t level = this->m_is_truncated[index];
+            if (level == -1)  // basis function not truncated
+            {
+                unsigned level = this->levelOf(index);
+                ti = this->m_bases[level]->tensorIndex(flatTensorIndexOf(index, level));
+                for(short_t k = 0; k!=d; ++k)
+                {
+                    *tmp.data() = u(k,i);
+                    //this->m_bases[level]->component(k).evalAllDersSingle_into(ti[k], tmp, n, cw[k]); // has a bug
+                    // less efficient alternative
+                    this->m_bases[level]->component(k).evalAllDers_into(tmp, n, cwb);
+                    const index_t first = this->m_bases[level]->component(k).firstActive(tmp.value());
+
+                    for (int l = 0; l <= n; l++)
+                    {
+                        cw[k].at(l) = cwb[l].at(ti[k]-first);
+                    }
+                    //end less efficient alternative
+                }
+                // -- Start eval
+                if (n>-1)
+                {
+                    result[0](j,i) = cw[0].at(0);
+                    for ( short_t k=1; k<d; ++k)
+                        result[0](j,i) *= cw[k].at(0);
+                }
+
+                if (n>0)
+                {
+                    T * acc = result[1].col(i).data() + str[1]*j;
+                    for ( short_t k=0; k<d; ++k)
+                    {
+                        // derivative w.r.t. k-th variable
+                        *acc = cw[k].at(1);
+                        for ( short_t l=0; l<k; ++l)
+                            *acc *= cw[l].at(0);
+                        for ( short_t l=k+1; l<d; ++l)
+                            *acc *= cw[l].at(0);
+                        ++acc;
+                    }
+                }
+
+                if (n>1)
+                {
+                    short_t m = d;
+                    T * acc = result[2].col(i).data() + str[2]*j;
+                    for ( short_t k=0; k<d; ++k)
+                    {
+                        *(acc+k) = cw[k].at(2); // pure 2nd derivative w.r.t. k-th variable
+                        for ( short_t l=0; l<k; ++l)
+                            *(acc+k) *= cw[l].at(0);
+                        for ( short_t l=k+1; l<d; ++l)
+                        {
+                            *(acc+k) *= cw[l].at(0);
+                            // Then all mixed derivatives follow in lex order
+                            *(acc+m) = cw[k].at(1) * cw[l].at(1);
+                            for ( short_t q=0; q<k; ++q)
+                                *(acc+m) *= cw[q].at(0);
+                            for ( short_t q=k+1; q<l; ++q)
+                                *(acc+m) *= cw[q].at(0);
+                            for ( short_t q=l+1; q<d; ++q)
+                                *(acc+m) *= cw[q].at(0);
+                            ++m;
+                        }
+                    }
+                }
+                // -- End eval
+            }
+            else// function is truncated
+            {
+                const gsSparseVector<T>& coefs = getCoefs(index);
+                this->m_bases[level]->active_into(u.col(i), ind);
+                this->m_bases[level]->evalAllDers_into(u.col(i), n, cwt);
+                for (int l = 0; l <= n; l++)
+                {
+                    auto acc = result[l].col(i).segment(j*str[l],str[l]);
+                    for ( index_t q = 0; q < ind.rows(); ++q) // for all non-zero basis functions
+                        acc += coefs[ind.at(q)] * cwt[l].col(0).segment(str[l]*q, str[l]);
+                }
+
+                //todo: do/while[q] then inside [l]
+            }
+        }
+    }
+    /*
+    std::vector<gsMatrix<> >test;
+    gsBasis<T>::evalAllDers_into(u,n,test);
+    for (int l = 0; l <= n; l++)
+    {
+        if ( (result[l]-test[l]).norm() > 1e-8 )
+        {
+            gsInfo <<"\n---------Result "<<l<<"--------\n";
+            gsInfo <<result[l];
+            gsInfo <<"\n---------Test "<<l<<"--------\n";
+            gsInfo <<test[l];
+            gsInfo <<"\n---------Diff "<<l<<"--------\n";
+            gsInfo <<result[l]-test[l];
+            gsInfo <<"\n---------POINTS --------\n";
+            gsInfo << u <<"\n";
+        }
+    }
+    */
+}
+
+template<short_t d, class T>
 void gsTHBSplineBasis<d, T>::decomposeDomain(
     typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& boundaryAABB,
     typename gsTHBSplineBasis<d, T>::TrimmingCurves& trimCurves) const
@@ -1439,6 +1572,22 @@ gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& bounding
 
     return gsTensorBSpline<d, T> (basis, newCoefs);
 }
+
+template<short_t d, class T>
+void gsTHBSplineBasis<d, T>::getBsplinePatchGlobal(gsVector<index_t> b1,
+                          gsVector<index_t> b2,
+                          unsigned level,
+                          const gsMatrix<T>& geom_coef,
+                          gsMatrix<T>& cp, gsKnotVector<T>& k1,
+                          gsKnotVector<T>& k2) const
+{ getBsplinePatchGlobal_impl<d>(b1,b2,level,geom_coef,cp,k1,k2); };
+
+template<short_t d, class T>
+gsTensorBSpline<d,T> gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<index_t>& boundingBox,
+                                         const unsigned level,
+                                         const gsMatrix<T>& geomCoefs) const
+{ return getBSplinePatch_impl<d>(boundingBox, level, geomCoefs); }
+
 
 template<short_t d, class T>
 void gsTHBSplineBasis<d, T>::breakCycles(

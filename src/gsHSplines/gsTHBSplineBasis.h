@@ -143,6 +143,9 @@ public:
                              const gsMatrix<T> & u,
                           gsMatrix<T>& result) const;
 
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const;
+
     // look at eval_into
     void fastEval_into(const gsMatrix<T>& u,
                        gsMatrix<T>& result) const
@@ -535,8 +538,7 @@ public:
                           unsigned level,
                           const gsMatrix<T>& geom_coef,
                           gsMatrix<T>& cp, gsKnotVector<T>& k1,
-                          gsKnotVector<T>& k2) const
-    { getBsplinePatchGlobal_impl<d>(b1,b2,level,geom_coef,cp,k1,k2); }
+                               gsKnotVector<T>& k2) const;
 
   /**
    * @brief Return the list of B-spline patches to represent a THB-spline geometry.
@@ -605,8 +607,7 @@ public:
     /// level. Geometry of the patch is defined via input coefficients.
     gsTensorBSpline<d,T> getBSplinePatch(const std::vector<index_t>& boundingBox,
                                          const unsigned level,
-                                         const gsMatrix<T>& geomCoefs) const
-    { return getBSplinePatch_impl<d>(boundingBox, level, geomCoefs); }
+                                         const gsMatrix<T>& geomCoefs) const;
 
 private:
     /**

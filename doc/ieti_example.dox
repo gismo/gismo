@@ -13,7 +13,7 @@ Its variational form is: Find \f$ u\in V_g \f$ such that
 \f[
     \int_\Omega \nabla u \nabla v d x = \int_\Omega f v dx
 \f]
-for all \f$ u\in V_0 \f$, which corresponds to the linear system
+for all \f$ v\in V_0 \f$, which corresponds to the linear system
 \f[
       A \underline u = \underline f.
 \f]
