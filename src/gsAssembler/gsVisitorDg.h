@@ -144,8 +144,8 @@ public:
         const index_t numActive2 = actives2.rows();
 
         // Evaluate basis functions and their first derivatives
-        B1.evalAllDers_into(md1.points, 1, basisData1);
-        B2.evalAllDers_into(md2.points, 1, basisData2);
+        B1.evalAllDers_into(md1.points, 1, basisData1, true);
+        B2.evalAllDers_into(md2.points, 1, basisData2, true);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo1.computeMap(md1);
