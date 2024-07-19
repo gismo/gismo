@@ -143,6 +143,9 @@ public:
                              const gsMatrix<T> & u,
                           gsMatrix<T>& result) const;
 
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const;
+
     // look at eval_into
     void fastEval_into(const gsMatrix<T>& u,
                        gsMatrix<T>& result) const

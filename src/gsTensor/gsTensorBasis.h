@@ -56,7 +56,7 @@ public:
     
     gsTensorBasis() : m_bases() { }
 
-    //virtual ~gsTensorBasis() { freeAll(m_bases, m_bases+d); }
+    virtual ~gsTensorBasis() { freeAll(m_bases, m_bases+d); }
 
     gsTensorBasis( const gsTensorBasis & o);
     gsTensorBasis& operator=( const gsTensorBasis & o);
