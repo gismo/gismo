@@ -138,8 +138,7 @@ public:
 
     int size(int const& k) const{ return m_src->size(k); }
 
-    size_t numElements() const { return m_src->numElements(); }
-    size_t numElements(boxSide const & s) const { return m_src->numElements(s); }
+    size_t numElements(boxSide const & s = 0) const { return m_src->numElements(s); }
     //using Base::numElements; //unhide
 
     /// See \ref gsBasis for a description

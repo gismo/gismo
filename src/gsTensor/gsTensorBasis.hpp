@@ -651,7 +651,7 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     {
         // evaluate basis functions/derivatives
         m_bases[i]->evalAllDers_into( u.row(i), n, values[i], sameElement); 
-      
+
         // number of basis functions
         const index_t num_i = values[i].front().rows();
         nb_cwise[i] = num_i;

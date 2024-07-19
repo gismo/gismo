@@ -911,20 +911,25 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
 #if FALSE
 
     const int pn = m_p - n;
+    unsigned span;
 
     for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
     {
-        // Check if the point is in the domain
-        if ( ! inDomain( u(0,v) ) )
+        if (!sameElement || 0==v)
         {
-            // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
-            for(int k=0; k<=n; k++)
-                result[k].col(v).setZero();
-            continue;
-        }
 
-        // Run evaluation algorithm and keep the function values triangle & the knot differences
-        unsigned span = m_knots.findspan( u(0,v) ) ;     // Get span of absissae.
+            // Check if the point is in the domain
+            if ( ! inDomain( u(0,v) ) )
+            {
+                // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
+                for(int k=0; k<=n; k++)
+                    result[k].col(v).setZero();
+                continue;
+            }
+
+            // Run evaluation algorithm and keep the function values triangle & the knot differences
+            span = m_knots.findspan( u(0,v) ) ; // Get span of absissae.
+        }
 
         for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
         {
@@ -961,20 +966,26 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
 
 #endif
 
+    typename KnotVectorType::iterator span;
+
     for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
     {
-        // Check if the point is in the domain
-        if ( ! inDomain( u(0,v) ) )
-        {
-            //gsDebug<< "Point "<< u(0,v) <<" not in the BSpline domain ["
-            //      << *(m_knots.begin()+m_p)<< ", "<<*(m_knots.end()-m_p-1)<<"].\n";
-            for(int k=0; k<=n; k++)
-                result[k].col(v).setZero();
-            continue;
-        }
 
-        // Run evaluation algorithm and keep the function values triangle & the knot differences
-        typename KnotVectorType::iterator span = m_knots.iFind( u(0,v) );
+        if (!sameElement || 0==v)
+        {
+            // Check if the point is in the domain
+            if ( ! inDomain( u(0,v) ) )
+            {
+                //gsDebug<< "Point "<< u(0,v) <<" not in the BSpline domain ["
+                //      << *(m_knots.begin()+m_p)<< ", "<<*(m_knots.end()-m_p-1)<<"].\n";
+                for(int k=0; k<=n; k++)
+                    result[k].col(v).setZero();
+                continue;
+            }
+
+            // Run evaluation algorithm and keep the function values triangle & the knot differences
+            span = m_knots.iFind( u(0,v) );
+        }
 
         ndu[0] = (T)(1) ; // 0-th degree function value
         for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)

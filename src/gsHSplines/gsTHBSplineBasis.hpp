@@ -1344,7 +1344,7 @@ void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
                 for(short_t k = 0; k!=d; ++k)
                 {
                     *tmp.data() = u(k,i);
-                    //this->m_bases[level]->component(k).evalAllDersSingle_into(ti[k], tmp, n, cw[k], sameElement); // has a bug
+                    //this->m_bases[level]->component(k).evalAllDersSingle_into(ti[k], tmp, n, cw[k]); // has a bug
                     // less efficient alternative
                     this->m_bases[level]->component(k).evalAllDers_into(tmp, n, cwb, sameElement);
                     const index_t first = this->m_bases[level]->component(k).firstActive(tmp.value());

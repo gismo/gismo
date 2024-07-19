@@ -402,7 +402,7 @@ public:
     static void linearCombination_into(const gsMatrix<T> & coefs,
                                        const gsMatrix<index_t> & actives,
                                        const gsMatrix<T> & values,
-                                       gsMatrix<T> & result);
+                                       gsMatrix<T> & result, bool sameElement = false);
 
     /// @}
 

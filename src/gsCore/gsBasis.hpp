@@ -133,6 +133,7 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
     // resize result so that it will hold
     // function values and up to the n-th derivatives
     result.resize(n+1);
+    if ( 0 == u.cols() ) return;
 
     // B will contain the derivatives up to order n
     std::vector< gsMatrix<T> >B;
@@ -141,12 +142,15 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
     gsMatrix<index_t> actives;
 
     this->evalAllDers_into(u,n,B,sameElement);
-    this->active_into(u,actives); //..
+    if (sameElement)
+        this->active_into(u.col(0), actives);
+    else
+        this->active_into(u, actives);
 
     // for derivatives 0 to n, evaluate the function by linear combination
     // of coefficients with the respective function values/derivatives
     for( unsigned i = 0; i <= n; i++)
-        linearCombination_into( coefs, actives, B[i], result[i] );
+        linearCombination_into( coefs, actives, B[i], result[i], sameElement);
 }
 
 
@@ -154,7 +158,7 @@ template<class T>
 void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
                                         const gsMatrix<index_t> & actives,
                                         const gsMatrix<T> & values,
-                                        gsMatrix<T> & result)
+                                        gsMatrix<T> & result, bool sameElement)
 {
     const index_t numPts = values.cols() ;
     const index_t tarDim = coefs.cols()  ;
@@ -166,13 +170,21 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     result.resize( tarDim * stride, numPts );
     result.setZero();
 
-    for ( index_t pt = 0; pt < numPts; ++pt ) // For pt, i.e., for every column of u
+    if (sameElement)
+    {
         for ( index_t i = 0; i < actives.rows(); ++i )  // for all nonzero basis functions
             for ( index_t c = 0; c < tarDim; ++c )      // for all components of the geometry
-            {
-                result.block( stride * c, pt, stride, 1).noalias() +=
-                    coefs( actives(i,pt), c) * values.block( stride * i, pt, stride, 1);
-            }
+                result.middleRows( stride * c, stride).noalias() +=
+                    coefs( actives.at(i), c) * values.middleRows(stride * i, stride);
+    }
+    else
+    {
+        for ( index_t pt = 0; pt < numPts; ++pt ) // For pt, i.e., for every column of u
+            for ( index_t i = 0; i < actives.rows(); ++i )  // for all nonzero basis functions
+                for ( index_t c = 0; c < tarDim; ++c )      // for all components of the geometry
+                    result.block( stride * c, pt, stride, 1).noalias() +=
+                        coefs( actives(i,pt), c) * values.block( stride * i, pt, stride, 1);
+    }
 }
 
 

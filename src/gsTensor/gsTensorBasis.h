@@ -112,7 +112,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements() const
+    size_t numTotalElements() const
     {
         size_t nElem = m_bases[0]->numElements();
         for (short_t dim = 1; dim < d; ++dim)
@@ -121,9 +121,9 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements(boxSide const & s) const
+    size_t numElements(boxSide const & s = boundary::none) const
     {
-        if (0==s.index()) return this->numElements();
+        if (0==s.index()) return this->numTotalElements();
         const short_t dir =  s.direction();
         size_t nElem = 1;
         for (short_t dim = 0; dim < d; ++dim)

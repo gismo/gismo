@@ -40,7 +40,7 @@ m_global(coefs)
 
 template<short_t d,class T>
 gsMappedSpline<d,T>::gsMappedSpline( const gsMappedSpline& other )
-: m_global(other.m_global)
+: gsFunctionSet<T>(), m_global(other.m_global)
 {
     m_mbases=other.m_mbases->clone().release();
 }

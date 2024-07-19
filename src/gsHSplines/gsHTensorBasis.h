@@ -975,19 +975,21 @@ public:
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
     std::vector< std::vector< std::vector<index_t > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result) const;
     // TO DO: use gsHDomainLeafIterator for a better implementation
-    size_t numElements() const
+    size_t numElements(boxSide const & s = 0) const
     {
-        gsHDomainIterator<T, d> domIter(*this);
+        typename gsBasis<T>::domainIter domIter =
+            s == boundary::none ?
+            typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
+            typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(*this,s) );
 
         size_t numEl = 0;
-        for (; domIter.good(); domIter.next())
+        for (; domIter->good(); domIter->next())
         {
             numEl++;
         }
 
         return numEl;
     }
-    using gsBasis<T>::numElements; //unhide
 
     /// @brief transformes a sortedVector \a indexes of flat tensor index
     /// of the bspline basis of \a level to hierachical indexes in place. If a flat

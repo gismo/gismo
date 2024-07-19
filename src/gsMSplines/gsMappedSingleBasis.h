@@ -87,7 +87,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements() const { return m_basis->getBase(m_index).numElements(); }
+    size_t numElements(boxSide const & s = 0) const { return m_basis->getBase(m_index).numElements(s); }
 
     /*
       void refine(gsMatrix<T> const & boxes)

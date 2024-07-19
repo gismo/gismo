@@ -165,8 +165,7 @@ public:
     index_t size() const { return m_knots.size() - m_p - 1 - m_periodic; }
 
     // Look at gsBasis class for a description
-    size_t numElements() const { return m_knots.numElements(); }
-    using Base::numElements; //unhide
+    size_t numElements(boxSide const & s = 0) const { return (0==s?m_knots.numElements():1); }
 
     // Look at gsBasis class for a description
     size_t elementIndex(const gsVector<T> & u ) const;

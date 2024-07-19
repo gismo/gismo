@@ -566,7 +566,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
         case 210:  // Class_BoundedSurface
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Reading GoTools trimmed surface (ClassType="<<ncp<<") not implemented.\n";
-
+            break;
         case 110:  // Class_CurveOnSurface
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Reading GoTools CurveOnSurface (ClassType="<<ncp<<") not implemented.\n";
