@@ -585,7 +585,7 @@ public:
     // Look at gsBasis.h for the documentation of this function
     virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
 
-    virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset , index_t level) const; //..
+    virtual gsMatrix<index_t> boundaryOffsetLevel(boxSide const & s, index_t offset , index_t level) const;
 
     virtual index_t levelAtCorner(boxCorner const & c) const;
 
@@ -594,9 +594,8 @@ public:
 
 
     // Look at gsBasis.h for the documentation of this function
-    // /// \todo impl. evalAllDers_into
     //void evalAllDers_into(const gsMatrix<T> & u, int n,
-    //                      std::vector<gsMatrix<T> >& result) const;
+    //                      std::vector<gsMatrix<T> >& result, bool sameElement) const;
 
     /// Returns a reference to m_tree
     const gsHDomain<d> & tree() const { return m_tree; }
