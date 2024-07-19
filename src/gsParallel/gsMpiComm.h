@@ -35,7 +35,7 @@ public:
     /**
        @brief Compares the group with another group
     */
-    static int compare (const gsSerialGroup& other)
+    static int compare (const gsSerialGroup&)
     {
         return 0;
     }
@@ -43,7 +43,7 @@ public:
     /**
        @brief Compares the group with another group
     */
-    static int compare (const int& other)
+    static int compare (const int&)
     {
         return 0;
     }
@@ -51,7 +51,7 @@ public:
     /**
        @brief Creates a group from the difference of the group with another group
     */
-    static gsSerialGroup diff (const gsSerialGroup& other)
+    static gsSerialGroup diff (const gsSerialGroup&)
     {
         return gsSerialGroup();
     }
@@ -59,7 +59,7 @@ public:
     /**
        @brief Creates a group from the difference of the group with another group
     */
-    static gsSerialGroup diff (const int& other)
+    static gsSerialGroup diff (const int&)
     {
         return gsSerialGroup();
     }
@@ -67,7 +67,7 @@ public:
     /**
        @brief Creates a group from the intersection of the group with another group
     */
-    static gsSerialGroup intersect (const gsSerialGroup& other)
+    static gsSerialGroup intersect (const gsSerialGroup&)
     {
         return gsSerialGroup();
     }
@@ -75,7 +75,7 @@ public:
     /**
        @brief Creates a group from the intersection of the group with another group
     */
-    static gsSerialGroup intersect (const int& other)
+    static gsSerialGroup intersect (const int&)
     {
         return gsSerialGroup();
     }
@@ -83,7 +83,7 @@ public:
     /**
        @brief Creates a group from the union of the group with another group
     */
-    static gsSerialGroup unite (const gsSerialGroup& other)
+    static gsSerialGroup unite (const gsSerialGroup&)
     {
         return gsSerialGroup();
     }
@@ -91,7 +91,7 @@ public:
     /**
        @brief Creates a group from the union of the group with another group
     */
-    static gsSerialGroup unite (const int& other)
+    static gsSerialGroup unite (const int&)
     {
         return gsSerialGroup();
     }
@@ -238,7 +238,7 @@ public:
         return gsSerialStatus();
     }
 
-    static gsSerialStatus waitAny (int numberRequests, gsSerialRequest requests[], int* outIndex)
+    static gsSerialStatus waitAny (int, gsSerialRequest [], int*)
     {
         return gsSerialStatus();
     }
@@ -308,7 +308,7 @@ public:
 
     /** @brief Compares two communicators.
      */
-    static int compare ( gsSerialComm comm )
+    static int compare ( gsSerialComm)
     {
         return 0;
     }
@@ -322,14 +322,14 @@ public:
 
     /** @brief Returns the group of the communicator.
      */
-    static int group ( const MPI_Group* group_ )
+    static int group ( const MPI_Group*)
     {
         return 0;
     }
 
     /** @brief Splits the communicator into two.
      */
-    gsSerialComm split (int color, int key) const
+    gsSerialComm split (int, int) const
     {
         return gsSerialComm(*this);
     }
@@ -440,7 +440,7 @@ public:
      * @param[in] source The rank of the process which sended the message
      * @param[in] tag Specifies the message ID
      */
-    static gsSerialStatus probe(int source, int tag = 0)
+    static gsSerialStatus probe(int, int = 0)
     {
         return gsSerialStatus();
     }
@@ -454,7 +454,7 @@ public:
      * @param[out] flag True if a message with the specified source, tag, and communicator is available (logical)
      * @param[in] tag Specifies the message ID
      */
-    static gsSerialStatus iprobe (int source, int* flag, int tag = 0)
+    static gsSerialStatus iprobe (int, int*, int = 0)
     {
         return gsSerialStatus();
     }
@@ -485,7 +485,7 @@ public:
      * @param[in] tag Specifies the message ID
      */
     template<typename T>
-    static int isend (T* in, int len, int dest, MPI_Request request, int tag = 0)
+    static int isend (T*, int, int, MPI_Request, int = 0)
     {
         return 0;
     }
@@ -516,7 +516,7 @@ public:
      * @param[in] tag Specifies the message ID
      */
     template<typename T>
-    static int irecv (T* out, int len, int source, MPI_Request request, int tag = 0)
+    static int irecv (T*, int, int, MPI_Request, int = 0)
     {
         return 0;
     }
@@ -525,7 +525,7 @@ public:
      * all other processes
      */
     template<typename T>
-    static int broadcast (T* inout, int len, int root)
+    static int broadcast (T* , int , int )
     {
         return 0;
     }
