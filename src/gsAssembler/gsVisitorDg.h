@@ -159,8 +159,8 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & element1,
-                         gsDomainIterator<T>    & element2,
+    inline void assemble(gsDomainIterator<T>    & /*element1*/,
+                         gsDomainIterator<T>    & /*element2*/,
                          gsVector<T>            & quWeights)
     {
         const index_t numActive1 = actives1.rows();

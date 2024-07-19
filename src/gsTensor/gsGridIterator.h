@@ -162,6 +162,7 @@ public:
             return *this;
 
         case 1: // ----------- Iteration over boundary of [m_low, m_upp]
+        default:
             for (index_t i = 0; i != m_cur.size(); ++i)
             {        
                 if ( m_cur[i] != m_upp[i] )
@@ -187,7 +188,6 @@ public:
                 }
             }
             /*fall through to default*/
-        default:
             m_valid = 0;//done
             return *this;
         }

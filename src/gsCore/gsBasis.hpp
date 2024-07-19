@@ -127,7 +127,8 @@ template<class T>
 void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
                                       const gsMatrix<T> & coefs,
                                       const unsigned n,
-                                      std::vector< gsMatrix<T> >& result) const
+                                      std::vector< gsMatrix<T> >& result,
+                                      bool sameElement) const
 {
     // resize result so that it will hold
     // function values and up to the n-th derivatives
@@ -139,8 +140,8 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
     // which are active at the evaluation points
     gsMatrix<index_t> actives;
 
-    this->evalAllDers_into(u,n,B);
-    this->active_into(u,actives);
+    this->evalAllDers_into(u,n,B,sameElement);
+    this->active_into(u,actives); //..
 
     // for derivatives 0 to n, evaluate the function by linear combination
     // of coefficients with the respective function values/derivatives
@@ -464,8 +465,10 @@ void gsBasis<T>::deriv2Single_into(index_t,
 
 template<class T>
 void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> >& result) const
+                                  std::vector<gsMatrix<T> >& result,
+                                  bool sameElement) const
 {
+    GISMO_UNUSED(sameElement);
     result.resize(n+1);
 
     switch(n)
@@ -532,7 +535,7 @@ size_t gsBasis<T>::elementIndex(const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<T> gsBasis<T>::elementInSupportOf(index_t j) const
+gsMatrix<T> gsBasis<T>::elementInSupportOf(index_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -677,11 +680,6 @@ short_t gsBasis<T>::degree(short_t) const
 
 template<class T>
 void gsBasis<T>::reverse()
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
-void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
-               gsMatrix<index_t> &, gsMatrix<index_t> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

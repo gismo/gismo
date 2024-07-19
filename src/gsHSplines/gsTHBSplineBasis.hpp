@@ -1307,7 +1307,8 @@ void gsTHBSplineBasis<d,T>::derivSingle_into(index_t i,
 
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                           std::vector<gsMatrix<T> >& result) const
+                                             std::vector<gsMatrix<T> >& result,
+                                             bool sameElement) const
 {
     //gsBasis<T>::evalAllDers_into(u,n,result); return;
     result.resize(n+1);
@@ -1407,7 +1408,7 @@ void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
             {
                 const gsSparseVector<T>& coefs = getCoefs(index);
                 this->m_bases[level]->active_into(u.col(i), ind);
-                this->m_bases[level]->evalAllDers_into(u.col(i), n, cwt);
+                this->m_bases[level]->evalAllDers_into(u.col(i), n, cwt, sameElement);
                 for (int l = 0; l <= n; l++)
                 {
                     auto acc = result[l].col(i).segment(j*str[l],str[l]);

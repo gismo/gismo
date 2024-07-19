@@ -129,7 +129,8 @@ void gsMappedSpline<d,T>::deriv2_into(const unsigned patch, const gsMatrix<T> & 
 
 template<short_t d,class T>
 void gsMappedSpline<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<T> & u,
-                                             const int n, std::vector<gsMatrix<T> >& result) const
+                                           const int n, std::vector<gsMatrix<T> >& result,
+                                           bool sameElement) const
 {
     result.resize(n+1);
 
@@ -153,8 +154,8 @@ void gsMappedSpline<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<
         // This loop enables that the number of actives can be different for each column in u
         for (index_t k = 0; k!=u.cols(); k++)
         {
-            m_mbases->active_into(patch,u.col(k),actives);
-            m_mbases->evalAllDers_into(patch,u.col(k),n,evals);
+            m_mbases->active_into(patch,u.col(k),actives);//..
+            m_mbases->evalAllDers_into(patch,u.col(k),n,evals,sameElement);
             m_mbases->getBase(patch).linearCombination_into(m_global,actives,evals[i],tmp);
             result[i].col(k) = tmp;
 

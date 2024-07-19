@@ -43,11 +43,12 @@ public:
     }
 
     void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> > & result) const
+                          std::vector<gsMatrix<T> > & result,
+                          bool sameElement = false) const
     {
         GISMO_ASSERT(1==u.cols(), "Single argument assumed");
         result.resize(n+1);
-        m_g->evalAllDers_into(u, n, m_gd);
+        m_g->evalAllDers_into(u, n, m_gd, sameElement);
 
         // f  = (1/2)*||x-pt||^2
         result[0].resize(1, 1);
@@ -171,8 +172,9 @@ void gsGeometry<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 
 template<class T>
 void gsGeometry<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                        std::vector<gsMatrix<T> > & result) const
-{ this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
+                                     std::vector<gsMatrix<T> > & result,
+                                     bool sameElement) const
+{ this->basis().evalAllDersFunc_into(u, m_coefs, n, result, sameElement); }
 
 template<class T>
 short_t gsGeometry<T>::domainDim() const { return this->basis().domainDim(); }
@@ -223,8 +225,8 @@ gsGeometry<T>::boundary(boxSide const& s) const
 
 template<class T>
 typename gsGeometry<T>::uPtr
-gsGeometry<T>::iface(const boundaryInterface & bi,
-                     const gsGeometry & other) const
+gsGeometry<T>::iface(const boundaryInterface &,
+                     const gsGeometry &) const
 {
     GISMO_NO_IMPLEMENTATION
 }
@@ -421,7 +423,7 @@ std::vector<gsGeometry<T> *> gsGeometry<T>::boundary() const
 }
 
 template<class T>
-void gsGeometry<T>::insertKnot( T knot, index_t dir, index_t i)
+void gsGeometry<T>::insertKnot( T, index_t, index_t)
 {
     GISMO_NO_IMPLEMENTATION
 }

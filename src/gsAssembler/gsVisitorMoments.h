@@ -98,7 +98,7 @@ public:
 
     /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patchIndex,
-                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              const std::vector<gsMatrix<T> > & /*eliminatedDofs*/,
                               gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs

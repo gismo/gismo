@@ -229,16 +229,16 @@ public:
 
 private:
     // Avoid warnings for hidden overloads w.r.t gsFunctionSet
-    void active_into(const gsMatrix<T> & u,gsMatrix<index_t>& result) const
+    void active_into(const gsMatrix<T> &,gsMatrix<index_t>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void eval_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void deriv_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv2_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void deriv2_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> >& result ) const
+    void evalAllDers_into(const gsMatrix<T> &, int,
+                          std::vector<gsMatrix<T> >&, bool) const
     { GISMO_NO_IMPLEMENTATION; }
 
 public:
@@ -334,7 +334,8 @@ public:
     /// @brief Evaluate the nonzero basis functions of \a patch and their derivatives up
     /// to order \a n at points \a u into \a result.
     void evalAllDers_into(const index_t patch, const gsMatrix<T> & u,
-                          const index_t n, std::vector<gsMatrix<T> >& result ) const;
+                          const index_t n, std::vector<gsMatrix<T> >& result,
+                          bool sameElement = false) const;
 
     /// @brief Evaluate the basis function \a global_BF at \a patch and its derivatives up
     /// to order \a n at points \a u into \a result.

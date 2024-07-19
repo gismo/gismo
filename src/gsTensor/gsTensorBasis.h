@@ -255,7 +255,8 @@ public:
     // Evaluate the nonzero basis functions and their derivatives up to
     // order n at all columns of u
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> >& result) const;
+                                  std::vector<gsMatrix<T> >& result,
+                                  bool sameElement = false) const;
 
     // see gsBasis for doxygen documentation
     // Evaluates the gradient the non-zero basis functions at value u.
@@ -350,7 +351,7 @@ public:
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1, int mul=1);
-    
+
     // Look at gsBasis class for documentation 
     virtual void uniformCoarsen(int numKnots = 1)
     {
@@ -685,7 +686,7 @@ public:
     }
     
     // Destructor
-    ~gsTensorBasis() 
+    virtual ~gsTensorBasis()
     { 
         m_address = NULL;
     }

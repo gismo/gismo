@@ -51,7 +51,7 @@ gsMatrix<T> gsFunctionSet<T>::support() const
 }
 
 template <class T>
-gsMatrix<T> gsFunctionSet<T>::support(const index_t & i) const
+gsMatrix<T> gsFunctionSet<T>::supportOf(const index_t & i) const
 {
     GISMO_NO_IMPLEMENTATION
 }
@@ -85,23 +85,23 @@ void gsFunctionSet<T>::deriv2_into (const gsMatrix<T> &, gsMatrix<T> &) const
 
 template <typename T>
 void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
-                                        std::vector<gsMatrix<T> > & result) const
+                                        std::vector<gsMatrix<T> > & result,
+                                        bool sameElement) const
 {
+    GISMO_UNUSED(sameElement);
+#   ifndef NDEBUG
+        gsWarn << "Is piece(.) needed/implemented ?\n";
+#   endif
     result.resize(n+1);
 
     switch(n)
     {
-    case 0:
-        eval_into(u, result[0]);
-        break;
-    case 1:
-        eval_into (u, result[0]);
-        deriv_into(u, result[1]);
-        break;
     case 2:
-        eval_into  (u, result[0]);
-        deriv_into (u, result[1]);
         deriv2_into(u, result[2]);
+    case 1:
+        eval_into(u, result[0]);
+    case 0:
+        eval_into (u, result[0]);
         break;
     default:
         GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n ); //<< " for "<<*this);
@@ -184,7 +184,7 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
 
     const int md = out.maxDeriv();
     if (md != -1)
-        evalAllDers_into(in, md, out.values);
+        evalAllDers_into(in, md, out.values, flags & SAME_ELEMENT);
 
     if (flags & NEED_ACTIVE && flags & SAME_ELEMENT)
     {

@@ -144,7 +144,8 @@ public:
                           gsMatrix<T>& result) const;
 
     void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> > & result) const;
+                          std::vector<gsMatrix<T> > & result,
+                          bool sameElement = false) const;
 
     // look at eval_into
     void fastEval_into(const gsMatrix<T>& u,
@@ -729,12 +730,12 @@ private:
 
     template<short_t dd>
     typename util::enable_if<dd!=2,void>::type
-    getBsplinePatchGlobal_impl(gsVector<index_t> b1,
-                               gsVector<index_t> b2,
-                               unsigned level,
-                               const gsMatrix<T>& geom_coef,
-                               gsMatrix<T>& cp, gsKnotVector<T>& k1,
-                               gsKnotVector<T>& k2) const { GISMO_NO_IMPLEMENTATION }
+    getBsplinePatchGlobal_impl(gsVector<index_t> ,
+                               gsVector<index_t> ,
+                               unsigned ,
+                               const gsMatrix<T>&,
+                               gsMatrix<T>&, gsKnotVector<T>&,
+                               gsKnotVector<T>&) const { GISMO_NO_IMPLEMENTATION }
 
     template<short_t dd>
     typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
@@ -744,9 +745,9 @@ private:
 
     template<short_t dd>
     typename util::enable_if<dd!=2,gsTensorBSpline<d,T> >::type
-    getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
-                    const unsigned level,
-                    const gsMatrix<T>& geomCoefs) const { GISMO_NO_IMPLEMENTATION }
+    getBSplinePatch_impl(const std::vector<index_t>&,
+                    const unsigned,
+                    const gsMatrix<T>&) const { GISMO_NO_IMPLEMENTATION }
 
     
 private:

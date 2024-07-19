@@ -102,14 +102,15 @@ public:
 
     /// @brief Evaluate the nonzero spline functions and their derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDers_into(const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result) const
+    void evalAllDers_into(const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result,
+                          bool sameElement = false) const
     {
-        m_spline->evalAllDers_into(m_index,u,n,result);
+        m_spline->evalAllDers_into(m_index,u,n,result,sameElement);
     }
 
     // support (domain of definition)
     gsMatrix<T> support() const
-    { return m_spline->support(m_index); }
+    { return m_spline->supportOf(m_index); }
 
 
     GISMO_CLONE_FUNCTION(gsMappedSingleSpline)

@@ -632,7 +632,8 @@ void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u,
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                          std::vector<gsMatrix<T> >& result) const
+                                          std::vector<gsMatrix<T> >& result,
+                                          bool sameElement) const
 {
     GISMO_ASSERT(n>-2, "gsTensorBasis::evalAllDers() is implemented only for -2<n<=2: -1 means no value, 0 values only, ... " );
     if (n==-1)
@@ -649,7 +650,7 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     for (short_t i = 0; i < d; ++i)
     {
         // evaluate basis functions/derivatives
-        m_bases[i]->evalAllDers_into( u.row(i), n, values[i] ); 
+        m_bases[i]->evalAllDers_into( u.row(i), n, values[i], sameElement); 
       
         // number of basis functions
         const index_t num_i = values[i].front().rows();

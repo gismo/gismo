@@ -312,7 +312,8 @@ public:
 
     // Look at gsBasis class for a description
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> >& result) const;
+                                  std::vector<gsMatrix<T> >& result,
+                                  bool sameElement = false) const;
 
     // Look at gsBasis class for a description
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
@@ -400,7 +401,7 @@ public:
 
     // Look at gsBasis class for a description
     void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
-    { m_knots.uniformRefine(numKnots,mul); }
+    { GISMO_UNUSED(dir); m_knots.uniformRefine(numKnots,mul); }
 
     // Look at gsBasis class for a description
     void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul=1, int dir=-1);
@@ -597,6 +598,10 @@ public:
     // Look at gsBasis class for a description
     void reverse() { m_knots.reverse(); }
 
+    void matchWith(const boundaryInterface &, const gsBasis<T> &,
+                   gsMatrix<index_t> &, gsMatrix<index_t> &, index_t) const { }
+
+    
     void matchWith(const boundaryInterface & bi,
                    const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis,

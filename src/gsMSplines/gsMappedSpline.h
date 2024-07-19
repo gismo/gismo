@@ -167,23 +167,23 @@ public:
     gsMultiPatch<T> exportToPatches() const;
 
     // support (domain of definition)
-    gsMatrix<T> support(const index_t & k) const
+    gsMatrix<T> supportOf(const index_t & k) const
     { return m_mbases->getBase(k).support(); }
 
     gsGeometry<T> * exportPatch(int i,gsMatrix<T> const & localCoef) const;
 
 private:
     // Avoid warnings for hidden overloads w.r.t gsFunctionSet
-    void active_into(const gsMatrix<T> & u,gsMatrix<index_t>& result) const
+    void active_into(const gsMatrix<T> &,gsMatrix<index_t>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void eval_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void deriv_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv2_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void deriv2_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> >& result ) const
+    void evalAllDers_into(const gsMatrix<T> &, int,
+                          std::vector<gsMatrix<T> >&) const
     { GISMO_NO_IMPLEMENTATION; }
 
 public:
@@ -221,7 +221,8 @@ public:
     /// @brief Evaluate the nonzero basis functions of \a patch and their derivatives up
     /// to order \a n at points \a u into \a result.
     void evalAllDers_into(const unsigned patch, const gsMatrix<T> & u,
-                          const int n, std::vector<gsMatrix<T> >& result ) const;
+                          const int n, std::vector<gsMatrix<T> >& result,
+                          bool sameElement = false) const;
 
 
 

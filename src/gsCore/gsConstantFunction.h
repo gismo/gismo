@@ -175,8 +175,10 @@ public:
     }
 
     void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> > & result) const
+                          std::vector<gsMatrix<T> > & result,
+                          bool sameElement = false) const
     {
+        GISMO_UNUSED(sameElement);
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                      << ", expected "<< m_domainDim);
         

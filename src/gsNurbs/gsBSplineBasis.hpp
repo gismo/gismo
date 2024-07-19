@@ -889,7 +889,8 @@ memory::unique_ptr<gsGeometry<T> > gsBSplineBasis<T>::makeGeometry( gsMatrix<T> 
 template <class T>
 void gsTensorBSplineBasis<1,T>::
 evalAllDers_into(const gsMatrix<T> & u, int n,
-                 std::vector<gsMatrix<T> >& result) const
+                 std::vector<gsMatrix<T> >& result,
+                 bool sameElement) const
 {
     // TO DO : Use less memory proportionally to n
     // Only last n+1 columns and last n rows of ndu are needed
@@ -923,7 +924,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
         }
 
         // Run evaluation algorithm and keep the function values triangle & the knot differences
-        unsigned span = m_knots.findspan( u(0,v) ) ;     // Get span of absissae
+        unsigned span = m_knots.findspan( u(0,v) ) ;     // Get span of absissae.
 
         for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
         {

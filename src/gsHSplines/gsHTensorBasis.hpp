@@ -1572,7 +1572,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
 
     // Keep consistency of finest level
     tensorBasis * last_basis = m_bases.back()->clone().release();
-    last_basis->uniformRefine(1,mul);
+    last_basis->uniformRefine(1,mul,dir);
     m_bases.push_back( last_basis );
 
     // Delete the first level

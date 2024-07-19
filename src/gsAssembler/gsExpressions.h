@@ -2454,8 +2454,8 @@ public:
     }
 
 
-    const index_t rows() const { return _u.rows(); }
-    const index_t cols() const { return _u.cols(); }
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return _u.cols(); }
 
     void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
@@ -2487,8 +2487,8 @@ class ppartval_expr : public _expr<ppartval_expr<E> >
     return res; // component-wise maximum with zero
   }
 
-  const index_t rows() const { return 0; }
-  const index_t cols() const { return 0; }
+  index_t rows() const { return 0; }
+  index_t cols() const { return 0; }
 
   void parse(gsExprHelper<Scalar> & evList) const
   { _u.parse(evList); }

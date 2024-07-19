@@ -311,12 +311,13 @@ public:
     }
 
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
-    { 
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther,
+                           index_t offset = 0) const
+    {
         if ( const gsRationalBasis * _other = dynamic_cast<const gsRationalBasis*>(&other) )
-            m_src->matchWith(bi,*_other->m_src,bndThis,bndOther);
+            m_src->matchWith(bi,*_other->m_src,bndThis,bndOther, offset);
         else
-            m_src->matchWith(bi,other,bndThis,bndOther);
+            m_src->matchWith(bi,other,bndThis,bndOther, offset);
     }
 
     /// Returns a matrix of projective coefficients. The input \a
@@ -597,6 +598,7 @@ void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numK
     GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                   "Invalid dimensions" );
     gsSparseMatrix<T, RowMajor> transfer;
+    GISMO_ENSURE(-1==dir, "!!");
     m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
 
     coefs     = transfer * ( m_weights.asDiagonal() * coefs);

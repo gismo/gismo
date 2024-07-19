@@ -262,7 +262,7 @@ public:
      of definition is the whole of \f$R^{domainDim}\f$
     */
     virtual gsMatrix<T> support() const;
-    virtual gsMatrix<T> support(const index_t & i) const;
+    virtual gsMatrix<T> supportOf(const index_t & i) const;
 
     /**
       @brief Indices of active (non-zero) function(s) for each point.
@@ -409,7 +409,8 @@ public:
     /// @brief Evaluate the nonzero functions and their derivatives up
     /// to order \a n. If n is -1 then no computation is performed.
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> > & result) const;
+                                  std::vector<gsMatrix<T> > & result,
+                                  bool sameElement = false) const;
 
     /// Evaluate all derivatives upto order \a n, \see evalAllDers_into
     std::vector<gsMatrix<T> > evalAllDers(const gsMatrix<T> & u, int n) const;

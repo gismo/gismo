@@ -386,7 +386,8 @@ public:
     virtual void evalAllDersFunc_into(const gsMatrix<T> & u,
                                       const gsMatrix<T> & coefs,
                                       const unsigned n,
-                                      std::vector< gsMatrix<T> >& result ) const;
+                                      std::vector< gsMatrix<T> >& result,
+                                      bool sameElement = false) const;
 
     /**
      * @brief Computes the linear combination \em coefs * <em> values( actives ) </em>
@@ -693,7 +694,8 @@ public:
      \param[in,out] result See above for format.
     */
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> >& result) const;
+                                  std::vector<gsMatrix<T> >& result,
+                                  bool sameElement = false) const;
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
@@ -766,7 +768,7 @@ public:
 
     /// @brief The number of elements on side \a s.
     // fixme: default arg = none
-    virtual size_t numElements(boxSide const & s) const;
+    virtual size_t numElements(boxSide const & s) const; // = none
 
     /// @brief Returns an index for the element which contains point \a u
     virtual size_t elementIndex(const gsVector<T> & u ) const;
@@ -977,21 +979,13 @@ public:
 
     /// \brief Computes the indices of DoFs that match on the
     /// interface \a bi. The interface is assumed to be a common face
-    /// between this patch and \a other.
-    /// The output is two lists of indices \a bndThis and \a bndOther,
-    /// with indices that match one-to-one on the boundary \a bi.
-    virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
-
-    /// \brief Computes the indices of DoFs that match on the
-    /// interface \a bi. The interface is assumed to be a common face
     /// between this patch and \a other, with an offset \a offset.
     /// The output is two lists of indices \a bndThis and \a bndOther,
     /// with indices that match one-to-one on the boundary \a bi.
     ///
     /// NOTE: bndThis will have \a offset but bndOther will NOT have an offset (hence offset 0)
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const;
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset = 0) const;
 
 
     /// Get the minimum mesh size, as expected for inverse inequalities
