@@ -57,10 +57,22 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
                      unsigned npts, bool mesh);
 
 TEMPLATE_INST
-void gsWriteParaview(gsHBox<2,T> & hbox, std::string const & fn);
+void gsWriteParaview(gsBasis<T> const& basis,
+                     std::vector<index_t> const & indices,
+                     std::string const & fn,
+                     unsigned npts, bool mesh);
 
 TEMPLATE_INST
-void gsWriteParaview(gsHBoxContainer<2,T> & hbox, std::string const & fn);
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsMatrix<T> & box, const gsVector<T> & values, std::string const & fn);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsHBox<2,T> & hbox, std::string const & fn);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsHBoxContainer<2,T> & hbox, std::string const & fn);
 
 TEMPLATE_INST
 void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn);
@@ -149,7 +161,10 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          std::string const & fn, unsigned resolution);
 
 TEMPLATE_INST
-void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
+void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value);
+
+TEMPLATE_INST
+void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn);
 
 TEMPLATE_INST
 void writeSingleControlNet(const gsGeometry<T> & Geo, std::string const & fn);

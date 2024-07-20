@@ -697,6 +697,11 @@ public:
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n,
+                                  std::vector<gsMatrix<T> >& result) const;
+
+    /// @brief Evaluate the basis function \a i and its derivatives up
+    /// to order \a n at points \a u into \a result.
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
