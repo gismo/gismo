@@ -694,31 +694,20 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
                                                   gsMatrix<T>& result) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
-    //gsWarn << "You're about to use evalAllDersSingle_into(...) that has not been tested at all.\n";
-
     // Notation from the NURBS book:
     // p - degree
     // U = {u[0],...,u[m]} the knot vector
     // i - id of the basis function (hopefully the same ;)
     // u - parameter (where to evaluate)
 
-    // Note that N[i][k] = N[ i*table_size + k ].
+    T saved, Uleft, Uright, temp;
+    const unsigned int p1 = m_p + 1;
+    // Note that N[i][k] = N[ i*p1 + k ].
+    STACK_ARRAY(T, N, p1*p1);
+    STACK_ARRAY(T, ND, p1);
 
-    T saved;
-    T Uleft;
-    T Uright;
-    T temp;
-    const unsigned int table_size = m_p + 1;
-    STACK_ARRAY(T, N, table_size*table_size);
-    STACK_ARRAY(T, ND, table_size);
-
-    result.resize(( n + 1 ), u.cols()); // (1 value + n derivatives) times number of points of evaluation.
-
-    gsWarn << "evalAllDersSingle_into(...) has a bug in the second derivatives.\n";
-
-    // Commented parts were attempts to solve the bug in the second derivatives at the right endpoint.
-
-
+    result.setZero(n + 1, u.cols());
+    n = ( n>m_p ? m_p : n );
 
     for( index_t s = 0; s < u.cols(); s++ )
     {
@@ -729,53 +718,52 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
             if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
                 i += size(); // we use the basis function ignored ny the periodic construction
         }
-        if( u(0,s) < m_knots[i] || u(0,s) > m_knots[i+m_p+1]) // Local property
+
+        if( u(0,s) < m_knots[i] || u(0,s) >= m_knots[i+m_p+1]) // Local property
+            if( u( 0,s ) != m_knots[m_knots.size()-m_p-1] )
+                continue; //zeros
+
+        //bspline::deBoorTriangle( u(0,s), m_knots.begin() + i, m_p, N );
+        if ( u(0,s) == m_knots[m_knots.size()-m_p-1] )
+        {   // Initialize zeroth-degree functions
+            for( int j = 0; j <= m_p; j++ )
+                N[ j*p1 ] = (T)( u(0,s) > m_knots[i+j] && u(0,s) <= m_knots[i+j+1] );
+        }
+        else // not at right boundary
         {
-            if( u( 0,s ) != m_knots[ m_knots.size() - 1 ] )
+            for( int j = 0; j <= m_p; j++ )
+                N[ j*p1 ] = (T)( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] );
+        }
+
+        for( int k = 1; k <= m_p; k++ ) // Compute full triangular table
+        {
+            saved = (N[(k-1)] == 0 ? (T)(0) :
+                     ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]) );
+
+            for( int j = 0; j < m_p-k+1; j++)
             {
-                for( int j = 0; j <= n; j++ )
-                    result( j,s ) = 0.0;
-                continue;
+                Uleft  = m_knots[i+j+1];
+                Uright = m_knots[i+j+k+1];
+                if( N[ (j+1)*p1 + (k-1) ] == 0 )
+                {
+                    N[ j*p1 + k ] = saved;
+                    saved = 0;
+                }
+                else
+                {
+                    temp = N[ (j+1)*p1 + (k-1) ]/(Uright-Uleft);
+                    N[ j*p1 + k ] = saved + (Uright-u(0,s))*temp;
+                    saved = (u(0,s)-Uleft)*temp;
+                }
             }
         }
 
-        bspline::deBoorTriangle( u(0,s), m_knots.begin() + i, m_p, N );
+        result(0,s) = N[ m_p ]; // The function value        
 
-        // The following commented area has been replaced by the deBoorTriangle(...); line.
-/*        for( int j = 0; j <= m_p; j++ ) // Initialize zeroth-degree functions
-          if( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
-          N[ j*table_size ] = 1;
-          else
-          N[ j*table_size ] = 0;
-          for( int k = 1; k <= m_p; k++ ) // Compute full triangular table
-          {
-          if( N[(k-1)] == 0 )
-          saved = 0;
-          else
-          saved = ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]);
-          for( int j = 0; j < m_p-k+1; j++)
-          {
-          Uleft = m_knots[i+j+1];
-          Uright = m_knots[i+j+k+1];
-          if( N[ (j+1)*table_size + (k-1) ] == 0 )
-          {
-          N[ j*table_size + k ] = saved;
-          saved = 0;
-          }
-          else
-          {
-          temp = N[ (j+1)*table_size + (k-1) ]/(Uright-Uleft);
-          N[ j*table_size + k ] = saved + (Uright-u(0,s))*temp;
-          saved = (u(0,s)-Uleft)*temp;
-          }
-          }
-          }
-*/
-        result(0,s) = N[ m_p ]; // The function value
         for( int k = 1; k <= n; k++ ) // Compute the derivatives
         {
             for( int j = 0; j <= k; j++ ) // Load appropriate column
-                ND[j] = N[ j*table_size + (m_p-k) ];
+                ND[j] = N[ j*p1 + (m_p-k) ];
             for( int jj = 1; jj <= k; jj++ ) // Compute table of width k
             {
                 if( ND[0] == 0 )
@@ -785,7 +773,7 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
                 for( int j = 0; j < k-jj+1; j++ )
                 {
                     Uleft = m_knots[i+j+1];
-                    Uright = m_knots[i+j+m_p-k+jj+1];
+                    Uright = m_knots[i + m_p-k+jj + j+1];
                     if( ND[j+1] == 0 )
                     {
                         ND[j] = static_cast<T>(m_p-k+jj)*saved;
@@ -802,22 +790,7 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
             result(k,s) = ND[0]; // k-th derivative
         }
     }
-
-    /*
-      if( clamped_end )
-      {
-      m_knots[ m_knots.size() - 1 ] -= 0.001;
-      m_knots[ m_knots.size() - 2 ] -= 0.001;
-      }
-      // Changes from the book: notation change, stack arrays instead of normal C arrays, changed all 0.0s and 1.0s into 0 and 1. No return in the first check
-      // Warning: Segmentation fault if n > m_p.
-      gsDebug << "After:" << std::endl;
-      for( int j = 0; j < m_knots.size(); j++ )
-      {
-      gsDebug << "m_knots[" << j << "] =" << m_knots[j] << std::endl;
-      }*/
 }
-
 
 template <class T> inline
 void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const

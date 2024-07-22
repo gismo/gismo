@@ -95,7 +95,7 @@ gsBoxTopology::ifContainer gsBoxTopology::selectInterfaces(interaction::type ifc
 {
     ifContainer result;
     for ( size_t i = 0; i < m_interfaces.size(); ++i )
-        if ( m_interfaces[i].type() == interaction::contact)
+        if ( m_interfaces[i].type() == ifc_type)
             result.push_back(m_interfaces[i]);
     return result;
 }

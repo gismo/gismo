@@ -406,8 +406,24 @@ public:
     */
     virtual void deriv2_into    (const gsMatrix<T>  &  u, gsMatrix<T> &result) const;
 
-    /// @brief Evaluate the nonzero functions and their derivatives up
-    /// to order \a n. If n is -1 then no computation is performed.
+    /** @brief Evaluate the nonzero functions and their derivatives up
+     to order \a n at points \a u into \a result.
+
+     The derivatives (the 0-th derivative is the function value) are stored
+     in a \em result. \em result is a std::vector, where <em>result[i]</em> is a gsMatrix
+     which contains the <em>i</em>-th derivatives.
+
+     The entries in <em>result[0]</em>, <em>result[1]</em>, and <em>result[2]</em> are ordered as in
+     eval_into(), deriv_into(), and deriv2_into(), respectively. For <em>i > 2</em>, the
+     derivatives are stored in lexicographical order, e.g. for order <em>i = 3</em> and dimension <em>2</em>
+     the derivatives are stored as follows:
+     \f$ \partial_{xxx}, \, \partial_{xxy}, \, \partial_{xyy}, \, \partial_{yyy}.\, \f$\n
+
+     \param[in] u Evaluation points, each column corresponds to one evaluation point.
+     \param[in] n All derivatives up to order \em n are computed and stored
+     in \b result.
+     \param[in,out] result See above for format.
+    */
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> > & result,
                                   bool sameElement = false) const;
@@ -421,7 +437,7 @@ public:
     /// Evaluate the derivatives, \see deriv_into()
     gsMatrix<T> deriv(const gsMatrix<T>& u) const;
 
-    /** \brief Evaluates the second derivatives of active (i.e., non-zero) basis at points \a u.
+    /** \brief Evaluates the second derivatives of active (i.e., non-zero) functions at points \a u.
      
         See documentation for deriv2_into()
         (the one without input parameter \em coefs) for details.

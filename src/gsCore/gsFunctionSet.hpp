@@ -89,7 +89,7 @@ void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
                                         bool sameElement) const
 {
     GISMO_UNUSED(sameElement);
-    gsWarn << "generic evalAllDers called from "<<typeid(*this).name()<< "\n";
+    //gsWarn << "generic evalAllDers called from "<<typeid(*this).name()<< "\n";
     result.resize(n+1);
 
     switch(n)
