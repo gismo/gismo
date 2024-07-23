@@ -1,4 +1,4 @@
-/** @file monitor_r-adaptivity.cpp
+/** @file monitor_composed_r-adaptivity.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
@@ -105,9 +105,9 @@ private:
         grad = sGrad.eval(k);
         ones.resize( _u.source().domainDim());
         ones.setOnes();
-        ones[0] = 4;
-        // res = 1.0 / ( math::sqrt(1.0 + grad.dot(grad) ) ) * ones;
-        res = ones;
+        //ones[0] = 4;
+        res = 1.0 / ( math::sqrt(1.0 + grad.dot(grad) ) ) * ones;
+        //res = ones;
         return res;
     }
 
@@ -123,8 +123,6 @@ private:
         res.resize( _u.source().domainDim(), 1);
 
         res = 1.0 / ( math::sqrt(1.0 + grad.norm()*grad.norm() ) ) * ones;
-        // res(0,0) = 1.0 / ( math::sqrt(1.0 + (grad*grad.transpose()).value() ) );
-        // res(1,0) = 1;
         return res;
     }
 };
@@ -148,48 +146,37 @@ private:
     typedef typename gsExprAssembler<T>::solution solution;
 
 public:
-    gsOptMesh( gsGeometry<T> & geometry,
+    gsOptMesh(  gsFunction<T> & composition,
+                const gsGeometry<T> & geometry,
                 const gsFunction<T> & fun)
     :
+    m_comp(&composition),
     m_geom(geometry),
     m_fun(fun)
-    {
-        // Mapper storing control points
-        m_mapper = gsDofMapper(m_geom.basis(),m_geom.targetDim());
-
-        gsBoxTopology topology(m_geom.domainDim(),1);
-        topology.addAutoBoundaries();
-        // gsMatrix<index_t> boundary = m_geom.basis().allBoundary();
-        for (typename gsBoxTopology::biterator it = topology.bBegin(); it != topology.bEnd(); ++it)
-        {
-            gsMatrix<index_t> boundary = m_geom.basis().boundary(*it);
-            for (index_t d = 0; d!=m_geom.targetDim(); d++)
-                m_mapper.markBoundary(0,boundary,d);
-        }
-        m_mapper.finalize();
-
-    }
-
-    gsDofMapper mapper() { return m_mapper;}
+    {}
 
     /// Evaluates the objective function at the given point u.
     T evalObj(const gsAsConstVector<T> &u) const override
     {
-        for (short_t d=0; d!=m_geom.domainDim(); d++)
-            for (index_t k=0; k!=m_geom.coefs().rows(); k++)
-                if (m_mapper.is_free(k,0,d))
-                    m_geom.coefs()(k,d) = u[m_mapper.index(k, 0, d)];
+        for (index_t k=0; k!=u.rows(); k++)
+            m_comp->control(k) = u[k];
+
+        gsComposedGeometry<T> cgeom(*m_comp,m_geom);
 
         gsMultiPatch<> mp;
-        mp.addPatch(m_geom);
+        mp.addPatch(cgeom);
         gsMultiBasis<> mb(m_geom.basis());
 
         m_evaluator.setIntegrationElements(mb);
         geometryMap G = m_evaluator.getMap(mp);
 
         auto invJacMat = jac(G).inv();
-        auto eta = m_evaluator.getVariable(m_fun,G);
-        return m_evaluator.integral((m(eta).asDiag()*invJacMat).sqNorm() * meas(G));
+        auto eta = m_evaluator.getVariable(m_fun,G); // This G might not be needed for a spline-based error field
+        
+        auto EfoldoverFree = (1.e-2 - jac(G).det()).ppartval();
+
+        return m_evaluator.integral((m(eta).asDiag()*invJacMat).sqNorm()*meas(G)
+                                        + 1e4 * EfoldoverFree);
     }
 
     // /// Computes the gradient of the objective function at the given point u
@@ -198,14 +185,9 @@ public:
     //                 gsAsVector<T> &result) const override;
 
 protected:
-
     gsFunction<T> * m_comp;
-    gsGeometry<T> & m_geom;
+    const gsGeometry<T> & m_geom;
     const gsFunction<T> & m_fun;
-
-    gsDofMapper m_mapper;
-
-    gsMatrix<T> m_free;
 
     mutable gsExprEvaluator<T> m_evaluator;
 };
@@ -236,6 +218,7 @@ int main(int arg, char *argv[])
     gsTensorBSpline<2> tbspline(tbasis,coefs);
 
     gsSquareDomain<2,real_t> domain(numElevate,numRefine);
+    domain.options().addSwitch("Slide","",true);
 
     gsComposedGeometry<real_t> cspline(domain,tbspline);
 
@@ -255,9 +238,6 @@ int main(int arg, char *argv[])
 
     gsFunctionExpr<> fun("tanh(30*((x)^2+(y)^2-1.0/16.0))",2);
     gsWriteParaview(mp,fun,"fun");
-
-    // gsWriteParaview(mp,domain,"domain",1000,true,true);
-
 
     gsExprEvaluator<> ev;
     ev.setIntegrationElements(mb);
@@ -279,24 +259,36 @@ int main(int arg, char *argv[])
 
     gsDebugVar(ev.integral((m(u).asDiag()*invJacMat).sqNorm() * meas(G)));
 
-    
-    gsOptMesh<> optMesh(tbspline,fun);
-    gsMatrix<> initial = convertMultiPatchToFreeVector(mp,optMesh.mapper());
-    initial *= 0.8;
+    gsOptMesh<> optMesh(domain,tbspline,fun);
+    gsVector<> controls(domain.nControls());
+     for (size_t k=0; k!=domain.nControls(); k++)
+         controls[k] = domain.control(k) * 0.9;
 
+    // gsDebugVar(controls.transpose());
     
     gsHLBFGS<real_t> optimizer(&optMesh);
     optimizer.options().setInt("MaxIterations",200);
     optimizer.options().setInt("Verbose",2);
+    // gsDebugVar(optimizer.currentDesign().transpose());
+    optimizer.solve(controls);
     
-    optimizer.solve(initial);
 
 
 
     gsVector<> solution = optimizer.currentDesign();
     gsDebugVar(solution.transpose());
-    convertFreeVectorToMultiPatch(solution,optMesh.mapper(),mp);
-    gsWriteParaview(mp,"mp",1000);
+    
+
+    for (size_t k=0; k!=solution.rows(); k++)
+        domain.control(k) = solution[k];
+
+
+
+    gsWriteParaview(cspline,"cspline",1000);
+    gsWriteParaview(domain,"domain",1000);
+
+
+    
 
     return 0;
 }// end main
