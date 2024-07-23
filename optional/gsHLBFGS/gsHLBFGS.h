@@ -94,7 +94,7 @@ protected:
         m_options.addInt("ICFS","ICFS parameter (default 15)",15);
         m_options.addInt("linesearch","0: classical line-search (default), 1: modified line-search [not useful in practice]",0);
         m_options.addInt("preconditionedCG","0: disable preconditioned CG (default), 1: enable preconditioned CG",0);
-        m_options.addInt("preconditionedCGpar","0 or 1 defines different methods for choosing beta in CG. (default 0)",1);
+        m_options.addInt("preconditionedCGpar","0 or 1 defines different methods for choosing beta in CG. (default 0)",0);
         // m_options.addInt("diagonalUpdate","internal usage. 0: only update the diag in USER_DEFINED_HLBFGS_UPDATE_H; 1: default. ",0);
 
         // Option M
