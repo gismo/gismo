@@ -329,6 +329,7 @@ bool nextCubePoint(Vec& cur, const Vec& end)
         else
             cur[i] = 0;
     }
+    --cur[0];//stopping flag
     return false;
 }
 
@@ -356,6 +357,7 @@ bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
             cur[i] = start[i];
 
     }
+    --cur[0];//stopping flag
     return false;
 }
 
