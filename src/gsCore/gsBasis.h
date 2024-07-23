@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsFunctionSet.h>
+#include <gsCore/gsBoundary.h>//for boxSide
 
 #define GISMO_MAKE_GEOMETRY_NEW    \
 virtual memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) const      \
