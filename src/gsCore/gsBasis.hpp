@@ -22,14 +22,6 @@ namespace gismo
 {
 
 template<class T>
-gsBasis<T>::gsBasis()
-{ }
-
-template<class T>
-gsBasis<T>::gsBasis(const gsBasis& other) : Base(other)
-{ }
-
-template<class T>
 gsBasis<T>::~gsBasis()
 { }
 

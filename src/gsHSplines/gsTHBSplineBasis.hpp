@@ -1159,17 +1159,23 @@ bool findNextMatch(const gsSparseVector<T> & sv, index_t & ii,
     return false;
 }
 
-template<short_t d, class T>
-index_t gsTHBSplineBasis<d,T>::numActiveMax(const gsMatrix<T> & u,
-                                            gsMatrix<index_t> & offset) const
+ /*
+//template<short_t d, class T>
+//index_t gsTHBSplineBasis<d,T>::
+template<class T>
+active_detail(const gsMatrix<T> & u,
+              gsMatrix<index_t> &actives,//sorted active functions
+              gsMatrix<index_t> & offset,//level offset
+              // ???
+              std::vector<std:vector<index_t> > & repLvl, // [rlvl]->list(act)
+              gsMatrix<index_t  & repLevel> // for each function: [rlvl] -> []
+    ) const
 {
     point low, upp, cur, mstr, str, ll, uu, cc;
-    index_t count(0), cmax(0);
     index_t ii;
-    const int maxLevel = this->m_tree.getMaxInsLevel();
     // todo: store active_cwise/stride_cwise
+    const int maxLevel = this->m_tree.getMaxInsLevel();
     gsMatrix<T> currPoint;
-    //gsMatrix<index_t> moffset(maxLevel+1, u.cols());
     offset.setZero(maxLevel+1, u.cols()); //trim at the end
     // stores [rlvl]->(act,level)
     std::vector<std::vector<std::pair<index_t,index_t> > > tfunction(maxLevel+1);
@@ -1186,22 +1192,21 @@ index_t gsTHBSplineBasis<d,T>::numActiveMax(const gsMatrix<T> & u,
         //offset.col(i).setZero();
 
         typename CMatrix::const_iterator it;
-        count = 0;// TODO: count(lvl+1) and store sizes. Convert to offset at the end
         for(int level = 0; level <= maxLevel; level++) // for all relevant levels
         {
             if (level>lvl && tfunction[level].empty()) //nothing to do here
                 continue; // 0 offset
-            
+
             m_bases[level]->active_cwise(currPoint, low, upp);//my be improved: start from finest lvl
             m_bases[level]->stride_cwise(mstr);
+
             if ( level<= lvl)
             {
                 it = m_xmatrix[level].begin();
                 cur = low;
-
                 while ( findNextMatch(it, m_xmatrix[level].end(), cur, low, upp, mstr) )
                 {
-                    const index_t act = this->m_xmatrix_offset[level] + (it - m_xmatrix[level].begin());
+                    const index_t act = this->m_xmatrix_offset[level] + (it - m_xmatrix[level].begin());//flattensortohier ?
                     if ( isTruncated(act) )
                     {
                         //Record truncated functions with their representation level
@@ -1209,7 +1214,7 @@ index_t gsTHBSplineBasis<d,T>::numActiveMax(const gsMatrix<T> & u,
                         tfunction[rlvl].push_back( std::make_pair(act,level) );
                     }
                     else
-                        ++offset[level];
+                        ++offset(level, i);
                     ++it;//advance both
                     nextCubePoint(cur,low,upp);
                 }
@@ -1225,15 +1230,94 @@ index_t gsTHBSplineBasis<d,T>::numActiveMax(const gsMatrix<T> & u,
                     cur = low;
                     ii = 0;
                     if ( findNextMatch(coefs, ii, cur, low, upp, mstr) )
-                        ++offset[q.second];
+                        ++offset(q.second, i);
                 }
                 tfunction[level].clear();
             }
         }// end level
-
     }//end points
 
-    //offset.conservativeresize(
+    // ii =maxLevel;
+    // while (offset[ii]==) --ii;
+    // offset.conservativeresize(ii,gsEigen::NoChange);
+
+    return offset.sum();
+}
+// */
+
+template<short_t d, class T>
+index_t gsTHBSplineBasis<d,T>::numActiveMax(const gsMatrix<T> & u,
+                                            gsMatrix<index_t> & offset) const
+{
+    point low, upp, cur, mstr, str, ll, uu, cc;
+    index_t ii;
+    // todo: store active_cwise/stride_cwise
+    const int maxLevel = this->m_tree.getMaxInsLevel();
+    gsMatrix<T> currPoint;
+    offset.setZero(maxLevel+1, u.cols()); //trim at the end
+    // stores [rlvl]->(act,level)
+    std::vector<std::vector<std::pair<index_t,index_t> > > tfunction(maxLevel+1);
+
+    for (index_t i = 0; i != u.cols(); i++) // for all points
+    {
+        currPoint = u.col(i);
+        for(short_t k = 0; k != d; ++k)
+            low[k] = m_bases[maxLevel]->knots(k).uFind( currPoint.at(k) ).uIndex();
+        if (m_manualLevels)
+            this->_knotIndexToDiadicIndex(maxLevel,low);
+        // Identify the level of the point
+        index_t lvl = std::min(this->m_tree.levelOf(low, maxLevel),(int) m_xmatrix.size()-1);
+        //offset.col(i).setZero();
+
+        typename CMatrix::const_iterator it;
+        for(int level = 0; level <= maxLevel; level++) // for all relevant levels
+        {
+            if (level>lvl && tfunction[level].empty()) //nothing to do here
+                continue; // 0 offset
+
+            m_bases[level]->active_cwise(currPoint, low, upp);//my be improved: start from finest lvl
+            m_bases[level]->stride_cwise(mstr);
+
+            if ( level<= lvl)
+            {
+                it = m_xmatrix[level].begin();
+                cur = low;
+                while ( findNextMatch(it, m_xmatrix[level].end(), cur, low, upp, mstr) )
+                {
+                    const index_t act = this->m_xmatrix_offset[level] + (it - m_xmatrix[level].begin());//flattensortohier ?
+                    if ( isTruncated(act) )
+                    {
+                        //Record truncated functions with their representation level
+                        const int rlvl = m_is_truncated.at(act);
+                        tfunction[rlvl].push_back( std::make_pair(act,level) );
+                    }
+                    else
+                        ++offset(level, i);
+                    ++it;//advance both
+                    nextCubePoint(cur,low,upp);
+                }
+            }
+
+            // count truncated active functions
+            if ( !tfunction[level].empty() )
+            {
+                for ( std::pair<index_t,index_t> & q : tfunction[level] )
+                {
+                    const gsSparseVector<T>& coefs = getCoefs(q.first);
+                    cur = low;
+                    ii = 0;
+                    if ( findNextMatch(coefs, ii, cur, low, upp, mstr) )
+                        ++offset(q.second, i);
+                }
+                tfunction[level].clear();
+            }
+        }// end level
+    }//end points
+
+    // ii =maxLevel;
+    // while (offset[ii]==) --ii;
+    // offset.conservativeresize(ii,gsEigen::NoChange);
+
     return offset.sum();
 }
 
@@ -1610,7 +1694,7 @@ void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     else
         active_into(u, act);
 
-    gsMatrix<index_t> astr;
+//    gsMatrix<index_t> astr;
 //    index_t result_size(sameElement ? numActiveMax(u.col(0),astr) : numActiveMax(u,astr));
     index_t result_size = act.rows();//to try: conservativeResize on the go?
 

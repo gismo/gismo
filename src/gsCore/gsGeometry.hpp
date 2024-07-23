@@ -159,6 +159,10 @@ gsGeometry<T>::gsGeometry(const gsGeometry<T> & o)
 { }
 
 template<class T>
+gsGeometry<T>::~gsGeometry()
+{ delete m_basis; }
+
+template<class T>
 void gsGeometry<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 { this->basis().evalFunc_into(u, m_coefs, result); }
 

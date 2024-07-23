@@ -131,10 +131,8 @@ public:
 
     gsGeometry& operator=( const gsGeometry & o);
     
-    virtual ~gsGeometry() 
-    {
-        delete m_basis;
-    }
+    virtual ~gsGeometry();
+
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsGeometry(gsGeometry&& other) 

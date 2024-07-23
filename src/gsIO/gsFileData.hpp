@@ -760,6 +760,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
         default:
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Unknown GoTools entity (ClassType="<<ncp<<").\n";
+            parDim = 0;
             continue;
             break;
         }

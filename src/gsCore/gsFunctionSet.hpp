@@ -19,12 +19,6 @@ namespace gismo
 {
 
 template <class T>
-gsFunctionSet<T>::gsFunctionSet() {}
-
-template <class T>
-gsFunctionSet<T>::gsFunctionSet(const gsFunctionSet &) {}
-
-template <class T>
 gsFunctionSet<T>::~gsFunctionSet () {}
 
 template <class T>

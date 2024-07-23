@@ -94,12 +94,6 @@ public:
 
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
 
-public:
-
-    gsBasis();
-
-    gsBasis(const gsBasis& other);
-
     virtual ~gsBasis();
 
 public:

@@ -227,10 +227,6 @@ public:
 
 public:
 
-    gsFunctionSet();
-
-    gsFunctionSet(const gsFunctionSet &);
-
     virtual ~gsFunctionSet();
 
 #ifdef __DOXYGEN__
