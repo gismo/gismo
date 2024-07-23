@@ -41,7 +41,7 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addReal("ff_tolRelG",
                   "Min gradient length for foldover-free optimization",
                   1e-20);
-  options.addReal("ff_MinStepLength",
+  options.addReal("ff_minStepL",
                   "Min step length for foldover-free optimization",
                   1e-20);
 
@@ -52,7 +52,7 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addReal("qi_tolRelG",
                   "Min gradient length for quality improvement",
                   1e-4);
-  options.addReal("qi_MinStepLength",
+  options.addReal("qi_minStepL",
                   "Min step length for quality improvement",
                   1e-4);
 
@@ -329,8 +329,8 @@ void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T> &mp,
   optFoldoverFree.options().setReal("tolRelG",
                                     options.askReal("ff_tolRelG",
                                                     1e-12));
-  optFoldoverFree.options().setReal("MinStepLength",
-                                    options.askReal("ff_MinStepLength", 1e-12));
+  optFoldoverFree.options().setReal("minStepL",
+                                    options.askReal("ff_minStepL", 1e-12));
   optFoldoverFree.options().setInt("Verbose", options.askInt("Verbose", 0));
 
   T Efoldover = std::numeric_limits<T>::max();
@@ -1076,7 +1076,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
     bc.addCondition(*bit, condition_type::dirichlet, nullptr);
   }
 
-  space space1 = assembler.getSpace(mb, d); // 1D space!!
+  space space1 = assembler.getSpace(mb, d);
   space1.setup(bc, dirichlet::homogeneous, 0);
 
   // Function for the Residual

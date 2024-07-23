@@ -73,6 +73,8 @@ public:
         this->_initIndices(m_domain,m_mapper,m_indices);
     }
 
+    gsOptionList & options() {return m_options;}
+
     const gsTensorBSpline<DIM,T> & domain() const
     {
         return m_domain;
@@ -162,14 +164,15 @@ private:
         gsBoxTopology topology(DIM,1);
         topology.addAutoBoundaries();
         // gsMatrix<index_t> boundary = domain.basis().allBoundary();
-        gsDebugVar(topology);
         for (typename gsBoxTopology::biterator it = topology.bBegin(); it != topology.bEnd(); ++it)
         {
             gsMatrix<index_t> boundary = domain.basis().boundary(*it);
-            gsDebugVar(boundary);
-            // for (index_t a = 0; a!=boundary.rows(); a++)
-                // for (index_t d = 0; d!=domain.targetDim(); d++)
+            if (m_options.askSwitch("Slide",false))
+                for (index_t d = 0; d!=domain.targetDim(); d++)
+                    mapper.markBoundary(0,boundary,d);
+            else
                 mapper.markBoundary(0,boundary,it->direction());
+
         }
         mapper.finalize();
     }
@@ -189,6 +192,7 @@ protected:
     gsTensorBSpline<DIM,T> m_domain;
     gsDofMapper m_mapper;
     std::vector<std::pair<index_t,index_t>> m_indices;
+    gsOptionList m_options;
 };
 
 } // namespace gismo
