@@ -124,6 +124,17 @@ template<int n> class binomialT<n,0> {public:enum { value= 1};};
 template <unsigned n, unsigned r>
 inline unsigned binomial () {return binomialT<n,r>::value;}
 
+/// Computes the of a vector
+template<class Vec>
+inline Vec stridesOf(const Vec & sz)
+{
+    Vec result(sz.size());
+    result[0] = 1;
+    for ( index_t i=1; i != sz.size(); ++i )
+        result[i] = result[i-1] * sz[i-1];
+    return result;
+}
+
 /// \brief Computes the first \a r-combination of {0,..,n-1}
 /// \ingroup combinatorics
 template<class Vec>
@@ -358,6 +369,28 @@ bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
 
     }
     --cur[0];//stopping flag
+    return false;
+}
+
+template<class Vec>
+bool nextCubePoint(Vec & ci, const Vec& start, const Vec& end, const Vec& str)
+{
+    const index_t d = end.size();
+    GISMO_ASSERT( d == static_cast<int>(start.size()) &&
+                  d == static_cast<int>(end.size()),
+                  "Vector sizes don't match in nextCubePoint");
+
+    for (index_t i = 0; i != d; ++i)
+    {
+        if ( ci % str[i] != end[i] ) // cur[i] != end[i]
+        {
+            ci += str[i]; //++cur[i]
+            return true;
+        }
+        else
+            ci -= (end[i]-start[i])*str[i]; // cur[i] = start[i]
+    }
+    ci = end.dot(str)+1;//stopping flag
     return false;
 }
 

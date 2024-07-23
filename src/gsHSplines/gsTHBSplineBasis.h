@@ -127,7 +127,7 @@ public:
     // Look at gsBasis class for documentation
     void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const;
 
-    index_t numActiveMax(const gsMatrix<T> & u) const;
+    index_t numActiveMax(const gsMatrix<T> & u, gsMatrix<index_t> & offset) const;
 
     // returns all actives at \a u from level \a lvl only
     // Does not clear result, only appends data
