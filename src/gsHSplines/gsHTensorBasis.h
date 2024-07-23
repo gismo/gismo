@@ -928,10 +928,7 @@ public:
     inline
     index_t flatTensorIndexOf(const index_t i) const
     {
-        const index_t level = this->levelOf(i);
-        const index_t offset = this->m_xmatrix_offset[level];
-        const index_t ind_in_level = this->m_xmatrix[level][i - offset];
-        return ind_in_level;
+        return flatTensorIndexOf(i, this->levelOf(i) );
     }
 
     /// @brief Returns the tensor index of the function indexed \a i

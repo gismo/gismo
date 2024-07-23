@@ -1083,9 +1083,13 @@ inline gsVector<index_t, d> tensorIndex(index_t m,
                                         const gsVector<index_t, d> & str)
 {
     gsVector<index_t, d> rvo;
-    for (short_t i = d-1; i>=0; --i)
+    for (short_t i = d-1; i>=0; --i )
     {
+        // I think it must be something like [from d..1]
         rvo[d-i-1] = m % str[i];
+
+        // const index_t s = (upp[i]-low[i]+1); // THIS IS NOT SIZE
+        // rvo[i] = m % s;
         m     -= rvo[i];
     }
     return rvo;
@@ -1097,6 +1101,7 @@ bool findNextMatch(Iter & it, Iter stop, Vec & cur,
                      const Vec & low, const Vec & upp,
                      const Vec & str)
 {
+//    gsInfo <<"str="<< str.transpose() <<"\n";
     index_t ci;
     while (it!=stop)
     {
@@ -1107,27 +1112,13 @@ bool findNextMatch(Iter & it, Iter stop, Vec & cur,
         {
             // problem: we should be inside [low,upp].
             // but what happens if we are not ?
-            /*
-             cur = tensorIndex(*it, str);
-             for (index_t i = cur.size()-1; i>=0; ++i)
-             {
-                 if (cur[i]>upp[i]) //impossible for i=d-1
-                     cur[i] = upp[i];
-                 else if (cur[i]<low[i])
-                 {
-                     cur[i] = low[i];
-                     if (i+1<cur.size())
-                         cur[i+1] += 1;
-                     else
-                         return false;
-                 }
-             }
-             // HOW TO BREAK ?
-             //if ( (cur.array() > upp.array()).any() ) break;
-             if (cur.dot(str) > upp.dot(str) ) break;
-            //*/
+            //cur = tensorIndex(*it, str);
 
-            if (!nextCubePoint(cur,low,upp)) break; //move by one..
+            // for (index_t i = 0; i!=cur.size(); ++i)
+            //     if (cur[i]<low[i]) cur[i] = low[i];
+            //     else if (cur[i]>upp[i]) cur[i] = + str[i]-low[i]; 
+
+            if (!nextCubePoint(cur,low,upp)) break;
         }
         else // *it < ci
             it = std::lower_bound(it, stop, ci);
@@ -1250,33 +1241,28 @@ void gsTHBSplineBasis<d,T>::activeAtLevel_into(index_t lvl, const gsMatrix<T>& u
             const gsTensorBSplineBasis<d, T>& base =
                 *this->m_bases[this->m_is_truncated[act]];
 
+            /* // (!) BUG POSSIBLE HERE ./bin/poissonTHB_example -r 2
             base.active_cwise(u, ll, uu);
             base.stride_cwise(str);
             cc = ll;
             ii = 0;
-            //bool rr = false;
             if ( findNextMatch(coefs, ii, cc, ll, uu, str) )
             {
-                //rr = true;
                 result.push_back(act);
+                break;
             }
             //*/
 
-            /* // known to work
+//            /* // known to work
             base.active_into(u, ind);
-            for (index_t k = 0; k < ind.rows(); ++k)
+            for (index_t k = 0; k < ind.rows(); ++k) 
                 if (coefs(ind.at(k)) != 0)
                 {
-                    gsInfo<< "1.GOT value indeed "<< coefs.data().value(ii)<< " at " << ind.at(k) <<".\n";
-                    if (!rr) gsInfo << "Missed "<< ind.at(k) <<"\n";
                     result.push_back(act);
                     break;
                 }
-            if (rr)
-            {
-                gsInfo << "False pos "<< act <<"\n";
             //*/
-                            
+            
             /* // TESTING
             gsInfo<< "---- Comparing \n" << base.active(u).transpose()
                   <<"\n";
@@ -1286,7 +1272,7 @@ void gsTHBSplineBasis<d,T>::activeAtLevel_into(index_t lvl, const gsMatrix<T>& u
             typename gsSparseVector<T>::InnerIterator it2(coefs);
             while (it2) { gsInfo<< " " << it2.value(); ++it2;}
             gsInfo<<"\n";
-            base.active_cwise(u, ll, uu);
+            base.active_cwise(u, ll, uu); //expensive! knot search
             base.stride_cwise(str);
             cc = ll;
             ii = 0;
@@ -1302,15 +1288,7 @@ void gsTHBSplineBasis<d,T>::activeAtLevel_into(index_t lvl, const gsMatrix<T>& u
 
                 break;
                 ii++;
-                //nextCubePoint(cc,ll,uu);
-            }
-
-            for (index_t k = 0; k < ind.rows(); ++k)
-                if (coefs(ind.at(k)) != 0)
-                {
-                    gsInfo<< "2.GOT value indeed "<< coefs.data().value(ii)<< " at " << ind.at(k) <<".\n";
-                    break;
-                }
+                nextCubePoint(cc,ll,uu);
             }
             //*/
         }
@@ -1415,7 +1393,7 @@ template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     /*
-    // slightly slower currently (!sameElement)
+    // quite slower currently (!sameElement)
     std::vector<gsMatrix<T> > tmp(1);
     evalAllDers_into(u, 0, tmp);
      tmp[0].swap(result);
@@ -1599,9 +1577,9 @@ void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         active_into(u.col(0), act);
     else
         active_into(u, act);
-
-//    index_t result_size(sameElement ? numActiveMax(u.col(0)) : numActiveMax(u));
-    index_t result_size = act.rows();//to try: conservativeResize on the go?
+    
+//    index_t result_size(sameElement ? numActiveMax(u.col(0)) : numActiveMax(u));w
+    index_t result_size = this->active(u).rows();//to try: conservativeResize on the go?
 
     // BETTER COMPUTE ACTIVES (maybe also m_bases->actCWise) HERE ONCE AND FOR ALL
     // together with active offsets
@@ -1633,13 +1611,13 @@ void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
                 low[k] = kit.uIndex();//unique index
             }
             if (m_manualLevels)
-                this->_knotIndexToDiadicIndex(maxLevel,low);
+                this->_knotIndexToDiadicIndex(maxLevel,low);            
             lvl = std::min(this->m_tree.levelOf(low, maxLevel),(int) m_xmatrix.size()-1);
         }
 
         m = 0; // (!) problem with !sameElement -> numbering in result
         thbact.resize(lvl+1);
-
+        
         for(int level = 0; level <= maxLevel; level++) // for all relevant levels (..how about act_offset)
         {
             if ( level<=lvl && (!sameElement || 0==i) )
@@ -1702,7 +1680,7 @@ void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
                             auto acc = result[l].col(i).segment(q.second*str[l],str[l]);
                             acc += coefs.data().value(ii) * temp[l];
                         }
-
+                        
                         ++ii;
                         //nextCubePoint(tcur,kil,til);
                     }

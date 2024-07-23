@@ -127,6 +127,13 @@ public:
     // Look at gsBasis class for documentation
     void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const;
 
+    index_t numActiveMax(const gsMatrix<T> & u) const;
+
+    // returns all actives at \a u from level \a lvl only
+    // Does not clear result, only appends data
+    void activeAtLevel_into(index_t lvl, const gsMatrix<T>& u,
+                            std::vector<index_t> & result) const;
+
     // Look at gsBasis class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const;
 
@@ -401,16 +408,10 @@ public:
 
 private:
 
-    unsigned getPresLevelOfBasisFun(const unsigned index) const
+    index_t getPresLevelOfBasisFun(const index_t index) const
     {
-        if (m_is_truncated[index] == -1)
-        {
-            return this->levelOf(index);
-        }
-        else
-        {
-            return m_is_truncated[index];
-        }
+        return (m_is_truncated[index] == -1 ?
+                this->levelOf(index) : m_is_truncated[index] );
     }
 
     /// @brief Computes and saves representation of all basis functions.
