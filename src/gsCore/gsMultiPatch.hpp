@@ -656,6 +656,7 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
 template<class T>
 gsMultiPatch<T> gsMultiPatch<T>::approximateLinearly(index_t nsamples) const
 {
+    GISMO_UNUSED(nsamples);
     gsMultiPatch<T> result;
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )

@@ -151,7 +151,7 @@ public:
         m_funcs.clear();
     }
 
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>&, gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION }
 
     index_t nPieces() const {return m_funcs.size();}
