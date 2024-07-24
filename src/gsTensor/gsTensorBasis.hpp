@@ -491,7 +491,7 @@ void gsTensorBasis<d,T>::deriv2Single_into(index_t i,
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
             for (short_t r = k+1; r != l; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
-            for (short_t r = l+1; r != d; ++r)
+            for (short_t r = l+1; r < d; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
             c++;
         }
@@ -833,7 +833,7 @@ void gsTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnot
     else
     {
         GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
-                      "Invalid basis component "<< dir <<" requested for degree elevation" );
+                      "Invalid basis component "<< dir <<" requested for uniform refinement." );
 
         gsVector<index_t,d> sz;
         this->size_cwise(sz);

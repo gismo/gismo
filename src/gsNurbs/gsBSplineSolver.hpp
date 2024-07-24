@@ -195,7 +195,7 @@ unsigned findHyperPlaneIntersections (
     int newK_rep = 0; // number of time we inserted the same knot
     unsigned rootCount = 0; // total number of roots found
 
-    for ( ; (unsigned)curC<crv.coefsSize(); ++curC )
+    for ( ; (index_t)curC<crv.coefsSize(); ++curC )
     {
         newP = relativePosition(crv.coef(curC).dot(normal), ref, tol); // current Position
         if ( newP == undef )

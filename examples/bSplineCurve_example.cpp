@@ -89,7 +89,8 @@ int main(int argc, char *argv[])
       gsInfo << "Done. Re-run with --trim to learn basic trim/merge operations\n";
 
     // Basic intersection operations between two BSpline curves - @Ye
-    if (intersect){
+    if (intersect)
+    {
       gsMatrix<real_t> ctrPts1(4, 2);
       ctrPts1 << 0,0, 1,1, 2,1, 3,1;
       gsBSpline<real_t> bsp1(0, 1, 0, 3, ctrPts1);
@@ -101,10 +102,12 @@ int main(int argc, char *argv[])
 
       gsInfo << intersectPts.size() << " intersections are found!" << "\n";
       gsMatrix<> iPts(bsp1.geoDim(), intersectPts.size());
-      for (int j = 0; j < intersectPts.size(); ++j) {
+      for (size_t j = 0; j < intersectPts.size(); ++j)
+      {
         iPts.col(j) = intersectPts[j].getPoint();
       }
-      if (!intersectPts.empty()) {
+      if (!intersectPts.empty())
+      {
         gsWriteParaviewPoints(iPts, "intersect");
       }
 

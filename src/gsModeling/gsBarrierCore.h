@@ -98,7 +98,7 @@ void setOptimizerOptions(gsHLBFGS<T> &optimizer, const gsOptionList &options) {
 #endif
 
 /// helper function to verbose log
-void verboseLog(const std::string &message, const index_t &verbose) {
+inline void verboseLog(const std::string &message, const index_t &verbose) {
   if (verbose > 0) { gsInfo << message << "\n"; }
 }
 

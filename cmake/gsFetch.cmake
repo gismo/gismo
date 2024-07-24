@@ -180,7 +180,7 @@ function(gismo_fetch_module SUBMODULE)
 	#ERROR_VARIABLE gitclone_err
 	RESULT_VARIABLE gitclone_res)
       if(gitclone_res AND NOT gitclone_res EQUAL 0)
-	message(FATAL_ERROR "Unable to clone module ${SUBMODULE} (${${SUBMODULE}_url})")
+	message(FATAL_ERROR "Unable to clone module ${SUBMODULE} (${${SUBMODULE}_url}), set ${SUBMODULE}_url")
       endif()
 
       if(NOT GISMO_SUBMODULES_HEAD AND ${SUBMODULE}_HASH)# hash in submodules.txt

@@ -13,11 +13,9 @@
 
 #pragma once
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsIO/gsBase64.h>
 #include <gsIO/gsXml.h>
-
-#include <numeric>
-
+#include <gsNurbs/gsKnotVector.h>
 
 namespace gismo
 {
@@ -48,7 +46,9 @@ public:
         typename gsKnotVector<T>::knotContainer knotValues;
 
         gsXmlAttribute * mode = node->first_attribute("mode");
-        //mode: uniform, graded, ..
+        
+        // Generate Knotvectors based on key
+        // mode: uniform, graded, ..
         if (mode)
         {
             if ( !strcmp( mode->value(),"uniform") )
@@ -65,12 +65,21 @@ public:
             }
         }
 
-        // Case: mode: none/default
-        std::istringstream str;
-        str.str( node->value() );
-        for (T knot; gsGetReal(str, knot);)
-            knotValues.push_back(knot);
+        // Read knots from list
+        gsXmlAttribute* format = node->first_attribute("format");
+        std::string format_flag = format ? format->value() : "ascii";
+        std::transform(format_flag.cbegin(), format_flag.cend(),
+                       format_flag.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
 
+        if (format_flag == "ascii") {
+            // Case: mode: none/default
+            std::istringstream str;
+            str.str(node->value());
+            for (T knot; gsGetReal(str, knot);) knotValues.push_back(knot);
+        } else {
+            Base64::DecodeIntoGsType(node->value(), format_flag, knotValues);
+        }
         result = gsKnotVector<T>(give(knotValues), p);
     }
 
