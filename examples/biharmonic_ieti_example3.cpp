@@ -44,6 +44,42 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
     return dm;
 }
 
+std::vector<std::vector<std::vector<index_t>>> setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb)
+{
+    std::vector<std::vector<std::vector<index_t>>> result(mp.nPatches());
+    for (size_t k=0; k<mp.nPatches(); ++k)
+        result[k].resize(2); 
+    
+    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const index_t k1 = it->first().patch;
+        const index_t k2 = it->second().patch;
+        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side()),
+                          s2 = mb.basis(k2).boundary(it->second().side()),
+                          s1o = mb.basis(k1).boundaryOffset(it->first().side(),1),
+                          s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
+        
+        // We assume for now that the orientation matches!
+        GISMO_ASSERT( s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), ""); 
+        for (index_t i=0;i<s1.rows();++i)
+        {
+            result[k1][0].push_back(s1 [i]);
+            result[k1][1].push_back(s1o[i]);
+            result[k2][0].push_back(s2 [i]);
+            result[k2][1].push_back(s2o[i]);
+        }
+    }
+
+    for (size_t k=0; k<mp.nPatches(); ++k)
+        for (size_t j=0; j<2; ++j)
+        {
+            std::sort(result[k][j].begin(),result[k][j].end());
+            result[k][j].erase( std::unique(result[k][j].begin(),result[k][j].end()), result[k][j].end() );
+        }
+    
+    return result;
+}
+
 std::pair<std::vector<index_t>,std::vector<index_t>> commonSkeletonDofs(const gsSparseMatrix<real_t,RowMajor>& jump1, const gsSparseMatrix<real_t,RowMajor>& jump2 )
 {
     GISMO_ASSERT(jump1.rows()==jump2.rows(),"");
@@ -278,6 +314,7 @@ int main(int argc, char *argv[])
     /******************* Setup dofMapper ********************/
     gsInfo << "Setup dofMapper... " << std::flush;
     gsDofMapper dm = setupTwoLayerDofMapper(mp, mb);
+    std::vector<std::vector<std::vector<index_t>>> skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb);
     gsInfo << "done:\n" << dm << "\n";
     
     /****************** Setup ietimapper ********************/
@@ -385,14 +422,27 @@ int main(int argc, char *argv[])
         localBasisTransforms.push_back(transformer);
         localSchurs.push_back(gsScaledDirichletPrec<>::schurComplement(localMatrix,ietiMapper.skeletonDofs(k)));
         
-        prec.addSubdomain(
-            gsScaledDirichletPrec<>::restrictToSkeleton(
-                jumpMatrix,
-                localMatrix,
-                ietiMapper.skeletonDofs(k)
-            )
-        );
-        
+        if (0)
+        {
+            prec.addSubdomain(
+                gsScaledDirichletPrec<>::restrictToSkeleton(
+                    jumpMatrix,
+                    localMatrix,
+                    ietiMapper.skeletonDofs(k)
+                )
+            );
+        }
+        else
+        {
+            for (index_t j=0; j<2; ++j)
+                prec.addSubdomain(
+                    gsScaledDirichletPrec<>::restrictToSkeleton(
+                        jumpMatrix,
+                        localMatrix,
+                        skeletonDofs[k][j]
+                    )
+                );
+        }
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubdomain().
