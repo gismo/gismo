@@ -280,10 +280,12 @@ int main(int argc, char *argv[])
     real_t Q0norm = 1, Qnorm = 10;
     real_t tol = 1e-4;
 
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints", numPts);
+    // USE A MESH FOR PLOTTING
+    gsSurfMesh mesh = mp.toMesh();
+    auto pid = mesh.get_vertex_property<index_t>("v:patch");
+    auto aid = mesh.get_vertex_property<index_t>("v:anchor");
+    auto field = mesh.add_vertex_property<real_t>("v:field");    
+
 
     real_t dt_old = dt;
     real_t t_rho = 0.9;
@@ -435,17 +437,20 @@ int main(int argc, char *argv[])
         {
             Calpha = Cnew;
             // collection.newTimeStep(&mp);
-            collection.newTimeStep(&mp);
-            collection.addField(c,"numerical solution");
-            collection.saveTimeStep();
+
+            gsExprEvaluator<> ev(A);
+            gsVector<> pt;  
+            for (auto vit = mesh.vertices_begin(); vit < mesh.vertices_end(); ++vit)
+            {
+                index_t k = pid[*vit];
+                pt = mp.patch(k).basis().anchor(aid[*vit]);
+                field[*vit] = ev.eval( c , pt, k ).value();//any expression
+            }
+            gsWriteParaview(mesh,"Solution"+util::to_string(step), {"v:field"} );
         }
     }
 
-    if (plot)
-    {
-        collection.save();
-    }
-    else
+    if (!plot)
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
 
