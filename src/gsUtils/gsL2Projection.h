@@ -85,8 +85,8 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T project(   const gsFunctionSet<T>& integrationBasis,
-                        const gsMultiBasis<T> & projectionBasis,
+    static T project(   const gsMultiBasis<T> & integrationBasis,
+                        const gsFunctionSet<T>& projectionBasis,
                         const gsMultiPatch<T> & geometryMap,
                               gsMatrix<T>     & coefs,
                         const gsOptionList    & options = gsOptionList())
@@ -173,7 +173,7 @@ public:
                               gsMatrix<T>      & coefs,
                         const gsOptionList     & options = gsOptionList())
     {
-        return _project(projectionBasis, projectionBasis, geometryMap, sourceFunction, coefs, options);
+        return _project(integrationBasis, projectionBasis, geometryMap, sourceFunction, coefs, options);
     }
 
     /**
