@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     bool random = false;
 
     std::string fn("pde/poisson2d_bvp.xml");
-
+    std::string out("Cahn-Hilliard-MultiPatch-Output");
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
     cmd.addInt ( "s", "Npoints", "Number of points for plotting",  numPts );
     cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
     cmd.addString( "f", "file", "Input XML file", fn );
+    cmd.addString( "o", "out", "Output directory", out );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("nitsche", "Weak BC enforcement with Nitsche", nitsche);
@@ -109,6 +110,8 @@ int main(int argc, char *argv[])
     else
         mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1) );
     mp.computeTopology();*/
+
+    gsFileManager::mkdir(out);
 
     gsFileData<> data(fn);
     gsMultiPatch<> mp;
@@ -446,7 +449,7 @@ int main(int argc, char *argv[])
                 pt = mp.patch(k).basis().anchor(aid[*vit]);
                 field[*vit] = ev.eval( c , pt, k ).value();//any expression
             }
-            gsWriteParaview(mesh,"Solution"+util::to_string(step), {"v:field"} );
+            gsWriteParaview(mesh,out + "/" + "solution"+util::to_string(step), {"v:field"} );
         }
     }
 
