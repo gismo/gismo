@@ -118,7 +118,7 @@ public:
         numActive = actives.rows();
 
         // Evaluate basis functions on element
-        basis.evalAllDers_into(md.points, 2, basisData);
+        basis.evalAllDers_into(md.points, 2, basisData, true);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);

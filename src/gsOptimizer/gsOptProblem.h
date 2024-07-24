@@ -36,13 +36,13 @@ public:
 
     /// \brief Returns the gradient value of the objective function at design
     /// value \a u
-    virtual T evalObj( const gsAsConstVector<T> & u ) const
+    virtual T evalObj( const gsAsConstVector<T> &) const
     {GISMO_NO_IMPLEMENTATION }
 
     /// \brief Returns the gradient of the objective function at design value
     /// \a u
     /// By default it uses finite differences, overriding it should provide exact gradient.
-    virtual void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const
+    virtual void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
         const index_t n = u.rows();
         //GISMO_ASSERT((index_t)m_numDesignVars == n*m, "Wrong design.");
@@ -71,13 +71,13 @@ public:
 
 
     /// \brief Returns values of the constraints at design value \a u
-    virtual void evalCon_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const
+    virtual void evalCon_into ( const gsAsConstVector<T> &, gsAsVector<T> &) const
     {GISMO_NO_IMPLEMENTATION }
 
     /// \brief Returns Jacobian of the constraints at design value \a u.
     /// Format of \a result is sparse, complying to \a m_conJacRows
     /// and \a m_conJacCols
-    virtual void jacobCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const
+    virtual void jacobCon_into( const gsAsConstVector<T> &, gsAsVector<T> &) const
     {GISMO_NO_IMPLEMENTATION }
 
     /// \brief Returns Hessian Lagrangian of the constraints at design value

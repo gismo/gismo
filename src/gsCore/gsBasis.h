@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsFunctionSet.h>
+#include <gsCore/gsBoundary.h>//for boxSide
 
 #define GISMO_MAKE_GEOMETRY_NEW    \
 virtual memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) const      \
@@ -92,12 +93,6 @@ public:
     static const bool IsRational = false;
 
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
-
-public:
-
-    gsBasis();
-
-    gsBasis(const gsBasis& other);
 
     virtual ~gsBasis();
 
@@ -386,7 +381,8 @@ public:
     virtual void evalAllDersFunc_into(const gsMatrix<T> & u,
                                       const gsMatrix<T> & coefs,
                                       const unsigned n,
-                                      std::vector< gsMatrix<T> >& result ) const;
+                                      std::vector< gsMatrix<T> >& result,
+                                      bool sameElement = false) const;
 
     /**
      * @brief Computes the linear combination \em coefs * <em> values( actives ) </em>
@@ -401,7 +397,7 @@ public:
     static void linearCombination_into(const gsMatrix<T> & coefs,
                                        const gsMatrix<index_t> & actives,
                                        const gsMatrix<T> & values,
-                                       gsMatrix<T> & result);
+                                       gsMatrix<T> & result, bool sameElement = false);
 
     /// @}
 
@@ -674,27 +670,6 @@ public:
                                    const gsMatrix<T> & u,
                                    gsMatrix<T>& result ) const;
 
-    /** @brief Evaluate the nonzero basis functions and their derivatives up
-     to order \a n at points \a u into \a result.
-
-     The derivatives (the 0-th derivative is the function value) are stored
-     in a \em result. \em result is a std::vector, where <em>result[i]</em> is a gsMatrix
-     which contains the <em>i</em>-th derivatives.
-
-     The entries in <em>result[0]</em>, <em>result[1]</em>, and <em>result[2]</em> are ordered as in
-     eval_into(), deriv_into(), and deriv2_into(), respectively. For <em>i > 2</em>, the
-     derivatives are stored in lexicographical order, e.g. for order <em>i = 3</em> and dimension <em>2</em>
-     the derivatives are stored as follows:
-     \f$ \partial_{xxx}, \, \partial_{xxy}, \, \partial_{xyy}, \, \partial_{yyy}.\, \f$\n
-
-     \param[in] u Evaluation points, each column corresponds to one evaluation point.
-     \param[in] n All derivatives up to order \em n are computed and stored
-     in \b result.
-     \param[in,out] result See above for format.
-    */
-    virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> >& result) const;
-
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
@@ -761,12 +736,8 @@ public:
       Member functions that may be implemented or not in the derived class
     */
 
-    /// @brief The number of elements.
-    virtual size_t numElements() const;
-
     /// @brief The number of elements on side \a s.
-    // fixme: default arg = none
-    virtual size_t numElements(boxSide const & s) const;
+    virtual size_t numElements(boxSide const & s = 0) const; // = none
 
     /// @brief Returns an index for the element which contains point \a u
     virtual size_t elementIndex(const gsVector<T> & u ) const;
@@ -977,21 +948,13 @@ public:
 
     /// \brief Computes the indices of DoFs that match on the
     /// interface \a bi. The interface is assumed to be a common face
-    /// between this patch and \a other.
-    /// The output is two lists of indices \a bndThis and \a bndOther,
-    /// with indices that match one-to-one on the boundary \a bi.
-    virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
-
-    /// \brief Computes the indices of DoFs that match on the
-    /// interface \a bi. The interface is assumed to be a common face
     /// between this patch and \a other, with an offset \a offset.
     /// The output is two lists of indices \a bndThis and \a bndOther,
     /// with indices that match one-to-one on the boundary \a bi.
     ///
     /// NOTE: bndThis will have \a offset but bndOther will NOT have an offset (hence offset 0)
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const;
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset = 0) const;
 
 
     /// Get the minimum mesh size, as expected for inverse inequalities

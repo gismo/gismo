@@ -198,8 +198,9 @@ void gsAdaptiveMeshing<d,T>::_assignErrors(boxMapType & container, const std::ve
 
 template<short_t d, class T>
 template<bool _coarsen,bool _admissible>
-void gsAdaptiveMeshing<d,T>::_markElements(  const std::vector<T> & elError, const index_t refCriterion, const std::vector<gsHBoxCheck<d,T> *> & predicates, HBoxContainer & elMarked) const
+void gsAdaptiveMeshing<d,T>::_markElements(const std::vector<T> & elError, const index_t refCriterion, const std::vector<gsHBoxCheck<d,T> *> & predicates, HBoxContainer & elMarked) const
 {
+    GISMO_UNUSED(elError);
     // Mark using different rules
     switch (refCriterion)
     {
@@ -581,9 +582,10 @@ gsAdaptiveMeshing<d,T>::_markProjectedFraction_impl( const boxMapType & elements
 template<short_t d, class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if< _coarsen && !_admissible, void>::type
-gsAdaptiveMeshing<d,T>::_markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, typename gsAdaptiveMeshing<d,T>::HBoxContainer & elMarked) const
+//gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
+gsAdaptiveMeshing<d,T>::_markProjectedFraction_impl( const boxMapType &, const std::vector<gsHBoxCheck<d,T> *>, typename gsAdaptiveMeshing<d,T>::HBoxContainer &) const
 {
-    GISMO_NO_IMPLEMENTATION;
+    GISMO_NO_IMPLEMENTATION
     // gsDebug<<"Projected fraction marking for coarsening...\n";
     // T projectedError = m_totalError;
     // T targetError = m_crsParam;
