@@ -175,8 +175,9 @@ public:
         
         auto EfoldoverFree = (1.e-2 - jac(G).det()).ppartval();
 
-        return m_evaluator.integral((m(eta).asDiag()*invJacMat).sqNorm()*meas(G)
-                                        + 1e4 * EfoldoverFree);
+        return m_evaluator.integral( (m(eta).asDiag()*invJacMat).sqNorm()*meas(G)
+                                        + 1e4 * EfoldoverFree *meas(G)
+                                        );
     }
 
     // /// Computes the gradient of the objective function at the given point u
@@ -199,12 +200,17 @@ int main(int arg, char *argv[])
     bool plot = false;
     index_t numRefine  = 2;
     index_t numElevate = 0;
+    index_t maxIt = 100;
+    real_t tol_g = 5e-5;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addReal("g", "tolG", "relative tol", tol_g);
+    cmd.addInt( "i", "maxIt", "max num iteterations",  maxIt );
+
 
     try { cmd.getValues(arg,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -262,13 +268,16 @@ int main(int arg, char *argv[])
     gsOptMesh<> optMesh(domain,tbspline,fun);
     gsVector<> controls(domain.nControls());
      for (size_t k=0; k!=domain.nControls(); k++)
-         controls[k] = domain.control(k) * 0.9;
+        controls[k] = domain.control(k);
+         // controls[k] = domain.control(k) * 0.9;
+
 
     // gsDebugVar(controls.transpose());
     
     gsHLBFGS<real_t> optimizer(&optMesh);
-    optimizer.options().setInt("MaxIterations",200);
+    optimizer.options().setInt("MaxIterations",maxIt);
     optimizer.options().setInt("Verbose",2);
+    optimizer.options().setReal("tolRelG",tol_g);
     // gsDebugVar(optimizer.currentDesign().transpose());
     optimizer.solve(controls);
     
