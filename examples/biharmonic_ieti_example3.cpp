@@ -71,11 +71,20 @@ std::vector<std::vector<std::vector<index_t>>> setupTwoLayerSkeletonDofs(const g
     }
 
     for (size_t k=0; k<mp.nPatches(); ++k)
+    {
         for (size_t j=0; j<2; ++j)
         {
             std::sort(result[k][j].begin(),result[k][j].end());
             result[k][j].erase( std::unique(result[k][j].begin(),result[k][j].end()), result[k][j].end() );
         }
+        /*
+        std::vector<index_t> tmp;
+        std::set_difference(result[k][1].begin(),result[k][1].end(),
+                            result[k][0].begin(),result[k][0].end(),
+                            std::inserter(tmp, tmp.begin()));
+        tmp.swap(result[k][1]);
+        //*/
+    }
     
     return result;
 }
@@ -282,9 +291,11 @@ int main(int argc, char *argv[])
         {
             "32*pi^4*sin(2*pi*x)*sin(2*pi*y)",
             "2*pi^4*sin(pi*x)*sin(pi*y)",
-            "1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)"
+            "1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)",
+            "2/100*pi^4*sin(pi*x/10)*sin(pi*y/10)"
         };
-    
+    GISMO_ENSURE (rhsType >= 0 && (size_t)rhsType < util::size(rhsTypes), "");
+
     gsInfo << "Rhs function is " << rhsTypes[rhsType] << "\n";
     gsFunctionExpr<> f(rhsTypes[rhsType],dim);
 
