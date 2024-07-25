@@ -169,13 +169,13 @@ int main(int argc, char *argv[])
     index_t refinements = 1;
     index_t rhsType = 2;
     std::string out;
-    real_t robin = 100;
-    //real_t factor = 0;
+    real_t robin = 0;
+    real_t alpha = 1;
     bool plot = false;
 
     real_t tolerance = 1.e-8;
     index_t maxIterations = 1000;
-    std::string primals("");
+    std::string primals("x");
 
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
     cmd.addInt   ("t", "RhsType",               "Chosen right-hand side", rhsType);
@@ -184,11 +184,11 @@ int main(int argc, char *argv[])
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addReal  ("b", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
-    //cmd.addReal  ("q", "Factor",                "Factor for bdy derivs", factor);
+    cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
-    cmd.addString("",  "Primals",               "Chosen primal dofs; empty is default", primals);
+    cmd.addString("c", "Primals",               "Chosen primal dofs", primals);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
 
@@ -205,7 +205,11 @@ int main(int argc, char *argv[])
             "1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)",
             "2/100*pi^4*sin(pi*x/10)*sin(pi*y/10)"
         };
-    GISMO_ENSURE (rhsType >= 0 && (size_t)rhsType < util::size(rhsTypes), "");
+    if (rhsType < 0 || (size_t)rhsType >= util::size(rhsTypes))
+    {
+        gsInfo << "Invalid choice for --RhsType (-t).\n";
+        return -1;
+    }
 
     gsInfo << "Rhs function is " << rhsTypes[rhsType] << "\n";
     gsFunctionExpr<> f(rhsTypes[rhsType],dim);
@@ -273,9 +277,13 @@ int main(int argc, char *argv[])
             ietiMapper.customPrimalConstraints(data[i]);
         gsInfo << "[" << data.size() << " eXtended cornerdofs added]";
     }
+    else if (primals == "0")
+        ;
     else
-        GISMO_ENSURE(primals=="", "Unknown choice \""<<primals<<"\"");
-
+    {
+        gsInfo << "Invalid choice for --Primals.\n";
+        return -1;
+    }
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
 
@@ -314,8 +322,8 @@ int main(int argc, char *argv[])
         auto u = A.getSpace(mb_local);
 
         A.initSystem();
-        A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G),u * ff * meas(G));
-        A.assemble(u*u.tr()*meas(G)); //TODO
+        A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
+        A.assemble(alpha*u*u.tr()*meas(G));
 
         gsSparseMatrix<> transformer = makeTransformer(mb[k]);
 
@@ -326,8 +334,8 @@ int main(int argc, char *argv[])
 
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
 
-        // Penalize Dirichlet boundary
-        /*for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
+        // Penalize (Dirichlet) boundary
+        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
         {
             if (it->patchIndex()==k)
             {
@@ -336,7 +344,7 @@ int main(int argc, char *argv[])
                 for (index_t i=0; i<s1.rows(); ++i)
                     localMatrix(s1[i],s1[i]) += robin;
             }
-        }*/
+        }
 
         // Store
         localStiffnessMatrices.push_back(localMatrix);
