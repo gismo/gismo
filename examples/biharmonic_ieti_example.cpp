@@ -44,6 +44,51 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
     return dm;
 }
 
+std::vector<std::vector<std::vector<index_t>>> setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb)
+{
+    std::vector<std::vector<std::vector<index_t>>> result(mp.nPatches());
+    for (size_t k=0; k<mp.nPatches(); ++k)
+        result[k].resize(2); 
+    
+    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const index_t k1 = it->first().patch;
+        const index_t k2 = it->second().patch;
+        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side()),
+                          s2 = mb.basis(k2).boundary(it->second().side()),
+                          s1o = mb.basis(k1).boundaryOffset(it->first().side(),1),
+                          s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
+        
+        // We assume for now that the orientation matches!
+        GISMO_ASSERT( s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), ""); 
+        for (index_t i=0;i<s1.rows();++i)
+        {
+            result[k1][0].push_back(s1 [i]);
+            result[k1][1].push_back(s1o[i]);
+            result[k2][0].push_back(s2 [i]);
+            result[k2][1].push_back(s2o[i]);
+        }
+    }
+
+    for (size_t k=0; k<mp.nPatches(); ++k)
+    {
+        for (size_t j=0; j<2; ++j)
+        {
+            std::sort(result[k][j].begin(),result[k][j].end());
+            result[k][j].erase( std::unique(result[k][j].begin(),result[k][j].end()), result[k][j].end() );
+        }
+        /*
+        std::vector<index_t> tmp;
+        std::set_difference(result[k][1].begin(),result[k][1].end(),
+                            result[k][0].begin(),result[k][0].end(),
+                            std::inserter(tmp, tmp.begin()));
+        tmp.swap(result[k][1]);
+        //*/
+    }
+    
+    return result;
+}
+
 std::pair<std::vector<index_t>,std::vector<index_t>> commonSkeletonDofs(const gsSparseMatrix<real_t,RowMajor>& jump1, const gsSparseMatrix<real_t,RowMajor>& jump2 )
 {
     GISMO_ASSERT(jump1.rows()==jump2.rows(),"");
@@ -172,6 +217,36 @@ std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> cornersFromJumpMat
     return result;
 }
 
+gsSparseMatrix<> makeTransformer(const gsBasis<>& basis)
+{
+    const index_t d = basis.dim();
+    gsSparseMatrix<> result;
+    for (index_t i=0; i<d; ++i)
+    {
+        const index_t ndofs1D = basis.component(d-1-i).size();
+        GISMO_ASSERT( ndofs1D>5, "" );
+        
+        gsSparseMatrix<> transformer1D(ndofs1D,ndofs1D);
+        transformer1D.setIdentity();
+        
+        transformer1D(0,0)=1;
+        transformer1D(0,1)=1;
+
+        transformer1D(1,1)=1;
+        
+        transformer1D(ndofs1D-2,ndofs1D-2)=-1;
+
+        transformer1D(ndofs1D-1,ndofs1D-2)=1;
+        transformer1D(ndofs1D-1,ndofs1D-1)=1;
+
+        if (i==0)
+            result = give(transformer1D);
+        else
+            result = result.kron(transformer1D);
+    }
+    return result;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -184,11 +259,11 @@ int main(int argc, char *argv[])
     index_t rhsType = 2;
     std::string out;
     real_t robin = 100;
+    //real_t factor = 0;
     bool plot = false;
 
-    bool fancyPrecon = false;
     real_t tolerance = 1.e-8;
-    index_t maxIterations = 100;
+    index_t maxIterations = 1000;
     std::string primals("");
 
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
@@ -198,10 +273,10 @@ int main(int argc, char *argv[])
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addReal  ("b", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
+    //cmd.addReal  ("q", "Factor",                "Factor for bdy derivs", factor);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
     
-    cmd.addSwitch("f", "FancyPrecon",           "Use fancy preconditioner", fancyPrecon);
     cmd.addString("",  "Primals",               "Chosen primal dofs; empty is default", primals);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
@@ -216,9 +291,11 @@ int main(int argc, char *argv[])
         {
             "32*pi^4*sin(2*pi*x)*sin(2*pi*y)",
             "2*pi^4*sin(pi*x)*sin(pi*y)",
-            "1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)"
+            "1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)",
+            "2/100*pi^4*sin(pi*x/10)*sin(pi*y/10)"
         };
-    
+    GISMO_ENSURE (rhsType >= 0 && (size_t)rhsType < util::size(rhsTypes), "");
+
     gsInfo << "Rhs function is " << rhsTypes[rhsType] << "\n";
     gsFunctionExpr<> f(rhsTypes[rhsType],dim);
 
@@ -248,6 +325,7 @@ int main(int argc, char *argv[])
     /******************* Setup dofMapper ********************/
     gsInfo << "Setup dofMapper... " << std::flush;
     gsDofMapper dm = setupTwoLayerDofMapper(mp, mb);
+    std::vector<std::vector<std::vector<index_t>>> skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb);
     gsInfo << "done:\n" << dm << "\n";
     
     /****************** Setup ietimapper ********************/
@@ -304,6 +382,7 @@ int main(int argc, char *argv[])
     std::vector<gsSparseMatrix<>> localBasisTransforms; localBasisTransforms.reserve(nPatches);
     std::vector<gsSparseMatrix<>> localStiffnessMatrices; localStiffnessMatrices.reserve(nPatches);
     std::vector<gsMatrix<>> localRhsVectors; localRhsVectors.reserve(nPatches);
+    std::vector<gsLinearOperator<>::Ptr> localSchurs; localSchurs.reserve(nPatches);
     
     for (index_t k=0; k<nPatches; ++k)
     {
@@ -326,20 +405,8 @@ int main(int argc, char *argv[])
         A.initSystem();
         A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G),u * ff * meas(G));
         A.assemble(u*u.tr()*meas(G)); //TODO
-               
-        const index_t ndofs = A.matrix().rows();
-        const index_t ndofs1D = math::sqrt(ndofs); // TODO
-        GISMO_ASSERT( ndofs==ndofs1D*ndofs1D, ndofs<<"=="<<ndofs1D<<"*"<<ndofs1D );
-        GISMO_ASSERT( ndofs1D>3, "" );
-        
-        gsSparseMatrix<> transformer1D(ndofs1D,ndofs1D);
-        transformer1D.setIdentity();
-        transformer1D(0,1)=1;
-        transformer1D(ndofs1D-1,ndofs1D-2)=1;
-        transformer1D(1,1)=1;
-        transformer1D(ndofs1D-2,ndofs1D-2)=-1;
-
-        gsSparseMatrix<> transformer = transformer1D.kron(transformer1D); 
+                       
+        gsSparseMatrix<> transformer = makeTransformer(mb[k]);
         
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
@@ -349,23 +416,24 @@ int main(int argc, char *argv[])
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
         
         // Penalize Dirichlet boundary
-        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
+        /*for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
         {
             if (it->patchIndex()==k)
             {
                 // gsInfo << "Found biterator: " << *it << "\n";
-                gsVector<index_t> s1 = mb.basis(k).boundary(it->side());
+                gsVector<index_t> s1 = mb_local.basis(0).boundary(it->side());
                 for (index_t i=0; i<s1.rows(); ++i)
                     localMatrix(s1[i],s1[i]) += robin;
             }
-        }
+        }*/
         
         // Store
         localStiffnessMatrices.push_back(localMatrix);
         localRhsVectors.push_back(localRhs);
         localBasisTransforms.push_back(transformer);
-       
-        if (!fancyPrecon)
+        localSchurs.push_back(gsScaledDirichletPrec<>::schurComplement(localMatrix,ietiMapper.skeletonDofs(k)));
+        
+        if (0)
         {
             prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
@@ -374,6 +442,17 @@ int main(int argc, char *argv[])
                     ietiMapper.skeletonDofs(k)
                 )
             );
+        }
+        else
+        {
+            for (index_t j=0; j<2; ++j)
+                prec.addSubdomain(
+                    gsScaledDirichletPrec<>::restrictToSkeleton(
+                        jumpMatrix,
+                        localMatrix,
+                        skeletonDofs[k][j]
+                    )
+                );
         }
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
@@ -404,6 +483,7 @@ int main(int argc, char *argv[])
     //! [Primal to system]
     if (ietiMapper.nPrimalDofs()>0)
     {
+        gsInfo << "[P] " << std::flush;
         gsLinearOperator<>::Ptr localSolver
             = makeSparseLUSolver(primal.localMatrix());
 
@@ -418,216 +498,7 @@ int main(int argc, char *argv[])
 
     gsInfo << "done. " << ietiMapper.nPrimalDofs() << " primal dofs.\n";
     
-    if (fancyPrecon&&false)
-        for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-        {
-            const index_t k1 = it->first().patch;
-            const index_t k2 = it->second().patch;
-            gsInfo << " [" << k1 << "/" << k2 << "]";
-
-            // Determine dofs on edge (TODO: excluding primals?)
-            std::pair<std::vector<index_t>,std::vector<index_t>> skel = commonSkeletonDofs(ietiMapper.jumpMatrix(k1),ietiMapper.jumpMatrix(k2));
-            
-            if (!true) // exclude primals
-            {
-                std::vector<gsSparseVector<>> pc = ietiMapper.primalConstraints(k1);
-                std::vector<index_t> pi;
-                for (size_t i=0; i<pc.size(); ++i)
-                    for (index_t j=0; j<pc[i].outerSize(); ++j)
-                        for (gsSparseVector<>::InnerIterator it(pc[i],j); it; ++it)
-                            pi.push_back(it.col());
-                std::sort(pi.begin(), pi.end());
-                
-                std::vector<index_t> pi2;
-                std::unique_copy(pi.begin(), pi.end(), std::back_inserter(pi2));
-                pi = give(pi2);
-                
-                for (size_t i=1; i<pi.size(); ++i)
-                    GISMO_ASSERT (pi[i-1]<pi[i], "Assume unique.");
-
-                std::pair<std::vector<index_t>,std::vector<index_t>> skel2;
-                skel2.first .reserve(skel.first.size()-pi.size());
-                skel2.second.reserve(skel.first.size()-pi.size());
-                index_t r=0;
-                pi.push_back(mp[k1].size());
-                for (size_t i=0; i<skel.first.size(); ++i)
-                {
-                    while (pi[r]<skel.first[i]) ++r;
-                    if (pi[r]>skel.first[i])
-                    {
-                        skel2.first .push_back(skel.first [i]);
-                        skel2.second.push_back(skel.second[i]);
-                    }
-                }
-                skel = skel2;
-            }
-            
-            
-            // these pairs contain the local ids for both patches
-            gsSparseMatrix<> E1 = embeddingForChosen   (skel.first,  mb[k1].size());
-            gsSparseMatrix<> E2 = embeddingForChosen   (skel.second, mb[k2].size());
-            gsSparseMatrix<> R1 = embeddingForNotChosen(skel.first,  mb[k1].size());
-            gsSparseMatrix<> R2 = embeddingForNotChosen(skel.second, mb[k2].size());
-            
-            const gsSparseMatrix<>& A1 = localStiffnessMatrices[k1];
-            const gsSparseMatrix<>& A2 = localStiffnessMatrices[k2];
-            
-            gsSparseMatrix<> AEE  = E1 * A1 * E1.transpose() + E2 * A2 * E2.transpose();
-            
-            gsSparseMatrix<> A1ER = - E1 * A1 * R1.transpose();
-            gsSparseMatrix<> A1RE =   R1 * A1 * E1.transpose();
-            gsSparseMatrix<> A1RR =   R1 * A1 * R1.transpose();
-            
-            gsSparseMatrix<> A2ER = - E2 * A2 * R2.transpose();
-            gsSparseMatrix<> A2RE =   R2 * A2 * E2.transpose();
-            gsSparseMatrix<> A2RR =   R2 * A2 * R2.transpose();
-            
-            // Construct gsLinearOperator representing:
-            // AEE + (-A1ER) * A1RR.inverse() * A1RE + (-A2ER) * A2RR.inverse() * A2RE
-            //       ============ S1 ===============   ============ S2 ===============
-            
-            gsProductOp<>::Ptr S1 = gsProductOp<>::make(makeMatrixOp(A1RE.moveToPtr()), makeSparseCholeskySolver(A1RR), makeMatrixOp(A1ER.moveToPtr()) );
-            gsProductOp<>::Ptr S2 = gsProductOp<>::make(makeMatrixOp(A2RE.moveToPtr()), makeSparseCholeskySolver(A2RR), makeMatrixOp(A2ER.moveToPtr()));
-
-            prec.addSubdomain( 
-                gsSparseMatrix<real_t,RowMajor>(ietiMapper.jumpMatrix(k1) * E1.transpose()).moveToPtr(), 
-                gsSumOp<>::make(makeMatrixOp(AEE.moveToPtr()), S1, S2)
-            );
-        }    
-    if (fancyPrecon)
-        for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-        {
-            int mm=0;
-            const index_t k1 = mm ? it->first().patch  : it->second().patch;
-            const index_t k2 = mm ? it->second().patch : it->first().patch ;
-            gsInfo << " [" << k1 << "/" << k2 << "]";
-
-            // Determine dofs on edge (TODO: excluding primals?)
-            std::pair<std::vector<index_t>,std::vector<index_t>> skel = commonSkeletonDofs(ietiMapper.jumpMatrix(k1),ietiMapper.jumpMatrix(k2));
-            
-            if (true) // exclude primals
-            {
-                std::vector<gsSparseVector<>> pc = ietiMapper.primalConstraints(k1);
-                std::vector<index_t> pi;
-                for (size_t i=0; i<pc.size(); ++i)
-                    for (index_t j=0; j<pc[i].outerSize(); ++j)
-                        for (gsSparseVector<>::InnerIterator it(pc[i],j); it; ++it)
-                            pi.push_back(it.row());
-                std::sort(pi.begin(), pi.end());
-                
-                std::vector<index_t> pi2;
-                std::unique_copy(pi.begin(), pi.end(), std::back_inserter(pi2));
-                pi = give(pi2);
-                
-                gsInfo << "[Primals are";
-                for (size_t i=0; i<pi.size(); ++i) gsInfo << " " << pi[i];
-                gsInfo << " ]\n";
-                
-                for (size_t i=1; i<pi.size(); ++i)
-                    GISMO_ASSERT (pi[i-1]<pi[i], "Assume unique.");
-
-                std::pair<std::vector<index_t>,std::vector<index_t>> skel2;
-                skel2.first .reserve(skel.first.size()-pi.size());
-                skel2.second.reserve(skel.first.size()-pi.size());
-                index_t r=0;
-                for (size_t i=0; i<skel.first.size(); ++i)
-                {
-                    while (r<pi.size()&&pi[r]<skel.first[i]) ++r;
-                    if (r>=pi.size()||pi[r]>skel.first[i])
-                    {
-                        skel2.first .push_back(skel.first [i]);
-                        skel2.second.push_back(skel.second[i]);
-                    }
-                }
-                skel = skel2;
-            }
-            
-            
-            // these pairs contain the local ids for both patches
-            gsSparseMatrix<> E1 = embeddingForChosen   (skel.first,  mb[k1].size());
-            gsSparseMatrix<> E2 = embeddingForChosen   (skel.second, mb[k2].size());
-            
-            bool locallyDir = !true;
-            
-            gsSparseMatrix<> R1 = embeddingForNotChosen(locallyDir ? ietiMapper.skeletonDofs(k1) : skel.first , mb[k1].size());
-            gsSparseMatrix<> R2 = embeddingForNotChosen(locallyDir ? ietiMapper.skeletonDofs(k2) : skel.second, mb[k2].size());
-            
-            const gsSparseMatrix<>& A1 = localStiffnessMatrices[k1];
-            const gsSparseMatrix<>& A2 = localStiffnessMatrices[k2];
-
-            gsSparseMatrix<> A1EE =  E1 * A1 * E1.transpose();
-            gsSparseMatrix<> A1ER =  E1 * A1 * R1.transpose();
-            gsSparseMatrix<> A1RE =  R1 * A1 * E1.transpose();
-            gsSparseMatrix<> A1RR =  R1 * A1 * R1.transpose();
-            
-            gsSparseMatrix<> A2EE =  E2 * A2 * E2.transpose();
-            gsSparseMatrix<> A2ER =  E2 * A2 * R2.transpose();
-            gsSparseMatrix<> A2RE =  R2 * A2 * E2.transpose();
-            gsSparseMatrix<> A2RR =  R2 * A2 * R2.transpose();
-
-            GISMO_ASSERT (A1EE.rows() == A2EE.rows(), "");
-            GISMO_ASSERT (A1RE.cols() == A1EE.cols(), "");
-            GISMO_ASSERT (A2RE.cols() == A1EE.cols(), "");
-            GISMO_ASSERT (A1RE.rows() == A1RR.cols(), "");
-            GISMO_ASSERT (A2RE.rows() == A1RR.cols(), "");
-            
-            
-            gsSparseMatrix<> bigMat (A1EE.rows() + A1RR.rows() + A2RR.rows(), A1EE.rows() + A1RR.rows() + A2RR.rows());
-            gsSparseEntries<> se;
-            add(se, 0                      , 0                      , A1EE );
-            add(se, 0                      , 0                      , A2EE );
-            add(se, A1EE.rows()            , A1EE.rows()            , A1RR );
-            add(se, A1EE.rows()+A1RR.rows(), A1EE.rows()+A1RR.rows(), A2RR );
-            add(se, A1EE.rows()            , 0                      , A1RE );
-            add(se, A1EE.rows()+A1RR.rows(), 0                      , A2RE );
-            add(se, 0                      , A1EE.rows()            , A1ER );
-            add(se, 0                      , A1EE.rows()+A1RR.rows(), A2ER );
-            bigMat.setFrom(se);
-            
-            gsSparseMatrix<> bigMatLR (A1EE.rows(), A1EE.rows() + A1RR.rows() + A2RR.rows());
-            gsSparseEntries<> seLR;
-            add(se, 0                      , 0                      , A1EE );
-            add(se, 0                      , A1EE.rows()            , A1ER );
-            bigMatLR.setFrom(seLR);
-            
-            
-            gsSparseMatrix<> bigMatLRTransposed = bigMatLR.transpose();
-            
-            gsProductOp<>::Ptr S1 = gsProductOp<>::make(makeMatrixOp(bigMatLRTransposed.moveToPtr()), makeSparseLUSolver(bigMat), makeMatrixOp(bigMatLR.moveToPtr()) );
-            gsSumOp<>::Ptr S = gsSumOp<>::make(S1,makeMatrixOp(A1EE.moveToPtr()));
-            
-            prec.addSubdomain( 
-                gsSparseMatrix<real_t,RowMajor>(ietiMapper.jumpMatrix(k1) * E1.transpose()).moveToPtr(), 
-                S
-            );
-        }   
-
-//if (fancyPrecon)
-//        for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-//        {
-//            const index_t k1 = it->first().patch;
-//            const index_t k2 = it->second().patch;
-//            gsInfo << "[" << k1 << "/" << k2 << "]";
-//
-//            GISMO_ASSERT( ietiMapper.jumpMatrix(k1).rows() == ietiMapper.jumpMatrix(0).rows(), "");
-//            GISMO_ASSERT( ietiMapper.jumpMatrix(k2).rows() == ietiMapper.jumpMatrix(0).rows(), "");
-//
-//            std::vector<index_t> skel = commonLMultpliersDofs(ietiMapper.jumpMatrix(k1),ietiMapper.jumpMatrix(k2));
-//            gsInfo << "\nskel=[";
-//            for (size_t i=0; i<skel.size(); ++i) gsInfo << " " << skel[i];
-//            gsInfo << " ]\n";
-//            gsInfo << "Lmults: " << ietiMapper.jumpMatrix(k1).rows() << "\n";
-//            gsMatrix<> embed(ietiMapper.jumpMatrix(k1).rows(), skel.size());
-//            embed.setZero(); 
-//            for(size_t i=0;i<skel.size();++i)
-//                embed(skel[i],i)=1;
-//            gsMatrix<> tmp;
-//            ieti.schurComplement()->apply(embed,tmp);
-//            tmp = embed.transpose()*tmp;
-//
-//            prec.addSubdomain( gsSparseMatrix<real_t,RowMajor>(embed.sparseView()).moveToPtr(), makePartialPivLUSolver(tmp) );
-//        }            
-        
+   
     /**************** Setup solver and solve ****************/
 
     gsInfo << "Setup solver and solve... \n"
@@ -699,6 +570,19 @@ int main(int argc, char *argv[])
         for (index_t k=0; k<nPatches; ++k)
             fd.add(gsSparseMatrix<>(ietiMapper.jumpMatrix(k)));
         
+        for (index_t k=0; k<nPatches; ++k)
+            fd.add(localStiffnessMatrices[k]);
+
+        for (index_t k=0; k<nPatches; ++k)
+        {
+            gsMatrix<> tmp;
+            localSchurs[k]->toMatrix(tmp);
+            fd.add(tmp);
+        }
+        
+        gsMatrix<> sc;
+        ieti.schurComplement()->toMatrix(sc);
+        fd.add(sc);
         
         gsMatrix<> pc;
         prec.preconditioner()->toMatrix(pc);
