@@ -135,7 +135,7 @@ gsSparseMatrix<> makeTransformer(const gsBasis<>& basis)
     for (index_t i=0; i<d; ++i)
     {
         const index_t ndofs1D = basis.component(d-1-i).size();
-        GISMO_ASSERT( ndofs1D>5, "" );
+        GISMO_ASSERT( ndofs1D>3, "" );
 
         gsSparseMatrix<> transformer1D(ndofs1D,ndofs1D);
         transformer1D.setIdentity();
@@ -163,19 +163,19 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
+    index_t rhsType = 2;
     index_t nPatchesX = 4;
     index_t nPatchesY = 4;
     index_t degree = 2;
     index_t refinements = 1;
-    index_t rhsType = 2;
-    std::string out;
     real_t robin = 0;
     real_t alpha = 1;
-    bool plot = false;
-
+    std::string primals("x");
+    bool modifiedPreconder = false;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 1000;
-    std::string primals("x");
+    std::string out;
+    bool plot = false;
 
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
     cmd.addInt   ("t", "RhsType",               "Chosen right-hand side", rhsType);
@@ -185,12 +185,12 @@ int main(int argc, char *argv[])
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addReal  ("b", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
     cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
-    cmd.addString("",  "out",                   "Write solution and used options to file", out);
-    cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
-
     cmd.addString("c", "Primals",               "Chosen primal dofs", primals);
+    cmd.addSwitch("m", "ModifiedPreconder",     "Use modified preconder", modifiedPreconder);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
+    cmd.addString("",  "out",                   "Write solution and used options to file", out);
+    cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
         localBasisTransforms.push_back(transformer);
         localSchurs.push_back(gsScaledDirichletPrec<>::schurComplement(localMatrix,ietiMapper.skeletonDofs(k)));
 
-        if (0)
+        if (!modifiedPreconder)
         {
             prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
