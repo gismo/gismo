@@ -51,21 +51,22 @@ public:
         gsAsVector<T> tmp(uu.data(), n);
         gsAsConstVector<T> ctmp(uu.data(), n);
         index_t c = 0;
-
+        const T e0 = this->evalObj(ctmp);
         // for all partial derivatives (column-wise)
         for ( index_t i = 0; i!=n; i++ )
         {
             // to do: add m_desLowerBounds m_desUpperBounds check
             tmp[i]  += T(0.00001);
             const T e1 = this->evalObj(ctmp);
-            tmp[i]   = u[i] + T(0.00002);
-            const T e3 = this->evalObj(ctmp);
-            tmp[i]   = u[i] - T(0.00001);
-            const T e2 = this->evalObj(ctmp);
-            tmp[i]   = u[i] - T(0.00002);
-            const T e4 = this->evalObj(ctmp);
+            // tmp[i]   = u[i] + T(0.00002);
+            // const T e3 = this->evalObj(ctmp);
+            // tmp[i]   = u[i] - T(0.00001);
+            // const T e2 = this->evalObj(ctmp);
+            // tmp[i]   = u[i] - T(0.00002);
+            // const T e4 = this->evalObj(ctmp);
             tmp[i]   = u[i];
-            result[c++]= ( 8 * (e1 - e2) + e4 - e3 ) / T(0.00012);
+            // result[c++]= ( 8 * (e1 - e2) + e4 - e3 ) / T(0.00012);
+            result[c++] = (e1 - e0) / T(0.00001);
         }
     }
 

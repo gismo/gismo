@@ -75,6 +75,12 @@ public:
 
     gsOptionList & options() {return m_options;}
 
+    void applyOptions()
+    {
+        this->_initMapper(m_domain,m_mapper);
+        this->_initIndices(m_domain,m_mapper,m_indices);
+    }
+
     const gsTensorBSpline<DIM,T> & domain() const
     {
         return m_domain;
@@ -168,10 +174,10 @@ private:
         {
             gsMatrix<index_t> boundary = domain.basis().boundary(*it);
             if (m_options.askSwitch("Slide",false))
+                mapper.markBoundary(0,boundary,it->direction());
+            else
                 for (index_t d = 0; d!=domain.targetDim(); d++)
                     mapper.markBoundary(0,boundary,d);
-            else
-                mapper.markBoundary(0,boundary,it->direction());
 
         }
         mapper.finalize();
