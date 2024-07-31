@@ -1,6 +1,6 @@
-/** @file gsWriteParaview.h
+/** @file gsCsv.h
 
-    @brief Provides declaration of functions writing .csv files.
+    @brief Provides functions writing .csv files.
 
     This file is part of the G+Smo library. 
 
@@ -20,7 +20,13 @@
 
 namespace gismo {
 
-
+/// @brief Export a \a gsMatrix to a .csv (comma separated values) file
+/// @tparam T 
+/// @param filename path of output file
+/// @param matrix a \a gsMatrix to be written to the file
+/// @param headers optionally, a vector of strings to be used as column headers 
+///
+/// \ingroup IO
 template<class T>
 void gsWriteCsv(std::string const & filename, const gsMatrix<T> & matrix, const std::vector<std::string> & headers = std::vector<std::string>() )
 {
@@ -47,7 +53,6 @@ void gsWriteCsv(std::string const & filename, const gsMatrix<T> & matrix, const 
     csv_file << matrix.format(CSVFormat);
     csv_file.close();
 }
-
 
 
 } // namespace gismo
