@@ -160,9 +160,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   endif()
 
   if (GISMO_WITH_PARDISO)
-     if (PARDISO_USE_MKL)
-       find_package(MKL REQUIRED)
-       target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
+    if (PARDISO_USE_MKL)
+      # Note: Download and install "Intel oneAPI Base Toolkit"
+      # use Intel compilers if desired: export CC=icx CXX=icpx cmake
+      # Then source /path-to/intel/oneapi/setvars.sh
+      # Then run e.g.: make ../  -DGISMO_WITH_PARDISO=ON  -DPARDISO_USE_MKL=ON -DEIGEN_USE_MKL_ALL=ON -DCMAKE_BUILD_TYPE=Release -DGISMO_WITH_OPENMP=ON -DTARGET_ARCHITECTURE=none -DMKL_INTERFACE=lp64
+      find_package(MKL REQUIRED)
+      target_link_libraries(${PROJECT_NAME} MKL::MKL)
      else()
        find_package(Pardiso REQUIRED)
        target_link_libraries(${PROJECT_NAME} Pardiso)
@@ -208,7 +212,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 endif(GISMO_BUILD_LIB)
 
 if (EIGEN_USE_MKL_ALL)
-  target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
+  # Note: Download and install "Intel oneAPI Base Toolkit"
+  # use Intel compilers if desired: export CC=icx CXX=icpx cmake
+  # Then source /path-to/intel/oneapi/setvars.sh
+  # Then run e.g.: make ../  -DGISMO_WITH_PARDISO=ON  -DPARDISO_USE_MKL=ON -DEIGEN_USE_MKL_ALL=ON -DCMAKE_BUILD_TYPE=Release -DGISMO_WITH_OPENMP=ON -DTARGET_ARCHITECTURE=none -DMKL_INTERFACE=lp64
+  find_package(MKL REQUIRED)
+  target_link_libraries(${PROJECT_NAME} MKL::MKL)
 endif()
 
 ## #################################################################
