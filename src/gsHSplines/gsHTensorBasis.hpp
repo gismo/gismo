@@ -1501,7 +1501,7 @@ boundaryOffset(boxSide const & s,index_t offset) const
 
 template<short_t d, class T>
 gsMatrix<index_t>  gsHTensorBasis<d,T>::
-boundaryOffset(boxSide const & s,index_t offset, index_t level) const
+boundaryOffsetLevel(boxSide const & s,index_t offset, index_t level) const
 {
     //get information on the side
     //index_t k   = s.direction();
@@ -1553,7 +1553,7 @@ functionAtCorner(boxCorner const & c, index_t level) const
 /*
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                           std::vector<gsMatrix<T> >& result) const;
+                                           std::vector<gsMatrix<T> >& result, bool sameElement) const;
 {
     result.resize(n+1);
 
@@ -1572,7 +1572,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
 
     // Keep consistency of finest level
     tensorBasis * last_basis = m_bases.back()->clone().release();
-    last_basis->uniformRefine(1,mul);
+    last_basis->uniformRefine(1,mul,dir);
     m_bases.push_back( last_basis );
 
     // Delete the first level
