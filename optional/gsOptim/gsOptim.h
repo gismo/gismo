@@ -299,7 +299,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::bfgs(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     /// See \ref gsOptim
@@ -346,7 +346,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::lbfgs(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     /// See \ref gsOptim
@@ -395,7 +395,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::cg(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     /// See \ref gsOptim
@@ -448,7 +448,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::gd(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     /// See \ref gsOptim
@@ -532,7 +532,7 @@ protected:
 
 //     bool callOptim( gsVector<T> & x,
 //                     gsOptProblem<T> & op,
-//                     optim::algo_settings_t & optimSettings)
+//                     optim::algo_settings_t & optimSettings) override
 //     { return optim::newton(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
 // protected:
@@ -563,7 +563,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::nm(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     /// See \ref gsOptim
@@ -628,7 +628,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::de(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     /// See \ref gsOptim
@@ -725,7 +725,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::de_prmm(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 };
 
@@ -751,7 +751,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::pso(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     /// See \ref gsOptim
@@ -848,7 +848,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::pso_dv(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 };
 
@@ -874,7 +874,7 @@ public:
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
-                    optim::algo_settings_t & optimSettings)
+                    optim::algo_settings_t & optimSettings) override
     { return optim::sumt(x, gsOptimWrapper<T>(op),nullptr,gsOptimWrapperConstraint<T>(op),nullptr,optimSettings); }
 
     /// See \ref gsOptim

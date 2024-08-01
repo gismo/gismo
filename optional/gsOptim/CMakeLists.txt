@@ -43,8 +43,6 @@ set(OPTIM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/optim/header_only_version CAC
 set(GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OPTIM_INCLUDE_DIR}
     CACHE INTERNAL "Gismo include directories" FORCE)
 
-message(${GISMO_INCLUDE_DIRS})
-
 include_directories(${GISMO_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} INTERFACE)
