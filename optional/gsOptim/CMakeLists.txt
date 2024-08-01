@@ -17,13 +17,12 @@ include( gsConfig)
 #fetch here!
 include(gsFetch)
 gismo_fetch_directory(optim
-  URL https://github.com/kthohr/optim/archive/refs/heads/master.zip
+  GIT_REPOSITORY https://github.com/kthohr/optim.git
   DESTINATION    external)
 
 IF(NOT EXISTS ${gismo_externals}/optim/include/BaseMatrixOps/include)
-      execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init"
-	ERROR_QUIET
-	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/external/optim)
+    execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init"
+	                   WORKING_DIRECTORY ${gismo_SOURCE_DIR}/external/optim)
 ENDIF()
 
 ## CALL ./configure --header-only-version
