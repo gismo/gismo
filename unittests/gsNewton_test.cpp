@@ -60,4 +60,23 @@ SUITE(gsNewton_test)
         CHECK( res <= 1e-5 );
     }
 
+    TEST(closestPoint_test)
+    {
+        gsTensorNurbs<2> geom = * gsNurbsCreator<>::NurbsQuarterAnnulus(1,2);
+
+        gsVector<> query(2), res(2);
+        query << -3., 3.;
+        res.setZero();
+        real_t  distance = geom.closestPointTo(query, res);
+        gsMatrix<> resXY = geom.eval( res );
+
+        gsTestInfo << "Query Point: " << query.transpose() << "\n";
+        gsTestInfo << "Closest Point: " << resXY.transpose() << "\n";
+
+        gsMatrix<> expectedPoint(2,0);
+        expectedPoint << 2.,0.;
+
+        CHECK_ARRAY_CLOSE(expectedPoint, resXY, 2,1e-5);
+    }
+
 }
