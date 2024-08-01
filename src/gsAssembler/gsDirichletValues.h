@@ -367,7 +367,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                   // If the condition is homogeneous then fill with zeros
                   if (iter->isHomogeneous())
                   {
-                    rhsVals.setZero(u.dim(), md.points.size());
+                    rhsVals.setZero((com==-1) ? u.dim() : 1, md.points.size());
                   }
                   else
                   {
