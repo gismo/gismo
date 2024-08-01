@@ -318,6 +318,19 @@ int gsFunction<T>::newtonRaphson_impl(
             return iter;
         }
 
+        const T rr = ( 1==iter ? (T)1.51 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
+        damping_factor = rr<1.5 ? math::max((T)0.1 + (rr/99),(rr-(T)0.5)*damping_factor) : math::min((T)1,rr*damping_factor);
+
+
+        // VERSION 1;
+        if ( withSupport && (math::abs(rr-1)<accuracy)  && (  (arg.array() == supp.col(0).array()).any()  || (arg.array() == supp.col(1).array()).any() ) ) 
+        {
+            // If last iteration was stationary and at least one parameter has exceeded
+            // the bounds of the parameter space, stop iterating.
+            //gsInfo <<"OK: Newton reached boundary of support "<< delta.norm() <<"\n";
+            return iter;
+        }
+
         // compute Jacobian
         if (0==mode)
             jac = scale * fd.jacobian(0);
@@ -340,8 +353,20 @@ int gsFunction<T>::newtonRaphson_impl(
             delta.noalias() = jac.colPivHouseholderQr().solve(
                         gsMatrix<T>::Identity(n,n)) * residual;
 
-        const T rr = ( 1==iter ? (T)1.51 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
-        damping_factor = rr<1.5 ? math::max((T)0.1 + (rr/99),(rr-(T)0.5)*damping_factor) : math::min((T)1,rr*damping_factor);
+        // gsInfo << "Iter:" << iter << "\n";
+        // gsInfo << "Arg:"  << arg.transpose() << "\n";
+        // gsInfo << "Residual:"  <<  rnorm[iter%2] << "\n";
+        // gsInfo << "Ratio - 1 :"  <<  rr-1 << "\n";
+
+        // VERSION 2
+        // If only the components of delta that are free (i.e. not on the boundary and delta pointing out)
+        // have a sufficiently small norm, stop iterating.
+        // if (withSupport && ( !(arg.array() == supp.col(0).array() && delta.array() < 0) 
+        //     && !(arg.array() == supp.col(1).array()  && delta.array() > 0)).select(delta, 0).norm() < accuracy )
+        // {
+        //     return iter;
+        // }
+
 
         //Line search
         /*
@@ -360,15 +385,8 @@ int gsFunction<T>::newtonRaphson_impl(
         // update arg
         arg += damping_factor * delta;
 
-        if ( withSupport )
-        {
-            if ( delta.norm()<accuracy )
-            {
-                //gsInfo <<"OK: Newton reached boundary of support "<< delta.norm() <<"\n";
-                return iter;
-            }
-            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
-        }
+        //Bound paramaters to the support range
+        if ( withSupport ) arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
 
     } while (++iter <= max_loop);
 
