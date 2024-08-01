@@ -230,7 +230,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
     {
         auto & basis = m_basis->basis(h);
 
-//#   pragma omp parallel for default(shared) private(curr_point,actives,value)
+#       pragma omp parallel for default(shared) private(curr_point,actives,value)
         for (index_t k = m_offset[h]; k < m_offset[h+1]; ++k)
         {
             curr_point = m_param_values.col(k);
@@ -243,15 +243,16 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
             const index_t numActive = actives.rows();
 
+#           pragma omp critical (acc_A_mat)
+{
             for (index_t i = 0; i != numActive; ++i)
             {
                 const index_t ii = actives.at(i);
-//#           pragma omp critical (acc_m_B)
                 m_B.row(ii) += value.at(i) * m_points.row(k);
                 for (index_t j = 0; j != numActive; ++j)
-//#               pragma omp critical (acc_A_mat)
                     A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
             }
+}
         }
     }
 }

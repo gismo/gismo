@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsBasisFun.h>
-#include <gsCore/gsFuncData.h>
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsGeometry.h>
@@ -196,13 +195,22 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
     for (index_t i=0; i!=act.rows(); ++i)
         result.insert(0, act.at(i) ) = ev.at(i);
 
-    for (index_t k=1; k!=u.cols(); ++k)
-    {
-        eval_into  (u.col(k), ev );
-        active_into(u.col(k), act);
-        for (index_t i=0; i!=act.rows(); ++i)
-            result.insert(k, act.at(i) ) = ev.at(i);
-    }
+#pragma omp parallel
+{
+        gsMatrix<T> ev;
+        gsMatrix<index_t> act;
+#pragma omp for
+        for (index_t k=1; k!=u.cols(); ++k)
+        {
+            eval_into  (u.col(k), ev );
+            active_into(u.col(k), act);
+#pragma omp critical (collocationMatrix)
+{
+            for (index_t i=0; i!=act.rows(); ++i)
+                result.insert(k, act.at(i) ) = ev.at(i);
+}
+        }
+}
 
     result.makeCompressed();
     return result;
