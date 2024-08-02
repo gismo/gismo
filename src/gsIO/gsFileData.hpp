@@ -527,7 +527,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
 
     // Temporaries
     bool rational;
-    int  ncp, deg, c, parDim, geoDim;
+    int  ncp, deg, c, parDim(0), geoDim;
 
     // Structure:
     // type, version
@@ -760,7 +760,6 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
         default:
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Unknown GoTools entity (ClassType="<<ncp<<").\n";
-            parDim = 0;
             continue;
             break;
         }
