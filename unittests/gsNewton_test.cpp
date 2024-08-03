@@ -62,21 +62,52 @@ SUITE(gsNewton_test)
 
     TEST(closestPoint_test)
     {
-        gsTensorNurbs<2> geom = * gsNurbsCreator<>::NurbsQuarterAnnulus(1,2);
+        gsGeometry<>::Ptr  geom = gsNurbsCreator<>::NurbsQuarterAnnulus(1,2);
 
         gsVector<> query(2), res(2);
-        query << -3., 3.;
-        res.setZero();
-        real_t  distance = geom.closestPointTo(query, res);
-        gsMatrix<> resXY = geom.eval( res );
+        gsMatrix<> expectedPoint(2,1), expectedRes(2,1);
 
-        gsTestInfo << "Query Point: " << query.transpose() << "\n";
-        gsTestInfo << "Closest Point: " << resXY.transpose() << "\n";
+        // query << -3., 3.;
+        // expectedRes << 1,1;
 
-        gsMatrix<> expectedPoint(2,0);
-        expectedPoint << 2.,0.;
+        // query << 3., 3.;
+        // expectedRes << 1,0.5;
 
-        CHECK_ARRAY_CLOSE(expectedPoint, resXY, 2,1e-5);
+        query << -1, 3.;
+        expectedRes << 1,1;
+
+        query << -2, 3.;
+        expectedRes << 1,1;
+
+        query << -2.84, 3.;
+        expectedRes << 1,1;
+
+        query << -2.8, 3.;
+        expectedRes << 1,1;
+
+//        query << 0, 3.;
+//        expectedRes << 1,1;
+
+//        query << 3, 3.;
+//        expectedRes << 0,0;
+
+        query << 3, -3.;
+        expectedRes << 1,0;
+
+        expectedPoint = geom->eval(expectedRes);
+        gsTestInfo <<"Query: "<< query.transpose()<<", Exact distance "<< (expectedPoint - query).norm() << " at u="<<expectedRes.transpose() <<"\n";
+
+        res.setConstant(0.5);
+        real_t  distance = geom->closestPointTo(query, res, 1e-6, true);
+        gsMatrix<> resXY = geom->eval( res );
+
+        gsTestInfo << "Query Point    : " << query.transpose() << "\n";
+        gsTestInfo << "Result         : " << res.transpose() << "\n";
+        gsTestInfo << "Closest Point  : " << resXY.transpose() << "\n";
+        gsTestInfo << "Distance       : " << distance << "\n";
+        gsTestInfo << "Distance check : " << (geom->eval(res) - query).norm() << "\n";
+        
+        CHECK( (expectedPoint- resXY).norm() <= 1e-5);
     }
 
 }
