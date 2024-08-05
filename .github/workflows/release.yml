@@ -31,10 +31,10 @@ jobs:
       - name: Release
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ TAGVER }}
-          release_name: G+Smo ${{ TAGVER }} #Release ${{ github.ref }}
+          tag_name: ${{ env.TAGVER }}
+          release_name: G+Smo ${{ env.TAGVER }} #Release ${{ github.ref }}
           body: |
-            ${{ CLOG }}
+            ${{ env.CLOG }}
           draft: true
           prerelease: true
 
