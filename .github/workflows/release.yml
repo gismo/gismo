@@ -34,5 +34,5 @@ env:
           release_name: Release ${{ github.ref }}
           body: |
             $CLOD
-          draft: false
+          draft: true
           prerelease: true
