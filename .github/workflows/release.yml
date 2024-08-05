@@ -8,7 +8,7 @@ on:
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  jobs:
+jobs:
   build:
     name: Create Release
     runs-on: ubuntu-latest
