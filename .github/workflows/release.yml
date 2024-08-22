@@ -25,9 +25,9 @@ jobs:
           git tag $TAGVER
           git push origin $TAGVER
           export CLOG="$(sed -n -e '/$TAGVER/,$p' changelog)"
-          echo "CLOG=0123$CLOG"
+          echo "CLOG=0123${{ CLOG }}"
           echo "TAGVER=$TAGVER" >> $GITHUB_ENV
-          echo "CLOG=0123$CLOG" >> $GITHUB_ENV
+          echo "CLOG=0123${{ CLOG }}" >> $GITHUB_ENV
 #          export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
       - name: Release
         uses: actions/create-release@v1
