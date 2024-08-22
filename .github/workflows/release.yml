@@ -44,6 +44,3 @@ jobs:
 
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.zip
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.tar.gz
-
- echo "MULTI_LINES_TEXT_ENV_VAR<<EOF" >> $GITHUB_ENV
- 
