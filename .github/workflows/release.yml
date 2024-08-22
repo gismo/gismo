@@ -25,18 +25,20 @@ jobs:
           git tag $TAGVER
           git push origin $TAGVER
           export CLOG=$(sed -n -e '/$TAGVER/,$p' changelog)
+          echo "CLOG=0123$CLOG"
           echo "TAGVER=$TAGVER" >> $GITHUB_ENV
-          echo "CLOG=$CLOG" >> $GITHUB_ENV
+          echo "CLOG=0123$CLOG" >> $GITHUB_ENV
 #          export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
       - name: Release
         uses: actions/create-release@v1
         with:
           tag_name: ${{ env.TAGVER }}
           release_name: G+Smo ${{ env.TAGVER }} #Release ${{ github.ref }}
-          body: |
-            ${{ env.CLOG }}
+          body: ${{ env.CLOG }}
           draft: true
           prerelease: true
+      - name: Assets
+        upload_url
 
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.zip
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.tar.gz
