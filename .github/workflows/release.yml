@@ -33,7 +33,7 @@ jobs:
         with:
           tag_name: ${{ env.TAGVER }}
           release_name: G+Smo ${{ env.TAGVER }} #Release ${{ github.ref }}
-          body: ${{ env.CLOG }}
+          body: $(awk '/'$env.TAGVER'/,0' changelog)
           draft: true
           prerelease: true
 #      - name: Assets
