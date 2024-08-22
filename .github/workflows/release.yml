@@ -25,7 +25,10 @@ jobs:
           git tag $TAGVER
           git push origin $TAGVER
           echo "TAGVER=$TAGVER" >> $GITHUB_ENV
-          awk '/'$TAGVER'/,0' changelog
+          echo "CLOG<<EOF" >> $GITHUB_ENV
+          echo "$(awk '/'$TAGVER'/,0' changelog)" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          #          awk '/'$TAGVER'/,0' changelog
 #          echo "CLOG=$(awk '/'$TAGVER'/,0' changelog)" >> $GITHUB_ENV
 #          export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
       - name: Release
@@ -33,7 +36,7 @@ jobs:
         with:
           tag_name: ${{ env.TAGVER }}
           release_name: G+Smo ${{ env.TAGVER }} #Release ${{ github.ref }}
-          body: $(awk '/'$env.TAGVER'/,0' changelog)
+          body: ${{ env.CLOG }}
           draft: true
           prerelease: true
 #      - name: Assets
@@ -42,3 +45,5 @@ jobs:
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.zip
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.tar.gz
 
+ echo "MULTI_LINES_TEXT_ENV_VAR<<EOF" >> $GITHUB_ENV
+ 
