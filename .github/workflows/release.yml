@@ -24,10 +24,12 @@ jobs:
           export TAGVER=$(grep "https://github.com/gismo/gismo/releases/tag/v" changelog | awk '{print $1;}' | tail -1)
           git tag $TAGVER
           git push origin $TAGVER
+          cat changelog
+          sed -n -e '/$TAGVER/,$p' changelog
           export CLOG="$(sed -n -e '/$TAGVER/,$p' changelog)"
-          echo "CLOG=0123${{ CLOG }}"
+          echo "CLOG=0123$CLOG"
           echo "TAGVER=$TAGVER" >> $GITHUB_ENV
-          echo "CLOG=0123${{ CLOG }}" >> $GITHUB_ENV
+          echo "CLOG=0123$CLOG" >> $GITHUB_ENV
 #          export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
       - name: Release
         uses: actions/create-release@v1
