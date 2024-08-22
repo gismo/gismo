@@ -37,8 +37,8 @@ jobs:
           body: ${{ env.CLOG }}
           draft: true
           prerelease: true
-      - name: Assets
-        upload_url
+#      - name: Assets
+#        upload_url
 
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.zip
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.tar.gz
