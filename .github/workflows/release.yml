@@ -28,9 +28,10 @@ jobs:
           echo "CLOG<<EOF" >> $GITHUB_ENV
           echo "$(awk '/'$TAGVER'/,0' changelog)" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          #          awk '/'$TAGVER'/,0' changelog
-#          echo "CLOG=$(awk '/'$TAGVER'/,0' changelog)" >> $GITHUB_ENV
-#          export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
+          wget https://github.com/gismo/gismo/archive/$TAGVER.tar.gz
+          gpg --armor --detach-sign $TAGVER.tar.gz
+          wget https://github.com/gismo/gismo/archive/$TAGVER.zip
+          gpg --armor --detach-sign $TAGVER.zip
       - name: Release
         uses: actions/create-release@v1
         with:
@@ -39,8 +40,10 @@ jobs:
           body: ${{ env.CLOG }}
           draft: true
           prerelease: true
+          artifacts: "${{ TAGVER }}.tar.gz.asc,${{ TAGVER }}.zip"
 #      - name: Assets
 #        upload_url
 
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.zip
 #https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.tar.gz
+#          export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
