@@ -605,6 +605,7 @@ void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numK
 
     // Using uniformRefine_withCoefs
     auto tmp = m_src->clone();
+    coefs *= m_weights.asDiagonal();
     tmp->uniformRefine_withCoefs(coefs, numKnots);
     m_src->uniformRefine_withCoefs(m_weights, numKnots,mul,dir);
 

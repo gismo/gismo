@@ -106,6 +106,15 @@ public:
         return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
     }
 
+    void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
+    {
+        auto tmp = m_src->clone();
+        coefs *= m_weights.asDiagonal();
+        tmp->refine_withCoefs(coefs, boxes);
+        m_src->refine_withCoefs(m_weights, boxes);
+        coefs.array().colwise() /= m_weights.col(0).array();
+    }
+
     /// The number of basis functions in the direction of the k-th parameter component
     // void size_cwise(gsVector<index_t,d> & result) const
     // {
