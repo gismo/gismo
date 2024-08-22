@@ -21,10 +21,10 @@ jobs:
       - name: Create tag
         shell: bash
         run: |
-          export TAGVER=$(grep "https://github.com/gismo/gismo/releases/tag/v" changelog | awk '{print $1;}' | tail -1)        
+          export TAGVER=$(grep "https://github.com/gismo/gismo/releases/tag/v" changelog | awk '{print $1;}' | tail -1)
           git tag $TAGVER
           git push origin $TAGVER
-          export CLOG=$(sed -n -e '/$TAGVER/,$p' changelog)
+          export CLOG="$(sed -n -e '/$TAGVER/,$p' changelog)"
           echo "CLOG=0123$CLOG"
           echo "TAGVER=$TAGVER" >> $GITHUB_ENV
           echo "CLOG=0123$CLOG" >> $GITHUB_ENV
