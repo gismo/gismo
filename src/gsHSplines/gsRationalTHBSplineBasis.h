@@ -56,7 +56,7 @@ public:
     typedef gsRationalTHBSpline<d,T> GeometryType;
 
     /// @brief Associated Boundary basis type
-    typedef gsRationalBasis<typename gsTHBSplineBasis<d,T>::BoundaryBasisType> BoundaryBasisType;
+    typedef gsRationalTHBSplineBasis< (1<d?d-1:d),T> BoundaryBasisType;
 
     /// @brief Shared pointer for gsRationalTHBSplineBasis
     typedef memory::shared_ptr< gsRationalTHBSplineBasis > Ptr;
@@ -71,9 +71,12 @@ public:
     // Constructors forwarded from the base class
     gsRationalTHBSplineBasis() : Base() { };
 
-    gsRationalTHBSplineBasis( Src_t& basis ) : Base(basis) { }
+    gsRationalTHBSplineBasis(const Src_t& basis ) : Base(basis) { }
 
     gsRationalTHBSplineBasis( Src_t* basis, gsMatrix<T> w ) : Base(basis, give(w)) { }
+
+    gsRationalTHBSplineBasis( gsConstantBasis<T>* basis, gsMatrix<T>)
+    {GISMO_ERROR("!!"); }
 
     gsRationalTHBSplineBasis(const gsRationalTHBSplineBasis & o) : Base(o) { }
 
@@ -91,7 +94,17 @@ public:
         return os;
     }
 
+    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
+    {
+        typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(n1);
+        gsMatrix<index_t> ind = m_src->boundary(n1);
 
+        gsMatrix<T> ww( ind.size(),1);
+        for ( index_t i=0; i<ind.size(); ++i)
+            ww(i,0) = m_weights( (ind)(i,0), 0);
+
+        return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
+    }
 
     /// The number of basis functions in the direction of the k-th parameter component
     // void size_cwise(gsVector<index_t,d> & result) const
