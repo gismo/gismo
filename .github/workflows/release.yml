@@ -40,7 +40,7 @@ jobs:
           body: ${{ env.CLOG }}
           draft: true
           prerelease: true
-          artifacts: "${{ TAGVER }}.tar.gz.asc,${{ TAGVER }}.zip"
+          artifacts: "${{ env.TAGVER }}.tar.gz.asc,${{ env.TAGVER }}.zip"
 #      - name: Assets
 #        upload_url
 
