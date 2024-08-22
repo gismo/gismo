@@ -24,9 +24,8 @@ jobs:
           export TAGVER=$(grep "https://github.com/gismo/gismo/releases/tag/v" changelog | awk '{print $1;}' | tail -1)
           git tag $TAGVER
           git push origin $TAGVER
-          cat changelog | sed -n -e '/$TAGVER/,$p'
-          sed -n -e '/$TAGVER/,$p' changelog
-          export CLOG="$(sed -n -e '/$TAGVER/,$p' changelog)"
+          awk '/$TAGVER/,0' changelog
+          export CLOG="$(awk '/$TAGVER/,0' changelog)"
           echo "CLOG=0123$CLOG"
           echo "TAGVER=$TAGVER" >> $GITHUB_ENV
           echo "CLOG=0123$CLOG" >> $GITHUB_ENV
