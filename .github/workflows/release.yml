@@ -50,8 +50,8 @@ jobs:
           body: ${{ env.CLOG }}
           artifacts: "${{ env.TAGVER }}.tar.gz.asc,${{ env.TAGVER }}.zip.asc"
           skipIfReleaseExists: true
-          draft: true
-          prerelease: true
+          draft: false
+          prerelease: false
       - name: Post-release
         run: |
           echo "id: ${{ steps.release.outputs.id }}"
