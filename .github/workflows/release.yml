@@ -2,48 +2,58 @@ on:
   push:
     branches:
       - release
+    paths:
+      - 'changelog'
 #    tags:
-#      - 'v*'
+#      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
 
 jobs:
   build:
     name: Create Release
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
+#    permissions:
+#      contents: write
     steps:
 #      working-directory: ${{runner.workspace}}
       - name: Checkout G+Smo
         uses: actions/checkout@v3
-      - name: Create tag
+      - name: Create tag and artifacts
         shell: bash
         run: |
+          # tag
           export TAGVER=$(grep "https://github.com/gismo/gismo/releases/tag/v" changelog | awk '{print $1;}' | tail -1)
           git tag $TAGVER
           git push origin $TAGVER
           echo "TAGVER=$TAGVER" >> $GITHUB_ENV
+          # notes
           echo "CLOG<<EOF" >> $GITHUB_ENV
           echo "$(awk '/'$TAGVER'/,0' changelog)" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          wget https://github.com/gismo/gismo/archive/$TAGVER.tar.gz
+          # sign
+          echo -n "$GPG_SIGNING_KEY" | base64 --decode | gpg --import
+          wget -nv https://github.com/gismo/gismo/archive/$TAGVER.tar.gz
           gpg --armor --detach-sign $TAGVER.tar.gz
-          wget https://github.com/gismo/gismo/archive/$TAGVER.zip
+          wget -nv https://github.com/gismo/gismo/archive/$TAGVER.zip
           gpg --armor --detach-sign $TAGVER.zip
+          #export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
       - name: Release
-        uses: actions/create-release@v1
+        id: release
+        uses: ncipollo/release-action@v1
+        #uses: actions/create-release@v1
         with:
-          tag_name: ${{ env.TAGVER }}
-          release_name: G+Smo ${{ env.TAGVER }} #Release ${{ github.ref }}
+          name: G+Smo ${{ env.TAGVER }} #Release ${{ github.ref }}
+          tag: ${{ env.TAGVER }}
           body: ${{ env.CLOG }}
+          artifacts: "${{ env.TAGVER }}.tar.gz.asc,${{ env.TAGVER }}.zip"
+          skipIfReleaseExists: true
           draft: true
           prerelease: true
-          artifacts: "${{ env.TAGVER }}.tar.gz.asc,${{ env.TAGVER }}.zip"
-#      - name: Assets
-#        upload_url
-
-#https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.zip
-#https://github.com/gismo/gismo/archive/refs/tags/v24.08.0.tar.gz
-#          export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
+      - name: Post-release
+        run: |
+          echo "id: ${{ steps.release.outputs.id }}"
+          echo "HTML url: ${{ steps.release.outputs.html_url }}"
+          echo "Upload url: ${{ steps.release.outputs.upload_url }}"
