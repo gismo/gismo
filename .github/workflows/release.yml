@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - release
+      - stable
     paths:
       - 'changelog'
 #    tags:
@@ -35,8 +35,6 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
           # sign
           echo -n "$GPG_SIGNING_KEY" | base64 --decode | gpg --import
-          gpg --list-key
-          
           wget -nv https://github.com/gismo/gismo/archive/$TAGVER.tar.gz
           gpg --armor --detach-sign $TAGVER.tar.gz
           wget -nv https://github.com/gismo/gismo/archive/$TAGVER.zip
@@ -50,7 +48,7 @@ jobs:
           name: G+Smo ${{ env.TAGVER }} #Release ${{ github.ref }}
           tag: ${{ env.TAGVER }}
           body: ${{ env.CLOG }}
-          artifacts: "${{ env.TAGVER }}.tar.gz.asc,${{ env.TAGVER }}.zip"
+          artifacts: "${{ env.TAGVER }}.tar.gz.asc,${{ env.TAGVER }}.zip.asc"
           skipIfReleaseExists: true
           draft: true
           prerelease: true
