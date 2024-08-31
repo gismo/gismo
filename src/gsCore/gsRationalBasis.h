@@ -138,8 +138,7 @@ public:
 
     int size(int const& k) const{ return m_src->size(k); }
 
-    size_t numElements() const { return m_src->numElements(); }
-    size_t numElements(boxSide const & s) const { return m_src->numElements(s); }
+    size_t numElements(boxSide const & s = 0) const { return m_src->numElements(s); }
     //using Base::numElements; //unhide
 
     /// See \ref gsBasis for a description
@@ -274,7 +273,7 @@ public:
     void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
 
     //void evalAllDers_into(const gsMatrix<T> & u, int n,
-    //                      std::vector<gsMatrix<T> >& result) const;
+    //                      std::vector<gsMatrix<T> >& result, bool sameElement = false) const;
 
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
@@ -311,12 +310,13 @@ public:
     }
 
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
-    { 
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther,
+                           index_t offset = 0) const
+    {
         if ( const gsRationalBasis * _other = dynamic_cast<const gsRationalBasis*>(&other) )
-            m_src->matchWith(bi,*_other->m_src,bndThis,bndOther);
+            m_src->matchWith(bi,*_other->m_src,bndThis,bndOther, offset);
         else
-            m_src->matchWith(bi,other,bndThis,bndOther);
+            m_src->matchWith(bi,other,bndThis,bndOther, offset);
     }
 
     /// Returns a matrix of projective coefficients. The input \a
@@ -433,13 +433,13 @@ void gsRationalBasis<SrcT>::evalFunc_into(const gsMatrix<T> & u, const gsMatrix<
 /* TODO
 template<class SrcT>
 void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                             std::vector<gsMatrix<T> >& result) const
+                                             std::vector<gsMatrix<T> >& result, bool sameElement = false) const
 {
     result.resize(n+1);
 
     std::vector<gsMatrix<T> > ev(n+1);
 
-    m_src->evalAllDers_into(u, n, ev);
+    m_src->evalAllDers_into(u, n, ev, sameElement);
 
     // find active basis functions
     gsMatrix<index_t> act;
@@ -597,6 +597,7 @@ void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numK
     GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                   "Invalid dimensions" );
     gsSparseMatrix<T, RowMajor> transfer;
+    GISMO_ENSURE(-1==dir, "!!");
     m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
 
     coefs     = transfer * ( m_weights.asDiagonal() * coefs);

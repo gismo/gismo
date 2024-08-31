@@ -86,7 +86,7 @@ clang11_cxx20_release_mpq_long:
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
 
-# Clang 13 (latest), C++23, Release  (works!!!!)
+# Clang 13 (latest), C++23, Release
 clang13_cxx23_release_float_int:
   extends: .test:linux:base
   variables:
@@ -96,8 +96,10 @@ clang13_cxx23_release_float_int:
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=23;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
     GISMO_OPTIONAL: "gsOpennurbs\\;"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
+#  before_script:
+#    - rm -rf /builds/gismo-ci/build_ExperimentalRelease_clang++
 
-#-------------------------------------------------------------------------------
+    #-------------------------------------------------------------------------------
 # GCC 8-12, C++11,14,17,20
 #-------------------------------------------------------------------------------
     
@@ -149,8 +151,10 @@ gcc12_cxx23_release_float_int:
     CXXNAME:          "g++"
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
-    GISMO_OPTIONAL: "gsOpennurbs\\;gsSpectra"
-
+    GISMO_OPTIONAL: "gsOpennurbs\\;gsCInterface"
+#  before_script:
+#    - rm -rf /builds/gismo-ci/build_ExperimentalRelease_gcc++
+  
 ################################################################################
 # 2. Building and testing of all branches and external pull requests (PRs)
 ################################################################################
