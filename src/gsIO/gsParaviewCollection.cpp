@@ -48,8 +48,7 @@ namespace gismo
 
             // This is so only the relative part of the path in filenames[] is kept
             std::string relativeFilename = gsFileManager::makeRelative(
-                            gsFileManager::getCurrentPath() + gsFileManager::getPath(m_filename),
-                            filenames[i]);
+                gsFileManager::getPath(m_filename), filenames[i]);
             
             addPart( relativeFilename, time, name); 
         }

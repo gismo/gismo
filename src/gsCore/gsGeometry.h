@@ -131,10 +131,8 @@ public:
 
     gsGeometry& operator=( const gsGeometry & o);
     
-    virtual ~gsGeometry() 
-    {
-        delete m_basis;
-    }
+    virtual ~gsGeometry();
+
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsGeometry(gsGeometry&& other) 
@@ -246,7 +244,8 @@ public:
     virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> > & result) const;
+                                  std::vector<gsMatrix<T> > & result,
+                                  bool sameElement = false) const;
 
     // Look at gsFunctionSet for documentation
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
