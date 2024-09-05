@@ -163,9 +163,22 @@ install(FILES
 #install(EXPORT gismoTargets DESTINATION
 #  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
+# Produce pkg-config file
+configure_file ("${PROJECT_SOURCE_DIR}/gismo_lib.pc.in"
+                "${PROJECT_BINARY_DIR}/gismo.pc" @ONLY)
+
 else(GISMO_BUILD_LIB)
-   message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
+  message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
+
+# Produce pkg-config file
+  configure_file ("${PROJECT_SOURCE_DIR}/gismo_nolib.pc.in"
+                  "${PROJECT_BINARY_DIR}/gismo.pc" @ONLY)
 endif(GISMO_BUILD_LIB)
+
+# Install pkg-config file
+install(FILES "${PROJECT_BINARY_DIR}/gismo.pc"
+  DESTINATION "lib/pkgconfig/"
+  RENAME "${PROJECT_NAME}.pc")
 
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/ofa"
         COMPONENT devel
