@@ -19,6 +19,7 @@
 #include <gsAssembler/gsExprHelper.h>  
 #include <gsAssembler/gsExprEvaluator.h>
 // #include <gsIO/gsIOUtils.h>
+#include <gsCore/gsLinearAlgebra.h>
 #include <gsLsdyna/gsBextFormat.h>
 #include <gsIO/gsBase64.h>
 
@@ -62,10 +63,91 @@ namespace gismo
     /// ignore precision
     /// @return The raw xml string
     template <class T>
-    std::string toDataArray(const gsMatrix<T>& points,
+    std::string toDataArray(const gsMatrix<T> matrix,
                             std::map<std::string, std::string> attributes={{"",""}},
                             unsigned precision = 5,
-                            const bool& export_base64=false);
+                            const bool& export_base64=false)
+    {
+        std::stringstream stream;
+
+        // Determing 'type' attribute based on input
+        const std::string vtk_typename = []() {
+            if (std::is_same<T, float>::value) {
+                return std::string("Float32");
+            } else if (std::is_same<T, double>::value) {
+                return std::string("Float64");
+            } else if (std::is_same<T, short int>::value) {
+                return std::string("Int8");
+            } else if (std::is_same<T, unsigned short int>::value) {
+                return std::string("UInt8");
+            } else if (std::is_same<T, int>::value) {
+                return std::string("Int16");
+            } else if (std::is_same<T, unsigned int>::value) {
+                return std::string("UInt16");
+            } else if (std::is_same<T, long int>::value) {
+                return std::string("Int32");
+            } else if (std::is_same<T, unsigned long int>::value) {
+                return std::string("UInt32");
+            } else if (std::is_same<T, long long int>::value) {
+                return std::string("Int64");
+            } else if (std::is_same<T, unsigned long long int>::value) {
+                return std::string("UInt64");
+            }
+        }();
+
+
+        // Header
+        stream << "<DataArray type=\"" << vtk_typename
+            << "\" format=\"";
+        if (export_base64) stream << "binary\" ";
+        else stream << "ascii\" ";
+
+        // Write attributes
+        for (auto const& block : attributes)
+        {
+            if (block.first!="")
+            stream << block.first <<"=\""<< block.second <<"\" ";
+        }
+        if (matrix.rows()>1)
+            stream << "NumberOfComponents=\"" << matrix.rows() << "\" ";
+        stream << ">\n";
+
+
+        if (export_base64) {
+
+            // Write data to vector to ensure it is 3D :/
+            std::vector<T> copy_of_matrix;
+            copy_of_matrix.reserve(matrix.cols() * matrix.rows());
+            // Note : Matrix is transposed
+            for (index_t j = 0; j < matrix.cols(); ++j) {
+                for (index_t i = 0; i < matrix.rows(); ++i) {
+                    copy_of_matrix.push_back(matrix(i, j));
+                }
+            }
+
+            // Prepend the number of bytes to be expected (using a single-item
+            // array of unsigned 64 integers)
+            stream << Base64::Encode(std::vector<uint64_t>(1,copy_of_matrix.size() *
+                                                        sizeof(T)))
+                        // Write the actual data
+                        + Base64::Encode(copy_of_matrix);
+        } else {
+            stream.setf(std::ios::fixed);  // write floating point values in
+                                        // fixed-point notation.
+            stream.precision(precision);
+            // Format as vtk xml string
+            // stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
+            // stream << "NumberOfComponents=\"3\">\n";
+            // For every point
+            for (index_t j = 0; j < matrix.cols(); ++j) {
+                for (index_t i = 0; i != matrix.rows(); ++i)
+                    stream << matrix(i, j) << " ";
+            }
+        }
+        stream << "\n</DataArray>\n";
+
+        return stream.str();
+    }
 
     /// @brief  Evaluates one expression over all patches and returns all
     /// <DataArray> xml tags as a vector of strings, as no points are exported, no

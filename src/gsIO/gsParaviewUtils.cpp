@@ -124,8 +124,8 @@ namespace gismo
         stream <<"<Piece NumberOfPoints=\""<< totalPoints<<"\" NumberOfCells=\""<<ElBlock.numElements<<"\">\n";
         // TODO remove
         stream << "<PointData>\n";
-        newCoefs.transposeInPlace();
-        stream << toDataArray( newCoefs, {{"Name","Position"}});
+        // newCoefs.transposeInPlace();
+        stream << toDataArray( newCoefs.transpose(), {{"Name","Position"}});
         stream << "</PointData>\n";
 
         stream << "<CellData HigherOrderDegrees=\"HigherOrderDegrees\">\n";

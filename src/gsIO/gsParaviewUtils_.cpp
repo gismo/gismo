@@ -47,7 +47,7 @@ namespace gismo
     //                                const bool& export_base64)
 
 
-    TEMPLATE_INST
+/*     TEMPLATE_INST
     std::string toDataArray(const gsMatrix<real_t>& points,
                             std::map<std::string,std::string> attributes,
                             unsigned precision,
@@ -58,7 +58,7 @@ namespace gismo
                             std::map<std::string,std::string> attributes,
                             unsigned precision,
                             const bool& export_base64);
-
+ */
 
     TEMPLATE_INST
     std::string BezierVTK(const gsMultiPatch<real_t> & mPatch);

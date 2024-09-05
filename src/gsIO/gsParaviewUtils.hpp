@@ -196,7 +196,7 @@ namespace gismo
     //     return out;
     // }
 
-    template <class T>
+/*    template <class T>
     std::string toDataArray(const gsMatrix<T>& matrix,
                             std::map<std::string,std::string> attributes,
                             unsigned precision,
@@ -261,7 +261,7 @@ namespace gismo
 
             // Prepend the number of bytes to be expected (using a single-item
             // array of unsigned 64 integers)
-            stream << Base64::Encode(std::vector<uint64_t>(1,copy_of_matrix.size() *
+            stream << Base64::Encode(std::vector<uint64_t>(1,copy_of_matrix.size() *ß
                                                         sizeof(T)))
                         // Write the actual data
                         + Base64::Encode(copy_of_matrix);
@@ -281,7 +281,7 @@ namespace gismo
         stream << "\n</DataArray>\n";
 
         return stream.str();
-    }
+    } */
 
     
 
