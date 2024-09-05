@@ -59,23 +59,23 @@
   <m2n:sockets acceptor="Fluid" connector="Solid" exchange-directory="../"/>
   <coupling-scheme:serial-implicit>
       <participants first="Solid" second="Fluid" />
-      <max-time value="2" />
-      <time-window-size value="0.01" />
+      <max-time value="0.02" />
+      <time-window-size value="0.00005" />
       <exchange data="GeometryControlPointData" mesh="GeometryControlPointMesh" from="Solid" to="Fluid" />
 <!--      <exchange data="GeometryKnotData" mesh="GeometryKnotMesh" from="Solid" to="Fluid" />-->
       <exchange data="ForceControlPointData" mesh="ForceControlPointMesh" from="Fluid" to="Solid" />
 <!--      <exchange data="ForceKnotMeshData" mesh="ForceKnotMesh" from="Fluid" to="Solid" />-->
       <max-iterations value="50" />
-      <relative-convergence-measure limit="1e-4" data="GeometryControlPointData"  mesh="GeometryControlPointMesh"/>
-      <relative-convergence-measure limit="1e-4" data="ForceControlPointData"         mesh="ForceControlPointMesh"/>
+      <relative-convergence-measure limit="1e-6" data="GeometryControlPointData"  mesh="GeometryControlPointMesh"/>
+      <relative-convergence-measure limit="1e-6" data="ForceControlPointData"         mesh="ForceControlPointMesh"/>
       <acceleration:IQN-ILS>
 <!--        <data name="GeometryControlPointData" mesh="GeometryControlPointMesh" />-->
         <data name="ForceControlPointData"        mesh="ForceControlPointMesh" />
         <preconditioner type="residual-sum" />
-        <filter type="QR2" limit="1e-4" />
+        <filter type="QR1" limit="1e-10" />
         <initial-relaxation value="1.0" />
         <max-used-iterations value="100" />
-        <time-windows-reused value="15" />
+        <time-windows-reused value="1" />
       </acceleration:IQN-ILS>
       <acceleration:constant>
         <relaxation value="1.0" />

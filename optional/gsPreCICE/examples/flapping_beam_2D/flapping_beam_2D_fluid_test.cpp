@@ -1,19 +1,3 @@
-/// This is the fluid-structure interaction benchmark FSI2 from this paper:
-/// "Proposal for numerical benchmarking of fluid-structure interaction between an elastic object and laminar incompressible flow"
-/// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006.
-///
-///
-///
-///TODO: FIX THE MEMORY LEAK 
-/**
-
-GISMO_DEBUG: flapping_beam_2D_solid.cpp:147, forceControlPoints.cols(): 
-608
-GISMO_DEBUG: flapping_beam_2D_solid.cpp:148, basis->size(): 
-612
-
-**/
-/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
@@ -55,7 +39,7 @@ int main(int argc, char* argv[])
     index_t numUniRef = 3;
     // time integration
     real_t timeStep = 0.01;
-    real_t timeSpan = 0.1;
+    real_t timeSpan = 15.;
     real_t thetaFluid = 0.5;
     bool imexOrNewton = true;
     bool warmUp = false;
@@ -234,8 +218,6 @@ int main(int argc, char* argv[])
                                      presFlow,patchSide(3,boundary::south),
                                      viscosity,densityFluid,true);
 
-
-
     // gsFsiLoad<real_t> fSouth(geoALE,dispALE,1,boundary::north,
     //                          velFlow,presFlow,4,viscosity,densityFluid,true);
     // gsFsiLoad<real_t> fEast(geoALE,dispALE,2,boundary::west,
@@ -265,29 +247,9 @@ int main(int argc, char* argv[])
     //=============================================//
 
     // navier stokes solver in the current configuration
-
     gsNsAssembler<real_t> nsAssembler(geoFlow,basisVelocity,basisPressure,bcInfoFlow,gZero);
     nsAssembler.options().setReal("Viscosity",viscosity);
     nsAssembler.options().setReal("Density",densityFluid);
-
-    // Print boundary conditions
-    gsInfo << "Boundary conditions:\n";
-   gsDebugVar(bcInfoFlow);
-
-    // Print material properties
-    gsInfo << "Material properties:\n";
-    gsInfo << "Viscosity: " << viscosity << "\n";
-    gsInfo << "Density: " << densityFluid << "\n";
-
-    // Print geometry and mesh information
-    gsInfo << "Geometry and mesh information:\n";
-    gsInfo << "Number of patches in geoFlow: " << geoFlow.nPatches() << "\n";
-    gsInfo << "Number of patches in geoALE: " << geoALE.nPatches() << "\n";
-
-    // Add debugging output in the assembly process
-    gsInfo << "Assembling stiffness matrix and right-hand side...\n";
-    gsDebugVar(nsAssembler.rhs());
-
     gsMassAssembler<real_t> nsMassAssembler(geoFlow,basisVelocity,bcInfoFlow,gZero);
     nsMassAssembler.options().setReal("Density",densityFluid);
     gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler,&velALE,&interfaceALE2Flow);
@@ -338,7 +300,6 @@ int main(int argc, char* argv[])
     nsTimeSolver.setFixedDofs(nsAssembler.allFixedDofs());
 
     // plotting initial condition
-
     nsTimeSolver.constructSolution(velFlow,presFlow);
     moduleALE.constructSolution(dispALE);
 
@@ -369,21 +330,14 @@ int main(int argc, char* argv[])
     dbeam.patch(0).coefs().setZero();
 
 
-    real_t timestep_checkpoint = 0.01;
+    index_t timestep_checkpoint = 0;
     while (participant.isCouplingOngoing())
     {
-        gsInfo << "---------------------------Sim Time: " << simTime << "----------------------\n";
-
-        if (timeFlow < 2.)
-            nsAssembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(EIGEN_PI*(timeFlow+precice_dt)/2.))/2);
-
-
 
         if (participant.requiresWritingCheckpoint())
         {
             nsTimeSolver.saveState();
             moduleALE.saveState();
-            timestep_checkpoint = timeStep;
 
             // IMPORTANT!!
             //////// do something with beamNew, beamOld
@@ -392,42 +346,18 @@ int main(int argc, char* argv[])
             gsInfo << "Writing checkpoint \n";
         }
 
-        if (participant.requiresReadingCheckpoint())
-        {
-            nsTimeSolver.recoverState();
-            timeStep = timestep_checkpoint;
-
-            gsInfo << "Read Checkpoint\n";
-
-            // IMPORTANT!!
-            //////// do something with beamNew, beamOld
-        }
-        else
-        {
-            // gsTimeIntegrator advances the time step
-            // advance variables
-            // beamOld = beamNew;
-            timeALE += timeStep;
-            timeFlow += timeStep;
-            numTimeStep++;
-            simTime += timeStep;
-
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flapping_beam_2D_flow",collectionFlow,numTimeStep,1000);
-            //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flapping_beam_2D_ALE",collectionALE,numTimeStep,1000);
-            plotDeformation(geoALE,dispALE,"flapping_beam_2D_ALE",collectionALE,numTimeStep);
-        }
-
+        if (timeFlow < 2.)
+            nsAssembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(EIGEN_PI*(timeFlow+precice_dt)/2.))/2);
 
         participant.readData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
-        gsDebugVar(geometryControlPoints.transpose());
+        // gsDebugVar(geometryControlPoints.transpose());
 
         // beamNew.patch(0).coefs() = beam.patch(0).coefs() + geometryControlPoints.transpose();
 
         // gsDebugVar(beamNew.patch(0).coefs().rows());
         // gsDebugVar(beamOld.patch(0).coefs().rows());
         dbeam.patch(0).coefs() = geometryControlPoints.transpose();
-        // dbeam.patch(0).coefs().setZero();
-        
+        dbeam.patch(0).coefs().setZero();
         // gsDebugVar(dbeam.patch(0).coefs().rows());
         // gsDebugVar(beamNew.patch(0).coefs().transpose());
         // gsDebugVar(beamOld.patch(0).coefs().transpose());
@@ -461,6 +391,9 @@ int main(int argc, char* argv[])
         for (size_t p = 0; p < velALE.nPatches(); ++p)
             velALE.patch(p).coefs() = (dispALE.patch(p).coefs() - velALE.patch(p).coefs()) / timeStep;
 
+        gsDebugVar(velALE.patch(0).coefs().transpose());
+        gsDebugVar(velALE.patch(1).coefs().transpose());
+        gsDebugVar(velALE.patch(2).coefs().transpose());
 
 
         // apply new ALE deformation to the flow domain
@@ -468,8 +401,8 @@ int main(int argc, char* argv[])
         {
             index_t pFlow = nsTimeSolver.aleInterface().patches[p].second;
             index_t pALE = nsTimeSolver.aleInterface().patches[p].first;
-            nsTimeSolver.assembler().patches().patch(pFlow).coefs() += dispALE.patch(pALE).coefs() ;
-            nsTimeSolver.mAssembler().patches().patch(pFlow).coefs() += dispALE.patch(pALE).coefs() ;
+            nsTimeSolver.assembler().patches().patch(pFlow).coefs() += dispALE.patch(pALE).coefs();
+            nsTimeSolver.mAssembler().patches().patch(pFlow).coefs() += dispALE.patch(pALE).coefs();
         }
 
         /*
@@ -486,9 +419,7 @@ int main(int argc, char* argv[])
             nsTimeSolver.assembler().setFixedDofs(pFlow,sFlow,velALE.patch(pALE).boundary(sALE)->coefs());
         }
 
-        gsInfo << "Got here \n";
         nsTimeSolver.makeTimeStep(timeStep);
-        gsInfo << "Got here 2\n";
 
         /*
          *
@@ -498,37 +429,54 @@ int main(int argc, char* argv[])
         timeStep = std::min(timeStep,precice_dt);
 
         // Construct the velocity and pressure fields
-        // There is always a magnitude of 2 times difference between the partitioned and the non-partitioned solution
-
-
         nsTimeSolver.constructSolution(velFlow,presFlow);
-
         // gsDebugVar(velFlow.patch(3).coefs().transpose());
         // gsDebugVar(velFlow.patch(4).coefs().transpose());
         // gsDebugVar(velFlow.patch(5).coefs().transpose());
-
-        // gsField<> fSouthField(geoALE,dispALE,patchSide(1,boundary::north));
-
-        gsWriteParaview(velocityField,"flapping_beam_2D_flow_vel");
+        gsWriteParaview(velFlow,"flapping_beam_2D_flow");
 
         gsMatrix<> coefsSouth;
-        gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(4).boundaryBasis(boundary::north), fSouth, coefsSouth);
+        gsDebugVar(timeStep);
+
+        // Extend the lifetime of the temporary objects by storing them in variables
+        auto northBoundaryBasisUPtr = basisVelocity.basis(4).boundaryBasis(boundary::north);
+        auto northBoundaryBasis = dynamic_cast<gsTensorBSplineBasis<1, real_t>*>(northBoundaryBasisUPtr.get());
+
+        auto westBoundaryBasisUPtr = basisVelocity.basis(5).boundaryBasis(boundary::west);
+        auto westBoundaryBasis = dynamic_cast<gsTensorBSplineBasis<1, real_t>*>(westBoundaryBasisUPtr.get());
+
+        auto southBoundaryBasisUPtr = basisVelocity.basis(3).boundaryBasis(boundary::south);
+        auto southBoundaryBasis = dynamic_cast<gsTensorBSplineBasis<1, real_t>*>(southBoundaryBasisUPtr.get());
+
+ 
+
+//gsBSplineBasis<real_t> tempBasisNorth(dynamic_cast<gsTensorBSplineBasis<1, real_t>*>(&basisVelocity.basis(4))->knots(0));
+
+        // Perform interpolation using the obtained boundary bases
+        gsQuasiInterpolate<real_t>::localIntpl(*northBoundaryBasis, fSouth, coefsSouth);
+
         gsMatrix<> coefsEast;
-        gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(5).boundaryBasis(boundary::west), fEast, coefsEast);
+        gsQuasiInterpolate<real_t>::localIntpl(*westBoundaryBasis, fEast, coefsEast);
+
         gsMatrix<> coefsNorth;
-        gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(3).boundaryBasis(boundary::south), fNorth, coefsNorth);
+        gsQuasiInterpolate<real_t>::localIntpl(*southBoundaryBasis, fNorth, coefsNorth);
+
 
         // gsMatrix<> coefsSouth;
-        // gsQuasiInterpolate<real_t>::localIntpl(basisVelocity.basis(4).boundaryBasis(), fSouth, coefsSouth);
+        // gsL2Projection<real_t>::projectFunction(*basisVelocity.basis(4).boundaryBasis(boundary::north), fSouth, geoFlow, coefsSouth);
+        
         // gsMatrix<> coefsEast;
-        // gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(5), fEast, coefsEast);
+
         // gsMatrix<> coefsNorth;
-        // gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(3), fNorth, coefsNorth);
-
-
+        // gsMatrix<> coefsSouth;
+        // gsQuasiInterpolate<real_t>::localIntpl(&basisVelocity.basis(4), fSouth, coefsSouth);
+        // gsMatrix<> coefsEast;
+        // gsQuasiInterpolate<real_t>::localIntpl(&basisVelocity.basis(5), fEast, coefsEast);
+        // gsMatrix<> coefsNorth;
+        // gsQuasiInterpolate<real_t>::localIntpl(&basisVelocity.basis(3), fNorth, coefsNorth);
         // gsDebugVar(coefsSouth);
 
-        // forceControlPoints.setZero();
+        forceControlPoints.setZero();
 
         gsMatrix<index_t> indexSouth = basisVelocity.basis(4).boundary(boundary::north);
         gsMatrix<index_t> indexEast = basisVelocity.basis(5).boundary(boundary::west);
@@ -543,7 +491,7 @@ int main(int argc, char* argv[])
         for (index_t k =0 ; k != indexNorth.size(); ++k)
             forceControlPoints.col(indexNorth(k,0)) = coefsNorth.row(k).transpose();
 
-        gsDebugVar(forceControlPoints);
+        // gsDebugVar(forceControlPoints);
 
 
         // Write the force to the solid solver
@@ -557,16 +505,94 @@ int main(int argc, char* argv[])
         participant.writeData(ForceControlPointMesh,ForceControlPointData,forceControlPointsIDs,forceControlPoints);
 
         // do the coupling
-        gsDebugVar(timeStep);
         precice_dt =participant.advance(timeStep);
 
+
+
+        if (participant.requiresReadingCheckpoint())
+        {
+            nsTimeSolver.recoverState();
+            timeStep = timestep_checkpoint;
+
+            gsInfo << "Read Checkpoint\n";
+
+            // IMPORTANT!!
+            //////// do something with beamNew, beamOld
+        }
+        else
+        {
+            // gsTimeIntegrator advances the time step
+            // advance variables
+            // beamOld = beamNew;
+            
+            timeALE += timeStep;
+            timeFlow += timeStep;
+            numTimeStep++;
+
+            gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flapping_beam_2D_flow",collectionFlow,numTimeStep,1000);
+            //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flapping_beam_2D_ALE",collectionALE,numTimeStep,1000);
+            plotDeformation(geoALE,dispALE,"flapping_beam_2D_ALE",collectionALE,numTimeStep);
+        }
+
     }
-    if (numPlotPoints > 0)
-    {
-        collectionFlow.save();
-        collectionALE.save();
-        gsInfo << "Open \"flappingBeam_FSI2_*.pvd\" in Paraview for visualization.\n";
-    }
+
+
+
+    // while (simTime < timeSpan)
+    // {
+    //     // bar.display(simTime/timeSpan);
+    //     // change time step for the initial warm-up phase
+    //     real_t tStep = (warmUp && simTime < 2.) ? 0.1 : timeStep;
+    //     // smoothly change the inflow boundary condition
+    //     if (simTime < 2.)
+    //         nsAssembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(EIGEN_PI*(simTime+tStep)/2.))/2);
+    //     if (simTime > 7.)
+    //         moduleALE.options().setSwitch("Check",true);
+
+    //     if (!moduleFSI.makeTimeStep(tStep))
+    //     {
+    //         gsInfo << "Invalid ALE mapping. Terminated.\n";
+    //         break;
+    //     }
+
+    //     // Iteration end
+    //     simTime += tStep;
+    //     timeALE += moduleFSI.timeALE();
+    //     timeBeam += moduleFSI.timeEL();
+    //     timeFlow += moduleFSI.timeNS();
+    //     numTimeStep++;
+
+    //     if (numPlotPoints > 0)
+    //     {
+    //         gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flapping_beam_2D_flow",collectionFlow,numTimeStep,numPlotPoints);
+    //         gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flapping_beam_2D_beam",collectionBeam,numTimeStep,numPlotPoints);
+    //         //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flapping_beam_2D_ALE",collectionALE,numTimeStep,numPlotPoints);
+    //         plotDeformation(geoALE,dispALE,"flapping_beam_2D_ALE",collectionALE,numTimeStep);
+    //     }
+    //     writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,geoALE,dispALE,
+    //              simTime,timeALE,timeFlow,timeBeam, moduleFSI.numberIterations(),
+    //              nsTimeSolver.numberIterations(),elTimeSolver.numberIterations(),
+    //              moduleFSI.aitkenOmega(),moduleFSI.residualNormAbs(),moduleFSI.residualNormRel());
+    // }
+
+    // //=============================================//
+    //                // Final touches //
+    // //=============================================//
+
+    // gsInfo << "Complete in: " << secToHMS(totalClock.stop())
+    //        << ", ALE time: " << secToHMS(timeALE)
+    //        << ", flow time: " << secToHMS(timeFlow)
+    //        << ", beam time: " << secToHMS(timeBeam) << std::endl;
+
+    // if (numPlotPoints > 0)
+    // {
+    //     collectionFlow.save();
+    //     collectionBeam.save();
+    //     collectionALE.save();
+    //     gsInfo << "Open \"flapping_beam_2D_*.pvd\" in Paraview for visualization.\n";
+    // }
+    // logFile.close();
+    // gsInfo << "Log file created in \"flapping_beam_2D.txt\".\n";
 
     return 0;
 }

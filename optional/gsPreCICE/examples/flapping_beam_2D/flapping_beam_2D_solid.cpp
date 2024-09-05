@@ -21,6 +21,22 @@
 
 using namespace gismo;
 
+void writeDisplacement(std::ofstream & ofs, 
+              const gsMultiPatch<> & displacementBeam, 
+              real_t simTime)
+{
+    // Compute displacement of the beam point A
+    gsMatrix<> dispA(2,1);
+    dispA << 1.,0.5;
+    dispA = displacementBeam.patch(0).eval(dispA);
+
+    gsDebugVar(dispA);
+
+    // Print: 1-simTime 2-dispAx 3-dispAy
+    ofs << simTime << " " << dispA.at(0) << " " << dispA.at(1) << std::endl;
+}
+
+
 int main(int argc, char* argv[])
 {
     gsInfo << "Testing the two-way fluid-structure interaction solver in 2D.\n";
@@ -31,20 +47,20 @@ int main(int argc, char* argv[])
 
     // beam parameters
     std::string filenameBeam = "flappingBeam_beam.xml";
-    real_t youngsModulus = 1.4e6;
+    real_t youngsModulus = 1.4e3;
     real_t poissonsRatio = 0.4;
     real_t densitySolid = 1.0e4;
     real_t beamLoad = 0.0;
     // space discretization
     index_t numUniRef = 3;
     // time integration
-    real_t timeStep = 0.01;
-    real_t timeSpan = 15.;
+    real_t timeStep = 0.00005;
+    real_t timeSpan = 0.01;
     real_t thetaSolid = 1.;
     bool imexOrNewton = true;
     bool warmUp = false;
     // output parameters
-    index_t numPlotPoints = 0.;
+    index_t numPlotPoints = 1000.;
     index_t verbosity = 0;
 
     std::string precice_config("../precice_config.xml");
@@ -137,15 +153,10 @@ int main(int argc, char* argv[])
     gsVector<index_t> forceControlPointIDs;
     participant.getMeshVertexIDsAndCoordinates(ForceControlPointMesh, forceControlPointIDs,forceControlPoints);
 
-    /*
-     * TODO: ADD forceControlPointsBdr on the right rows of forceControlPoints
-     */
 
 
 
     // // Step 2: Regenerate the geometry
-    gsDebugVar(forceControlPoints.cols());
-    gsDebugVar(basis->size());
     gsMultiPatch<> forceMesh; //Geometry object belongs to gsFunctionSet
     forceMesh.addPatch(give(basis->makeGeometry(forceControlPoints.transpose())));
 
@@ -171,6 +182,7 @@ int main(int argc, char* argv[])
         bcInfoBeam.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
     // flow to beam interface: these Neumann boundary condtions contain references to flow and ALE solutions;
     // by updating them, we update the boundary load as well
+
 
     bcInfoBeam.addCondition(0,boundary::south,condition_type::neumann,&forceMesh.patch(0));
     bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&forceMesh.patch(0));
@@ -209,6 +221,9 @@ int main(int argc, char* argv[])
     fieldsBeam["von Mises"] = &stressField;
     // paraview collection of time steps
     gsParaviewCollection collectionBeam("flapping_beam_2D_beam");
+    std::ofstream logFile;
+    logFile.open("flapping_beam_disp_modified.txt");
+    logFile << "# Print point displacement\n";
 
     // gsProgressBar bar;
     // gsStopwatch totalClock, iterClock;
@@ -238,7 +253,7 @@ int main(int argc, char* argv[])
     real_t numTimeStep = 0;
     real_t timeBeam = 0.;
 
-    index_t timestep_checkpoint = 0;
+    real_t timestep_checkpoint = 0;
 
     // totalClock.restart();
 
@@ -249,34 +264,54 @@ int main(int argc, char* argv[])
         if (participant.requiresWritingCheckpoint())
         {
             elTimeSolver.saveState();
+            timestep_checkpoint = timeStep;
         }
 
         participant.readData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
 
-        /*
-         * TODO: ADD forceControlPointsBdr on the right rows of forceControlPoints
-         */
-
         forceMesh.patch(0).coefs() = forceControlPoints.transpose();
+
 
         // Perform a time integration step of the solid solver
         elTimeSolver.makeTimeStep(timeStep);
 
+        // elTimeSolver.recoverState();
+
+
         // potentially adjust non-matching timestep sizes
         timeStep = std::min(timeStep,precice_dt);
+
+
 
         // Construct the displacment field
         elTimeSolver.constructSolution(dispBeam);
 
-        gsDebugVar(geometryControlPoints.transpose());
-        geometryControlPoints = dispBeam.patch(0).coefs().transpose();
-        gsDebugVar(geometryControlPoints.transpose());
-        gsDebugVar(dispBeam.patch(0).coefs().transpose());
+        // gsMatrix<> displacement_temp;
+        // displacement_temp = dispBeam.coefs();
+
+
+        // for (int i = 0; i < displacement_temp.rows(); ++i) {
+        //     for (int j = 0; j < displacement_temp.cols(); ++j) {
+        //         if (std::isnan(displacement_temp(i, j))) 
+        //             displacement_temp(i, j) = 0;
+        //     }
+        // }
+
+
+
+
+        // geometryControlPoints.setZero();
+
+
+
+        geometryControlPoints = dispBeam.coefs().transpose();
+
 
         // Write the beam displacements to the fluid solver
         participant.writeData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
 
         // do the coupling
+
         precice_dt =participant.advance(timeStep);
 
         if (participant.requiresReadingCheckpoint())
@@ -288,9 +323,11 @@ int main(int argc, char* argv[])
         {
             // gsTimeIntegrator advances the time step
             // advance variables
+            writeDisplacement(logFile,dispBeam,simTime);
+            
             timeBeam += timeStep;
             numTimeStep++;
-
+            simTime += timeStep;
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flapping_beam_2D_beam",collectionBeam,numTimeStep,1000);
         }
 
@@ -342,14 +379,13 @@ int main(int argc, char* argv[])
     //        << ", flow time: " << secToHMS(timeFlow)
     //        << ", beam time: " << secToHMS(timeBeam) << std::endl;
 
-    // if (numPlotPoints > 0)
-    // {
-    //     collectionFlow.save();
-    //     collectionBeam.save();
-    //     collectionALE.save();
-    //     gsInfo << "Open \"flapping_beam_2D_*.pvd\" in Paraview for visualization.\n";
-    // }
-    // logFile.close();
-    // gsInfo << "Log file created in \"flapping_beam_2D.txt\".\n";
+    if (numPlotPoints > 0)
+    {
+        // collectionFlow.save();
+        collectionBeam.save();
+        gsInfo << "Open \"flapping_beam_2D_*.pvd\" in Paraview for visualization.\n";
+    }
+    logFile.close();
+    gsInfo << "Log file created in \"flapping_beam_disp_modified.txt\".\n";
     return 0;
 }
