@@ -177,7 +177,7 @@ endif(GISMO_BUILD_LIB)
 
 # Install pkg-config file
 install(FILES "${PROJECT_BINARY_DIR}/gismo.pc"
-  DESTINATION "lib/pkgconfig/"
+  DESTINATION "${LIB_INSTALL_DIR}/pkgconfig/"
   RENAME "${PROJECT_NAME}.pc")
 
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/ofa"
