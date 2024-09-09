@@ -20,6 +20,9 @@
 
 #include <gsUtils/gsCombinatorics.h>
 
+#include <gsMesh2/gsSurfMesh.h>
+#include <gsTensor/gsTensorBasis.h>
+
 namespace gismo
 {
 
@@ -562,6 +565,33 @@ bool gsMultiPatch<T>::matchVerticesOnSide (
 template<class T>
 void gsMultiPatch<T>::closeGaps(T tol)
 {
+    gsDofMapper mapper = getMapper(tol);
+
+    gsMatrix<T> meanVal;
+    std::vector<std::pair<index_t,index_t> > dof;
+    const index_t start = mapper.freeSize() - mapper.coupledSize();
+    const index_t end   = mapper.freeSize();
+
+    for (index_t i = start; i!= end; ++i) // For all coupled DoFs
+    {
+        // Get the preimages of this global dof (as pairs (patch,index) )
+        mapper.preImage(i, dof);
+
+        // Compute the mean value
+        meanVal = m_patches[dof.front().first]->coef(dof.front().second);
+        for (size_t k = 1; k!=dof.size(); ++k)
+            meanVal += m_patches[dof[k].first]->coef(dof[k].second);
+        meanVal.array() /= dof.size();
+
+        // Set involved control points equal to their average value
+        for (size_t k = 0; k!=dof.size(); ++k)
+            m_patches[dof[k].first]->coef(dof[k].second) = meanVal;
+    }
+}
+
+template<class T>
+gsDofMapper gsMultiPatch<T>::getMapper(T tol) const
+{
     const T tol2 = tol*tol;
     gsMatrix<index_t> bdr1, bdr2; // indices of the boundary control points
 
@@ -574,7 +604,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
 
     gsDofMapper mapper(patchSizes);
 
-    for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
+    for ( const_iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
     {
         const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
         const gsGeometry<T> & p2 = *m_patches[it->second().patch];
@@ -604,29 +634,64 @@ void gsMultiPatch<T>::closeGaps(T tol)
     // Finalize the mapper. At this point all patch-local dofs are
     // mapped to unique global indices
     mapper.finalize();
-
-    gsMatrix<T> meanVal;
-    std::vector<std::pair<index_t,index_t> > dof;
-    const index_t start = mapper.freeSize() - mapper.coupledSize();
-    const index_t end   = mapper.freeSize();
-
-    for (index_t i = start; i!= end; ++i) // For all coupled DoFs
-    {
-        // Get the preimages of this global dof (as pairs (patch,index) )
-        mapper.preImage(i, dof);
-
-        // Compute the mean value
-        meanVal = m_patches[dof.front().first]->coef(dof.front().second);
-        for (size_t k = 1; k!=dof.size(); ++k)
-            meanVal += m_patches[dof[k].first]->coef(dof[k].second);
-        meanVal.array() /= dof.size();
-
-        // Set involved control points equal to their average value
-        for (size_t k = 0; k!=dof.size(); ++k)
-            m_patches[dof[k].first]->coef(dof[k].second) = meanVal;
-    }
+    return mapper;
 }
 
+template<class T>
+gsSurfMesh gsMultiPatch<T>::toMesh() const
+{
+    GISMO_ASSERT(2==parDim(), "Works for surfaces only.");
+    gsDofMapper mapper = getMapper((T)1e-7);
+    gsSurfMesh mesh;
+    auto pid = mesh.add_vertex_property<index_t>("v:patch");
+    auto anchor = mesh.add_vertex_property<index_t>("v:anchor");
+    gsSurfMesh::Vertex v;
+    gsSurfMesh::Point pt(0,0,0);
+    const index_t gd = geoDim();
+    std::vector<std::pair<index_t,index_t> > pi = mapper.anyPreImages();
+    //std::pair<index_t,index_t> pi;
+
+    for (index_t j = 0; j!= mapper.size(); ++j)
+    {
+        //pi = mapper.anyPreImage(j);
+        gsGeometry<> &  pp = patch(pi[j].first);
+        pt.topRows(gd) = pp.eval( pp.basis().anchor(pi[j].second) );
+        v = mesh.add_vertex( pt );
+        pid[v]  = pi[j].first;
+        anchor[v] = pi[j].second;
+    }
+
+    size_t np = nPatches();
+    gsMatrix<> supp, coor;
+    gsVector<bool> boxPar(m_dim);
+    gsVector<index_t,2>  cur, csize, strides;
+    GISMO_ENSURE( dynamic_cast<gsTensorBasis<2>*>(&patch(0).basis()), "Not a tensor basis");
+    static_cast<gsTensorBasis<2>&>(patch(0).basis()).stride_cwise(strides);
+    static_cast<gsTensorBasis<2>&>(patch(0).basis()).size_cwise  (csize);
+    csize.array() -= 2;
+    gsSurfMesh::Vertex v1, v2, v3, v4;
+    for (size_t p=0; p<np; ++p)
+    {
+        // todo: basis->connectivityAtAnchors  ++  basis->controlPolytope
+        gsTensorBasis<2>& pp = static_cast<gsTensorBasis<2>&>(patch(p).basis());
+        cur.setZero(2);
+        do
+        {
+            index_t ci = pp.index(cur);
+            v1 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            ci += strides[0];
+            v2 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            ci += strides[1];
+            v3 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            ci -= strides[0];
+            v4 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            mesh.add_quad(v1,v2,v3,v4);
+        } while (nextCubePoint(cur, csize));
+
+    }
+
+    return mesh;
+}
 
 template<class T> // to do: move to boundaryInterface
 gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface &bi, T scaling) const

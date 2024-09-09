@@ -48,19 +48,19 @@ public:
     /// @brief Constructor, take 3 scalars.
     /// \param x, y, z Coordinates of position in 3D space.
     gsVertex(scalar_t x, scalar_t y, scalar_t z = 0) :
-        MeshElement(), gsVector3d<T>(x,y,z),sharp(0)
+    MeshElement(), gsVector3d<T>(x,y,z),sharp(0), numEdges(0), data()
     { }
 
     /// @brief Constructor, takes a gsVector3d
     /// \param u the gsVector3d
     gsVertex( gsVector3d<T> const & u) :
-        MeshElement(), gsVector3d<T>(u),sharp(0)
+    MeshElement(), gsVector3d<T>(u),sharp(0), numEdges(0), data()
     { }
 
     /// @brief Constructor, takes a gsVector.
     /// \param u gsVector of dimension 1, 2 or 3. Fills with zero.
     gsVertex( gsVector<T> const & u) :
-        MeshElement(), gsVector3d<T>(),sharp(0)
+    MeshElement(), gsVector3d<T>(),sharp(0),numEdges(0), data()
     {
         // vertex is always a 3-cooordinate vector.
         const index_t r = u.rows();
