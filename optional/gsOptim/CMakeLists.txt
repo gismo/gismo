@@ -25,17 +25,20 @@ IF(NOT EXISTS ${gismo_externals}/optim/include/BaseMatrixOps/include)
 	                   WORKING_DIRECTORY ${gismo_SOURCE_DIR}/external/optim)
 ENDIF()
 
-## CALL ./configure --header-only-version
 execute_process (
+    #COMMAND dos2unix ./configure
     COMMAND ./configure --header-only-version
     WORKING_DIRECTORY ${gismo_externals}/optim
-)
+    RESULT_VARIABLE ret
+    #in case of error executing due to windows file: dos2unix script
+    )
 
-
-## CALL ./configure --header-only-version
-
-
-
+if(ret AND NOT ret EQUAL 0)
+    message( FATAL_ERROR "Configure of optim returned an error.\n(try dos2unix external/optim/configure if on linux)")
+  else()
+    #BaseMatrixOps is an external dependency of optim
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${gismo_SOURCE_DIR}/external/optim/header_only_version/BaseMatrixOps ${gismo_SOURCE_DIR}/external/BaseMatrixOps)
+  endif()
 
 # Set optim include directory
 set(OPTIM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/optim/header_only_version CACHE INTERNAL "")
