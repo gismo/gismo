@@ -57,28 +57,24 @@
   </participant>
   
   <m2n:sockets acceptor="Fluid" connector="Solid" exchange-directory="../"/>
-  <coupling-scheme:serial-implicit>
-      <participants first="Solid" second="Fluid" />
-      <max-time value="40" />
-      <time-window-size value="0.01" />
-      <exchange data="GeometryControlPointData" mesh="GeometryControlPointMesh" from="Solid" to="Fluid" />
-<!--      <exchange data="GeometryKnotData" mesh="GeometryKnotMesh" from="Solid" to="Fluid" />-->
-      <exchange data="ForceControlPointData" mesh="ForceControlPointMesh" from="Fluid" to="Solid" />
-<!--      <exchange data="ForceKnotMeshData" mesh="ForceKnotMesh" from="Fluid" to="Solid" />-->
-      <max-iterations value="50" />
-      <relative-convergence-measure limit="5e-3" data="GeometryControlPointData"  mesh="GeometryControlPointMesh"/>
-      <relative-convergence-measure limit="5e-3" data="ForceControlPointData"         mesh="ForceControlPointMesh"/>
-      <acceleration:IQN-ILS>
-<!--        <data name="GeometryControlPointData" mesh="GeometryControlPointMesh" />-->
-        <data name="ForceControlPointData"        mesh="ForceControlPointMesh" />
-        <preconditioner type="residual-sum" />
-        <filter type="QR2" limit="1.2e-3" />
-        <initial-relaxation value="0.1" />
-        <max-used-iterations value="60" />
-        <time-windows-reused value="15" />
-      </acceleration:IQN-ILS>
-      <acceleration:constant>
-        <relaxation value="1.0" />
-      </acceleration:constant>
-    </coupling-scheme:serial-implicit>
+
+     <coupling-scheme:parallel-implicit>
+    <participants first="Fluid" second="Solid"/>
+    <time-window-size value="0.001" />
+    <max-time value="40.0" />
+    <exchange data="GeometryControlPointData" mesh="GeometryControlPointMesh" from="Solid"   to="Fluid"/>
+    <exchange data="ForceControlPointData"        mesh="ForceControlPointMesh"        from="Fluid"   to="Solid"  />
+    <max-iterations value="100" />
+    <relative-convergence-measure limit="5e-3" data="GeometryControlPointData"  mesh="GeometryControlPointMesh"/>
+    <relative-convergence-measure limit="5e-3" data="ForceControlPointData"         mesh="ForceControlPointMesh"/>
+    <acceleration:IQN-ILS>
+      <data name="GeometryControlPointData" mesh="GeometryControlPointMesh" />
+      <data name="ForceControlPointData"        mesh="ForceControlPointMesh" />
+      <preconditioner type="residual-sum" />
+      <filter type="QR2" limit="1.2e-3" />
+      <initial-relaxation value="0.1" />
+      <max-used-iterations value="60" />
+      <time-windows-reused value="15" />
+    </acceleration:IQN-ILS>
+  </coupling-scheme:parallel-implicit>
 </precice-configuration>

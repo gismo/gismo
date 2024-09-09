@@ -190,6 +190,8 @@ int main(int argc, char* argv[])
     // inflow velocity profile U(y) = 1.5*U_mean*y*(H-y)/(H/2)^2; channel height H = 0.41
     gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
 
+    
+
     // containers for solution as IGA functions
     gsMultiPatch<> velFlow, presFlow, dispBeam, dispALE, velALE;
 
@@ -533,6 +535,8 @@ int main(int argc, char* argv[])
         gsMatrix<index_t> indexSouth = basisVelocity.basis(4).boundary(boundary::north);
         gsMatrix<index_t> indexEast = basisVelocity.basis(5).boundary(boundary::west);
         gsMatrix<index_t> indexNorth = basisVelocity.basis(3).boundary(boundary::south);
+
+
 
         for (index_t k =0 ; k != indexSouth.size(); ++k)
             forceControlPoints.col(indexSouth(k,0)) = coefsSouth.row(k).transpose();

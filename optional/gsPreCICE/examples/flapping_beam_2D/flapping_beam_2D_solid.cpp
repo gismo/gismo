@@ -54,8 +54,8 @@ int main(int argc, char* argv[])
     // space discretization
     index_t numUniRef = 3;
     // time integration
-    real_t timeStep = 0.00005;
-    real_t timeSpan = 0.01;
+    real_t timeStep = 0.001;
+    real_t timeSpan = 0.1;
     real_t thetaSolid = 1.;
     bool imexOrNewton = true;
     bool warmUp = false;
@@ -188,6 +188,8 @@ int main(int argc, char* argv[])
     bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&forceMesh.patch(0));
     bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&forceMesh.patch(0));
 
+    gsDebugVar(forceMesh.patch(0).coefs());
+
     //=============================================//
           // Setting assemblers and solvers //
     //=============================================//
@@ -304,8 +306,10 @@ int main(int argc, char* argv[])
 
 
 
+
         geometryControlPoints = dispBeam.coefs().transpose();
 
+        gsDebugVar(geometryControlPoints.transpose());
 
         // Write the beam displacements to the fluid solver
         participant.writeData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
@@ -323,13 +327,13 @@ int main(int argc, char* argv[])
         {
             // gsTimeIntegrator advances the time step
             // advance variables
-            writeDisplacement(logFile,dispBeam,simTime);
-            
             timeBeam += timeStep;
             numTimeStep++;
             simTime += timeStep;
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flapping_beam_2D_beam",collectionBeam,numTimeStep,1000);
         }
+
+        writeDisplacement(logFile,dispBeam,simTime);
 
     }
 
