@@ -61,7 +61,7 @@ namespace gismo
  */
 
     TEMPLATE_INST
-    std::vector<std::string> BezierVTK(const gsMultiPatch<real_t> & mPatch);
+    std::vector<std::string> BezierVTK(const gsMultiPatch<real_t> & mPatch, bool singleFile);
 
 } // namespace gismo
 

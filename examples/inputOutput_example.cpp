@@ -74,19 +74,37 @@ int main(int argc, char* argv[])
         return EXIT_SUCCESS;
     }
 
-    // writing a paraview file
+    // writing a ParaView file
     const std::string out = output + "Paraview";
-    if (!bezier)
+    if (!fileData.has< gsMultiPatch<> >()) 
     {
-        gsWriteParaview(*pGeom, out);
+        if (!bezier)
+        {
+            gsWriteParaview(*pGeom, out);
+        }
+        else
+        {
+            gsMultiPatch<> mPatch;
+            mPatch.addPatch(*pGeom);
+            gsWriteParaviewBezier(mPatch, out);
+        }
+        gsInfo << "Wrote ParaView files: " << out << ext << ", " << out << ".pvd\n";
     }
     else
     {
         gsMultiPatch<> mPatch;
-        mPatch.addPatch(*pGeom);
-        gsWriteParaviewBezier(mPatch, out);
+        fileData.getFirst(mPatch);
+        if (!bezier)
+        {
+            gsWriteParaview(mPatch, out);
+        }
+        else
+        {
+            bool singleFile = (mPatch.nPatches() > 10 );
+            gsWriteParaviewBezier(mPatch, out, singleFile);
+        }
+        gsInfo << "Wrote ParaView file: " << out << ".pvd\n";
     }
-    gsInfo << "Wrote paraview files: " << out << ext << ", " << out << ".pvd\n";
 
     //! [Write geometry]
     // writing a G+Smo .xml file

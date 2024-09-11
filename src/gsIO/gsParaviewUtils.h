@@ -223,7 +223,7 @@ namespace gismo
 
 
     template<class T>
-    std::vector<std::string> BezierVTK(const gsMultiPatch<T> & mPatch);
+    std::vector<std::string> BezierVTK(const gsMultiPatch<T> & mPatch, bool singleFile=false);
 } // namespace gismo
 
 #undef VTK_BEZIER_QUADRILATERAL

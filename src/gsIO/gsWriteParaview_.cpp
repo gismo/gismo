@@ -24,7 +24,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string cons
                       unsigned npts, bool mesh, bool ctrlNet, const std::string pDelim);
 
 TEMPLATE_INST
-void gsWriteParaviewBezier(const gsMultiPatch<real_t> & mPatch, std::string const & filename, bool ctrlNet);
+void gsWriteParaviewBezier(const gsMultiPatch<real_t> & mPatch, std::string const & filename, bool singleFile, bool ctrlNet);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
