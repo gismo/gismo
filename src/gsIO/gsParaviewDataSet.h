@@ -188,7 +188,6 @@ public:
         opt.addString("subfolder","Name of subfolder where the vtk files will be stored.", "");
         opt.addSwitch("plotElements", "Controls plotting of element mesh.", false);
         opt.addSwitch("plotControlNet", "Controls plotting of control point grid.", false);
-        opt.addSwitch("bezierElements","Bezier extraction is performed on the geometry and the bezier eleents are exported to ParaView.CAUTION: currently export of field data is not supported for bezier elements!",false);
         return opt;
     }
 

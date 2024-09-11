@@ -118,23 +118,21 @@ namespace gismo
                 T * *Cit * geomCoefs(Ait->asVector(),gsEigen::all);
             // ID transform * bezier extraction operator * original control points
             ++i;
-        } 
+        }
+
+        if (newCoefs.cols() == 2)
+                // Pad matrix with zeros
+                newCoefs.conservativeResizeLike(gsEigen::MatrixXd::Zero(newCoefs.rows(),3));
 
         // Format to xml
         stream <<"<Piece NumberOfPoints=\""<< totalPoints<<"\" NumberOfCells=\""<<ElBlock.numElements<<"\">\n";
-        // TODO remove
-        stream << "<PointData>\n";
-        // newCoefs.transposeInPlace();
-        stream << toDataArray( newCoefs.transpose(), {{"Name","Position"}});
-        stream << "</PointData>\n";
 
         stream << "<CellData HigherOrderDegrees=\"HigherOrderDegrees\">\n";
-        degrees.transposeInPlace();
-        stream << "" << toDataArray(degrees,{{"Name","HigherOrderDegrees"}});
+        stream << "" << toDataArray(degrees.transpose(),{{"Name","HigherOrderDegrees"}});
         stream << "</CellData>\n";
 
         stream << "<Points>\n";
-        stream << ""<< toDataArray( newCoefs, {{"Name","Points"}});
+        stream << ""<< toDataArray( newCoefs.transpose(), {{"Name","Points"}});
         stream << "</Points>\n";
 
         stream << "<Cells>\n";
@@ -142,6 +140,12 @@ namespace gismo
         stream << toDataArray(offsets, {{"Name","offsets"}});
         stream << toDataArray(types, {{"Name","types"}});
         stream << "</Cells>\n";
+/*        // TODO remove, In the point data tag we can provide point data e.g. solution fields
+        stream << "<PointData>\n";
+        // newCoefs.transposeInPlace();
+        stream << toDataArray( newCoefs.transpose(), {{"Name","Position"}});
+        stream << "</PointData>\n";
+*/
         stream << "</Piece>\n";
 
         return stream.str(); 

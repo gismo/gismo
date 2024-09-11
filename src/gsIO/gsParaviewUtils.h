@@ -62,13 +62,15 @@ namespace gismo
     /// @param export_base64 (defaults true) export as base63 encoded string -
     /// ignore precision
     /// @return The raw xml string
-    template <class T>
-    std::string toDataArray(const gsMatrix<T> matrix,
+    template <class MatrixType>
+    std::string toDataArray(const MatrixType & matrix,
                             std::map<std::string, std::string> attributes={{"",""}},
                             unsigned precision = 5,
                             const bool& export_base64=false)
     {
         std::stringstream stream;
+
+        typedef typename MatrixType::Scalar T;
 
         // Determing 'type' attribute based on input
         const std::string vtk_typename = []() {
@@ -221,7 +223,7 @@ namespace gismo
 
 
     template<class T>
-    std::string BezierVTK(const gsMultiPatch<T> & mPatch);
+    std::vector<std::string> BezierVTK(const gsMultiPatch<T> & mPatch);
 } // namespace gismo
 
 #undef VTK_BEZIER_QUADRILATERAL

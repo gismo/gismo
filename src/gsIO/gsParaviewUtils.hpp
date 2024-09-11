@@ -352,25 +352,27 @@ namespace gismo
 
     template<class T>
     // std::string BezierVTK(const gsGeometry<T> & geom)
-    std::string BezierVTK(const gsMultiPatch<T> & mPatch)
+    std::vector<std::string> BezierVTK(const gsMultiPatch<T> & mPatch)
     {
-
-        std::stringstream stream;
-        stream << "<?xml version=\"1.0\"?>\n"
-        << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n"
-        << "<UnstructuredGrid>\n";
-
+        std::vector<std::string> out;
         for (index_t p=0;p<mPatch.nPatches();++p)
         {
+            std::stringstream stream;
+            stream << "<?xml version=\"1.0\"?>\n"
+            << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n"
+            << "<UnstructuredGrid>\n";
+
             std::map<index_t, ElementBlock> ElBlocks = BezierOperator(mPatch.patch(p).basis() );
             for (auto const& pair : ElBlocks)
             {
                 stream << ΕlBlock2vtk(pair.second, mPatch.patch(p).coefs());
             }
+            stream << "</UnstructuredGrid>\n";
+            stream << "</VTKFile>\n";
+            out.push_back(stream.str()); 
         }
-        stream << "</UnstructuredGrid>\n";
-        stream << "</VTKFile>\n";
-        return stream.str(); 
+        return out;
     }
+
 } // namespace gismo
 
