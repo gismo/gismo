@@ -27,12 +27,18 @@ int main(int argc, char* argv[])
     //! [Parse command line]
     std::string input("curves3d/bspline3d_curve_01.xml");
     std::string output("");
+    bool bezier=false; 
 
     gsCmdLine cmd("Tutorial Input Output");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
     cmd.addString("o", "output", "Name of the output file", output);
+    cmd.addSwitch("b","bezier", "Output using Bezier elements", bezier);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
+
+
+    std::string ext;
+    ext = (bezier) ? ".vtu" : ".vtp";
 
     //! [Read geometry]
     if (!gsFileManager::fileExists(input))
@@ -64,14 +70,23 @@ int main(int argc, char* argv[])
     if ( output.empty() )
     {
         gsInfo << "Call program with option -o <basename> to write data to files\n";
-        gsInfo << "<basename>Paraview.vtp, <basename>Paraview.pvd, <basename>.xml, <basename>ControlPoints.csv\n";
+        gsInfo << "<basename>Paraview"+ext+", <basename>Paraview.pvd, <basename>.xml, <basename>ControlPoints.csv\n";
         return EXIT_SUCCESS;
     }
 
     // writing a paraview file
     const std::string out = output + "Paraview";
-    gsWriteParaview(*pGeom, out);
-    gsInfo << "Wrote paraview files: " << out << ".vtp, " << out << ".pvd\n";
+    if (!bezier)
+    {
+        gsWriteParaview(*pGeom, out);
+    }
+    else
+    {
+        gsMultiPatch<> mPatch;
+        mPatch.addPatch(*pGeom);
+        gsWriteParaviewBezier(mPatch, out);
+    }
+    gsInfo << "Wrote paraview files: " << out << ext << ", " << out << ".pvd\n";
 
     //! [Write geometry]
     // writing a G+Smo .xml file
