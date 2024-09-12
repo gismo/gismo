@@ -181,6 +181,8 @@ int main(int argc, char* argv[])
 
     beam.addPatch(give(geometryKnotBasis->makeGeometry(geometryControlPoints.transpose())));
 
+    delete geometryKnotBasis;
+
     //=============================================//
         // Setting loads and boundary conditions //
     //=============================================//
@@ -579,5 +581,6 @@ int main(int argc, char* argv[])
         gsInfo << "Open \"flappingBeam_FSI2_*.pvd\" in Paraview for visualization.\n";
     }
 
-    return 0;
+    delete geometryKnotBasis;
+    return  EXIT_SUCCESS;
 }

@@ -396,5 +396,7 @@ int main(int argc, char* argv[])
     }
     logFile.close();
     gsInfo << "Log file created in \"flapping_beam_disp_modified.txt\".\n";
-    return 0;
+
+    delete basis;
+    return  EXIT_SUCCESS;
 }
