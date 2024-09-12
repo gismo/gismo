@@ -261,6 +261,7 @@ int main(int argc, char* argv[])
 
     gsInfo << "Running the simulation...\n";
     // Time integration loop
+    gsStopwatch solid_time;
     while (participant.isCouplingOngoing())
     {
         if (participant.requiresWritingCheckpoint())
@@ -308,10 +309,13 @@ int main(int argc, char* argv[])
 
 
         geometryControlPoints = dispBeam.coefs().transpose();
+        gsInfo << "solid time = " << solid_time.stop() << "\n";
 
         gsDebugVar(geometryControlPoints.transpose());
 
         // Write the beam displacements to the fluid solver
+
+        gsStopwatch write_timer;
         participant.writeData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
 
         // do the coupling
@@ -334,6 +338,7 @@ int main(int argc, char* argv[])
         }
 
         writeDisplacement(logFile,dispBeam,simTime);
+        gsInfo << "write time = " << write_timer.stop() << "\n";
 
     }
 

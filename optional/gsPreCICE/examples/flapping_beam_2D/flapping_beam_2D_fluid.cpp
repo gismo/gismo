@@ -372,12 +372,14 @@ int main(int argc, char* argv[])
 
 
     real_t timestep_checkpoint = 0.01;
+    gsStopwatch fluid_time;
     while (participant.isCouplingOngoing())
     {
         gsInfo << "---------------------------Sim Time: " << simTime << "----------------------\n";
 
         if (timeFlow < 2.)
             nsAssembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(EIGEN_PI*(timeFlow+precice_dt)/2.))/2);
+
 
 
 
@@ -420,7 +422,10 @@ int main(int argc, char* argv[])
         }
 
 
+        gsStopwatch read_timer;
         participant.readData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
+        gsInfo << "read time = " << read_timer.stop() << "\n";
+
         gsDebugVar(geometryControlPoints.transpose());
 
         // beamNew.patch(0).coefs() = beam.patch(0).coefs() + geometryControlPoints.transpose();
@@ -548,6 +553,8 @@ int main(int argc, char* argv[])
             forceControlPoints.col(indexNorth(k,0)) = coefsNorth.row(k).transpose();
 
         gsDebugVar(forceControlPoints);
+
+        gsInfo << "fluid time = " << fluid_time.stop() << "\n";
 
 
         // Write the force to the solid solver
