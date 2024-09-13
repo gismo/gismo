@@ -151,8 +151,7 @@ int main(int argc, char* argv[])
 
     participant.addMesh(ForceKnotMesh, forceKnotMatrix);
 
-    gsMatrix<> forceControlPoints(2,forceBasis.size());
-    gsDebugVar(forceControlPoints.rows());
+    gsMatrix<> forceControlPoints = forceBasis.anchors();
 
     gsVector<index_t> forceControlPointsIDs;
 
@@ -196,8 +195,8 @@ int main(int argc, char* argv[])
 
     // containers for solution as IGA functions
     gsMultiPatch<> velFlow, presFlow, dispBeam, dispALE, velALE;
-
-    dispBeam.addPatch(forceBasis.makeGeometry(forceControlPoints.transpose()));
+    gsMatrix<> dispBeamCoefs = gsMatrix<>::Zero(forceBasis.size(),2);
+    dispBeam.addPatch(forceBasis.makeGeometry(dispBeamCoefs));
    
     // boundary conditions: flow
     gsBoundaryConditions<> bcInfoFlow;
@@ -290,7 +289,7 @@ int main(int argc, char* argv[])
 
     // Add debugging output in the assembly process
     gsInfo << "Assembling stiffness matrix and right-hand side...\n";
-    gsDebugVar(nsAssembler.rhs());
+    // gsDebugVar(nsAssembler.rhs());
 
     gsMassAssembler<real_t> nsMassAssembler(geoFlow,basisVelocity,bcInfoFlow,gZero);
     nsMassAssembler.options().setReal("Density",densityFluid);

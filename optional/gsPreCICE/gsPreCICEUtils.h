@@ -313,7 +313,8 @@ typename gsBasis<T>::Ptr knotMatrixToBasis(const gsMatrix<T> & knots)
         std::copy_if(knots.row(d).begin(),knots.row(d).end(),
                      std::back_inserter(tmp),
                      [](T a){return !math::isnan(a);});
-        KVs[d] = gsKnotVector<T>(tmp);
+        KVs[d] = gsKnotVector<T>(tmp);/////// MEMLEAK
+        gsDebug<<"(gsPreCICEUtils.h: There is a memory leak in the line above)\n";
     }
 
     switch(DIM)
