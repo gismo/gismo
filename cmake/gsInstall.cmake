@@ -176,8 +176,15 @@ else(GISMO_BUILD_LIB)
 endif(GISMO_BUILD_LIB)
 
 # Install pkg-config file
+if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  # FreeBSD uses ${PREFIX}/libdata/pkgconfig
+  set(GISMO_PKGCONFIG_INSTALLDIR "libdata/pkgconfig")
+else()
+  set(GISMO_PKGCONFIG_INSTALLDIR "${LIB_INSTALL_DIR}/pkgconfig")
+endif()
+
 install(FILES "${PROJECT_BINARY_DIR}/gismo.pc"
-  DESTINATION "${LIB_INSTALL_DIR}/pkgconfig/"
+  DESTINATION "${GISMO_PKGCONFIG_INSTALLDIR}/"
   RENAME "${PROJECT_NAME}.pc")
 
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/ofa"
