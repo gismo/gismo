@@ -16,8 +16,6 @@
 //! [Include namespace]
 #include <gsCore/gsFunction.h>
 
-#  define return_t  auto
-
 namespace gismo
 {
 
