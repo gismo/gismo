@@ -168,6 +168,8 @@ int main(int argc, char* argv[])
     participant.getMeshVertexIDsAndCoordinates(GeometryKnotMesh, geometryKnotIDs, geometryKnots);
 
     // Gives a full tensor product basis
+
+
     gsBasis<> * geometryKnotBasis = knotMatrixToBasis<real_t>(geometryKnots).get();
 
     // Receive geometry control points
@@ -180,7 +182,8 @@ int main(int argc, char* argv[])
 
     beam.addPatch(give(geometryKnotBasis->makeGeometry(geometryControlPoints.transpose())));
 
-    delete geometryKnotBasis;
+    // beam.addPatch(give(geometryKnotBasis->makeGeometry(geometryControlPoints.transpose())));
+
 
     //=============================================//
         // Setting loads and boundary conditions //

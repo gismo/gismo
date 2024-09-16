@@ -302,34 +302,35 @@ gsMatrix<T> unPackControlPoints(const gsMatrix<T> & controlPoints, const gsMatri
 template<class T>
 typename gsBasis<T>::Ptr knotMatrixToBasis(const gsMatrix<T> & knots)
 {
-    gsBasis<> * basis;
     const short_t DIM = knots.rows();
 
     std::vector<gsKnotVector<T>> KVs(DIM);
-    index_t k=0;
-    for (size_t d=0; d!=DIM; d++)
+    for (size_t d = 0; d != DIM; d++)
     {
         std::vector<T> tmp;
-        std::copy_if(knots.row(d).begin(),knots.row(d).end(),
+        std::copy_if(knots.row(d).begin(), knots.row(d).end(),
                      std::back_inserter(tmp),
                      [](T a){return !math::isnan(a);});
-        KVs[d] = gsKnotVector<T>(tmp);/////// MEMLEAK
-        gsDebug<<"(gsPreCICEUtils.h: There is a memory leak in the line above)\n";
+        KVs[d] = gsKnotVector<T>(std::move(tmp));
     }
 
+    std::unique_ptr<gsBasis<T>> basis;
     switch(DIM)
     {
         case 1:
-            basis = new  gsBSplineBasis<T>(KVs[0]);
+            basis = std::make_unique<gsBSplineBasis<T>>(KVs[0]);
             break;
         case 2:
-            basis = new  gsTensorBSplineBasis<2,T>(KVs);
+            basis = std::make_unique<gsTensorBSplineBasis<2,T>>(KVs);
             break;
         case 3:
-            basis = new  gsTensorBSplineBasis<3,T>(KVs);
+            basis = std::make_unique<gsTensorBSplineBasis<3,T>>(KVs);
             break;
+        default:
+            throw std::runtime_error("Unsupported DIM");
     }
-    return memory::make_shared_not_owned(basis);
+
+    return basis;
 }
 
 } //namespace gismo
