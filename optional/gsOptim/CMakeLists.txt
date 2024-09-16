@@ -17,7 +17,7 @@ include( gsConfig)
 #fetch here!
 include(gsFetch)
 gismo_fetch_directory(optim
-  GIT_REPOSITORY https://github.com/kthohr/optim.git
+  GIT_REPOSITORY https://github.com/hverhelst/optim.git
   DESTINATION    external)
 
 IF(NOT EXISTS ${gismo_externals}/optim/include/BaseMatrixOps/include)
