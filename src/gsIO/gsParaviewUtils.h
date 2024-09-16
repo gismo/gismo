@@ -20,7 +20,6 @@
 #include <gsAssembler/gsExprEvaluator.h>
 // #include <gsIO/gsIOUtils.h>
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsLsdyna/gsBextFormat.h>
 #include <gsIO/gsBase64.h>
 
 
@@ -219,11 +218,9 @@ namespace gismo
     std::string toDataArray(index_t num, std::map<std::string, std::string> attributes={{"",""}});
 
 
-    std::string ΕlBlock2vtk( ElementBlock ElBlock, const gsMatrix<> geomCoefs);
-
 
     template<class T>
-    std::vector<std::string> BezierVTK(const gsMultiPatch<T> & mPatch, bool singleFile=false);
+    std::string BezierVTK(const gsMultiPatch<T> & mPatch);
 } // namespace gismo
 
 #undef VTK_BEZIER_QUADRILATERAL

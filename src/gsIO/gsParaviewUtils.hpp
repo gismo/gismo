@@ -22,11 +22,12 @@
 #include <gsIO/gsIOUtils.h>
 
 
-#include <gsLsdyna/gsBextFormat.h>
+// #include <gsLsdyna/gsBextFormat.h>
 
 #include<fstream>
 #include<iostream>
 
+#define VTK_BEZIER_QUADRILATERAL 77
 
 namespace gismo
 {
@@ -352,48 +353,76 @@ namespace gismo
 
     template<class T>
     // std::string BezierVTK(const gsGeometry<T> & geom)
-    std::vector<std::string> BezierVTK(const gsMultiPatch<T> & mPatch, bool singleFile)
+    std::string BezierVTK(const gsMultiPatch<T> & mPatch)
     {
-        std::vector<std::string> out;
         std::stringstream stream;
-        if (singleFile)
-        {
-            stream << "<?xml version=\"1.0\"?>\n"
-            << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n"
-            << "<UnstructuredGrid>\n";
-        }
-        for (index_t p=0;p<mPatch.nPatches();++p)
-        {
-            if (!singleFile)
-            {
-                stream << "<?xml version=\"1.0\"?>\n"
-                << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n"
-                << "<UnstructuredGrid>\n";
-            }
 
-            std::map<index_t, ElementBlock> ElBlocks = BezierOperator(mPatch.patch(p).basis() );
-            for (auto const& pair : ElBlocks)
-            {
-                stream << ΕlBlock2vtk(pair.second, mPatch.patch(p).coefs());
-            }
+        stream << "<?xml version=\"1.0\"?>\n"
+        << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n"
+        << "<UnstructuredGrid>\n";
 
-            if (!singleFile)
-            {
-                stream << "</UnstructuredGrid>\n";
-                stream << "</VTKFile>\n";
-                out.push_back(stream.str()); 
-                stream.str(std::string()); // clear contents
-            }
-        }
 
-        if (singleFile)
+        const gsMultiPatch<T> bezierExt = mPatch.BezierExtraction(); 
+        index_t totalPoints = bezierExt.coefsSize();
+
+        // Set up matrices with cell data
+        gsMatrix<index_t> degrees(bezierExt.nPatches(),3);
+
+        gsMatrix<index_t> connectivity(1,totalPoints);
+        connectivity.asVector().setLinSpaced(0,totalPoints-1);
+
+        gsMatrix<index_t> offsets(1,bezierExt.nPatches());
+        index_t offset=0;
+
+        gsMatrix<index_t> types(1, bezierExt.nPatches());
+        types.setOnes();
+        types*= VTK_BEZIER_QUADRILATERAL;
+
+        gsMatrix<T> coefs(bezierExt.coefsSize(), bezierExt.targetDim());
+
+        // For every patch / bezier element
+        for (size_t p=0;p<bezierExt.nPatches();++p)
         {
-            stream << "</UnstructuredGrid>\n";
-            stream << "</VTKFile>\n";
-            out.push_back(stream.str()); 
+            // Control point ID transformation matrix
+            // from G+Smo notation to Paraview notation
+            gsMatrix<> IdTransform = vtkIDTransform(bezierExt.patch(p).degree(0)+1, bezierExt.patch(p).degree(1)+1);
+
+            // Fill matrices with Cell data
+            degrees.row(p) << bezierExt.patch(p).degree(0), bezierExt.patch(p).degree(1), 0;
+            offsets(p) = offset + bezierExt.patch(p).coefsSize();
+
+            // Tranform control points to vtk ordering and concatenate in coefs
+            coefs.middleRows(offset,bezierExt.patch(p).coefsSize()) = IdTransform * bezierExt.patch(p).coefs();
+            offset += bezierExt.patch(p).coefsSize();
         }
-        return out;
+
+        if (coefs.cols() == 2)
+            // Pad matrix with zeros
+            coefs.conservativeResizeLike(gsEigen::MatrixXd::Zero(coefs.rows(),3));
+
+        // Format to xml
+        stream <<"<Piece NumberOfPoints=\""<< totalPoints<<"\" NumberOfCells=\""<< bezierExt.nPatches()<<"\">\n";
+
+        stream << "<CellData HigherOrderDegrees=\"HigherOrderDegrees\">\n";
+        stream << "" << toDataArray(degrees.transpose(),{{"Name","HigherOrderDegrees"}});
+        stream << "</CellData>\n";
+
+        stream << "<Points>\n";
+        stream << ""<< toDataArray( coefs.transpose(), {{"Name","Points"}});
+        stream << "</Points>\n";
+
+        stream << "<Cells>\n";
+        stream << toDataArray(connectivity, {{"Name","connectivity"}});
+        stream << toDataArray(offsets, {{"Name","offsets"}});
+        stream << toDataArray(types, {{"Name","types"}});
+        stream << "</Cells>\n";
+        stream << "</Piece>\n";
+        stream << "</UnstructuredGrid>\n";
+        stream << "</VTKFile>\n";
+
+        return stream.str();
     }
 
 } // namespace gismo
+#undef VTK_BEZIER_QUADRILATERAL
 
