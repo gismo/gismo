@@ -166,11 +166,11 @@ int main(int argc, char* argv[])
     gsVector<index_t> geometryKnotIDs;
     gsMatrix<> geometryKnots;
     participant.getMeshVertexIDsAndCoordinates(GeometryKnotMesh, geometryKnotIDs, geometryKnots);
+    // gsDebugVar(geometryKnots);
 
     // Gives a full tensor product basis
-
-
-    gsBasis<> * geometryKnotBasis = knotMatrixToBasis<real_t>(geometryKnots).get();
+    gsBasis<> * geometryKnotBasis = knotMatrixToBasis<real_t>(geometryKnots).get(); //The displacement value at the first timestep can be empty
+    gsDebugVar(geometryKnotBasis);
 
     // Receive geometry control points
     gsVector<index_t> geometryControlPointIDs;
@@ -179,6 +179,8 @@ int main(int argc, char* argv[])
 
     // Reconstruct the beam geometry in its own mesh
     gsMultiPatch<> beam;
+
+    gsDebugVar(geometryControlPoints);
 
     beam.addPatch(give(geometryKnotBasis->makeGeometry(geometryControlPoints.transpose())));
 
@@ -278,7 +280,6 @@ int main(int argc, char* argv[])
 
     // Print boundary conditions
     gsInfo << "Boundary conditions:\n";
-   gsDebugVar(bcInfoFlow);
 
     // Print material properties
     gsInfo << "Material properties:\n";
@@ -430,7 +431,6 @@ int main(int argc, char* argv[])
         participant.readData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
         gsInfo << "read time = " << read_timer.stop() << "\n";
 
-        gsDebugVar(geometryControlPoints.transpose());
 
         // beamNew.patch(0).coefs() = beam.patch(0).coefs() + geometryControlPoints.transpose();
 
@@ -448,7 +448,7 @@ int main(int argc, char* argv[])
         // Represent dbeam onto disp beam's basis
         gsQuasiInterpolate<real_t>::localIntpl(dispBeam.basis(0), dbeam.patch(0), dispBeam.patch(0).coefs());
 
-        gsDebugVar(dispBeam.patch(0).coefs().transpose());
+        // gsDebugVar(dispBeam.patch(0).coefs().transpose());
 
 
         /*
@@ -457,16 +457,16 @@ int main(int argc, char* argv[])
         // Given dispBeam, move the mesh and compute its velocities
         // Store the old fluid mesh in the velocity mesh
         moduleALE.constructSolution(velALE);
-        gsDebugVar(velALE.patch(0).coefs().transpose());
+        // gsDebugVar(velALE.patch(0).coefs().transpose());
         // Compute the fluid mesh displacements
         moduleALE.updateMesh();
 
         // Update the fluid mesh displacements
         moduleALE.constructSolution(dispALE);
 
-        gsDebugVar(dispALE.patch(0).coefs().transpose());
-        gsDebugVar(dispALE.patch(1).coefs().transpose());
-        gsDebugVar(dispALE.patch(2).coefs().transpose());
+        // gsDebugVar(dispALE.patch(0).coefs().transpose());
+        // gsDebugVar(dispALE.patch(1).coefs().transpose());
+        // gsDebugVar(dispALE.patch(2).coefs().transpose());
 
         // Update the fluid mesh velocities (v = (u_t - u_t-1) / dt)
         for (size_t p = 0; p < velALE.nPatches(); ++p)
@@ -556,7 +556,7 @@ int main(int argc, char* argv[])
         for (index_t k =0 ; k != indexNorth.size(); ++k)
             forceControlPoints.col(indexNorth(k,0)) = coefsNorth.row(k).transpose();
 
-        gsDebugVar(forceControlPoints);
+        // gsDebugVar(forceControlPoints);
 
         gsInfo << "fluid time = " << fluid_time.stop() << "\n";
 

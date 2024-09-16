@@ -30,7 +30,6 @@ void writeDisplacement(std::ofstream & ofs,
     dispA << 1.,0.5;
     dispA = displacementBeam.patch(0).eval(dispA);
 
-    gsDebugVar(dispA);
 
     // Print: 1-simTime 2-dispAx 3-dispAy
     ofs << simTime << " " << dispA.at(0) << " " << dispA.at(1) << std::endl;
@@ -188,7 +187,7 @@ int main(int argc, char* argv[])
     bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&forceMesh.patch(0));
     bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&forceMesh.patch(0));
 
-    gsDebugVar(forceMesh.patch(0).coefs());
+    // gsDebugVar(forceMesh.patch(0).coefs());
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -304,10 +303,6 @@ int main(int argc, char* argv[])
 
 
         // geometryControlPoints.setZero();
-
-
-
-
         geometryControlPoints = dispBeam.coefs().transpose();
         gsInfo << "solid time = " << solid_time.stop() << "\n";
 
@@ -397,6 +392,5 @@ int main(int argc, char* argv[])
     logFile.close();
     gsInfo << "Log file created in \"flapping_beam_disp_modified.txt\".\n";
 
-    delete basis;
-    return  EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
