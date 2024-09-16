@@ -57,8 +57,12 @@ gsMatrix<T> gsPointGrid( gsVector<T> const & a, gsVector<T> const & b,
 template<class T> inline
 gsMatrix<T> gsPointGrid( T const & t1, T const & t2, unsigned const & n = 100)
 {
-    gsMatrix<T> ab(1,2); ab << t1, t2; 
-    return gsPointGrid(ab, n);
+    gsMatrix<T,1,2> ab(1,2); ab << t1, t2; 
+    gsGridIterator<T,CUBE,1> pt(ab,n);
+    gsMatrix<T> rvo(ab.rows(), pt.numPoints() );
+    for(index_t c = 0; pt; ++pt, ++c)
+        rvo.col(c) = *pt;
+    return rvo;
 }
 
 /**

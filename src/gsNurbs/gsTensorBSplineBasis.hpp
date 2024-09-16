@@ -26,6 +26,24 @@
 namespace gismo
 {
 
+template<short_t d, class T>
+gsTensorBSplineBasis<d,T>::gsTensorBSplineBasis(std::vector<typename gsTensorBSplineBasis<d,T>::Basis_t*> & bb )
+: Base( castVectorPtr<gsBasis<T> >(bb).data() )
+{
+    GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
+    GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
+    bb.clear();
+    setIsPeriodic();
+}
+
+template<short_t d, class T>
+gsTensorBSplineBasis<d,T>::gsTensorBSplineBasis(std::vector<gsBasis<T>*> & bb )
+: Base(bb.data())
+{
+    GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
+    bb.clear();
+    setIsPeriodic();
+}
 
 template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::

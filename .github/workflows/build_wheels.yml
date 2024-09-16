@@ -3,7 +3,6 @@ name: build_python_wheels
 on:
   push:
     branches: ["stable"]
-  pull_request:
 
 jobs:
 

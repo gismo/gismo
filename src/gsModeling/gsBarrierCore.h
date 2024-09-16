@@ -98,7 +98,7 @@ void setOptimizerOptions(gsHLBFGS<T> &optimizer, const gsOptionList &options) {
 #endif
 
 /// helper function to verbose log
-void verboseLog(const std::string &message, const index_t &verbose) {
+inline void verboseLog(const std::string &message, const index_t &verbose) {
   if (verbose > 0) { gsInfo << message << "\n"; }
 }
 
@@ -761,7 +761,7 @@ class AndersonAcceleration {
 
   inline void printIterationInfo() {
     if (m_printInfo) {
-      printf(" %d         %.4e\n", m_iter, static_cast< double >( m_currResidualNorm ));
+        printf(" %d         %.4e\n", m_iter, cast<Scalar,double>( m_currResidualNorm ));
     }
   }
 

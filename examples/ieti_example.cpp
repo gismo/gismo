@@ -390,11 +390,10 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
     // Now, we want to have the global solution for u
     //! [Recover]
-    gsMatrix<> uVec = ietiMapper.constructGlobalSolutionFromLocalSolutions(
-        primal.distributePrimalSolution(
-            ieti.constructSolutionFromLagrangeMultipliers(lambda)
-        )
+    std::vector<gsMatrix<>> uLocal = primal.distributePrimalSolution(
+        ieti.constructSolutionFromLagrangeMultipliers(lambda)
     );
+    gsMatrix<> uGlobal = ietiMapper.constructGlobalSolutionFromLocalSolutions(uLocal);
     //! [Recover]
     gsInfo << "done.\n\n";
 
@@ -420,7 +419,7 @@ int main(int argc, char *argv[])
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
         fd.add(cmd);
-        fd.add(uVec);
+        fd.add(uGlobal);
         fd.addComment(std::string("ieti_example   Timestamp:")+std::ctime(&time));
         fd.save(out);
         gsInfo << "Write solution to file " << out << "\n";
@@ -429,29 +428,13 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsInfo << "Write Paraview data to file ieti_result.pvd\n";
-        // Construct the solution as a scalar field
-        // For this purpose, we use a global assembler
-        gsExprAssembler<> A(1,1);
-        //A.setOptions(Aopt);
-        typedef gsExprAssembler<>::geometryMap geometryMap;
-        typedef gsExprAssembler<>::variable    variable;
-        typedef gsExprAssembler<>::space       space;
-        typedef gsExprAssembler<>::solution    solution;
-        // Elements used for numerical integration
-        A.setIntegrationElements(mb);
-        gsExprEvaluator<> ev(A);
-        // Set the geometry map
-        geometryMap G = A.getMap(mp);
-        // Set the discretization space
-        space u = A.getSpace(mb);
-        // Solution vector and solution variable
-        solution u_sol = A.getSolution(u, uVec);
-        // Setup u
-        u.setup(bc, dirichlet::interpolation, 0);
-        ev.options().setSwitch( "plot.elements", true );
-        ev.writeParaview( u_sol, G, "ieti_result" );
+        gsMultiPatch<> mpsol;
+        for (index_t k=0; k<nPatches; ++k)
+            mpsol.addPatch( mb[k].makeGeometry( ietiMapper.incorporateFixedPart(k, uLocal[k])  ) );
+        gsWriteParaview<>( gsField<>( mp, mpsol ), "ieti_result", 1000);
         //gsFileManager::open("ieti_result.pvd");
     }
+
     if (!plot&&out.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "

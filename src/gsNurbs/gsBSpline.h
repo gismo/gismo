@@ -22,6 +22,14 @@
 
 #include <gsUtils/gsPointGrid.h>
 
+namespace gismo {
+namespace internal {
+
+template<class T>
+struct gsCurveIntersectionResult;
+
+} // namespace internal
+} // namespace gismo
 
 namespace gismo
 {
@@ -209,6 +217,24 @@ public:
     /// \param right curve segment from u0 to the right of parameter domain
     /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
     void splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance=1e-15) const;
+
+    /// Convert BSpline curve into Bezier segments
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    /// @note: parameter range do NOT change, extra knots().affineTransform() needed
+    gsMultiPatch<T> toBezier(T tolerance=1e-15) const;
+
+    /// Compute all intersections with another B-Spline curve
+    /// \param other the other B-Spline curve
+    /// \param tolerance the tolerance for computing the intersection
+    /// \param curvatureTolerance the curvature tolerance for the splitting stage
+    /// @note curvatureTolerance should be slightly greater than 1.0, e.g., 1+1e-6
+    /// \return a vector of intersection results
+    std::vector<internal::gsCurveIntersectionResult<T>> intersect(const gsBSpline<T>& other, T tolerance = 1e-5, T curvatureTolerance=1+1e-6) const;
+
+    /// calculates curvature approximation for a B-spline curve by dividing
+    /// the total length of the polyline formed by its control points by
+    /// the direct distance between the first and last control point
+    T pseudoCurvature() const;
 
     /// Insert the given new knot (multiplicity \a i) without changing
     /// the curve.

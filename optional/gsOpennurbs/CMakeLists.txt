@@ -6,7 +6,7 @@
 ######################################################################
 
 ## OpenNurbs extension
-project(gsOpennurbs)
+project(gsOpennurbs LANGUAGES CXX)
 
 set(OPENNURBS_SOURCES
 ${gismo_externals}/onurbs/opennurbs_3dm_attributes.cpp

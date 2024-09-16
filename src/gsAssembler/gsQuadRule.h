@@ -137,7 +137,7 @@ public:
     /**\brief Maps a univariate quadrature rule (i.e., points and
      * weights) from the reference interval to an arbitrary interval.
      */
-    virtual void mapTo( T startVal, T endVal,
+    virtual void mapTo( T startVal, T endVal, //mapToInterval
                 gsMatrix<T> & nodes, gsVector<T> & weights ) const;
 
     /**\brief Maps a univariate quadrature rule (i.e., points and

@@ -101,6 +101,10 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
 install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
         DESTINATION include/${PROJECT_NAME})
 
+# For gdcpp.h
+install(FILES ${PROJECT_SOURCE_DIR}/external/gdcpp.h
+        DESTINATION include/${PROJECT_NAME})
+
 # For gsXmlUtils.h
 install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
               ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
@@ -162,6 +166,11 @@ install(FILES
 else(GISMO_BUILD_LIB)
    message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
 endif(GISMO_BUILD_LIB)
+
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/ofa"
+        COMPONENT devel
+        DESTINATION "${CMAKE_INSTALL_DIR}/"
+        USE_SOURCE_PERMISSIONS)
 
 # Install docs (if available/generated)
 set(DOC_INSTALL_DIR share/doc/gismo CACHE PATH #-${GISMO_VERSION}
