@@ -221,7 +221,7 @@ public:
 
     /// See \ref gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const override { return m_basis->matchWith(bi,other,bndThis,bndOther); }
+                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset = 0) const override { return m_basis->matchWith(bi,other,bndThis,bndOther,offset); }
 
     /// See \ref gsBasis for documentation
     domainIter makeDomainIterator() const override { return m_basis->makeDomainIterator(); }
@@ -233,10 +233,7 @@ public:
     std::string detail() const override { return m_basis->detail(); };
 
     /// See \ref gsBasis for documentation
-    size_t numElements() const override { return m_basis->numElements(); }
-
-    /// See \ref gsBasis for documentation
-    size_t numElements(boxSide const & s) const override { return m_basis->numElements(s); }
+    size_t numElements(boxSide const & s = 0) const override { return m_basis->numElements(s); }
 
     /// See \ref gsBasis for documentation
     index_t size() const override {return m_basis->size(); }
