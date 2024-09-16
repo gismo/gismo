@@ -150,7 +150,7 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
 /// \param singleFile if true, the entire gsMultiPatch is exported in one .vtu file, to reduce clutter
 /// \param ctrlNet if true, the control net is plotted as well
 template<class T>
-void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool singleFile=false, bool ctrlNet = false);
+void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool ctrlNet = false);
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
