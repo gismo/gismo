@@ -21,6 +21,20 @@
 namespace gismo
 {
 
+namespace internal
+{
+struct ElementBlock
+{
+    index_t numElements;    // NE
+    std::list<gsMatrix<index_t>> actives;       // Nodes
+    std::list<gsMatrix<real_t>>  coefVectors;   // Bezier Coefficient Vectors ID
+    index_t PR; // Polynomial degree in R direction  
+    index_t PS; // Polynomial degree in S direction  
+    index_t PT; // Polynomial degree in T direction  
+};
+} // end namespace internal
+
+
 /** @brief Container class for a set of geometry patches and their
     topology, that is, the interface connections and outer boundary
     faces.
@@ -410,6 +424,8 @@ public:
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }
     const BoundaryRep & sides() const { return m_sides; }
+
+    gsMultiPatch<T> BezierExtraction() const;
     
 protected:
 
@@ -442,6 +458,8 @@ private:
            const gsVector<bool> &matched,
            gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
            T tol, index_t reference=0);
+    
+    std::map<index_t, internal::ElementBlock> BezierOperator() const;
 
 }; // class gsMultiPatch
 
