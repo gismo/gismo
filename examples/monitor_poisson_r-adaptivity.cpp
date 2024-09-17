@@ -1,4 +1,4 @@
-/** @file monitor_r-adaptivity.cpp
+/** @file monitor_poisson_r-adaptivity-test.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
@@ -16,6 +16,8 @@
 #include <gsNurbs/gsSquareDomain.h>
 #include <gsHLBFGS/gsHLBFGS.h>
 #include <gsModeling/gsBarrierCore.h>
+#include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptim/gsOptim.h>
 
 //! [Include namespace]
 
@@ -120,23 +122,19 @@ private:
     eval_impl(const U & u, const index_t k)  const
     {
         grad = _u.data().values[1].col(k);
-        jac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
-        jacInv = jac.inverse();
-
-        grad = jacInv * grad;
         ones.resize( _u.source().domainDim());
         ones.setOnes();
 
         res.resize( _u.source().domainDim(), 1);
 
-        res = 1.0 / ( math::sqrt(1.0 + grad.norm()*grad.norm() ) ) * ones;
+        res = 1.0 / ( math::sqrt(1.0 + grad.squaredNorm() ) ) * ones;
         return res;
     }
 };
 
 
 template<class E> EIGEN_STRONG_INLINE
-monitor_expr<E> m(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return monitor_expr<E>(u,G); }
+monitor_expr<E> monitor(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return monitor_expr<E>(u,G); }
 
 
 }
@@ -181,6 +179,9 @@ public:
         }
         m_mapper.finalize();
 
+        m_numDesignVars = m_mapper.freeSize();
+        m_curDesign.setZero(m_numDesignVars,1);
+
     }
 
     gsDofMapper mapper() { return m_mapper;}
@@ -209,7 +210,7 @@ public:
         auto chi = 0.5 * (jac(G).det() + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
         auto invJacMat = jac(G).adj()/chi;
         auto eta = m_evaluator.getVariable(m_fun,G);
-        return m_evaluator.integral( (m(eta,G).asDiag()*invJacMat).sqNorm()*meas(G));
+        return m_evaluator.integral( (monitor(eta,G).asDiag()*invJacMat).sqNorm()*meas(G));
     }
 
     // /// Computes the gradient of the objective function at the given point u
@@ -229,6 +230,9 @@ protected:
 
     mutable gsExprEvaluator<T> m_evaluator;
     T m_eps;
+
+    using gsOptProblem<T>::m_numDesignVars;
+    using gsOptProblem<T>::m_curDesign;
 };
 
 
@@ -239,6 +243,7 @@ int main(int arg, char *argv[])
     index_t numRefine  = 2;
     index_t numElevate = 0;
     index_t maxIt = 100;
+    index_t expression = 0;
     real_t tol_g = 5e-5;
     real_t eps = 1e-4;
     bool slide = true;
@@ -250,6 +255,7 @@ int main(int arg, char *argv[])
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addReal("g", "tolG", "relative tol", tol_g);
     cmd.addInt( "i", "maxIt", "max num iterations",  maxIt );
+    cmd.addInt( "f", "expr", "Problem to be solved: 0 default peak in the center of the domain; 1 peak in the bottom left corner of the domain.",  expression );
     cmd.addReal("", "eps", "eps",  eps );
     cmd.addSwitch("noslide", "Do not slide the boundaries",  slide );
 
@@ -278,15 +284,36 @@ int main(int arg, char *argv[])
 
 
 
-/* 
-    SOLVE POISSON
- */
+    /* 
+        SOLVE POISSON
+    */
+    
     
     // Source function:
-    gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",2);
+    
+    index_t dimexpr = 2;
+    std::string fstring = "";
+    std::string msstring = "";
 
-    // Exact solution
-    gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",2);
+    switch (expression) {
+    case 1:
+        // bottom left corner
+        fstring = "((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)";
+        msstring = "tanh((0.25-sqrt(x^2+y^2))/0.05)+1";
+        dimexpr = 2;
+        break;
+    default:
+        // center of the domain
+        fstring = "((tanh(20*((x-0.5)^2 + (y-0.5)^2)^(1/2) - 5)^2 - 1)*(20*(x-0.5)^2 + 20*(y-0.5)^2)*(40*tanh(20*((x-0.5)^2 + (y-0.5)^2)^(1/2) - 5)*((x-0.5)^2 + (y-0.5)^2)^(1/2) - 1))/((x-0.5)^2 + (y-0.5)^2)^(3/2)";
+        msstring = "tanh((0.25-sqrt((x-0.5)^2+(y-0.5)^2))/0.05)+1";
+        dimexpr = 2;
+        break;
+    }
+
+    gsFunctionExpr<> f(fstring, dimexpr);
+    gsFunctionExpr<> ms(msstring,dimexpr);
+
+
 
     gsBoundaryConditions<> bc;
     bc.addCondition(boundary::side::west ,condition_type::dirichlet,&ms);
@@ -343,14 +370,15 @@ int main(int arg, char *argv[])
     solver.compute( A.matrix() );
     solVector = solver.solve(A.rhs());
 
+
     // Convert solution to gsMultiPatch
     gsMultiPatch<> fun;
     u_sol.extract(fun);
-    ev.writeParaview(u_sol,G,dirname+"solution");
+    ev.writeParaview(u_sol,G,"solution");
+    ev.writeParaview(ff,G,"force");
+    ev.writeParaview(u_ex,G,"exact_solution");
     ev.writeParaview(ijac(u_sol,G),G,dirname+"solution_gradient");
     ev.writeParaview(ijac(u_sol,G).sqNorm(),G,dirname+"solution_gradient_sqNorm");
-
-    // gsWriteParaview(mp,domain,"domain",1000,true,true);
 
     gsOptionList options;
     options.addSwitch("Slide","Slide boundaries",slide);
@@ -359,16 +387,18 @@ int main(int arg, char *argv[])
     
     gsInfo<<"Number of optimizer degrees of freedom: "<<initial.rows()<<"\n";
 
-    gsHLBFGS<real_t> optimizer(&optMesh);
-    optimizer.options().setInt("MaxIterations",maxIt);
-    optimizer.options().setInt("Verbose",2);
-    optimizer.options().setReal("tolRelG",tol_g);
+    //gsHLBFGS<real_t> optimizer(&optMesh);
+
+    gsOptimizer<real_t> * optimizer;
+    optimizer = new gsOptim<real_t>::LBFGS(&optMesh);
     
-    optimizer.solve(initial);
+    optimizer->options().setInt("MaxIterations",maxIt);
+    optimizer->options().setInt("Verbose",1);
+    optimizer->options().setReal("GradErrTol",tol_g);
+    
+    optimizer->solve(initial);
 
-
-
-    gsVector<> solOpt = optimizer.currentDesign();
+    gsVector<> solOpt = optimizer->currentDesign();
     gsDebugVar(solOpt.transpose());
     convertFreeVectorToMultiPatch(solOpt,optMesh.mapper(),mp);
 
