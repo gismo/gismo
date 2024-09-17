@@ -1033,7 +1033,7 @@ gsMultiPatch<T> gsMultiPatch<T>::BezierExtraction() const
         }
     }
 
-    result.computeTopology();
+    // result.computeTopology();
     return result; 
 }
 } // namespace gismo

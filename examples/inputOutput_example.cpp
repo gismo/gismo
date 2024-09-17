@@ -100,8 +100,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-            bool singleFile = (mPatch.nPatches() > 10 );
-            gsWriteParaviewBezier(mPatch, out, singleFile);
+            gsWriteParaviewBezier(mPatch, out);
         }
         gsInfo << "Wrote ParaView file: " << out << ".pvd\n";
     }
