@@ -30,7 +30,11 @@
 #include <gsUtils/gsUtils.h>
 
 #ifdef gsMpfr_ENABLED
+#undef real_t
+#define real_t real_t_mpreal
 #include <mpreal.h>
+#undef real_t
+#define real_t GISMO_COEFF_TYPE
 #endif
 
 #ifdef gsGmp_ENABLED
