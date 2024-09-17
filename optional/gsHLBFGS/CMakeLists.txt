@@ -1,5 +1,5 @@
 ######################################################################
-### CMakeLists.txt --- gsOpennurbs
+### CMakeLists.txt --- gsHLBFGS
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris

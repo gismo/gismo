@@ -130,8 +130,7 @@ gcc10_cxx17_release_double_int32t:
     CNAME:            "gcc"
     CXXNAME:          "g++"
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
-    GISMO_OPTIONAL: "gsOpennurbs\\;"
-
+    GISMO_OPTIONAL: "gsOpennurbs\\;gsCInterface"
 # GCC 11, C++20, Release
 gcc11_cxx20_release_float_int:
   extends: .test:linux:base
@@ -151,7 +150,7 @@ gcc12_cxx23_release_float_int:
     CXXNAME:          "g++"
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
-    GISMO_OPTIONAL: "gsOpennurbs\\;gsCInterface"
+    GISMO_OPTIONAL: "gsOpennurbs\\;"
 #  before_script:
 #    - rm -rf /builds/gismo-ci/build_ExperimentalRelease_gcc++
   

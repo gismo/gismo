@@ -886,27 +886,22 @@ void gsTensorBasis<d,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> 
     tensorCombineTransferMatrices<d, T>( B, transfer );
 }
 
-/*
- * //Note: MSVC won't resolve this if defined outside the class
 template<short_t d, class T>
-typename gsBasis<T>::domainIter
+typename gsTensorBasis<d,T>::domainIter
 gsTensorBasis<d,T>::makeDomainIterator() const
 {
-    return typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T, d>(*this));
+    return domainIter(new gsTensorDomainIterator<T, d>(*this));
 }
 
-
-template<class T>
 template<short_t d, class T>
-gsDomainIterator<T>::ptr
-//memory::unique_ptr<gsDomainIterator<T>
-//typename gsBasis<T>::domainIter
+typename gsTensorBasis<d,T>::domainIter
 gsTensorBasis<d,T>::makeDomainIterator(const boxSide & s) const
 {
-    return typename gsBasis<T>::domainIter(new gsTensorDomainBoundaryIterator<T, d>(*this,s));
+    return ( s == boundary::none ? 
+             domainIter(new gsTensorDomainIterator<T,d>(*this)) :
+             domainIter(new gsTensorDomainBoundaryIterator<T,d>(*this, s))
+        );
 }
-*/
-
 
 template<short_t d, class T>
 typename gsGeometry<T>::uPtr
