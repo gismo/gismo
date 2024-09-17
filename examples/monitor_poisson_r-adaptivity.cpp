@@ -389,16 +389,14 @@ int main(int arg, char *argv[])
 
     //gsHLBFGS<real_t> optimizer(&optMesh);
 
-    gsOptimizer<real_t> * optimizer;
-    optimizer = new gsOptim<real_t>::LBFGS(&optMesh);
+    gsOptim<real_t>::LBFGS optimizer(optMesh);
+    optimizer.options().setInt("MaxIterations",maxIt);
+    optimizer.options().setInt("Verbose",1);
+    optimizer.options().setReal("GradErrTol",tol_g);
     
-    optimizer->options().setInt("MaxIterations",maxIt);
-    optimizer->options().setInt("Verbose",1);
-    optimizer->options().setReal("GradErrTol",tol_g);
-    
-    optimizer->solve(initial);
+    optimizer.solve(initial);
 
-    gsVector<> solOpt = optimizer->currentDesign();
+    gsVector<> solOpt = optimizer.currentDesign();
     gsDebugVar(solOpt.transpose());
     convertFreeVectorToMultiPatch(solOpt,optMesh.mapper(),mp);
 

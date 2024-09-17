@@ -435,16 +435,15 @@ int main(int arg, char *argv[])
     //optimizer.solve(controls);
     //gsVector<> optSol = optimizer.currentDesign();
 
-    gsOptimizer<real_t> * optimizer;
-    optimizer = new gsOptim<real_t>::LBFGS(&optMesh);
+    gsOptim<real_t>::LBFGS optimizer(&optMesh);
 
-    optimizer->options().setInt("MaxIterations",maxIt);
-    optimizer->options().setInt("Verbose",1);
-    optimizer->options().setReal("GradErrTol",tol_g);
+    optimizer.options().setInt("MaxIterations",maxIt);
+    optimizer.options().setInt("Verbose",1);
+    optimizer.options().setReal("GradErrTol",tol_g);
 
-    optimizer->solve(controls);
+    optimizer.solve(controls);
 
-    gsVector<> optSol = optimizer->currentDesign();
+    gsVector<> optSol = optimizer.currentDesign();
 
 
     
