@@ -58,12 +58,12 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        evList.add(_u);
-        _u.data().flags |= NEED_GRAD;
-
-        evList.add(_G);
-        _G.data().flags |= NEED_DERIV;
+        grad_expr<gsFeVariable<Scalar>>(_u).parse(evList);
+        jacInv_expr<Scalar>(_G).parse(evList);
+        _u.parse(evList);
+        _G.parse(evList);
     }
+
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
@@ -121,7 +121,13 @@ private:
     typename util::enable_if< !util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        grad = _u.data().values[1].col(k);
+        grad_expr<gsFeVariable<Scalar>> gradExpr = grad_expr<gsFeVariable<Scalar>>(_u);
+        grad = gradExpr.eval(k);
+
+        jacInv_expr<Scalar> jacInvExpr = jacInv_expr<Scalar>(_G);
+        jacInv = jacInvExpr.eval(k);
+
+        grad = grad * jacInv;
         ones.resize( _u.source().domainDim());
         ones.setOnes();
 
@@ -129,6 +135,16 @@ private:
 
         res = 1.0 / ( math::sqrt(1.0 + grad.squaredNorm() ) ) * ones;
         return res;
+
+
+        // grad = _u.data().values[1].col(k);
+        // ones.resize( _u.source().domainDim());
+        // ones.setOnes();
+
+        // res.resize( _u.source().domainDim(), 1);
+
+        // res = 1.0 / ( math::sqrt(1.0 + grad.squaredNorm() ) ) * ones;
+        // return res;
     }
 };
 
@@ -209,7 +225,7 @@ public:
 
         auto chi = 0.5 * (jac(G).det() + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
         auto invJacMat = jac(G).adj()/chi;
-        auto eta = m_evaluator.getVariable(m_fun,G);
+        auto eta = m_evaluator.getVariable(m_fun);
         return m_evaluator.integral( (monitor(eta,G).asDiag()*invJacMat).sqNorm()*meas(G));
     }
 
@@ -280,6 +296,7 @@ int main(int arg, char *argv[])
 
     gsMultiPatch<> mp;
     mp.addPatch(tbspline);
+    // mp.embed(3);
     gsMultiBasis<> mb(mp);
 
 
@@ -291,7 +308,7 @@ int main(int arg, char *argv[])
     
     // Source function:
     
-    index_t dimexpr = 2;
+    index_t dimexpr = mp.geoDim();
     std::string fstring = "";
     std::string msstring = "";
 
@@ -300,13 +317,11 @@ int main(int arg, char *argv[])
         // bottom left corner
         fstring = "((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)";
         msstring = "tanh((0.25-sqrt(x^2+y^2))/0.05)+1";
-        dimexpr = 2;
         break;
     default:
         // center of the domain
         fstring = "((tanh(20*((x-0.5)^2 + (y-0.5)^2)^(1/2) - 5)^2 - 1)*(20*(x-0.5)^2 + 20*(y-0.5)^2)*(40*tanh(20*((x-0.5)^2 + (y-0.5)^2)^(1/2) - 5)*((x-0.5)^2 + (y-0.5)^2)^(1/2) - 1))/((x-0.5)^2 + (y-0.5)^2)^(3/2)";
         msstring = "tanh((0.25-sqrt((x-0.5)^2+(y-0.5)^2))/0.05)+1";
-        dimexpr = 2;
         break;
     }
 
@@ -389,7 +404,7 @@ int main(int arg, char *argv[])
 
     //gsHLBFGS<real_t> optimizer(&optMesh);
 
-    gsOptim<real_t>::LBFGS optimizer(optMesh);
+    gsOptim<real_t>::LBFGS optimizer(&optMesh);
     optimizer.options().setInt("MaxIterations",maxIt);
     optimizer.options().setInt("Verbose",1);
     optimizer.options().setReal("GradErrTol",tol_g);
@@ -401,6 +416,7 @@ int main(int arg, char *argv[])
     convertFreeVectorToMultiPatch(solOpt,optMesh.mapper(),mp);
 
     gsWriteParaview(mp,dirname+"domain",1000,true,true);
+    gsInfo<<"Area = "<<ev.integral(meas(G))<<"\n";
     ev.writeParaview(jac(G).det(),G,dirname+"jacobian_determinant");
 
     return 0;
