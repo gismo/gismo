@@ -52,6 +52,8 @@ public:
     typedef Basis_t** iterator;
     typedef Basis_t* const* const_iterator;
 
+    typedef typename Basis_t::domainIter domainIter;
+
 public:
     
     gsTensorBasis() : m_bases() { }
@@ -292,19 +294,10 @@ public:
     //void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for documentation 
-    typename gsBasis<T>::domainIter makeDomainIterator() const
-    {
-        return typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,d>(*this) );
-    }
+    typename gsBasis<T>::domainIter makeDomainIterator() const;
 
-    // Look at gsBasis class for documentation 
-    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
-    {
-        return ( s == boundary::none ? 
-                 typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,d>(*this)) :
-                 typename gsBasis<T>::domainIter(new gsTensorDomainBoundaryIterator<T,d>(*this, s))
-                );
-    }
+    // Look at gsBasis class for documentation
+    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const;
 
     // Look at gsBasis class for documentation 
     virtual typename gsGeometry<T>::uPtr interpolateAtAnchors(gsMatrix<T> const& vals) const;
