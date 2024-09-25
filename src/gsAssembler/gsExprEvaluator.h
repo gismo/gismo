@@ -279,6 +279,17 @@ public:
          const index_t patchInd = 0);
 
     template<class E>
+    typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+    eval(const expr::_expr<E> & testExpr, const gsMatrix<T> & pt,
+         const index_t patchInd = 0);
+
+    template<class E>
+    typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+    eval(const expr::_expr<E> & testExpr, const gsMatrix<T> & pt,
+         const index_t patchInd = 0);
+
+
+    template<class E>
 #ifdef __DOXYGEN__
     gsAsConstMatrix<T>
 #else
@@ -759,6 +770,53 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_elWise.resize(r*c);
     gsAsMatrix<T>(m_elWise, r, c) = tmp; //expr.eval(0);
     return gsAsConstMatrix<T>(m_elWise, r, c);
+}
+
+template<class T>
+template<class E>
+typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsMatrix<T> & pt,
+                         const index_t patchInd)
+{
+
+    m_elWise.resize(pt.cols());
+    
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+    index_t stride = (pt.cols() + nt - 1) / nt;
+    index_t start = stride * tid;
+    index_t end = math::min(start + stride, pt.cols());
+    if (start < end)
+    {
+        auto _arg = expr.val();
+        m_exprdata->parse(_arg);
+        m_exprdata->points() = pt.block(0,start,pt.rows(),end-start);
+        m_exprdata->precompute(patchInd);
+        for (index_t i = start; i < end; ++i)
+            m_elWise[i] = _arg.eval(i-start);
+    }
+    else
+        gsWarn<<"Evaluation might get stuck if the number of threads is too high\n FIX THIS!\n";
+#else
+    m_exprdata->points() = pt;
+    for (index_t i = 0; i < pt.cols(); ++i)
+            m_elWise[i] = _arg.eval(i);
+#endif
+}
+    m_value = 0;
+    return gsAsConstMatrix<T>(m_elWise,1,pt.cols());
+}
+
+template<class T>
+template<class E>
+typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsMatrix<T> & pt,
+                         const index_t patchInd)
+{
+    GISMO_NO_IMPLEMENTATION;
 }
 
 // template<class T>
