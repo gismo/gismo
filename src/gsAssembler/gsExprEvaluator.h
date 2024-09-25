@@ -801,6 +801,8 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsMatrix<T> & pt,
     else
         gsWarn<<"Evaluation might get stuck if the number of threads is too high\n FIX THIS!\n";
 #else
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
     m_exprdata->points() = pt;
     for (index_t i = 0; i < pt.cols(); ++i)
             m_elWise[i] = _arg.eval(i);

@@ -163,6 +163,13 @@ public:
         }
     }
 
+    void perturb(T factor = 1e-3)
+    {
+        gsVector<T> rand = gsVector<T>::Random(m_indices.size());
+        for (index_t i = 0; i!=m_indices.size(); i++)
+            m_domain.coefs()(m_indices[i].first,m_indices[i].second) += factor * rand[i];
+    }
+
 private:
     void _initMapper(const gsTensorBSpline<DIM,T> & domain, gsDofMapper & mapper) const
     {

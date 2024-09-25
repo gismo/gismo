@@ -148,15 +148,15 @@ private:
         res = 1.0 / ( math::sqrt(1.0 +eps*grad.squaredNorm() ) ) * ones;
         return res;
 
-        // /// OLD
-        grad = _u.data().values[1].col(k).transpose();
-        ones.resize( DIM);
-        ones.setOnes();
+        // // /// OLD
+        // grad = _u.data().values[1].col(k).transpose();
+        // ones.resize( DIM);
+        // ones.setOnes();
 
-        res.resize( DIM, 1);
+        // res.resize( DIM, 1);
 
-        res = 1.0 / ( math::sqrt(1.0 +eps*grad.squaredNorm() ) ) * ones;
-        return res;
+        // res = 1.0 / ( math::sqrt(1.0 +eps*grad.squaredNorm() ) ) * ones;
+        // return res;
     }
 };
 
@@ -221,6 +221,9 @@ public:
         m_curDesign.resize(m_numDesignVars,1);
 
         m_options.addInt("nSamplingPoints","Number of sampling points in each parametric direction",50);
+    
+        m_options.addInt("nRefine","Number of refinement steps for the integration basis",2);
+        m_options.addInt("nElevate","Number of elevation steps for the integration basis",1);
     }
 
     gsOptionList & options() { return m_options; }
@@ -235,7 +238,14 @@ public:
 
         gsMultiPatch<> mpG;
         mpG.addPatch(cgeom);
-        gsMultiBasis<> mb(mpG.basis(0));
+
+        gsKnotVector<> kv({0,0,1,1},1);
+        gsTensorBSplineBasis<2,T> basis(kv,kv);
+        basis.degreeElevate(m_options.getInt("nElevate"));
+        for (index_t i = 0; i < m_options.getInt("nRefine"); i++)
+            basis.uniformRefine();
+
+        gsMultiBasis<> mb(basis);
 
         m_evaluator.setIntegrationElements(mb);
         geometryMap G = m_evaluator.getMap(mpG);
@@ -250,20 +260,17 @@ public:
 
         gsComposedFunction<T> fun(*m_comp,m_fun.function(0));
 
-        gsVector<unsigned> np(m_fun.domainDim());
-        np.setConstant(m_options.getInt("nSamplingPoints"));
-        gsMatrix<T> grid = gsPointGrid<T>(m_geom.support().col(0),m_geom.support().col(1),np);
+        // gsVector<unsigned> np(m_fun.domainDim());
+        // np.setConstant(m_options.getInt("nSamplingPoints"));
+        // gsMatrix<T> grid = gsPointGrid<T>(m_geom.support().col(0),m_geom.support().col(1),np);
         if (m_geom.domainDim()==m_geom.targetDim())
         {
             auto jacG = jac(G).det();
             auto chi = 0.5 * (jacG + pow(eps.val() + pow(jacG, 2.0), 0.5));
             auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
             auto eta = m_evaluator.getVariable(fun);    
-            // gsDebugVar(m_evaluator.eval((monitor(eta,G)*invJacMat).sqNorm(),grid));
-
-            return m_evaluator.eval((monitor(eta,G)*invJacMat).sqNorm(),grid).sum();
-
-            // return m_evaluator.integral( (monitor(eta,G)*invJacMat).sqNorm()*meas(G));
+            // return m_evaluator.eval((monitor(eta,G)*invJacMat).sqNorm(),grid).sum();
+            return m_evaluator.integral( (monitor(eta,G)*invJacMat).sqNorm()*meas(G));
         }
         else
         {
@@ -315,6 +322,8 @@ int main(int arg, char *argv[])
     bool plot = false;
     index_t numRefine  = 2;
     index_t numElevate = 1;
+    index_t numRefineI = 2;
+    index_t numElevateI = 1;
     index_t maxIt = 100;
     real_t tol_g = 5e-5;
     real_t eps = 1e-4;
@@ -326,6 +335,8 @@ int main(int arg, char *argv[])
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "elevAnalysis","Number of degree elevation steps to perform for the analysis", numElevate );
     cmd.addInt( "r", "refAnalysis", "Number of Uniform h-refinement loops for the analysis",  numRefine );
+    cmd.addInt( "E", "elevIntegral","Number of degree elevation steps to perform for the integration", numElevateI );
+    cmd.addInt( "R", "refIntegral", "Number of Uniform h-refinement loops for the integration",  numRefineI );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addReal("g", "tolG", "relative tol", tol_g);
     cmd.addInt( "i", "maxIt", "max num iterations",  maxIt );
@@ -338,7 +349,8 @@ int main(int arg, char *argv[])
     try { cmd.getValues(arg,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    std::string dirname = "template_r-adaptivity_e"+util::to_string(numElevate)+"_r"+util::to_string(numRefine)+"_S"+util::to_string(nSamplingPoints)+"_function"+util::to_string(testCase)+"_opt"+util::to_string(opt);
+    // std::string dirname = "template_r-adaptivity_e"+util::to_string(numElevate)+"_r"+util::to_string(numRefine)+"_S"+util::to_string(nSamplingPoints)+"_function"+util::to_string(testCase)+"_opt"+util::to_string(opt);
+    std::string dirname = "template_r-adaptivity_e"+util::to_string(numElevate)+"_r"+util::to_string(numRefine)+"_E"+util::to_string(numElevateI)+"_R"+util::to_string(numRefineI)+"_function"+util::to_string(testCase)+"_opt"+util::to_string(opt);
     gsFileManager::mkdir(dirname);
     dirname += gsFileManager::getNativePathSeparator();
 
@@ -357,6 +369,7 @@ int main(int arg, char *argv[])
     gsSquareDomain<2,real_t> domain(tbbasis);
     domain.options().addSwitch("Slide","",slide);
     domain.applyOptions();
+    // domain.perturb(1e-1);
 
     gsComposedGeometry<real_t> cspline(domain,geom.patch(0));
     gsFunction<> * fun;
@@ -387,9 +400,11 @@ int main(int arg, char *argv[])
     gsInfo<<"Number of optimizer degrees of freedom: "<<domain.nControls()<<"\n";
 
     gsOptMesh<> optMesh(domain,geom.patch(0),*fun,eps);
-    optMesh.options().setInt("nSamplingPoints",nSamplingPoints);
     gsVector<> controls(domain.nControls());
-     for (size_t k=0; k!=domain.nControls(); k++)
+    // optMesh.options().setInt("nSamplingPoints",nSamplingPoints);
+    optMesh.options().setInt("nRefine",numRefineI);
+    optMesh.options().setInt("nElevate",numElevateI);
+    for (size_t k=0; k!=domain.nControls(); k++)
         controls[k] = domain.control(k);
 
 
