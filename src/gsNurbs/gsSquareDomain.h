@@ -73,6 +73,8 @@ public:
         this->_initIndices(m_domain,m_mapper,m_indices);
     }
 
+    GISMO_CLONE_FUNCTION(gsSquareDomain)
+
     gsOptionList & options() {return m_options;}
 
     void applyOptions()

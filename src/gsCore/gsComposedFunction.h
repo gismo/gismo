@@ -16,8 +16,6 @@
 //! [Include namespace]
 #include <gsCore/gsFunction.h>
 
-#  define return_t  auto
-
 namespace gismo
 {
 
@@ -25,7 +23,14 @@ template<class T>
 class gsComposedFunction : public gsFunction<T>
 {
 public:
-    gsComposedFunction(const std::vector<gsFunction<T> *> functions)
+
+    gsComposedFunction(const gsFunction<T> & composition, const gsFunction<T> & function)
+    :
+    gsComposedFunction({&composition,&function})
+    {
+    }
+
+    gsComposedFunction(const std::vector<const gsFunction<T> *> functions)
     :
     m_functions(functions)
     {
@@ -41,6 +46,16 @@ public:
     short_t targetDim() const { return m_functions.back()->targetDim(); }
 
     gsMatrix<T> support() const { return m_functions.front()->support(); }
+
+    // void evalAllDers_into(const gsMatrix<T> & u, int n,
+    //                         std::vector<gsMatrix<T> >& result,
+    //                         bool sameElement) const
+    // {
+    //     gsMatrix<T> coords = m_composition->eval(u);
+    //     this->_applyBounds(coords);
+    //     m_basis->evalAllDers_into(coords,n,result,sameElement);
+    // }
+
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -116,6 +131,6 @@ public:
     }
 
 protected:
-    const std::vector<gsFunction<T> *> m_functions;
+    const std::vector<const gsFunction<T> *> m_functions;
 };
 }
