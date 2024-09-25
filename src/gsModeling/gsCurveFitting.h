@@ -34,7 +34,7 @@ class gsCurveFitting
 public:
   /// default constructor
   gsCurveFitting(){
-       //m_curve = NULL;
+       m_curve = NULL;
        m_closed=false;
     };
 
@@ -56,6 +56,12 @@ public:
 
   /// computes the least squares fit for a (closed) B-spline curve
   void compute();
+
+  /// computes the least squares fit for a (closed) B-spline curve, with smoothing
+  void compute(T lambda);
+
+  /// computes the least squares fit for a (closed) B-spline curve
+  void applySmoothing(T lambda, gsMatrix<T> & A_mat, const gsBSplineBasis<T> & basis);
 
   // computes the least squares fit for a periodic B-spline curve (experimental)
   void compute_periodic();
@@ -92,6 +98,8 @@ protected:
   gsKnotVector<T> m_knots;
   /// closed or not closed curve
   bool m_closed;
+
+  T m_last_lambda;
 
 
 }; // class gsCurveFitting
@@ -164,6 +172,181 @@ void gsCurveFitting<T>::compute()
     m_curve = gsBSpline<T >(*curveBasis, give(coefs));
     delete curveBasis;
 }
+
+
+template<class T>
+void gsCurveFitting<T>::applySmoothing(T lambda, gsMatrix<T> & A_mat, const gsBSplineBasis<T> & basis)
+{
+    m_last_lambda = lambda;
+    const short_t dim(basis.domainDim());
+    const short_t stride = dim * (dim + 1) / 2;
+
+    gsVector<index_t> numNodes(dim);
+    gsMatrix<T> quNodes, der2, localA;
+    gsVector<T> quWeights;
+    gsMatrix<index_t> actives;
+
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+        
+    //for (index_t h = 0; h < num_patches; h++)
+    {
+        //auto & basis = m_basis->basis(h);
+
+        //gsDebugVar(dim);
+        //gsDebugVar(stride);
+
+        for (short_t i = 0; i != dim; ++i)
+        {
+            numNodes[i] = basis.degree(i);//+1; 
+        }
+
+        gsGaussRule<T> QuRule(numNodes); // Reference Quadrature rule
+
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(); 
+
+        
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
+        for (; domIt->good(); domIt->next() )
+#       endif
+        {
+            // Map the Quadrature rule to the element and compute basis derivatives
+            QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+            basis.deriv2_into(quNodes, der2);
+            basis.active_into(domIt->center, actives);
+            const index_t numActive = actives.rows();
+            localA.setZero(numActive, numActive);
+
+            // perform the quadrature
+            for (index_t k = 0; k < quWeights.rows(); ++k)
+            {
+                const T weight = quWeights[k] * lambda;
+
+                for (index_t i = 0; i != numActive; ++i)
+                    for (index_t j = 0; j != numActive; ++j)
+                    {
+                        T localAij = 0; // temporary variable
+
+                        for (short_t s = 0; s < stride; s++)
+                        {
+                            // The pure second derivatives
+                            // d^2u N_i * d^2u N_j + ...
+                            if (s < dim)
+                            {
+                                localAij += der2(i * stride + s, k) *
+                                    der2(j * stride + s, k);
+                            }
+                            // Mixed derivatives 2 * dudv N_i * dudv N_j + ...
+                            else
+                            {
+                                localAij += T(2) * der2(i * stride + s, k) *
+                                    der2(j * stride + s, k);
+                            }
+                        }
+                        localA(i, j) += weight * localAij;
+                    }
+            }
+
+            for (index_t i = 0; i != numActive; ++i)
+            {
+                const int ii = actives(i, 0);
+                for (index_t j = 0; j != numActive; ++j)
+                    A_mat(ii, actives(j, 0)) += localA(i, j);
+            }
+        }
+
+    }
+}
+
+
+
+template<class T>
+void gsCurveFitting<T>::compute(T lambda)
+{
+
+    m_last_lambda = lambda;
+
+    // Wipe out previous result ??
+
+    //degree of knot vector i.e. degree of wanted B-spline curve
+    int m_degree=m_knots.degree();
+
+    // number of points 
+    int num_points=m_points.cols();
+    
+    // dimension of points will be also later dimension of coefficients
+    int m_dimension=m_points.rows();
+
+    // basis function definition
+    gsBSplineBasis<T> *curveBasis = new gsBSplineBasis<T>(m_knots);
+
+    //number of basis functions
+    int num_basis=curveBasis->size();
+
+
+    //for computing the value of the basis function
+    gsMatrix<T> values;
+    gsMatrix<index_t> actives;
+
+    //computing the values of the basis functions at some position
+    curveBasis->eval_into(m_param_values,values);
+
+    // which functions have been computed i.e. which are active
+    curveBasis->active_into(m_param_values,actives);
+
+    //how many rows and columns has the A matrix and how many rows has the b vector
+    int num_rows=num_basis;
+    if(m_closed==true){
+        num_rows=num_rows-m_degree;
+    }
+
+    //left side matrix
+    gsMatrix<T> m_A(num_rows,num_rows);
+    m_A.setZero(); // ensure that all entries are zero in the beginning
+    //right side vector (more dimensional!)
+    gsMatrix<T> m_B(num_rows,m_dimension);
+    m_B.setZero(); // enusure that all entris are zero in the beginning
+
+
+    // building the matrix A and the vector b of the system of linear equations A*x==b(uses automatically the information of closed or not)
+    for(index_t k=0;k<num_points;k++){
+        for(index_t i=0;i<actives.rows();i++){
+            m_B.row(actives(i,k)%num_rows) += values(i,k)*m_points.col(k);
+            for(index_t j=0;j<actives.rows();j++){
+                m_A(actives(i,k)%num_rows,actives(j,k)%num_rows) += values(i,k)*values(j,k);
+            }
+        }
+    }
+
+    if(lambda > 0)
+      applySmoothing(lambda, m_A, *curveBasis);
+
+    //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
+    gsMatrix<T> x (m_B.rows(), m_B.cols());
+    x=m_A.fullPivHouseholderQr().solve( m_B);
+
+    // making the coeffiecients ready if it was a closed or not closed curve
+    gsMatrix<T> coefs=x;
+    if(m_closed==true){
+        coefs.conservativeResize(num_rows+m_degree,m_dimension);
+        for(index_t i=0;i<m_degree;i++){
+            for(index_t j=0;j<m_dimension;j++){
+                coefs(num_rows+i,j)=coefs(i,j);
+            }
+        }
+
+    }
+    // finally generate the B-spline curve
+    m_curve = gsBSpline<T >(*curveBasis, give(coefs));
+    delete curveBasis;
+}
+
+
+
 
 template<class T>
 void gsCurveFitting<T>::compute_periodic()
