@@ -60,6 +60,9 @@ public:
   /// computes the least squares fit for a (closed) B-spline curve, with smoothing
   void compute(T lambda);
 
+  /// computes the least squares fit for a (closed) B-spline curve, with smoothing
+  void compute(T lambda, gsMatrix<T> & weights);
+
   /// computes the least squares fit for a (closed) B-spline curve
   void applySmoothing(T lambda, gsMatrix<T> & A_mat, const gsBSplineBasis<T> & basis);
 
@@ -263,9 +266,17 @@ void gsCurveFitting<T>::applySmoothing(T lambda, gsMatrix<T> & A_mat, const gsBS
 }
 
 
-
 template<class T>
 void gsCurveFitting<T>::compute(T lambda)
+{
+    gsMatrix<T> weights(1, m_points.cols()); 
+    weights.setOnes();
+    compute(lambda, weights);
+}
+
+
+template<class T>
+void gsCurveFitting<T>::compute(T lambda, gsMatrix<T> & weights)
 {
 
     m_last_lambda = lambda;
@@ -315,9 +326,9 @@ void gsCurveFitting<T>::compute(T lambda)
     // building the matrix A and the vector b of the system of linear equations A*x==b(uses automatically the information of closed or not)
     for(index_t k=0;k<num_points;k++){
         for(index_t i=0;i<actives.rows();i++){
-            m_B.row(actives(i,k)%num_rows) += values(i,k)*m_points.col(k);
+            m_B.row(actives(i,k)%num_rows) += values(i,k)*m_points.col(k)*weights(k);
             for(index_t j=0;j<actives.rows();j++){
-                m_A(actives(i,k)%num_rows,actives(j,k)%num_rows) += values(i,k)*values(j,k);
+                m_A(actives(i,k)%num_rows,actives(j,k)%num_rows) += values(i,k)*values(j,k)*weights(k);
             }
         }
     }

@@ -19,7 +19,7 @@ using namespace gismo;
 gsMultiPatch<> getMPfromGeom(gsFileData<> & data);
 
 template<class T>
-gsMatrix<T> parameterize_points1D(const gsMatrix<T> & xyz, T alpha = 0.5)
+gsMatrix<T> parameterize_points1D(const gsMatrix<T> & xyz, T alpha)
 {
     index_t N = xyz.cols();
     gsMatrix<T> uv(1,N);
@@ -37,6 +37,20 @@ gsMatrix<T> parameterize_points1D(const gsMatrix<T> & xyz, T alpha = 0.5)
 }
 
 
+template<class T>
+gsMatrix<T> midpoint_weights(const gsMatrix<T> & uv)
+{
+    index_t N = uv.cols();
+    gsMatrix<T> weights(1,N);
+
+    weights(0,0) = uv(0,1) - uv(0,0);
+    weights(0,N-1) = uv(0,N-1) - uv(0,N-2);
+    
+    for(index_t j=1; j < N-1; j++)
+        weights(0,j) = (uv(0,j+1) - uv(0,j-1))/2;
+        
+    return weights;
+}
 
 
 int main(int argc, char *argv[])
@@ -51,6 +65,7 @@ int main(int argc, char *argv[])
     index_t deg_u = 2;
     index_t num_u_knots = 5;
     real_t cm = 1.;
+    bool wls = false;
 
     // Reading options from the command line
     gsCmdLine cmd("Loft parametrized B-spline cuves. Expected input file is an XML "
@@ -63,6 +78,7 @@ int main(int argc, char *argv[])
     cmd.addInt("v", "vdeg", "degree in v direction", deg_v);
     cmd.addInt("", "nu", "number of knots in u direction", num_u_knots);
     cmd.addReal("m", "method", "curves parameterization method: (0) unfirom; (0.5) centripetal; (1) chord-length", cm);
+    cmd.addSwitch("w", "wls", "compute WEIGHTED least squares", wls);
     
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -72,7 +88,7 @@ int main(int argc, char *argv[])
     gsKnotVector<> ku (0., 1., num_u_knots, deg_u+1) ;
 
     gsFileData<> fd(fn);
-    gsMatrix<> xyz, uv;
+    gsMatrix<> xyz, uv, weights;
     
 
     gsInfo << "Numdata: " << fd.numData() << "\n";
@@ -84,17 +100,24 @@ int main(int argc, char *argv[])
     {
         fd.getId<gsMatrix<> >(j+1, xyz );
 
+        gsWriteParaviewPoints(xyz, "data" + internal::to_string(j));
+
         gsInfo << j << "j-th input data:\n";
         gsInfo << xyz.rows() << " x " << xyz.cols() << "\n";
 
         uv = parameterize_points1D(xyz, cm);
+
+        weights = midpoint_weights(uv);
 
         gsInfo << uv.rows() << " x " << uv.cols() << "\n";
 
         //xyz.transposeInPlace();
         //uv.transposeInPlace();
         gsCurveFitting<real_t> fitter( uv, xyz, ku);
-        fitter.compute(lambda);
+        if(wls)
+            fitter.compute(lambda, weights);
+        else
+            fitter.compute(lambda);
 
         gsInfo << fitter.curve() << "\n";
         container.addPatch(fitter.curve());
