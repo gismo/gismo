@@ -1,4 +1,4 @@
-/** @file monitor_poisson_r-adaptivity-test.cpp
+/** @file monitor_poisson_r-adaptivity.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 

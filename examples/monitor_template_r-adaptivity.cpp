@@ -1,4 +1,4 @@
-/** @file monitor_poisson_r-adaptivity-test.cpp
+/** @file monitor_template_r-adaptivity.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
@@ -321,6 +321,14 @@ int main(int arg, char *argv[])
         GISMO_ERROR("Unknown test case");
     }
 
+
+    gsOptionList options;
+    options.addSwitch("Slide","Slide boundaries",slide);
+    gsOptMesh<> optMesh(tbspline,*fun,options,eps);
+    gsMatrix<> initial = convertMultiPatchToFreeVector(mp,optMesh.mapper());
+    
+    gsInfo<<"Number of optimizer degrees of freedom: "<<initial.rows()<<"\n";
+
     gsOptimizer<real_t> * optimizer;
     if      (opt==0) // gsGradientDescent
     {
@@ -349,8 +357,9 @@ int main(int arg, char *argv[])
         GISMO_ERROR("Unknown optimizer");
     }
 
-
-
+    optimizer->solve(initial);
+    gsVector<> solOpt = optimizer->currentDesign();
+    
     gsDebugVar(solOpt.transpose());
     convertFreeVectorToMultiPatch(solOpt,optMesh.mapper(),mp);
 
@@ -360,7 +369,7 @@ int main(int arg, char *argv[])
     gsExprEvaluator<> ev;
     ev.setIntegrationElements(mb);
     auto G = ev.getMap(mp);
-    auto f = ev.getVariable(fun,G);
+    auto f = ev.getVariable(*fun,G);
     ev.writeParaview(f,G,dirname+"fun");
     ev.writeParaview(jac(G).det(),G,dirname+"jacobian_determinant");
 
