@@ -148,6 +148,11 @@ int main(int argc, char* argv[])
 
     gsMatrix<> forceKnotMatrix = knotsToMatrix(forceBasis);
 
+    gsDebugVar(forceKnotMatrix);
+    gsDebugVar(forceKnotMatrix.dim());
+
+
+
 
     participant.addMesh(ForceKnotMesh, forceKnotMatrix);
 
@@ -169,23 +174,21 @@ int main(int argc, char* argv[])
     // gsDebugVar(geometryKnots);
 
     // Gives a full tensor product basis
-    gsInfo << "line 172 \n";
     gsBasis<> * geometryKnotBasis = knotMatrixToBasis<real_t>(geometryKnots).get(); //The displacement value at the first timestep can be empty
-    gsInfo << "Got knotMatrixToBasis line 173 \n";
-    gsDebugVar(geometryKnotBasis);
+    // gsDebugVar(geometryKnotBasis);
 
     // Receive geometry control points
     gsVector<index_t> geometryControlPointIDs;
     gsMatrix<> geometryControlPoints;
     participant.getMeshVertexIDsAndCoordinates(GeometryControlPointMesh, geometryControlPointIDs, geometryControlPoints);
-    gsInfo<<"Read geometryControlPoints successfully! \n";
+
     // Reconstruct the beam geometry in its own mesh
     gsMultiPatch<> beam;
 
     gsDebugVar(geometryControlPoints);
-    gsInfo << "Got here line 183, gsMultiPatch<> beam \n";
+
     beam.addPatch(give(geometryKnotBasis->makeGeometry(geometryControlPoints.transpose())));
-    gsInfo<<"Got here line 187, beam.addPatch...makrGeometry \n";
+
     // beam.addPatch(give(geometryKnotBasis->makeGeometry(geometryControlPoints.transpose())));
 
 
@@ -431,8 +434,7 @@ int main(int argc, char* argv[])
 
         gsStopwatch read_timer;
         participant.readData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
-	gsDebugVar(geometryControlPoints);
-	gsInfo << "read time = " << read_timer.stop() << "\n";
+        gsInfo << "read time = " << read_timer.stop() << "\n";
 
 
         // beamNew.patch(0).coefs() = beam.patch(0).coefs() + geometryControlPoints.transpose();
@@ -440,7 +442,6 @@ int main(int argc, char* argv[])
         // gsDebugVar(beamNew.patch(0).coefs().rows());
         // gsDebugVar(beamOld.patch(0).coefs().rows());
         dbeam.patch(0).coefs() = geometryControlPoints.transpose();
-	gsDebugVar(dbeam.patch(0).coefs());
         // dbeam.patch(0).coefs().setZero();
         
         // gsDebugVar(dbeam.patch(0).coefs().rows());

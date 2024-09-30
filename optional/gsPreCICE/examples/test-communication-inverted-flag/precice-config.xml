@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<precice-configuration>
+  <log>
+    <sink
+      filter="%Severity% > info and %Rank% = 0"
+      format="---[precice] %ColorizedSeverity% %Message%"
+      enabled="true" />
+
+    <sink
+      filter="%Severity% > debug and %Rank% = 0"
+      format="---[precice] %ColorizedSeverity% %Message%"
+      enabled="false" />
+  </log>
+
+  <data:vector name="KnotData" />
+  <data:vector name="ControlPointData" />
+  <data:vector name="ForceData" />
+
+  <mesh name="KnotMesh" dimensions="2">
+    <use-data name="KnotData" />
+  </mesh>
+
+  <mesh name="ControlPointMesh" dimensions="3">
+    <use-data name="ControlPointData" />
+  </mesh>
+
+  <mesh name="ForceMesh" dimensions="2">
+    <use-data name="ForceData" />
+  </mesh>
+
+  <participant name="Fluid">
+    <receive-mesh name="ForceMesh" from="Solid"/>
+    <receive-mesh name="KnotMesh" from="Solid"/>
+    <receive-mesh name="ControlPointMesh" from="Solid" direct-access="true"/>
+    <read-data name="ControlPointData" mesh="ControlPointMesh" />
+    <write-data name="ForceData" mesh="ForceMesh" />
+  </participant>
+
+  <participant name="Solid">
+    <provide-mesh name="ForceMesh"/>
+    <provide-mesh name="KnotMesh"/>
+    <provide-mesh name="ControlPointMesh"/>
+    <read-data name="ForceData" mesh="ForceMesh" />
+    <write-data name="ControlPointData" mesh="ControlPointMesh" />
+  </participant>
+
+  <m2n:sockets acceptor="Fluid" connector="Solid" exchange-directory=".." />
+
+  <coupling-scheme:parallel-implicit>
+    <participants first="Fluid" second="Solid"/>
+    <time-window-size value="0.025" />
+    <max-time value="0.5" />
+    <exchange data="ControlPointData" mesh="ControlPointMesh" from="Solid"   to="Fluid"/>
+    <exchange data="ForceData"        mesh="ForceMesh"        from="Fluid"   to="Solid"  />
+    <max-iterations value="50" />
+    <relative-convergence-measure limit="1e-4" data="ControlPointData"  mesh="ControlPointMesh"/>
+    <relative-convergence-measure limit="1e-4" data="ForceData"         mesh="ForceMesh"/>
+    <acceleration:IQN-ILS>
+      <data name="ControlPointData" mesh="ControlPointMesh" />
+      <data name="ForceData"        mesh="ForceMesh" />
+      <preconditioner type="residual-sum" />
+      <filter type="QR2" limit="1e-4" />
+      <initial-relaxation value="1.0" />
+      <max-used-iterations value="100" />
+      <time-windows-reused value="15" />
+    </acceleration:IQN-ILS>
+    <acceleration:constant>
+      <relaxation value="1.0" />
+    </acceleration:constant>
+  </coupling-scheme:parallel-implicit>
+
+</precice-configuration>

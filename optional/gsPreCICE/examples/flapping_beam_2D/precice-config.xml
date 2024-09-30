@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<precice-configuration>
+  <log>
+    <sink
+      filter="%Severity% > info and %Rank% = 0"
+      format="---[precice] %ColorizedSeverity% %Message%"
+      enabled="false" />
+
+    <sink
+      filter="%Severity% > debug and %Rank% = 0"
+      format="---[precice] %ColorizedSeverity% %Message%"
+      enabled="true" />
+  </log>
+
+  <data:vector name="GeometryControlPointData" />
+  <data:vector name="ForceControlPointData" />
+  <data:vector name="GeometryKnotData" />
+  <data:vector name="ForceKnotMeshData" />
+
+
+  <mesh name="GeometryKnotMesh" dimensions="2">
+    <use-data name="GeometryKnotData" />
+  </mesh>
+  
+  <mesh name="GeometryControlPointMesh" dimensions="2">
+      <use-data name="GeometryControlPointData" />
+  </mesh>
+  
+  <mesh name="ForceKnotMesh" dimensions="2">
+      <use-data name="ForceKnotMeshData" />
+  </mesh>
+  
+  <mesh name="ForceControlPointMesh" dimensions="2">
+      <use-data name="ForceControlPointData" />
+  </mesh>
+  
+  <participant name="Fluid">
+      <provide-mesh name="ForceControlPointMesh" />
+      <provide-mesh name="ForceKnotMesh" />
+      <receive-mesh name="GeometryControlPointMesh" from="Solid" direct-access="true"/>
+      <receive-mesh name="GeometryKnotMesh" from="Solid" />
+      <read-data    name="GeometryControlPointData" mesh="GeometryControlPointMesh" />
+<!--      <read-data    name="GeometryKnotData" mesh="GeometryKnotMesh" />-->
+      <write-data   name="ForceControlPointData" mesh="ForceControlPointMesh" />
+<!--      <write-data   name="ForceKnotMeshData" mesh="ForceKnotMesh" />-->
+  </participant>
+  
+  <participant name="Solid">
+      <provide-mesh name="GeometryControlPointMesh" />
+      <provide-mesh name="GeometryKnotMesh" />
+      <receive-mesh name="ForceControlPointMesh" from="Fluid" direct-access="true"/>
+      <receive-mesh name="ForceKnotMesh" from="Fluid" />
+<!--      <read-data    name="ForceKnotMeshData" mesh="ForceKnotMesh" />-->
+      <read-data    name="ForceControlPointData"            mesh="ForceControlPointMesh" />
+      <write-data   name="GeometryControlPointData" mesh="GeometryControlPointMesh" />
+<!--      <write-data   name="GeometryKnotData" mesh="GeometryKnotMesh" />-->
+  </participant>
+  
+  <m2n:sockets acceptor="Fluid" connector="Solid" exchange-directory="../"/>
+
+     <coupling-scheme:parallel-implicit>
+    <participants first="Fluid" second="Solid"/>
+    <time-window-size value="0.001" />
+    <max-time value="40.0" />
+    <exchange data="GeometryControlPointData" mesh="GeometryControlPointMesh" from="Solid"   to="Fluid"/>
+    <exchange data="ForceControlPointData"        mesh="ForceControlPointMesh"        from="Fluid"   to="Solid"  />
+    <max-iterations value="100" />
+    <relative-convergence-measure limit="5e-3" data="GeometryControlPointData"  mesh="GeometryControlPointMesh"/>
+    <relative-convergence-measure limit="5e-3" data="ForceControlPointData"         mesh="ForceControlPointMesh"/>
+    <acceleration:IQN-ILS>
+      <data name="GeometryControlPointData" mesh="GeometryControlPointMesh" />
+      <data name="ForceControlPointData"        mesh="ForceControlPointMesh" />
+      <preconditioner type="residual-sum" />
+      <filter type="QR2" limit="1.2e-3" />
+      <initial-relaxation value="0.1" />
+      <max-used-iterations value="60" />
+      <time-windows-reused value="15" />
+    </acceleration:IQN-ILS>
+  </coupling-scheme:parallel-implicit>
+</precice-configuration>
