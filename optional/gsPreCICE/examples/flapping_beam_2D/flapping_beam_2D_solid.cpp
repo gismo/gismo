@@ -117,6 +117,8 @@ int main(int argc, char* argv[])
     gsMatrix<> bbox(2,2);
     bbox << -1e300, 1e300, // X dimension limits
             -1e300, 1e300; // Y dimension limits
+
+
     bbox.transposeInPlace();
     bbox.resize(1,bbox.rows()*bbox.cols());
     participant.setMeshAccessRegion(ForceControlPointMesh, bbox);
@@ -128,19 +130,25 @@ int main(int argc, char* argv[])
 
     // Setup the geometry knot mesh
     gsMatrix<> geometryKnots = knotsToMatrix(basisDisplacement.basis(0));
+
+    gsDebugVar(geometryKnots);
+
     participant.addMesh(GeometryKnotMesh,geometryKnots);
 
     // Initialize preCICE (send solid mesh to API)
     real_t precice_dt = participant.initialize();
 
 
-    //Get the force mesh from the API
+    //Get the force mesh from direct-access="true"direct-access="true"the API
     gsVector<index_t> forceKnotIDs;
     gsMatrix<> forceKnots;
     participant.getMeshVertexIDsAndCoordinates(ForceKnotMesh,forceKnotIDs,forceKnots);
 
+    gsDebugVar(forceKnots);
+
     // Gives a full tensor product basis
     gsBasis<> * basis = knotMatrixToBasis<real_t>(forceKnots).get();
+
 
     gsMatrix<> forceControlPoints(basis->size(),2);
     forceControlPoints.setZero();

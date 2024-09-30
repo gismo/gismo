@@ -148,6 +148,11 @@ int main(int argc, char* argv[])
 
     gsMatrix<> forceKnotMatrix = knotsToMatrix(forceBasis);
 
+    gsDebugVar(forceKnotMatrix);
+    gsDebugVar(forceKnotMatrix.dim());
+
+
+
 
     participant.addMesh(ForceKnotMesh, forceKnotMatrix);
 
@@ -170,7 +175,7 @@ int main(int argc, char* argv[])
 
     // Gives a full tensor product basis
     gsBasis<> * geometryKnotBasis = knotMatrixToBasis<real_t>(geometryKnots).get(); //The displacement value at the first timestep can be empty
-    gsDebugVar(geometryKnotBasis);
+    // gsDebugVar(geometryKnotBasis);
 
     // Receive geometry control points
     gsVector<index_t> geometryControlPointIDs;
