@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo @GISMO_VERSION@-->
+<xml>
+ <JITCompilerConfig cmd="@JIT_C_COMPILER@"
+                    flags="@JIT_C_FLAGS@ @JIT_INCLUDES@ @JIT_LIBRARIES@"
+                    lang="c"
+                    out="-o "
+                    temp=""
+                    id="0"/>
+ 
+ <JITCompilerConfig cmd="@JIT_CXX_COMPILER@"
+                    flags="@JIT_CXX_FLAGS@ @JIT_INCLUDES@ @JIT_LIBRARIES@"
+                    lang="cxx"
+                    out="-o "
+                    temp=""
+                    id="1"/>
+
+  <JITCompilerConfig cmd="@JIT_CUDA_COMPILER@"
+                    flags="@JIT_CUDA_FLAGS@ @CUDA_INCLUDES@ @JIT_LIBRARIES@"
+                    lang="cu"
+                    out="-o "
+                    temp=""
+                    id="2"/>
+
+   <JITCompilerConfig cmd="@JIT_Fortran_COMPILER@"
+                    flags="@JIT_Fortran_FLAGS@ @JIT_INCLUDES@ @JIT_LIBRARIES@"
+                    lang="F95"
+                    out="-o "
+                    temp=""
+                    id="3"/>
+</xml>

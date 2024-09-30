@@ -1,0 +1,436 @@
+namespace gismo {
+
+/**
+
+\page thbSplineBasis_example thbSplineBasis_example.cpp
+
+This tutorial provides a basic motivation for <b>truncated hierarchical B-splines (THB-splines)</b> and a brief introduction to some basic features of gsTHBSplineBasis.<br>
+See also \ref basis_example and \ref bSplineBasis_example.
+
+More details on the hierarchical splines can be found in
+\ref adaptRefinementThb_example as well as in the \ref HSplines
+description.
+
+\section sIntro Introduction
+
+Two simple examples are provided for illustrating the construction of a THB-spline basis. The formal definition is given only for the sake of completeness (see \ref ssFormalDef), see the \ref sReferences for further details.
+
+\subsection s1d 1D-example
+
+For illustration, consider a 1D-example.<br>
+We start with two sets of B-Spline basis functions of degree 2:
+
+Level 0, the "coarse" ones, with knot vector \f$ s^0 = (0,\ 0,\ 0,\ 1/8,\ 2/8,\ ... 7/8,\ 1,\ 1,\ 1)\f$
+
+Level 1, the "fine" ones, with knot vector \f$ s^1 = (0,\ 0,\ 0,\ 1/16,\ 2/16,\ ... 15/16,\ 1,\ 1,\ 1)\f$
+
+These two bases are illustrated here (shown in different colours and thickness only for better visibility):
+\image html figs/tutTHB_1d_B0.png "B-splines of level 0"
+
+\image html figs/tutTHB_1d_B1.png "B-splines of level 1"
+
+The parameter domain is referred to as \f$ \Omega^0 \f$. The green area in the pictures indicates \f$ \Omega^1 \subset \Omega^0 \f$, i.e., the area where we want finer basis functions.
+
+A straightforward way of doing so: Take all fine functions \f$ \beta^1_j \f$ where \f$ \mathrm{supp} \beta^1_j \subset \Omega^1 \f$,
+
+\image html figs/tutTHB_1d_B1act.png "Active B-splines of level 1"
+
+...and only those coarse functions \f$ \beta^0_i \f$ where \f$ \mathrm{supp} \beta^0_i \subset \Omega^0 \land \mathrm{supp} \beta^0_i \not \subset \Omega^1 \f$
+
+\image html figs/tutTHB_1d_B0sel.png "Active B-splines of level 0"
+
+\subsubsection sssHB HB-splines
+
+By taking the union of these two sets of functions, we obtain the hierarchical B-spline basis (HB-splines) of level 1:
+
+\image html figs/tutTHB_1d_H1.png "HB-splines"
+
+With this basis, however, the partition-of-unity property is lost. Also, there can be large overlaps of the supports of the basis functions.
+
+\subsubsection sssTHB THB-splines
+
+Instead of just using the coarse functions as they are, the coarse functions are truncated (see \ref sReferences at the bottom for details). This results in the THB-spline basis of level 1:
+
+\image html figs/tutTHB_1d_T1.png "THB-splines"
+
+THB-splines again have the partition-of-unity property and support overlaps are reduced.
+
+Note that HB-splines and THB-splines span the same function space.
+
+\subsection s2d 2D-example
+
+Similar to the 1D-case above, consider a coarse and a fine mesh, as displayed on the left, and right, respectively. 
+The corresponding tensor-product B-spline bases of degree 2 are displayed in the picture below.
+The green area again indicates the area where we want fine basis funcitons.
+
+
+\image html figs/tutTHB_2d_m0_m1.png "Meshes of levels 0 and 1, green are to be refined to level 1."
+<br>
+\image html figs/tutTHB_2d_B0_B1.png "Tensor-product B-spline bases of levels 0 and 1."
+<br>
+As in the 1D-case, we select<br>
+the coarse functions \f$ \beta^0_i \f$ where \f$ \mathrm{supp} \beta^0_i \subset \Omega^0 \land \mathrm{supp} \beta^0_i \not \subset \Omega^1 \f$, and we truncate them (displayed on the left)<br>
+and the fine functions \f$ \beta^1_j \f$ where \f$ \mathrm{supp} \beta^1_j \subset \Omega^1 \f$ (displayed on the right):
+
+\image html figs/tutTHB_2d_B0_B1_acts.png "Active basis functions of levels 0 (already truncated) and of level 1."
+<br>
+The union of these functions is the THB-spline basis:
+
+\image html figs/tutTHB_2d_Tm1_T1.png "Locally refined mesh and corresponding THB-spline basis."
+<br>
+
+\subsection ssFormalDef Formal definition
+
+Just for the sake of completeness, a brief formal definition is provided, without going into any details. See \ref sReferences at the bottom for details
+
+\subsubsection sssTrunc Truncation operation
+
+Let \f$ B^{\ell-1} \f$ denote the (tensor-product) B-spline basis of level \f$\ell - 1 \f$. Let a function \f$ \tau \in \mathrm{span} B^{\ell-1} \f$ be represented in terms of \f$ B^{\ell} \f$ by 
+\f$ \tau = \sum_{\beta^{\ell} \in B^{\ell} } c_\beta \beta^{\ell} \f$.
+The truncation of \f$ \tau \f$ is given by
+\f$ \mathrm{trunc}^{\ell} \tau = \sum_{\beta^{\ell} \in B^{\ell},\ \mathrm{supp} \beta^{\ell} \not \subseteq \Omega^{\ell} } c_\beta \beta^{\ell} \f$
+
+\subsubsection sssTHBdef THB-spline basis
+
+\f$ T^0 = B^0 \f$<br>
+\f$ T^{\ell} =  T_A^{\ell} \cup T_B^{\ell}\f$, where<br>
+\f$ \quad T_A^{\ell} = \{ \mathrm{trunc}^{\ell} \tau:\ \tau \in T^{\ell-1} \land \mathrm{supp} \tau \not \subseteq \Omega^{\ell} \} \f$ <br>
+\f$ \quad T_B^{\ell} = \{ \beta^\ell \in B^{\ell}:\ \mathrm{supp} \beta^\ell \subseteq \Omega^{\ell} \} \f$<br>
+\f$ T = T^N \f$
+
+\section sConst Constructing a THB-spline-basis
+
+Remark: gsTHBSplineBasis and gsHBSplineBasis are derived from gsHTensorBasis
+
+\subsection ssConstTens From tensor-basis
+
+Constructor using a gsTensorBSplineBasis as argument.
+
+\snippet thbSplineBasis_example.cpp constBasis
+
+\subsection ssConstXml From xml
+
+Example for a THB-spline basis of degree 2:
+\verbatim
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Basis type="THBSplineBasis2" levels="6">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+ </Basis>
+</xml>
+\endverbatim
+The tensor-product B-spline basis in the "THBSplineBasis2" defines the basis of level 0.
+
+\section sRef Refinement
+
+\image html figs/tutTHB_2d_m0_m1.png "Meshes of levels 0 and 1, green are to be refined to level 1."
+
+\subsection sRefElts using refineElements( std::vector )
+
+See gsHTensorBasis::refineElements(). The argument is a std::vector<unsigned> containing a sequence of <em>n*(1+2*d)</em> unsigned. Each (1+2*d)-tuple contains the following information:
+- the the level that you want to refine to
+- the lower corner in unique knot span indices of the new level
+- the upper corner in unique knot span indices of the new level
+
+The green are marked in the 2D-example above has lower corner (2,0) and upper corner (8,4) in unique knot indices at level 1. We can refine this area as follows:
+
+\snippet thbSplineBasis_example.cpp refViaStdVec
+
+This method is the recommended one, since the corners of the refinement areas are specified by unsigned integers, which is numerically stable. Also, since the level is specified explicitly, double calls by mistake will not result in double refinement.
+
+\subsection sRefBox by the "<box>" tag in the xml
+
+One can also specify different levels of refinement already in the xml-file, using the "box"-tag:
+\verbatim
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Basis type="THBSplineBasis2" levels="6">   
+  <Basis type="TensorBSplineBasis2">         
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+ <box level="1">2 0 8 4</box>
+ </Basis>
+</xml>
+\endverbatim
+
+\subsection sRefMatrix using refine( gsMatrix )
+
+See gsHTensorBasis::refine(). The argument is a gsMatrix of size <em>d x (2*n)</em>. Two columns represent the coordinates of the lower and the upper corner, respectively, of the area to be refined. In our example, the area to be refined can be written as 
+\verbatim
+gsMatrix<real_t> boxM(2,2);
+boxM(0,0) = 0.25;
+boxM(1,0) = 0.0;
+
+boxM(0,1) = 1.0;
+boxM(1,1) = 0.5;
+
+thb.refine( boxM );
+\endverbatim
+
+This method refines all elements overlapping the specified box.
+
+<b>Warning!</b><br>
+This method does not specify which level should be refined to. If parts overlap, areas might get refined twice.<br>
+This refinement function uses numerical values, which could cause problems, especially when the coordinates coincide with knots.
+
+\section sOps Basic operations
+
+\subsection sOps0 "standard" operations
+
+Just like with the other bases. For example, displaying information via std::cout,<br>
+
+\snippet thbSplineBasis_example.cpp stdOpsCout
+
+will return the following:
+
+\verbatim
+This basis is:
+Truncated basis of dimension 2,
+levels=2, size=54, tree_nodes=5).
+Domain: [0 0]..[1 1].
+Size per level: 30 24 
+\endverbatim
+
+The last line refers to the number of basis functions on the respective levels.
+
+Other functions such as gsHTensorBasis::active_into(),<br>
+gsHTensorBasis::eval_into(),<br>
+gsHTensorBasis::deriv_into(), and also <br>
+gsHTensorBasis::uniformRefine() work as usual.
+
+Example:
+\snippet thbSplineBasis_example.cpp stdOpsStd
+
+\image html figs/tutTHB_2d_Tm1_evalPts.png "evaluation points"<br>
+
+\verbatim
+active functions: 
+ 9  9 14
+10 10 15
+11 11 16
+33 15 20
+34 16 21
+35 17 22
+39 45 26
+40 46 27
+41 47 28
+45 51  0
+46 52  0
+47 53  0
+their values:     
+     0 0.0012 0.0144
+     0 0.0204 0.0592
+     0 0.0384 0.0064
+0.0288 0.0004 0.1008
+0.2016 0.0068 0.4144
+0.1296 0.0128 0.0448
+0.0448 0.0144 0.0648
+0.3136 0.1008 0.2664
+0.2016 0.0648 0.0288
+0.0064 0.0592      0
+0.0448 0.4144      0
+0.0288 0.2664      0
+\endverbatim
+
+<b>Note:</b>
+<ul>
+<li>The basis functions are 
+numbered firstly by level (starting with level 0), and then by the tensor-index of the respective level (see \ref sOpsHIndexing).
+
+<li>gsHTensorBasis::active_into() does not account for functions which are truncated to zero (i.e., it will return the same result for gsHBSplineBasis and gsTHBSplineBasis). Functions which are truncated to zero will be evaluated as (exactly) zero.
+
+<li>The numbers of active functions at the two evaluation points may different. Any shorter columns will be filled with (exact) zeros.
+</ul>
+
+
+\subsection sOpsHBasis gsHTensorBasis - specific
+
+Some additional functions are specific to gsHTensorBasis.
+
+\subsubsection sOpsHIndexing Indexing / numbering of basis functions
+
+The basis functions are numbered firstly by level (starting with level 0), and then by the tensor-index of the respective level.<br>
+The index in the numbering of the whole THB-spline basis (in our example, the numbering from 0 to 53), is referred to as <em>global index</em> or <em>hierarchical index</em>.<br>
+The index that a certain function has within the tensor-product B-spline basis of the respective level is referred to as <em>flat tensor index</em> ("flat" in the sense that no <em>d</em>-tupels are used, but the tensor-product basis functions already have a "single-digit" index).
+
+To get the flat index and the level of a certain basis function, use gsHTensorBasis::flatTensorIndexOf() and gsHTensorBasis::levelOf().
+
+\snippet thbSplineBasis_example.cpp indexTransfForw
+
+will, in our example, print
+
+\verbatim
+transform indices
+global/hier.index  ->  flat tensor index (on level)
+27  ->  33  ( 0 )
+28  ->  34  ( 0 )
+29  ->  35  ( 0 )
+30  ->  4  ( 1 )
+31  ->  5  ( 1 )
+32  ->  6  ( 1 )
+33  ->  7  ( 1 )
+34  ->  8  ( 1 )
+35  ->  9  ( 1 )
+\endverbatim
+
+To compute the global/hierarchical index from a given flat index and a given level, use 
+gsHTensorBasis::flatTensorIndexToHierachicalIndex().
+
+\snippet thbSplineBasis_example.cpp indexTransfBack
+
+will, in our example, print
+
+\verbatim
+reverse index transformation
+flat tensor index (on level)  ->  global/hier.index
+33  ( 0 )  ->  27
+34  ( 0 )  ->  28
+35  ( 0 )  ->  29
+4  ( 1 )  ->  30
+5  ( 1 )  ->  31
+6  ( 1 )  ->  32
+7  ( 1 )  ->  33
+8  ( 1 )  ->  34
+9  ( 1 )  ->  35
+\endverbatim
+
+\subsubsection sOpsHLevelAt Get level and knot span
+
+gsHTensorBasis::getLevelUniqueSpanAtPoints() will tell you the levels of certain points, as well as the knot span containing these points:
+
+\snippet thbSplineBasis_example.cpp stdOpsHTens
+
+In our example, this will return
+
+\verbatim
+levels: 
+1 1 0
+lower corners: 
+7 7 2
+0 2 3
+\endverbatim
+These indices are given on the respective level.
+
+\subsubsection sOpsHTree Show tree-structure
+
+The gsHTensorBasis are based on a gsHDomain. The tree-structure (see references at the bottom) can be accessed by the member function gsHTensorBasis::tree(). For example, this is how to take a look at the underlying tree-structure:
+
+\snippet thbSplineBasis_example.cpp stdOpsHTensTree
+
+In our example, this will return
+
+\verbatim
+levels:        
+0
+1
+0
+lower corners: 
+2 4
+2 0
+0 0
+upper corners: 
+8 8
+8 4
+2 8
+\endverbatim
+Note that these indices are given with respect to level gsHDomain::m_maxInsLevel.
+
+\section sRemRef Remarks regarding refinement
+
+\subsection ssRefAreaSize Size of refined area
+
+Keep in mind that fine functions are only added, if the refined area contains the support of at least one fine basis function! If only a single cell/element is refined, no fine functions are added (for \f$ p > 1 \f$)! If necessary, extend the refinement area by a ring of cells around the refinement area.
+
+
+\subsection sRefExtra Additional refinement during refinement
+
+Take the hierarchical mesh from above, where \f$ \Omega^1 \f$ is now coloured light green. Refining the dark green area to level 2 will NOT result in the mesh shown in the middle. Instead, in order to avoid L-shaped elements, and due to some requirements by the underlying tree, the mesh shown on the right will be generated (with additional refinement in the orange areas).
+
+\image html figs/tutTHB_2d_Tm2.png "Level 1: light green. Level 2: dark green. Additional refinement: orange." 
+
+The hierarchical mesh and the corresponding THB-Spline basis:
+
+\image html figs/tutTHB_2d_Tm2_T2.png "Hierarchical mesh and THB-splines on 3 levels."
+
+Applying this refinement to the basis and printing the basis...
+
+\snippet thbSplineBasis_example.cpp refViaStdVec2
+
+...will return
+
+\verbatim
+after 2nd refinement, this basis is:
+Truncated basis of dimension 2,
+levels=3, size=70, tree_nodes=25).
+Domain: [0 0]..[1 1].
+Size per level: 30 32 8 
+\endverbatim
+
+This should be kept in mind when manually creating THB-spline geometries.
+
+
+\subsection sRefPresOfCoeff Preservation of coefficients
+
+
+Assume you have given a certain spline geometry (curve, surface, volume,...) represented by tensor-product splines of level 0 with coefficients \f$ c^0_i \f$:
+\f[ G(\xi) = \sum_{ \beta^0_i \in B^0} c^0_i \beta^0_i(\xi) \f]
+
+The <em>same</em> geometry can be represented on level 1 with different coefficients \f$ c^1_j \f$:
+\f[ G(\xi) = \sum_{ \beta^1_j \in B^1} c^1_j \beta^1_j(\xi) \f]
+
+
+If an area \f$ \Omega^1 \subset \Omega^0 \f$ is refined to level 1, we obtain the THB-spline basis consisting of
+- truncated coarse functions \f$ \mathrm{trunc}^1 \beta^0_i(\xi), \mathrm{supp} \beta^0_i \not \subseteq \Omega^1 \f$ 
+- and fine functions \f$ \beta^1_j, \ \mathrm{supp} \beta^1_j \subseteq \Omega^1 \f$
+
+The geometry \f$ G \f$ can be obtained <em>exactly</em> by taking the same coefficients \f$ c^0_j \f$ and \f$ c^1_j \f$ that were used on the respective levels:
+\f[ G(\xi) = 
+\sum_{ \beta^0_i \in B^0,\ \mathrm{supp} \beta^0_i \not \subseteq \Omega^1} 
+c^0_i\ \mathrm{trunc}^1 \beta^0_i(\xi) 
++ \sum_{ \beta^1_j \in B^1,\ \mathrm{supp} \beta^1_j \subseteq \Omega^1} 
+c^1_j \beta^1_j(\xi) 
+\f]
+
+\section sReferences References
+
+C. Giannelli, B. J&uuml;ttler, and H. Speleers. THB-splines: The truncated basis for hierarchical splines. Comput. Aided Geom. Design, 29(7):485-498, 2012.
+<a href="http://www.sciencedirect.com/science/article/pii/S0167839612000519">[Link]</a> 
+<a href="http://www.ag.jku.at/pubs/2012gjs.pdf">[Technical&nbsp;Report]</a>
+
+C. Giannelli, B. J&uuml;ttler, and H. Speleers. Strongly stable bases for adaptively refined multilevel spline spaces. Adv. Comp. Math., 40(2):459-490, 2014.
+<a href="http://link.springer.com/article/10.1007/s10444-013-9315-2">[Link]</a>
+<a href="http://gs.jku.at/pubs/NFNreport3.pdf">[G+S&nbsp;Report&nbsp;No.&nbsp;3]</a>
+
+C. Giannelli, B. J&uuml;ttler, S.K. Kleiss, A. Mantzaflaris, B. Simeon, J. Speh:
+THB-splines: An Effective Mathematical Technology for Adaptive Refinement in Geometric Design and Isogeometric Analysis. NFN Technical Report No. 30.
+<a href="http://www.sciencedirect.com/science/article/pii/S0045782515003540">[Link]</a> 
+<a href="http://gs.jku.at/pubs/NFNreport30.pdf">[G+S&nbsp;Report&nbsp;No.&nbsp;30]</a>
+
+G. Kiss, C. Giannelli, B. Jüttler:
+Algorithms and Data structures for truncated hierarchical B-splines.
+Mathematical Methods for Curves and Surfaces. Ed. by M. Floater et al. Vol. 8177. Lecture Notes in Computer Science. Springer, 2014, pp 304 - 323.
+<a href="http://link.springer.com/chapter/10.1007/978-3-642-54382-1_18">[Link]</a>
+<a href="http://www.ag.jku.at/pubs/2013kgj.pdf">[Technical&nbsp;Report]</a>
+
+\section thbSplineBasis_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/thbSplineBasis_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include thbSplineBasis_example.cpp
+
+*/
+
+}

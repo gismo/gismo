@@ -1,0 +1,144 @@
+namespace gismo {
+
+/**
+
+\page adaptRefinementThb_example adaptRefinementThb_example.cpp
+
+This tutorial, shows how to use some functions for adaptive refinement. It is based on \ref poisson_example, see there for details.
+
+More details on the hierarchical splines can be found in \ref
+thbSplineBasis_example as well as in the \ref HSplines description.
+
+\section sSetup Setting up the problem
+
+As in \ref poisson_example, we include the gismo namespace...
+
+\snippet adaptRefinementThb_example.cpp Include namespace
+
+...and a command-line argument which allows the user to create a
+Paraview visualization file.
+
+\snippet adaptRefinementThb_example.cpp Parse command line
+
+
+\subsection sProblemDef Problem definition
+
+We consider the Laplace problem on an L-shaped domain \f$ (-1,1)^2 \setminus [0,1]^2 \f$ which is represented by three squares.
+
+\image html tutAdaRefTHB_geo.png "L-shaped domain, 3 patches."
+
+We solve the Laplace problem
+\f[ -\Delta u = 0~\mathrm{in}~\Omega,\quad u = u_{ex} ~\mathrm{on}~\partial \Omega, \f]
+where the exact solution \f$u_{ex}\f$ is given in polar coordinates by
+\f[ u_{ex}(r,\varphi) = r^{\frac{2}{3}} \sin\Big( ( 2\varphi - \pi)/3 \Big). \f]
+
+We define exact solution (in Cartesian coordinates) and the (homogenous) right-hand-side of the PDE:
+\snippet adaptRefinementThb_example.cpp Function data
+
+
+\subsection sGetGeoBasis Getting geometry and basis
+
+The gsMultiPatch object describing the geometry is read in from an .xml-file:
+
+\snippet adaptRefinementThb_example.cpp GetGeometryData
+
+The information on patch-interfaces and/or boundaries is not necessarily contained in the .xml-file. To make sure that interfaces and boundaries are correctly set up, call gsMultiPatch::computeTopology().
+
+\snippet adaptRefinementThb_example.cpp computeTopology
+
+To prescribe Dirichlet boundary conditions on all boundaries, we use the gsMultiPatch::const_biterator to iterate through all boundaries:
+
+\snippet adaptRefinementThb_example.cpp Boundary conditions
+
+
+Obtaining the gsMultiBasis from the gsMultiPatch is straightforward, just call the corresponding constructor:
+
+\snippet adaptRefinementThb_example.cpp GetBasisFromTHB
+
+Note that the resulting gsMultiBasis will be composed of the bases defining the geometry. In this example, the geometry is given as a gsTHBSpline. Accordingly, the created gsMultiBasis is composed of gsTHBSplineBasis.
+
+\subsubsection sGeoFromTens Get a gsTHBSplineBasis from a gsTensorBSpline
+
+If the geometry is not given as a gsTHBSpline, but as a gsTensorBSpline...
+
+\snippet adaptRefinementThb_example.cpp GetGeometryDataTens
+
+...one can create a gsTHBSplineBasis as follows:
+
+\snippet adaptRefinementThb_example.cpp GetBasisFromTens
+
+
+
+\section sMainLoop Loop
+
+Instead of just solving the problem once, we wrap a loop around the solving process. For each computed solution, we compute the distribution of the error. Based on this error indication, we mark a certain number of cells for refinement.
+
+
+\subsection sAdaRefSettings Setting up adaptive refinement parameters
+
+For adaptive refinement, we need to specify a criterion for marking cells, and a parameter.
+Currently implemented are PUCA, GARU, errorFraction (a.k.a. Doerfel-marking), see gsMarkElementsForRef().<br>
+Setting the parameter to 0 will result in global refinement, setting it to 1 will result in (almost) no refinement.
+
+\snippet adaptRefinementThb_example.cpp adaptRefSettings
+
+\subsection solving Solving the problem
+
+If desired or necessary (e.g., because the geometry is given by a very coarse representation), apply initial uniform (i.e., global) refinement steps:
+
+\snippet adaptRefinementThb_example.cpp initialRefinements
+
+Wrap a loop around the solution process
+
+\snippet adaptRefinementThb_example.cpp beginRefLoop
+
+The part re solving the equation is the same as in \ref poisson_example.
+
+\snippet adaptRefinementThb_example.cpp solverPart
+
+\subsection sAdaRefExecute Adaptive refinement
+
+After having computed the solution, we compute the local errors. Either by some a posteriori error estimation technique, or, as in this academic example, by computation of the exact error.
+
+\snippet adaptRefinementThb_example.cpp errorComputation
+
+Having computed the element-wise errors, we select those that need to be marked by calling gsMarkElementsForRef(), where the previously defined parameters \a adaptRefCrit and \a adaptRefParam are used. The actual refinement is done by gsRefineMarkedElements(). 
+
+\snippet adaptRefinementThb_example.cpp adaptRefinementPart
+
+<b>Note/Warning:</b><br>
+As of now, we cannot access a single element of a gsHTensorBasis directly (e.g., by some index). gsMarkElementsForRef() and gsRefineMarkedElements() rely on the assumption that the gsDomainIterator used in these two functions will iterate over the elements in the same order.
+<br>
+This is also the reason why <em>elMarked</em> is a vector of booleans indicating "refine!" or "don't refine!" for each element (instead of, e.g., a list of inidces of elements).
+
+Recall from \ref thbSplineBasis_example that the refined area must contain the
+support of at least one basis function. Due to this, we also refine the 1-ring of cells around marked cells.
+
+Adaptive refinement on a gsMultiPatch geometry can result in interfaces 
+which are no longer fully matching. Thus, it is important to call gsMultiBasis::repairInterfaces().
+
+\snippet adaptRefinementThb_example.cpp repairInterfaces
+
+\section sPlot Plotting final solution
+
+In the last iteration, we export the solution to paraview files
+
+\snippet adaptRefinementThb_example.cpp Export to Paraview
+
+Plot the solution in Paraview
+
+\snippet adaptRefinementThb_example.cpp Plot in Paraview
+
+\image html tutAdaRefTHB_LSres4.png "Mesh (left, coloured by patch-index) and solution after 4 adaptive refinement steps."
+
+
+\section adaptRefinementThb_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/adaptRefinementThb_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include adaptRefinementThb_example.cpp
+
+*/
+
+}

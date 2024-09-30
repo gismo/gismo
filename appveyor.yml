@@ -1,0 +1,78 @@
+branches:
+  only:
+    - stable
+
+# Specify version format
+version: "G+Smo-stable.{build}"
+
+image:
+- Visual Studio 2015
+- Ubuntu
+
+shallow_clone: true
+
+# scripts that are called at very beginning, before repo cloning
+init:
+#  - sh: nproc
+#  - cmake --version
+#  - cmd: echo Platform is %platform%
+#  - cmd: set
+#  - cmd: msbuild /version
+#  - cmd: wmic os get osarchitecture
+
+# clone directory (default)
+# clone_folder: C:\projects\gismo
+build:
+  verbosity: minimal
+  parallel: true
+  configuration: Release
+  generator: "Visual Studio 14 2015"
+
+# Do not build on tags (GitHub only)
+skip_tags: true
+
+# scripts that run after cloning repository
+install:
+  # install mingw
+  - cmd: if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-win32/seh/x86_64-5.1.0-release-win32-seh-rt_v4-rev0.7z" -FileName mw64.7z
+  - cmd: if [%BUILD%]==[mingw] 7z x -oC:\ mw64.7z > NUL
+
+# scripts to run before build
+before_build:
+  #- cmd: dir "%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers"
+  #- cmd: dir "%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers"\lib\x64
+  #- cmd: dir "%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers"\inc 
+  - cmd: if [%BUILD%]==[msvc2015] set envpath=C:\Program Files (x86)\MSBuild\14.0\Bin
+  #- if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
+  - cmd: if [%BUILD%]==[mingw] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
+  - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
+  - cmd: set PATH=%envpath%;%PATH%
+  - sh: cd ~/projects && mkdir build-gismo && cd build-gismo  
+  - cmd: cmake -DCMAKE_QUIET=ON -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=TRUE -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%VS_14_2025-%configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_OPTIONAL="gsOpennurbs" -DGISMO_BUILD_UNITTESTS=ON ../gismo #-DGISMO_WITH_XDEBUG=ON -DDbgHelp_DIR="%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers" ../gismo
+  - sh: cmake -DCMAKE_QUIET=ON -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=TRUE -DSITE="$APPVEYOR_PULL_REQUEST_NUMBER-$APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH [appVeyor]" -DBUILDNAME="Ubuntu-Makefiles-$configuration" -DCMAKE_BUILD_TYPE=$configuration -DGISMO_BUILD_UNITTESTS=ON -DGISMO_ZLIB_STATIC=1 -DGISMO_OPTIONAL="gsOpennurbs" ../gismo
+
+build_script:
+#  - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V
+#  - sh: ctest --output-on-failure -j5 -C $configuration -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+  - cmd: ctest -S ../gismo/cmake/ctest_script.cmake -C %configuration% -D CTEST_CONFIGURATION_TYPE=%configuration% -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=5
+  - sh: ctest -S ../gismo/cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=5
+
+#validate: https://codebeautify.org/yaml-validator
+
+
+##############################################################
+for:
+##############################################################
+
+# Stable branch
+-
+  branches:
+    only:
+    - stable
+
+  environment:
+    CTEST_OUTPUT_ON_FAILURE: 1
+    matrix:
+    - BUILD: msvc2015
+      configuration: Release
+      generator: "Visual Studio 14 2015"

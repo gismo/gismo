@@ -1,0 +1,137 @@
+namespace gismo {
+/**
+
+\page kirchhoff-Love_example kirchhoff-Love_example.cpp
+
+In this example, the Kirchhoff-Love shell is implemented. References for this implementation include the original work by Kiendl et. al. (2009) [1], the PhD thesis of Josef Kiendl (2011) [2], the PhD thesis of Anmol Goyal (2015) [3], the MSc thesis of Hugo Verhelst (2019) [4]. Anmol contributed to the first Kirchhoff-Love implementation of G+Smo and Hugo to the current one.
+
+\section equations Governing Equations
+
+The variational formulation for the Kirchhoff-Love shell is:
+\f{eqnarray*}{
+	\int_\Omega \mathbf{f}\cdot\mathbf{v}\ + p\mathbf{\hat{n}}:\text{d}\Omega - \int_\Omega \mathbf{n}(\mathbf{u}):\mathbf{\varepsilon}^\prime(\mathbf{u},\mathbf{v}) + \mathbf{m}(\mathbf{u}):\mathbf{\kappa}^\prime(\mathbf{u},\mathbf{v}) \text{d}\Omega = 0
+\f}
+
+The left-hand side of this formulation in fact is the residual of the problem, being the balance between external and internal forces. In this equation, \f$\Omega\f$ is the domain, \f$ \mathbf{f} \f$ is a vector with a distributed load acting on the mid-plane of the shell, \f$ \mathbf{v} \f$ is the three-dimensional test function, \f$ p\f$ is a follower pressure acting on the shell, \f$ \mathbf{\hat{n}}\f$ is the shell normal, \f$ n \f$ is the normal-force tensor, \f$ \mathbf{\varepsilon}^\prime \f$ is the variation of the membrane strain tensor, \f$ \mathbf{m} \f$ is the bending moment tensor, \f$ \mathbf{\kappa}^\prime \f$ is the variation of the bending strain tensor and \f$\mathbf{u} \f$ is the displacement of the mid-plane of the shell; thus the solution to the problem.
+
+In order to solve the variational formulation for \f$ \mathbf{u} \f$, the second variation is derived, such that a lineararized form can be found or such that the Jacobian and for Newton iterations can be found. The second variation is:
+
+ \f{eqnarray*}{
+	j(\mathbf{u},\mathbf{v},\mathbf{w}) = \int_\Omega \mathbf{n}(\mathbf{u}):\mathbf{\varepsilon}^{\prime\prime}(\mathbf{u},\mathbf{v},\mathbf{v}) + \mathbf{n}^\prime(\mathbf{u},\mathbf{v}):\mathbf{\varepsilon}^{\prime}(\mathbf{u},\mathbf{v}) + \mathbf{m}(\mathbf{u}):\mathbf{\kappa}^{\prime\prime}(\mathbf{u},\mathbf{v},\mathbf{w}) + \mathbf{m}^\prime(\mathbf{u},\mathbf{v}):\mathbf{\kappa}^\prime(\mathbf{u},\mathbf{v}) \text{d}\Omega - \int_\Omega p \mathbf{v}\cdot\mathbf{\hat{n}}^\prime :\text{d}\Omega
+\f}
+
+In this equation, the primed (\f$\cdot^\prime\f$) expressions again denote the first variation and the double-primed (\f$\cdot^{\prime\prime}\f$) expressions denote second variations.
+
+From the above equations, a system of equations can be assembled, which will later be done by the \ref gsExprAssembler . In case of a lineararized system, only the single-primed expressions are non-zero, together with the term containing the external load.
+
+The expressions for the strains, normal foce and bending moment are as follows (see sec. 3.2 and 3.3 of [3]):
+\f{align*}{
+	\varepsilon_{\alpha\beta} &= \frac{\partial\mathbf{c}}{\partial\theta_\alpha}\cdot\frac{\partial\mathbf{c}}{\partial\theta_\beta} - \frac{\partial\mathbf{C}}{\partial\theta_\alpha}\cdot\frac{\partial\mathbf{C}}{\partial\theta_\beta}\\
+	\varepsilon^\prime_{\alpha\beta} &= \frac{1}{2}\frac{\partial\mathbf{v}}{\partial\theta_\alpha}\cdot\frac{\partial\mathbf{c}}{\partial\theta_\beta} + \frac{1}{2}\frac{\partial\mathbf{c}}{\partial\theta_\alpha}\cdot\frac{\partial\mathbf{v}}{\partial\theta_\beta} \\
+	\kappa_{\alpha\beta} &= \frac{\partial^2\mathbf{C}}{\partial\theta_\alpha\partial\theta_\beta}\cdot\mathbf{\hat{N}} - \frac{\partial^2\mathbf{c}}{\partial\theta_\alpha\partial\theta_\beta}\cdot\mathbf{\hat{n}}\\
+	\kappa^\prime_{\alpha\beta} &= \frac{\partial^2\mathbf{v}}{\partial\theta_\alpha\partial\theta_\beta}\cdot\mathbf{\hat{n}} + \frac{\partial^2\mathbf{c}}{\partial\theta_\alpha\partial\theta_\beta}\cdot\mathbf{\hat{n}}^\prime(\mathbf{u})\\
+	\mathbf{\hat{n}}^\prime(\mathbf{v}) &= \mathbf{m}_{\mathbf{v}} - (\mathbf{\hat{n}}\cdot \mathbf{m}_{\mathbf{v}})\mathbf{\hat{n}} \\
+	\mathbf{m}_{\mathbf{v}} &= \frac{1}{\vert \frac{\partial\mathbf{c}}{\partial\theta_1}\times \frac{\partial\mathbf{c}}{\partial\theta_2}\vert } \left( \frac{\partial\mathbf{v}}{\partial\theta_1}\times \frac{\partial\mathbf{c}}{\partial\theta_2} + \frac{\partial\mathbf{c}}{\partial\theta_1} \times \frac{\partial\mathbf{v}}{\partial\theta_2} \right)\\
+	\varepsilon^{\prime\prime}_{\alpha\beta} &= \frac{\partial\mathbf{v}}{\partial\theta_\alpha}\cdot\frac{\partial\mathbf{w}}{\partial\theta_\beta}\\
+	\kappa^{\prime\prime}_{\alpha\beta} &= \frac{\partial^2\mathbf{v}}{\partial\theta_\alpha\partial\theta_\beta}\cdot\mathbf{\hat{n}}^\prime(\mathbf{w}) + \frac{\partial^2\mathbf{w}}{\partial\theta_\alpha\partial\theta_\beta}\cdot\mathbf{\hat{n}}^\prime(\mathbf{v}) + \frac{\partial^2\mathbf{c}}{\partial\theta_\alpha\partial\theta_\beta}\cdot\mathbf{\hat{n}}^{\prime\prime}(\mathbf{v},\mathbf{w})\\
+	\mathbf{\hat{n}}^{\prime\prime}(\mathbf{v},\mathbf{w}) &= \mathbf{m}_{\mathbf{v}}^\prime - ( \mathbf{m}_{\mathbf{v}}\cdot\mathbf{\hat{n}}^\prime(\mathbf{w}) + \mathbf{\hat{n}}\cdot\mathbf{m}_{\mathbf{v}}^\prime(\mathbf{w}) )\mathbf{\hat{n}} - ( \mathbf{\hat{n}}\cdot \mathbf{m}_{\mathbf{v}} )\mathbf{\hat{n}}^\prime(\mathbf{w})\\
+	\mathbf{m}_{\mathbf{v}}^{\prime}(\mathbf{w}) &= \mathbf{m}_{\mathbf{vw}}-(\mathbf{n}\cdot\mathbf{m}_{\mathbf{w}})\mathbf{m}_{\mathbf{w}}\\
+	\mathbf{m}_{\mathbf{vw}} &= \frac{1}{\vert \frac{\partial\mathbf{c}}{\partial\theta_1}\times \frac{\partial\mathbf{c}}{\partial\theta_2}\vert } \left( \frac{\partial\mathbf{v}}{\partial\theta_1}\times \frac{\partial\mathbf{w}}{\partial\theta_2} + \frac{\partial\mathbf{w}}{\partial\theta_1} \times \frac{\partial\mathbf{v}}{\partial\theta_2} \right)\\
+	n_{\alpha\beta} &= t \mathcal{C}^{\alpha\beta\gamma\delta} \varepsilon_{\alpha\beta}\\
+	n_{\alpha\beta}^\prime &= \mathcal{C}^{\alpha\beta\gamma\delta} \varepsilon_{\alpha\beta}^{\prime}\\
+	m_{\alpha\beta} &= t \mathcal{C}^{\alpha\beta\gamma\delta} \kappa{\alpha\beta}\\
+	m_{\alpha\beta}^\prime &= \mathcal{C}^{\alpha\beta\gamma\delta} \kappa_{\alpha\beta}^{\prime}
+\f}
+
+Here, \f$ t\f$ is the thickness of the shell and \f$ \mathcal{C}^{\alpha\beta\gamma\delta}\f$ is the material tensor (see [3] eq. 3.15).
+
+\section implementation Implementation of the Kirchhoff-Love Shell
+Now we will have a look at the implementation in \c kirchhoff-Love_example.cpp.
+
+The file starts with a large amount of classes being defined. These classes all inherit from the class \c _expr which means that they are \gismo expressions. Without going into detail for the implementations of all the classes, the following functions match with the expressions defined above. Note that all these expressions are specific for the shell problem.
+- \c var1_expr resembles \f$ \mathbf{\hat{n}}^\prime\f$ and requires the space and the geometry.
+- \c var2_expr resembles \f$ \mathbf{\hat{n}}^{\prime\prime} \cdot \mathbf{p} \f$ for an arbitrary vector \f$ \mathbf{p} \f$.
+- \c deriv2dot_expr resembles either \f$ \frac{\partial^2\mathbf{v}}{\partial\theta_\alpha\partial\theta_\beta}\cdot \mathbf{p} \f$ or \f$ \frac{\partial^2\mathbf{c}}{\partial\theta_\alpha\partial\theta_\beta}\cdot \mathbf{p} \f$ for arbitrary vector \f$ \mathbf{p} \f$ space \f$ \mathbf{v}\f$ and geometry \f$ c \f$,
+- \c deriv2_expr resembles either \f$ \frac{\partial^2\mathbf{v}}{\partial\theta_\alpha\partial\theta_\beta} \f$ or \f$ \frac{\partial^2\mathbf{c}}{\partial\theta_\alpha\partial\theta_\beta} \f$ for space \f$ \mathbf{v}\f$ or geometry \f$ c \f$,
+- \c flatdot_expr is used to compute \f$ \mathbf{\varepsilon}^{\prime\prime}\cdot\mathbf{n}\f$ and its main purpose is memory-efficient implementation
+- \c flatdot2_expr is used to compute the first two terms of \f$ \mathbf{\kappa}^{\prime\prime}\cdot\mathbf{m}\f$ and its main purpose is memory-efficient implementation
+- \c cartcov_expr returns a transformation matrix between local covariant to local cartesian coordinates. The expression for its inverse, \c cartcovinv_expr is also implemented,
+- \c cartcov_expr returns a transformation matrix between local contravariant to local cartesian coordinates. The expression for its inverse, \c cartconinv_expr is also implemented,
+
+After the shell-specific expressions, the material matrix class is defined, which is used to handle the material tensor $\mathcal{C}$. This class inherits from \ref gsFunction because it will later be used as a function to declare a variable in the \ref gsExprAssembler.
+
+Now, let us skip the implementation of the shell-specific expression implementations and the definition of the material matrix class. Before the main file starts, there are some forward declarations  for functions that will help to define rectangular domains with arbitrary number of elements, order and length and width.
+
+\snippet kirchhoff-Love_example.cpp Forward declarations
+
+The first lines of our main file will handle the command line arguments for our script. This works similar to what can be seen in \ref poisson2_example. For this particular case, there are multiple test cases that can be chosen, the flag for nonlinear simulation can be set and the usage of weak Dirichlet boundary conditions can be triggered for some test cases.
+
+\snippet kirchhoff-Love_example.cpp Parse command line
+
+Next up, we define the geometry and material data for different test cases. We define two multipatches; one to store the original geometry and one to store the deformed geometry. Furthermore, each test case requires a thickness, a Youngs modulus, a Poisson's ratio and a geometry.
+
+\snippet kirchhoff-Love_example.cpp set test case data
+
+In the following snippet, the geometry is refined and its degree is elevated.
+
+\snippet kirchhoff-Love_example.cpp Refinement
+
+Now we define the boundary conditions, add the geometry map to the \ref gsBoundaryConditions class and we define vectors for the implementation of the surface load (\c tmp), the neumann boundary conditions (\c neu) and functions are added for the imposed displacements, weak boundary conditions and the Neumann boundary conditions. We also have a scalar for applied pressures.
+
+\snippet kirchhoff-Love_example.cpp pre-define boundary conditions
+
+Now let us consider the definition of the individual test cases. The first case is a square plate (see geometry definition) where all boundaries are fixed in all directions. Note that the boundary conditions are applied per component (last entry) of the displacement.
+
+\snippet kirchhoff-Love_example.cpp Boundary condition case 1
+
+For the second test case, a corner is fixed.
+
+\snippet kirchhoff-Love_example.cpp Boundary condition case 2
+
+For the other test cases, please look at the file.
+
+In the following snippet, the assembler is defined. Here, we can see that the \ref gsExprAssembler is defined, typedefinitions for geometry map, variables, spaces and solutions are defined. Furthermore, the integration elements (quadrature points) are set according to the basis and an expression evaluator is constructed. Note that the \ref gsExprAssembler::getSpace() function is called with the second argument being the dimension of he space. Furthermore, for the parameters and materials, variables are defined. Lastly, note the definition of the \c m2 object. This is a matrix with [1,1,2] on the diagonal because all the components (stresses, strains and their variations) are defined in Voight-notation.
+
+\snippet kirchhoff-Love_example.cpp Assembler setup
+
+Next up is the assembly of the system. First, all the necessary tensors (here, vectors by the Voight-notation) are defined. Dimensionality of the space is automatically taken into account. First, the weak Dirichlet and clamped boundary conditions are assembled according to the results of [5]. Then, the \ref gsExprAssembler::assemble() function is called which assembles the linear system.
+
+\snippet kirchhoff-Love_example.cpp System assembly
+
+The linear system can now be solved according tot the following. ALso, the deformed multipatch is constructed by adding the displacements - the solution to the system - to the original multipatch. Note that the solution vector contains the displacements of the control points of the original geometry. The solution object and the \ref gsExprEvaluator are used for plotting. Also the stresses are evaluated at a point.
+
+\snippet kirchhoff-Love_example.cpp Linear solve
+
+Now it is time for the nonlinear system assembly. The variational form depends on the deformed geometry which is the current geometry plus the computed displacements in the linear solve. In each iteration, the nonlinear variational form is assembled to a system of equations.
+
+\snippet kirchhoff-Love_example.cpp Nonlinear solve
+
+When the solution to the nonlinear problem is known, the solution is constructed and the deformations are evaluated. The deformation is simply the difference between the deformed and the original geometries.
+
+\snippet kirchhoff-Love_example.cpp Construct solution
+
+Lastly, the deformation can be evaluated on several points:
+
+\snippet kirchhoff-Love_example.cpp Evaluate solution
+
+And the solution can be plotted in Paraview:
+
+\snippet kirchhoff-Love_example.cpp Export visualization in ParaView
+
+\section References References
+[1] J. Kiendl, K.-U. Bletzinger, J. Linhard, and R. Wüchner, “Isogeometric shell analysis with Kirchhoff–Love elements,” Comput. Methods Appl. Mech. Eng., vol. 198, no. 49–52, pp. 3902–3914, Nov. 2009.
+
+[2] J. Kiendl, “Isogeometric analysis and shape optimal design of shell structures,” Technische Universität München, 2011.
+
+[3] A. Goyal, “Isogeometric Shell Discretizations for Flexible Multibody Dynamics,” Technische Universität Kaiserslautern, 2015.
+
+[4] H. M. Verhelst, “Modelling Wrinkling Behaviour of Large Floating Thin Offshore Structures: An application of Isogeometric Structural Analysis for Post-Buckling Analyses,” Delft University of Technology, 2019.
+
+[5] A. J. Herrema, E. L. Johnson, D. Proserpio, M. C. H. Wu, J. Kiendl, and M.-C. Hsu, “Penalty coupling of non-matching isogeometric Kirchhoff–Love shell patches with application to composite wind turbine blades,” Comput. Methods Appl. Mech. Eng., vol. 346, pp. 810–840, Apr. 2019.
+
+\section Contact Contact
+Author: Hugo Verhelst -- h.m.verhelst@tudelft.nl
+
+*/
+
+}

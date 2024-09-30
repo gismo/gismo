@@ -1,0 +1,114 @@
+--- Ipopt/ThirdParty/Mumps/get.Mumps	2014-09-14 18:31:03.008274503 +0200
++++ Ipopt/ThirdParty/Mumps/get.Mumps	2014-09-14 18:31:49.185274279 +0200
+@@ -21,6 +21,8 @@
+   fi
+ fi
+ 
++DIR="$( cd "$( dirname $0 )" && pwd )"
++
+ echo " "
+ echo "Running script for downloading the source code for MUMPS"
+ echo " "
+@@ -34,13 +36,14 @@
+ gunzip -f MUMPS_${mumps_ver}.tar.gz
+ 
+ echo "Unpacking the source code..."
+-tar xf MUMPS_${mumps_ver}.tar
++tar xf MUMPS_${mumps_ver}.tar -C $DIR
++
+ 
+ echo "Deleting the tar file..."
+ rm MUMPS_${mumps_ver}.tar
+ 
+-rm -rf MUMPS
+-mv MUMPS_${mumps_ver} MUMPS
++rm -rf $DIR/MUMPS
++mv $DIR/MUMPS_${mumps_ver} $DIR/MUMPS
+ 
+ echo " "
+ echo "Done downloading the source code for MUMPS."
+@@ -48,7 +51,7 @@
+ echo "Apply a patch to work around a bug in MUMPS."
+ echo " "
+ 
+-patch -p0 < mumps.patch
++patch -p0 < $DIR/mumps.patch -d $DIR
+ 
+ echo " "
+ 
+--- Ipopt/ThirdParty/Metis/get.Metis	2012-05-29 12:58:02.000000000 +0200
++++ Ipopt/ThirdParty/Metisget.Metis	2014-09-14 18:32:39.544274035 +0200
+@@ -17,6 +17,8 @@
+   fi
+ fi
+ 
++DIR="$( cd "$( dirname $0 )" && pwd )"
++
+ echo " "
+ echo "Running script for downloading the source code for the METIS"
+ echo " "
+@@ -31,10 +33,10 @@
+ gunzip metis-4.0.3.tar.gz
+ 
+ echo "Unpacking the source code..."
+-tar xf metis-4.0.3.tar
++tar xf metis-4.0.3.tar -C $DIR
+ 
+ echo "Renaming directory to match source code name..."
+-mv metis-4.0.? metis-4.0
++mv $DIR/metis-4.0.? $DIR/metis-4.0
+ 
+ echo "Deleting the tar file..."
+ rm metis-4.0.3.tar
+
+--- Ipopt/ThirdParty/Blas/get.Blas	2013-11-09 18:10:48.000000000 +0100
++++ Ipopt/ThirdParty/Blas/get.Blas	2015-04-23 15:44:59.622333436 +0200
+@@ -18,6 +18,7 @@
+ fi
+ 
+ coinblas=blas-20130815.tgz
++DIR="$( cd "$( dirname $0 )" && pwd )"
+ 
+ echo " "
+ echo "Running script for downloading the source code for BLAS"
+@@ -47,14 +48,14 @@
+ gunzip -f blas.tgz
+ 
+ echo "Unpacking the source code..."
+-tar xf blas.tar
++tar xf blas.tar -C ${DIR}
+ 
+ echo "Deleting the tar file..."
+ rm blas.tar
+ 
+ echo "Moving the source files from BLAS subdirectory"
+-mv BLAS/*.f .
+-rm -rf BLAS
++mv ${DIR}/BLAS/*.f ${DIR}/
++rm -rf ${DIR}/BLAS
+ 
+ echo " "
+ echo "Done downloading the source code for BLAS."
+
+--- Ipopt/ThirdParty/Lapack/get.Lapack  2021-11-26 15:04:07.527512847 +0100
++++ Ipopt/ThirdParty/Lapack/get.Lapack  2021-11-26 15:02:16.655377252 +0100
+@@ -19,6 +19,7 @@
+   fi
+ fi
+ 
++DIR="$( cd "$( dirname $0 )" && pwd )"
+ echo " "
+ echo "Running script for downloading the source code for LAPACK"
+ echo " "
+@@ -45,9 +46,9 @@
+ gunzip -f lapack-${lapack_ver}.tgz
+ 
+ echo "Unpacking the source code..."
+-tar xf lapack-${lapack_ver}.tar lapack-${lapack_ver}/SRC lapack-${lapack_ver}/INSTALL/dlamch.f lapack-${lapack_ver}/INSTALL/slamch.f
++tar xf lapack-${lapack_ver}.tar -C ${DIR} lapack-${lapack_ver}/SRC lapack-${lapack_ver}/INSTALL/dlamch.f lapack-${lapack_ver}/INSTALL/slamch.f 
+ rm -rf LAPACK
+-mv lapack-${lapack_ver} LAPACK
++mv ${DIR}/lapack-${lapack_ver} ${DIR}/LAPACK
+ 
+ echo "Deleting the tar file..."
+ rm lapack-${lapack_ver}.tar

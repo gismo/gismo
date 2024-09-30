@@ -1,0 +1,18 @@
+
+1. representation of rational truncated hierarchical b-splines does not seem to work with gsTensorNurbsBasis<2> (i.e. having the weights on the basis)
+   it does work with homogenenous coordinates (wx,wy,wz,w) and gsTensorBSplineBasis<2> (i.e. having the weights on the coefs)
+   -> should .geoDim() be 3 and .coefDim() 4? what about .dim() (is that equal to 2, for e.g. gsTHBSpline2 because it is the number of tensor dimensions?)
+
+2. controlNet (i.e. basis().connectivity(m_coefs)) for a rational thb spline. Have to convert coefs to (x,y,z) first.
+
+3. binary serialization as alternative for xml serialization.
+
+4. how does adaptive refinement work and can we also do adaptive coarsening?
+
+5. what does transfer2 and coarsening_direct2 do?
+
+6. what is the m_xmatrix used for?
+
+7. how to get UV-mapping on a mesh as input for surface fitting?
+
+8. is there a way to get the 'row' and 'column' indices of hierarchical grips? this will enable navigation in row-wise or column-wise fashion.

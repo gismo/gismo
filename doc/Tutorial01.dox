@@ -1,0 +1,590 @@
+namespace gismo {
+/**
+\page Tutorial01 Tutorial 01: Hello \gismo
+
+In this tutorial you will get to know the structure of the library,
+some main tools which are available as well as how to write your first
+program.
+
+\section Folder01 Code repository
+
+\subsection Obtaining01 Obtaining and compiling
+
+The source code can be obtained via Subversion or Git.
+See the section <a href="https://github.com/gismo/gismo/wiki/Downloads" target="_parent">Downloads</a>
+of the wiki for downloading information.
+
+The configuration/compilation is based on the CMake build management
+system. A C++ compiler should be available in the system.
+See the section <a href="https://github.com/gismo/gismo/wiki/Compiling" target="_parent">Compiling</a>
+of the wiki for information on compilation.
+
+\subsection Source01 The source folder
+
+The source folder contains the following sub-folders:
+
+- \b src
+
+   In this folder we have the source files of the library. Code is
+   partitioned into modules, which correspond to folders inside
+   src. Here is a list of these folders/modules:
+   - \ref Core "gsCore"
+
+      Contains several general objects that are useful for the rest
+      of the modules.  Most importantly it contains abstract classes
+      such as gsFunction and gsBasis which represent functions and
+      sets of bases on a parametric domain. Continue here.
+
+   - \ref Matrix "gsMatrix"
+
+      Contains classes for matrices, vectors, and sparse
+      matrices. These objects are derived from the Eigen linear
+      algebra library.
+
+   - \ref Nurbs "gsNurbs"
+
+      Contains classes for knot-vectors, univariate B-splines,
+      tensor-product B-splines as well as NURBS and tensor-product
+      NURBS classes.
+
+   - \ref HSplines "gsHSplines"
+
+      Contains classes for hierarchical B-spline basis, as well as
+      truncated hierarchical B-spline basis. These are based on a
+      tree-structure which holds the domain information.
+      It also contains adaptive fitting algorithms using hierarchical splines.
+
+   - \ref Modeling "gsModeling"
+
+     Contains classes related to modeling with geometric objects. The
+     main functionality is currently fitting and boundary-represented
+     solids.
+
+   - \ref Pde "gsPde"
+
+     Contains classes which represent boundary value problems of
+     partial differential equations. This includes the PDE
+     definitions, boundary conditions and point loads.
+
+   - \ref Assembler "gsAssembler"
+
+     Contains classes which allow us to generate (assemble) the matrices
+     and right-hand side(s) of a boundary value problem by means of
+     (Gauss) quadrature. Also, it contains classes which allow us to
+     compute the norms or semi-norms of the difference of two functions,
+     error estimators and related utilities.
+
+   - \ref Solver "gsSolver"
+
+     Contains iterative linear solvers which complement the ones from
+     the Eigen library, such as GMRES. It also contains multigrid
+     solvers and preconditioners.
+
+   - \ref IO "gsIO"
+
+     Contains utilities related to data input and output. This
+     includes helpers for adding command line arguments to
+     executables, reading data from files and writing data to the
+     disk. It implements the XML file format of \gismo. Finally, there
+     are functions which generate Paraview files for visualization.
+
+   - \ref Tensor "gsTensor"
+
+     Contains classes and function to manipulate tensor-structured
+     objects.
+
+   - \ref Utils "gsUtils"
+
+     Contains several utilities that are needed by other modules. This
+     includes combinatorics utilities, point grid generators and
+     iterators, utilities for measuring the CPU time, and a data
+     structure for triangular meshes.
+
+- \b examples
+
+    Contains source code for \ref Examples "the examples", small
+    programs and tutorials. Each of these files has extension .cpp and
+    produces an executable upon compilation.
+
+- \b filedata
+
+    Contains some example data files in the XML format the G+Smo can
+    read and write.
+
+- \b optional
+
+    Optional additional modules that can be compiled along G+Smo,
+    typically extending functionality, sometimes also requiring
+    external packages, which may be automatically downloaded. For
+    instance, the Parasolid module requires the Parasolid library, and
+    IpOpt module requires the IpOpt optimization library. The
+    OpenNurbs module is used to read and write the Rhino3D 3DM file
+    format, but it does not require any external package, since the
+    source code of the OpenNurbs library is already in /external.
+
+- \b plugins
+
+    The plugins are typically dynamic libraries which wrap \gismo for
+    linking with external software and for exporting functionality to
+    third party software. A plugin is available for the Axel geometric
+    modeller (INRIA).
+
+- \b cmake
+
+    Contains Cmake configuration script files which are required for
+    compilation.
+
+- \b doc
+
+   Contains files related to Doxygen documentation pages.
+
+
+\subsection BuildFolder01 The build (compilation) folder
+
+The build folder has the following subfolders and files:
+
+- \b lib
+
+  In this folder the G+Smo library is created. On MS Windows the
+  dynamic library will be called gismo.dll, while on linux libgismo.so
+  and on OSX libgismo.dylib.  The static libraries are
+  gismo_static.lib and libgismo_static.a, respectively.
+  When typing "make -j2 gismo" in the root build folder the dynamic library is created.
+  If you need a static library then "make -j2 gismo_static" will do the trick.
+
+- \b bin
+
+  Inside this folder all the compiled executable files will be created
+  upon compilation. In particular, each .cpp file in the \a examples
+  folder corresponds to the file in this folder, with the same
+  name. On MS Windows, the file will have extension .exe, while on
+  Linux they will be marked as executable files.
+  If this folder is empty, then type "make -j2 examples" in the root
+  build folder to trigger the compilation.
+
+  On a command line, you can compile (and execute) specific examples,
+  for instance to execute the executable coming from examples/gsView.cpp
+  it suffices to issue inside the build folder:
+  ~~~~~
+  $ make gsView
+  [100%] Building CXX object stable/examples/CMakeFiles/gsView.dir/gsView.cpp.o
+  [100%] Linking CXX executable ../../bin/gsView
+  [100%] Built target gsView
+  $ ./bin/gsView
+  Hi, give me a file (eg: .xml) and I will try to draw it!
+  Type ./bin/gsView -h, to get the list of command line options.
+  $
+  ~~~~~
+  Note that on Linux you need to provide correctly the path (starting
+  with dot-slash-bin), in order to execute a file. Similarly on Windows
+  you should execute (eg. from a command line) the file \a gsView.exe
+
+
+- \b doc
+
+  This folder contains files related to Doxygen documentation. In
+  particular, if Doxygen is available on the system, and inside the
+  root build folder we execute:
+  ~~~~~
+  $ make doc
+  [100%] Generating API documentation with Doxygen
+  [100%] Built target doc
+  $ firefox doc/html/index.html
+  ~~~~~
+  then the resulting main Doxygen page will be created in
+  <strong>doc/html/index.html</strong> and can be opened with a
+  web-browser.
+
+- \b CMakeFiles
+
+  This folder contains files related to the CMake
+  configuration. Similarly several files (eg. with extension .cmake)
+  which are found in the root folder are related to CMake. Most
+  important of the latter files is the CMakeCache.txt file which keeps
+  all the needed paths (eg. the path to the source folder) and all
+  compilation flags and options.
+
+- \b src, \b examples, \b external, \b optional
+
+  These folders are named as the corresponding folders in the source
+  folder, and contain the compiled object files. All files in these
+  folders are temporary, and their goal is to allow one to
+  re-compile the library fast when there are only a few changes in the
+  source files (while all the other object files are unchanged).  Most
+  of the time we do not need to care about or work in these folders.
+
+\subsection build1 Build types
+
+There are a number of options which parametrize the compilation
+process.  The default options should work most of the time. For a list
+of the available options have a look at
+<a href="https://github.com/gismo/gismo/wiki/Compiling#configuration-options" target="_parent">this wiki page</a>.
+
+The most important setting is setting the build type.
+As common to the <a href="https://cmake.org/" target="_blank">CMake</a>
+build management system, there are three basic build types:
+
+Build type        | Characteristics
+------------------|----------------------
+\c Debug          | No optimizations, NDEBUG not defined
+\c RelWithDebInfo | Optimized code, but NDEBUG \b defined
+\c Release        | The macro NDEBUG is defined, fully optimized
+
+The default build type (if not specified with the CMAKE_BUILD_TYPE
+setting) is Release.  Contrarily to the default setting of
+CMake, in \gismo the macro NDEBUG \b is defined in this
+setting. Therefore in RelWithDebInfo mode you still get a fairly good
+checking level, with the cost that the performance is reduced.
+
+The Debug mode is often too slow. However, as a last resort for
+chasing bugs this mode should be tried. Several times RelWithDebInfo
+inlines functions, and causes the debug information to point to the
+wrong line in the code.
+
+The Release mode is the fully optimized, production code.
+
+\section get01 Getting started
+
+A toy program using the library looks as follows.
+~~~~~
+# include <gismo.h>
+
+using namespace gismo;
+
+int main(int argc, char* argv[])
+{
+    gsInfo <<  "Hello G+Smo.\n";
+
+    real_t a = 2.0; // a real number, ie. double
+
+    index_t b = 3; // an integer, ie. int
+
+    GISMO_ASSERT( a*b == 6, "This is an error, 2*3 should be 6.");
+
+    return 0;
+}
+~~~~~
+All the objects of the library are found inside the \a gismo namespace.
+
+\subsection str01 Streaming text messages
+
+There are pre-defined streams that should be preferred:
+
+- \b gsInfo This stream is an alias for \c std::cout and should be preferred over it.
+
+- \b gsWarn This stream prints the word "Warning" before your message,
+  and should be used to warn of any important events.
+
+- \b gsDebug The messages are prefixed by GISMO_DEBUG and appear in
+  Debug/RelWithDebInfo but not in release mode (controlled by the macro
+  NDEBUG).
+
+- \b gsDebugVar(\em var) Streams the variable \a var, and the line and
+  file of the code which emitted the message. This macro is used for
+  easy printing and inspecting the contents of a variable.
+
+Note that the end-of-line character \c "\n" should be preferred over \c std::endl .
+
+\subsection deb01 Assertion macros
+
+In Debug/RelWithDebInfo the assertions of the type are executed:
+~~~~~
+GISMO_ASSERT( condition, "Message if failed")
+~~~~~
+In Release Mode these commands are striped out of the code. An
+assertion which executes even in release mode is the following:
+~~~~~
+GISMO_ENSURE( condition, "Message if failed")
+~~~~~
+Also, the following emits an runtime error exception (without check condition):
+~~~~~
+GISMO_ERROR("You reached a line in the code which indicated a serious error")
+~~~~~
+
+\subsection art1 Arithmetic types
+
+Common arithmetic types are defined by macros in \gismo, and should be
+preferred:
+- \b real_t This type defaults to \a double
+- \b index_t This is the number type used for all matrix and vector indices and sizes (eg. number of rows).
+- \b size_t This is the type used in the standard library, eg. for the size of an std::vector.
+
+Note that index_t and size_t might be different types, therefore care
+should be taken when comparing their value.
+
+Many template classes (for instance matrices) have a default first
+argument which is in most cases \b real_t.
+
+
+\section io01 Basic input and output
+
+\subsection cmd01 Command line arguments
+
+A handy class called gsCmdLine for adding command line options to your
+programs.  Adding options to a program makes it more friendly to the
+users, while allowing you to execute many different scenarios without
+having to change the source code and re-compile the source file.
+
+Command-line arguments are useful to avoid re-compiling your code
+every time a small parameter is altered, as well as to make your
+program easily accessible by others. In \gismo there is an easy way to
+add command-line arguments, which come automatically with a small help
+message and error checking, see \ref commandLineArg_example.
+
+In the file \ref gsView for instance, we find the following code
+for parsing the command line:
+
+\snippet gsView.cpp Parse Command line
+
+The last argument of each "add" command is, as expected, a boolean
+(for the addSwitch), or an integer (for the addInt). The
+gsCmdLine::getValues command parses all the user's input and updates
+the variables with new values.
+Therefore, after this command, the value of all the variables can be
+different.
+If an argument is not provided by the user, then the value of the
+variable does not change.
+
+After compiling the program we can issue:
+~~~~~
+$ ./bin/gsView -h
+~~~~~
+and we obtain a list of the arguments together with the short
+explanation that we provided in the definition of the argument. Note
+that all arguments are checked automatically during parsing,
+eg. duplicate arguments and other subtle errors are detected.
+
+Combined with reading the input data from files, this feature allows
+you eg. to write code which works for any input file which contains
+data that \gismo can read, merely by adding a command line argument
+which accepts a string describing a filename.
+
+\subsection xml01 The XML file format
+
+The native format for data input, output and data exchange is XML.  In
+\gismo we define a number of tags that are used to read and write
+respective objects (classes). Typically, the data in an XML tree which
+represent, for instance, a B-spline, follow the logic of the classes
+in the code. As a first example the file square.xml is:
+
+\include square.xml
+
+The space between the numbers and line breaks do not matter.
+The plain text files can become big in size, when the data is a lot. For
+this reason, a compressed XML format is also supported, which can also
+be read/written directly.
+
+All the tags in the XML tree of a \gismo XML file must be contained
+inside the \b \<\p xml \> tag. Arbitrary data can be contained inside an XML
+file, as long as they are valid XML files. If you write (a small) XML file yourself, you can validate it for instance
+<a href="http://www.w3schools.com/xml/xml_validator.asp" target="_blank">this page</a>
+to make sure that there are no errors. In any case, invalid files will
+not be read properly by \gismo and errors will be emitted.
+Each object in a \gismo XML is also expected to have a unique ID attribute, which can be used for identifiing the specific data in the file.
+
+The XML file format is extensible. As soon as objects/classes are
+created, a new tag for reading or writing the data can be added in the
+XML manager.
+
+\subsection read01 Reading files
+
+To read a file in your program the recommended solution is to first
+define an input argument for your program which will be a string
+holding the name of the filename. For instance
+
+\snippet inputOutput_example.cpp Parse command line
+
+In the above code note the default value of the input string: The
+macro GISMO_DATA_DIR always points to the \a filedata folder inside
+the \ref Source01 "source folder". Using this macro allows you to make
+sure that your default argument will work on any system which will
+compile the library. Using an absolute path such as
+\a /home/myname/gismo/filedata/square.xml will directly
+make your program to fail when used in a different system. Therefore
+the GISMO_DATA_DIR macro is highly recommended.
+
+The main class which allows you to read data from the file is the
+gsFileData object. In the following we read a polymorphic gsGeometry
+object from the file:
+
+\snippet inputOutput_example.cpp Read geometry
+
+When creating the gsFileData object, all the XML data in the file are
+loading into memory as an XML tree.
+This XML tree can contain many different objects. In the above, the
+gsFileData::has helper searches the tree for the existence of a
+gsGeometry tag. This tag corresponds to a polymorphic geometry object
+(which can be a polynomial curve, surface or volume or a rational
+NURBS patch, or a different type of geometry/patch).
+In the case that a gsGeometry object is found, a pointer is allocated
+and returned to the user.
+As the name of the get function suggests, the returned object is the
+first object which was encountered in the XML tree.
+
+To see what is the gsGeometry data that have been obtained, we can
+stream it to gsInfo:
+
+\snippet inputOutput_example.cpp Print geometry
+
+You can have better control of which data is read from the file by
+reading using the ID of the tag. For instance, the following:
+
+\snippet fitting_example.cpp Read data
+
+reads two matrices from an XML tree, that correspond to parameters and
+values for a fitting problem. The \a uv matrix is fetched from the
+file as the matrix inside the file with id=0, and then the \a xyz
+matrix is fetched again by its id=1. this way there is no ambiguity
+which object is being read from the tree (as long as we use unique ids).
+
+Another command which appears in the above example is the \a safe
+function.  This macro takes a pointer to a matrix (which is the returned
+type of getId, and produces a smart pointer. The smart pointer is then
+transferred to uv/xyz matrices. This is an emulation of the move
+semantics of C++11, which we do not use yet, for the sake of
+compatibility.
+
+\todo Update this paragraph
+
+\subsection write01 Writing files
+
+Similarly to reading XML data, we are able to create XML tree data and
+save them as a file in the disk:
+
+\snippet inputOutput_example.cpp Write geometry
+
+the \<\< operator translates the object into an XML tag. Then the save
+command creates a file with all the contents of the \a fd XML
+tree. Since we only pushed one object in the tree up to now, only one
+gsGeometry tag will be found in the resulting file.
+
+Apart from the native XML format of the library, a number of third
+party formats can be imported or exported. One such useful format is
+Rhino's 3DM file format (note: the gsOpennurbs submodule must be
+enabled). Also, the Siemens' NX (Parasolid) file format
+is supported, if the Parasolid library is available in the system
+(note: GISMO_WITH_PSOLID compilation parameter). Other formats include
+the GeoPDE (Matlab/octave) text format, the GoTools format and OBJ,
+OFF and STL mesh files. The IGES file format is under development.
+
+\section la01 Matrices and linear algebra
+
+The matrices in \gismo are obtained from the %Eigen linear algebra library.
+
+All the functionality of Eigen::Matrix is available in the (inherited)
+class gsMatrix. The \ref linearAlgebra_example contains
+starting examples for using matrices.
+
+The sparse matrix class is gsSparseMatrix and is derived from
+Eigen::SparseMatrix class. Several sparse linear solvers are
+available, demonstrated in \ref sparseSolvers_example. The main information
+about the matrix manipulations can be found in the Eigen documentation
+pages. We link to the most important chapters:
+
+- \ref DenseMatrixManipulation_chapter
+
+- \ref DenseLinearSolvers_chapter
+
+- \ref Sparse_chapter
+
+The quick reference pages give a summary of the functionality:
+
+- \ref QuickRefPage (for dense matrices)
+
+- \ref SparseQuickRefPage
+
+There is also a list with the [correspondance to Matlab
+functions](http://eigen.tuxfamily.org/dox/AsciiQuickReference.txt). However,
+note that some operations of Matlab are not mirrored (yet) with
+functionality in Eigen. For example, a \em reshape function does not
+exist. The Topic \ref TopicAliasing is also important to learn how to avoid
+bugs and write more efficient code.
+
+\note
+You do not need to care about headers and inclusion of Eigen
+files.  By default the Core, Dense and Sparse packages are included in
+in \gismo.
+
+All the information and functionality in the above pages apply to the
+gsMatrix, gsVector and gsSparseMatrix, gsSparseVector classes. For
+certain functionalities, which we need to extend or adapt in \gismo,
+for example for the sparse liner solver classes, there are more
+objects defined which correspond to Eigen objects. In general, we try
+to avoid the direct use of the \a Eigen namespace inside the library,
+whenever possible.
+
+The sources of the Eigen linear algebra library are included in the
+code repository of \gismo, for your convenience.
+
+Matrix operations of Eigen should be preferred over using for loops or
+manual functions. One reason for this is the clarity of the code, the
+reduction of lines of code and last but not least the fact that the
+provided operations are vectorized therefore they are more efficient
+than manual coding.
+
+As a simple example, consider that you would like to multiply each row
+of a matrix by a number. Here are some equivalent ways to do this:
+
+\include bspline_vecxmat.cpp
+Output: \verbinclude bspline_vecxmat.out
+
+  From these 3 versions, the last one is preferred, since we know well
+  from linear algebra that left multiplication by a diagonal matrix
+  corresponds to multiplying the rows by the diagonal elements. Note
+  that v.asDiagonal() does not make a copy of the vector \a v, but only
+  returns an expression of the \a v as a diagonal matrix. Also note
+  the noalias() function to avoid \ref TopicAliasing, eg. an un-needed
+  temporary copy of \a R3.
+
+
+\section main01 Functions and bases
+
+One of the most basic objects in \gismo are the ones representing
+functions. There are several implementations of functions, or sets of
+functions. They all derive by a common class, gsFunctionSet. The main
+descendants of gsFunctionSet are two:
+
+\subsection Function01 gsFunction
+
+  This class represents a (abstract) functions of several variables,
+  possibly vector-valued. The function is defined over an (arbitrary)
+  square domain, referred to as its support.  One characteristic of
+  the function is that in principle it takes non-zero values \a
+  throughout its support.
+
+  The main attributes of functions (and bases) are the dimension of the
+  parameter domain and the target domain, as well as their support.  The
+  main functionality is the ability to evaluate the function and its
+  derivatives at given points inside the support.
+
+  One instance of function is the gsFunctionExpr. This class can be
+  defined by a string containing the mathematical formula of a
+  function. It makes it very easy ad efficient to define and work with
+  complicated mathematical function with minimal effort.
+
+
+\subsection Basis01 gsBasis
+
+  This class represent an (abstract) function basis, that is, a set of
+  basis functions. The functions are usually local, that is, they take
+  non-zero value only at a small portion of the support of the basis.
+  See \ref basis_example
+
+\subsection Geometry01 gsGeometry
+
+  One more instance of a function (derived from gsFunction) is the
+  gsGeometry. This class is essentially a function defined by a
+  coefficient vector and a gsBasis. For example a NURBS patch will
+  fall in this category.
+
+  Printing the geometry:
+  \snippet geometry_example.cpp printing the geometry
+
+  Printing the main properties:
+  \snippet geometry_example.cpp printing properties
+
+  Computing values and derivatives:
+  \snippet geometry_example.cpp values and derivatives
+
+*/
+}

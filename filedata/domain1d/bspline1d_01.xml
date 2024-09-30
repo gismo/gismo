@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="BSpline">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1</KnotVector>
+    </Basis>
+  <coefs geoDim="1">0 1 -1 1 0.5 -0.5</coefs>
+ </Geometry>
+</xml>
+

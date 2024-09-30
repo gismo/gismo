@@ -1,0 +1,36 @@
+namespace gismo {
+/**
+\page Tutorial03 Tutorial 03: Simulation
+
+In this tutorial, you will learn to use the Expression-assembler of \gismo, see \ref gsExprAssembler. This powerful tool can be used to assemble a system of equations, given the expressions of a weak formulation.
+
+\section files Relevant source files
+The files relevant for using the \ref gsExprAssembler are the following:
+
+- \c gsExprAssembler.h : contains the assembly routines for generic expressions; all performed with the \ref gsExprAssembler,
+
+- \c gsExprEvaluator.h : contains the class that is used to evaluate expressions; \ref gsExprEvaluator,
+
+- \c gsAssemblerOptions.h : contains the \ref gsAssemblerOptions class which is used to define options for the Expression-assembler,
+
+- \c gsExpressions.h : contains classes that are the actual expressions and the arithmetic to evaluate them,
+
+- \c gsExprHelper.h : contains the \ref gsExprHelper class to store evaluation data of expression-related objects,
+
+- \c gsDirichletValues.h : contains classes to evaluate non-homogeneous Dirichlet boundary conditions defined for a space.
+
+From those classes the top three (\ref gsExprAssembler, \ref gsExprEvaluator and \ref gsAssemblerOptions) are the ones that are actually called in your code, wheres the other ones are used under the hood.
+
+Furthermore, for any boundary value problem boundary conditions are to be defined. This happens with the \ref gsBoundaryConditions class.
+
+\section poisson Example 1: The Poisson Equation
+
+See \ref poisson2_example
+
+\section kirchhoff Example 2: The Kirchhoff-Love shell
+
+See \ref kirchhoff-Love_example
+
+*/
+
+}

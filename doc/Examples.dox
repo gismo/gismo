@@ -1,0 +1,81 @@
+namespace gismo {
+
+/**
+
+\page Examples Examples
+
+In the gismo/examples sub-directory we find:
+
+- \subpage adaptiveConvectionDiffusionReaction_example
+
+- \subpage adaptRefinementThb_example
+
+- \subpage assembly_example
+
+- \subpage basis_example
+
+- \subpage biharmonic_example
+
+- \subpage biharmonic2_example
+
+- \subpage bSplineBasis_example
+
+- \subpage bSplineCurve_example
+
+- \subpage bSplineSurface_example
+
+- \subpage commandLineArg_example
+
+- \subpage fileIo_example
+
+- \subpage fitting_example
+
+- \subpage geometry_example
+
+- \subpage heatEquation_example
+
+- \subpage inputOutput_example
+
+- \subpage gsInterpolateMap
+
+- \subpage ieti_example
+
+- \subpage ieti2_example
+
+- \subpage knotVector_example
+
+- \subpage kirchhoff-Love_example
+
+- \subpage linearAlgebra_example
+  
+- \subpage linearSolvers_example
+
+- \subpage mpi_example
+
+- \subpage multiGrid_example
+
+- \subpage pMultiGrid_example
+
+<!--
+- \subpage poisson_example
+-->
+
+- \subpage poisson2_example
+
+- \subpage poissonTHB_example
+
+- \subpage sparseSolvers_example
+
+- \subpage thbRefinement_example
+
+- \subpage thbSplineBasis_example
+
+- \subpage trilinos_example
+
+- \subpage triangulatedMeshToSolid_example
+
+- \subpage gsView
+
+
+*/
+}

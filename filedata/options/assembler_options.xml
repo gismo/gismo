@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 0.8.1alpha-->
+<xml>
+ <OptionList id="0">
+  <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+  <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+  <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+  <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+  <int label="quB" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+  <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+  <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+  <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+ </OptionList>
+</xml>
+

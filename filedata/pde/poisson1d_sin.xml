@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<Pde type="PoissonPde" dim="1">
+<rhs>pi^2*sin(pi*x)</rhs>
+</Pde>
+<Function type="FunctionExpr" id="100" dim="1">sin(pi*x)</Function>
+</xml>

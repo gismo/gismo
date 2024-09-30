@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  <Basis type="THBSplineBasis2" levels="3">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <box level="1">18 18 40 40</box>
+   <box level="2">16 16 24 24</box>
+
+   <box level="1">0 0 6 6</box>
+  </Basis>
+</xml>

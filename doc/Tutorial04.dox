@@ -1,0 +1,218 @@
+namespace gismo {
+/**
+\page Tutorial04 Tutorial 04: Writing code
+
+In this tutorial we collect some tips and guidelines for writing code
+in \gismo.
+
+Information regarding code formatting are found in
+<a href="https://github.com/gismo/gismo/wiki/Contributing#code-style-and-formatting" target="_parent"> the wiki</a>.
+
+
+\section conf04 Configuration options
+
+Upon configuration, G+Smo presents a set of basic configuration
+ options, which are ON (enabled):
+
+\verbatim
+Configuration:
+  CMAKE_BUILD_TYPE        RelWithDebInfo
+  GISMO_COEFF_TYPE        double
+  GISMO_BUILD_LIB         ON
+  GISMO_BUILD_EXAMPLES    ON
+  CMAKE_INSTALL_PREFIX    /usr/local
+\endverbatim
+
+The full list of options can be accessed using the \b cmake-gui
+utility, or using the command-line version:
+
+\verbatim
+ccmake .
+\endverbatim
+
+inside the build folder.
+
+
+-   CMAKE_BUILD_TYPE
+
+    Available values are the standard CMake build configurations:
+    Debug, Release, RelWithDebInfo?, MinSizeRel?.
+
+-   GISMO_COEFF_TYPE
+
+    The arithmetic type to be used for all computations. Available
+    options include double, long double, float. This is the type is
+    alias as \a real_t.
+
+-   GISMO_WITH_XDEBUG
+
+    If set to ON additional debugging tools are enabled during
+    compilation. These include checked iterators for GCC and MSVC
+    compilers and call stack back-trace printout when a runtime
+    exception occurs.
+
+-   GISMO_BUILD_LIB
+
+    If enabled a dynamic library is created using GISMO_COEFF_TYPE
+    arithmetic. A target for a static library named gismo_static is
+    also created but not compiled by default.
+
+-   GISMO_BUILD_EXAMPLES
+
+    If enabled the programs in the examples folder are compiled, and
+    executables are created in build-folder/bin.
+
+-   GISMO_PLUGIN_AXL
+
+    If enabled the plugin for Axel modeler is compiled (requires
+    Axel).
+
+-   GISMO_WITH_PSOLID
+
+    If enabled the extensions using functionalities of Parasolid
+    geometric kernel are compiled.(requires Parasolid).
+
+-   gsOpennurbs
+
+    Extension for reading and writing of Rhinoceros' 3DM.
+
+-   CMAKE_INSTALL_PREFIX
+
+    The location for installation of the library, e.g. /usr/local on
+    some Linux systems.
+
+
+\section debug04 Debugging
+
+There are 2 main tools for debugging C++ code:
+
+- The debugger, for instance GDB for GCC, and the Visual Studio
+  debuggerfor Visual C++.
+
+- The memory checker, for instance valgrind on linux or the C Run-Time
+  Libraries (CRT) on Visual studio.
+
+If the CMake option GISMO_WITH_XDEBUG is set to ON, more checks are
+performed while running the code. In particular the Standard library
+containers are checked for invalid access, invalid iterators, and so
+on. Also upon failure of the program the call stack is printed on the
+screen.
+
+\note
+The setting GISMO_WITH_XDEBUG replaces the standard containers, for
+instance std::vector with debug types, eg std::debug_vector. This can
+cause problems when linking the resulting dynamic library with
+third-party codes which is not compiled with the same
+settings. Setting the option back to OFF restores the correct types.
+
+CMake provides with a tool to execute programs and report the result
+status. Result status zero (main() function returns 0) means program
+succeded, return 1 means program failed. To run this check inside the
+build folder do:
+
+\verbatim
+ctest -j3
+\endverbatim
+
+Problems or bugs might also be related to the platform or operating
+system. Nightly compilations and tests on several systems detects such
+problems. The CDash server:
+
+https://cdash-ci.irisa.fr/index.php?project=Gismo
+
+collects the result of compilation and testing from compilation nodes.
+To Submit your compilation and test log to the CDash server you can type:
+\verbatim
+make -j2 Experimental
+\endverbatim
+
+inside the build folder. After building and executing all programs, a
+log file will be posted on the CDash server, under the section
+Experimental.
+
+\section cxx Gismo and Cxx Standards
+
+Gismo should be able to compile with C++98 and on different machines
+with different datatypes and maybe architectures.
+To ensure this, and still be able to use some of the benefits of newer
+compilers like C++11, there are some helping functions inside gsUtils and
+gsMemory that should be used instead of native C++11 calls. It is helpful
+to keep in mind that real_t and size_t are definitions that will be
+exchanged by cmake and should be used instead of double and int.
+
+Cxx(11)                             | Gismo
+----------------------------------- | -----------------------------------
+std::move(...)                      | give(...)
+double                              | real_t
+int                                 | index_t
+std::unique_ptr                     | memory::unique_ptr or gs...\::uPtr
+std::shared_ptr                     | memory::shared_ptr or gs...\::Ptr
+std::to_string                      | util::to_string
+
+Also keep in mind that C++98 std::ios doesn't like "strings". Therefore,
+just call .c_str() if you give a string to an fstream (like ofstream::open).
+
+And please don't use auto and the fancy new foreach loop.
+
+\section tips04 Quick Tips
+
+- Find intuitive names for your classes, prefix the names with "gs"
+
+- Prefer one header file for one class, with the same name. For
+  several small objects, grouping in one file is an option.
+
+- Avoid statements like "using namespace std;" in the code.  Prefer to
+  just type eg "std::vector". The reason is that we do not want to
+  pollute the \a gismo namespace with third-party functions.
+
+- The header file "gismo.h" contains all the headers of the
+  library. It is intended to be used by clients using the library
+  (such as the example programs). It should not be used as an included
+  file in the source code of the library itself.
+
+- Avoid overloading the header files with a lot of included files.
+  Prefer to put a header file in the .hpp (or .cpp) file rather than
+  the .h file.
+
+- While coding, do frequent updates to your svn/git copy. This will
+  keep your local copy up to date with the repository.
+
+- Avoid letting your program produce paraview files by default. Use a
+  --plot switch to trigger output.
+
+
+- Try to fit your work in the general framework of Gismo, and derive
+  your classes from the existing Core classes. For instance, if you
+  implement a different function type, inherit from gsFunction and
+  implement the evaluation interface.
+
+
+- Add Doxygen comments to all of your functions and classes. There are
+  a lot of resources online in using Doxygen documentation.  The basic
+  usage is quite straightforward.
+
+  + <a href="https://www.stack.nl/~dimitri/doxygen/manual/markdown.html" target="_blank">Doxygen manual pages</a>.
+
+  + <a href="http://www.digilife.be/quickreferences/QRC/Doxygen%20Quick%20Reference.pdf" target="_blank">Quick reference manual</a>
+
+-  Add your name on the header of your files. Use the common header as follows:
+   \verbatim
+   /** @file fitting_example.cpp
+
+    @brief Demonstrates adaptive fitting of data samples
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): G. Kiss, A. Mantzaflaris
+   */
+   \endverbatim
+
+- Get in touch with us on Github wiki: https://github.com/gismo/gismo/wiki
+  and issues: https://github.com/gismo/gismo/issues
+
+*/
+}

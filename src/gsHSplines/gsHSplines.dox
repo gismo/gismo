@@ -1,0 +1,61 @@
+namespace gismo {
+
+/** \defgroup HSplines Hierarchical splines module
+\ingroup Modules
+
+This module implements hierarchical and truncated hierarchical tensor-product B-splines.
+
+See also \ref thbSplineBasis_example and \ref adaptRefinementThb_example.
+
+
+\section THB-splines Tutorial
+
+We will now have a closer look at the \c gsThbs_test.cpp file. After parsing the command line arguments it either reads the hierarchical basis from the file given by the user or runs a default example. To understand how the hierarchical basis is specified you can look into the file with the default example. This you do by
+> cat ./filedata/thbbasis/simple.xml
+in your \c gismo-build directory. This should give something like
+
+~~~~~
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  <Basis type="THBSplineBasis2" levels="3">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <box level="1">2 2 6 6</box>
+   <box level="2">4 4 10 10</box>
+  </Basis>
+</xml>
+~~~~~
+
+This means that we are first given a unit square equidistantly divided into 16 pieces and having triple knots on the boundary. Note number 2 in the specification of the \c THBSplineBasis2 (and the other bases as well) telling the number of variables. If omitted, it is expected to be one as in the case of the univariate bases in the tensor product. Note also that \c levels="3". This means that (in the current implementation) cannot get more than three levels of dyadic refinement.
+
+This leads us to an important concept of local and global indices. Internally, \gismo stores the knot points indexed by the \b finest level. See the following table.
+
+physical coordinates	| 0 | 0.25 | 0.5 | 0.75 | 1
+------------------------|---|------|-----|------|---
+indices in level 0 	| 0 | 1    | 2   | 3	| 4
+indices in level 1 	| 0 | 2    | 4   | 6	| 8
+indices in level 2 	| 0 | 4    | 8   | 12	| 16
+
+The mesh is then refined in the specified boxes. Important is that each of these boxes is specified by its lower left and upper right corner and these corners are given in the indices of the \b current level. The final mesh together with the bivariate (check, where this is specified!) basis functions is depicted in Figure 1.
+
+\image html hierarchical_mesh_grid.png "Figure 1. Hierarchical mesh."
+
+The triple knots at the domain boundary are shown with spaces for illustration. First we refined the square \f$ [2,6]\times [2,6]\f$ in the numbering of level 1 and then the square \f$ [4,10]\times [4,10]\f$ in the indices of level 2. The physical coordinates are visible from the picture.
+
+The active basis functions (those that are in the hierarchical basis) are printed in the console as the output of \c gsThbs_test.cpp starting with
+> Characteristic matrix:
+There should be 36, 3 and 16 basis functions in levels 0, 1 and 2, respectively. The basis functions are given as pairs \f$(x,y)\f$, where \f$x\f$ is the number of this basis function in the horizontal direction counted from the left (note that the functions in each level has their own numbering, since the size of their support is different) and \f$y\f$ is its number in the vertical numbering starting from below. Consult Figure 2 for the numbering of the basis functions.
+
+\image html hierarchical_mesh_basis.png "Figure 2. Basis functions."
+
+You can see the mesh specified in \c ~gismo/filedata/thbbasis/simple.xml together with the Greville points (center points of supports) of the basis functions. Basis functions from levels 0, 1 and 2 are marked by black, red and turqoise dots, respectively. The axes show the numbering of the basis functions from the three levels.
+
+
+*/
+}

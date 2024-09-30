@@ -1,0 +1,16 @@
+% --- Initiliazations
+clear all classes
+close all
+
+% --- Update paths for G+Smo plugin
+addpath('@CMAKE_CURRENT_SOURCE_DIR@/m');
+addpath('@CMAKE_CURRENT_SOURCE_DIR@/test');
+addpath('@CMAKE_CURRENT_BINARY_DIR@');
+
+% --- Set the filedata path in the source directory
+filedata='@CMAKE_SOURCE_DIR@/filedata/';
+
+% --- Update linker paths for loading dynamic libraries
+setenv('LD_LIBRARY_PATH', [getenv('LD_LIBRARY_PATH') ':@CMAKE_BINARY_DIR@/lib'])
+setenv('DYLD_LIBRARY_PATH', [getenv('DYLD_LIBRARY_PATH') ':@CMAKE_BINARY_DIR@/lib'])
+%setenv('PATH', [getenv('PATH') ';D:\mypath']);

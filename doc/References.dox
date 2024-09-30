@@ -1,0 +1,34 @@
+namespace gismo {
+
+/**
+  \page References
+  
+  In this page we collect references to \gismo. To add a reference:
+  
+  1. Add the bibtex entry in the file <b>doc/gismo.bib</b>.
+  
+  2. Choose a category below and add a cite command with the new
+  entry.  Then it will be added to <a href="citelist.html">the
+  bibliography</a>, in lexicographic order, when you run doxygen.
+  
+  - Papers referencing/using \gismo:
+    \cite jlmmz2014
+    \cite lmmt2015a
+    \cite gjkmss2015
+    \cite bjm2015
+    \cite lmmt2015b
+    \cite mjkl2015
+    \cite iil2014
+
+  - Textbooks and papers used while coding \gismo:	  
+    \cite Piegl1997
+    \cite iga2005
+    \cite splinemethods2008
+    \cite Kraft1997
+
+  - References to third-party software:
+    \cite PARDISO500
+    \cite eigenweb
+
+*/
+}

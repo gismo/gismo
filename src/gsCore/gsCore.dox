@@ -1,0 +1,94 @@
+/*
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
+namespace gismo {
+
+/** \defgroup Core Core module
+\ingroup Modules
+
+The \b Core module is the backbone of the library. Here an abstract
+interface is defined for a gsBasis, that is, a set of real-valued
+functions living on a parameter domain. At this level, we do not
+specify how these functions (or its derivatives) should be evaluated.
+However, a number of virtual member functions define an interface that
+should be implemented by derived classes of this type.  Another
+abstract class is the gsGeometry class. This object consists of
+a (still abstract) basis and a coefficient vector, and represents a
+patch.  Note that parameter or physical dimension are not specified at
+this point.  There are four classes  directly derived from the
+geometry class; these are gsCurve, gsSurface, gsVolume and gsBulk. These are
+parametric objects with known parameter space dimension 1 ,2, 3, 
+and 4 respectively.
+
+Another abstract class is the gsFunction class. The interface for this
+class includes evaluation, derivations and other related
+operations. The gsGgeometry abstract class is actually deriving from
+the function class, demonstrating the fact that parametric geometries
+can be simply viewed as (vector) functions. Another interesting object
+is the gsMultipatch object.  CAD models are composed of many
+patches. Therefore, a multipatch structure is of great importance.  It
+contains two types of information; first, geometric information,
+essentially a list of geometry patches. Second, the gsBoxTopology
+class (inherited by gsMultiPatch) captures topological information
+between the patches, that is, the adjacency graph between patch
+boundaries, degenerate points, and so on. Let us also mention the
+gsField class, which is the object that typically represents the
+solution of a PDE. A gsField is a mathematical scalar or vector
+field which is defined on a parametric patch, or multipatch object. It
+may be evaluated either on the parameter or physical space, as the
+isogeometric paradigm suggests.
+
+
+See \ref geometry and \ref basis.
+
+
+*/
+
+/**
+  \defgroup enum Enumeration declarations
+
+  @brief This group collects the enumeration declarations used in \gismo
+
+  \anchor enum_decl
+*/
+
+
+/**
+  \defgroup geometry Geometries hierarchy
+
+  @brief This group collects geometry types deriving from gsGeometry.
+
+  \copydetails gsGeometry
+
+  \anchor geometry_classes  
+*/
+
+
+/**
+  \defgroup basis Bases hierarchy
+
+  @brief This group collects basis types deriving from gsBasis.
+
+  \copydetails gsBasis
+
+  \anchor basis_classes  
+*/
+
+/**
+  \defgroup function Functions group
+
+  @brief This group collects function types directly based on gsFunction.
+
+  \copydetails gsFunction
+
+  \anchor function_classes  
+*/
+
+
+}
+

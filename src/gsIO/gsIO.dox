@@ -1,0 +1,18 @@
+namespace gismo {
+
+/** \defgroup IO Input/Output module
+\ingroup Modules
+
+    This module is responsible for input and output of \gismo objects to files.
+
+    The <b>Input/Output</b> module is responsible for visualization
+    as well as file reading and writing. For visualization, we employ
+    Paraview or Axel (which are in turn based on VTK).  An important
+    feature is file format support.  \gismo can read and write popular CAD
+    formats, which include the 3DM file format of Rhinoceros 3D modeler,
+    the X_T format of Siemens' NX platform, provided that the
+    related extensions are enabled.
+
+*/
+
+}

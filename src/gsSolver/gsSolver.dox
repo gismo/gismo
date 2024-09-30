@@ -1,0 +1,49 @@
+namespace gismo {
+
+/** \defgroup Solver Solver module
+\ingroup Modules
+
+    This module is responsible for treating the systems of linear
+    equations arizing from a discretized a PDE.
+
+This class provides iterative solvers, preconditioners, and related
+tools.
+
+The *iterative solvers* are derived from the \a gsIterativeSolver,
+most notably there are the standard Krylov space solvers (cg, MINRES,
+GMRES) and the gradient method, which can use optimal step sizes
+based on line search or fixed step sizes. The latter allows methods,
+which G+Smo presents as preconditioners, to be used as solvers, this
+means that a standard multigrid solver would be realized as a gradient
+solver with multigrid preconditioner.
+
+The *preconditioners* are based on the abstract class
+\a gsLinearOperator. Objects of this type realize linear operators \f$ A \f$.
+Their application to a vector is provided by the member function `apply`. The
+class \a gsPreconditionerOp is an abstract class derived from \a gsLinearOperator.
+An example would be the Jacobi iteration, which interpreted as a linear operator,
+would be \f$ P = (\mbox{diag } A)^{-1} \f$. Preconditioners additionally have an
+underlying operator (underlyingOp), which would be \f$ A \f$ in this case. It
+is also possible to directly iterate those preconditioners using the member
+function `step`, which takes parameters \f$ f \f$ and \f$ x \f$ and updates the
+latter as follows:
+\f[
+    x_{new} =  x_{old} + P ( f - A * x_{old} ).
+\f]
+
+Linear operators and preconditioners can be combined dynamically with
+the respective classes (like \a gsSumOp, \a gsProductOp, \a gsScaledOp,
+\a gsBlockOp). The wrapper class \a gsMatrixOp allows to treat (sparse) matrices
+as linear operators, the wrapper class \a gsSolverOp allows to treat the
+direct solvers from Eigen as linear operators. Also the multigrid and IETI
+methods are presented as linear operators and preconditioners.
+
+
+The files associated to this module are located in the folders
+    - src/gsSolver
+    - src/gsMultiGrid
+    - src/gsIeti
+
+*/
+
+}

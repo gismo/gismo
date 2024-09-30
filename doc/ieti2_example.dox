@@ -1,0 +1,28 @@
+namespace gismo {
+/**
+
+\page ieti2_example ieti2_example.cpp
+
+This example is a variation of the example file *ieti_example.cpp*, please
+see the documentation for that file.
+
+There are two main differences:
+
+ - The file at hand used a \a gsAssembler based assembler, while the
+   example file *ieti_example.cpp* uses the \a gsExprAssembler.
+
+ - The file at hand uses a MINRES solver to solve the saddle point formulation
+   of the IETI system, which is of particular interest for inexact variants of
+   IETI. The example file *ieti_example.cpp* uses CG for solving the Schur
+   complement formulation.
+
+\section ieti2_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/ieti2_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include ieti2_example.cpp
+
+*/
+
+}

@@ -1,0 +1,10 @@
+namespace gismo {
+
+/** \defgroup Assembler Assembler module
+\ingroup Modules
+
+    This module is responsible for generating matrices that discretize a PDE.
+
+*/
+
+}

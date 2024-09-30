@@ -1,0 +1,10 @@
+#include <gismo.h>
+
+using namespace gismo;
+
+int main(int, char**)
+{
+    gsInfo.precision(3);
+${snippet_source_code}
+    return 0;
+}

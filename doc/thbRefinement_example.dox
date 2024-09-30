@@ -1,0 +1,23 @@
+namespace gismo {
+/**
+
+\page thbRefinement_example thbRefinement_example.cpp
+
+
+More details on the hierarchical splines can be found in \ref
+thbSplineBasis_example, \ref adaptRefinementThb_example as well as in the \ref HSplines description.
+
+
+<!-- more info on the file examples/thbRefinement_example.cpp goes here -->
+
+
+\section thbRefinement_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/thbRefinement_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include thbRefinement_example.cpp
+
+*/
+
+}

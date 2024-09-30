@@ -1,0 +1,252 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile>
+  <compound kind="class">
+    <name>Eigen::aligned_allocator</name>
+    <filename>classEigen_1_1aligned__allocator.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::AngleAxis</name>
+    <filename>classEigen_1_1AngleAxis.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Array</name>
+    <filename>classEigen_1_1Array.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::BDCSVD</name>
+    <filename>classEigen_1_1BDCSVD.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::BiCGSTAB</name>
+    <filename>classEigen_1_1BiCGSTAB.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Block</name>
+    <filename>classEigen_1_1Block.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::COLAMDOrdering</name>
+    <filename>classEigen_1_1COLAMDOrdering.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::CompleteOrthogonalDecomposition</name>
+    <filename>classEigen_1_1CompleteOrthogonalDecomposition.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::ConjugateGradient</name>
+    <filename>classEigen_1_1ConjugateGradient.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::DiagonalPreconditioner</name>
+    <filename>classEigen_1_1DiagonalPreconditioner.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::EigenBase</name>
+    <filename>structEigen_1_1EigenBase.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::EigenSolver</name>
+    <filename>classEigen_1_1EigenSolver.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::FullPivLU</name>
+    <filename>classEigen_1_1FullPivLU.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::GeneralizedSelfAdjointEigenSolver</name>
+    <filename>classEigen_1_1GeneralizedSelfAdjointEigenSolver.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::IdentityPreconditioner</name>
+    <filename>classEigen_1_1IdentityPreconditioner.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::IncompleteLUT</name>
+    <filename>classEigen_1_1IncompleteLUT.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::JacobiSVD</name>
+    <filename>classEigen_1_1JacobiSVD.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::LDLT</name>
+    <filename>classEigen_1_1LDLT.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Map</name>
+    <filename>classEigen_1_1Map.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Matrix</name>
+    <filename>classEigen_1_1Matrix.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::MatrixBase</name>
+    <filename>classEigen_1_1MatrixBase.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::PardisoLDLT</name>
+    <filename>classEigen_1_1PardisoLDLT.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::PardisoLLT</name>
+    <filename>classEigen_1_1PardisoLLT.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::PardisoLU</name>
+    <filename>classEigen_1_1PardisoLU.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::PartialPivLU</name>
+    <filename>classEigen_1_1PartialPivLU.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::PermutationMatrix</name>
+    <filename>classEigen_1_1PermutationMatrix.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::PermutationWrapper</name>
+    <filename>classEigen_1_1PermutationWrapper.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::PlainObjectBase</name>
+    <filename>classEigen_1_1PlainObjectBase.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Ref</name>
+    <filename>classEigen_1_1Ref.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Rotation2D</name>
+    <filename>classEigen_1_1Rotation2D.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SelfAdjointEigenSolver</name>
+    <filename>classEigen_1_1SelfAdjointEigenSolver.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SimplicialLDLT</name>
+    <filename>classEigen_1_1SimplicialLDLT.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SimplicialLLT</name>
+    <filename>classEigen_1_1SimplicialLLT.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SparseLU</name>
+    <filename>classEigen_1_1SparseLU.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SparseMatrix</name>
+    <filename>classEigen_1_1SparseMatrix.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SparseMatrixBase</name>
+    <filename>classEigen_1_1SparseMatrixBase.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SparseQR</name>
+    <filename>classEigen_1_1SparseQR.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SparseSelfAdjointView</name>
+    <filename>classEigen_1_1SparseSelfAdjointView.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SparseVector</name>
+    <filename>classEigen_1_1SparseVector.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::SuperLU</name>
+    <filename>classEigen_1_1SuperLU.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Transform</name>
+    <filename>classEigen_1_1Transform.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Transpose</name>
+    <filename>classEigen_1_1Transpose.html</filename>
+  </compound>
+  <compound kind="class">
+    <name>Eigen::Triplet</name>
+    <filename>classEigen_1_1Triplet.html</filename>
+  </compound>
+  <compound kind="namespace">
+    <name>Eigen</name>
+    <filename>namespaceEigen.html</filename>
+    <class kind="class">Eigen::aligned_allocator</class>
+    <class kind="class">Eigen::AngleAxis</class>
+    <class kind="class">Eigen::Array</class>
+    <class kind="class">Eigen::BDCSVD</class>
+    <class kind="class">Eigen::BiCGSTAB</class>
+    <class kind="class">Eigen::Block</class>
+    <class kind="class">Eigen::COLAMDOrdering</class>
+    <class kind="class">Eigen::CompleteOrthogonalDecomposition</class>
+    <class kind="class">Eigen::ConjugateGradient</class>
+    <class kind="class">Eigen::DiagonalPreconditioner</class>
+    <class kind="class">Eigen::EigenBase</class>
+    <class kind="class">Eigen::EigenSolver</class>
+    <class kind="class">Eigen::FullPivLU</class>
+    <class kind="class">Eigen::GeneralizedSelfAdjointEigenSolver</class>
+    <class kind="class">Eigen::IdentityPreconditioner</class>
+    <class kind="class">Eigen::IncompleteLUT</class>
+    <class kind="class">Eigen::JacobiSVD</class>
+    <class kind="class">Eigen::LDLT</class>
+    <class kind="class">Eigen::Map</class>
+    <class kind="class">Eigen::Matrix</class>
+    <class kind="class">Eigen::MatrixBase</class>
+    <class kind="class">Eigen::PardisoLDLT</class>
+    <class kind="class">Eigen::PardisoLLT</class>
+    <class kind="class">Eigen::PardisoLU</class>
+    <class kind="class">Eigen::PartialPivLU</class>
+    <class kind="class">Eigen::PermutationMatrix</class>
+    <class kind="class">Eigen::PermutationWrapper</class>
+    <class kind="class">Eigen::PlainObjectBase</class>
+    <class kind="class">Eigen::Ref</class>
+    <class kind="class">Eigen::Rotation2D</class>
+    <class kind="class">Eigen::SelfAdjointEigenSolver</class>
+    <class kind="class">Eigen::SimplicialLDLT</class>
+    <class kind="class">Eigen::SimplicialLLT</class>
+    <class kind="class">Eigen::SparseLU</class>
+    <class kind="class">Eigen::SparseMatrix</class>
+    <class kind="class">Eigen::SparseMatrixBase</class>
+    <class kind="class">Eigen::SparseQR</class>
+    <class kind="class">Eigen::SparseSelfAdjointView</class>
+    <class kind="class">Eigen::SparseVector</class>
+    <class kind="class">Eigen::SuperLU</class>
+    <class kind="class">Eigen::Transform</class>
+    <class kind="class">Eigen::Transpose</class>
+    <class kind="class">Eigen::Triplet</class>
+  </compound>
+  <compound kind="page">
+    <name>DenseMatrixManipulation_chapter</name>
+    <title>Dense matrix and array manipulation</title>
+    <filename>group__DenseMatrixManipulation__chapter</filename>
+  </compound>
+  <compound kind="page">
+    <name>DenseLinearSolvers_chapter</name>
+    <title>Dense linear problems and decompositions</title>
+    <filename>group__DenseLinearSolvers__chapter</filename>
+  </compound>
+  <compound kind="page">
+    <name>Sparse_chapter</name>
+    <title>Sparse linear algebra</title>
+    <filename>group__Sparse__chapter</filename>
+  </compound>
+  <compound kind="page">
+    <name>QuickRefPage</name>
+    <title>Quick reference guide</title>
+    <filename>group__QuickRefPage</filename>
+  </compound>
+  <compound kind="page">
+    <name>SparseQuickRefPage</name>
+    <title>Quick reference guide for sparse matrices</title>
+    <filename>group__SparseQuickRefPage</filename>
+  </compound>
+  <compound kind="page">
+    <name>TopicAliasing</name>
+    <title>Aliasing</title>
+    <filename>group__TopicAliasing</filename>
+  </compound>
+</tagfile>

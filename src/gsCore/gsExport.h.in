@@ -1,0 +1,149 @@
+/** @file gsExport.h
+
+    @brief Handles shared library creation and other class attributes
+
+    This file is part of the G+Smo library. 
+    
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris
+*/
+
+#pragma once
+
+#include <gsCore/gsConfig.h>
+
+
+/*
+  Symbol exporting and importing
+
+  By default no symbols are exported to the shared library. Symbols
+  that have to be exported must be marked with GISMO_EXPORT. Symbols
+  that should not be exported can be marked with GISMO_LOCAL.
+  Also:
+  
+  - When building the shared library, gismo_EXPORTS must be defined,
+  but NOT when consuming G+Smo as a shared library
+  
+  - When building the static library, gismo_STATIC must be defined
+  
+  - If GISMO_BUILD_LIB is defined when building or consuming the
+  shared or static library then function definitions in .hpp files are
+  not included after class/function declarations. Otherwise
+  (GISMO_BUILD_LIB not defined) a pure template build will take place.
+  The macro GISMO_BUILD_LIB is controlled in gsCore/gsConfig.h.
+
+  info: https://gcc.gnu.org/wiki/Visibility
+*/
+#if defined(@PROJECT_NAME@_STATIC) // using/building static library
+
+#  define GISMO_EXPORT
+#  define GISMO_IMPORT
+//#  define GISMO_LOCAL
+#  define GISMO_DEFAULT_VIS //GCC warns when base/derived class differ in visibility, this macro allows to add attribute to the templated base
+
+#elif defined(@PROJECT_NAME@_EXPORTS) // building shared library: export, don't import
+
+#  if defined(_WIN32) || defined(__CYGWIN__)
+#    define GISMO_EXPORT __declspec(dllexport) //equiv. __attribute__ ((dllexport))
+//#    define GISMO_LOCAL
+#    define GISMO_DEFAULT_VIS
+#  else						                
+#    define GISMO_EXPORT __attribute__((visibility("default")))
+//#    define GISMO_LOCAL  __attribute__((visibility("hidden" )))
+#    define GISMO_DEFAULT_VIS __attribute__((visibility("default")))
+#  endif
+#  define GISMO_IMPORT
+
+#else // using shared library: import all
+
+#  if defined(_WIN32) || defined(__CYGWIN__)
+#    define GISMO_EXPORT __declspec(dllimport) //equiv. __attribute__ ((dllimport))
+#    define GISMO_IMPORT __declspec(dllimport)
+#  else
+// GCC: If a symbol declared dllimport is later defined, the attribute
+// is ignored in subsequent references, and a warning is emitted.
+#    define GISMO_EXPORT //__attribute__ ((dllimport))
+#    define GISMO_IMPORT //__attribute__ ((dllimport))
+#  endif
+//#  define GISMO_LOCAL
+#  define GISMO_DEFAULT_VIS
+#endif
+
+
+/*
+  Macros for instantiating templated structs, classes or functions.
+  
+  - When using the shared library all instantiations are expected to
+  be imported from the library are marked as "extern template".  This
+  allows the compile to avoid to instantiate the template in this
+  translation unit.
+  
+  - When compiling the translation unit for an explicit template
+  instantiation of a certain templated class, the
+  EXTERN_CLASS_TEMPLATE must be replaced with an explicit
+  instantiation directive, i.e. CLASS_TEMPLATE_INST.
+  
+  - On GCC the scheme would work if the "extern template" where still
+  present in the headers and CLASS_TEMPLATE_INST would follow later.
+  Hoever, in MSVC2010, "extern template" cannot be followed later by
+  an explicit instantization.  Actually MSVC considers "extern
+  template" already to be an instantization, which can happen only
+  once in the translation unit.  Hence the error C2960 is emitted.
+  
+  - The compiler is free to inline any function that it has the
+  definition for, if it chooses to do so.
+
+  info: https://support.microsoft.com/en-us/kb/168958
+*/
+#define STRUCT_TEMPLATE_INST   template struct        GISMO_EXPORT
+#define CLASS_TEMPLATE_INST    template class         GISMO_EXPORT
+#define TEMPLATE_INST          template               GISMO_EXPORT
+#define EXTERN_STRUCT_TEMPLATE extern template struct GISMO_IMPORT
+#define EXTERN_CLASS_TEMPLATE  extern template class  GISMO_IMPORT
+#define EXTERN_TEMPLATE        extern template        GISMO_IMPORT
+
+#ifndef __has_feature // clang only
+#define __has_feature(x) 0
+#endif
+
+/* 
+   Override control
+
+  - GISMO_FINAL
+  Marks a virtual method indicating that derived classes cannot
+  override it, or mark a class to indicate that there can be no
+  derived classes.
+
+  Example:
+  virtual void foo() GISMO_FINAL;
+  class B GISMO_FINAL : public A {};
+
+  - GISMO_OVERRIDE
+  Marks a virtual method indicating it must be overriding a virtual
+  method of the base class
+  
+  Example:
+  virtual void foo() GISMO_OVERRIDE;
+*/
+#if defined(_MSC_VER) && _MSC_VER < 1700   // all versions before MSVC 2012
+// MSVC2010 uses "sealed", later versions accept final as well
+#  define GISMO_FINAL sealed
+#  define GISMO_OVERRIDE override
+#elif _MSC_VER >= 1700   // MSVC 2012 upward
+#  define GISMO_FINAL final
+#  define GISMO_OVERRIDE override
+#elif defined(__clang__ ) && __has_feature(cxx_override_control)
+#  define GISMO_FINAL final
+#  define GISMO_OVERRIDE override
+#elif defined(__GNUG__) && __cplusplus >= 201103 && \
+    (__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40700
+// GCC 4.7 supports override control with C++11 enabled
+#  define GISMO_FINAL final
+#  define GISMO_OVERRIDE override
+#else
+#  define GISMO_FINAL
+#  define GISMO_OVERRIDE
+#endif

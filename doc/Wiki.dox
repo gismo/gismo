@@ -1,0 +1,19 @@
+namespace gismo {
+
+/**
+  \page Wiki \gismo Wiki
+
+  The <a href="https://github.com/gismo/gismo/wiki" target="_parent"><b>online wiki pages</b></a> provide general information, including:
+
+  - <a href="https://github.com/gismo/gismo/wiki/About--G-Smo" target="_parent">About \gismo</a>
+
+  - <a href="https://github.com/gismo/gismo/wiki/Frequently-asked-questions" target="_parent">Frequently Asked Questions</a>
+
+  - <a href="https://github.com/gismo/gismo/wiki/Compiling" target="_parent">Compiling the library</a>
+
+  - <a href="https://github.com/gismo/gismo/wiki/Compiling#configuration-options">Configuring the build process</a>
+
+  - <a href="https://github.com/gismo/gismo/wiki/Contributing" target="_parent">Contributing to <b>\gismo</b></a>
+
+*/
+}

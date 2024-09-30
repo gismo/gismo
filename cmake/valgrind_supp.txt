@@ -1,0 +1,165 @@
+{
+   <gismo_Leak_dl_init>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libstdc++.so.*
+   fun:call_init.part.0
+   fun:call_init
+   fun:_dl_init
+   obj:/lib/x86_64-linux-gnu/ld-2.??.so
+}
+{
+   <gismo_Leak_Darwin2>
+   Memcheck:Leak
+   #match-leak-kinds: indirect
+   ...
+   fun:*ImageLoaderMachO??doModInitFunctions*ImageLoader??LinkContext*
+   fun:*ImageLoaderMachO??doInitialization*ImageLoader??LinkContext*
+   ...
+}
+{
+   <gismo_Leak_Darwin3>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   fun:malloc
+   fun:__smakebuf
+   fun:__swsetup
+   fun:__sfvwrite
+   fun:fwrite
+   ...
+   fun:*ostreambuf*
+   ...
+   fun:*basic_ostream*
+   ...
+}
+{
+   <gismo_Leak_Darwin4>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   fun:malloc
+   fun:__Balloc_D2A
+   ...
+   fun:_ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEd
+   ...
+}
+{
+   <gismo_Leak_Darwin5>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   fun:malloc
+   fun:__Balloc_D2A
+   ...
+   fun:strtod_l
+   ...
+}
+
+{
+   <gismo_Leak_Darwin6>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   ...
+   fun:NXCreateMapTableFromZone
+   fun:NXCreateMapTable
+   ...
+}
+
+{
+   <dlopen still reachable>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   ...
+   fun:_dlerror_run
+   fun:dlopen*
+   ...
+}
+
+{
+   <iostream _dl_init>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   fun:malloc
+   obj:/*/libstdc++.so.*
+   fun:call_init.part.0
+   ...
+   fun:_dl_init
+   obj:/lib64/ld-?.??.so
+}
+
+#########################################
+#                 MPI                   #
+#########################################
+
+{
+   <orte>
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:orte_oob_base_set_addr
+   ...
+   fun:start_thread
+   fun:clone
+}
+
+{
+   <cond_ompi_init>
+   Memcheck:Cond
+   ...
+   fun:ompi_mpi_init
+   fun:PMPI_Init
+}
+
+{
+   <leak_ompi_init_orte>
+   Memcheck:Leak
+   ...
+   fun:orte_init
+   fun:ompi_mpi_init
+}
+
+{
+   <leak_ompi_init_PMPI>
+   Memcheck:Leak
+   ...
+   fun:ompi_mpi_init
+   fun:PMPI_Init
+}
+
+{
+   <event_process_active_single_queue>
+   Memcheck:Leak
+   match-leak-kinds: all
+   fun:malloc
+   ...
+   fun:event_process_active_single_queue
+   fun:event_base_loop
+}
+
+{
+   <opal1>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:opal_free_list_grow_st
+   fun:opal_rb_tree_init
+}
+
+{
+   <opal2>
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:opal_*
+   ...
+   fun:opal_init*
+   ...
+}
+
+{
+   <hwloc>
+   Memcheck:Leak
+   ...
+   fun:hwloc_xml_component_instantiate
+   fun:hwloc_disc_component_force_enable
+   fun:hwloc_topology_set_xmlbuffer
+}

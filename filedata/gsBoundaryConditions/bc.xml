@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<!--
+    A set of boundary conditions
+-->
+<boundaryConditions id="4" multipatch="2">
+<Function type="FunctionExpr" dim="2" index="0">sin(pi*x) * sin(pi*y)</Function>
+<Function type="FunctionExpr" dim="2" index="1">0</Function>
+
+<!-- 
+     The boundary conditions are stored by specifing the attributes:
+
+     * The unknown to which the boundary condition refers to (=0 if the tag does not exist)
+     * Type of condition (Dirichlet, Neumann, other label...)
+     * Function data index (the condition is assumed to be homogeneous
+       if function attribute does not exist)
+     
+     And, additionally the indices of the boundaries where this
+     condition applies.  These indices refer to the enumeration of the
+     boundary sides inside the <bc> tag
+-->
+
+<!-- Dirichlet conditions -->
+<bc unknown="0" type="Dirichlet" function="1">
+0 1 0 3 1 1 1 2
+</bc>
+
+<bc unknown="0" type="Dirichlet" function="0">
+0 2 0 4
+</bc>
+
+<!-- Neumann conditions -->
+<bc unknown="0" type="Neumann" function="1">
+1 3 1 4
+</bc>
+
+<!-- Corner values -->
+<cv unknown="0" patch="0" corner="0">0.0</cv>
+</boundaryConditions>
+
+</xml>
+
