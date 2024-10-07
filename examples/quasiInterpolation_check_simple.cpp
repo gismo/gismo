@@ -45,9 +45,12 @@ int main(int argc, char *argv[])
 
     gsMultiBasis<> dbasis_fine, dbasis_coarse;
 
-    gsMatrix<> C_coarse, C_fine; // for projection
+    gsMatrix<> C_coarse, C_fine, C_coarse_l2, C_coarse_l2_local; // for projection
     
     dbasis_coarse.addBasis(thb.clone());
+
+    //gsWriteParaview(thb, "hola");
+
 
     // ===== Get the coefficients of the mySinus function with local interpolation =====
     gsMatrix<> refBoxes(2,2);
@@ -60,15 +63,25 @@ int main(int argc, char *argv[])
     //gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0), mySinus, C_fine); 
     gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0),mySinus,mp,C_fine);
 
-    
     gsTHBSpline<2,real_t> thb_fine_basis(thb,C_fine); 
+
+    gsDebugVar(thb_fine_basis);
+    gsDebugVar(dbasis_coarse.basis(0));
+    
+    gsGeometry<>::uPtr fine_ = dbasis_fine.basis(0).makeGeometry(give(C_fine));
 
     gsWriteParaview(thb_fine_basis,"funcioninter"); // interpolated function mySinus
 
 
+    gsDebugVar(mp);
     //gsDebugVar(thb_fine_basis.uniformCoarsen());
-    // thb_fine_basis.uniformCoarsen(1);
-    gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), thb_fine_basis, C_coarse); 
+    gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_, C_coarse); 
+    gsL2Projection<real_t>::projectFunction(dbasis_coarse.basis(0), *fine_,mp,C_coarse_l2);
+    
+    // order inputs changed!
+    //gsL2Projection<real_t>::projectFunctionLocal(dbasis_coarse.basis(0),dbasis_fine.basis(0),*fine_,mp,C_coarse_l2_local);
+
+    // gsDebugVar(C_coarse_l2-C_coarse_l2_local);
 
     // gsDebugVar(C_fine.size());
     // gsDebugVar(C_coarse.size());
@@ -78,12 +91,17 @@ int main(int argc, char *argv[])
     // gsMultiBasis<> dbasis_qi;
     // dbasis_qi.addBasis(thb.clone()); // why?
 
+    //gsDebugVar(C_coarse);
+
     gsGeometry<>::uPtr sol_coarse = dbasis_coarse.basis(0).makeGeometry(give(C_coarse));
+    gsGeometry<>::uPtr sol_coarse_L2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2));
+
     gsExprAssembler<> A(1,1);
     A.setIntegrationElements(dbasis_fine);
     gsExprEvaluator<> ev(A);
     auto G = ev.getMap(mp); // is this correct?
     
+    auto c_sinus_L2 = ev.getVariable(*sol_coarse_L2,G); // pointer to the QI
     auto c_sinus_qi = ev.getVariable(*sol_coarse,G); // pointer to the QI
     auto cfunction = ev.getVariable(mySinus,G);
 
@@ -95,6 +113,7 @@ int main(int argc, char *argv[])
 
     error_col.newTimeStep(&mp);
     error_col.addField((cfunction-c_sinus_qi).sqNorm(),"error mySinus QI");
+    error_col.addField((cfunction-c_sinus_L2).sqNorm(),"error mySinus L2");
 
     error_col.saveTimeStep();
     error_col.save();
