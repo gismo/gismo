@@ -23,7 +23,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    gsMultiPatch<> mp;
+    gsMultiPatch<> mp, mp_2;
     mp.addPatch(*gsNurbsCreator<>:: BSplineSquare()); // create a multipatch with multibasis!???????
  
     
@@ -65,18 +65,35 @@ int main(int argc, char *argv[])
 
     gsTHBSpline<2,real_t> thb_fine_basis(thb,C_fine); 
 
-    gsDebugVar(thb_fine_basis);
-    gsDebugVar(dbasis_coarse.basis(0));
+    gsDebugVar(C_fine);
+
+    gsWriteParaview(thb_fine_basis,"holaholahola");
+
+    // gsDebugVar(thb_fine_basis);
+    // gsDebugVar(dbasis_coarse.basis(0));
     
     gsGeometry<>::uPtr fine_ = dbasis_fine.basis(0).makeGeometry(give(C_fine));
 
     gsWriteParaview(thb_fine_basis,"funcioninter"); // interpolated function mySinus
 
-
-    gsDebugVar(mp);
+    // gsDebugVar(mp.basis(0).numElements());
+    //mp_2.addPatch(*fine_);
     //gsDebugVar(thb_fine_basis.uniformCoarsen());
     gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_, C_coarse); 
-    gsL2Projection<real_t>::projectFunction(dbasis_coarse.basis(0), *fine_,mp,C_coarse_l2);
+    gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0), dbasis_coarse, *fine_,mp,C_coarse_l2);
+
+    gsDebugVar(C_coarse_l2-C_coarse);
+
+    // gsTHBSpline<2,real_t> thb_coarse_basis2(dbasis_coarse.basis(0),C_coarse_l2); 
+    // gsWriteParaview(thb_coarse_basis2,"funcioninter_final"); // interpolated function mySinus
+    
+    thb.unrefine(refBoxes,0); // coarse mesh!
+    gsTHBSpline<2,real_t> thb_fine_plot(thb,C_coarse); 
+    gsTHBSpline<2,real_t> thb_fine_plot_l2(thb,C_coarse_l2); 
+
+    gsWriteParaview(thb_fine_plot,"holafinal"); // interpolated function mySinus
+    gsWriteParaview(thb_fine_plot_l2,"holafinal_L2"); // interpolated function mySinus
+
     
     // order inputs changed!
     //gsL2Projection<real_t>::projectFunctionLocal(dbasis_coarse.basis(0),dbasis_fine.basis(0),*fine_,mp,C_coarse_l2_local);
