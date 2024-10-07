@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
     thb = gsTHBSplineBasis<2,real_t>(bas); // create basis with knot vectors
 
     gsMatrix<> coefs, C_coarse, C_fine, C_coarse_final, C_fine_coefs, coefs_in, coefs_final; // for projection
+    gsMatrix<> coefs_L2, C_fine_coefs_L2, C_coarse_final_L2; // for projection
 
     gsMatrix<> refBoxes(2,2);
     refBoxes.col(0) << 0,0;
@@ -52,10 +53,48 @@ int main(int argc, char *argv[])
     refBoxes2.col(0) << 0,0;
     refBoxes2.col(1) << 0.25,0.25;
     thb.refine( refBoxes2 );
+    gsMatrix<> refBoxes3(2,2);
+    refBoxes3.col(0) << 0.5,0.5;
+    refBoxes3.col(1) << 1.0,1.0;
+    thb.refine( refBoxes3 );
+    gsMatrix<> refBoxes4(2,2);
+    refBoxes4.col(0) << 0.75,0.5;
+    refBoxes4.col(1) << 1.0,0.75;
+    thb.refine( refBoxes4 );
+    gsMatrix<> refBoxes5(2,2);
+    refBoxes5.col(0) << 0.875,0.5;
+    refBoxes5.col(1) << 1.,0.625;
+    thb.refine( refBoxes5 );
+    // gsMatrix<> refBoxes3(2,2);
+    // refBoxes3.col(0) << 0.5,0.0;
+    // refBoxes3.col(1) << 1.0,0.5;
+    // thb.refine( refBoxes3 );
+    // gsMatrix<> refBoxes4(2,2);
+    // refBoxes4.col(0) << 0.75,0.0;
+    // refBoxes4.col(1) << 1.0,0.25;
+    // thb.refine( refBoxes4 );
+    // gsMatrix<> refBoxes5(2,2);
+    // refBoxes5.col(0) << 0.875,0.0;
+    // refBoxes5.col(1) << 1.,0.125;
+    // thb.refine( refBoxes5 );
     
+    // gsMatrix<> refBoxes4(2,2);
+    // refBoxes4.col(0) << 0.5,0.0;
+    // refBoxes4.col(1) << 1.0,0.5;
+    // thb.refine( refBoxes4 );
+    // gsMatrix<> refBoxes5(2,2);
+    // refBoxes5.col(0) << 0.75,0.0;
+    // refBoxes5.col(1) << 1.,0.25;
+    // thb.refine( refBoxes5 );
+
+
     // ===== Get the coefficients of the mySinus function with local interpolation =====
     gsQuasiInterpolate<real_t>::localIntpl(thb, mySinus, coefs); 
+    gsL2Projection<real_t>::projectFunction(thb,mySinus,mp,coefs_L2);
+
     gsMatrix<> C_coarse_initial = coefs;
+    gsMatrix<> C_coarse_L2_initial = coefs_L2;
+
     coefs_in =  coefs;
     // Check for coefficients of the coarse basis
     // gsDebugVar(C_coarse_initial.size()); // gives 22, dofs of the coarse basis
@@ -65,22 +104,26 @@ int main(int argc, char *argv[])
     dbasis_qi.addBasis(thb.clone()); // why?
 
     gsGeometry<>::uPtr sinus_qi = dbasis_qi.basis(0).makeGeometry(give(coefs));
+    gsGeometry<>::uPtr sinus_L2 = dbasis_qi.basis(0).makeGeometry(give(coefs_L2));
     gsExprAssembler<> A(1,1);
     A.setIntegrationElements(dbasis_qi);
     gsExprEvaluator<> ev(A);
     auto G = ev.getMap(mp); // is this correct?
-
-    auto c_sinus_initial = ev.getVariable(*sinus_qi,G); // pointer to the QI
+    
+    auto c_sinus_L2 = ev.getVariable(*sinus_L2,G); // pointer to the QI
+    auto c_sinus_qi = ev.getVariable(*sinus_qi,G); // pointer to the QI
     auto cfunction = ev.getVariable(mySinus,G);
 
     gsParaviewCollection error_collection("Error_Analysis_QI", &ev);
     error_collection.options().setSwitch("plotElements", true);
     error_collection.options().setInt("plotElements.resolution", 4);
     error_collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 10000);
-    error_collection.options().setInt("precision", 30); // 1e-18
+    error_collection.options().setInt("precision", 32); // 1e-18
 
     error_collection.newTimeStep(&mp); // i need an updated mp!
-    error_collection.addField((cfunction-c_sinus_initial).sqNorm(),"error mySinus");
+    error_collection.addField((cfunction-c_sinus_qi).sqNorm(),"error mySinus QI");
+    error_collection.addField((cfunction-c_sinus_L2).sqNorm(),"error mySinus L2");
+
     // ====================================
 
     // ======= Construct the gsTHBSpline with the coarse coefficients of mySinus =======
@@ -89,69 +132,71 @@ int main(int argc, char *argv[])
     
     // ======= Refine basis and get fine coefficients =======
     gsTHBSpline<2,real_t> thb_fine_basis = thb_coarse_basis;
-    thb_fine_basis.refineElements({2,0,0,8,8}); // Refine the spline (basis and the coefficients)
+    thb_fine_basis.refineElements({3,0,0,16,16}); // Refine the spline (basis and the coefficients)
+    //thb_fine_basis.refineElements({3,8,0,8,8}); // Refine the spline (basis and the coefficients)
+    //thb_fine_basis.refineElements({3,12,8,16,12}); // Refine the spline (basis and the coefficients)
+    //thb_fine_basis.refineElements({3,12,8,12,16}); // Refine the spline (basis and the coefficients)
     // gsDebugVar(thb_fine_basis.coefs().size()); // gives 100, dofs of the fine basis
     gsTHBSplineBasis<2,real_t> thb_fine_plot = thb_fine_basis.basis(); // take basis for plotß
     // ======================================================
-
-    // ======= Quasi interpolation II (get the coarse coefficients) =======
-    gsQuasiInterpolate<real_t>::localIntpl(thb,thb_fine_basis,C_coarse_final); // I get the coarse coefficients 
-    coefs_final = C_coarse_final;
-
-    // gsDebugVar((C_coarse_final-C_coarse_initial).norm());
-    // gsDebugVar(C_coarse_final-C_coarse_initial);
-
+   
     // ========= For plotting =========
     gsMultiBasis<> dbasis_fine, dbasis_coarse;
     dbasis_fine.addBasis(thb_fine_plot.clone()); // why?
     //gsDebugVar(thb_fine_basis);
     dbasis_coarse.addBasis(thb.clone());
+    // // gsWriteParaview(thb, "hola");
+    // gsDebugVar(thb.size());
+    // gsDebugVar(thb_fine_basis.targetDim());
 
+
+    gsMatrix<> coefs_trial = thb_fine_basis.coefs();
+    gsGeometry<>::uPtr geom_fine_coefs = dbasis_fine.basis(0).makeGeometry((coefs_trial));
+
+    // // ======= Quasi interpolation II (get the coarse coefficients) =======
+    gsQuasiInterpolate<real_t>::localIntpl(thb,thb_fine_basis,C_coarse_final); // I get the coarse coefficients 
+    coefs_final = C_coarse_final;
+    //gsL2Projection<real_t>::projectFunction(thb,thb_fine_basis,mp,C_coarse_final_L2);
+    gsL2Projection<real_t>::projectFunction(dbasis_coarse,*geom_fine_coefs,mp,C_coarse_final_L2);
+    gsDebugVar(C_coarse_final.size());
+    gsDebugVar(C_coarse_final_L2.size());
 
     // ====== !!!!Error de QI a fine mesh!!!! ======
     // sinus_qi is the pointer to the initial coarse coefficients
-
-    gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0),*sinus_qi,C_fine_coefs); // I get the coarse coefficients 
+    gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0),*sinus_qi,C_fine_coefs); // I get the fine coefficients 
+    gsL2Projection<real_t>::projectFunction(dbasis_fine,*sinus_L2,mp,C_fine_coefs_L2);
     gsGeometry<>::uPtr Cfine_geom = dbasis_fine.basis(0).makeGeometry(give(C_fine_coefs));
+    gsGeometry<>::uPtr Cfine_geom_L2 = dbasis_fine.basis(0).makeGeometry(give(C_fine_coefs_L2));
     A.setIntegrationElements(dbasis_fine);
     auto c_fine = ev.getVariable(*Cfine_geom,G);
+    auto c_fine_L2 = ev.getVariable(*Cfine_geom_L2,G);
+
     auto cfunction_2 = ev.getVariable(mySinus,G);
-    error_collection.addField((c_sinus_initial-c_fine).sqNorm(),"error_refinement");
-
-    // ======== Plot error from coarsening =======
-    gsGeometry<>::uPtr Ccoarse2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_final)); // C_coarse_final    
-    // Also works
-    // gsGeometry<>::uPtr Ccoarse2 = thb.makeGeometry(give(C_coarse_final)); // C_coarse_final    
-    A.setIntegrationElements(dbasis_coarse); // no lo sé, tengo que ver como hacer?????
-    auto c_coarse_2 = ev.getVariable(*Ccoarse2,G);
-    auto c_fine2= ev.getVariable(*Cfine_geom,G);
-    error_collection.addField((c_fine-c_coarse_2).sqNorm(),"error_coarsening");
-    error_collection.saveTimeStep();
-    error_collection.save();
-
-
-    // gsExprAssembler<> A(1,1);
-    // A.setIntegrationElements(dbasis_fine);
-    // gsExprEvaluator<> ev(A);
-    // auto G = ev.getMap(mp); // is this correct?
-    ///  ================================
-    
-    // gsGeometry<>::uPtr Ccoarse_final_geom = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_final));
-    // //gsGeometry<>::uPtr Ccoarse_final_geom = dbasis_fine.basis(0).makeGeometry(give(C_coarse_final));
-    // gsGeometry<>::uPtr Cfine_geom = dbasis_fine.basis(0).makeGeometry(give(thb_fine_basis.coefs()));
-    
-    // auto cfine = ev.getVariable(*Cfine_geom,G);
-    // auto ccoarse2 = ev.getVariable(*Ccoarse_final_geom,G);
-
-    // A.setIntegrationElements(dbasis_coarse); 
-    // gsParaviewCollection error_collection("Error_Analysis_QI", &ev);
-    // error_collection.options().setSwitch("plotElements", true);
-    // error_collection.options().setInt("plotElements.resolution", 4);
-    // error_collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
-
-    // error_collection.newTimeStep(&mp); // i need an updated mp!
-    // error_collection.addField((ccoarse2-cfine).sqNorm(),"error QI");
+    error_collection.addField((c_sinus_qi-c_fine).sqNorm(),"error_refinement QI");
+    error_collection.addField((c_sinus_L2-c_fine_L2).sqNorm(),"error_refinement L2");
     // error_collection.saveTimeStep();
     // error_collection.save();
+    
+    gsTHBSpline<2,real_t> thb_coarse_basis2(thb,C_coarse_final_L2); 
+    gsWriteParaview(thb_coarse_basis2,"funcioninter_final"); // interpolated function mySinus
+
+    // // ======== Plot error from coarsening =======
+    gsGeometry<>::uPtr Ccoarse2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_final)); // C_coarse_final    
+    gsGeometry<>::uPtr Ccoarse2_L2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_final_L2)); // C_coarse_final    
+
+    // Also works
+    // gsGeometry<>::uPtr Ccoarse2 = thb.makeGeometry(give(C_coarse_final)); // C_coarse_final    
+    A.setIntegrationElements(dbasis_coarse); 
+    auto c_coarse_2 = ev.getVariable(*Ccoarse2,G);
+    // auto c_fine2= ev.getVariable(*Cfine_geom,G);
+    auto c_coarse_2_L2 = ev.getVariable(*Ccoarse2_L2,G);
+    error_collection.addField((c_fine-c_coarse_2_L2).sqNorm(),"error_coarsening L2");
+    error_collection.addField((c_fine-c_coarse_2).sqNorm(),"error_coarsening QI");
+    
+    error_collection.addField((c_coarse_2_L2-c_sinus_L2).sqNorm(),"error_final L2");
+    error_collection.addField((c_coarse_2-c_sinus_qi).sqNorm(),"error_final QI");
+
+    error_collection.saveTimeStep();
+    error_collection.save();
 
 }// end main
