@@ -23,7 +23,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    gsMultiPatch<> mp, mp_2;
+    gsMultiPatch<> mp;
     mp.addPatch(*gsNurbsCreator<>:: BSplineSquare()); // create a multipatch with multibasis!???????
  
     
@@ -60,65 +60,45 @@ int main(int argc, char *argv[])
     
     dbasis_fine.addBasis(thb.clone());
 
-    //gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0), mySinus, C_fine); 
-    gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0),mySinus,mp,C_fine);
+    gsMatrix<> C_fine_QI, C_fine_L2, C_fine_L2_local;
 
-    gsTHBSpline<2,real_t> thb_fine_basis(thb,C_fine); 
+    gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0), mySinus, C_fine_QI); 
+    gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0),mySinus,mp,C_fine_L2);
+    gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0),dbasis_fine.basis(0),mySinus,mp,C_fine_L2_local);
 
-    gsDebugVar(C_fine);
+    gsTHBSpline<2,real_t> thb_fine_basis(thb,C_fine_QI); 
 
-    gsWriteParaview(thb_fine_basis,"holaholahola");
+    gsGeometry<>::uPtr fine_QI = dbasis_fine.basis(0).makeGeometry(give(C_fine_QI));
+    gsGeometry<>::uPtr fine_L2 = dbasis_fine.basis(0).makeGeometry(give(C_fine_L2));
+    gsGeometry<>::uPtr fine_L2_local = dbasis_fine.basis(0).makeGeometry(give(C_fine_L2_local));
 
-    // gsDebugVar(thb_fine_basis);
-    // gsDebugVar(dbasis_coarse.basis(0));
-    
-    gsGeometry<>::uPtr fine_ = dbasis_fine.basis(0).makeGeometry(give(C_fine));
+    gsWriteParaview(thb_fine_basis,"Surface L2 initial QI"); // interpolated function mySinus
 
-    gsWriteParaview(thb_fine_basis,"funcioninter"); // interpolated function mySinus
+    gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_QI, C_coarse); 
+    gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0), dbasis_coarse, *fine_L2,mp,C_coarse_l2);
+    gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0), dbasis_coarse.basis(0), *fine_L2_local,mp,C_coarse_l2_local);
 
-    // gsDebugVar(mp.basis(0).numElements());
-    //mp_2.addPatch(*fine_);
-    //gsDebugVar(thb_fine_basis.uniformCoarsen());
-    gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_, C_coarse); 
-    gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0), dbasis_coarse, *fine_,mp,C_coarse_l2);
-
-    gsDebugVar(C_coarse_l2-C_coarse);
-
-    // gsTHBSpline<2,real_t> thb_coarse_basis2(dbasis_coarse.basis(0),C_coarse_l2); 
-    // gsWriteParaview(thb_coarse_basis2,"funcioninter_final"); // interpolated function mySinus
-    
     thb.unrefine(refBoxes,0); // coarse mesh!
     gsTHBSpline<2,real_t> thb_fine_plot(thb,C_coarse); 
     gsTHBSpline<2,real_t> thb_fine_plot_l2(thb,C_coarse_l2); 
+    gsTHBSpline<2,real_t> thb_fine_plot_l2_local(thb,C_coarse_l2_local); 
 
-    gsWriteParaview(thb_fine_plot,"holafinal"); // interpolated function mySinus
-    gsWriteParaview(thb_fine_plot_l2,"holafinal_L2"); // interpolated function mySinus
+    gsWriteParaview(thb_fine_plot,"Surface QI"); // interpolated function mySinus
+    gsWriteParaview(thb_fine_plot_l2,"Surface L2"); // interpolated function mySinus
+    gsWriteParaview(thb_fine_plot_l2_local,"Surface L2 local"); // interpolated function mySinus
 
-    
-    // order inputs changed!
-    //gsL2Projection<real_t>::projectFunctionLocal(dbasis_coarse.basis(0),dbasis_fine.basis(0),*fine_,mp,C_coarse_l2_local);
-
-    // gsDebugVar(C_coarse_l2-C_coarse_l2_local);
-
-    // gsDebugVar(C_fine.size());
-    // gsDebugVar(C_coarse.size());
-
-
-    // ====== Plotting error from QI ======
-    // gsMultiBasis<> dbasis_qi;
-    // dbasis_qi.addBasis(thb.clone()); // why?
-
-    //gsDebugVar(C_coarse);
-
+    // ====== Plotting error from QI ======xw
     gsGeometry<>::uPtr sol_coarse = dbasis_coarse.basis(0).makeGeometry(give(C_coarse));
     gsGeometry<>::uPtr sol_coarse_L2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2));
+    gsGeometry<>::uPtr sol_coarse_L2_local = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2_local));
 
     gsExprAssembler<> A(1,1);
     A.setIntegrationElements(dbasis_fine);
     gsExprEvaluator<> ev(A);
     auto G = ev.getMap(mp); // is this correct?
     
-    auto c_sinus_L2 = ev.getVariable(*sol_coarse_L2,G); // pointer to the QI
+    auto c_sinus_L2_local = ev.getVariable(*sol_coarse_L2_local,G); // pointer to the LOCAL L2 proj
+    auto c_sinus_L2 = ev.getVariable(*sol_coarse_L2,G); // pointer to the L2 proj
     auto c_sinus_qi = ev.getVariable(*sol_coarse,G); // pointer to the QI
     auto cfunction = ev.getVariable(mySinus,G);
 
@@ -131,9 +111,9 @@ int main(int argc, char *argv[])
     error_col.newTimeStep(&mp);
     error_col.addField((cfunction-c_sinus_qi).sqNorm(),"error mySinus QI");
     error_col.addField((cfunction-c_sinus_L2).sqNorm(),"error mySinus L2");
+    error_col.addField((cfunction-c_sinus_L2_local).sqNorm(),"error mySinus L2 local");
 
     error_col.saveTimeStep();
     error_col.save();
-
 
 }// end main
