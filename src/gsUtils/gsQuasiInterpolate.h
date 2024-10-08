@@ -73,6 +73,33 @@ struct gsQuasiInterpolate
                            const gsFunction<T> &fun,
                            gsMatrix<T> &result);
 
+     static gsMatrix<T> localL2(const gsBasis<T>   &intbasis,
+                                const gsBasis<T> &b,   
+                                const gsFunction<T>  &source,
+                                const gsMultiPatch<T>   &geometry,                                                
+                                index_t i,
+                                const gsMatrix<T> &ab);
+
+    
+    static gsMatrix<T> localL2( const gsBasis<T>   &intbasis,
+                                const gsBasis<T> &b,
+                                const gsFunction<T>  &source,
+                                const gsMultiPatch<T>   &geometry,
+                                index_t i);
+
+    template<short_t d>
+    static gsMatrix<T> localL2(const gsBasis<T>   &intbasis,
+                                const gsHTensorBasis<d,T> &b,
+                                const gsFunction<T>  &source,
+                                const gsMultiPatch<T>   &geometry,
+                                index_t i);
+
+    static void localL2(const gsBasis<T>   &intbasis,
+                        const gsBasis<T> &b,
+                        const gsFunction<T>  &source,
+                        const gsMultiPatch<T>   &geometry,
+                        gsMatrix<T> & result);
+
 
     /** \brief A quasi-interpolation scheme based on the tayor expansion of the function to approximate.
      *  See Theorem 8.5 of "Spline methods (Lyche Morken)"

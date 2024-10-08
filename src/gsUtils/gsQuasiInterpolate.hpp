@@ -13,6 +13,8 @@
 */
 
 #pragma once
+#include <fstream>
+#include <iostream>
 
 namespace gismo {
 
@@ -25,49 +27,43 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     gsMatrix<T> bev, fev, pts, tmp;
     gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
-
     qRule.mapTo(ab, pts);//map points on element
+    // gsDebugVar(ab.col(0));
     bb .eval_into(pts, bev);//evaluate basis
     fun.eval_into(pts, fev);//evaluate function
     bev.transposeInPlace();
     fev.transposeInPlace();
-    tmp = bev.partialPivLu().solve(fev);//solve on element
-
+    tmp = bev.fullPivLu().solve(fev);//solve on element
+    
+    //gsDebugVar(bev.fullPivLu().rcond());//solve on element
+    //real_t cond_num = bev.fullPivLu().rcond();
+    // new
+    gsMatrix<T> interpolatedFev = bev.transpose() * tmp; // interpolated values at quad points
+    gsMatrix<T> error = fev - interpolatedFev; // local error
+    // gsInfo<<"Iter \n";
+    // gsInfo<<"Error is: \n"<<error<<"\n";
+    
+    // std::ofstream myfile;
+    // myfile.open("error.txt", std::ios_base::app); 
+    // if (myfile.is_open())
+    // {
+    //     myfile << "Error is: \n" << error << "\n";
+    //     myfile.close();
+    // }
+    // std::ofstream myfile;
+    // myfile.open("condition.txt", std::ios_base::app); 
+    // if (myfile.is_open())
+    // {
+    //     myfile << "Error is: \n" << cond_num << "\n";
+    //     myfile.close();
+    // }
+   
     // find the i-th BS:
     gsMatrix<index_t> act = bb.active(pts.col(0));
     index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
     GISMO_ASSERT(c<act.size(), "Problem with basis function index");
     return tmp.row(c);
 }
-
-/*
-gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsTensorBasis<d,T> &bb,
-                                              const gsFunction<T> &fun,
-                                              index_t i,
-                                              const gsMatrix<T> &ab)
-{
-    gsMatrix<T> bev, fev, pts, tmp;
-    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
-    gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes); //gsTPQuadRule ..
-
-    // for(pt..)
-    //{
-    qRule.mapTo(ab, pt);//map point on element
-    fun.eval_into(pts, fev);//evaluate function
-    //}
-    fev.transposeInPlace();
-
-    //solve
-    bev.transposeInPlace();// must be cwise
-    tmp = bev.partialPivLu().solve(fev);//solve on element
-
-    // find the i-th BS:
-    gsMatrix<index_t> act = bb.active(pts.col(0)); //cwise..?
-    index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
-    GISMO_ASSERT(c<act.size(), "Problem with basis function index");
-    return tmp.row(c);
-}
-*/
 
 template<typename T>
 template<short_t d>
@@ -98,6 +94,97 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
         return localIntpl(bb,fun,i,bb.elementInSupportOf(i));
 }
 
+template<typename T>
+gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsBasis<T>   &intbasis,
+                                            const gsBasis<T> &bb,
+                                            const gsFunction<T>  &fun,
+                                            const gsMultiPatch<T>   &geometry,
+                                            index_t i,                                    
+                                            const gsMatrix<T> &ab)
+{
+    gsMatrix<T> bev, fev, pts, tmp;
+    gsVector<T> weights;
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
+    gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
+    //qRule.mapTo(ab, pts);//map points on element
+    gsVector<T> pt(2);
+    pt<<0.5,0.5;
+    qRule.mapTo(ab.col(0),ab.col(1), pts, weights);//map points and weights on element (for quadrature)
+    // qRule.mapTo(ab.col(0),pt, pts, weights);//map points and weights on element (for quadrature)
+
+    //gsDebugVar(bb);
+
+    bb .eval_into(pts, bev);//evaluate basis on quadrature points (numbasis*pts)
+    fun.eval_into(pts, fev);//evaluate function on quadrature points (1*pts)
+
+    gsMatrix<T> M = bev * weights.asDiagonal() * bev.transpose(); // Mass matrix
+    gsMatrix<T> RHS = bev * weights.asDiagonal() * fev.transpose();  
+
+    tmp = M.fullPivLu().solve(RHS);//solve on element
+
+    // find the i-th BS:
+    gsMatrix<index_t> act = bb.active(pts.col(0));
+    index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
+    GISMO_ASSERT(c<act.size(), "Problem with basis function index");
+    return tmp.row(c);
+}
+
+template<typename T>
+template<short_t d>
+gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsBasis<T>   &intbasis,
+                                            const gsHTensorBasis<d,T> &bb,   
+                                            const gsFunction<T>  &fun,
+                                            const gsMultiPatch<T>   &geometry,
+                                            index_t i)
+{
+    index_t lvl = bb.levelOf(i);
+    index_t j = bb.flatTensorIndexOf(i);
+   // return localL2(intbasis,bb.tensorLevel(lvl),fun,geometry,j,bb.elementInSupportOf(i)); // uses the H-grid element implementation
+    return localL2(intbasis,bb.tensorLevel(lvl),fun,geometry,j); // uses the H-grid element implementation
+
+}
+
+template<typename T>
+gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsBasis<T>   &intbasis,
+                                            const gsBasis<T> &bb,           
+                                            const gsFunction<T>  &fun,
+                                            const gsMultiPatch<T>   &geometry,
+                                            index_t i)
+{
+    if (const gsHTensorBasis<1,T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb))
+        return localL2(intbasis,*b,fun,geometry,i);
+    if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
+         return localL2(intbasis,*b,fun,geometry,i);
+    if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
+        return localL2(intbasis,*b,fun,geometry,i);
+    if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
+        return localL2(intbasis,*b,fun,geometry,i);
+    else
+        return localL2(intbasis,bb,fun,geometry,i,bb.elementInSupportOf(i));
+}
+
+template <typename T>
+void gsQuasiInterpolate<T>::localL2(const gsBasis<T>  &intbasis,
+                                    const gsBasis<T> &b,
+                                    const gsFunction<T>  &fun,
+                                    const gsMultiPatch<T>   &geometry,
+                                    gsMatrix<T> &result)
+{
+    GISMO_ASSERT(b.domainDim()==fun.domainDim(),"Domain dimensions should be equal");
+    //assert b.domainDim()==fun.domainDim()
+    gsMatrix<>  cf;
+    index_t n = b.size();
+    index_t dim = fun.targetDim();
+    result.resize(n,dim);
+
+#   pragma omp parallel for private(cf)
+    for (index_t i = 0; i<n; ++i)
+    {
+        cf = localL2(intbasis,b,fun,geometry,i);
+        result.row(i) = cf;
+    }
+
+}
 
 template<typename T>
 void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> & coefs)
