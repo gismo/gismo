@@ -107,8 +107,8 @@ gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsBasis<T>   &intbasis,
     gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
     //qRule.mapTo(ab, pts);//map points on element
-    gsVector<T> pt(2);
-    pt<<0.5,0.5;
+    // gsVector<T> pt(2);
+    // pt<<0.5,0.5;
     qRule.mapTo(ab.col(0),ab.col(1), pts, weights);//map points and weights on element (for quadrature)
     // qRule.mapTo(ab.col(0),pt, pts, weights);//map points and weights on element (for quadrature)
 
@@ -139,8 +139,8 @@ gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsBasis<T>   &intbasis,
 {
     index_t lvl = bb.levelOf(i);
     index_t j = bb.flatTensorIndexOf(i);
-   // return localL2(intbasis,bb.tensorLevel(lvl),fun,geometry,j,bb.elementInSupportOf(i)); // uses the H-grid element implementation
-    return localL2(intbasis,bb.tensorLevel(lvl),fun,geometry,j); // uses the H-grid element implementation
+    return localL2(intbasis,bb.tensorLevel(lvl),fun,geometry,j,bb.elementInSupportOf(i)); // uses the H-grid element implementation
+    //return localL2(intbasis,bb.tensorLevel(lvl),fun,geometry,j); // uses the H-grid element implementation
 
 }
 
