@@ -445,11 +445,14 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
             if (const gsComposedBasis<T> * cb = dynamic_cast<const gsComposedBasis<T> *>(&m_exprdata->multiBasis().basis(patchInd)))
             {
-                gsMatrix<T> quPointsInv = gsMatrix<T>::Zero(m_exprdata->points().rows(),m_exprdata->points().cols());
-                quPointsInv.colwise() = domIt->centerPoint(); // Initialize with the centerpoint
-                cb->composition()->invertPoints(m_exprdata->points(),quPointsInv,1e-4,true);
-                GISMO_ASSERT(!(quPointsInv.array()==std::numeric_limits<T>::infinity()).any(),"Point inversion failed");
-                quPointsInv.swap(m_exprdata->points());
+                // gsMatrix<T> quPointsInv = gsMatrix<T>::Zero(m_exprdata->points().rows(),m_exprdata->points().cols());
+                // quPointsInv.colwise() = domIt->centerPoint(); // Initialize with the centerpoint
+                // cb->composition()->invertPoints(m_exprdata->points(),quPointsInv,1e-10,true);
+                // GISMO_ASSERT(!(quPointsInv.array()==std::numeric_limits<T>::infinity()).any(),"Point inversion failed");
+                // quPointsInv.swap(m_exprdata->points());
+
+                gsMatrix<T> quPoints = cb->composition()->eval(m_exprdata->points());
+                quPoints.swap(m_exprdata->points());
             }
 
             // Perform required pre-computations on the quadrature nodes
