@@ -46,6 +46,7 @@ public:
     {
         // Initialize domain element iterator -- using unknown 0
         res.setZero(1,u.cols());
+        gsMatrix<T> supp(m_basis.domainDim(),2);
         for(index_t i=0; i<u.cols();++i)
         {
             int iter =0;
@@ -54,14 +55,23 @@ public:
             typename gsBasis<T>::domainIter domIt = m_basis.makeDomainIterator();
             for (; domIt->good(); domIt->next() )
             {
-                 bool flag = true;
-                const gsVector<T>& low = domIt->lowerCorner();
-                const gsVector<T>& upp = domIt->upperCorner();
+                bool flag = true;
+                supp.col(0) = domIt->lowerCorner();
+                supp.col(1) = domIt->upperCorner();
 
+                // if (const gsComposedBasis<T> * cb = dynamic_cast<const gsComposedBasis<T> *>(&m_basis))
+                // {
+                    
+                //     gsMatrix<T> pointsInv = gsMatrix<T>::Zero(supp.rows(),supp.cols());
+                //     pointsInv.colwise() = domIt->centerPoint(); // Initialize with the centerpoint
+                //     cb->composition()->invertPoints(supp,pointsInv,1e-4,true);
+                //     GISMO_ASSERT(!(pointsInv.array()==std::numeric_limits<T>::infinity()).any(),"Point inversion failed");
+                //     pointsInv.swap(supp);
+                // }
 
                 for(int d=0; d<domainDim();++d )
                 {
-                    if(low(d)> u(d,i) || u(d,i) > upp(d))
+                    if(supp.col(0)(d)> u(d,i) || u(d,i) > supp.col(1)(d)) // replace with .array().any()
                     {
                         flag = false;
                         break;

@@ -1,4 +1,4 @@
-/** @file monitor_template_composed_r-adaptivity.cpp
+/** @file monitor_adaptivie_template_composed_r-adaptivity.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
@@ -85,45 +85,12 @@ private:
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        // const index_t A = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
-        // res.resize(_u.cardinality(), cols()); // rows()*
-
-        // normal = _G.data().normal(k);// not normalized to unit length
-        // normal.normalize();
-        // bGrads = _u.data().values[1].col(k);
-        // cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
-        // const Scalar measure =  (cJac.col3d(0).cross( cJac.col3d(1) )).norm();
-
-        // for (index_t d = 0; d!= cols(); ++d) // for all basis function components
-        // {
-        //     const short_t s = d*A;
-        //     for (index_t j = 0; j!= A; ++j) // for all actives
-        //     {
-        //         // Jac(u) ~ Jac(G) with alternating signs ?..
-        //         m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-        //                       - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
-
-        //         // ---------------  First variation of the normal
-        //         // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
-        //         res.row(s+j).noalias() = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
-        //     }
-        // }
-        // return res;
     }
 
     template<class U> inline
     typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        // GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-        // grad_expr<gsFeSolution<Scalar>> sGrad =  grad_expr<gsFeSolution<Scalar>>(_u);
-        // grad = sGrad.eval(k);
-        // ones.resize( DIM);
-        // ones.setOnes();
-        // //ones[0] = 4;
-        // res = 1.0 / ( math::sqrt(1.0 + grad.dot(grad) ) ) * ones;
-        // //res = ones;
-        // return res;
     }
 
     template<class U> inline
@@ -132,9 +99,6 @@ private:
     {
         real_t eps = 0.1; // determines the degree of smoothing
         
-        /// NEW
-        // jac_expr<gsFeVariable<Scalar>> jacExpr = jac_expr<gsFeVariable<Scalar>>(_u);
-        // jac = jacExpr.eval(k);
 
         jac = _u.data().values[1].col(k).transpose();
 
@@ -148,51 +112,16 @@ private:
         res = 1.0 / ( math::sqrt(1.0 +eps*grad.squaredNorm() ) ) * ones;
         return res;
 
-        // // /// OLD
-        // grad = _u.data().values[1].col(k).transpose();
-        // ones.resize( DIM);
-        // ones.setOnes();
-
-        // res.resize( DIM, 1);
-
-        // res = 1.0 / ( math::sqrt(1.0 +eps*grad.squaredNorm() ) ) * ones;
-        // return res;
     }
 };
 
 template<class E> EIGEN_STRONG_INLINE
 monitor_expr<E> monitor(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return monitor_expr<E>(u,G); }
 
-
 }
 }
 
 using namespace gismo;
-
-// template<typename T = real_t>
-// class gsExprAsFunction : public gsFunction<T>
-// {
-// public:
-//     template<class E>
-//     gsExprAsFunction( const expr::_expr<E> & expr)
-//     : m_expr(expr)
-//     {}
-
-//     short_t domainDim() const { return m_expr.parDim(); }
-//     short_t targetDim() const { return m_expr.rows();   }
-
-//     void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
-//     {
-//         result.resize(u,this->targetDim());
-//         gsExprEvaluator<T> ev;
-//         for (index_t k = 0; k!=u.cols(); k++)
-//             result.col(k) = ev.eval(m_expr,u.col(k));
-//     }
-
-// protected:
-//     const expr::_expr<E> & m_expr;
-// };
-
 
 
 
@@ -220,7 +149,7 @@ public:
         m_numDesignVars = m_comp->nControls();
         m_curDesign.resize(m_numDesignVars,1);
 
-        m_options.addInt("nSamplingPoints","Number of sampling points in each parametric direction",50);
+        //m_options.addInt("nSamplingPoints","Number of sampling points in each parametric direction",50);
     
         m_options.addInt("nRefine","Number of refinement steps for the integration basis",2);
         m_options.addInt("nElevate","Number of elevation steps for the integration basis",1);
@@ -242,6 +171,7 @@ public:
         gsKnotVector<> kv({0,0,1,1},1);
         gsTensorBSplineBasis<2,T> basis(kv,kv);
         basis.degreeElevate(m_options.getInt("nElevate"));
+
         for (index_t i = 0; i < m_options.getInt("nRefine"); i++)
             basis.uniformRefine();
 
@@ -277,19 +207,6 @@ public:
             GISMO_ERROR("The dimension of target domain should be 2 or 3.");
             return 0;
         }
-        // else 
-        // {
-        //     auto jacG = signed svd;
-        //     /* 
-        //         if (sigma2>0) // smallest one
-        //             chi = sigma1*sigma2 // = jac.det
-        //         else
-        //             jacG = sigma1*sigma2
-        //             chi = 0.5 * (jacG + pow(eps.val() + pow(jacG, 2.0), 0.5));
-
-        //      */
-        //     auto chi = 0.5 * (jacG + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
-        // }
         
     }
 
@@ -320,23 +237,28 @@ int main(int arg, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    index_t numURef  = 3;
     index_t numRefine  = 2;
     index_t numElevate = 1;
-    index_t numRefineI = 2;
-    index_t numElevateI = 1;
+    index_t numRefineI = 5;
+    index_t numElevateI = 3;
     index_t maxIt = 100;
     real_t tol_g = 5e-5;
     real_t eps = 1e-4;
     bool slide = true;
     index_t testCase = 0;
     index_t opt = 2;
-    index_t nSamplingPoints = 50;
+    index_t numAdaptiveLoops = 2;
+    index_t rule = 1;
+    
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "elevAnalysis","Number of degree elevation steps to perform for the analysis", numElevate );
     cmd.addInt( "r", "refAnalysis", "Number of Uniform h-refinement loops for the analysis",  numRefine );
+    
     cmd.addInt( "E", "elevIntegral","Number of degree elevation steps to perform for the integration", numElevateI );
     cmd.addInt( "R", "refIntegral", "Number of Uniform h-refinement loops for the integration",  numRefineI );
+    
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addReal("g", "tolG", "relative tol", tol_g);
     cmd.addInt( "i", "maxIt", "max num iterations",  maxIt );
@@ -344,7 +266,9 @@ int main(int arg, char *argv[])
     cmd.addSwitch("noslide", "Do not slide the boundaries",  slide );
     cmd.addInt( "t", "testCase", "Function to be used: 0: cosine waves, 1: spiral.",  testCase );
     cmd.addInt( "o", "opt", "Optimizer: 0: gsGradientDescent, 1: gsHLBFGS, 2: gsOptim::LBFGS.",  opt );
-    cmd.addInt( "S", "nSamplingPoints", "Number of sampling points in each parametric direction",  nSamplingPoints );
+    cmd.addInt( "j", "ell", "Maximum number of iterations for the adaptive loop.",  numAdaptiveLoops );
+    cmd.addInt( "w", "rule", "Refinement rule: 1 - GARU; 2 - PUKA; 3 - BULK.",  rule );
+    
 
     try { cmd.getValues(arg,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -354,10 +278,20 @@ int main(int arg, char *argv[])
     gsFileManager::mkdir(dirname);
     dirname += gsFileManager::getNativePathSeparator();
 
-    gsMultiPatch<> geom;
-    geom.addPatch(*gsNurbsCreator<>::BSplineSquare());
 
-    // Basis for the square domain
+    // Geometry (square domain, represented by thb.)
+    gsTensorBSpline<2,real_t> nurbs = *gsNurbsCreator<>::BSplineSquare(1,0,0);
+    nurbs.uniformRefine( (1<<numURef)-1 );
+    gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&nurbs);
+    gsTHBSpline<2,real_t> thb = gsTHBSpline<2,real_t>(*geo);
+    
+    gsMultiPatch<> geom;
+    geom.addPatch(thb);
+    gsWriteParaview(thb, dirname+"init_geom", 10000, true, true);
+
+
+
+    // Basis for the sigma mapper
     gsKnotVector<> kv({0,0,1,1},1);
     gsTensorBSplineBasis<2> tbbasis(kv,kv);
     tbbasis.degreeElevate(numElevate);
@@ -366,12 +300,13 @@ int main(int arg, char *argv[])
     
     gsInfo<<"Mapper basis:\n"<<tbbasis<<"\n";
 
-    gsSquareDomain<2,real_t> domain(tbbasis);
-    domain.options().addSwitch("Slide","",slide);
-    domain.applyOptions();
-    // domain.perturb(1e-1);
+    // // sigma mapper
+    // gsSquareDomain<2,real_t> domain(tbbasis);
+    // domain.options().addSwitch("Slide","",slide);
+    // domain.applyOptions();
 
-    gsComposedGeometry<real_t> cspline(domain,geom.patch(0));
+
+    // error field to test
     gsFunction<> * fun;
     if      (testCase==0)
     {
@@ -393,15 +328,37 @@ int main(int arg, char *argv[])
         GISMO_ERROR("Unknown test case");
     }
 
-/* 
-    PERFORM R-ADAPTIVITY
- */
+
+    /* 
+        PERFORM H-ADAPTIVITY
+    */
+    //! [beginRefLoop]
+    for( int refLoop = 0; refLoop <= numAdaptiveLoops; refLoop++)
+    {
+        gsInfo << "#loop = "<< refLoop + 1<< "\n";
+    /* 
+        PERFORM R-ADAPTIVITY
+    */
+
+    // sigma mapper
+    gsSquareDomain<2,real_t> domain(tbbasis);
+    domain.options().addSwitch("Slide","",slide);
+    domain.applyOptions();
+
 
     gsInfo<<"Number of optimizer degrees of freedom: "<<domain.nControls()<<"\n";
 
+    gsWriteParaview(geom,dirname+"geom_in"+std::to_string(refLoop),1,true);
+    
+    gsMultiPatch<> mp;
+    gsComposedGeometry<real_t> cspline(domain,geom.patch(0));
+    mp.addPatch(cspline);
+    gsWriteParaview(geom,dirname+"cspline_in"+std::to_string(refLoop),1,true);
+
+
     gsOptMesh<> optMesh(domain,geom.patch(0),*fun,eps);
     gsVector<> controls(domain.nControls());
-    // optMesh.options().setInt("nSamplingPoints",nSamplingPoints);
+    
     optMesh.options().setInt("nRefine",numRefineI);
     optMesh.options().setInt("nElevate",numElevateI);
     for (size_t k=0; k!=domain.nControls(); k++)
@@ -442,25 +399,69 @@ int main(int arg, char *argv[])
     for (size_t k=0; k!=optSol.rows(); k++)
         domain.control(k) = optSol[k];
 
-    gsMultiPatch<> mp;
-    mp.addPatch(cspline);
+    // gsInfo << "Domain after optimization:\n" << domain.domain() << "\n";
+    // gsInfo << "Domain #coefficients after optimization:\n" << domain.domain().coefs().rows() << "\n";
+    // gsInfo << "Domain #controls after optimization:\n" << domain.nControls() << "\n";
+
+    
     // mp.embed(3);
-    gsMultiBasis<> mb(mp);
+
+    gsWriteParaview(cspline,dirname+"cspline_r"+std::to_string(refLoop),1000,true,true); // plots in xi, eta because it uses the support of the basis of cspline (thus the support of the cbasis, thus the support of the original basis)
+    //gsWriteParaview(cspline.basis(),dirname+"cbasis_init"+std::to_string(refLoop),1000);
+
+    gsMultiBasis<> mb(geom);
 
     gsExprEvaluator<> ev;
     ev.setIntegrationElements(mb);
-    auto G = ev.getMap(mp);
-    auto f = ev.getVariable(*fun,G);
+    auto G = ev.getMap(mp); // geometry map
+    auto f  = ev.getVariable(*fun,G);
+
     ev.writeParaview(f,G,dirname+"fun");
+   
+    gsWriteParaview(domain.domain(),dirname+"domain"+std::to_string(refLoop),1000,true,true);
+    ev.writeParaview(jac(G).det(),G,dirname+"jacobian_determinant"+std::to_string(refLoop));
+    
 
-    // gsWriteParaview(cspline,"cspline",1000,true);
-    // gsWriteParaview(cspline.basis(),"cbasis",1000);
-    gsWriteParaview(domain.domain(),dirname+"domain",1000,true,true);
+    // Get the element-wise errors.
+    //ev.integralElWise( f*meas(G) );
+    ev.maxElWise(f);
 
-    // gsInfo<<"Area = "<<ev.integral(meas(G))<<"\n";
-    ev.writeParaview(jac(G).det(),G,dirname+"jacobian_determinant");
+    
+    const std::vector<real_t> & elErrs = ev.elementwise();
+    gsInfo << elErrs.size() << " element-wise errors\n";
+
+    // to check
+    gsElementErrorPlotter<real_t> err_eh(thb.basis(),elErrs);
+    // gsComposedFunction<real_t> cerr_eh(domain,err_eh);
+    // gsWriteParaview<>(err_eh, cspline.support(), dirname+"error_elem_ref", 10000); 
+    gsWriteParaview<>(cspline,err_eh, dirname+"error_elem_ref"+std::to_string(refLoop), 1000); 
+
+    gsAdaptiveMeshing<real_t> mesher(geom);
+    mesher.options().setInt("RefineRule",rule);
+    mesher.options().setInt("CoarsenRule",rule);
+    mesher.options().setSwitch("Admissible",true);
+    mesher.options().setReal("RefineParam",0.3);
+    
+    
+    mesher.getOptions();
+    gsHBoxContainer<2,real_t> refine;
+    mesher.markRef_into(elErrs,refine);
+
+    // gsInfo<<"Cells marked for refinement:\n";
+    // gsInfo<<refine<<"\n";
+    gsWriteParaview(refine,dirname+"marked4ref_"+std::to_string(refLoop));
+
+
+    mesher.refine(refine);
+    gsWriteParaview(geom,dirname+"geom_ref"+std::to_string(refLoop),1,true);
+
+    gsComposedGeometry<real_t> refcspline(domain,geom.patch(0));
+    gsWriteParaview(refcspline,dirname+"cspline_ref"+std::to_string(refLoop),1000,true,true);
+
+    delete optimizer;
+
+    }//! [endRefLoop]
 
     delete fun;
-    delete optimizer;
     return 0;
 }// end main
