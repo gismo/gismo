@@ -236,31 +236,31 @@ protected:
 int main(int arg, char *argv[])
 {
     //! [Parse command line]
-    bool plot = false;
+    
     index_t numURef  = 3;
     index_t numRefine  = 2;
     index_t numElevate = 1;
     index_t numRefineI = 5;
     index_t numElevateI = 3;
-    index_t maxIt = 100;
+    index_t maxIt = 1000;
     real_t tol_g = 5e-5;
     real_t eps = 1e-4;
     bool slide = true;
     index_t testCase = 0;
     index_t opt = 2;
-    index_t numAdaptiveLoops = 2;
+    index_t numAdaptiveLoops = 3;
     index_t rule = 1;
     real_t perc_ref = 0.1;
     
 
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
-    cmd.addInt( "e", "elevAnalysis","Number of degree elevation steps to perform for the analysis", numElevate );
-    cmd.addInt( "r", "refAnalysis", "Number of Uniform h-refinement loops for the analysis",  numRefine );
+    gsCmdLine cmd("hr adaptivity with monitor function and composite maps, for a given error field.");
+    cmd.addInt( "e", "elevAnalysis","Number of degree elevation steps to perform for the analysis space and the sigma mapper", numElevate );
+    cmd.addInt( "r", "refAnalysis", "Number of Uniform h-refinement loops for the analysis space and the sigma mapper",  numRefine );
     
     cmd.addInt( "E", "elevIntegral","Number of degree elevation steps to perform for the integration", numElevateI );
     cmd.addInt( "R", "refIntegral", "Number of Uniform h-refinement loops for the integration",  numRefineI );
     
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    
     cmd.addReal("g", "tolG", "relative tol", tol_g);
     cmd.addInt( "i", "maxIt", "max num iterations",  maxIt );
     cmd.addReal("", "eps", "eps",  eps );
@@ -335,7 +335,7 @@ int main(int arg, char *argv[])
         PERFORM H-ADAPTIVITY
     */
     //! [beginRefLoop]
-    for( int refLoop = 0; refLoop <= numAdaptiveLoops; refLoop++)
+    for( int refLoop = 0; refLoop < numAdaptiveLoops; refLoop++)
     {
         gsInfo << "#loop = "<< refLoop + 1<< "\n";
     /* 
