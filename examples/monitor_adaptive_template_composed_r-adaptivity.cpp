@@ -1,4 +1,4 @@
-/** @file monitor_adaptivie_template_composed_r-adaptivity.cpp
+/** @file monitor_adaptive_template_composed_r-adaptivity.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
@@ -250,6 +250,7 @@ int main(int arg, char *argv[])
     index_t opt = 2;
     index_t numAdaptiveLoops = 2;
     index_t rule = 1;
+    real_t perc_ref = 0.1;
     
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
@@ -268,6 +269,7 @@ int main(int arg, char *argv[])
     cmd.addInt( "o", "opt", "Optimizer: 0: gsGradientDescent, 1: gsHLBFGS, 2: gsOptim::LBFGS.",  opt );
     cmd.addInt( "j", "ell", "Maximum number of iterations for the adaptive loop.",  numAdaptiveLoops );
     cmd.addInt( "w", "rule", "Refinement rule: 1 - GARU; 2 - PUKA; 3 - BULK.",  rule );
+    cmd.addReal("p", "refp", "Refine percentage",  perc_ref );
     
 
     try { cmd.getValues(arg,argv); } catch (int rv) { return rv; }
@@ -440,7 +442,7 @@ int main(int arg, char *argv[])
     mesher.options().setInt("RefineRule",rule);
     mesher.options().setInt("CoarsenRule",rule);
     mesher.options().setSwitch("Admissible",true);
-    mesher.options().setReal("RefineParam",0.3);
+    mesher.options().setReal("RefineParam",perc_ref);
     
     
     mesher.getOptions();
