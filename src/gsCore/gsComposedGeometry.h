@@ -50,7 +50,7 @@ public:
      */
     gsComposedGeometry(const gsComposedBasis<T> & basis, const gsMatrix<T> & coefs)
     :
-    Base(basis, give(coefs) ),
+    Base(basis, coefs ),
     m_composition(basis.composition()),
     m_geom(give(basis.basis()->makeGeometry(coefs))),
     m_domainDim(basis.domainDim())
@@ -64,7 +64,7 @@ public:
      */
     gsComposedGeometry(const gsFunction<T> & composition, const gsGeometry<T> & geom)
     :
-    Base(gsComposedBasis<T>(composition,geom.basis()), give(geom.coefs()) ),
+    Base(gsComposedBasis<T>(composition,geom.basis()), geom.coefs() ),
     m_composition(&composition),
     m_geom(geom.clone()),
     m_domainDim(geom.domainDim())
@@ -184,7 +184,7 @@ public:
         if (1==gDim && 3>pDim) // Plot a graph
             for (size_t i = 0; i!= mesh.numVertices(); ++i)
             {
-                m_composition->invertPoints(tmp,tmp);
+                // m_composition->invertPoints(tmp,tmp);
                 this->eval_into( mesh.vertex(i).topRows(pDim), tmp );
                 mesh.vertex(i).middleRows(pDim, gDim) = tmp;
             }
@@ -192,7 +192,7 @@ public:
             for (size_t i = 0; i!= mesh.numVertices(); ++i)
             {
                 this->eval_into( mesh.vertex(i).topRows(pDim), tmp );
-                m_composition->invertPoints(tmp,tmp);
+                // m_composition->invertPoints(tmp,tmp);
                 const index_t gd = math::min(3,gDim);
                 mesh.vertex(i).topRows(gd) = tmp.topRows(gd);
             }
