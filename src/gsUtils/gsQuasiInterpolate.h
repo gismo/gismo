@@ -73,31 +73,23 @@ struct gsQuasiInterpolate
                            const gsFunction<T> &fun,
                            gsMatrix<T> &result);
 
-     static gsMatrix<T> localL2(const gsBasis<T>   &intbasis,
-                                const gsBasis<T> &b,   
-                                const gsFunction<T>  &source,
-                                const gsMultiPatch<T>   &geometry,                                                
+     static gsMatrix<T> localL2(const gsBasis<T> &b,   
+                                const gsFunction<T>  &source,                                              
                                 index_t i,
                                 const gsMatrix<T> &ab);
 
     
-    static gsMatrix<T> localL2( const gsBasis<T>   &intbasis,
-                                const gsBasis<T> &b,
+    static gsMatrix<T> localL2(const gsBasis<T> &b,
                                 const gsFunction<T>  &source,
-                                const gsMultiPatch<T>   &geometry,
                                 index_t i);
 
     template<short_t d>
-    static gsMatrix<T> localL2(const gsBasis<T>   &intbasis,
-                                const gsHTensorBasis<d,T> &b,
+    static gsMatrix<T> localL2(const gsHTensorBasis<d,T> &b,
                                 const gsFunction<T>  &source,
-                                const gsMultiPatch<T>   &geometry,
                                 index_t i);
 
-    static void localL2(const gsBasis<T>   &intbasis,
-                        const gsBasis<T> &b,
+    static void localL2(const gsBasis<T> &b,
                         const gsFunction<T>  &source,
-                        const gsMultiPatch<T>   &geometry,
                         gsMatrix<T> & result);
 
 

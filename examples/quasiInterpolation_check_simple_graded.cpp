@@ -27,19 +27,37 @@ int main(int argc, char *argv[])
 
     gsTensorBSpline<2,real_t> bspline = *gsNurbsCreator<>::BSplineSquare(1,0,0);
     bspline.degreeElevate(1); // quadratic!!!!! 
+    mp.addPatch(bspline);
 
-    mpBspline.addPatch(bspline);
+    gsMultiBasis<> dbasis_tmp(mp,true);
+    gsMultiBasis<> dbasis;
 
-    // Cast all patches of the mp object to THB splines
-    gsTHBSpline<2,real_t> thb;
-    for (size_t k=0; k!=mpBspline.nPatches(); ++k)
+    //const dim = 2; 
+
+    index_t numRefine = 2; 
+
+    // Cast every basis of dbasis to a gsTHBSplineBasis
+    for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
     {
-        gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mpBspline.patch(k));
-        thb = gsTHBSpline<2,real_t>(*geo);
-        mp.addPatch(thb);
+        // TODO: Make dimension-independent over the template
+        if (gsTensorBSplineBasis<2,real_t> * b = dynamic_cast<gsTensorBSplineBasis<2,real_t>*>(&dbasis_tmp.basis(p)))
+            dbasis.addBasis(new gsTHBSplineBasis<2,real_t>(*b));
+        else if (gsTHBSplineBasis<2,real_t> * b = dynamic_cast<gsTHBSplineBasis<2,real_t>*>(&dbasis_tmp.basis(p)))
+            dbasis.addBasis(b->clone());
+        else
+            GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
+
+        // Refine the basis for `numRefine` levels
+        gsMatrix<> box = dbasis.basis(p).support();
+        for (index_t r = 0; r!=numRefine; r++)
+            dbasis.basis(p).refine(box);
     }
 
+    gsDebugVar(dbasis.basis(0));
+    gsDebugVar(dbasis_tmp.basis(0));
+    //gsWriteParaview(mp,"init",1,true); //mesh after the refinements
 
+    gsDebugVar(mp.patch(0).coefs());
     std::vector<index_t> boxes(5);
 
     // Initial refinement
@@ -78,90 +96,92 @@ int main(int argc, char *argv[])
     boxes[4] = 12;
     mp.patch(0).refineElements(boxes);
 
-    // mp.patch(0).unrefineElements()
-    gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)",2); // Function to interpolate 
-    gsMultiBasis<> dbasis_fine, dbasis_coarse;
+    // // mp.patch(0).unrefineElements()
+    // gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)",2); // Function to interpolate 
+    // gsMultiBasis<> dbasis_fine, dbasis_coarse;
 
 
     gsWriteParaview(mp,"init",1,true); //mesh after the refinements
 
-    gsTHBSplineBasis<2,real_t> *thb_graded = dynamic_cast<gsTHBSplineBasis<2,real_t> *>(&mp.basis(0));
+    // gsTHBSplineBasis<2,real_t> *thb_graded = dynamic_cast<gsTHBSplineBasis<2,real_t> *>(&mp.basis(0));
     
 
-    dbasis_fine.addBasis(thb_graded->clone());
+    // dbasis_fine.addBasis(thb_graded->clone());
 
-    std::vector<index_t> boxes_unrefine(5);
+    // std::vector<index_t> boxes_unrefine(5);
 
-    // A VER !!!! NO FUNCIONA LITERALMENTE EL COARSENING... !!!!
-    boxes_unrefine[0] = 5;
-    boxes_unrefine[1] = 20;
-    boxes_unrefine[2] = 0;
-    boxes_unrefine[3] = 32;
-    boxes_unrefine[4] = 12;
-    mp.patch(0).unrefineElements(boxes_unrefine);
+    // // A VER !!!! NO FUNCIONA LITERALMENTE EL COARSENING... !!!!
+    // boxes_unrefine[0] = 5;
+    // boxes_unrefine[1] = 20;
+    // boxes_unrefine[2] = 0;
+    // boxes_unrefine[3] = 32;
+    // boxes_unrefine[4] = 12;
+    // mp.patch(0).unrefineElements(boxes_unrefine); // no funciona 
 
-    gsWriteParaview(mp,"after",1,true); //mesh after the refinements
+    // gsWriteParaview(mp,"after",1,true); //mesh after the refinements
     
-    gsTHBSplineBasis<2,real_t> *thb_graded_coarse = dynamic_cast<gsTHBSplineBasis<2,real_t> *>(&mp.basis(0));
+    // gsTHBSplineBasis<2,real_t> *thb_graded_coarse = dynamic_cast<gsTHBSplineBasis<2,real_t> *>(&mp.basis(0));
 
 
-    dbasis_coarse.addBasis(thb_graded_coarse->clone());
+    // dbasis_coarse.addBasis(thb_graded_coarse->clone());
 
-    gsWriteParaview(dbasis_coarse.basis(0),"coarse_thb_graded",1000);
-    gsWriteParaview(dbasis_fine.basis(0),"fine_thb_graded",1000);
+    // gsWriteParaview(dbasis_coarse.basis(0),"coarse_thb_graded",1000);
+    // gsWriteParaview(dbasis_fine.basis(0),"fine_thb_graded",1000);
 
-    gsMatrix<> C_fine_L2, C_fine_QI, C_fine_L2_local;
-    gsMatrix<> C_coarse, C_coarse_l2, C_coarse_l2_local;
+    // gsMatrix<> C_fine_L2, C_fine_QI, C_fine_L2_local;
+    // gsMatrix<> C_coarse, C_coarse_l2, C_coarse_l2_local;
 
-    gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0), mySinus, C_fine_QI); 
-    gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0),mySinus,mp,C_fine_L2);
-    gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0),dbasis_fine.basis(0),mySinus,mp,C_fine_L2_local);
+    // gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0), mySinus, C_fine_QI); 
+    // gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0),mySinus,mp,C_fine_L2);
+    // gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0),mySinus,C_fine_L2_local);
     
-    gsGeometry<>::uPtr fine_QI = dbasis_fine.basis(0).makeGeometry(give(C_fine_QI));
-    gsGeometry<>::uPtr fine_L2 = dbasis_fine.basis(0).makeGeometry(give(C_fine_L2));
-    gsGeometry<>::uPtr fine_L2_local = dbasis_fine.basis(0).makeGeometry(give(C_fine_L2_local));
+    // gsGeometry<>::uPtr fine_QI = dbasis_fine.basis(0).makeGeometry(give(C_fine_QI));
+    // gsGeometry<>::uPtr fine_L2 = dbasis_fine.basis(0).makeGeometry(give(C_fine_L2));
+    // gsGeometry<>::uPtr fine_L2_local = dbasis_fine.basis(0).makeGeometry(give(C_fine_L2_local));
     
-    // gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_QI, C_coarse); 
-    // gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0), dbasis_coarse, *fine_L2,mp,C_coarse_l2);
-    // gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0), dbasis_coarse.basis(0), *fine_L2_local,mp,C_coarse_l2_local);
+    // // gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_QI, C_coarse); 
+    // // gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0), dbasis_coarse, *fine_L2,mp,C_coarse_l2);
+    // // gsQuasiInterpolate<real_t>::localL2(dbasis_coarse.basis(0), *fine_L2_local,C_coarse_l2_local);
     
-    // gsGeometry<>::uPtr sol_coarse = dbasis_coarse.basis(0).makeGeometry(give(C_coarse));
-    // gsGeometry<>::uPtr sol_coarse_L2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2));
-    // gsGeometry<>::uPtr sol_coarse_L2_local = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2_local));
+    // // gsGeometry<>::uPtr sol_coarse = dbasis_coarse.basis(0).makeGeometry(give(C_coarse));
+    // // gsGeometry<>::uPtr sol_coarse_L2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2));
+    // // gsGeometry<>::uPtr sol_coarse_L2_local = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2_local));
 
-    gsExprAssembler<> A(1,1);
-    A.setIntegrationElements(dbasis_fine);
-    gsExprEvaluator<> ev(A);
-    auto G = ev.getMap(mp); // is this correct?
+    // gsExprAssembler<> A(1,1);
+    // A.setIntegrationElements(dbasis_fine);
+    // gsExprEvaluator<> ev(A);
+    // auto G = ev.getMap(mp); // is this correct?
 
-    auto c_sinus_qi_fine = ev.getVariable(*fine_QI,G); // pointer to the QI
-    auto c_sinus_L2_fine = ev.getVariable(*fine_L2,G); // pointer to the L2
-    auto c_sinus_L2_local_fine = ev.getVariable(*fine_L2_local,G); // pointer to the L2 local
-    auto cfunction = ev.getVariable(mySinus,G);
+    // auto c_sinus_qi_fine = ev.getVariable(*fine_QI,G); // pointer to the QI
+    // auto c_sinus_L2_fine = ev.getVariable(*fine_L2,G); // pointer to the L2
+    // auto c_sinus_L2_local_fine = ev.getVariable(*fine_L2_local,G); // pointer to the L2 local
+    // auto cfunction = ev.getVariable(mySinus,G);
 
-    // auto c_sinus_qi = ev.getVariable(*sol_coarse,G); // pointer to the QI
-    // auto c_sinus_L2 = ev.getVariable(*sol_coarse_L2,G); // pointer to the L2 proj
-    // auto c_sinus_L2_local = ev.getVariable(*sol_coarse_L2_local,G); // pointer to the LOCAL L2 proj
+    // // auto c_sinus_qi = ev.getVariable(*sol_coarse,G); // pointer to the QI
+    // // auto c_sinus_L2 = ev.getVariable(*sol_coarse_L2,G); // pointer to the L2 proj
+    // // auto c_sinus_L2_local = ev.getVariable(*sol_coarse_L2_local,G); // pointer to the LOCAL L2 proj
 
-    gsParaviewCollection error_col("New_error", &ev);
-    error_col.options().setSwitch("plotElements", true);
-    error_col.options().setInt("plotElements.resolution", 4);
-    error_col.options().setInt("numPoints",(mp.geoDim()==3) ? 20000 : 20000);
-    error_col.options().setInt("precision", 40); // 1e-18
+    // gsParaviewCollection error_col("New_error", &ev);
+    // error_col.options().setSwitch("plotElements", true);
+    // error_col.options().setInt("plotElements.resolution", 4);
+    // error_col.options().setInt("numPoints",(mp.geoDim()==3) ? 20000 : 20000);
+    // error_col.options().setInt("precision", 40); // 1e-18
 
-    error_col.newTimeStep(&mp);
-    // error_col.addField((c_sinus_qi_fine-c_sinus_qi).sqNorm(),"error coarsening QI");
-    // error_col.addField((c_sinus_L2_fine-c_sinus_L2).sqNorm(),"error coarsening L2");
-    // error_col.addField((c_sinus_L2_local_fine-c_sinus_L2_local).sqNorm(),"error coarsening L2 local");
+    // error_col.newTimeStep(&mp);
+    // // error_col.addField((c_sinus_qi_fine-c_sinus_qi).sqNorm(),"error coarsening QI");
+    // // error_col.addField((c_sinus_L2_fine-c_sinus_L2).sqNorm(),"error coarsening L2");
+    // // error_col.addField((c_sinus_L2_local_fine-c_sinus_L2_local).sqNorm(),"error coarsening L2 local");
     
-    error_col.addField((c_sinus_qi_fine-cfunction).sqNorm(),"error function projection QI");
-    error_col.addField((c_sinus_L2_fine-cfunction).sqNorm(),"error function projection L2");
-    error_col.addField((c_sinus_L2_local_fine-cfunction).sqNorm(),"error function projection L2 local");
+    // error_col.addField((c_sinus_qi_fine-cfunction).sqNorm(),"error function projection QI");
+    // error_col.addField((c_sinus_L2_fine-cfunction).sqNorm(),"error function projection L2");
+    // error_col.addField((c_sinus_L2_local_fine-cfunction).sqNorm(),"error function projection L2 local");
 
-    error_col.saveTimeStep();
-    error_col.save();
+    // error_col.saveTimeStep();
+    // error_col.save();
 
 
+
+///// HOLA ... RECUPERAR A PARTIR DE AQUI!
 
 
 
@@ -233,7 +253,7 @@ int main(int argc, char *argv[])
 
     // gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0), mySinus, C_fine_QI); 
     // gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0),mySinus,mp,C_fine_L2);
-    // gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0),dbasis_fine.basis(0),mySinus,mp,C_fine_L2_local);
+    // gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0),mySinus,C_fine_L2_local);
     
     // gsGeometry<>::uPtr fine_QI = dbasis_fine.basis(0).makeGeometry(give(C_fine_QI));
     // gsGeometry<>::uPtr fine_L2 = dbasis_fine.basis(0).makeGeometry(give(C_fine_L2));
@@ -241,7 +261,7 @@ int main(int argc, char *argv[])
     
     // gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_QI, C_coarse); 
     // gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0), dbasis_coarse, *fine_L2,mp,C_coarse_l2);
-    // gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0), dbasis_coarse.basis(0), *fine_L2_local,mp,C_coarse_l2_local);
+    // gsQuasiInterpolate<real_t>::localL2(dbasis_coarse.basis(0), *fine_L2_local,C_coarse_l2_local);
     
     // gsGeometry<>::uPtr sol_coarse = dbasis_coarse.basis(0).makeGeometry(give(C_coarse));
     // gsGeometry<>::uPtr sol_coarse_L2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2));

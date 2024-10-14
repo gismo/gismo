@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     gsTHBSplineBasis<2,real_t> thb, thb_fine;
     thb = gsTHBSplineBasis<2,real_t>(bas); // create basis with knot vectors
 
-    gsMatrix<> coefs, C_coarse, C_fine, C_coarse_final, C_fine_coefs, coefs_in, coefs_final; // for projection
+    gsMatrix<> coefs, C_coarse, C_fine, C_coarse_final, C_fine_coefs, coefs_in; // for projection
     gsMatrix<> coefs_L2, C_fine_coefs_L2, C_coarse_final_L2, C_fine_coefs_L2_local, C_coarse_final_L2_local, coefs_L2_local; // for projection
 
     gsMatrix<> refBoxes(2,2);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     // ===== Get the coefficients of the mySinus function with local interpolation =====
     gsQuasiInterpolate<real_t>::localIntpl(thb, mySinus, coefs); 
     gsL2Projection<real_t>::projectFunction(thb,mySinus,mp,coefs_L2);
-    gsQuasiInterpolate<real_t>::localL2(thb,thb,mySinus,mp,coefs_L2_local);
+    gsQuasiInterpolate<real_t>::localL2(thb,mySinus,coefs_L2_local);
 
     gsMatrix<> C_coarse_initial = coefs;
     gsMatrix<> C_coarse_L2_initial = coefs_L2;
@@ -153,16 +153,16 @@ int main(int argc, char *argv[])
     gsGeometry<>::uPtr geom_fine_coefs = dbasis_fine.basis(0).makeGeometry((coefs_trial));
 
     // // ======= Quasi interpolation II (get the coarse coefficients) =======
-    gsQuasiInterpolate<real_t>::localIntpl(thb,thb_fine_basis,C_coarse_final); // I get the coarse coefficients 
-    coefs_final = C_coarse_final;
+    //gsQuasiInterpolate<real_t>::localIntpl(thb,thb_fine_basis,C_coarse_final); // I get the coarse coefficients 
+    gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0),*geom_fine_coefs,C_coarse_final); // I get the coarse coefficients 
     gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0),dbasis_coarse,*geom_fine_coefs,mp,C_coarse_final_L2);
-    gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0),dbasis_coarse.basis(0),*geom_fine_coefs,mp,C_coarse_final_L2_local);
+    gsQuasiInterpolate<real_t>::localL2(dbasis_coarse.basis(0),*geom_fine_coefs,C_coarse_final_L2_local);
 
     // ====== !!!!Error de QI a fine mesh!!!! ======
     // sinus_qi is the pointer to the initial coarse coefficients
     gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0),*sinus_qi,C_fine_coefs); // I get the fine coefficients 
     gsL2Projection<real_t>::projectFunction(dbasis_fine,*sinus_L2,mp,C_fine_coefs_L2);
-    gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0),dbasis_fine.basis(0),*sinus_L2_local,mp,C_fine_coefs_L2_local);
+    gsQuasiInterpolate<real_t>::localL2(dbasis_fine.basis(0),*sinus_L2_local,C_fine_coefs_L2_local);
 
     gsGeometry<>::uPtr Cfine_geom = dbasis_fine.basis(0).makeGeometry(give(C_fine_coefs));
     gsGeometry<>::uPtr Cfine_geom_L2 = dbasis_fine.basis(0).makeGeometry(give(C_fine_coefs_L2));
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
     auto cfunction_2 = ev.getVariable(mySinus,G);
     error_collection.addField((c_sinus_qi-c_fine).sqNorm(),"error_refinement QI");
     error_collection.addField((c_sinus_L2-c_fine_L2).sqNorm(),"error_refinement L2");
-    error_collection.addField((c_sinus_L2-c_fine_L2_local).sqNorm(),"error_refinement L2 local");
+    error_collection.addField((c_sinus_L2_local-c_fine_L2_local).sqNorm(),"error_refinement L2 local");
 
 
     gsTHBSpline<2,real_t> thb_coarse_basis2(thb,C_coarse_final); 
