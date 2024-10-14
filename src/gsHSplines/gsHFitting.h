@@ -15,6 +15,9 @@
 
 #include <gsModeling/gsFitting.h>
 #include <gsHSplines/gsHTensorBasis.h>
+#include <gsHSplines/gsHBox.h>
+#include <gsHSplines/gsHBoxContainer.h>
+#include <gsHSplines/gsHBoxUtils.h>
 
 namespace gismo {
 
@@ -33,6 +36,7 @@ class gsHFitting : public gsFitting<T>
 public:
 
     typedef typename gsBSplineTraits<d,T>::Basis tensorBasis;
+    typedef typename gsFitting<T>::tdm_method tdm_method;
 
 public:
     /// Default constructor
@@ -81,6 +85,7 @@ public:
 
 public:
 
+    // void updateGeometry(gsMatrix<T> coefficients, gsMatrix<T> parameters);
     /**
      * @brief iterative_refine iteratively refine the basis
      *
@@ -103,6 +108,16 @@ public:
      */
     bool nextIteration(T tolerance, T err_threshold, index_t maxPcIter = 0);
 
+    bool nextRefinement(T tolerance, T err_threshold, index_t maxPcIter = 0, bool admissibleRef = false);
+    /**
+     * @brief nextIteration_tdm One step of the refinement of iterative_refine(...);
+     * @param tolerance (>=0) if the maximum error is below the tolerance the refinement stops;
+     * @param err_threshold the same as in iterative_refine(...).
+     * @param mu is the amount of PDM, to be set between 0.1 and 1;
+     * @param sigma is the amount of TDM, to be set to 1;
+     */
+
+
     /**
      * @brief Like \a nextIteration without \a fixedSides but keeping the values
      * on these sides unchanged throughout the fit.
@@ -110,6 +125,27 @@ public:
     bool nextIteration(T tolerance, T err_threshold,
                        const std::vector<boxSide>& fixedSides,
                        index_t maxPcIter = 0);
+
+    bool nextRefinement(T tolerance, T err_threshold,
+                       const std::vector<boxSide>& fixedSides,
+                       index_t maxPcIter = 0,
+                       bool admissibleRef = false);
+
+    bool nextIteration_tdm(T tolerance, T err_threshold, index_t maxPcIter, T mu, T sigma, const std::vector<index_t> & interpIdx, tdm_method method, bool admissibleRef = false);
+    bool nextIteration_tdm(T tolerance, T err_threshold,
+                          const std::vector<boxSide>& fixedSides,
+                          index_t maxPcIter,
+                          T mu, T sigma,
+                          const std::vector<index_t>& interpIdx,
+                          tdm_method method,
+                          bool admissibleRef);
+
+    bool nextIteration_pdm(T tolerance, T err_threshold, index_t maxPcIter, const std::vector<index_t> & interpIdx, bool admissibleRef = false);
+    bool nextIteration_pdm(T tolerance, T err_threshold,
+                          const std::vector<boxSide>& fixedSides,
+                          index_t maxPcIter,
+                          const std::vector<index_t>& interpIdx,
+                          bool admissibleRef);
 
     /// Return the refinement percentage
     T getRefPercentage() const
@@ -166,6 +202,12 @@ protected:
             boxes.push_back(box[col]);
     }
 
+    gsHBoxContainer<d> getMarkedHBoxesFromBasis_max(const gsHTensorBasis<d,T>& basis,
+                                                    const std::vector<T>& errors,
+                                                    const gsMatrix<T>& parameters,
+                                                    T threshold,
+                                                    T extension);
+
 protected:
 
     /// How many % to refine - 0-1 interval
@@ -187,6 +229,15 @@ protected:
     using gsFitting<T>::m_min_error;
 };
 
+// template<short_t d, class T>
+// void gsHFitting<d, T>::updateGeometry(gsMatrix<T> coefficients,
+//                                      gsMatrix<T> parameters)
+// {
+//   this->m_result->coefs() = coefficients;
+//   this->m_param_values = parameters;
+//   this->computeErrors();
+// }
+
 template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
                                      index_t maxPcIter)
@@ -194,6 +245,37 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
     std::vector<boxSide> dummy;
     return nextIteration(tolerance, err_threshold, dummy, maxPcIter);
 }
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextIteration_tdm(T tolerance, T err_threshold,
+                                         index_t maxPcIter, T mu, T sigma,
+                                         const std::vector<index_t>& interpIdx,
+                                         tdm_method method,
+                                         bool admissibleRef)
+{
+    std::vector<boxSide> dummy;
+    return nextIteration_tdm(tolerance, err_threshold, dummy, maxPcIter, mu, sigma, interpIdx, method, admissibleRef);
+}
+
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
+                                         index_t maxPcIter,
+                                         const std::vector<index_t>& interpIdx,
+                                         bool admissibleRef)
+{
+    std::vector<boxSide> dummy;
+    return nextIteration_pdm(tolerance, err_threshold, dummy, maxPcIter, interpIdx, admissibleRef);
+}
+
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextRefinement(T tolerance, T err_threshold, index_t maxPcIter, bool admissibleRef)
+{
+    std::vector<boxSide> dummy;
+    return nextRefinement(tolerance, err_threshold, dummy, maxPcIter, admissibleRef);
+}
+
 
 template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
@@ -210,7 +292,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
         {
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
             T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
-
+            gsInfo << threshold << "\n";
             std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
             if(boxes.size()==0)
                 return false;
@@ -221,6 +303,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
             // If there are any fixed sides, prescribe the coefs in the finer basis.
             if(m_result != NULL && fixedSides.size() > 0)
             {
+                gsDebugVar(fixedSides.size());
                 m_result->refineElements(boxes);
                 gsFitting<T>::setConstraints(fixedSides);
             }
@@ -243,6 +326,229 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 
     return true;
 }
+
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
+                                        const std::vector<boxSide>& fixedSides,
+                                        index_t maxPcIter,
+                                        const std::vector<index_t>& interpIdx,
+                                        bool admissibleRef)
+{
+    // INVARIANT
+    // look at iterativeRefine
+    if ( m_pointErrors.size() != 0 )
+    {
+        if ( m_max_error > tolerance )
+        {
+            gsHBoxContainer<2> markedRef;
+            std::vector<index_t> boxes;
+
+            // if err_treshold is -1 we refine the m_ref percent of the whole domain
+            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+
+            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+
+            if (admissibleRef)
+            {
+                gsInfo << "ADMISSIBLE REFINEMENT.\n";
+                markedRef = getMarkedHBoxesFromBasis_max(*basis, m_pointErrors, m_param_values, threshold, 2.);
+                boxes = markedRef.toRefBoxes();
+            }
+            else
+            {
+                gsInfo << "STANDARD REFINEMENT.\n";
+                boxes = getBoxes(m_pointErrors, threshold);
+            }
+
+            if(boxes.size()==0)
+                return false;
+
+            basis->refineElements(boxes);
+            m_result->refineElements(boxes);
+
+            // If there are any fixed sides, prescribe the coefs in the finer basis.
+            if(m_result != NULL && fixedSides.size() > 0)
+            {
+                gsDebugVar(fixedSides.size());
+                m_result->refineElements(boxes);
+                gsFitting<T>::setConstraints(fixedSides);
+            }
+            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
+        }
+        else
+        {
+            gsInfo << "Tolerance reached.\n";
+            return false;
+        }
+    }
+
+    // We run one fitting step and compute the errors
+    //this->compute(m_lambda);
+
+    gsInfo << "compute...\n";
+    this->compute(m_lambda);
+    // m_results->coefs() = coefs_tilde;
+
+    //parameter correction
+    gsInfo << "apply " << maxPcIter << " steps of parameter correction for pdm...\n";
+    // this->parameterCorrection_tdm(1e-7, maxPcIter, mu, sigma, interpIdx);
+    this->parameterCorrectionSepBoundary_pdm(1e-6, maxPcIter,interpIdx);
+    this->computeErrors();
+
+    return true;
+}
+
+
+
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextIteration_tdm(T tolerance, T err_threshold,
+                                        const std::vector<boxSide>& fixedSides,
+                                        index_t maxPcIter, T mu, T sigma,
+                                        const std::vector<index_t>& interpIdx,
+                                        tdm_method method,
+                                        bool admissibleRef)
+{
+
+    time_t now = time(0);
+
+    if ( m_pointErrors.size() != 0 )
+    {
+    gsDebugVar(m_pointErrors.size());
+
+    gsHBoxContainer<2> markedRef;
+    std::vector<index_t> boxes;
+
+    if ( m_max_error > tolerance )
+    {
+      // if err_treshold is -1 we refine the m_ref percent of the whole domain
+      T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+
+      // REFINE
+      gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+
+      // MARK
+      if (admissibleRef)
+      {
+        gsInfo << "ADMISSIBLE REFINEMENT.\n";
+        markedRef = getMarkedHBoxesFromBasis_max(*basis, m_pointErrors, m_param_values, threshold, 2.);
+        boxes = markedRef.toRefBoxes();
+      }
+      else
+      {
+        gsInfo << "STANDARD REFINEMENT.\n";
+        boxes = getBoxes(m_pointErrors, threshold);
+      }
+
+      if(boxes.size()==0)
+          return false;
+
+      basis->refineElements(boxes);
+      m_result->refineElements(boxes);
+
+      // If there are any fixed sides, prescribe the coefs in the finer basis.
+      if(m_result != NULL && fixedSides.size() > 0)
+        {
+          gsDebugVar(fixedSides.size());
+          m_result->refineElements(boxes);
+          gsFitting<T>::setConstraints(fixedSides);
+        }
+            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
+    }
+    else
+    {
+      gsInfo << "Tolerance reached.\n";
+      return false;
+    }
+    }
+
+    // SOLVE
+    this->compute_tdm(m_lambda, mu, sigma, interpIdx, method);
+
+
+    // PARAMETER CORRECTION
+    gsInfo << "apply "<< maxPcIter << " steps of parameter correction for tdm...\n";
+    this->parameterCorrectionSepBoundary_tdm(1e-6, maxPcIter, mu, sigma, interpIdx, method); // refit
+
+    // ESTIMATE
+    this->computeErrors();
+
+    return true;
+}
+
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextRefinement(T tolerance, T err_threshold,
+                                      const std::vector<boxSide>& fixedSides,
+                                      index_t maxPcIter,
+                                      bool admissibleRef)
+{
+    // INVARIANT
+    // look at iterativeRefine
+    if ( m_pointErrors.size() != 0 )
+    {
+
+        if ( m_max_error > tolerance )
+        {
+            std::vector<index_t> boxes;
+            gsHBoxContainer<2> markedRef;
+            // if err_treshold is -1 we refine the m_ref percent of the whole domain
+            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+
+            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+
+            // MARK
+            if (admissibleRef)
+            {
+              markedRef = getMarkedHBoxesFromBasis_max(*basis, m_pointErrors, m_param_values, threshold, 2.);
+              boxes = markedRef.toRefBoxes();
+            }
+            else
+            {
+              boxes = getBoxes(m_pointErrors, threshold);
+            }
+
+            if(boxes.size()==0)
+                return false;
+
+            basis->refineElements(boxes);
+            m_result->refineElements(boxes);
+
+            if(m_result != NULL && fixedSides.size() > 0)
+            {
+              gsInfo << "Constrained fitting of Dominik.\n";
+                gsDebugVar(fixedSides.size());
+                m_result->refineElements(boxes);
+                gsFitting<T>::setConstraints(fixedSides);
+            }
+            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
+        }
+        else
+        {
+            gsInfo << "Tolerance reached.\n";
+            return false;
+        }
+        // const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis);
+        // m_result = bb->makeGeometry( give(this->m_result->coefs()) ).release();
+
+    }
+    else
+    {
+      gsInfo << "First fitting: compute with LS.\n";
+      this->compute(m_lambda);
+    }
+
+    this->parameterCorrection(1e-7, maxPcIter, 1e-4);
+    this->computeErrors();
+
+    return true;
+}
+
+
+
+
+
 
 template<short_t d, class T>
 void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_threshold)
@@ -389,6 +695,95 @@ T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
     std::nth_element(errorsCopy.begin(), pos, errorsCopy.end());
     return *pos;
 }
+
+
+
+
+
+template <class T>
+bool is_point_inside_cell(const gsMatrix<T>& parameter,
+                          const gsMatrix<T>& element)
+{
+    const real_t x = parameter(0, 0);
+    const real_t y = parameter(1, 0);
+
+    return element(0, 0) <= x && x < element(0, 1) &&
+           element(1, 0) <= y && y < element(1, 1);
+}
+
+template <class T>
+bool is_point_inside_cell(const T x,
+                          const T y,
+                          const gsMatrix<T>& element)
+{
+    bool condition = (element(0, 0) <= x && x <= element(0, 1) && element(1, 0) <= y && y <= element(1, 1));
+    return condition;
+}
+
+
+
+template<class T>
+T getCellMaxError(const gsMatrix<T>& a_cell,
+                  const std::vector<T>& errors,
+                  const gsMatrix<T>& parameters){
+
+    std::vector<T> a_cellErrs;
+    T cell_max_err = 0;
+    for(index_t it=0; it < parameters.cols(); it++){
+        const T xx = parameters.col(it)(0);
+        const T yy = parameters.col(it)(1);
+            if (is_point_inside_cell(xx, yy, a_cell))
+            {
+                a_cellErrs.push_back(errors[it]);
+            }
+        }
+
+    for(typename std::vector<T>::iterator errIt = a_cellErrs.begin(); errIt != a_cellErrs.end(); ++errIt){
+      if (*errIt > cell_max_err){
+        cell_max_err = *errIt;
+      }
+    }
+    return cell_max_err;
+}
+
+
+/// returns the markd cells to refine admissibiliy.
+// input      basis: the THB basis from which we extract the elements of the domain
+// input      error: the pointwise parameter error
+// input parameters: the sites on which the point-wise error is computed
+// input  threshold: the threshold to mark for refinement.
+template <short_t d, class T>
+gsHBoxContainer<d> gsHFitting<d, T>::getMarkedHBoxesFromBasis_max(const gsHTensorBasis<d,T>& basis,
+                                                const std::vector<T>& errors,
+                                                const gsMatrix<T>& parameters,
+                                                T threshold,
+                                                T extension)
+{
+    gsHBoxContainer<d> markedHBoxes;
+    typename gsHTensorBasis<d, T>::domainIter domIt = basis.makeDomainIterator();
+        for (; domIt->good(); domIt->next() )    // loop over all elements
+        {
+            gsMatrix<T> elMatrix(d,d);
+            elMatrix.col(0)<< domIt->lowerCorner(); // first column  = lower corner
+            elMatrix.col(1)<< domIt->upperCorner(); // second column = upper corner
+            T cellMaxError = getCellMaxError(elMatrix, errors, parameters);
+            if (cellMaxError >= threshold)
+            {
+              gsHDomainIterator<T,d> * domHIt = nullptr;
+              domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
+              gsHBox<d> a_box(domHIt);
+              gsHBoxContainer<d> tmp(gsHBoxUtils<d,T>::markAdmissible(a_box,extension));
+              // gsHBoxContainer<2> tmp(gsHBoxUtils<2,real_t>::markAdmissible(cell,m));
+              markedHBoxes.add(tmp);
+            }
+        }
+    return markedHBoxes;
+}
+
+
+
+
+
 
 
 }// namespace gismo

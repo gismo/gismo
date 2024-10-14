@@ -66,12 +66,15 @@ set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with 
     DESTINATION    external)
 
   gismo_fetch_directory(MUMPS
-    URL https://files.inria.fr/gismo/gz/MUMPS.tar.gz
+    #URL https://files.inria.fr/gismo/gz/MUMPS.tar.gz
+    URL http://coin-or-tools.github.io/ThirdParty-Mumps/MUMPS_5.6.2.tar.gz
     #URL https://github.com/scivision/mumps/archive/refs/heads/main.zip
     DESTINATION    external/ThirdParty-Mumps)
 
   set(MUMPS_LIBRARY ${MUMPS_INST}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}coinmumps${CMAKE_SHARED_LIBRARY_SUFFIX} )
 
+  execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink ${gismo_externals}/ThirdParty-Mumps/MUMPS/libseq/mpi.h ${gismo_externals}/ThirdParty-Mumps/MUMPS/libseq/mumps_mpi.h)
+  
   # For Mumps: If using GFortran 10, add
   # ADD_FCFLAGS=-fallow-argument-mismatch to compiler flags.
   ExternalProject_Add(ThirdParty-Mumps
@@ -82,6 +85,7 @@ set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with 
       BUILD_BYPRODUCTS "${MUMPS_LIBRARY}"
       DOWNLOAD_COMMAND  ""
       UPDATE_COMMAND    ""
+      PATCH_COMMAND patch -p0 < ${gismo_externals}//ThirdParty-Mumps/mumps_mpi.patch
       )
 
 include_directories(${IPOPT_INCLUDE_DIR})

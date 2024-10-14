@@ -16,10 +16,16 @@
 #include <gsCore/gsFuncCoordinate.h>
 #include <gsTensor/gsGridIterator.h>
 
+#ifdef gsIpOpt_ENABLED
+#include <gsIpOpt/gsIpOpt.h>
+#endif
+
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
 #endif
-//#include <gsOptimizer/gsGradientDescent.h>
+
+#include <gsOptimizer/gsGradientDescent.h>
+
 #include <gsOptimizer/gsFunctionAdaptor.h>
 
 #pragma once
@@ -464,7 +470,8 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         result = _argMinOnGrid(20);
     }
 
-    #ifdef gsHLBFGS_ENABLED
+#ifdef gsHLBFGS_ENABLED
+// #ifdef false
     gsFunctionAdaptor<T> fmin(*this);
     // gsIpOpt<T> solver( &fmin );
     //gsGradientDescent<T> solver( &fmin );
@@ -512,7 +519,7 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
     gsVector<index_t> ind(xyz.rows()-1);
     for (index_t i = 0; i!= xyz.rows(); ++i)
         if (i<k) ind[i]=i;
-        else if (i>k) ind[i-1]=i;       
+        else if (i>k) ind[i-1]=i;
 
     gsMatrix<T> pt = xyz(ind,gsEigen::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
@@ -605,7 +612,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
-    
+
     // If the measure on a boundary is requested, calculate the outer normal vector as well
     if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
 
@@ -651,11 +658,11 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
                 // BUG: When the determinant is really close to zero but negative,
                 // the result might be the opposite of what is expected because of alt_sgn
-                
+
                 if (! (InOut.flags &SAME_ELEMENT)  )
                 {
                     T detJacTcurr = jacT.determinant();
-                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 : 
+                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 :
                         ( detJacTcurr < 0 ? -1 : 1 );
                     if ( 0 == det_sgn )
                     {
