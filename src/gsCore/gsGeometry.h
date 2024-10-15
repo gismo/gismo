@@ -130,7 +130,7 @@ public:
     /// @}
 
     gsGeometry& operator=( const gsGeometry & o);
-    
+
     virtual ~gsGeometry()
     {
         delete m_basis;
