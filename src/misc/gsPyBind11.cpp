@@ -2,12 +2,12 @@
 
     @brief PyBind11 main module file
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): M. Moller
 */
 
@@ -50,7 +50,7 @@ PYBIND11_MODULE(pygismo, m) {
   m.doc() = "G+Smo (Geometry + Simulation Modules)";
 
   py::add_ostream_redirect(m, "ostream_redirect");
-  
+
   py::module assembler = m.def_submodule("assembler");
 
   assembler.attr("__name__") = "pygismo.assembler";
@@ -58,6 +58,8 @@ PYBIND11_MODULE(pygismo, m) {
   assembler.doc() = "G+Smo (Geometry + Simulation Modules): Assembler module";
 
   gismo::pybind11_init_gsBiharmonicExprAssembler( assembler );
+  gismo::pybind11_init_gsQuadRule( assembler );
+  gismo::pybind11_init_gsGaussRule( assembler );
 
 
   py::module core = m.def_submodule("core");
@@ -65,7 +67,7 @@ PYBIND11_MODULE(pygismo, m) {
   core.attr("__name__") = "pygismo.core";
   core.attr("__version__") = GISMO_VERSION;
   core.doc() = "G+Smo (Geometry + Simulation Modules): Core module";
-  
+
   gismo::pybind11_enum_gsBoundary( core );
 
   gismo::pybind11_init_gsFunctionSet( core );
@@ -100,7 +102,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsTHBSpline2( hsplines );
   gismo::pybind11_init_gsTHBSpline3( hsplines );
   gismo::pybind11_init_gsTHBSpline4( hsplines );
-  
+
   py::module io = m.def_submodule("io");
 
   io.attr("__name__") = "pygismo.io";
@@ -118,14 +120,14 @@ PYBIND11_MODULE(pygismo, m) {
   matrix.attr("__name__") = "pygismo.matrix";
   matrix.attr("__version__") = GISMO_VERSION;
   matrix.doc() = "G+Smo (Geometry + Simulation Modules): Matrix module";
-  
+
   gismo::pybind11_init_gsVector<real_t>(matrix,"Real"); //gsVectorReal
   gismo::pybind11_init_gsVector<index_t>(matrix,"Int"); //gsVectorInt
   gismo::pybind11_init_gsMatrix<real_t>(matrix,"Real"); //gsMatrixReal
   gismo::pybind11_init_gsMatrix<index_t>(matrix,"Int"); //gsMatrixInt
   gismo::pybind11_init_gsSparseMatrix<real_t>(matrix,"Real"); //gsSparseMatrixReal
   gismo::pybind11_init_gsSparseMatrix<index_t>(matrix,"Int"); //gsSparseMatrixInt
-  
+
   py::module modelling = m.def_submodule("modelling");
 
   modelling.attr("__name__") = "pygismo.modelling";
@@ -156,13 +158,13 @@ PYBIND11_MODULE(pygismo, m) {
   // gismo::pybind11_init_gsMappedSingleBasis3( msplines );
 
   py::module mpi = m.def_submodule("mpi");
-  
+
   mpi.attr("__name__") = "pygismo.mpi";
   mpi.attr("__version__") = GISMO_VERSION;
   mpi.doc() = "G+Smo (Geometry + Simulation Modules): MPI module";
 
   py::module multigrid = m.def_submodule("multigrid");
-  
+
   multigrid.attr("__name__") = "pygismo.multigrid";
   multigrid.attr("__version__") = GISMO_VERSION;
   multigrid.doc() = "G+Smo (Geometry + Simulation Modules): MultiGrid module";
@@ -184,7 +186,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsTensorBSplineBasis4( nurbs );
   gismo::pybind11_init_gsNurbsCreator( nurbs );
 
-  
+
   py::module pde = m.def_submodule("pde");
 
   pde.attr("__name__") = "pygismo.pde";

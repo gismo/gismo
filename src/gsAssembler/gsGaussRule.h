@@ -63,10 +63,10 @@ public:
     //const unsigned digits = std::numeric_limits<T>::digits10 );
 
     ~gsGaussRule() { }
-    
+
 public:
     // see gsQuadRule.h for documentation
-    void setNodes( gsVector<index_t> const & numNodes, 
+    void setNodes( gsVector<index_t> const & numNodes,
                    unsigned digits = 0 );
 
     using gsQuadRule<T>::setNodes; // unhide base
@@ -74,16 +74,16 @@ public:
 private:
 
     void init(const gsBasis<T> & basis, const T quA, const index_t quB, short_t fixDir);
-    
+
     /**
      * @brief Computes the Gauss quadrature rule with \a n nodes in the interval [-1,1].
      *
      * This function is called by setNodes(), if lookupReference() (which is called first) returned \a false.
      */
-    static void computeReference(index_t n, gsVector<T> & x, gsVector<T> & w, 
+    static void computeReference(index_t n, gsVector<T> & x, gsVector<T> & w,
                                  unsigned digits =  0 );
 
-    /** 
+    /**
      *@brief  Look up function for the Gauss quadrature rule in the interval [-1,1].
      *
      * When the member function setNodes() is called, it will first try to look up
@@ -94,6 +94,14 @@ private:
 
 }; // class gsGaussRule
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsGaussRule
+   */
+  void pybind11_init_gsGaussRule(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

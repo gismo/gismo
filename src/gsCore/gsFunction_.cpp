@@ -8,7 +8,7 @@ namespace gismo
 
 CLASS_TEMPLATE_INST gsFunction<real_t> ;
 
-#ifdef GISMO_WITH_PYBIND11  
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 
@@ -24,7 +24,9 @@ void pybind11_init_gsFunction(py::module &m)
              py::arg("accuracy") = 1e-6, py::arg("max_loop") = 100,
              py::arg("init") = gsMatrix<real_t>(),
              py::arg("damping_factor") = 1 )
-  ;
+        .def("invertPoints", &Class::invertPoints, "Takes the physical points and computes the corresponding parameter values.  If the point cannot be inverted (eg. is not part of the geometry) the corresponding parameter values will be undefined",
+             py::arg("points"), py::arg("result"), py::arg("accuracy") = 1e-6, py::arg("useInitialPoint") = false)
+        ;
 }
 #endif
 

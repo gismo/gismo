@@ -53,10 +53,28 @@ void pybind11_init_gsGeometry(py::module &m)
          "Returns the bspline basis as a reference")
   .def("rotate", (void (Class::*)(real_t, const gsVector<real_t,3>&)) &Class::rotate, "Apply 3D Rotation by an angle radians around axis")
   .def("rotate", (void (Class::*)(real_t)) &Class::rotate, "Apply 2D Rotation by an angle radians")
+
   .def("closestPointTo", (void (Class::*)(real_t)) &Class::rotate, "Get the closest position to a given point in space")
 
+  .def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the geometry uniformly",
+   py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
+  .def("uniformCoarsen", static_cast<void (Class::*)(int)> (&Class::uniformCoarsen), "Refines the geometry uniformly",
+   py::arg("numKnots") = 1) //default arguments
+  .def("degreeElevate", static_cast<void (Class::*)(short_t const, short_t const)> (&Class::degreeElevate), "Elevate the degree of the geometry by the given amount, preserve smoothness",
+   py::arg("i") = 1, py::arg("dir") = -1) //default arguments
+  .def("degreeReduce" , static_cast<void (Class::*)(short_t const, short_t const)> (&Class::degreeReduce) , "Elevate the degree of the geometry by the given amount, preserve smoothness",
+   py::arg("i") = 1, py::arg("dir") = -1) //default arguments
+  .def("degreeIncrease", static_cast<void (Class::*)(short_t const, short_t const)> (&Class::degreeIncrease), "Elevate the degree of the geometry by the given amount, preserve smoothness",
+   py::arg("i") = 1, py::arg("dir") = -1) //default arguments
+  .def("degreeDecrease", static_cast<void (Class::*)(short_t const, short_t const)> (&Class::degreeDecrease), "Elevate the degree of the geometry by the given amount, preserve smoothness",
+   py::arg("i") = 1, py::arg("dir") = -1) //default arguments
   .def("refineElements",&Class::refineElements  ,"Refines the geometry given elements  ")
   .def("unrefineElements",&Class::unrefineElements,"Unrefines the geometry given elements")
+
+  .def("insertKnot",&Class::insertKnot,"Inserts knot at direction dir, i times",
+   py::arg("knot"), py::arg("dir"), py::arg("i") = 1)
+
+
 
   ;
 }

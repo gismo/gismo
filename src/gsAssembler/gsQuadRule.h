@@ -133,7 +133,7 @@ public:
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const;
 
     void mapTo(const gsMatrix<T>& ab, gsMatrix<T> & nodes) const;
-    
+
     /**\brief Maps a univariate quadrature rule (i.e., points and
      * weights) from the reference interval to an arbitrary interval.
      */
@@ -199,6 +199,15 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
     // Adjust the weights (multiply by the Jacobian of the linear map)
     weights.noalias() = hprod * m_weights;
 }
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsQuadRule
+   */
+  void pybind11_init_gsQuadRule(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 
