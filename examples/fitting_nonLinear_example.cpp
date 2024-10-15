@@ -1,4 +1,4 @@
-/** @file gsTHB_optFitting_fixedBoundary.cpp
+/** @file fitting_nonLinear_example.cpp
 
     @brief Tensor product BSpline surface fitting with HLBFGS optimization.
 
@@ -462,23 +462,20 @@ int main(int argc, char *argv[])
     index_t verbosity = 1; // b, b=2 prints a lot of gsInfo
     index_t deg = 2; // d, fitting degree
     real_t tolerance = 1e-4; // e hierarchical refinement tolerance
-    std::string fn = "../filedata/alia/posB_data_lpsp.xml"; // f, string file input data
+    std::string fn = "../filedata/vboxdata/posB_data_lpsp.xml"; // f, string file input data
     // "../filedata/fitting/shipHullPts55_scale01.xml";
     real_t gtoll = 1e-6; // g, HLBFGS stopping criteria
     index_t maxIter = 200; // i, max number of iteration for the hlbfgs optimization algorithm
     
     
-    index_t maxRef = 1; // l for the adaptive loop
-    index_t mupdate = 20; // m, HLBFGS hessian updates
+    index_t maxRef = 0; // l for the adaptive loop
+    index_t mupdate = 50; // m, HLBFGS hessian updates
     index_t numKnots = 2; // n, fitting initial number of knots in each direction
-    bool jopt = false; // o, run joint optimization
-    
     
 	  bool constrainCorners = true; // r
-    real_t lambda = 1e-7; // s, fitting smoothing weight
+    real_t lambda = 1e-1; // s, fitting smoothing weight
     bool callScalePoints = false; // t
-    // u, v
-    index_t pc0 = 0; // w
+    
     index_t kx = -1; // x
     index_t ky = -1; // y
     
@@ -501,7 +498,7 @@ int main(int argc, char *argv[])
     cmd.addInt("l", "level", "number of maximum iterations for the adaptive loop.", maxRef);
     cmd.addInt("m", "update", "number of LBFGS updates.", mupdate);
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
-    cmd.addSwitch("o", "jopt", "run the Joing OPTimization algorithm.", jopt); // enable for comparison
+    
     cmd.addSwitch("r", "constrainCorners", "constrain the corners", constrainCorners);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
     cmd.addSwitch("t", "scale", "scale input data.", callScalePoints); // enable for comparison
@@ -592,8 +589,8 @@ int main(int argc, char *argv[])
 
     std::string prefix = "adaptive";
 
-    file_opt.open(std::to_string(now)+"results_adaptive_CPDM.csv");
-    file_opt << "m, deg, pen, dofs, optTol, optIt, refMode, refIt, min, max, mse, rmse, perc, refTol, time\n";
+    //file_opt.open(std::to_string(now)+"results_adaptive_CPDM.csv");
+    //file_opt << "m, deg, pen, dofs, optTol, optIt, refMode, refIt, min, max, mse, rmse, perc, refTol, time\n";
 
     real_t finaltime_adaptiveLoop = 0;
     // gtoll = gtoll * 4;
@@ -772,14 +769,14 @@ int main(int argc, char *argv[])
         gsInfo<<"Points below tolerance: "<< percentagePoint <<"%.\n";
 
         finaltime_adaptiveLoop += finaltime_itLoop;
-        file_opt << X.cols() << "," << deg << "," << lambda << "," << basis.size()<< ","
-                 << gtoll << ", " << optimizer->iterations() << ","
-                 << sol_min_max_mse[0] << std::scientific << ","
-    					   << sol_min_max_mse[1] << std::scientific << ","
-    					   << sol_min_max_mse[2] << std::scientific << ","
-                 << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
-                 << percentagePoint << "," << tolerance << ","
-                 << finaltime_itLoop << "\n";
+        // file_opt << X.cols() << "," << deg << "," << lambda << "," << basis.size()<< ","
+        //          << gtoll << ", " << optimizer->iterations() << ","
+        //          << sol_min_max_mse[0] << std::scientific << ","
+    		// 			   << sol_min_max_mse[1] << std::scientific << ","
+    		// 			   << sol_min_max_mse[2] << std::scientific << ","
+        //          << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+        //          << percentagePoint << "," << tolerance << ","
+        //          << finaltime_itLoop << "\n";
 
 
 
