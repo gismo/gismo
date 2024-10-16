@@ -2704,7 +2704,7 @@ public:
 public:
     enum {Space= 0, ScalarValued= 1, ColBlocks= 0};
 
-    Scalar eval(const index_t k) const { return abs_expr::eval_impl(_u,k); }
+    Scalar eval(const index_t k) const { return abs_expr::eval_impl     (_u,k).norm(); }
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
