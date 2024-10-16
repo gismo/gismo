@@ -325,7 +325,7 @@ public:
     {
         std::ostringstream os;
         os <<"Sparsity: "<< std::fixed << std::setprecision(2)
-           <<(double)100*this->nonZeros()/this->size() <<'%'<<", nnz: "<<this->size() <<"\n";
+           <<(double)100*this->nonZeros()/this->size() <<'%'<<", nnz: "<<this->nonZeros() <<"\n";
         for (index_t i = 0; i!=this->rows(); ++i)
         {
             for (index_t j = 0; j!=this->cols(); ++j)

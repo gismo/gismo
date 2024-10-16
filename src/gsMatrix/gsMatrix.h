@@ -468,7 +468,7 @@ public:
     std::string printSparsity() const
     {
         std::ostringstream os;
-        os <<", sparsity: "<< std::fixed << std::setprecision(2)<<"nnz: "<<this->size()
+        os <<", sparsity: "<< std::fixed << std::setprecision(2)<<"nnz: "<<(this->array() != 0).count() << "\n"
            <<(double)100*(this->array() != 0).count()/this->size() <<'%'<<"\n";
         for (index_t i = 0; i!=this->rows(); ++i)
         {
