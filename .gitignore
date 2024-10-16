@@ -37,3 +37,6 @@ CMakeFiles/
 
 #Mac OS
 **/.DS_Store
+
+#Symbolic link Eigen library
+external/Eigen
