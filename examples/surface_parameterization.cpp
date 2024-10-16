@@ -21,209 +21,98 @@
 
 //! [Include namespace]
 
-namespace gismo{
-namespace expr{
 
-template<class T>
-class detJ_expr : public _expr<detJ_expr<T> >
+namespace gismo {
+namespace expr {
+
+template<class E0, class E1, class E2>
+class ternary_expr; // ternary expression
+
+
+template<class E0, class E1, class E2>
+class ternary_expr : public _expr<ternary_expr<E0, E1, E2> >
 {
-public:
+  typename E0::Nested_t _u;
+  typename E1::Nested_t _v;
+  typename E2::Nested_t _w;
+ public:
+  typedef typename E1::Scalar Scalar;
 
-	typedef T Scalar;
+  explicit ternary_expr(_expr<E0> const &u,
+                        _expr<E1> const &v,
+                        _expr<E2> const &w)
+      :
+      _u(u),
+      _v(v),
+      _w(w) {
+    GISMO_ASSERT(E0::ScalarValued, "Condition must be scalar valued");
+    GISMO_ASSERT((int) E1::ScalarValued == (int) E2::ScalarValued,
+                 "Both v and w must be scalar valued (or not).");
+    GISMO_ASSERT((int) E1::ColBlocks == (int) E2::ColBlocks,
+                 "Both v and w must be colblocks (or not).");
+    GISMO_ASSERT((int) E1::Space == (int) E2::Space,
+                 "Both v and w must be space (or not), but E1::Space = "
+                     << E1::Space << " and E2::Space = " << E2::Space);
+    GISMO_ASSERT(_v.rows() == _w.rows(),
+                 "Rows of v and w differ. _v.rows() = " << _v.rows()
+                                                        << ", _w.rows() = "
+                                                        << _w.rows());
+    GISMO_ASSERT(_v.cols() == _w.cols(),
+                 "Columns of v and w differ. _v.cols() = " << _v.cols()
+                                                           << ", _w.cols() = "
+                                                           << _w.cols());
+    GISMO_ASSERT(_v.rowVar() == _w.rowVar(), "rowVar of v and w differ.");
+    GISMO_ASSERT(_v.colVar() == _w.colVar(), "colVar of v and w differ.");
+  }
+ public:
+  enum {
+    ScalarValued = E1::ScalarValued,
+    ColBlocks = E1::ColBlocks,
+    Space = E1::Space
+  }; // == E2::Space
 
-private:
-	typename gsGeometryMap<T>::Nested_t _G;
+//  const Scalar eval(const index_t k) const { return (_u.eval(k) > 0 ? _v.eval
+//  (k) : _w.eval(k)); }
 
-	const short_t domainDim;
-	const short_t targetDim;
+  const Temporary_t eval(const index_t k) const
+  {
+    return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
+  }
 
-	mutable gsMatrix<Scalar> jac;
-	mutable gsMatrix<Scalar> S;
-	mutable gsMatrix<Scalar> U_VT;
-	mutable Scalar detG;
+  // { res = eval_impl(_u,_v,_w,k); return  res;}
 
-public:
-	enum{ Space = 0, ScalarValued= 1, ColBlocks= 0};
+  index_t rows() const { return _v.rows(); }
+  index_t cols() const { return _v.cols(); }
+  void parse(gsExprHelper<Scalar> &evList) const {
+    _u.parse(evList);
+    _v.parse(evList);
+    _w.parse(evList);
+  }
 
-	detJ_expr(const gsGeometryMap<Scalar> & G) 
-	: 
-	_G(G),
-	domainDim(_G.source().domainDim()),
-	targetDim(_G.source().targetDim())
-	{
-	}
-
-#   define Eigen gsEigen
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
-
-	const Scalar & eval(const index_t k) const
-	{
-		// Jacobian of G (domainDim x targetDim)
-        jac = _G.data().values[1].reshapeCol(k, domainDim, targetDim).transpose();
-		// SVD gives:
-		// - U: targetDim x targetDim
-		// - S: targetDim x domainDim. svd.SingularValues() is min(domainDim,targetDim) x 1
-		// - V: domainDim x domainDim
-		gsEigen::JacobiSVD<gsEigen::MatrixXd> svd(jac, gsEigen::ComputeFullU | gsEigen::ComputeFullV);
-		// Compute the Jacobian determinant using the singular value decomposition
-		S.setZero(targetDim,domainDim);
-		S.diagonal() = svd.singularValues();
-
-		U_VT = svd.matrixU().topRows(domainDim) * S * svd.matrixV().transpose();
-		// Compute the determinant
-		detG = U_VT.determinant();
-		return detG;
-	}
-
-	index_t rows() const { return 0; }
-
-	index_t cols() const { return 0; }
-
-	void parse(gsExprHelper<Scalar> & evList) const
-	{
-		evList.add(_G);
-        _G.data().flags |= NEED_DERIV;
-		// jac_expr<Scalar>(_G).parse(evList);
-		// _G.parse(evList);
-	}
-
-
-	const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
-	const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-
-	void print(std::ostream &os) const { os << "detJ("; _G.print(os); os <<")"; }
-
+  const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
 
 };
 
-template<class T> EIGEN_STRONG_INLINE
-detJ_expr<T> detJ(const gsGeometryMap<T> & G) { return detJ_expr<T>(G); }
 
-template<class T>
-class penJinv_expr : public _expr<penJinv_expr<T> >
+/// Ternary ternary_expr
+template<class E0, class E1, class E2>
+EIGEN_STRONG_INLINE
+ternary_expr<E0, E1, E2> ternary(const E0 &u,
+                                 const E1 &v,
+                                 const E2 &w)
 {
-public:
-
-	typedef T Scalar;
-
-private:
-	typename gsGeometryMap<T>::Nested_t _G;
-
-	const Scalar eps;
-
-	const short_t domainDim;
-	const short_t targetDim;
-
-	mutable gsMatrix<Scalar> jac;
-	mutable gsMatrix<Scalar> S;
-	mutable gsMatrix<Scalar> U_VT;
-	mutable Scalar chi;
-	mutable Scalar detG;
-	mutable gsMatrix<Scalar> res;
-
-public:
-	enum{ Space = 0, ScalarValued= 0, ColBlocks= 0};
-
-	penJinv_expr(const gsGeometryMap<Scalar> & G, const Scalar epsilon) 
-	: 
-	_G(G),
-	eps(epsilon),
-	domainDim(_G.source().domainDim()),
-	targetDim(_G.source().targetDim())
-	{
-	}
-
-// #   define Eigen gsEigen
-// 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-// #   undef Eigen
-
-	const gsMatrix<Scalar> & eval(const index_t k) const
-	{
-		// Jacobian of G (targetDim x domainDim)
-        jac = _G.data().values[1].reshapeCol(k, domainDim, targetDim).transpose();
-
-		// SVD gives:
-		// - U: targetDim x targetDim
-		// - S: targetDim x domainDim. svd.SingularValues() is min(domainDim,targetDim) x 1
-		// - V: domainDim x domainDim
-		gsEigen::JacobiSVD<gsEigen::MatrixXd> svd(jac, gsEigen::ComputeFullU | gsEigen::ComputeFullV);
-		// Compute the Jacobian determinant using the singular value decomposition
-		S.setZero(targetDim,domainDim);
-		S.diagonal() = svd.singularValues();
-
-		U_VT = svd.matrixU().topRows(domainDim) * S * svd.matrixV().transpose();
-		// Compute the determinant
-		detG = U_VT.determinant();
-		// Compute the penalized determinant
-		chi = (detG<0) ? 0.5 * (detG + math::pow(eps + math::pow(detG, 2.0), 0.5)) : 1.;
-
-		// Compute the inverse of the singular values
-		S.diagonal().array() = 1.0 / S.diagonal().array(); 
-		S.transposeInPlace(); // From now on, S is its inverse
-
-		// Compute the penalized inverse equivalent of the Moore-Penrose inverse		
-		res = svd.matrixV() * S * svd.matrixU().transpose() / chi;
-		return res;
-	}
-
-	index_t rows() const { return domainDim; }
-
-	index_t cols() const { return domainDim; }
-
-	void parse(gsExprHelper<Scalar> & evList) const
-	{
-		evList.add(_G);
-        _G.data().flags |= NEED_DERIV;
-		// jac_expr<Scalar>(_G).parse(evList);
-		// _G.parse(evList);
-	}
-
-	const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
-	const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-
-	void print(std::ostream &os) const { os << "penJinv("; _G.print(os); os <<")"; }
-
-
-};
-
-template<class T> EIGEN_STRONG_INLINE
-penJinv_expr<T> penJinv(const gsGeometryMap<T> & G, const T eps) { return penJinv_expr<T>(G,eps); }
-
+  return ternary_expr<E0, E1, E2>(u, v, w);
 }
-}
+
+} // namespace expr
+}// namespace gismo
 
 using namespace gismo;
 
-// template<typename T = real_t>
-// class gsExprAsFunction : public gsFunction<T>
-// {
-// public:
-//     template<class E>
-//     gsExprAsFunction( const expr::_expr<E> & expr)
-//     : m_expr(expr)
-//     {}
-
-//     short_t domainDim() const { return m_expr.parDim(); }
-//     short_t targetDim() const { return m_expr.rows();   }
-
-//     void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
-//     {
-//         result.resize(u,this->targetDim());
-//         gsExprEvaluator<T> ev;
-//         for (index_t k = 0; k!=u.cols(); k++)
-//             result.col(k) = ev.eval(m_expr,u.col(k));
-//     }
-
-// protected:
-//     const expr::_expr<E> & m_expr;
-// };
-
-
-
 
 template<typename T = real_t>
-class gsOptMesh : public gsOptProblem<T> 
+class gsOptMesh : public gsOptProblem<T>
 {
 	using Base = gsOptProblem<T>;
 
@@ -264,19 +153,39 @@ public:
 		{
 			auto detG = jac(G).det();
 			auto M = 1./detG;
-			auto chi = 0.5 * (detG + pow(m_eps + pow(detG, 2.0), 0.5));
+			// auto chi = 0.5 * (detG + pow(m_eps + pow(detG, 2.0), 0.5));
+
+            // Compute the chi part
+            gsConstantFunction<T> epsilon(m_eps, m_comp->domainDim());
+            auto eps = m_evaluator.getVariable(epsilon);
+            auto chiPPart = eps * ((detG.val() - eps.val()).exp());
+
+            // Ternary operation to compute chi and chip
+            auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
+
 			return m_evaluator.integral( (M*jac(G).adj()/chi).sqNorm()*meas(G));
 		}
 		else
 		{
-			auto detG = detJ(G);
+            auto fform = jac(G).tr()*jac(G);
+            auto detG = pow(fform.det().val(),0.5); //jacobian determinant for a surface, i.e. the measure
 			auto M = 1./detG;
-			return m_evaluator.integral( (M*penJinv(G,m_eps)).sqNorm()*meas(G));
+
+            // Compute the chi part
+            gsConstantFunction<T> epsilon(m_eps, m_comp->domainDim());
+            auto eps = m_evaluator.getVariable(epsilon);
+            auto chiPPart = eps * ((detG.val() - eps.val()).exp());
+
+            // Ternary operation to compute chi and chip
+            auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
+
+            auto invJacMat = fform.adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
+			return m_evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
 		}
-		// else 
+		// else
 		// {
 		//     auto jacG = signed svd;
-		//     /* 
+		//     /*
 		//         if (sigma2>0) // smallest one
 		//             chi = sigma1*sigma2 // = jac.det
 		//         else
@@ -286,7 +195,7 @@ public:
 		//      */
 		//     auto chi = 0.5 * (jacG + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
 		// }
-		
+
 	}
 
 	// /// Computes the gradient of the objective function at the given point u
@@ -344,7 +253,7 @@ int main(int arg, char *argv[])
 	// Load XML file - multi-patch computational domain
 	//! [Read geometry]
 	// Check if the input file exists
-	if (!gsFileManager::fileExists(input)) 
+	if (!gsFileManager::fileExists(input))
 	{
 		gsWarn << "The file cannot be found!\n";
 		return EXIT_FAILURE;
@@ -356,7 +265,7 @@ int main(int arg, char *argv[])
 	gsInfo << " Got" << *mp << " \n";
 	//! [Read geometry]
 
-	mp->embed(3);
+	// mp->embed(3);
 
 	gsMultiBasis<> mb(*mp);
 
@@ -366,7 +275,7 @@ int main(int arg, char *argv[])
 	dbasis.degreeElevate(numElevateD);
 	for (index_t i = 0; i < numRefineD; i++)
 		dbasis.uniformRefine();
-	
+
 	gsInfo<<"Mapper basis:\n"<<dbasis<<"\n";
 
 	gsSquareDomain<2,real_t> domain(dbasis);
@@ -412,7 +321,7 @@ int main(int arg, char *argv[])
 
 	optimizer->solve(controls);
 	gsVector<> optSol = optimizer->currentDesign();
-	
+
 	for (size_t k=0; k!=optSol.rows(); k++)
 		domain.control(k) = optSol[k];
 
@@ -429,8 +338,8 @@ int main(int arg, char *argv[])
 
 	gsWriteParaview(domain.domain(),"domain",1000,true,true);
 	// ev.writeParaview(detJ(G),G,"jacobian_determinant");
-	ev.writeParaview(detJ(Gold),Gold,"OldJacobian_determinant");
-	ev.writeParaview(detJ(Gnew),Gnew,"NewJacobian_determinant");
+	ev.writeParaview((jac(Gold).tr()*jac(Gold)).det(),Gold,"OldJacobian_determinant");
+	ev.writeParaview((jac(Gnew).tr()*jac(Gnew)).det(),Gnew,"NewJacobian_determinant");
 
 	delete optimizer;
 	return 0;
