@@ -327,10 +327,12 @@ public:
     {
         GISMO_ASSERT( !strcmp( node->name(),"Matrix"), 
                       "Something went wrong. Expected Matrix tag." );
-        
-        unsigned rows  = atoi ( node->first_attribute("rows")->value() ) ;
-        unsigned cols  = atoi ( node->first_attribute("cols")->value() ) ;
-        getMatrixFromXml<T>(node, rows, cols, obj);
+
+        unsigned rows = atoi(node->first_attribute("rows")->value());
+        unsigned cols = atoi(node->first_attribute("cols")->value());
+        gsXmlAttribute *format = node->first_attribute("format");
+        std::string format_flag = format ? format->value() : "ascii";
+        getMatrixFromXml<T>(node, rows, cols, obj, format_flag);
     }
     
     static gsXmlNode * put (const gsMatrix<T> & obj,
@@ -1369,13 +1371,13 @@ public:
         {
             gsXmlNode * tmp = node->first_node("rhs");
             gsFunctionExpr<T>  rhs_fnct;
-            getFunctionFromXml(tmp, rhs_fnct);
+            internal::gsXml<gsFunctionExpr<T> >::get_into(tmp, rhs_fnct);
             
             tmp = node->first_node("solution");
             if ( tmp )
             {
                 gsFunctionExpr<T> msol;
-                getFunctionFromXml(tmp, msol);
+                internal::gsXml<gsFunctionExpr<T> >::get_into(tmp, msol);
                 
                 return new gsPoissonPde<T>(rhs_fnct, d, msol );
             }

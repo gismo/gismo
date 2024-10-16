@@ -43,11 +43,12 @@ public:
     }
 
     void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> > & result) const
+                          std::vector<gsMatrix<T> > & result,
+                          bool sameElement = false) const
     {
         GISMO_ASSERT(1==u.cols(), "Single argument assumed");
         result.resize(n+1);
-        m_g->evalAllDers_into(u, n, m_gd);
+        m_g->evalAllDers_into(u, n, m_gd, sameElement);
 
         // f  = (1/2)*||x-pt||^2
         result[0].resize(1, 1);
@@ -158,6 +159,10 @@ gsGeometry<T>::gsGeometry(const gsGeometry<T> & o)
 { }
 
 template<class T>
+gsGeometry<T>::~gsGeometry()
+{ delete m_basis; }
+
+template<class T>
 void gsGeometry<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 { this->basis().evalFunc_into(u, m_coefs, result); }
 
@@ -171,8 +176,9 @@ void gsGeometry<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 
 template<class T>
 void gsGeometry<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                        std::vector<gsMatrix<T> > & result) const
-{ this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
+                                     std::vector<gsMatrix<T> > & result,
+                                     bool sameElement) const
+{ this->basis().evalAllDersFunc_into(u, m_coefs, n, result, sameElement); }
 
 template<class T>
 short_t gsGeometry<T>::domainDim() const { return this->basis().domainDim(); }
@@ -223,8 +229,8 @@ gsGeometry<T>::boundary(boxSide const& s) const
 
 template<class T>
 typename gsGeometry<T>::uPtr
-gsGeometry<T>::iface(const boundaryInterface & bi,
-                     const gsGeometry & other) const
+gsGeometry<T>::iface(const boundaryInterface &,
+                     const gsGeometry &) const
 {
     GISMO_NO_IMPLEMENTATION
 }
@@ -363,22 +369,6 @@ T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamp
 // T gsGeometry<T>::hausdorffDistance() const
 
 
-template<class T>
-void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
-                                  const T accuracy) const
-{
-    gsVector<index_t> ind(xyz.rows()-1);
-    for (index_t i = 0; i!= xyz.rows(); ++i)
-        if (i<k) ind[i]=i;
-        else if (i>k) ind[i-1]=i;       
-
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
-    gsFuncCoordinate<T> fc(*this, give(ind));
-    fc.invertPoints(pt,uv,accuracy,false);
-    xyz = this->eval(uv);
-    //possible check: pt close to xyz
-}
-
 
 template<class T>
 std::ostream & gsGeometry<T>::print(std::ostream &os) const
@@ -415,7 +405,7 @@ std::vector<gsGeometry<T> *> gsGeometry<T>::boundary() const
 }
 
 template<class T>
-void gsGeometry<T>::insertKnot( T knot, index_t dir, index_t i)
+void gsGeometry<T>::insertKnot( T, index_t, index_t)
 {
     GISMO_NO_IMPLEMENTATION
 }

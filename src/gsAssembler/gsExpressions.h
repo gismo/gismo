@@ -650,8 +650,6 @@ public:
     /// Copy the coefficients of another gsGeometryMap to this one, if they are compatible.
     void copyCoefs( const gsGeometryMap<T> & other) const
     {
-        const index_t dim = m_fs->domainDim();
-
         GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( this->m_fs ), "error");
         const gsMultiPatch<T> & thisMP  = static_cast<const gsMultiPatch<T>&>(*this->m_fs );
         GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( other.m_fs ), "error");
@@ -1561,6 +1559,18 @@ public:
             }
     }
 
+    /// Extract this variable as a gsMappedSpline object
+    void extract(gsMappedSpline<2,T> & result) const
+    {
+        if( const gsMappedBasis<2,T>* basis = dynamic_cast<const gsMappedBasis<2,T>* >(&_u.source()) )
+        {
+            gsMatrix<T> coefs;
+            this->extractFull(coefs);
+            coefs.resize(coefs.rows()/_u.dim(),_u.dim());
+            result.init(*basis,coefs);
+        }
+    }
+
     /// Extract the piece \a p as a gsGeometry pointer
     memory::unique_ptr<gsGeometry<T> > extractPiece(const index_t p) const
     {
@@ -1576,7 +1586,6 @@ public:
     // insert g-coefficients to the solution vector
     void insert(const gsGeometry<T> & g, const index_t p = 0) const
     {
-        const index_t dim = _u.dim();
         const gsMatrix<T> & cf = g.coefs();
         gsMatrix<T> & sol = *_Sv;
         //gsMatrix<T> & fixedPart = _u.fixedPart();
@@ -2445,8 +2454,8 @@ public:
     }
 
 
-    const index_t rows() const { return _u.rows(); }
-    const index_t cols() const { return _u.cols(); }
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return _u.cols(); }
 
     void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
@@ -2478,8 +2487,8 @@ class ppartval_expr : public _expr<ppartval_expr<E> >
     return res; // component-wise maximum with zero
   }
 
-  const index_t rows() const { return 0; }
-  const index_t cols() const { return 0; }
+  index_t rows() const { return 0; }
+  index_t cols() const { return 0; }
 
   void parse(gsExprHelper<Scalar> & evList) const
   { _u.parse(evList); }
@@ -4675,6 +4684,7 @@ GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace()   )
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
+GISMO_SHORTCUT_VAR_EXPRESSION(shapeop, fform(u).inv() * fform2nd(u) )
 
 #undef GISMO_SHORTCUT_PHY_EXPRESSION
 #undef GISMO_SHORTCUT_VAR_EXPRESSION

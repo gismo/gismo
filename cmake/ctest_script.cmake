@@ -173,26 +173,6 @@ if(DEFINED CXXNAME)
   set(ENV{CXX}  ${CXX})
 endif()
 
-# Other Environment variables and scripts
-#set(ENV{OMP_NUM_THREADS} 3)
-#set(ENV{CXXFLAGS} "-Ofast")
-#execute_process(COMMAND source "/path/to/iccvars.sh intel64")
-#set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
-#set(ENV{MAKEFLAGS} "-j12")
-
-# Build options
-if(NOT DEFINED CMAKE_ARGS)
-  set(CMAKE_ARGS
-    -DGISMO_WITH_WARNINGS=OFF
-    -DGISMO_COEFF_TYPE=double
-    -DGISMO_BUILD_LIB=ON
-    #-DCMAKE_CXX_STANDARD=11
-    -DGISMO_BUILD_EXAMPLES=ON
-    -DGISMO_BUILD_UNITTESTS=ON
-    -DNOSNIPPETS=OFF
-    )
-endif()
-
 # Source folder (defaults inside the script directory)
 if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
   if(EXISTS ${CTEST_SCRIPT_DIRECTORY}/gismoConfig.cmake.in
@@ -401,11 +381,35 @@ if(NOT DEFINED CTEST_BUILD_NAME)
 endif()
 STRING(REPLACE " " "_" CTEST_BUILD_NAME "${CTEST_BUILD_NAME}")
 
+# Other Environment variables and scripts
+#set(ENV{OMP_NUM_THREADS} 3)
+#set(ENV{CXXFLAGS} "-Ofast")
+#execute_process(COMMAND source "/path/to/iccvars.sh intel64")
+#set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
+#set(ENV{MAKEFLAGS} "-j12")
+
+# Build options
+if(NOT DEFINED CMAKE_ARGS)
+  set(CMAKE_ARGS
+    -DSITE=${CTEST_SITE}
+    -DBUILDNAME=${CTEST_BUILD_NAME}
+    -DGISMO_SUBMODULES_HEAD=ON
+    -DGISMO_WITH_WARNINGS=OFF
+    -DGISMO_COEFF_TYPE=double
+    -DGISMO_BUILD_LIB=ON
+    #-DCMAKE_CXX_STANDARD=11
+    -DGISMO_BUILD_EXAMPLES=ON
+    -DGISMO_BUILD_UNITTESTS=ON
+    -DNOSNIPPETS=OFF
+    )
+endif()
+
 #Output details
 message("Site: ${CTEST_SITE}")
 message("Build Name: ${CTEST_BUILD_NAME}")
 string(TIMESTAMP TODAY "%Y-%m-%d")
 message("Date: ${TODAY}")
+message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&date=${TODAY}&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
 
 if(NOT CTEST_BUILD_JOBS)
   include(ProcessorCount)
@@ -444,15 +448,7 @@ macro(get_git_status res)
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
       OUTPUT_STRIP_TRAILING_WHITESPACE
       OUTPUT_VARIABLE commitMessage)
-    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule status
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      OUTPUT_VARIABLE submoduleHashes)
-    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule summary
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      OUTPUT_VARIABLE submoduleSummary)
-    set(${res} "${commitMessage}\n\nSubmodule status:\n${submoduleHashes}\n\nSubmodule summary:\n${submoduleSummary}\n")
+    set(${res} "${commitMessage}\n")
   endif()
 endmacro(get_git_status)
 
@@ -534,6 +530,8 @@ macro(run_ctests)
 
   if (NOT confResult EQUAL 0)
     message(SEND_ERROR "CMake Configuration failed.")
+    message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&date=${TODAY}&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
+    return()
   endif()
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
@@ -545,9 +543,9 @@ macro(run_ctests)
         set_property(GLOBAL PROPERTY SubProject ${subproject})
         set_property(GLOBAL PROPERTY Label ${subproject})
       endif()
-      ctest_build(TARGET ${subproject} APPEND)
+      ctest_build(TARGET ${subproject} APPEND CONFIGURATION ${CTEST_CONFIGURATION_TYPE})
       ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
-      if (DO_TESTS)
+      if (DO_TESTS AND NOT "x${subproject}" STREQUAL "xgismo")
 	ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
 	if (narg GREATER 0 AND NOT testResult EQUAL 0)
 	  set(${ARGV0} -1)
@@ -619,7 +617,7 @@ if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
   endif()
   run_ctests(res)
 
-  message("CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=${CTEST_PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
+  message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=${CTEST_PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
 
   if(NOT res EQUAL 0)
     message(SEND_ERROR "Some Tests failed.")

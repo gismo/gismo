@@ -54,7 +54,8 @@ geodim = mp.targetDim()
 if (isBRep | pardim != geodim):
     springInitializer = gs.modelling.gsSpringPatch(mp)
     mp.clear()
-    mp = springInitializer.result()
+    springInitializer.compute()
+    mp.addPatch(springInitializer.result())
 #! [construct a initial parameterization if the input data is B-Rep]
 
 #! [align the orientations of a multi-patch parameterization]

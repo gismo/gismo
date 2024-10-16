@@ -56,15 +56,17 @@ In the gismo/examples sub-directory we find:
 
 - \subpage pMultiGrid_example
 
-@cond DOXYGEN_EXCLUDE
+<!--
 - \subpage poisson_example
-@endcond
+-->
 
 - \subpage poisson2_example
 
 - \subpage poissonTHB_example
 
 - \subpage sparseSolvers_example
+
+- \subpage stokes_ieti_example
 
 - \subpage thbRefinement_example
 

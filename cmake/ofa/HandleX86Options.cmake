@@ -14,6 +14,8 @@
 
 include(ofa/CommonMacros)
 
+#Requires CMake 3.2
+
 macro(OFA_HandleX86Options)
 
   # Special treatment for "native" flag
@@ -237,8 +239,13 @@ macro(OFA_HandleX86Options)
     endmacro()
     macro(_zen3)
       list(APPEND _march_flag_list "znver3")
-      _zen3()
+      _zen2()
       list(APPEND _available_extension_list "pku" "vpclmulqdq" "vaes")
+    endmacro()
+    macro(_zen4)
+      list(APPEND _march_flag_list "znver4")
+      _zen3()
+      list(APPEND _available_extension_list "avx512f" "avx512cd" "avx512vl" "avx512dq" "avx512bw" "avx512ifma" "avx512vbmi" "avx512vpopcntdq" "avx512bitalg" "avx512vbmi2" "avx512vnni" "avx512bf16")
     endmacro()
 
     # Intel
@@ -348,11 +355,14 @@ macro(OFA_HandleX86Options)
       _zen2()
     elseif(TARGET_ARCHITECTURE STREQUAL "zen3")
       _zen3()
+    elseif(TARGET_ARCHITECTURE STREQUAL "zen4")
+      _zen4()
 
       # Others
     elseif(TARGET_ARCHITECTURE STREQUAL "generic")
       list(APPEND _march_flag_list "generic")
       list(APPEND _available_extension_list "sse")
+      list(APPEND _available_extension_list "sse2")
     elseif(TARGET_ARCHITECTURE STREQUAL "none")
       # add this clause to remove it from the else clause
 

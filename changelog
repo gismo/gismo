@@ -121,3 +121,67 @@ v23.09.0 (https://github.com/gismo/gismo/releases/tag/v23.09.0)
   - Eigen library version used is now 3.4.0
   - ExprTk library updated
 
+
+v23.12.0 (https://github.com/gismo/gismo/releases/tag/v23.12.0)
+------
+* NEW
+  - Floating point precision showcase, quadrature lookup guard
+  - Introduce gsFunction::recoverPoints, moved includes of third parties
+  - Biharmonic equation assembler
+  - Unittest gsGeometry_test
+  - Example file: precision_example
+  - Labels and file includes in XML file format
+* IMPROVED
+  - Python bindings (pygismo)
+  - XML file indenting
+  - Add unittests for spectra
+  - ACC3 scheme for boudaries
+  - gsFuncCoordinate is now more general
+  - Option to keep Sparsity Pattern when reseting the sparse matrix in gsExpAssembler
+  - Parallelization structs (gsParallel)
+  - Optional gsSpectra module
+  - Several fixes in expressions
+* FIXED
+  - CI scripts
+  - Header only and mpfr compilation
+  - Linking of MPFR with gcc
+  - Replace 'sprintf' by 'snprintf' as the former is marked deprecated
+  - Checking if the Eigen symlink already exists before creating a new one
+  - Static linking for pygismo
+  - Make G+Smo compile on Ookami (Fujitsu A64FX)
+* API
+  - Several changes in expressions
+
+v24.08.0 (https://github.com/gismo/gismo/releases/tag/v24.08.0)
+------
+* NEW
+  - Add an automated script for publishing releases (#732)
+  - Base64 I/O for Paraview and XML
+  - Add a new example that shows how Expression Assembler + IETI framework can be used to solve systems of PDEs.
+  - Further examples and improvements for the cppyy bindings
+  - cppyy bindings, example on heat equation, including a Jupyter notebook
+  - gsBSpline::intersect: The gsBSpline class now features intersect, enabling it to calculate intersections between two B-spline curves in arbitrary dimension
+  - Add a function for matrix to .csv output
+  - Geometry transformation and function adaptor classes
+  - function gsGeometry::invertPointGrid
+* IMPROVED
+  - CI scripts
+  - Python bindings
+  - 3dm output
+  - fast THB-Spline evaluation
+  - visitors use same element flag
+  - gsKnotVector::degreeDecrease - added boolean  to handle interior knots
+  - igs format i/o, add multipatch output
+  - Optimize for Architecture (OFA) scripts (#678)
+* FIXED
+  - in multidimensional Dirichlet BCs, Function on Dirichlet Boundary (#687)
+  - Intel MKL support
+  - in paraview collection output
+  - linker error: undefined reference (#707)
+  - issue #702m fix in gsTensorBasis::elementIndex
+  - CurveIntersection: Type fixes (#713)
+  - const correctness in gsBoundary.h (#715)
+  - mex files
+  - Change return type of gsTensorNurbs::weights() const to be a const reference
+  - inconsistency of types in generic assembler class
+  - include dependencies in header-only mode

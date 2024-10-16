@@ -63,10 +63,15 @@ bool read_poly(gsSurfMesh& mesh, const std::string& filename)
     gsSurfMesh::Vertex_property<Point>                                  point = mesh.vertex_property<Point>("v:point",Point(0,0,0));
 
     // read properties from file
-    (void)fread((char*)vconn.data(), sizeof(gsSurfMesh::Vertex_connectivity),   nv, in);
-    (void)fread((char*)hconn.data(), sizeof(gsSurfMesh::Halfedge_connectivity), nh, in);
-    (void)fread((char*)fconn.data(), sizeof(gsSurfMesh::Face_connectivity),     nf, in);
-    (void)fread((char*)point.data(), sizeof(Point),                               nv, in);
+    size_t result;
+    result = fread((char*)vconn.data(), sizeof(gsSurfMesh::Vertex_connectivity),   nv, in);
+    GISMO_ENSURE(result==sizeof(gsSurfMesh::Vertex_connectivity),"Vertex connectivity reading error");
+    result = fread((char*)hconn.data(), sizeof(gsSurfMesh::Halfedge_connectivity), nh, in);
+    GISMO_ENSURE(result==sizeof(gsSurfMesh::Halfedge_connectivity),"Vertex connectivity reading error");
+    result = fread((char*)fconn.data(), sizeof(gsSurfMesh::Face_connectivity),     nf, in);
+    GISMO_ENSURE(result==sizeof(gsSurfMesh::Face_connectivity),"Vertex connectivity reading error");
+    result = fread((char*)point.data(), sizeof(Point),                               nv, in);
+    GISMO_ENSURE(result==sizeof(Point),"Vertex connectivity reading error");
 
     fclose(in);
     return true;

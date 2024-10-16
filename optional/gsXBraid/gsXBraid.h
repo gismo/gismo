@@ -15,11 +15,11 @@
 
 #include <gismo.h>
 
-#if !defined(GISMO_WITH_MPI)
+#ifndef GISMO_WITH_MPI
 #define braid_SEQUENTIAL 1
 #endif
 
-#include <braid.hpp>
+#include <XBraid/braid/braid.hpp>
 
 namespace gismo {
 

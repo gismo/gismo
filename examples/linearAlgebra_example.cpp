@@ -18,7 +18,7 @@
 using namespace gismo;
 
 int main(int argc, char**argv)
-{
+{     
     gsCmdLine cmd("Tutorial on matrix operations and linear algebra.");
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -35,13 +35,17 @@ int main(int argc, char**argv)
 
     // A matrix with entries of type real_t, and allocated size 3x3
     gsMatrix<real_t> A (3,3);
-    // The comman initializer lets us fill the matrix. Note that the
+    // The comman initializer lets us fill the matrix ROW-WISE. Note that the
     // matrix must have the correct size for this to work
     A << 2,2,3,  4,5,6,  7,8,10;
     A(0,0) -= 1 ;
 
     gsInfo << "A=\n"<< A <<"\n";
-    
+
+    gsInfo<< math::isnan(A(0,0)) <<"\n";
+    gsInfo<< math::isinf(A(0,0)) <<"\n";
+            
+            
     // If the type of the entries of the matrix is not given, the
     // default type is real_t (e.g. double)
     gsMatrix<> E (3,1);

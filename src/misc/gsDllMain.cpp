@@ -22,3 +22,6 @@ DllMain( HANDLE /* hModule */,
          LPVOID /* lpReserved */  )
 { return TRUE; }
 #endif
+
+// equivalent in linux:
+//__attribute__((constructor)) and __attribute__((destructor))

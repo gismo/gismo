@@ -101,6 +101,10 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
 install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
         DESTINATION include/${PROJECT_NAME})
 
+# For gdcpp.h
+install(FILES ${PROJECT_SOURCE_DIR}/external/gdcpp.h
+        DESTINATION include/${PROJECT_NAME})
+
 # For gsXmlUtils.h
 install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
               ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
@@ -159,9 +163,34 @@ install(FILES
 #install(EXPORT gismoTargets DESTINATION
 #  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
+# Produce pkg-config file
+configure_file ("${PROJECT_SOURCE_DIR}/gismo_lib.pc.in"
+                "${PROJECT_BINARY_DIR}/gismo.pc" @ONLY)
+
 else(GISMO_BUILD_LIB)
-   message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
+  message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
+
+# Produce pkg-config file
+  configure_file ("${PROJECT_SOURCE_DIR}/gismo_nolib.pc.in"
+                  "${PROJECT_BINARY_DIR}/gismo.pc" @ONLY)
 endif(GISMO_BUILD_LIB)
+
+# Install pkg-config file
+if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  # FreeBSD uses ${PREFIX}/libdata/pkgconfig
+  set(GISMO_PKGCONFIG_INSTALL_DIR "libdata/pkgconfig")
+else()
+  set(GISMO_PKGCONFIG_INSTALL_DIR "${LIB_INSTALL_DIR}/pkgconfig")
+endif()
+
+install(FILES "${PROJECT_BINARY_DIR}/gismo.pc"
+  DESTINATION "${GISMO_PKGCONFIG_INSTALL_DIR}/"
+  RENAME "${PROJECT_NAME}.pc")
+
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/ofa"
+        COMPONENT devel
+        DESTINATION "${CMAKE_INSTALL_DIR}/"
+        USE_SOURCE_PERMISSIONS)
 
 # Install docs (if available/generated)
 set(DOC_INSTALL_DIR share/doc/gismo CACHE PATH #-${GISMO_VERSION}

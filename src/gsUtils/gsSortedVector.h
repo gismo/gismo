@@ -17,7 +17,7 @@
 //#include <vector>
 //#include <algorithm>			// For lower_bound
 
-
+#ifndef TORCH_VERSION
 namespace std
 {
 
@@ -30,6 +30,7 @@ std::ostream& operator << ( std::ostream& os,
 }
 
 }//namespace std
+#endif
 
 namespace gismo {
 

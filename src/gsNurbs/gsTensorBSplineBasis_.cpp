@@ -41,7 +41,10 @@ void pybind11_init_gsTensorBSplineBasis2(py::module &m)
     // Inherited from gsTensorBasis
     .def("dim", &Class::dim, "Returns the dimension")
     // Inherited from gsBasis
+    .def("active", &Class::active, "Gives actives at points into a matrix")
     .def("eval", &Class::eval, "Evaluates points into a matrix")
+    .def("deriv", &Class::deriv, "Evaluates derivatives at points into a matrix")
+    .def("deriv2", &Class::deriv2, "Evaluates second derivatives at points into a matrix")
     // Inherited from gsBasis
     .def("function", &Class::function, "Returns the basis function i")
     .def("evalSingle", static_cast<gsMatrix<real_t> (Class::*)(index_t, const gsMatrix<real_t> &                   ) const> (&Class::evalSingle     ), "Evaluates the basis function i")

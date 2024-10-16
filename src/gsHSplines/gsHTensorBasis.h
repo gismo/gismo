@@ -585,18 +585,17 @@ public:
     // Look at gsBasis.h for the documentation of this function
     virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
 
-    virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset , index_t level) const;
+    virtual gsMatrix<index_t> boundaryOffsetLevel(boxSide const & s, index_t offset , index_t level) const;
 
     virtual index_t levelAtCorner(boxCorner const & c) const;
 
     virtual index_t functionAtCorner(boxCorner const & c) const;
-    virtual index_t functionAtCorner(boxCorner const & c, index_t level) const;
+    virtual index_t functionAtCorner(boxCorner const & c, index_t level) const;//..
 
 
     // Look at gsBasis.h for the documentation of this function
-    // /// \todo impl. evalAllDers_into
     //void evalAllDers_into(const gsMatrix<T> & u, int n,
-    //                      std::vector<gsMatrix<T> >& result) const;
+    //                      std::vector<gsMatrix<T> >& result, bool sameElement) const;
 
     /// Returns a reference to m_tree
     const gsHDomain<d> & tree() const { return m_tree; }
@@ -748,7 +747,10 @@ public:
                 // We iterate through unique knots, skipping the first and last knot
                 // At level 0 we iterate through all unique knots,
                 // At level >0 we iterate through all knots that are new, i.e. every other knot starting from 1
-                for (gsKnotVector<>::uiterator it = m_bases[lvl]->knots(dir).ubegin() + 1; it < m_bases[lvl]->knots(dir).uend() - 1; it += (lvl == 0? 1 : 2))
+                for (typename gsKnotVector<T>::uiterator it =
+                         m_bases[lvl]->knots(dir).ubegin() + 1;
+                     it < m_bases[lvl]->knots(dir).uend() - 1;
+                     it += (lvl == 0? 1 : 2))
                 {
                     for(unsigned int j =lvl;j < m_bases.size();j++)
                         m_bases[j]->component(dir).insertKnot(*it,i);
@@ -929,15 +931,8 @@ public:
     inline
     index_t flatTensorIndexOf(const index_t i) const
     {
-
-        const index_t level = this->levelOf(i);
-
-        const index_t offset = this->m_xmatrix_offset[level];
-        const index_t ind_in_level = this->m_xmatrix[level][i - offset];
-
-        return ind_in_level;
+        return flatTensorIndexOf(i, this->levelOf(i) );
     }
-
 
     /// @brief Returns the tensor index of the function indexed \a i
     /// (in continued indices).
@@ -951,10 +946,8 @@ public:
     inline
     index_t flatTensorIndexOf(const index_t i, const index_t level) const
     {
-
         const index_t offset = this->m_xmatrix_offset[level];
         const index_t ind_in_level = this->m_xmatrix[level][i - offset];
-
         return ind_in_level;
     }
 
@@ -976,19 +969,21 @@ public:
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
     std::vector< std::vector< std::vector<index_t > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result) const;
     // TO DO: use gsHDomainLeafIterator for a better implementation
-    size_t numElements() const
+    size_t numElements(boxSide const & s = 0) const
     {
-        gsHDomainIterator<T, d> domIter(*this);
+        typename gsBasis<T>::domainIter domIter =
+            s == boundary::none ?
+            typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
+            typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(*this,s) );
 
         size_t numEl = 0;
-        for (; domIter.good(); domIter.next())
+        for (; domIter->good(); domIter->next())
         {
             numEl++;
         }
 
         return numEl;
     }
-    using gsBasis<T>::numElements; //unhide
 
     /// @brief transformes a sortedVector \a indexes of flat tensor index
     /// of the bspline basis of \a level to hierachical indexes in place. If a flat
@@ -1152,6 +1147,18 @@ public:
 // Next line disallows instantization of gsTensorBasis<0,T>
 template<typename T> class gsHTensorBasis<0,T>
 {using T::GISMO_ERROR_gsHTensorBasis_cannot_have_dimension_zero;};
+
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsHTensorBasis
+   */
+  void pybind11_init_gsHTensorBasis2(pybind11::module &m);
+  void pybind11_init_gsHTensorBasis3(pybind11::module &m);
+  void pybind11_init_gsHTensorBasis4(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 
 } // namespace gismo

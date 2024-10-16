@@ -33,6 +33,8 @@
     
     <tab type="classlist" visible="yes" title="" intro=""/>
 
+    <tab type="user" url="@ref python" title="Python bindings" />
+
     <tab type="user" url="@ref citelist" title="Bibliographic references" />
 
     <!--

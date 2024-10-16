@@ -213,6 +213,24 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
       return true;
 }
 
+template<class T>
+bool writeON_NurbsSurface( const gsSurface<T> & srf, const std::string & name)
+{
+    ONX_Model model;
+    writeON_Init(model);
+    writeON_NurbsSurface(srf, model, "srf");
+    return writeON_Write3dm(model,name+".3dm");
+}
+
+template<class T>
+bool writeON_NurbsCurve( const gsCurve<T> & curve, const std::string & name)
+{
+    ONX_Model model;
+    writeON_Init(model);
+    writeON_NurbsCurve(curve, model, "curve");
+    return writeON_Write3dm(model,name+".3dm");
+}
+
 /// Writes a MultiPatch to OpenNurbs file
 template<class T>
 bool writeON_MultiPatch( const gsMultiPatch<T> & patches, const std::string & name)

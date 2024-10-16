@@ -11,6 +11,14 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s): A. Mantzaflaris
+
+    Notes:
+    -PARDISO notes: https://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
+
+    -Compile on 64bit with MKL machine using (lp64):
+
+    cmake .. -DGISMO_OPTIONAL="gsSpectra" -DCMAKE_CXX_COMPILER=icpx -DCMAKE_C_COMPILER=icx -DGISMO_WITH_PARDISO=ON -DPARDISO_USE_MKL=ON -DEIGEN_USE_MKL_ALL=ON -DGISMO_WITH_OPENMP=ON -DMKL_INTERFACE=lp64 -DTARGET_ARCHITECTURE=none
+
 */
 
 #pragma once

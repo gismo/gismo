@@ -138,15 +138,6 @@ public:
         m_src->size_cwise(result);
     }
 
-    size_t numElements() const
-    {
-        return m_src->numElements();
-        // size_t nElem = m_bases[0]->numElements();
-        // for (short_t dim = 1; dim < d; ++dim)
-        //     nElem *= m_bases[dim]->numElements();
-        // return nElem;
-    }
-
     /// Returns the strides for all dimensions
     void stride_cwise(gsVector<index_t,d> & result) const
     {
@@ -237,6 +228,12 @@ public:
             ww(i,0) = m_weights( (ind)(i,0), 0);
         
         return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
+    }
+
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
+    {
+        this->matchWith(bi,other,bndThis,bndOther,0);
     }
 
     // see gsBasis for documentation

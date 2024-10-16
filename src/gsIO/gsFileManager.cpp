@@ -190,6 +190,7 @@ bool gsFileManager::isExplicitlyRelative(const std::string& fn)
 
 namespace {
 
+#if defined _WIN32
 inline void _replace_with_native_separator(std::string & str)
 {
     for (size_t i = 1; i < gsFileManager::getValidPathSeparators().length(); ++i)
@@ -199,6 +200,7 @@ inline void _replace_with_native_separator(std::string & str)
             gsFileManager::getNativePathSeparator());
     }
 }
+#endif
 
 inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out)
 {

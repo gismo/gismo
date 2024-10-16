@@ -263,7 +263,7 @@ public:
     T & weight(int i) const { return this->basis().weight(i); }
 
     /// Returns the NURBS weights
-    gsMatrix<T> & weights() const { return this->basis().weights(); }
+    const gsMatrix<T> & weights() const { return this->basis().weights(); }
 
     /// Returns the NURBS weights as non-const reference
     gsMatrix<T> & weights() { return this->basis().weights(); }

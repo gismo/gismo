@@ -491,7 +491,7 @@ void gsTensorBasis<d,T>::deriv2Single_into(index_t i,
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
             for (short_t r = k+1; r != l; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
-            for (short_t r = l+1; r != d; ++r)
+            for (short_t r = l+1; r < d; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
             c++;
         }
@@ -632,7 +632,8 @@ void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u,
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                          std::vector<gsMatrix<T> >& result) const
+                                          std::vector<gsMatrix<T> >& result,
+                                          bool sameElement) const
 {
     GISMO_ASSERT(n>-2, "gsTensorBasis::evalAllDers() is implemented only for -2<n<=2: -1 means no value, 0 values only, ... " );
     if (n==-1)
@@ -649,8 +650,8 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     for (short_t i = 0; i < d; ++i)
     {
         // evaluate basis functions/derivatives
-        m_bases[i]->evalAllDers_into( u.row(i), n, values[i] ); 
-      
+        m_bases[i]->evalAllDers_into( u.row(i), n, values[i], sameElement); 
+
         // number of basis functions
         const index_t num_i = values[i].front().rows();
         nb_cwise[i] = num_i;
@@ -733,13 +734,11 @@ void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u,
     std::vector< gsMatrix<T> >values[d];
     gsVector<unsigned, d> v, nb_cwise;
 
-    unsigned nb = 1;
     for (short_t i = 0; i < d; ++i)
     {
         m_bases[i]->evalAllDers_into( u.row(i), 2, values[i]); 
         const int num_i = values[i].front().rows();
         nb_cwise[i] = num_i;
-        nb     *= num_i;
     }
 
     deriv2_tp(values, nb_cwise, result);
@@ -835,7 +834,7 @@ void gsTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnot
     else
     {
         GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
-                      "Invalid basis component "<< dir <<" requested for degree elevation" );
+                      "Invalid basis component "<< dir <<" requested for uniform refinement." );
 
         gsVector<index_t,d> sz;
         this->size_cwise(sz);
@@ -887,27 +886,22 @@ void gsTensorBasis<d,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> 
     tensorCombineTransferMatrices<d, T>( B, transfer );
 }
 
-/*
- * //Note: MSVC won't resolve this if defined outside the class
 template<short_t d, class T>
-typename gsBasis<T>::domainIter
+typename gsTensorBasis<d,T>::domainIter
 gsTensorBasis<d,T>::makeDomainIterator() const
 {
-    return typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T, d>(*this));
+    return domainIter(new gsTensorDomainIterator<T, d>(*this));
 }
 
-
-template<class T>
 template<short_t d, class T>
-gsDomainIterator<T>::ptr
-//memory::unique_ptr<gsDomainIterator<T>
-//typename gsBasis<T>::domainIter
+typename gsTensorBasis<d,T>::domainIter
 gsTensorBasis<d,T>::makeDomainIterator(const boxSide & s) const
 {
-    return typename gsBasis<T>::domainIter(new gsTensorDomainBoundaryIterator<T, d>(*this,s));
+    return ( s == boundary::none ? 
+             domainIter(new gsTensorDomainIterator<T,d>(*this)) :
+             domainIter(new gsTensorDomainBoundaryIterator<T,d>(*this, s))
+        );
 }
-*/
-
 
 template<short_t d, class T>
 typename gsGeometry<T>::uPtr

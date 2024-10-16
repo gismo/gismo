@@ -105,7 +105,7 @@ void gsBarrierPatch<d, T>::compute()
   gsVector<T, d> bbmax = boundingBox.col(1);
   T maxside = (bbmax-bbmin).maxCoeff();
 
-  gsVector<T, d> scaleFactor;
+  gsVector<T, d> scaleFactor(d);
   scaleFactor.setConstant(m_boxsize/maxside);
 
   // Apply transformation (translation and scaling) to the patches

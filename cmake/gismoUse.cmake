@@ -156,45 +156,45 @@ function(get_repo_info repository revision) #REPO_REVISION
     #  message("GISMO_REPO undefined.")
     endif()
   endif()
-    #set( ${repo_exe}
-  endfunction()
+  #set( ${repo_exe}
+endfunction()
 
-  macro(add_gismo_module _DIR _NAME)
+macro(add_gismo_module _DIR _NAME)
 
-    message(STATUS "Module ${_NAME}")
-    aux_header_directory     (${_DIR} ${_NAME}_H  )
-    aux_cpp_directory        (${_DIR} ${_NAME}_CPP)
-    aux_tmpl_header_directory(${_DIR} ${_NAME}_HPP)
+  message(STATUS "Module ${_NAME}")
+  aux_header_directory     (${_DIR} ${_NAME}_H  )
+  aux_cpp_directory        (${_DIR} ${_NAME}_CPP)
+  aux_tmpl_header_directory(${_DIR} ${_NAME}_HPP)
 
-    if( (NOT GISMO_BUILD_LIB) )
-      aux_instance_directory (${_DIR} ${_NAME}_INS)
-      if(${_NAME}_INS)
-	LIST( REMOVE_ITEM ${_NAME}_CPP ${${_NAME}_INS})
-      endif()
+  if( (NOT GISMO_BUILD_LIB) )
+    aux_instance_directory (${_DIR} ${_NAME}_INS)
+    if(${_NAME}_INS)
+      LIST( REMOVE_ITEM ${_NAME}_CPP ${${_NAME}_INS})
     endif()
+  endif()
 
-    add_library(${_NAME} OBJECT
-      ${${_NAME}_H}
-      ${${_NAME}_HPP}
-      ${${_NAME}_CPP} )
+  add_library(${_NAME} OBJECT
+    ${${_NAME}_H}
+    ${${_NAME}_HPP}
+    ${${_NAME}_CPP} )
 
-    set_target_properties(${_NAME} PROPERTIES
-      COMPILE_DEFINITIONS gismo_EXPORTS
-      POSITION_INDEPENDENT_CODE ON
-      LINKER_LANGUAGE CXX
-      FOLDER "G+Smo modules" )
+  set_target_properties(${_NAME} PROPERTIES
+    COMPILE_DEFINITIONS gismo_EXPORTS
+    POSITION_INDEPENDENT_CODE ON
+    LINKER_LANGUAGE CXX
+    FOLDER "G+Smo modules" )
 
-    set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${_NAME}>
-      CACHE INTERNAL "G+Smo modules" )
+  set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${_NAME}>
+    CACHE INTERNAL "G+Smo modules" )
 
-    install(DIRECTORY "${_DIR}/${_NAME}"
-      DESTINATION include/gismo
-      FILES_MATCHING PATTERN "*.h")
+  install(DIRECTORY "${_DIR}/${_NAME}"
+    DESTINATION include/gismo
+    FILES_MATCHING PATTERN "*.h")
 
-  endmacro(add_gismo_module)
+endmacro(add_gismo_module)
 
-  macro(gismo_require_submodule SUBMOD)
-    if (NOT ";${GISMO_OPTIONAL};" MATCHES ";${SUBMOD};")
-      message(FATAL_ERROR "The submodule ${PROJECT_NAME} depends on ${SUBMOD}.\nEnable ${SUBMOD} by adding it to GISMO_OPTIONAL and rerun CMake.")
-    endif()
-  endmacro(gismo_require_submodule)
+macro(gismo_require_submodule SUBMOD)
+  if (NOT ";${GISMO_OPTIONAL};" MATCHES ";${SUBMOD};")
+    message(FATAL_ERROR "The submodule ${PROJECT_NAME} depends on ${SUBMOD}.\nEnable ${SUBMOD} by adding it to GISMO_OPTIONAL and rerun CMake.")
+  endif()
+endmacro(gismo_require_submodule)

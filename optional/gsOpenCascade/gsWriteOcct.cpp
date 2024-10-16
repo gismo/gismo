@@ -13,6 +13,7 @@
 
 #include <gsOpenCascade/gsWriteOcct.h>
 #include <gsCore/gsSurface.h>
+#include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsBSplineBasis.h>
 
 #include <TopoDS.hxx>
@@ -148,6 +149,46 @@ Handle(Geom_Surface) makeOcctGeom(const gsSurface<real_t> & srf)
 return bsp;
 }
 
+Handle(Geom_Curve) makeOcctGeom(const gsCurve<real_t> & crv)
+{
+    TColgp_Array1OfPnt cps(1,crv.basis().component(0).size() );
+
+    const gsKnotVector<real_t> & kv1 = 
+        dynamic_cast<const gsBSplineBasis<real_t>&>( crv.basis().component(0) ).knots();
+    TColStd_Array1OfReal UKnots(1,kv1.uSize());
+    TColStd_Array1OfInteger UMults(1,kv1.uSize());
+
+    Standard_Integer theIndex = 1;
+    for(auto  i = kv1.ubegin(); i!=kv1.uend(); ++i)
+    {
+        UMults.SetValue(theIndex, i.multiplicity());
+        UKnots.SetValue(theIndex++, i.value());
+    }
+    theIndex = 0;
+    const bool dd = ( 3 == crv.targetDim() );
+    for(index_t  i = 0; i!=crv.basis().component(0).size(); ++i)
+    {
+        cps.SetValue(i+1, gp_Pnt( crv.coef(theIndex,0),
+                                  crv.coef(theIndex,1),
+                                  dd ? crv.coef(theIndex,2) : 0.0));
+        ++theIndex;
+    }
+
+    Handle(Geom_Curve) bsp;
+    if (crv.basis().isRational() )
+    {
+        TColStd_Array1OfReal wgt(1,crv.basis().component(0).size() );
+        theIndex = 0;
+            for(index_t  i = 0; i!=crv.basis().component(0).size(); ++i)
+                wgt.SetValue(i+1, crv.basis().weights().at(theIndex++) );
+
+        bsp.reset(new Geom_BSplineCurve(cps, wgt,  UKnots, UMults, crv.basis().degree(0) ) );
+    }
+    else
+        bsp.reset(new Geom_BSplineCurve(cps, UKnots, UMults, crv.basis().degree(0) ) );
+return bsp;
+}
+
 bool writeOcctIges(const gsSurface<real_t> & srf, const std::string & name)
 {
     IGESControl_Writer writer;
@@ -165,6 +206,36 @@ bool writeOcctIges(const gsSurface<real_t> & srf, const std::string & name)
     header.SetFileName(new TCollection_HAsciiString(name.c_str()));
     writer.Model()->SetGlobalSection(header);                
     writer.AddGeom( makeOcctGeom(srf) );
+    const std::string fname = name + ".igs";
+    return writer.Write(fname.c_str());;
+}
+
+bool writeOcctIgesMp(const gsMultiPatch<real_t> & mp, const std::string & name)
+{
+    IGESControl_Writer writer;
+    // Interface_Static::SetCVal("write.iges.header.product", "G+Smo");
+    // Interface_Static::SetCVal("write.iges.header.receiver", "G+SmoFriend");
+    // Interface_Static::SetCVal("write.iges.header.author", "G+SmoUser");
+    // Interface_Static::SetCVal("write.iges.header.company", "Inria");
+    IGESData_GlobalSection header = writer.Model()->GlobalSection();
+    header.SetAuthorName(new TCollection_HAsciiString("G+Smo"));
+    header.SetCompanyName(new TCollection_HAsciiString("Inria"));
+    header.SetSendName(new TCollection_HAsciiString("G+SmoSender"));
+    header.SetSystemId(new TCollection_HAsciiString("G+Smo"));
+    header.SetUnitName(new TCollection_HAsciiString("G+Smo"));
+    header.SetReceiveName(new TCollection_HAsciiString("G+Smo"));
+    header.SetFileName(new TCollection_HAsciiString(name.c_str()));
+    writer.Model()->SetGlobalSection(header);                
+
+    for (size_t i = 0; i!= mp.nPatches(); ++i)
+    {
+        const gsGeometry<real_t>& g = mp.patch(i);
+        if (2==g.parDim())
+            writer.AddGeom( makeOcctGeom( (const gsSurface<real_t>&)mp.patch(i) ) );
+        else if (1==g.parDim())
+            writer.AddGeom( makeOcctGeom( (const gsCurve<real_t>&)mp.patch(i) ) );
+    }
+
     const std::string fname = name + ".igs";
     return writer.Write(fname.c_str());;
 }

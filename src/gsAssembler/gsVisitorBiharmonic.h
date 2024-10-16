@@ -92,7 +92,7 @@ public:
         //col(point) = B1_xx B2_yy B1_zz B_xy B1_xz B1_xy B2_xx ...
 
         // Evaluate basis functions on element
-        basis.evalAllDers_into(md.points, 2, basisData);
+        basis.evalAllDers_into(md.points, 2, basisData, true);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);

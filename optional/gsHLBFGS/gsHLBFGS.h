@@ -5,9 +5,8 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsOptionList.h>
 #include <gsOptimizer/gsOptimizer.h>
-#include <gsOptimizer/gsOptProblem.h>
+
 #include "HLBFGS/HLBFGS.h"
 /*
 To do:

@@ -3,6 +3,8 @@ namespace gismo {
 /**
 \page Tutorials Tutorials
 
+These tutorials will get you started with G+Smo.
+
 List of tutorials:
 
 - \subpage Tutorial01

@@ -19,12 +19,6 @@ namespace gismo
 {
 
 template <class T>
-gsFunctionSet<T>::gsFunctionSet() {}
-
-template <class T>
-gsFunctionSet<T>::gsFunctionSet(const gsFunctionSet &) {}
-
-template <class T>
 gsFunctionSet<T>::~gsFunctionSet () {}
 
 template <class T>
@@ -51,7 +45,7 @@ gsMatrix<T> gsFunctionSet<T>::support() const
 }
 
 template <class T>
-gsMatrix<T> gsFunctionSet<T>::support(index_t i) const
+gsMatrix<T> gsFunctionSet<T>::supportOf(const index_t &) const
 {
     GISMO_NO_IMPLEMENTATION
 }
@@ -71,7 +65,7 @@ void gsFunctionSet<T>::active_into (const gsMatrix<T> &, gsMatrix<index_t> &) co
 template <typename T>
 void gsFunctionSet<T>::eval_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {
-    gsWarn << "Is piece(.) needed/implemented ?\n";
+    gsWarn << "eval: Is piece(.) needed/implemented ?\n";
     GISMO_NO_IMPLEMENTATION
 }
 
@@ -83,10 +77,13 @@ template <typename T>
 void gsFunctionSet<T>::deriv2_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {GISMO_NO_IMPLEMENTATION}
 
-template <typename T>
+template <typename T> //__attribute__ ((fallthrough)) // todo
 void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
-                                        std::vector<gsMatrix<T> > & result) const
+                                        std::vector<gsMatrix<T> > & result,
+                                        bool sameElement) const
 {
+    GISMO_UNUSED(sameElement);
+    //gsWarn << "generic evalAllDers called from "<<typeid(*this).name()<< "\n";
     result.resize(n+1);
 
     switch(n)
@@ -111,10 +108,10 @@ void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
 
 template <class T>
 std::vector<gsMatrix<T> >
-gsFunctionSet<T>::evalAllDers(const gsMatrix<T>& u, int n) const
+gsFunctionSet<T>::evalAllDers(const gsMatrix<T>& u, int n, bool sameElement) const
 {
     std::vector<gsMatrix<T> > result;
-    this->evalAllDers_into( u, n, result );
+    this->evalAllDers_into( u, n, result, sameElement);
     return result;
 }
 
@@ -184,7 +181,7 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
 
     const int md = out.maxDeriv();
     if (md != -1)
-        evalAllDers_into(in, md, out.values);
+        evalAllDers_into(in, md, out.values, flags & SAME_ELEMENT);
 
     if (flags & NEED_ACTIVE && flags & SAME_ELEMENT)
     {

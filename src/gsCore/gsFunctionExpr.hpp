@@ -772,7 +772,22 @@ public:
 
     static void get_into (gsXmlNode * node, Object & obj)
     {
-        getFunctionFromXml(node, obj);
+        GISMO_ASSERT( node->first_attribute("dim"), "Reading gsFunctionExpr XML: No dim found" ) ;
+        const int d = atoi( node->first_attribute("dim")->value() );
+
+        std::vector< std::string > expr_strings;
+
+        gsXmlNode * child = node->first_node("c");
+
+        if (child != NULL )
+        {
+            for (; child; child = child->next_sibling() )
+                expr_strings.push_back(  child->value() );
+        }
+        else
+            expr_strings.push_back(  node->value() );
+
+        obj = gsFunctionExpr<T>( expr_strings, d );
     }
 
     static gsXmlNode * put (const Object & obj,

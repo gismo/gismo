@@ -600,7 +600,7 @@ private:
 
         const T & m_tol;
     };
-    
+
 }; // class gsMatrix
 
 

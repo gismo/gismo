@@ -247,9 +247,9 @@ public:
     {
         GISMO_ASSERT(NULL!=m_vrow[id], "Not set.");
         expr::gsFeSpace<T> s = m_exprdata->
-            getSpace(*m_vrow[id]->fs,m_vrow[id]->dim());
+            getSpace(*m_vrow[id]->fs,m_vrow[id]->dim);
         s.setSpaceData(*m_vrow[id]);
-        return *m_vrow[id];
+        return s;
     }
 
     /// Return the test space of a pre-existing trial space \a u
@@ -309,11 +309,15 @@ public:
      * @param save_sparsety_pattern only modify values but keep sparsety
      * information by multiplying matrix by zero in-place
      */
-    void clearMatrix(const bool& save_sparsety_pattern = true) {
-        if (save_sparsety_pattern) {
+    void clearMatrix(const bool& save_sparsety_pattern = true)
+    {
+        if (m_matrix.nonZeros() && save_sparsety_pattern)
+        {
             std::fill(m_matrix.valuePtr(),
                       m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
-        } else {
+        }
+        else
+        {
             m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
             if (0 == m_matrix.rows() || 0 == m_matrix.cols())
@@ -441,7 +445,9 @@ private:
         {
             auto u = ee.rowVar();
             auto v = ee.colVar();
+#ifndef NDEBUG
             const bool m = E::isMatrix();
+#endif
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!m || u.isValid(), "The column space is not valid");
             GISMO_ASSERT(m || (ea.numDofs()==ee.rhs().size()), "The right-hand side vector is not initialized");
@@ -796,6 +802,8 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             if (m_exprdata->points().cols()==0)
                 continue;
 
+// Activate the try-catch only if G+Smo is not in DEBUG
+#ifdef NDEBUG
             // Perform required pre-computations on the quadrature nodes
             try
             {
@@ -809,6 +817,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 failed = true;
                 break;
             }
+#else
+            m_exprdata->precompute(patchInd);
+#endif
 
 
             // Assemble contributions of the element

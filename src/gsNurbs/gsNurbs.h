@@ -231,6 +231,10 @@ protected:
     // TODO Check function
     // check function: check the coefficient number, degree, knot vector ...
 
+private:
+
+    // Avoid hidden overloads w.r.t. gsGeometry
+    using Base::insertKnot;
 
 // Data members
 private:

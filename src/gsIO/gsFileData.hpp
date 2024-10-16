@@ -293,10 +293,22 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
 }
 
 template<class T>
+void gsFileData<T>::addInclude( const std::string & filename, const real_t & time,
+                                const index_t & id, const std::string & label)
+{
+    GISMO_ASSERT( filename!="", "No filename provided for include!");
+    gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
+    if (-1. != time)
+        node->append_attribute(internal::makeAttribute("time", std::to_string( cast<real_t,double >( time ) ), *data));
+    data->appendToRoot(node,id, label);
+}
+
+
+template<class T>
 void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std::string label)
 {   
     // Ensures that only one argument is actually provided
-    GISMO_ENSURE((id!=-1 ^  time!=-1. ^  label!="") &&
+    GISMO_ENSURE(( (id!=-1) ^  (time!=-1.) ^  (label!="") ) &&
                 !(id!=-1 && time!=-1. && label!=""),
                 "gsFileData::getInclude("<<id<<","<<time<<","<<label<<"), too many arguments provided!");
     std::string attr_name, attr_string;
@@ -310,7 +322,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
     else if ( time!=-1)
     {
         attr_name   = "time";
-        attr_string = std::to_string(time);
+        attr_string = cast<real_t,double>( time );
     }
     else if ( label!="")
     {
@@ -318,9 +330,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
         attr_string = label;
     } 
 
-    bool found=false;
     gsXmlNode * root = getXmlRoot();
-    const gsXmlAttribute * attribute;
 
     gsXmlNode * nd = internal::searchNode(root, attr_name, attr_string, "xmlfile");
     if (nd)
@@ -517,7 +527,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
 
     // Temporaries
     bool rational;
-    int  ncp, deg, c, parDim, geoDim;
+    int  ncp, deg, c, parDim(0), geoDim;
 
     // Structure:
     // type, version
@@ -556,7 +566,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
         case 210:  // Class_BoundedSurface
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Reading GoTools trimmed surface (ClassType="<<ncp<<") not implemented.\n";
-
+            break;
         case 110:  // Class_CurveOnSurface
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Reading GoTools CurveOnSurface (ClassType="<<ncp<<") not implemented.\n";

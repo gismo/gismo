@@ -18,7 +18,8 @@
 
 #include <gsCore/gsConstantFunction.h>
 
-namespace gismo{
+namespace gismo
+{
 
 // ************************************************
 // Public member functions
@@ -27,30 +28,29 @@ namespace gismo{
 template<short_t d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
-    GISMO_ASSERT(d==2,"Not implemented for d!=2");
+    typedef typename gsHDomain<d>::point point;
+
+    const gsHDomain<d>& tree = this->basis().tree();
 
     // Construct a box covering the whole parameter domain.
-    const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
-    std::vector<index_t> wholeDomainAsBox(2*d+1,0);
+    const point & uCornerGlob = tree.upperCorner();
+    point uCornerLoc;
 
-    wholeDomainAsBox[0] = this->basis().tree().getMaxInsLevel();
+    index_t maxInsLevel = tree.getMaxInsLevel();
+    tree.global2localIndex(uCornerGlob, maxInsLevel, uCornerLoc);
 
-    std::copy(uCorner.data(), uCorner.data()+d, wholeDomainAsBox.begin()+d+1);
+    std::vector<index_t> wholeDomainAsBox(2*d+1, 0);
+    wholeDomainAsBox[0] = maxInsLevel;
+
+    std::copy(uCornerLoc.data(), uCornerLoc.data()+d, wholeDomainAsBox.begin()+d+1);
 
     // Refine the whole domain to the finest level present there.
     this->refineElements( wholeDomainAsBox );
 
-    tensorBasis & tpBasis = 
-        this->basis().tensorLevel(this->basis().maxLevel());
+    tensorBasis & tpBasis = this->basis().tensorLevel(this->basis().maxLevel());
 
-    gsTensorBSplineBasis<2,T> newtpBasis(tpBasis.knots(0), tpBasis.knots(1)); 
-    // makeGeometry returns an abstract class, so we need to cast to the particular.
-    gsTensorBSpline<d,T> *newGeo = 
-        static_cast< gsTensorBSpline<d,T> *>(newtpBasis.makeGeometry(this->coefs()).release());
-
-    result = *newGeo;
-    // Don't forget:
-    delete newGeo;
+    // makeGeometry returns an abstract class, therefore we need to cast to the particular.
+    result = *(static_cast< gsTensorBSpline<d, T> *>(tpBasis.makeGeometry(this->coefs()).release()));
 }
 
 template<short_t d, class T>

@@ -402,7 +402,7 @@ public:
 
     gsVector<index_t> nonZerosPerInner(index_t upto = std::numeric_limits<index_t>::max())  const
     {
-        upto = math::min(upto, this->cols());
+        upto = math::min(upto, this->outerSize());
         gsVector<index_t> nz(upto);
         index_t * v = nz.data();
         for (index_t i = 0; i != upto; ++i, ++v)

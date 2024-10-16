@@ -219,6 +219,14 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
                                 gsVector<T> & x, // Quadrature points
                                 gsVector<T> & w) // Quadrature weights
 {
+    if ( REAL_DIG >= 28 )
+    {
+        // The generated points and weights are only accurate up to ~30 decimal digits (leaving some wiggle room inside the conditional).
+        // If the precision of the number format aliased by real_t is higher than that the lookup is refused.
+        // More precise weights must be computed on-the-fly.
+        return false;
+    }
+
     x.resize(n);
     w.resize(n);
 

@@ -879,6 +879,7 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
 
+
 template<class T>
 template<class E, bool gmap>
 void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,

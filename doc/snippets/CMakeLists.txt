@@ -35,6 +35,8 @@ foreach(snippet_src ${snippets_SRCS})
 
   if(GISMO_BUILD_LIB)
     target_link_libraries(${snippet_target} gismo)
+  else()
+    target_link_libraries(${snippet_target} gismo_static)
   endif()
 
 if (NOT NOSNIPPETS)

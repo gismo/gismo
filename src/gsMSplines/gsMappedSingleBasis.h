@@ -87,7 +87,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements() const { return m_basis->getBase(m_index).numElements(); }
+    size_t numElements(boxSide const & s = 0) const { return m_basis->getBase(m_index).numElements(s); }
 
     /*
       void refine(gsMatrix<T> const & boxes)
@@ -104,7 +104,7 @@ public:
     }
 
     /// Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    void numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const
+    void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const
     {
         // Assuming all patches have the same degree
         m_basis->numActive_into(m_index,u,result);
@@ -197,9 +197,10 @@ public:
 
     /// @brief Evaluate the nonzero basis functions and their derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDers_into(const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result) const
+    void evalAllDers_into(const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result,
+        bool sameElement = false) const
     {
-        m_basis->evalAllDers_into(m_index,u,n,result);
+        m_basis->evalAllDers_into(m_index,u,n,result,sameElement);
     }
 
     /// @brief Evaluate the basis function \a i and its derivatives up
@@ -377,5 +378,15 @@ private:
 
 }; // class gsMappedSingleBasis
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsMappedSingleBasis
+   */
+  // void pybind11_init_gsMappedSingleBasis1(pybind11::module &m);
+  void pybind11_init_gsMappedSingleBasis2(pybind11::module &m);
+  // void pybind11_init_gsMappedSingleBasis3(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
