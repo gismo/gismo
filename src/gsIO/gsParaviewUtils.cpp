@@ -22,39 +22,39 @@ namespace gismo
 {
     gsMatrix<real_t> vtkIDTransform(index_t nU, index_t nV)
     {
-        // T converts coefs from G+Smo's convetnion to ParaView's convention
-        gsMatrix<real_t> T(nU*nV, nU*nV);
-        T.setZero();
+        // Transform converts coefs from G+Smo's convention to ParaView's convention
+        gsMatrix<real_t> Transform(nU*nV, nU*nV);
+        Transform.setZero();
 
-        // T( Paraview , gismo  )
+        // Transform( Paraview , gismo  )
         // Corners ( always 0-3 )
-        T(0,0) = 1;
-        T(1,nU-1) = 1;
-        T(2,nU*nV-1) = 1;
-        T(3,nU*nV-nU) = 1;
+        Transform(0,0) = 1;
+        Transform(1,nU-1) = 1;
+        Transform(2,nU*nV-1) = 1;
+        Transform(3,nU*nV-nU) = 1;
 
         // Edges
         for (index_t i=1;i<nU-1;++i) // Parallel to u
         {
-            T(3+i,i) = 1;
-            T(3+ (nU-2) + (nV-2) + i, nU*(nV-1) + i  ) = 1;
+            Transform(3+i,i) = 1;
+            Transform(3+ (nU-2) + (nV-2) + i, nU*(nV-1) + i  ) = 1;
 
 
         }
         for (index_t j=1;j<nV-1;++j) // Parallel to v
         {
-            T( 3 + (nU-2) + j, (j+1)*nU-1) = 1 ;
-            T( 3 + 2*(nU-2) + (nV-2) + j, nU*j) = 1;
+            Transform( 3 + (nU-2) + j, (j+1)*nU-1) = 1 ;
+            Transform( 3 + 2*(nU-2) + (nV-2) + j, nU*j) = 1;
         }
         // Internal
         for (index_t i=0;i<nU-2;++i)
         {
             for (index_t j=0;j<nV-2;++j)
             {
-                T(2*( nU + nV) - 4 + j*(nU-2) + i , nU*(j+1)+(i+1)) = 1;
+                Transform(2*( nU + nV) - 4 + j*(nU-2) + i , nU*(j+1)+(i+1)) = 1;
             }
         }
-        return T;
+        return Transform;
     }
     
 
