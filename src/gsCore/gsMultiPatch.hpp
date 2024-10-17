@@ -1088,8 +1088,6 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
         auto Ait = ElBlock.actives.begin();        // Actives Iterator
         auto Cit = ElBlock.coefVectors.begin();    // Coefficients Iteratos
 
-        gsMatrix<real_t> newCoefs( ((ElBlock.PR+1) * (ElBlock.PS+1)), targetDim() );
-
         for(; Ait != ElBlock.actives.end() && Cit != ElBlock.coefVectors.end(); ++Ait, ++Cit)
         {
             gsTensorBSpline<2> bezier(kv1,kv2, *Cit * coefs()(Ait->asVector(),gsEigen::all));
