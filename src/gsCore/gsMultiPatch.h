@@ -431,7 +431,7 @@ public:
     const BoundaryRep & boundaryRep() const { return m_bdr; }
     const BoundaryRep & sides() const { return m_sides; }
 
-    gsMultiPatch<T> BezierExtraction() const;
+    gsMultiPatch<T> extractBezier() const;
     
 protected:
 

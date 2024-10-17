@@ -362,7 +362,7 @@ namespace gismo
         << "<UnstructuredGrid>\n";
 
 
-        const gsMultiPatch<T> bezierExt = mPatch.BezierExtraction(); 
+        const gsMultiPatch<T> bezierExt = mPatch.extractBezier(); 
         index_t totalPoints = bezierExt.coefsSize();
 
         // Set up matrices with cell data

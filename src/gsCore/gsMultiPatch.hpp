@@ -1070,7 +1070,7 @@ std::map<index_t, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() cons
 
 
 template<class T> 
-gsMultiPatch<T> gsMultiPatch<T>::BezierExtraction() const
+gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
 {
     GISMO_ENSURE( 2==domainDim(), "Anything other than bivariate splines is not yet supported!");
     std::map<index_t, internal::ElementBlock> ElementBlocks = BezierOperator();
