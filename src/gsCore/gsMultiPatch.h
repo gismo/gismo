@@ -465,6 +465,8 @@ private:
            gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
            T tol, index_t reference=0);
     
+    /// @brief Performs Bezier extraction on the multipatch
+    /// @return The ElementBlock structure of the Bezier extraction, which contains the Bezier coefficients and the active nodes for each bezier patch;
     std::map<index_t, internal::ElementBlock> BezierOperator() const;
 
 }; // class gsMultiPatch
