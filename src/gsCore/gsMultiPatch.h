@@ -431,6 +431,16 @@ public:
     const BoundaryRep & boundaryRep() const { return m_bdr; }
     const BoundaryRep & sides() const { return m_sides; }
 
+    /**
+     * @brief Extracts a Bezier representation of the current gsMultiPatch object.
+     *
+     * This function extracts the Bezier representation of the current gsMultiPatch object.
+     *
+     * @tparam T The numerical type used for the definition of the gsMultiPatch object.
+     * @return A gsMultiPatch object containing the Bezier representation of the original object.
+     *
+     * @note Currently, only bivariate splines are supported.
+     */
     gsMultiPatch<T> extractBezier() const;
     
 protected:
