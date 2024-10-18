@@ -1013,7 +1013,7 @@ std::map<index_t, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() cons
     gsMatrix<index_t> actives; // Active basis functions
     index_t offset=0; // Offset of active's numbering ( local id -> multipatch id)
 
-    for (index_t p=0; p<nPatches(); ++p)
+    for (size_t p=0; p<nPatches(); ++p)
     {
         gsBasis<T> * basis = & patch(p).basis();
 

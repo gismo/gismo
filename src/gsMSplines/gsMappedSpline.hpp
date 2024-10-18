@@ -193,4 +193,40 @@ gsGeometry<T> * gsMappedSpline<d,T>::exportPatch(int i,gsMatrix<T> const & local
     return m_mbases->exportPatch(i,localCoef);
 }
 
+template<short_t d,class T>
+std::map<index_t, internal::ElementBlock> gsMappedSpline<d,T>::BezierOperator() const
+{
+    GISMO_ENSURE( 2==domainDim(), "Anything other than bivariate splines is not yet supported!");
+
+    // Loop over all the elements of the given multipatch and collect all relevant
+    // information in ElementBlocks. These will be grouped in a std::map
+    // with respect to the number of active basis functions ( = NN/NCV )
+    // of each Bezier element
+    std::map<index_t, internal::ElementBlock> ElementBlocks;
+
+    index_t NN; // Number of control points of the Bezier element
+    gsMatrix<index_t> actives; // Active basis functions
+
+    gsMatrix<T> tmp, center_point(2,1);
+    center_point.setConstant( (T)(0.5) );
+
+    for (size_t p=0; p<nPatches(); ++p)
+    {
+        const gsBasis<T> * basis = & this->getBase(p);
+        actives = basis->active( center_point );
+        NN = actives.size();
+        ElementBlocks[NN].numElements += 1;    // Increment the Number of Elements contained in the ElementBlock
+        ElementBlocks[NN].actives.push_back(actives);  // Append the active basis functions ( = the Node IDs ) for this element.
+        ElementBlocks[NN].PR = basis->degree(0);
+        ElementBlocks[NN].PS = basis->degree(1);
+        ElementBlocks[NN].PT = 0; // TODO: if implemented for trivariates fix this
+        
+        this->exportPatch(p, tmp);
+        ElementBlocks[NN].coefVectors.push_back( tmp ); //(!) If it is not  bezier
+    }
+
+    return ElementBlocks;
 }
+
+
+} //namespace gismo

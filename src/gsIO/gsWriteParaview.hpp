@@ -994,7 +994,7 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
     {   
         gsParaviewCollection collection(filename);
         collection.addPart(gsFileManager::getFilename(filename) + ".vtu");
-        for (index_t patch=0; patch<mPatch.nPatches();++patch)
+        for (size_t patch=0; patch<mPatch.nPatches();++patch)
         {
             const std::string fileName = filename + "_" + util::to_string(patch) + "_cnet";
             const std::string fileName_nopath = gsFileManager::getFilename(fileName);
