@@ -206,7 +206,7 @@ namespace gismo
     /// @param nU Number of control points in u parametric direction
     /// @param nV Number of control points in u parametric direction
     /// @return 
-    gsMatrix<real_t> vtkIDTransform(index_t nU, index_t nV);
+    GISMO_EXPORT gsMatrix<real_t> vtkIDTransform(index_t nU, index_t nV);
 
 
 
@@ -215,7 +215,7 @@ namespace gismo
     /// @param attributes Optional, map of strings, with attribute name mapping to attribute value.
     /// @param ind Optional, indentation level for the resulting string.
     /// @return 
-    std::string toDataArray(index_t num, std::map<std::string, std::string> attributes={{"",""}});
+    GISMO_EXPORT std::string toDataArray(index_t num, std::map<std::string, std::string> attributes={{"",""}});
 
 
 
