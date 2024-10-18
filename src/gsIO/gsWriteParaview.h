@@ -143,6 +143,15 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
     gsWriteParaview( Geo.patches(), fn, npts, mesh, ctrlNet, pDelim);
 }
 
+/// \brief Export a multipatch Geometry (without scalar information) to paraview file using Bezier elements.
+///
+/// \param Geo a multipatch object
+/// \param fn filename where paraview file is written
+/// \param singleFile if true, the entire gsMultiPatch is exported in one .vtu file, to reduce clutter
+/// \param ctrlNet if true, the control net is plotted as well
+template<class T>
+void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool ctrlNet = false);
+
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
 /// \param Geo a vector of the geometries to be plotted
