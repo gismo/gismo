@@ -39,26 +39,18 @@ namespace gismo
                                    const bool& export_base64);
 
 
-    // template <class E>
-    // std::vector<std::string> toVTK(const expr::_expr<E>& expr,
-    //                                const gsExprEvaluator<> & evaltr,
-    //                                unsigned nPts, unsigned precision,
-    //                                std::string label,
-    //                                const bool& export_base64)
-
-
-/*     TEMPLATE_INST
-    std::string toDataArray(const gsMatrix<real_t>& points,
-                            std::map<std::string,std::string> attributes,
-                            unsigned precision,
-                            const bool& export_base64);
-
     TEMPLATE_INST
-    std::string toDataArray(const gsMatrix<index_t>& points,
-                            std::map<std::string,std::string> attributes,
+    std::string toDataArray(const gsMatrix<real_t> & matrix,
+                            std::map<std::string, std::string> attributes,
                             unsigned precision,
                             const bool& export_base64);
- */
+
+    
+    TEMPLATE_INST
+    std::string toDataArray(const gsMatrix<index_t> & matrix,
+                            std::map<std::string, std::string> attributes,
+                            unsigned precision,
+                            const bool& export_base64);
 
     TEMPLATE_INST
     std::string BezierVTK(const gsMultiPatch<real_t> & mPatch);
