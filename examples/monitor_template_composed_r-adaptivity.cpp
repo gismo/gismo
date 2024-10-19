@@ -22,11 +22,18 @@
 
 //! [Include namespace]
 
+enum MonitorMode
+{
+    // We can add the option "Runtime" where the mode is determined at runtime using an option
+    ValueBased = 0,
+    GradientBased = 1
+};
+
 namespace gismo{
 namespace expr{
 
-template<class E>
-class monitor_expr : public _expr<monitor_expr<E> >
+template<enum MonitorMode MODE, class E>
+class monitor_expr : public _expr<monitor_expr<MODE,E> >
 {
 public:
     typedef typename E::Scalar Scalar;
@@ -34,6 +41,7 @@ public:
     mutable gsMatrix<Scalar> res;
     mutable gsMatrix<Scalar> grad, jac, jacInv;
     mutable gsMatrix<Scalar> ones;
+    mutable Scalar m_theta;
 
 private:
     typename E::Nested_t _u;
@@ -43,11 +51,12 @@ private:
 public:
     enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
 
-    monitor_expr(const E & u, const gsGeometryMap<Scalar> & G)
+    monitor_expr(const E & u, const gsGeometryMap<Scalar> & G, const Scalar theta)
     :
     _u(u),
     _G(G),
-    DIM(_u.source().domainDim())
+    DIM(_u.source().domainDim()),
+    m_theta(theta)
     {
     }
 
@@ -56,7 +65,7 @@ public:
 #   undef Eigen
 
     const gsMatrix<Scalar> & eval(const index_t k) const
-    {return eval_impl(_u,k); }
+    {return eval_impl<MODE>(_u,k); }
 
     index_t rows() const { return DIM; }
 
@@ -64,15 +73,7 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        // jac_expr<gsFeVariable<Scalar>>(_u).parse(evList);
-        jacInv_expr<Scalar>(_G).parse(evList);
-        // _u.parse(evList);
-        _G.parse(evList);
-
-        // OLD
-        evList.add(_u);
-        _u.data().flags |= NEED_VALUE; //for value-based
-        // _u.data().flags |= NEED_JACOBIAN;
+        parse_impl<MODE>(evList);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -82,46 +83,89 @@ public:
     void print(std::ostream &os) const { os << "M("; _u.print(os); os <<")"; }
 
 private:
-    template<class U> inline
+
+    template<enum MonitorMode _MODE> inline
+    typename util::enable_if<_MODE == ValueBased, void>::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        _G.parse(evList);
+
+        evList.add(_u);
+        _u.data().flags |= NEED_VALUE; //for value-based
+    }
+
+    template<enum MonitorMode _MODE> inline
+    typename util::enable_if<_MODE == GradientBased, void>::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        jacInv_expr<Scalar>(_G).parse(evList);
+        _G.parse(evList);
+
+        evList.add(_u);
+        _u.data().flags |= NEED_JACOBIAN;
+    }
+
+    template<enum MonitorMode _MODE> inline
+    typename util::enable_if< _MODE != ValueBased && _MODE != GradientBased , void>::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
+    template<enum MonitorMode _MODE, class U> inline
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
         GISMO_NO_IMPLEMENTATION;
     }
 
-    template<class U> inline
-    typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    template<enum MonitorMode _MODE, class U> inline
+    typename util::enable_if< !util::is_same<U,gsFeSpace<Scalar> >::value && _MODE == ValueBased, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        GISMO_NO_IMPLEMENTATION;
-    }
-
-    template<class U> inline
-    typename util::enable_if< !util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
-    eval_impl(const U & u, const index_t k)  const
-    {
-        real_t eps = 0.1; // determines the degree of smoothing
         ones.resize(DIM,DIM);
         ones.setIdentity();
 
-        /// Gradient-based
-        /*
+        // Value-based:
+        Scalar uval = _u.data().values[0].col(k).value();
+        res = 1.0 / ( math::sqrt(1.0 +m_theta*math::pow(uval,2) ) ) * ones;
+        return res;
+    }
+
+    template<enum MonitorMode _MODE, class U> inline
+    typename util::enable_if< !util::is_same<U,gsFeSpace<Scalar> >::value && _MODE == GradientBased, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
+    {
+        ones.resize(DIM,DIM);
+        ones.setIdentity();
+
+        // Gradient-based
         jac = _u.data().values[1].col(k).transpose();
         jacInv_expr<Scalar> jacInvExpr = jacInv_expr<Scalar>(_G);
         jacInv = jacInvExpr.eval(k);
         grad = jac * jacInv;
 
-        res = 1.0 / ( math::sqrt(1.0 +eps*grad.squaredNorm() ) ) * ones;
-        */
-        /// Value-based:
-        Scalar uval = _u.data().values[0].col(k).value();
-        res = 1.0 / ( math::sqrt(1.0 +eps*math::pow(uval,2) ) ) * ones;
+        res = 1.0 / ( math::sqrt(1.0 +m_theta*grad.squaredNorm() ) ) * ones;
         return res;
     }
+
+    template<enum MonitorMode _MODE, class U> inline
+    typename util::enable_if< !util::is_same<U,gsFeSpace<Scalar> >::value && _MODE != ValueBased && _MODE != GradientBased, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
+    {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
 };
 
-template<class E> EIGEN_STRONG_INLINE
-monitor_expr<E> monitor(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return monitor_expr<E>(u,G); }
+template<enum MonitorMode MODE, class E>
+EIGEN_STRONG_INLINE
+monitor_expr<MODE,E> monitor(const E & u,
+                             const gsGeometryMap<typename E::Scalar> & G,
+                             const typename E::Scalar theta = 0.1)
+                             {
+                                return monitor_expr<MODE,E>(u,G,theta);
+                             }
 
 
 }
@@ -130,7 +174,7 @@ monitor_expr<E> monitor(const E & u, const gsGeometryMap<typename E::Scalar> & G
 using namespace gismo;
 
 
-template<typename T = real_t>
+template<typename T, enum MonitorMode MODE>
 class gsOptMesh : public gsOptProblem<T>
 {
     using Base = gsOptProblem<T>;
@@ -141,37 +185,51 @@ private:
     typedef typename gsExprAssembler<T>::solution solution;
 
 public:
-    gsOptMesh(  gsFunction<T> & composition,
+    gsOptMesh(        gsFunction<T> & composition,
                 const gsGeometry<T> & geometry,
-                const gsFunctionSet<T> & fun,
-                T eps = 1e-2)
+                const gsFunction<T> & fun,
+                const bool            parametric)
     :
-    m_comp(&composition),
-    m_geom(geometry),
-    m_fun(fun),
-    m_eps(eps)
+    m_comp(composition)
     {
-        m_numDesignVars = m_comp->nControls();
-        m_curDesign.resize(m_numDesignVars,1);
 
-        m_options.addInt("nSamplingPoints","Number of sampling points in each parametric direction",50);
+
+        // Assert dimensions
+        // GISMO_ASSERT();
+
+        m_cgeom = gsComposedGeometry<T>(m_comp,geometry);
+        if (parametric)
+            m_cfun = gsComposedFunction<T>(m_comp,fun);
+        else
+            m_cfun = gsComposedFunction<T>(m_cgeom,fun);
+
+        m_numDesignVars = m_comp.nControls();
+        m_curDesign.resize(m_numDesignVars,1);
+        m_controls.resize(m_numDesignVars,1);
+        for (index_t k=0; k!=m_numDesignVars; k++)
+            m_controls(k,0) = m_comp.control(k);
 
         m_options.addInt("nRefine","Number of refinement steps for the integration basis",2);
         m_options.addInt("nElevate","Number of elevation steps for the integration basis",1);
+
+        m_options.addReal("Smoothing","Smoothing parameter for the monitor function",0.1);
+        m_options.addReal("Penalty","Penalty parameter for the monitor function",1e-2);
+
+
     }
+
+    gsFunction<T> & composition() { return m_comp; }
 
     gsOptionList & options() { return m_options; }
 
     /// Evaluates the objective function at the given point u.
     T evalObj(const gsAsConstVector<T> &u) const override
     {
-        for (index_t k=0; k!=u.rows(); k++)
-            m_comp->control(k) = u[k];
-
-        gsComposedGeometry<T> cgeom(*m_comp,m_geom);
+        for (index_t k=0; k!=m_numDesignVars; k++)
+            m_comp.control(k) = u[k];
 
         gsMultiPatch<> mpG;
-        mpG.addPatch(cgeom);
+        mpG.addPatch(m_cgeom);
 
         gsKnotVector<> kv({0,0,1,1},1);
         gsTensorBSplineBasis<2,T> basis(kv,kv);
@@ -184,7 +242,7 @@ public:
         m_evaluator.setIntegrationElements(mb);
         geometryMap G = m_evaluator.getMap(mpG);
 
-        gsConstantFunction<T> epsilonFunction(m_eps, m_geom.domainDim());
+        gsConstantFunction<T> epsilonFunction(m_options.getReal("Penalty"), m_cgeom.domainDim());
         auto eps = m_evaluator.getVariable(epsilonFunction);
 
         // auto chi = 0.5 * (jac(G).det() + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
@@ -198,19 +256,19 @@ public:
 
         // gsVector<unsigned> np(m_fun.domainDim());
         // np.setConstant(m_options.getInt("nSamplingPoints"));
-        // gsMatrix<T> grid = gsPointGrid<T>(m_geom.support().col(0),m_geom.support().col(1),np);
-        if (m_geom.domainDim()==m_geom.targetDim())
+        // gsMatrix<T> grid = gsPointGrid<T>(m_cgeom.support().col(0),m_cgeom.support().col(1),np);
+        if (m_cgeom.domainDim()==m_cgeom.targetDim())
         {
             auto jacG = jac(G).det();
             auto chi = 0.5 * (jacG + pow(pow(eps.val(),2.0) + pow(jacG, 2.0), 0.5));
             auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
 
             // auto eta = m_evaluator.getVariable(fun);
-            auto eta = m_evaluator.getVariable(m_fun);
+            auto eta = m_evaluator.getVariable(m_cfun);
             // auto eta = m_evaluator.getVariable(m_fun,G);
 
-            // return m_evaluator.eval((monitor(eta,G)*invJacMat).sqNorm(),grid).sum();
-            return m_evaluator.integral( (monitor(eta,G)*invJacMat).sqNorm()*meas(G));
+            auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
+            return m_evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
         }
         else
         {
@@ -244,15 +302,91 @@ protected:
     using Base::m_curDesign;
     using Base::m_numDesignVars;
 
+    // Controls of the composition
+    // NOTE: Different from m_curDesign, since m_curDesign updates every time
+    gsMatrix<T> m_controls;
 
-    gsFunction<T> * m_comp;
-    const gsGeometry<T> & m_geom;
-    const gsFunctionSet<T> & m_fun;
-    T m_eps;
+    gsFunction<T>         & m_comp;
+    gsComposedGeometry<T>   m_cgeom;
+    gsComposedFunction<T>   m_cfun;
 
     gsOptionList m_options;
 
     mutable gsExprEvaluator<T> m_evaluator;
+};
+
+/*
+    NOTES:
+    * Give the integration basis?? The integration elements should be the finest of the elements of the composition and the basis/geometry
+    * There should be a rule of thumb for the number of integration points. Given a composition of degree p and a geometry of degree q, the number of integration points should be at least p*q+1?? or p+q+1??
+ */
+template<class T, enum MonitorMode MODE=MonitorMode::ValueBased>
+class gsComposedRelocation
+{
+protected:
+
+public:
+
+    /**
+     * @brief      Constructs a new instance.
+     * @param[in]  composition  The composition to apply to the geometry
+     * @param[in]  geometry     The geometry to be relocated
+     * @param[in]  fun          The function used for the monitor function
+     */
+    gsComposedRelocation(      gsFunction<T>  & composition,
+                         const gsGeometry<T>  & geometry,
+                         const gsFunction<T>  & function,
+                               gsOptimizer<T> & optimizer,
+                         const bool               parametric=true)
+    :
+    m_optProblem(composition,geometry,function,parametric),
+    m_optimizer(optimizer)
+    {
+        this->defaultOptions();
+    }
+
+    gsOptionList & options() { return m_options; }
+
+    void defaultOptions()
+    {
+        m_options.addReal("Penalty","Penalization coefficient for Jacobian determinant [default=0.01]",1e-2);
+        m_options.addReal("Smoothing","Smoothing parameter in the monitor function [default=0.1]",0.1);
+        m_options.addInt("Mode","0: Relocate based on f [default]; 1: Relocate based on grad(f)",0);
+
+        // Integration basis options [HUGO: replace with numGauss]
+        m_options.addInt("nRefine","Number of refinement steps for the integration basis",2);
+        m_options.addInt("nElevate","Number of elevation steps for the integration basis",1);
+    }
+
+    void solve()
+    {
+        // Set the optimization problem
+        m_optProblem.options().setInt("nRefine",m_options.getInt("nRefine"));
+        m_optProblem.options().setInt("nElevate",m_options.getInt("nElevate"));
+        m_optProblem.options().setReal("Smoothing",m_options.getReal("Smoothing"));
+        m_optProblem.options().setReal("Penalty",m_options.getReal("Penalty"));
+
+        m_optimizer.setProblem(&m_optProblem);
+        // Solve the optimization problem
+        gsVector<T> controls(m_optProblem.composition().nControls());
+        for (index_t k=0; k!=m_optProblem.composition().nControls(); k++)
+            controls[k] = m_optProblem.composition().control(k);
+
+        gsDebugVar(controls.transpose());
+        m_optimizer.solve(controls);
+        controls = m_optimizer.currentDesign();
+        gsDebugVar(controls.transpose());
+        // Write the optimized solution back to the composition
+        for (index_t k=0; k!=controls.rows(); k++)
+            m_optProblem.composition().control(k) = controls[k];
+    }
+
+protected:
+
+    gsOptMesh<T,MODE>       m_optProblem;
+    gsOptimizer<T>        & m_optimizer;
+
+    gsOptionList m_options;
 };
 
 
@@ -340,6 +474,7 @@ int main(int arg, char *argv[])
 
     gsComposedFunction<real_t> cfun({&domain,fun});
     // gsComposedFunction<real_t> cfun({&cspline,fun});
+    gsComposedGeometry<real_t> cgeom(domain,geom.patch(0));
 
 /*
     PERFORM R-ADAPTIVITY
@@ -347,19 +482,10 @@ int main(int arg, char *argv[])
 
     gsInfo<<"Number of optimizer degrees of freedom: "<<domain.nControls()<<"\n";
 
-    gsOptMesh<> optMesh(domain,geom.patch(0),cfun,eps);
-    gsVector<> controls(domain.nControls());
-    // optMesh.options().setInt("nSamplingPoints",nSamplingPoints);
-    optMesh.options().setInt("nRefine",numRefineI);
-    optMesh.options().setInt("nElevate",numElevateI);
-    for (size_t k=0; k!=domain.nControls(); k++)
-        controls[k] = domain.control(k);
-
-
     gsOptimizer<real_t> * optimizer;
     if      (opt==0) // gsGradientDescent
     {
-        optimizer = new gsGradientDescent<real_t>(&optMesh);
+        optimizer = new gsGradientDescent<real_t>;
         optimizer->options().setInt("MaxIterations",maxIt);
         optimizer->options().setInt("Verbose",2);
         optimizer->options().setReal("MinGradientLength",tol_g);
@@ -367,14 +493,14 @@ int main(int arg, char *argv[])
     }
     else if (opt==1) // gsHLBFGS
     {
-        optimizer = new gsHLBFGS<real_t>(&optMesh);
+        optimizer = new gsHLBFGS<real_t>;
         optimizer->options().setInt("MaxIterations",maxIt);
         optimizer->options().setInt("Verbose",2);
         optimizer->options().setReal("tolRelG",tol_g);
     }
     else if (opt==2) //gsOptim::LBFGS
     {
-        optimizer = new gsOptim<real_t>::LBFGS(&optMesh);
+        optimizer = new gsOptim<real_t>::LBFGS;
         optimizer->options().setInt("MaxIterations",maxIt);
         optimizer->options().setInt("Verbose",1);
         optimizer->options().setReal("GradErrTol",tol_g);
@@ -384,11 +510,17 @@ int main(int arg, char *argv[])
         GISMO_ERROR("Unknown optimizer");
     }
 
-    optimizer->solve(controls);
-    gsVector<> optSol = optimizer->currentDesign();
-
-    for (size_t k=0; k!=optSol.rows(); k++)
-        domain.control(k) = optSol[k];
+    for (index_t k=0; k!=domain.nControls(); k++)
+        gsInfo<<domain.control(k)<<" ";
+    gsInfo<<std::endl;
+    // gsComposedRelocation<real_t,MonitorMode::ValueBased> relocator(domain,geom.patch(0),cfun,*optimizer);
+    gsComposedRelocation<real_t,MonitorMode::ValueBased> relocator(domain,geom.patch(0),*fun,*optimizer);
+    relocator.options().setInt("nRefine",numRefineI);
+    relocator.options().setInt("nElevate",numElevateI);
+    relocator.solve();
+    for (index_t k=0; k!=domain.nControls(); k++)
+        gsInfo<<domain.control(k)<<" ";
+    gsInfo<<std::endl;
 
     gsMultiPatch<> mp;
     mp.addPatch(cspline);
@@ -400,8 +532,11 @@ int main(int arg, char *argv[])
     auto G = ev.getMap(mp);
     auto f = ev.getVariable(*fun);
 
+    gsField<> cfun_field(mp,cfun);
+
     gsWriteParaview(mp,*fun,dirname+"fun");
     gsWriteParaview(mp,cfun,dirname+"cfun");
+    gsWriteParaview(cfun_field,dirname+"cfun_field");
 
     // ev.writeParaview(f,G,dirname+"fun");
 
