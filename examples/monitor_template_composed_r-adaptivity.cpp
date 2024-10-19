@@ -43,9 +43,9 @@ private:
 public:
     enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
 
-    monitor_expr(const E & u, const gsGeometryMap<Scalar> & G) 
-    : 
-    _u(u), 
+    monitor_expr(const E & u, const gsGeometryMap<Scalar> & G)
+    :
+    _u(u),
     _G(G),
     DIM(_u.source().domainDim())
     {
@@ -71,7 +71,8 @@ public:
 
         // OLD
         evList.add(_u);
-        _u.data().flags |= NEED_JACOBIAN;
+        _u.data().flags |= NEED_VALUE; //for value-based
+        // _u.data().flags |= NEED_JACOBIAN;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -85,45 +86,14 @@ private:
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        // const index_t A = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
-        // res.resize(_u.cardinality(), cols()); // rows()*
-
-        // normal = _G.data().normal(k);// not normalized to unit length
-        // normal.normalize();
-        // bGrads = _u.data().values[1].col(k);
-        // cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
-        // const Scalar measure =  (cJac.col3d(0).cross( cJac.col3d(1) )).norm();
-
-        // for (index_t d = 0; d!= cols(); ++d) // for all basis function components
-        // {
-        //     const short_t s = d*A;
-        //     for (index_t j = 0; j!= A; ++j) // for all actives
-        //     {
-        //         // Jac(u) ~ Jac(G) with alternating signs ?..
-        //         m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-        //                       - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
-
-        //         // ---------------  First variation of the normal
-        //         // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
-        //         res.row(s+j).noalias() = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
-        //     }
-        // }
-        // return res;
+        GISMO_NO_IMPLEMENTATION;
     }
 
     template<class U> inline
     typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        // GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-        // grad_expr<gsFeSolution<Scalar>> sGrad =  grad_expr<gsFeSolution<Scalar>>(_u);
-        // grad = sGrad.eval(k);
-        // ones.resize( DIM);
-        // ones.setOnes();
-        // //ones[0] = 4;
-        // res = 1.0 / ( math::sqrt(1.0 + grad.dot(grad) ) ) * ones;
-        // //res = ones;
-        // return res;
+        GISMO_NO_IMPLEMENTATION;
     }
 
     template<class U> inline
@@ -131,32 +101,22 @@ private:
     eval_impl(const U & u, const index_t k)  const
     {
         real_t eps = 0.1; // determines the degree of smoothing
-        
-        /// NEW
-        // jac_expr<gsFeVariable<Scalar>> jacExpr = jac_expr<gsFeVariable<Scalar>>(_u);
-        // jac = jacExpr.eval(k);
-
-        jac = _u.data().values[1].col(k).transpose();
-
-        jacInv_expr<Scalar> jacInvExpr = jacInv_expr<Scalar>(_G);
-        jacInv = jacInvExpr.eval(k);
-
-        grad = jac * jacInv;
         ones.resize(DIM,DIM);
         ones.setIdentity();
 
+        /// Gradient-based
+        /*
+        jac = _u.data().values[1].col(k).transpose();
+        jacInv_expr<Scalar> jacInvExpr = jacInv_expr<Scalar>(_G);
+        jacInv = jacInvExpr.eval(k);
+        grad = jac * jacInv;
+
         res = 1.0 / ( math::sqrt(1.0 +eps*grad.squaredNorm() ) ) * ones;
+        */
+        /// Value-based:
+        Scalar uval = _u.data().values[0].col(k).value();
+        res = 1.0 / ( math::sqrt(1.0 +eps*math::pow(uval,2) ) ) * ones;
         return res;
-
-        // // /// OLD
-        // grad = _u.data().values[1].col(k).transpose();
-        // ones.resize( DIM);
-        // ones.setOnes();
-
-        // res.resize( DIM, 1);
-
-        // res = 1.0 / ( math::sqrt(1.0 +eps*grad.squaredNorm() ) ) * ones;
-        // return res;
     }
 };
 
@@ -169,35 +129,9 @@ monitor_expr<E> monitor(const E & u, const gsGeometryMap<typename E::Scalar> & G
 
 using namespace gismo;
 
-// template<typename T = real_t>
-// class gsExprAsFunction : public gsFunction<T>
-// {
-// public:
-//     template<class E>
-//     gsExprAsFunction( const expr::_expr<E> & expr)
-//     : m_expr(expr)
-//     {}
-
-//     short_t domainDim() const { return m_expr.parDim(); }
-//     short_t targetDim() const { return m_expr.rows();   }
-
-//     void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
-//     {
-//         result.resize(u,this->targetDim());
-//         gsExprEvaluator<T> ev;
-//         for (index_t k = 0; k!=u.cols(); k++)
-//             result.col(k) = ev.eval(m_expr,u.col(k));
-//     }
-
-// protected:
-//     const expr::_expr<E> & m_expr;
-// };
-
-
-
 
 template<typename T = real_t>
-class gsOptMesh : public gsOptProblem<T> 
+class gsOptMesh : public gsOptProblem<T>
 {
     using Base = gsOptProblem<T>;
 
@@ -210,7 +144,7 @@ public:
     gsOptMesh(  gsFunction<T> & composition,
                 const gsGeometry<T> & geometry,
                 const gsFunctionSet<T> & fun,
-                T eps = 1e-4)
+                T eps = 1e-2)
     :
     m_comp(&composition),
     m_geom(geometry),
@@ -221,7 +155,7 @@ public:
         m_curDesign.resize(m_numDesignVars,1);
 
         m_options.addInt("nSamplingPoints","Number of sampling points in each parametric direction",50);
-    
+
         m_options.addInt("nRefine","Number of refinement steps for the integration basis",2);
         m_options.addInt("nElevate","Number of elevation steps for the integration basis",1);
     }
@@ -258,7 +192,9 @@ public:
         // auto eta = m_evaluator.getVariable(m_fun);
         // return m_evaluator.integral( (monitor(eta,G).asDiag()*invJacMat).sqNorm()*meas(G));
 
-        gsComposedFunction<T> fun(*m_comp,m_fun.function(0));
+        // gsComposedFunction<T> fun(*m_comp,m_fun.function(0));
+        // gsComposedFunction<T> fun(mpG.patch(0),m_fun.function(0));
+
 
         // gsVector<unsigned> np(m_fun.domainDim());
         // np.setConstant(m_options.getInt("nSamplingPoints"));
@@ -266,31 +202,35 @@ public:
         if (m_geom.domainDim()==m_geom.targetDim())
         {
             auto jacG = jac(G).det();
-            auto chi = 0.5 * (jacG + pow(eps.val() + pow(jacG, 2.0), 0.5));
+            auto chi = 0.5 * (jacG + pow(pow(eps.val(),2.0) + pow(jacG, 2.0), 0.5));
             auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
-            auto eta = m_evaluator.getVariable(fun);    
+
+            // auto eta = m_evaluator.getVariable(fun);
+            auto eta = m_evaluator.getVariable(m_fun);
+            // auto eta = m_evaluator.getVariable(m_fun,G);
+
             // return m_evaluator.eval((monitor(eta,G)*invJacMat).sqNorm(),grid).sum();
             return m_evaluator.integral( (monitor(eta,G)*invJacMat).sqNorm()*meas(G));
         }
         else
         {
+            // auto fform = jac(G).tr()*jac(G);
+            // auto jacG = sqrt(fform.det()); //jacobian determinant for a surface, i.e. the measure
+            // // auto chi = 0.5 * (jacG + pow(pow(eps.val(),2.0) + pow(jacG, 2.0), 0.5));
+
+            // // Compute the chi part
+            // auto chiPPart = eps * ((jacG - eps.val()).exp());
+
+            // // Ternary operation to compute chi and chip
+            // auto chi = ternary(eps.val() - jacG, chiPPart.val(), jacG.val());
+
+            // auto invJacMat = fform.adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
+            // auto eta = m_evaluator.getVariable(fun);
+            // return m_evaluator.integral( (monitor(eta,G)*invJacMat).sqNorm()*meas(G));
+
             GISMO_ERROR("The dimension of target domain should be 2 or 3.");
             return 0;
         }
-        // else 
-        // {
-        //     auto jacG = signed svd;
-        //     /* 
-        //         if (sigma2>0) // smallest one
-        //             chi = sigma1*sigma2 // = jac.det
-        //         else
-        //             jacG = sigma1*sigma2
-        //             chi = 0.5 * (jacG + pow(eps.val() + pow(jacG, 2.0), 0.5));
-
-        //      */
-        //     auto chi = 0.5 * (jacG + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
-        // }
-        
     }
 
     // /// Computes the gradient of the objective function at the given point u
@@ -326,7 +266,7 @@ int main(int arg, char *argv[])
     index_t numElevateI = 1;
     index_t maxIt = 100;
     real_t tol_g = 5e-5;
-    real_t eps = 1e-4;
+    real_t eps = 1e-2;
     bool slide = true;
     index_t testCase = 0;
     index_t opt = 2;
@@ -355,7 +295,9 @@ int main(int arg, char *argv[])
     dirname += gsFileManager::getNativePathSeparator();
 
     gsMultiPatch<> geom;
-    geom.addPatch(*gsNurbsCreator<>::BSplineSquare());
+    // geom.addPatch(*gsNurbsCreator<>::BSplineSquare());
+    geom.addPatch(*gsNurbsCreator<>::BSplineRectangle(0,0,2,1));
+    geom.patch(0).uniformRefine(1,1,0);
 
     // Basis for the square domain
     gsKnotVector<> kv({0,0,1,1},1);
@@ -363,7 +305,10 @@ int main(int arg, char *argv[])
     tbbasis.degreeElevate(numElevate);
     for (index_t i = 0; i < numRefine; i++)
         tbbasis.uniformRefine();
-    
+
+    tbbasis.uniformRefine(1,1,0);
+
+
     gsInfo<<"Mapper basis:\n"<<tbbasis<<"\n";
 
     gsSquareDomain<2,real_t> domain(tbbasis);
@@ -393,13 +338,16 @@ int main(int arg, char *argv[])
         GISMO_ERROR("Unknown test case");
     }
 
-/* 
+    gsComposedFunction<real_t> cfun({&domain,fun});
+    // gsComposedFunction<real_t> cfun({&cspline,fun});
+
+/*
     PERFORM R-ADAPTIVITY
  */
 
     gsInfo<<"Number of optimizer degrees of freedom: "<<domain.nControls()<<"\n";
 
-    gsOptMesh<> optMesh(domain,geom.patch(0),*fun,eps);
+    gsOptMesh<> optMesh(domain,geom.patch(0),cfun,eps);
     gsVector<> controls(domain.nControls());
     // optMesh.options().setInt("nSamplingPoints",nSamplingPoints);
     optMesh.options().setInt("nRefine",numRefineI);
@@ -438,7 +386,7 @@ int main(int arg, char *argv[])
 
     optimizer->solve(controls);
     gsVector<> optSol = optimizer->currentDesign();
-    
+
     for (size_t k=0; k!=optSol.rows(); k++)
         domain.control(k) = optSol[k];
 
@@ -450,8 +398,12 @@ int main(int arg, char *argv[])
     gsExprEvaluator<> ev;
     ev.setIntegrationElements(mb);
     auto G = ev.getMap(mp);
-    auto f = ev.getVariable(*fun,G);
-    ev.writeParaview(f,G,dirname+"fun");
+    auto f = ev.getVariable(*fun);
+
+    gsWriteParaview(mp,*fun,dirname+"fun");
+    gsWriteParaview(mp,cfun,dirname+"cfun");
+
+    // ev.writeParaview(f,G,dirname+"fun");
 
     // gsWriteParaview(cspline,"cspline",1000,true);
     // gsWriteParaview(cspline.basis(),"cbasis",1000);
