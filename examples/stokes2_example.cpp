@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     bool last = false;
     bool compute_error{false};
-    std::string file_name("pde/stokes_fullCircle.xml");
+    std::string file_name("pde/stokes_quadCircle_intf.xml");
 
     gsCmdLine cmd("Tutorial on solving a two-dimensional Stokes problem.");
     cmd.addString( "f", "file", "Input XML file", file_name );
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 
     
     // Material constants
-    real_t viscosity{1e-3};
+    real_t viscosity{1e-6};
     //real_t density{1e3};
     //cmd.addReal("v", "visc", "Viscosity", viscosity);
     
@@ -84,9 +84,6 @@ int main(int argc, char *argv[])
     boundary_conditions.setGeoMap(multi_patch);
     gsInfo<<"Boundary conditions:\n"<< boundary_conditions <<"\n";
 
-    //gsFunctionExpr<> ref_sol_expression;
-    //file_data.getId(3, ref_sol_expression); // id=3: reference solution
-
     gsOptionList assembler_options;
     file_data.getId(4, assembler_options); // id=4: assembler options
 
@@ -96,8 +93,14 @@ int main(int argc, char *argv[])
 
     // Elevate the degree and increase the degree one 
     // additional time for the velocity to obtain Taylor-Hood elements
-    function_basis_velocity.setDegree( function_basis_velocity.maxCwiseDegree() + numElevate + 1);
-    function_basis_pressure.setDegree( function_basis_pressure.maxCwiseDegree() + numElevate);
+    for ( size_t i = 0; i < function_basis_velocity.nBases(); ++ i )
+    {
+        function_basis_velocity[i].setDegreePreservingMultiplicity(function_basis_velocity.maxCwiseDegree() + numElevate + 1);
+        function_basis_pressure[i].setDegreePreservingMultiplicity(function_basis_pressure.maxCwiseDegree() + numElevate);
+        function_basis_velocity[i].reduceContinuity(1);
+    }
+    //function_basis_velocity[0].setDegreePreservingMultiplicity( function_basis_velocity.maxCwiseDegree() + numElevate + 1);
+    //function_basis_pressure.setDegree( function_basis_pressure.maxCwiseDegree() + numElevate);
 
     const int geometric_dimension = multi_patch.geoDim();
 
@@ -149,10 +152,6 @@ int main(int argc, char *argv[])
         function_basis_pressure, PRESSURE_DIM, PRESSURE_ID
         );
     
-
-    // Set the source term
-    //auto source_function = expression_assembler.getCoeff(source_function_expression, geometry_map);
-
     // Solution vector and solution variables
     gsMatrix<> solution_vector;
     solution pressure_sol_expression = 
@@ -162,7 +161,6 @@ int main(int argc, char *argv[])
 
     // Set Dirichlet BCs for velocity
     velocity_trial_space.setup(boundary_conditions, dirichlet::l2Projection, 0);
-    // Initialize interfaces for pressure field?
 
     // Initialize the system
     expression_assembler.initSystem();
@@ -173,22 +171,20 @@ int main(int argc, char *argv[])
     gsInfo << "Number of blocks in the system matrix : "
          << expression_assembler.numBlocks() << std::endl;
     
-    
     // Assembly
     gsInfo << "Starting assembly of linear system ..." << std::flush;
     timer.restart();
     
-    // Compute the system matrix and right-hand side
     // Compute the system matrix and right-hand side
     auto phys_jacobian = ijac(velocity_trial_space, geometry_map);
     auto bilin_conti = pressure_trial_space * idiv(velocity_trial_space, geometry_map).tr() * meas(geometry_map);
     auto bilin_press = -idiv(velocity_trial_space, geometry_map) * pressure_trial_space.tr() * meas(geometry_map);
     auto bilin_mu_1 = viscosity * (phys_jacobian.cwisetr() % phys_jacobian.tr()) *
                     meas(geometry_map);
-    auto bilin_mu_2 =
-      viscosity * (phys_jacobian % phys_jacobian.tr()) * meas(geometry_map);
+    //auto bilin_mu_2 =
+    //  viscosity * (phys_jacobian % phys_jacobian.tr()) * meas(geometry_map);
 
-    expression_assembler.assemble(bilin_conti, bilin_press, bilin_mu_1, bilin_mu_2);
+    expression_assembler.assemble(bilin_conti, bilin_press, bilin_mu_1);//, bilin_mu_2);
 
     assembly_time_ls += timer.stop();
     gsInfo << "\t\tFinished" << std::endl;
@@ -208,33 +204,33 @@ int main(int argc, char *argv[])
   timer.restart();
 
   const auto& system_matrix = expression_assembler.matrix();
-  // TEST: boundary conditions -- 20240403
-//   gsInfo << (system_matrix).rows() << "\n";
-//   gsInfo << (system_matrix).cols() << "\n";
-//     auto bdrytest = multi_patch.getBoundary(1) << "\n";
-//     gsInfo << multi_patch.boundaries <<"\n";
-//    gsInfo << multi_patch.patch(0).boundary(1) << "\n";
 
 // create multipatch geometry of full circle
-// gsInfo << multi_patch << "\n";
-// gsTensorBSpline<2,real_t> geomTest = static_cast<gsTensorBSpline<2,real_t>&>(multi_patch.patch(0));
-// geomTest.rotate(M_PI_2);
-// multi_patch.addPatch(geomTest);
-// geomTest.rotate(M_PI_2);
-// multi_patch.addPatch(geomTest);
-// geomTest.rotate(M_PI_2);
-// multi_patch.addPatch(geomTest);
-// multi_patch.computeTopology();
-// gsWriteParaview(multi_patch, "testmp", 1000);
-// gsWrite(multi_patch, "wholeGeom");
+//gsInfo << multi_patch << "\n";
+//gsTensorBSpline<2,real_t> geomTest = static_cast<gsTensorBSpline<2,real_t>&>(multi_patch.patch(0));
+//geomTest.rotate(M_PI_2);
+//multi_patch.addPatch(geomTest);
+//geomTest.rotate(M_PI_2);
+//multi_patch.addPatch(geomTest);
+//geomTest.rotate(M_PI_2);
+//multi_patch.addPatch(geomTest);
+//multi_patch.computeTopology();
+//gsWriteParaview(multi_patch, "testmp", 1000);
+//gsWrite(multi_patch, "wholeGeom");
+
+
+// add periodic BCs as interface to single patch geometry
+//multi_patch.addInterface(&multi_patch.patch(0),4,&multi_patch.patch(0),3);
+//gsWriteParaview(multi_patch, "testmp", 1000);
+//gsWrite(multi_patch, "quadCirc_intf");
 
 ////////////////////////////////////////////////////////////////////////////////////
 
   const auto& rhs_vector = expression_assembler.rhs();
 
   // Initialize linear solver
-  //gsSparseSolver<>::BiCGSTABILUT solver;
-  gsSparseSolver<>::BiCGSTABIdentity solver;
+  gsSparseSolver<>::BiCGSTABILUT solver;
+  //gsSparseSolver<>::BiCGSTABIdentity solver;
   //gsSparseSolver<>::GMRES solver;
   //gsSparseSolver<>::LeastSquaresCG solver;
   solver.compute(system_matrix);
@@ -243,15 +239,20 @@ int main(int argc, char *argv[])
   solving_time_ls += timer.stop();
   gsInfo << "\tFinished" << std::endl;
 
+  // check rhs
+  
+  gsInfo << "\tRHS\n" << expression_assembler.rhs().transpose()<<"\n";
+  gsInfo << "\tsolution vector\n" << solution_vector.transpose()<<" \n";
+
   // Export and visualization
   gsExprEvaluator<> expression_evaluator(expression_assembler);
   gsInfo << "\nStarting the paraview export ..." << std::flush;
   timer.restart();
 
-  gsParaviewCollection collection("ParaviewOutput/solutionfull_elim_intf",
+  gsParaviewCollection collection("ParaviewOutput/solution_quad_imp_coarse",
                                     &expression_evaluator);
   collection.options().setSwitch("plotElements", true);
-  collection.options().setInt("plotElements.resolution", 1000);
+  collection.options().setInt("plotElements.resolution", 16);
   collection.newTimeStep(&multi_patch);
   collection.addField(pressure_sol_expression, "pressure");
   collection.addField(velocity_sol_expression, "velocity");
