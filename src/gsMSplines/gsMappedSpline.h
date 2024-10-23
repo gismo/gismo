@@ -126,6 +126,12 @@ public:
     /// getter for m_topol
     gsBoxTopology const & getTopol() const
     { return m_mbases->getTopol(); }
+    
+    /// @brief Performs Bezier extraction on the multipatch
+    /// @return The ElementBlock structure of the Bezier extraction,
+    /// which contains the Bezier coefficients and the active nodes
+    /// for each bezier patch;
+    std::map<index_t, internal::ElementBlock> BezierOperator() const;
 
 //////////////////////////////////////////////////
 // Virtual base members with a new implementation

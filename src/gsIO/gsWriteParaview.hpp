@@ -979,6 +979,33 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
     collection.save();
 }
 
+/// Export a multipatch Geometry without scalar information using Bezier elements
+template <class T>
+void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool ctrlNet)
+{    
+    std::string fnBase;
+
+    // Write file contents to the respective file
+    std::ofstream file(filename + ".vtu");
+    file << BezierVTK(mPatch);
+    file.close();
+
+    if ( ctrlNet ) // Output the control net
+    {   
+        gsParaviewCollection collection(filename);
+        collection.addPart(gsFileManager::getFilename(filename) + ".vtu");
+        for (size_t patch=0; patch<mPatch.nPatches();++patch)
+        {
+            const std::string fileName = filename + "_" + util::to_string(patch) + "_cnet";
+            const std::string fileName_nopath = gsFileManager::getFilename(fileName);
+
+            writeSingleControlNet(mPatch.patch(patch), fileName);
+            collection.addPart(fileName_nopath + ".vtp");
+        }
+        collection.save();
+    }
+}
+
 /// Export i-th Basis function
 template<class T>
 void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const & fn, unsigned npts)
