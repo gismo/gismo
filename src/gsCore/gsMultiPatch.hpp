@@ -1010,6 +1010,9 @@ std::map<index_t, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() cons
     std::map<index_t, internal::ElementBlock> ElementBlocks;
 
     index_t NN; // Number of control points of the Bezier element
+    gsMatrix<index_t> localActives, globalActives; // Active basis functions
+    gsDofMapper mapper = getMapper((T)1e-7);
+
     gsMatrix<T> quPoints, values;
     gsVector<T> quWeights;
 
@@ -1044,15 +1047,18 @@ std::map<index_t, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() cons
 
         for (; domIt->good(); domIt->next() )
         {
-            actives = basis->active( domIt->center );
-            actives.array() += offset;
+            localActives = basis->active( domIt->center );
+            globalActives.resizeLike(localActives);
+            // Map every local active basis function to the global numbering
+            for (index_t i=0; i<localActives.rows(); ++i)
+                globalActives.at(i) = mapper.index(localActives.at(i), p);
 
-            NN = actives.size();
-            ElementBlocks[NN].numElements += 1;    // Increment the Number of Elements contained in the ElementBlock
-            ElementBlocks[NN].actives.push_back(actives);  // Append the active basis functions ( = the Node IDs ) for this element.
+            NN = localActives.size();
+            ElementBlocks[NN].numElements += 1;                  // Increment the Number of Elements contained in the ElementBlock
+            ElementBlocks[NN].actives.push_back(globalActives);  // Append the active basis functions ( = the Node IDs ) for this element.
             ElementBlocks[NN].PR = basis->degree(0);
             ElementBlocks[NN].PS = basis->degree(1);
-            ElementBlocks[NN].PT = 0; // TODO: if implemented for trivariates fix this
+            ElementBlocks[NN].PT = 0;                            // TODO: if implemented for trivariates fix this
 
             // Map the quadrature points to the current element.
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(), quPoints, quWeights);
@@ -1060,7 +1066,6 @@ std::map<index_t, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() cons
             // Append the local Bezier Extraction matrix to the ElementBlock.coefVectors
             ElementBlocks[NN].coefVectors.push_back(solver.solve(values.transpose()));
         }
-        offset+= patch(p).coefsSize();
     }
 
     return ElementBlocks;
@@ -1073,6 +1078,21 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
     GISMO_ENSURE( 2==domainDim(), "Anything other than bivariate splines is not yet supported!");
     std::map<index_t, internal::ElementBlock> ElementBlocks = BezierOperator();
     gsMultiPatch<T> result;
+
+    // Get the map from patch-local to global indexing for the multi-patch
+    gsDofMapper mapper = this->getMapper((T)1e-4);
+
+    // Get global coefficients of the multi patch. (i.e. without duplicates on the interfaces)
+    gsMatrix<T> globalCoefs(mapper.size(), this->coefs().cols());
+    globalCoefs.setZero();
+    // Loop over all patches
+    for (index_t p = 0; p != this->nPatches(); p++)
+    {
+        for (index_t i=0; i != this->patch(p).coefs().rows(); ++i) // For every control point
+        {
+            globalCoefs.row(mapper.index(i,p)).leftCols(this->geoDim()) = this->patch(p).coefs().row(i);
+        }
+    }
 
     for (auto const& pair : ElementBlocks)
     {
@@ -1088,7 +1108,7 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
 
         for(; Ait != ElBlock.actives.end() && Cit != ElBlock.coefVectors.end(); ++Ait, ++Cit)
         {
-            gsTensorBSpline<2> bezier(kv1,kv2, *Cit * coefs()(Ait->asVector(),gsEigen::all));
+            gsTensorBSpline<2> bezier(kv1,kv2, *Cit * globalCoefs(Ait->asVector(),gsEigen::all));
             // bezier extraction operator * original control points
             result.addPatch(bezier);
         }
