@@ -1010,8 +1010,8 @@ std::map<index_t, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() cons
     std::map<index_t, internal::ElementBlock> ElementBlocks;
 
     index_t NN; // Number of control points of the Bezier element
-    gsMatrix<index_t> actives; // Active basis functions
-    index_t offset=0; // Offset of active's numbering ( local id -> multipatch id)
+    gsMatrix<T> quPoints, values;
+    gsVector<T> quWeights;
 
     for (size_t p=0; p<nPatches(); ++p)
     {
@@ -1035,8 +1035,6 @@ std::map<index_t, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() cons
         // Initialize an iterator over all the elements of the given basi
         typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
 
-        gsMatrix<T> quPoints, values;
-        gsVector<T> quWeights;
 
         // Calculate the collocation matrix of the Bezier Basis
         // It will be used to fit the Bez. Basis to the original basis' elements.
