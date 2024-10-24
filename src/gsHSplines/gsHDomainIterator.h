@@ -110,6 +110,7 @@ public:
     /// iteration through all boundary elements.
     void reset()
     {
+        m_id = 0;
         const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
         m_leaf = hbs->tree().beginLeafIterator();
         updateLeaf();

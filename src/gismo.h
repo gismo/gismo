@@ -98,6 +98,7 @@ namespace internal
 #include <gsNurbs/gsTensorNurbsBasis.h>
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbsCreator.h>
+#include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
 #include <gsHSplines/gsHBSplineBasis.h>
@@ -206,6 +207,7 @@ namespace internal
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
+#include <gsIO/gsCsv.h>
 
 /* ----------- Parallel ----------- */
 #include <gsParallel/gsMpi.h>

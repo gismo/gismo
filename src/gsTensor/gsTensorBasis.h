@@ -52,11 +52,13 @@ public:
     typedef Basis_t** iterator;
     typedef Basis_t* const* const_iterator;
 
+    typedef typename Basis_t::domainIter domainIter;
+
 public:
     
     gsTensorBasis() : m_bases() { }
 
-    ~gsTensorBasis() { freeAll(m_bases, m_bases+d); }
+    virtual ~gsTensorBasis() { freeAll(m_bases, m_bases+d); }
 
     gsTensorBasis( const gsTensorBasis & o);
     gsTensorBasis& operator=( const gsTensorBasis & o);
@@ -112,7 +114,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements() const
+    size_t numTotalElements() const
     {
         size_t nElem = m_bases[0]->numElements();
         for (short_t dim = 1; dim < d; ++dim)
@@ -121,9 +123,9 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements(boxSide const & s) const
+    size_t numElements(boxSide const & s = boundary::none) const
     {
-        if (0==s.index()) return this->numElements();
+        if (0==s.index()) return this->numTotalElements();
         const short_t dir =  s.direction();
         size_t nElem = 1;
         for (short_t dim = 0; dim < d; ++dim)
@@ -140,10 +142,10 @@ public:
     {
         GISMO_ASSERT( u.rows() == d, "Wrong vector dimension");
 
-        size_t ElIndex = m_bases[d-1]->elementIndex( u.col(d-1) );
+        size_t ElIndex = m_bases[d-1]->elementIndex( u.row(d-1) );
         for ( short_t i=d-2; i>=0; --i )
-            ElIndex = ElIndex * m_bases[i]->numElements() 
-                    + m_bases[i]->elementIndex( u.col(i) );
+            ElIndex = ElIndex * m_bases[i]->numElements()
+                    + m_bases[i]->elementIndex( u.row(i) );
 
         return ElIndex;        
     }
@@ -255,7 +257,8 @@ public:
     // Evaluate the nonzero basis functions and their derivatives up to
     // order n at all columns of u
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> >& result) const;
+                                  std::vector<gsMatrix<T> >& result,
+                                  bool sameElement = false) const;
 
     // see gsBasis for doxygen documentation
     // Evaluates the gradient the non-zero basis functions at value u.
@@ -291,19 +294,10 @@ public:
     //void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for documentation 
-    typename gsBasis<T>::domainIter makeDomainIterator() const
-    {
-        return typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,d>(*this) );
-    }
+    typename gsBasis<T>::domainIter makeDomainIterator() const;
 
-    // Look at gsBasis class for documentation 
-    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
-    {
-        return ( s == boundary::none ? 
-                 typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,d>(*this)) :
-                 typename gsBasis<T>::domainIter(new gsTensorDomainBoundaryIterator<T,d>(*this, s))
-                );
-    }
+    // Look at gsBasis class for documentation
+    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const;
 
     // Look at gsBasis class for documentation 
     virtual typename gsGeometry<T>::uPtr interpolateAtAnchors(gsMatrix<T> const& vals) const;
@@ -350,7 +344,7 @@ public:
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1, int mul=1);
-    
+
     // Look at gsBasis class for documentation 
     virtual void uniformCoarsen(int numKnots = 1)
     {
@@ -685,7 +679,7 @@ public:
     }
     
     // Destructor
-    ~gsTensorBasis() 
+    virtual ~gsTensorBasis()
     { 
         m_address = NULL;
     }

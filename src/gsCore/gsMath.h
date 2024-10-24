@@ -239,8 +239,8 @@ template <typename T>
 int isfinite(T a)
 {return _finite(a);}
 //bool isfinite(T a)  {(a - a) == (a - a);} //equiv.
-//template <typename T>
-//bool isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
+template <typename T>
+bool isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
 
 #ifndef NAN
 // MSVC doesn't have the NAN constant in cmath, so we use the C++

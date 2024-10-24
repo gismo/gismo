@@ -117,10 +117,6 @@ endif()
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
   CACHE INTERNAL "gismo extensions to be included")
 
-# Add XBraid include directories to G+Smo standard include directories
-set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
-    CACHE INTERNAL "Gismo include directories")
-
 # Install gsXBraid header files
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
   DESTINATION include/gismo/gsXBraid

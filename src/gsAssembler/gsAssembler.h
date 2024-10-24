@@ -86,10 +86,10 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
 
     // assumes points u on boundary "s"
     result.resize(md.dim.second);
-    gsMatrix<T,3> tmp;
+    gsVector<T,3> tmp;
     if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
     {
-        const gsMatrix<T,3,1> Jk = md.jacobian(k).col(!dir);
+        auto Jk = md.jacobian(k).col(!dir);
         // fixme: generalize to nD
         normal(md, k, result);
         tmp = result;

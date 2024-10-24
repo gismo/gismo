@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
   index_t n_deg_elevations = 0;
   bool only_last = false;
   bool compute_error{false};
-  int sample_rate{9};
+  index_t sample_rate{9};
 
   std::string file_name("pde/linear_elasticity_example.xml");
 
