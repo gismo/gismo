@@ -1,6 +1,6 @@
-/** @file stokes2_example.cpp
+/** @file stokes_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve the Stokes equation in 2D
+    @brief Using expression assembler to solve the Stokes equation in 2D
 
     This file is part of the G+Smo library.
 
@@ -24,9 +24,6 @@ int main(int argc, char *argv[])
     constexpr index_t VELOCITY_ID = 1;
     // field dimensions
     constexpr index_t PRESSURE_DIM = 1;
-    // number of solution and test spaces
-    //constexpr index_t NUM_TRIAL = 2;
-    //constexpr index_t NUM_TEST = 2;
 
     // Setup values for timing
     double setup_time(0), assembly_time_ls(0), solving_time_ls(0),
@@ -40,7 +37,7 @@ int main(int argc, char *argv[])
     bool compute_error{false};
     std::string file_name("pde/stokes_quadCircle_intf.xml");
 
-    gsCmdLine cmd("Tutorial on solving a two-dimensional Stokes problem.");
+    gsCmdLine cmd("Solving a two-dimensional Stokes problem.");
     cmd.addString( "f", "file", "Input XML file", file_name );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -51,11 +48,9 @@ int main(int argc, char *argv[])
 
     
     // Material constants
+    // kinematic viscosity
     real_t viscosity{1e-6};
-    //real_t density{1e3};
-    //cmd.addReal("v", "visc", "Viscosity", viscosity);
     
-
     // Mesh options
     index_t numElevate = 0;
     cmd.addInt("e", "degreeElevate", "Number of uniform degree elevations",
@@ -75,17 +70,10 @@ int main(int argc, char *argv[])
     gsMultiPatch<> multi_patch;
     file_data.getId(0, multi_patch); // id=0: Multipatch domain
 
-    //gsFunctionExpr<> source_function_expression;
-    //file_data.getId(1, source_function_expression); // id=1: source function
-    //gsInfo<<"Source function "<< source_function_expression << "\n";
-
     gsBoundaryConditions<> boundary_conditions;
     file_data.getId(2, boundary_conditions); // id=2: boundary conditions
     boundary_conditions.setGeoMap(multi_patch);
     gsInfo<<"Boundary conditions:\n"<< boundary_conditions <<"\n";
-
-    gsOptionList assembler_options;
-    file_data.getId(4, assembler_options); // id=4: assembler options
 
     //! Define function bases for velocity and pressure
     gsMultiBasis<> function_basis_velocity(multi_patch, true);//true: poly-splines (not NURBS)
@@ -99,8 +87,6 @@ int main(int argc, char *argv[])
         function_basis_pressure[i].setDegreePreservingMultiplicity(function_basis_pressure.maxCwiseDegree() + numElevate);
         function_basis_velocity[i].reduceContinuity(1);
     }
-    //function_basis_velocity[0].setDegreePreservingMultiplicity( function_basis_velocity.maxCwiseDegree() + numElevate + 1);
-    //function_basis_pressure.setDegree( function_basis_pressure.maxCwiseDegree() + numElevate);
 
     const int geometric_dimension = multi_patch.geoDim();
 
@@ -128,7 +114,6 @@ int main(int argc, char *argv[])
 
     //! [Problem setup]
     gsExprAssembler<> expression_assembler(2,2);
-    expression_assembler.setOptions(assembler_options);
 
     gsInfo<<"Active options:\n"<< expression_assembler.options() <<"\n";
 
@@ -191,9 +176,6 @@ int main(int argc, char *argv[])
 
     assembly_time_ls += timer.stop();
 
-    // gsDebugVar(A.matrix().toDense());
-    // gsDebugVar(A.rhs().transpose()   );
-
     gsInfo << "\t\tFinished" << std::endl;
 
   ///////////////////
@@ -241,8 +223,8 @@ int main(int argc, char *argv[])
 
   // check rhs
   
-  gsInfo << "\tRHS\n" << expression_assembler.rhs().transpose()<<"\n";
-  gsInfo << "\tsolution vector\n" << solution_vector.transpose()<<" \n";
+  //gsInfo << "\tRHS\n" << expression_assembler.rhs().transpose()<<"\n";
+  //gsInfo << "\tsolution vector\n" << solution_vector.transpose()<<" \n";
 
   // Export and visualization
   gsExprEvaluator<> expression_evaluator(expression_assembler);
