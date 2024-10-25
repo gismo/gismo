@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
   gsInfo << "\nStarting the paraview export ..." << std::flush;
   timer.restart();
 
-  gsParaviewCollection collection("ParaviewOutput/solution_quad_imp_coarse",
+  gsParaviewCollection collection("ParaviewOutput/solution",
                                     &expression_evaluator);
   collection.options().setSwitch("plotElements", true);
   collection.options().setInt("plotElements.resolution", 16);
