@@ -18,6 +18,10 @@ void pybind11_init_gsGaussRule(py::module &m)
     using Class = gsGaussRule<real_t>;
     py::class_<Class,Base>(m, "gsGaussRule")
     // Constructors
+    .def(py::init<gsVector<index_t> const & , const unsigned>(),
+         "Initialize a tensor-product Gauss quadrature rule for basis using numNodes nodes (direction-wise)",
+         py::arg("numNodes"), py::arg("digits") = 0)
+
     .def(py::init<const gsBasis<real_t> &, const real_t, const index_t, short_t>(),
          "Initialize a tensor-product Gauss quadrature rule for basis using quA *deg_i + quB nodes (direction-wise)",
          py::arg("basis"), py::arg("quA"), py::arg("quB"), py::arg("fixDir") = -1)

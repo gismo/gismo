@@ -54,7 +54,8 @@ void pybind11_init_gsGeometry(py::module &m)
   .def("rotate", (void (Class::*)(real_t, const gsVector<real_t,3>&)) &Class::rotate, "Apply 3D Rotation by an angle radians around axis")
   .def("rotate", (void (Class::*)(real_t)) &Class::rotate, "Apply 2D Rotation by an angle radians")
 
-  .def("closestPointTo", (void (Class::*)(real_t)) &Class::rotate, "Get the closest position to a given point in space")
+  .def("closestPointTo", &Class::closestPointTo, "Returns the parameters of closest point to \a pt as an argument, and the Euclidean distance as a return value",
+   py::arg("pt"), py::arg("result"), py::arg("accuracy") = 1e-6, py::arg("useInitialPoint") = false)
 
   .def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the geometry uniformly",
    py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
