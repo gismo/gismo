@@ -17,8 +17,8 @@
 using namespace gismo;
 
 template <class T>
-gsMatrix<T> findRoot(const gsGeometry<T> &geometry, gsKnotVector<T> &kv, const gsMatrix<T> &value, const index_t i=0,
-            const short_t dir=0, const index_t maxiter=50, const T epsilon=1e-4);
+gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, const gsMatrix<T> &value,
+                     const index_t i=0, const short_t dir=0, const index_t maxiter=50, const T epsilon=1e-4);
 
 int main(int argc, char *argv[])
 {
@@ -73,9 +73,9 @@ int main(int argc, char *argv[])
     gsInfo << curve_param.coefs() << "\n";
     
     // Search for θ values at the crossing between the embedded curve and the surface
-    // isoparametric line at ξ = 0.50
-    gsMatrix<> θ(1,1);
-    θ << 0.25; //initial guess
+    // isoparametric line at ξ = 0.50 starting from multiple guesses
+    gsMatrix<> θ(1,2);
+    θ << 0.25,0.75; //initial guess
     index_t maxiter = 50;
     index_t i = 2;
     real_t epsilon = 1e-8;
@@ -85,36 +85,55 @@ int main(int argc, char *argv[])
 
     gsInfo << θ_crossing_ξ << "\n";
 
-    //// gsInfo<<curveCoordinate(coefs);
-
     return 0;
 }
 
 template <class T>
-gsMatrix<T> findRoot(const gsGeometry<T> &geometry, gsKnotVector<T> &kv, const gsMatrix<T> &value, const index_t i=0,
-            const short_t dir=0, const index_t maxiter=50, const real_t epsilon=1e-4)
+gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, const gsMatrix<T> &value,
+                     const index_t i=0, const short_t dir=0, const index_t maxiter=50, const real_t epsilon=1e-8)
 {
-     GISMO_ASSERT(geometry.parDim() == 1, "The embedded geometry must be a curve (parameter dimension 1)");
+    /* geometry: embedded entity description in superdomain parameter space
+       kv: knot vector of superdomain in specified parameter direction
+       value: vector of initial θ-guesses (θ is the embedded curve parameter)
+       i: index of superdomain knot at which crossings are looked for 
+       dir: superdomain parameter direction
+       maxiter, epsilon: root finding stopping parameters
+     */
 
-     gsMatrix<T> xn = value; 
-     for (index_t n=0; n < maxiter; n++ )
-     {
-         real_t Dfxn = geometry.deriv(xn)(dir,0);
-         if (Dfxn == 0)
-         {
-             gsInfo <<"Zero derivative: no crossing found.\n";
-             xn << math::sqrt(-1);
-             return xn;
-         }
-         real_t fxn = geometry.eval(xn)(dir,0) - kv(i);
-         if (abs(fxn) <= epsilon)
-         {
-             gsInfo <<"Crossing found after "<< n << " iterations.\n";
-             return xn;
-         }
-         xn(0,0) = xn(0,0) - fxn/Dfxn;
-     }
-     gsInfo << "Max number of iterations exceeded: no crossing found.\n";
-     xn << math::sqrt(-1);
-     return xn;
+    GISMO_ASSERT(geometry.parDim() == 1, "The embedded geometry must be a curve (parameter dimension 1)");
+
+    gsMatrix<T> result(1,value.cols());
+    for(index_t k=0; k < value.cols(); k++)
+    {
+        gsMatrix<T> xn(1,1);
+        xn(0,0) = value(0,k);
+        for (index_t n=0; n < maxiter; n++)
+        {
+             real_t Dfxn = geometry.deriv(xn)(dir,0);
+             if (Dfxn == 0)
+             {
+                 gsInfo << "Guess " << k+1 << "\n";
+                 gsInfo << "Zero derivative: no crossing found.\n";
+                 result(0,k) = math::sqrt(-1);
+                 break;
+             }
+             real_t fxn = geometry.eval(xn)(dir,0) - kv(i);
+             if (abs(fxn) <= epsilon)
+             {
+                gsInfo << "Guess " << k+1 << "\n";
+                gsInfo << "Crossing found after" << n << "iterations.\n";
+                result(0,k) = xn(0,0);
+                break;
+             }
+             xn(0,0) = xn(0,0) - fxn/Dfxn;
+             if (n == maxiter - 1)
+             {
+                gsInfo << "Guess" << k+1 << "\n";
+                gsInfo << "Max number of iterations exceeded: no crossing found.\n";
+                result(0,k) = math::sqrt(-1);
+             }
+        }
+    }
+
+     return result;
 };
