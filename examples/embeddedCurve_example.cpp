@@ -12,16 +12,13 @@
 */
 
 #include <iostream>
-
 #include <gismo.h>
 
 using namespace gismo;
 
 template <class T>
-T curveCoordinate(const gsGeometry<T> & geometry, const T & value, const short_t & dir);
-
-// template <class T>
-// T findRoot();
+gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, const gsMatrix<T> &value,
+                     const index_t i=0, const short_t dir=0, const index_t maxiter=50, const T epsilon=1e-8);
 
 int main(int argc, char *argv[])
 {
@@ -36,33 +33,107 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
+    // Superdomain
+    gsKnotVector<> kv_ξ(0, 1, 3, 3); //along ξ dimension
+    gsKnotVector<> kv_η(0, 1, 3, 3); //along η dimension
 
-    // Make a BSpline curve
-    gsKnotVector<> kv(0, 1, 1, 3);//start,end,interior knots, start/end multiplicites of knots1
-    gsMatrix<> coefs(4, 3);
-    coefs << 0, 0, 0,
-             1, 2, 3,
-             2, 1, 4,
-             4, 4, 4;
+    gsMatrix<> coefs_s(36,2); //x,y;..
+    coefs_s << 0,0,0.5,0,1.5,0,2.5,0,3.5,0,4,0,0,0.5,0.5,0.5,1.5,0.5,2.5,0.5,3.5,0.5,4,0.5,
+               0,1.5,0.5,1.5,1.5,1.5,2.5,1.5,3.5,1.5,4,1.5,0,2.5,0.5,2.5,1.5,2.5,2.5,2.5,3.5,2.5,4,2.5,
+               0,3.5,0.5,3.5,1.5,3.5,2.5,3.5,3.5,3.5,4,3.5,0,4,0.5,4,1.5,4,2.5,4,3.5,4,4,4;
 
-    gsBSpline<> curve( kv, give(coefs));
+    gsTensorBSplineBasis<2,real_t> basis(kv_ξ, kv_η);
+    gsTensorBSpline<2, real_t>  surface(basis, coefs_s);
 
-    // Print the Bspline curve
-    gsInfo << "I am a " << curve << "\n";
+    // Print the superdomain
+    gsInfo << "I am the superdomain" << "\n";
+    gsInfo << "Knot vector along ξ dimension:" << surface.knots(0) << "\n";
+    gsInfo << "Knot vector along η dimension:" << surface.knots(1) << "\n";
+    gsInfo << "Control points:" << "\n";
+    gsInfo << surface.coefs() << "\n";
 
+    // Embedded entity in the superdomain parameter space
+    gsKnotVector<> kv_c(0, 1, 2, 3); //start,end,interior knots, start/end multiplicity
+    gsMatrix<> coefs_c(5, 2); //ξ,η;..
+    coefs_c << 0, 0,
+             0.2618, 0.053,
+             0.5, 0.5,
+             0.738, 0.9465,
+             1,1;
 
-    // gsInfo<<curveCoordinate(coefs);
+    coefs_c.col(0) = coefs_c.col(0) * kv_ξ.last();
+    coefs_c.col(1) = coefs_c.col(1) * kv_η.last();
 
-    return EXIT_SUCCESS;
+    gsBSpline<> curve_param(kv_c, coefs_c);
+
+    // Print the embedded entity
+    gsInfo << "I am the embedded entity in the superdomain parameter space" << "\n";
+    gsInfo << "Knot vector:" << curve_param.knots() << "\n";
+    gsInfo << "Control points:" << "\n";
+    gsInfo << curve_param.coefs() << "\n";
+    
+    // Search for θ values at the crossing between the embedded curve and the surface
+    // isoparametric line at ξ = 0.50 starting from multiple guesses
+    gsMatrix<> θ(1,2);
+    θ << 0.25,0.75; //initial guess
+    index_t maxiter = 50;
+    index_t i = 2;
+    real_t epsilon = 1e-8;
+    short_t dir = 0;
+
+    gsMatrix<> θ_crossing_ξ = findRoot(curve_param, kv_ξ, θ, i, dir, maxiter, epsilon);
+
+    gsInfo << θ_crossing_ξ << "\n";
+
+    return 0;
 }
 
 template <class T>
-T curveCoordinate(const gsGeometry<T> & geometry, const T & value, const short_t & dir)
+gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, const gsMatrix<T> &value,
+                     const index_t i, const short_t dir, const index_t maxiter, const T epsilon)
 {
-    GISMO_ASSERT(geometry.parDim() == 1, "The geometry must be a curve with parameter dimension 1");
-    GISMO_ASSERT(dir < geometry.targetDim(), "The direction must be less than the target dimension of the geometry");
-    gsMatrix<T> u(1,1);
-    u(0,0) = value;
-    return geometry.eval(u)(dir,0);
-    // return geometry.deriv(u)(dir,0);
+    /* geometry: embedded entity description in superdomain parameter space
+       kv: knot vector of superdomain in specified parameter direction
+       value: vector of initial θ-guesses (θ is the embedded curve parameter)
+       i: index of superdomain knot at which crossings are looked for 
+       dir: superdomain parameter direction
+       maxiter, epsilon: root finding stopping parameters
+     */
+
+    GISMO_ASSERT(geometry.parDim() == 1, "The embedded geometry must be a curve (parameter dimension 1)");
+
+    gsMatrix<T> result(1,value.cols());
+    result.setConstant(std::numeric_limits<T>::quiet_NaN());
+    gsMatrix<T> xn(1,1);
+    T Dfxn , fxn;
+    for(index_t k=0; k < value.cols(); k++)
+    {
+        xn(0,0) = value(0,k);
+        for (index_t n=0; n < maxiter; n++)
+        {
+             Dfxn = geometry.deriv(xn)(dir,0);
+             if (gsClose(Dfxn,0.0,std::numeric_limits<T>::epsilon()))
+             {
+                 gsInfo << "Guess " << k+1 << "\n";
+                 gsInfo << "Zero derivative: no crossing found.\n";
+                 break;
+             }
+             fxn = geometry.eval(xn)(dir,0) - kv(i);
+             if (math::abs(fxn) <= epsilon)
+             {
+                gsInfo << "Guess " << k+1 << "\n";
+                gsInfo << "Crossing found after" << n << "iterations.\n";
+                result(0,k) = xn(0,0);
+                break;
+             }
+             xn(0,0) = xn(0,0) - fxn/Dfxn;
+             if (n == maxiter - 1)
+             {
+                gsInfo << "Guess" << k+1 << "\n";
+                gsInfo << "Max number of iterations exceeded: no crossing found.\n";
+             }
+        }
+    }
+
+     return result;
 };
