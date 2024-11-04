@@ -202,6 +202,11 @@ public:
 
     GISMO_OVERRIDE_BASIS_ACCESSORS;
 
+    // const CompositionT & composition() const { return *m_composition; }
+    //       CompositionT & composition()       { return *m_composition; }
+
+    const    CompositionT * composition() const { return  m_composition; }
+
 protected:
     // Map from parametric domain to geometry
     const CompositionT * m_composition;

@@ -37,7 +37,7 @@ struct gsHLBFGSObjective
     {
         gsAsConstVector<real_t> u(x,N);
         *f = obj->evalObj(u);
-        
+
         gsAsVector<real_t> Gvec(g,N);
         obj->gradObj_into(u,Gvec);
     }
@@ -59,6 +59,13 @@ public:
     //     this->defaultOptions();
     // }
 
+    gsHLBFGS()
+    :
+    Base()
+    {
+        this->defaultOptions();
+    }
+
     gsHLBFGS(gsOptProblem<T> * problem)
     :
     Base(problem)
@@ -73,7 +80,7 @@ protected:
         Base::defaultOptions();
         // See https://xueyuhanlang.github.io/software/HLBFGS/
 
-        // DEPRECATED  
+        // DEPRECATED
         m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
         m_options.addReal("MinStepLength","Minimal step length",1e-9);
 
@@ -172,7 +179,7 @@ public:
 
             gsAsConstVector<real_t> u(x,N);
             *f = m_op->evalObj(u);
-            
+
             gsAsVector<real_t> Gvec(g,N);
             m_op->gradObj_into(u,Gvec);
         };

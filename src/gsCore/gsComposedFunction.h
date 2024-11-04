@@ -30,7 +30,10 @@ public:
     {
     }
 
-    gsComposedFunction(const std::vector<const gsFunction<T> *> functions)
+    gsComposedFunction()
+    {}
+
+    gsComposedFunction(const std::vector<const gsFunction<T> *> & functions)
     :
     m_functions(functions)
     {
@@ -41,6 +44,23 @@ public:
                 ", but functions[l+1]->domainDim() = "<<m_functions[l+1]->domainDim()<<
                 " and functions[l]->targetDim() = )"<<m_functions[l]->targetDim());
     }
+
+public:
+
+    /// Move constructor
+    gsComposedFunction( gsComposedFunction&& other )
+    :
+    m_functions(other.m_functions)
+    {}
+
+    /// Move assignment operator
+    gsComposedFunction& operator= ( gsComposedFunction&& other )
+    {
+        m_functions = other.m_functions;
+        return *this;
+    }
+
+public:
 
     short_t domainDim() const { return m_functions.front()->domainDim(); }
     short_t targetDim() const { return m_functions.back()->targetDim(); }
@@ -76,7 +96,7 @@ public:
         domainDim = m_functions[0]->domainDim();
         targetDim = m_functions[0]->targetDim();
 
-        for (index_t l = 1; l!=m_functions.size(); l++)
+        for (size_t l = 1; l!=m_functions.size(); l++)
         {
             // Compute the new coord for the next function
             m_functions[l-1]->eval_into(coord,newcoord);
@@ -130,7 +150,14 @@ public:
         return os;
     }
 
+    index_t numCompositions() const { return m_functions.size()-1; };
+
+    // const gsFunction<T> & composition(const index_t i) const { return *m_functions[i]; }
+    //       gsFunction<T> & composition(const index_t i)       { return *m_functions[i]; }
+
+    const    gsFunction<T> * composition(const index_t i) const { return  m_functions(i); }
+
 protected:
-    const std::vector<const gsFunction<T> *> m_functions;
+    std::vector<const gsFunction<T> *> m_functions;
 };
 }

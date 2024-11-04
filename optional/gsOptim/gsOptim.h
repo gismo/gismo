@@ -15,6 +15,10 @@
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsOptimizer.h>
 
+#define GISMO_OPTIM_MAKE_CONSTRUCTOR(gsname)                                   \
+gsname()                          : Base()        { this->defaultOptions(); }  \
+gsname(gsOptProblem<T> * problem) : Base(problem) { this->defaultOptions(); }
+
 #   define Eigen gsEigen
 #define OPTIM_ENABLE_EIGEN_WRAPPERS
 #include <optim/header_only_version/optim.hpp>
@@ -148,7 +152,13 @@ public:
 public:
 
     /// Empty constructor
-    gsOptim() {};
+    gsOptim()
+    :
+    Base(),
+    m_success(false)
+    {
+        this->defaultOptions();
+    }
 
 
     /**
@@ -290,11 +300,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimBFGS(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimBFGS)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -337,11 +343,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimLBFGS(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimLBFGS)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -386,11 +388,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimCG(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimCG)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -439,11 +437,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimGD(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimGD)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -554,11 +548,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimNM(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimNM)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -619,11 +609,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimDE(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimDE)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -717,10 +703,8 @@ class gsOptimDEPRMM : public gsOptimDE<T>
 {
     using Base = gsOptimDE<T>;
 public:
-    gsOptimDEPRMM(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimDEPRMM)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -742,11 +726,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimPSO(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimPSO)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -839,11 +819,7 @@ class gsOptimPSODV : public gsOptimPSO<T>
     using Base = gsOptimPSO<T>;
 public:
 
-    /// See \ref gsOptim
-    gsOptimPSODV(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimPSODV)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -865,11 +841,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimSUMT(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimSUMT)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,

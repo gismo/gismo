@@ -85,7 +85,7 @@ public:
         m_composition->invertPoints(supp,result,1e-4,true);
 
         supp.conservativeResize(this->domainDim(),2);
-        for (size_t d=0; d!=this->domainDim(); d++)
+        for (index_t d=0; d!=this->domainDim(); d++)
             supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
 
         return supp;
@@ -125,58 +125,58 @@ public:
          * is different per point in u. PLEASE CHECK THIS!
          */
 
-        const size_t DIM = m_basis->domainDim();
         index_t domainDim, targetDim;
-        gsMatrix<T> coord, deriv, tmp, compderiv;
-
-        m_composition->deriv_into(u,compderiv);
         domainDim = m_composition->domainDim();
         targetDim = m_composition->targetDim();
 
-        m_composition->eval_into(u,coord);
+        gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
+        m_composition->compute(u,fd);
+
+        gsMatrix<T> coord, deriv, tmp, compderiv;
+        coord = fd.values[0];
+        compderiv = fd.values[1];
+
         this->_applyBounds(coord);
         m_basis->deriv_into(coord,deriv);
-        const index_t numAct = deriv.rows() / DIM;
+        const index_t numAct = deriv.rows() / domainDim;
 
         result.resize(numAct*domainDim*m_basis->targetDim(),u.cols());
         for (index_t k = 0; k!=u.cols(); k++)
         {
-            gsAsMatrix<T,Dynamic,Dynamic> resultMat = compderiv.reshapeCol(k,domainDim,targetDim);
+            gsAsMatrix<T,Dynamic,Dynamic> compderivMat = compderiv.reshapeCol(k,domainDim,targetDim);
             // gsAsMatrix<T,Dynamic,Dynamic> derivMat = deriv.reshapeCol(k,m_basis->domainDim(),m_basis->targetDim());
             for (index_t act = 0; act!=numAct; act++)
-            {
-                result.block(act*DIM,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim()) = resultMat*deriv.block(act*DIM,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim());
-            }
+                result.block(act*domainDim,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim()) = compderivMat*deriv.block(act*domainDim,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim());
         }
     }
 
     void derivSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         index_t domainDim, targetDim;
-        gsMatrix<T> coord, deriv, tmp, tmpderiv;
-
-        m_composition->deriv_into(u,result);
         domainDim = m_composition->domainDim();
         targetDim = m_composition->targetDim();
 
-        m_composition->eval_into(u,coord);
-        this->_applyBounds(coord);
+        gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
+        m_composition->compute(u,fd);
+
+        gsMatrix<T> coord, deriv, tmp, compderiv;
+        coord = fd.values[0];
+        compderiv = fd.values[1];
+
         m_basis->derivSingle_into(i,coord,deriv);
 
-        tmp.resize(m_basis->targetDim()*domainDim,u.cols());
+        result.resize(m_basis->targetDim()*domainDim,u.cols());
         for (index_t k = 0; k!=u.cols(); k++)
         {
-            gsAsMatrix<T,Dynamic,Dynamic> resultMat = result.reshapeCol(k,domainDim,targetDim);
+            gsAsMatrix<T,Dynamic,Dynamic> compderivMat = compderiv.reshapeCol(k,domainDim,targetDim);
             gsAsMatrix<T,Dynamic,Dynamic> derivMat = deriv.reshapeCol(k,m_basis->domainDim(),m_basis->targetDim());
             // The product has size:
             // (domainDim x targetDim) x (m_basis->domainDim(),m_basis->targetDim())
             //  =
             // (domainDim x m_basis->targetDim())
-            gsAsMatrix<T,Dynamic,Dynamic> tmpMat = tmp.reshapeCol(k,domainDim,m_basis->targetDim());
-            tmpMat = resultMat*derivMat;
-
+            gsAsMatrix<T,Dynamic,Dynamic> resultMat = result.reshapeCol(k,domainDim,m_basis->targetDim());
+            resultMat = compderivMat * derivMat;
         }
-        result = tmp;
     }
 
     // void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result)
@@ -279,7 +279,7 @@ public:
     std::ostream &print(std::ostream &os) const override
     {
         os <<"Composite basis:\n";
-        os << "* Compositoon "
+        os << "* Composition "
            << " ( R^" << m_composition->domainDim() << " --> R^" << m_composition->targetDim() << "):\n"
            << m_composition<<"\n";
         os << "* Basis "
