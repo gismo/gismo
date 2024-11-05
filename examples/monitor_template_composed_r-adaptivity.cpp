@@ -30,6 +30,7 @@ int main(int arg, char *argv[])
     index_t testCase = 0;
     index_t opt = 2;
     index_t nSamplingPoints = 50;
+    bool parametric = false;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "elevAnalysis","Number of degree elevation steps to perform for the analysis", numElevate );
@@ -42,7 +43,7 @@ int main(int arg, char *argv[])
     cmd.addInt( "t", "testCase", "Function to be used: 0: cosine waves, 1: spiral.",  testCase );
     cmd.addInt( "o", "opt", "Optimizer: 0: gsGradientDescent, 1: gsHLBFGS, 2: gsOptim::LBFGS.",  opt );
     cmd.addInt( "S", "nSamplingPoints", "Number of sampling points in each parametric direction",  nSamplingPoints );
-
+    cmd.addSwitch("n", "parametric", "Define the function parametrically",  parametric );
     try { cmd.getValues(arg,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
@@ -95,9 +96,6 @@ int main(int arg, char *argv[])
         GISMO_ERROR("Unknown test case");
     }
 
-    gsComposedFunction<real_t> cfun({&domain,fun});
-    // gsComposedFunction<real_t> cfun({&cspline,fun});
-    gsComposedGeometry<real_t> cgeom(domain,geom.patch(0));
 
 /*
     PERFORM R-ADAPTIVITY
@@ -133,16 +131,13 @@ int main(int arg, char *argv[])
         GISMO_ERROR("Unknown optimizer");
     }
 
-    for (size_t k=0; k!=domain.nControls(); k++)
-        gsInfo<<domain.control(k)<<" ";
-    gsInfo<<std::endl;
-    // gsComposedRelocation<real_t,MonitorMode::ValueBased> relocator(domain,geom.patch(0),cfun,*optimizer);
-
-    gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,geom.patch(0),*fun,geom.basis(0),*optimizer);
+    gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,geom.patch(0),*fun,geom.basis(0),*optimizer,parametric);
     relocator.solve();
-    for (size_t k=0; k!=domain.nControls(); k++)
-        gsInfo<<domain.control(k)<<" ";
-    gsInfo<<std::endl;
+
+    //////////////////////////////////////////////////
+    // PLOTTING
+    //////////////////////////////////////////////////
+    gsComposedFunction<real_t> cfun = (parametric) ? gsComposedFunction<real_t>(domain,*fun) : gsComposedFunction<real_t>(cspline,*fun);
 
     gsMultiPatch<> mp;
     mp.addPatch(cspline);
@@ -154,19 +149,8 @@ int main(int arg, char *argv[])
     auto G = ev.getMap(mp);
     // auto f = ev.getVariable(*fun);
 
-    gsField<> cfun_field(mp,cfun);
-
-    gsWriteParaview(mp,*fun,dirname+"fun");
     gsWriteParaview(mp,cfun,dirname+"cfun");
-    gsWriteParaview(cfun_field,dirname+"cfun_field");
-
-    // ev.writeParaview(f,G,dirname+"fun");
-
-    // gsWriteParaview(cspline,"cspline",1000,true);
-    // gsWriteParaview(cspline.basis(),"cbasis",1000);
     gsWriteParaview(domain.domain(),dirname+"domain",1000,true,true);
-
-    // gsInfo<<"Area = "<<ev.integral(meas(G))<<"\n";
     ev.writeParaview(jac(G).det(),G,dirname+"jacobian_determinant");
 
     delete fun;

@@ -24,19 +24,17 @@ class gsComposedFunction : public gsFunction<T>
 {
 public:
 
+    // gsComposedFunction(const gsFunction<T> & composition, const gsFunction<T> & function)
+    // :
+    // gsComposedFunction(std::vector<gsFunction<T>*>(composition.clone().release(),
+    //                                                function.clone().release()))
+    // {}
+
     gsComposedFunction(const gsFunction<T> & composition, const gsFunction<T> & function)
-    :
-    gsComposedFunction({&composition,&function})
     {
-    }
-
-    gsComposedFunction()
-    {}
-
-    gsComposedFunction(const std::vector<const gsFunction<T> *> & functions)
-    :
-    m_functions(functions)
-    {
+        m_functions.reserve(2);
+        m_functions.push_back(composition.clone().release());
+        m_functions.push_back(function.clone().release());
         for (size_t l = 0; l!=m_functions.size()-1; l++)
             GISMO_ENSURE(m_functions[l+1]->domainDim()==m_functions[l]->targetDim(),
                 "Domain dimension of function "<<l+1<<
@@ -45,18 +43,38 @@ public:
                 " and functions[l]->targetDim() = )"<<m_functions[l]->targetDim());
     }
 
+    gsComposedFunction()
+    {}
+
+    gsComposedFunction(std::vector<gsFunction<T> *> & functions)
+    {
+        m_functions.swap(functions);
+        for (size_t l = 0; l!=m_functions.size()-1; l++)
+            GISMO_ENSURE(m_functions[l+1]->domainDim()==m_functions[l]->targetDim(),
+                "Domain dimension of function "<<l+1<<
+                " should be equal to the target dimension of function "<<l<<
+                ", but functions[l+1]->domainDim() = "<<m_functions[l+1]->domainDim()<<
+                " and functions[l]->targetDim() = )"<<m_functions[l]->targetDim());
+    }
+
+    ~gsComposedFunction()
+    {
+        freeAll(m_functions);
+    }
+
 public:
 
     /// Move constructor
     gsComposedFunction( gsComposedFunction&& other )
     :
-    m_functions(other.m_functions)
+    m_functions(give(other.m_functions))
     {}
 
     /// Move assignment operator
     gsComposedFunction& operator= ( gsComposedFunction&& other )
     {
-        m_functions = other.m_functions;
+        freeAll(m_functions);
+        m_functions = give(other.m_functions);
         return *this;
     }
 
@@ -155,9 +173,9 @@ public:
     // const gsFunction<T> & composition(const index_t i) const { return *m_functions[i]; }
     //       gsFunction<T> & composition(const index_t i)       { return *m_functions[i]; }
 
-    const    gsFunction<T> * composition(const index_t i) const { return  m_functions(i); }
+    const gsFunction<T> * composition(const index_t i) const { return  m_functions[i]; }
 
 protected:
-    std::vector<const gsFunction<T> *> m_functions;
+    std::vector<gsFunction<T> *> m_functions;
 };
 }
