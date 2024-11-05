@@ -1,4 +1,4 @@
-/** @file geometry_example.cpp
+/** @file controlled_function_1D_example.cpp
 
     @brief Tutorial on gsGeometry abstract class.
 
