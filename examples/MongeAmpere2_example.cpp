@@ -272,8 +272,7 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        gsInfo<<"Plotting in Paraview...\n";
-
+        gsInfo<<"Plotting in Paraview...\n";        
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
@@ -286,6 +285,25 @@ int main(int argc, char *argv[])
 
 
         gsFileManager::open("ParaviewOutput/solution.pvd");
+
+
+        gsMultiBasis<> gbasis(dbasis);
+        gbasis.reduceContinuity(1);
+        space v = A.getSpace(gbasis);
+        solution v_sol = A.getSolution(v, solVector);
+        A.initSystem(2);
+
+        //gsVector<> pt(2); pt.setConstant(0.5);
+        //ev.testEval( v, pt );
+        //ev.testEval( igrad(u_sol,G), pt );
+
+        // Obtain control points for the gradient of Psi
+        A.assemble( v * v.tr(), v * igrad(u_sol,G) );
+        solVector = solver.compute(A.matrix()).solve(A.rhs());
+        gsMultiPatch<> Psi;
+        v_sol.extract(Psi);
+        gsWrite(Psi, "Psi_mapping");
+        gsInfo << "Result written in Psi_mapping.xml \n";
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
