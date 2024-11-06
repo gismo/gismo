@@ -125,9 +125,9 @@ int main(int argc, char *argv[])
             );
 
     // Solution vector and solution variables
-    gsMatrix<> solution_vector;
-    solution pressure_sol_expression = expression_assembler.getSolution(pressure_trial_space, solution_vector);
-    solution velocity_sol_expression = expression_assembler.getSolution(velocity_trial_space, solution_vector);
+    gsMatrix<> pressure_solution_vector, velocity_solution_vector, solution_vector;
+    solution pressure_sol_expression = expression_assembler.getSolution(pressure_trial_space, pressure_solution_vector);
+    solution velocity_sol_expression = expression_assembler.getSolution(velocity_trial_space, velocity_solution_vector);
 
     // Set Dirichlet BCs for velocity
     velocity_trial_space.setup(boundary_conditions, dirichlet::l2Projection, 0);
@@ -175,7 +175,8 @@ int main(int argc, char *argv[])
     // Set up system matrix for the Stokes problem
 
     // Time-stepping loop
-    gsParaviewCollection collection("ParaviewOutput/solution");
+    gsExprEvaluator<> expression_evaluator(expression_assembler);
+    gsParaviewCollection collection("ParaviewOutput/solution",&expression_evaluator);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 16);
 
@@ -194,13 +195,8 @@ int main(int argc, char *argv[])
 
         gsSparseSolver<>::BiCGSTABILUT solver;
         solver.compute(system_matrix);
-        gsDebugVar(system_matrix);
         solution_vector = solver.solve(rhs);
-        gsDebugVar(solution_vector);
 
-
-
-        gsExprEvaluator<> expression_evaluator(expression_assembler);
         gsInfo << "Solution vector size: " << solution_vector.size() << "\n";
         gsInfo << "Expected DoFs: " << expression_assembler.numDofs() << "\n";
         gsInfo << "Expected RHS DoFs: " << solution_vector.size() << "\n";
@@ -210,13 +206,11 @@ int main(int argc, char *argv[])
         if (plot)
         {
             gsInfo << "\nStarting the paraview export ..." << std::flush;
-            // gsParaviewCollection collection("ParaviewOutput/solution",
-            //                                 &expression_evaluator);
-            // collection.options().setSwitch("plotElements", true);
-            // collection.options().setInt("plotElements.resolution", 16);
-            // collection.newTimeStep(&multi_patch);
-            // collection.addField(pressure_sol_expression, "pressure");
-            // collection.addField(velocity_sol_expression, "velocity");
+            pressure_solution_vector = solution_vector.col(0).head(pressure_trial_space.mapper().freeSize());
+            velocity_solution_vector = solution_vector.col(0).tail(velocity_trial_space.mapper().freeSize());
+            collection.newTimeStep(&multi_patch);
+            collection.addField(pressure_sol_expression, "pressure");
+            collection.addField(velocity_sol_expression, "velocity");
             collection.saveTimeStep();
         }
     }
