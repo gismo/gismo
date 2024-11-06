@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
         A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) +  1e-8*u*u.tr() * meas(G) //matrix
             ,
-            -1. * pow( ilapl(u_sol,G)*ilapl(u_sol,G).tr() + 2.*(ff - ihess(u_sol,G).det()), 0.5) * u * meas(G) //rhs vector
+            -1. * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * u * meas(G) //rhs vector
             );
             //- ihess(u_sol,G).det()
         // Compute the Neumann terms defined on physical space
