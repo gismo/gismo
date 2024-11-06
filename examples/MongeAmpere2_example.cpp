@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-
+    dbasis.degreeElevate(2);
     // h-refine each basis
     if (last)
     {
@@ -146,9 +146,9 @@ int main(int argc, char *argv[])
         timer.restart();
         // Compute the system matrix and right-hand side
         A.assemble(
-            igrad(u, G) * igrad(u, G).tr() * meas(G) +  1e-8*u*u.tr() * meas(G) //matrix
+            igrad(u, G) * igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
             ,
-            pow(2. * ff, 0.5) * u * meas(G) //rhs vector
+            u* (-1.)*pow(2. * ff, 0.5) * meas(G) //rhs vector
             );
         //math::sqrt(ilapl(u,G)*ilapl(u,G) + 2.*(ff-ihess(u,G))) * u * meas(G) //rhs vector
         // Compute the Neumann terms defined on physical space
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
     //! [Solver loop]
 
     //... Picard iterations test case
-    int NiterPicard{5};
+    int NiterPicard{20};
 
     // Picard loop
     double l2errMA, h1errMA;
@@ -206,9 +206,9 @@ int main(int argc, char *argv[])
         timer.restart();
         // Compute the system matrix and right-hand side
         A.assemble(
-            igrad(u, G) * igrad(u, G).tr() * meas(G) +  1e-8*u*u.tr() * meas(G) //matrix
+            igrad(u, G) * igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
             ,
-            -1. * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * u * meas(G) //rhs vector
+            u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
             );
             //- ihess(u_sol,G).det()
         // Compute the Neumann terms defined on physical space
