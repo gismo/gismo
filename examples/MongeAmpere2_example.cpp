@@ -2,13 +2,21 @@
 
     @brief Tutorial on how to use expression assembler to solve the Monge-Ampere equation
 
+                -det(Hess(u))       = f, <==> -div(grad(u)) + epsilon u= -( div(grad(u))^2 + d!(f- det(Hess(u)) )  )
+
+                            u=g & eps=0 or \partial_n u = g & eps = 1e-8 : eps is the pinalization coefficient
+                            u is convex (u in H^2(\Omega))
+
+    N. A simple test of the solver using the nonlinear Poisson equation equation is provided
+                        -div((1+u**2)grad(u)) = f
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris M. Bahari
 */
 
 //! [Include namespace]
@@ -23,10 +31,11 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 5;
     index_t numElevate = 0;
+    int NiterPicard{15}; // for Picard iteration
     bool last{false}, export_b64{false};
     std::string fn("pde/MongeAmpere2d_bvp.xml");
 
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    gsCmdLine cmd("Tutorial on solving a nonlinear Poisson(Monge-Ampere) problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
@@ -49,7 +58,8 @@ int main(int argc, char *argv[])
     fd.getId(0, mp); // id=0: Multipatch domain
 
     gsFunctionExpr<> f;
-    fd.getId(1, f); // id=1: source function
+    // id=1: source function for Monge-Ampere equation
+    fd.getId(1, f); // id=5: source function for Nonlinear Poisson equation
     gsInfo<<"Source function "<< f << "\n";
 
     gsBoundaryConditions<> bc;
@@ -71,7 +81,10 @@ int main(int argc, char *argv[])
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-    dbasis.degreeElevate(2);
+
+    //degree elevation
+    //dbasis.degreeElevate(1);
+
     // h-refine each basis
     if (last)
     {
@@ -145,12 +158,20 @@ int main(int argc, char *argv[])
 
         timer.restart();
         // Compute the system matrix and right-hand side
+
+        //... Nonlonear poisson equation : initial guess equal to zero
+        // A.assemble(
+        //    igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
+        //    ,
+        //    u * ff * meas(G) //rhs vector
+        //    );
+        //... Monge-Ampere eqaution : initial guess equal to zero
         A.assemble(
-            igrad(u, G) * igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
-            ,
-            u* (-1.)*pow(2. * ff, 0.5) * meas(G) //rhs vector
-            );
-        //math::sqrt(ilapl(u,G)*ilapl(u,G) + 2.*(ff-ihess(u,G))) * u * meas(G) //rhs vector
+           igrad(u, G) * igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
+           ,
+           u* (-1.)*pow(2. * ff, 0.5) * meas(G) //rhs vector
+           );
+        
         // Compute the Neumann terms defined on physical space
         //auto g_N = A.getBdrFunction(G);
         //A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
@@ -181,18 +202,14 @@ int main(int argc, char *argv[])
         gsInfo<< ". " <<std::flush; // Error computations done
 
     } //for loop
-
     //! [Solver loop]
 
     //... Picard iterations test case
-    int NiterPicard{20};
+    double l2errMA, h1errMA;
 
     // Picard loop
-    double l2errMA, h1errMA;
     for(int ip{0}; ip<NiterPicard; ++ip)
     {
-        //dbasis.uniformRefine();
-        //mp.uniformRefine();
 
 //        u.setup(bc, dirichlet::interpolation, 0);
         u.setup(bc, dirichlet::l2Projection, 0);
@@ -205,12 +222,18 @@ int main(int argc, char *argv[])
 
         timer.restart();
         // Compute the system matrix and right-hand side
+        // just for test
+        // A.assemble(
+        //     igrad(u, G) * (1.+pow(u_sol,2))*igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
+        //     ,
+        //     u * ff* meas(G) //rhs vector
+        //     );
         A.assemble(
-            igrad(u, G) * igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
-            ,
-            u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
-            );
-            //- ihess(u_sol,G).det()
+           igrad(u, G) * igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
+           ,
+           u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
+           );
+           
         // Compute the Neumann terms defined on physical space
         //auto g_N = A.getBdrFunction(G);
         //A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
