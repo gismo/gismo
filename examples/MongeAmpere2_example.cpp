@@ -117,6 +117,8 @@ int main(int argc, char *argv[])
     // Set the geometry map
     geometryMap G = A.getMap(mp);
 
+    //geometryMap P = A.getMap(Psi);
+        
     // Set the discretization space
     space u = A.getSpace(dbasis);
 
@@ -302,6 +304,7 @@ int main(int argc, char *argv[])
         collection.options().setInt("plotElements.resolution", 16);
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
+        collection.addField(igrad(u_sol,G),"gradient_numerical solution");
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();
         collection.save();
@@ -310,10 +313,16 @@ int main(int argc, char *argv[])
         gsFileManager::open("ParaviewOutput/solution.pvd");
 
 
+        gsMultiPatch<> UU;
+        u_sol.extract(UU);
+        gsWrite(UU, "U_solution");
+        auto u_s = A.getCoeff(UU);
+
         gsMultiBasis<> gbasis(dbasis);
         gbasis.reduceContinuity(1);
         space v = A.getSpace(gbasis);
-        solution v_sol = A.getSolution(v, solVector);
+        gsMatrix<> vsolVector;
+        solution v_sol = A.getSolution(v, vsolVector);
         A.initSystem(2);
 
         //gsVector<> pt(2); pt.setConstant(0.5);
@@ -321,10 +330,13 @@ int main(int argc, char *argv[])
         //ev.testEval( igrad(u_sol,G), pt );
 
         // Obtain control points for the gradient of Psi
-        A.assemble( v * v.tr(), v * igrad(u_sol,G) );
-        solVector = solver.compute(A.matrix()).solve(A.rhs());
+        A.assemble( v * v.tr() , v * igrad(u_s,G) );
+        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         gsMultiPatch<> Psi;
         v_sol.extract(Psi);
+        geometryMap PP = A.getMap(Psi);
+        auto fp = A.getCoeff(f,PP);
+
         gsWrite(Psi, "Psi_mapping");
         gsInfo << "Result written in Psi_mapping.xml \n";
     }
