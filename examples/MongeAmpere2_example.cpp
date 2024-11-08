@@ -31,7 +31,8 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 5;
     index_t numElevate = 0;
-    int NiterPicard{15}; // for Picard iteration
+    double eps{1e-7}; /// pinalization coefficient
+    int NiterPicard{40}; // for Picard iteration
     bool last{false}, export_b64{false};
     std::string fn("pde/MongeAmpere2d_bvp.xml");
 
@@ -163,13 +164,13 @@ int main(int argc, char *argv[])
 
         //... Nonlonear poisson equation : initial guess equal to zero
         // A.assemble(
-        //    igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
+        //    igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps*u*u.tr() * meas(G) //matrix
         //    ,
         //    u * ff * meas(G) //rhs vector
         //    );
         //... Monge-Ampere eqaution : initial guess equal to zero
         A.assemble(
-           igrad(u, G) * igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
+           igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps*u*u.tr() * meas(G) //matrix
            ,
            u* (-1.)*pow(2. * ff, 0.5) * meas(G) //rhs vector
            );
@@ -207,12 +208,13 @@ int main(int argc, char *argv[])
     //! [Solver loop]
 
     //... Picard iterations test case
-    double l2errMA, h1errMA;
+    double l2errMA, h1errMA, l2errRes;
 
     // Picard loop
+    gsMatrix<> sv0; // 
     for(int ip{0}; ip<NiterPicard; ++ip)
     {
-
+        sv0 = solVector;
 //        u.setup(bc, dirichlet::interpolation, 0);
         u.setup(bc, dirichlet::l2Projection, 0);
 
@@ -226,12 +228,12 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side
         // just for test
         // A.assemble(
-        //     igrad(u, G) * (1.+pow(u_sol,2))*igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
+        //     igrad(u, G) * (1.+pow(u_sol,2))*igrad(u, G).tr() * meas(G) +  eps*u*u.tr() * meas(G) //matrix
         //     ,
         //     u * ff* meas(G) //rhs vector
         //     );
         A.assemble(
-           igrad(u, G) * igrad(u, G).tr() * meas(G) +  0e-8*u*u.tr() * meas(G) //matrix
+           igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps*u*u.tr() * meas(G) //matrix
            ,
            u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
            );
@@ -259,13 +261,16 @@ int main(int argc, char *argv[])
 
         timer.restart();
         l2errMA = math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-        
+        l2errRes = (solVector-sv0).norm();// TODO
+
         h1errMA = l2errMA +
             math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
         gsInfo<< "\nPicard iter nb =" << ip <<"> L2 error: "<<std::scientific<<std::setprecision(3)<<l2errMA<<"\n";
         gsInfo<< "Picard iter nb =" << ip <<"> H1 error: "<<std::scientific<<h1errMA<<"\n";
+        gsInfo<< "Picard iter nb =" << ip <<"> L2 residual: "<<std::scientific<<l2errRes<<"\n";
+        if ( l2errRes <1e-5 ) break; // TODO
     } //for loop
     // ! end Picard loop
 
@@ -334,8 +339,8 @@ int main(int argc, char *argv[])
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         gsMultiPatch<> Psi;
         v_sol.extract(Psi);
-        geometryMap PP = A.getMap(Psi);
-        auto fp = A.getCoeff(f,PP);
+        //geometryMap PP = A.getMap(Psi);
+        //auto fp = A.getCoeff(f,PP);
 
         gsWrite(Psi, "Psi_mapping");
         gsInfo << "Result written in Psi_mapping.xml \n";
