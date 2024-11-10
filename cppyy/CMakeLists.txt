@@ -4,6 +4,7 @@
 ##
 ## Author: Felix Scholz
 ######################################################################
+find_package(Python)
 
 set(GISMO_LIB_DIR  "${PROJECT_BINARY_DIR}/${LIB_INSTALL_DIR}")
 set(PYTHON_PACKAGE_DIR ${PROJECT_BINARY_DIR}/cppyy)
@@ -22,7 +23,7 @@ message("-- Python package was generated in ${PYTHON_PACKAGE_DIR}.
   To install the bindings, run target \"install-bindings\".")
 
 # Check if python-build is installed
-execute_process(COMMAND python -c "import build"
+execute_process(COMMAND ${Python_EXECUTABLE} -c "import build"
         RESULT_VARIABLE EXIT_CODE
         OUTPUT_QUIET)
 if(NOT ${EXIT_CODE} EQUAL 0)
@@ -30,12 +31,12 @@ if(NOT ${EXIT_CODE} EQUAL 0)
 endif ()
 
 add_custom_command(OUTPUT ${PY_WHEEL_FILE}
-        COMMAND python -m build --wheel
+        COMMAND ${Python_EXECUTABLE} -m build --wheel
         WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
         COMMENT "  Generating wheel for the Python bindings...")
 add_custom_target(wheel ALL DEPENDS ${PY_WHEEL_FILE})
 
-add_custom_target(install-bindings COMMAND pip install ${PY_WHEEL_FILE}
+add_custom_target(install-bindings COMMAND ${Python_EXECUTABLE} -m pip install ${PY_WHEEL_FILE}
         COMMENT "Installing the cppyy Python bindings using pip"
         DEPENDS wheel gismo)
 
