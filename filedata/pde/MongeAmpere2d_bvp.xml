@@ -35,10 +35,10 @@
 
     <!-- Dirichlet conditions (patch,side) -->
     <bc type="Dirichlet" function="0" unknown="0" name="dirichlet">
-    </bc>
-
-    <!-- <bc unknown="0" type="Neumann" function="1" name="neumann"> 
     </bc> -->
+
+    <bc unknown="0" type="Neumann" function="1" name="neumann"> 
+    </bc>
   </boundaryConditions>
 
   <!-- The manufactured exact solution (for reference) -->
