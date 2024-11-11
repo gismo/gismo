@@ -105,11 +105,11 @@ public:
 
         return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
     }
-
+public:
     void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
     {
         auto tmp = m_src->clone();
-        coefs *= m_weights.asDiagonal();
+        coefs = m_weights.asDiagonal() * coefs;
         tmp->refine_withCoefs(coefs, boxes);
         m_src->refine_withCoefs(m_weights, boxes);
         coefs.array().colwise() /= m_weights.col(0).array();
