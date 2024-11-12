@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 4;
     index_t numElevate = 0;
     index_t maxIter = 100;
-    double l2errRes{0.}, eps{0.000001};
+    double l2errRes{0.}, eps{0.0000001};
     index_t method = 2;
     bool last = false, export_b64{false}, adaptiveMesh{false};
 
@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    dbasis.degreeElevate(1);
 
     // h-refine each basis
     if (last)
@@ -162,7 +163,7 @@ int main(int argc, char *argv[])
         mp.uniformRefine();
 
 //        u.setup(bc, dirichlet::interpolation, 0);
-        u.setup(bc, dirichlet::l2Projection, 0);
+//        u.setup(bc, dirichlet::l2Projection, 0);
 
         // Initialize the system
         A.initSystem();
@@ -173,21 +174,29 @@ int main(int argc, char *argv[])
         timer.restart();
         // Compute the system matrix and right-hand side
 
-        //... Nonlonear poisson equation : initial guess equal to zero
-        // A.assemble(
-        //    igrad(u, G) * igrad(u, G).tr() * meas(G) + eps*u*u.tr() * meas(G) //matrix
-        //    ,
-        //    u * ff * meas(G) //rhs vector
-        //    );
-        //... Monge-Ampere eqaution : initial guess equal to zero
-        A.assemble(
-           igrad(u, G) * igrad(u, G).tr() * meas(G) + eps*u*u.tr() * meas(G) //matrix
-           ,
-           u* (-1.)*pow(2. * ff, 0.5) * meas(G) //rhs vector
-           );
-
+        // .... Computes the conductivity coeffeicient
+        auto CoeffConductivity{ev.integral(pow(2. * ff, 0.5) * meas(G))};
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
+        A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+        auto Neumann_Int{A.rhs().sum()};
+
+        // Initialize the system
+        A.initSystem();
+        setup_time += timer.stop();
+
+        gsInfo<< A.numDofs() <<std::flush;
+
+        timer.restart();
+
+        A.assemble(
+           igrad(u, G) * igrad(u, G).tr() * meas(G) + eps*u*u.tr() //matrix
+           ,
+           u* (-1.)*pow(2. * ff, 0.5) *Neumann_Int/CoeffConductivity* meas(G) //rhs vector
+           );
+        
+        // Compute the Neumann terms defined on physical space
+        //auto g_N = A.getBdrFunction(G);
         A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
 
         ma_time += timer.stop();
@@ -199,7 +208,7 @@ int main(int argc, char *argv[])
 
         timer.restart();
         solver.compute( A.matrix() );
-        solVector = solver.solve(A.rhs());
+        solVector = solver.solve(A.rhs()*Neumann_Int/CoeffConductivity);
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done
@@ -209,6 +218,11 @@ int main(int argc, char *argv[])
         gsMatrix<> sv0; //
         for(int ip{0}; ip<maxIter; ++ip)
         {
+            gsMultiPatch<> UU;
+            u_sol.extract(UU);
+            gsWrite(UU, "U_solution");
+            auto u_s = A.getCoeff(UU);
+
             if(adaptiveMesh)
             {
                 gsMultiPatch<> UU;
@@ -230,6 +244,7 @@ int main(int argc, char *argv[])
                 // Obtain control points for the gradient of Psi
                 A.assemble( v * v.tr() , v * igrad(u_s,G) );
                 vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+                
                 gsMultiPatch<> Psi;
                 v_sol.extract(Psi);
                 //geometryMap PP = A.getMap(Psi);
@@ -237,7 +252,7 @@ int main(int argc, char *argv[])
             }
             sv0 = solVector;
     //        u.setup(bc, dirichlet::interpolation, 0);
-            u.setup(bc, dirichlet::l2Projection, 0);
+    //        u.setup(bc, dirichlet::l2Projection, 0);
 
             // Initialize the system
             A.initSystem();
@@ -254,10 +269,13 @@ int main(int argc, char *argv[])
             //     u * ff* meas(G) //rhs vector
             //     );
             //... Monge-Ampere eqaution
+
+            // .. update Coeffeicient of conductivity
+            CoeffConductivity = ev.integral(pow( (ilapl(u_s,G)*ilapl(u_s,G).tr()).val() + 2.*(ff.val() - ihess(u_s,G).det()), 0.5) * meas(G));
             A.assemble(
-               igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps*u*u.tr() * meas(G) //matrix
+               igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps*u*u.tr() //matrix
                ,
-               u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
+               u * (-1.) * pow( (ilapl(u_s,G)*ilapl(u_s,G).tr()).val() + 2.*(ff.val() - ihess(u_s,G).det()), 0.5) *Neumann_Int/CoeffConductivity * meas(G) //rhs vector
                );
 
             // Compute the Neumann terms defined on physical space
@@ -268,6 +286,7 @@ int main(int argc, char *argv[])
 
             // gsDebugVar(A.matrix().toDense());
             // gsDebugVar(A.rhs().transpose()   );
+            
 
             gsInfo<< " ." <<std::flush;// Assemblying done
 
