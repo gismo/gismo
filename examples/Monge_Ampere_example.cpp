@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
     gsVector<> l2err(numRefine+1), h1err(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n"
         "\nDoFs: ";
-    double setup_time(0), ma_time(0), slv_time(0), err_time(0);
+    double setup_time(0), ma_time(0), slv_time(0), err_time(0);    
     gsStopwatch timer;
     for (int r=0; r<=numRefine; ++r)
     {
@@ -165,21 +165,15 @@ int main(int argc, char *argv[])
 //        u.setup(bc, dirichlet::interpolation, 0);
 //        u.setup(bc, dirichlet::l2Projection, 0);
 
-        // Initialize the system
-        A.initSystem();
-        setup_time += timer.stop();
-
-        gsInfo<< A.numDofs() <<std::flush;
-
-        timer.restart();
         // Compute the system matrix and right-hand side
 
-        // .... Computes the conductivity coeffeicient
-        auto CoeffConductivity{ev.integral(pow(2. * ff, 0.5) * meas(G))};
+        // Initialize the system : start Computing the conductivity coeffeicient ...
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
-        A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
-        auto Neumann_Int{A.rhs().sum()};
+        auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
+        // ...
+        auto CoeffConductivity{Neumann_Int/ev.integral(pow(2. * ff, 0.5) * meas(G))};
+        //... end 
 
         // Initialize the system
         A.initSystem();
@@ -190,9 +184,9 @@ int main(int argc, char *argv[])
         timer.restart();
 
         A.assemble(
-           igrad(u, G) * igrad(u, G).tr() * meas(G) + eps*u*u.tr() //matrix
+           igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr() //matrix
            ,
-           u* (-1.)*pow(2. * ff, 0.5) *Neumann_Int/CoeffConductivity* meas(G) //rhs vector
+           u* (-1.)*pow(2. * ff, 0.5) *CoeffConductivity* meas(G) //rhs vector
            );
         
         // Compute the Neumann terms defined on physical space
@@ -208,7 +202,8 @@ int main(int argc, char *argv[])
 
         timer.restart();
         solver.compute( A.matrix() );
-        solVector = solver.solve(A.rhs()*Neumann_Int/CoeffConductivity);
+        solVector = solver.solve(A.rhs());
+
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done
@@ -218,11 +213,6 @@ int main(int argc, char *argv[])
         gsMatrix<> sv0; //
         for(int ip{0}; ip<maxIter; ++ip)
         {
-            gsMultiPatch<> UU;
-            u_sol.extract(UU);
-            gsWrite(UU, "U_solution");
-            auto u_s = A.getCoeff(UU);
-
             if(adaptiveMesh)
             {
                 gsMultiPatch<> UU;
@@ -271,11 +261,12 @@ int main(int argc, char *argv[])
             //... Monge-Ampere eqaution
 
             // .. update Coeffeicient of conductivity
-            CoeffConductivity = ev.integral(pow( (ilapl(u_s,G)*ilapl(u_s,G).tr()).val() + 2.*(ff.val() - ihess(u_s,G).det()), 0.5) * meas(G));
+            CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
+
             A.assemble(
-               igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps*u*u.tr() //matrix
+               igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr() //matrix
                ,
-               u * (-1.) * pow( (ilapl(u_s,G)*ilapl(u_s,G).tr()).val() + 2.*(ff.val() - ihess(u_s,G).det()), 0.5) *Neumann_Int/CoeffConductivity * meas(G) //rhs vector
+               u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) *CoeffConductivity * meas(G) //rhs vector
                );
 
             // Compute the Neumann terms defined on physical space
@@ -293,6 +284,9 @@ int main(int argc, char *argv[])
             timer.restart();
             solver.compute( A.matrix() );
             solVector = solver.solve(A.rhs());
+            // gsMatrix<> ToUse();
+            // solVector = solVector -  ToUse * solVector.sum()/A.numDofs();
+
             slv_time += timer.stop();
 
             gsInfo<< "." <<std::flush; // Linear solving done
