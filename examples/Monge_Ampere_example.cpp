@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 4;
     index_t numElevate = 0;
     index_t maxIter = 100;
-    double l2errRes{0.}, eps{0.0000};
+    double l2errRes{0.}, eps{0.000001};
     index_t method = 2;
     bool last = false, export_b64{false}, adaptiveMesh{false};
 
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, .1, .1);
+    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, .0, .0);
 
     //// Manufactured solition
     //gsFunctionExpr<> s("sin(2*pi*y)*sin(2*pi*x)",2);
@@ -63,30 +63,30 @@ int main(int argc, char *argv[])
     // Right-hand side function
     gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
     // // Right-hand side function : nonlinear Poisson equation
-    // gsFunctionExpr<> f("-x**2*(exp(x**2 + y**2) + 1.0)*exp(0.5*x**2 + 0.5*y**2) - 2.0*x**2*exp(0.5*(x**2 + y**2))*exp(x**2 + y**2) - y**2*(exp(x**2 + y**2) + 1.0)*exp(0.5*x**2 + 0.5*y**2) - 2.0*y**2*exp(0.5*x**2 + 0.5*y**2)*exp(x**2 + y**2) - 2.0*(exp(x**2 + y**2) + 1.0)*exp(0.5*x**2 + 0.5*y**2)",2);
+    //gsFunctionExpr<> f("-x**2*(exp(x**2 + y**2) + 1.0)*exp(0.5*x**2 + 0.5*y**2) - 2.0*x**2*exp(0.5*(x**2 + y**2))*exp(x**2 + y**2) - y**2*(exp(x**2 + y**2) + 1.0)*exp(0.5*x**2 + 0.5*y**2) - 2.0*y**2*exp(0.5*x**2 + 0.5*y**2)*exp(x**2 + y**2) - 2.0*(exp(x**2 + y**2) + 1.0)*exp(0.5*x**2 + 0.5*y**2)",2);
 
     //..... Test 2
     // Manufactured solition
     // gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
     // // // Manufactured Grad solition
     // gsFunctionExpr<> sN("x","y",2);
-    // // Right-hand side function : nonlinear Poisson equation
+    // // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
     // gsFunctionExpr<> f("0.5698752034687177/(1./(2.+cos(8.*pi*sqrt((sx-0.5-0.25*0.)**2+(sy-0.5)**2))))",2);
-    
+
     gsInfo<<"Source function "<< f << "\n";
 
     gsFunctionExpr<> bfunc("0",2);
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
-    bc.addCondition(0,1, condition_type::dirichlet, &s,0,false);
-    bc.addCondition(0,2, condition_type::dirichlet, &s,0,false);
-    bc.addCondition(0,3, condition_type::dirichlet, &s,0,false);
-    bc.addCondition(0,4, condition_type::dirichlet, &s,0,false);
+    // bc.addCondition(0,1, condition_type::dirichlet, &s,0,false);
+    // bc.addCondition(0,2, condition_type::dirichlet, &s,0,false);
+    // bc.addCondition(0,3, condition_type::dirichlet, &s,0,false);
+    // bc.addCondition(0,4, condition_type::dirichlet, &s,0,false);
     // ....
-    // bc.addCondition(0,1, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(0,2, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(0,3, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(0,4, condition_type::neumann, &sN,0,false);
+    bc.addCondition(0,1, condition_type::neumann, &sN,0,false);
+    bc.addCondition(0,2, condition_type::neumann, &sN,0,false);
+    bc.addCondition(0,3, condition_type::neumann, &sN,0,false);
+    bc.addCondition(0,4, condition_type::neumann, &sN,0,false);
     //gsDebugVar( bc.allConditions()[0].parametric() );
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
            ,
            u* (-1.)*pow(2. * ff, 0.5) * meas(G) //rhs vector
            );
-        
+
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
         A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
@@ -205,7 +205,8 @@ int main(int argc, char *argv[])
         gsInfo<< "." <<std::flush; // Linear solving done
 
         // Picard loop
-        gsMatrix<> sv0; // 
+        index_t NiterPicard{0};
+        gsMatrix<> sv0; //
         for(int ip{0}; ip<maxIter; ++ip)
         {
             if(adaptiveMesh)
@@ -258,7 +259,7 @@ int main(int argc, char *argv[])
                ,
                u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
                );
-            
+
             // Compute the Neumann terms defined on physical space
             auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
@@ -280,17 +281,18 @@ int main(int argc, char *argv[])
             // omp_set_dynamic(0);     // Explicitly disable dynamic teams
             // omp_set_num_threads(1); // Use these threads for later parallel regions
 
+            ++NiterPicard;
             l2errRes = (solVector-sv0).norm();// TODO
-            if ( l2errRes <1e-5 ) break; // TODO
+            if ( l2errRes <1e-10 ) break; // TODO
         } //for loop
         // ! end Picard loop
-        gsInfo<< "L2 residual in Picard Algorithm : "<<std::scientific<<l2errRes<<"\n";
+        gsInfo<< "\n Niter in Picard : " << NiterPicard << " L2 residual : "<<std::scientific<<l2errRes<<"\n";
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
         timer.restart();
         l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-        
+
         h1err[r]= l2err[r] +
             math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();
@@ -327,7 +329,7 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        gsInfo<<"Plotting in Paraview...\n";        
+        gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
