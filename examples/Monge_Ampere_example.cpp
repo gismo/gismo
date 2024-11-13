@@ -24,9 +24,9 @@ int main(int argc, char *argv[])
     index_t numRefine  = 4;
     index_t numElevate = 0;
     index_t maxIter = 100;
-    double l2errRes{0.}, eps{0.0000001}, tolerancePicard{1e-6};
+    double l2errRes{0.}, eps{0.0000001}, tolerancePicard{1e-7};
     index_t method = 2;
-    bool last = false, export_b64{false}, adaptiveMesh{true};
+    bool last = false, export_b64{false}, adaptiveMesh{false};
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("m","method","Method to use: 0: Newton with automated Jacobian, 1: Newton with Precomputed Jacobian, 2: Picard iteration", method);
@@ -50,19 +50,19 @@ int main(int argc, char *argv[])
 
     //..... Test 2
     // // Manufactured solition
-    // gsFunctionExpr<> s("exp(0.5*(x**2 + y**2))",2);
-    // // Manufactured Grad solition
-    // gsFunctionExpr<> sN("x*exp(0.5*(x**2 + y**2))","y*exp(0.5*(x**2 + y**2))",2);
-    // // Right-hand side function
-    // gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
+    gsFunctionExpr<> s("exp(0.5*(x**2 + y**2))",2);
+    // Manufactured Grad solition
+    gsFunctionExpr<> sN("x*exp(0.5*(x**2 + y**2))","y*exp(0.5*(x**2 + y**2))",2);
+    // Right-hand side function
+    gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
 
     //..... Test 2
-    // Manufactured solition
-    gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
-    // // Manufactured Grad solition
-    gsFunctionExpr<> sN("x","y",2);
-    // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
-    gsFunctionExpr<> f("0.5698752034687177/(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
+    // // Manufactured solition
+    // gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
+    // // // Manufactured Grad solition
+    // gsFunctionExpr<> sN("x","y",2);
+    // // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
+    // gsFunctionExpr<> f("0.5698752034687177/(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
     ///! this example doesn't work !
     //gsFunctionExpr<> f("3.553841799466826/(1.+ 9./(1.+(10.*sqrt((sx-0.7-0.25*0.)**2+(sy-0.5)**2)*cos(arctan2(sy-0.5,sx-0.7-0.25*0.) -20.*((sx-0.7-0.25*0.)**2+(sy-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("1.4259290652600725/( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
         timer.restart();
 
         A.assemble(
-           igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr() //matrix
+           igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
            ,
            u* (-1.)*pow(2.+2. * ff.val(), 0.5) *CoeffConductivity* meas(G) //rhs vector
            );
@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
                 CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
 
                 A.assemble(
-                igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr() //matrix
+                igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
                 ,
                 u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(fp.val() - ihess(u_sol,G).det()), 0.5) *CoeffConductivity * meas(G) //rhs vector
                 );
@@ -324,7 +324,7 @@ int main(int argc, char *argv[])
             CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
 
             A.assemble(
-               igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr() //matrix
+               igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()  * meas(G) //matrix
                ,
                u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) *CoeffConductivity * meas(G) //rhs vector
                );
