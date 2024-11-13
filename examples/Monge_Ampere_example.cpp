@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 4;
     index_t numElevate = 0;
     index_t maxIter = 100;
-    double l2errRes{0.}, eps{0.0000001};
+    double l2errRes{0.}, eps{0.0000001}, tolerancePicard{1e-6};
     index_t method = 2;
     bool last = false, export_b64{false}, adaptiveMesh{false};
 
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1);
+    gsVector<>  h1err(numRefine+1); //l2err(numRefine+1),
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n"
         "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);    
@@ -243,6 +243,8 @@ int main(int argc, char *argv[])
             sv0 = solVector;
     //        u.setup(bc, dirichlet::interpolation, 0);
     //        u.setup(bc, dirichlet::l2Projection, 0);
+            
+            solution u_sol = A.getSolution(u, solVector);
 
             // Initialize the system
             A.initSystem();
@@ -286,6 +288,7 @@ int main(int argc, char *argv[])
             solVector = solver.solve(A.rhs());
             // gsMatrix<> ToUse();
             // solVector = solVector -  ToUse * solVector.sum()/A.numDofs();
+            //gsInfo << "Error in Picard algorithm " << math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) ) << "\n";
 
             slv_time += timer.stop();
 
@@ -296,7 +299,7 @@ int main(int argc, char *argv[])
 
             ++NiterPicard;
             l2errRes = (solVector-sv0).norm();// TODO
-            if ( l2errRes <1e-10 ) break; // TODO
+            if ( l2errRes < tolerancePicard ) break; // TODO
         } //for loop
         // ! end Picard loop
         gsInfo<< "\n Niter in Picard : " << NiterPicard << " L2 residual : "<<std::scientific<<l2errRes<<"\n";
@@ -304,10 +307,9 @@ int main(int argc, char *argv[])
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
         timer.restart();
-        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
+        //l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
 
-        h1err[r]= l2err[r] +
-            math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+        h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
 
@@ -323,15 +325,15 @@ int main(int argc, char *argv[])
     gsInfo<<"     Norms: "<< err_time   <<"\n";
 
     //! [Error and convergence rates]
-    gsInfo<< "\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    //gsInfo<< "\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
 
     if (!last && numRefine>0)
     {
-        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-              <<  ( l2err.head(numRefine).array()  /
-                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
-                   <<"\n";
+        // gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
+        //       <<  ( l2err.head(numRefine).array()  /
+        //            l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
+        //            <<"\n";
 
         gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
               <<( h1err.head(numRefine).array() /
