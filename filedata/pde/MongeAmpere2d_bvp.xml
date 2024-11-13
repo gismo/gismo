@@ -7,14 +7,14 @@
     <interfaces>501 1 500 2 0 1 1 1
     </interfaces>
     <boundary name="dirichlet">
+    </boundary>
+    <boundary name="neumann">
       501 4
       500 3
       501 3
       500 4
       500 1
       501 2
-    </boundary>
-    <boundary name="neumann">
     </boundary>
   </MultiPatch>
 

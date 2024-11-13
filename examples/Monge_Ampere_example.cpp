@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     index_t maxIter = 100;
     double l2errRes{0.}, eps{0.0000001}, tolerancePicard{1e-7};
     index_t method = 2;
-    bool last = false, export_b64{false}, adaptiveMesh{false};
+    bool last = false, export_b64{false}, adaptiveMesh{true};
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("m","method","Method to use: 0: Newton with automated Jacobian, 1: Newton with Precomputed Jacobian, 2: Picard iteration", method);
@@ -50,19 +50,19 @@ int main(int argc, char *argv[])
 
     //..... Test 2
     // // Manufactured solition
-    gsFunctionExpr<> s("exp(0.5*(x**2 + y**2))",2);
-    // Manufactured Grad solition
-    gsFunctionExpr<> sN("x*exp(0.5*(x**2 + y**2))","y*exp(0.5*(x**2 + y**2))",2);
-    // Right-hand side function
-    gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
+    // gsFunctionExpr<> s("exp(0.5*(x**2 + y**2))",2);
+    // // Manufactured Grad solition
+    // gsFunctionExpr<> sN("x*exp(0.5*(x**2 + y**2))","y*exp(0.5*(x**2 + y**2))",2);
+    // // Right-hand side function
+    // gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
 
     //..... Test 2
-    // // Manufactured solition
-    // gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
-    // // // Manufactured Grad solition
-    // gsFunctionExpr<> sN("x","y",2);
-    // // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
-    // gsFunctionExpr<> f("0.5698752034687177/(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
+    // convex function
+    gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
+    // // Manufactured identity mapping
+    gsFunctionExpr<> sN("x","y",2);
+    // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
+    gsFunctionExpr<> f("0.5698752034687177/(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
     ///! this example doesn't work !
     //gsFunctionExpr<> f("3.553841799466826/(1.+ 9./(1.+(10.*sqrt((sx-0.7-0.25*0.)**2+(sy-0.5)**2)*cos(arctan2(sy-0.5,sx-0.7-0.25*0.) -20.*((sx-0.7-0.25*0.)**2+(sy-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("1.4259290652600725/( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
@@ -72,10 +72,6 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> bfunc("0",2);
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
-    // bc.addCondition(0,1, condition_type::dirichlet, &s,0,false);
-    // bc.addCondition(0,2, condition_type::dirichlet, &s,0,false);
-    // bc.addCondition(0,3, condition_type::dirichlet, &s,0,false);
-    // bc.addCondition(0,4, condition_type::dirichlet, &s,0,false);
     // ....
     bc.addCondition(0,1, condition_type::neumann, &sN,0,false);
     bc.addCondition(0,2, condition_type::neumann, &sN,0,false);
@@ -156,9 +152,6 @@ int main(int argc, char *argv[])
         dbasis.uniformRefine();
         mp.uniformRefine();
 
-//        u.setup(bc, dirichlet::interpolation, 0);
-//        u.setup(bc, dirichlet::l2Projection, 0);
-
         // Compute the system matrix and right-hand side
 
         // Initialize the system : start Computing the conductivity coeffeicient ...
@@ -236,8 +229,6 @@ int main(int argc, char *argv[])
 
                 //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
                 sv0 = solVector;
-        //        u.setup(bc, dirichlet::interpolation, 0);
-        //        u.setup(bc, dirichlet::l2Projection, 0);
                 
                 solution u_sol = A.getSolution(u, solVector);
 
@@ -248,18 +239,12 @@ int main(int argc, char *argv[])
                 //gsInfo<< A.numDofs() <<std::flush;
 
                 timer.restart();
-                // Compute the system matrix and right-hand side
-                // just for test
-                // A.assemble(
-                //     igrad(u, G) * (1.+pow(u_sol,2))*igrad(u, G).tr() * meas(G) + eps*u*u.tr() * meas(G) //matrix
-                //     ,
-                //     u * ff* meas(G) //rhs vector
-                //     );
-                //... Monge-Ampere eqaution
-
+                // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
+                
                 // .. update Coeffeicient of conductivity
                 CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
 
+                // MAE system
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
                 ,
@@ -281,10 +266,7 @@ int main(int argc, char *argv[])
                 timer.restart();
                 solver.compute( A.matrix() );
                 solVector = solver.solve(A.rhs());
-                // gsMatrix<> ToUse();
-                // solVector = solVector -  ToUse * solVector.sum()/A.numDofs();
-                //gsInfo << "Error in Picard algorithm " << math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) ) << "\n";
-
+                
                 slv_time += timer.stop();
 
                 gsInfo<< "." <<std::flush; // Linear solving done
@@ -312,17 +294,11 @@ int main(int argc, char *argv[])
 
             timer.restart();
             // Compute the system matrix and right-hand side
-            // just for test
-            // A.assemble(
-            //     igrad(u, G) * (1.+pow(u_sol,2))*igrad(u, G).tr() * meas(G) + eps*u*u.tr() * meas(G) //matrix
-            //     ,
-            //     u * ff* meas(G) //rhs vector
-            //     );
-            //... Monge-Ampere eqaution
 
             // .. update Coeffeicient of conductivity
             CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
 
+            // MAE system
             A.assemble(
                igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()  * meas(G) //matrix
                ,
@@ -344,10 +320,6 @@ int main(int argc, char *argv[])
             timer.restart();
             solver.compute( A.matrix() );
             solVector = solver.solve(A.rhs());
-            // gsMatrix<> ToUse();
-            // solVector = solVector -  ToUse * solVector.sum()/A.numDofs();
-            //gsInfo << "Error in Picard algorithm " << math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) ) << "\n";
-
             slv_time += timer.stop();
 
             gsInfo<< "." <<std::flush; // Linear solving done
@@ -389,11 +361,6 @@ int main(int argc, char *argv[])
 
     if (!last && numRefine>0)
     {
-        // gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-        //       <<  ( l2err.head(numRefine).array()  /
-        //            l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
-        //            <<"\n";
-
         gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
               <<( h1err.head(numRefine).array() /
                   h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
@@ -411,10 +378,11 @@ int main(int argc, char *argv[])
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
         collection.addField(igrad(u_sol,G),"gradient_numerical solution");
-        if(adaptiveMesh)
-        collection.addField(ff, "density function");
-        else
+        if(adaptiveMesh){
+        collection.addField(ff, "density function");}
+        else{
         collection.addField(u_ex, "exact solution");
+        }
         collection.saveTimeStep();
         collection.save();
 
