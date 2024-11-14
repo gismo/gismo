@@ -24,9 +24,10 @@ int main(int argc, char *argv[])
     index_t numRefine  = 4;
     index_t numElevate = 0;
     index_t maxIter = 100;
-    double l2errRes{0.}, eps{0.0000001}, tolerancePicard{1e-7};
+    double eps{1e-7}; /// pinalization coefficient
+    double l2errRes{0.}, tolerancePicard{1e-7};
     index_t method = 2;
-    bool last = false, export_b64{false}, adaptiveMesh{true};
+    bool last = false, export_b64{false}, adaptiveMesh{false};
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("m","method","Method to use: 0: Newton with automated Jacobian, 1: Newton with Precomputed Jacobian, 2: Picard iteration", method);
@@ -49,20 +50,20 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, .0, .0);
 
     //..... Test 2
-    // // Manufactured solition
-    // gsFunctionExpr<> s("exp(0.5*(x**2 + y**2))",2);
-    // // Manufactured Grad solition
-    // gsFunctionExpr<> sN("x*exp(0.5*(x**2 + y**2))","y*exp(0.5*(x**2 + y**2))",2);
-    // // Right-hand side function
-    // gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
+    // Manufactured solition
+    gsFunctionExpr<> s("exp(0.5*(x**2 + y**2))",2);
+    // Manufactured Grad solition
+    gsFunctionExpr<> sN("x*exp(0.5*(x**2 + y**2))","y*exp(0.5*(x**2 + y**2))",2);
+    // Right-hand side function
+    gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
 
     //..... Test 2
-    // convex function
-    gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
-    // // Manufactured identity mapping
-    gsFunctionExpr<> sN("x","y",2);
-    // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
-    gsFunctionExpr<> f("0.5698752034687177/(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
+    // // convex function
+    // gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
+    // // // Manufactured identity mapping
+    // gsFunctionExpr<> sN("x","y",2);
+    // // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
+    // gsFunctionExpr<> f("0.5698752034687177/(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
     ///! this example doesn't work !
     //gsFunctionExpr<> f("3.553841799466826/(1.+ 9./(1.+(10.*sqrt((sx-0.7-0.25*0.)**2+(sy-0.5)**2)*cos(arctan2(sy-0.5,sx-0.7-0.25*0.) -20.*((sx-0.7-0.25*0.)**2+(sy-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("1.4259290652600725/( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
@@ -280,6 +281,7 @@ int main(int argc, char *argv[])
             }
             else
             {
+                if(2==method){
             sv0 = solVector;
     //        u.setup(bc, dirichlet::interpolation, 0);
     //        u.setup(bc, dirichlet::l2Projection, 0);
@@ -330,6 +332,66 @@ int main(int argc, char *argv[])
             ++NiterPicard;
             l2errRes = (solVector-sv0).norm();// TODO
             if ( l2errRes < tolerancePicard ) break; // TODO
+            }
+            else{
+
+                //=============================================  Newton method  ===============================================
+            auto residual =   igrad(u,G) * igrad(u_sol, G).tr() * meas(G) 
+            + u * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G);
+
+            solution u_sol = A.getSolution(u, solVector);
+
+            // Initialize the system
+            A.initSystem();
+            setup_time += timer.stop();
+
+            //gsInfo<< A.numDofs() <<std::flush;
+
+            timer.restart();
+            // Compute the system matrix and right-hand side
+
+            // .. update Coeffeicient of conductivity
+
+            // MAE system 
+            //+ u*((ilapl(u,G)*ilapl(u_sol,G).tr()).val()  - (ihess(u,G).adj() *ihess(u_sol,G)).trace().val() ) /pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5)* meas(G)            
+
+            //(ilapl(u,G)*ilapl(u_sol,G).tr())-
+            //(ihess(u,G).adj() *ihess(u_sol,G)).trace()).tr()
+            A.assemble(
+               igrad(u, G) * igrad(u, G).tr()  * meas(G) //matrix
+                +u * 2.*( (ilapl(u,G)*ilapl(u_sol,G).tr()).tr()/pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5)) * meas(G)
+                -u * ((ihess(u,G).adj() *ihess(u_sol,G)).trace().tr())/pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G)
+               ,
+               residual
+               );
+
+            // Compute the Neumann terms defined on physical space
+            auto g_N = A.getBdrFunction(G);
+            A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+
+            ma_time += timer.stop();
+
+            // gsDebugVar(A.matrix().toDense());
+            // gsDebugVar(A.rhs().transpose()   );
+            
+
+            gsInfo<< " ." <<std::flush;// Assemblying done
+
+            timer.restart();                
+            solver.compute( A.matrix() );
+            auto du = solver.solve(A.rhs());
+            solVector -= du;
+            slv_time += timer.stop();
+
+            gsInfo<< "." <<std::flush; // Linear solving done
+
+            // omp_set_dynamic(0);     // Explicitly disable dynamic teams
+            // omp_set_num_threads(1); // Use these threads for later parallel regions
+
+            ++NiterPicard;
+            l2errRes = du.norm();// TODO
+            if ( l2errRes < tolerancePicard ) break; // TODO                
+            }
             }
         } //for loop
         // ! end Picard loop
