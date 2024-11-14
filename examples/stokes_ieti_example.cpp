@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
 
         // Register local problem to ieti system
         ieti.addSubdomain(jumpMatrix.moveToPtr(),
-                          makeMatrixOp(localMatrix.moveToPtr()),
+                          makeMatrixOp(localMatrix),
                           give(localRhs),
                           makeSparseLUSolver(localMatrix)
                          );
