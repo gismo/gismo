@@ -276,8 +276,8 @@ int main(int argc, char *argv[])
 
         gsMatrix<index_t> bndThis = sbasis.boundary(it->first.side());
         pbdr[it->first .patch].first.at(it->first .side()-1) = bndThis;
-        for (index_t k=0; k!=bndThis.rows(); k++)
-            pbdr[it->first .patch].second.row(bndThis(k,0)) = cfit.result()->coefs().row(k);
+        for (index_t l=0; l!=bndThis.rows(); l++)
+            pbdr[it->first .patch].second.row(bndThis(l,0)) = cfit.result()->coefs().row(l);
         crv_net.addPatch( *cfit.result() );
     }
 
@@ -294,9 +294,9 @@ int main(int argc, char *argv[])
 
         for (size_t s=0; s!=pbdr.at(p).first.size(); s++)
         {
-            for (index_t k=0; k!=pbdr.at(p).first.at(s).size(); k++)
+            for (index_t l=0; l!=pbdr.at(p).first.at(s).size(); l++)
             {
-                index_t index = (pbdr.at(p).first.at(s) )(k,0);
+                index_t index = (pbdr.at(p).first.at(s) )(l,0);
                 prescribedDoFs.push_back(index);
                 prescibedCoefs.push_back((pbdr.at(p).second).row(index));
             }
@@ -372,8 +372,8 @@ int main(int argc, char *argv[])
 
         std::ofstream file;
         file.open("haussdorfs.csv",std::ofstream::out);
-        for (size_t k=0; k!=hausdorffs.size(); k++)
-            file<<std::setprecision(12)<<hausdorffs.at(k)<<"\n";
+        for (size_t l=0; l!=hausdorffs.size(); l++)
+            file<<std::setprecision(12)<<hausdorffs.at(l)<<"\n";
 
         file.close();
     }

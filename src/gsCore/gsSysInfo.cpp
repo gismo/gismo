@@ -18,6 +18,9 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #   include <windows.h>
+#ifdef __MINGW32__
+#   include <intrin.h>
+#endif
 #elif __APPLE__
 #   include <sys/utsname.h>
 #   include <sys/sysctl.h>

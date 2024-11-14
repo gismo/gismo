@@ -24,7 +24,7 @@ class GISMO_EXPORT Base64 {
     using ByteRepresentation = unsigned char;
 
     /// Look up table
-    static const char char_encode_table(const unsigned& index) {
+    static char char_encode_table(const unsigned& index) {
         // Create static array in function to avoid use of c++17 static member
         // declaration
         static const std::array<char, 64> encode_table{
@@ -59,7 +59,7 @@ class GISMO_EXPORT Base64 {
     }
 
     /// Lookup Table for Decoding B64 string
-    static const unsigned char_decode_table(const unsigned& index) {
+    static unsigned char_decode_table(const unsigned& index) {
         static const std::array<unsigned, 256> decode_table{
             ReverseCharEncodeTable_()};
         GISMO_ASSERT((index < 256),

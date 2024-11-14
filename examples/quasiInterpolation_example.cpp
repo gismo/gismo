@@ -151,8 +151,9 @@ public:
     }
 
 
-    void evalAllDers_into(const gsMatrix<T> &u, int n, std::vector<gsMatrix<T> > &result) const
+    void evalAllDers_into(const gsMatrix<T> &u, int n, std::vector<gsMatrix<T> > &result, bool sameElement = false) const
     {
+        GISMO_UNUSED(sameElement);
         gsMatrix<T> sin(1,u.size());
         gsMatrix<T> cos(1,u.size());
         for(int i=0; i<u.size(); i++)
@@ -210,8 +211,9 @@ public:
         }
     }
 
-    void evalAllDers_into(const gsMatrix<T> &u, int n, std::vector<gsMatrix<T> > &result) const
+    void evalAllDers_into(const gsMatrix<T> &u, int n, std::vector<gsMatrix<T> > &result, bool sameElement = false) const
     {
+        GISMO_UNUSED(sameElement);
         gsMatrix<T> sincos(2,u.size());
         gsMatrix<T> cossin(2,u.size());
         for(int i=0; i<u.size(); i++)

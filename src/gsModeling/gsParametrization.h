@@ -97,8 +97,8 @@ public:
     void writeTexturedMesh(std::string filename) const;
 
     /// It might make sense in the derived classes to restrict the parameters to [0, 1]^2.
-    virtual void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
-                                  real_t uMin = 0, real_t uMax = 1) const
+    virtual void restrictMatrices(gsMatrix<T>& , const gsMatrix<T>&,
+                                  real_t = 0, real_t = 1) const
     {}
 
     gsOptionList& options() { return m_options; }

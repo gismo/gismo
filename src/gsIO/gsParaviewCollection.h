@@ -92,7 +92,7 @@ public:
         std::string path = gsFileManager::getPath(m_filename);
 
         // If the path does not start with ./ or / , it is assumed to be a relative path
-        if ( (!gsFileManager::isExplicitlyRelative(path) && !gsFileManager::isFullyQualified(path)) )
+        if ( !gsFileManager::isFullyQualified(path) )
             path = gsFileManager::getCurrentPath() + path;
 
         m_filename = path + gsFileManager::getBasename(m_filename) + ".pvd";

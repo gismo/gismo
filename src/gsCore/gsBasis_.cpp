@@ -61,7 +61,6 @@ void pybind11_init_gsBasis(py::module &m)
     .def("deriv2Single_into", static_cast<void        (Class::*)(index_t, const gsMatrix<real_t> &, gsMatrix<real_t>&) const> (&Class::deriv2Single_into), "Evaluates the second derivative of basis function i")
 
     .def("numElements", static_cast<size_t (Class::*)(boxSide const & ) const> ( &Class::numElements), "Number of elements")
-    .def("numElements", static_cast<size_t (Class::*)() const> ( &Class::numElements), "Number of elements")
     .def("component", static_cast<gsBasis<real_t> & (Class::*)(short_t ) > ( &Class::component), "Return the basis of component",py::return_value_policy::reference)
     ;
 }
