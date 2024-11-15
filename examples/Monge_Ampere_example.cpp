@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 4;
     index_t numElevate = 0;
-    index_t maxIter = 100;
+    index_t maxIter = 10;
     double eps{1e-7}; /// pinalization coefficient
     double l2errRes{0.}, tolerancePicard{1e-7};
     index_t method = 2;
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 
     //..... Test 2
     // // convex function
-    // gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
+    //gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
     // // // Manufactured identity mapping
     // gsFunctionExpr<> sN("x","y",2);
     // // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
@@ -133,6 +133,10 @@ int main(int argc, char *argv[])
 
     // Recover manufactured solution
     auto u_ex = ev.getVariable(s, G);
+
+    gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
+    auto u_I = ev.getVariable(sI, G);
+
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
@@ -336,10 +340,11 @@ int main(int argc, char *argv[])
             else{
 
                 //=============================================  Newton method  ===============================================
-            auto residual =   igrad(u,G) * igrad(u_sol, G).tr() * meas(G) 
-            + u * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G);
+            // .. update Coeffeicient of conductivity
+            CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
 
-            solution u_sol = A.getSolution(u, solVector);
+            auto residual =   igrad(u,G) * igrad(u_sol, G).tr() * meas(G) 
+            + u * CoeffConductivity * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G);
 
             // Initialize the system
             A.initSystem();
@@ -353,21 +358,19 @@ int main(int argc, char *argv[])
             // .. update Coeffeicient of conductivity
 
             // MAE system 
-            //+ u*((ilapl(u,G)*ilapl(u_sol,G).tr()).val()  - (ihess(u,G).adj() *ihess(u_sol,G)).trace().val() ) /pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5)* meas(G)            
-
-            //(ilapl(u,G)*ilapl(u_sol,G).tr())-
-            //(ihess(u,G).adj() *ihess(u_sol,G)).trace()).tr()
+            A.clearMatrix();
+            A.clearRhs();
             A.assemble(
                igrad(u, G) * igrad(u, G).tr()  * meas(G) //matrix
-                +u * 2.*( (ilapl(u,G)*ilapl(u_sol,G).tr()).tr()/pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5)) * meas(G)
-                -u * ((ihess(u,G).adj() *ihess(u_sol,G)).trace().tr())/pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G)
-               ,
+               //+u * CoeffConductivity * ( ((ilapl(u,G)*ilapl(u_sol,G).tr()-(ihess(u_sol,G).adj()*ihess(u,G)).trace()).tr())/pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5)) * meas(G)
+               +u * CoeffConductivity * ( (u*((ilapl(u_I,G)*ilapl(u_sol,G).tr()-(ihess(u_sol,G).adj()*ihess(u_I,G)).trace()).tr())).tr()/pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5)) * meas(G)
+                ,
                residual
                );
 
             // Compute the Neumann terms defined on physical space
             auto g_N = A.getBdrFunction(G);
-            A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+            A.assembleBdr(bc.get("Neumann"), -1.*u * g_N.tr() * nv(G) );
 
             ma_time += timer.stop();
 
@@ -376,12 +379,12 @@ int main(int argc, char *argv[])
             
 
             gsInfo<< " ." <<std::flush;// Assemblying done
-
+            
             timer.restart();                
             solver.compute( A.matrix() );
-            auto du = solver.solve(A.rhs());
+            auto du    = solver.solve(A.rhs());
             solVector -= du;
-            slv_time += timer.stop();
+            slv_time  += timer.stop();
 
             gsInfo<< "." <<std::flush; // Linear solving done
 
