@@ -6,8 +6,6 @@
     <patches type="id_range">500 501</patches>
     <interfaces>501 1 500 2 0 1 1 1
     </interfaces>
-    <boundary name="dirichlet">
-    </boundary>
     <boundary name="neumann">
       501 4
       500 4
@@ -20,30 +18,42 @@
 
   <!-- Right-hand side function : for the Monge-Ampere test case use  --> 
   <Function type="FunctionExpr" id="1" dim="2"> (1.+x**2+y**2)*exp(x**2 + y**2) </Function>
+  <!-- The boundary conditions (multipatch=number of patches)-->
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="2" index="0">(0.5*(x**2 + y**2))</Function>
+    <Function type="FunctionExpr" dim="2" index="1" c="2">
+      <c index="0">x*exp(0.5*(x**2 + y**2))</c>
+      <c index="1">y*exp(0.5*(x**2 + y**2))</c>
+    </Function>
+    <Function type="FunctionExpr" dim="2" index="2">0</Function><!--unused-->
+
+    <!-- Neumann conditions (patch,side) -->
+    <bc unknown="0" type="Neumann" function="1" name="neumann"> 
+    </bc>
+  </boundaryConditions>
+  <!-- The manufactured exact solution (for reference) -->
+  <Function type="FunctionExpr" id="3" dim="2">exp(0.5*(x**2 + y**2))</Function>
 
   <!-- Right-hand side function : for mesh adaptation technique case use  --> 
   <!--<Function type="FunctionExpr" id="5" dim="2"> (1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2)))) </Function> 
-  <Function type="FunctionExpr" id="5" dim="2"> ( 1.+ 39./(1.+(10.*sqrt(x**2+y**2)*cos(atan2(y,x) -20.*(x**2+y**2)))**2)) </Function>-->
-  <Function type="FunctionExpr" id="5" dim="2"> (1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2) </Function>
-  <!-- The boundary conditions (multipatch=number of patches)-->
-  <boundaryConditions id="2" multipatch="0">
+  <Function type="FunctionExpr" id="5" dim="2"> ( 1.+ 39./(1.+(10.*sqrt(x**2+y**2)*cos(atan2(y,x) -20.*(x**2+y**2)))**2)) </Function>
+  <Function type="FunctionExpr" id="5" dim="2"> (1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2) </Function> -->
+  <Function type="FunctionExpr" id="5" dim="2"> (1.+5.*exp(-50.*abs((x-0.5)**2+(y-0.5-0.25*0.)**2-0.09)) ) </Function>
+
+  <boundaryConditions id="6" multipatch="0">
     <Function type="FunctionExpr" dim="2" index="0">(0.5*(x**2 + y**2))</Function>
     <Function type="FunctionExpr" dim="2" index="1" c="2">
       <c index="0">x+0.*exp(0.5*(x**2 + y**2))</c>
       <c index="1">y+0.*exp(0.5*(x**2 + y**2))</c>
     </Function>
     <Function type="FunctionExpr" dim="2" index="2">0</Function><!--unused-->
-
-    <!-- Dirichlet conditions (patch,side) -->
-    <bc type="Dirichlet" function="0" unknown="0" name="dirichlet">
-    </bc>
-
+    <!-- Neumann conditions (patch,side) -->
     <bc unknown="0" type="Neumann" function="1" name="neumann"> 
     </bc>
   </boundaryConditions>
 
   <!-- The manufactured exact solution (for reference) -->
-  <Function type="FunctionExpr" id="3" dim="2">(0.5*(x**2 + y**2))</Function>
+  <Function type="FunctionExpr" id="7" dim="2">(0.5*(x**2 + y**2))</Function>
 
   <!-- Assembler options -->
  <OptionList id="4">
