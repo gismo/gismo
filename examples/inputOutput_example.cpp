@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
     if ( output.empty() )
     {
         gsInfo << "Call program with option -o <basename> to write data to files\n";
-        gsInfo << "<basename>Paraview.vtp, <basename>Paraview.pvd, <basename>.xml\n";
+        gsInfo << "<basename>Paraview.vtp, <basename>Paraview.pvd, <basename>.xml, <basename>ControlPoints.csv\n";
         return EXIT_SUCCESS;
     }
 
@@ -81,6 +81,15 @@ int main(int argc, char* argv[])
     fd.save(output);
     gsInfo << "Wrote G+Smo file:     " << output << ".xml \n";
     //! [Write geometry]
+
+    //! [Write control points to .csv]
+    // writing a .csv file
+    if (pGeom->targetDim()==2)
+        gsWriteCsv(output+".csv", pGeom->coefs(), {"X","Y"});
+    else if (pGeom->targetDim()==3)
+        gsWriteCsv(output+".csv", pGeom->coefs(), {"X","Y","Z"});
+    gsInfo << "Wrote CSV file:       " << output+".csv \n";
+    //! [Write control points to .csv]
 
     return EXIT_SUCCESS;
 }

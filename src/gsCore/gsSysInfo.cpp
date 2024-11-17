@@ -18,6 +18,9 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #   include <windows.h>
+#if defined(__GNUC__)
+#   include <cpuid.h>
+#endif
 #elif __APPLE__
 #   include <sys/utsname.h>
 #   include <sys/sysctl.h>
@@ -650,8 +653,8 @@ namespace gismo
 
 #   else
 
-    char hostname[HOST_NAME_MAX + 1];
-    gethostname(hostname, HOST_NAME_MAX + 1);
+    char hostname[256];
+    gethostname(hostname, 256);
 
     std::string str = "Unknown-CPU [";
     str += hostname;

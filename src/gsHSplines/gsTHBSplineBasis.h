@@ -127,6 +127,13 @@ public:
     // Look at gsBasis class for documentation
     void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const;
 
+    index_t numActiveMax(const gsMatrix<T> & u, gsMatrix<index_t> & offset) const;
+
+    // returns all actives at \a u from level \a lvl only
+    // Does not clear result, only appends data
+    void activeAtLevel_into(index_t lvl, const gsMatrix<T>& u,
+                            std::vector<index_t> & result) const;
+
     // Look at gsBasis class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const;
 
@@ -144,7 +151,8 @@ public:
                           gsMatrix<T>& result) const;
 
     void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> > & result) const;
+                          std::vector<gsMatrix<T> > & result,
+                          bool sameElement = false) const;
 
     // look at eval_into
     void fastEval_into(const gsMatrix<T>& u,
@@ -400,16 +408,10 @@ public:
 
 private:
 
-    unsigned getPresLevelOfBasisFun(const unsigned index) const
+    index_t getPresLevelOfBasisFun(const index_t index) const
     {
-        if (m_is_truncated[index] == -1)
-        {
-            return this->levelOf(index);
-        }
-        else
-        {
-            return m_is_truncated[index];
-        }
+        return (m_is_truncated[index] == -1 ?
+                this->levelOf(index) : m_is_truncated[index] );
     }
 
     /// @brief Computes and saves representation of all basis functions.
@@ -729,12 +731,12 @@ private:
 
     template<short_t dd>
     typename util::enable_if<dd!=2,void>::type
-    getBsplinePatchGlobal_impl(gsVector<index_t> b1,
-                               gsVector<index_t> b2,
-                               unsigned level,
-                               const gsMatrix<T>& geom_coef,
-                               gsMatrix<T>& cp, gsKnotVector<T>& k1,
-                               gsKnotVector<T>& k2) const { GISMO_NO_IMPLEMENTATION }
+    getBsplinePatchGlobal_impl(gsVector<index_t> ,
+                               gsVector<index_t> ,
+                               unsigned ,
+                               const gsMatrix<T>&,
+                               gsMatrix<T>&, gsKnotVector<T>&,
+                               gsKnotVector<T>&) const { GISMO_NO_IMPLEMENTATION }
 
     template<short_t dd>
     typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
@@ -744,9 +746,9 @@ private:
 
     template<short_t dd>
     typename util::enable_if<dd!=2,gsTensorBSpline<d,T> >::type
-    getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
-                    const unsigned level,
-                    const gsMatrix<T>& geomCoefs) const { GISMO_NO_IMPLEMENTATION }
+    getBSplinePatch_impl(const std::vector<index_t>&,
+                    const unsigned,
+                    const gsMatrix<T>&) const { GISMO_NO_IMPLEMENTATION }
 
     
 private:

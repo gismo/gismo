@@ -875,7 +875,6 @@ void gsKnotVector<T>::increaseMultiplicity(const mult_t i, bool boundary)
 {
     GISMO_ASSERT( i>=0, "Expecting non-negative number");
     size_t newSize = size() + i*(uSize()-2);
-    GISMO_ASSERT( newSize>=0, "Invalid input to adjustMultiplicity");
     knotContainer tmp;
     tmp.reserve(newSize);
 

@@ -94,7 +94,7 @@ public:
     }
 
     // Just here to stop the recursion
-    void addFields(std::vector<std::string> labels){} 
+    void addFields(std::vector<std::string>){ } 
 
 
     /// @brief Recursive form of addField()

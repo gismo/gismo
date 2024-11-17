@@ -22,14 +22,6 @@ namespace gismo
 {
 
 template<class T>
-gsBasis<T>::gsBasis()
-{ }
-
-template<class T>
-gsBasis<T>::gsBasis(const gsBasis& other) : Base(other)
-{ }
-
-template<class T>
 gsBasis<T>::~gsBasis()
 { }
 
@@ -127,11 +119,13 @@ template<class T>
 void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
                                       const gsMatrix<T> & coefs,
                                       const unsigned n,
-                                      std::vector< gsMatrix<T> >& result) const
+                                      std::vector< gsMatrix<T> >& result,
+                                      bool sameElement) const
 {
     // resize result so that it will hold
     // function values and up to the n-th derivatives
     result.resize(n+1);
+    if ( 0 == u.cols() ) return;
 
     // B will contain the derivatives up to order n
     std::vector< gsMatrix<T> >B;
@@ -139,13 +133,16 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
     // which are active at the evaluation points
     gsMatrix<index_t> actives;
 
-    this->evalAllDers_into(u,n,B);
-    this->active_into(u,actives);
+    this->evalAllDers_into(u,n,B,sameElement);
+    if (sameElement)
+        this->active_into(u.col(0), actives);
+    else
+        this->active_into(u, actives);
 
     // for derivatives 0 to n, evaluate the function by linear combination
     // of coefficients with the respective function values/derivatives
     for( unsigned i = 0; i <= n; i++)
-        linearCombination_into( coefs, actives, B[i], result[i] );
+        linearCombination_into( coefs, actives, B[i], result[i], sameElement);
 }
 
 
@@ -153,7 +150,7 @@ template<class T>
 void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
                                         const gsMatrix<index_t> & actives,
                                         const gsMatrix<T> & values,
-                                        gsMatrix<T> & result)
+                                        gsMatrix<T> & result, bool sameElement)
 {
     const index_t numPts = values.cols() ;
     const index_t tarDim = coefs.cols()  ;
@@ -165,13 +162,21 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     result.resize( tarDim * stride, numPts );
     result.setZero();
 
-    for ( index_t pt = 0; pt < numPts; ++pt ) // For pt, i.e., for every column of u
+    if (sameElement)
+    {
         for ( index_t i = 0; i < actives.rows(); ++i )  // for all nonzero basis functions
             for ( index_t c = 0; c < tarDim; ++c )      // for all components of the geometry
-            {
-                result.block( stride * c, pt, stride, 1).noalias() +=
-                    coefs( actives(i,pt), c) * values.block( stride * i, pt, stride, 1);
-            }
+                result.middleRows( stride * c, stride).noalias() +=
+                    coefs( actives.at(i), c) * values.middleRows(stride * i, stride);
+    }
+    else
+    {
+        for ( index_t pt = 0; pt < numPts; ++pt ) // For pt, i.e., for every column of u
+            for ( index_t i = 0; i < actives.rows(); ++i )  // for all nonzero basis functions
+                for ( index_t c = 0; c < tarDim; ++c )      // for all components of the geometry
+                    result.block( stride * c, pt, stride, 1).noalias() +=
+                        coefs( actives(i,pt), c) * values.block( stride * i, pt, stride, 1);
+    }
 }
 
 
@@ -463,32 +468,6 @@ void gsBasis<T>::deriv2Single_into(index_t,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> >& result) const
-{
-    result.resize(n+1);
-
-    switch(n)
-    {
-    case 0:
-        eval_into(u, result[0]);
-        break;
-    case 1:
-        eval_into (u, result[0]);
-        deriv_into(u, result[1]);
-        break;
-    case 2:
-        eval_into  (u, result[0]);
-        deriv_into (u, result[1]);
-        deriv2_into(u, result[2]);
-        break;
-    default:
-        GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n<< " for "<<*this);
-        break;
-    }
-}
-
-template<class T>
 void gsBasis<T>::evalAllDersSingle_into(index_t, const gsMatrix<T> &,
                                         int, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
@@ -520,10 +499,6 @@ gsBasis<T>::makeDomainIterator(const boxSide &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-size_t gsBasis<T>::numElements() const
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
 size_t gsBasis<T>::numElements(boxSide const &) const
 { GISMO_NO_IMPLEMENTATION }
 
@@ -532,7 +507,7 @@ size_t gsBasis<T>::elementIndex(const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<T> gsBasis<T>::elementInSupportOf(index_t j) const
+gsMatrix<T> gsBasis<T>::elementInSupportOf(index_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -677,11 +652,6 @@ short_t gsBasis<T>::degree(short_t) const
 
 template<class T>
 void gsBasis<T>::reverse()
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
-void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
-               gsMatrix<index_t> &, gsMatrix<index_t> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
