@@ -8,515 +8,435 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): Junjie Dong (junjiedong.umich@gmail.com),
-               minor adjustments to G+Smo by M. Möller
+    Author(s): M. Möller, A. Mantzaflaris, inspired by Junjie Dong
 
-    The original source code can be found at
+    The code of Junjie Dong can be found at
     https://github.com/junjiedong/KDTree
 */
 
 #pragma once
 
-#include <stdexcept>
-#include <cmath>
-#include <vector>
-#include <unordered_map>
-#include <utility>
-#include <algorithm>
+//#include <stdexcept>
+//#include <cmath>
+//#include <vector>
+//#include <unordered_map>
+//#include <utility>
+//#include <algorithm>
 
 #include <gsUtils/gsBoundedPriorityQueue.h>
 
 namespace gismo
 {
 
-template <class T>
-struct gsKDTreeTraits
+template<typename Z = index_t, typename Data_t = int>
+class gsKDTree
 {
-  static inline std::size_t size() { return 1; }
-  
-  static inline bool islhalf(const T& lhs, const T& rhs, std::size_t axis) { return lhs[axis] < rhs[axis]; }
-  
-  static inline double fabs(const T& lhs, const T& rhs, std::size_t axis) { return std::abs(lhs[axis] - rhs[axis]); }
-  
-  static inline double distance(const T& lhs, const T& rhs)
-  {
-    double result = 0.0;
-    for (std::size_t i = 0; i < size(); ++i) {
-      result += fabs(lhs, rhs, i);
-    }
-    return result;
-  }
-};
-  
-/**
-   \brief An interface representing a kd-tree in some number of dimensions
+public:
+    index_t axis;  /// split axis
+    Z pos;         /// split position
+    Data_t * data;  /// pointer to node data
 
-   The tree can be constructed from a set of data, (key,value)-pairs,
-   and then queried for membership and k-nearest neighbors.
- */  
-template <class KeyType, class ValueType>
-class gsKDTree {
+    gsKDTree * parent, * left, * right; /// parent and children
+
+    //typedef gsVector<Z, d> point;
+
+    /// Constructor (empty node)
+    gsKDTree() : axis(-2), data(0), parent(0), left(0), right(0) { }
+
+    gsKDTree(index_t _axis, Z _position, Data_t * _data = nullptr)
+    : axis(_axis), pos(_position), data(_data), parent(nullptr), left(nullptr), right(nullptr) {}
+
+    /// Recursively copies the whole subtree under \a o, and sets it's
+    /// parent to \a parentNode
+    gsKDTree(const gsKDTree & o, gsKDTree * parentNode = NULL) : axis(o.axis)
+    {
+        this->operator=(o);
+        parent = parentNode;
+    }
+
+    /// Recursively deletes the whole subtree under this node
+    ~gsKDTree()
+    {
+        // TODO: non-recursive
+        if ( hasData() ) delete data;
+
+        if ( !isLeaf() ) 
+        {
+            delete left;
+            delete right;
+        }
+    }
+
+
+    gsKDTree & operator=(const gsKDTree& o)
+    {
+        parent = nullptr;
+        if (this != &o)
+        {
+            if ( isLeaf() )
+            {
+                GISMO_ASSERT( (o.left == 0) && (o.right == 0), "Problem: leaf with children." );
+                left = right = NULL;
+            }
+            else
+            {
+                GISMO_ASSERT(o.data == 0, "Problem: split node with data." );
+                pos   = o.pos;
+                left  = new gsKDTree(*o.left , this);
+                right = new gsKDTree(*o.right, this);
+            }
+            
+            if (o.hasData())
+                data  = new Data_t(*o.data);
+            else
+                data   = nullptr;            
+        }
+
+        return *this;
+    }
+
+    
 public:
 
-  // Constructs an empty gsKDTree.
-  gsKDTree();
+    bool hasData() const { return (nullptr != data); }
+    //Data_t & data() { return *data; }
 
-  // Efficiently build a balanced kd-tree from a large set of data
-  gsKDTree(std::vector<std::pair<KeyType, ValueType> >& data);
-  
-  // Frees up all the dynamically allocated resources
-  ~gsKDTree();
+    bool isLeaf() const { return axis == -1; }
+    bool isRoot() const { return parent == NULL; }
+    bool isTerminal() const { return (axis!=-1) && (left->axis==-1) && (right->axis==-1); }
 
-  // Frees up all the dynamically allocated resources
-  void clear();
-  
-  // Deep-copies the contents of another gsKDTree into this one.
-  gsKDTree(const gsKDTree& other);
+    bool isLeftChild()  const { return parent!=NULL && this==parent->left; }
+    bool isRightChild() const { return parent!=NULL && this==parent->right; }
 
-  // Deep-copies the contents of another gsKDTree into this one.
-  gsKDTree& operator=(const gsKDTree& other);
-  
-  // Returns the dimension of the data stored in this gsKDTree.
-  std::size_t dimension() const;
+    gsKDTree * sibling() const
+    { 
+        GISMO_ASSERT( parent != 0, "Root does not have a sibling.");
+        return (parent->left == this ? parent->right : parent->left ); 
+    }
 
-  // Returns the number of elements in the kd-tree.
-  std::size_t size() const;
+public:
 
-  // Returns true if this gsKDTree is empty and false otherwise.
-  bool empty() const;
-
-  // Returns true if the specified key is contained in the gsKDTree.
-  bool contains(const KeyType& key) const;
-  
-  /*
-   * Inserts the data with the given key into the gsKDTree,
-   * associating it with the specified value. If another data element
-   * with the same key already existed in the tree, the new value will
-   * overwrite the existing one.
-   */
-  void insert(const KeyType& key, const ValueType& value=ValueType());
-  
-  /*
-   * Returns a reference to the value associated with the data stored
-   * under the given key in the gsKDTree. If the key does not exist,
-   * then it is added to the gsKDTree using the default value of
-   * ValueType as its value.
-   */
-  ValueType& operator[](const KeyType& key);
-  
-  /*
-   * Returns a reference to the value associated with the given
-   * key. If the key is not in the tree, this function throws an
-   * out_of_range exception.
-   */
-  ValueType& at(const KeyType& key);
-  const ValueType& at(const KeyType& key) const;
-  
-  /*
-   * Given a key and an integer k, finds the k data elements in the
-   * gsKDTree nearest to the data element associated with the given
-   * key and returns the most common value associated with those data
-   * elements. In the event of a tie, one of the most frequent value
-   * will be chosen.
-   */
-  ValueType kNNValue(const KeyType& key, std::size_t k) const;
-
-  /*
-   * Given a key and an integer k, finds the k data elements in the
-   * gsKDTree nearest to the data element associated with the given
-   * key and returns a reference to the most common value associated
-   * with those data elements. In the event of a tie, one of the most
-   * frequent value will be chosen.
-   */
-  ValueType& kNNValue(const KeyType& key, std::size_t k);
-
-  /// Prints the object as a string.
-  void print(std::ostream &os) const;
-
-  /// Print (as string) operator
-  friend std::ostream &operator<<(std::ostream &os, const gsKDTree &obj)
-  {
-    obj.print(os);
-    return os;
-  }
-  
-private:
-  struct Node {
-    KeyType point;
-    Node *left;
-    Node *right;
-    int level;  // level of the node in the tree, starts at 0 for the root
-    ValueType value;
-    Node(const KeyType& _key, int _level, const ValueType& _value=ValueType()):
-      point(_key), left(NULL), right(NULL), level(_level), value(_value) {}
-  };
-  
-  // Root node of the gsKDTree
-  Node* root_;
-  
-  // Number of points in the gsKDTree
-  std::size_t size_;
-  
-  /*
-   * Recursively build a subtree that satisfies the kd-tree invariant using points in [start, end)
-   * At each level, we split points into two halves using the median of the points as pivot
-   * The root of the subtree is at level 'currLevel'
-   * O(n) time partitioning algorithm is used to locate the median element
-   */
-  Node* buildTree(typename std::vector<std::pair<KeyType, ValueType> >::iterator start,
-                  typename std::vector<std::pair<KeyType, ValueType> >::iterator end,
-                  int currLevel);
-  
-  /*
-   * Returns the Node that contains element with given key if it is present in subtree 'currNode'
-   * Returns the Node below where key should be inserted if key is not in the subtree
-   */
-  Node* findNode(Node* currNode, const KeyType& key) const;
-  
-  // Recursive helper method for kNNValue(key, k)
-  void nearestNeighborRecurse(const Node* currNode,
-                              const KeyType& key,
-                              gsBoundedPriorityQueue<ValueType>& bpq) const;
-
-  // Recursive helper method for kNNValue(key, k)
-  void nearestNeighborRecurse(const Node* currNode,
-                              const KeyType& key,
-                              gsBoundedPriorityQueue<ValueType*>& bpq) const;
-  
-  /*
-   * Recursive helper method for copy constructor and assignment operator
-   * Deep copies tree 'root' and returns the root of the copied tree
-   */
-  Node* deepcopyTree(Node* root);
-  
-  // Recursively free up all resources of subtree rooted at 'currNode'
-  void freeResource(Node* currNode);
-
-}; // class gsKDTree
-
-template <class KeyType, class ValueType>
-gsKDTree<KeyType, ValueType>::gsKDTree() :
-  root_(NULL), size_(0) { }
-
-template <class KeyType, class ValueType>
-typename gsKDTree<KeyType, ValueType>::Node*
-gsKDTree<KeyType, ValueType>::deepcopyTree(typename gsKDTree<KeyType, ValueType>::Node* root)
-{
-  if (root == NULL) return NULL;
-  Node* newRoot = new Node(*root);
-  newRoot->left = deepcopyTree(root->left);
-  newRoot->right = deepcopyTree(root->right);
-  return newRoot;
-}
-
-template <class KeyType, class ValueType>
-typename gsKDTree<KeyType, ValueType>::Node*
-gsKDTree<KeyType, ValueType>::buildTree(typename std::vector<std::pair<KeyType, ValueType> >::iterator start,
-                                        typename std::vector<std::pair<KeyType, ValueType>>::iterator  end,
-                                        int currLevel)
-{
-  if (start >= end) return NULL; // empty tree
-  
-  int axis = currLevel % gsKDTreeTraits<KeyType>::size(); // the axis to split on
-  auto cmp = [axis](const std::pair<KeyType, ValueType>& p1,
-                    const std::pair<KeyType, ValueType>& p2) {
-    return p1.first[axis] < p2.first[axis];
-  };
-  std::size_t len = end - start;
-  auto mid = start + len / 2;
-  std::nth_element(start, mid, end, cmp); // linear time partition
-  
-  // move left (if needed) so that all the equal points are to the right
-  // The tree will still be balanced as long as there aren't many points that are equal along each axis
-  while (mid > start && (mid - 1)->first[axis] == mid->first[axis]) {
-    --mid;
-  }
-  
-  Node* newNode = new Node(mid->first, currLevel, mid->second);
-  newNode->left = buildTree(start, mid, currLevel + 1);
-  newNode->right = buildTree(mid + 1, end, currLevel + 1);
-  return newNode;
-}
-
-template <class KeyType, class ValueType>
-gsKDTree<KeyType, ValueType>::gsKDTree(std::vector<std::pair<KeyType, ValueType> >& data)
-{
-  root_ = buildTree(data.begin(), data.end(), 0);
-  size_ = data.size();
-}
-
-template <class KeyType, class ValueType>
-gsKDTree<KeyType, ValueType>::gsKDTree(const gsKDTree& rhs)
-{
-  root_ = deepcopyTree(rhs.root_);
-  size_ = rhs.size_;
-}
-
-template <class KeyType, class ValueType>
-gsKDTree<KeyType, ValueType>& gsKDTree<KeyType, ValueType>::operator=(const gsKDTree& rhs)
-{
-  if (this != &rhs) { // make sure we don't self-assign
-    freeResource(root_);
-    root_ = deepcopyTree(rhs.root_);
-    size_ = rhs.size_;
-  }
-  return *this;
-}
-
-template <class KeyType, class ValueType>
-void gsKDTree<KeyType, ValueType>::freeResource(typename gsKDTree<KeyType, ValueType>::Node* currNode)
-{
-  if (currNode == NULL) return;
-  freeResource(currNode->left);
-  freeResource(currNode->right);
-  delete currNode;
-}
-  
-template <class KeyType, class ValueType>
-gsKDTree<KeyType, ValueType>::~gsKDTree()
-{
-  clear();
-}
-
-template <class KeyType, class ValueType>
-void gsKDTree<KeyType, ValueType>::clear()
-{
-  freeResource(root_);
-}
-  
-template <class KeyType, class ValueType>
-std::size_t gsKDTree<KeyType, ValueType>::dimension() const
-{
-  return gsKDTreeTraits<KeyType>::size();
-}
-
-template <class KeyType, class ValueType>
-std::size_t gsKDTree<KeyType, ValueType>::size() const
-{
-  return size_;
-}
-
-template <class KeyType, class ValueType>
-bool gsKDTree<KeyType, ValueType>::empty() const
-{
-  return size_ == 0;
-}
-  
-template <class KeyType, class ValueType>
-typename gsKDTree<KeyType, ValueType>::Node*
-gsKDTree<KeyType, ValueType>::findNode(typename gsKDTree<KeyType, ValueType>::Node* currNode,
-                                       const KeyType& key) const
-{
-  if (currNode == NULL || currNode->point == key) return currNode;
-  
-  const KeyType& currPoint = currNode->point;
-  int currLevel = currNode->level;
-  if (gsKDTreeTraits<KeyType>::islhalf(key, currPoint, currLevel%gsKDTreeTraits<KeyType>::size()))
+    /// Splits the node (i.e., two children are added)
+    inline void split()
     {
-      // recurse to the left side
-      return currNode->left == NULL ? currNode : findNode(currNode->left, key);
-    } else {
-    // recurse to the right side
-    return currNode->right == NULL ? currNode : findNode(currNode->right, key);
-  }
-}
+        GISMO_ASSERT( (left == 0) && (right == 0),
+                      "Can only split leaf nodes.");
+        GISMO_ASSERT( axis > -1, "Split axis not prescribed.");
 
-template <class KeyType, class ValueType>
-bool gsKDTree<KeyType, ValueType>::contains(const KeyType& key) const
-{
-  auto node = findNode(root_, key);
-  return node != NULL && node->point == key;
-}
-  
-template <class KeyType, class ValueType>
-void gsKDTree<KeyType, ValueType>::insert(const KeyType& key, const ValueType& value)
-{
-  auto targetNode = findNode(root_, key);
-  if (targetNode == NULL) { // this means the tree is empty
-    root_ = new Node(key, 0, value);
-    size_ = 1;
-  } else {
-    if (targetNode->point == key) { // key is already in the tree, simply update its value
-      targetNode->value = value;
-    } else { // construct a new node and insert it to the right place (child of targetNode)
-      int currLevel = targetNode->level;
-      Node* newNode = new Node(key, currLevel + 1, value);
-      if (gsKDTreeTraits<KeyType>::islhalf(key, targetNode->point, currLevel%gsKDTreeTraits<KeyType>::size())) {
-        targetNode->left = newNode;
-      } else {
-        targetNode->right = newNode;
-      }
-      ++size_;
+        // Make new left and right children
+        left          = new gsKDTree();
+        right         = new gsKDTree();
+        // Set axis to -1 (since they are leaves)
+        left ->axis   =
+        right->axis   = -1;
+        // Set parent to this node
+        left ->parent = 
+        right->parent = this;
+        // Set data to both children
+        left ->data    = data;    
+        right->data    = new Data_t(*data);
+        // Detach data from parent (is now at left child)
+        data = nullptr;
+        //left->data->setLeft (axis,pos);
+        //left->data->setRight(axis,pos);
     }
-  }
-}
 
-template <class KeyType, class ValueType>
-const ValueType& gsKDTree<KeyType, ValueType>::at(const KeyType& key) const
-{
-  auto node = findNode(root_, key);
-  if (node == NULL || node->point != key) {
-    throw std::out_of_range("Key not found in gsKDTree");
-  } else {
-    return node->value;
-  }
-}
-
-template <class KeyType, class ValueType>
-ValueType& gsKDTree<KeyType, ValueType>::at(const KeyType& key)
-{
-  const gsKDTree<KeyType, ValueType>& constThis = *this;
-  return const_cast<ValueType&>(constThis.at(key));
-}
-  
-template <class KeyType, class ValueType>
-ValueType& gsKDTree<KeyType, ValueType>::operator[](const KeyType& key)
-{
-  auto node = findNode(root_, key);
-  if (node != NULL && node->point == key) { // key is already in the tree
-    return node->value;
-  } else { // insert key with default ValueType value, and return reference to the new ValueType
-    insert(key);
-    if (node == NULL) return root_->value; // the new node is the root
-    else return (node->left != NULL && node->left->point == key) ? node->left->value: node->right->value;
-  }
-}
-  
-template <class KeyType, class ValueType>
-void gsKDTree<KeyType, ValueType>::nearestNeighborRecurse(const typename gsKDTree<KeyType, ValueType>::Node* currNode,
-                                                          const KeyType& key,
-                                                          gsBoundedPriorityQueue<ValueType>& bpq) const
-{
-  if (currNode == NULL) return;
-  const KeyType& currPoint = currNode->point;
-
-  // Add the current point to the BPQ if it is closer to 'key' that some point in the BPQ
-  bpq.enqueue(currNode->value, gsKDTreeTraits<KeyType>::distance(key, currPoint));
-
-  // Recursively search the half of the tree that contains Point 'key'
-  int currLevel = currNode->level;
-  bool isLeftTree;
-  if (gsKDTreeTraits<KeyType>::islhalf(key, currPoint, currLevel%gsKDTreeTraits<KeyType>::size())) {
-    nearestNeighborRecurse(currNode->left, key, bpq);
-    isLeftTree = true;
-  } else {
-    nearestNeighborRecurse(currNode->right, key, bpq);
-    isLeftTree = false;
-  }
-  
-  if (bpq.size() < bpq.maxSize() ||
-      gsKDTreeTraits<KeyType>::fabs(key, currPoint, currLevel%gsKDTreeTraits<KeyType>::size()) < bpq.worst()) {
-    // Recursively search the other half of the tree if necessary
-    if (isLeftTree) nearestNeighborRecurse(currNode->right, key, bpq);
-    else nearestNeighborRecurse(currNode->left, key, bpq);
-  }
-}
-
-template <class KeyType, class ValueType>
-void gsKDTree<KeyType, ValueType>::nearestNeighborRecurse(const typename gsKDTree<KeyType, ValueType>::Node* currNode,
-                                                          const KeyType& key,
-                                                          gsBoundedPriorityQueue<ValueType*>& bpq) const
-{
-  if (currNode == NULL) return;
-  const KeyType& currPoint = currNode->point;
-
-  // Add the current point to the BPQ if it is closer to 'key' that some point in the BPQ
-  bpq.enqueue(const_cast<ValueType*>(&(currNode->value)), gsKDTreeTraits<KeyType>::distance(key, currPoint));
-
-  // Recursively search the half of the tree that contains Point 'key'
-  int currLevel = currNode->level;
-  bool isLeftTree;
-  if (gsKDTreeTraits<KeyType>::islhalf(key, currPoint, currLevel%gsKDTreeTraits<KeyType>::size())) {
-    nearestNeighborRecurse(currNode->left, key, bpq);
-    isLeftTree = true;
-  } else {
-    nearestNeighborRecurse(currNode->right, key, bpq);
-    isLeftTree = false;
-  }
-  
-  if (bpq.size() < bpq.maxSize() ||
-      gsKDTreeTraits<KeyType>::fabs(key, currPoint, currLevel%gsKDTreeTraits<KeyType>::size()) < bpq.worst()) {
-    // Recursively search the other half of the tree if necessary
-    if (isLeftTree) nearestNeighborRecurse(currNode->right, key, bpq);
-    else nearestNeighborRecurse(currNode->left, key, bpq);
-  }
-}
-
-template <class KeyType, class ValueType>
-ValueType gsKDTree<KeyType, ValueType>::kNNValue(const KeyType& key, std::size_t k) const
-{
-  // BPQ with maximum size k
-  gsBoundedPriorityQueue<ValueType> bpq(k); 
-  if (empty()) throw std::out_of_range("gsKDTree is empty");
-
-  // Recursively search the kd-tree with pruning
-  nearestNeighborRecurse(root_, key, bpq);
-
-  // Ensure finite values; non-standard 'distance' functions can be
-  // used to exclude data elements that are close to the given key but
-  // on the 'wrong' side of the hyperplane. This allows to exclude
-  // nearest neighbours that are, e.g., smaller than the given key.
-  if (!math::isfinite(bpq.best()))
-      throw std::out_of_range("gsKDTree does not contain finite value");
-  
-  // Count occurrences of all ValueType in the kNN set
-  std::unordered_map<ValueType, int> counter;
-  while (!bpq.empty()) {
-    ++counter[bpq.dequeueMin()];
-  }
-
-  // Return the most frequent element in the kNN set
-  ValueType result;
-  int cnt = -1;
-  for (const auto &p : counter) {
-    if (p.second > cnt) {
-      result = p.first;
-      cnt = p.second;
+    /// Splits the node (i.e., two children are added)
+    void split(int splitAxis, Z splitPos)
+    {
+        axis = splitAxis;
+        pos  = splitPos;
+        split();
     }
-  }
-  return result;
-}
 
-template <class KeyType, class ValueType>
-ValueType& gsKDTree<KeyType, ValueType>::kNNValue(const KeyType& key, std::size_t k)
-{
-  // BPQ with maximum size k
-  gsBoundedPriorityQueue<ValueType*> bpq(k);
-  if (empty())
-    throw std::out_of_range("gsKDTree is empty");
+    /// Merges terminal node (i.e., two children are joined)
+    inline void merge()
+    {
+        GISMO_ASSERT( (left->isLeaf()) && (right->isLeaf()),
+                      "Can only merge terminal nodes.");
 
-  // Recursively search the kd-tree with pruning
-  nearestNeighborRecurse(root_, key, bpq);
-  
-  // Ensure finite values; non-standard 'distance' functions can be
-  // used to exclude data elements that are close to the given key but
-  // on the 'wrong' side of the hyperplane. This allows to exclude
-  // nearest neighbours that are, e.g., smaller than the given key.
-  if (!math::isfinite(bpq.best()))
-      throw std::out_of_range("gsKDTree does not contain finite value");
-  
-  // Count occurrences of all ValueType in the kNN set
-  std::unordered_map<ValueType*, int> counter;
-  while (!bpq.empty()) {
-    ++counter[bpq.dequeueMin()];
-  }
+        // Recover left data
+        data = left->data;
+        left->data = NULL;
+        //data->setLeft(axis, right->data->getLeftPos(axis) );
+        axis  = - 1;
 
-  // Return the most frequent element in the kNN set
-  ValueType* result = nullptr;
-  int cnt = -1;
-  for (const auto &p : counter) {
-    if (p.second > cnt) {
-      result = p.first;
-      cnt = p.second;
+        // Delete children
+        delete  left;
+        left  = NULL;
+        delete right;
+        right = NULL;
     }
-  }
-  return *result;
-}
 
-template <class KeyType, class ValueType>
-void gsKDTree<KeyType, ValueType>::print(std::ostream& os) const
+    inline int numLeaves() const
+    { return leafSearch< counter_visitor >(); }
+
+    inline int printLeaves() const
+    { return leafSearch< printLeaves_visitor >(); }
+
+    inline int numNodes() const
+    { return nodeSearch< counter_visitor >(); }
+
+private:
+
+    /// Counts visited nodes
+    struct counter_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+
+        static void visitNode(const gsKDTree * , return_type & i)
+        {
+            i++;
+        }
+    };
+    
+    /// Prints the nodes in the tree
+    struct printLeaves_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+        
+        static void visitLeaf(const gsKDTree * leafNode, return_type &)
+        {
+            gsInfo << *leafNode;
+        }
+    };
+
+
+public:
+
+    template<typename visitor>
+    typename visitor::return_type leafSearch() const
+    {
+        typename visitor::return_type i = visitor::init();
+
+        const gsKDTree * curNode = this;
+
+        while(true)
+        {
+            if ( !curNode->isLeaf() )
+            {   //property: tree has no singles (only childs)
+                curNode = curNode->left;
+            }
+            else
+            {
+                // Visit the leaf
+                visitor::visitLeaf(curNode, i);
+                
+                while (curNode->parent != NULL &&
+                       curNode != curNode->parent->left)
+                    curNode = curNode->parent;
+
+                if ( curNode->isRoot() )
+                    break;
+                else
+                    curNode = curNode->parent->right;
+            }
+        }
+        return i;
+    }
+
+    template<typename visitor>
+    typename visitor::return_type nodeSearch() const
+    {
+        typename visitor::return_type i = visitor::init();
+        
+        const gsKDTree * curNode = this;
+
+        while(true)
+        {
+            visitor::visitNode(curNode, i);
+            //gsInfo << "curnode "<< curNode <<"\n";
+            if ( !curNode->isLeaf() )
+            {   //property: tree has no singles
+                curNode = curNode->left;
+            }
+            else
+            {
+                while (curNode->parent != NULL &&
+                       curNode != curNode->parent->left)
+                    curNode = curNode->parent;
+
+                if ( curNode->isRoot() )
+                    break;
+                else
+                    curNode = curNode->parent->right;
+            }
+        }
+        return i;
+    }
+
+    template<typename visitor, typename point>
+    typename visitor::return_type rangeSearch(point const & k1, point const & k2) const
+    {
+
+        typename visitor::return_type res = visitor::init();
+        
+        std::vector<const gsKDTree*> stack;
+        size_t m_maxPath = 20;
+        stack.reserve( 2 * m_maxPath );
+        stack.push_back(this);
+
+        const gsKDTree * curNode = this;
+        while ( ! stack.empty() )
+        {
+            curNode = stack.back(); //top();
+            stack.pop_back();       //pop();
+            
+            if ( curNode->isLeaf() )
+            {
+                // Visit the leaf
+                visitor::visitLeaf(curNode, res );
+                // TODO
+                // if (visitor::visitLeaf(curNode, res ) ) return res;
+            }
+            else // this is a split-node
+            {
+                if ( k2[curNode->axis] <= curNode->pos)
+                    // qBox overlaps only left child of this split-node
+                    stack.push_back(curNode->left); //push(curNode->left);
+                else if  ( k1[curNode->axis] >= curNode->pos)
+                    // qBox overlaps only right child of this split-node
+                    stack.push_back(curNode->right); //push(curNode->right);
+                else
+                {
+                    // qBox overlaps both children of this split-node
+                    stack.push_back(curNode->left ); //push(curNode->left );
+                    stack.push_back(curNode->right); //push(curNode->right);
+                }
+            }
+        }
+
+        return res;
+    }
+
+    template<typename point>
+    gsKDTree * pointSearch(const point & pp) const
+    {
+        //TODO:
+        // return this->rangeSearch(pp,pp);
+        std::vector<const gsKDTree*> stack;
+        int m_maxPath = 20;
+        stack.reserve( 2 * m_maxPath );
+        stack.push_back(this);
+
+        const gsKDTree * curNode;
+        while ( ! stack.empty() )
+        {
+            curNode = stack.back(); //top();
+            stack.pop_back();       //pop();
+
+            if ( curNode->isLeaf() )
+            {
+                // Point found at current node
+                return curNode;
+            }
+            else // this is a split-node
+            {
+                if ( pp[curNode->axis] < curNode->pos)
+                    stack.push_back(curNode->left);
+                else
+                    stack.push_back(curNode->right);
+            }
+        }
+
+        GISMO_ERROR("pointSearch: Error ("<< pp.transpose()<<").\n" );
+    }
+
+    std::pair<int,int> minMaxPath() const
+    {
+        const gsKDTree * curNode = this;
+        int min = 1000000000, max = -1, cur = 0;
+
+        while(true)
+        {
+            if ( !curNode->isLeaf() )
+            {   //property: tree has no singles
+                curNode = curNode->left;
+                cur++;
+            }
+            else
+            {
+                // Update min-max
+                min = math::min(min,cur);
+                max = math::max(max,cur);
+
+                while (curNode->parent != NULL &&
+                       curNode != curNode->parent->left)
+                {
+                    curNode = curNode->parent;
+                    cur--;
+                }
+
+                if ( curNode->isRoot() )
+                    break;
+                else
+                    curNode = curNode->parent->right;
+            }
+        }
+        return std::make_pair(min,max);
+    }
+
+    friend std::ostream & operator<<(std::ostream & os, const gsKDTree & n)
+    {
+        if ( n.isLeaf() ) 
+            os << "Leaf node. ";
+        else
+            os << (n.isTerminal() ? "Terminal" : "Split" ) << " node, axis= "
+                   << n.axis <<", pos="<< n.pos <<". ";
+        if ( n.hasData() ) os << "Node has data."; //<< *n.data;
+        os <<" \n";
+        return os;
+    }
+
+};
+
+/**
+   \brief A kd-tree in some number of dimensions \a d
+*/
+template<std::size_t d, typename Z = index_t, typename Data_t = int>
+class gsKDTreeExample
 {
-  os << "KD-tree: size= " << size() << ", dimension= " << dimension() << ".\n";
-}
+    typedef gsKDTree<Z,Data_t> Node;
+    Node * m_root; /// Root node of the gsKDTree
+
+public:
+
+    // Constructs an empty gsKDTree.
+    gsKDTreeExample();
+  
+    // Frees up all the dynamically allocated resources
+    ~gsKDTreeExample();
+
+    // Frees up all the dynamically allocated resources
+    void clear();
+  
+    // Deep-copies the contents of another gsKDTree into this one.
+    gsKDTreeExample(const gsKDTreeExample& other);
+
+    // Deep-copies the contents of another gsKDTree into this one.
+    gsKDTreeExample& operator=(const gsKDTreeExample& other);
+    
+    // Returns the dimension of the data stored in this gsKDTree.
+    static std::size_t dimension() { return d; }
+
+    int numLeaves() const { return m_root->numLeaves(); };
+    int numNodes () const { return m_root->numNodes(); };
+
+    // Returns true if this gsKDTree is empty and false otherwise.
+    bool empty() const { return 0;}
+
+    /// Prints the object as a string.
+    void print(std::ostream &os) const;
+
+    /// Print (as string) operator
+    friend std::ostream &operator<<(std::ostream &os, const gsKDTreeExample &obj)
+    {
+        obj.print(os);
+        return os;
+    }
+  
+}; // class gsKDTreeExample
   
 } //namespace gismo

@@ -14,14 +14,14 @@
 #include <iostream>
 
 #include <gismo.h>
-#include <gsUtils/gsKDTree.h>
+#include <gsUtils/gsKNNTree.h>
 
 using namespace gismo;
 
 namespace gismo {
 
 template<>
-struct gsKDTreeTraits< gsVector<real_t> >
+struct gsKNNTreeTraits< gsVector<real_t> >
 {
     typedef gsVector<real_t,3> T;
     static inline std::size_t size() { return 3; }
@@ -40,19 +40,8 @@ struct gsKDTreeTraits< gsVector<real_t> >
   }
 };
 
-struct gsKDNode
-{
-    KeyType point;
-    ValueType value;
-    int level;  // level of the node in the tree, starts at 0 for the root
-
-    gsKDNode * left, * right;
-    Node(const KeyType& _key, int _level, const ValueType& _value=ValueType()):
-    point(_key), left(NULL), right(NULL), level(_level), value(_value) {}
-  };
 }
 
-}
 
 int main(int argc, char *argv[])
 {
@@ -64,11 +53,14 @@ int main(int argc, char *argv[])
     std::vector<std::pair<gsVector<>, int> > data;
     for(index_t i = 0; i<xyz.cols();++i)
         data.push_back( std::make_pair(xyz.col(i),  i) );
+
+    gsInfo <<"Number of points: "<< data.size() <<"\n";
         
-    gsKDTree<gsVector<>, int > tree(data);
+    gsKNNTree<gsVector<>, int > tree(data);
 
     gsInfo <<"k-d tree size      "<< tree.size() <<"\n";
     gsInfo <<"k-d tree dimension "<< tree.dimension() <<"\n";
-    
+    gsInfo <<"k-d tree root      "<< tree.root() <<"\n";
+
     return EXIT_SUCCESS;
 }
