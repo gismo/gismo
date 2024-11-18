@@ -1,4 +1,4 @@
-/** @file nonlinear_example.cpp
+/** @file Monge_Ampere_example.cpp
 
     @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris & M. BAHARI
 */
 
 //! [Include namespace]
@@ -23,11 +23,11 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 4;
     index_t numElevate = 0;
-    index_t maxIter = 10;
-    double eps{1e-7}; /// pinalization coefficient
-    double l2errRes{0.}, tolerancePicard{1e-7};
+    index_t maxIter = 50;
+    double eps{1e-5}; // pinalization coefficient
+    double l2errRes{0.}, tolerancePicard{1e-8};
     index_t method = 2;
-    bool last = false, export_b64{false}, adaptiveMesh{false};
+    bool last = false, export_b64{false}, adaptiveMesh{true};
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("m","method","Method to use: 0: Newton with automated Jacobian, 1: Newton with Precomputed Jacobian, 2: Picard iteration", method);
@@ -40,50 +40,61 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-    //! [Parse command line]
-
-    //! [Read input file]
 
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, .0, .0);
+   gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,2,1, .0, .0);
+   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,1,0));
+   mp.addInterface(0,2,2,1);
+   // Get all interfaces and boundaries:
+   mp.computeTopology();
 
     //..... Test 2
     // Manufactured solition
-    gsFunctionExpr<> s("exp(0.5*(x**2 + y**2))",2);
-    // Manufactured Grad solition
-    gsFunctionExpr<> sN("x*exp(0.5*(x**2 + y**2))","y*exp(0.5*(x**2 + y**2))",2);
-    // Right-hand side function
-    gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
+    // gsFunctionExpr<> s("exp(0.5*(x**2 + y**2))",2);
+    // // Manufactured Grad solition
+    // gsFunctionExpr<> sN("x*exp(0.5*(x**2 + y**2))","y*exp(0.5*(x**2 + y**2))",2);
+    // // Right-hand side function
+    // gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
 
     //..... Test 2
-    // // convex function
-    //gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
-    // // // Manufactured identity mapping
-    // gsFunctionExpr<> sN("x","y",2);
-    // // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
-    // gsFunctionExpr<> f("0.5698752034687177/(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
-    ///! this example doesn't work !
-    //gsFunctionExpr<> f("3.553841799466826/(1.+ 9./(1.+(10.*sqrt((sx-0.7-0.25*0.)**2+(sy-0.5)**2)*cos(arctan2(sy-0.5,sx-0.7-0.25*0.) -20.*((sx-0.7-0.25*0.)**2+(sy-0.5)**2)))**2) )",2);
-    //gsFunctionExpr<> f("1.4259290652600725/( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
+    // convex function
+    gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
+    // // Manufactured identity mapping
+    gsFunctionExpr<> sN("x","y",2);
+    // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
+    gsFunctionExpr<> f("(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
+    //
+    //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
+    //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
 
     gsInfo<<"Source function "<< f << "\n";
+
+    gsInfo<<"The domain is "<< mp.detail() << "\n";
 
     gsFunctionExpr<> bfunc("0",2);
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
-    // ....
+    // .... patch 0
     bc.addCondition(0,1, condition_type::neumann, &sN,0,false);
-    bc.addCondition(0,2, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(0,2, condition_type::neumann, &sN,0,false);
     bc.addCondition(0,3, condition_type::neumann, &sN,0,false);
-    bc.addCondition(0,4, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(0,4, condition_type::neumann, &sN,0,false);
+    // .. patch 1
+    bc.addCondition(1,1, condition_type::neumann, &sN,0,false);
+    bc.addCondition(1,2, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(1,3, condition_type::neumann, &sN,0,false);
+    bc.addCondition(1,4, condition_type::neumann, &sN,0,false);
+    // ... patch 2
+    //bc.addCondition(2,1, condition_type::neumann, &sN,0,false);
+    bc.addCondition(2,2, condition_type::neumann, &sN,0,false);
+    bc.addCondition(2,3, condition_type::neumann, &sN,0,false);
+    bc.addCondition(2,4, condition_type::neumann, &sN,0,false);
     //gsDebugVar( bc.allConditions()[0].parametric() );
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     //gsOptionList Aopt;
-
-    //! [Read input file]
 
     //! [Refinement]
     gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
@@ -91,7 +102,7 @@ int main(int argc, char *argv[])
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-    dbasis.degreeElevate(1);
+    dbasis.degreeElevate(2);
 
     // h-refine each basis
     if (last)
@@ -134,9 +145,8 @@ int main(int argc, char *argv[])
     // Recover manufactured solution
     auto u_ex = ev.getVariable(s, G);
 
-    gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
-    auto u_I = ev.getVariable(sI, G);
-
+    //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
+    //auto u_I = ev.getVariable(sI, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
@@ -147,65 +157,68 @@ int main(int argc, char *argv[])
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
-    gsVector<>  h1err(numRefine+1); //l2err(numRefine+1),
+    gsVector<>  h1err(numRefine+1); //l2err(numRefine+1) : The solution exists up to an additive constant.
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n"
         "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);    
     gsStopwatch timer;
-    for (int r=0; r<=numRefine; ++r)
+    if(adaptiveMesh)
     {
-        dbasis.uniformRefine();
-        mp.uniformRefine();
-
-        // Compute the system matrix and right-hand side
-
-        // Initialize the system : start Computing the conductivity coeffeicient ...
-        // Compute the Neumann terms defined on physical space
-        auto g_N = A.getBdrFunction(G);
-        auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
-        // ...
-        auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * ff.val(), 0.5) * meas(G))};
-        //... end 
-
-        // Initialize the system
-        A.initSystem();
-        setup_time += timer.stop();
-
-        gsInfo<< A.numDofs() <<std::flush;
-
-        timer.restart();
-
-        A.assemble(
-           igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
-           ,
-           u* (-1.)*pow(2.+2. * ff.val(), 0.5) *CoeffConductivity* meas(G) //rhs vector
-           );
-        
-        // Compute the Neumann terms defined on physical space
-        //auto g_N = A.getBdrFunction(G);
-        A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
-
-        ma_time += timer.stop();
-
-        // gsDebugVar(A.matrix().toDense());
-        // gsDebugVar(A.rhs().transpose()   );
-
-        gsInfo<< "." <<std::flush;// Assemblying done
-
-        timer.restart();
-        solver.compute( A.matrix() );
-        solVector = solver.solve(A.rhs());
-
-        slv_time += timer.stop();
-
-        gsInfo<< "." <<std::flush; // Linear solving done
-
-        // Picard loop
-        index_t NiterPicard{0};
-        gsMatrix<> sv0; //
-        for(int ip{0}; ip<maxIter; ++ip)
+        //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
+        for (int r=0; r<=numRefine; ++r)
         {
-            if(adaptiveMesh)
+            dbasis.uniformRefine();
+            mp.uniformRefine();
+            u.setup(bc, dirichlet::l2Projection, 0);
+            // Compute the system matrix and right-hand side
+
+            //... nromalisation of density function
+            auto CoeffDensity{ev.integral(ff.val() * meas(G))};
+            // Initialize the system : start Computing the conductivity coeffeicient ...
+            // Compute the Neumann terms defined on physical space
+            auto g_N = A.getBdrFunction(G);
+            auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
+            // ...
+            auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
+            //... end 
+
+            // Initialize the system :  identity mapping as initial guess
+            A.initSystem();
+            setup_time += timer.stop();
+
+            gsInfo<< A.numDofs() <<std::flush;
+
+            timer.restart();
+
+            A.assemble(
+            igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
+            ,
+            u*  CoeffConductivity * (-1.)*pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G) //rhs vector
+            );
+            
+            // Compute the Neumann terms defined on physical space
+            //auto g_N = A.getBdrFunction(G);
+            A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+
+            ma_time += timer.stop();
+
+            // gsDebugVar(A.matrix().toDense());
+            // gsDebugVar(A.rhs().transpose()   );
+
+            gsInfo<< "." <<std::flush;// Assemblying done
+
+            timer.restart();
+            solver.compute( A.matrix() );
+            solVector = solver.solve(A.rhs());
+
+            slv_time += timer.stop();
+
+            gsInfo<< "." <<std::flush; // Linear solving done
+
+            // Picard loop
+            index_t NiterPicard{0};
+            gsMatrix<> sv0; //
+            for(int ip{0}; ip<maxIter; ++ip)
             {
                 gsMultiPatch<> UU;
                 u_sol.extract(UU);
@@ -232,9 +245,10 @@ int main(int argc, char *argv[])
                 geometryMap PP = A.getMap(Psi);
                 auto fp = A.getCoeff(f,PP);
 
-                //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
+                // ...  0  dirichlet for boundaries
                 sv0 = solVector;
-                
+                u.setup(bc, dirichlet::l2Projection, 0);
+            
                 solution u_sol = A.getSolution(u, solVector);
 
                 // Initialize the system
@@ -247,13 +261,13 @@ int main(int argc, char *argv[])
                 // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
                 
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
+                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
 
                 // MAE system
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
                 ,
-                u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(fp.val() - ihess(u_sol,G).det()), 0.5) *CoeffConductivity * meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space
@@ -282,121 +296,130 @@ int main(int argc, char *argv[])
                 ++NiterPicard;
                 l2errRes = (solVector-sv0).norm();// TODO
                 if ( l2errRes < tolerancePicard ) break; // TODO
-            }
-            else
-            {
-                if(2==method){
-            sv0 = solVector;
-    //        u.setup(bc, dirichlet::interpolation, 0);
-    //        u.setup(bc, dirichlet::l2Projection, 0);
-            
-            solution u_sol = A.getSolution(u, solVector);
+            }//for loop
+            // ! end Picard loop
+            gsInfo<< "\n Niter in Picard : " << NiterPicard << " L2 residual : "<<std::scientific<<l2errRes<<"\n";
+            // omp_set_dynamic(0);     // Explicitly disable dynamic teams
+            // omp_set_num_threads(1); // Use these threads for later parallel regions
+
+            timer.restart();
+            //l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
+
+            h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+            err_time += timer.stop();
+            gsInfo<< ". " <<std::flush; // Error computations done
+
+        } //for loop
+        //! [Solver loop]
+
+    }
+    else
+    {
+        //::::::::::::::::::::     manufactured exact solution         :::::::::::::::::::::::::
+        for (int r=0; r<=numRefine; ++r)
+        {
+            dbasis.uniformRefine();
+            mp.uniformRefine();
+            u.setup(bc, dirichlet::l2Projection, 0);
+            // Compute the system matrix and right-hand side
+
+            // Initialize the system : start Computing the conductivity coeffeicient ...
+            // Compute the Neumann terms defined on physical space
+            auto g_N = A.getBdrFunction(G);
+            auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
+            // ...
+            auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * ff.val(), 0.5) * meas(G))};
+            //... end 
 
             // Initialize the system
             A.initSystem();
             setup_time += timer.stop();
 
-            //gsInfo<< A.numDofs() <<std::flush;
+            gsInfo<< A.numDofs() <<std::flush;
 
             timer.restart();
-            // Compute the system matrix and right-hand side
 
-            // .. update Coeffeicient of conductivity
-            CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
-
-            // MAE system
             A.assemble(
-               igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()  * meas(G) //matrix
-               ,
-               u * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) *CoeffConductivity * meas(G) //rhs vector
-               );
-
+            igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
+            ,
+            u*  CoeffConductivity * (-1.)*pow(2.+2. * ff.val(), 0.5) * meas(G) //rhs vector
+            );
+            
             // Compute the Neumann terms defined on physical space
-            auto g_N = A.getBdrFunction(G);
+            //auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
 
             ma_time += timer.stop();
 
             // gsDebugVar(A.matrix().toDense());
             // gsDebugVar(A.rhs().transpose()   );
-            
 
-            gsInfo<< " ." <<std::flush;// Assemblying done
+            gsInfo<< "." <<std::flush;// Assemblying done
 
             timer.restart();
             solver.compute( A.matrix() );
             solVector = solver.solve(A.rhs());
+
             slv_time += timer.stop();
 
             gsInfo<< "." <<std::flush; // Linear solving done
 
-            // omp_set_dynamic(0);     // Explicitly disable dynamic teams
-            // omp_set_num_threads(1); // Use these threads for later parallel regions
+            // Picard loop
+            index_t NiterPicard{0};
+            gsMatrix<> sv0; //
+            for(int ip{0}; ip<maxIter; ++ip)
+            {
+                sv0 = solVector;
+        //        u.setup(bc, dirichlet::interpolation, 0);
+                u.setup(bc, dirichlet::l2Projection, 0);
+                
+                solution u_sol = A.getSolution(u, solVector);
 
-            ++NiterPicard;
-            l2errRes = (solVector-sv0).norm();// TODO
-            if ( l2errRes < tolerancePicard ) break; // TODO
-            }
-            else{
+                // Initialize the system
+                A.initSystem();
+                setup_time += timer.stop();
 
-                //=============================================  Newton method  ===============================================
-            // .. update Coeffeicient of conductivity
-            CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
+                //gsInfo<< A.numDofs() <<std::flush;
 
-            auto residual =   igrad(u,G) * igrad(u_sol, G).tr() * meas(G) 
-            + u * CoeffConductivity * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G);
+                timer.restart();
+                // Compute the system matrix and right-hand side
 
-            // Initialize the system
-            A.initSystem();
-            setup_time += timer.stop();
+                // .. update Coeffeicient of conductivity
+                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
 
-            //gsInfo<< A.numDofs() <<std::flush;
-
-            timer.restart();
-            // Compute the system matrix and right-hand side
-
-            // .. update Coeffeicient of conductivity
-
-            // MAE system 
-            A.clearMatrix();
-            A.clearRhs();
-            A.assemble(
-               igrad(u, G) * igrad(u, G).tr()  * meas(G) //matrix
-               //+u * CoeffConductivity * ( ((ilapl(u,G)*ilapl(u_sol,G).tr()-(ihess(u_sol,G).adj()*ihess(u,G)).trace()).tr())/pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5)) * meas(G)
-               +u * CoeffConductivity * ( (u*((ilapl(u_I,G)*ilapl(u_sol,G).tr()-(ihess(u_sol,G).adj()*ihess(u_I,G)).trace()).tr())).tr()/pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5)) * meas(G)
+                // MAE system
+                A.assemble(
+                igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()  * meas(G) //matrix
                 ,
-               residual
-               );
+                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) *meas(G) //rhs vector
+                );
 
-            // Compute the Neumann terms defined on physical space
-            auto g_N = A.getBdrFunction(G);
-            A.assembleBdr(bc.get("Neumann"), -1.*u * g_N.tr() * nv(G) );
+                // Compute the Neumann terms defined on physical space
+                auto g_N = A.getBdrFunction(G);
+                A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
 
-            ma_time += timer.stop();
+                ma_time += timer.stop();
 
-            // gsDebugVar(A.matrix().toDense());
-            // gsDebugVar(A.rhs().transpose()   );
-            
+                // gsDebugVar(A.matrix().toDense());
+                // gsDebugVar(A.rhs().transpose()   );
+                
 
-            gsInfo<< " ." <<std::flush;// Assemblying done
-            
-            timer.restart();                
-            solver.compute( A.matrix() );
-            auto du    = solver.solve(A.rhs());
-            solVector -= du;
-            slv_time  += timer.stop();
+                gsInfo<< " ." <<std::flush;// Assemblying done
 
-            gsInfo<< "." <<std::flush; // Linear solving done
+                timer.restart();
+                solver.compute( A.matrix() );
+                solVector = solver.solve(A.rhs());
+                slv_time += timer.stop();
 
-            // omp_set_dynamic(0);     // Explicitly disable dynamic teams
-            // omp_set_num_threads(1); // Use these threads for later parallel regions
+                gsInfo<< "." <<std::flush; // Linear solving done
 
-            ++NiterPicard;
-            l2errRes = du.norm();// TODO
-            if ( l2errRes < tolerancePicard ) break; // TODO                
-            }
-            }
-        } //for loop
+                // omp_set_dynamic(0);     // Explicitly disable dynamic teams
+                // omp_set_num_threads(1); // Use these threads for later parallel regions
+
+                ++NiterPicard;
+                l2errRes = (solVector-sv0).norm();// TODO
+                if ( l2errRes < tolerancePicard ) break; // TODO
+            }//for loop
         // ! end Picard loop
         gsInfo<< "\n Niter in Picard : " << NiterPicard << " L2 residual : "<<std::scientific<<l2errRes<<"\n";
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
@@ -408,9 +431,11 @@ int main(int argc, char *argv[])
         h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
+        } //for loop
+        //! [Solver loop]
 
-    } //for loop
-    //! [Solver loop]
+    } // end of solver
+    
 
 
     timer.stop();

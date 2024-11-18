@@ -7,16 +7,13 @@
                             \partial_n u = g & eps = 1e-8 : eps is the pinalization coefficient
                             u is convex (u in H^2(\Omega))
 
-    N. A simple test of the solver using the nonlinear Poisson equation equation is provided
-                        -div((1+u**2)grad(u)) = f
-
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris M. Bahari
+    Author(s): A. Mantzaflaris & M. Bahari
 */
 
 //! [Include namespace]
@@ -32,7 +29,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 4;
     index_t numElevate = 0;
     double eps{1e-5}; /// pinalization coefficient
-    index_t maxIter = 20;
+    index_t maxIter = 30;
     double l2errRes{0.}, tolerancePicard{1e-8};
     bool last{false}, export_b64{false}, adaptiveMesh{true};
     std::string fn("pde/MongeAmpere2d_bvp.xml");
@@ -52,7 +49,6 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     //! [Read input file]
-
     gsFileData<> fd(fn);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
@@ -70,6 +66,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> ms;
     fd.getId(3, ms); // id=3: reference solution
 
+    // .. Get data for mesh adaption using analytical density functions
     if (adaptiveMesh)
     {
         // id=1: source function for Monge-Ampere equation
@@ -83,8 +80,6 @@ int main(int argc, char *argv[])
 
     //gsOptionList Aopt;
     //fd.getId(4, Aopt); // id=4: assembler options
-
-    //! [Read input file]
 
     //! [Refinement]
     gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
@@ -144,8 +139,6 @@ int main(int argc, char *argv[])
 
     //! [Problem setup]
 
-    //! [Problem setup]
-
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
@@ -173,7 +166,7 @@ int main(int argc, char *argv[])
             auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
             //... end 
 
-            // Initialize the system
+            // Initialize the system using initial mapping as identity mapping
             A.initSystem();
             setup_time += timer.stop();
 
