@@ -501,6 +501,95 @@ int main(int argc, char *argv[])
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         gsMultiPatch<> Psi;
         v_sol.extract(Psi);
+
+        // Projection normal of control points (exact geometry)
+        int boxMaxNumber = mp.nInterfaces() +1;
+        for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
+        {
+            // test if the boundary interface is not an inner interface between patches
+            if(!mp.isInterface( patchSide(boxNumber,1) ) ){
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
+            {
+                Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
+            }
+            }
+
+            if(!mp.isInterface( patchSide(boxNumber,2) ) ){
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
+            {
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0] + 1.;
+            }
+            }
+
+            if(!mp.isInterface( patchSide(boxNumber,3) ) ){
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
+            {
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
+            }
+            }
+            if(!mp.isInterface( patchSide(boxNumber,4) ) ){
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
+            {
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+            }
+            }
+         }
+
+        gsInfo << "given data "<< mp.bInterface(0).first().patchIndex() <<"\n";
+        gsInfo << "given data "<< mp.bInterface(0).second().index() <<"\n";
+        gsInfo << "given data "<< mp.bInterface(1).first() <<"\n";
+        gsInfo << "given data "<< mp.bInterface(1).second() <<"\n";
+        
+        //....  To determine Geo is an L-shape and which patch is located at a corner
+        for (size_t iIntIndex = 0; iIntIndex < mp.nInterfaces()-1; ++iIntIndex)
+        {
+            gsInfo << "tring to find L-shape" <<"\n";
+            if ( mp.bInterface(iIntIndex).first().patchIndex() == mp.bInterface(iIntIndex+1).first().patchIndex()) // test if patch has two interfaces
+            {
+            gsInfo << "tring to find L-shape test 1" <<"\n";
+            int boxNumber  = mp.bInterface(iIntIndex).first().patchIndex(); // patch of the corner
+            int boxNumber1 = mp.bInterface(iIntIndex).second().patchIndex();
+            int boxNumber2 = mp.bInterface(iIntIndex+1).second().patchIndex();
+            if((mp.bInterface(iIntIndex).first().index() == 2 && mp.bInterface(iIntIndex+1).first().index() == 4) ||(mp.bInterface(iIntIndex).first().index() == 4 && mp.bInterface(iIntIndex+1).first().index() == 2))   // means inner interfaces are 4 and 2
+            {
+                int i_x = Psi.patch(boxNumber).basis().boundary(2).size() -1;
+                Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
+                Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+
+                if(mp.bInterface(iIntIndex).second().index() == 1){
+                    i_x = Psi.patch(boxNumber1).basis().boundary(1).size() -1;
+                    Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
+                    Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+                    i_x = Psi.patch(boxNumber2).basis().boundary(3).size() -1;
+                    Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
+                    Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+                } 
+                else{
+                    i_x = Psi.patch(boxNumber1).basis().boundary(3).size() -1;
+                    Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
+                    Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+                    i_x = Psi.patch(boxNumber2).basis().boundary(1).size() -1;
+                    Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
+                    Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+                }
+             }
+            }
+
+
+
+            if (  mp.bInterface(iIntIndex).first().patchIndex() == mp.bInterface(iIntIndex+1).second().patchIndex()){
+            gsInfo << "tring to find L-shape test 2" <<"\n";
+
+            }
+            if (  mp.bInterface(iIntIndex).second().patchIndex() == mp.bInterface(iIntIndex+1).first().patchIndex()){
+            gsInfo << "tring to find L-shape test 3" <<"\n";
+
+            }
+            if ( mp.bInterface(iIntIndex).first().patchIndex() == mp.bInterface(iIntIndex+1).second().patchIndex()){
+            gsInfo << "tring to find L-shape test 4" <<"\n";
+                
+            }
+        }
         //geometryMap PP = A.getMap(Psi);
         //auto fp = A.getCoeff(f,PP);
 
