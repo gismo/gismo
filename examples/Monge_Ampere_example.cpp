@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
         gsInfo << "given data "<< mp.bInterface(1).first() <<"\n";
         gsInfo << "given data "<< mp.bInterface(1).second() <<"\n";
         
-        //....  To determine Geo is an L-shape and which patch is located at a corner
+        //....To determine whether a geometry is an L-shape and identify which patch is located at a specific corner
         for (size_t iIntIndex = 0; iIntIndex < mp.nInterfaces()-1; ++iIntIndex)
         {
             gsInfo << "tring to find L-shape" <<"\n";
@@ -575,8 +575,7 @@ int main(int argc, char *argv[])
              }
             }
 
-
-
+            // TODO ... 
             if (  mp.bInterface(iIntIndex).first().patchIndex() == mp.bInterface(iIntIndex+1).second().patchIndex()){
             gsInfo << "tring to find L-shape test 2" <<"\n";
 
