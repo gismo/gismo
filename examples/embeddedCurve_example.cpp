@@ -18,7 +18,11 @@ using namespace gismo;
 
 template <class T>
 gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, const gsMatrix<T> &value,
+<<<<<<< HEAD
                      const index_t i=0, const short_t dir=0, const index_t maxiter=50, const T epsilon=1e-4);
+=======
+                     const index_t i=0, const short_t dir=0, const index_t maxiter=50, const T epsilon=1e-8);
+>>>>>>> aca29bdcb46c581a1b4fbf1454d15b9e12b62cf5
 
 int main(int argc, char *argv[])
 {
@@ -90,7 +94,11 @@ int main(int argc, char *argv[])
 
 template <class T>
 gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, const gsMatrix<T> &value,
+<<<<<<< HEAD
                      const index_t i=0, const short_t dir=0, const index_t maxiter=50, const real_t epsilon=1e-8)
+=======
+                     const index_t i, const short_t dir, const index_t maxiter, const T epsilon)
+>>>>>>> aca29bdcb46c581a1b4fbf1454d15b9e12b62cf5
 {
     /* geometry: embedded entity description in superdomain parameter space
        kv: knot vector of superdomain in specified parameter direction
@@ -103,6 +111,7 @@ gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, c
     GISMO_ASSERT(geometry.parDim() == 1, "The embedded geometry must be a curve (parameter dimension 1)");
 
     gsMatrix<T> result(1,value.cols());
+<<<<<<< HEAD
     for(index_t k=0; k < value.cols(); k++)
     {
         gsMatrix<T> xn(1,1);
@@ -119,6 +128,25 @@ gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, c
              }
              real_t fxn = geometry.eval(xn)(dir,0) - kv(i);
              if (abs(fxn) <= epsilon)
+=======
+    result.setConstant(std::numeric_limits<T>::quiet_NaN());
+    gsMatrix<T> xn(1,1);
+    T Dfxn , fxn;
+    for(index_t k=0; k < value.cols(); k++)
+    {
+        xn(0,0) = value(0,k);
+        for (index_t n=0; n < maxiter; n++)
+        {
+             Dfxn = geometry.deriv(xn)(dir,0);
+             if (gsClose(Dfxn,0.0,std::numeric_limits<T>::epsilon()))
+             {
+                 gsInfo << "Guess " << k+1 << "\n";
+                 gsInfo << "Zero derivative: no crossing found.\n";
+                 break;
+             }
+             fxn = geometry.eval(xn)(dir,0) - kv(i);
+             if (math::abs(fxn) <= epsilon)
+>>>>>>> aca29bdcb46c581a1b4fbf1454d15b9e12b62cf5
              {
                 gsInfo << "Guess " << k+1 << "\n";
                 gsInfo << "Crossing found after" << n << "iterations.\n";
@@ -130,7 +158,10 @@ gsMatrix<T> findRoot(const gsGeometry<T> &geometry, const gsKnotVector<T> &kv, c
              {
                 gsInfo << "Guess" << k+1 << "\n";
                 gsInfo << "Max number of iterations exceeded: no crossing found.\n";
+<<<<<<< HEAD
                 result(0,k) = math::sqrt(-1);
+=======
+>>>>>>> aca29bdcb46c581a1b4fbf1454d15b9e12b62cf5
              }
         }
     }
