@@ -191,10 +191,6 @@ public:
     void print(std::ostream &os) const { os << "ctv("; _S.print(os); os<<" , "; _C.print(os); os <<")"; }
 };
 
-
-
-
-
 template<class T>
 class curve_normal_expr : public _expr<curve_normal_expr<T> >
 {
@@ -276,6 +272,101 @@ public:
     void print(std::ostream &os) const { os << "cnv("; _S.print(os); os<<" , "; _C.print(os); os <<")"; }
 };
 
+template<class E>
+class curve_normal_var1_expr : public _expr<curve_normal_var1_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+
+private:
+    typename E::Nested_t _u;
+    typename gsGeometryMap<Scalar>::Nested_t _S;
+    typename gsGeometryMap<Scalar>::Nested_t _C;
+
+public:
+    enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
+
+    curve_normal_var1_expr(const E & u, const gsGeometryMap<Scalar> & S, const gsGeometryMap<Scalar> & C): _u(u), _S(S), _C(C),
+    Spatch(_S.source().piece(0)) {} //////// <<<<<<<<---------- REMOVE THIS! MAKE PATCH-INDEPENDENT PRE-COMPUTATION
+
+    mutable gsMatrix<Scalar> theta, bGrads, sJac, cnvMat, res, var;
+    const gsFunctionSet<Scalar> & Spatch;
+
+#   define Eigen gsEigen
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
+
+    // helper function
+    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
+    {
+        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
+        result[pos] = val;
+        return result;
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        res.resize(_u.cardinality(), cols());
+
+        if (_S.source().targetDim() == 2)
+        {
+            gsMatrix<Scalar> res = gsMatrix<Scalar>::Zero();
+            return res;
+        }
+        else if (_S.source().targetDim()==3)
+        {
+        const index_t A = _u.cardinality()/_u.dim();
+        bGrads = _u.data().values[1].col(k);
+        theta  = _C.data().values[0].col(k); 
+        sJac  = Spatch.deriv(theta);
+        sJac.transposeInPlace();
+        sJac.resize(_S.source().domainDim(),_S.source().targetDim());
+        curve_normal_expr<Scalar> cnv(_S,_C);
+        cnvMat = cnv.eval(k);
+        const Scalar measure = cnvMat.norm();
+        cnvMat.normalize();
+
+        for (index_t d = 0; d!= cols(); ++d) // for all basis function components
+        {
+            const short_t s = d*A;
+            for (index_t j = 0; j!= A; ++j) // for all active basis functions
+            {
+                //first variation of non-unit normal vector (divided by measure)
+                var =  (vecFun(d, bGrads.at(2*j  )).cross(sJac.col3d(1))
+                      - vecFun(d, bGrads.at(2*j+1)).cross(sJac.col3d(0)))/measure;
+
+                //first variation of unit normal vector
+                res.row(s+j) = (var - ((cnvMat.col3d(0)*var.tr()) * cnvMat.col3d(0))).tr();
+            }
+        }
+        return res;
+        }
+    }
+
+    index_t rows() const { return 1; }
+
+    index_t cols() const { return _u.dim(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_ACTIVE | NEED_GRAD;
+
+        evList.add(_S);
+        _S.data().flags |= NEED_DERIV;
+
+        evList.add(_C);
+        _C.data().flags |= NEED_VALUE;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
+
+};
+
 template<class T>
 class curve_binormal_expr : public _expr<curve_binormal_expr<T> >
 {
@@ -341,34 +432,123 @@ public:
     void print(std::ostream &os) const { os << "cnv("; _S.print(os); os<<" , "; _C.print(os); os <<")"; }
 };
 
+template<class E>
+class curve_binormal_var1_expr : public _expr<curve_binormal_var1_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+
+private:
+    typename E::Nested_t _u;
+    typename gsGeometryMap<Scalar>::Nested_t _S;
+    typename gsGeometryMap<Scalar>::Nested_t _C;
+
+public:
+    enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
+
+    curve_binormal_var1_expr(const E & u, const gsGeometryMap<Scalar> & S, const gsGeometryMap<Scalar> & C): _u(u), _S(S), _C(C),
+    Spatch(_S.source().piece(0)) //////// <<<<<<<<---------- REMOVE THIS! MAKE PATCH-INDEPENDENT PRE-COMPUTATION
+    {}
+
+    mutable gsMatrix<Scalar> ctvMat, cnvMat, cbvMat, ctv1Mat, cnv1Mat, var, res;
+    const gsFunctionSet<Scalar> & Spatch;
+
+#   define Eigen gsEigen
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
+
+    // helper function
+    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
+    {
+        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
+        result[pos] = val;
+        return result;
+    }
+
+    // Make the selection between 2D and 3D based on enable_if (and get the expression templated over d)
+    // to avoid if-statement
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        var.resize(_u.cardinality(), cols());
+        res.resize(_u.cardinality(), cols());
+
+        curve_tangent_expr<Scalar> ctv(_S,_C);
+        ctvMat = ctv.eval(k);
+        curve_normal_expr<Scalar> cnv(_S,_C);
+        cnvMat = cnv.eval(k);
+        curve_tangent_var1_expr<E> ctv_var1(_u,_S,_C);
+        ctv1Mat = ctv_var1.eval(k);
+        curve_normal_var1_expr<E> cnv_var1(_u,_S,_C);
+        cnv1Mat = cnv_var1.eval(k);
+        curve_binormal_expr<Scalar> cbv(_S,_C);
+        cbvMat = cbv.eval(k);
+        const Scalar measure = cbvMat.norm();
+        cbvMat.normalize();
+
+        for (index_t i = 0; i!= _u.cardinality(); ++i)
+        {
+            //first variation of non-unit binormal vector (divided by measure)
+            var.row(i) = (cnv1Mat.row3d(i).tr().cross(ctvMat.col3d(0)) +
+                         cnvMat.col3d(0).cross(ctv1Mat.row3d(i).tr()))/measure;
+
+            //first variation of unit binormal vector
+            res.row(i) = (var.row(i).tr() - (cbvMat.col3d(0)*var.row(i)) *cbvMat.col3d(0)).tr();            
+        }
+        return res;
+    }
+
+    index_t rows() const { return 1; }
+
+    index_t cols() const { return _u.dim(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_ACTIVE | NEED_GRAD;
+
+        evList.add(_S);
+        _S.data().flags |= NEED_DERIV;
+
+        evList.add(_C);
+        _C.data().flags |= NEED_VALUE | NEED_DERIV;
+
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
+
+};
+
 
 template<class T> EIGEN_STRONG_INLINE
 curve_tangent_expr<T> ctv(const gsGeometryMap<T> & S,
                           const gsGeometryMap<T> & C) { return curve_tangent_expr<T>(S,C); }
 
+template<class E> EIGEN_STRONG_INLINE
+curve_tangent_var1_expr<E> ctv_var1(const E &u, const gsGeometryMap<typename E::Scalar> & S,
+                          const gsGeometryMap<typename E::Scalar> & C) { return curve_tangent_var1_expr<E>(u,S,C); }
+
 template<class T> EIGEN_STRONG_INLINE
 curve_normal_expr<T>  cnv(const gsGeometryMap<T> & S,
                           const gsGeometryMap<T> & C) { return curve_normal_expr<T>(S,C); }
+
+template<class E> EIGEN_STRONG_INLINE
+curve_normal_var1_expr<E> cnv_var1(const E &u, const gsGeometryMap<typename E::Scalar> & S,
+                          const gsGeometryMap<typename E::Scalar> & C) { return curve_normal_var1_expr<E>(u,S,C); }
 
 template<class T> EIGEN_STRONG_INLINE
 curve_binormal_expr<T>  cbv(const gsGeometryMap<T> & S,
                             const gsGeometryMap<T> & C) { return curve_binormal_expr<T>(S,C); }
 
-
-/*
-Next:
-- Binormal = n x t
-- Variation of the normal vector
-- Variation of the tangent vector
-- Variation of the binormal vector
- */
-
+template<class E> EIGEN_STRONG_INLINE
+curve_binormal_var1_expr<E> cbv_var1(const E &u, const gsGeometryMap<typename E::Scalar> & S,
+                          const gsGeometryMap<typename E::Scalar> & C) { return curve_binormal_var1_expr<E>(u,S,C); }
 
 }
 }
-
-
-
 
 using namespace gismo;
 
@@ -397,29 +577,26 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-
-
     // Make a BSpline curve
     gsKnotVector<> kv_c(0, 1, 2, 3); //start,end,interior knots, start/end multiplicity
     gsMatrix<> coefs_c(5, 2); //ξ,η;..
     coefs_c << 0, 0,
              0.2618, 0.053,
+
              0.5, 0.5,
              0.738, 0.9465,
              1,1;
-
 
     gsBSpline<> curve( kv_c, give(coefs_c));
 
     // Print the Bspline curve
     gsInfo << "I am a " << curve << "\n";
 
-
     // 2D->2D
     gsMultiPatch<> mp_surf;
     mp_surf.addPatch(gsNurbsCreator<>::BSplineSquare());
     gsInfo<<"The surface (R^"<<mp_surf.patch(0).domainDim()<<" -> R^"<<mp_surf.patch(0).targetDim()<<") is:\n"<<mp_surf.patch(0)<<"\n";
-    // 2D->2D
+    // 1D->2D
     gsMultiPatch<> mp_curve;
     mp_curve.addPatch(curve);
     gsInfo<<"The curve (R^"<<mp_curve.patch(0).domainDim()<<" -> R^"<<mp_curve.patch(0).targetDim()<<") is:\n"<<mp_curve.patch(0)<<"\n";
@@ -439,7 +616,7 @@ int main(int argc, char *argv[])
     gsInfo << "tangent vector  = "<<ev.eval( gismo::expr::ctv(G_surf, G_curve), gamma ).transpose() << "\n";
     gsInfo << "binormal vector = "<<ev.eval( gismo::expr::cbv(G_surf, G_curve), gamma ).transpose() << "\n";
 
-    gsDebugVar(ev.eval(jac(u),point));
+    //gsDebugVar(ev.eval(jac(u),point));
 
     // gsMatrix<> normal = ev.eval( sn(G_surf) );
     // gsMatrix<> tangent = ev.eval( tv(G_curve) );
@@ -447,7 +624,6 @@ int main(int argc, char *argv[])
 
     // ev.integral()
 
-    // gsInfo<<curveCoordinate(coefs);
 
     gsWriteParaview(mp_surf,  "surf",  1000, true,  false); // multi-patch, file name, number of points, mesh, control net
     gsWriteParaview(mp_curve, "curve", 1000, false, false); // multi-patch, file name, number of points, mesh, control net
