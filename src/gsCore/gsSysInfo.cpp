@@ -18,6 +18,9 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #   include <windows.h>
+#if defined(__GNUC__)
+#   include <cpuid.h>
+#endif
 #elif __APPLE__
 #   include <sys/utsname.h>
 #   include <sys/sysctl.h>
@@ -594,7 +597,11 @@ namespace gismo
     unsigned   nExIds, i =  0;
     char CPUBrandString[0x40];
 
+#if defined(__GNUC__)
+    __cpuid(0x80000000, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
+#else
     __cpuid(CPUInfo, 0x80000000);
+#endif
     nExIds = CPUInfo[0];
 
     for (i=0x80000000; i<=nExIds; ++i) {
@@ -650,8 +657,8 @@ namespace gismo
 
 #   else
 
-    char hostname[HOST_NAME_MAX + 1];
-    gethostname(hostname, HOST_NAME_MAX + 1);
+    char hostname[128];
+    gethostname(hostname, 128);
 
     std::string str = "Unknown-CPU [";
     str += hostname;
