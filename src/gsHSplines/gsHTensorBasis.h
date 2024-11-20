@@ -332,7 +332,7 @@ public:
     bool manualLevels() const { return m_manualLevels; }
 
     /// Returns the number of levels
-    index_t numLevels() const { return m_bases.size(); }
+    index_t numLevels() const { return m_xmatrix.size(); }
 
     /// Adds a level, only if manual levels are activated.
     void addLevel( const gsTensorBSplineBasis<d, T>& next_basis);
