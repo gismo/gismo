@@ -552,11 +552,11 @@ int main(int argc, char *argv[])
     // // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
-    //gsFunctionExpr<> f("(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
+    gsFunctionExpr<> f("(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
     //
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    gsFunctionExpr<> f("(1. + 3./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 3./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
+    //gsFunctionExpr<> f("(1. + 3./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 3./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
@@ -779,10 +779,10 @@ int main(int argc, char *argv[])
                 v_sol.extract(Psi);
 
                 // ... correct boundary
-                if (PNormalCP)
-                    ProjectionNormalCPoints(Psi, mp);
-                if (CornersLshape)
-                    CorrectCornersLshape(Psi, mp);
+                //if (PNormalCP)
+                //    ProjectionNormalCPoints(Psi, mp);
+                //if (CornersLshape)
+                //    CorrectCornersLshape(Psi, mp);
                 
                 geometryMap PP = A.getMap(Psi);
                 auto fp = A.getCoeff(f,PP);
