@@ -484,7 +484,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 3;
+    index_t numRefine  = 4;
     index_t numElevate = 0;
     index_t maxIter = 50;
     double eps{1e-5}; // pinalization coefficient
@@ -493,6 +493,8 @@ int main(int argc, char *argv[])
     bool last = false, export_b64{false}, adaptiveMesh{true};
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
     bool PNormalCP{true}, CornersLshape{true};
+    //bool PNormalCP{false}, CornersLshape{false};
+
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("m","method","Method to use: 0: Newton with automated Jacobian, 1: Newton with Precomputed Jacobian, 2: Picard iteration", method);
@@ -509,32 +511,32 @@ int main(int argc, char *argv[])
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
-   gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,2,1, 0.0, 0.0);
+   //gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
    // ... patch 2 (L-shape)
-   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1.,0.0));
-   mp.addInterface(0,2,2,1);
+   //mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1.,0.0));
+   //mp.addInterface(0,2,2,1);
 
-//    // ... patch 0-1
-//    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,2,1, -1.0, -1.0);
-//    // ... patch 2
-//    mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,-1.,-2.0));
-//    mp.addInterface(0,3,2,4);
-//    // ... patch 3
-//    mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,0.,-2.0));
-//    mp.addInterface(2,2,3,1);
-//    // ... patch 4
-//    mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1.,-2.0));
-//    mp.addInterface(3,2,4,1);
-//    // ... patch 5
-//    mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1.,-1.0));
-//    mp.addInterface(4,4,5,3);
-//    // ... patch 6
-//    mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1., 0.0));
-//    mp.addInterface(5,4,6,3);
-//    // ... patch 7
-//    mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.0, 0.0));
-//    mp.addInterface(6,1,7,2);
-//    mp.addInterface(1,2,7,1);
+   // ... patch 0-1
+   gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,2,1, -1.0, -1.0);
+   // ... patch 2
+   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,-1.,-2.0));
+   mp.addInterface(0,3,2,4);
+   // ... patch 3
+   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,0.,-2.0));
+   mp.addInterface(2,2,3,1);
+   // ... patch 4
+   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1.,-2.0));
+   mp.addInterface(3,2,4,1);
+   // ... patch 5
+   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1.,-1.0));
+   mp.addInterface(4,4,5,3);
+   // ... patch 6
+   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1., 0.0));
+   mp.addInterface(5,4,6,3);
+   // ... patch 7
+   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.0, 0.0));
+   mp.addInterface(6,1,7,2);
+   mp.addInterface(1,2,7,1);
    // Get all interfaces and boundaries:
    mp.computeTopology();
 
@@ -556,7 +558,7 @@ int main(int argc, char *argv[])
     //
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    //gsFunctionExpr<> f("(1. + 3./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 3./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
+    //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
@@ -571,61 +573,61 @@ int main(int argc, char *argv[])
     // bc.addCondition(0,4, condition_type::neumann, &sN,0,false);
 
     // .... L shape
-    bc.addCondition(0,1, condition_type::neumann, &sN,0,false);
-    //bc.addCondition(0,2, condition_type::neumann, &sN,0,false);
-    bc.addCondition(0,3, condition_type::neumann, &sN,0,false);
-    //bc.addCondition(0,4, condition_type::neumann, &sN,0,false);
-    //...    
-    bc.addCondition(1,1, condition_type::neumann, &sN,0,false);
-    bc.addCondition(1,2, condition_type::neumann, &sN,0,false);
-    //bc.addCondition(1,3, condition_type::neumann, &sN,0,false);
-    bc.addCondition(1,4, condition_type::neumann, &sN,0,false);
-    //...    
-    //bc.addCondition(2,1, condition_type::neumann, &sN,0,false);
-    bc.addCondition(2,2, condition_type::neumann, &sN,0,false);
-    bc.addCondition(2,3, condition_type::neumann, &sN,0,false);
-    bc.addCondition(2,4, condition_type::neumann, &sN,0,false);
-
-    // // .... patch 0
     // bc.addCondition(0,1, condition_type::neumann, &sN,0,false);
     // bc.addCondition(0,2, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(0,3, condition_type::neumann, &sN,0,false);
+    // bc.addCondition(0,3, condition_type::neumann, &sN,0,false);
     // //bc.addCondition(0,4, condition_type::neumann, &sN,0,false);
-    // // .. patch 1
+    // //...    
     // bc.addCondition(1,1, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(1,2, condition_type::neumann, &sN,0,false);
+    // bc.addCondition(1,2, condition_type::neumann, &sN,0,false);
     // //bc.addCondition(1,3, condition_type::neumann, &sN,0,false);
     // bc.addCondition(1,4, condition_type::neumann, &sN,0,false);
-    // // ... patch 2
-    // bc.addCondition(2,1, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(2,2, condition_type::neumann, &sN,0,false);
+    //...    
+    // //bc.addCondition(2,1, condition_type::neumann, &sN,0,false);
+    // bc.addCondition(2,2, condition_type::neumann, &sN,0,false);
     // bc.addCondition(2,3, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(2,4, condition_type::neumann, &sN,0,false);
-    // // ... patch 3
-    // //bc.addCondition(3,1, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(3,2, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(3,3, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(3,4, condition_type::neumann, &sN,0,false);
-    // // ... patch 4
-    // //bc.addCondition(4,1, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(4,2, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(4,3, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(4,4, condition_type::neumann, &sN,0,false);
-    // // // ... patch 5
-    // bc.addCondition(5,1, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(5,2, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(5,3, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(5,4, condition_type::neumann, &sN,0,false);
-    // // // ... patch 6
-    // //bc.addCondition(6,1, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(6,2, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(6,3, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(6,4, condition_type::neumann, &sN,0,false);
-    // // // ... patch 7
-    // //bc.addCondition(7,1, condition_type::neumann, &sN,0,false);
-    // //bc.addCondition(7,2, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(7,3, condition_type::neumann, &sN,0,false);
-    // bc.addCondition(7,4, condition_type::neumann, &sN,0,false);
+    // bc.addCondition(2,4, condition_type::neumann, &sN,0,false);
+
+    // .... patch 0
+    bc.addCondition(0,1, condition_type::neumann, &sN,0,false);
+    bc.addCondition(0,2, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(0,3, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(0,4, condition_type::neumann, &sN,0,false);
+    // .. patch 1
+    bc.addCondition(1,1, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(1,2, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(1,3, condition_type::neumann, &sN,0,false);
+    bc.addCondition(1,4, condition_type::neumann, &sN,0,false);
+    // ... patch 2
+    bc.addCondition(2,1, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(2,2, condition_type::neumann, &sN,0,false);
+    bc.addCondition(2,3, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(2,4, condition_type::neumann, &sN,0,false);
+    // ... patch 3
+    //bc.addCondition(3,1, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(3,2, condition_type::neumann, &sN,0,false);
+    bc.addCondition(3,3, condition_type::neumann, &sN,0,false);
+    bc.addCondition(3,4, condition_type::neumann, &sN,0,false);
+    // ... patch 4
+    //bc.addCondition(4,1, condition_type::neumann, &sN,0,false);
+    bc.addCondition(4,2, condition_type::neumann, &sN,0,false);
+    bc.addCondition(4,3, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(4,4, condition_type::neumann, &sN,0,false);
+    // // ... patch 5
+    bc.addCondition(5,1, condition_type::neumann, &sN,0,false);
+    bc.addCondition(5,2, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(5,3, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(5,4, condition_type::neumann, &sN,0,false);
+    // // ... patch 6
+    //bc.addCondition(6,1, condition_type::neumann, &sN,0,false);
+    bc.addCondition(6,2, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(6,3, condition_type::neumann, &sN,0,false);
+    bc.addCondition(6,4, condition_type::neumann, &sN,0,false);
+    // // ... patch 7
+    //bc.addCondition(7,1, condition_type::neumann, &sN,0,false);
+    //bc.addCondition(7,2, condition_type::neumann, &sN,0,false);
+    bc.addCondition(7,3, condition_type::neumann, &sN,0,false);
+    bc.addCondition(7,4, condition_type::neumann, &sN,0,false);
     //gsDebugVar( bc.allConditions()[0].parametric() );
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
