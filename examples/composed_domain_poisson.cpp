@@ -14,6 +14,7 @@
 //! [Include namespace]
 #include <gismo.h>
 #include <gsNurbs/gsSquareDomain.h>
+#include <gsCore/gsComposedFunction.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -25,11 +26,16 @@ int main(int argc, char *argv[])
     bool plotbasis = false;
     index_t numRefine  = 1;
     index_t numElevate = 0;
+    index_t numRefineC = 1;
+    index_t numElevateC = 0;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt( "E", "degreeElevationC",
+                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevateC );
+    cmd.addInt( "R", "uniformRefineC", "Number of Uniform h-refinement loops",  numRefineC );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("plotB", "Create a ParaView visualization file with the solution", plotbasis);
 
@@ -53,17 +59,20 @@ int main(int argc, char *argv[])
     const gsBasis<> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
     const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
 
-    // // The domain sigma
-    // gsSquareDomain<2,real_t> domain;
+    // The domain sigma
+    gsSquareDomain<2,real_t> domain(numElevateC,numRefineC);
+    for (index_t i = 0; i < domain.nControls(); i++)
+        domain.control(i) *= 0.85;
 
-    // gsMatrix<> pars = domain.controls();
-    // // pars *= 0.99;
+    gsWriteParaview(domain.domain(),"domain");
+
+    // pars *= 0.99;
     // pars *= 0.95;
-    // // pars(0,0) -= 0.1;
+    // pars(0,0) -= 0.1;
     // domain.controls() = pars.col(0);
     // domain.updateGeom();
 
-    gsFunctionExpr<> domain("(x)^(2)","(y)^(2)",2);
+    // gsFunctionExpr<> domain("(x)^(2)","(y)^(2)",2);
     // gsFunctionExpr<> domain("(x","y",2);
 
 
@@ -79,24 +88,17 @@ int main(int argc, char *argv[])
         gsWriteParaview(tbasis,"tbasis");
     }
 
-    const gsBasis<> & cbasis = tbasis; // basis(u,v) -> deriv will give dphi/du ,dphi/dv
-    // const gsGeometry<> & cgeom = tgeom;
-
-
+    gsMultiBasis<> ibasis(tbasis);
     gsMultiPatch<> mp;
     mp.addPatch(cgeom);
+    gsMultiBasis<> mb(mp);
 
-    gsMultiBasis<> dbasis(cbasis);
-
-    // gsMultiBasis<> dbasis(mp, true);
-
-    //! [Refinement]
-
-     // Source function:
-     gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",3);
-
-     // Exact solution
-     gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",3);
+    // Source function:
+    gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",3);
+    gsComposedFunction<real_t> cf(cgeom,f);
+    // Exact solution
+    gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",3);
+    gsComposedFunction<real_t> cms(cgeom,ms);
 
     // Source function:
 //    gsFunctionExpr<> f("2*pi^2*cos(pi*x)*cos(pi*y)",2);
@@ -105,10 +107,10 @@ int main(int argc, char *argv[])
 //    gsFunctionExpr<> ms("cos(pi*x)*cos(pi*y)",2);
 
     gsBoundaryConditions<> bc;
-    bc.addCondition(boundary::side::west ,condition_type::dirichlet,&ms);
-    bc.addCondition(boundary::side::east ,condition_type::dirichlet,&ms);
-    bc.addCondition(boundary::side::south,condition_type::dirichlet,&ms);
-    bc.addCondition(boundary::side::north,condition_type::dirichlet,&ms);
+    bc.addCondition(boundary::side::west ,condition_type::dirichlet,&cms,0,true);
+    bc.addCondition(boundary::side::east ,condition_type::dirichlet,&cms,0,true);
+    bc.addCondition(boundary::side::south,condition_type::dirichlet,&cms,0,true);
+    bc.addCondition(boundary::side::north,condition_type::dirichlet,&cms,0,true);
     bc.setGeoMap(mp);
 
     //! [Problem setup]
@@ -120,20 +122,20 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
+    A.setIntegrationElements(ibasis);
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
     geometryMap G = A.getMap(mp);
 
     // Set the discretization space
-    space u = A.getSpace(dbasis);
+    space u = A.getSpace(mb);
 
     // Set the source term
-    auto ff = A.getCoeff(f, G);
+    auto ff = A.getCoeff(cf);
 
     // Recover manufactured solution
-    auto u_ex = ev.getVariable(ms, G);
+    auto u_ex = ev.getVariable(cms);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;

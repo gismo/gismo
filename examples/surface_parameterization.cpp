@@ -147,6 +147,7 @@ public:
 		gsMultiBasis<> mb(m_geom.basis());
 
 		m_evaluator.setIntegrationElements(mb);
+		m_evaluator.options().setReal("quA",4.0);
 		geometryMap G = m_evaluator.getMap(mp);
 
 		if (m_geom.domainDim()==m_geom.targetDim())
@@ -233,6 +234,7 @@ int main(int arg, char *argv[])
 	index_t testCase = 0;
 	index_t opt = 2;
 	std::string input = "domain2d/lake.xml";
+	std::string output;
 
 	gsCmdLine cmd("Tutorial on solving a Poisson problem.");
 	cmd.addInt( "e", "elevAnalysis","Number of degree elevation steps to perform for the analysis", numElevate );
@@ -246,6 +248,7 @@ int main(int arg, char *argv[])
 	cmd.addSwitch("noslide", "Do not slide the boundaries",  slide );
 	cmd.addInt( "o", "opt", "Optimizer: 0: gsGradientDescent, 1: gsHLBFGS, 2: gsOptim::LBFGS.",  opt );
 	cmd.addString("f", "file", "Input file", input);
+	cmd.addString("w", "write", "Output file", output);
 
 	try { cmd.getValues(arg,argv); } catch (int rv) { return rv; }
 	//! [Parse command line]
@@ -275,6 +278,9 @@ int main(int arg, char *argv[])
 	dbasis.degreeElevate(numElevateD);
 	for (index_t i = 0; i < numRefineD; i++)
 		dbasis.uniformRefine();
+
+	// gsTensorBSplineBasis<2> dbasis = *dynamic_cast<gsTensorBSplineBasis<2> *>(&mb.basis(0));
+	// dbasis.degreeDecrease(1);
 
 	gsInfo<<"Mapper basis:\n"<<dbasis<<"\n";
 
@@ -338,8 +344,13 @@ int main(int arg, char *argv[])
 
 	gsWriteParaview(domain.domain(),"domain",1000,true,true);
 	// ev.writeParaview(detJ(G),G,"jacobian_determinant");
+	ev.options().setInt("plot.npts",1000);
 	ev.writeParaview((jac(Gold).tr()*jac(Gold)).det(),Gold,"OldJacobian_determinant");
 	ev.writeParaview((jac(Gnew).tr()*jac(Gnew)).det(),Gnew,"NewJacobian_determinant");
+
+	gsComposedGeometry<real_t> cspline2(domain.domain(),cmp.patch(0));
+	gsWrite(mp->patch(0),"geometry");
+	gsWrite(domain.domain(),"composition");
 
 	delete optimizer;
 	return 0;

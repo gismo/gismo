@@ -14,12 +14,8 @@
 #pragma once
 
 #include <gismo.h>
-// #include <gsCore/gsComposedFunction.h>
+#include <gsCore/gsComposedFunction.h>
 #include <gsNurbs/gsSquareDomain.h>
-#include <gsHLBFGS/gsHLBFGS.h>
-#include <gsModeling/gsBarrierCore.h>
-#include <gsOptimizer/gsGradientDescent.h>
-#include <gsOptim/gsOptim.h>
 
 enum MonitorMode
 {
@@ -32,6 +28,82 @@ namespace gismo
 {
 namespace expr
 {
+
+template<class E0, class E1, class E2>
+class ternary_expr : public _expr<ternary_expr<E0, E1, E2> >
+{
+  typename E0::Nested_t _u;
+  typename E1::Nested_t _v;
+  typename E2::Nested_t _w;
+ public:
+  typedef typename E1::Scalar Scalar;
+
+  explicit ternary_expr(_expr<E0> const &u,
+                        _expr<E1> const &v,
+                        _expr<E2> const &w)
+      :
+      _u(u),
+      _v(v),
+      _w(w) {
+    GISMO_ASSERT(E0::ScalarValued, "Condition must be scalar valued");
+    GISMO_ASSERT((int) E1::ScalarValued == (int) E2::ScalarValued,
+                 "Both v and w must be scalar valued (or not).");
+    GISMO_ASSERT((int) E1::ColBlocks == (int) E2::ColBlocks,
+                 "Both v and w must be colblocks (or not).");
+    GISMO_ASSERT((int) E1::Space == (int) E2::Space,
+                 "Both v and w must be space (or not), but E1::Space = "
+                     << E1::Space << " and E2::Space = " << E2::Space);
+    GISMO_ASSERT(_v.rows() == _w.rows(),
+                 "Rows of v and w differ. _v.rows() = " << _v.rows()
+                                                        << ", _w.rows() = "
+                                                        << _w.rows());
+    GISMO_ASSERT(_v.cols() == _w.cols(),
+                 "Columns of v and w differ. _v.cols() = " << _v.cols()
+                                                           << ", _w.cols() = "
+                                                           << _w.cols());
+    GISMO_ASSERT(_v.rowVar() == _w.rowVar(), "rowVar of v and w differ.");
+    GISMO_ASSERT(_v.colVar() == _w.colVar(), "colVar of v and w differ.");
+  }
+ public:
+  enum {
+    ScalarValued = E1::ScalarValued,
+    ColBlocks = E1::ColBlocks,
+    Space = E1::Space
+  }; // == E2::Space
+
+//  const Scalar eval(const index_t k) const { return (_u.eval(k) > 0 ? _v.eval
+//  (k) : _w.eval(k)); }
+
+  const Temporary_t eval(const index_t k) const
+  {
+    return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
+  }
+
+  // { res = eval_impl(_u,_v,_w,k); return  res;}
+
+  index_t rows() const { return _v.rows(); }
+  index_t cols() const { return _v.cols(); }
+  void parse(gsExprHelper<Scalar> &evList) const {
+    _u.parse(evList);
+    _v.parse(evList);
+    _w.parse(evList);
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
+
+};
+
+
+/// Ternary ternary_expr
+template<class E0, class E1, class E2>
+EIGEN_STRONG_INLINE
+ternary_expr<E0, E1, E2> ternary(const E0 &u,
+                                 const E1 &v,
+                                 const E2 &w)
+{
+  return ternary_expr<E0, E1, E2>(u, v, w);
+}
 
 template<enum MonitorMode MODE, class E>
 class monitor_expr : public _expr<monitor_expr<MODE,E> >
@@ -185,20 +257,33 @@ private:
 
 public:
 
-    gsOptMesh() {}
+    gsOptMesh()
+    {}
 
     gsOptMesh(        gsFunction<T> & composition,
                 const gsGeometry<T> & geometry,
-                const gsFunction<T> & fun,
+                const gsBasis<T>    * integrationBasis,
+                const bool            parametric)
+    :
+    gsOptMesh(composition,geometry,nullptr,integrationBasis,parametric)
+    {}
+
+    gsOptMesh(        gsFunction<T> & composition,
+                const gsGeometry<T> & geometry,
+                const gsFunction<T> * fun,
                 const gsBasis<T>    * integrationBasis,
                 const bool            parametric)
     :
     m_comp(&composition),
+    m_geom(&geometry),
+    m_fun(fun),
     m_ib(integrationBasis),
     m_mb(*m_ib),
     m_cgeom(*m_comp,geometry),
-    m_cfun(parametric ? gsComposedFunction<T>(*m_comp,fun) : gsComposedFunction<T>(m_cgeom,fun)),
-    m_mp(m_cgeom)
+    // THIS DOES NOT WORK FOR PARAMETRIC=FALSE. POINTER IS LOST WHEN ARRIVING IN evalObj
+    // m_cfun(parametric ? gsComposedFunction<T>(*m_comp,fun) : gsComposedFunction<T>(m_cgeom,fun)),
+    m_mp(m_cgeom),
+    m_parametric(parametric)
     {
         m_numDesignVars = m_comp->nControls();
         m_curDesign.resize(m_numDesignVars,1);
@@ -241,36 +326,50 @@ public:
         // gsMatrix<T> grid = gsPointGrid<T>(m_cgeom.support().col(0),m_cgeom.support().col(1),np);
         if (m_cgeom.domainDim()==m_cgeom.targetDim())
         {
-            auto jacG = jac(G).det();
-            auto chi = 0.5 * (jacG + pow(pow(eps.val(),2.0) + pow(jacG, 2.0), 0.5));
+            auto detG = jac(G).det();
+            auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
             auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
 
-            // auto eta = m_evaluator.getVariable(fun);
-            auto eta = m_evaluator.getVariable(m_cfun);
-            // auto eta = m_evaluator.getVariable(m_fun,G);
+            if (m_fun==nullptr)
+            {
+                auto M = 1/detG;
+                return m_evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+            }
+            else
+            {
+                // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
+                m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
+                auto eta = m_evaluator.getVariable(m_cfun);
+                auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
+                return m_evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+            }
+        }
+        else if (m_cgeom.domainDim()<m_cgeom.targetDim())
+        {
+            auto fform = jac(G).tr()*jac(G);
+            auto detG = pow(fform.det().val(),0.5); //jacobian determinant for a surface, i.e. the measure
+            // Compute the chi part
+            auto chiPPart = eps * ((detG.val() - eps.val()).exp());
+            // Ternary operation to compute chi and chip
+            auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
+            auto invJacMat = fform.sqrt().adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
 
-            auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
-            return m_evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+            if (m_fun==nullptr)
+            {
+                auto M = 1/detG;
+                return m_evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+            }
+            else
+            {
+                // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
+                m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
+                auto eta = m_evaluator.getVariable(m_cfun);
+                auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
+                return m_evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+            }
         }
         else
-        {
-            // auto fform = jac(G).tr()*jac(G);
-            // auto jacG = sqrt(fform.det()); //jacobian determinant for a surface, i.e. the measure
-            // // auto chi = 0.5 * (jacG + pow(pow(eps.val(),2.0) + pow(jacG, 2.0), 0.5));
-
-            // // Compute the chi part
-            // auto chiPPart = eps * ((jacG - eps.val()).exp());
-
-            // // Ternary operation to compute chi and chip
-            // auto chi = ternary(eps.val() - jacG, chiPPart.val(), jacG.val());
-
-            // auto invJacMat = fform.adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
-            // auto eta = m_evaluator.getVariable(fun);
-            // return m_evaluator.integral( (monitor(eta,G)*invJacMat).sqNorm()*meas(G));
-
-            GISMO_ERROR("The dimension of target domain should be 2 or 3.");
-            return 0;
-        }
+            GISMO_ERROR("Domain dimension must be smaller than or equal to the target dimension, but domainDim = "<<m_cgeom.domainDim()<<" and targetDim = "<<m_cgeom.targetDim());
     }
 
     // /// Computes the gradient of the objective function at the given point u
@@ -285,11 +384,14 @@ protected:
     using Base::m_numDesignVars;
 
     gsFunction<T>             * m_comp;
+    const gsGeometry<T>       * m_geom;
+    const gsFunction<T>       * m_fun;
     const gsBasis<T>          * m_ib;
     gsMultiBasis<T>             m_mb;
     gsComposedGeometry<T>       m_cgeom;
-    gsComposedFunction<T>       m_cfun;
+    mutable gsComposedFunction<T>       m_cfun; // MUTABLE BECAUSE OF TEMPORARY FIX
     gsMultiPatch<T>             m_mp;
+    bool                        m_parametric;   // CAN BE REMOVED IF TEMPORARY FIX IS REMOVED
 
 
     // Controls of the composition
@@ -322,6 +424,27 @@ public:
      *
      * @param composition       a \a gsFunction object representing the composition of the parametrization
      * @param geometry          a \a gsGeometry object representing the geometry
+     * @param integrationBasis  a \a gsBasis object used to define the integration points
+     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
+     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
+     */
+    gsAdaptiveParametrization(        gsFunction<T>  & composition,
+                                const gsGeometry<T>  & geometry,
+                                const gsBasis<T>     & integrationBasis,
+                                      gsOptimizer<T> & optimizer,
+                                const bool             parametric=true)
+    :
+    gsAdaptiveParametrization(composition,geometry,nullptr,integrationBasis,optimizer,parametric)
+    {
+    }
+
+    /**
+     * @brief Constructs a gsAdaptiveParametrization object.
+     *
+     * This constructor takes any composition and integration basis among other inputs, and computes integrals based on the integration rule on the integration basis.
+     *
+     * @param composition       a \a gsFunction object representing the composition of the parametrization
+     * @param geometry          a \a gsGeometry object representing the geometry
      * @param function          a \a gsFunction object representing the indicator function
      * @param integrationBasis  a \a gsBasis object used to define the integration points
      * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
@@ -334,11 +457,27 @@ public:
                                       gsOptimizer<T> & optimizer,
                                 const bool             parametric=true)
     :
-    m_optimizer(optimizer),
-    m_integrationBasis(integrationBasis.clone())//,
+    gsAdaptiveParametrization(composition,geometry,&function,integrationBasis,optimizer,parametric)
     {
-        m_optProblem = gsOptMesh<T,MODE>(composition,geometry,function,m_integrationBasis.get(),parametric);
-        this->defaultOptions();
+    }
+
+    /**
+     * @brief Constructs a gsAdaptiveParametrization object.
+     *
+     * This constructor takes any composition among other inputs, and computes integrals based on the integration rule on the integration basis.
+     *
+     * @param composition       a \a gsFunction object representing the composition of the parametrization
+     * @param geometry          a \a gsGeometry object representing the geometry
+     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
+     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
+     */
+    gsAdaptiveParametrization(        gsFunction<T>  & composition,
+                                const gsGeometry<T>  & geometry,
+                                      gsOptimizer<T> & optimizer,
+                                const bool             parametric=true)
+    :
+    gsAdaptiveParametrization(composition,geometry,nullptr,geometry.basis(),optimizer,parametric)
+    {
     }
 
     /**
@@ -365,6 +504,58 @@ public:
     /**
      * @brief Constructs a gsAdaptiveParametrization object.
      *
+     * This constructor takes any composition and integration basis among other inputs, and computes integrals based on the integration rule on the integration basis.
+     *
+     * @param composition       a \a gsFunction object representing the composition of the parametrization
+     * @param geometry          a \a gsGeometry object representing the geometry
+     * @param function          a \a gsFunction object representing the indicator function
+     * @param integrationBasis  a \a gsBasis object used to define the integration points
+     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
+     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
+     */
+    gsAdaptiveParametrization(        gsFunction<T>  & composition,
+                                const gsGeometry<T>  & geometry,
+                                const gsFunction<T>  * function,
+                                const gsBasis<T>     & integrationBasis,
+                                      gsOptimizer<T> & optimizer,
+                                const bool             parametric=true)
+    :
+    m_comp(composition),
+    m_geom(geometry),
+    m_fun(&function),
+    m_optimizer(optimizer),
+    m_integrationBasis(integrationBasis.clone())//,
+    {
+        m_optProblem = gsOptMesh<T,MODE>(m_comp,m_geom,m_fun,m_integrationBasis.get(),parametric);
+        this->defaultOptions();
+    }
+
+    /**
+     * @brief Constructs a gsAdaptiveParametrization object.
+     *
+     * This constructor takes a \ref gsSquareDomain as composition and integration basis among other inputs, and computes integrals based on the union of the integration basis and the composition
+     *
+     * @param composition       a \a gsSquareDomain object representing the composition of the parametrization. This object will be exactly integrated by inserting its integration points in the integration basis.
+     * @param geometry          a \a gsGeometry object representing the geometry
+     * @param integrationBasis  a \a gsBasis object used to define the integration points. The integration points from the composition will be added to this basis.
+     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
+     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
+     */
+    template <short_t DIM>
+    gsAdaptiveParametrization(        gsSquareDomain<DIM,T> & composition,
+                                const gsGeometry<T>         & geometry,
+                                const gsBasis<T>            & integrationBasis,
+                                      gsOptimizer<T>        & optimizer,
+                                const bool                    parametric=true)
+    :
+    gsAdaptiveParametrization(composition,geometry,nullptr,integrationBasis,optimizer,parametric)
+    {
+    }
+
+
+    /**
+     * @brief Constructs a gsAdaptiveParametrization object.
+     *
      * This constructor takes a \ref gsSquareDomain as composition and integration basis among other inputs, and computes integrals based on the union of the integration basis and the composition
      *
      * @param composition       a \a gsSquareDomain object representing the composition of the parametrization. This object will be exactly integrated by inserting its integration points in the integration basis.
@@ -382,6 +573,77 @@ public:
                                       gsOptimizer<T>        & optimizer,
                                 const bool                    parametric=true)
     :
+    gsAdaptiveParametrization(composition,geometry,&function,integrationBasis,optimizer,parametric)
+    {
+    }
+
+    /**
+     * @brief Constructs a gsAdaptiveParametrization object.
+     *
+     * This constructor takes a \ref gsSquareDomain as composition among other inputs, and computes integrals based on the union of the integration basis and the composition
+     * The integration basis is set to the geometry's basis.
+     *
+     * @param composition       a \a gsSquareDomain object representing the composition of the parametrization. This object will be exactly integrated by inserting its integration points in the integration basis.
+     * @param geometry          a \a gsGeometry object representing the geometry
+     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
+     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
+     */
+    template <short_t DIM>
+    gsAdaptiveParametrization(        gsSquareDomain<DIM,T> & composition,
+                                const gsGeometry<T>         & geometry,
+                                      gsOptimizer<T>        & optimizer,
+                                const bool                    parametric=true)
+    :
+    gsAdaptiveParametrization(composition,geometry,nullptr,geometry.basis(),optimizer,parametric)
+    {
+    }
+
+    /**
+     * @brief Constructs a gsAdaptiveParametrization object.
+     *
+     * This constructor takes a \ref gsSquareDomain as composition among other inputs, and computes integrals based on the union of the integration basis and the composition
+     * The integration basis is set to the geometry's basis.
+     *
+     * @param composition       a \a gsSquareDomain object representing the composition of the parametrization. This object will be exactly integrated by inserting its integration points in the integration basis.
+     * @param geometry          a \a gsGeometry object representing the geometry
+     * @param function          a \a gsFunction object representing the indicator function
+     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
+     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
+     */
+    template <short_t DIM>
+    gsAdaptiveParametrization(        gsSquareDomain<DIM,T> & composition,
+                                const gsGeometry<T>         & geometry,
+                                const gsFunction<T>         & function,
+                                      gsOptimizer<T>        & optimizer,
+                                const bool                    parametric=true)
+    :
+    gsAdaptiveParametrization(composition,geometry,&function,geometry.basis(),optimizer,parametric)
+    {
+    }
+
+/**
+     * @brief Constructs a gsAdaptiveParametrization object.
+     *
+     * This constructor takes a \ref gsSquareDomain as composition and integration basis among other inputs, and computes integrals based on the union of the integration basis and the composition
+     *
+     * @param composition       a \a gsSquareDomain object representing the composition of the parametrization. This object will be exactly integrated by inserting its integration points in the integration basis.
+     * @param geometry          a \a gsGeometry object representing the geometry
+     * @param function          a \a gsFunction object representing the indicator function
+     * @param integrationBasis  a \a gsBasis object used to define the integration points. The integration points from the composition will be added to this basis.
+     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
+     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
+     */
+    template <short_t DIM>
+    gsAdaptiveParametrization(        gsSquareDomain<DIM,T> & composition,
+                                const gsGeometry<T>         & geometry,
+                                const gsFunction<T>         * function,
+                                const gsBasis<T>            & integrationBasis,
+                                      gsOptimizer<T>        & optimizer,
+                                const bool                    parametric=true)
+    :
+    m_comp(composition),
+    m_geom(geometry),
+    m_fun(function),
     m_optimizer(optimizer)
     {
         if (const gsTensorBSplineBasis<DIM,T> * tbasis = dynamic_cast<const gsTensorBSplineBasis<DIM,T> *>(&integrationBasis))
@@ -408,32 +670,11 @@ public:
                 m_integrationBasis = memory::make_unique(new gsTensorBSplineBasis<DIM,T>(ibasis));
             }
         }
-        m_optProblem = gsOptMesh<T,MODE>(composition,geometry,function,m_integrationBasis.get(),parametric);
+        m_optProblem = gsOptMesh<T,MODE>(m_comp,m_geom,m_fun,m_integrationBasis.get(),parametric);
         this->defaultOptions();
     }
 
-    /**
-     * @brief Constructs a gsAdaptiveParametrization object.
-     *
-     * This constructor takes a \ref gsSquareDomain as composition among other inputs, and computes integrals based on the union of the integration basis and the composition
-     * The integration basis is set to the geometry's basis.
-     *
-     * @param composition       a \a gsSquareDomain object representing the composition of the parametrization. This object will be exactly integrated by inserting its integration points in the integration basis.
-     * @param geometry          a \a gsGeometry object representing the geometry
-     * @param function          a \a gsFunction object representing the indicator function
-     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
-     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
-     */
-    template <short_t DIM>
-    gsAdaptiveParametrization(        gsSquareDomain<DIM,T> & composition,
-                                const gsGeometry<T>         & geometry,
-                                const gsFunction<T>         & function,
-                                      gsOptimizer<T>        & optimizer,
-                                const bool                    parametric=true)
-    :
-    gsAdaptiveParametrization(composition,geometry,function,geometry.basis(),optimizer,parametric)
-    {
-    }
+
 
     gsOptionList & options() { return m_options; }
 
@@ -464,6 +705,10 @@ public:
     }
 
 protected:
+
+    gsFunction<T>             & m_comp;
+    const gsGeometry<T>       & m_geom;
+    const gsFunction<T>       * m_fun;
 
     gsOptMesh<T,MODE>           m_optProblem;
     gsOptimizer<T>            & m_optimizer;

@@ -198,6 +198,30 @@ public:
         GISMO_ERROR("Solver \'"<< slv << "\' not known to G+Smo");
     }
 
+    /**
+     * @brief      Getter for a specific solver
+     *
+     * @param[in]  slv  The solver name
+     *
+     * @return     Pointer to the solver
+     */
+    static uPtr get(const std::string & slv)
+    {
+        if (slv=="BFGS") return uPtr(new BFGS());
+        if (slv=="LBFGS") return uPtr(new LBFGS());
+        if (slv=="CG") return uPtr(new CG());
+        if (slv=="GD") return uPtr(new GD());
+        // if (slv=="Newton") return uPtr(new Newton());
+        if (slv=="NM") return uPtr(new NM());
+        if (slv=="DE") return uPtr(new DE());
+        if (slv=="DEPRMM") return uPtr(new DEPRMM());
+        if (slv=="PSO") return uPtr(new PSO());
+        if (slv=="PSODV") return uPtr(new PSODV());
+        if (slv=="SUMT") return uPtr(new SUMT());
+        GISMO_ERROR("Solver \'"<< slv << "\' not known to G+Smo");
+    }
+
+
     /// Default options
     virtual void defaultOptions()
     {

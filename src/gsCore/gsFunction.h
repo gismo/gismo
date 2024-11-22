@@ -295,9 +295,8 @@ public:
     index_t size() const { return 1;}
 
     /// Returns the controls of the function
-    virtual  gsAsConstVector<T> controls() const { GISMO_NO_IMPLEMENTATION; };
-    virtual       gsAsVector<T> controls()       { GISMO_NO_IMPLEMENTATION; };
-
+    virtual void        setControls(const gsVector<T> & controls)         { GISMO_NO_IMPLEMENTATION;}
+    virtual gsVector<T> getControls()                               const { GISMO_NO_IMPLEMENTATION;}
     /// Returns the number of controls of the function
     virtual size_t nControls() const { GISMO_NO_IMPLEMENTATION;}
 
