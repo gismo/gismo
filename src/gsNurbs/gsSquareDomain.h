@@ -44,7 +44,6 @@ public:
      * @brief      Constructs a new instance.
      *
      * @param[in]  basis  The basis
-     * @param[in]  domain  The domain
      */
     gsSquareDomain(const gsTensorBSplineBasis<DIM,T> & basis)
     {
@@ -123,10 +122,33 @@ public:
         m_domain.deriv_into(u,result);
     }
 
-    /// Returns the controls of the function
-    // DO NOT WORK YET
-        //   gsAsConstVector<T> controls() const override { return gsAsConstVector<T>(m_domain.coefs(),m_indices); };
-        //   gsAsVector<T>      controls()       override { return gsAsVector<T>     (m_domain.coefs(),m_indices); };  
+    std::vector<std::pair<index_t,index_t>> indices() { return m_indices; }
+
+    // /// Sets the controls of the domain (does not override)
+    // void setControls(const gsMatrix<T> & coefs)
+    // {
+    //     GISMO_ASSERT(coefs.rows()==m_domain.coefs().rows() && coefs.cols()==m_domain.coefs().cols(),"Wrong size of controls matrix");
+    //     for (index_t i = 0; i!=m_indices.size(); i++)
+    //         m_domain.coefs()(m_indices[i].first,m_indices[i].second) = coefs(m_indices[i].first,m_indices[i].second);
+    // }
+
+    /// Sets the controls of the domain
+    void setControls(const gsVector<T> & controls) override
+    {
+        GISMO_ASSERT(controls.rows()==m_indices.size(),"Wrong size of controls vector");
+        for (index_t i = 0; i!=m_indices.size(); i++)
+            m_domain.coefs()(m_indices[i].first,m_indices[i].second) = controls[i];
+    }
+
+    /// Gets the controls of the domain
+    /// NOTE: This makes a copy
+    gsVector<T> getControls() const override
+    {
+        gsVector<T> coefs(m_indices.size());
+        for (index_t i = 0; i!=m_indices.size(); i++)
+            coefs[i] = m_domain.coefs()(m_indices[i].first,m_indices[i].second);
+        return coefs;
+    }
 
     /// Returns the \a i th control of the function
     // const typename gsMatrix<T>::CoeffReturnType & control(index_t i) const override { return gsAsConstVector<T>(m_parameters.data(),m_parameters.size())(i);}

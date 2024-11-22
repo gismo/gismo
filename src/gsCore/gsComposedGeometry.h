@@ -116,13 +116,6 @@ public:
         return *this;
     }
 
-
-    ~gsComposedGeometry()
-    {
-        // if (m_geom!=nullptr)
-        //     delete m_geom;
-    }
-
     short_t domainDim() const override { return m_domainDim; }
 
     void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const override

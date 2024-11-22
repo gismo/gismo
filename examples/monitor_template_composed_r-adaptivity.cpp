@@ -13,9 +13,13 @@
 
 //! [Include namespace]
 #include <gismo.h>
-#include <gsCore/gsComposedFunction.h>
 #include <gsNurbs/gsSquareDomain.h>
 #include <gsAssembler/gsAdaptiveParametrization.h>
+
+#include <gsHLBFGS/gsHLBFGS.h>
+#include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptim/gsOptim.h>
+
 
 int main(int arg, char *argv[])
 {

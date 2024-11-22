@@ -21,142 +21,126 @@ using namespace gismo;
 using namespace expr;
 //! [Include namespace]
 
+// Integrates one basis function using the expression evaluator
+template <short_t DIM, class T>
+T testEvaluator(const gsTensorBSpline<DIM,T> & geometry,
+                const gsFunction<T>          & composition,
+                const gsOptionList           & options,
+                const index_t                & idxI,
+                const index_t                & idxJ)
+{
+    gsComposedGeometry<T> cgeom(composition,geometry);
+    gsMultiBasis<T> ib(geometry.basis());
+
+    gsMultiPatch<T> mp(geometry);
+    gsMultiBasis<T> mb(mp);
+
+    gsExprEvaluator<T> ev;
+    ev.setIntegrationElements(ib);
+    // Functions i and j
+    gsBasisFun<T> Fi = mb.basis(0).function(idxI);
+    gsBasisFun<T> Fj = mb.basis(0).function(idxJ);
+    ev.options().update(options);
+    auto G = ev.getMap(mp);
+    auto fi = ev.getVariable(Fi);
+    auto fj = ev.getVariable(Fj);
+    gsDebugVar(ev.integral(fi*fj*meas(G)));
+
+    gsMultiPatch<T> cmp(cgeom);
+    gsMultiBasis<T> cmb(cmp);
+
+    gsExprEvaluator<T> cev;
+    cev.setIntegrationElements(ib);
+    gsBasisFun<T> cFi = cmb.basis(0).function(idxI);
+    gsBasisFun<T> cFj = cmb.basis(0).function(idxJ);
+    cev.options().update(options);
+    auto cG = cev.getMap(cmp);
+    auto cfi = cev.getVariable(cFi);
+    auto cfj = cev.getVariable(cFj);
+    gsDebugVar(cev.integral(cfi*cfj*meas(cG)));
+
+    return math::pow(ev.integral(fi*fj*meas(G)) - cev.integral(cfi*cfj*meas(cG)),2);
+}
+
+// Integrates all basis functions using the expression assembler
+template <short_t DIM, class T>
+T testIntegrator(const gsTensorBSpline<DIM,T> & geometry,
+                 const gsFunction<T>          & composition,
+                 const gsOptionList           & options)
+{
+    gsComposedGeometry<T> cgeom(composition,geometry);
+    gsMultiBasis<T> ib(geometry.basis());
+
+    gsMultiPatch<T> mp(geometry);
+    gsMultiBasis<T> mb(mp);
+    gsExprAssembler<T> A(1,1);
+    A.setIntegrationElements(ib);
+    A.options().update(options);
+    auto G = A.getMap(mp);
+    auto u = A.getSpace(mb);
+    u.setup();
+    A.initSystem();
+    A.assemble(u*u.tr()*meas(G));
+    gsDebugVar(A.matrix().toDense());
+
+    gsMultiPatch<T> cmp(cgeom);
+    gsMultiBasis<T> cmb(cmp);
+
+    gsExprAssembler<T> cA(1,1);
+    cA.setIntegrationElements(ib);
+    cA.options().update(options);
+    auto cG = cA.getMap(cmp);
+    auto cu = cA.getSpace(cmb);
+    cu.setup();
+    cA.initSystem();
+    cA.assemble(cu*cu.tr()*meas(cG));
+    gsDebugVar(cA.matrix().toDense());
+
+    return (A.matrix()-cA.matrix()).norm();
+}
+
 int main(int argc, char *argv[])
 {
+    index_t degree = 1;
+    index_t interior = 0;
+    index_t multiplicity = 1;
+    index_t nGauss = -1;
+    index_t bIndexI = 0;
+    index_t bIndexJ = 0;
+    std::string X = "x^1";
+    std::string Y = "y^1";
 
-    // gsFunctionExpr<> S("x*y","y^2*sqrt(x)",2);
-    // gsFunctionExpr<> S("(x-0.5)^2","(y-0.5)^2",2);
-    gsSquareDomain<2,real_t> S;
-    gsMatrix<> pars = S.controls();
-    pars *= 0.95;
-    // pars(0,0) -= 0.1;
-    S.controls() = pars.col(0);
-    S.updateGeom();
+    gsCmdLine cmd("");
+    cmd.addInt( "p", "degree", "Degree of the basis", degree );
+    cmd.addInt( "i", "interior", "Interior knots in the basis", interior );
+    cmd.addInt( "m", "multiplicity", "Interior knot multiplicity in the basis", multiplicity );
+    cmd.addInt( "G", "numGauss", "Number of Gauss points (default = degree+1)", nGauss );
+    cmd.addInt( "I", "bIdxI", "Basis function index of the basis function to test", bIndexI );
+    cmd.addInt( "J", "bIdxJ", "Basis function index of the basis function to test", bIndexJ );
+    cmd.addString( "X", "xcoord", "X-coordinate of the composition", X );
+    cmd.addString( "Y", "ycoord", "Y-coordinate of the composition", Y );
 
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsFunctionExpr<> G("y^(1/3)","x^(1/2)","0",2);
-    gsFunctionExpr<> FXI("x*y",2);
-    gsFunctionExpr<> FS("x*y",2);
-    gsFunctionExpr<> FG("x*y+z",3);
-    gsComposedFunction<real_t> CG({&S,&G});     // Composition G∘S
-    gsComposedFunction<real_t> CFG({&S,&G,&FG});
-    gsComposedFunction<real_t> CSFG({&G,&FG});
-    gsComposedFunction<real_t> CFCG({&CG,&FG});
+    nGauss = (nGauss==-1) ? degree + 1 : nGauss;
 
-    gsKnotVector<> kv(0,1,7,3);
-    gsTensorBSplineBasis<2> tbasis2(kv,kv);
-    gsComposedBasis<>       cbasis2(S,tbasis2);
-    gsTensorBSplineBasis<3> tbasis3(kv,kv,kv);
-
-    gsExprAssembler<> A(1,1);
-    gsMultiBasis<> mb(tbasis2);
-    A.setIntegrationElements(mb);
-    gsExprEvaluator<> ev(A);
-    auto s = A.getMap(S);
-    auto g = A.getMap(G);
-    auto cg = A.getMap(CG);
-
-    auto u  = A.getSpace(tbasis2);
-    auto cu = A.getSpace(cbasis2);
-    auto u3 = A.getSpace(tbasis3);
-
-    auto JSinv  = jac(s).ginv();
-    auto JGinv  = jac(g).ginv();
-    auto JCGinv = jac(cg).ginv();
-
-    gsVector<> pt(2);
-    pt<<0.5,0.25;
-    gsMatrix<> ptS = ev.eval(s,pt);
-    gsMatrix<> ptG = ev.eval(g,ptS);
-    gsMatrix<> ptCG = ev.eval(cg,pt);
-
-    gsDebug<<"Point evaluation of the maps\n";
-    gsDebug<<"(ξ,η)         = "<<pt.transpose()<<"\n";
-    gsDebug<<"(u,v)         = "<<ptS.transpose()<<"\n";
-    gsDebug<<"(x,y,z)       = "<<ptG.transpose()<<"\n";
-    gsDebug<<"(x,y,z)       = "<<ptCG.transpose()<<"\n";
-    gsDebug<<"\n";
-    gsDebug<<"σ(ξ,η)        = "<<ev.eval(s,pt).transpose()<<"\n";
-    gsDebug<<"G(u,v)        = "<<ev.eval(g,ptS).transpose()<<"\n";
-    gsDebug<<"G(σ(ξ,η))     = "<<ev.eval(cg,pt).transpose()<<"\n";
-    gsDebug<<"\n";
-    gsDebug<<"Function evaluations of F(x,y,z) = x*y+z\n";
-    gsDebug<<"φ(σ(ξ,η))     = "<<ev.eval(u,ptS).transpose()<<"\n";
-    gsDebug<<"φ(G(σ(ξ,η)))  = "<<ev.eval(cu,pt).transpose()<<"\n";
-
-    gsDebug<<"\n";
-    // Derivatives of f w.r.t. x,y,z
-    gsDebug<<"∇φ(σ(ξ,η))    = \n"<<ev.eval(grad(u),ptS).transpose()<<"\n";
-    gsDebug<<"∇φ(G(σ(ξ,η))) = \n"<<ev.eval(igrad(cu,s),pt).transpose()<<"\n"; // fg is defined in (x,y,z), so no jac transform is needed
-
-    // gsDebug<<"∇φ(G(σ(ξ,η))) = \n"<<ev.eval(grad(u)*JSinv,pt).transpose()<<"\n"; // fg is defined in (x,y,z), so no jac transform is needed
-    // gsDebug<<"∇φ(G(σ(ξ,η))) = \n"<<ev.eval(grad(cu),pt).transpose()<<"\n"; // fg is defined in (x,y,z), so no jac transform is needed
-
-    gsMatrix<> JS  = ev.eval(jac(s),pt);
-    gsMatrix<> JCG = ev.eval(jac(cg),pt);
-
-    gsDebug<<"∇φ(G(σ(ξ,η))) = \n"<<ev.eval(grad(u)*JGinv,ptS).transpose()<<"\n"; // fg is defined in (x,y,z), so no jac transform is needed
-    gsDebug<<"∇φ(G(σ(ξ,η))) = \n"<<ev.eval(igrad(u,g),ptS).transpose()<<"\n"; // fg is defined in (x,y,z), so no jac transform is needed
-
-
-    gsDebug<<"∇φ(G(σ(ξ,η))) = \n"<<ev.eval(grad(cu)*JCGinv,pt).transpose()<<"\n"; // fg is defined in (x,y,z), so no jac transform is needed
-    gsDebug<<"∇φ(G(σ(ξ,η))) = \n"<<ev.eval(igrad(cu,cg),pt).transpose()<<"\n"; // fg is defined in (x,y,z), so no jac transform is needed
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    gsQuadRule<> QuRule;  // Quadrature rule
-    gsVector<> quWeights; // quadrature weights
-    gsMatrix<> quPoints, quPointsS;
-    gsMatrix<> vals;
-    gsMatrix<index_t> acts;
+    gsFunctionExpr<> composition(X,Y,2);
+    gsKnotVector<> kv(0,1,interior,degree+1,multiplicity,degree);
+    gsDebugVar(kv);
+    gsTensorBSplineBasis<2,real_t> tbasis(kv,kv);
+    gsMatrix<> coefs = tbasis.anchors().transpose();
+    gsTensorBSpline<2,real_t> tspline(tbasis,coefs);
 
     gsOptionList opt;
-    opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
-    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+    opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 0  );
+    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", nGauss    );
     opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
     opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
     opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
-    //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
 
+    testEvaluator(tspline,composition,opt,bIndexI,bIndexJ);
+    testIntegrator(tspline,composition,opt);
 
-    QuRule =  gsQuadrature::get(tbasis2, opt);
-
-    // Initialize domain element iterator
-    typename gsBasis<>::domainIter domIt = tbasis2.makeDomainIterator();
-
-    real_t resultB00 = 0;
-    real_t resultCB00 = 0;
-    for (; domIt->good(); domIt->next() )
-    {
-        // Map the Quadrature rule to the element
-        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                      quPoints, quWeights);
-
-        S.eval_into(quPoints,quPointsS);
-        gsDebugVar(quPoints);
-
-        tbasis2.active_into(quPointsS,acts);
-        gsDebugVar(acts);
-        cbasis2.active_into(quPoints,acts);
-        gsDebugVar(acts);
-
-
-        // // Compute the basis on the quadrature nodes
-        // B00.eval_into(quPointsS,vals);
-        // // Compute integral
-        // for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
-        //     resultB00 += vals(0,k)*quWeights[k];
-
-        // CB00.eval_into(quPoints,vals);
-        // // Compute integral
-        // for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
-        //     resultCB00 += vals(0,k)*quWeights[k];
-
-    }
-    // gsDebugVar(resultB00);
-    // gsDebugVar(resultCB00);
-
-    gsWriteParaview(tbasis2,"tbasis2");
-    gsWriteParaview(cbasis2,"cbasis2");
     return EXIT_SUCCESS;
 
 }// end main

@@ -15,6 +15,7 @@
 #include <gismo.h>
 #include <gsNurbs/gsSquareDomain.h>
 #include <gsNurbs/gsMobiusDomain.h>
+#include <gsCore/gsComposedFunction.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -22,13 +23,9 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    // a
-    bool b_morph = false;   // b, composition on the basis
     // c
     index_t spaceDim = 2;   // d, dimension of the physical solution
     index_t numElevate = 0; // e, deg elevation
-    // f
-    bool g_morph = false;   // g, composition on the geometry
     // i, j, k, l, m, n, o
     index_t problem = 0;    // p, problem: 0 --> poisson, 1 -->  L2, 2 --> another pde;
     // q
@@ -37,29 +34,30 @@ int main(int argc, char *argv[])
     bool ref_last = false;  // last, perform last refinement only
     bool plot = false;
     bool plotbasis = false;
+    //
+    index_t numElevateC = 0;
+    index_t numRefineC = 1;
 
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addInt( "R", "uniformRefineC", "Number of uniform refinements for the composition",  numRefineC );
+    cmd.addInt( "E", "degreeElevationC",
+                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevateC );
     cmd.addInt("d", "dimension", "specify the problem dimension", spaceDim);
     cmd.addInt("p", "equation", "specify the problem", problem);
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("plotB", "Create a ParaView visualization file with the solution", plotbasis);
-    cmd.addSwitch("b", "basis", "Apply composition to the basis", b_morph);
-    cmd.addSwitch("g", "geom", "Apply composition to the geometry", g_morph);
     cmd.addSwitch("last", "one-shot uniform refinement", ref_last);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    gsStopwatch gsTime;
-    time_t now = time(0);
-
     std::ofstream file_out;
-    file_out.open(std::to_string(now)+"composedDomain_results.csv");
-    file_out << "problem, cbasis, cgeom, deg, ref, dofs, L2err\n";
+    file_out.open("composedDomain_results_r"+util::to_string(numRefine)+"e"+util::to_string(numElevate)+"R"+util::to_string(numRefineC)+"E"+util::to_string(numElevateC)+".csv");
+    file_out << "problem, deg, ref, dofs, L2err\n";
 
     std::string problem_name = "";
     if(problem == 0)
@@ -86,7 +84,7 @@ int main(int argc, char *argv[])
       mp0.embed(spaceDim);
 
     if (numElevate!=0)
-        mp0.degreeElevate(numElevate);
+      mp0.degreeElevate(numElevate);
 
     gsInfo << "degree: (" << mp0.patch(0).degree(0) << "," << mp0.patch(0).degree(1) << ")\n";
 
@@ -109,101 +107,34 @@ int main(int argc, char *argv[])
         // // The domain sigma
         // gsFunctionExpr<> domain("(x)^(2)","(y)^(2)",spaceDim);
         // gsFunctionExpr<> domain("(x","y",2);
-        // gsSquareDomain<2,real_t> domain(1,1);
+        gsSquareDomain<2,real_t> domain(numElevateC,numRefineC);
         // gsMobiusDomain<2,real_t> domain;
-        gsSimpleMobiusDomain<2,real_t> domain;
+        // gsSimpleMobiusDomain<2,real_t> domain;
         // gsWriteParaview(domain,mp0.patch(0).support(),"domain");
+
+        for (index_t i = 0; i < domain.nControls(); i++)
+            domain.control(i) *= 0.5;
+
 
         // // gsMatrix<> pars = domain.controls();
 
         gsInfo << domain << "\n";
         // gsInfo << "Domain coefficients before:\n" << domain.controls() << "...\n";
 
-        // gsWriteParaview(domain,"domain_afterControls");
+        gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
 
-
-        if((b_morph || g_morph))
-        {
-
-          gsInfo << "Apply sigma.\n";
-          domain.control(0) = 0.75;
-          domain.control(1) = 0.45;
-          // domain.control(2) = 0.75;
-          // domain.control(3) = 0.45;
-          // gsDebugVar(domain.controls());
-          // domain.controls().array()*=0.5;
-          // domain.controls().array()+=0.5;
-          // pars *= 0.9;
-          // pars(0,0) -= 0.1;
-          // domain.controls() = pars;
-        }
-
-        // gsWriteParaview(domain,"domain_mod");
-
-        // gsInfo << "... and after:\n" << domain.controls() << "\n";
-
-        // gsVector<> pt(2);
-        // pt.setConstant(0.25);
-
-        // gsMatrix<> res;
-        // domain.eval_into(pt,res);
-        // gsDebugVar(res);
-
-        // domain.deriv_into(pt,res);
-        // gsDebugVar(res);
-
-        // domain.deriv_into2(pt,res);
-        // gsDebugVar(res);
-        
-
-        gsBasis<>::Ptr cbasis;
-        // Define a composite basis and composite geometry
-        if(b_morph)
-        {
-          gsInfo << "Composed basis.\n";
-          // gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
-          cbasis = memory::make_shared(new gsComposedBasis<real_t>(domain,tbasis));
-        }
-        else
-        {
-          cbasis = memory::make_shared_not_owned(&tbasis);
-          // const gsBasis<> & cbasis = tbasis; // basis(u,v) -> deriv will give dphi/du ,dphi/dv
-        }
-
-
-        // const gsGeometry<> & cgeom = tgeom;
-        gsGeometry<>::Ptr cgeom;
-        if(g_morph)
-        {
-          gsInfo << "Composed geometry.\n";
-          cgeom = memory::make_shared(new gsComposedGeometry<real_t>(domain,tgeom));
-          //gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
-        }
-        else
-          cgeom = memory::make_shared_not_owned(&tgeom);
-
-
-        if (plotbasis)
-        {
-            gsWriteParaview(*cbasis,"cbasis");
-            gsWriteParaview(tbasis,"tbasis");
-        }
-
-
+        gsMultiBasis<> ibasis(tbasis);
         gsMultiPatch<> mp;
-        mp.addPatch(*cgeom);
-
-        gsMultiBasis<> dbasis(*cbasis);
-
-        // gsMultiBasis<> dbasis(mp, true);
+        mp.addPatch(cgeom);
+        gsMultiBasis<> mb(mp);
 
         //! [Refinement]
 
-         // Source function:
-         gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",spaceDim);
+        // Source function:
+        gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",spaceDim);
 
-         // Exact solution
-         gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",spaceDim);
+        // Exact solution
+        gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",spaceDim);
 
         // Source function:
     //    gsFunctionExpr<> f("2*pi^2*cos(pi*x)*cos(pi*y)",spaceDim);
@@ -211,14 +142,18 @@ int main(int argc, char *argv[])
         // Exact solution
     //    gsFunctionExpr<> ms("cos(pi*x)*cos(pi*y)",spaceDim);
 
+        gsComposedFunction<real_t> cf(cgeom,f);
+        gsComposedFunction<real_t> cms(cgeom,ms);
+
+
         gsBoundaryConditions<> bc;
         if (problem == 0)
         {
           gsInfo << "Add bc for Poisson.\n";
-          bc.addCondition(boundary::side::west ,condition_type::dirichlet,&ms);
-          bc.addCondition(boundary::side::east ,condition_type::dirichlet,&ms);
-          bc.addCondition(boundary::side::south,condition_type::dirichlet,&ms);
-          bc.addCondition(boundary::side::north,condition_type::dirichlet,&ms);
+          bc.addCondition(boundary::side::west ,condition_type::dirichlet,&cms,0,true);
+          bc.addCondition(boundary::side::east ,condition_type::dirichlet,&cms,0,true);
+          bc.addCondition(boundary::side::south,condition_type::dirichlet,&cms,0,true);
+          bc.addCondition(boundary::side::north,condition_type::dirichlet,&cms,0,true);
         }
         bc.setGeoMap(mp);
 
@@ -231,20 +166,20 @@ int main(int argc, char *argv[])
         typedef gsExprAssembler<>::solution    solution;
 
         // Elements used for numerical integration
-        A.setIntegrationElements(dbasis);
+        A.setIntegrationElements(ibasis);
         gsExprEvaluator<> ev(A);
 
         // Set the geometry map
         geometryMap G = A.getMap(mp);
 
         // Set the discretization space
-        space u = A.getSpace(dbasis);
+        space u = A.getSpace(mb);
 
         // Set the source term
-        auto ff = A.getCoeff(f, G);
+        auto ff = A.getCoeff(cf);
 
         // Recover manufactured solution
-        auto u_ex = ev.getVariable(ms, G);
+        auto u_ex = ev.getVariable(cms);
 
         // Solution vector and solution variable
         gsMatrix<> solVector;
@@ -297,7 +232,7 @@ int main(int argc, char *argv[])
         gsInfo<<"\nL2 error = "<<L2err<<"\n";
 
         // file_out << "problem, morph, deg, ref, dofs, L2err\n";
-        file_out << problem_name << "," << b_morph << "," << g_morph << ","
+        file_out << problem_name << ","
                  << std::max(mp0.patch(0).degree(0),mp0.patch(0).degree(1))   << "," << refCount << ","
                  << A.numDofs()  << "," << L2err     << "\n";
 
@@ -319,7 +254,7 @@ int main(int argc, char *argv[])
             collection.saveTimeStep();
             collection.save();
 
-            gsWriteParaview(*cgeom,"cgeom");
+            gsWriteParaview(cgeom,"cgeom");
 
             // gsFileManager::open("ParaviewOutput/solution.pvd");
         }

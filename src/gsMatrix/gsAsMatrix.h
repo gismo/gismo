@@ -247,32 +247,17 @@ public:
 
 public:
     gsAsVector( std::vector<T> & v)
-    : Base( v.data(), v.size(), 1 ) 
-    {  
-        //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
+    : Base( v.data(), v.size(), 1 )
+    {
+        //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." );
     }
 
     gsAsVector( T * pt, unsigned n)
     : Base( pt, n, 1) {  }
 
-    /**
-     * @brief      Transforms a matrix into a vector by taking the elements
-     *             specified by @a indices
-     *
-     * @param      mat      The original matrix
-     * @param[in]  indices  The indices
-     */
-    gsAsVector(gsMatrix<T> & mat,
-               const std::vector<std::pair<index_t,index_t>> & indices)
-    : Base(mat.data(),indices.size(),1)
-    {
-        for (size_t i = 0; i < indices.size(); ++i)
-            this->operator()(i) = mat(indices[i].first, indices[i].second);
-    }
-
 #ifdef _MSC_VER
     template <class EigenExpr>
-    gsAsVector& operator= (const EigenExpr & other) 
+    gsAsVector& operator= (const EigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
