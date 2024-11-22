@@ -256,6 +256,28 @@ int main(int arg, char *argv[])
     real_t totalError, maxError;
     for (index_t i = 0; i < 5; i++)
     {
+        /*
+            Functions/FunctionSets:
+            mp     := the original geometry
+            cmp    := the composed geometry
+            mb     := the original basis
+            cmb    := the composed basis
+            f      := the source function
+            cf     := the composed source function
+            ms     := the manufactured solution
+            cms    := the composed manufactured solution
+            sol    := the numerical solution defined using a composed basis
+            parsol := the numerical solution defined using the original basis and the coefficients of sol
+            err    := the L2 error between the numerical solution and the manufactured solution
+
+            Expressions:
+            G      := the geometry map of the original geometry
+            cG     := the geometry map of the composed geometry
+            u_sol  := the numerical solution defined using the composed basis
+            u_ex   := the exact solution defined on the composed parametric domain
+         */
+
+        // Write the mesh and control net to the paraview collections
         writeSingleCompMesh(cmp.basis(0),cmp.patch(0),dirname+"domain_mesh_"+util::to_string(i));
         errcol.addTimestep("domain_mesh_"+util::to_string(i),i,".vtp");
         solcol.addTimestep("domain_mesh_"+util::to_string(i),i,".vtp");
@@ -263,129 +285,55 @@ int main(int arg, char *argv[])
         errcol.addTimestep("domain_cnet_"+util::to_string(i),i,".vtp");
         solcol.addTimestep("domain_cnet_"+util::to_string(i),i,".vtp");
 
-
+        // Solve the poisson equation
         sol = solvePoisson(cmp,cmb,mb,cf,bc);
+
+        // Construct parsol and the error in the original parametric domain
         gsMultiPatch<> parsol;
-        parsol.addPatch(sol.basis(0).makeGeometry(sol.patch(0).coefs()));
+        parsol.addPatch(mb.basis(0).makeGeometry(sol.patch(0).coefs()));
+        gsL2Difference<real_t> err(ms,parsol.patch(0));
 
-
+        // Prepare the error computation
         gsExprEvaluator<real_t> ev;
         ev.setIntegrationElements(mb);
+        // gsWarn<<"Construct an integration basis instead of hard-coding the quadrature rule\n";
         ev.options().setReal("quA",4.0);
         ev.options().setInt("quB",2.0);
         auto G     = ev.getMap(mp);
         auto cG    = ev.getMap(cmp);
         auto u_sol = ev.getVariable(sol);
         auto u_ex  = ev.getVariable(cms);
-
-
-        gsL2Difference<real_t> err(ms,parsol.patch(0));
-        gsL2Difference<real_t> cerr(cms,sol.patch(0));
-        // gsL2Difference<real_t> err(cms,sol.patch(0));
         auto E     = ev.getVariable(err);
+
+        // Evaluate the error(s) and maximum error
         gsInfo<<"ev.integral((u_sol-u_ex).norm()*meas(G)) = "<<ev.integral((u_sol-u_ex).norm()*meas(cG))<<"\n";
-        gsInfo<<"ev.integral(E*meas(G))                   = "<<ev.integral(E*meas(cG))<<"\n";
+        gsInfo<<"ev.integral(E*meas(G))                   = "<<ev.integral(E*meas(G))<<"\n";
         totalError = ev.integral((u_sol-u_ex).norm()*meas(cG));
         gsInfo<<"total error after iteration "<<i<<": "<<totalError<<"\n";
-
-
         maxError = ev.max((u_sol-u_ex).norm());
 
-        writeSinglePatchField(cmp.patch(0),cerr,true,dirname+"error_"+util::to_string(i),1000);
+        // Write the error(s) and solution to paraview
+        writeSinglePatchField(cmp.patch(0),err,true,dirname+"error_"+util::to_string(i),1000);
         errcol.addTimestep("error_"+util::to_string(i),i,".vts");
         writeSinglePatchField(cmp.patch(0),parsol.patch(0),true,dirname+"sol_"+util::to_string(i),1000);
         solcol.addTimestep("sol_"+util::to_string(i),i,".vts");
 
-        gsWriteParaview(mp,parsol,"parsol_mp");
-        gsWriteParaview(cmp,parsol,"parsol_cmp");
-        gsWriteParaview(mp,sol,"sol_mp");
-        gsWriteParaview(cmp,sol,"sol_cmp");
+        // ev.writeParaview((u_sol),cG,dirname+"u_sol");
+        // ev.writeParaview((u_ex),cG,dirname+"u_ex");
+        // ev.writeParaview((u_ex-u_sol).norm(),cG,dirname+"u_err");
 
-        // writeSinglePatchField(domain.domain(),sol.patch(0),true,dirname+"sol_"+util::to_string(i),1000);
-        // errcol.addTimestep("sol_"+util::to_string(i),i,".vts");
-
-        ev.writeParaview((u_sol),cG,dirname+"u_sol");
-        ev.writeParaview((u_ex),cG,dirname+"u_ex");
-        ev.writeParaview((u_ex-u_sol).norm(),cG,dirname+"u_err");
-
-
-        // POSSIBLE PROBLEM: err IS DOUBLE COMPOSED (Once here and once in the gsAdaptiveParametrization class)
-
-
-        // gsMultiPatch<> tmp = mp, tmp_sol;
-        // tmp.patch(0).coefs() = domain.domain().coefs();
-        // tmp_sol = solvePoisson(tmp,mb,f,bc);
-
-        // gsExprEvaluator<real_t> tmp_ev;
-        // tmp_ev.setIntegrationElements(mb);
-        // auto tmp_G     = tmp_ev.getMap(tmp);
-        // auto tmp_u_sol = tmp_ev.getVariable(tmp_sol);
-        // auto tmp_u_ex  = tmp_ev.getVariable(ms);
-
-        // totalError = tmp_ev.integral((tmp_u_sol-tmp_u_ex).norm()*meas(tmp_G));
-        // gsInfo<<"total error after iteration "<<i<<": "<<totalError<<"\n";
-
+        // Solve r-adaptivity
         gsInfo<<"R-Adaptivity iteration "<<i<<"\n";
         gsL2Difference<real_t> err_scaled(ms,parsol.patch(0),10./maxError);
-        gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,mp.patch(0),err_scaled,mb.basis(0),optimizer,true);
+        // gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,mp.patch(0),err_scaled,mb.basis(0),optimizer,true);
         // gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,mp.patch(0),parsol.patch(0),mb.basis(0),optimizer,true);
-        // gsAdaptiveParametrization<real_t,MonitorMode::GradientBased> relocator(domain,mp.patch(0),parsol.patch(0),mb.basis(0),optimizer,true);
+        gsAdaptiveParametrization<real_t,MonitorMode::GradientBased> relocator(domain,mp.patch(0),parsol.patch(0),mb.basis(0),optimizer,true);
         relocator.solve();
     }
 
     errcol.save();
     solcol.save();
-
-    // gsMultiPatch<> sol = solvePoisson(cmp,cmb,mb,cf,bc);
-
-    // ///////////////////////////////////////////////////////
-    // // ERROR ESTIMATION
-    // ///////////////////////////////////////////////////////
-
-    // gsExprEvaluator<real_t> ev;
-    // ev.setIntegrationElements(mb);
-    // auto G     = ev.getMap(cmp);
-    // auto u_sol = ev.getVariable(sol);
-    // auto u_ex  = ev.getVariable(ms);
-
-
-    // ev.writeParaview(u_sol,G,dirname+"solution");
-
-    // real_t totalError = ev.integral((u_sol-u_ex).norm()*meas(G));
-    // gsDebugVar(totalError);
-
-    // ev.writeParaview((u_sol-u_ex).norm()/totalError,G,dirname+"error");
-    // // ev.writeParaview(ijac(u_sol,G),G,dirname+"solution_gradient");
-    // // ev.writeParaview(ijac(u_sol,G).sqNorm(),G,dirname+"solution_gradient_sqNorm");
-
-    // gsL2Difference<real_t> err(ms.piece(0),sol.patch(0),1./totalError);
-    // gsWriteParaview(mp,err,"error",3000);
-
-    // gsComposedFunction<real_t> cerr = gsComposedFunction<real_t>(domain,err);
-    // gsComposedFunction<real_t> cserr = gsComposedFunction<real_t>(cspline,err);
-    // gsWriteParaview(mp,cerr,"cerror",3000);
-    // gsWriteParaview(mp,cserr,"cserror",3000);
-
-
-    // gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,mp.patch(0),err,mb.basis(0),optimizer,true);
-    // relocator.solve();
-
-
-    // gsL2Difference<real_t> err2(ms.piece(0),sol.patch(0),1./totalError);
-    // gsComposedFunction<real_t> cerr2 = gsComposedFunction<real_t>(domain,err2);
-    // gsComposedFunction<real_t> cserr2 = gsComposedFunction<real_t>(cspline,err2);
-    // gsWriteParaview(mp,cerr2,"cerror2",3000);
-    // gsWriteParaview(mp,cserr2,"cserror2",3000);
-
-    // gsDebugVar(domain.domain().coefs());
-
-
-    // // gsWriteParaview(cspline,"cspline",1000,true);
-    // // gsWriteParaview(cspline.basis(),"cbasis",1000);
     gsWriteParaview(domain.domain(),dirname+"domain",1000,true,true);
-
-    // gsInfo<<"Area = "<<ev.integral(meas(G))<<"\n";
-    // ev.writeParaview(jac(G).det(),G,dirname+"jacobian_determinant");
 
 
 

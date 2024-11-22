@@ -4417,7 +4417,7 @@ public:
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
         GISMO_ASSERT(_u.cols() == _v.cols(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation:\n" << _u <<" minus \n" << _v );
-        GISMO_ASSERT(_u.cardinality() == _u.cardinality(),
+        GISMO_ASSERT(E1::Space==0 || _u.cardinality() == _u.cardinality(),
                      "Cardinality "<< _u.cardinality()<<" != "<< _v.cardinality());
         //return (_u.eval(k) - _v.eval(k) ).eval();
         //return (_u.eval(k) - _v.eval(k) ); // any temporary matrices eval(.) will leak mem.
