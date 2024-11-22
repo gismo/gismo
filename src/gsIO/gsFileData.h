@@ -224,6 +224,14 @@ public:
     }
 
     /// Returns true if an Object exists in the filedata
+    inline bool hasLabel(const std::string & label) const {
+      gsXmlNode* root = getXmlRoot();
+      // const gsXmlAttribute * id_at;
+      gsXmlNode* nd = internal::searchLabel(label, root, NULL, false);
+      return (bool)nd;
+    }
+
+    /// Returns true if an Object exists in the filedata
     inline bool hasId(int id) const {
       gsXmlNode* root = getXmlRoot();
       // const gsXmlAttribute * id_at;
