@@ -821,6 +821,13 @@ public:
             - m_xmatrix_offset.begin() - 1;
     }
 
+    /// @brief Returns the grading parameter,
+    /// i.e. the maximum level difference between any two interacting basis functions
+   index_t gradingParameter() const;
+
+    /// @brief Returns the average number of active basis functions over an element
+    real_t averageOverloading() const;
+
 /*
   const boxHistory & get_inserted_boxes() const
   {

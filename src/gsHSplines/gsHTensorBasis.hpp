@@ -1967,6 +1967,44 @@ void gsHTensorBasis<d,T>::degreeDecrease(int const & i, int const dir)
     this->update_structure();
 }
 
+template<int d,class T>
+index_t gsHTensorBasis<d,T>::gradingParameter() const
+{
+    std::vector<size_t> levels(this->numLevels() + 1);
+    levels[0] = 0;
+    for (index_t l = 0; l < this->numLevels(); ++l)
+        levels[l+1] = levels[l] + this->m_xmatrix[l].size();
+
+    index_t grading = 0;
+    // Loop over each element
+    for (const std::unique_ptr<gsDomainIterator<>> it = this->makeDomainIterator(); it->good(); it->next())
+    {
+        index_t min(0), max(0);
+        // Indices of active basis functions over the element
+        gsVector<index_t> indices = this->active(it->center);
+        for (index_t l = 0; l < this->numLevels(); ++l)
+        {
+            // Indices are sorted, so taken two functions of different levels,
+            // the one that belongs to the lowest level has a lower index
+            min = indices[0] - levels[l] <= levels[l+1] - levels[l] ? l : min;
+            max = indices[indices.size()-1] - levels[l] <= levels[l+1] - levels[l] ? l : max;
+        }
+        grading = max - min > grading ? max - min : grading;
+    }
+
+    return grading;
+}
+
+template<int d, class T>
+real_t gsHTensorBasis<d,T>::averageOverloading() const
+{
+    index_t sum(0), count(0);
+    for (const std::unique_ptr<gsDomainIterator<>> it = this->makeDomainIterator(); it->good(); it->next(), ++count)
+        sum += this->active(it->center).size();
+
+    return sum/static_cast<real_t>(count);
+}
+
 template<short_t d, class T>
 bool gsHTensorBasis<d,T>::testPartitionOfUnity(const index_t npts, const T tol) const
 {
