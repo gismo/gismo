@@ -7,7 +7,7 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): Junjie Dong (junjiedong.umich@gmail.com),
     minor adjustments to G+Smo by M. Möller
 
@@ -34,11 +34,11 @@ template <class T>
 struct gsKNNTreeTraits
 {
     static inline std::size_t size() { return 1; }
-  
+
     static inline bool islhalf(const T& lhs, const T& rhs, std::size_t axis) { return lhs[axis] < rhs[axis]; }
-  
+
     static inline double fabs(const T& lhs, const T& rhs, std::size_t axis) { return std::abs(lhs[axis] - rhs[axis]); }
-  
+
     static inline double distance(const T& lhs, const T& rhs)
     {
         double result = 0.0;
@@ -48,7 +48,7 @@ struct gsKNNTreeTraits
         return result;
     }
 };
-  
+
 /**
    \brief An interface representing a kd-tree in some number of dimensions
 
@@ -68,7 +68,7 @@ class gsKNNTree {
 
     typedef gsKDTree<real_t,NodeData> Node;
     Node * m_root; /// Root node of the gsKDTree
-    
+
 public:
 
     // Constructs an empty gsKNNTree.
@@ -79,7 +79,7 @@ public:
     {
         m_root = buildTree(data.begin(), data.end(), 0);
     }
-  
+
     // Frees up all the dynamically allocated resources
     ~gsKNNTree() { clear(); }
 
@@ -87,7 +87,7 @@ public:
     void clear() { delete m_root; }
 
     const Node & root() const { return *m_root; }
-  
+
     // Deep-copies the contents of another gsKNNTree into this one.
     gsKNNTree(const gsKNNTree& other)
     {
@@ -101,7 +101,7 @@ public:
             m_root = new Node(*other.m_root);
         return *this;
     }
-  
+
     // Returns the dimension of the data stored in this gsKNNTree.
     std::size_t dimension() const
     { return gsKNNTreeTraits<KeyType>::size(); }
@@ -118,7 +118,7 @@ public:
         auto node = findNode(m_root, key);
         return node != NULL && node->point == key;
     }
-    
+
     /*
      * Inserts the data with the given key into the gsKNNTree,
      * associating it with the specified value. If another data element
@@ -126,7 +126,7 @@ public:
      * overwrite the existing one.
      */
     void insert(const KeyType& key, const ValueType& value=ValueType());
-  
+
     /*
      * Returns a reference to the value associated with the data stored
      * under the given key in the gsKNNTree. If the key does not exist,
@@ -134,7 +134,7 @@ public:
      * ValueType as its value.
      */
     ValueType& operator[](const KeyType& key);
-  
+
     /*
      * Returns a reference to the value associated with the given
      * key. If the key is not in the tree, this function throws an
@@ -142,7 +142,7 @@ public:
      */
     ValueType& at(const KeyType& key);
     const ValueType& at(const KeyType& key) const;
-  
+
     /*
      * Given a key and an integer k, finds the k data elements in the
      * gsKNNTree nearest to the data element associated with the given
@@ -170,9 +170,9 @@ public:
         obj.print(os);
         return os;
     }
-  
+
 private:
-  
+
     /*
      * Recursively build a subtree that satisfies the kd-tree invariant using points in [start, end)
      * At each level, we split points into two halves using the median of the points as pivot
@@ -182,13 +182,13 @@ private:
     Node* buildTree(typename std::vector<std::pair<KeyType, ValueType> >::iterator start,
                     typename std::vector<std::pair<KeyType, ValueType> >::iterator end,
                     int currLevel);
-  
+
     /*
      * Returns the Node that contains element with given key if it is present in subtree 'currNode'
      * Returns the Node below where key should be inserted if key is not in the subtree
      */
     Node* findNode(Node* currNode, const KeyType& key) const;
-  
+
     // Recursive helper method for kNNValue(key, k)
     void nearestNeighborRecurse(const Node* currNode,
                                 const KeyType& key,
@@ -198,13 +198,13 @@ private:
     void nearestNeighborRecurse(const Node* currNode,
                                 const KeyType& key,
                                 gsBoundedPriorityQueue<ValueType*>& bpq) const;
-  
+
     /*
      * Recursive helper method for copy constructor and assignment operator
      * Deep copies tree 'root' and returns the root of the copied tree
      */
     Node* deepcopyTree(Node* root);
-  
+
     // Recursively free up all resources of subtree rooted at 'currNode'
     void freeResource(Node* currNode);
 
@@ -217,7 +217,7 @@ gsKNNTree<KeyType, ValueType>::buildTree(typename std::vector<std::pair<KeyType,
                                          int currLevel)
 {
     if (start >= end) return NULL; // empty tree
-  
+
     int axis = currLevel % gsKNNTreeTraits<KeyType>::size(); // the axis to split on
     auto cmp = [axis](const std::pair<KeyType, ValueType>& p1,
                       const std::pair<KeyType, ValueType>& p2) {
@@ -226,21 +226,23 @@ gsKNNTree<KeyType, ValueType>::buildTree(typename std::vector<std::pair<KeyType,
     std::size_t len = end - start;
     auto mid = start + len / 2;
     std::nth_element(start, mid, end, cmp); // linear time partition
-  
+
     // move left (if needed) so that all the equal points are to the right
     // The tree will still be balanced as long as there aren't many points that are equal along each axis
     while (mid > start && (mid - 1)->first[axis] == mid->first[axis]) {
         --mid;
     }
-  
-    Node* newNode = new Node(axis, mid->first[axis],
-                             new NodeData(mid->first, currLevel, mid->second) );
+
+    Node* newNode = new Node(axis, mid->first[axis],new NodeData(mid->first, currLevel, mid->second));
 
     newNode->left = buildTree(start, mid, currLevel + 1);
-    newNode->right = buildTree(mid + 1, end, currLevel + 1);
-
     if (nullptr == newNode->left) newNode->axis = -1;
-    
+    else newNode->left->parent = newNode;
+
+    newNode->right = buildTree(mid + 1, end, currLevel + 1);
+    if (nullptr == newNode->right) newNode->axis = -1;
+    else newNode->right->parent = newNode;
+
     return newNode;
 }
 
@@ -250,7 +252,7 @@ gsKNNTree<KeyType, ValueType>::findNode(typename gsKNNTree<KeyType, ValueType>::
                                         const KeyType& key) const
 {
     if (currNode == NULL || currNode->data().point == key) return currNode;
-  
+
     const KeyType& currPoint = currNode->data().point; // point contains the position..
     // NOTE: split position is not used, it is equal to: currNode->data().point[currNode->axis]
     if (gsKNNTreeTraits<KeyType>::islhalf(key, currPoint, (currNode->axis+1)%gsKNNTreeTraits<KeyType>::size()))
@@ -276,7 +278,7 @@ void gsKNNTree<KeyType, ValueType>::insert(const KeyType& key, const ValueType& 
         } else { // construct a new node and insert it to the right place (child of targetNode)
             int currLevel = targetNode->data().level;
             Node* newNode = new Node ( (currLevel + 1)%currLevel%gsKNNTreeTraits<KeyType>::size(), 000, new NodeData(key, currLevel + 1, value) );
-            
+
             if (gsKNNTreeTraits<KeyType>::islhalf(key, targetNode->data().point, currLevel%gsKNNTreeTraits<KeyType>::size())) {
                 targetNode->left = newNode;
             } else {
@@ -303,7 +305,7 @@ ValueType& gsKNNTree<KeyType, ValueType>::at(const KeyType& key)
     const gsKNNTree<KeyType, ValueType>& constThis = *this;
     return const_cast<ValueType&>(constThis.at(key));
 }
-  
+
 template <class KeyType, class ValueType>
 ValueType& gsKNNTree<KeyType, ValueType>::operator[](const KeyType& key)
 {
@@ -316,7 +318,7 @@ ValueType& gsKNNTree<KeyType, ValueType>::operator[](const KeyType& key)
         else return (node->left != NULL && node->left->data().point == key) ? node->left->data().value: node->right->data().value;
     }
 }
-  
+
 template <class KeyType, class ValueType>
 void gsKNNTree<KeyType, ValueType>::nearestNeighborRecurse(const typename gsKNNTree<KeyType, ValueType>::Node* currNode,
                                                            const KeyType& key,
@@ -338,7 +340,7 @@ void gsKNNTree<KeyType, ValueType>::nearestNeighborRecurse(const typename gsKNNT
         nearestNeighborRecurse(currNode->right, key, bpq);
         isLeftTree = false;
     }
-  
+
     if (bpq.size() < bpq.maxSize() ||
         gsKNNTreeTraits<KeyType>::fabs(key, currPoint, currLevel%gsKNNTreeTraits<KeyType>::size()) < bpq.worst()) {
         // Recursively search the other half of the tree if necessary
@@ -368,7 +370,7 @@ void gsKNNTree<KeyType, ValueType>::nearestNeighborRecurse(const typename gsKNNT
         nearestNeighborRecurse(currNode->right, key, bpq);
         isLeftTree = false;
     }
-  
+
     if (bpq.size() < bpq.maxSize() ||
         gsKNNTreeTraits<KeyType>::fabs(key, currPoint, currLevel%gsKNNTreeTraits<KeyType>::size()) < bpq.worst()) {
         // Recursively search the other half of the tree if necessary
@@ -381,7 +383,7 @@ template <class KeyType, class ValueType>
 ValueType gsKNNTree<KeyType, ValueType>::kNNValue(const KeyType& key, std::size_t k) const
 {
     // BPQ with maximum size k
-    gsBoundedPriorityQueue<ValueType> bpq(k); 
+    gsBoundedPriorityQueue<ValueType> bpq(k);
     if (empty()) throw std::out_of_range("gsKNNTree is empty");
 
     // Recursively search the kd-tree with pruning
@@ -393,7 +395,7 @@ ValueType gsKNNTree<KeyType, ValueType>::kNNValue(const KeyType& key, std::size_
     // nearest neighbours that are, e.g., smaller than the given key.
     if (!math::isfinite(bpq.best()))
         throw std::out_of_range("gsKNNTree does not contain finite value");
-  
+
     // Count occurrences of all ValueType in the kNN set
     std::unordered_map<ValueType, int> counter;
     while (!bpq.empty()) {
@@ -422,14 +424,14 @@ ValueType& gsKNNTree<KeyType, ValueType>::kNNValue(const KeyType& key, std::size
 
     // Recursively search the kd-tree with pruning
     nearestNeighborRecurse(m_root, key, bpq);
-  
+
     // Ensure finite values; non-standard 'distance' functions can be
     // used to exclude data elements that are close to the given key but
     // on the 'wrong' side of the hyperplane. This allows to exclude
     // nearest neighbours that are, e.g., smaller than the given key.
     if (!math::isfinite(bpq.best()))
         throw std::out_of_range("gsKNNTree does not contain finite value");
-  
+
     // Count occurrences of all ValueType in the kNN set
     std::unordered_map<ValueType*, int> counter;
     while (!bpq.empty()) {
@@ -453,5 +455,5 @@ void gsKNNTree<KeyType, ValueType>::print(std::ostream& os) const
 {
     os << "kNN-tree: size= " << size() << ", dimension= " << dimension() << ".\n";
 }
-  
+
 } //namespace gismo

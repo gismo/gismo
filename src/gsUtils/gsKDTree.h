@@ -7,7 +7,7 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): M. Möller, A. Mantzaflaris, inspired by Junjie Dong
 
     The code of Junjie Dong can be found at
@@ -60,7 +60,7 @@ public:
         // TODO: non-recursive
         if ( hasData() ) delete data;
 
-        if ( !isLeaf() ) 
+        if ( !isLeaf() )
         {
             delete left;
             delete right;
@@ -85,17 +85,17 @@ public:
                 left  = new gsKDTree(*o.left , this);
                 right = new gsKDTree(*o.right, this);
             }
-            
+
             if (o.hasData())
                 data  = new Data_t(*o.data);
             else
-                data   = nullptr;            
+                data   = nullptr;
         }
 
         return *this;
     }
 
-    
+
 public:
 
     bool hasData() const { return (nullptr != data); }
@@ -109,9 +109,9 @@ public:
     bool isRightChild() const { return parent!=NULL && this==parent->right; }
 
     gsKDTree * sibling() const
-    { 
+    {
         GISMO_ASSERT( parent != 0, "Root does not have a sibling.");
-        return (parent->left == this ? parent->right : parent->left ); 
+        return (parent->left == this ? parent->right : parent->left );
     }
 
 public:
@@ -130,10 +130,10 @@ public:
         left ->axis   =
         right->axis   = -1;
         // Set parent to this node
-        left ->parent = 
+        left ->parent =
         right->parent = this;
         // Set data to both children
-        left ->data    = data;    
+        left ->data    = data;
         right->data    = new Data_t(*data);
         // Detach data from parent (is now at left child)
         data = nullptr;
@@ -185,18 +185,18 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
 
-        static void visitNode(const gsKDTree * , return_type & i)
+        static void visitNode(const gsKDTree *, return_type & i)
         {
             i++;
         }
     };
-    
+
     /// Prints the nodes in the tree
     struct printLeaves_visitor
     {
         typedef int return_type;
         static return_type init() {return 0;}
-        
+
         static void visitLeaf(const gsKDTree * leafNode, return_type &)
         {
             gsInfo << *leafNode;
@@ -223,7 +223,7 @@ public:
             {
                 // Visit the leaf
                 visitor::visitLeaf(curNode, i);
-                
+
                 while (curNode->parent != NULL &&
                        curNode != curNode->parent->left)
                     curNode = curNode->parent;
@@ -241,7 +241,7 @@ public:
     typename visitor::return_type nodeSearch() const
     {
         typename visitor::return_type i = visitor::init();
-        
+
         const gsKDTree * curNode = this;
 
         while(true)
@@ -272,7 +272,7 @@ public:
     {
 
         typename visitor::return_type res = visitor::init();
-        
+
         std::vector<const gsKDTree*> stack;
         size_t m_maxPath = 20;
         stack.reserve( 2 * m_maxPath );
@@ -283,7 +283,7 @@ public:
         {
             curNode = stack.back(); //top();
             stack.pop_back();       //pop();
-            
+
             if ( curNode->isLeaf() )
             {
                 // Visit the leaf
@@ -380,7 +380,7 @@ public:
 
     friend std::ostream & operator<<(std::ostream & os, const gsKDTree & n)
     {
-        if ( n.isLeaf() ) 
+        if ( n.isLeaf() )
             os << "Leaf node. ";
         else
             os << (n.isTerminal() ? "Terminal" : "Split" ) << " node, axis= "
@@ -405,19 +405,19 @@ public:
 
     // Constructs an empty gsKDTree.
     gsKDTreeExample();
-  
+
     // Frees up all the dynamically allocated resources
     ~gsKDTreeExample();
 
     // Frees up all the dynamically allocated resources
     void clear();
-  
+
     // Deep-copies the contents of another gsKDTree into this one.
     gsKDTreeExample(const gsKDTreeExample& other);
 
     // Deep-copies the contents of another gsKDTree into this one.
     gsKDTreeExample& operator=(const gsKDTreeExample& other);
-    
+
     // Returns the dimension of the data stored in this gsKDTree.
     static std::size_t dimension() { return d; }
 
@@ -436,7 +436,7 @@ public:
         obj.print(os);
         return os;
     }
-  
+
 }; // class gsKDTreeExample
-  
+
 } //namespace gismo
