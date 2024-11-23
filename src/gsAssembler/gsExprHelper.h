@@ -387,6 +387,42 @@ public:
         }
     }
 
+    void precomputeThreadLocal(const index_t patchIndex, gsMatrix<T> &pointsThreadLocal/*, gsMatrix<T> &measures*/)
+    {
+        boundary::side bs = boundary::none;
+
+        for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
+        {
+            auto& mineData = it->second.mine();
+
+            mineData.points.swap(pointsThreadLocal);//swap
+            mineData.side    = bs;
+            mineData.patchId = patchIndex;
+            it->first->function(patchIndex).computeMap(mineData);
+            mineData.points.swap(pointsThreadLocal);//restore
+
+            // measures = it->second.mine().measures;
+        }
+
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+        {
+            it->second.mine().patchId = patchIndex;
+            it->first->piece(patchIndex).compute(pointsThreadLocal, it->second.mine());
+        }
+
+        for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
+        {
+            it->first.first->piece(patchIndex).compute(it->first.second->mine().values[0], it->second.mine());
+            it->second.mine().patchId = patchIndex;
+        }
+
+        // Mutable variable to treat BCs
+        if (nullptr != mutSrc && 0 != mutData.mine().flags)
+        {
+            mutSrc->piece(patchIndex).compute( mutMap ? m_mdata[mutMap].mine().values[0] : pointsThreadLocal, mutData );
+        }
+    }
+
     void precompute(const index_t patchIndex = 0,
                     boundary::side bs = boundary::none)
     {

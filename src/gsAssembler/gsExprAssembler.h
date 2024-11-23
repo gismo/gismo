@@ -459,14 +459,14 @@ private:
     {
         gsSparseMatrix<T> & m_matrix;
         gsMatrix<T>       & m_rhs;
-        const gsVector<T> & m_quWeights;
+        gsVector<T> & m_quWeights;
         bool m_elim;
         gsMatrix<T>         localMat;
         gsMatrix<T>         aux;
 
         _eval(gsSparseMatrix<T> & _matrix,
               gsMatrix<T>       & _rhs,
-              const gsVector<>  & _quWeights)
+              gsVector<>  & _quWeights)
         : m_matrix(_matrix), m_rhs(_rhs),
           m_quWeights(_quWeights), m_elim(true)
         { }
@@ -755,80 +755,114 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
+    struct alignas(64) ElemData {
+        gsMatrix<T>        points;
+        gsVector<T>        quWeights;
+        size_t             patchInd; /* last to minimize padding */
+
+        ElemData(gsMatrix<T> &p, gsVector<T> &q, size_t patchInd)
+            : points(p), quWeights(q), patchInd(patchInd) {}
+    };
+
+    std::vector <ElemData>                  elemContainer;
+    std::vector<std::vector<ElemData>>      localContainers(omp_get_max_threads());
+
+    // std::vector<typename gsQuadRule<T>::uPtr> quadCache(m_exprdata->multiBasis().nBases());
+    // for (size_t patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) {
+    //     quadCache[patchInd] = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
+    // }
+
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
-    bool failed = false;
-#pragma omp parallel shared(failed)
-{
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
-    auto arg_tpl = std::make_tuple(args...);
-
-    m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT);
-    //op_tuple(__printExpr(), arg_tpl);
-
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
-
-    gsVector<T> quWeights; // quadrature weights
-    _eval ee(m_matrix, m_rhs, quWeights);
-    const index_t elim = m_options.getInt("DirichletStrategy");
-    ee.setElim(dirichlet::elimination==elim);
-
-    // Note: omp thread will loop over all patches and will work on Ep/nt
-    // elements, where Ep is the elements on the patch.
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases() && (!failed); ++patchInd) //todo: distribute in parallel somehow?
+#pragma omp parallel num_threads(omp_get_max_threads())
     {
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
+        const int                           threadId    = omp_get_thread_num();
+        typename gsBasis<T>::domainIter     domIt;
+        gsMatrix<T>                         quPoints; /* TODO: Measure OPT */
+        gsVector<T>                         quWeights;
 
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-        m_exprdata->getElement().set(*domIt,quWeights);
-
-        // Start iteration over elements of patchInd
-#       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good() && (!failed); domIt->next(nt) )
-#       else
-        for (; domIt->good(); domIt->next() )
-#       endif
+        for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
         {
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           m_exprdata->points(), quWeights);
+            domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+            typename gsQuadRule<T>::uPtr    QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
+            size_t numElements = domIt->numElements();
+            localContainers[threadId].reserve(localContainers[threadId].size() + numElements);
 
-            if (m_exprdata->points().cols()==0)
-                continue;
-
-// Activate the try-catch only if G+Smo is not in DEBUG
-#ifdef NDEBUG
-            // Perform required pre-computations on the quadrature nodes
-            try
+# ifdef _OPENMP
+            const int   nt          = omp_get_num_threads();
+            for (domIt->next(threadId); domIt->good(); domIt->next(nt))
+# else
+            for (; domIt->good(); domIt->next() )
+# endif
             {
-            m_exprdata->precompute(patchInd);
-            //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
-            }
-            catch (...)
-            {
-                // #pragma omp single copyprivate(failed) // broadcasting "failed". Does not work
-                #pragma omp atomic write
-                failed = true;
-                break;
-            }
-#else
-            m_exprdata->precompute(patchInd);
-#endif
+                const auto &l   = domIt->lowerCorner();
+                const auto &u   = domIt->upperCorner();
 
-
-            // Assemble contributions of the element
-            op_tuple(ee, arg_tpl);
+                QuRule->mapTo(l, u, quPoints, quWeights);
+                localContainers[threadId].emplace_back(quPoints, quWeights, patchInd);
+                // std::cout << "\nElement ID: " << domIt->id() << std::endl;
+                // std::cout << "Patch ID: " << patchInd << std::endl;
+                // std::cout << "Lower Corner: " << l << std::endl;  // Check if this prints valid values
+                // std::cout << "Upper Corner: " << u << std::endl;  // Check if this prints valid values
+            }
         }
     }
-}//omp parallel
-    // Throw something else?? (floating point exception?)
-    GISMO_ENSURE(!failed,"Assembly failed due to an error");
+
+    elemContainer.clear();
+    for (const auto& localContainer : localContainers) {
+        elemContainer.insert(elemContainer.end(), localContainer.begin(), localContainer.end());
+    }
+
+    // std::cout << "Number of elements of current patch: " << domIt->numElements() << std::endl;
+    // size_t  numElements = domIt->numElements();
+
+    size_t  numElements = elemContainer.size();
+    // std::cout << "\n Total number of elements processed: " << numElements << std::endl;
+
+    // std::vector<gsSparseMatrix<T>> matrices;
+    // matrices.reserve(omp_get_max_threads());
+
+    // int     nt;
+
+    // m_exprdata->cleanUp();
+
+    #pragma omp parallel
+    {
+        const int   nt = omp_get_num_threads();
+        const int   tid = omp_get_thread_num();
+        size_t      chunkSize = numElements / nt;
+        size_t      remainder = numElements % nt;
+        size_t      start = (tid * chunkSize) + std::min(static_cast<size_t>(tid), remainder);
+        size_t      end   = start + chunkSize + (static_cast<size_t>(tid) < remainder ? 1 : 0);
+
+        auto arg_tpl = std::make_tuple(args...);
+
+        // __printExpr pE;
+        // op_tuple(pE, arg_tpl); // print the expression
+
+        m_exprdata->parse(arg_tpl);
+        m_exprdata->activateFlags(SAME_ELEMENT);
+
+        gsVector<T>     quWeights;
+        _eval           eval(m_matrix, m_rhs, quWeights); // pass by reference the vector of Quadrature Weights
+        const index_t   elim = m_options.getInt("DirichletStrategy");
+        eval.setElim(dirichlet::elimination == elim);
+
+        //#pragma omp simd
+        for (size_t i = start; i < end; ++i) {
+            ElemData    eldata = elemContainer[i];
+            // typename gsQuadRule<T>::uPtr    &QuRule = quadCache[eldata.patchInd];
+            // QuRule->mapTo(eldata.lowerCorner, eldata.upperCorner, m_exprdata->points(), quWeights);
+
+            if (eldata.points.cols() > 0) {
+                m_exprdata->precomputeThreadLocal(eldata.patchInd, eldata.points);
+                /* Print measures and see if they are used in _G.data().measures */
+                // gsInfo << " In Assembler: " << m_exprdata->multiPatchData().measures << "\n\n\n";
+                eval.m_quWeights = eldata.quWeights;
+                op_tuple(eval, arg_tpl);
+            }
+        }
+    }
     m_matrix.makeCompressed();
 }
 
