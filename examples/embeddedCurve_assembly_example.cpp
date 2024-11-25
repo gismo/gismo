@@ -122,7 +122,7 @@ public:
         GISMO_ASSERT(_C.source().targetDim() == _S.source().domainDim(), "The curve and surface must have the same target dimension");
     }
 
-    mutable gsMatrix<Scalar> theta, dtheta, bGrads, res;
+    mutable gsMatrix<Scalar> theta, dtheta, bGrads, sJac, res;
     const gsFunctionSet<Scalar> & Spatch;
 
 #   define Eigen gsEigen
@@ -139,18 +139,29 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        // NEEDED FOR ARTIFICIAL ADDITION OF EXTRA ZERO FOR 2D
-        res.resize(_u.cardinality(),cols()); // cols==3
-
-        const index_t A = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
         // The parametric coordinates of the surface are the evaluation of the curve at point k
         theta = _C.data().values[0].col(k);
         dtheta = _C.data().values[1].reshapeCol(k,1,_C.data().dim.second).transpose(); // VERIFY
 
+        const gsMultiBasis<Scalar> & mb = static_cast<const gsMultiBasis<Scalar>&>(_u.source());
+        GISMO_ASSERT( dynamic_cast<const gsMultiBasis<Scalar>*>(&_u.source()), "error");
+
+        const index_t A = mb.basis(0).active(theta).rows(); // _u.data().actives.rows()
+
+        res.resize(A*_u.dim(),cols()); // cols==3
+        res.setZero();
+
         // Take the gradient of the basis functions
-        bGrads = _u.data().values[1].col(k);
-        for (index_t d = 0; d!= cols(); ++d) // for all basis function components
+        bGrads = mb.basis(0).deriv(theta);
+
+        // bGrads = _u.data().values[1].col(k);
+        for (index_t d = 0; d!= _u.dim(); ++d) // for all basis function components
         {
+            /// NOT USED YET
+            sJac  = Spatch.deriv(theta);
+            sJac.transposeInPlace();
+            sJac.resize(_S.source().domainDim(),_S.source().targetDim());
+
             const short_t s = d*A;
             for (index_t j = 0; j!= A; ++j) // for all actives
             {
@@ -169,14 +180,15 @@ public:
 
     index_t rows() const { return 1; }
 
-    index_t cols() const { return _u.dim(); }
+    index_t cols() const { return 3; }
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        evList.add(_u);
-        _u.data().flags |= NEED_ACTIVE | NEED_GRAD; // need actives for cardinality
+        // CANNOT BE PRECOMPUTED SINCE IT HAS TO BE COMPUTED ON C
+        // evList.add(_u);
+        // _u.data().flags |= NEED_ACTIVE | NEED_VALUE | NEED_GRAD; // need actives for cardinality
 
         // evList.add(_S);
         // _S.data().flags |= NEED_DERIV;
@@ -253,7 +265,7 @@ public:
             GISMO_ERROR("The target dimension of the surface must be 2 or 3, but is "<<_S.source().targetDim());
     }
 
-    index_t rows() const { return _C.source().targetDim(); }
+    index_t rows() const { return 3; }
 
     index_t cols() const { return 1; }
 
@@ -347,7 +359,7 @@ public:
 
     index_t rows() const { return 1; }
 
-    index_t cols() const { return _u.dim(); }
+    index_t cols() const { return 3; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -411,7 +423,7 @@ public:
         return res;
     }
 
-    index_t rows() const { return _C.source().targetDim(); }
+    index_t rows() const { return 3; }
 
     index_t cols() const { return 1; }
 
@@ -507,7 +519,7 @@ public:
 
     index_t rows() const { return 1; }
 
-    index_t cols() const { return _u.dim(); }
+    index_t cols() const { return 3; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -676,8 +688,12 @@ int main(int argc, char *argv[])
     auto G_surf  = exprAssembler.getMap(mp_surf);
     // auto u_curve = exprAssembler.getSpace(basis_curve); // not needed...
     auto u_surf  = exprAssembler.getSpace(basis_surf,mp_surf.geoDim());
+    gsDebugVar(mp_surf.geoDim());
     // Declare expression evaluator from assembler
     gsExprEvaluator<> exprEvaluator(exprAssembler);
+
+    // auto u_surf = exprAssembler.getSpace(basis_surf,mp_surf.geoDim(),G_curve);
+    // auto G_surf = exprAssembler.getMap(mp_surf,G_curve);
 
     gsVector<> gamma(1);
     gamma << 0.5;
@@ -686,7 +702,7 @@ int main(int argc, char *argv[])
     gsInfo << "normal vector   = "<<exprEvaluator.eval( gismo::expr::cnv(G_surf, G_curve), gamma ).transpose() << "\n";
     gsInfo << "tangent vector  = "<<exprEvaluator.eval( gismo::expr::ctv(G_surf, G_curve), gamma ).transpose() << "\n";
     gsInfo << "binormal vector = "<<exprEvaluator.eval( gismo::expr::cbv(G_surf, G_curve), gamma ).transpose() << "\n";
-    // gsInfo << "variation of tv = "<<exprEvaluator.eval( gismo::expr::ctv_var1(u_surf,G_surf, G_curve), gamma ) << "\n";
+    gsInfo << "variation of tv = "<<exprEvaluator.eval( gismo::expr::ctv_var1(u_surf,G_surf, G_curve), gamma ) << "\n";
     // gsInfo << "variation of nv = "<<exprEvaluator.eval( gismo::expr::cnv_var1(u_surf,G_surf, G_curve), gamma ) << "\n";
     // BREAKS:
     // gsInfo << "variation of bv = "<<exprEvaluator.eval( gismo::expr::cbv_var1(u_surf,G_surf, G_curve), gamma ) << "\n";
