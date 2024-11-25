@@ -250,18 +250,22 @@ public:
             //gsInfo << "curnode "<< curNode <<"\n";
             if ( !curNode->isLeaf() )
             {   //property: tree has no singles
+                GISMO_ASSERT( nullptr!=curNode->left, "Problem: left child is NULL.");
                 curNode = curNode->left;
             }
             else
             {
-                while (curNode->parent != NULL &&
-                       curNode != curNode->parent->left)
+                while (!curNode->isRoot() &&
+                       !curNode->isLeftChild())
                     curNode = curNode->parent;
 
                 if ( curNode->isRoot() )
                     break;
                 else
+                {
+                    GISMO_ASSERT( nullptr!=curNode->parent->right, "Problem: right child is NULL.");
                     curNode = curNode->parent->right;
+                }
             }
         }
         return i;
