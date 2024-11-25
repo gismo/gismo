@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 3;
+    index_t numRefine  = 2;
     index_t numElevate = 0;
     index_t maxIter = 50;
     double eps{1e-5}; // pinalization coefficient
@@ -85,15 +85,24 @@ int main(int argc, char *argv[])
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    mp.degreeElevate(2);
+    gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // //... patch 2 (L-shape)
+    // gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1, -1.0, 0.0);
+    // mptp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
+
+    // ... need regularity to be at least C^1
+    mptp.degreeElevate(2);
+    for(size_t i =0; i<mptp.nPatches(); ++i)
+        mp.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mptp.patch(i)) ));
+    mp.addAutoBoundaries();
+
     //..... Test 2
     // Manufactured solition
-    gsFunctionExpr<> s("1./(1.+exp((x + y  - 0.5)/0.01))",2);
+    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
     // // Manufactured Grad solition
-    // gsFunctionExpr<> sP("-1.92874984796392e-20*exp(100.0*x + 100.0*y)/(1.92874984796392e-22*exp(100.0*x + 100.0*y) + 1.0)**2","-1.92874984796392e-20*exp(100.0*x + 100.0*y)/(1.92874984796392e-22*exp(100.0*x + 100.0*y) + 1.0)**2",2);
+    //gsFunctionExpr<> sP("2.06115362243856e-7*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2","-2.06115362243856e-7*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2",2);
     // // Right-hand side function
-    gsFunctionExpr<> SourceFunc("3.85749969592784e-18*exp(100.0*x + 100.0*y)/(1.92874984796392e-22*exp(100.0*x + 100.0*y) + 1.0)**2 - 1.48803039040833e-39*exp(200.0*x + 200.0*y)/(1.92874984796392e-22*exp(100.0*x + 100.0*y) + 1.0)**3",2);
+    gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
 
     //..... Test 2
     // convex function
@@ -105,7 +114,7 @@ int main(int argc, char *argv[])
     //
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    gsFunctionExpr<> f("1.+10.( 1/(1.+exp((x + y  - 0.6)/0.01)) - 1/(1.+exp((x + y  - 0.3)/0.01)))",2);
+    gsFunctionExpr<> f("1.+10.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)))",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
 
@@ -166,21 +175,17 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
-    //geometryMap G = A.getMap(mp);
+    geometryMap G = A.getMap(mp);
 
     // Set the discretization space
-    //space u = A.getSpace(dbasis);
+    space u = A.getSpace(dbasis);
 
     // Set the source term
-    //auto ff = A.getCoeff(f, G);
-
-
-    //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
-    //auto u_I = ev.getVariable(sI, G);
+    auto ff = A.getCoeff(f, G);
 
     // Solution vector and solution variable
-    //gsMatrix<> solVector;
-    //solution u_sol = A.getSolution(u, solVector);
+    gsMatrix<> solVector;
+    solution u_sol = A.getSolution(u, solVector);
 
     //! [Problem setup] ***-------------------Initailisation for adaptive mapping ---------------------***
     gsMultiPatch<> Psi;
@@ -221,35 +226,22 @@ int main(int argc, char *argv[])
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     for (int r=0; r<=numRefine; ++r)
     {
-    // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
+        // Elements used for numerical integration
+        A.setIntegrationElements(dbasis);
+        gsExprEvaluator<> ev(A);
 
-    // Set the geometry map
-    geometryMap G = A.getMap(mp);
+        // Set the geometry map
+        geometryMap G = A.getMap(mp);
 
-    // Set the discretization space
-    space u = A.getSpace(dbasis);
+        // Set the discretization space
+        space u = A.getSpace(dbasis);
 
-    // Set the source term
-    auto ff = A.getCoeff(f, G);
+        // Set the geometry optimal map
+        geometryMap PP = A.getMap(Psi);    
+        // Set the discretization space // different boundary condition !
+        space ru = A.getSpace(dbasis);
 
-    // Solution vector and solution variable
-    gsMatrix<> solVector;
-    solution u_sol = A.getSolution(u, solVector);
-
-    //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
-    //auto u_I = ev.getVariable(sI, G);
-
-    geometryMap PP = A.getMap(Psi);    
-    // Set the discretization space // different boundary condition !
-    space ru = A.getSpace(dbasis);
-    // Solution vector and solution variable
-    gsMatrix<> rsolVector;
-    solution ru_sol = A.getSolution(ru, rsolVector);
-    // Recover manufactured solution for Poisson equation
-    auto u_ex = ev.getVariable(s, PP);
-    //*********************************************************//
+        //*********************************************************//
 
         dbasis.uniformRefine();
         //mp.uniformRefine();
@@ -428,21 +420,21 @@ int main(int argc, char *argv[])
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
 
-        if(hadaptive){
+        if(hadaptive && r < numRefine){
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
-        ev.integralElWise( ( igrad(u_sol, PP)).sqNorm()*meas(PP) );
+        ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm()*meas(PP) );
         const std::vector<real_t> & eltErrs  = ev.elementwise();
         //! [errorComputation]
 
         // --------------- adaptive refinement ---------------
-            // Specify cell-marking strategy...
-            MarkingStrategy adaptRefCrit = PUCA;
-            //MarkingStrategy adaptRefCrit = GARU;
-            //MarkingStrategy adaptRefCrit = errorFraction;
+        // Specify cell-marking strategy...
+        MarkingStrategy adaptRefCrit = PUCA;
+        //MarkingStrategy adaptRefCrit = GARU;
+        //MarkingStrategy adaptRefCrit = errorFraction;
 
-            // ... and parameter.
-            const real_t adaptRefParam = 0.7;
+        // ... and parameter.
+        const real_t adaptRefParam = 0.7;
         //! [adaptRefinementPart]
         // Mark elements for refinement, based on the computed local errors and
         // the refinement-criterion and -parameter.
@@ -451,36 +443,7 @@ int main(int argc, char *argv[])
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
         // Refine the marked elements with a 1-ring of cells around marked elements
         gsRefineMarkedElements( dbasis, elMarked, 1 );
-        //! [adaptRefinementPart]
-        //for (const auto& iref : elMarked){
-        //     gsInfo << rsolVector.coeff(iref) << "~\n";
-        //}
-        //! [Export to Paraview]
-
-        // Export the final solution
-        if( plot && r==numRefine+1 )
-        {
-
-            // --------------- define Pde ---------------
-            // diffusion coefficient:
-            gsFunctionExpr<> coeff_diff("1.000001","0","0","0.000000",2);
-            // convection coefficient:
-            gsFunctionExpr<> coeff_conv("0/sqrt(13)","0/sqrt(13)",2);
-            // reaction coefficient:
-            gsFunctionExpr<> coeff_reac("0",2);
-            //! [Function data]
-            //! [definePde]
-            gsConvDiffRePde<real_t> cdrPde(Psi, bc, & coeff_diff,& coeff_conv, & coeff_reac, & SourceFunc);
-            // Construct assembler
-            gsCDRAssembler<real_t> cdrAss( cdrPde, dbasis);
-            // Construct the solution as a scalar field
-            gsField<> solField;
-           solField = cdrAss.constructSolution(rsolVector);
-            // Write the computed solution to paraview files
-            gsWriteParaview<>( solField, "adaptRef", 1000, true);
-            // Run paraview
-            gsFileManager::open("adaptRef.pvd");
-            }
+        gsRefineMarkedElements( Psi, elMarked, 1 );
         }
     }
     //! [Solver loop]    
@@ -520,8 +483,8 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
         collection.newTimeStep(&Psi);
-        //collection.addField(ru_sol,"numerical solution");
-        //collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
+        collection.addField(ru_sol,"numerical solution");
+        collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();
         collection.save();
