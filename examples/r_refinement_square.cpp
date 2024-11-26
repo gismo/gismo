@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     //
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    gsFunctionExpr<> f("1.+10.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)))",2);
+    gsFunctionExpr<> f("1.+10.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) + 5./cosh( 10.*((x-0.2)**2 - 0.9) ) )",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
 
@@ -196,6 +196,9 @@ int main(int argc, char *argv[])
     // Recover manufactured solution for Poisson equation
     auto u_ex = ev.getVariable(s, PP);
 
+    // Recover manufactured density function for Poisson equation
+    auto fp = ev.getVariable(f, PP);
+
     // Set the discretization space // different boundary condition !
     space ru = A.getSpace(dbasis);
     
@@ -217,8 +220,7 @@ int main(int argc, char *argv[])
     gsSparseSolver<>::CGDiagonal solver;
 
     gsVector<>  h1err(numRefine+1), l2err(numRefine+1); //l2err(numRefine+1) : The solution exists up to an additive constant fro MAE equation.
-    gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n"
-        "\nDoFs: ";
+    gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);    
     gsStopwatch timer;
     //...
@@ -262,7 +264,7 @@ int main(int argc, char *argv[])
         A.initSystem();
         setup_time += timer.stop();
 
-        gsInfo<< A.numDofs() <<std::flush << "\n";
+        gsInfo<< "\nDoFs: " << A.numDofs() <<std::flush << "\n";
 
         timer.restart();
 
@@ -486,6 +488,7 @@ int main(int argc, char *argv[])
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
         collection.addField(u_ex, "exact solution");
+        collection.addField(fp,"Density function");
         collection.saveTimeStep();
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");
