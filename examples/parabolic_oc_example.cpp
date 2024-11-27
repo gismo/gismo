@@ -161,7 +161,8 @@ int main(int argc, char *argv[])
     cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
     cmd.addInt   ("y", "PreconderType",         "0=Direct, 1=FD in time and direct in space, 2=FD in time and multigrid in space", pcTypeIdx);
     cmd.addInt   ("d", "DesiredState",          "0=const (like i.c), 1=follows parabolic proces", desiredStateIdx);
-    cmd.addInt   ("",  "ControlSpace",          "0=Reduced continuity (1 for time, 2 for space); 1=equal to state space", controlSpaceIdx);
+    cmd.addInt   ("",  "ControlSpace",          "0=Reduced continuity (1 for time, 2 for space); 1=equal to state space; "
+                                                "2=Reduced continuity for time, full for space", controlSpaceIdx);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -184,7 +185,7 @@ int main(int argc, char *argv[])
     if (obsTypeIdx<0      || obsTypeIdx>=(int)(util::size(obstypes)) ) { gsInfo << "Unfeasible choice for --ObservationType (-o).\n"; ok=false; }
     if (pcTypeIdx<0       || pcTypeIdx>2                             ) { gsInfo << "Unfeasible choice for --PreconderType (-y).\n";   ok=false; }
     if (desiredStateIdx<0 || desiredStateIdx>1                       ) { gsInfo << "Unfeasible choice for --DesiredState (-d).\n";    ok=false; }
-    if (controlSpaceIdx<0 || controlSpaceIdx>1                       ) { gsInfo << "Unfeasible choice for --ControlSpace.\n";         ok=false; }
+    if (controlSpaceIdx<0 || controlSpaceIdx>2                       ) { gsInfo << "Unfeasible choice for --ControlSpace.\n";         ok=false; }
     if (!ok) return -1;
 
     gsInfo << "Run parabolic_oc_example with options:\n" << cmd << std::endl;
@@ -257,7 +258,7 @@ int main(int argc, char *argv[])
         tiU.uniformRefine();
     }
 
-    if (controlSpaceIdx==0)
+    if (controlSpaceIdx==0 || controlSpaceIdx==2)
         for ( size_t i = 0; i < tiU.nBases(); ++ i )
             tiU[i].reduceContinuity(1);
 
