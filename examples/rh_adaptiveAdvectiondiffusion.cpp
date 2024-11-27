@@ -60,12 +60,13 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 4;
+    index_t numRefine  = 0;// for local refinement
+    index_t UnifRefine  = 4;// initial refinement
     index_t numElevate = 0;
     index_t maxIter = 30;
     double eps{1e-5}; // pinalization coefficient
     double l2errRes{0.}, tolerancePicard{1e-8};
-    index_t hadaptive = false;
+    index_t hadaptive = true;
     bool last = false, export_b64{false};
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
     bool PNormalCP{true};
@@ -85,10 +86,10 @@ int main(int argc, char *argv[])
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
-    // gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     // //... patch 2 (L-shape)
-    gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1, -1.0, 0.0);
-    mptp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
+    // gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1, -1.0, 0.0);
+    // mptp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
 
     // ... need regularity to be at least C^1
     mptp.degreeElevate(2);
@@ -97,12 +98,16 @@ int main(int argc, char *argv[])
     mp.addAutoBoundaries();
 
     //..... Test 2
+    // Define  Dirichlet boundary conditions
+    gsFunctionExpr<> Dg("if( y<=0.2, if( x <1, 1, 0 ), 0 )", 2);
     // Manufactured solition
-    gsFunctionExpr<> s("1./(1.+exp((y - x  - 1.)/0.01))",2);
+    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
+   // convection coefficient:
+    gsFunctionExpr<> coeff_conv("cos(pi/4)*x+sin(pi/4)*y",2);
     // // Manufactured Grad solition
     //gsFunctionExpr<> sP("2.06115362243856e-7*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2","-2.06115362243856e-7*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2",2);
     // // Right-hand side function
-    gsFunctionExpr<> SourceFunc("7.44015195204167e-40*exp(-100.0*x + 100.0*y)/(3.72007597602084e-44*exp(-100.0*x + 100.0*y) + 1.0)**2 - 5.53558610694695e-83*exp(-200.0*x + 200.0*y)/(3.72007597602084e-44*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
+    gsFunctionExpr<> SourceFunc("0.",2);
 
     //..... Test 2
     // convex function
@@ -114,7 +119,7 @@ int main(int argc, char *argv[])
     //
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 1.1)/0.01)) - 1/(1.+exp((y - x  - 0.95)/0.01)) )",2);
+    gsFunctionExpr<> f("1.+0.*( 1/(1.+exp((y -x  - 1.1)/0.01)) - 1/(1.+exp((y - x  - 0.95)/0.01)) )",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";// + 5./cosh( 10.*((x-0.2)**2 - 0.9) )
 
@@ -193,6 +198,8 @@ int main(int argc, char *argv[])
     // Set the source term for Poisson equation
     auto SFunc = A.getCoeff(SourceFunc, PP);
 
+    // Set the source term for Poisson equation
+    auto coeffConv = A.getCoeff(coeff_conv, PP);
     // Recover manufactured solution for Poisson equation
     auto u_ex = ev.getVariable(s, PP);
 
@@ -212,7 +219,7 @@ int main(int argc, char *argv[])
     for ( gsMultiPatch<>::const_biterator
             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
     {
-       bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
+       bc.addCondition( *bit, condition_type::dirichlet, &Dg,0, false);
     }
     //... END Initailisation
 
@@ -226,10 +233,13 @@ int main(int argc, char *argv[])
     gsStopwatch timer;
     //...
     mp.uniformRefine();
-    dbasis.uniformRefine();
-    //mp.uniformRefine();
-    Psi.uniformRefine();
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
+    for (int r=0; r<=UnifRefine; ++r)
+    {
+        dbasis.uniformRefine();
+        //mp.uniformRefine();
+        Psi.uniformRefine();
+    }
     for (int r=0; r<=numRefine; ++r)
     {
         // Elements used for numerical integration
@@ -249,10 +259,10 @@ int main(int argc, char *argv[])
 
         //*********************************************************//
 
-        dbasis.uniformRefine();
-        // mp.uniformRefine();
-        Psi.uniformRefine();
-        // Compute the system matrix and right-hand side
+        // dbasis.uniformRefine();
+        // // mp.uniformRefine();
+        // Psi.uniformRefine();
+        // // Compute the system matrix and right-hand side
 
         //... nromalisation of density function
         auto CoeffDensity{ev.integral(ff.val() * meas(G))};
@@ -405,7 +415,7 @@ int main(int argc, char *argv[])
         timer.restart();
 
         A.assemble(
-        igrad(ru, PP) * igrad(ru, PP).tr() * meas(PP) //matrix
+        1e-6*igrad(ru, PP) * igrad(ru, PP).tr() * meas(PP)+ ru * (igrad(coeffConv, PP) * igrad(ru, PP).tr()) * meas(PP) //matrix
         ,
         ru * SFunc * meas(PP) //rhs vector
         );
