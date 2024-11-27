@@ -34,16 +34,14 @@ int main(int argc, char *argv[])
    //! [Function data]
    // Define exact solution (will be used for specifying Dirichlet boundary conditions
    //gsFunctionExpr<> g("if( y<-x/2-1/2, 1, 0 )", 2);
-    // Define  Dirichlet boundary conditions
-   //gsFunctionExpr<> g("if( y <= -0.2, if( x >= -1 && x != 1, 1, 0 ), 0)", 2);
-   gsFunctionExpr<> g("if( y<=-0.8, if( x <1, 1, 0 ), 0 )", 2);
+   gsFunctionExpr<> g("if( y>=0, if( x <=-1, 1, 0 ), 0 )", 2);
    // Define source function
    gsFunctionExpr<> rhs("0",2);
 
    // diffusion coefficient:
    gsFunctionExpr<> coeff_diff("0.000001","0","0","0.000001",2);
    // convection coefficient:
-   gsFunctionExpr<> coeff_conv("3/sqrt(2)","3sqrt(2)",2);
+   gsFunctionExpr<> coeff_conv("3/sqrt(13)","-2/sqrt(13)",2);
    // reaction coefficient:
    gsFunctionExpr<> coeff_reac("0",2);
    //! [Function data]
