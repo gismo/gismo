@@ -122,7 +122,7 @@ public:
     :
     m_manualLevels(manualLevels)
     {
-        if (!m_manualLevels) 
+        if (!m_manualLevels)
         {
             initialize_class(tbasis);
             // Build the characteristic matrices
@@ -292,7 +292,7 @@ public:
             m_deg            = o.m_deg;
             m_tree           = o.m_tree;
             m_xmatrix        = o.m_xmatrix;
-            m_manualLevels   = o.m_manualLevels; 
+            m_manualLevels   = o.m_manualLevels;
             m_uIndices       = o.m_uIndices;
 
             freeAll( m_bases );
@@ -336,7 +336,7 @@ public:
 
     /// Adds a level, only if manual levels are activated.
     void addLevel( const gsTensorBSplineBasis<d, T>& next_basis);
-    
+
     /// \brief Inserts a domain into the basis
     void only_insert_box(point const & k1, point const & k2, int lvl);
 
@@ -823,9 +823,31 @@ public:
 
     /// @brief Returns the grading parameter,
     /// i.e. the maximum level difference between any two interacting basis functions
-   index_t gradingParameter() const;
+    index_t gradingParameter() const;
+
+    /// @brief Returns the number of active basis functions over an element in the underlying tensor product basis
+    index_t normalLoading() const { return std::pow(degree(0) + 1, dim()); }
+
+    /// @brief Returns the max number of active basis functions over an element
+    index_t maxLoading() const;
+
+    /// @brief Returns the min number of active basis functions over an element
+    index_t minLoading() const;
 
     /// @brief Returns the average number of active basis functions over an element
+    real_t averageLoading() const;
+
+    /// @brief Returns the number of overloaded elements,
+    /// i.e. the number of elements that have more active basis functions than normal loading
+    index_t overloadedElements() const;
+
+    /// @brief Returns the percentage of overloaded elements
+    real_t overloadedElementsPercentage() const
+    {
+        return overloadedElements()/static_cast<real_t>(numElements()) * 100.0;
+    }
+
+    /// @brief Returns the average of active basis functions over the overloaded elements
     real_t averageOverloading() const;
 
 /*
