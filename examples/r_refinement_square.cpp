@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 2;
     index_t numElevate = 0;
-    index_t maxIter = 50;
+    index_t maxIter = 30;
     double eps{1e-5}; // pinalization coefficient
     double l2errRes{0.}, tolerancePicard{1e-8};
     index_t hadaptive = true;
@@ -85,10 +85,10 @@ int main(int argc, char *argv[])
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
-    gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     // //... patch 2 (L-shape)
-    // gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1, -1.0, 0.0);
-    // mptp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
+    gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1, -1.0, 0.0);
+    mptp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
 
     // ... need regularity to be at least C^1
     mptp.degreeElevate(2);
@@ -114,11 +114,11 @@ int main(int argc, char *argv[])
     //
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    gsFunctionExpr<> f("1.+10.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) + 5./cosh( 10.*((x-0.2)**2 - 0.9) ) )",2);
+    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
-    gsInfo<<"Source function "<< f << "\n";
+    gsInfo<<"Source function "<< f << "\n";// + 5./cosh( 10.*((x-0.2)**2 - 0.9) )
 
-    gsInfo<<"The domain is "<< mp.detail() << "\n";
+    gsInfo<<"The Initial domain is "<< mp.detail() << "\n";
 
     gsFunctionExpr<> bfunc("0",2);
     gsBoundaryConditions<> bc_mae;
@@ -219,12 +219,16 @@ int main(int argc, char *argv[])
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
-    gsVector<>  h1err(numRefine+1), l2err(numRefine+1); //l2err(numRefine+1) : The solution exists up to an additive constant fro MAE equation.
+    gsVector<>  h1err(numRefine+1), l2err(numRefine+1);
+    gsVector<int>  DoFPDE(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);    
     gsStopwatch timer;
     //...
     mp.uniformRefine();
+    dbasis.uniformRefine();
+    //mp.uniformRefine();
+    Psi.uniformRefine();
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     for (int r=0; r<=numRefine; ++r)
     {
@@ -246,7 +250,7 @@ int main(int argc, char *argv[])
         //*********************************************************//
 
         dbasis.uniformRefine();
-        //mp.uniformRefine();
+        // mp.uniformRefine();
         Psi.uniformRefine();
         // Compute the system matrix and right-hand side
 
@@ -377,6 +381,15 @@ int main(int argc, char *argv[])
         // ... correct boundary
         if (PNormalCP)
             ProjectionNormalCPoints(Psi, mp);
+        if(mp.nPatches()>1){
+        Psi.addInterface(0,2,1,1);
+        Psi.addInterface(1,4,2,3);
+        }
+        Psi.addAutoBoundaries();
+        if (r==0){
+        gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
+        gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+        }
         //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
 
         ru.setup(bc, dirichlet::l2Projection, 0);
@@ -414,6 +427,7 @@ int main(int argc, char *argv[])
 
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
+        DoFPDE[r] = A.numDofs();
 
         timer.restart();
         l2err[r]= math::sqrt( ev.integral( (u_ex - ru_sol).sqNorm() * meas(PP) ) );
@@ -460,8 +474,9 @@ int main(int argc, char *argv[])
     
 
     //! [Error and convergence rates]
-    gsInfo<< "\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
+    gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
+    gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
 
     if (!last && numRefine>0)
     {
