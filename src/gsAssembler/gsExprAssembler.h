@@ -143,7 +143,7 @@ public:
 
     const gsMultiPatch<T>& getGeometryMap() const
     {
-        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap); 
+        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap);
     }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
@@ -653,11 +653,11 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     /// dirichlet treatment? elimination ????
 
     //storage of quadrature points, TP, ... non-linear assembly.
-    
+
     //gsExpressions.h -> split ?
 
     //parallel interface assembly..
-    
+
     // mpi assemly. ???
 }
 
@@ -786,6 +786,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
             m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+        // typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+        //     m_exprdata->domain().iterator();
+
         m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements of patchInd

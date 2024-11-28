@@ -3,30 +3,51 @@
     @brief Abstracgt Base class representing a domain. i.e. a
     collection of elements (triangles, rectangles, cubes, simplices.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsDomainIterator.h>
+#include <gsCore/gsBoundary.h>
 
 namespace gismo
 {
 
-/** 
+/**
     @brief Class representing a domain. i.e. a collection of
     elements (triangles, rectangles, cubes, simplices.
 
     \warning  This interface is under development and is not used yet...
-    
+
     \ingroup Core
 */
+
+
+/*
+
+    TODO (later):
+        /// Begin iterator (pointer)
+    // virtual gsDomainIterator<T> begin() const
+    // { gsWarn << "gsDomain: begin() not defined at "<< *this << "\n"; return gsDomainIterator<T>(); }
+
+    /// End iterator (pointer)
+    // virtual gsDomainIterator<T> end() const
+    // { gsWarn << "gsDomain: end() not defined at "<< *this << "\n"; return gsDomainIterator<T>(); }
+
+
+ */
+
+
+
+
 template<class T>
 class gsDomain
 {
@@ -45,46 +66,72 @@ public:
 
 public:
 
-    /// dimension of the domain
-    virtual short_t dim() const
-    { gsWarn << "gsDomain: dimension() not defined at "<< *this << "\n"; return 0; }
 
-    /// Returns a bounding box for the domain
-    /// eg. This coincides to the domain in case of tensor-product domains
-    virtual gsMatrix<T> boundingBox()
-    {GISMO_NO_IMPLEMENTATION}
+    // iterator(index_t i)
 
-    /// Returns a list of elements
-    virtual gsMatrix<T> elements()
-    {GISMO_NO_IMPLEMENTATION}
+    // numSubdomains (for pieces)
 
-    /// Returns the mesh..
-    virtual gsMatrix<T> mesh()
-    {GISMO_NO_IMPLEMENTATION }
+    // From Basis:
+    // -[X] gsDomainIterator
+    // -[X] numElements
+    // -[ ] elementIndex
 
-    virtual T minMeshSize()
-    {GISMO_NO_IMPLEMENTATION}
+    // From gsDomainIterator
+    // - side
+    // - numElements
 
-    /// Returns the breaks..
-    virtual std::vector<T> breaks() const
-    {GISMO_NO_IMPLEMENTATION}
-    
-    /// Clone function. Used to make a copy of the (derived) geometry
-    virtual gsDomain* clone() const = 0;
-
-    /// Prints the object as a string.
-    virtual std::ostream &print(std::ostream &os) const = 0;
 
     /*
-      Member functions that may be implemented or not in the derived class
+        // Taking domain from basis (uses gsHDomain WHICH DOES NOT INHERIT FROM GSDOMAIN)
+        gsTHBSplineBasis<d,T> thb;
+        gsExprAssembler<> A;
+        A.setIntegrationElements(thb.domain());
+
+        // Taking domain from multiBasis
+        gsMultiBasis<T> mb;
+        gsExprAssembler<> A;
+        A.setIntegrationElements(mb.domain());
+
+        // Taking domain from set of points
+        gsMatrix<T> points;
+        gsPointDomain<T> pd(points);
+        A.setIntegrationElements(pd);
+
+     */
+
+    /** @brief Iterator over the elements of the domain.
+     *
+     * @param i The index of the domain.
+     * @param s The side of the domain (optional).
+     */
+    virtual typename gsDomainIterator<T>::uPtr domainIterator(index_t i, const boxSide s = boundary::none) = 0;
+
+    /** @brief Dimension of the domain
     */
+    virtual short_t dim() const
+    {GISMO_NO_IMPLEMENTATION}
 
-    virtual std::vector<T> unique() const 
-    { gsWarn<<"gsDomain: unique() was not defined at"<< *this <<"\n"; return std::vector<T>() ;}
+    /** @brief Number of elements in the domain
+    */
+    virtual size_t numElements(boxSide const & s = boundary::none) const
+    {GISMO_NO_IMPLEMENTATION}
 
-    void merge(gsDomain<T> * other ) 
-    { gsWarn<<"gsDomain: merge(..) was not defined in "<< *this <<"\n"; return;}
+    /** @brief Bounding box of the domain
+    */
+    virtual gsMatrix<T> boundingBox() const
+    {GISMO_NO_IMPLEMENTATION}
 
+    /** @brief Mesh of the domain
+    */
+    virtual gsMesh<T> mesh() const
+    {GISMO_NO_IMPLEMENTATION }
+
+    /// Prints the object as a string.
+    virtual std::ostream &print(std::ostream &os) const
+    {
+        os<<"Domain with dimennsion "<<dim()<<".";
+        return os;
+    }
 }; // class gsDomain
 
 /// Print (as string) operator to be used by all derived classes

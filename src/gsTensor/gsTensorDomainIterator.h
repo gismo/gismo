@@ -14,10 +14,8 @@
 #pragma once
 
 #include <gsCore/gsDomainIterator.h>
-
+#include <gsTensor/gsTensorDomain.h>
 #include <gsUtils/gsCombinatorics.h>
-
-#include <gsAssembler/gsGaussRule.h>
 
 namespace gismo
 {
@@ -39,19 +37,44 @@ private:
 
 public:
 
-    gsTensorDomainIterator(const std::vector< std::vector<T> > & breaks_)
-    : d( breaks_.size() ),
-      lower  ( gsVector<T, D>::Zero(d) ),
-      upper  ( gsVector<T, D>::Zero(d) )
+    gsTensorDomainIterator(const gsTensorDomain<T,D> & domain)
+    : lower  ( gsVector<T, D>::Zero(D) ),
+      upper  ( gsVector<T, D>::Zero(D) )
     {
-        center  = gsVector<T, D>::Zero(d);
+        center  = gsVector<T, D>::Zero(D);
 
         // compute breaks and mesh size
-        meshStart.resize(d);
-        meshEnd.resize(d);
-        curElement.resize(d);
+        meshStart.resize(D);
+        meshEnd.resize(D);
+        curElement.resize(D);
+
+        for (int i=0; i < D; ++i)
+        {
+            meshEnd[i]   = domain.breaksEnd() - 1;
+            curElement[i] = meshStart[i] = domain.breaksBegin(i);
+
+            if (meshEnd[i] == meshStart[i])
+                m_isGood = false;
+        }
+
+        if (m_isGood)
+            update();
+    }
+
+    // GISMO_DEPRECATED??
+    gsTensorDomainIterator(const std::vector< std::vector<T> > & breaks_)
+    : lower  ( gsVector<T, D>::Zero(D) ),
+      upper  ( gsVector<T, D>::Zero(D) )
+    {
+        GISMO_ASSERT(breaks_.size() == D, "Number of knot vectors must match the dimension of the domain.");
+        center  = gsVector<T, D>::Zero(D);
+
+        // compute breaks and mesh size
+        meshStart.resize(D);
+        meshEnd.resize(D);
+        curElement.resize(D);
         breaks = breaks_;
-        for (int i=0; i < d; ++i)
+        for (int i=0; i < D; ++i)
         {
             meshEnd[i]   = breaks[i].end() - 1;
             curElement[i] = meshStart[i] = breaks[i].begin();
@@ -68,16 +91,16 @@ public:
     // note: this assumes that b is a tensor product basis
     gsTensorDomainIterator(const gsBasis<T>& b) // to do: change to gsTensorBasis
         : gsDomainIterator<T>( b ),
-          d( m_basis->dim() ),
-          lower ( gsVector<T, D>::Zero(d) ),
-          upper ( gsVector<T, D>::Zero(d) )
+          lower ( gsVector<T, D>::Zero(D) ),
+          upper ( gsVector<T, D>::Zero(D) )
     {
+        GISMO_ASSERT(b.dim() == D, "Number of knot vectors must match the dimension of the domain.");
         // compute breaks and mesh size
-        meshStart.resize(d);
-        meshEnd.resize(d);
-        curElement.resize(d);
-        breaks.reserve(d);
-        for (int i=0; i < d; ++i)
+        meshStart.resize(D);
+        meshEnd.resize(D);
+        curElement.resize(D);
+        breaks.reserve(D);
+        for (int i=0; i < D; ++i)
         {
             breaks.push_back( m_basis->component(i).domain()->breaks() );
             // for n breaks, we have n-1 elements (spans)
@@ -130,8 +153,8 @@ public:
     /// return the tensor index of the current element
     gsVector<unsigned, D> index() const
     {
-        gsVector<unsigned, D> curr_index(d);
-        for (int i = 0; i < d; ++i)
+        gsVector<unsigned, D> curr_index(D);
+        for (int i = 0; i < D; ++i)
             curr_index[i]  = curElement[i] - breaks[i].begin();
         return curr_index;
     }
@@ -167,7 +190,7 @@ public:
         return false;
     }
 
-    index_t domainDim() const {return d;}
+    index_t domainDim() const {return D;}
 
 private:
 
@@ -176,7 +199,7 @@ private:
     /// active functions.
     void update()
     {
-        for (int i = 0; i < d; ++i)
+        for (int i = 0; i < D; ++i)
         {
             lower[i]  = *curElement[i];
             upper[i]  = *(curElement[i]+1);
@@ -188,7 +211,7 @@ private:
 //    {
 //
 //    }
-  
+
 // Data members
 public:
     using gsDomainIterator<T>::center;
@@ -199,9 +222,6 @@ protected:
     using gsDomainIterator<T>::m_isGood;
 
 private:
-    // the dimension of the parameter space
-    int d;
-
     // coordinates of the grid cell boundaries
     std::vector< std::vector<T> > breaks;
 

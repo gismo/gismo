@@ -111,15 +111,19 @@ public: // typedefs
     typedef uiterator        const_uiterator;
     typedef iterator         const_iterator;
     typedef reverse_iterator const_reverse_iterator;
-    
+
+    // Unique and shared pointers
+    typedef memory::unique_ptr< gsKnotVector<T> > uPtr;
+    typedef memory::shared_ptr< gsKnotVector<T> > Ptr;
+
 public: // iterator ends
 
     /// Returns iterator pointing to the beginning of the repeated knots.
     iterator               begin()   const;
     /// Returns iterator pointing past the end of the repeated knots.
-    iterator               end()     const;    
+    iterator               end()     const;
     /// Returns reverse iterator pointing past the end of the repeated knots.
-    reverse_iterator       rbegin()  const;    
+    reverse_iterator       rbegin()  const;
     /// Returns reverse iterator pointing to the beginning of the repeated knots.
     reverse_iterator       rend()    const;
 
@@ -131,8 +135,8 @@ public: // iterator ends
     /// Returns an iterator pointing one past the last appearance of
     /// the knot with cardinal index (ie. counted without repetitions,
     /// left ghosts mapped to negatives) equal to \a upos.
-    iterator               endAt(mult_t upos)     const;    
-    
+    iterator               endAt(mult_t upos)     const;
+
     /// Returns unique iterator pointing to the beginning of the unique knots.
     uiterator              ubegin()  const;
     /// Returns unique iterator pointing past the end of the unique knots.
@@ -145,11 +149,19 @@ public: // iterator ends
     /// Returns the smart iterator pointing to the beginning of the repeated knots.
     smart_iterator         sbegin()  const;
     /// Returns the smart iterator pointing past the end of the repeated knots.
-    smart_iterator         send()    const;    
+    smart_iterator         send()    const;
     /// Returns the reverse smart iterator pointing past the end of the repeated knots.
     reverse_smart_iterator rsbegin() const;
     /// Returns the reverse smart iterator pointing to the beginning of the repeated knots.
     reverse_smart_iterator rsend()   const;
+
+    // iterator
+    typename gsDomainIterator<T>::uPtr domainIterator(index_t i, const boxSide s = boundary::none) override
+    {
+        // NOTE: What do we do here?
+        GISMO_NO_IMPLEMENTATION
+    }
+
 
 public: // constructors
 
@@ -167,7 +179,7 @@ public: // constructors
 
     /// Returns the knots as a matrix of size  1 x size()
     gsAsConstMatrix<T> asMatrix() const {return m_repKnots;}
-    
+
 public:
     /// Returns a pointer to a copy.
     gsKnotVector* clone() const;
@@ -207,7 +219,7 @@ public: // inserting and removing
     void remove( const T knot, mult_t mult = 1 );
 
     //TODO: remove with two iterators.
-    
+
 public: // multiplicities
 
     /// Returns the multiplicity of the knot-value \a u (or zero if
@@ -312,13 +324,13 @@ public: // Findspan and value query
 
     /** \brief Returns a uiterator pointing to the first knot which
      * does not compare less than \a u.
-     * 
+     *
      *  Unlike uUpperBound, the value pointed by the iterator returned
      *  by this function may also be equivalent to \a u, and not only
      *  greater.
      */
     uiterator uLowerBound( const T u ) const;
-    
+
 public: // miscellaneous
 
     /// Print the knot vector to the given stream.
@@ -376,7 +388,7 @@ public: // miscellaneous
     {
         return u >= *domainBegin() && u <= *domainEnd();
         // equivalent:
-        // return u >= m_repKnots[m_deg] && u <= m_repKnots.end()[-m_deg-1];        
+        // return u >= m_repKnots[m_deg] && u <= m_repKnots.end()[-m_deg-1];
     }
 
     /// Removes the knots in the range [first,last)
@@ -384,7 +396,7 @@ public: // miscellaneous
 
     /// Removes the left-most \a numKnots from the knot-vector
     void trimLeft (const mult_t numKnots);
-    
+
     /// Removes the right-most \a numKnots from the knot-vector
     void trimRight(const mult_t numKnots);
 
@@ -476,7 +488,7 @@ public: // Deprecated functions required by gsKnotVector.
 
 public:
     // TODO If stays, make it private.
-    
+
     /// Resets the knot vector so that it has \a interior knots
     /// between \a first and \a last, each of them repeated \a
     /// mult_interior times (and the endpoints repeated \a mult_ends
@@ -545,7 +557,7 @@ public:
     }
 
     // TODO Write properly.
-     
+
     /// Compresses the knot-vector by making the knot-sequence strictly
     /// increasing
 /*
@@ -583,7 +595,7 @@ public:
     bool includes(const gsKnotVector<T> & other) const;
 
     /** \brief Computes the difference between \a this knot-vector and \a other.
-        
+
         All knots in \a this  which are not found in \a other (counted
         with repetitions), are stored in \a result
     */
@@ -598,19 +610,19 @@ public:
     void symDifference(const gsKnotVector<T> & other,
                        std::vector<T>& result) const;
 
-    /** 
+    /**
         \brief Computes the union of knot-vectors \a this and \a b.
 
         Example:
         gsKnotVector<> testKv1(0, 1, 2, 2, 1);		// 0 0 1/3 2/3 1 1
-        gsKnotVector<> testKv2(0, 1, 1, 2, 2);		// 0 0 1/2 1/2 1 1 
+        gsKnotVector<> testKv2(0, 1, 1, 2, 2);		// 0 0 1/2 1/2 1 1
         gsKnotVector<T> kv = kv1.knotUnion(kv2);
 
         Results in:  0 0 1/3 1/2 1/2 2/3 1 1
     */
     gsKnotVector knotUnion(const gsKnotVector & b) const;
 
-    /** 
+    /**
         \brief Computes the intersection of knot-vectors \a this and \a b.
      */
     gsKnotVector knotIntersection(const gsKnotVector & b) const;
@@ -620,7 +632,7 @@ public:
 
     /// @brief Insert knots into the knot vector.
     /// \param knots parameter values of the new knots, stored in a std::vector
-    /// \param mult multiplicity of the new knots     
+    /// \param mult multiplicity of the new knots
     void insert( const knotContainer &knots, int mult = 1 )
     {
         for( int i = 0; i < mult; ++i)
@@ -723,7 +735,7 @@ public: // things required by gsKnotVector
         GISMO_ASSERT(this->size()>=1, "I need at least one knot.");
         return m_repKnots.front();
     }
-    
+
     /// Get the last knot.
     T last  () const
     {
@@ -779,7 +791,7 @@ public: // things required by gsKnotVector
         m_deg -= i;
 
         if (updateInterior)
-        {        
+        {
             if ( m_deg <= 0 )
                 initUniform(first(), last(), 0, 1, 0, 0);
             else
@@ -838,7 +850,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
         // equivalent:
         // return 0 == i ? 0 : m_multSum[i-1];
     }
-     
+
     /// Returns the last knot-index of cardinal index \a i
     /// (i.e. counted without repetitions)
     inline unsigned lastKnotIndex(const size_t & i) const
@@ -847,7 +859,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
         // equivalent:
         // return m_multSum[i] - 1;
     }
-     
+
     /// Returns the multiplicity sum at unique index \a i
     /// (i.e. counted without repetitions)
     inline unsigned knotsUntilSpan(const size_t & i) const
@@ -859,7 +871,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
     bool operator != (const gsKnotVector<T>& other) const
     {
         return ! ((*this)==other);
-    }    
+    }
 
     /// Returns the value of the \a i - th knot (counted with repetitions).
     inline T at (const size_t & i) const
@@ -876,7 +888,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
                 return false;
         return true;
     }
-     
+
     /// Returns true iff the knot is open (i.e., both endpoints
     /// have multiplicities equal to degree+1).
     bool isOpen() const
@@ -888,7 +900,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
         //return ( ubegin  .multiplicity() == dp1 &&
         //         (--uend).multiplicity() == dp1 );
         // equivalent
-        //return m_multSum.front() == dp1 && 
+        //return m_multSum.front() == dp1 &&
         //    m_multSum.back() - m_multSum.end()[-2] == dp1;
     }
 
@@ -904,7 +916,7 @@ public: // others
     /// Compute the new knots needed for uniform refinement with the
     /// given number of knots per span and return them in \a result.
     /// TODO: Think who is in charge of uniform refinement: basis or knot vector?
-    void getUniformRefinementKnots(mult_t knotsPerSpan, knotContainer& result, 
+    void getUniformRefinementKnots(mult_t knotsPerSpan, knotContainer& result,
                                    mult_t mult = 1) const;
 
     /// Return a string with detailed information on the knot vector.
