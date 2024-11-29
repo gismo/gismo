@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 3;// for local refinement
+    index_t numRefine  = 2;// for local refinement
     index_t UnifRefine  = 2;// initial refinement
     index_t numElevate = 0;
     index_t maxIter = 30;
@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
         rsolVector = gsSparseSolver<>::BiCGSTABILUT( cdrAss.matrix() ).solve( cdrAss.rhs() );
 
         slv_time += timer.stop();
-        gsInfo<< cdrAss.numDofs() << "DoFs in PDEs" <<std::flush;
+        gsInfo<< "DoFs in PDEs " << cdrAss.numDofs() <<std::flush;
         DoFPDE[r] = cdrAss.numDofs();
         gsInfo<< "." <<std::flush << "\n"; // Linear solving done
 
@@ -481,7 +481,7 @@ int main(int argc, char *argv[])
         collection.options().setInt("plotElements.resolution", 16);
         collection.newTimeStep(&Psi);
         collection.addField(is,"numerical solution");
-        // collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
+        collection.addField(igrad(is,PP),"gradient_numerical solution");
         collection.addField(u_ex, "exact solution");
         collection.addField(fp,"Density function");
         collection.saveTimeStep();
