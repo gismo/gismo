@@ -428,7 +428,7 @@ gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsFunction
 :
 m_comp(composition),
 m_geom(geometry),
-m_fun(&function),
+m_fun(function),
 m_optimizer(optimizer),
 m_integrationBasis(integrationBasis.clone())//,
 {
@@ -437,74 +437,69 @@ m_integrationBasis(integrationBasis.clone())//,
 }
 
 template <class T, enum MonitorMode MODE>
-template <short_t DIM>
-gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<DIM,T> & composition,
-                                                                const gsGeometry<T>         & geometry,
-                                                                const gsBasis<T>            & integrationBasis,
-                                                                      gsOptimizer<T>        & optimizer,
-                                                                const bool                    parametric=true)
+gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<T> & composition,
+                                                                const gsGeometry<T>     & geometry,
+                                                                const gsBasis<T>        & integrationBasis,
+                                                                      gsOptimizer<T>    & optimizer,
+                                                                const bool                parametric)
 :
 gsAdaptiveParametrization(composition,geometry,nullptr,integrationBasis,optimizer,parametric)
 {
-    }
+}
 
 template <class T, enum MonitorMode MODE>
-template <short_t DIM>
-gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<DIM,T> & composition,
-                                                                const gsGeometry<T>         & geometry,
-                                                                const gsFunction<T>         & function,
-                                                                const gsBasis<T>            & integrationBasis,
-                                                                      gsOptimizer<T>        & optimizer,
-                                                                const bool                    parametric=true)
+gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<T> & composition,
+                                                                const gsGeometry<T>     & geometry,
+                                                                const gsFunction<T>     & function,
+                                                                const gsBasis<T>        & integrationBasis,
+                                                                      gsOptimizer<T>    & optimizer,
+                                                                const bool                parametric)
 :
 gsAdaptiveParametrization(composition,geometry,&function,integrationBasis,optimizer,parametric)
 {
 }
 
 template <class T, enum MonitorMode MODE>
-template <short_t DIM>
-gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<DIM,T> & composition,
-                                                                const gsGeometry<T>         & geometry,
-                                                                      gsOptimizer<T>        & optimizer,
-                                                                const bool                    parametric=true)
+gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<T> & composition,
+                                                                const gsGeometry<T>     & geometry,
+                                                                      gsOptimizer<T>    & optimizer,
+                                                                const bool                parametric)
 :
 gsAdaptiveParametrization(composition,geometry,nullptr,geometry.basis(),optimizer,parametric)
 {
 }
 
 template <class T, enum MonitorMode MODE>
-template <short_t DIM>
-gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<DIM,T> & composition,
-                                                                const gsGeometry<T>         & geometry,
-                                                                const gsFunction<T>         & function,
-                                                                      gsOptimizer<T>        & optimizer,
-                                                                const bool                    parametric=true)
+gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<T> & composition,
+                                                                const gsGeometry<T>     & geometry,
+                                                                const gsFunction<T>     & function,
+                                                                      gsOptimizer<T>    & optimizer,
+                                                                const bool                parametric)
 :
 gsAdaptiveParametrization(composition,geometry,&function,geometry.basis(),optimizer,parametric)
 {
 }
 
 template <class T, enum MonitorMode MODE>
-template <short_t DIM>
-gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<DIM,T> & composition,
-                                                                const gsGeometry<T>         & geometry,
-                                                                const gsFunction<T>         * function,
-                                                                const gsBasis<T>            & integrationBasis,
-                                                                      gsOptimizer<T>        & optimizer,
-                                                                const bool                    parametric=true)
+gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<T> & composition,
+                                                                const gsGeometry<T>     & geometry,
+                                                                const gsFunction<T>     * function,
+                                                                const gsBasis<T>        & integrationBasis,
+                                                                      gsOptimizer<T>    & optimizer,
+                                                                const bool                parametric)
 :
 m_comp(composition),
 m_geom(geometry),
 m_fun(function),
 m_optimizer(optimizer)
 {
-    if (const gsTensorBSplineBasis<DIM,T> * tbasis = dynamic_cast<const gsTensorBSplineBasis<DIM,T> *>(&integrationBasis))
+    if (const gsTensorBSplineBasis<2,T> * tbasis = dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&integrationBasis))
     {
-        gsTensorBSplineBasis<DIM,T> ibasis(*tbasis);
+        gsTensorBSplineBasis<2,T> ibasis(*tbasis);
         // Integration basis: parent basis with knots of composition basis inserted, and the degree is the sum of the two degrees (?)
         index_t targetDegree;
-        const gsTensorBSplineBasis<DIM,T> & comp_tbasis = dynamic_cast<const gsTensorBSplineBasis<DIM,T> &>(composition.domain().basis());
-        for (size_t d = 0; d!=DIM; d++)
+        const gsTensorBSplineBasis<2,T> & comp_tbasis = dynamic_cast<const gsTensorBSplineBasis<2,T> &>(composition.domain().basis());
+        for (size_t d = 0; d!=2; d++)
         {
             // 1. Insert interior knots of composition basis
             for (typename gsKnotVector<real_t>::uiterator it = std::next(comp_tbasis.knots(d).ubegin());
@@ -519,7 +514,7 @@ m_optimizer(optimizer)
             targetDegree = ibasis.degree(d) * comp_tbasis.degree(d);
             ibasis.degreeIncrease(targetDegree-ibasis.degree(d),d);
 
-            m_integrationBasis = memory::make_unique(new gsTensorBSplineBasis<DIM,T>(ibasis));
+            m_integrationBasis = memory::make_unique(new gsTensorBSplineBasis<2,T>(ibasis));
         }
     }
     m_optProblem = gsOptMesh<T,MODE>(m_comp,m_geom,m_fun,m_integrationBasis.get(),parametric);
