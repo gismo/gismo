@@ -23,32 +23,38 @@ template<class T>
 class gsComposedFunction : public gsFunction<T>
 {
 public:
-    typedef gsBasis<T>      BasisT;
+
+    typedef memory::shared_ptr< gsComposedFunction > Ptr;
+    typedef memory::unique_ptr< gsComposedFunction > uPtr;
+
     typedef gsFunction<T>   CompositionT;
+    typedef gsFunction<T>   FunctionT;
 
     GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedFunction)
 
 public:
 
-    gsComposedFunction(const gsFunction<T> & composition, const gsFunction<T> & function)
-    :
-    m_composition(&composition),
-    m_function(&function)
-    {
-        GISMO_ENSURE(m_function->domainDim()==m_composition->targetDim(),
-            "Domain dimension of the function "<<
-            " should be equal to the target dimension of the composition "<<
-            ", but basis.domainDim() = "<<m_function->domainDim()<<
-            " and composition.targetDim() = )"<<m_composition->targetDim());
-    }
+    gsComposedFunction();
 
-    gsComposedFunction()
-    {}
+    gsComposedFunction( const CompositionT  * composition,
+                        const FunctionT * function);
 
-    short_t domainDim() const { return m_composition->domainDim(); }
-    short_t targetDim() const { return m_function->targetDim(); }
+    gsComposedFunction( const CompositionT  & composition,
+                        const FunctionT & function);
 
-    gsMatrix<T> support() const { return m_composition->support(); }
+    gsComposedFunction( typename CompositionT::Ptr composition,
+                        typename FunctionT::Ptr function);
+
+
+    /// Return the composition
+    const CompositionT & composition() const;
+    /// Return the function
+    const FunctionT & function() const;
+
+    short_t domainDim() const;
+    short_t targetDim() const;
+
+    gsMatrix<T> support() const;
 
     // void evalAllDers_into(const gsMatrix<T> & u, int n,
     //                         std::vector<gsMatrix<T> >& result,
@@ -61,79 +67,23 @@ public:
 
 
 
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        gsMatrix<T> coords = m_composition->eval(u);
-        this->_applyBounds(coords);
-        m_function->eval_into(coords,result);
-    }
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        index_t domainDim, targetDim;
-        domainDim = m_composition->domainDim();
-        targetDim = m_composition->targetDim();
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
-        gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
-        m_composition->compute(u,fd);
+    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
-        gsMatrix<T> coord, deriv, tmp, compderiv;
-        coord = fd.values[0];
-        compderiv = fd.values[1];
-
-        this->_applyBounds(coord);
-        m_function->deriv_into(coord,deriv);
-        result.resize(m_function->targetDim()*domainDim,u.cols());
-        for (index_t k = 0; k!=u.cols(); k++)
-        {
-            gsAsMatrix<T,Dynamic,Dynamic> compderivMat = compderiv.reshapeCol(k,domainDim,targetDim);
-            gsAsMatrix<T,Dynamic,Dynamic> derivMat = deriv.reshapeCol(k,m_function->domainDim(),m_function->targetDim());
-            // The product has size:
-            // (domainDim x targetDim) x (m_function->domainDim(),m_function->targetDim())
-            //  =
-            // (domainDim x m_function->targetDim())
-            gsAsMatrix<T,Dynamic,Dynamic> resultMat = result.reshapeCol(k,domainDim,m_function->targetDim());
-            resultMat = compderivMat*derivMat;
-        }
-    }
-
-    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        GISMO_NO_IMPLEMENTATION;
-    }
-
-    std::ostream &print(std::ostream &os) const
-    {
-        os <<"Composite function:\n";
-        os << "* Composition ( R^" << m_composition->domainDim() << " --> R^" << m_composition->targetDim() << "):\n"
-            << *m_composition<<"\n"
-            << "(address: "<<m_composition<<")\n";
-        os << "* Function ( R^" << m_function->domainDim() << " --> R^" << m_function->targetDim() << "):\n"
-            << *m_function<<"\n"
-            << "(address: "<<m_function<<")\n";
-        return os;
-    }
+    std::ostream &print(std::ostream &os) const override;
 
 private:
-    void _applyBounds(gsMatrix<T> & coords) const
-    {
-        // for (index_t k=0; k!=coords.cols(); k++)
-        // {
-        //     gsDebugVar(coords.col(k));
-        //     gsDebugVar(m_composition->support().col(0));
-        //     gsDebugVar(m_composition->support().col(1));
-        //     coords.col(k) = coords.col(k).cwiseMax(m_composition->support().col(0));
-        //     coords.col(k) = coords.col(k).cwiseMin(m_composition->support().col(1));
-        // }
-    }
+    void _applyBounds(gsMatrix<T> & coords) const;
 
 protected:
 
-    const CompositionT * m_composition;
-    const gsFunction<T>* m_function;
+    typename CompositionT::Ptr   m_composition;
+    typename FunctionT::Ptr  m_function;
 
 };
-
 
 
 /*
@@ -303,4 +253,8 @@ protected:
     std::vector<typename gsFunction<T>::Ptr> m_functions;
 };
 */
-}
+} // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsComposedFunction.hpp)
+#endif

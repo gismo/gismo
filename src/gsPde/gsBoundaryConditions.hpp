@@ -258,7 +258,7 @@ public:
         typedef typename std::vector<typename gsFunctionSet<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
-            gsXmlNode * ff = putFunctionToXml<T>(*fit, data, count);
+            gsXmlNode * ff = putFunctionSetToXml<T>(*fit, data, count);
             BCs->append_node(ff);
             ++count;
         }

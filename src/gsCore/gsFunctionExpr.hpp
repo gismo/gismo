@@ -765,13 +765,17 @@ private:
     typedef gsFunctionExpr<T> Object;
 public:
     GSXML_COMMON_FUNCTIONS(Object);
+    GSXML_GET_INTO(Object);
     static std::string tag ()  { return "Function"; }
     static std::string type () { return "FunctionExpr"; }
 
-    GSXML_GET_POINTER(Object);
-
-    static void get_into (gsXmlNode * node, Object & obj)
+    static Object * get(gsXmlNode * node)
     {
+        GISMO_ASSERT( ( !strcmp( node->name(),"Function") )
+                    &&  ( !strcmp(node->first_attribute("type")->value(),
+                                internal::gsXml<Object>::type().c_str() ) ),
+                    "Reading gsFunctionExpr XML: No Function found" );
+
         GISMO_ASSERT( node->first_attribute("dim"), "Reading gsFunctionExpr XML: No dim found" ) ;
         const int d = atoi( node->first_attribute("dim")->value() );
 
@@ -787,21 +791,24 @@ public:
         else
             expr_strings.push_back(  node->value() );
 
-        obj = gsFunctionExpr<T>( expr_strings, d );
+        return new Object(expr_strings, d);
     }
 
     static gsXmlNode * put (const Object & obj,
                             gsXmlTree & data )
     {
-        gsXmlNode * func = makeNode("Function", data);
-        func->append_attribute(makeAttribute("dim", obj.domainDim(), data));
-        func->append_attribute(makeAttribute("type", "FunctionExpr", data));
+        // Add a new node
+        gsXmlNode* node = internal::makeNode("Function" , data);
+        node->append_attribute( makeAttribute("type",
+                                            internal::gsXml< Object >::type().c_str(), data) );
+        node->append_attribute(makeAttribute("dim", obj.domainDim(), data));
+
 
         const short_t tdim = obj.targetDim();
 
         if ( tdim == 1)
         {
-            func->value( makeValue(obj.expression(), data) );
+            node->value( makeValue(obj.expression(), data) );
         }
         else
         {
@@ -809,11 +816,11 @@ public:
             for (short_t c = 0; c!=tdim; ++c)
             {
                 cnode = makeNode("c", obj.expression(c), data);
-                func->append_node(cnode);
+                node->append_node(cnode);
             }
         }
 
-        return func;
+        return node;
     }
 };
 

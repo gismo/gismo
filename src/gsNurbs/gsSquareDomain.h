@@ -15,11 +15,13 @@
 
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsDofMapper.h>
+#include <gsIO/gsOptionList.h>
+#include <gsNurbs/gsTensorBSpline.h>
 
 namespace gismo
 {
 
-template <short_t DIM, class T>
+template <class T>
 class gsSquareDomain : public gsFunction<T>
 {
     using Base = gsFunction<T> ;
@@ -33,26 +35,14 @@ public:
      *
      * @param[in]  domain  The domain
      */
-    gsSquareDomain(const gsTensorBSpline<DIM,T> & domain)
-    {
-        m_domain = domain;
-        this->_initMapper(m_domain,m_mapper);
-        this->_initIndices(m_domain,m_mapper,m_indices);
-    }
+    gsSquareDomain(const gsGeometry<T> & domain);
 
     /**
      * @brief      Constructs a new instance.
      *
      * @param[in]  basis  The basis
      */
-    gsSquareDomain(const gsTensorBSplineBasis<DIM,T> & basis)
-    {
-        gsMatrix<T> coefs = basis.anchors();
-        coefs.transposeInPlace();
-        m_domain = gsTensorBSpline<DIM,T>(basis,coefs);
-        this->_initMapper(m_domain,m_mapper);
-        this->_initIndices(m_domain,m_mapper,m_indices);
-    }
+    gsSquareDomain(const gsBasis<T> & basis);
 
 
     /**
@@ -61,68 +51,35 @@ public:
      * @param[in]  numElevation  The number elevation
      * @param[in]  numRefine     The number refine
      */
-    gsSquareDomain(index_t numElevation = 0, index_t numRefine = 0)
-    {
-        m_domain = *gsNurbsCreator<T>::BSplineSquare();
-        m_domain.degreeElevate(numElevation);
-        index_t numKts = pow(2, numRefine) - 1;
-        m_domain.uniformRefine(numKts);
+    gsSquareDomain(index_t numElevation = 0, index_t numRefine = 0);
 
-        this->_initMapper(m_domain,m_mapper);
-        this->_initIndices(m_domain,m_mapper,m_indices);
-    }
+    // Copy constructor
+    gsSquareDomain(const gsSquareDomain<T> & other);
+
+    // Copy assignment
+    gsSquareDomain<T> & operator=(const gsSquareDomain<T> & other);
 
     GISMO_CLONE_FUNCTION(gsSquareDomain)
 
-    gsOptionList & options() {return m_options;}
+    gsOptionList & options();
 
-    void applyOptions()
-    {
-        this->_initMapper(m_domain,m_mapper);
-        this->_initIndices(m_domain,m_mapper,m_indices);
-    }
+    void applyOptions();
 
-    const gsTensorBSpline<DIM,T> & domain() const
-    {
-        return m_domain;
-    }
+    const gsGeometry<T> & domain() const;
 
-    const gsDofMapper & mapper() const
-    {
-        return m_mapper;
-    }
+    const gsDofMapper & mapper() const;
 
-    gsMatrix<T> support() const override
-    {
-        return m_domain.support();
-    }
+    gsMatrix<T> support() const override;
 
-    short_t maxDegree() const
-    {
-        return m_domain.basis().maxDegree();
-    }
+    short_t maxDegree() const;
 
-    short_t domainDim() const override
-    {
-        return m_domain.domainDim();
-    }
+    short_t domainDim() const override;
 
-    short_t targetDim() const override
-    {
-        return m_domain.domainDim();
-    }
+    short_t targetDim() const override;
 
-    void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-    {
-        m_domain.eval_into(u,result);
-    }
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override;
 
-    void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-    {
-        m_domain.deriv_into(u,result);
-    }
-
-    std::vector<std::pair<index_t,index_t>> indices() { return m_indices; }
+    void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override;
 
     // /// Sets the controls of the domain (does not override)
     // void setControls(const gsMatrix<T> & coefs)
@@ -133,103 +90,52 @@ public:
     // }
 
     /// Sets the controls of the domain
-    void setControls(const gsVector<T> & controls) override
-    {
-        GISMO_ASSERT(controls.rows()==m_indices.size(),"Wrong size of controls vector");
-        for (index_t i = 0; i!=m_indices.size(); i++)
-            m_domain.coefs()(m_indices[i].first,m_indices[i].second) = controls[i];
-    }
+    void setControls(const gsVector<T> & controls) override;
 
     /// Gets the controls of the domain
     /// NOTE: This makes a copy
-    gsVector<T> getControls() const override
-    {
-        gsVector<T> coefs(m_indices.size());
-        for (index_t i = 0; i!=m_indices.size(); i++)
-            coefs[i] = m_domain.coefs()(m_indices[i].first,m_indices[i].second);
-        return coefs;
-    }
+    gsVector<T> getControls() const override;
 
     /// Returns the \a i th control of the function
     // const typename gsMatrix<T>::CoeffReturnType & control(index_t i) const override { return gsAsConstVector<T>(m_parameters.data(),m_parameters.size())(i);}
-    const T & control(index_t i) const override { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
-          T & control(index_t i)       override { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
+    const T & control(index_t i) const override;
+          T & control(index_t i)       override;
 
 
     // const gsVector<T> & parameters() const { return m_parameters; };
     //       gsVector<T> & parameters()       { return m_parameters; };
 
     /// Returns the number of controls of the function
-    size_t nControls() const override
-    {
-        return m_mapper.freeSize();
-    }
+    size_t nControls() const override;
 
     /// Returns the control derivative
-    virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const override
-    {
-        gsMatrix<T> tmp;
+    virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const override;
 
-        result.resize(targetDim()*nControls(), points.cols());
-        result.setZero();
-        for (index_t p = 0; p!=points.cols(); p++)
-        {
-            gsAsMatrix<T> res = result.reshapeCol(p,nControls(),targetDim());
-            for (index_t k = 0; k!=m_domain.coefs().rows(); k++)
-                for (index_t d = 0; d!=m_domain.targetDim(); d++)
-                    if (m_mapper.is_free(k,0,d))
-                    {
-                        m_domain.basis().evalSingle_into(k,points.col(p),tmp); // evaluate basis function k
-                        res(m_mapper.index(k,0,d),d) = tmp(0,0); // tmp is a single value (1 point, 1 basis function)
-                    }
-        }
-    }
-
-    void perturb(T factor = 1e-3)
-    {
-        gsVector<T> rand = gsVector<T>::Random(m_indices.size());
-        for (index_t i = 0; i!=m_indices.size(); i++)
-            m_domain.coefs()(m_indices[i].first,m_indices[i].second) += factor * rand[i];
-    }
+    /// Perturb the control points by a \a factor
+    void perturb(T factor = 1e-3);
 
 private:
-    void _initMapper(const gsTensorBSpline<DIM,T> & domain, gsDofMapper & mapper) const
-    {
-        // Mapper storing control points
-        mapper = gsDofMapper(domain.basis(),domain.targetDim());
+    /// @brief Initialize the dof mapper
+    /// @param domain The domain as a tensor B-spline
+    /// @param mapper The dof mapper (output)
+    void _initMapper(const gsGeometry<T> & domain, gsDofMapper & mapper) const;
 
-        gsBoxTopology topology(DIM,1);
-        topology.addAutoBoundaries();
-        // gsMatrix<index_t> boundary = domain.basis().allBoundary();
-        for (typename gsBoxTopology::biterator it = topology.bBegin(); it != topology.bEnd(); ++it)
-        {
-            gsMatrix<index_t> boundary = domain.basis().boundary(*it);
-            if (m_options.askSwitch("Slide",false))
-                mapper.markBoundary(0,boundary,it->direction());
-            else
-                for (index_t d = 0; d!=domain.targetDim(); d++)
-                    mapper.markBoundary(0,boundary,d);
-
-        }
-        mapper.finalize();
-    }
-
-    void _initIndices(const gsTensorBSpline<DIM,T> & domain, const gsDofMapper & mapper, std::vector<std::pair<index_t,index_t>> & indices) const
-    {
-        indices.resize(mapper.freeSize());
-        // std::vector<index_t> i(mapper.freeSize());
-        // std::vector<index_t> j(mapper.freeSize());
-        for (index_t k = 0; k!=domain.coefs().rows(); k++)
-            for (index_t d = 0; d!=domain.targetDim(); d++)
-                if (mapper.is_free(k,0,d))
-                    indices[mapper.index(k,0,d)] = std::make_pair(k,d);
-    }
+    /// @brief Initialize the indices of the free control points
+    /// @param domain   The domain as a tensor B-spline
+    /// @param mapper   The dof mapper
+    /// @param indices  The indices of the free control points (output)
+    void _initIndices(const gsGeometry<T> & domain, const gsDofMapper & mapper, std::vector<std::pair<index_t,index_t>> & indices) const;
 
 protected:
-    gsTensorBSpline<DIM,T> m_domain;
+    typename gsGeometry<T>::uPtr m_domain;
     gsDofMapper m_mapper;
     std::vector<std::pair<index_t,index_t>> m_indices;
     gsOptionList m_options;
 };
 
 } // namespace gismo
+
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsSquareDomain.hpp)
+#endif

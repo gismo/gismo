@@ -105,7 +105,7 @@ int main(int arg, char *argv[])
     GISMO_ENSURE(cbasis0_ptr,"The composition basis must be a tensor B-spline basis");
 
     gsInfo<<"Mapper basis:\n"<<*cbasis0_ptr<<"\n";
-    gsSquareDomain<2,real_t> domain(*cbasis0_ptr);
+    gsSquareDomain<real_t> domain(*cbasis0_ptr);
     domain.options().addSwitch("Slide","",PARoptions.askSwitch("Slide",false));
     domain.applyOptions();
 
@@ -121,6 +121,7 @@ int main(int arg, char *argv[])
     optimizer->options().update(OPToptions);
 
     gsInfo<<domain.domain().coefs()<<"\n";
+    // gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> * relocator;
     gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> * relocator;
     if (function.domainDim()==0)
         relocator = new gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>(domain,gpatch0,gbasis0,*optimizer,PARoptions.askSwitch("Parametric",false));

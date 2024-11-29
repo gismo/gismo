@@ -107,11 +107,13 @@ public:
 
     typedef T Scalar_t;
 
+    typedef gsBasis<T> Basis;
+
 public:
 
     /// @name Constructors
     /// @{
-    
+
     /// @brief Default constructor.  Note: Derived constructors (except for
     /// the default) should assign \a m_basis to a valid pointer
     gsGeometry() :m_basis( NULL ), m_id(0)
