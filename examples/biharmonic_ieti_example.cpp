@@ -115,7 +115,7 @@ struct corner_t {
     void push_back(std::pair<index_t,index_t> p) { data.push_back(p); }
     bool operator==(const corner_t& other) const
     {
-        if (data.size()!=other.data.size())
+        if (data.size()!=other.data.size()) 
             return false;
         for (size_t i=0;i<data.size();++i)
         {
@@ -137,7 +137,7 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
 {
     // This function guesses the corners from the jump matrices; each dof belonging
     // to more than 2 patches is a corner.
-
+    
     // lmultsof[k][i] ... which L-multipliers act on dof i of patch k?
     std::vector<std::vector<std::vector<index_t>>> lmultsof(sms.size());
     // dofsof[l][0 and 1] ... a pair (patch, index) of dofs connected by L-multiplier l
@@ -175,8 +175,8 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
         gsInfo << "]\n";
     }
     //*/
-
-
+    
+    
     std::vector<corner_t> result;
     for (size_t k=0; k<lmultsof.size(); ++k)
         for (size_t i=0; i<lmultsof[k].size(); ++i)
@@ -200,7 +200,7 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
                 if (find(result.begin(), result.end(), corner) == result.end())
                     result.push_back(corner);
             }
-
+    
     std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> finalResult;
     for (size_t i=0; i<result.size(); ++i)
     {
@@ -209,70 +209,17 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
         {
             gsSparseVector<> sv(sms[result[i].data[j].first].cols());
             sv.setZero();
-            //gsInfo << i << "%%" << j << "%%" <<
+            //gsInfo << i << "%%" << j << "%%" << 
             //    result[i].data[j].first << "%%" << result[i].data[j].second << "%%"
             //    << sms[result[i].data[j].first].cols() << "%%" << result[i].data[j].second << std::endl;
             sv[result[i].data[j].second] = 1;
             corner.push_back(std::pair<index_t,gsSparseVector<>>(result[i].data[j].first,sv));
-        }
+        }  
         finalResult.push_back(corner);
-    }
+    }    
     return finalResult;
-
+    
 }
-
-
-/*std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>>
-cornersFromJumpMatrices( const gsDofMapper& dm, const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms )
-{
-    // This function guesses the corners from the jump matrices; each dof belonging
-    // to more than 2 patches is a corner.
-    gsInfo << "dm.freeSize() = " << dm.freeSize() << "\n";
-    gsVector<index_t> tmp( dm.freeSize() );
-    tmp.setZero();
-    for (size_t k=0; k<sms.size(); ++k)
-        for (index_t i=0; i<sms[k].outerSize(); ++i)
-            for (gsSparseMatrix<real_t,RowMajor>::InnerIterator it(sms[k],i); it; ++it)
-            {
-                gsInfo << "{"<<k<<";"<<it.row()<<";"<<it.col()<<";"<<it.value()<<";"<<(dm.is_free(it.col(), k)?dm.index(it.col(), k):-42)<<"}\n";
-                if (dm.is_free(it.col(), k))
-                    tmp[dm.index(it.col(), k)] += 1;
-            }
-    gsInfo << "tmp=[" << tmp.transpose() << "]\n";
-    index_t j=0;
-    for (index_t i=0; i<tmp.rows(); ++i)
-        if (tmp[i]>2)
-        {
-            tmp[i]=j;
-            ++j;
-        }
-        else
-            tmp[i]=-1;
-
-    gsInfo << "tmp=[" << tmp.transpose() << "]\n";
-    std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> result(j);
-    for (size_t k=0; k<sms.size(); ++k)
-        for (index_t i=0; i<sms[k].outerSize(); ++i)
-            for (gsSparseMatrix<real_t,RowMajor>::InnerIterator it(sms[k],i); it; ++it)
-                if (dm.is_free(it.col(), k) && tmp[dm.index(it.col(),k)]>=0)
-                {
-                    std::pair<index_t,gsSparseVector<>> constr(k, gsSparseVector<>(sms[k].cols()));
-                    constr.second[it.col()] = 1;
-                    GISMO_ASSERT (it.col()<sms[k].cols(), "");
-                    index_t idx = tmp[dm.index(it.col(),k)];
-                    bool found = false;
-                    for (size_t l=0; l<result[idx].size(); ++l)
-                        if (result[idx][l].first == constr.first)
-                        {
-                            found = true;
-                            //TODO: GISMO_ASSERT (result[idx][l].second == constr.second, "Internal error.");
-                        }
-                    if (!found)
-                        result[idx].push_back(constr);
-                }
-    return result;
-}
-*/
 
 
 gsSparseMatrix<> makeTransformer(const gsBasis<>& basis)
@@ -481,7 +428,7 @@ public:
     {
         m_localSystems.push_back(give(localSystem));
         m_localJumpMatrices.push_back(give(localJumpMatrix));
-        m_localSkeletonDofs.push_back(give(localSkeletonDofs));
+        m_localSkeletonDofs.push_back(give(localSkeletonDofs)); //TODO: Should be used for construction of local problems
     }
 
 
