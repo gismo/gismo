@@ -16,7 +16,7 @@
 
 using namespace gismo;
 
-gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb)
+gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds)
 {
     gsVector<index_t> patchDofSizes(mp.nPatches());
     for (size_t k=0; k<mp.nPatches(); ++k)
@@ -32,7 +32,7 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
                           s1o = mb.basis(k1).boundaryOffset(it->first().side(),1),
                           s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
 
-        // We assume for now that the orientation matches!
+        // TODO: We assume for now that the orientation matches!
         GISMO_ASSERT( s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "");
         for (index_t i=0;i<s1.rows();++i)
         {
@@ -40,12 +40,33 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
             dm.matchDof(k1,s1o[i],k2,s2o[i]);
         }
     }
+
+    if (bdyConds)  // Eliminate boundary layer if bdyConds == 1 or == 2
+    {
+        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
+        {
+            const index_t k = it->patchIndex();
+            gsVector<index_t> s = mb.basis(k).boundary(it->side()),
+                              so = mb.basis(k).boundaryOffset(it->side(),1);
+
+            GISMO_ASSERT( s.rows() == so.rows(), "");
+            for (index_t i=0;i<s.rows();++i)
+            {
+                dm.eliminateDof(s[i],k);
+                if (bdyConds == 2)
+                    dm.eliminateDof(so[i],k);
+            }
+        }
+    }
+
     dm.finalize();
     return dm;
 }
 
-std::vector<std::vector<std::vector<index_t>>> setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb)
+std::vector<std::vector<std::vector<index_t>>>
+setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, int bdyCond)
 {
+    GISMO_ENSURE ( bdyCond==0, "This function is not bounary-aware."); // TODO: It should use the dof mapper instead!
     std::vector<std::vector<std::vector<index_t>>> result(mp.nPatches());
     for (size_t k=0; k<mp.nPatches(); ++k)
         result[k].resize(2);
@@ -89,47 +110,177 @@ std::vector<std::vector<std::vector<index_t>>> setupTwoLayerSkeletonDofs(const g
     return result;
 }
 
+struct corner_t {
+    std::vector<std::pair<index_t,index_t>> data;
+    void push_back(std::pair<index_t,index_t> p) { data.push_back(p); }
+    bool operator==(const corner_t& other) const
+    {
+        if (data.size()!=other.data.size())
+            return false;
+        for (size_t i=0;i<data.size();++i)
+        {
+            int found = 0;
+            for (size_t j=0;j<other.data.size();++j)
+                if (data[i].first == other.data[j].first && data[i].second == other.data[j].second)
+                    found += 1;
+            if (found!=1)
+                return false;
+        }
+        return true;
+    }
 
-std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> cornersFromJumpMatrices( const gsDofMapper& dm, const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms )
+};
+
+
+std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>>
+cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms )
 {
+    // This function guesses the corners from the jump matrices; each dof belonging
+    // to more than 2 patches is a corner.
+
+    // lmultsof[k][i] ... which L-multipliers act on dof i of patch k?
+    std::vector<std::vector<std::vector<index_t>>> lmultsof(sms.size());
+    // dofsof[l][0 and 1] ... a pair (patch, index) of dofs connected by L-multiplier l
+    std::vector<std::vector<std::pair<index_t,index_t>>> dofsof(sms[0].rows());
+    for (size_t k=0; k<sms.size(); ++k)
+    {
+        lmultsof[k].resize(sms[k].cols());
+        for (index_t i=0; i<sms[k].outerSize(); ++i)
+            for (gsSparseMatrix<real_t,RowMajor>::InnerIterator it(sms[k],i); it; ++it)
+            {
+                lmultsof[k][it.col()].push_back(it.row());
+                dofsof[it.row()].push_back(std::pair<index_t,index_t>(k, it.col()));
+            }
+    }
+    /*gsInfo << "lmultsof: \n";
+    for (size_t k=0;k<lmultsof.size(); ++k)
+    {
+        gsInfo << "[" << k << ":";
+        for (size_t i=0;i<lmultsof[k].size(); ++i)
+            if (lmultsof[k][i].size()>0)
+            {
+                gsInfo << "{" << i << ":";
+                for (size_t j=0;j<lmultsof[k][i].size(); ++j)
+                    gsInfo << " " << lmultsof[k][i][j];
+                gsInfo << "}";
+            }
+        gsInfo << "]\n";
+    }
+    gsInfo << "dofsof: \n";
+    for (size_t k=0;k<dofsof.size(); ++k)
+    {
+        gsInfo << "[" << k << ":";
+        for (size_t i=0;i<dofsof[k].size(); ++i)
+            gsInfo << " " << dofsof[k][i].first << "/" << dofsof[k][i].second;
+        gsInfo << "]\n";
+    }
+    //*/
+
+
+    std::vector<corner_t> result;
+    for (size_t k=0; k<lmultsof.size(); ++k)
+        for (size_t i=0; i<lmultsof[k].size(); ++i)
+            if (lmultsof[k][i].size()>1)
+            {
+                corner_t corner;
+                corner.push_back(std::pair<index_t,index_t>(k,i));
+                for (size_t l=0; l<lmultsof[k][i].size(); ++l)
+                {
+                    index_t multiplier = lmultsof[k][i][l];
+                    GISMO_ENSURE(dofsof[multiplier].size()==2,"");
+                    if (dofsof[multiplier][0].first != (index_t)k)
+                        corner.push_back(dofsof[multiplier][0]);
+                    else if (dofsof[multiplier][1].first != (index_t)k)
+                        corner.push_back(dofsof[multiplier][1]);
+                    else
+                    {
+                        GISMO_ENSURE(0, "");
+                    }
+                }
+                if (find(result.begin(), result.end(), corner) == result.end())
+                    result.push_back(corner);
+            }
+
+    std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> finalResult;
+    for (size_t i=0; i<result.size(); ++i)
+    {
+        std::vector<std::pair<index_t,gsSparseVector<>>> corner;
+        for (size_t j=0; j<result[i].data.size(); ++j)
+        {
+            gsSparseVector<> sv(sms[result[i].data[j].first].cols());
+            sv.setZero();
+            //gsInfo << i << "%%" << j << "%%" <<
+            //    result[i].data[j].first << "%%" << result[i].data[j].second << "%%"
+            //    << sms[result[i].data[j].first].cols() << "%%" << result[i].data[j].second << std::endl;
+            sv[result[i].data[j].second] = 1;
+            corner.push_back(std::pair<index_t,gsSparseVector<>>(result[i].data[j].first,sv));
+        }
+        finalResult.push_back(corner);
+    }
+    return finalResult;
+
+}
+
+
+/*std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>>
+cornersFromJumpMatrices( const gsDofMapper& dm, const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms )
+{
+    // This function guesses the corners from the jump matrices; each dof belonging
+    // to more than 2 patches is a corner.
+    gsInfo << "dm.freeSize() = " << dm.freeSize() << "\n";
     gsVector<index_t> tmp( dm.freeSize() );
     tmp.setZero();
     for (size_t k=0; k<sms.size(); ++k)
         for (index_t i=0; i<sms[k].outerSize(); ++i)
             for (gsSparseMatrix<real_t,RowMajor>::InnerIterator it(sms[k],i); it; ++it)
+            {
+                gsInfo << "{"<<k<<";"<<it.row()<<";"<<it.col()<<";"<<it.value()<<";"<<(dm.is_free(it.col(), k)?dm.index(it.col(), k):-42)<<"}\n";
                 if (dm.is_free(it.col(), k))
                     tmp[dm.index(it.col(), k)] += 1;
+            }
+    gsInfo << "tmp=[" << tmp.transpose() << "]\n";
     index_t j=0;
     for (index_t i=0; i<tmp.rows(); ++i)
         if (tmp[i]>2)
         {
-                tmp[i]=j;
+            tmp[i]=j;
             ++j;
         }
         else
             tmp[i]=-1;
+
+    gsInfo << "tmp=[" << tmp.transpose() << "]\n";
     std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> result(j);
     for (size_t k=0; k<sms.size(); ++k)
         for (index_t i=0; i<sms[k].outerSize(); ++i)
             for (gsSparseMatrix<real_t,RowMajor>::InnerIterator it(sms[k],i); it; ++it)
-                if (tmp[dm.index(it.col(),k)]>=0)
+                if (dm.is_free(it.col(), k) && tmp[dm.index(it.col(),k)]>=0)
                 {
                     std::pair<index_t,gsSparseVector<>> constr(k, gsSparseVector<>(sms[k].cols()));
                     constr.second[it.col()] = 1;
                     GISMO_ASSERT (it.col()<sms[k].cols(), "");
-                    std::vector<std::pair<index_t,gsSparseVector<>>>& where
-                        = result[tmp[dm.index(it.col(),k)]];
+                    index_t idx = tmp[dm.index(it.col(),k)];
                     bool found = false;
-                    for (size_t l=0; l<where.size(); ++l)
-                        found |= (where[l].first == constr.first /* && where[l].second == constr.second*/);
+                    for (size_t l=0; l<result[idx].size(); ++l)
+                        if (result[idx][l].first == constr.first)
+                        {
+                            found = true;
+                            //TODO: GISMO_ASSERT (result[idx][l].second == constr.second, "Internal error.");
+                        }
                     if (!found)
-                        where.push_back(constr);
+                        result[idx].push_back(constr);
                 }
     return result;
 }
+*/
+
 
 gsSparseMatrix<> makeTransformer(const gsBasis<>& basis)
 {
+    // This function creates a sparse matix that changes the sign of the
+    // the n-1 st row and column (1D). This is tensorized. This function's
+    // result is put into applyDofMapperTwoSided to respect the boundary
+    // conditions.
     const index_t d = basis.dim();
     gsSparseMatrix<> result;
     for (index_t i=0; i<d; ++i)
@@ -158,6 +309,211 @@ gsSparseMatrix<> makeTransformer(const gsBasis<>& basis)
     return result;
 }
 
+gsSparseMatrix<>
+applyDofMapperTwoSided(const gsSparseMatrix<>&sm, const gsDofMapper& dm)
+{
+    gsSparseEntries<> se;
+    se.reserve(sm.nonZeros());
+    for ( index_t i=0; i<sm.outerSize(); ++i )
+        for ( gsSparseMatrix<>::InnerIterator it(sm,i); it; ++it )
+            if (dm.is_free(it.row(), 0) && dm.is_free(it.col(), 0))
+                se.add( dm.index(it.row(), 0), dm.index(it.col(), 0), it.value() );
+
+    gsSparseMatrix<> result(dm.freeSize(), dm.freeSize());
+    result.setFrom(se);
+    return result;
+}
+
+class deluxePreconder {
+
+    static size_t idx_of(std::vector<size_t>& vec, size_t what)
+    {
+        for (size_t i=0; i<vec.size(); ++i)
+            if (vec[i]==what)
+                return i;
+        vec.push_back(what);
+        return vec.size()-1;
+    }
+
+
+    struct edge {
+        size_t first;
+        size_t second;
+        std::vector<size_t> firstIndices;
+        std::vector<size_t> secondIndices;
+        std::vector<size_t> lagrangeIndices;
+    };
+
+    std::vector<edge> identifyEdges() const
+    {
+        // TODO: handle corner dofs!
+        const size_t nPatches = m_localJumpMatrices.size();
+        gsMatrix<index_t> dofslist;
+        dofslist.setZero(m_localJumpMatrices[0].rows(), 2);
+        index_t edgeCount = 0;
+
+        std::vector<edge> edges;
+
+        for (size_t k=0; k<nPatches; ++k)
+        {
+            std::vector<size_t> neighbors;
+
+            for (index_t i=0; i<m_localJumpMatrices[k].outerSize(); ++i)
+            {
+                for (gsSparseMatrix<real_t,RowMajor>::InnerIterator it(m_localJumpMatrices[k],i); it; ++it)
+                {
+                    if (dofslist( it.row(), 0 )==0)
+                    {
+                        dofslist( it.row(), 0 ) = k+1;
+                        dofslist( it.row(), 1 ) = it.col();
+                        GISMO_ASSERT( (it.value()>.99 && it.value()<1.01) || (-it.value()>.99 && -it.value()<1.01), it.value());
+                    }
+                    else if (dofslist( it.row(), 0 )>0)
+                    {
+                        GISMO_ASSERT( (it.value()>.99 && it.value()<1.01) || (-it.value()>.99 && -it.value()<1.01), it.value());
+                        size_t l = dofslist(it.row(),0)-1;
+                        size_t e = idx_of(neighbors,l);
+                        e+=edgeCount;
+                        if (e==edges.size())
+                        {
+                            edge ee;
+                            ee.first = l;
+                            ee.second = k;
+                            edges.push_back(ee);
+                        }
+                        GISMO_ASSERT (e<edges.size(), "Internal error.");
+                        edges[e].firstIndices.push_back(dofslist(it.row(),1));
+                        edges[e].secondIndices.push_back(it.col());
+                        edges[e].lagrangeIndices.push_back(it.row());
+                        dofslist(it.row(),0) = -1; // mark as "done"
+                    }
+                    else
+                        GISMO_ENSURE(0, "No L-multiplier should connect to 3 patches!");
+                }
+            }
+            edgeCount += neighbors.size();
+        }
+        gsInfo << "[deluxe-pc: " << edgeCount << "edges]" << std::flush;
+        //*
+        for (size_t l=0; l<edges.size(); ++l)
+        {
+            gsInfo << "Edge " << l << ": ";
+            gsInfo << "(" << edges[l].first << "," << edges[l].second << ") [ ";
+            GISMO_ASSERT(edges[l].firstIndices.size()==edges[l].secondIndices.size(), "Internal error.");
+            for (size_t i=0; i<edges[l].firstIndices.size(); ++i)
+                gsInfo << "(" << edges[l].firstIndices[i] << "," << edges[l].secondIndices[i] << "," << edges[l].lagrangeIndices[i] << ") ";
+            gsInfo << "]\n";
+        }
+        //*/
+
+
+        return edges;
+
+    }
+
+    gsSparseMatrix<> setupLocalProblem(const edge& e) const
+    {
+        const size_t firstPatch = e.first;
+        const size_t secondPatch = e.second;
+        const index_t firstSize = m_localSystems[firstPatch].rows();
+        const index_t secondSize = m_localSystems[secondPatch].rows();
+        const index_t lagrangeSize = e.lagrangeIndices.size();
+        const index_t size = firstSize+secondSize+lagrangeSize;
+
+        gsSparseEntries<> se;
+        // first matrix
+        for (index_t i=0; i<m_localSystems[firstPatch].outerSize(); ++i)
+            for (gsSparseMatrix<real_t>::InnerIterator it(m_localSystems[firstPatch],i); it; ++it)
+                se.add(it.row(), it.col(), it.value());
+        // second matrix
+        for (index_t i=0; i<m_localSystems[secondPatch].outerSize(); ++i)
+            for (gsSparseMatrix<real_t>::InnerIterator it(m_localSystems[secondPatch],i); it; ++it)
+                se.add(firstSize+it.row(), firstSize+it.col(), it.value());
+        // jump blocks
+        for (index_t i=0; i<lagrangeSize; ++i)
+        {
+            real_t value1 = m_localJumpMatrices[firstPatch ](e.lagrangeIndices[i], e.firstIndices [i]);
+            real_t value2 = m_localJumpMatrices[secondPatch](e.lagrangeIndices[i], e.secondIndices[i]);
+            GISMO_ASSERT( (value1>.99 && value1<1.01) || (-value1>.99 && -value1<1.01), value1<<"///"<<value2<<"///"<<firstPatch<<"///"<<secondPatch<<"///"<<e.firstIndices [i]<<"///"<<e.secondIndices[i]<<"///"<<e.lagrangeIndices[i]);
+            GISMO_ASSERT( (value2>.99 && value2<1.01) || (-value2>.99 && -value2<1.01), value2<<"///"<<value1<<"///"<<secondPatch<<"///"<<firstPatch<<"///"<<e.secondIndices[i]<<"///"<<e.firstIndices [i]<<"///"<<e.lagrangeIndices[i]);
+            se.add(firstSize+secondSize+i,             e.firstIndices[i] , value1 );
+            se.add(firstSize+secondSize+i, firstSize + e.secondIndices[i], value2 );
+            se.add(            e.firstIndices[i] , firstSize+secondSize+i, value1 );
+            se.add(firstSize + e.secondIndices[i], firstSize+secondSize+i, value2 );
+        }
+
+        // setup matrix
+        gsSparseMatrix<> result(size,size);
+        result.setFrom(se);
+        return result;
+    }
+
+    gsSparseMatrix<> getLocalEmbedding(const edge& e)
+    {
+        const size_t firstPatch = e.first;
+        const size_t secondPatch = e.second;
+        const index_t firstSize = m_localSystems[firstPatch].rows();
+        const index_t secondSize = m_localSystems[secondPatch].rows();
+        const index_t lagrangeSize = e.lagrangeIndices.size();
+        const index_t localSize = firstSize+secondSize+lagrangeSize;
+        const index_t globalLagrangeSize = m_localJumpMatrices[0].rows();
+
+        gsSparseEntries<> se;
+        se.reserve(lagrangeSize);
+
+        for (index_t i=0; i<lagrangeSize; ++i)
+            se.add( e.lagrangeIndices[i], firstSize+secondSize+i, 1 );
+
+        // setup matrix
+        gsSparseMatrix<> result(globalLagrangeSize,localSize);
+        result.setFrom(se);
+        return result;
+    }
+
+
+public:
+
+    void addSubdomain(
+            gsSparseMatrix<> localSystem,
+            gsSparseMatrix<real_t,RowMajor> localJumpMatrix,
+            std::vector<index_t> localSkeletonDofs
+    )
+    {
+        m_localSystems.push_back(give(localSystem));
+        m_localJumpMatrices.push_back(give(localJumpMatrix));
+        m_localSkeletonDofs.push_back(give(localSkeletonDofs));
+    }
+
+
+    void setupPreconditioner()
+    {
+        m_preconditioner = gsSumOp<>::make();
+        std::vector<edge> edges = identifyEdges();
+        for (size_t e=0; e<edges.size(); ++e)
+        {
+            gsLinearOperator<>::Ptr solver = makeSparseLUSolver(setupLocalProblem(edges[e]));
+            memory::shared_ptr<gsSparseMatrix<>> embedding = getLocalEmbedding(edges[e]).moveToPtr();
+            gsLinearOperator<>::Ptr prolong = makeMatrixOp(embedding.get()->transpose());
+            gsLinearOperator<>::Ptr restrict = makeMatrixOp(embedding);
+            m_preconditioner->addOperator( gsProductOp<>::make(prolong, solver, restrict) );
+        }
+    }
+
+    gsLinearOperator<>::Ptr preconditioner()
+    {
+        return m_preconditioner;
+    }
+
+
+private:
+    std::vector<gsSparseMatrix<>> m_localSystems;
+    std::vector<gsSparseMatrix<real_t,RowMajor>> m_localJumpMatrices;
+    std::vector<std::vector<index_t>> m_localSkeletonDofs;
+    gsSumOp<>::Ptr m_preconditioner;
+
+
+};
+
 
 int main(int argc, char *argv[])
 {
@@ -167,11 +523,13 @@ int main(int argc, char *argv[])
     index_t nPatchesX = 4;
     index_t nPatchesY = 4;
     index_t degree = 2;
-    index_t refinements = 1;
+    index_t refinements = 2;
     real_t robin = 0;
     real_t alpha = 1;
+    int bdyConds = 2;
     std::string primals("x");
-    bool modifiedPreconder = false;
+    std::string dualPreconder("d");
+    std::string solverType("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 1000;
     std::string out;
@@ -183,10 +541,12 @@ int main(int argc, char *argv[])
     cmd.addInt   ("y", "PatchesY",              "Number of patches (coordinate direction y)", nPatchesY);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
-    cmd.addReal  ("b", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
+    cmd.addReal  ("o", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
     cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
+    cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (0) \u0394u, dn\u0394u; (1) u, \u0394u; (2) u, dnu", bdyConds);
     cmd.addString("c", "Primals",               "Chosen primal dofs", primals);
-    cmd.addSwitch("m", "ModifiedPreconder",     "Use modified preconder", modifiedPreconder);
+    cmd.addString("d", "DualPreconder",         "Use preconder: (s) stanard Dirichlet, (c) componentwise Dirichlet, (d) deluxe", dualPreconder);
+    cmd.addString("",  "Solver",                "Which solver to use: \"cg\" or \"gmres\".", solverType);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
@@ -208,6 +568,11 @@ int main(int argc, char *argv[])
     if (rhsType < 0 || (size_t)rhsType >= util::size(rhsTypes))
     {
         gsInfo << "Invalid choice for --RhsType (-t).\n";
+        return -1;
+    }
+    if (bdyConds < 0 || bdyConds > 2)
+    {
+        gsInfo << "Invalid choice for --BdyCond (-b).\n";
         return -1;
     }
 
@@ -239,24 +604,33 @@ int main(int argc, char *argv[])
 
     /******************* Setup dofMapper ********************/
     gsInfo << "Setup dofMapper... " << std::flush;
-    gsDofMapper dm = setupTwoLayerDofMapper(mp, mb);
-    std::vector<std::vector<std::vector<index_t>>> skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb);
+    gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, bdyConds);
+    std::vector<std::vector<std::vector<index_t>>> skeletonDofs;
+    if (dualPreconder=="c")
+        skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb, bdyConds);
     gsInfo << "done:\n" << dm << "\n";
 
     /****************** Setup ietimapper ********************/
     gsInfo << "Setup ietimapper... " << std::flush;
     gsMatrix<> fixedPart;
+    fixedPart.setZero(dm.boundarySize(),1);
     gsIetiMapper<> ietiMapper(mb,dm,fixedPart);
-    ietiMapper.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false);
+    ietiMapper.computeJumpMatrices(/*fullyRedundant=*/false,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/true);
     if (primals == "c")
+    {
         ietiMapper.cornersAsPrimals();
+        gsInfo << "[" << ietiMapper.nPrimalDofs() << " classical cornerdofs added as primals]";
+    }
     else if (primals == "x")
     {
+        gsIetiMapper<> ietiMapper2(mb,dm,fixedPart);
+        ietiMapper2.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/false);
         std::vector<gsSparseMatrix<real_t,RowMajor>> jm;
         jm.reserve(nPatches);
         for (index_t k=0; k<nPatches; ++k)
-            jm.push_back(ietiMapper.jumpMatrix(k));
-        std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> data = cornersFromJumpMatrices(dm, jm);
+            jm.push_back(ietiMapper2.jumpMatrix(k));
+        gsInfo << "im2-jumps[0]:" << jm[0].rows() << "x" << jm[0].cols() << "\n";
+        std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> data = cornersFromJumpMatrices(jm);
 
         if ( true )
         {
@@ -275,10 +649,10 @@ int main(int argc, char *argv[])
 
         for (size_t i=0; i<data.size(); ++i)
             ietiMapper.customPrimalConstraints(data[i]);
-        gsInfo << "[" << data.size() << " eXtended cornerdofs added]";
+        gsInfo << "[" << data.size() << " eXtended cornerdofs added as primals]";
     }
     else if (primals == "0")
-        ;
+        gsInfo << "[no primaldofs added]";
     else
     {
         gsInfo << "Invalid choice for --Primals.\n";
@@ -303,6 +677,8 @@ int main(int argc, char *argv[])
     std::vector<gsMatrix<>> localRhsVectors; localRhsVectors.reserve(nPatches);
     std::vector<gsLinearOperator<>::Ptr> localSchurs; localSchurs.reserve(nPatches);
 
+    deluxePreconder deluxe;
+
     for (index_t k=0; k<nPatches; ++k)
     {
         gsInfo << "[" << k << "] " << std::flush;
@@ -321,28 +697,37 @@ int main(int argc, char *argv[])
         auto ff = A.getCoeff(f, G);
         auto u = A.getSpace(mb_local);
 
+        u.setup();
+        ietiMapper.initFeSpace(u,k);
+
         A.initSystem();
         A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(alpha*u*u.tr()*meas(G));
 
-        gsSparseMatrix<> transformer = makeTransformer(mb[k]);
+        gsSparseMatrix<> transformer = applyDofMapperTwoSided(makeTransformer(mb[k]),ietiMapper.dofMapperLocal(k));
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
         gsSparseMatrix<>                 localMatrix = transformer*A.matrix()*transformer.transpose();
         gsMatrix<>                       localRhs    = transformer*A.rhs();
 
+        //gsInfo << "\nlocalMatrix:"<<localMatrix.rows()<<"x"<<localMatrix.cols()<<";jumpMatrix:"<<jumpMatrix.rows()<<"x"<<jumpMatrix.cols();
+
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
 
         // Penalize (Dirichlet) boundary
-        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
+        if (robin)
         {
-            if (it->patchIndex()==k)
+            gsInfo << "[robin]";
+            for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
             {
-                // gsInfo << "Found biterator: " << *it << "\n";
-                gsVector<index_t> s1 = mb_local.basis(0).boundary(it->side());
-                for (index_t i=0; i<s1.rows(); ++i)
-                    localMatrix(s1[i],s1[i]) += robin;
+                if (it->patchIndex()==k)
+                {
+                    // gsInfo << "Found biterator: " << *it << "\n";
+                    gsVector<index_t> s1 = mb_local.basis(0).boundary(it->side());
+                    for (index_t i=0; i<s1.rows(); ++i)
+                        localMatrix(s1[i],s1[i]) += robin;
+                }
             }
         }
 
@@ -352,7 +737,7 @@ int main(int argc, char *argv[])
         localBasisTransforms.push_back(transformer);
         localSchurs.push_back(gsScaledDirichletPrec<>::schurComplement(localMatrix,ietiMapper.skeletonDofs(k)));
 
-        if (!modifiedPreconder)
+        if (dualPreconder=="s")
         {
             prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
@@ -362,7 +747,7 @@ int main(int argc, char *argv[])
                 )
             );
         }
-        else
+        else if (dualPreconder=="c")
         {
             for (index_t j=0; j<2; ++j)
                 prec.addSubdomain(
@@ -372,6 +757,19 @@ int main(int argc, char *argv[])
                         skeletonDofs[k][j]
                     )
                 );
+        }
+        else if (dualPreconder=="d")
+        {
+            gsInfo << "Skeleton=[";
+            for (size_t i=0; i<ietiMapper.skeletonDofs(k).size(); ++i)
+                gsInfo  << ietiMapper.skeletonDofs(k)[i] << " ";
+            gsInfo << "]";
+            deluxe.addSubdomain(localMatrix, jumpMatrix, ietiMapper.skeletonDofs(k));  // TODO: What are the skeleton dofs here?
+        }
+        else
+        {
+            gsInfo << "\nUnknown dual preconder.\n";
+            return -1;
         }
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
@@ -421,11 +819,14 @@ int main(int argc, char *argv[])
     /**************** Setup solver and solve ****************/
 
     gsInfo << "Setup solver and solve... \n"
-        "    Setup multiplicity scaling... " << std::flush;
+        "    Setup multiplicity/deluxe scaling... " << std::flush;
 
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
-    prec.setupMultiplicityScaling();
+    if (dualPreconder=="d")
+        deluxe.setupPreconditioner();
+    else
+        prec.setupMultiplicityScaling();
     //! [Setup scaling]
 
     gsInfo << "done.\n    Setup rhs... " << std::flush;
@@ -445,10 +846,31 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
-    gsConjugateGradient<> PCG( ieti.schurComplement(), prec.preconditioner() );
-    PCG.setOptions( cmd.getGroup("Solver") );
-    PCG.setCalcEigenvalues(true);
-    PCG.solveDetailed( rhsForSchur, lambda, errorHistory );
+    gsLinearOperator<>::Ptr preconder;
+    if (dualPreconder=="d")
+        preconder = deluxe.preconditioner();
+    else
+        preconder = prec.preconditioner();
+    real_t conditionNumber = -1;
+    if (solverType == "cg")
+    {
+        gsConjugateGradient<> solver( ieti.schurComplement(), preconder );
+        solver.setOptions( cmd.getGroup("Solver") );
+        solver.setCalcEigenvalues(true);
+        solver.solveDetailed( rhsForSchur, lambda, errorHistory );
+        conditionNumber = solver.getConditionNumber();
+    }
+    else if (solverType == "gmres")
+    {
+        gsGMRes<> solver( ieti.schurComplement(), preconder );
+        solver.setOptions( cmd.getGroup("Solver") );
+        solver.solveDetailed( rhsForSchur, lambda, errorHistory );
+    }
+    else
+    {
+        gsInfo << "Unknown --solver.\n";
+        return -1;
+    }
     //! [Solve]
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
@@ -475,7 +897,7 @@ int main(int argc, char *argv[])
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-    gsInfo << "Estimated condition number: " << PCG.getConditionNumber() << "\n";
+    gsInfo << "Estimated condition number: " << conditionNumber << "\n";
 
     /********************** Output **************************/
     if (!out.empty())

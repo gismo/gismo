@@ -112,7 +112,11 @@ public:
     ///                        if false, then no redundancy
     /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
     ///                        if the corners are chosen as primal dofs
-    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners );
+    /// @param excludeDofsForSeveralPatches Similar to excludeCorners: Ignore all dofs
+    ///                        that belong to more than two patches. This makes sense
+    ///                        if these are chosen as primal. This option is exclusive
+    ///                        to fullyRedundant
+    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners, bool excludeDofsForSeveralPatches = false );
 
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
