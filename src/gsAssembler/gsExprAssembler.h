@@ -143,7 +143,7 @@ public:
 
     const gsMultiPatch<T>& getGeometryMap() const
     {
-        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap); 
+        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap);
     }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
@@ -653,11 +653,11 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     /// dirichlet treatment? elimination ????
 
     //storage of quadrature points, TP, ... non-linear assembly.
-    
+
     //gsExpressions.h -> split ?
 
     //parallel interface assembly..
-    
+
     // mpi assemly. ???
 }
 
@@ -726,13 +726,13 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
-        if (!m_vcol.front()->valid()) m_vcol.front()->init();
+        if (!m_vcol[i]->valid()) m_vcol[i]->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
                                    m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
 
-        if ( m_vcol[i] != m_vrow[i] )
+        if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
-            if (!m_vrow.front()->valid()) m_vrow.front()->init();
+            if (!m_vrow[i]->valid()) m_vrow[i]->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
                                        m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
         }
