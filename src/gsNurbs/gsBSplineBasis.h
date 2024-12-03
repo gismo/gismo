@@ -770,6 +770,53 @@ public:
             gsWarn << "Warning: Insconsistent "<< *this<< "\n";
     }
 
+    using gsBasis<T>::create; //unhide from gsBasis
+
+    static typename gsBasis<T>::uPtr create(KnotVectorType KV, short_t dim)
+    {
+        typedef typename gsBasis<T>::uPtr basisPtr;
+
+        switch (dim)
+        {
+        case 1:
+            return basisPtr(new gsBSplineBasis<T>(give(KV)));
+            break;
+        case 2:
+            return basisPtr(new gsTensorBSplineBasis<2,T>(give(KV),give(KV)));
+            break;
+        case 3:
+            return basisPtr(new gsTensorBSplineBasis<3,T>(give(KV),give(KV),give(KV)));
+            break;
+        case 4:
+            return basisPtr(new gsTensorBSplineBasis<4,T>(give(KV),give(KV),give(KV),give(KV)));
+            break;
+        }
+        GISMO_ERROR("Dimension should be between 1 and 4.");
+    }
+
+    static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV)
+    {
+        typedef typename gsBasis<T>::uPtr basisPtr;
+
+        const index_t dd = cKV.size();
+        switch (dd)
+        {
+        case 1:
+            return basisPtr(new gsBSplineBasis<T>(give(cKV)));
+            break;
+        case 2:
+            return basisPtr(new gsTensorBSplineBasis<2,T>(give(cKV)));
+            break;
+        case 3:
+            return basisPtr(new gsTensorBSplineBasis<3,T>(give(cKV)));
+            break;
+        case 4:
+            return basisPtr(new gsTensorBSplineBasis<4,T>(give(cKV)));
+            break;
+        }
+        GISMO_ERROR("Dimension should be between 1 and 4.");
+    }
+
 /*
     /// @brief Copy Constructor
     gsBSplineBasis( const gsBSplineBasis & o)

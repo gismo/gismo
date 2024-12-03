@@ -844,8 +844,6 @@ public:
     void parse(gsExprHelper<T> & evList) const
     {
         GISMO_ERROR("EL");
-        evList.add(*this);
-        this->data().flags |= NEED_VALUE;
     }
 };
 
