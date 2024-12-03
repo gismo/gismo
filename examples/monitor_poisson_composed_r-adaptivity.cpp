@@ -326,8 +326,8 @@ int main(int arg, char *argv[])
         gsInfo<<"R-Adaptivity iteration "<<i<<"\n";
         gsL2Difference<real_t> err_scaled(ms,parsol.patch(0),10./maxError);
         // gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,mp.patch(0),err_scaled,mb.basis(0),optimizer,true);
-        // gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,mp.patch(0),parsol.patch(0),mb.basis(0),optimizer,true);
-        gsAdaptiveParametrization<real_t,MonitorMode::GradientBased> relocator(domain,mp.patch(0),parsol.patch(0),mb.basis(0),optimizer,true);
+        gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relocator(domain,mp.patch(0),parsol.patch(0),mb.basis(0),optimizer,true);
+        //gsAdaptiveParametrization<real_t,MonitorMode::GradientBased> relocator(domain,mp.patch(0),parsol.patch(0),mb.basis(0),optimizer,true);
         relocator.solve();
     }
 

@@ -105,11 +105,7 @@ int main(int argc, char *argv[])
 
 
         // // The domain sigma
-        // gsFunctionExpr<> domain("(x)^(2)","(y)^(2)",spaceDim);
-        // gsFunctionExpr<> domain("(x","y",2);
         gsSquareDomain<2,real_t> domain(numElevateC,numRefineC);
-        // gsMobiusDomain<2,real_t> domain;
-        // gsSimpleMobiusDomain<2,real_t> domain;
         // gsWriteParaview(domain,mp0.patch(0).support(),"domain");
 
         for (index_t i = 0; i < domain.nControls(); i++)
@@ -118,7 +114,7 @@ int main(int argc, char *argv[])
 
         // // gsMatrix<> pars = domain.controls();
 
-        gsInfo << domain << "\n";
+        gsInfo << domain.domain() << "\n";
         // gsInfo << "Domain coefficients before:\n" << domain.controls() << "...\n";
 
         gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
