@@ -31,7 +31,7 @@ class gsComposedBasis : public gsBasis<T>
     typedef gsComposedGeometry<T> GeometryType;
 
     GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedBasis)
-//
+
     GISMO_OVERRIDE_MAKE_GEOMETRY_NEW
 
     typedef typename gsBasis<T>::domainIter domainIter;
@@ -48,14 +48,6 @@ public:
 public:
 
     gsComposedBasis();
-
-
-    // gsComposedBasis(const CompositionT * composition, const BasisT * basis)
-    // :
-    // gsComposedBasis(memory::make_shared_not_owned(composition),
-    //                 memory::make_shared_not_owned(basis) )
-    // {
-    // }
 
     gsComposedBasis(const CompositionT * composition, const BasisT * basis);
 
@@ -91,6 +83,9 @@ public:
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     void derivSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override;
+
+    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
+
 
     // void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result)
     // {
@@ -154,16 +149,18 @@ public:
     /// See \ref gsBasis for documentation
     void anchors_into(gsMatrix<T> & result) const override;
 
-
     /// See \ref gsBasis for documentation
     void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const override;
 
+    /// See \ref gsBasis for documentation
+    void uniformRefine(int numKnots = 1, int mul=1, int dir=-1) override;
 
     /// See \ref gsBasis for documentation
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir=-1) override;
 
+    // See \ref gsBasis for documentation
+    void degreeElevate(short_t const & i = 1, short_t const dir = -1) override;
 
-    /// See \ref gsBasis for documentation
-    //
 
     //// NEEDS TO EVALUATE THE INVERSE MAP, NOT m_composition!!
     void mapMesh(gsMesh<T> & mesh) const;
@@ -171,6 +168,7 @@ public:
 
     /// Return the composition
     const CompositionT & composition() const;
+          CompositionT & composition()      ;
     /// Return the basis
     const BasisT & basis() const;
 

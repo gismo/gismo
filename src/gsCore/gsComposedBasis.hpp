@@ -43,8 +43,7 @@ template <class T>
 gsComposedBasis<T>::gsComposedBasis(const typename gsComposedBasis<T>::CompositionT & composition,
                                     const typename gsComposedBasis<T>::BasisT & basis)
 :
-gsComposedBasis(memory::make_shared(composition.clone().release()),
-                memory::make_shared(basis.clone().release()) )
+gsComposedBasis(&composition,&basis)
 {
 }
 
@@ -55,12 +54,36 @@ gsComposedBasis<T>::gsComposedBasis(typename gsComposedBasis<T>::CompositionT::P
 m_composition(composition),
 m_basis(basis)
 {
+    GISMO_ENSURE(m_composition->domainDim()==m_composition->targetDim(),
+        "Domain dimension of the composition "<<
+        " should be equal to the target dimension of the composition "<<
+        ", but composition.domainDim() = "<<m_composition->domainDim()<<
+        " and composition.targetDim() = )"<<m_composition->targetDim());
     GISMO_ENSURE(m_basis->domainDim()==m_composition->targetDim(),
         "Domain dimension of the basis "<<
         " should be equal to the target dimension of the composition "<<
         ", but basis.domainDim() = "<<m_basis->domainDim()<<
         " and composition.targetDim() = )"<<m_composition->targetDim());
 }
+
+// template <class T>
+// gsComposedBasis<T>::gsComposedBasis(const gsComposedBasis<T> & other)
+// :
+// m_composition(other.m_composition->clone()),
+// m_basis(other.m_basis->clone())
+// {
+// }
+
+// template <class T>
+// gsComposedBasis<T> & gsComposedBasis<T>::operator=(const gsComposedBasis<T> & other)
+// {
+//     if (this != &other)
+//     {
+//         m_composition = other.m_composition->clone();
+//         m_basis = other.m_basis->clone();
+//     }
+//     return *this;
+// }
 
 template <class T>
 short_t gsComposedBasis<T>::domainDim() const
@@ -206,6 +229,69 @@ void gsComposedBasis<T>::derivSingle_into(index_t i, const gsMatrix<T>& u, gsMat
     }
 }
 
+template <class T>
+void gsComposedBasis<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{
+    // The second derivative of the composed basis is computed as follows:
+    // Let d2B/dudv be the second derivative of the basis, dC/dx be the derivative of the composition.
+    // In 2D:
+    // d2B/dudv = [[ d2B/dudu, d2B/dudv],
+    //             [ d2B/dvdu, d2B/dvdv]]  (2x2 matrix)
+    // dC/dx    = [[ du/dx1  , dv/dx1  ],
+    //             [ du/dx2  , dv/dx2  ]]  (2x2 matrix)
+    // Then the second derivative of the basis is:
+    // d2B/dxidxj = dC/dx * d2B/dudv * dC/dx^T
+    //            = [[ du/dx1  , dv/dx1  ],  * [[ d2B/dudu, d2B/dudv],  * [[ du/dx1  , du/dx2  ],
+    //               [ du/dx2  , dv/dx2  ]]     [ d2B/dvdu, d2B/dvdv]]     [ dv/dx1  , dv/dx2  ]]
+    // d2B/dxdx   = ( d2B/dudu * du/dx1 + d2B/dudv * dv/dx1 ) * du/dx1 + ( d2B/dvdu * du/dx1 + d2B/dvdv * dv/dx1 ) * dv/dx1
+    //            = d2B/dudu * du/dx1 * du/dx1 + d2B/dudv * du/dx1 * dv/dx1 + d2B/dvdu * du/dx1 * dv/dx1 + d2B/dvdv * dv/dx1 * du/dx1
+    // d2B/dydy   = ( d2B/dudu * du/dx2 + d2B/dudv * dv/dx2 ) * du/dx2 + ( d2B/dvdu * du/dx2 + d2B/dvdv * dv/dx2 ) * dv/dx2
+    //            = d2B/dudu * du/dx2 * du/dx2 + d2B/dudv * du/dx2 * dv/dx2 + d2B/dvdu * du/dx2 * dv/dx2 + d2B/dvdv * dv/dx2 * du/dx2
+    // d2B/dxdy   = ( d2B/dudu * du/dx1 + d2B/dudv * dv/dx1 ) * du/dx2 + ( d2B/dvdu * du/dx1 + d2B/dvdv * dv/dx1 ) * dv/dx2
+    //            = d2B/dudu * du/dx1 * du/dx2 + d2B/dudv * du/dx1 * dv/dx2 + d2B/dvdu * du/dx2 * dv/dx1 + d2B/dvdv * dv/dx1 * du/dx2
+    // d2B/dydx   = ( d2B/dudu * du/dx2 + d2B/dudv * dv/dx2 ) * du/dx1 + ( d2B/dvdu * du/dx2 + d2B/dvdv * dv/dx2 ) * dv/dx1
+    //            = d2B/dudu * du/dx2 * du/dx1 + d2B/dudv * du/dx2 * dv/dx1 + d2B/dvdu * du/dx1 * dv/dx2 + d2B/dvdv * dv/dx2 * du/dx1
+
+    // Get the domain and target dimensions
+    index_t domainDim, targetDim, bDomainDim, bTargetDim;
+    domainDim = m_composition->domainDim();
+    targetDim = m_composition->targetDim();
+    bDomainDim = m_basis->domainDim();
+    bTargetDim = m_basis->targetDim();
+    GISMO_ASSERT(bTargetDim==1,"The basis should be scalar-valued"); // HMV: I think
+
+    // Compute the composition and its derivatives
+    gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
+    m_composition->compute(u,fd);
+
+    gsMatrix<T> coord, deriv2, tmphess, tmpder2, compderiv, hessMat;
+    coord = fd.values[0];
+    compderiv = fd.values[1];
+
+    this->_applyBounds(coord);
+
+    // Compute the second derivative of the basis
+    // The number of second derivatives per component is d(d+1)/2
+    const index_t numSecDeriv = bDomainDim*(bDomainDim+1)/2;
+    m_basis->deriv2_into(coord,deriv2);
+
+    // Compute for every point for every basis function
+    const index_t numAct = deriv2.rows() / numSecDeriv;
+    result.resize(numAct*numSecDeriv,u.cols());
+    for (index_t k = 0; k!=u.cols(); k++)
+    {
+        gsAsMatrix<T,Dynamic,Dynamic> compderivMat = compderiv.reshapeCol(k,domainDim,targetDim);
+        for (index_t act = 0; act!=numAct; act++)
+        {
+            tmpder2 = deriv2.block(act*numSecDeriv,k,numSecDeriv,1);
+            hessMat = util::secDerToHessian(tmpder2,bDomainDim).reshape(bDomainDim,bDomainDim);
+            tmphess = compderivMat*hessMat*compderivMat.transpose();
+            util::hessianToSecDer(tmphess,bDomainDim,tmpder2);
+            result.block(act*numSecDeriv,k,numSecDeriv,1) = tmpder2;
+        }
+    }
+}
+
 // void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result)
 // {
 //     // The number of rows is the target dimension times the number of controls
@@ -290,13 +376,32 @@ index_t gsComposedBasis<T>::size() const
 template <class T>
 void gsComposedBasis<T>::anchors_into(gsMatrix<T> & result) const
 {
-    m_basis->anchors_into(result);
+    gsMatrix<T> anchors = m_basis->anchors();
+    m_composition->invertPoints(anchors,result,1e-2,true);
 }
 
 template <class T>
 void gsComposedBasis<T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const
 {
     m_basis->connectivity(nodes,mesh);
+}
+
+template <class T>
+void gsComposedBasis<T>::uniformRefine(int numKnots, int mul, int dir)
+{
+    m_basis->uniformRefine(numKnots,mul,dir);
+}
+
+template <class T>
+void gsComposedBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int dir)
+{
+    m_basis->uniformRefine_withCoefs(coefs,numKnots,mul,dir);
+}
+
+template <class T>
+void gsComposedBasis<T>::degreeElevate(short_t const & i, short_t const dir)
+{
+    m_basis->degreeElevate(i,dir);
 }
 
 template <class T>
@@ -317,6 +422,12 @@ void gsComposedBasis<T>::mapMesh(gsMesh<T> & mesh) const
 
 template <class T>
 const typename gsComposedBasis<T>::CompositionT & gsComposedBasis<T>::composition() const
+{
+    return *m_composition;
+}
+
+template <class T>
+typename gsComposedBasis<T>::CompositionT & gsComposedBasis<T>::composition()
 {
     return *m_composition;
 }

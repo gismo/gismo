@@ -23,8 +23,6 @@ namespace gismo
 template <class T>
 gsComposedGeometry<T>::gsComposedGeometry()
 :
-m_composition(nullptr),
-m_geom(nullptr),
 m_domainDim(0)
 {
 }
@@ -33,8 +31,6 @@ template <class T>
 gsComposedGeometry<T>::gsComposedGeometry(const gsComposedBasis<T> & basis, const gsMatrix<T> & coefs)
 :
 Base(basis, coefs ),
-m_composition(memory::make_shared(basis.composition().clone().release())),
-m_geom(give(basis.basis().makeGeometry(coefs))),
 m_domainDim(basis.composition().domainDim())
 {
 }
@@ -43,8 +39,6 @@ template <class T>
 gsComposedGeometry<T>::gsComposedGeometry(const gsFunction<T> & composition, const gsGeometry<T> & geom)
 :
 Base(gsComposedBasis<T>(composition,geom.basis()), geom.coefs() ),
-m_composition(memory::make_shared(composition.clone().release())),
-m_geom(geom.clone()),
 m_domainDim(geom.domainDim())
 {
     GISMO_ASSERT(geom.domainDim()==composition.targetDim(),"Domain dimension of the geometry does not correspond with the target dimension of the composition!");
@@ -99,13 +93,13 @@ m_domainDim(geom.domainDim())
 template <class T>
 const typename gsComposedGeometry<T>::CompositionT & gsComposedGeometry<T>::composition() const
 {
-    return *m_composition;
+    return static_cast<gsComposedBasis<T> *>(m_basis)->composition();
 }
 
 template <class T>
 typename gsComposedGeometry<T>::CompositionT & gsComposedGeometry<T>::composition()
 {
-    return *m_composition;
+    return static_cast<gsComposedBasis<T> *>(m_basis)->composition();
 }
 
 template <class T>
@@ -132,18 +126,19 @@ void gsComposedGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out)
 template <class T>
 void gsComposedGeometry<T>::control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const
 {
+    const CompositionT & composition = static_cast<gsComposedBasis<T> *>(m_basis)->composition();
     // The number of rows is the target dimension times the number of controls
     // The number of cols is the number of points
-    result.resize(targetDim()*m_composition->nControls(),points.cols());
+    result.resize(targetDim()*composition.nControls(),points.cols());
 
     // Pre-compute the coordinates of the composition, the derivatives of G and the derivatives of the composition
     gsMatrix<T> c, dc, dG;
-    m_composition->eval_into(points,c);
-    m_composition->control_deriv_into(points,dc);   // This is dc/dpi (pi is a control of c)
+    composition.eval_into(points,c);
+    composition.control_deriv_into(points,dc);   // This is dc/dpi (pi is a control of c)
     m_geom->deriv_into(c,dG);                       // This is dG/dc evaluated on c
 
     // Store some sizes
-    index_t nControls = m_composition->nControls();
+    index_t nControls = composition.nControls();
     index_t dd = m_geom->domainDim();
     index_t td = m_geom->targetDim();
 
