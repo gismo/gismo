@@ -45,7 +45,6 @@ public:
     gsComposedFunction( typename CompositionT::Ptr composition,
                         typename FunctionT::Ptr function);
 
-
     /// Return the composition
     const CompositionT & composition() const;
     /// Return the function

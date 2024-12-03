@@ -119,7 +119,6 @@ template<class E> class normalized_expr;
 template<class E> class trace_expr;
 template<class E> class integral_expr;
 template<class E> class adjugate_expr;
-template<class E> class sqrt_expr;
 template<class E> class norm_expr;
 template<class E> class sqNorm_expr;
 template<class E> class det_expr;
@@ -275,10 +274,6 @@ public:
     /// Returns the adjugate of the expression (for matrix-valued expressions)
     adjugate_expr<E> adj() const
     { return adjugate_expr<E>(static_cast<E const&>(*this)); }
-
-    /// Returns the square root of the expression (for matrix-valued expressions)
-    sqrt_expr<E> sqrt() const
-    { return sqrt_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the Euclidean norm of the expression
     norm_expr<E> norm() const
@@ -1882,58 +1877,6 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
     void print(std::ostream &os) const { os << "adj("; _u.print(os); os<<")"; }
-};
-
-/*
-  Expression for the square root of a matrix expression
-*/
-template<class E>
-class sqrt_expr  : public _expr<sqrt_expr<E> >
-{
-public:
-    typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0, ColBlocks = E::ColBlocks};
-    enum {Space = E::Space};
-private:
-    typename E::Nested_t _u;
-    mutable gsMatrix<Scalar> res;
-
-public:
-    sqrt_expr(_expr<E> const& u) : _u(u)
-    {
-        GISMO_ASSERT(_u.cols() == _u.rows(), "Expecting square-block expression, got " << _u.rows() <<" x "<< _u.cols() );
-    }
-
-    // choose if ColBlocks
-    const gsMatrix<Scalar> & eval(const index_t k) const
-    {
-        gsMatrix<Scalar> tmp = _u.eval(k);
-        const index_t cb = _u.rows();
-        const index_t r  = _u.cols() / cb;
-        res.resize(_u.rows(),_u.cols());
-        // Can be made faster by templating over the dimension of tmp.
-        gsEigen::SelfAdjointEigenSolver<gsMatrix<Scalar>> es(tmp.rows());
-        for (index_t i = 0; i!=r; ++i)
-        {
-            es.compute(tmp.middleCols(i*cb,cb));
-            res.middleCols(i*cb,cb) = es.operatorSqrt();
-        }
-        return res;
-    }
-
-    // choose if !ColBlocks
-    //todo: Scalar eval(const index_t k) const
-
-    index_t rows() const { return _u.rows(); }
-    index_t cols() const { return _u.cols(); }
-
-    void parse(gsExprHelper<Scalar> & evList) const
-    { _u.parse(evList); }
-
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
-
-    void print(std::ostream &os) const { os << "sqrt("; _u.print(os); os<<")"; }
 };
 
 template<class E>
@@ -4415,7 +4358,7 @@ public:
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
         GISMO_ASSERT(_u.cols() == _v.cols(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation:\n" << _u <<" minus \n" << _v );
-        GISMO_ASSERT(E1::Space==0 || _u.cardinality() == _u.cardinality(),
+        GISMO_ASSERT(_u.cardinality() == _u.cardinality(),
                      "Cardinality "<< _u.cardinality()<<" != "<< _v.cardinality());
         //return (_u.eval(k) - _v.eval(k) ).eval();
         //return (_u.eval(k) - _v.eval(k) ); // any temporary matrices eval(.) will leak mem.

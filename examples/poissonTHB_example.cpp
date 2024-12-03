@@ -1,4 +1,4 @@
-/** @file poissonTHB_example.cpp
+/** @file poisson_exampleThb.cpp
 
     @brief Example for using the gsPoissonSolver with adaptive refinement with THB-splines.
 
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
             RefineLoopMax);
     cmd.addInt("i", "initial-ref", "Initial number of uniform refinement steps to perform",
             initUnifRef);
-    cmd.addInt("d", "degree", "Spline degree of the THB basis", degree);
+    cmd.addInt("", "degree", "Spline degree of the THB basis", degree);
     cmd.addInt("c", "criterion",  "Criterion to be used for adaptive refinement (1-3, see documentation)",
             refCriterion);
     cmd.addInt("E", "extension",  "Criterion to be used for adaptive refinement (1-3, see documentation)",
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
             HTB->addLevel(tbb);
         }
 
-        // This works
+        // This works    
         //{
         // for (index_t k=0; k!=3; k++)
         // {

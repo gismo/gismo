@@ -2,12 +2,12 @@
 
     @brief Provides implementation of input/output XML utilities struct.
 
-    This file is part of the G+Smo library.
+    This file is part of the G+Smo library. 
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
+    
     Author(s): A. Mantzaflaris
 */
 
@@ -71,7 +71,7 @@ public:
 
     static gsSolid<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"Solid"),
+        GISMO_ASSERT( !strcmp( node->name(),"Solid"), 
                       "Something went wrong. Expected Solid tag." );
 
         gsSolid<T> * m = new gsSolid<T>;
@@ -98,7 +98,7 @@ public:
             gsGetReal(str, z);
             m->addHeVertex(x,y,z);
         }
-        GISMO_ASSERT( ntest==n,
+        GISMO_ASSERT( ntest==n, 
                       "Number of vertices does not match the Solid tag." );
 
         // get faces and surfaces
@@ -274,11 +274,11 @@ public:
     {
         assert( ( !strcmp( node->name(),"Mesh") )
                 &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
-
+      
         gsMesh<T> * m = new gsMesh<T>;
         std::istringstream str;
         str.str( node->value() );
-
+      
         unsigned n  = atoi ( node->first_attribute("vertices")->value() ) ;
         T x,y, z;
         for (unsigned i=0; i<n; ++i)
@@ -288,7 +288,7 @@ public:
             gsGetReal(str, z);
             m->addVertex(x,y,z);
         }
-
+      
         n  = atoi ( node->first_attribute("faces")->value() ) ;
         unsigned c = 0;
         std::vector<int> face;
@@ -324,12 +324,12 @@ public:
     GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag () { return "Matrix"; }
     static std::string type() { return ""; }
-
+  
     GSXML_GET_POINTER(Object);
 
     static void get_into (gsXmlNode * node, Object & obj)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"Matrix"),
+        GISMO_ASSERT( !strcmp( node->name(),"Matrix"), 
                       "Something went wrong. Expected Matrix tag." );
 
         unsigned rows = atoi(node->first_attribute("rows")->value());
@@ -338,17 +338,17 @@ public:
         std::string format_flag = format ? format->value() : "ascii";
         getMatrixFromXml<T>(node, rows, cols, obj, format_flag);
     }
-
+    
     static gsXmlNode * put (const gsMatrix<T> & obj,
                             gsXmlTree & data )
     {
         gsXmlNode * mat_data = putMatrixToXml(obj,data);
         // Record matrix dimensions
-        mat_data->append_attribute(
+        mat_data->append_attribute( 
             makeAttribute("rows", obj.rows(), data) );
-        mat_data->append_attribute(
+        mat_data->append_attribute( 
             makeAttribute("cols", obj.cols(), data) );
-
+        
         return mat_data;
     }
 };
@@ -366,12 +366,12 @@ public:
     GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag () { return "SparseMatrix"; }
     static std::string type() { return ""; }
-
+  
     GSXML_GET_POINTER(Object);
 
     static void get_into (gsXmlNode * node, Object & obj)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"SparseMatrix"),
+        GISMO_ASSERT( !strcmp( node->name(),"SparseMatrix"), 
                       "Something went wrong. Expected SparseMatrix tag." );
 
         const index_t rows  = atoi ( node->first_attribute("rows")->value() ) ;
@@ -383,15 +383,15 @@ public:
         obj.resize(rows,cols);
         obj.setFrom(entries);
     }
-
+    
     static gsXmlNode * put (const gsSparseMatrix<T> & obj,
                             gsXmlTree & data )
     {
         gsXmlNode * mat_data = putSparseMatrixToXml(obj,data);
 
-        mat_data->append_attribute(
+        mat_data->append_attribute( 
             makeAttribute("rows", obj.rows(), data) );
-        mat_data->append_attribute(
+        mat_data->append_attribute( 
             makeAttribute("cols", obj.cols(), data) );
 
         return mat_data;
@@ -401,7 +401,7 @@ public:
 /*
  * Getting Bases from XML data
  */
-
+    
 /// Get a NurbsBasis from XML data
 template<class T>
 class gsXml< gsNurbsBasis<T> >
@@ -441,7 +441,7 @@ public:
     {
         return getRationalBasisFromXml< gsTensorNurbsBasis<d,T> >(node);
     }
-
+    
     static gsXmlNode * put (const gsTensorNurbsBasis<d,T> & obj,
                             gsXmlTree & data )
     {
@@ -465,7 +465,7 @@ public:
     {
         return getGeometryFromXml< gsNurbs<T> >(node);
     }
-
+    
     static gsXmlNode * put (const gsNurbs<T> & obj,
                             gsXmlTree & data )
     {
@@ -488,7 +488,7 @@ public:
     {
         return getGeometryFromXml< gsTensorNurbs<d,T> >( node );
     }
-
+    
     static gsXmlNode * put (const gsTensorNurbs<d,T> & obj,
                             gsXmlTree & data )
     {
@@ -510,16 +510,16 @@ public:
     static gsTrimSurface<T> * get (gsXmlNode * node)
     {
         assert( !strcmp( node->name(),"TrimSurface") );
-
+        
         gsXmlNode * tmp = node->first_node("Geometry");
         gsSurface<T> * geo =  gsXml<gsSurface<T> >::get (tmp) ;
-
+        
         tmp = node->first_node("PlanarDomain");
         gsPlanarDomain<T> * pd  =  gsXml<gsPlanarDomain<T> >::get (tmp) ;
-
+        
         return new gsTrimSurface<T>( geo, pd );
     }
-
+    
     static gsXmlNode * put (const gsTrimSurface<T> & obj,
                             gsXmlTree & data )
     {
@@ -546,7 +546,7 @@ public:
 
     static gsGeometry<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( ( !strcmp( node->name(),"Geometry") ),
+        GISMO_ASSERT( ( !strcmp( node->name(),"Geometry") ), 
                       "Something went wrong, was waiting for a Geometry tag.\n" );
 
         gsXmlAttribute * gtype = node->first_attribute("type");
@@ -779,7 +779,7 @@ public:
 
     static gsCurve<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( ( !strcmp( node->name(),"Geometry") ),
+        GISMO_ASSERT( ( !strcmp( node->name(),"Geometry") ), 
                       "Something went wrong, was waiting for a Geometry tag.\n" );
 
         gsXmlAttribute * gtype = node->first_attribute("type");
@@ -789,12 +789,12 @@ public:
             return NULL;
         }
         std::string s = gtype->value() ;
-
-        if ( s == "BSpline"    )
+      
+        if ( s == "BSpline"    ) 
             return gsXml< gsBSpline<T> >::get(node);
-        if ( s == "Nurbs"      )
+        if ( s == "Nurbs"      ) 
             return gsXml< gsNurbs<T> >::get(node);
-
+      
         gsWarn<<"gsXmlUtils: getCurve: No known curve \""<<s<<"\". Error.\n";
         return NULL;
     }
@@ -805,18 +805,18 @@ public:
 	{
 	    const gsGeometry<T> * ptr = & obj;
 
-	    if ( const gsBSpline<T> * g =
+	    if ( const gsBSpline<T> * g = 
              dynamic_cast<const gsBSpline<T> *>( ptr ) )
 		    return gsXml< gsBSpline<T> >::put(*g,data);
-
-	    if ( const gsNurbs<T> * g =
+        
+	    if ( const gsNurbs<T> * g = 
              dynamic_cast<const gsNurbs<T> *>( ptr ) )
 		    return gsXml< gsNurbs<T> >::put(*g,data);
-
-	    if ( const gsHBSpline<1,T> * g =
+                   
+	    if ( const gsHBSpline<1,T> * g = 
 	    	 dynamic_cast<const gsHBSpline<1,T> *>( ptr ) )
             return gsXml< gsHBSpline<1,T> >::put(*g,data);
-
+        
 		gsWarn<<"gsXmlUtils: put Curve: No known object "<< obj <<"Error.\n";
         return NULL;
 	}
@@ -836,7 +836,7 @@ public:
 
     static gsSurface<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( ( !strcmp( node->name(),"Geometry") ),
+        GISMO_ASSERT( ( !strcmp( node->name(),"Geometry") ), 
                       "Something went wrong, was waiting for a Geometry tag.\n" );
 
         gsXmlAttribute * gtype = node->first_attribute("type");
@@ -846,15 +846,15 @@ public:
             return NULL;
         }
         std::string s = gtype->value() ;
-
-        if ( s == "HBSpline2"  )
-            return gsXml< gsHBSpline<2,T> >::get(node);
-        if ( s == "THBSpline2" )
+      
+        if ( s == "HBSpline2"  )  
+            return gsXml< gsHBSpline<2,T> >::get(node); 
+        if ( s == "THBSpline2" )  
             return gsXml< gsTHBSpline<2,T> >::get(node);
-
-        if ( s == "TensorBSpline2" )
+      
+        if ( s == "TensorBSpline2" ) 
             return gsXml< gsTensorBSpline<2,T> >::get(node);
-        if ( s == "TensorNurbs2" )
+        if ( s == "TensorNurbs2" ) 
             return gsXml< gsTensorNurbs<2,T> >::get(node);
 
         gsWarn<<"gsXmlUtils: getSurface: No known surface \""<<s<<"\". Error.\n";
@@ -866,22 +866,22 @@ public:
 	{
 	    const gsGeometry<T> * ptr = & obj;
 
-	    if ( const gsTensorBSpline<2,T> * g =
+	    if ( const gsTensorBSpline<2,T> * g = 
              dynamic_cast<const gsTensorBSpline<2,T> *>( ptr ) )
             return gsXml< gsTensorBSpline<2,T> >::put(*g,data);
-
-	    if ( const gsTensorNurbs<2,T> * g =
+        
+	    if ( const gsTensorNurbs<2,T> * g = 
              dynamic_cast<const gsTensorNurbs<2,T> *>( ptr ) )
             return gsXml< gsTensorNurbs<2,T> >::put(*g,data);
-
-	    if ( const gsTHBSpline<2,T> * g =
+        
+	    if ( const gsTHBSpline<2,T> * g = 
              dynamic_cast<const gsTHBSpline<2,T> *>( ptr ) )
 	        return gsXml< gsTHBSpline<2,T> >::put(*g,data);
-
-	    if ( const gsHBSpline<2,T> * g =
+	    
+	    if ( const gsHBSpline<2,T> * g = 
 	    	 dynamic_cast<const gsHBSpline<2,T> *>( ptr ) )
             return gsXml< gsHBSpline<2,T> >::put(*g,data);
-
+        
 		gsWarn<<"gsXmlUtils: put Geometry: No known object "<< obj <<"Error.\n";
         return NULL;
 	}
@@ -901,7 +901,7 @@ public:
     static gsBasis<T> * get (gsXmlNode * node)
     {
         GISMO_ASSERT( ( !strcmp( node->name(),"Basis") ), "Something went wrong, waiting for a basis." );
-
+        
         gsXmlAttribute * btype = node->first_attribute("type");
         if ( ! btype )
         {
@@ -910,7 +910,7 @@ public:
         }
         std::string s = btype->value() ;
 
-        if ( s == "BSplineBasis" )
+        if ( s == "BSplineBasis" )      
             return gsXml< gsBSplineBasis<T> >::get(node);
         if ( s == "NurbsBasis"   )
             return gsXml< gsNurbsBasis<T>   >::get(node);
@@ -1041,22 +1041,22 @@ public:
     GSXML_COMMON_FUNCTIONS(gsPde<T>);
     static std::string tag () { return "Pde"; }
     static std::string type () { return ""; }
-
+    
     static gsPde<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"Pde"),
+        GISMO_ASSERT( !strcmp( node->name(),"Pde"), 
                       "Something went wrong. Expected Pde tag." );
-
+        
         std::string s = node->first_attribute("type")->value() ;
         if ( s == "PoissonPde" )
             return gsXml< gsPoissonPde<T> >::get(node);
         if ( s == "SurfacePoissonPde" )
             return gsXml< gsSurfacePoissonPde<T> >::get(node);
-
+        
         gsWarn<<"gsXmlUtils: getPde: No known Pde \""<<s<<"\". Error.\n";
         return NULL;
     }
-
+    
     static gsXmlNode * put (const gsPde<T> &,
                             gsXmlTree & )
     {
@@ -1077,23 +1077,23 @@ public:
     GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag () { return "MultiPatch"; }
     static std::string type () { return ""; }
-
+    
     GSXML_GET_POINTER(Object);
-
+    
     static void get_into (gsXmlNode * node, Object & obj)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"MultiPatch"),
+        GISMO_ASSERT( !strcmp( node->name(),"MultiPatch"), 
                       "Something went wrong. Expected Multipatch tag." );
-
+        
         // the geometry patches should be siblings of node
         gsXmlNode * toplevel = node->parent();
-
+        
         const int d = atoi( node->first_attribute("parDim")->value() );
-
+        
         gsXmlNode * tmp = node->first_node("patches");
         std::istringstream str ;
         str.str( tmp->value() );
-
+        
         std::vector< gsGeometry<T> *> patches;
         std::map<int,int> ids;
         if ( ! strcmp( tmp->first_attribute("type")->value(),"id_range") )
@@ -1103,7 +1103,7 @@ public:
             gsGetInt(str, last);
             for ( int i = first; i<=last; ++i )
             {
-                GISMO_ASSERT( searchId(i, toplevel) != NULL,
+                GISMO_ASSERT( searchId(i, toplevel) != NULL, 
                               "No Geometry with Id "<<i<<" found in the XML data.");
                 patches.push_back( getById< gsGeometry<T> >( toplevel, i ) );
                 patches.back()->setId(i);
@@ -1115,7 +1115,7 @@ public:
             int c = 0;
             for (int pindex; gsGetInt(str, pindex);)
             {
-                GISMO_ASSERT( searchId(pindex, toplevel) != NULL,
+                GISMO_ASSERT( searchId(pindex, toplevel) != NULL, 
                               "No Geometry with Id "<<pindex<<" found in the XML data.");
                 patches.push_back( getById< gsGeometry<T> >( toplevel, pindex ) );
                 patches.back()->setId(pindex);
@@ -1132,7 +1132,7 @@ public:
         // before offset range: 5 3 4
 
         // Boundaries and interfaces are also 3,4,5 so we need to translate them t0 0,1,2
-
+        
         // Read boundary
         std::vector< patchSide > boundaries;
         for (gsXmlNode * child = node->first_node("boundary"); child;
@@ -1166,7 +1166,7 @@ public:
         interfaces.erase(std::unique(interfaces.begin(), interfaces.end()), interfaces.end());
 
 
-        obj = gsMultiPatch<T>(patches, boundaries, interfaces);
+        obj = gsMultiPatch<T>(patches, boundaries, interfaces);        
     }
 
     static gsXmlNode * put (const gsMultiPatch<T> & obj,
@@ -1181,18 +1181,18 @@ public:
             tmp = gsXml<gsGeometry<T> >::put(**it,data);
             data.appendToRoot(tmp);
         }
-
+        
         std::ostringstream str;
         str<< max_id+1 <<" "<< data.maxId();
         tmp = internal::makeNode("patches" , str.str(), data);
         tmp->append_attribute( internal::makeAttribute("type", "id_range", data) );
         str.clear(); str.str("");
-
+        
         // Make MultiPatch node
         gsXmlNode * mp_node = internal::makeNode("MultiPatch" , data);
         mp_node->append_attribute( internal::makeAttribute("parDim", obj.parDim() , data) );
         mp_node->append_node(tmp);
-
+      
         appendBoxTopology(obj, mp_node, data);
 
         if (obj.numBoxProperties()!=0)
@@ -1200,7 +1200,7 @@ public:
 
         return mp_node;
     }
-
+    
 };
 
 /// Get a MultiBasis from XML data
@@ -1262,7 +1262,7 @@ public:
         gsXmlNode * tmp = node->first_node("boundary");
         if (tmp)
             getBoundaries(tmp, ids, boundaries);
-
+        
         // Read interfaces
         std::vector< boundaryInterface > interfaces;
         tmp = node->first_node("interfaces");
@@ -1319,11 +1319,11 @@ public:
 
     static gsPlanarDomain<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"PlanarDomain"),
+        GISMO_ASSERT( !strcmp( node->name(),"PlanarDomain"), 
                       "Something went wrong. Expected PlanarDomain tag." );
-
+      
         std::vector<gsCurveLoop<T>*> loops;
-        for (gsXmlNode * tmp = node->first_node("CurveLoop");
+        for (gsXmlNode * tmp = node->first_node("CurveLoop"); 
              tmp; tmp = tmp->next_sibling("CurveLoop"))
             loops.push_back( gsXml<gsCurveLoop<T> >::get(tmp) ) ;
 
@@ -1344,7 +1344,7 @@ public:
             tmp = internal::gsXml< gsCurveLoop<T> >::put(obj.loop(i), data );
             tmp->append_attribute( makeAttribute("index", i, data) );
             pl->append_node(tmp);
-        }
+        }    
         return pl;
     }
 };
@@ -1362,15 +1362,15 @@ public:
 
     static gsCurveLoop<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"CurveLoop"),
+        GISMO_ASSERT( !strcmp( node->name(),"CurveLoop"), 
                       "Something went wrong. Expected CurveLoop tag." );
-
+      
         std::vector<gsCurve<T>* > curves;
 
-        for (gsXmlNode * tmp = node->first_node("Geometry");
+        for (gsXmlNode * tmp = node->first_node("Geometry"); 
              tmp; tmp = tmp->next_sibling("Geometry"))
             curves.push_back( gsXml<gsCurve<T> >::get(tmp) ) ;
-
+      
         return new gsCurveLoop<T>( curves );
     }
 
@@ -1388,7 +1388,7 @@ public:
             tmp = internal::gsXml< gsGeometry<T> >::put(obj.curve(i), data );
             tmp->append_attribute( makeAttribute("index", i, data) );
             cl->append_node(tmp);
-        }
+        }    
         return cl;
     }
 };
@@ -1407,9 +1407,9 @@ public:
 
     static gsCurveFitting<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"CurveFitting"),
+        GISMO_ASSERT( !strcmp( node->name(),"CurveFitting"), 
                       "Something went wrong. Expected CurveFitting tag." );
-
+      
         bool closed = (atoi(node->first_attribute("closed")->value() ) != 0);
 
         // Read knot-vector
@@ -1452,7 +1452,7 @@ public:
 
     static gsPoissonPde<T> * get (gsXmlNode * node)
     {
-        assert( ( !strcmp( node->name(),"Pde") ) &&
+        assert( ( !strcmp( node->name(),"Pde") ) && 
                 ( !(
                     strcmp( node->first_attribute("type")->value(),"PoissonPde")
                     && strcmp( node->first_attribute("type")->value(),"SurfacePoissonPde")
@@ -1462,10 +1462,10 @@ public:
         GISMO_ASSERT( node->first_attribute("dim"), "xml reader: No dim found" ) ;
         short_t d = atoi( node->first_attribute("dim")->value() );
 
-
+        
         unsigned tDim = 0;
         gsXmlAttribute * targetDim = node->first_attribute("targetDim");
-
+        
         if ( targetDim )
             tDim = atoi( targetDim->value() );
 
@@ -1474,13 +1474,13 @@ public:
             gsXmlNode * tmp = node->first_node("rhs");
             gsFunctionExpr<T>  rhs_fnct;
             internal::gsXml<gsFunctionExpr<T> >::get_into(tmp, rhs_fnct);
-
+            
             tmp = node->first_node("solution");
             if ( tmp )
             {
                 gsFunctionExpr<T> msol;
                 internal::gsXml<gsFunctionExpr<T> >::get_into(tmp, msol);
-
+                
                 return new gsPoissonPde<T>(rhs_fnct, d, msol );
             }
             else
@@ -1528,7 +1528,7 @@ public:
 
     static gsSurfacePoissonPde<T> * get (gsXmlNode * node)
     {
-        assert( ( !strcmp( node->name(),"Pde") ) &&
+        assert( ( !strcmp( node->name(),"Pde") ) && 
                 ( !strcmp( node->first_attribute("type")->value(),"SurfacePoissonPde") ) );
 
         // Read the dimension
@@ -1536,11 +1536,11 @@ public:
         unsigned d = atoi( node->first_attribute("dim")->value() );
 
         // Read right hand side function
-        gsXmlNode   * tmp = node->first_node("rhs");
+        gsXmlNode   * tmp = node->first_node("rhs");	
         gsFunctionExpr<T> * rhs = new gsFunctionExpr<T>(tmp->value());
 
         // Read exact solution, if one exists in the file
-        tmp = node->first_node("solution");
+        tmp = node->first_node("solution");	
         if ( tmp )
         {
             gsFunctionExpr<T> * sol = new gsFunctionExpr<T>(tmp->value());
@@ -1552,7 +1552,7 @@ public:
             return new gsSurfacePoissonPde<T>( rhs, d );
         }
     }
-
+    
     static gsXmlNode * put (const gsSurfacePoissonPde<T> & obj,
                             gsXmlTree & data )
     {
@@ -1576,26 +1576,26 @@ public:
 
     static gsBVProblem<T> * get (gsXmlNode * node)
     {
-        GISMO_ASSERT( !strcmp( node->name(),"BVProblem"),
+        GISMO_ASSERT( !strcmp( node->name(),"BVProblem"), 
                       "Something went wrong. Expected BVProblem tag." );
 
         gsBVProblem<T> * bvp;
 
         // Read the Pde
         gsPde<T>  * pde = gsXml< gsPde<T> >::get( node->first_node("Pde") );
-
+	
         // Read domain
         int domain = atoi(node->first_attribute("domain")->value() );
         gsXmlNode * toplevel = node->parent();// the geometry patches should be siblings of node
         std::string dtag; // = getTag(toplevel, domain );
-        for (gsXmlNode * child = node->first_node();
+        for (gsXmlNode * child = node->first_node(); 
              child; child = child->next_sibling() )
             if (  atoi(child->first_attribute("id")->value() ) == domain )
             {
                 dtag = child->name();
                 break;
             }
-
+    
         if ( dtag == "Geometry" )
         {
             gsGeometry<T> * geo = getById< gsGeometry<T> >(toplevel,domain);
@@ -1611,30 +1611,30 @@ public:
         {
             GISMO_ERROR("Invalid tag");
         }
-
+	
         // Read in boundary conditions
-        for (gsXmlNode * child = node->first_node("bc");
+        for (gsXmlNode * child = node->first_node("bc"); 
              child; child = child->next_sibling("bc") )
         {
-            gsFunctionExpr<T> * ff =
+            gsFunctionExpr<T> * ff = 
                 new gsFunctionExpr<T>(child->first_attribute("function")->value() );
             std::istringstream str;
             str.str( child->value() );
-
+        
             if ( !strcmp(child->first_attribute("type")->value(), "dirichlet") )
-            {
-                for (int side; gsGetInt(str, side);)
+            {		       
+                for (int side; gsGetInt(str, side);) 
                     bvp->addCondition( static_cast<boxSide>(side),
                                        condition_type::dirichlet, ff);
             }
             else if ( !strcmp(child->first_attribute("type")->value(), "neumann") )
-            {
-                for (int side; gsGetInt(str, side);)
+            {		       
+                for (int side; gsGetInt(str, side);) 
                     bvp->addCondition( static_cast<boxSide>(side),
                                        condition_type::neumann, ff);
-            }
+            }		
         }
-
+    
         return bvp ;
     }
 

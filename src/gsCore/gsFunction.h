@@ -306,35 +306,6 @@ public:
     virtual       T & control(index_t i)       { GISMO_NO_IMPLEMENTATION;}
 
     /// Returns the control derivative
-
-
-
-
-    /**
-     * @brief      { function_description }
-     *
-     * \f[
-     \left[
-     \begin{array}{cccc}
-     TOTOTOTOTOTOTOTOTODODODODODODODODODO
-        \partial_{c_1} f^{(1)}(u_1) & \partial_{c_1} f^{(1)}(u_1) & \partial_{c_1} f^{(1)}(u_N) \\
-        \partial_{c_2} f^{(1)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
-        \vdots                      & \vdots                    & \ldots & \vdots
-        \partial_{c_M} f^{(1)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
-        \partial_{c_1} f^{(2)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
-        \partial_{c_2} f^{(2)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
-        \vdots                      & \vdots                    & \ldots & \vdots
-        \partial_{c_M} f^{(2)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
-        \partial_{c_1} f^{(3)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
-        \partial_{c_2} f^{(3)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
-        \vdots                      & \vdots                    & \ldots & \vdots
-     \end{array}
-     \right]
-     \f]
-     *
-     * @param[in]  points  The points
-     * @param      result  The result
-     */
     virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const { GISMO_NO_IMPLEMENTATION;}
 
 
