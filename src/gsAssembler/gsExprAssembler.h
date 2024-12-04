@@ -18,6 +18,7 @@
 #include <gsAssembler/gsExprHelper.h>
 
 #include <gsAssembler/gsCPPInterface.h>
+#include <gsUtils/gsStopwatch.h>
 
 namespace gismo
 {
@@ -764,21 +765,27 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             : points(p), quWeights(q), patchInd(patchInd) {}
     };
 
-    std::vector <ElemData>                  elemContainer;
-    std::vector<std::vector<ElemData>>      localContainers(omp_get_max_threads());
+    std::vector <ElemData>  elemContainer;
+    int                     maxThreads;
+    const char              *ompNumThreads = std::getenv("OMP_NUM_THREADS");
 
-    // std::vector<typename gsQuadRule<T>::uPtr> quadCache(m_exprdata->multiBasis().nBases());
-    // for (size_t patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) {
-    //     quadCache[patchInd] = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
-    // }
+    if (!ompNumThreads) {
+        maxThreads = omp_get_max_threads();
+    } else {
+        maxThreads = std::atoi(ompNumThreads);
+    }
+    std::vector<std::vector<ElemData>>      localContainers(maxThreads);
 
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
-#pragma omp parallel num_threads(omp_get_max_threads())
+    double          dataTransformTime = 0;
+    gsStopwatch     timer;
+    timer.restart();
+    #pragma omp parallel
     {
-        const int                           threadId    = omp_get_thread_num();
+        const int                           threadId = omp_get_thread_num();
         typename gsBasis<T>::domainIter     domIt;
-        gsMatrix<T>                         quPoints; /* TODO: Measure OPT */
+        gsMatrix<T>                         quPoints;
         gsVector<T>                         quWeights;
 
         for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
@@ -788,18 +795,18 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             size_t numElements = domIt->numElements();
             localContainers[threadId].reserve(localContainers[threadId].size() + numElements);
 
-# ifdef _OPENMP
-            const int   nt          = omp_get_num_threads();
-            for (domIt->next(threadId); domIt->good(); domIt->next(nt))
-# else
+        # ifdef _OPENMP
+            for (domIt->next(threadId); domIt->good(); domIt->next(maxThreads))
+        # else
             for (; domIt->good(); domIt->next() )
-# endif
+        # endif
             {
                 const auto &l   = domIt->lowerCorner();
                 const auto &u   = domIt->upperCorner();
 
                 QuRule->mapTo(l, u, quPoints, quWeights);
                 localContainers[threadId].emplace_back(quPoints, quWeights, patchInd);
+
                 // std::cout << "\nElement ID: " << domIt->id() << std::endl;
                 // std::cout << "Patch ID: " << patchInd << std::endl;
                 // std::cout << "Lower Corner: " << l << std::endl;  // Check if this prints valid values
@@ -807,31 +814,24 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             }
         }
     }
-
     elemContainer.clear();
     for (const auto& localContainer : localContainers) {
         elemContainer.insert(elemContainer.end(), localContainer.begin(), localContainer.end());
     }
-
-    // std::cout << "Number of elements of current patch: " << domIt->numElements() << std::endl;
-    // size_t  numElements = domIt->numElements();
+    dataTransformTime += timer.stop();
+    gsInfo << "\n Data Transfromation: " << dataTransformTime;
 
     size_t  numElements = elemContainer.size();
-    // std::cout << "\n Total number of elements processed: " << numElements << std::endl;
+    gsInfo << "\n Number of Elements: " << numElements << std::endl;
 
     // std::vector<gsSparseMatrix<T>> matrices;
     // matrices.reserve(omp_get_max_threads());
 
-    // int     nt;
-
-    // m_exprdata->cleanUp();
-
     #pragma omp parallel
     {
-        const int   nt = omp_get_num_threads();
         const int   tid = omp_get_thread_num();
-        size_t      chunkSize = numElements / nt;
-        size_t      remainder = numElements % nt;
+        size_t      chunkSize = numElements / maxThreads;
+        size_t      remainder = numElements % maxThreads;
         size_t      start = (tid * chunkSize) + std::min(static_cast<size_t>(tid), remainder);
         size_t      end   = start + chunkSize + (static_cast<size_t>(tid) < remainder ? 1 : 0);
 
@@ -848,16 +848,11 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         const index_t   elim = m_options.getInt("DirichletStrategy");
         eval.setElim(dirichlet::elimination == elim);
 
-        //#pragma omp simd
         for (size_t i = start; i < end; ++i) {
             ElemData    eldata = elemContainer[i];
-            // typename gsQuadRule<T>::uPtr    &QuRule = quadCache[eldata.patchInd];
-            // QuRule->mapTo(eldata.lowerCorner, eldata.upperCorner, m_exprdata->points(), quWeights);
 
             if (eldata.points.cols() > 0) {
                 m_exprdata->precomputeThreadLocal(eldata.patchInd, eldata.points);
-                /* Print measures and see if they are used in _G.data().measures */
-                // gsInfo << " In Assembler: " << m_exprdata->multiPatchData().measures << "\n\n\n";
                 eval.m_quWeights = eldata.quWeights;
                 op_tuple(eval, arg_tpl);
             }

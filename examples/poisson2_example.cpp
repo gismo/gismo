@@ -159,6 +159,7 @@ int main(int argc, char *argv[])
 
         gsInfo<< "." <<std::flush;// Assemblying done
 
+/*
         timer.restart();
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
@@ -176,15 +177,17 @@ int main(int argc, char *argv[])
             math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
-
+*/
     } //for loop
 
     //! [Solver loop]
-
+/*
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
     gsInfo<<"     Setup: "<< setup_time <<"\n";
+*/
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
+/*
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
     gsInfo<<"     Norms: "<< err_time   <<"\n";
 
@@ -204,7 +207,7 @@ int main(int argc, char *argv[])
                   h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     //! [Error and convergence rates]
-
+*/
     //! [Export visualization in ParaView]
     if (plot)
     {
