@@ -256,7 +256,7 @@ public:
     { return ppartval_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the expression's negative part
-    mult_expr<real_t, ppart_expr<mult_expr<double,E,false>> , false> 
+    mult_expr<real_t, ppart_expr<mult_expr<double,E,false>> , false>
     npart() const { return -1* ( -(*this) ).ppart() ; }
 
     /// Returns an evaluation of the (sub-)expression in temporary memory
@@ -646,7 +646,7 @@ public:
 
     index_t targetDim() const { return m_fs->targetDim();}
     index_t domainDim() const { return m_fs->domainDim();}
- 
+
     /// Copy the coefficients of another gsGeometryMap to this one, if they are compatible.
     void copyCoefs( const gsGeometryMap<T> & other) const
     {
@@ -657,7 +657,7 @@ public:
         GISMO_ASSERT( (thisMP.domainDim()==otherMP.domainDim())&&
                       (thisMP.geoDim()==otherMP.geoDim())&&
                       (thisMP.coefsSize() == otherMP.coefsSize())&&
-                      (thisMP.nPatches()==otherMP.nPatches()), 
+                      (thisMP.nPatches()==otherMP.nPatches()),
                 "The geometryMaps are not compatible!");
 
         // For every patch of the MultiPatch
@@ -833,7 +833,7 @@ public:
     //const gsMatrix<T> points() const {return pts;}
 
     //index_t dim() { return di->
-    
+
     void print(std::ostream &os) const { os << "e"; }
 
     void parse(gsExprHelper<T> & evList) const
@@ -1399,7 +1399,7 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
-        bool singleActives = (1 == _u.data().actives.cols()); 
+        bool singleActives = (1 == _u.data().actives.cols());
 
         res.setZero(_u.dim(), 1);
         const gsDofMapper & map = _u.mapper();
@@ -1456,8 +1456,8 @@ public:
     void setSolutionVector(gsMatrix<T>& solVector)
     { _Sv = & solVector; }
 
-    /// @brief Sets all coefficients of the solution vector that belong to 
-    ///    patch \a p , and refer to the specified \a component equal to \a value. 
+    /// @brief Sets all coefficients of the solution vector that belong to
+    ///    patch \a p , and refer to the specified \a component equal to \a value.
     /// @param component The index of the component to be set.
     /// @param value The value that the coefficients will be set to.
     /// @param patch The index of the patch whose coefficients will be set. By default all patches are affected,
@@ -1466,9 +1466,9 @@ public:
         gsMatrix<T> & solVector = *_Sv;
         const gsDofMapper & mapper = _u.mapper();
 
-        index_t patchStart, patchEnd; 
+        index_t patchStart, patchEnd;
         if (patch==-1){
-            patchStart = 0; 
+            patchStart = 0;
             patchEnd   = _u.mapper().numPatches();
         }
         else{
@@ -1489,7 +1489,7 @@ public:
 
     const gsMatrix<T> & coefs() const { return *_Sv; }
     //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
-    
+
     //const gsMatrix<T> & coefs(component, patch) const { return *_Sv; }
 
     /// val: perturbation value, j: global index, p: patch
@@ -2047,9 +2047,9 @@ flat_expr<E> const flat(E const & u)
 
     public:
         diag_expr(_expr<E> const& u) : _u(u)
-        { 
+        {
             GISMO_ASSERT(0== _u.cols()%_u.rows(), "Expecting square-block expression, got "
-            << _u.rows() <<" x "<< _u.cols() ); 
+            << _u.rows() <<" x "<< _u.cols() );
         }
 
         const gsMatrix<Scalar> & eval(const index_t k) const
@@ -2372,7 +2372,7 @@ public:
     typedef typename E::Scalar Scalar;
     enum {ScalarValued = 1, Space = E::Space, ColBlocks= 0};
 
-    sign_expr(_expr<E> const& u, Scalar tolerance = 0.0) : _u(u),_tol(tolerance){ 
+    sign_expr(_expr<E> const& u, Scalar tolerance = 0.0) : _u(u),_tol(tolerance){
         GISMO_ASSERT( _tol >= 0, "Tolerance for sign_expr should be a positive number.");
     }
 
@@ -3886,6 +3886,64 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
+template <typename E1, typename E2, typename E3>
+class ternary_expr : public _expr<ternary_expr<E1, E2, E3> >
+{
+    typename E1::Nested_t _c;
+    typename E2::Nested_t _t;
+    typename E3::Nested_t _f;
+
+public:
+    enum {  ScalarValued = E2::ScalarValued,
+            ColBlocks = E2::ColBlocks,
+            Space = E2::Space };
+
+    typedef typename E1::Scalar Scalar;
+
+    ternary_expr(const E1 & c,
+                 const E2 & t,
+                 const E3 & f)
+    : _c(c), _t(t), _f(f)
+    {
+        GISMO_ASSERT(E1::ScalarValued, "Condition must be scalar valued");
+        GISMO_ASSERT((int) E2::ScalarValued == (int) E3::ScalarValued,"Both v and w must be scalar valued (or not).");
+        GISMO_ASSERT((int) E2::ColBlocks == (int) E3::ColBlocks,"Both v and w must be colblocks (or not).");
+        GISMO_ASSERT((int) E2::Space == (int) E3::Space,"Both v and w must be space (or not), but E2::Space = "
+                         << E2::Space << " and E3::Space = " << E3::Space);
+        GISMO_ASSERT(_t.rows() == _f.rows(),"Rows of v and w differ. _t.rows() = " << _t.rows()<< ", _f.rows() = "<< _f.rows());
+        GISMO_ASSERT(_t.cols() == _f.cols(),"Columns of v and w differ. _t.cols() = " << _t.cols()<< ", _f.cols() = "<< _f.cols());
+        GISMO_ASSERT(_t.rowVar() == _f.rowVar(), "rowVar of v and w differ.");
+        GISMO_ASSERT(_t.colVar() == _f.colVar(), "colVar of v and w differ.");
+    }
+
+
+    AutoReturn_t eval(const index_t k) const
+    {
+        return (_c.val().eval(k) > 0.0  ? _t.eval(k) : _f.eval(k));
+    }
+
+    index_t rows() const { return _t.rows(); }
+    index_t cols() const { return _t.cols(); }
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _c.parse(evList); _t.parse(evList); _f.parse(evList); }
+
+
+    index_t cardinality_impl() const
+    { return _t.cardinality(); }
+
+    const gsFeSpace<Scalar> & rowVar() const
+    { return _t.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    { return _t.colVar(); }
+
+    void print(std::ostream &os) const { os<<"( "; _c.print(os); os<<" > 0) ? "; _t.print(os); os<<" : "; _f.print(os); }
+};
+
+// Ternary expression, (c > 0) ? t : f
+template <typename E1, typename E2, typename E3> //EIGEN_STRONG_INLINE
+//collapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
+ternary_expr<E1,E2,E3> ternary( _expr<E1> const& c, _expr<E1> const& t, _expr<E3> const& f)
+{ return ternary_expr<E1, E2, E3>(c, t, f); }
 
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >
@@ -4469,10 +4527,10 @@ public:
 /// The identity matrix of dimension \a dim
 EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
 
-EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim) { 
+EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim) {
     gsMatrix<real_t> ones(dim, dim);
     ones.fill(1);
-    return constMat_expr(ones); 
+    return constMat_expr(ones);
     }
 
 EIGEN_STRONG_INLINE constMat_expr mat(const gsMatrix<real_t> mat) { return constMat_expr(mat); }
