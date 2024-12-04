@@ -60,12 +60,12 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 4;
+    index_t numRefine  = 2;
     index_t numElevate = 0;
     index_t maxIter = 30;
     double eps{1e-5}; // pinalization coefficient
     double l2errRes{0.}, tolerancePicard{1e-8};
-    index_t hadaptive = false;
+    index_t hadaptive = true;
     bool last = false, export_b64{false};
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
     bool PNormalCP{true};
@@ -98,11 +98,11 @@ int main(int argc, char *argv[])
 
     //..... Test 2
     // Manufactured solition
-    gsFunctionExpr<> s("1./(1.+exp((y - x  - 1.)/0.01))",2);
+    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
     // // Manufactured Grad solition
     //gsFunctionExpr<> sP("2.06115362243856e-7*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2","-2.06115362243856e-7*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2",2);
     // // Right-hand side function
-    gsFunctionExpr<> SourceFunc("7.44015195204167e-40*exp(-100.0*x + 100.0*y)/(3.72007597602084e-44*exp(-100.0*x + 100.0*y) + 1.0)**2 - 5.53558610694695e-83*exp(-200.0*x + 200.0*y)/(3.72007597602084e-44*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
+    gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
 
     //..... Test 2
     // convex function
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     //
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 1.1)/0.01)) - 1/(1.+exp((y - x  - 0.95)/0.01)) )",2);
+    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";// + 5./cosh( 10.*((x-0.2)**2 - 0.9) )
 
