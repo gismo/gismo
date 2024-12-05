@@ -17,6 +17,30 @@
 using namespace gismo;
 //! [Include namespace]
 
+void ProjectionNormalCPointsAll(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
+    // Projection normal of control points (exact geometry)
+    int boxMaxNumber = mp.nBoxes();
+    for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
+    {
+        // test if the boundary interface is not an inner interface between patches
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
+        {
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
+        }
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
+        {
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0] + 1.;
+        }
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
+        {
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
+        }
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
+        {
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+        }
+        }
+};
 
 void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
     // Projection normal of control points (exact geometry)
@@ -96,7 +120,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 1;
+    index_t numRefine  = 3;
     index_t numElevate = 0;
     index_t maxIter = 50;
     double eps{1e-5}; // pinalization coefficient
@@ -154,8 +178,8 @@ int main(int argc, char *argv[])
 //    mp.addInterface(6,1,7,2);
 //    mp.addInterface(1,2,7,1);
    // Get all interfaces and boundaries:
-    //mp.computeTopology();
-    mp.addAutoBoundaries();
+    mp.computeTopology();
+    //mp.addAutoBoundaries();
 
     //..... Test 2
     // // Manufactured solition
@@ -172,19 +196,25 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
     //gsFunctionExpr<> f("1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2)))",2);
-    gsFunctionExpr<> f("1.+6.*( max( 1/(1.+exp((y - 1.05)/0.01)) - 1/(1.+exp((y - 0.95)/0.01)), 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) ))",2);
-    //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
+    //gsFunctionExpr<> f("1.+6.*( max( 1/(1.+exp((y - 1.05)/0.01)) - 1/(1.+exp((y - 0.95)/0.01)), 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) ))",2);
+    gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
 
+    gsBoundaryConditions<> bcInt;
+    bcInt.setGeoMap(mp);
+    bcInt.addCondition(0,4, condition_type::neumann, &sN,0,false);
+    //bcInt.addCondition(1,3, condition_type::neumann, &sN,0,false);
+
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
     // For simplicity, set Neumann boundary conditions
     //bc.addCornerValue(4,1.,0,0);
     //bc.addCornerValue(2,1.,1,0);
+    bc.addCoupled(0,4,1,3,2,0);
    for ( gsMultiPatch<>::const_biterator
             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
    {
@@ -294,6 +324,8 @@ int main(int argc, char *argv[])
             // Compute the Neumann terms defined on physical space
             //auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+            A.assembleBdr(bcInt.get("Neumann"), u * g_N.tr() * nv(G) );
+            
 
             ma_time += timer.stop();
 
@@ -385,6 +417,8 @@ int main(int argc, char *argv[])
                 // Compute the Neumann terms defined on physical space
                 auto g_N = A.getBdrFunction(G);
                 A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+                A.assembleBdr(bcInt.get("Neumann"), u * g_N.tr() * nv(G) );
+
 
                 ma_time += timer.stop();
 
@@ -619,7 +653,7 @@ int main(int argc, char *argv[])
 
         //... correct the boundary
         if (PNormalCP)
-            ProjectionNormalCPoints(Psi, mp);
+            ProjectionNormalCPointsAll(Psi, mp);
         MatchtangentialCPoints(Psi, 0, 1, 4);
         //MatchtangentialCPoints(Psi, 0, 2, 2);
         //geometryMap PP = A.getMap(Psi);
