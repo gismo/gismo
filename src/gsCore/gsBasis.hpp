@@ -631,7 +631,7 @@ void gsBasis<T>::reduceContinuity(int const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsDomain<T> * gsBasis<T>::domain() const
+memory::shared_ptr<gsDomain<T> > gsBasis<T>::domain() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

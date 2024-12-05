@@ -17,6 +17,7 @@
 #include <gsCore/gsDomain.h>
 
 #include <gsNurbs/gsKnotIterator.h>
+#include <gsTensor/gsKnotDomainIterator.h>//change path
 
 namespace gismo
 {
@@ -156,12 +157,17 @@ public: // iterator ends
     reverse_smart_iterator rsend()   const;
 
     // iterator
-    typename gsDomainIterator<T>::uPtr domainIterator(index_t i, const boxSide s = boundary::none) override
+
+    // NOTE: problem with the name (domainBegin not possible)
+    typename gsDomainIterator<T>::uPtr begin(index_t i, const boxSide s = boundary::none) const override
     {
-        // NOTE: What do we do here?
-        GISMO_NO_IMPLEMENTATION
+        return gsDomainIterator<T>::uPtr(new gsKnotDomainIterator<T>(*this));
     }
 
+    typename gsDomainIterator<T>::uPtr end(index_t i, const boxSide s = boundary::none) const override
+    {
+        return gsDomainIterator<T>::uPtr(new gsDomainIteratorEnd<T>(this->numElements(),s));
+    }
 
 public: // constructors
 

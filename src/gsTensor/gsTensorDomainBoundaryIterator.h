@@ -52,23 +52,23 @@ public:
 
         for (int i=0; i < dir; ++i)
         {
-            meshEnd[i]   = domain.breaksEnd(i) - 1;
-            meshStart[i] = curElement[i] = domain.breaksBegin(i);
+            meshEnd[i]   = domain.component(i)->end();
+            meshStart[i] = curElement[i] = domain.component(i)->begin();
 
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
         }
 
         // Fixed direction
-        meshEnd[dir]    = ( par ? domain.breakEnd(dir) - 1 : domain.breaksBegin(dir) + 1 );
+        meshEnd[dir]    = ( par ? domain.component(dir)->end() - 1 : domain.component(dir)->begin() + 1 );
         curElement[dir] =
-        meshStart[dir]  = ( par ? domain.breakEnd(dir) - 2 : domain.breaksBegin(dir)     );
-        tindex = curElement[dir] - domain.breaksBegin(dir);
+        meshStart[dir]  = ( par ? domain.component(dir)->end() - 2 : domain.component(dir)->begin()     );
+        tindex = curElement[dir] - domain.component(dir)->begin();
 
         for (int i=dir+1; i < d; ++i)
         {
-            meshEnd[i]   = domain.breaksEnd(i) - 1;
-            meshStart[i] = curElement[i] = domain.breaksBegin(i);
+            meshEnd[i]   = domain.component(i)->end() - 1;
+            meshStart[i] = curElement[i] = domain.component(i)->begin();
 
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
@@ -80,62 +80,9 @@ public:
 
 
     gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boxSide & s )
-    : gsDomainIterator<T>(b, s),
-      d( m_basis->dim() ),
-      lower ( gsVector<T, D>::Zero(d) ),
-      upper ( gsVector<T, D>::Zero(d) )
+    :
+    gsTensorDomainBoundaryIterator(static_cast<const gsTensorDomain<T,D>&>(b), s)
     {
-        center =  gsVector<T, D>::Zero(d);
-        par = s.parameter();
-        dir = s.direction();
-        meshStart.resize(d);
-        meshEnd.resize(d);
-        curElement.resize(d);
-        breaks.reserve(d);
-
-        for (int i=0; i < dir; ++i)
-        {
-            breaks.push_back( m_basis->component(i).domain()->breaks() );
-            meshEnd[i]   = breaks[i].end() - 1;
-            meshStart[i] = curElement[i] = breaks[i].begin();
-            //meshEnd[i]    = m_basis->component(i).domain()->uend() - 1;
-            //meshStart[i]  =
-            //curElement[i] = m_basis->component(i).knots().ubegin();
-
-            if (meshEnd[i] == curElement[i])
-                m_isGood = false;
-        }
-
-        // Fixed direction
-        breaks.push_back( m_basis->component(dir).domain()->breaks() );
-
-        meshEnd[dir]    = ( par ? breaks[dir].end() - 1 : breaks[dir].begin() + 1 );
-        curElement[dir] =
-        meshStart[dir]  = ( par ? breaks[dir].end() - 2 : breaks[dir].begin()     );
-        tindex = curElement[dir] - breaks[dir].begin();
-        //meshEnd[dir]    = ( par ? m_basis->component(dir).knots().uend() - 1   :
-        //                          m_basis->component(dir).knots().ubegin() + 1 );
-        //curElement[dir] =
-        //meshStart[dir]  = ( par ?
-        //                    m_basis->component(dir).knots().uend() - 2 :
-        //                    m_basis->component(dir).knots().ubegin()   );
-        //tindex = curElement[dir] - m_basis->component(i).knots().ubegin();
-
-        for (int i=dir+1; i < d; ++i)
-        {
-            breaks.push_back( m_basis->component(i).domain()->breaks() );
-            meshEnd[i]   = breaks[i].end() - 1;
-            meshStart[i] = curElement[i] = breaks[i].begin();
-            //meshEnd[i]    = m_basis->component(i).knots().uend() - 1;
-            //meshStart[i]  =
-            //curElement[i] = m_basis->component(i).knots().ubegin();
-
-            if (meshEnd[i] == curElement[i])
-                m_isGood = false;
-        }
-
-        if (m_isGood)
-            update();
     }
 
     // ---> Documentation in gsDomainIterator.h
@@ -199,42 +146,33 @@ public:
         return *(curElement[dir]+1) - *curElement[dir];
     }
 
-    /// Returns the number of elements.
-    size_t numElements() const
-    {
-        size_t result = 1;
-        for (short_t i = 0; i < dir; ++i)
-            result *= breaks[i].size() - 1;
-        for (short_t i = dir+1; i < d; ++i)
-            result *= breaks[i].size() - 1;
-
-        return result;
-    }
-
+    GISMO_DEPRECATED
     void adjacent( const gsVector<bool> & orient,
                    gsDomainIterator<T>  & other )
     {
-        // 2D only for now
+        GISMO_NO_IMPLEMENTATION
+        // // 2D only for now
 
-        gsTensorDomainBoundaryIterator & other_ =
-            static_cast< gsTensorDomainBoundaryIterator &>(other);
+        // gsTensorDomainBoundaryIterator & other_ =
+        //     static_cast< gsTensorDomainBoundaryIterator &>(other);
 
-        int a1 = !dir;
-        int a2 = !other_.dir;
+        // int a1 = !dir;
+        // int a2 = !other_.dir;
 
-        other_.curElement[a2] = std::lower_bound(
-            other_.breaks[a2].begin(), other_.breaks[a2].end(),
-            orient[0] ? *curElement[a1] : *(curElement[a1]+1) );
-        other_.update();
+        // other_.curElement[a2] = std::lower_bound(
+        //     other_.breaks[a2].begin(), other_.breaks[a2].end(),
+        //     orient[0] ? *curElement[a1] : *(curElement[a1]+1) );
+        // other_.update();
     }
 
     /// Function to set the breakpoints in direction \a i manually
     void setBreaks(std::vector<T> newBreaks, index_t i) // i: direction
     {
-        breaks[i].swap(newBreaks);
-        meshEnd[i]   = breaks[i].end() - 1;
-        meshStart[i] = curElement[i] = breaks[i].begin();
-        reset();
+        GISMO_NO_IMPLEMENTATION
+        // breaks[i].swap(newBreaks);
+        // meshEnd[i]   = breaks[i].end() - 1;
+        // meshStart[i] = curElement[i] = breaks[i].begin();
+        // reset();
     }
 
 private:
@@ -245,26 +183,42 @@ private:
     {
         for (int i = 0; i < dir ; ++i)
         {
-            lower[i]  = *curElement[i];
-            upper[i]  = *(curElement[i]+1);
-            center[i] = (T)(0.5) * (lower[i] + upper[i]);
+            lower[i]  = curElement[i]->lowerCorner();
+            upper[i]  = curElement[i]->upperCorner();
+            center[i] = curElement[i]->center;
         }
         lower[dir]  =
         upper[dir]  =
-        center[dir] = (par ? *(curElement[dir]+1) : *curElement[dir] );
+        center[dir] = (par ? curElement[dir]->upperCorner() : curElement[dir]->lowerCorner() );
         for (int i = dir+1; i < d; ++i)
         {
-            lower[i]  = *curElement[i];
-            upper[i]  = *(curElement[i]+1);
-            center[i] = (T)(0.5) * (lower[i] + upper[i]);
+            lower[i]  = curElement[i]->lowerCorner();
+            upper[i]  = curElement[i]->upperCorner();
+            center[i] = curElement[i]->center;
         }
 
         //gsDebug<<"lower: "<< lower.transpose() <<", upper="<<upper.transpose() <<"\n";
     }
 
+    void advance()
+    {
+        for (index_t i = 0; i < D; ++i)
+        {
+            // increase current dimension
+            if (++(*curElement[i]) == meshEnd[i])     // current dimension exhausted ?
+            {
+                if (i == D - 1)         // was it the last one?
+                    m_isGood = false;       // then all elements exhausted
+                else
+                    curElement[i]->reset();  // otherwise, reset this and increase the next dimension
+            }
+            else
+                m_isGood = true;            // current dimension not yet exhausted, return current vector
+        }
+    }
+
 // Data members
 protected:
-    using gsDomainIterator<T>::m_basis;
     using gsDomainIterator<T>::m_isGood;
     using gsDomainIterator<T>::center;
     using gsDomainIterator<T>::m_side;
@@ -279,8 +233,6 @@ private:
     bool par;
     unsigned tindex;
 
-    // coordinates of the grid cell boundaries
-    std::vector< std::vector<T> > breaks;
 
     // First mesh-line on the tensor grid
     gsVector<uiter, D> meshStart;

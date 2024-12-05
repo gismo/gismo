@@ -17,6 +17,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
+#include <gsUtils/gsMesh/gsMesh.h>
 
 namespace gismo
 {
@@ -52,6 +53,9 @@ template<class T>
 class gsDomain
 {
 public:
+
+    typedef typename memory::shared_ptr<gsDomain<T> > Ptr;
+    typedef typename memory::unique_ptr<gsDomain<T> > uPtr;
 
     virtual ~gsDomain() { }
 
@@ -104,7 +108,8 @@ public:
      * @param i The index of the domain.
      * @param s The side of the domain (optional).
      */
-    virtual typename gsDomainIterator<T>::uPtr domainIterator(index_t i, const boxSide s = boundary::none) = 0;
+    virtual typename gsDomainIterator<T>::uPtr begin(index_t i, const boxSide s = boundary::none) const = 0;
+    virtual typename gsDomainIterator<T>::uPtr end  (index_t i, const boxSide s = boundary::none) const = 0;
 
     /** @brief Dimension of the domain
     */

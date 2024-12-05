@@ -902,7 +902,7 @@ public:
     /// Return the gsDomain which represents the parameter domain of
     /// this basis.
     // SHOULD BE A MEMBER
-    virtual gsDomain<T> * domain() const;
+    virtual memory::shared_ptr<gsDomain<T> > domain() const;
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the maximum polynomial degree.

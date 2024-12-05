@@ -32,24 +32,37 @@ template<class T, int D>
 class gsTensorDomain : public gsDomain<T>
 {
 private:
-    // typedef typename std::vector<T>::const_iterator  uiter;
-    typename gsTensorBasis<D,T>::domainIter domainIter;
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
 
 public:
 
-    gsTensorDomain(const std::vector< typename gsKnotVector<T>::Ptr> & KVs)
+    // gsTensorDomain(const std::vector<gsKnotVector<T> *> & KVs)
+    // :
+    // {
+    //     GISMO_ASSERT(KVs.size() == D, "Number of knot vectors must match the dimension of the domain.");
+    //     m_knotVectors.reserve(D);
+    //     for (index_t i = 0; i < D; ++i)
+    //         m_knotVectors.push_back(memory::make_shared_not_owned(KVs[i]));
+    // }
+
+    gsTensorDomain(const std::vector<typename gsDomain<T>::Ptr> & KVs)
     :
-    m_knotVectors(KVs)
+    m_knotVectors(give(KVs))
     {
-        GISMO_ASSERT(KVs.size() == D, "Number of knot vectors must match the dimension of the domain.");
+        GISMO_ASSERT(KVs.size() == D, "Number of domains must match the dimension of the domain.");
     }
 
-    typename gsDomainIterator<T>::uPtr domainIterator(index_t i, const boxSide s = boundary::none) override
+    typename gsDomainIterator<T>::uPtr begin(index_t i, const boxSide s = boundary::none) const override
     {
         return ( s == boundary::none ?
                  domainIter(new gsTensorDomainIterator<T,D>(*this)) :
                  domainIter(new gsTensorDomainBoundaryIterator<T,D>(*this, s))
         );
+    }
+
+    typename gsDomainIterator<T>::uPtr end(index_t i, const boxSide s = boundary::none) const override
+    {
+        return domainIter(new gsDomainIteratorEnd<T>(this->numElements(),s));
     }
 
     // Look at gsBasis class for a description
@@ -72,10 +85,7 @@ public:
     {
         gsMatrix<T> result(2,D);
         for (short_t i = 0; i < D; ++i)
-        {
-            result(0,i) = m_knotVectors[i]->first();
-            result(1,i) = m_knotVectors[i]->last();
-        }
+            result.col(i) = m_knotVectors[i]->boundingBox();
         return result;
     }
 
@@ -85,23 +95,27 @@ public:
         // mesh.setDimension(d);
         // mesh.setBasis(m_basis);
         // return mesh;
+        GISMO_NO_IMPLEMENTATION
     }
 
 // Specific for gsTensorDomain
 public:
 
-    auto breaksBegin(index_t i)
+
+
+    auto component(index_t i)
     {
-        return m_knotVectors[i]->uBegin();
+        return m_knotVectors[i];
     }
 
-    auto breaksEnd(index_t i)
-    {
-        return m_knotVectors[i]->uEnd();
-    }
+    // auto breaksEnd(index_t i)
+    // {
+    //     return m_knotVectors[i]->uEnd();
+    // }
 
 protected:
-    std::vector< typename gsKnotVector<T>::Ptr> m_knotVectors;
+    // NOTE: change vector to array?
+    std::vector< typename gsDomain<T>::Ptr> m_knotVectors;
 
 };
 

@@ -103,6 +103,25 @@ public:
         GISMO_NO_IMPLEMENTATION
     }
 
+    /// Equality operator to compare two iterators
+    bool operator==(const gsDomainIterator& other) const
+    {
+        return m_id == other.m_id;
+    }
+
+    /// Inequality operator to compare two iterators
+    bool operator!=(const gsDomainIterator& other) const
+    {
+        return m_id != other.m_id;
+    }
+
+    /// Incremental operator to proceed to the next element
+    gsDomainIterator& operator++()
+    {
+        this->next();
+        return *this;
+    }
+
 public:
 
     /// Returns the element id
@@ -116,6 +135,7 @@ public:
 
     /// Updates \a other with and adjacent element
     /// \todo upgrade to return adjacent range instead
+    GISMO_DEPRECATED
     virtual void adjacent( const gsVector<bool> & ,
                            gsDomainIterator & )
     {
@@ -232,6 +252,28 @@ private:
     gsDomainIterator& operator= ( const gsDomainIterator& );
 }; // class gsDomainIterator
 
+
+template <class T>
+class gsDomainIteratorEnd : public gsDomainIterator<T>
+{
+    using gsDomainIterator<T>::m_id;
+    using gsDomainIterator<T>::m_side;
+
+public:
+
+    explicit gsDomainIteratorEnd(size_t id, boxSide s = boundary::none)
+    :
+    gsDomainIterator<T>()
+    {
+        m_side = s;
+        m_id =id;
+    }
+
+    virtual bool next() override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
+
+    virtual bool next(index_t increment) override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
+
+};
 
 /// Print (as string) operator to be used by all derived classes
 //template<class T>

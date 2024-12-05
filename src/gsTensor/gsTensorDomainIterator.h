@@ -33,7 +33,7 @@ template<class T, int D>
 class gsTensorDomainIterator : public gsDomainIterator<T>
 {
 private:
-    typedef typename std::vector<T>::const_iterator  uiter;
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
 
 public:
 
@@ -50,8 +50,8 @@ public:
 
         for (int i=0; i < D; ++i)
         {
-            meshEnd[i]   = domain.breaksEnd() - 1;
-            curElement[i] = meshStart[i] = domain.breaksBegin(i);
+            meshEnd[i]    = domain.component(i)->end();
+            curElement[i] = meshStart[i] = domain.component(i)->begin();
 
             if (meshEnd[i] == meshStart[i])
                 m_isGood = false;
@@ -61,64 +61,46 @@ public:
             update();
     }
 
-    // GISMO_DEPRECATED??
-    gsTensorDomainIterator(const std::vector< std::vector<T> > & breaks_)
-    : lower  ( gsVector<T, D>::Zero(D) ),
-      upper  ( gsVector<T, D>::Zero(D) )
-    {
-        GISMO_ASSERT(breaks_.size() == D, "Number of knot vectors must match the dimension of the domain.");
-        center  = gsVector<T, D>::Zero(D);
+    // gsTensorDomainIterator(const gsTensorDomain<T,D> & domain, boxSide s=boundary::none)
+    // : lower  ( gsVector<T, D>::Zero(D) ),
+    //   upper  ( gsVector<T, D>::Zero(D) )
+    // {
+    //     center  = gsVector<T, D>::Zero(D);
 
-        // compute breaks and mesh size
-        meshStart.resize(D);
-        meshEnd.resize(D);
-        curElement.resize(D);
-        breaks = breaks_;
-        for (int i=0; i < D; ++i)
-        {
-            meshEnd[i]   = breaks[i].end() - 1;
-            curElement[i] = meshStart[i] = breaks[i].begin();
+    //     // compute breaks and mesh size
+    //     meshStart.resize(D);
+    //     meshEnd.resize(D);
+    //     curElement.resize(D);
 
-            if (meshEnd[i] == meshStart[i])
-                m_isGood = false;
-        }
+    //     for (int i=0; i < D; ++i)
+    //     {
+    //         meshEnd[i]    = domain.component(i)->end();
+    //         curElement[i] = meshStart[i] = domain.component(i)->begin();
 
-        if (m_isGood)
-            update();
-    }
+    //         if (meshEnd[i] == meshStart[i])
+    //             m_isGood = false;
+    //     }
+
+    //     if (s!=boundary::none)
+    //     {
+    //         auto par = s.parameter();
+    //         auto dir = s.direction();
+    //         // Fixed direction
+    //         meshEnd[dir]    = ( par ? domain.component(dir)->end() - 1 : domain.component(dir)->begin() + 1 );
+    //         curElement[dir] =
+    //         meshStart[dir]  = ( par ? domain.component(dir)->end() - 2 : domain.component(dir)->begin()     );
+    //         // tindex = curElement[dir] - domain.component(dir)->begin();
+    //     }
 
 
-    // note: this assumes that b is a tensor product basis
-    gsTensorDomainIterator(const gsBasis<T>& b) // to do: change to gsTensorBasis
-        : gsDomainIterator<T>( b ),
-          lower ( gsVector<T, D>::Zero(D) ),
-          upper ( gsVector<T, D>::Zero(D) )
-    {
-        GISMO_ASSERT(b.dim() == D, "Number of knot vectors must match the dimension of the domain.");
-        // compute breaks and mesh size
-        meshStart.resize(D);
-        meshEnd.resize(D);
-        curElement.resize(D);
-        breaks.reserve(D);
-        for (int i=0; i < D; ++i)
-        {
-            breaks.push_back( m_basis->component(i).domain()->breaks() );
-            // for n breaks, we have n-1 elements (spans)
-            meshEnd[i]   = breaks[i].end() - 1;
-            curElement[i] = meshStart[i] = breaks[i].begin();
-
-            if (meshEnd[i] == meshStart[i])
-                m_isGood = false;
-        }
-
-        if (m_isGood)
-            update();
-    }
+    //     if (m_isGood)
+    //         update();
+    // }
 
     // Documentation in gsDomainIterator.h
     bool next()
     {
-        m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
+        this->advance();
         if (m_isGood)
         {
             update();
@@ -131,7 +113,7 @@ public:
     bool next(index_t increment)
     {
         for (index_t i = 0; i < increment; i++)
-            m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
+            this->advance();
         if (m_isGood)
         {
             update();
@@ -144,8 +126,10 @@ public:
     void reset()
     {
         m_id = 0;
-        curElement = meshStart;
-        m_isGood = ( meshEnd.array() != meshStart.array() ).all() ;
+        for (index_t i = 0; i < D; ++i)
+            curElement[i]->reset();
+
+        m_isGood = ( meshEnd.array() != curElement.array() ).all() ;
         if (m_isGood)
             update();
     }
@@ -155,7 +139,7 @@ public:
     {
         gsVector<unsigned, D> curr_index(D);
         for (int i = 0; i < D; ++i)
-            curr_index[i]  = curElement[i] - breaks[i].begin();
+            curr_index[i]  = curElement[i]->index();
         return curr_index;
     }
 
@@ -184,8 +168,7 @@ public:
     bool isBoundaryElement() const
     {
         for (int i = 0; i< D; ++i)
-            if ((lower[i]-*meshStart[i]==0) ||
-                (*meshEnd[0]-upper[0] ==0)  )
+            if ( curElement[i]->isBoundaryElement() )
                 return true;
         return false;
     }
@@ -201,11 +184,29 @@ private:
     {
         for (int i = 0; i < D; ++i)
         {
-            lower[i]  = *curElement[i];
-            upper[i]  = *(curElement[i]+1);
-            center[i] = (T)(0.5) * (lower[i] + upper[i]);
+            lower[i]  = curElement[i]->lowerCorner();
+            upper[i]  = curElement[i]->upperCorner();
+            center[i] = curElement[i]->center;
         }
     }
+
+    void advance()
+    {
+        for (index_t i = 0; i < D; ++i)
+        {
+            // increase current dimension
+            if (++(*curElement[i]) == meshEnd[i])     // current dimension exhausted ?
+            {
+                if (i == D - 1)         // was it the last one?
+                    m_isGood = false;       // then all elements exhausted
+                else
+                    curElement[i]->reset();  // otherwise, reset this and increase the next dimension
+            }
+            else
+                m_isGood = true;            // current dimension not yet exhausted, return current vector
+        }
+    }
+
 
 //    size_t numElements() const
 //    {
@@ -218,18 +219,14 @@ public:
 
 protected:
     using gsDomainIterator<T>::m_id;
-    using gsDomainIterator<T>::m_basis;
     using gsDomainIterator<T>::m_isGood;
 
 private:
-    // coordinates of the grid cell boundaries
-    std::vector< std::vector<T> > breaks;
-
     // Extent of the tensor grid
-    gsVector<uiter, D> meshStart, meshEnd;
+    gsVector<domainIter, D> meshStart, meshEnd;
 
     // Current element as pointers to it's supporting mesh-lines
-    gsVector<uiter, D> curElement;
+    gsVector<domainIter, D> curElement;
 
     // parameter coordinates of current grid cell
     gsVector<T> lower, upper;
@@ -239,6 +236,5 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 #   undef Eigen
 }; // class gsTensorDomainIterator
-
 
 } // namespace gismo

@@ -69,9 +69,6 @@ public:
         // Allocate breaks
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
 
-        // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<index_t>::Ones(d) );
-
         // Get the side information
         par = s.parameter();
         dir = s.direction();
@@ -310,9 +307,6 @@ private:
 
     // parameter coordinates of current grid cell
     gsVector<T> m_lower, m_upper;
-
-    // Quadrature rule
-    gsGaussRule<T> m_quadrature;
 
 };
 

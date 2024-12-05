@@ -2,12 +2,12 @@
 
     @brief Provides declaration of TensorBasis class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -15,11 +15,12 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsBoundary.h>
+#include <gsTensor/gsTensorDomain.h>
 
 namespace gismo
 {
 
-/** 
+/**
  *  @brief Abstract base class for tensor product bases.
  *
  *   \param d dimension of the parameter domain
@@ -32,7 +33,7 @@ namespace gismo
 template<short_t d, class T>
 class gsTensorBasis : public gsBasis<T>
 {
-public: 
+public:
     typedef memory::shared_ptr< gsTensorBasis > Ptr;
     typedef memory::unique_ptr< gsTensorBasis > uPtr;
 
@@ -229,7 +230,7 @@ public:
 
     index_t functionAtCorner(boxCorner const & c) const;
 
-    /// Returns the components for a basis on the face \a s 
+    /// Returns the components for a basis on the face \a s
     void getComponentsForSide(boxSide const & s, std::vector<Basis_t*> & rr) const;
 
     // see gsBasis for doxygen documentation
@@ -293,13 +294,21 @@ public:
     // Evaluates the (partial) derivatives of an element given by coefs at (the columns of) u.
     //void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
 
-    // Look at gsBasis class for documentation 
+    memory::shared_ptr<gsDomain<T> > domain() const override
+    {
+        std::vector<typename gsDomain<T>::Ptr> domains(d);
+        for (short_t i = 0; i < d; ++i)
+            domains[i] = m_bases[i]->domain();
+        return memory::make_shared(new gsTensorDomain<T,d>(give(domains)));
+    }
+
+    // Look at gsBasis class for documentation
     typename gsBasis<T>::domainIter makeDomainIterator() const;
 
     // Look at gsBasis class for documentation
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const;
 
-    // Look at gsBasis class for documentation 
+    // Look at gsBasis class for documentation
     virtual typename gsGeometry<T>::uPtr interpolateAtAnchors(gsMatrix<T> const& vals) const;
 
     /// Interpolates values on a tensor-grid of points, given in
