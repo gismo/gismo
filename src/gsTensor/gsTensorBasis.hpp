@@ -890,17 +890,15 @@ template<short_t d, class T>
 typename gsTensorBasis<d,T>::domainIter
 gsTensorBasis<d,T>::makeDomainIterator() const
 {
-    return domainIter(new gsTensorDomainIterator<T, d>(*this));
+    return this->domain()->domainIterator(0); // NOTE: eliminate the need for adding the 0 as an argument
+    // return domainIter(new gsTensorDomainIterator<T, d>(*this));
 }
 
 template<short_t d, class T>
 typename gsTensorBasis<d,T>::domainIter
 gsTensorBasis<d,T>::makeDomainIterator(const boxSide & s) const
 {
-    return ( s == boundary::none ? 
-             domainIter(new gsTensorDomainIterator<T,d>(*this)) :
-             domainIter(new gsTensorDomainBoundaryIterator<T,d>(*this, s))
-        );
+    return this->domain()->domainIterator(0,s); // NOTE: eliminate the need for adding the 0 as an argument
 }
 
 template<short_t d, class T>
