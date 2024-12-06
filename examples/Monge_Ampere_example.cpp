@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 3;
     index_t numElevate = 0;
-    index_t maxIter = 50;
+    index_t maxIter = 20;
     double eps{1e-5}; // pinalization coefficient
     double l2errRes{0.}, tolerancePicard{1e-8};
     bool last = false, export_b64{false}, adaptiveMesh{true};
@@ -196,8 +196,8 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
     //gsFunctionExpr<> f("1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2)))",2);
-    //gsFunctionExpr<> f("1.+6.*( max( 1/(1.+exp((y - 1.05)/0.01)) - 1/(1.+exp((y - 0.95)/0.01)), 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) ))",2);
-    gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
+    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
+    //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
@@ -207,14 +207,14 @@ int main(int argc, char *argv[])
     gsBoundaryConditions<> bcInt;
     bcInt.setGeoMap(mp);
     bcInt.addCondition(0,4, condition_type::neumann, &sN,0,false);
-    //bcInt.addCondition(1,3, condition_type::neumann, &sN,0,false);
+    bcInt.addCondition(1,3, condition_type::neumann, &sN,0,false);
 
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
     // For simplicity, set Neumann boundary conditions
     //bc.addCornerValue(4,1.,0,0);
     //bc.addCornerValue(2,1.,1,0);
-    bc.addCoupled(0,4,1,3,2,0);
+    //bc.addCoupled(0,4,1,3,2,0);
    for ( gsMultiPatch<>::const_biterator
             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
    {
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
     A.options().addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
-
+    A.options().addInt("InterfaceStrategy", "Interface strategy conforming", iFace::none);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -256,13 +256,13 @@ int main(int argc, char *argv[])
     ev.options().addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
-
+    ev.options().addInt("InterfaceStrategy", "Interface strategy conforming", iFace::none);
     // Set the geometry map
     geometryMap G = A.getMap(mp);
 
     // Set the discretization space
     space u = A.getSpace(dbasis);
-
+    
     // Set the source term
     auto ff = A.getCoeff(f, G);
 
@@ -285,6 +285,13 @@ int main(int argc, char *argv[])
         "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);    
     gsStopwatch timer;
+    // Initialize the system : start Computing the conductivity coeffeicient ...
+    // Compute the Neumann terms defined on physical space
+    auto g_N = A.getBdrFunction(G);
+    auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
+    //... nromalisation of density function
+    auto CoeffDensity{ev.integral(ff.val() * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
     if(adaptiveMesh)
     {
         //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
@@ -296,15 +303,7 @@ int main(int argc, char *argv[])
                 continue;
             u.setup(bc, dirichlet::l2Projection, -1);
             // Compute the system matrix and right-hand side
-
-            //... nromalisation of density function
-            auto CoeffDensity{ev.integral(ff.val() * meas(G))};
-            // Initialize the system : start Computing the conductivity coeffeicient ...
-            // Compute the Neumann terms defined on physical space
-            auto g_N = A.getBdrFunction(G);
-            auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
             // ...
-            auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
             //... end 
 
             // Initialize the system :  identity mapping as initial guess
@@ -312,9 +311,91 @@ int main(int argc, char *argv[])
             setup_time += timer.stop();
 
             gsInfo<< A.numDofs() <<std::flush;
+// //Optionally, assemble Nitsche
+//         gsMatrix<> mu_interfaces;
+//         //auto m_penalty = 1;
+//         index_t i = 0;
+//         for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
+//         {
+//             //auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
+//            // auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
+//             auto mu       = 10.;//2 * stab / m_h;
+//             auto alpha = 1.;
 
+//             // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
+//             // if (m_penalty == -1)
+//             //     mu = mu_interfaces(i,0) / m_h;
+//             // else
+//             //     mu = m_penalty / m_h;
+
+//             std::vector<boundaryInterface> iFace;
+//             iFace.push_back(*it);
+//             A.assembleIfc(iFace,
+//                     //B11
+//                           +mu * u.left() *
+//                           u.left().tr() * nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                           (igrad(u.left(), G) * nv(G.left()).normalized() * u.left().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                             (u.left()*(igrad(u.left(), G) * nv(G.left()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B12
+//                          -mu * u.left() *
+//                           u.right().tr() * nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                           (igrad(u.left(), G) * nv(G.left()).normalized() * u.right().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                             (u.left()*(igrad(u.right(), G) * nv(G.right()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B21
+//                          - mu * u.right() *
+//                           u.left().tr() * nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                           (igrad(u.right(), G) * nv(G.right()).normalized() * u.left().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                             (u.right()*(igrad(u.left(), G) * nv(G.left()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B22
+//                           + mu * u.right() *
+//                           u.right().tr() * nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                           (igrad(u.right(), G) * nv(G.right()).normalized() * u.right().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                             (u.right()*(igrad(u.right(), G) * nv(G.right()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm()
+                          
+//                     // // E11
+//                     //      0.5*alpha * igrad(u.left(), G.left()) * nv(G.left()).normalized() *
+//                     //       (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E12
+//                     //       -0.5*alpha *(igrad(u.left(), G.left()) * nv(G.left()).normalized()) *
+//                     //       (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E21
+//                     //       -0.5*alpha *(igrad(u.right(), G.right()) * nv(G.left()).normalized()) *
+//                     //       (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // // E22
+//                     //      0.5*alpha * igrad(u.right(), G.right()) * nv(G.left()).normalized() *
+//                     //       (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm()
+
+//                     // //E11
+//                     //     0.5* alpha * igrad(u.left(), G.left()) * tv(G.left()).normalized() *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E12
+//                     //       -0.5* alpha *(igrad(u.left(), G.left()) * tv(G.left()).normalized()) *
+//                     //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E21
+//                     //       - 0.5*alpha *(igrad(u.right(), G.right()) * tv(G.right()).normalized()) *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //E22
+//                     //       0.5*alpha * igrad(u.right(), G.right()) * tv(G.right()).normalized() *
+//                     //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm()
+//             );
+//         }
             timer.restart();
-
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
@@ -325,7 +406,6 @@ int main(int argc, char *argv[])
             //auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
             A.assembleBdr(bcInt.get("Neumann"), u * g_N.tr() * nv(G) );
-            
 
             ma_time += timer.stop();
 
@@ -387,7 +467,7 @@ int main(int argc, char *argv[])
                 //    CorrectCornersLshape(Psi, mp);
                 
                 geometryMap PP = A.getMap(Psi);
-                auto fp = A.getCoeff(f,PP);
+                auto ff = A.getCoeff(f,PP);
 
                 // ...  0  dirichlet for boundaries
                 sv0 = solVector;
@@ -405,13 +485,95 @@ int main(int argc, char *argv[])
                 // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
                 
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
+                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
+// // Optionally, assemble Nitsche
+//         gsMatrix<> mu_interfaces;
+//         // auto m_penalty = 1;
+//         index_t i = 0;
+//         for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
+//         {
+//             //auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
+//             //auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
+//             auto mu       = 10*10*10; //2 * stab / m_h;
+//             auto alpha = 1;
 
+//             //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
+//             // if (m_penalty == -1)
+//             //     mu = mu_interfaces(i,0) / m_h;
+//             // else
+//             //     mu = m_penalty / m_h;
+
+//             std::vector<boundaryInterface> iFace;
+//             iFace.push_back(*it);
+//             A.assembleIfc(iFace,
+//                     //B11
+//                           +mu * u.left() *
+//                           u.left().tr() * nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                           (igrad(u.left(), G) * nv(G.left()).normalized() * u.left().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                             (u.left()*(igrad(u.left(), G) * nv(G.left()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B12
+//                          -mu * u.left() *
+//                           u.right().tr() * nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                           (igrad(u.left(), G) * nv(G.left()).normalized() * u.right().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                             (u.left()*(igrad(u.right(), G) * nv(G.right()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B21
+//                          - mu * u.right() *
+//                           u.left().tr() * nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                           (igrad(u.right(), G) * nv(G.right()).normalized() * u.left().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                             (u.right()*(igrad(u.left(), G) * nv(G.left()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B22
+//                           + mu * u.right() *
+//                           u.right().tr() * nv(G.left()).norm()
+//                          +0.5*alpha *
+//                           (igrad(u.right(), G) * nv(G.right()).normalized() * u.right().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                             (u.right()*(igrad(u.right(), G) * nv(G.right()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     // E11
+//                          0.5*alpha * igrad(u.left(), G.left()) * nv(G.left()).normalized() *
+//                           (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     //-E12
+//                           -0.5*alpha *(igrad(u.left(), G.left()) * nv(G.left()).normalized()) *
+//                           (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     //-E21
+//                           -0.5*alpha *(igrad(u.right(), G.right()) * nv(G.left()).normalized()) *
+//                           (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // E22
+//                          0.5*alpha * igrad(u.right(), G.right()) * nv(G.left()).normalized() *
+//                           (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm()
+
+//                     // E11
+//                     //     0.5* alpha * igrad(u.left(), G.left()) * tv(G.left()).normalized() *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // -E12
+//                     //       -0.5* alpha *(igrad(u.left(), G.left()) * tv(G.left()).normalized()) *
+//                     //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm(),
+//                     // -E21
+//                     //       - 0.5*alpha *(igrad(u.right(), G.right()) * tv(G.right()).normalized()) *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // E22
+//                     //       0.5*alpha * igrad(u.right(), G.right()) * tv(G.right()).normalized() *
+//                     //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm()
+//             );
+//         }
                 // MAE system
                 A.assemble(
-                igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
+                igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
                 ,
-                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space
@@ -622,6 +784,10 @@ int main(int argc, char *argv[])
         else{
         collection.addField(u_ex, "exact solution");
         }
+        if(maxIter == 0)
+        collection.addField(CoeffConductivity * (-1.)*pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G), "MAE_rhs");
+        else
+        collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G), "MAE_rhs");
         collection.saveTimeStep();
         collection.save();
 
@@ -650,11 +816,11 @@ int main(int argc, char *argv[])
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         gsMultiPatch<> Psi;
         v_sol.extract(Psi);
-
+        
         //... correct the boundary
         if (PNormalCP)
-            ProjectionNormalCPointsAll(Psi, mp);
-        MatchtangentialCPoints(Psi, 0, 1, 4);
+            ProjectionNormalCPoints(Psi, mp);
+        //MatchtangentialCPoints(Psi, 0, 1, 4);
         //MatchtangentialCPoints(Psi, 0, 2, 2);
         //geometryMap PP = A.getMap(Psi);
         //auto fp = A.getCoeff(f,PP);
@@ -671,437 +837,3 @@ int main(int argc, char *argv[])
 
 
 }// end main
-
-
-
-
-
-/*
-
-void CorrectCornersLshape(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
-    //....To determine whether a geometry is an L-shape and identify which patch is located at a specific corner then correct the corner to be exact
-    for (size_t iIntIndex = 0; iIntIndex < mp.nInterfaces(); ++iIntIndex)
-    {
-    for (size_t jIntIndex = 0; jIntIndex < mp.nInterfaces(); ++jIntIndex)
-    {
-        if( (jIntIndex <= iIntIndex) || (iIntIndex == mp.nInterfaces() - 1 && jIntIndex != 0))
-            continue;            
-
-        // ... Coonfig 1 L 
-        if ( mp.bInterface(iIntIndex).first().patchIndex() == mp.bInterface(jIntIndex).first().patchIndex()) // test if patch has two interfaces
-        {
-        // gsInfo << "tring to find L-shape test 1" <<"\n";
-        int boxNumber  = mp.bInterface(iIntIndex).first().patchIndex(); // patch of the corner
-        int boxNumber1 = mp.bInterface(iIntIndex).second().patchIndex();
-        int boxNumber2 = mp.bInterface(jIntIndex).second().patchIndex();
-        if((mp.bInterface(iIntIndex).first().index() == 2 && mp.bInterface(jIntIndex).first().index() == 4) || (mp.bInterface(iIntIndex).first().index() == 4 && mp.bInterface(jIntIndex).first().index() == 2))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << ":\n:\n";
-            // gsInfo << ".....\n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(2).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-
-            if(mp.bInterface(iIntIndex).second().index() == 1){
-                i_x = Psi.patch(boxNumber1).basis().boundary(1).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(3).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            } 
-            else{
-                i_x = Psi.patch(boxNumber1).basis().boundary(3).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(1).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            }
-            }
-        else if ((mp.bInterface(iIntIndex).first().index() == 2 && mp.bInterface(jIntIndex).first().index() == 3) ||(mp.bInterface(iIntIndex).first().index() == 3 && mp.bInterface(jIntIndex).first().index() == 2))   // means inner interfaces are 3 and 2
-        {
-            // gsInfo << "..." <<"\n";
-            // gsInfo << ":  \n:  \n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(3).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-
-            if(mp.bInterface(iIntIndex).second().index() == 1){
-                i_x = 0;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-                i_x = Psi.patch(boxNumber2).basis().boundary(4).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            } 
-            else{
-                i_x = Psi.patch(boxNumber1).basis().boundary(4).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-                i_x = 0;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            }
-            }
-        else if((mp.bInterface(iIntIndex).first().index() == 1 && mp.bInterface(jIntIndex).first().index() == 4) ||(mp.bInterface(iIntIndex).first().index() == 4 && mp.bInterface(jIntIndex).first().index() == 1))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << "  :\n  :\n";
-            // gsInfo << "..." <<"\n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(1).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-
-            if(mp.bInterface(iIntIndex).second().index() == 2){
-                i_x = Psi.patch(boxNumber1).basis().boundary(2).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = 0;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            } 
-            else{
-                i_x = 0;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(2).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            }
-            }
-        else if((mp.bInterface(iIntIndex).first().index() == 1 && mp.bInterface(jIntIndex).first().index() == 3) ||(mp.bInterface(iIntIndex).first().index() == 3 && mp.bInterface(jIntIndex).first().index() == 1))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << "..." <<"\n";
-            // gsInfo << "  :\n  :\n";
-            int i_x = 0;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            if(mp.bInterface(iIntIndex).first().index() == 2){
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            }
-            else{
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];                    
-            }
-            }
-        }
-
-        // ... Coonfig 2 
-        if (  mp.bInterface(iIntIndex).first().patchIndex() == mp.bInterface(jIntIndex).second().patchIndex()){
-        // gsInfo << "tring to find L-shape test 2" <<"\n";
-        int boxNumber  = mp.bInterface(iIntIndex).first().patchIndex(); // patch of the corner
-        int boxNumber1 = mp.bInterface(iIntIndex).second().patchIndex();
-        int boxNumber2 = mp.bInterface(jIntIndex).first().patchIndex();
-        if((mp.bInterface(iIntIndex).first().index() == 2 && mp.bInterface(jIntIndex).second().index() == 4) ||(mp.bInterface(iIntIndex).first().index() == 4 && mp.bInterface(jIntIndex).second().index() == 2))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << ":\n:\n";
-            // gsInfo << ".....\n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(2).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-
-            if(mp.bInterface(iIntIndex).second().index() == 1){
-                i_x = Psi.patch(boxNumber1).basis().boundary(1).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(3).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            } 
-            else{
-                i_x = Psi.patch(boxNumber1).basis().boundary(3).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(1).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            }
-            }
-        else if ((mp.bInterface(iIntIndex).first().index() == 2 && mp.bInterface(jIntIndex).second().index() == 3) ||(mp.bInterface(iIntIndex).first().index() == 3 && mp.bInterface(jIntIndex).second().index() == 2))   // means inner interfaces are 3 and 2
-        {
-            // gsInfo << "..." <<"\n";
-            // gsInfo << ":  \n:  \n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(3).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-
-            if(mp.bInterface(iIntIndex).second().index() == 1){
-                i_x = 0;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-                i_x = Psi.patch(boxNumber2).basis().boundary(4).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            } 
-            else{
-                i_x = Psi.patch(boxNumber1).basis().boundary(4).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-                i_x = 0;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            }
-            }
-        else if((mp.bInterface(iIntIndex).first().index() == 1 && mp.bInterface(jIntIndex).second().index() == 4) ||(mp.bInterface(iIntIndex).first().index() == 4 && mp.bInterface(jIntIndex).second().index() == 1))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << "  :\n  :\n";
-            // gsInfo << "..." <<"\n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(1).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-
-            if(mp.bInterface(iIntIndex).second().index() == 2){
-                i_x = Psi.patch(boxNumber1).basis().boundary(2).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = 0;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            } 
-            else{
-                i_x = 0;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(2).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            }
-            }
-        else if((mp.bInterface(iIntIndex).first().index() == 1 && mp.bInterface(jIntIndex).second().index() == 3) ||(mp.bInterface(iIntIndex).first().index() == 3 && mp.bInterface(jIntIndex).second().index() == 1))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << "..." <<"\n";
-            // gsInfo << "  :\n  :\n";
-            int i_x = 0;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            if(mp.bInterface(iIntIndex).first().index() == 2){
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            }
-            else{
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];                    
-            }
-            }
-        }
-
-        // ... Coonfig 3
-        if (  mp.bInterface(iIntIndex).second().patchIndex() == mp.bInterface(jIntIndex).first().patchIndex()){
-        // gsInfo << "tring to find L-shape test 3" <<"\n";
-
-        int boxNumber  = mp.bInterface(iIntIndex).second().patchIndex(); // patch of the corner
-        int boxNumber1 = mp.bInterface(iIntIndex).first().patchIndex();
-        int boxNumber2 = mp.bInterface(jIntIndex).second().patchIndex();
-        if((mp.bInterface(iIntIndex).second().index() == 2 && mp.bInterface(jIntIndex).first().index() == 4) ||(mp.bInterface(iIntIndex).second().index() == 4 && mp.bInterface(jIntIndex).first().index() == 2))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << ":\n:\n";
-            // gsInfo << ".....\n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(2).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-
-            if(mp.bInterface(iIntIndex).first().index() == 1){
-                i_x = Psi.patch(boxNumber1).basis().boundary(1).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(3).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            } 
-            else{
-                i_x = Psi.patch(boxNumber1).basis().boundary(3).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(1).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            }
-            }
-        else if ((mp.bInterface(iIntIndex).second().index() == 2 && mp.bInterface(jIntIndex).first().index() == 3) ||(mp.bInterface(iIntIndex).second().index() == 3 && mp.bInterface(jIntIndex).first().index() == 2))   // means inner interfaces are 3 and 2
-        {
-            // gsInfo << "..." <<"\n";
-            // gsInfo << ":  \n:  \n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(3).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-
-            if(mp.bInterface(iIntIndex).first().index() == 1){
-                i_x = 0;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-                i_x = Psi.patch(boxNumber2).basis().boundary(4).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            } 
-            else{
-                i_x = Psi.patch(boxNumber1).basis().boundary(4).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-                i_x = 0;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            }
-            }
-        else if((mp.bInterface(iIntIndex).second().index() == 1 && mp.bInterface(jIntIndex).first().index() == 4) ||(mp.bInterface(iIntIndex).second().index() == 4 && mp.bInterface(jIntIndex).first().index() == 1))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << "  :\n  :\n";
-            // gsInfo << "..." <<"\n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(1).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-
-            if(mp.bInterface(iIntIndex).first().index() == 2){
-                i_x = Psi.patch(boxNumber1).basis().boundary(2).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = 0;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            } 
-            else{
-                i_x = 0;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(2).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            }
-            }
-        else if((mp.bInterface(iIntIndex).second().index() == 1 && mp.bInterface(jIntIndex).first().index() == 3) ||(mp.bInterface(iIntIndex).second().index() == 3 && mp.bInterface(jIntIndex).first().index() == 1))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << "..." <<"\n";
-            // gsInfo << "  :\n  :\n";
-            int i_x = 0;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            if(mp.bInterface(iIntIndex).first().index() == 2){
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            }
-            else{
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];                    
-            }
-            }                
-        }
-
-        // ... Coonfig 4
-        if ( mp.bInterface(iIntIndex).second().patchIndex() == mp.bInterface(jIntIndex).second().patchIndex()){
-        gsInfo << "tring to find L-shape test 4" <<"\n";
-
-        int boxNumber  = mp.bInterface(iIntIndex).second().patchIndex(); // patch of the corner
-        int boxNumber1 = mp.bInterface(iIntIndex).first().patchIndex();
-        int boxNumber2 = mp.bInterface(jIntIndex).first().patchIndex();
-        if((mp.bInterface(iIntIndex).second().index() == 2 && mp.bInterface(jIntIndex).second().index() == 4) ||(mp.bInterface(iIntIndex).second().index() == 4 && mp.bInterface(jIntIndex).second().index() == 2))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << ":\n:\n";
-            // gsInfo << ".....\n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(2).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-
-            if(mp.bInterface(iIntIndex).first().index() == 1){
-                i_x = Psi.patch(boxNumber1).basis().boundary(1).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(3).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            } 
-            else{
-                i_x = Psi.patch(boxNumber1).basis().boundary(3).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(1).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            }
-            }
-        else if ((mp.bInterface(iIntIndex).second().index() == 2 && mp.bInterface(jIntIndex).second().index() == 3) ||(mp.bInterface(iIntIndex).second().index() == 3 && mp.bInterface(jIntIndex).second().index() == 2))   // means inner interfaces are 3 and 2
-        {
-            // gsInfo << "..." <<"\n";
-            // gsInfo << ":  \n:  \n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(3).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-
-            if(mp.bInterface(iIntIndex).first().index() == 1){
-                i_x = 0;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-                i_x = Psi.patch(boxNumber2).basis().boundary(4).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            } 
-            else{
-                i_x = Psi.patch(boxNumber1).basis().boundary(4).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-                i_x = 0;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]+1.;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            }
-            }
-        else if((mp.bInterface(iIntIndex).second().index() == 1 && mp.bInterface(jIntIndex).second().index() == 4) ||(mp.bInterface(iIntIndex).second().index() == 4 && mp.bInterface(jIntIndex).second().index() == 1))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << "  :\n  :\n";
-            // gsInfo << "..." <<"\n";
-            int i_x = Psi.patch(boxNumber).basis().boundary(1).size() -1;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-
-            if(mp.bInterface(iIntIndex).first().index() == 2){
-                i_x = Psi.patch(boxNumber1).basis().boundary(2).size() -1;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = 0;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            } 
-            else{
-                i_x = 0;
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-                i_x = Psi.patch(boxNumber2).basis().boundary(2).size() -1;
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-                Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-            }
-            }
-        else if((mp.bInterface(iIntIndex).second().index() == 1 && mp.bInterface(jIntIndex).second().index() == 3) ||(mp.bInterface(iIntIndex).second().index() == 1 && mp.bInterface(jIntIndex).second().index() == 3))   // means inner interfaces are 4 and 2
-        {
-            // gsInfo << "..." <<"\n";
-            // gsInfo << "  :\n  :\n";
-            int i_x = 0;
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            if(mp.bInterface(iIntIndex).first().index() == 2){
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            }
-            else{
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber1).coef( Psi.patch(boxNumber1).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-            Psi.patch(boxNumber2).coef( Psi.patch(boxNumber2).basis().boundary(2).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];                    
-            }
-            }                
-        }
-    }
-    }
-};
-*/
