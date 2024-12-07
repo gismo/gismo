@@ -609,6 +609,7 @@ private:
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
 //#                                       pragma omp atomic
+//                                        m_matrix.coeffUpdate(ii, jj) += localMat(rls+i,cls+j);
 #                                       pragma omp critical (acc_m_matrix)
                                         m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
@@ -616,7 +617,8 @@ private:
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-#                                       pragma omp atomic
+//#                                       pragma omp atomic
+#                                       pragma omp critical (acc_m_rhs)
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
                                     }
@@ -636,48 +638,30 @@ private:
 
     };
 
-    // A hash function for pairs of ints
-    struct _p_hash {
-        inline std::size_t operator()(const std::pair<index_t,index_t> & ij) const
-        { return ij.first ^ ( ij.second + 0x9e3779b9 + (ij.first << 6) + (ij.first >> 2) ); }
-    };
-
     // Constructs the sparsity pattern of the global matrix
     struct _pattern
     {
-        std::unordered_set<std::pair<index_t,index_t>,_p_hash> & m_positions;
+        typedef std::unordered_set<gsRowCol<T>,gsRowColHash> RowColSet; 
+        RowColSet & m_positions;
         const gsMatrix<T> & m_point;
         unsigned & patchid;
         gsMatrix<index_t> rowInd0, colInd0;
-        bool m_elim;
 
-        _pattern(std::unordered_set<std::pair<index_t,index_t>,_p_hash> & _positions,
+        _pattern(RowColSet & _positions,
                  const gsMatrix<T> & _point, unsigned & _patchid)
-        : m_positions(_positions), m_point(_point), patchid(_patchid), m_elim(true)
+        : m_positions(_positions), m_point(_point), patchid(_patchid)
         { }
-
-        void setElim(bool elim) {m_elim = elim;}
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
             //  ------- Accumulate  -------
             if (E::isMatrix())
-                if (m_elim) push<true,true>(ee.rowVar(), ee.colVar());
-                else push<true,false>(ee.rowVar(), ee.colVar());
-            else if (E::isVector())
-                if (m_elim) push<false,true>(ee.rowVar(), ee.colVar());
-                else push<false,false>(ee.rowVar(), ee.colVar());
-            else
-            {
-                GISMO_ERROR("Something went terribly wrong at this point");
-                //GISMO_ASSERTrowSpan() && (!colSpan())
-            }
-
-        }// operator()
+                push<true>(ee.rowVar(), ee.colVar());
+        }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
-        template<bool isMatrix, bool elim = true>
+        template<bool isMatrix>
         void push(const expr::gsFeSpace<T> & v,
                   const expr::gsFeSpace<T> & u)
         {
@@ -692,15 +676,15 @@ private:
             for (index_t r = 0; r != rd; ++r)
                 for (index_t i = 0; i != rowInd0.rows(); ++i)
                 {
-                    const index_t ii = rowMap.index(rowInd0.at(i),v.data().patchId,r); //N_i
+                    const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
                     if ( rowMap.is_free_index(ii) )
                     {
                         for (index_t c = 0; c != cd; ++c)
                             for (index_t j = 0; j != colInd0.rows(); ++j)
                             {
-                                const index_t jj = colMap.index(colInd0.at(j),u.data().patchId,c); // N_j
+                                const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
                                 if ( colMap.is_free_index(jj) )
-                                    m_positions.insert( std::make_pair(ii,jj) );
+                                    m_positions.insert({ii,jj});
                             }
                     }
                 }
@@ -829,50 +813,57 @@ void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 
 template<class T>
 template<class... expr>
+//todo: computePattern(..), computePatternBdr(..), computePatternIff(..), initPattern()
 void gsExprAssembler<T>::initPattern(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
-    const index_t elim = m_options.getInt("DirichletStrategy");
+    typedef std::unordered_set<gsRowCol<T>,gsRowColHash> RowColSet;
+    RowColSet nzeros;
 
 #   ifdef _OPENMP
-    std::vector<std::unordered_set<std::pair<index_t,index_t>,_p_hash> >
-        localContainers(omp_get_max_threads());
+    std::vector<RowColSet> localNzeros(omp_get_max_threads());//prefered for threads
+#endif
 
 #pragma omp parallel
 {
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
     auto arg_tpl = std::make_tuple(args...);
-    m_exprdata->parse(arg_tpl);;
+    m_exprdata->parse(arg_tpl);
+    // m_exprdata->parseTestTrialOnly(arg_tpl); //todo
+
     typename gsBasis<T>::domainIter domIt;
     unsigned patchInd;
-    _pattern pp(localContainers[tid], m_exprdata->points(), patchInd);
-    pp.setElim(dirichlet::elimination==elim);
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+    _pattern pp(localNzeros[tid], m_exprdata->points(), patchInd);
+#   else
+    _pattern pp(nzeros, m_exprdata->points(), patchInd);
+#   endif
     for (patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-        for (domIt->next(tid); domIt->good(); domIt->next(nt))
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
+        for (; domIt->good(); domIt->next() )
+#       endif
         {
             m_exprdata->points() = domIt->centerPoint();
             op_tuple(pp, arg_tpl);
         }
     }
-
-#pragma omp single
-{
-    std::vector<gsEigen::Triplet<T,index_t> > triplets;
-    size_t numEntries = 0;
-    for (const auto& localContainer : localContainers)
-        numEntries += localContainer.size();
-    triplets.reserve(numEntries);
-    for (const auto& localContainer : localContainers)
-        triplets.insert(triplets.end(), localContainer.begin(), localContainer.end() );
-    m_matrix.setFromTriplets(triplets.begin(), triplets.end());
-    m_matrix.makeCompressed();
-}
-
 }//omp parallel
-#   endif
+
+#   ifdef _OPENMP
+    size_t numEntries = 0;
+    for (const auto& localNz : localNzeros)
+        numEntries += localNz.size();
+    nzeros.reserve(numEntries);
+    for (const auto& localNz : localNzeros)
+        nzeros.insert( localNz.begin(), localNz.end() );
+#endif
+    m_matrix.setFromTriplets(nzeros.begin(), nzeros.end());
+    m_matrix.makeCompressed();
 }
 
 template<class T>
