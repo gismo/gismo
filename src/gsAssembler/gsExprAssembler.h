@@ -18,6 +18,8 @@
 #include <gsAssembler/gsExprHelper.h>
 
 #include <gsAssembler/gsCPPInterface.h>
+#include <gsUtils/gsStopwatch.h>
+
 
 namespace gismo
 {
@@ -604,14 +606,14 @@ private:
                                         // If matrix is symmetric, we could
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
-#                                       pragma omp critical (acc_m_matrix)
+// #                                       pragma omp critical (acc_m_matrix)
                                         m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
                                     else if (elim) // colMap.is_boundary_index(jj) )
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-#                                       pragma omp critical (acc_m_rhs)
+// #                                       pragma omp critical (acc_m_rhs)
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
                                     }
@@ -621,7 +623,7 @@ private:
                         else
                         {
                             //The right-hand side can have more than one columns
-#                           pragma omp critical (acc_m_rhs)
+// #                           pragma omp critical (acc_m_rhs)
                             m_rhs.row(ii) += localMat.row(rls+i);
                         }
                     }
@@ -758,6 +760,36 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
     bool failed = false;
+    int         maxThreads;
+    const char  *ompNumThreads = std::getenv("OMP_NUM_THREADS");
+
+    if (!ompNumThreads) {
+        maxThreads = omp_get_max_threads();
+    } else {
+        maxThreads = std::atoi(ompNumThreads);
+    }
+
+    gsStopwatch                 timer;
+
+    timer.restart();
+
+    /* Create m_matrix and m_rhs instances for all threads */
+    std::vector<gsSparseMatrix<T>>  thread_m_matrices(maxThreads);
+    std::vector<gsMatrix<T>>        thread_m_rhs(maxThreads);
+
+
+    /* Initialize the matrices */
+    for (int tid = 0; tid < maxThreads; ++tid) {
+        thread_m_matrices[tid].resize(numDofs(), numDofs());
+        thread_m_rhs[tid].resize(numDofs(), 1);
+        thread_m_matrices[tid].setZero();
+        thread_m_rhs[tid].setZero();
+    }
+
+    double initTime = 0;
+    initTime = +timer.stop();
+    gsInfo << "\n Matrices' Initialization for all threads: " << initTime;
+
 #pragma omp parallel shared(failed)
 {
 #   ifdef _OPENMP
@@ -773,7 +805,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
     gsVector<T> quWeights; // quadrature weights
-    _eval ee(m_matrix, m_rhs, quWeights);
+
+
+    _eval ee(thread_m_matrices[tid], thread_m_rhs[tid], quWeights);
     const index_t elim = m_options.getInt("DirichletStrategy");
     ee.setElim(dirichlet::elimination==elim);
 
@@ -821,12 +855,23 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             m_exprdata->precompute(patchInd);
 #endif
 
-
             // Assemble contributions of the element
             op_tuple(ee, arg_tpl);
         }
     }
 }//omp parallel
+
+
+    // Accumulate local matrices and rhs into global m_matrix and m_rhs
+    double accumulationTime = 0;
+    timer.restart();
+    for (int tid = 0; tid < maxThreads; ++tid)
+    {
+        m_matrix += thread_m_matrices[tid];  // Accumulate thread's matrix
+        m_rhs += thread_m_rhs[tid];  // Accumulate thread's rhs
+    }
+    accumulationTime = +timer.stop();
+    gsInfo << "\n Accumulation of all threads' matrices into m_matrix and m_rhs: " << accumulationTime;
     // Throw something else?? (floating point exception?)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
     m_matrix.makeCompressed();
