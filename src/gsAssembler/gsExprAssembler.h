@@ -18,6 +18,7 @@
 #include <gsAssembler/gsExprHelper.h>
 
 #include <gsAssembler/gsCPPInterface.h>
+#include <unordered_set>
 
 namespace gismo
 {
@@ -340,6 +341,9 @@ public:
         }
     }
 
+    /// Initializes the pattern of the sparse matrix
+    template<class... expr> void initPattern(const expr &... args);
+
     /// \brief Initializes the right-hand side vector only
     void initVector(const index_t numRhs = 1)
     {
@@ -604,6 +608,7 @@ private:
                                         // If matrix is symmetric, we could
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
+//#                                       pragma omp atomic
 #                                       pragma omp critical (acc_m_matrix)
                                         m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
@@ -611,7 +616,7 @@ private:
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-#                                       pragma omp critical (acc_m_rhs)
+#                                       pragma omp atomic
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
                                     }
@@ -629,6 +634,77 @@ private:
             }
         }//push
 
+    };
+
+    // A hash function for pairs of ints
+    struct _p_hash {
+        inline std::size_t operator()(const std::pair<index_t,index_t> & ij) const
+        { return ij.first ^ ( ij.second + 0x9e3779b9 + (ij.first << 6) + (ij.first >> 2) ); }
+    };
+
+    // Constructs the sparsity pattern of the global matrix
+    struct _pattern
+    {
+        std::unordered_set<std::pair<index_t,index_t>,_p_hash> & m_positions;
+        const gsMatrix<T> & m_point;
+        unsigned & patchid;
+        gsMatrix<index_t> rowInd0, colInd0;
+        bool m_elim;
+
+        _pattern(std::unordered_set<std::pair<index_t,index_t>,_p_hash> & _positions,
+                 const gsMatrix<T> & _point, unsigned & _patchid)
+        : m_positions(_positions), m_point(_point), patchid(_patchid), m_elim(true)
+        { }
+
+        void setElim(bool elim) {m_elim = elim;}
+
+        template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
+        {
+            //  ------- Accumulate  -------
+            if (E::isMatrix())
+                if (m_elim) push<true,true>(ee.rowVar(), ee.colVar());
+                else push<true,false>(ee.rowVar(), ee.colVar());
+            else if (E::isVector())
+                if (m_elim) push<false,true>(ee.rowVar(), ee.colVar());
+                else push<false,false>(ee.rowVar(), ee.colVar());
+            else
+            {
+                GISMO_ERROR("Something went terribly wrong at this point");
+                //GISMO_ASSERTrowSpan() && (!colSpan())
+            }
+
+        }// operator()
+
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
+
+        template<bool isMatrix, bool elim = true>
+        void push(const expr::gsFeSpace<T> & v,
+                  const expr::gsFeSpace<T> & u)
+        {
+            GISMO_ASSERT(v.isValid(), "The row space is not valid");
+            GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
+            const index_t rd            = v.dim();//row
+            const index_t cd            = u.dim();//col
+            const gsDofMapper  & rowMap = v.mapper();
+            const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
+            rowInd0 = v.source().piece(patchid).active(m_point);
+            colInd0 = u.source().piece(patchid).active(m_point);
+            for (index_t r = 0; r != rd; ++r)
+                for (index_t i = 0; i != rowInd0.rows(); ++i)
+                {
+                    const index_t ii = rowMap.index(rowInd0.at(i),v.data().patchId,r); //N_i
+                    if ( rowMap.is_free_index(ii) )
+                    {
+                        for (index_t c = 0; c != cd; ++c)
+                            for (index_t j = 0; j != colInd0.rows(); ++j)
+                            {
+                                const index_t jj = colMap.index(colInd0.at(j),u.data().patchId,c); // N_j
+                                if ( colMap.is_free_index(jj) )
+                                    m_positions.insert( std::make_pair(ii,jj) );
+                            }
+                    }
+                }
+        }//push
     };
 
 }; // gsExprAssembler
@@ -753,11 +829,59 @@ void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 
 template<class T>
 template<class... expr>
+void gsExprAssembler<T>::initPattern(const expr &... args)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+    const index_t elim = m_options.getInt("DirichletStrategy");
+
+#   ifdef _OPENMP
+    std::vector<std::unordered_set<std::pair<index_t,index_t>,_p_hash> >
+        localContainers(omp_get_max_threads());
+
+#pragma omp parallel
+{
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parse(arg_tpl);;
+    typename gsBasis<T>::domainIter domIt;
+    unsigned patchInd;
+    _pattern pp(localContainers[tid], m_exprdata->points(), patchInd);
+    pp.setElim(dirichlet::elimination==elim);
+    for (patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    {
+        domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+        for (domIt->next(tid); domIt->good(); domIt->next(nt))
+        {
+            m_exprdata->points() = domIt->centerPoint();
+            op_tuple(pp, arg_tpl);
+        }
+    }
+
+#pragma omp single
+{
+    std::vector<gsEigen::Triplet<T,index_t> > triplets;
+    size_t numEntries = 0;
+    for (const auto& localContainer : localContainers)
+        numEntries += localContainer.size();
+    triplets.reserve(numEntries);
+    for (const auto& localContainer : localContainers)
+        triplets.insert(triplets.end(), localContainer.begin(), localContainer.end() );
+    m_matrix.setFromTriplets(triplets.begin(), triplets.end());
+    m_matrix.makeCompressed();
+}
+
+}//omp parallel
+#   endif
+}
+
+template<class T>
+template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
-
     bool failed = false;
+    const index_t elim = m_options.getInt("DirichletStrategy");
 #pragma omp parallel shared(failed)
 {
 #   ifdef _OPENMP
@@ -765,17 +889,15 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     const int nt  = omp_get_num_threads();
 #   endif
     auto arg_tpl = std::make_tuple(args...);
-
     m_exprdata->parse(arg_tpl);
     m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
-
     gsVector<T> quWeights; // quadrature weights
     _eval ee(m_matrix, m_rhs, quWeights);
-    const index_t elim = m_options.getInt("DirichletStrategy");
     ee.setElim(dirichlet::elimination==elim);
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
+    typename gsBasis<T>::domainIter domIt;
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
@@ -784,7 +906,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+        domIt =  // add patchInd to domainiter ?
             m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
         m_exprdata->getElement().set(*domIt,quWeights);
 
