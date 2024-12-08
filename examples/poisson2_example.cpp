@@ -23,6 +23,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 5;
     index_t numElevate = 0;
+    index_t numSplit = 0;
     bool last{false}, export_b64{false};
     std::string fn("pde/poisson2d_bvp.xml");
 
@@ -30,6 +31,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt( "s", "uniformSplit", "Subdivide the input pathes this many time",  numSplit );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement",
                   last);
@@ -47,6 +49,8 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> mp;
     fd.getId(0, mp); // id=0: Multipatch domain
+    for (index_t i = 0; i<numSplit;++i)
+      mp = mp.uniformSplit();
 
     gsFunctionExpr<> f;
     fd.getId(1, f); // id=1: source function
@@ -90,7 +94,7 @@ int main(int argc, char *argv[])
     gsExprAssembler<> A(1,1);
     A.setOptions(Aopt);
 
-    gsInfo<<"Active options:\n"<< A.options() <<"\n";
+    //gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -129,6 +133,7 @@ int main(int argc, char *argv[])
     gsStopwatch timer;
     for (int r=0; r<=numRefine; ++r)
     {
+        timer.restart();
         dbasis.uniformRefine();
 
 //        u.setup(bc, dirichlet::interpolation, 0);
@@ -136,6 +141,7 @@ int main(int argc, char *argv[])
 
         // Initialize the system
         A.initSystem();
+        A.initPattern( igrad(u) * igrad(u).tr() ); //sequential
         setup_time += timer.stop();
 
         gsInfo<< A.numDofs() <<std::flush;
@@ -144,8 +150,8 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side
         A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
-            ,
-            u * ff * meas(G) //rhs vector
+	    ,
+	    u * ff * meas(G) //rhs vector
             );
 
         // Compute the Neumann terms defined on physical space
@@ -159,34 +165,30 @@ int main(int argc, char *argv[])
 
         gsInfo<< "." <<std::flush;// Assemblying done
 
+// /*
         timer.restart();
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
         slv_time += timer.stop();
-
         gsInfo<< "." <<std::flush; // Linear solving done
-
-        // omp_set_dynamic(0);     // Explicitly disable dynamic teams
-        // omp_set_num_threads(1); // Use these threads for later parallel regions
 
         timer.restart();
         l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-        
         h1err[r]= l2err[r] +
             math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
-
+//*/
     } //for loop
 
     //! [Solver loop]
 
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
-    gsInfo<<"     Setup: "<< setup_time <<"\n";
-    gsInfo<<"  Assembly: "<< ma_time    <<"\n";
-    gsInfo<<"   Solving: "<< slv_time   <<"\n";
-    gsInfo<<"     Norms: "<< err_time   <<"\n";
+    gsInfo<<"   Setup: "<< setup_time <<"\n";
+    gsInfo<<"Assembly: "<< ma_time    <<"\n";
+    gsInfo<<" Solving: "<< slv_time   <<"\n";
+    gsInfo<<"   Norms: "<< err_time   <<"\n";
 
     //! [Error and convergence rates]
     gsInfo<< "\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
