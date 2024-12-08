@@ -608,17 +608,16 @@ private:
                                         // If matrix is symmetric, we could
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
-//#                                       pragma omp atomic
-//                                        m_matrix.coeffUpdate(ii, jj) += localMat(rls+i,cls+j);
-#                                       pragma omp critical (acc_m_matrix)
-                                        m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
+#                                       pragma omp atomic
+                                        m_matrix.coeffUpdate(ii, jj) += localMat(rls+i,cls+j);
+//#                                       pragma omp critical (acc_m_matrix)
+//                                        m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
                                     else if (elim) // colMap.is_boundary_index(jj) )
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-//#                                       pragma omp atomic
-#                                       pragma omp critical (acc_m_rhs)
+#                                       pragma omp atomic
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
                                     }
@@ -628,8 +627,15 @@ private:
                         else
                         {
                             //The right-hand side can have more than one columns
-#                           pragma omp critical (acc_m_rhs)
-                            m_rhs.row(ii) += localMat.row(rls+i);
+#ifdef _OPENMP
+			  for(index_t a = 0; a!= m_rhs.cols();++a)
+			  {
+#                              pragma omp atomic
+			       m_rhs(ii,a) += localMat(rls+i,a);
+                           }
+#else
+			  m_rhs.row(ii) += localMat.row(rls+i);
+#endif
                         }
                     }
                 }
@@ -641,16 +647,19 @@ private:
     // Constructs the sparsity pattern of the global matrix
     struct _pattern
     {
-        typedef std::unordered_set<gsRowCol<T>,gsRowColHash> RowColSet; 
-        RowColSet & m_positions;
-        const gsMatrix<T> & m_point;
+        //typedef std::set<gsRowCol<T> > RowColSet;
+        //RowColSet & m_positions;
+        gsSparseMatrix<T> & m_matrix;
+	const gsMatrix<T> & m_point;
         unsigned & patchid;
         gsMatrix<index_t> rowInd0, colInd0;
 
-        _pattern(RowColSet & _positions,
+        _pattern(gsSparseMatrix<T> & _matrix,
                  const gsMatrix<T> & _point, unsigned & _patchid)
-        : m_positions(_positions), m_point(_point), patchid(_patchid)
-        { }
+	  : m_matrix(_matrix), m_point(_point), patchid(_patchid)
+        {
+	  //assume single thread
+	}
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
@@ -673,19 +682,20 @@ private:
             const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
             rowInd0 = v.source().piece(patchid).active(m_point);
             colInd0 = u.source().piece(patchid).active(m_point);
-            for (index_t r = 0; r != rd; ++r)
-                for (index_t i = 0; i != rowInd0.rows(); ++i)
+	    for (index_t c = 0; c != cd; ++c)
+	        for (index_t j = 0; j != colInd0.rows(); ++j)
                 {
-                    const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
-                    if ( rowMap.is_free_index(ii) )
+		    const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
+		    if ( colMap.is_free_index(jj) )
                     {
-                        for (index_t c = 0; c != cd; ++c)
-                            for (index_t j = 0; j != colInd0.rows(); ++j)
-                            {
-                                const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
-                                if ( colMap.is_free_index(jj) )
-                                    m_positions.insert({ii,jj});
-                            }
+		        for (index_t r = 0; r != rd; ++r)
+			    for (index_t i = 0; i != rowInd0.rows(); ++i)
+			    {
+			        const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
+			        if ( rowMap.is_free_index(ii) )
+			        //m_positions.insert({ii,jj});
+			         m_matrix.coeffRef(ii,jj) = (T)(0);
+			  }
                     }
                 }
         }//push
@@ -817,53 +827,25 @@ template<class... expr>
 void gsExprAssembler<T>::initPattern(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
-    typedef std::unordered_set<gsRowCol<T>,gsRowColHash> RowColSet;
-    RowColSet nzeros;
 
-#   ifdef _OPENMP
-    std::vector<RowColSet> localNzeros(omp_get_max_threads());//prefered for threads
-#endif
-
-#pragma omp parallel
-{
+    // note: filling sparse matrix in parallel  is extremely slow
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
     // m_exprdata->parseTestTrialOnly(arg_tpl); //todo
 
     typename gsBasis<T>::domainIter domIt;
     unsigned patchInd;
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-    _pattern pp(localNzeros[tid], m_exprdata->points(), patchInd);
-#   else
-    _pattern pp(nzeros, m_exprdata->points(), patchInd);
-#   endif
+    _pattern pp(m_matrix, m_exprdata->points(), patchInd);
     for (patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-#       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#       else
         for (; domIt->good(); domIt->next() )
-#       endif
         {
             m_exprdata->points() = domIt->centerPoint();
-            op_tuple(pp, arg_tpl);
+	    op_tuple(pp, arg_tpl);
         }
     }
-}//omp parallel
-
-#   ifdef _OPENMP
-    size_t numEntries = 0;
-    for (const auto& localNz : localNzeros)
-        numEntries += localNz.size();
-    nzeros.reserve(numEntries);
-    for (const auto& localNz : localNzeros)
-        nzeros.insert( localNz.begin(), localNz.end() );
-#endif
-    m_matrix.setFromTriplets(nzeros.begin(), nzeros.end());
-    m_matrix.makeCompressed();
+ m_matrix.makeCompressed();
 }
 
 template<class T>
@@ -892,8 +874,12 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases() && (!failed); ++patchInd) //todo: distribute in parallel somehow?
-    {
+    const unsigned nP = m_exprdata->multiBasis().nBases();
+    const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
+    for (unsigned Ind = 0; Ind < nP && (!failed); ++Ind)
+     {
+        // Spread the threads on different patches
+        const unsigned patchInd = (Ind + offset * tid) % nP;
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
@@ -942,7 +928,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 }//omp parallel
     // Throw something else?? (floating point exception?)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
-    m_matrix.makeCompressed();
+    //    m_matrix.makeCompressed();
 }
 
 template<class T>
