@@ -35,12 +35,12 @@ void gsWriteCsv(std::string const & filename, const gsMatrix<T> & matrix, const 
 
     std::ofstream csv_file;
     csv_file.open(filename);
-    GISMO_ASSERT( (headers.empty() ||  headers.size() == matrix.cols()), "The column headers should be as many as the columns of the matrix provided." );
+    GISMO_ASSERT( (headers.empty() ||  headers.size() == (size_t)matrix.cols()), "The column headers should be as many as the columns of the matrix provided." );
 
     // If column headers are provided, write to file
     if (! headers.empty())
     {
-        for ( index_t j=0 ; j <  headers.size() ; j++)
+        for ( size_t j = 0 ; j <  headers.size() ; j++)
         {
             csv_file << headers[j];
             if (headers.size()-1 == j) 
