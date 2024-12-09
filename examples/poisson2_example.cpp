@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     gsExprAssembler<> A(1,1);
     A.setOptions(Aopt);
 
-    //gsInfo<<"Active options:\n"<< A.options() <<"\n";
+    gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -140,15 +140,16 @@ int main(int argc, char *argv[])
         timer.restart();
         dbasis.uniformRefine();
 
-//        u.setup(bc, dirichlet::interpolation, 0);
+        // Setup the space \a u with strongly imposed Dirichlet part
+        //u.setup(bc, dirichlet::interpolation, 0);
         u.setup(bc, dirichlet::l2Projection, 0);
 
         // Initialize the system
         A.initSystem();
-        // Compute sparsity patter: this is done automatically - but is needed if assemble(.) is called twice
-        //A.computePattern( igrad(u) * igrad(u).tr() );
+        // Compute sparsity patter: this is done automatically - but
+        // is needed if assemble(.) is called twice
+        A.computePattern( igrad(u) * igrad(u).tr() );
         setup_time += timer.stop();
-
         gsInfo<< A.numDofs() <<std::flush;
 
         timer.restart();
@@ -162,15 +163,11 @@ int main(int argc, char *argv[])
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
         A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
-
         ma_time += timer.stop();
-
         // gsDebugVar(A.matrix().toDense());
         // gsDebugVar(A.rhs().transpose()   );
-
         gsInfo<< "." <<std::flush;// Assemblying done
 
-// /*
         timer.restart();
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
@@ -178,17 +175,16 @@ int main(int argc, char *argv[])
         gsInfo<< "." <<std::flush; // Linear solving done
 
         timer.restart();
+        // Compute the L2 and H1 error, based on manufactured solution
         l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
         h1err[r]= l2err[r] +
             math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
-//*/
-    } //for loop
 
+    } //for loop
     //! [Solver loop]
 
-    timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
     gsInfo<<"   Setup: "<< setup_time <<"\n";
     gsInfo<<"Assembly: "<< ma_time    <<"\n";
@@ -226,7 +222,6 @@ int main(int argc, char *argv[])
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();
         collection.save();
-
 
         gsFileManager::open("ParaviewOutput/solution.pvd");
     }

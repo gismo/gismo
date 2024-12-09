@@ -346,20 +346,16 @@ public:
 
     inline T& coeffUpdate(_Index row, _Index col)
     {
-        //eigen_assert(row>=0 && row<this->rows() && col>=0 && col<this->cols());
-      const _Index outer = gsSparseMatrix::IsRowMajor ? row : col;
-      const _Index inner = gsSparseMatrix::IsRowMajor ? col : row;
-      _Index start = this->m_outerIndex[outer];
-      _Index end = this->m_innerNonZeros ? this->m_outerIndex[outer] + this->m_innerNonZeros[outer]
-          : this->m_outerIndex[outer+1];
-      //eigen_assert(end>=start && "you probably called coeffRef on a non finalized matrix");
-      if(end<=start)
-          GISMO_ERROR("(row,col) = ("<< row <<","<<col<<") is not in the matrix.");
-      const _Index p = this->m_data.searchLowerIndex(start,end-1,inner);
-      if((p<end) && (this->m_data.index(p)==inner))
-        return this->m_data.value(p);
-      else
-          GISMO_ERROR("(row,col) = ("<< row <<","<<col<<") is not in the matrix..");
+        GISMO_ASSERT(row>=0 && row<this->rows() && col>=0 && col<this->cols(), "Invalid row/col index.");
+        const _Index outer = gsSparseMatrix::IsRowMajor ? row : col;
+        _Index start = this->m_outerIndex[outer];
+        _Index end = this->m_innerNonZeros ? this->m_outerIndex[outer] + this->m_innerNonZeros[outer]
+            : this->m_outerIndex[outer+1];
+        const _Index inner = gsSparseMatrix::IsRowMajor ? col : row;
+        const _Index p = this->m_data.searchLowerIndex(start,end-1,inner);
+        if((p<end) && (this->m_data.index(p)==inner))
+            return this->m_data.value(p);
+        GISMO_ERROR("(row,col) = ("<< row <<","<<col<<") is not in the matrix (sparsity pattern).");
     }
 
     /// Return a block view of the matrix with \a rowSizes and \a colSizes

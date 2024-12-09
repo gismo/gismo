@@ -360,32 +360,36 @@ private:
     {
         static inline T init() { return 0; }
         static inline void acc(const T contrib, const T w, T & res)
-        {
-	  res += w * contrib;
-	}
+        { res += w * contrib; }
 
         static inline void acc_global(const T contrib, T & res)
         {
-#         pragma omp atomic
-	  res += contrib;
-	}
-
+#           pragma omp atomic update
+            res += contrib;
+        }
     };
     struct min_op
     {
         static inline T init() { return math::limits::max(); }
         static inline void acc (const T contrib, const T, T & res)
+        {res = math::min(contrib, res);	}
+        static inline void acc_global(const T contrib, T & res)
         {
-	  res = math::min(contrib, res);
-	}
+#           pragma omp atomic write
+            res = math::min(contrib, res);
+        }
+
     };
     struct max_op
     {
         static inline T init() { return math::limits::min(); }
         static inline void acc (const T contrib, const T, T & res)
+        { res = math::max(contrib, res); }
+        static inline void acc_global(const T contrib, T & res)
         {
-	  res = math::max(contrib, res);
-	}
+#           pragma omp atomic write
+            res = math::max(contrib, res);
+        }
     };
 
 };
@@ -400,7 +404,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         m_elWise.resize(m_exprdata->multiBasis().totalElements());
 
 #pragma omp parallel
-    {
+{
 #ifdef _OPENMP
         const int tid = omp_get_thread_num();
         const int nt  = omp_get_num_threads();
@@ -417,14 +421,14 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         // Computed value on element
         T elVal;
         index_t poffset = 0;
+        typename gsBasis<T>::domainIter domIt;
         for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
         {
             // Quadrature rule
             QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
 
             // Initialize domain element iterator
-            typename gsBasis<T>::domainIter domIt =
-                m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
+            domIt = m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
             m_exprdata->getElement().set(*domIt,quWeights);
 
             // Start iteration over elements of patchInd
@@ -453,14 +457,16 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
                     m_value);
 #endif
                     if ( storeElWise )
+                    {
                         m_elWise[poffset+domIt->id()] = elVal;
-                }
-            poffset += m_exprdata->multiBasis().basis(patchInd).size();
+                    }
+               }
+               poffset += m_exprdata->multiBasis().basis(patchInd).numElements();
         }
 #ifdef _OPENMP
     _op::acc_global(thValue, m_value);
 #endif
-    }//omp parallel
+}//omp parallel
     return m_value;
 }
 
