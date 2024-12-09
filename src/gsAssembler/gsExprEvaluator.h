@@ -360,19 +360,32 @@ private:
     {
         static inline T init() { return 0; }
         static inline void acc(const T contrib, const T w, T & res)
-        { res += w * contrib; }
+        {
+	  res += w * contrib;
+	}
+
+        static inline void acc_global(const T contrib, T & res)
+        {
+#         pragma omp atomic
+	  res += contrib;
+	}
+
     };
     struct min_op
     {
         static inline T init() { return math::limits::max(); }
         static inline void acc (const T contrib, const T, T & res)
-        { res = math::min(contrib, res); } //note: min/max are not atomic
+        {
+	  res = math::min(contrib, res);
+	}
     };
     struct max_op
     {
         static inline T init() { return math::limits::min(); }
         static inline void acc (const T contrib, const T, T & res)
-        { res = math::max(contrib, res); }
+        {
+	  res = math::max(contrib, res);
+	}
     };
 
 };
@@ -391,7 +404,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 #   ifdef _OPENMP
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
-    index_t patch_cnt = 0;
+    T thValue = _op::init();
 #   endif
 
     gsQuadRule<T> QuRule;  // Quadrature rule
@@ -403,7 +416,6 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     
     // Computed value on element
     T elVal;
-    index_t c = 0;
     for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         // Quadrature rule
@@ -415,12 +427,8 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements of patchInd
+
 #       ifdef _OPENMP
-        if ( storeElWise )
-        {
-            c = patch_cnt + tid;
-            patch_cnt += domIt->numElements();// a bit costy
-        }
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #       else
         for (; domIt->good(); domIt->next() )
@@ -437,22 +445,12 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             elVal = _op::init();
             for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
                 _op::acc(_arg.eval(k), quWeights[k], elVal);
-
+            _op::acc(elVal, (T)1, thValue);
             if ( storeElWise )
-            {
-#               ifdef _OPENMP
-                m_elWise[c] = elVal;
-                c += nt;
-#               else
-                m_elWise[c++] = elVal;
-#               endif
-            }
-
-#           pragma omp critical (_op_acc)
-            _op::acc(elVal, 1, m_value);
+	      m_elWise[domIt->id()] = elVal; // wrong...
         }
     }
-
+    _op::acc_global(thValue, m_value);
 }//omp parallel
     return m_value;
 }

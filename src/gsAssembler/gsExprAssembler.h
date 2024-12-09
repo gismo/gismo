@@ -610,8 +610,6 @@ private:
                                         //if ( (!symm) || jj <= ii )
 #                                       pragma omp atomic
                                         m_matrix.coeffUpdate(ii, jj) += localMat(rls+i,cls+j);
-//#                                       pragma omp critical (acc_m_matrix)
-//                                        m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
                                     else if (elim) // colMap.is_boundary_index(jj) )
                                     {
@@ -653,13 +651,20 @@ private:
 	const gsMatrix<T> & m_point;
         unsigned & patchid;
         gsMatrix<index_t> rowInd0, colInd0;
-
+#ifdef _OPENMP
+        std::vector<omp_lock_t> & m_lock;
+#endif
         _pattern(gsSparseMatrix<T> & _matrix,
-                 const gsMatrix<T> & _point, unsigned & _patchid)
+                 const gsMatrix<T> & _point, unsigned & _patchid
+#ifdef _OPENMP
+		 , std::vector<omp_lock_t> & _lock
+#endif
+		 )
 	  : m_matrix(_matrix), m_point(_point), patchid(_patchid)
-        {
-	  //assume single thread
-	}
+#ifdef _OPENMP
+	  , m_lock(_lock)
+#endif
+        { }
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
@@ -682,21 +687,25 @@ private:
             const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
             rowInd0 = v.source().piece(patchid).active(m_point);
             colInd0 = u.source().piece(patchid).active(m_point);
-	    //parallel column wise (assuming columns are distinct within patch)
-#           pragma omp parallel for schedule(static) collapse(2) if (colInd0.rows()>9) num_threads(colInd0.rows()/5)
 	    for (index_t c = 0; c != cd; ++c)
 	      for (index_t j = 0; j != colInd0.rows(); ++j)
 	      {
 		    const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
 		    if ( colMap.is_free_index(jj) )
                     {
-		        for (index_t r = 0; r != rd; ++r)
+#ifdef _OPENMP
+		      omp_set_lock(&m_lock[jj]);
+#endif
+		         for (index_t r = 0; r != rd; ++r)
 			    for (index_t i = 0; i != rowInd0.rows(); ++i)
 			    {
 			        const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
 			        if ( rowMap.is_free_index(ii) )
 				    m_matrix.coeffRef(ii,jj) = (T)(0);
 			    }
+#ifdef _OPENMP
+			 omp_unset_lock(&m_lock[jj]);
+#endif
                     }
 	      }
         }//push
@@ -829,6 +838,18 @@ void gsExprAssembler<T>::initPattern(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
+#   ifdef _OPENMP
+    std::vector<omp_lock_t> lock(m_matrix.cols());
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
     // note: filling sparse matrix in parallel  is extremely slow
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
@@ -836,16 +857,31 @@ void gsExprAssembler<T>::initPattern(const expr &... args)
 
     typename gsBasis<T>::domainIter domIt;
     unsigned patchInd;
-    _pattern pp(m_matrix, m_exprdata->points(), patchInd);
-    for (patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    _pattern pp(m_matrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+		, lock
+#endif
+		);
+    const unsigned nP = m_exprdata->multiBasis().nBases();
+    const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
+    for (unsigned Ind = 0; Ind < nP; ++Ind)
     {
+        patchInd = (Ind + offset * tid) % nP;
         domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
         for (; domIt->good(); domIt->next() )
+#       endif
         {
             m_exprdata->points() = domIt->centerPoint();
 	    op_tuple(pp, arg_tpl);
         }
     }
+ }//parallel
+    for (auto & l : lock)
+        omp_destroy_lock(&l);
+
  m_matrix.makeCompressed();
 }
 
