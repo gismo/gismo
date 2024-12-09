@@ -124,7 +124,11 @@ int main(int argc, char *argv[])
     //! [Problem setup]
 
     //! [Solver loop]
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver;
+#else
     gsSparseSolver<>::CGDiagonal solver;
+#endif
 
     gsVector<> l2err(numRefine+1), h1err(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"

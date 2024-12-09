@@ -682,9 +682,11 @@ private:
             const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
             rowInd0 = v.source().piece(patchid).active(m_point);
             colInd0 = u.source().piece(patchid).active(m_point);
+	    //parallel column wise (assuming columns are distinct within patch)
+#           pragma omp parallel for schedule(static) collapse(2) if (colInd0.rows()>9) num_threads(colInd0.rows()/5)
 	    for (index_t c = 0; c != cd; ++c)
-	        for (index_t j = 0; j != colInd0.rows(); ++j)
-                {
+	      for (index_t j = 0; j != colInd0.rows(); ++j)
+	      {
 		    const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
 		    if ( colMap.is_free_index(jj) )
                     {
@@ -693,11 +695,10 @@ private:
 			    {
 			        const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
 			        if ( rowMap.is_free_index(ii) )
-			        //m_positions.insert({ii,jj});
-			         m_matrix.coeffRef(ii,jj) = (T)(0);
-			  }
+				    m_matrix.coeffRef(ii,jj) = (T)(0);
+			    }
                     }
-                }
+	      }
         }//push
     };
 
