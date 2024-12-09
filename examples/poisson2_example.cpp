@@ -145,7 +145,8 @@ int main(int argc, char *argv[])
 
         // Initialize the system
         A.initSystem();
-        A.initPattern( igrad(u) * igrad(u).tr() ); //sequential
+        // Compute sparsity patter: this is done automatically - but is needed if assemble(.) is called twice
+        //A.computePattern( igrad(u) * igrad(u).tr() );
         setup_time += timer.stop();
 
         gsInfo<< A.numDofs() <<std::flush;

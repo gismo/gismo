@@ -250,6 +250,21 @@ private:
     template<typename... Ts>
     void _parse_tuple (const std::tuple<Ts...> &tuple) {_parse_tuple_i<0>(tuple);}
 
+    template<size_t I, typename... Ts>
+    void _parse_tt_tuple_i (const std::tuple<Ts...> &tuple)
+    {
+        if (std::get<I>(tuple).isMatrix())
+        {
+            std::get<I>(tuple).rowVar().parse(*this);
+            std::get<I>(tuple).colVar().parse(*this);
+        }
+        if (I + 1 < sizeof... (Ts))
+            _parse_tt_tuple_i<(I+1 < sizeof... (Ts) ? I+1 : I)> (tuple);
+    }
+
+    template<typename... Ts>
+    void _parse_tt_tuple (const std::tuple<Ts...> &tuple) {_parse_tt_tuple_i<0>(tuple);}
+
     void setInitialFlags()
     {
         // Additional evaluation flags
@@ -285,6 +300,18 @@ public:
         cleanUp(); //assumes parse is called once.
         _parse_tuple(tuple);
         setInitialFlags();
+    }
+
+    template<class... Ts>
+    void parsePattern(const std::tuple<Ts...> &tuple)
+    {
+        cleanUp(); //assumes parse is called once.
+        _parse_tt_tuple(tuple);
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+            it->second.mine().flags = NEED_ACTIVE;
+        if (isMirrored())
+            for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
+                it->second.mine().flags = NEED_ACTIVE;
     }
 
     template<class... expr>

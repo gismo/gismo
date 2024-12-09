@@ -43,6 +43,8 @@ private:
     std::vector<gsFeSpaceData<T>*> m_vrow;
     std::vector<gsFeSpaceData<T>*> m_vcol;
 
+    bool patternComputed;
+
     typedef typename gsExprHelper<T>::nullExpr    nullExpr;
 
 public:
@@ -73,7 +75,7 @@ public:
     /// \param _cBlocks Number of spaces for solution variables
     gsExprAssembler(index_t _rBlocks = 1, index_t _cBlocks = 1)
     : m_exprdata(gsExprHelper<T>::make()), m_gmap(nullptr), m_options(defaultOptions()),
-      m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr)
+      m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr), patternComputed(false)
     { }
 
     // The copy constructor replicates the same environent but does
@@ -312,7 +314,7 @@ public:
      */
     void clearMatrix(const bool& save_sparsety_pattern = true)
     {
-        if (m_matrix.nonZeros() && save_sparsety_pattern)
+        if (patternComputed /*m_matrix.nonZeros()*/ && save_sparsety_pattern)
         {
             std::fill(m_matrix.valuePtr(),
                       m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
@@ -320,6 +322,7 @@ public:
         else
         {
             m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
+            patternComputed = false;
 
             if (0 == m_matrix.rows() || 0 == m_matrix.cols())
                 gsWarn << " No internal DOFs, zero sized system.\n";
@@ -342,7 +345,7 @@ public:
     }
 
     /// Initializes the pattern of the sparse matrix
-    template<class... expr> void initPattern(const expr &... args);
+    template<class... expr> void computePattern(const expr &... args);
 
     /// \brief Initializes the right-hand side vector only
     void initVector(const index_t numRhs = 1)
@@ -626,13 +629,13 @@ private:
                         {
                             //The right-hand side can have more than one columns
 #ifdef _OPENMP
-			  for(index_t a = 0; a!= m_rhs.cols();++a)
-			  {
+                            for(index_t a = 0; a!= m_rhs.cols();++a)
+                            {
 #                              pragma omp atomic
-			       m_rhs(ii,a) += localMat(rls+i,a);
-                           }
+                                m_rhs(ii,a) += localMat(rls+i,a);
+                            }
 #else
-			  m_rhs.row(ii) += localMat.row(rls+i);
+                            m_rhs.row(ii) += localMat.row(rls+i);
 #endif
                         }
                     }
@@ -687,27 +690,27 @@ private:
             const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
             rowInd0 = v.source().piece(patchid).active(m_point);
             colInd0 = u.source().piece(patchid).active(m_point);
-	    for (index_t c = 0; c != cd; ++c)
-	      for (index_t j = 0; j != colInd0.rows(); ++j)
-	      {
-		    const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
-		    if ( colMap.is_free_index(jj) )
+            for (index_t c = 0; c != cd; ++c)
+                for (index_t j = 0; j != colInd0.rows(); ++j)
+                {
+                    const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
+                    if ( colMap.is_free_index(jj) )
                     {
 #ifdef _OPENMP
-		      omp_set_lock(&m_lock[jj]);
+                        omp_set_lock(&m_lock[jj]);
 #endif
-		         for (index_t r = 0; r != rd; ++r)
-			    for (index_t i = 0; i != rowInd0.rows(); ++i)
-			    {
-			        const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
-			        if ( rowMap.is_free_index(ii) )
-				    m_matrix.coeffRef(ii,jj) = (T)(0);
-			    }
+                        for (index_t r = 0; r != rd; ++r)
+                            for (index_t i = 0; i != rowInd0.rows(); ++i)
+                            {
+                                const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
+                                if ( rowMap.is_free_index(ii) )
+                                    m_matrix.coeffRef(ii,jj) = (T)(0);
+                            }
 #ifdef _OPENMP
-			 omp_unset_lock(&m_lock[jj]);
+                        omp_unset_lock(&m_lock[jj]);
 #endif
                     }
-	      }
+                }
         }//push
     };
 
@@ -833,56 +836,59 @@ void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 
 template<class T>
 template<class... expr>
-//todo: computePattern(..), computePatternBdr(..), computePatternIff(..), initPattern()
-void gsExprAssembler<T>::initPattern(const expr &... args)
+//todo: computePatternBdr(..), computePatternIfc(..)
+void gsExprAssembler<T>::computePattern(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
-#   ifdef _OPENMP
+#ifdef _OPENMP
     std::vector<omp_lock_t> lock(m_matrix.cols());
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
 
 #pragma omp parallel
-{
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
-    // note: filling sparse matrix in parallel  is extremely slow
-    auto arg_tpl = std::make_tuple(args...);
-    m_exprdata->parse(arg_tpl);
-    // m_exprdata->parseTestTrialOnly(arg_tpl); //todo
-
-    typename gsBasis<T>::domainIter domIt;
-    unsigned patchInd;
-    _pattern pp(m_matrix, m_exprdata->points(), patchInd
-#ifdef _OPENMP
-		, lock
-#endif
-		);
-    const unsigned nP = m_exprdata->multiBasis().nBases();
-    const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
-    for (unsigned Ind = 0; Ind < nP; ++Ind)
     {
-        patchInd = (Ind + offset * tid) % nP;
-        domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-#       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#       else
-        for (; domIt->good(); domIt->next() )
-#       endif
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+#endif
+        auto arg_tpl = std::make_tuple(args...);
+        m_exprdata->parsePattern(arg_tpl);
+
+        typename gsBasis<T>::domainIter domIt;
+        unsigned patchInd;
+        _pattern pp(m_matrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+                    , lock
+#endif
+            );
+        const unsigned nP = m_exprdata->multiBasis().nBases();
+#ifdef _OPENMP
+        const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
+        for (unsigned Ind = 0; Ind != nP; ++Ind)
         {
-            m_exprdata->points() = domIt->centerPoint();
-	    op_tuple(pp, arg_tpl);
+            patchInd = (Ind + offset * tid) % nP;
+            domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+        for (patchInd = 0; patchInd != nP; ++patchInd)
+        {
+            domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+            for (; domIt->good(); domIt->next() )
+#endif
+            {
+                m_exprdata->points() = domIt->centerPoint();
+                op_tuple(pp, arg_tpl);
+            }
         }
-    }
- }//parallel
+    }//parallel
+#ifdef _OPENMP
     for (auto & l : lock)
         omp_destroy_lock(&l);
-
- m_matrix.makeCompressed();
+#endif
+    m_matrix.makeCompressed();
+    patternComputed = true;
 }
 
 template<class T>
@@ -890,6 +896,10 @@ template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+
+    if (!patternComputed)
+        this->computePattern(args...);
+
     bool failed = false;
     const index_t elim = m_options.getInt("DirichletStrategy");
 #pragma omp parallel shared(failed)
@@ -912,11 +922,16 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
     const unsigned nP = m_exprdata->multiBasis().nBases();
+#ifdef _OPENMP
     const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
     for (unsigned Ind = 0; Ind < nP && (!failed); ++Ind)
      {
         // Spread the threads on different patches
         const unsigned patchInd = (Ind + offset * tid) % nP;
+#else
+     for (unsigned patchInd = 0; patchInd < nP && (!failed); ++patchInd)
+     {
+#endif
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
@@ -938,17 +953,16 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             if (m_exprdata->points().cols()==0)
                 continue;
 
-// Activate the try-catch only if G+Smo is not in DEBUG
-#ifdef NDEBUG
+// Activate the try-catch only if G+Smo is in DEBUG
+#ifndef NDEBUG
             // Perform required pre-computations on the quadrature nodes
             try
             {
-            m_exprdata->precompute(patchInd);
-            //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
+                m_exprdata->precompute(patchInd);
+                //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
             }
             catch (...)
             {
-                // #pragma omp single copyprivate(failed) // broadcasting "failed". Does not work
                 #pragma omp atomic write
                 failed = true;
                 break;
@@ -956,8 +970,6 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 #else
             m_exprdata->precompute(patchInd);
 #endif
-
-
             // Assemble contributions of the element
             op_tuple(ee, arg_tpl);
         }
@@ -965,6 +977,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 }//omp parallel
     // Throw something else?? (floating point exception?)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
+
     //    m_matrix.makeCompressed();
 }
 

@@ -400,58 +400,67 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         m_elWise.resize(m_exprdata->multiBasis().totalElements());
 
 #pragma omp parallel
-{
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-    T thValue = _op::init();
-#   endif
-
-    gsQuadRule<T> QuRule;  // Quadrature rule
-    gsVector<T> quWeights; // quadrature weights
-
-    auto _arg = expr.val();
-    m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
-    
-    // Computed value on element
-    T elVal;
-    for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
-        // Quadrature rule
-        QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+        T thValue = _op::init();
+#endif
 
-        // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
-        m_exprdata->getElement().set(*domIt,quWeights);
+        gsQuadRule<T> QuRule;  // Quadrature rule
+        gsVector<T> quWeights; // quadrature weights
 
-        // Start iteration over elements of patchInd
+        auto _arg = expr.val();
+        m_exprdata->parse(_arg);
+        m_exprdata->activateFlags(SAME_ELEMENT);
 
-#       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#       else
-        for (; domIt->good(); domIt->next() )
-#       endif
+        // Computed value on element
+        T elVal;
+        index_t poffset = 0;
+        for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
         {
-            // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+            // Quadrature rule
+            QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
 
-            // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patchInd);
+            // Initialize domain element iterator
+            typename gsBasis<T>::domainIter domIt =
+                m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
+            m_exprdata->getElement().set(*domIt,quWeights);
 
-            // Compute on element
-            elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
-                _op::acc(_arg.eval(k), quWeights[k], elVal);
-            _op::acc(elVal, (T)1, thValue);
-            if ( storeElWise )
-	      m_elWise[domIt->id()] = elVal; // wrong...
+            // Start iteration over elements of patchInd
+
+#ifdef _OPENMP
+            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+                for (; domIt->good(); domIt->next() )
+#endif
+                {
+                    // Map the Quadrature rule to the element
+                    QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                                  m_exprdata->points(), quWeights);
+
+                    // Perform required pre-computations on the quadrature nodes
+                    m_exprdata->precompute(patchInd);
+
+                    // Compute on element
+                    elVal = _op::init();
+                    for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
+                        _op::acc(_arg.eval(k), quWeights[k], elVal);
+                    _op::acc(elVal, (T)1,
+#ifdef _OPENMP
+                    thValue);
+#else
+                    m_value);
+#endif
+                    if ( storeElWise )
+                        m_elWise[poffset+domIt->id()] = elVal;
+                }
+            poffset += m_exprdata->multiBasis().basis(patchInd).size();
         }
-    }
+#ifdef _OPENMP
     _op::acc_global(thValue, m_value);
-}//omp parallel
+#endif
+    }//omp parallel
     return m_value;
 }
 
