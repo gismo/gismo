@@ -29,12 +29,12 @@ private:
     gsExprHelper(const gsExprHelper &);
 
     gsExprHelper() : m_mirror(nullptr), mesh_ptr(nullptr),
-                     mutSrc(nullptr), mutMap(nullptr)
+                     mutSrc(nullptr), mutMap(nullptr), m_element(*this)
     { }
 
     explicit gsExprHelper(gsExprHelper * m)
     : m_mirror(memory::make_shared_not_owned(m)),
-      mesh_ptr(m->mesh_ptr), mutSrc(nullptr), mutMap(nullptr)
+      mesh_ptr(m->mesh_ptr), mutSrc(nullptr), mutMap(nullptr), m_element(*this)
     { }
 
 private:
@@ -50,6 +50,7 @@ private:
     typedef typename CFuncData ::iterator CFuncDataIt;
 
     util::gsThreaded<gsMatrix<T> > m_points;
+    util::gsThreaded<gsVector<T> > m_weights;
     FuncData  m_fdata;///< functions
     MapData   m_mdata;///< maps
     CFuncData m_cdata;///< compositions
@@ -65,7 +66,7 @@ private:
     thFuncData               mutData;
 
     // Represents the current element
-    expr::gsFeElement<T> m_element;
+    expr::gsFeElement<T> m_element; //sharedby all threads
 
 public:
     typedef memory::unique_ptr<gsExprHelper> uPtr;
@@ -84,6 +85,12 @@ public:
 
     gsMatrix<T> & points()    { return m_points; }
     gsMatrix<T> & pointsIfc() { return this->iface().m_points; }
+
+    gsVector<T> & weights()    { return m_weights; }
+    const gsVector<T> & weights() const { return m_weights; }
+
+    gsVector<T> & weightsIfc() { return this->iface().m_weights; }
+    const gsVector<T> & weightsIfc() const { return this->iface().m_weights; }
 
     bool isMirrored() const { return nullptr!=m_mirror; }
 

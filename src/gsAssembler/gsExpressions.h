@@ -788,26 +788,19 @@ template<class T>
 class gsFeElement
 {
     friend class cdiam_expr<T>;
-
-    const gsDomainIterator<T> * m_di; ///< Pointer to the domain iterator
-
-    const gsVector<T> * m_weights;
-    //const gsMatrix<T> * m_points;
+    const gsExprHelper<T> * m_exprdata;
 
     gsFeElement(const gsFeElement &);
 public:
     typedef T Scalar;
 
-    gsFeElement() : m_di(NULL), m_weights(nullptr) { }
+    gsFeElement(const gsExprHelper<T> & eh) : m_exprdata(&eh) { }
 
-    void set(const gsDomainIterator<T> & di, const gsVector<T> & weights)
-    { m_di = &di, m_weights = &weights; }
+    bool isValid() const { return nullptr!=m_exprdata; }
 
-    bool isValid() const { return nullptr!=m_weights; }
+    const gsVector<T> & weights() const {return m_exprdata->weights();}
 
-    const gsVector<T> & weights() const {return *m_weights;}
-
-    template<class E>
+    template<class E> inline
     integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
 
@@ -830,15 +823,14 @@ public:
     PHDiamRetType diam(const gsGeometryMap<Scalar> & _G) const
     { return pow(integral(meas_expr<T>(_G)),(T)(1)/(T)(2)); }
 
-    //const gsMatrix<T> points() const {return pts;}
-
+    //auto points() const {return point_expr<T>(*this);}
     //index_t dim() { return di->
     
     void print(std::ostream &os) const { os << "e"; }
 
     void parse(gsExprHelper<T> & evList) const
     {
-        GISMO_ERROR("EL");
+        GISMO_ERROR("Call desired member of element expression instead.");
     }
 };
 

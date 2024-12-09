@@ -412,7 +412,6 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 #endif
 
         gsQuadRule<T> QuRule;  // Quadrature rule
-        gsVector<T> quWeights; // quadrature weights
 
         auto _arg = expr.val();
         m_exprdata->parse(_arg);
@@ -429,10 +428,6 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
             // Initialize domain element iterator
             domIt = m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
-            m_exprdata->getElement().set(*domIt,quWeights);
-
-            // Start iteration over elements of patchInd
-
 #ifdef _OPENMP
             for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #else
@@ -441,15 +436,15 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
                 {
                     // Map the Quadrature rule to the element
                     QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                                  m_exprdata->points(), quWeights);
+                                  m_exprdata->points(), m_exprdata->weights());
 
                     // Perform required pre-computations on the quadrature nodes
                     m_exprdata->precompute(patchInd);
 
                     // Compute on element
                     elVal = _op::init();
-                    for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
-                        _op::acc(_arg.eval(k), quWeights[k], elVal);
+                    for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quad. nodes
+                        _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
                     _op::acc(elVal, (T)1,
 #ifdef _OPENMP
                     thValue);
@@ -482,8 +477,6 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
     //expr.print(gsInfo);
 
     gsQuadRule<T> QuRule;  // Quadrature rule
-    gsVector<T> quWeights; // quadrature weights
-
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     m_exprdata->activateFlags(SAME_ELEMENT);
@@ -492,7 +485,6 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
     T elVal;
     m_value = _op::init();
     m_elWise.clear();
-
     for (typename gsBoxTopology::const_biterator bit = //!! not multipatch!
              bdrlist.begin(); bit != bdrlist.end(); ++bit)
     {
@@ -502,22 +494,21 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(bit->patch).makeDomainIterator(bit->side());
-        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+                          m_exprdata->points(), m_exprdata->weights());
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(bit->patch, bit->side() );
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(_arg.eval(k), quWeights[k], elVal);
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quadrature nodes
+                _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
 
             _op::acc(elVal, 1, m_value);
             //if ( storeElWise ) m_elWise.push_back( elVal );
@@ -542,8 +533,6 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
     m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
-    gsVector<T> quWeights; // quadrature weights
-
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     m_exprdata->activateFlags(SAME_ELEMENT);
@@ -566,14 +555,13 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
-        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+                          m_exprdata->points(), m_exprdata->weights());
 
             if (m_exprdata->points().cols()==0)
                 continue;
@@ -583,8 +571,8 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(_arg.eval(k), quWeights[k], elVal);
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quadrature nodes
+                _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
 
             _op::acc(elVal, 1, m_value);
             //if ( storeElWise ) m_elWise.push_back( elVal );
@@ -603,8 +591,6 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     // m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule;
-    gsVector<T> quWeights; // quadrature weights
-
     // Computed value
     T elVal;
     m_value = _op::init();
@@ -639,7 +625,6 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         typename gsBasis<T>::domainIter domIt =
             //interfaceMap.makeDomainIterator();
             m_exprdata->multiBasis().piece(patch1).makeDomainIterator(iFace.first().side());
-        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         elVal = _op::init();
@@ -647,16 +632,16 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         {
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           m_exprdata->points(), quWeights);
+                           m_exprdata->points(), m_exprdata->weights());
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(iFace);
 
             // Compute on element
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over qu-nodes
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over qu-nodes
             {
-                _op::acc(arg_tpl.eval(k), quWeights[k], elVal);
+                _op::acc(arg_tpl.eval(k), m_exprdata->weights()[k], elVal);
             }
         }
         _op::acc(elVal, 1, m_value);
