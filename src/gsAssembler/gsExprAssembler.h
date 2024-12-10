@@ -43,7 +43,7 @@ private:
     std::vector<gsFeSpaceData<T>*> m_vrow;
     std::vector<gsFeSpaceData<T>*> m_vcol;
 
-    bool patternComputed;
+    int m_sparsity;//0:unknown, 1:volume, 2:boundary, 4:interface pre-allocated
 
     typedef typename gsExprHelper<T>::nullExpr    nullExpr;
 
@@ -75,7 +75,7 @@ public:
     /// \param _cBlocks Number of spaces for solution variables
     gsExprAssembler(index_t _rBlocks = 1, index_t _cBlocks = 1)
     : m_exprdata(gsExprHelper<T>::make()), m_gmap(nullptr), m_options(defaultOptions()),
-      m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr), patternComputed(false)
+      m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr), m_sparsity(0)
     { }
 
     // The copy constructor replicates the same environent but does
@@ -314,7 +314,7 @@ public:
      */
     void clearMatrix(const bool& save_sparsety_pattern = true)
     {
-        if (patternComputed /*m_matrix.nonZeros()*/ && save_sparsety_pattern)
+        if (m_matrix.nonZeros() && save_sparsety_pattern)
         {
             std::fill(m_matrix.valuePtr(),
                       m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
@@ -322,7 +322,7 @@ public:
         else
         {
             m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
-            patternComputed = false;
+            m_sparsity = 0;
 
             if (0 == m_matrix.rows() || 0 == m_matrix.cols())
                 gsWarn << " No internal DOFs, zero sized system.\n";
@@ -345,7 +345,25 @@ public:
     }
 
     /// Initializes the pattern of the sparse matrix
-    template<class... expr> void computePattern(const expr &... args);
+    template<class... expr> void computePattern(const expr &... args)
+    {
+        _computePattern(args...);
+        m_sparsity |= 1;
+    }
+
+    /// Initializes the pattern of the sparse matrix at boundary integrals
+    template<class... expr> void computePatternBdr(const bcRefList & BCs, const expr &... args)
+    {
+        _computePatternBdr(BCs, args...);
+        m_sparsity |= 2;
+    }
+
+    /// Initializes the pattern of the sparse matrix at boundary integrals
+    template<class... expr> void computePatternIfc(const ifContainer & iFaces, expr... args)
+    {
+        _computePatternIfc(iFaces, args...);
+        m_sparsity |= 4;
+    }
 
     /// \brief Initializes the right-hand side vector only
     void initVector(const index_t numRhs = 1)
@@ -409,6 +427,10 @@ public:
                                                   const expr residual, solution  u);
 
 private:
+
+    template<class... expr> void _computePattern(const expr &... args);
+    template<class... expr> void _computePatternBdr(const bcRefList & BCs, const expr &... args);
+    template<class... expr> void _computePatternIfc(const ifContainer & iFaces, expr... args);
 
     void _blockDims(gsVector<index_t> & rowSizes,
                     gsVector<index_t> & colSizes)
@@ -704,7 +726,7 @@ private:
                             {
                                 const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
                                 if ( rowMap.is_free_index(ii) )
-                                    m_matrix.coeffRef(ii,jj) = (T)(0);
+                                    m_matrix.addExplicitZero(ii,jj);
                             }
 #ifdef _OPENMP
                         omp_unset_lock(&m_lock[jj]);
@@ -836,8 +858,7 @@ void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 
 template<class T>
 template<class... expr>
-//todo: computePatternBdr(..), computePatternIfc(..)
-void gsExprAssembler<T>::computePattern(const expr &... args)
+void gsExprAssembler<T>::_computePattern(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
@@ -888,8 +909,132 @@ void gsExprAssembler<T>::computePattern(const expr &... args)
         omp_destroy_lock(&l);
 #endif
     m_matrix.makeCompressed();
-    patternComputed = true;
 }
+
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &... args)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+
+    if ( BCs.empty() || 0==numDofs() ) return;
+
+#ifdef _OPENMP
+    std::vector<omp_lock_t> lock(m_matrix.cols());
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+
+    typename gsBasis<T>::domainIter domIt;
+#pragma omp parallel
+{
+/*
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+#endif
+*/
+        auto arg_tpl = std::make_tuple(args...);
+        m_exprdata->parsePattern(arg_tpl);
+        unsigned patchInd;
+        _pattern pp(m_matrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+                    , lock
+#endif
+            );
+
+    for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
+    {
+            const boundary_condition<T> * it = &iit->get();
+
+            patchInd = it->patch();
+            domIt = m_exprdata->multiBasis().basis(it->patch()).
+                makeDomainIterator(it->side());
+
+            // Start iteration over elements
+            //for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+            for (; domIt->good(); domIt->next() )
+            {
+#               pragma omp single nowait
+                {
+                    m_exprdata->points() = domIt->centerPoint();
+                    op_tuple(pp, arg_tpl);
+                }
+            }
+
+    }
+}//omp parallel
+
+#ifdef _OPENMP
+    for (auto & l : lock)
+        omp_destroy_lock(&l);
+#endif
+    m_matrix.makeCompressed();
+}
+
+
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... args)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    if ( iFaces.empty() || 0==numDofs() ) return;
+
+#ifdef _OPENMP
+    std::vector<omp_lock_t> lock(m_matrix.cols());
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+    typedef typename gsFunction<T>::uPtr ifacemap;
+    typename gsBasis<T>::domainIter domIt;
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+#pragma omp parallel
+{
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parsePattern(arg_tpl);
+    unsigned patchInd;
+    _pattern pp(m_matrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+                , lock
+#endif
+        );
+
+    ifacemap interfaceMap;
+    for (gsBoxTopology::const_iiterator it = iFaces.begin();
+         it != iFaces.end(); ++it )
+    {
+        // If flipSide switch is enabled, then the integration will be
+        // performed on the opposite side of the interface
+        const boundaryInterface & iFace =  flipSide ? it->getInverse() : *it;
+        const index_t patch1 = iFace.first() .patch;
+        const index_t patch2 = iFace.second().patch;
+
+        if (iFace.type() == interaction::conforming)
+            interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                      m_exprdata->multiBasis().basis(patch1).support(),
+                                                      m_exprdata->multiBasis().basis(patch2).support() );
+        else
+            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), m_exprdata->multiBasis(), iFace);
+
+        domIt = m_exprdata->multiBasis().basis(patch1)
+            .makeDomainIterator(iFace.first().side());
+
+        // Start iteration over elements
+        //for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+        for (; domIt->good(); domIt->next() )
+        {
+#           pragma omp single nowait
+            {
+                m_exprdata->points() = domIt->centerPoint();
+                interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                op_tuple(pp, arg_tpl);
+            }
+        }
+    }
+}//omp parallel
+    m_matrix.makeCompressed();
+}
+
 
 template<class T>
 template<class... expr>
@@ -897,8 +1042,8 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
-    if (!patternComputed)
-        this->computePattern(args...);
+    if ((m_sparsity & 1) == 0)
+        this->_computePattern(args...);
 
     bool failed = false;
     const index_t elim = m_options.getInt("DirichletStrategy");
@@ -975,8 +1120,6 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 }//omp parallel
     // Throw something else?? (floating point exception?)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
-
-    //    m_matrix.makeCompressed();
 }
 
 template<class T>
@@ -986,6 +1129,10 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
     if ( BCs.empty() || 0==numDofs() ) return;
+
+    if ((m_sparsity & 2) == 0)
+        this->_computePatternBdr(BCs, args...);
+
     m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
 
 // #pragma omp parallel
@@ -1035,8 +1182,6 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     }
 
 //}//omp parallel
-
-    m_matrix.makeCompressed();
 }
 
 
@@ -1094,6 +1239,10 @@ template<class T> template<class... expr>
 void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+
+    // TODO
+//    if ((m_sparsity & 4) == 0)
+//        this->_computePatternIfc(ifContainer, args...);
 
 // #pragma omp parallel
 // {

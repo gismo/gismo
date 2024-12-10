@@ -344,6 +344,22 @@ public:
         return !((id<end) && ( this->m_data.index(id)==inner));
     }
 
+    /// Adds an explicit zero, only if (row,col) is not in the matrix
+    inline void addExplicitZero(_Index row, _Index col)
+    {
+        GISMO_ASSERT(row>=0 && row<this->rows() && col>=0 && col<this->cols(), "Invalid row/col index.");
+        const _Index outer = gsSparseMatrix::IsRowMajor ? row : col;
+        const _Index inner = gsSparseMatrix::IsRowMajor ? col : row;
+        const _Index start = this->m_outerIndex[outer];
+        const _Index end   = this->m_innerNonZeros ?
+            this->m_outerIndex[outer] + this->m_innerNonZeros[outer] : this->m_outerIndex[outer+1];
+        if(end<=start)
+        { this->insert(row,col); return; }
+        const _Index p = this->m_data.searchLowerIndex(start,end-1,inner);
+        if(! ((p<end) && (this->m_data.index(p)==inner)) )
+            this->insert(row,col);
+    }
+
     inline T& coeffUpdate(_Index row, _Index col)
     {
         GISMO_ASSERT(row>=0 && row<this->rows() && col>=0 && col<this->cols(), "Invalid row/col index.");
