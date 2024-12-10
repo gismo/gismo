@@ -245,47 +245,63 @@ void gsQuasiInterpolate<T>::Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &
 
     const gsKnotVector<T> & kv0 = b->knots(0);
     const gsKnotVector<T> & kv1 = b->knots(1);
-    int deg0 = b -> degree(0); // degree of ith component????????
-    int deg1 = b -> degree(1); // degree of ith component????????
+    int deg0 = b -> degree(0);
+    int deg1 = b -> degree(1);
 
-    gsMatrix<T> xj = b->anchors();
-    gsMatrix<T> xj0 = xj.row(0);
-    gsMatrix<T> xj1 = xj.row(1);
+    gsMatrix<T> xj0 = b->component(0).anchors();
+    gsMatrix<T> xj1 = b->component(1).anchors();
 
-    int n = xj.size();
+    int n = b -> size();
     int dim = fun.targetDim();
     coefs.resize(n,dim);
 
     std::vector<gsMatrix<T> > derivs;
-    fun.evalAllDers_into(xj, r, derivs);
+    fun.evalAllDers_into(b->anchors(), r, derivs);
 
     gsMatrix<T> val;
     std::vector<T> knots0;
     std::vector<T> knots1;
- 
+    gsVector<index_t,2> jj;
+    T factor2;
+    const index_t str = dim + dim*(dim-1)/2;
+
     for(int j=0; j<n; j++)
     {
+        jj = b->tensorIndex(j);
+
         val.setZero(1,dim);
         knots0.clear();
         knots1.clear();
 
-        for(int q=j+1; q<=j+deg0; q++)
+        for(int q=jj[0]+1; q<=jj[0]+deg0; q++)
             knots0.push_back(kv0[q]);
         
-        for(int qq=j+1; qq<=j+deg1; qq++)
+        for(int qq=jj[1]+1; qq<=jj[1]+deg1; qq++)
             knots1.push_back(kv1[qq]);
         
-        for(int k0=0; k0<=deg0; k0++) // loop over x direction!
+        for(int k0=0; k0<=r; k0++) // loop over x direction!
         {
-            const T factor1_0 = derivProd(knots0, deg0-k0, xj0(j)); //
+            const T factor1_0 = derivProd(knots0, deg0-k0, xj0(jj[0])); //
             
-            for(int k1=0; k1<=deg1; k1++) // loop over y direction!
+            for(int k1=0; k1<=r; k1++) // loop over y direction!
             {
-                const T factor1_1 = derivProd(knots1, deg1-k1, xj1(j)); 
+                const T factor1_1 = derivProd(knots1, deg1-k1, xj1(jj[1])); 
                 
                 for (int i = 0; i < dim; i++)
                 {
-                    const T factor2 = derivs[k0,k1](i,j); //node
+                    if (2==k0)
+                        factor2 = derivs[2]( i*str, j );
+                    else if (2==k1)
+                        factor2 = derivs[2]( i*str+1, j );
+                    else if (2==k0+k1)
+                        factor2 = derivs[2]( i*str+dim, j );
+                    else if(1==k0+k1)
+                        factor2 = derivs[1]( i*dim+k1, j );
+                    else if(0==k0+k1)
+                        factor2 = derivs[0]( i, j );
+                    else
+                        GISMO_ERROR("deg<=2");
+
                     val(i) += std::pow(-1.0,k0) * std::pow(-1.0,k1) * factor1_0 * factor1_1 * factor2;
                 }
                 
