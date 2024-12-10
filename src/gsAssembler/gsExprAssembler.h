@@ -925,7 +925,6 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
         omp_init_lock(&l);
 #endif
 
-    typename gsBasis<T>::domainIter domIt;
 #pragma omp parallel
 {
 /*
@@ -936,6 +935,7 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
 */
         auto arg_tpl = std::make_tuple(args...);
         m_exprdata->parsePattern(arg_tpl);
+        typename gsBasis<T>::domainIter domIt;
         unsigned patchInd;
         _pattern pp(m_matrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
