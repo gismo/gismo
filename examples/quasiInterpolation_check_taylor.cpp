@@ -23,7 +23,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {    
-    gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)",1); // Function to interpolate 
+    gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)",2); // Function to interpolate 
     gsFunctionExpr<real_t> mySinus1D("sin(x)",1); // Function to interpolate 
 
     gsMultiPatch<> mp;
