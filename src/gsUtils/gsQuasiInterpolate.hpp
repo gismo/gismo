@@ -24,15 +24,24 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
                                               index_t i,
                                               const gsMatrix<T> &ab)
 {
-    gsMatrix<T> bev, fev, pts, tmp, pts1;
+    gsMatrix<T> bev, fev, pts, tmp;
     gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
-    
-    // pts1.col(0) << 0,0;
-
-    //)
-
     qRule.mapTo(ab, pts);//map points on element
+
+    //gsDebugVar(ab);
+
+    // // ========== Uniform point grid ==========
+    // gsVector<T> a = ab.col(0); 
+    // gsVector<T> b = ab.col(1); 
+
+    // // Sample vector with the number of nodes
+    // gsVector<unsigned> sample(2);
+    // sample << nNodes(0), nNodes(1);
+
+    // pts = gsPointGrid(a, b, sample);
+    //gsDebugVar(pts);
+    // =========================================
     
     bb .eval_into(pts, bev);//evaluate basis
     fun.eval_into(pts, fev);//evaluate function
@@ -227,6 +236,67 @@ void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fu
         val /= factorial(deg);
         coefs.row(j) = val;
     }
+}
+
+template<typename T>
+void gsQuasiInterpolate<T>::Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> & coefs)
+{
+    const gsTensorBSplineBasis<2,T>* b = dynamic_cast<const gsTensorBSplineBasis<2,T>* >(&bb);
+
+    const gsKnotVector<T> & kv0 = b->knots(0);
+    const gsKnotVector<T> & kv1 = b->knots(1);
+    int deg0 = b -> degree(0); // degree of ith component????????
+    int deg1 = b -> degree(1); // degree of ith component????????
+
+    gsMatrix<T> xj = b->anchors();
+    gsMatrix<T> xj0 = xj.row(0);
+    gsMatrix<T> xj1 = xj.row(1);
+
+    int n = xj.size();
+    int dim = fun.targetDim();
+    coefs.resize(n,dim);
+
+    std::vector<gsMatrix<T> > derivs;
+    fun.evalAllDers_into(xj, r, derivs);
+
+    gsMatrix<T> val;
+    std::vector<T> knots0;
+    std::vector<T> knots1;
+ 
+    for(int j=0; j<n; j++)
+    {
+        val.setZero(1,dim);
+        knots0.clear();
+        knots1.clear();
+
+        for(int q=j+1; q<=j+deg0; q++)
+            knots0.push_back(kv0[q]);
+        
+        for(int qq=j+1; qq<=j+deg1; qq++)
+            knots1.push_back(kv1[qq]);
+        
+        for(int k0=0; k0<=deg0; k0++) // loop over x direction!
+        {
+            const T factor1_0 = derivProd(knots0, deg0-k0, xj0(j)); //
+            
+            for(int k1=0; k1<=deg1; k1++) // loop over y direction!
+            {
+                const T factor1_1 = derivProd(knots1, deg1-k1, xj1(j)); 
+                
+                for (int i = 0; i < dim; i++)
+                {
+                    const T factor2 = derivs[k0,k1](i,j); //node
+                    val(i) += std::pow(-1.0,k0) * std::pow(-1.0,k1) * factor1_0 * factor1_1 * factor2;
+                }
+                
+            }
+
+        }
+        
+        val /= factorial(deg0)*factorial(deg1);
+        coefs.row(j) = val;
+    }
+
 }
 
 template<typename T> gsMatrix<T>

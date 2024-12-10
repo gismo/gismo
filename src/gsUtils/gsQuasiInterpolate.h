@@ -114,6 +114,26 @@ struct gsQuasiInterpolate
      */
     static void Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> &result);
 
+     /** \brief A quasi-interpolation scheme based on the tayor expansion of the function to approximate.
+     *  See Theorem 8.5 of "Spline methods (Lyche Morken)"
+     *  Theorem: (Lyche, Morken: Thm 8.5, page 178)
+     *  Let \f$p\f$ and \f$\boldsymbol{\tau}\f$ be the degree and knotvector of the quasi-interpolant, respectively.
+     *   Futhermore let \f$r\f$ be an integer with \f$ 0 \le r \le p \f$ and let \f$x_j\f$ be a number in \f$[\tau_j,
+     *   \tau_{j+p+1}]\f$ for \f$j=1,\dots,n\f$. Consider the quasi-interpolant
+     *   \f[
+     *   Q_{p,r}~f=\sum\limits_{j=1}^n{\lambda_j(f)B_{j,p}}, \quad \text{where} \quad
+     *   \lambda_j(f) = \frac{1}{p!}\sum\limits_{k=0}^r{(-1)^kD^{p-k}\rho_{j,p}(x_j)D^kf(x_j)}
+     *   \f]
+     *   and \f$\rho_{j,p}(y) = (y-\tau_{j+1}) \cdots (y - \tau_{j+p})\f$.
+     *   Then \f$Q_{p,r}\f$ reproduces all polynomials of degree \f$r\f$ and \f$Q_{p,p}\f$ reproduces all splines
+     *   in \f$\mathbb{S}_{p,\tau}\f$.
+     *
+     * \param b     the B-spline basis of the interpolant (knots and degree)
+     * \param fun   a function to approximate
+     * \param r     an integer in [0,deg] (order of maximal derivatives of the function)
+     * \param[out] result   a B-spline function, that approximates the given function
+     */
+    static void Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> &result);
 
     /**
      * @brief A quasi-interpolation scheme based on Schoenberg Variation Diminishing Spline Approximation.
