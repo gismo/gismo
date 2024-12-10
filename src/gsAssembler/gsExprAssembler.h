@@ -493,6 +493,26 @@ private:
 
         }// operator()
 
+        template <typename E> void operator() (const gismo::expr::_expr<E> & ee, std::vector<gsEigen::Triplet<T>> &triplets)
+        {
+            // ------- Compute  -------
+            quadrature(ee,localMat);
+
+            //  ------- Accumulate  -------
+            if (E::isMatrix())
+                if (m_elim) push_to_triplets<true,true>(ee.rowVar(), ee.colVar(), triplets);
+                else push_to_triplets<true,false>(ee.rowVar(), ee.colVar(), triplets);
+            else if (E::isVector())
+                if (m_elim) push_to_triplets<false,true>(ee.rowVar(), ee.colVar(), triplets);
+                else push_to_triplets<false,false>(ee.rowVar(), ee.colVar(), triplets);
+            else
+            {
+                GISMO_ERROR("Something went terribly wrong at this point");
+                //GISMO_ASSERTrowSpan() && (!colSpan())
+            }
+
+        }// operator()
+
         template <typename E>
         inline void quadrature(const gismo::expr::_expr<E> & ee,
                                gsMatrix<T> & lm)
@@ -629,6 +649,81 @@ private:
             }
         }//push
 
+        template<bool isMatrix, bool elim = true>
+        void push_to_triplets(const expr::gsFeSpace<T> & v,
+                  const expr::gsFeSpace<T> & u, std::vector<gsEigen::Triplet<T>> &triplets)
+        {
+            GISMO_ASSERT(v.isValid(), "The row space is not valid");
+            GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
+            //GISMO_ASSERT(isMatrix || (numDofs()==m_rhs.size()), "The right-hand side vector is not initialized");
+
+            const index_t rd            = v.dim();//row
+            const index_t cd            = u.dim();//col
+            //const index_t rp            = v.data().patchId;
+            //const index_t cp            = (isMatrix ? u.data().patchId : 0);
+            const gsDofMapper  & rowMap = v.mapper();
+            const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
+            gsMatrix<index_t> & rowInd0 = const_cast<gsMatrix<index_t>&>(v.data().actives);
+            gsMatrix<index_t> & colInd0 = (isMatrix ? const_cast<gsMatrix<index_t>&>(u.data().actives) : rowInd0);
+            const gsMatrix<T> & fixedDofs = (isMatrix ? u.fixedPart() : gsMatrix<T>());
+
+            if (isMatrix)
+            {
+                GISMO_ASSERT( rowInd0.rows()*rd==localMat.rows() && colInd0.rows()*cd==localMat.cols(),
+                              "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
+
+                GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
+                              "Invalid values for fixed part");
+
+                //GISMO_ASSERT( colMap.boundarySize()==0 || m_rhs.cols()==1,
+                //              "Invalid values for fixed part");
+            }
+
+            for (index_t r = 0; r != rd; ++r)
+            {
+                const index_t rls = r * rowInd0.rows();     //local stride
+                for (index_t i = 0; i != rowInd0.rows(); ++i)
+                {
+                    const index_t ii = rowMap.index(rowInd0.at(i),v.data().patchId,r); //N_i
+                    if ( rowMap.is_free_index(ii) )
+                    {
+                        if (isMatrix)
+                        {
+                            for (index_t c = 0; c != cd; ++c)
+                            {
+                                const index_t cls = c * colInd0.rows();     //local stride
+
+                                for (index_t j = 0; j != colInd0.rows(); ++j)
+                                {
+                                    if ( 0 == localMat(rls+i,cls+j) ) continue;
+
+                                    const index_t jj = colMap.index(colInd0.at(j),u.data().patchId,c); // N_j
+                                    if ( colMap.is_free_index(jj) )
+                                    {
+                                        triplets.emplace_back(ii, jj, localMat(rls + i, cls + j));
+                                    }
+                                    else if (elim)
+                                    {
+                                        triplets.emplace_back(ii, -1, -localMat(rls + i, cls + j) * fixedDofs.at(colMap.global_to_bindex(jj)));
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for (index_t j = 0; j < localMat.cols(); ++j)
+                               {
+                                   // Create a triplet for each value in the row of the local matrix,
+                                   // in the previous version of code there is vectorization to sum up the
+                                   // whole row with just one call, since now we want to create all the possible
+                                   // triplets the loop is neccessary.
+                                   triplets.emplace_back(ii, -1, localMat(rls + i, j));
+                               }
+                        }
+                    }
+                }
+            }
+        }//push
     };
 
 }; // gsExprAssembler
@@ -739,6 +834,7 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
 template<size_t I, class op, typename... Ts>
 void op_tuple_impl (op & _op, const std::tuple<Ts...> &tuple)
 {
@@ -751,20 +847,40 @@ template<class op, typename... Ts>
 void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 { op_tuple_impl<0>(_op,tuple); }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+template<size_t I, class op, typename... Ts, typename T>
+void op_tuple_impl_args (op & _op, const std::tuple<Ts...> &tuple, std::vector<gsEigen::Triplet<T>> &triplets)
+{
+    _op(std::get<I>(tuple), triplets);
+    if (I + 1 < sizeof... (Ts))
+        op_tuple_impl_args<(I+1 < sizeof... (Ts) ? I+1 : I)> (_op, tuple, triplets);
+}
+
+template<class op, typename... Ts, typename T>
+void op_tuple_args (op & _op, const std::tuple<Ts...> &tuple, std::vector<gsEigen::Triplet<T>> &triplets)
+{ op_tuple_impl_args<0>(_op,tuple, triplets); }
+
+
 template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
+    std::vector<std::vector<gsEigen::Triplet<T>>> thread_local_triplets(omp_get_max_threads());
+
     bool failed = false;
 #pragma omp parallel shared(failed)
 {
+    // Use thread-local storage for triplets
+
 #   ifdef _OPENMP
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
 #   endif
     auto arg_tpl = std::make_tuple(args...);
+
+    std::vector<gsEigen::Triplet<T>>& triplets = thread_local_triplets[tid];
 
     m_exprdata->parse(arg_tpl);
     m_exprdata->activateFlags(SAME_ELEMENT);
@@ -821,12 +937,31 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             m_exprdata->precompute(patchInd);
 #endif
 
-
-            // Assemble contributions of the element
-            op_tuple(ee, arg_tpl);
+            op_tuple_args(ee, arg_tpl, triplets);
         }
     }
 }//omp parallel
+
+    std::vector<gsEigen::Triplet<T>> all_triplets;
+
+    for (const auto& local_triplets : thread_local_triplets)
+    {
+        for (const auto& triplet : local_triplets)
+        {
+            if (triplet.col() == -1)
+            {
+                m_rhs.at(triplet.row()) += triplet.value();
+            }
+            else
+            {
+                all_triplets.push_back(triplet);
+            }
+        }
+    }
+
+    // m_matrix.resize(m_matrix.rows(), m_matrix.cols());
+    m_matrix.setFromTriplets(all_triplets.begin(), all_triplets.end());
+
     // Throw something else?? (floating point exception?)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
     m_matrix.makeCompressed();
