@@ -13,6 +13,8 @@
 
 #include <ctime>
 #include <gismo.h>
+#include <gsSolver/gsLowRankCorrectedOp.h>
+
 
 using namespace gismo;
 
@@ -52,7 +54,7 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
             GISMO_ASSERT( s.rows() == so.rows(), "");
             for (index_t i=0;i<s.rows();++i)
             {
-                dm.eliminateDof(s[i],k);
+                dm.eliminateDof(s[i],k); 
                 if (bdyConds == 2)
                     dm.eliminateDof(so[i],k);
             }
@@ -282,13 +284,14 @@ class deluxePreconder {
         return vec.size()-1;
     }
 
-
+public:
     struct edge {
         size_t first;
         size_t second;
         std::vector<size_t> firstIndices;
         std::vector<size_t> secondIndices;
         std::vector<size_t> lagrangeIndices;
+        edge(size_t _first, size_t _second) : first(_first), second(_second) {}
     };
 
     std::vector<edge> identifyEdges() const
@@ -322,12 +325,7 @@ class deluxePreconder {
                         size_t e = idx_of(neighbors,l);
                         e+=edgeCount;
                         if (e==edges.size())
-                        {
-                            edge ee;
-                            ee.first = l;
-                            ee.second = k;
-                            edges.push_back(ee);
-                        }
+                            edges.emplace_back(l,k);
                         GISMO_ASSERT (e<edges.size(), "Internal error.");
                         edges[e].firstIndices.push_back(dofslist(it.row(),1));
                         edges[e].secondIndices.push_back(it.col());
@@ -365,7 +363,9 @@ class deluxePreconder {
         const index_t firstSize = m_localSystems[firstPatch].rows();
         const index_t secondSize = m_localSystems[secondPatch].rows();
         const index_t lagrangeSize = e.lagrangeIndices.size();
-        const index_t size = firstSize+secondSize+lagrangeSize;
+        const index_t localDirichletSize = m_localSkeletonDofs[e.first].size() + m_localSkeletonDofs[e.second].size() - 2*lagrangeSize;
+        
+        const index_t size = firstSize+secondSize+lagrangeSize+localDirichletSize;
 
         gsSparseEntries<> se;
         // first matrix
@@ -381,17 +381,43 @@ class deluxePreconder {
         {
             real_t value1 = m_localJumpMatrices[firstPatch ](e.lagrangeIndices[i], e.firstIndices [i]);
             real_t value2 = m_localJumpMatrices[secondPatch](e.lagrangeIndices[i], e.secondIndices[i]);
-            GISMO_ASSERT( (value1>.99 && value1<1.01) || (-value1>.99 && -value1<1.01), value1<<"///"<<value2<<"///"<<firstPatch<<"///"<<secondPatch<<"///"<<e.firstIndices [i]<<"///"<<e.secondIndices[i]<<"///"<<e.lagrangeIndices[i]);
-            GISMO_ASSERT( (value2>.99 && value2<1.01) || (-value2>.99 && -value2<1.01), value2<<"///"<<value1<<"///"<<secondPatch<<"///"<<firstPatch<<"///"<<e.secondIndices[i]<<"///"<<e.firstIndices [i]<<"///"<<e.lagrangeIndices[i]);
+            GISMO_ASSERT( (value1>.99 && value1<1.01) || (-value1>.99 && -value1<1.01), "");
+            GISMO_ASSERT( (value2>.99 && value2<1.01) || (-value2>.99 && -value2<1.01), "");
             se.add(firstSize+secondSize+i,             e.firstIndices[i] , value1 );
             se.add(firstSize+secondSize+i, firstSize + e.secondIndices[i], value2 );
             se.add(            e.firstIndices[i] , firstSize+secondSize+i, value1 );
             se.add(firstSize + e.secondIndices[i], firstSize+secondSize+i, value2 );
         }
 
+        std::vector<index_t> outerSkeletonFirst;
+        std::copy_if(m_localSkeletonDofs[e.first].begin(), m_localSkeletonDofs[e.first].end(), std::back_inserter(outerSkeletonFirst),
+            [&](index_t arg)
+            { return (std::find(e.firstIndices.begin(), e.firstIndices.end(), arg) == e.firstIndices.end());});        
+        
+        std::vector<index_t> outerSkeletonSecond;
+        std::copy_if(m_localSkeletonDofs[e.second].begin(), m_localSkeletonDofs[e.second].end(), std::back_inserter(outerSkeletonSecond),
+            [&](index_t arg)
+            { return (std::find(e.secondIndices.begin(), e.secondIndices.end(), arg) == e.secondIndices.end());});   
+            
+        GISMO_ASSERT( outerSkeletonFirst.size()+outerSkeletonSecond.size() == localDirichletSize, "Internal error.");
+        for (size_t i=0; i<outerSkeletonFirst.size(); ++i)
+        {
+            se.add( firstSize+secondSize+lagrangeSize+i, outerSkeletonFirst[i], 1 );     
+            se.add( outerSkeletonFirst[i], firstSize+secondSize+lagrangeSize+i, 1 );     
+        }
+        for (size_t i=0; i<outerSkeletonSecond.size(); ++i)
+        {
+            se.add( firstSize+secondSize+lagrangeSize+outerSkeletonFirst.size()+i, firstSize+outerSkeletonSecond[i], 1 );     
+            se.add( firstSize+outerSkeletonSecond[i], firstSize+secondSize+lagrangeSize+outerSkeletonFirst.size()+i, 1 );     
+        }
+        
         // setup matrix
         gsSparseMatrix<> result(size,size);
         result.setFrom(se);
+        result *= -1; // Schur complement has form C - B^t A^{-1} B, so must be negative!
+        
+        //gsInfo << "***** local edge system *****\n\n" << result << "\n*****\n";
+        
         return result;
     }
 
@@ -402,7 +428,8 @@ class deluxePreconder {
         const index_t firstSize = m_localSystems[firstPatch].rows();
         const index_t secondSize = m_localSystems[secondPatch].rows();
         const index_t lagrangeSize = e.lagrangeIndices.size();
-        const index_t localSize = firstSize+secondSize+lagrangeSize;
+        const index_t localDirichletSize = m_localSkeletonDofs[e.first].size() + m_localSkeletonDofs[e.second].size() - 2*lagrangeSize;
+        const index_t localSize = firstSize+secondSize+lagrangeSize+localDirichletSize;
         const index_t globalLagrangeSize = m_localJumpMatrices[0].rows();
 
         gsSparseEntries<> se;
@@ -428,7 +455,7 @@ public:
     {
         m_localSystems.push_back(give(localSystem));
         m_localJumpMatrices.push_back(give(localJumpMatrix));
-        m_localSkeletonDofs.push_back(give(localSkeletonDofs)); //TODO: Should be used for construction of local problems
+        m_localSkeletonDofs.push_back(give(localSkeletonDofs));
     }
 
 
@@ -492,7 +519,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
     cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (0) \u0394u, dn\u0394u; (1) u, \u0394u; (2) u, dnu", bdyConds);
     cmd.addString("c", "Primals",               "Chosen primal dofs", primals);
-    cmd.addString("d", "DualPreconder",         "Use preconder: (s) stanard Dirichlet, (c) componentwise Dirichlet, (d) deluxe", dualPreconder);
+    cmd.addString("d", "DualPreconder",         "Use preconder: (s) stanard Dirichlet, (c) componentwise Dirichlet, (d) deluxe, (b) bruteforce", dualPreconder);
     cmd.addString("",  "Solver",                "Which solver to use: \"cg\" or \"gmres\".", solverType);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
@@ -705,13 +732,13 @@ int main(int argc, char *argv[])
                     )
                 );
         }
-        else if (dualPreconder=="d")
+        else if (dualPreconder=="d" || dualPreconder=="b")
         {
             gsInfo << "Skeleton=[";
             for (size_t i=0; i<ietiMapper.skeletonDofs(k).size(); ++i)
                 gsInfo  << ietiMapper.skeletonDofs(k)[i] << " ";
             gsInfo << "]";
-            deluxe.addSubdomain(localMatrix, jumpMatrix, ietiMapper.skeletonDofs(k));  // TODO: What are the skeleton dofs here?
+            deluxe.addSubdomain(localMatrix, jumpMatrix, ietiMapper.skeletonDofs(k));
         }
         else
         {
@@ -766,12 +793,14 @@ int main(int argc, char *argv[])
     /**************** Setup solver and solve ****************/
 
     gsInfo << "Setup solver and solve... \n"
-        "    Setup multiplicity/deluxe scaling... " << std::flush;
+        "    Setup scaling... " << std::flush;
 
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
     if (dualPreconder=="d")
         deluxe.setupPreconditioner();
+    if (dualPreconder=="b")
+        ;
     else
         prec.setupMultiplicityScaling();
     //! [Setup scaling]
@@ -796,9 +825,46 @@ int main(int argc, char *argv[])
     gsLinearOperator<>::Ptr preconder;
     if (dualPreconder=="d")
         preconder = deluxe.preconditioner();
+    else if (dualPreconder=="b")
+    {
+        gsSparseMatrix<> sm;
+        {
+            gsMatrix<> m;
+            ieti.schurComplement()->toMatrix(m);
+            sm = m.sparseView(m(0,0),1e-8);
+        }
+        gsSparseMatrix<> sm2(sm.rows(), sm.cols());
+        std::vector<deluxePreconder::edge> edges = deluxe.identifyEdges();
+        for (index_t k=0; k<nPatches; ++k)
+        {
+            gsSparseEntries<> se;
+            se.reserve(edges[k].lagrangeIndices.size());
+            for (size_t i=0; i<edges[k].lagrangeIndices.size(); ++i)
+                se.add(edges[k].lagrangeIndices[i],edges[k].lagrangeIndices[i],1.);
+            gsSparseMatrix<> trans(sm.rows(), sm.cols());
+            trans.setFrom(se);
+            sm2 += trans * sm * trans;
+        }
+        preconder = makeSparseLUSolver(sm2);
+    }
     else
         preconder = prec.preconditioner();
+        
+    {
+        gsMatrix<> m;
+        preconder->toMatrix(m);
+        m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
+        gsInfo << "\n\nPreconder M:\n" << std::setprecision (3) <<  m << "\n\n";
+    }    
+    {
+        gsMatrix<> m;
+        ieti.schurComplement()->toMatrix(m);
+        m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
+        gsInfo << "\n\nProblem F:\n" << std::setprecision (3) <<  m << "\n\n";
+    }    
+        
     real_t conditionNumber = -1;
+    gsMatrix<real_t> eigenvalues;
     if (solverType == "cg")
     {
         gsConjugateGradient<> solver( ieti.schurComplement(), preconder );
@@ -806,6 +872,7 @@ int main(int argc, char *argv[])
         solver.setCalcEigenvalues(true);
         solver.solveDetailed( rhsForSchur, lambda, errorHistory );
         conditionNumber = solver.getConditionNumber();
+        solver.getEigenvalues(eigenvalues);
     }
     else if (solverType == "gmres")
     {
@@ -844,7 +911,11 @@ int main(int argc, char *argv[])
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-    gsInfo << "Estimated condition number: " << conditionNumber << "\n";
+    if (solverType == "cg")
+    {
+        gsInfo << "Estimated condition number: " << conditionNumber << "\n";
+        gsInfo << "Eigenvalues: " << eigenvalues.transpose() << "\n";
+    }
 
     /********************** Output **************************/
     if (!out.empty())
