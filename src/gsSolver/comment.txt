@@ -1,0 +1,5 @@
+    struct { [[deprecated]] operator real_t() {return m->m_current_error/m->m_initial_error;}
+             [[deprecated]] real_t operator=(real_t e) {m->m_current_error=e*m->m_initial_error; return e; }
+	     mine* m; } m_error; 
+
+    struct { [[deprecated]] operator real_t() {return m->m_initial_error;} mine* m; } m_rhs_norm; 
