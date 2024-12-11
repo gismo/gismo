@@ -146,12 +146,12 @@ public:
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
-    
+
     virtual const gsBasis<T> & component(short_t i) const { return m_src->component(i); }
     using Base::component;
 
     gsMatrix<index_t> allBoundary( ) const {return m_src->allBoundary(); }
-    
+
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const
     { return m_src->boundaryOffset(s,offset); }
 
@@ -178,6 +178,13 @@ public:
     void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1, int dir=-1);
 
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
+
+    /// See \ref gsBasis
+    void refine(gsMatrix<T> const & boxes, int refExt = 0)
+    {
+        GISMO_UNUSED(refExt);
+        m_src->refine_withCoefs( m_weights, boxes );
+    }
 
     /**
      * @brief Refines specified areas or boxes, depending on underlying basis.
@@ -263,11 +270,11 @@ public:
     { return m_src->connectivity(nodes, mesh); }
 
     gsMatrix<T> support() const {return m_src->support(); }
-    
+
     gsMatrix<T> support(const index_t & i) const {return m_src->support(i); }
-    
+
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
-    
+
     void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
@@ -291,7 +298,7 @@ public:
 
     /// Returns the weights of the rational basis
     gsMatrix<T> & weights()  { return m_weights; }
-    
+
 
     /// Returns true, since by definition a gsRationalBasis is rational.
     virtual bool isRational() const { return true;}
@@ -379,8 +386,8 @@ protected:
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
-{ 
-    m_src->evalSingle_into(i, u, result);  
+{
+    m_src->evalSingle_into(i, u, result);
     result.array() *= m_weights.at(i);
     gsMatrix<T> denom;
     m_src->evalFunc_into(u, m_weights, denom);

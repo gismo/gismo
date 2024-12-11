@@ -379,6 +379,7 @@ void gsHTensorBasis<d,T>::unrefineElements_withTransfer(std::vector<index_t> con
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int dir)
 {
+    GISMO_UNUSED(dir);
     GISMO_ASSERT(dir==-1,"Direction is not implemented");
 
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;

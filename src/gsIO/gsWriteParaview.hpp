@@ -292,15 +292,15 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
 
     index_t np1 = (np.size()>1 ? np(1)-1 : 0);
     index_t np2 = (np.size()>2 ? np(2)-1 : 0);
-    
+
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
     file <<"<StructuredGrid WholeExtent=\"0 "<< np(0)-1<<" 0 "<< np1 <<" 0 "
          << np2 <<"\">\n";
     file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np1<<" 0 "
          << np2 <<"\">\n";
-    file <<"<PointData "<< ( eval_field.rows()==1 ?"Scalars":"Vectors")<<"=\"SolutionField\">\n";
-    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< ( eval_field.rows()==1 ? 1 : 3) <<"\">\n";
+    file <<"<PointData "<< ( eval_field.rows()==1 ?"Scalars":(eval_field.rows()>3?"Tensors":"Vectors"))<<"=\"SolutionField\">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< eval_field.rows() <<"\">\n";
     if ( eval_field.rows()==1 )
         for ( index_t j=0; j<eval_field.cols(); ++j)
             file<< eval_field.at(j) <<" ";
@@ -663,7 +663,7 @@ void writeSingleTrimSurface(const gsTrimSurface<T> & surf,
 template<class T>
 void gsWriteParaview(const gsField<T> & field,
                      std::string const & fn,
-                     unsigned npts, bool mesh, 
+                     unsigned npts, bool mesh,
                      const std::string pDelim)
 {
     /*
@@ -798,7 +798,7 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
 
             eval_geo = geom.piece(p).eval(pts);//pts
         }
-        
+
         for (std::vector<index_t>::const_iterator i = plotIndices.begin(); i!=plotIndices.end(); i++)//, k++)
         {
             if (!fullsupport)
@@ -810,11 +810,11 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
                 b = ab.col(1);
                 if (a.prod() == 0 && b.prod()==0)
                     continue;
-                
+
                 np = uniformSampleCount(a, b, npts);
                 pts = gsPointGrid(a, b, np);
 
-                eval_geo = geom.piece(p).eval(pts);//pts                
+                eval_geo = geom.piece(p).eval(pts);//pts
             }
 
             fileName = fn + util::to_string(*i) + "_" + util::to_string(p);
@@ -834,7 +834,7 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
         //     gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
 
         //     collection.addPart(fileName_nopath + ".vts",k,"",p);
-        // }   
+        // }
     }
     collection.save();
 }
@@ -977,6 +977,33 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
         }
     }
     collection.save();
+}
+
+/// Export a multipatch Geometry without scalar information using Bezier elements
+template <class T>
+void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool ctrlNet)
+{    
+    std::string fnBase;
+
+    // Write file contents to the respective file
+    std::ofstream file(filename + ".vtu");
+    file << BezierVTK(mPatch);
+    file.close();
+
+    if ( ctrlNet ) // Output the control net
+    {   
+        gsParaviewCollection collection(filename);
+        collection.addPart(gsFileManager::getFilename(filename) + ".vtu");
+        for (size_t patch=0; patch<mPatch.nPatches();++patch)
+        {
+            const std::string fileName = filename + "_" + util::to_string(patch) + "_cnet";
+            const std::string fileName_nopath = gsFileManager::getFilename(fileName);
+
+            writeSingleControlNet(mPatch.patch(patch), fileName);
+            collection.addPart(fileName_nopath + ".vtp");
+        }
+        collection.save();
+    }
 }
 
 /// Export i-th Basis function
@@ -1232,7 +1259,7 @@ void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
     GISMO_ENSURE(mp.nPatches()==mb.nBases(),"Number of bases and patches do not correspond");
 
     gsParaviewCollection collection(fn);
-    
+
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
 

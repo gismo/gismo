@@ -76,6 +76,7 @@ private:
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
+        GISMO_UNUSED(u);
         const index_t A = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
         res.resize(_u.cardinality(), cols()); // rows()*
 
@@ -106,6 +107,7 @@ private:
     typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
+        GISMO_UNUSED(u);
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
         grad_expr<gsFeSolution<Scalar>> sGrad =  grad_expr<gsFeSolution<Scalar>>(_u);
         res.resize(rows(), cols()); // rows()*
@@ -316,6 +318,7 @@ private:
     typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
+        GISMO_UNUSED(u);
         /*
             Here, we multiply the hessian of the geometry map by a vector, which possibly has multiple actives.
             The hessian of the geometry map c has the form: hess(c)
@@ -328,7 +331,7 @@ private:
         // evaluate the geometry map of U
         tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
         vEv = _v.eval(k);
-        
+
         res = vEv * tmp.transpose();
         return res;
     }
@@ -380,6 +383,7 @@ private:
     typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, index_t >::type
     cols_impl(const U & u)  const
     {
+        GISMO_UNUSED(u);
         return _u.data().dim.second;
     }
 
@@ -387,6 +391,7 @@ private:
     typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, index_t >::type
     cols_impl(const U & u) const
     {
+        GISMO_UNUSED(u);
         return _u.dim();
     }
 
@@ -394,6 +399,7 @@ private:
     typename util::enable_if<util::is_same<U,gsFeSolution<Scalar> >::value, index_t >::type
     cols_impl(const U & u) const
     {
+        GISMO_UNUSED(u);
         return _u.dim();
     }
 
@@ -466,6 +472,7 @@ public:
         typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
         eval_impl(const U & u, const index_t k)  const
         {
+            GISMO_UNUSED(u);
             /*
                 Here, we compute the hessian of the geometry map.
                 The hessian of the geometry map c has the form: hess(c)
@@ -484,6 +491,7 @@ public:
         typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
         eval_impl(const U & u, const index_t k) const
         {
+            GISMO_UNUSED(u);
             /*
                 Here, we compute the hessian of the basis with n actives.
                 The hessian of the basis u has the form: hess(u)
@@ -501,8 +509,8 @@ public:
                 [d12 u, 0, 0] [d12 u, 0, 0] ... [d12 u, 0, 0]            [0, d12 u, 0]  ... [0, d12 u, 0]  [0, d12 u, 0]  ... [0, d12 u, 0]
 
             */
-            const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
-            const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
+            const index_t numAct = _u.data().values[0].rows();   // number of actives of a basis function
+            const index_t cardinality = _u.cardinality();        // total number of actives (=3*numAct)
 
             res.resize(rows(), _u.dim() *_u.cardinality()); // (3 x 3*cardinality)
             res.setZero();
