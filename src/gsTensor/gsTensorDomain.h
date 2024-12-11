@@ -103,7 +103,7 @@ public:
 
 
 
-    auto component(index_t i)
+    auto component(index_t i) const
     {
         return m_knotVectors[i];
     }

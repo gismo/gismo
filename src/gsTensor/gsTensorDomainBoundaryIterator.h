@@ -81,7 +81,7 @@ public:
 
     gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boxSide & s )
     :
-    gsTensorDomainBoundaryIterator(static_cast<const gsTensorDomain<T,D>&>(b), s)
+    gsTensorDomainBoundaryIterator(static_cast<const gsTensorDomain<T,D>&>(b.domain()), s)
     {
     }
 

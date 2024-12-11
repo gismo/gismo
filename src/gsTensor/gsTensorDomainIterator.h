@@ -50,8 +50,9 @@ public:
 
         for (int i=0; i < D; ++i)
         {
-            meshEnd[i]    = domain.component(i)->end();
-            curElement[i] = meshStart[i] = domain.component(i)->begin();
+            meshEnd[i]    = domain.component(i)->end(0);
+            meshStart[i]  = domain.component(i)->begin(0);
+            curElement[i] = domain.component(i)->begin(0);
 
             if (meshEnd[i] == meshStart[i])
                 m_isGood = false;
