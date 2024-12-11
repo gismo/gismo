@@ -58,19 +58,24 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
 
 int main(int argc, char *argv[])
 {
-    //! [Parse command line]
-    bool plot = false;
-    index_t numRefine  = 2;// for local refinement
-    index_t UnifRefine  = 2;// initial refinement
+    bool plot          = false;
+    index_t numRefine  = 5;// for local refinement:  0 means no local h-refinement
+    index_t UnifRefine = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
     index_t numElevate = 0;
-    index_t maxIter = 30;
-    double eps{1e-5}; // pinalization coefficient
-    double l2errRes{0.}, tolerancePicard{1e-8};
-    index_t hadaptive = true;
-    bool last = false, export_b64{false};
+    index_t maxIter    = 30;
+    double eps         = 1e-5; // pinalization coefficient
+    double tolPicard   = 1e-8;
+    bool last = false, export_b64 =false;
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
-    bool PNormalCP{true};
+    bool PNormalCP     = true;
+    // --------------- adaptive refinement ---------------
+    // Specify cell-marking strategy...
+    MarkingStrategy adaptRefCrit = PUCA;
+    //MarkingStrategy adaptRefCrit = GARU;
+    //MarkingStrategy adaptRefCrit = errorFraction;
 
+    // ... and parameter.
+    const real_t adaptRefParam = 0.7;
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -229,8 +234,8 @@ int main(int argc, char *argv[])
         // dbasis.uniformRefine();
         // // mp.uniformRefine();
         // Psi.uniformRefine();
-        // // Compute the system matrix and right-hand side
 
+        if ( r == 0){
         //... nromalisation of density function
         auto CoeffDensity{ev.integral(ff.val() * meas(G))};
         // Initialize the system : start Computing the conductivity coeffeicient ...
@@ -277,7 +282,8 @@ int main(int argc, char *argv[])
         // Picard loop
         index_t NiterPicard{0};
         gsMatrix<> sv0; //
-        for(int ip{0}; ip<maxIter; ++ip)
+        solution u_lsol = A.getSolution(u, sv0);
+        for(int ip{0}; ip<=maxIter; ++ip)
         {
             gsMultiPatch<> UU;
             u_sol.extract(UU);
@@ -335,11 +341,13 @@ int main(int argc, char *argv[])
             // omp_set_num_threads(1); // Use these threads for later parallel regions
 
             ++NiterPicard;
-            l2errRes = (solVector-sv0).norm();// TODO
-            if ( l2errRes < tolerancePicard ) break; // TODO
+            auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+            if ( l2errRes < tolPicard || ip == maxIter ){
+                // ! end Picard loop
+                gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
+                break; 
+                } // 
         }//for loop
-        // ! end Picard loop
-        gsInfo<< "\n Niter in Picard : " << NiterPicard << " L2 residual : "<<std::scientific<<l2errRes<<"\n";
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
@@ -356,7 +364,7 @@ int main(int argc, char *argv[])
         //Psi.computeTopology();
         }
         Psi.addAutoBoundaries();
-        if (r==0){
+        
         // For simplicity, set Dirichlet boundary conditions
         bc.addCondition(0,1, condition_type::dirichlet, &Dg1,0,false);
         // given by exact solution Dg on all boundaries:
@@ -428,20 +436,13 @@ int main(int argc, char *argv[])
 
        //! [errorComputation]
         l2err[r]= math::sqrt( ev.integral( (u_ex - is).sqNorm() * meas(PP) ) );
-        if(hadaptive && r < numRefine){
+        if(r < numRefine){
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
         ev.integralElWise( ( ilapl(is, PP) +ms).sqNorm()*meas(PP) );
         const std::vector<real_t> & eltErrs  = ev.elementwise();
         //! [errorComputation]
-        // --------------- adaptive refinement ---------------
-        // Specify cell-marking strategy...
-        MarkingStrategy adaptRefCrit = PUCA;
-        //MarkingStrategy adaptRefCrit = GARU;
-        //MarkingStrategy adaptRefCrit = errorFraction;
 
-        // ... and parameter.
-        const real_t adaptRefParam = 0.7;
         //! [adaptRefinementPart]
         // Mark elements for refinement, based on the computed local errors and
         // the refinement-criterion and -parameter.

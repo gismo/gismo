@@ -119,12 +119,12 @@ void MatchtangentialCPoints(gsMultiPatch<>& Psi, int boxNumber, int boxNumberR, 
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool plot = false;
+    bool plot          = false;
     index_t numRefine  = 3;
     index_t numElevate = 0;
-    index_t maxIter = 20;
-    double eps{1e-5}; // pinalization coefficient
-    double l2errRes{0.}, tolerancePicard{1e-8};
+    index_t maxIter    = 30;
+    double eps         = 1e-5; // pinalization coefficient
+    double tolPicard   = 1e-8;
     bool last = false, export_b64{false}, adaptiveMesh{true};
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
     bool PNormalCP{false};
@@ -151,11 +151,11 @@ int main(int argc, char *argv[])
     // .... one single patch
    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
    //... patch 1
-   mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
+   //mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
 //    //... patch 2 (L-shape)
-//    mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1.,0.0));
+    // mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1.,0.0));
    //mp.addInterface(0,2,2,1);
-
+   
 //    // ... patch 0-1
 //    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,2,1, -1.0, -1.0);
 //    // ... patch 2
@@ -190,24 +190,21 @@ int main(int argc, char *argv[])
     // gsFunctionExpr<> f("(1.+x**2+y**2)*exp(x**2 + y**2)",2);
 
     //..... Test 2
-    // convex function
+    //convex function
     gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
-    // // Manufactured identity mapping
+    // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
     //gsFunctionExpr<> f("1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2)))",2);
-    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
+    //gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
+    // Manufactured density function
+    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp(( (y-0.98)**2+(x-0.899)**2  - 0.002)/0.001)) + 1/(1.+exp((y -x  - 0.25)/0.001)) - 1./(1.+exp((y - x  - 0.15)/0.001)) +  0/(1.+exp((y - 1.0)/0.001)) - 0./(1.+exp((y - 0.975)/0.001))  +  1/(1.+exp((x - 1.0)/0.001)) - 1./(1.+exp((x - 0.95)/0.001)) )",2);    
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
-
-    gsBoundaryConditions<> bcInt;
-    bcInt.setGeoMap(mp);
-    bcInt.addCondition(0,4, condition_type::neumann, &sN,0,false);
-    bcInt.addCondition(1,3, condition_type::neumann, &sN,0,false);
 
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
@@ -241,7 +238,7 @@ int main(int argc, char *argv[])
     //A.setOptions(Aopt);
     A.options().addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-                 2);
+                 1);
     A.options().addInt("InterfaceStrategy", "Interface strategy conforming", iFace::none);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
@@ -255,10 +252,15 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
     ev.options().addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-                2);
+                1);
     ev.options().addInt("InterfaceStrategy", "Interface strategy conforming", iFace::none);
     // Set the geometry map
     geometryMap G = A.getMap(mp);
+
+    // Set pow for BFO method
+    auto IGdim     = 1./G.domainDim();
+    // Set factor for BFO method
+    auto gammaMAE = factorial(G.domainDim());
 
     // Set the discretization space
     space u = A.getSpace(dbasis);
@@ -270,7 +272,7 @@ int main(int argc, char *argv[])
     auto u_ex = ev.getVariable(s, G);
 
     //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
-    //auto u_I = ev.getVariable(sI, G);
+    auto u_I = ev.getVariable(sN, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
@@ -291,7 +293,7 @@ int main(int argc, char *argv[])
     auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral(ff.val() * meas(G))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(gammaMAE * CoeffDensity/ff.val(), IGdim) * meas(G))};
     if(adaptiveMesh)
     {
         //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
@@ -301,7 +303,7 @@ int main(int argc, char *argv[])
             mp.uniformRefine();
             if( last && r != numRefine)
                 continue;
-            u.setup(bc, dirichlet::l2Projection, -1);
+            u.setup(bc, dirichlet::l2Projection, 0);
             // Compute the system matrix and right-hand side
             // ...
             //... end 
@@ -317,10 +319,10 @@ int main(int argc, char *argv[])
         index_t i = 0;
         for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
         {
-            //auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
-           //auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-           // auto mu       = 10.;//2 * stab / m_h;
-            auto alpha = 1e-3;
+            auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
+           auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
+           //auto mu       = 2 * stab / m_h;
+            auto alpha   = 2 * stab / m_h;
 
             // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
             // if (m_penalty == -1)
@@ -332,41 +334,41 @@ int main(int argc, char *argv[])
             iFace.push_back(*it);
             A.assembleIfc(iFace,
                     // //B11
-                    //       +mu * u.left() *
-                    //       u.left().tr() * nv(G.left()).norm(),
-                    //      -0.5*alpha *
-                    //       (igrad(u.left(), G) * nv(G.left()).normalized() * u.left().tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    //      -0.5*alpha *
-                    //         (u.left()*(igrad(u.left(), G) * nv(G.left()).normalized()).tr()).tr() *
-                    //       nv(G.left()).norm(),
+                        //   +mu * u.left() *
+                        //   u.left().tr() * nv(G.left()).norm(),
+                        //  -0.5*alpha *
+                        //   (igrad(u.left(), G) * tv(G.left()).normalized() * u.left().tr()).tr() *
+                        //   nv(G.left()).norm(),
+                        //  -0.5*alpha *
+                        //     (u.left()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
+                        //   nv(G.left()).norm(),
                     // //B12
-                    //      -mu * u.left() *
-                    //       u.right().tr() * nv(G.left()).norm(),
-                    //      +0.5*alpha *
-                    //       (igrad(u.left(), G) * nv(G.left()).normalized() * u.right().tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    //      -0.5*alpha *
-                    //         (u.left()*(igrad(u.right(), G) * nv(G.right()).normalized()).tr()).tr() *
-                    //       nv(G.left()).norm(),
+                        //  -mu * u.left() *
+                        //   u.right().tr() * nv(G.left()).norm(),
+                        //  +0.5*alpha *
+                        //   (igrad(u.left(), G) * tv(G.left()).normalized() * u.right().tr()).tr() *
+                        //   nv(G.left()).norm(),
+                        //  -0.5*alpha *
+                        //     (u.left()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
+                        //   nv(G.left()).norm(),
                     // //B21
-                    //      - mu * u.right() *
-                    //       u.left().tr() * nv(G.left()).norm(),
-                    //      -0.5*alpha *
-                    //       (igrad(u.right(), G) * nv(G.right()).normalized() * u.left().tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    //      +0.5*alpha *
-                    //         (u.right()*(igrad(u.left(), G) * nv(G.left()).normalized()).tr()).tr() *
-                    //       nv(G.left()).norm(),
+                        //  - mu * u.right() *
+                        //   u.left().tr() * nv(G.left()).norm(),
+                        //  -0.5*alpha *
+                        //   (igrad(u.right(), G) * tv(G.right()).normalized() * u.left().tr()).tr() *
+                        //   nv(G.left()).norm(),
+                        //  +0.5*alpha *
+                        //     (u.right()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
+                        //   nv(G.left()).norm(),
                     // //B22
-                    //       + mu * u.right() *
-                    //       u.right().tr() * nv(G.left()).norm(),
-                    //      +0.5*alpha *
-                    //       (igrad(u.right(), G) * nv(G.right()).normalized() * u.right().tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    //      +0.5*alpha *
-                    //         (u.right()*(igrad(u.right(), G) * nv(G.right()).normalized()).tr()).tr() *
-                    //       nv(G.left()).norm()
+                        //   + mu * u.right() *
+                        //   u.right().tr() * nv(G.left()).norm(),
+                        //  +0.5*alpha *
+                        //   (igrad(u.right(), G) * tv(G.right()).normalized() * u.right().tr()).tr() *
+                        //   nv(G.left()).norm(),
+                        //  +0.5*alpha *
+                        //     (u.right()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
+                        //   nv(G.left()).norm()
                           
                     // // E11
                     //      0.5*alpha * igrad(u.left(), G.left()) * nv(G.left()).normalized() *
@@ -394,60 +396,44 @@ int main(int argc, char *argv[])
                     //       0.5*alpha * igrad(u.right(), G.right()) * tv(G.right()).normalized() *
                     //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm()
                     
-                    //  //E11  Nitsche or Penality method for forcing tangential part
-                    //     - u.left() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E12
-                    //       u.left() *
-                    //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E21
-                    //     -  u.right() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //E22
-                    //       u.right() *
-                    //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //E11
-                    //       alpha * u.left() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E12
-                    //       -alpha *u.left() *
-                    //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E21
-                    //       -alpha * u.right() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //E22
-                    //       alpha *u.right() *
-                    //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm()
-
-                    // //
-                         +0.5*alpha *
-                          (igrad(u.left(), G) * tv(G.left()).normalized()) * u.left().tr() *
-                          nv(G.left()).norm(),
-                        //
-                         -0.5*alpha *
-                          (igrad(u.left(), G) * tv(G.left()).normalized()) * u.right().tr() *
-                           nv(G.left()).norm(),
-                        //
-                         -0.5*alpha *
-                          (igrad(u.right(), G) * tv(G.left()).normalized()) * u.left().tr() *
-                          nv(G.left()).norm(),
-                        //
-                         +0.5*alpha *
-                          (igrad(u.right(), G) * tv(G.left()).normalized() )* u.right().tr() *
-                          nv(G.left()).norm()
+                     //E11  Nitsche or Penality method for forcing tangential part
+                        - u.left() *
+                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * meas(G),
+                    //-E12
+                          u.left() *
+                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * meas(G),
+                    //-E21
+                        -  u.right() *
+                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * meas(G),
+                    //E22
+                          u.right() *
+                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * meas(G),
+                    //E11
+                          alpha * u.left() *
+                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //-E12
+                          -alpha *u.left() *
+                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //-E21
+                          alpha * u.right() *
+                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //E22
+                         - alpha *u.right() *
+                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm()
             );
         }
             timer.restart();
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
-            u*  CoeffConductivity * (-1.)*pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G) //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(gammaMAE* CoeffDensity/ff.val(), IGdim) * meas(G) //rhs vector
             );
             
             // Compute the Neumann terms defined on physical space
             //auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
-            A.assembleBdr(bcInt.get("Neumann"), u * g_N.tr() * nv(G) );
+            A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
+            A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
 
             ma_time += timer.stop();
 
@@ -477,7 +463,8 @@ int main(int argc, char *argv[])
             // Picard loop
             index_t NiterPicard{0};
             gsMatrix<> sv0; //
-            for(int ip{0}; ip<maxIter; ++ip)
+            solution u_lsol = A.getSolution(u, sv0);
+            for(int ip{0}; ip<=maxIter; ++ip)
             {
                 gsMultiPatch<> UU;
                 u_sol.extract(UU);
@@ -513,7 +500,7 @@ int main(int argc, char *argv[])
 
                 // ...  0  dirichlet for boundaries
                 sv0 = solVector;
-                u.setup(bc, dirichlet::l2Projection, -1);
+                u.setup(bc, dirichlet::l2Projection, 0);
             
                 solution u_sol = A.getSolution(u, solVector);
 
@@ -527,7 +514,7 @@ int main(int argc, char *argv[])
                 // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
                 
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
+                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), IGdim) * meas(G));
 //Optionally, assemble Nitsche
         gsMatrix<> mu_interfaces;
         //auto m_penalty = 1;
@@ -537,7 +524,7 @@ int main(int argc, char *argv[])
             //auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
            //auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
            // auto mu       = 10.;//2 * stab / m_h;
-            auto alpha = 1e-3;
+            auto alpha = 1e+4;
 
             // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
             // if (m_penalty == -1)
@@ -547,6 +534,7 @@ int main(int argc, char *argv[])
 
             std::vector<boundaryInterface> iFace;
             iFace.push_back(*it);
+            solution u_lsol = A.getSolution(u, sv0);
             A.assembleIfc(iFace,
                     // //B11
                     //       +mu * u.left() *
@@ -611,60 +599,62 @@ int main(int argc, char *argv[])
                     //       0.5*alpha * igrad(u.right(), G.right()) * tv(G.right()).normalized() *
                     //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm()
                     
-                    //  //E11  Nitsche or Penality method for forcing tangential part
-                    //     - u.left() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E12
-                    //       u.left() *
-                    //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E21
-                    //     -  u.right() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //E22
-                    //       u.right() *
-                    //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //E11
-                    //       alpha * u.left() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E12
-                    //       -alpha *u.left() *
-                    //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E21
-                    //       -alpha * u.right() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //E22
-                    //       alpha *u.right() *
-                    //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm()
+                     //E11  Nitsche or Penality method for forcing tangential part
+                        - u.left() *
+                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //-E12
+                          u.left() *
+                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //-E21
+                        -  u.right() *
+                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //E22
+                          u.right() *
+                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //E11
+                          alpha * u.left() *
+                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //-E12
+                          -alpha *u.left() *
+                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //-E21
+                          -alpha * u.right() *
+                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+                    //E22
+                          alpha *u.right() *
+                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm()
 
-                    // //
-                         +0.5*alpha *
-                          (igrad(u.left(), G) * tv(G.left()).normalized()) * u.left().tr() *
-                          nv(G.left()).norm(),
-                        //
-                         -0.5*alpha *
-                          (igrad(u.left(), G) * tv(G.left()).normalized()) * u.right().tr() *
-                           nv(G.left()).norm(),
-                        //
-                         -0.5*alpha *
-                          (igrad(u.right(), G) * tv(G.left()).normalized()) * u.left().tr() *
-                          nv(G.left()).norm(),
-                        //
-                         +0.5*alpha *
-                          (igrad(u.right(), G) * tv(G.left()).normalized() )* u.right().tr() *
-                          nv(G.left()).norm()
+                    // // //
+                    //      +0.5*alpha *
+                    //       (igrad(u.left(), G) * tv(G.left()).normalized()) * u.left().tr() *
+                    //       nv(G.left()).norm(),
+                    //     //
+                    //      -0.5*alpha *
+                    //       (igrad(u.left(), G) * tv(G.left()).normalized()) * u.right().tr() *
+                    //        nv(G.left()).norm(),
+                    //     //
+                    //      -0.5*alpha *
+                    //       (igrad(u.right(), G) * tv(G.left()).normalized()) * u.left().tr() *
+                    //       nv(G.left()).norm(),
+                    //     //
+                    //      +0.5*alpha *
+                    //       (igrad(u.right(), G) * tv(G.left()).normalized() )* u.right().tr() *
+                    //       nv(G.left()).norm()
             );
         }
                 // MAE system
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
                 ,
-                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), IGdim) * meas(G) //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space
                 auto g_N = A.getBdrFunction(G);
                 A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
-                A.assembleBdr(bcInt.get("Neumann"), u * g_N.tr() * nv(G) );
+                A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
+                A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
+
 
 
                 ma_time += timer.stop();
@@ -687,11 +677,13 @@ int main(int argc, char *argv[])
                 // omp_set_num_threads(1); // Use these threads for later parallel regions
 
                 ++NiterPicard;
-                l2errRes = (solVector-sv0).norm();// TODO
-                if ( l2errRes < tolerancePicard ) break; // TODO
+                auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+                if ( l2errRes < tolPicard || ip == maxIter ){
+                    // ! end Picard loop
+                    gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
+                    break; 
+                    } // 
             }//for loop
-            // ! end Picard loop
-            gsInfo<< "\n Niter in Picard : " << NiterPicard << " L2 residual : "<<std::scientific<<l2errRes<<"\n";
             // omp_set_dynamic(0);     // Explicitly disable dynamic teams
             // omp_set_num_threads(1); // Use these threads for later parallel regions
 
@@ -723,7 +715,7 @@ int main(int argc, char *argv[])
             auto g_N = A.getBdrFunction(G);
             auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
             // ...
-            auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * ff.val(), 0.5) * meas(G))};
+            auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+gammaMAE * ff.val(), IGdim) * meas(G))};
             //... end 
 
             // Initialize the system
@@ -737,7 +729,7 @@ int main(int argc, char *argv[])
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
-            u*  CoeffConductivity * (-1.)*pow(2.+2. * ff.val(), 0.5) * meas(G) //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(2.+gammaMAE* ff.val(), IGdim) * meas(G) //rhs vector
             );
             
             // Compute the Neumann terms defined on physical space
@@ -762,7 +754,8 @@ int main(int argc, char *argv[])
             // Picard loop
             index_t NiterPicard{0};
             gsMatrix<> sv0; //
-            for(int ip{0}; ip<maxIter; ++ip)
+            solution u_lsol = A.getSolution(u, sv0);
+            for(int ip{0}; ip<=maxIter; ++ip)
             {
                 sv0 = solVector;
         //        u.setup(bc, dirichlet::interpolation, 0);
@@ -780,13 +773,13 @@ int main(int argc, char *argv[])
                 // Compute the system matrix and right-hand side
 
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
+                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(ff.val() - ihess(u_sol,G).det()), IGdim) * meas(G));
 
                 // MAE system
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()  * meas(G) //matrix
                 ,
-                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(ff.val() - ihess(u_sol,G).det()), 0.5) *meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(ff.val() - ihess(u_sol,G).det()), IGdim) *meas(G) //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space
@@ -812,11 +805,13 @@ int main(int argc, char *argv[])
                 // omp_set_num_threads(1); // Use these threads for later parallel regions
 
                 ++NiterPicard;
-                l2errRes = (solVector-sv0).norm();// TODO
-                if ( l2errRes < tolerancePicard ) break; // TODO
+                auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+                if ( l2errRes < tolPicard  || ip == maxIter ){
+                    // ! end Picard loop
+                    gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
+                    break; 
+                    } // 
             }//for loop
-        // ! end Picard loop
-        gsInfo<< "\n Niter in Picard : " << NiterPicard << " L2 residual : "<<std::scientific<<l2errRes<<"\n";
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
@@ -860,6 +855,7 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("numPoints", 100000);
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
         collection.addField(igrad(u_sol,G),"gradient_numerical solution");
@@ -870,9 +866,9 @@ int main(int argc, char *argv[])
         collection.addField(u_ex, "exact solution");
         }
         if(maxIter == 0)
-        collection.addField(CoeffConductivity * (-1.)*pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G), "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.)*pow(2.+gammaMAE * CoeffDensity/ff.val(), IGdim) * meas(G), "MAE_rhs");
         else
-        collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G), "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), IGdim) * meas(G), "MAE_rhs");
         collection.saveTimeStep();
         collection.save();
 
