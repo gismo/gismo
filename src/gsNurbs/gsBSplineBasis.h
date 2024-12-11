@@ -418,9 +418,11 @@ public:
     /// @brief Refine the basis by inserting the given knots and perform knot
     /// refinement for the given coefficient matrix.
     void refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots);
+    void refine_withCoefs(gsMatrix<T>& /* coefs */, const gsMatrix<T> & /* boxes */)
+    {GISMO_NO_IMPLEMENTATION}
 
     // compatibility with tensor-bsplines
-    void refine_withCoefs(gsMatrix<T> & coefs, 
+    void refine_withCoefs(gsMatrix<T> & coefs,
                           const std::vector< std::vector<T> >& refineKnots)
     {
         refine_withCoefs(coefs,refineKnots.front() );
@@ -428,8 +430,9 @@ public:
 
     /// @brief Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots);
-
-    void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
+    void refine_withTransfer(gsMatrix<T>& /* coefs */, const gsMatrix<T> & /* boxes */)
+    {GISMO_NO_IMPLEMENTATION}
+    void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
                              const std::vector<std::vector<T> >& knots)
     {
         GISMO_ASSERT(knots.size()==1, "the knots you want to insert do not have the right dimension");

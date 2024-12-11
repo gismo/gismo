@@ -83,7 +83,7 @@ bool errorAnalysis(const gsFunction<T> &fun, const gsBasis<T> & bbasis, int type
     real_t convRateAvg = gsSolverUtils<>::convergenceRateLS(error_list,h_list);
 
     //if the computed convergence rate is at least 85% of the expected one, we consider this test as passed
-    
+
 
     gsInfo<<"The convergence rate is "<< convRateAvg << " (expected rate = "<< expConvRate<< ")\n";
     gsInfo<< (convRateAvg > expConvRate*tolerance ? "OK" : "Not OK") <<"\n";
@@ -495,7 +495,7 @@ bool qi_hs_2D()
     gsQuasiInterpolate<real_t>::localIntpl(thb3, aa1, coefs);
     gsTHBSpline<2> aa2(thb3,coefs);
     gsInfo<<"error="<< computeError(aa1,aa2,100) <<"\n";
-                
+
     return passed;
 }
 
@@ -552,6 +552,7 @@ bool qi_3D()
 
 int main(int argc, char* argv[])
 {
+    GISMO_UNUSED(argc); GISMO_UNUSED(argv);
     bool passed = true;
     passed &=  qi_1D();
     passed &=  qi_2D();

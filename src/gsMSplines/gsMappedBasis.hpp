@@ -481,6 +481,22 @@ index_t gsMappedBasis<d,T>::_getPatch(const index_t localIndex) const
 }
 
 template<short_t d,class T>
+index_t gsMappedBasis<d,T>::getGlobalIndex(index_t patch, index_t localIndex)
+{
+    GISMO_ASSERT(patch>=0 && patch<m_bases.size(),"patch index out of range");
+    return _getLocalIndex(patch, localIndex);
+}
+
+template<short_t d,class T>
+gsMatrix<index_t> gsMappedBasis<d,T>::getGlobalIndex(index_t patch, gsMatrix<index_t> localIndices)
+{
+    GISMO_ASSERT(patch>=0 && patch<m_bases.size(),"patch index out of range");
+    gsMatrix<index_t> globalIndices(localIndices);
+    globalIndices.array() += _getFirstLocalIndex(patch);
+    return globalIndices;
+}
+
+template<short_t d,class T>
 index_t gsMappedBasis<d,T>::_getPatchIndex(const index_t localIndex) const
 {
     index_t patchIndex=localIndex;
