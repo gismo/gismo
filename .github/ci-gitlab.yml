@@ -1,9 +1,9 @@
 ################################################################################
 # GitLab CI is used for multiple purposes
 #
-# 1. Building and testing of commits to all branches except 'ci_test' and 
+# 1. Building and testing of commits to all branches except 'ci_test' and
 #   'coverity_scan' and sending of the ctest results to the CDASH server
-#    - these jobs exclude external pull requests and the two branches 
+#    - these jobs exclude external pull requests and the two branches
 #      'ci_test' and 'coverity_scan' by the rule
 #       except:
 #       - external_pull_requests
@@ -28,7 +28,7 @@ workflow:
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
     - if: '$CI_COMMIT_BRANCH'
-      
+
 .test:linux:base:
   tags:
     - linux
@@ -65,8 +65,8 @@ clang9_cxx14_release_longdouble_int64t:
     IMAGE:            "silkeh/clang:9"
     CNAME:            "clang"
     CXXNAME:          "clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t'"
-    
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t'"
+
 # Clang 10, C++17, Release
 clang10_cxx17_release_mpreal_long:
   extends: .test:linux:base
@@ -74,7 +74,7 @@ clang10_cxx17_release_mpreal_long:
     IMAGE:            "silkeh/clang:10"
     CNAME:            "clang"
     CXXNAME:          "clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
 
 # Clang 11, C++20, Release
 clang11_cxx20_release_mpq_long:
@@ -83,24 +83,26 @@ clang11_cxx20_release_mpq_long:
     IMAGE:            "silkeh/clang:11"
     CNAME:            "clang"
     CXXNAME:          "clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
 
-# Clang 13 (latest), C++23, Release  (works!!!!)
+# Clang 13 (latest), C++23, Release
 clang13_cxx23_release_float_int:
   extends: .test:linux:base
   variables:
     IMAGE:            "silkeh/clang:latest"
     CNAME:            "clang"
     CXXNAME:          "clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=23;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=23;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
     GISMO_OPTIONAL: "gsOpennurbs\\;"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
+#  before_script:
+#    - rm -rf /builds/gismo-ci/build_ExperimentalRelease_clang++
 
-#-------------------------------------------------------------------------------
+    #-------------------------------------------------------------------------------
 # GCC 8-12, C++11,14,17,20
 #-------------------------------------------------------------------------------
-    
+
 # GCC 8, C++11, Release
 gcc8_cxx11_release_mpreal_long:
   extends: .test:linux:base
@@ -108,7 +110,7 @@ gcc8_cxx11_release_mpreal_long:
     IMAGE:            "gcc:8"
     CNAME:            "gcc"
     CXXNAME:          "g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE" #only one test failing!
 
 # GCC 9, C++14, Release
@@ -118,8 +120,8 @@ gcc9_cxx14_release_longdouble_int64t:
     IMAGE:            "gcc:9"
     CNAME:            "gcc"
     CXXNAME:          "g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t'"
-    
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t'"
+
 # GCC 10, C++17, Release
 gcc10_cxx17_release_double_int32t:
   extends: .test:linux:base
@@ -127,9 +129,8 @@ gcc10_cxx17_release_double_int32t:
     IMAGE:            "gcc:10"
     CNAME:            "gcc"
     CXXNAME:          "g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
-    GISMO_OPTIONAL: "gsOpennurbs\\;"
-
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+    GISMO_OPTIONAL: "gsOpennurbs\\;gsCInterface"
 # GCC 11, C++20, Release
 gcc11_cxx20_release_float_int:
   extends: .test:linux:base
@@ -137,7 +138,7 @@ gcc11_cxx20_release_float_int:
     IMAGE:            "gcc:11"
     CNAME:            "gcc"
     CXXNAME:          "g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
 
 # GCC 12 (latest), C++23, Release
@@ -147,9 +148,11 @@ gcc12_cxx23_release_float_int:
     IMAGE:            "gcc:latest"
     CNAME:            "gcc"
     CXXNAME:          "g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
-    GISMO_OPTIONAL: "gsOpennurbs\\;gsSpectra"
+    GISMO_OPTIONAL: "gsOpennurbs\\;"
+#  before_script:
+#    - rm -rf /builds/gismo-ci/build_ExperimentalRelease_gcc++
 
 ################################################################################
 # 2. Building and testing of all branches and external pull requests (PRs)
@@ -162,7 +165,7 @@ clang8_cxx11_release_double_int32t:
     IMAGE:            "silkeh/clang:8"
     CNAME:            "clang"
     CXXNAME:          "clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
   except:
     - ci_test
     - coverity_scan
@@ -174,7 +177,7 @@ clang10_cxx17_release_mpreal_long:
     IMAGE:            "silkeh/clang:10"
     CNAME:            "clang"
     CXXNAME:          "clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
   except:
     - ci_test
     - coverity_scan

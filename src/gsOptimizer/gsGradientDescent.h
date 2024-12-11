@@ -121,6 +121,7 @@ protected:
 
 public:
 
+    using Base::solve;
     void solve(const gsMatrix<T> &initialGuess)
     {
         this->getOptions();
