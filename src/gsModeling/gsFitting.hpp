@@ -75,7 +75,7 @@ void gsFitting<T>::compute(T lambda)
 
     const int num_basis = m_basis->size();
     const short_t dimension = m_points.cols();
-    
+
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
     gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
@@ -118,7 +118,7 @@ void gsFitting<T>::compute(T lambda)
     if ( solver.preconditioner().info() != gsEigen::Success )
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
-        
+
         return;
     }
     // Solves for many right hand side  columns
@@ -145,6 +145,7 @@ void gsFitting<T>::parameterCorrection(T accuracy,
                                        index_t maxIter,
                                        T tolOrth)
 {
+    GISMO_UNUSED(tolOrth);
     if ( !m_result )
         compute(m_last_lambda);
 
@@ -224,7 +225,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
-    gsMatrix<index_t> actives;    
+    gsMatrix<index_t> actives;
 
     for (index_t h = 0; h < num_patches; h++ )
     {
@@ -312,7 +313,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
 #   endif
-        
+
     for (index_t h = 0; h < num_patches; h++)
     {
         auto & basis = m_basis->basis(h);
@@ -322,14 +323,14 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
         for (short_t i = 0; i != dim; ++i)
         {
-            numNodes[i] = basis.degree(i);//+1; 
+            numNodes[i] = basis.degree(i);//+1;
         }
 
         gsGaussRule<T> QuRule(numNodes); // Reference Quadrature rule
 
-        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(); 
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
 
-        
+
 #       ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #       else
@@ -438,12 +439,12 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
 
     const int num_patches(m_basis->nPieces());
 
-    error = 0; 
+    error = 0;
 
-    for (index_t h = 0; h < num_patches; h++) 
+    for (index_t h = 0; h < num_patches; h++)
     {
 
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
@@ -483,9 +484,9 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
     const int num_patches(m_basis->nPieces());
 
-    for (index_t h = 0; h < num_patches; h++) 
+    for (index_t h = 0; h < num_patches; h++)
     {
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
         {
             curr_point = m_param_values.col(k);
 

@@ -2,12 +2,12 @@
 
     @brief Provides functions writing .csv files.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): C. Karampatzakis
 */
 
@@ -21,10 +21,10 @@
 namespace gismo {
 
 /// @brief Export a \a gsMatrix to a .csv (comma separated values) file
-/// @tparam T 
+/// @tparam T
 /// @param filename path of output file
 /// @param matrix a \a gsMatrix to be written to the file
-/// @param headers optionally, a vector of strings to be used as column headers 
+/// @param headers optionally, a vector of strings to be used as column headers
 ///
 /// \ingroup IO
 template<class T>
@@ -40,16 +40,16 @@ void gsWriteCsv(std::string const & filename, const gsMatrix<T> & matrix, const 
     // If column headers are provided, write to file
     if (! headers.empty())
     {
-        for ( size_t j = 0 ; j <  headers.size() ; j++)
+        for ( size_t j=0 ; j <  headers.size() ; j++)
         {
             csv_file << headers[j];
-            if (headers.size()-1 == j) 
+            if (headers.size()-1 == j)
                 csv_file << CSVFormat.rowSeparator;
             else
                 csv_file << CSVFormat.coeffSeparator ;
         }
     }
-    // write matrix entries to file 
+    // write matrix entries to file
     csv_file << matrix.format(CSVFormat);
     csv_file.close();
 }

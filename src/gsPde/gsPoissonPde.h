@@ -35,7 +35,7 @@ class gsPoissonPde : public gsPde<T>
 {
 
 public:
-    
+
     gsPoissonPde( ) { }
 
 
@@ -50,7 +50,7 @@ public:
     }
 
     int m_compat_dim;
-    GISMO_DEPRECATED
+    // GISMO_DEPRECATED // still used in gsXml < gsPoissonPde<T> >
     gsPoissonPde(const gsFunction<T>  &rhs,
                  int                   domdim,
                  const gsFunction<T>  &)
@@ -59,7 +59,7 @@ public:
         m_unknownDim.setOnes(1);
 
     }
-    GISMO_DEPRECATED
+    // GISMO_DEPRECATED // still used in gsXml < gsPoissonPde<T> >
     gsPoissonPde(const gsFunction<T>  &rhs,
                  int                   domdim)
        : m_compat_dim(domdim), m_rhs(rhs)
@@ -97,7 +97,7 @@ public:
     {
 	    os<<"Poisson's equation  -\u0394u = f ,  with:\n";
 	    os<<"Source function f= "<< m_rhs <<".\n";
-	    return os; 
+	    return os;
 	}
 
     virtual gsPde<T>* restrictToPatch(unsigned np) const

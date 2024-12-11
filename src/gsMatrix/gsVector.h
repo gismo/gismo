@@ -259,6 +259,9 @@ public:
 #endif
     */
 
+    // Copy constructor
+    gsVector3d(const gsVector3d & other) : Base(other) { }
+
     // implicitly deleted in C++11
     gsVector3d & operator=(const gsVector3d & other)
     {
