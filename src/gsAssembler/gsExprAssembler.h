@@ -475,18 +475,15 @@ private:
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
-            if (ee.rowVar().data().actives.cols() != 1 || ee.colVar().data().actives.cols()!=1)
+            if (ee.rowVar().data().actives.cols() != 1 || ( E::isMatrix() && ee.colVar().data().actives.cols()!=1) )
             {
                 index_t ra = 0, ca = 0;
                 // ------- Compute  -------
                 const T * w = m_quWeights.data();
                 for (index_t k = 0; k != m_quWeights.rows(); ++k)
                 {
-                    localMat.noalias() = (*(++w)) * ee.eval(k);
+                    localMat.noalias() = (*(w++)) * ee.eval(k);
 
-                    if (ee.rowVar().data().actives.cols() != 1) ++ra;
-                    else ++ca;
-                    
                     //  ------- Accumulate  -------
                     if (E::isMatrix())
                         if (m_elim) push<true,true>(ee.rowVar(), ee.colVar(), ra, ca);
@@ -499,6 +496,8 @@ private:
                         GISMO_ERROR("Something went terribly wrong at this point");
                         //GISMO_ASSERTrowSpan() && (!colSpan())
                     }
+                    if (ee.rowVar().data().actives.cols() != 1) ++ra;
+                    else ++ca;
                 }
                 return;
             }
