@@ -239,9 +239,142 @@ void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fu
 }
 
 template<typename T>
+gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
+                                              const gsFunction<T> &fun,
+                                              const int &r,
+                                              index_t j,
+                                              index_t lvl)
+{
+    // Do it dimension independent????????
+    const gsTensorBSplineBasis<2,T>* b = dynamic_cast<const gsTensorBSplineBasis<2,T>* >(&bb); // 2D 
+
+    const gsKnotVector<T> & kv0 = b->knots(0);
+    const gsKnotVector<T> & kv1 = b->knots(1);
+    int deg0 = b->degree(0);
+    int deg1 = b->degree(1);
+
+    gsMatrix<T> xj0 = b->component(0).anchors();
+    gsMatrix<T> xj1 = b->component(1).anchors();
+
+    int n = b->size();
+    int dim = fun.targetDim();
+
+    std::vector<gsMatrix<T> > derivs;
+    fun.evalAllDers_into(b->anchors(), r, derivs);
+
+    gsMatrix<T> val;
+    std::vector<T> knots0;
+    std::vector<T> knots1;
+    gsVector<index_t,2> jj;
+    T factor2;
+    const index_t str = dim + dim*(dim-1)/2;
+
+    jj = b->tensorIndex(j);
+
+    val.setZero(1,dim);
+    knots0.clear();
+    knots1.clear();
+
+    for(int q=jj[0]+1; q<=jj[0]+deg0; q++)
+        knots0.push_back(kv0[q]);
+    
+    for(int qq=jj[1]+1; qq<=jj[1]+deg1; qq++)
+        knots1.push_back(kv1[qq]);
+    
+    for(int k0=0; k0<=r; k0++) // loop over x direction!
+    {
+        const T factor1_0 = derivProd(knots0, deg0-k0, xj0(jj[0])); //
+        
+        for(int k1=0; k1<=r; k1++) // loop over y direction!
+        {
+            const T factor1_1 = derivProd(knots1, deg1-k1, xj1(jj[1])); 
+            
+            for (int i = 0; i < dim; i++)
+            {
+                if (2==k0)
+                    factor2 = derivs[2]( i*str, j );
+                else if (2==k1)
+                    factor2 = derivs[2]( i*str+1, j );
+                else if (2==k0+k1)
+                    factor2 = derivs[2]( i*str+dim, j );
+                else if(1==k0+k1)
+                    factor2 = derivs[1]( i*dim+k1, j );
+                else if(0==k0+k1)
+                    factor2 = derivs[0]( i, j );
+                else
+                    GISMO_ERROR("deg<=2");
+
+                val(i) += std::pow(-1.0,k0) * std::pow(-1.0,k1) * factor1_0 * factor1_1 * factor2;
+            }
+            
+        }
+
+    }
+        
+    val /= factorial(deg0)*factorial(deg1);
+    return val;
+}
+
+template<typename T>
+template<short_t d>
+gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsHTensorBasis<d,T> &bb,   
+                                                const gsFunction<T>  &fun,
+                                                const int &r,
+                                                index_t i)
+{
+    index_t lvl = bb.levelOf(i);
+    index_t j = bb.flatTensorIndexOf(i);
+    return localTaylor(bb.tensorLevel(lvl),fun,r,j,lvl); // uses the H-grid element implementation
+}
+
+template<typename T>
+gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
+                                              const gsFunction<T> &fun,
+                                              const int &r,
+                                              index_t i)
+{
+    const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb);
+    return localTaylor(*b,fun,r, i); 
+
+    // ????? dimension independent!!!!!!!
+    // if (const gsHTensorBasis<1,T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb))
+    //     return localL2(*b,fun,r,i);
+    // if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
+    //     return localL2(*b,fun,r,i);
+    // if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
+    //     return localL2(*b,fun,r,i);
+    // if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
+    //     return localL2(*b,fun,r,i);
+    // else
+    //     return localL2(bb,fun,i,r,bb.levelOf(i));
+}
+
+
+template<typename T>
+void gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &b,
+                                       const gsFunction<T> &fun,
+                                       const int &r,
+                                       gsMatrix<T> & result)
+{
+    // GISMO_ASSERT(b.domainDim()==fun.domainDim(),"Domain dimensions should be equal");
+    // //assert b.domainDim()==fun.domainDim()
+    gsMatrix<T> cf;
+    index_t n = b.size();
+    index_t dim = fun.targetDim();
+    result.resize(n,dim);
+
+#   pragma omp parallel for private(cf)
+    for (index_t i = 0; i<n; ++i)
+    {
+        cf = localTaylor(b,fun,r,i);
+        result.row(i) = cf;
+    }
+}
+
+template<typename T>
 void gsQuasiInterpolate<T>::Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> & coefs)
 {
-    const gsTensorBSplineBasis<2,T>* b = dynamic_cast<const gsTensorBSplineBasis<2,T>* >(&bb);
+    const gsTensorBSplineBasis<2,T>* b = dynamic_cast<const gsTensorBSplineBasis<2,T>* >(&bb); // 2D 
 
     const gsKnotVector<T> & kv0 = b->knots(0);
     const gsKnotVector<T> & kv1 = b->knots(1);

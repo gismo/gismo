@@ -72,8 +72,31 @@ struct gsQuasiInterpolate
     static void localIntpl(const gsBasis<T> &b,
                            const gsFunction<T> &fun,
                            gsMatrix<T> &result);
+    
+    static gsMatrix<T> localTaylor(const gsBasis<T> &b,
+                                  const gsFunction<T> &fun,
+                                  const int &r,
+                                  index_t i,
+                                  index_t lvl);
 
-     static gsMatrix<T> localL2(const gsBasis<T> &b,   
+    static gsMatrix<T> localTaylor(const gsBasis<T> &b,
+                                const gsFunction<T>  &fun,
+                                const int &r,
+                                index_t i);
+
+    template<short_t d>
+    static gsMatrix<T> localTaylor(const gsHTensorBasis<d,T> &b,
+                                const gsFunction<T>  &fun,
+                                const int &r,
+                                index_t i);
+
+    static void localTaylor(const gsBasis<T> &b,
+                        const gsFunction<T>  &fun,
+                        const int &r,
+                        gsMatrix<T> & result);    
+    
+    
+    static gsMatrix<T> localL2(const gsBasis<T> &b,   
                                 const gsFunction<T>  &source,                                              
                                 index_t i,
                                 const gsMatrix<T> &ab);

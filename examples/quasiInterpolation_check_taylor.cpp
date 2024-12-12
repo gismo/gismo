@@ -41,22 +41,21 @@ int main(int argc, char *argv[])
 
     gsTensorBSplineBasis<2> base2(kv,kv);
     gsTHBSplineBasis<2,real_t> thb;
-    //thb = gsTHBSplineBasis<2,real_t>(base2); // create basis with knot vectors
-    gsMultiBasis<> dbasis_fine;
-    // dbasis_fine.addBasis(thb.clone());
+    thb = gsTHBSplineBasis<2,real_t>(base2); // create basis with knot vectors
+    gsMultiBasis<> dbasis_fine, dbasis_thb;
 
+    dbasis_thb.addBasis(thb.clone());
     // dbasis_fine.addBasis(base2);
 
-
-
-    gsMatrix<> coefs, coefs_2d;
+    gsMatrix<> coefs, coefs_2d, local_coefs;
 
     gsQuasiInterpolate<real_t>::Taylor(bas, mySinus1D, deg, coefs);
     gsQuasiInterpolate<real_t>::Taylor2D(base2, mySinus, deg, coefs_2d);
-
-    gsInfo << coefs_2d;
+    //gsQuasiInterpolate<real_t>::localTaylor(base2, mySinus, deg, local_coefs);
+    gsQuasiInterpolate<real_t>::localTaylor(dbasis_thb.basis(0), mySinus, deg, local_coefs);
 
     gsTensorBSpline<2,real_t> spline_taylor(base2,coefs_2d); 
+    gsTensorBSpline<2,real_t> spline_taylor2(base2,local_coefs); 
 
     gsMatrix<> coefs_sine;
     gsL2Projection<real_t>::projectFunction(base2,mySinus,mp,coefs_sine);
@@ -64,5 +63,6 @@ int main(int argc, char *argv[])
 
     gsWriteParaview(spline_taylor,"approximation_Taylor"); // interpolated function mySinus
     gsWriteParaview(sine_func,"approximation_l2"); // interpolated function mySinus
+    gsWriteParaview(spline_taylor2,"approximation_Taylor_new"); // interpolated function mySinus
 
 }// end main
