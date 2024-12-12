@@ -122,12 +122,21 @@ public:
         return *this;
     }
 
+    /// Incremental operator to proceed to the next element
+    gsDomainIterator& operator+(index_t k)
+    {
+        this->next(k);
+        return *this;
+    }
+
 public:
 
     /// Returns the element id
     size_t id() const   { return m_id; }
 
     /// Is the iterator still pointing to a valid element?
+    // \todo use !=end() instead
+    GISMO_DEPRECATED
     bool good() const   { return m_isGood; }
 
     /// Return dimension of the elements
@@ -135,7 +144,7 @@ public:
 
     /// Updates \a other with and adjacent element
     /// \todo upgrade to return adjacent range instead
-    GISMO_DEPRECATED
+    // GISMO_DEPRECATED??
     virtual void adjacent( const gsVector<bool> & ,
                            gsDomainIterator & )
     {
@@ -231,20 +240,27 @@ public:
 
 public:
 
+protected:
+
+    gsDomain<T> * m_domain;
+
+    // \todo patchSide
+    boxSide m_side;
+
+    size_t m_id;
+
+    //// REMOVE
+
     /// Coordinates of a central point in the element (in the parameter domain).
     gsVector<T> center;
 
-protected:
-    /// The basis on which the domain iterator is defined.
-    const gsBasis<T> * m_basis;
 
     /// Flag indicating whether the domain iterator is "good". If it
     /// is "good", the iterator can continue to the next element.
     bool m_isGood;
 
-    boxSide m_side;
-
-    size_t m_id;
+    /// The basis on which the domain iterator is defined.
+    const gsBasis<T> * m_basis;
 
 private:
     // disable copying
