@@ -475,50 +475,32 @@ private:
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
-            if (ee.rowVar().data().actives.cols() != 1 || ( E::isMatrix() && ee.colVar().data().actives.cols()!=1) )
+            GISMO_ASSERT(E::isMatrix() || E::isVector(), "Expecting a matrix or vector expression.");
+            if ((ee.rowVar().data().flags & SAME_ELEMENT) &&
+                ( E::isVector() || (ee.colVar().data().flags & SAME_ELEMENT) ) )
             {
-                index_t ra = 0, ca = 0;
                 // ------- Compute  -------
-                const T * w = m_quWeights.data();
-                for (index_t k = 0; k != m_quWeights.rows(); ++k)
-                {
-                    localMat.noalias() = (*(w++)) * ee.eval(k);
-
-                    //  ------- Accumulate  -------
-                    if (E::isMatrix())
-                        if (m_elim) push<true,true>(ee.rowVar(), ee.colVar(), ra, ca);
-                        else push<true,false>(ee.rowVar(), ee.colVar(), ra, ca);
-                    else if (E::isVector())
-                        if (m_elim) push<false,true>(ee.rowVar(), ee.colVar(), ra, ca);
-                        else push<false,false>(ee.rowVar(), ee.colVar(), ra, ca);
-                    else
-                    {
-                        GISMO_ERROR("Something went terribly wrong at this point");
-                        //GISMO_ASSERTrowSpan() && (!colSpan())
-                    }
-                    if (ee.rowVar().data().actives.cols() != 1) ++ra;
-                    else ++ca;
-                }
-                return;
+                quadrature(ee, localMat);
+                //  ------- Accumulate  -------
+                if (m_elim) push<E::isMatrix(),true>(ee.rowVar(), ee.colVar(), 0, 0);
+                else push<E::isMatrix(),false>(ee.rowVar(), ee.colVar(), 0, 0);
             }
-            // For the case of interface: assuming all points on same element
-
-            // ------- Compute  -------
-            quadrature(ee,localMat);
-
-            //  ------- Accumulate  -------
-            if (E::isMatrix())
-                if (m_elim) push<true,true>(ee.rowVar(), ee.colVar());
-                else push<true,false>(ee.rowVar(), ee.colVar());
-            else if (E::isVector())
-                if (m_elim) push<false,true>(ee.rowVar(), ee.colVar());
-                else push<false,false>(ee.rowVar(), ee.colVar());
             else
             {
-                GISMO_ERROR("Something went terribly wrong at this point");
-                //GISMO_ASSERTrowSpan() && (!colSpan())
+                index_t k;
+                static index_t _zero(0);
+                index_t & ra = ( (ee.rowVar().data().flags & SAME_ELEMENT) ? _zero : k);
+                index_t & ca = ( (E::isVector() || ee.colVar().data().flags & SAME_ELEMENT) ? _zero : k);
+                const T * w = m_quWeights.data();
+                for (k = 0; k != m_quWeights.rows(); ++k)
+                {
+                    // ------- Compute  -------
+                    localMat.noalias() = (*(w++)) * ee.eval(k);
+                    //  ------- Accumulate  -------
+                    if (m_elim) push<E::isMatrix(),true>(ee.rowVar(), ee.colVar(), ra, ca);
+                    else push<E::isMatrix(),false>(ee.rowVar(), ee.colVar(), ra, ca);
+                }
             }
-
         }// operator()
 
         template <typename E>
