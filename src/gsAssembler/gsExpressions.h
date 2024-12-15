@@ -612,6 +612,7 @@ class gsGeometryMap : public _expr<gsGeometryMap<T> >
     //index_t d, n;
 
     bool m_isAcross; ///< true when the patch evaluated is across an interface
+    const gsMultiPatch<T> m_composedMap; ///< Pointer to the composed map (for chaining evaluations)
 
 public:
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
@@ -714,8 +715,41 @@ public:
 
     void print(std::ostream &os) const { os << "G"; }
 
+    // auto eval(const index_t k) const -> decltype(m_fd->values[0].col(k))
+    // { return m_fd->values[0].col(k); }
+
+    /// Operator() for composing with another gsMultiPatch<T>
+    gsGeometryMap operator()(const gsMultiPatch<T>& other) const {
+        std::cout << "Composing maps..." << std::endl;
+
+        // Set the current map as the first part of the composition
+        this.m_composedMap = other;
+
+        std::cout << "Composed map set successfully!" << std::endl;
+
+        return this;
+    }
+
     auto eval(const index_t k) const -> decltype(m_fd->values[0].col(k))
-    { return m_fd->values[0].col(k); }
+    {
+        // if (!m_composedMap.empty())
+        // {
+        // // Recursive case: first evaluate the composed map
+        // auto intermediateResult = m_fd->values[0].col(k);
+        // //auto Result = m_fd->values[0].col(k);
+        // /*
+        // two pistes 
+        // 1. if we can compute the composition directly from a m_fd->values[0].col(k)
+        // 2. conserve the same eval and swap col outside by updating image with intermediate mapping
+        // */
+        // auto Result = m_composedMap.patch(0).eval(intermediateResult).col(k);
+        // return Result;
+        // }
+        //Case: m_composedMap is not initialized!
+        return m_fd->values[0].col(k);
+    }
+    // Debugging utility
+    // void print(std::ostream& os) const { os << "gsGeometryMap (domainDim: " << domainDim() << ", targetDim: " << targetDim() << ")"; }
 
 protected:
 
