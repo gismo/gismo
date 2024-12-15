@@ -59,9 +59,9 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
 int main(int argc, char *argv[])
 {
     bool plot          = false;
-    index_t numRefine  = 5;// for local refinement:  0 means no local h-refinement
+    index_t numRefine  = 1;// for local refinement:  0 means no local h-refinement
     index_t UnifRefine = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
-    index_t numElevate = 0;
+    index_t numElevate = 1;
     index_t maxIter    = 30;
     double eps         = 1e-5; // pinalization coefficient
     double tolPicard   = 1e-8;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     //MarkingStrategy adaptRefCrit = errorFraction;
 
     // ... and parameter.
-    const real_t adaptRefParam = 0.7;
+    const real_t adaptRefParam = 0.5;
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -91,16 +91,8 @@ int main(int argc, char *argv[])
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
-    gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    // //... patch 2 (L-shape)
-    // gsMultiPatch<> mp,  mptp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1, 0.0, 0.0);
-    // mptp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
+    gsMultiPatch<> PsiPsi, mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
 
-    // ... need regularity to be at least C^1
-    mptp.degreeElevate(2);
-    for(size_t i =0; i<mptp.nPatches(); ++i)
-        mp.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mptp.patch(i)) ));
-    mp.addAutoBoundaries();
 
     //..... Test 2
     // Define  Dirichlet boundary conditions
@@ -122,7 +114,7 @@ int main(int argc, char *argv[])
     // // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
     // Manufactured density function
-    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp(( (y-0.98)**2+(x-0.899)**2  - 0.002)/0.001)) + 1/(1.+exp((y -x  - 0.25)/0.001)) - 1./(1.+exp((y - x  - 0.15)/0.001)) +  0/(1.+exp((y - 1.0)/0.001)) - 0./(1.+exp((y - 0.975)/0.001))  +  1/(1.+exp((x - 1.0)/0.001)) - 1./(1.+exp((x - 0.95)/0.001)) )",2);
+    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) + 1/(1.+exp((0.9-x)/0.01)) )",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The Initial domain is "<< mp.detail() << "\n";
@@ -148,7 +140,6 @@ int main(int argc, char *argv[])
     // where p is the highest degree in the bases
     dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
     //gsInfo << dbasis.degree(0) << " degree  \n";
-    //dbasis.degreeElevate(2);
 
     // h-refine each basis
     if (last)
@@ -162,41 +153,12 @@ int main(int argc, char *argv[])
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
-    //! [Refinement]
-
-    //! [Problem setup]
-    gsExprAssembler<> A(1,1);
-    //A.setOptions(Aopt);
-
-    gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
-    // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
-
-    // Set the geometry map
-    geometryMap G = A.getMap(mp);
-
-    // Set the discretization space
-    space u = A.getSpace(dbasis);
-
-    // Set the source term
-    auto ff = A.getCoeff(f, G);
-
-    // Solution vector and solution variable
-    gsMatrix<> solVector;
-    solution u_sol = A.getSolution(u, solVector);
-
-    //! [Problem setup] ***-------------------Initailisation for adaptive mapping ---------------------***
-    gsMultiPatch<> Psi;
-    gsBoundaryConditions<> bc;
-    bc.setGeoMap(Psi);
-    //... END Initailisation
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
@@ -212,171 +174,200 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine();
         //mp.uniformRefine();
-        Psi.uniformRefine();
+        PsiPsi.uniformRefine();
     }
-    for (int r=0; r<=numRefine; ++r)
+    //! [Refinement]
+
+    //! [Problem setup]
+    gsExprAssembler<> A(1,1);
+    //A.setOptions(Aopt);
+    gsInfo<<"Active options:\n"<< A.options() <<"\n";
+
+    // Elements used for numerical integration
+    A.setIntegrationElements(dbasis);
+    gsExprEvaluator<> ev(A);
+
+    // Set the discretization space
+    space u = A.getSpace(dbasis); 
+
+    // Set the geometry map
+    geometryMap G = A.getMap(mp);
+
+    // Set the source term
+    auto ff = A.getCoeff(f, G);
+
+    // Solution vector and solution variable
+    gsMatrix<> solVector;
+    solution u_sol = A.getSolution(u, solVector);
+    
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 2: r_refinement
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    //... nromalisation of density function
+    auto CoeffDensity{ev.integral(ff.val() * meas(G))};
+    // Initialize the system : start Computing the conductivity coeffeicient ...
+    // Compute the Neumann terms defined on physical space
+    auto g_N = A.getBdrFunction(G);
+    auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
+    // ...
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
+    //... end 
+
+    // Initialize the system :  identity mapping as initial guess
+    A.initSystem();
+    setup_time += timer.stop();
+
+    gsInfo<< "\nDoFs: " << A.numDofs() <<std::flush << "\n";
+
+    timer.restart();
+
+    A.assemble(
+    igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
+    ,
+    u*  CoeffConductivity * (-1.)*pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G) //rhs vector
+    );
+    
+    // Compute the Neumann terms defined on physical space
+    //auto g_N = A.getBdrFunction(G);
+    A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
+
+    ma_time += timer.stop();
+
+    // gsDebugVar(A.matrix().toDense());
+    // gsDebugVar(A.rhs().transpose()   );
+
+    gsInfo<< "." <<std::flush;// Assemblying done
+
+    timer.restart();
+    solver.compute( A.matrix() );
+    solVector = solver.solve(A.rhs());
+
+    slv_time += timer.stop();
+
+    gsInfo<< "." <<std::flush; // Linear solving done
+
+    // Picard loop
+    index_t NiterPicard{0};
+    gsMatrix<> sv0; //
+    solution u_lsol = A.getSolution(u, sv0);
+    for(int ip{0}; ip<=maxIter; ++ip)
     {
-        // Elements used for numerical integration
-        A.setIntegrationElements(dbasis);
-        gsExprEvaluator<> ev(A);
+        gsMultiPatch<> UU;
+        u_sol.extract(UU);
+        gsWrite(UU, "U_solution");
+        auto u_s = A.getCoeff(UU);
+        space v = A.getSpace(dbasis);
+        gsMatrix<> vsolVector;
+        solution v_sol = A.getSolution(v, vsolVector);
+        A.initSystem(2);
 
-        // Set the geometry map
-        geometryMap G = A.getMap(mp);
-
-        // Set the discretization space
-        space u = A.getSpace(dbasis);
-
+        // Obtain control points for the gradient of PsiPsi
+        A.assemble( v * v.tr() , v * igrad(u_s,G) );
+        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        
+        v_sol.extract(PsiPsi);                
+        
         // Set the geometry optimal map
-        geometryMap PP = A.getMap(Psi);  
+        geometryMap PP = A.getMap(PsiPsi);
+        auto ff = A.getCoeff(f,PP);
 
-        //*********************************************************//
+        // ...  0  dirichlet for boundaries
+        sv0 = solVector;
 
-        // dbasis.uniformRefine();
-        // // mp.uniformRefine();
-        // Psi.uniformRefine();
-
-        if ( r == 0){
-        //... nromalisation of density function
-        auto CoeffDensity{ev.integral(ff.val() * meas(G))};
-        // Initialize the system : start Computing the conductivity coeffeicient ...
-        // Compute the Neumann terms defined on physical space
-        auto g_N = A.getBdrFunction(G);
-        auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
-        // ...
-        auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
-        //... end 
-
-        // Initialize the system :  identity mapping as initial guess
+        // Initialize the system
         A.initSystem();
         setup_time += timer.stop();
-
-        gsInfo<< "\nDoFs: " << A.numDofs() <<std::flush << "\n";
-
         timer.restart();
-
-        A.assemble(
-        igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
-        ,
-        u*  CoeffConductivity * (-1.)*pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G) //rhs vector
-        );
+        // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         
+        // .. update Coeffeicient of conductivity
+        CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
+
+        // MAE system
+        A.assemble(
+        igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
+        ,
+        u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
+        );
+
         // Compute the Neumann terms defined on physical space
-        //auto g_N = A.getBdrFunction(G);
+        auto g_N = A.getBdrFunction(G);
         A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
 
-        ma_time += timer.stop();
+        ma_time += timer.stop();            
 
-        // gsDebugVar(A.matrix().toDense());
-        // gsDebugVar(A.rhs().transpose()   );
-
-        gsInfo<< "." <<std::flush;// Assemblying done
+        gsInfo<< " ." <<std::flush;// Assemblying done
 
         timer.restart();
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
-
+        
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done
 
-        // Picard loop
-        index_t NiterPicard{0};
-        gsMatrix<> sv0; //
-        solution u_lsol = A.getSolution(u, sv0);
-        for(int ip{0}; ip<=maxIter; ++ip)
-        {
-            gsMultiPatch<> UU;
-            u_sol.extract(UU);
-            gsWrite(UU, "U_solution");
-            auto u_s = A.getCoeff(UU);
-            space v = A.getSpace(dbasis);
-            gsMatrix<> vsolVector;
-            solution v_sol = A.getSolution(v, vsolVector);
-            A.initSystem(2);
-
-            // Obtain control points for the gradient of Psi
-            A.assemble( v * v.tr() , v * igrad(u_s,G) );
-            vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-            
-            v_sol.extract(Psi);                
-            
-            auto fp = A.getCoeff(f,PP);
-
-            // ...  0  dirichlet for boundaries
-            sv0 = solVector;
-
-            // Initialize the system
-            A.initSystem();
-            setup_time += timer.stop();
-            timer.restart();
-            // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
-            
-            // .. update Coeffeicient of conductivity
-            CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
-
-            // MAE system
-            A.assemble(
-            igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
-            ,
-            u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
-            );
-
-            // Compute the Neumann terms defined on physical space
-            auto g_N = A.getBdrFunction(G);
-            A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
-
-            ma_time += timer.stop();            
-
-            gsInfo<< " ." <<std::flush;// Assemblying done
-
-            timer.restart();
-            solver.compute( A.matrix() );
-            solVector = solver.solve(A.rhs());
-            
-            slv_time += timer.stop();
-
-            gsInfo<< "." <<std::flush; // Linear solving done
-
-            // omp_set_dynamic(0);     // Explicitly disable dynamic teams
-            // omp_set_num_threads(1); // Use these threads for later parallel regions
-
-            ++NiterPicard;
-            auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
-            if ( l2errRes < tolPicard || ip == maxIter ){
-                // ! end Picard loop
-                gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
-                break; 
-                } // 
-        }//for loop
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
+        ++NiterPicard;
+        auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+        if ( l2errRes < tolPicard || ip == maxIter ){
+            // ! end Picard loop
+            gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
+            break; 
+            } // 
+    }//for loop
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 3: Correct boundary
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    if (PNormalCP)
+        ProjectionNormalCPoints(PsiPsi, mp);
+    //  construct boundaries and interfaces
+    if(mp.nPatches()>1){
+    PsiPsi.addInterface(0,2,1,1);
+    PsiPsi.addInterface(0,4,2,3);
+    PsiPsi.addAutoBoundaries();
+    //PsiPsi.computeTopology();
+    }
+    PsiPsi.addAutoBoundaries();
+
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 4: Define hierarchical adaptive mapping
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    gsMultiPatch<> Psi;
+    for(size_t i =0; i<PsiPsi.nPatches(); ++i)
+        Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiPsi.patch(i)) ));
+    Psi.addAutoBoundaries();
+
+    // For simplicity, set Dirichlet boundary conditions
+    gsBoundaryConditions<> bc;
+    bc.setGeoMap(Psi);
+    bc.addCondition(0,1, condition_type::dirichlet, &Dg1,0,false);
+    // given by exact solution Dg on all boundaries:
+    for ( gsMultiPatch<>::const_biterator
+                bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
+    {
+        bc.addCondition( *bit, condition_type::dirichlet, &Dg );
+    }
+    gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
+    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+
+    //! [Refinement]
+    gsMultiBasis<> hdbasis(Psi, true);//true: poly-splines (not NURBS)
+
+    // Elevate and p-refine the basis to order p + numElevate
+    // where p is the highest degree in the bases
+    hdbasis.setDegree( hdbasis.maxCwiseDegree() + numElevate);
+    //gsInfo << hdbasis.degree(0) << " degree  \n";
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 5: local h-refinement
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+    for (int r=0; r<=numRefine; ++r)
+    {
+        //*********************************************************//
         timer.restart();
 
-        // ... correct boundary
-        if (PNormalCP)
-            ProjectionNormalCPoints(Psi, mp);
-        //  construct boundaries and interfaces
-        if(mp.nPatches()>1){
-        Psi.addInterface(0,2,1,1);
-        Psi.addInterface(0,4,2,3);
-        Psi.addAutoBoundaries();
-        //Psi.computeTopology();
-        }
-        Psi.addAutoBoundaries();
-        
-        // For simplicity, set Dirichlet boundary conditions
-        bc.addCondition(0,1, condition_type::dirichlet, &Dg1,0,false);
-        // given by exact solution Dg on all boundaries:
-        for ( gsMultiPatch<>::const_biterator
-                    bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
-        {
-            bc.addCondition( *bit, condition_type::dirichlet, &Dg );
-        }
-        gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
-        gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-        }
-        //geometryMap PP = A.getMap(Psi);    
         //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
         ma_time += timer.stop();
         // --------------- define Pde ---------------
@@ -386,7 +377,7 @@ int main(int argc, char *argv[])
 
         //! [constructAssembler]
         // Construct assembler
-        gsCDRAssembler<real_t> cdrAss( cdrPde, dbasis);
+        gsCDRAssembler<real_t> cdrAss( cdrPde, hdbasis);
         // Set stabilization flag to 1 = SUPG
         cdrAss.options().setInt("Stabilization", stabilizerCDR::SUPG);
         // Compute Dirichlet values by L2-projection
@@ -426,12 +417,17 @@ int main(int argc, char *argv[])
             gsInfo << "====== Loop " << r << " of "
                     <<numRefine<< " ======" << "\n";
 
+        gsExprEvaluator<> ev;
+        ev.setIntegrationElements(cdrAss.multiBasis());
+        // Set the geometry optimal map
+        geometryMap PP = A.getMap(Psi);
+        
         gsExprEvaluator<>::variable is = ev.getVariable(solField.fields());
         auto ms = ev.getVariable(SourceFunc, PP);
         // Recover manufactured solution for Poisson equation
         auto u_ex = ev.getVariable(s, PP);
         // Recover manufactured density function for MAE equation
-        auto fp = ev.getVariable(f, PP);
+        auto ff = ev.getVariable(f, PP);
 
 
        //! [errorComputation]
@@ -450,7 +446,7 @@ int main(int argc, char *argv[])
         gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
         // Refine the marked elements with a 1-ring of cells around marked elements
-        gsRefineMarkedElements( dbasis, elMarked, 1 );
+        gsRefineMarkedElements( hdbasis, elMarked, 1 );
         gsRefineMarkedElements( Psi, elMarked, 1 );
 
 
@@ -483,8 +479,9 @@ int main(int argc, char *argv[])
         collection.newTimeStep(&Psi);
         collection.addField(is,"numerical solution");
         collection.addField(igrad(is,PP),"gradient_numerical solution");
+        collection.addField(ihess(u_sol,G).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
-        collection.addField(fp,"Density function");
+        collection.addField(ff,"Density function");
         collection.saveTimeStep();
         collection.save();
         }
