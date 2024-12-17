@@ -59,8 +59,8 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
 int main(int argc, char *argv[])
 {
     bool plot          = false;
-    index_t numRefine  = 2;// for local refinement:  0 means no local h-refinement
-    index_t UnifRefine = 4;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
+    index_t numRefine  = 5;// for local refinement:  0 means no local h-refinement
+    index_t UnifRefine = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
     index_t numElevate = 1;
     index_t NumArMarEl = 1; // Number of ring of cells around marked elements
     index_t maxIter    = 30;
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     //MarkingStrategy adaptRefCrit = errorFraction;
 
     // ... and parameter.
-    const real_t adaptRefParam = 0.5;
+    const real_t adaptRefParam = 0.7;
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
     // // Right-hand side function
     gsFunctionExpr<> SourceFunc("0.",2);
     //Manufactured density function
-    gsFunctionExpr<> f("1.+9.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) + 1/(1.+exp((0.9-x)/0.01)) )",2);
+    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) + 1/(1.+exp((0.9-x)/0.01)) )",2);
 
 
     gsInfo<<"Source function "<< f << "\n";
@@ -433,9 +433,10 @@ int main(int argc, char *argv[])
         gsExprEvaluator<> ev;
         ev.setIntegrationElements(cdrAss.multiBasis());
         // Set the geometry optimal map
-        geometryMap PP = A.getMap(Psi);
+        geometryMap PP = ev.getMap(Psi);
         
         gsExprEvaluator<>::variable is = ev.getVariable(solField.fields());
+
         // Recover manufactured solution for Poisson equation
         auto u_ex = ev.getVariable(s, PP);
         // Recover manufactured density function for MAE equation
@@ -444,7 +445,7 @@ int main(int argc, char *argv[])
 
        //! [errorComputation]
         l2err[r]= math::sqrt( ev.integral( (u_ex - is).sqNorm() * meas(PP) ) );
-        h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex) - igrad(is,PP) ).sqNorm() * meas(PP) ));
+        h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex, PP) - igrad(is,PP) ).sqNorm() * meas(PP) ));
         if(r < numRefine){
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
@@ -453,13 +454,13 @@ int main(int argc, char *argv[])
         //! [errorComputation]
 
         //! [adaptRefinementPart]
-        // Mark elements for refinement, based on the computed local errors and
+        // Mark elements for refinement, based on the computed local a posteriori error estimate and
         // the refinement-criterion and -parameter.
         std::vector<bool> elMarked( eltErrs.size() );
         gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
         // Refine the marked elements with a N-ring of cells around marked elements
-        gsRefineMarkedElements( hdbasis, elMarked, NumArMarEl);
+        //gsRefineMarkedElements( hdbasis, elMarked, NumArMarEl);
         gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
        // Refine the marked elements with a 1-ring of cells around marked elements
@@ -488,6 +489,7 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
         collection.addField(is,"numerical solution");
         collection.addField(igrad(is,PP),"gradient_numerical solution");
