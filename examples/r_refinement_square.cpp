@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot          = false;
     index_t numRefine  = 4;// for local refinement:  0 means no local h-refinement
-    index_t UnifRefine = 2;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
-    index_t numElevate = 0;
+    index_t UnifRefine = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
+    index_t DegElevate = 2; // degree Elevation
     index_t maxIter    = 30;
     double eps         = 1e-5; // pinalization coefficient
     double tolPicard   = 1e-8;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", DegElevate);
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     //cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     // mptp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
 
     // ... need regularity to be at least C^1
-    mptp.degreeElevate(2);
+    mptp.degreeElevate(DegElevate);
     for(size_t i =0; i<mptp.nPatches(); ++i)
         mp.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mptp.patch(i)) ));
     mp.addAutoBoundaries();
@@ -128,7 +128,6 @@ int main(int argc, char *argv[])
 
     gsInfo<<"The Initial domain is "<< mp.detail() << "\n";
 
-    gsFunctionExpr<> bfunc("0",2);
     gsBoundaryConditions<> bc_mae;
     bc_mae.setGeoMap(mp);
     // For simplicity, set Neumann boundary conditions
@@ -149,16 +148,8 @@ int main(int argc, char *argv[])
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    //dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
     //gsInfo << dbasis.degree(0) << " degree  \n";
-
-    // h-refine each basis
-    if (last)
-    {
-        for (int r =0; r < numRefine; ++r)
-            dbasis.uniformRefine();
-        numRefine = 0;
-    }
 
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
@@ -177,6 +168,10 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
+
+    //! [Solver loop]
+    gsSparseSolver<>::CGDiagonal solver;
+
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
@@ -185,7 +180,7 @@ int main(int argc, char *argv[])
     geometryMap G = A.getMap(mp);
 
     // Set pow for BFO method
-    auto IGdim     = 1./G.domainDim();
+    auto IGdim     = G.domainDim();
     // Set factor for BFO method
     auto gammaMAE = factorial(G.domainDim());
 
@@ -228,9 +223,6 @@ int main(int argc, char *argv[])
     }
     //... END Initailisation
 
-    //! [Solver loop]
-    gsSparseSolver<>::CGDiagonal solver;
-
     gsVector<>  h1err(numRefine+1), l2err(numRefine+1);
     gsVector<int>  DoFPDE(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n";
@@ -261,7 +253,7 @@ int main(int argc, char *argv[])
         geometryMap PP = A.getMap(Psi);    
         // Set the discretization space // different boundary condition !
         space ru = A.getSpace(dbasis);
-        if (r<=1){
+        if (r==0){
             //*********************************************************//
 
             //dbasis.uniformRefine();
@@ -276,7 +268,7 @@ int main(int argc, char *argv[])
             auto g_N = A.getBdrFunction(G);
             auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
             // ...
-            auto CoeffConductivity{Neumann_Int/ev.integral(pow(gammaMAE* CoeffDensity/ff.val(), IGdim) * meas(G))};
+            auto CoeffConductivity{Neumann_Int/ev.integral(pow(gammaMAE* CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
             //... end  G.domainDim()+
 
             // Initialize the system :  identity mapping as initial guess
@@ -290,7 +282,7 @@ int main(int argc, char *argv[])
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
-            u*  CoeffConductivity * (-1.)*pow(gammaMAE * CoeffDensity/ff.val(), IGdim) * meas(G) //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
             );
             
             // Compute the Neumann terms defined on physical space
@@ -339,6 +331,7 @@ int main(int argc, char *argv[])
                 auto fp = A.getCoeff(f,PP);
 
                 // ...  0  dirichlet for boundaries
+                
                 sv0 = solVector;
 
                 // Initialize the system
@@ -351,13 +344,13 @@ int main(int argc, char *argv[])
                 // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
                 
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), IGdim) * meas(G));
+                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
 
                 // MAE system
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
                 ,
-                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), IGdim) * meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
                 );
                 // Compute the Neumann terms defined on physical space
                 auto g_N = A.getBdrFunction(G);
@@ -406,6 +399,7 @@ int main(int argc, char *argv[])
             gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
             gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
         }
+        gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
         //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
 
         ru.setup(bc, dirichlet::l2Projection, 0);
@@ -510,7 +504,7 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 100000);
+        collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
