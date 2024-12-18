@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 4;// for local refinement:  0 means no local h-refinement
     index_t UnifRefine = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
     index_t DegElevate = 2; // degree Elevation
+    index_t NumArMarEl = 1; // Number of ring of cells around marked elements
     index_t maxIter    = 30;
     double eps         = 1e-5; // pinalization coefficient
     double tolPicard   = 1e-8;
@@ -463,8 +464,8 @@ int main(int argc, char *argv[])
         gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
         // Refine the marked elements with a 1-ring of cells around marked elements
-        gsRefineMarkedElements( dbasis, elMarked, 1 );
-        gsRefineMarkedElements( Psi, elMarked, 1 );
+        gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
+        gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
         }
     }
     //! [Solver loop]    
@@ -508,6 +509,7 @@ int main(int argc, char *argv[])
         collection.newTimeStep(&Psi);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
+        collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
         collection.addField(fp,"Density function");
         collection.saveTimeStep();

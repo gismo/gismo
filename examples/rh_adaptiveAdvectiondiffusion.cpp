@@ -199,7 +199,6 @@ int main(int argc, char *argv[])
         //mp.uniformRefine();
         Psi.uniformRefine();
     }
-
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
 
     //! [Problem setup]
@@ -471,7 +470,6 @@ int main(int argc, char *argv[])
         gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
         // Refine the marked elements with a N-ring of cells around marked elements
-        //gsRefineMarkedElements( hdbasis, elMarked, NumArMarEl);
         gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
        // Refine the marked elements with a 1-ring of cells around marked elements
