@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot          = false;
-    index_t numRefine  = 4;// for local refinement:  0 means no local h-refinement
+    index_t numRefine  = 3;// for local refinement:  0 means no local h-refinement
     index_t UnifRefine = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
     index_t DegElevate = 2; // degree Elevation
     index_t NumArMarEl = 1; // Number of ring of cells around marked elements
@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
     double eps         = 1e-5; // pinalization coefficient
     double tolPicard   = 1e-8;
     bool last = false, export_b64 =false;
+    gsFunctionExpr<> sN("x","y",2); // FIX : Manufactured identity mapping
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
     bool PNormalCP{true};
     // --------------- adaptive refinement ---------------
@@ -105,19 +106,21 @@ int main(int argc, char *argv[])
         mp.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mptp.patch(i)) ));
     mp.addAutoBoundaries();
 
-    //..... Test 2
+    /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //..... Test 1 : POISSON EQUATION
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     // Manufactured solition
     gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
-    // // Manufactured Grad solition
-    //gsFunctionExpr<> sP("2.06115362243856e-7*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2","-2.06115362243856e-7*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2",2);
+    // convection coefficient:
+    gsMatrix<> coeff_conv{1,2};
+    // diffusion coefficient:
+    double coeff_diff = 1.;
+    // reaction coefficient:
+    double coeff_reac = 0.;
     // // Right-hand side function
     gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
 
     //..... Test 2
-    // convex function
-    //gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
-    // // Manufactured identity mapping
-    gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
     //gsFunctionExpr<> f("(1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2))))",2);
     //
@@ -178,37 +181,40 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
-    geometryMap G = A.getMap(mp);
+    geometryMap G   = A.getMap(mp);
 
     // Set pow for BFO method
-    auto IGdim     = G.domainDim();
+    auto IGdim      = G.domainDim();
     // Set factor for BFO method
-    auto gammaMAE = factorial(G.domainDim());
+    auto gammaMAE   = factorial(G.domainDim());
 
     // Set the discretization space
-    space u = A.getSpace(dbasis);
+    space u         = A.getSpace(dbasis);
 
     // Set the source term
-    auto ff = A.getCoeff(f, G);
+    auto ff         = A.getCoeff(f, G);
+
+    // Set the mesh size
+    // auto m_h        = dbasis.basis(0).getMinCellLength();
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
-    solution u_sol = A.getSolution(u, solVector);
+    solution u_sol  = A.getSolution(u, solVector);
 
     //! [Problem setup] ***-------------------Initailisation for adaptive mapping ---------------------***
     gsMultiPatch<> Psi;
-    geometryMap PP = A.getMap(Psi);    
+    geometryMap PP  = A.getMap(Psi);    
     // Set the source term for Poisson equation
-    auto SFunc = A.getCoeff(SourceFunc, PP);
+    auto SFunc      = A.getCoeff(SourceFunc, PP);
 
     // Recover manufactured solution for Poisson equation
-    auto u_ex = ev.getVariable(s, PP);
+    auto u_ex       = ev.getVariable(s, PP);
 
     // Recover manufactured density function for Poisson equation
-    auto fp = ev.getVariable(f, PP);
+    auto fp         = ev.getVariable(f, PP);
 
     // Set the discretization space // different boundary condition !
-    space ru = A.getSpace(dbasis);
+    space ru        = A.getSpace(dbasis);
     
     // Solution vector and solution variable
     gsMatrix<> rsolVector;
@@ -269,7 +275,7 @@ int main(int argc, char *argv[])
             auto g_N = A.getBdrFunction(G);
             auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
             // ...
-            auto CoeffConductivity{Neumann_Int/ev.integral(pow(gammaMAE* CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
+            auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE* CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
             //... end  G.domainDim()+
 
             // Initialize the system :  identity mapping as initial guess
@@ -283,7 +289,7 @@ int main(int argc, char *argv[])
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
-            u*  CoeffConductivity * (-1.)*pow(gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
             );
             
             // Compute the Neumann terms defined on physical space
@@ -386,7 +392,27 @@ int main(int argc, char *argv[])
             }//for loop
             // omp_set_dynamic(0);     // Explicitly disable dynamic teams
             // omp_set_num_threads(1); // Use these threads for later parallel regions
+            /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            Interpolate the last gradient mapping Psi
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+            gsMultiPatch<> UU;
+            u_sol.extract(UU);
+            gsWrite(UU, "U_solution");
+            auto u_s = A.getCoeff(UU);
 
+            //gsMultiBasis<> gbasis(dbasis);
+            //gbasis.reduceContinuity(1);
+            space v = A.getSpace(dbasis);
+            gsMatrix<> vsolVector;
+            solution v_sol = A.getSolution(v, vsolVector);
+            A.initSystem(2);
+
+            // Obtain control points for the gradient of Psi
+            A.assemble( v * v.tr() , v * igrad(u_s,G) );
+            vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+            
+            v_sol.extract(Psi);
+            //.....
             timer.restart();
 
             // ... correct boundary
@@ -412,11 +438,14 @@ int main(int argc, char *argv[])
 
         gsInfo<< "Solving PDEs " <<std::flush;
         gsInfo<< A.numDofs() <<std::flush;
+        
+        //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
 
         timer.restart();
-
         A.assemble(
-        igrad(ru, PP) * igrad(ru, PP).tr() * meas(PP) //matrix
+        coeff_diff * igrad(ru, PP) * igrad(ru, PP).tr() * meas(PP) //matrix
+        + ru * (coeff_conv * igrad(ru, PP).tr()) * meas(PP) //matrix
+        +coeff_reac * ru * ru.tr() * meas(PP) //matrix
         ,
         ru * SFunc * meas(PP) //rhs vector
         );

@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     auto g_N = A.getBdrFunction(G);
     auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
     // ...
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
     //... end 
 
     //u.setup(bc_mae, dirichlet::l2Projection, 0);
@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
     A.assemble(
     igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
     );
     
     // Compute the Neumann terms defined on physical space

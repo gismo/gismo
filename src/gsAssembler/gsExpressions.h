@@ -721,12 +721,12 @@ public:
     /// Operator() for composing with another gsMultiPatch<T>
     const gsGeometryMap & operator()(const gsMultiPatch<T>& other) const
     {
-        std::cout << "Composing maps..." << std::endl;
+        //std::cout << "Composing maps..." << std::endl;
 
         // Set the current map as the first part of the composition
         const_cast<gsGeometryMap*>(this)->m_composedMap = &other;
 
-        std::cout << "Composed map set successfully!" << std::endl;
+        //std::cout << "Composed map set successfully!" << std::endl;
 
         return *this;
     }
