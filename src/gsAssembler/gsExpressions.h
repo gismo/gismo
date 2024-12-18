@@ -612,7 +612,7 @@ class gsGeometryMap : public _expr<gsGeometryMap<T> >
     //index_t d, n;
 
     bool m_isAcross; ///< true when the patch evaluated is across an interface
-    const gsMultiPatch<T> m_composedMap; ///< Pointer to the composed map (for chaining evaluations)
+    const gsMultiPatch<T> * m_composedMap; ///< Pointer to the composed map (for chaining evaluations)
 
 public:
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
@@ -719,7 +719,20 @@ public:
     // { return m_fd->values[0].col(k); }
 
     /// Operator() for composing with another gsMultiPatch<T>
-    gsGeometryMap operator()(const gsMultiPatch<T>& other) const {
+    const gsGeometryMap & operator()(const gsMultiPatch<T>& other) const
+    {
+        std::cout << "Composing maps..." << std::endl;
+
+        // Set the current map as the first part of the composition
+        const_cast<gsGeometryMap*>(this)->m_composedMap = &other;
+
+        std::cout << "Composed map set successfully!" << std::endl;
+
+        return *this;
+    }
+/*
+    gsComposition<Scalar> operator()(const gsGeometryMap & other)
+    {
         std::cout << "Composing maps..." << std::endl;
 
         // Set the current map as the first part of the composition
@@ -727,33 +740,40 @@ public:
 
         std::cout << "Composed map set successfully!" << std::endl;
 
-        return this;
+        gsComposition<T> cc(other);
+        cc.setSource(this->m_fs);
+        return cc;
     }
+*/
+    mutable gsMatrix<T> tmp;
 
-    auto eval(const index_t k) const -> decltype(m_fd->values[0].col(k))
+    const gsMatrix<T> & eval(const index_t k) const
+    //auto eval(const index_t k) const -> decltype(m_fd->values[0].col(k))
     {
-        // if (!m_composedMap.empty())
-        // {
-        // // Recursive case: first evaluate the composed map
-        // auto intermediateResult = m_fd->values[0].col(k);
-        // //auto Result = m_fd->values[0].col(k);
-        // /*
-        // two pistes 
-        // 1. if we can compute the composition directly from a m_fd->values[0].col(k)
-        // 2. conserve the same eval and swap col outside by updating image with intermediate mapping
-        // */
-        // auto Result = m_composedMap.patch(0).eval(intermediateResult).col(k);
-        // return Result;
-        // }
-        //Case: m_composedMap is not initialized!
-        return m_fd->values[0].col(k);
+         if ( nullptr != m_composedMap )
+         {
+             //gsInfo <<"Calls comp......\n";
+             // Recursive case: first evaluate the composed map
+             auto intermediateResult = m_fd->values[0].col(k);
+             //auto Result = m_fd->values[0].col(k);
+             /*
+             // two pistes
+             // 1. if we can compute the composition directly from a m_fd->values[0].col(k)
+             // 2. conserve the same eval and swap col outside by updating image with intermediate mapping
+             // */
+             tmp = m_composedMap->patch(0).eval(intermediateResult);
+             return tmp;
+         }
+         //Case: m_composedMap is not initialized!
+         tmp = m_fd->values[0].col(k);
+         return tmp;
     }
     // Debugging utility
     // void print(std::ostream& os) const { os << "gsGeometryMap (domainDim: " << domainDim() << ", targetDim: " << targetDim() << ")"; }
 
 protected:
 
-    gsGeometryMap() : m_fs(NULL), m_fd(NULL), m_isAcross(false) { }
+    gsGeometryMap() : m_fs(NULL), m_fd(NULL), m_isAcross(false), m_composedMap(nullptr) { }
 
     void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
     void setData(const gsMapData<Scalar> & val) { m_fd = &val;}
@@ -2156,6 +2176,7 @@ GISMO_EXPR_VECTOR_EXPRESSION(det,determinant,1);
 //GISMO_EXPR_VECTOR_EXPRESSION(replicate,replicate,0);
 
 #undef GISMO_EXPR_VECTOR_EXPRESSION
+
 
 /**
    Expression for turning a vector into a diagonal matrix
