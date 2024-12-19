@@ -35,9 +35,9 @@ int main(int argc, char *argv[])
     std::string fn("pde/MongeAmpere2d_bvp.xml");
 
     gsCmdLine cmd("Tutorial on solving a nonlinear Poisson(Monge-Ampere) problem.");
-    cmd.addInt( "e", "degreeElevation",
+    cmd.addInt( "e", "numElevate",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt( "r", "numRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement",
                   last);

@@ -58,17 +58,18 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
 
 int main(int argc, char *argv[])
 {
-    bool plot          = false;
-    index_t numRefine  = 3;// for local refinement:  0 means no local h-refinement
-    index_t UnifRefine = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
-    index_t DegElevate = 2; // degree Elevation
-    index_t NumArMarEl = 1; // Number of ring of cells around marked elements
-    index_t maxIter    = 30;
-    double eps         = 1e-5; // pinalization coefficient
-    double tolPicard   = 1e-8;
-    bool last = false, export_b64 =false;
+    bool plot           = false;
+    index_t numRefine   = 3;// for local refinement:  0 means no local h-refinement
+    index_t UnifRefine  = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
+    index_t DegElevate  = 2; // degree Elevation
+    index_t NumArMarEl  = 1; // Number of ring of cells around marked elements
+    index_t maxIter     = 30;
+    double eps          = 1e-5; // pinalization coefficient
+    double tolPicard    = 1e-8;
+    double IntensityMAE = 6.;
+    bool ErrorPrint     = true, export_b64 =false;
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
-    bool PNormalCP     = true;
+    bool PNormalCP      = true;
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy...
     MarkingStrategy adaptRefCrit = PUCA;
@@ -76,15 +77,17 @@ int main(int argc, char *argv[])
     //MarkingStrategy adaptRefCrit = errorFraction;
 
     // ... and parameter.
-    const real_t adaptRefParam = 0.5;
+    const real_t adaptRefParam = 0.7;
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
-    cmd.addInt( "e", "degreeElevation",
+    cmd.addInt( "e", "DegElevate",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", DegElevate);
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  UnifRefine );
+    cmd.addInt( "l", "numRefine", "Number of local h-refinement loops",  numRefine );
+    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
+    cmd.addSwitch( "ErrorPrint", "print Error", ErrorPrint);
     //cmd.addString( "f", "file", "Input XML file", fn );
-    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -132,7 +135,7 @@ int main(int argc, char *argv[])
     // // Right-hand side function
     gsFunctionExpr<> SourceFunc("40000.0*x**2*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*x**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3 + 1.0*(75.0*pi**2*sin(pi*y) + 200)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 1.0*(40000*(y - 0.375*pi*cos(pi*y) - 0.5)**2)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 200.0*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*(y - 0.375*pi*cos(pi*y) - 0.5)**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3",2);
     // Manufactured density function
-    gsFunctionExpr<> f("1.+ 0.*exp(-100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y))**2 )",2);
+    gsFunctionExpr<> f("1.+ 6.*exp(-100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y))**2 )",2);
 
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // //..... Test 2 ADVECTION DUFFFUSION
@@ -242,13 +245,13 @@ int main(int argc, char *argv[])
     ###   Step 2: r_refinement
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     //... nromalisation of density function
-    auto CoeffDensity{ev.integral(ff.val() * meas(G))};
+    auto CoeffDensity{ev.integral((1.+IntensityMAE*ff.val()) * meas(G))};
     // Initialize the system : start Computing the conductivity coeffeicient ...
     // Compute the Neumann terms defined on physical space
     auto g_N = A.getBdrFunction(G);
     auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
     // ...
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G))};
     //... end 
 
     //u.setup(bc_mae, dirichlet::l2Projection, 0);
@@ -263,7 +266,7 @@ int main(int argc, char *argv[])
     A.assemble(
     igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G) //rhs vector
     );
     
     // Compute the Neumann terms defined on physical space
@@ -321,13 +324,13 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         
         // .. update Coeffeicient of conductivity
-        CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
+        CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
 
         // MAE system
         A.assemble(
         igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
         ,
-        u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
+        u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
         );
 
         // Compute the Neumann terms defined on physical space
@@ -520,7 +523,7 @@ int main(int argc, char *argv[])
     gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
 
-    if (!last && numRefine>0)
+    if (ErrorPrint && numRefine>0)
     {
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
               <<  ( l2err.head(numRefine).array()  /

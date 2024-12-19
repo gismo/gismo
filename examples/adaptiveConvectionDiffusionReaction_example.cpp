@@ -22,10 +22,21 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
    //! [Parse command line]
-   bool plot = false;
+   bool plot                 = false;
+   bool notAssemble          = false;
+   // Number of initial uniform refinement steps:
+   int numInitUniformRefine  = 4;
+   //! [adaptRefSettings]
+   // Number of refinement loops to be done
+   int numRefinementLoops    = 5;
 
    gsCmdLine cmd("Example for solving a convection-diffusion problem.");
    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+   cmd.addSwitch("notAssemble", "Use a solver based on predefined PDEs or assemble one manually", notAssemble);
+   cmd.addInt("l","numRefinementLoops", "Number of local h-refinement loops", numRefinementLoops);
+   cmd.addInt("u","numInitUniformRefine", "Number of uniform h-refinement loops", numInitUniformRefine);
+
+
    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
    //! [Parse command line]
 
@@ -116,17 +127,10 @@ int main(int argc, char *argv[])
 
 
    //! [initialRefinements]
-   // Number of initial uniform refinement steps:
-   int numInitUniformRefine  = 4;
-
    for (int i = 0; i < numInitUniformRefine; ++i){
      bases.uniformRefine();
      patches.uniformRefine();
     }
-
-   //! [adaptRefSettings]
-   // Number of refinement loops to be done
-   int numRefinementLoops = 5;
 
    // Specify cell-marking strategy...
    MarkingStrategy adaptRefCrit = PUCA;
@@ -139,7 +143,6 @@ int main(int argc, char *argv[])
     // error and DoFs
     gsVector<>  l2err(numRefinementLoops+1);
     gsVector<int>  DoFPDE(numRefinementLoops+1);
-    bool notAssemble= true;
 
    //! [initialRefinements]
    if (notAssemble){
