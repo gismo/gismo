@@ -59,7 +59,7 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
 int main(int argc, char *argv[])
 {
     bool plot          = false;
-    index_t numRefine  = 4;// for local refinement:  0 means no local h-refinement
+    index_t numRefine  = 3;// for local refinement:  0 means no local h-refinement
     index_t UnifRefine = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
     index_t DegElevate = 2; // degree Elevation
     index_t NumArMarEl = 1; // Number of ring of cells around marked elements
@@ -107,11 +107,7 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     // Define Stabilization method
     auto Stabilizationtype = stabilizerCDR::none;
-    // Define  Dirichlet boundary conditions
-    gsFunctionExpr<> Dg("1./(1.+exp((y - x  - 0.2)/0.01))", 2);
-    // Manufactured solition
-    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
-    // convection coefficient:
+    // convection coefficient
     gsFunctionExpr<> coeff_conv("0.","0.",2);
     // diffusion coefficient:
     gsFunctionExpr<> coeff_diff("1.","0","0","1.",2);
@@ -119,10 +115,24 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> coeff_diffMax("1.",2);
     // reaction coefficient:
     gsFunctionExpr<> coeff_reac("0",2);
+    /* *********************** Test 1 *********************** */
+    // // Define  Dirichlet boundary conditions
+    // gsFunctionExpr<> Dg("1./(1.+exp((y - x  - 0.2)/0.01))", 2);
+    // // Manufactured solition
+    // gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
+    // // // Right-hand side function
+    // gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
+    // // Manufactured density function
+    // gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01))  )",2);
+    /* *********************** Test 2 *********************** */
+    // Define  Dirichlet boundary conditions
+    gsFunctionExpr<> Dg("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))", 2);
+    // Manufactured solition
+    gsFunctionExpr<> s("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))",2);
     // // Right-hand side function
-    gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
+    gsFunctionExpr<> SourceFunc("40000.0*x**2*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*x**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3 + 1.0*(75.0*pi**2*sin(pi*y) + 200)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 1.0*(40000*(y - 0.375*pi*cos(pi*y) - 0.5)**2)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 200.0*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*(y - 0.375*pi*cos(pi*y) - 0.5)**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3",2);
     // Manufactured density function
-    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01))  )",2);
+    gsFunctionExpr<> f("1.+ 0.*exp(-100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y))**2 )",2);
 
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // //..... Test 2 ADVECTION DUFFFUSION
@@ -390,106 +400,92 @@ int main(int argc, char *argv[])
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 
-    // --------------- define Pde ---------------
-    timer.restart();
-    //! [definePde]
-    gsConvDiffRePde<real_t> cdrPde(Psi, bc, & coeff_diff,& coeff_conv, & coeff_reac, & SourceFunc);
-    //! [definePde]
-    //! [constructAssembler]
-    // Construct assembler
-    gsCDRAssembler<real_t> cdrAss( cdrPde, dbasis);
-    // Set stabilization flag to 1 = SUPG
-    cdrAss.options().setInt("Stabilization", Stabilizationtype);
-    // Compute Dirichlet values by L2-projection
-    // Caution: Interpolation does not work for locally refined (T)HB-splines!
-    cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
-    //! [constructAssembler]
-    gsInfo<< "." <<std::flush;// Assemblying done
-    ma_time += timer.stop();
+    // // Set the geometry optimal map
+    geometryMap PP    = ev.getMap(Psi);  
+
+    // Recover manufactured solution for Poisson equation
+    auto u_ex         = ev.getVariable(s, PP);
+    // Recover rhs for Poisson equation
+    auto SFunc        = ev.getVariable(SourceFunc, PP);
+    // Coeffs for advection-reaction diffusion equation
+    auto coeff_convPP = ev.getVariable(coeff_conv, PP);
+    auto coeff_diffPP = ev.getVariable(coeff_diffMax, PP);
+    auto coeff_reacPP = ev.getVariable(coeff_reac, PP);
+    // numerical solutionas Vector
+    gsMatrix<> rsolVector;
     for (int r=0; r<=numRefine; ++r)
     {
-        //*********************************************************//
-        // --------------- solving ---------------
+        // --------------- define Pde ---------------
         timer.restart();
-        //! [solverPart]
+        //! [definePde]
+        gsConvDiffRePde<real_t> cdrPde(Psi, bc, & coeff_diff,& coeff_conv, & coeff_reac, & SourceFunc);
+        //! [definePde]
+        //! [constructAssembler]
+        // Construct assembler
+        gsCDRAssembler<real_t> cdrAss( cdrPde, dbasis);
+        // Set stabilization flag to 1 = SUPG
+        cdrAss.options().setInt("Stabilization", Stabilizationtype);
+        // Compute Dirichlet values by L2-projection
+        // Caution: Interpolation does not work for locally refined (T)HB-splines!
+        cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
+        //! [constructAssembler]
+        gsInfo<< "." <<std::flush;// Assemblying done
+        ma_time += timer.stop();
         // Generate system matrix and load vector
         cdrAss.assemble();
         // Solution vector and solution variable
-        gsMatrix<> rsolVector;
+        timer.restart();
         // Solve the system
         rsolVector = gsSparseSolver<>::BiCGSTABILUT( cdrAss.matrix() ).solve( cdrAss.rhs() );
 
         slv_time += timer.stop();
         gsInfo<< "DoFs in PDEs " << cdrAss.numDofs() <<std::flush;
         DoFPDE[r] = cdrAss.numDofs();
-        gsInfo<< "." <<std::flush << "."; // Linear solving done
-
-        // Construct the solution as a scalar field
-        gsField<> solField;
+        gsField<> solField;        // Construct the solution as a scalar field
         solField = cdrAss.constructSolution(rsolVector);
 
+        ev.setIntegrationElements(dbasis);
 
-        //! [beginRefLoop]
-            gsInfo << "====== Loop " << r << " of "
-                    <<numRefine<< " ======" << "\n";
+        gsExprEvaluator<>::variable ru_sol = ev.getVariable(solField.fields());
 
-        gsExprEvaluator<> ev;
-        ev.setIntegrationElements(cdrAss.multiBasis());
-        // Set the geometry optimal map
-        geometryMap PP = ev.getMap(Psi);
-        
-        gsExprEvaluator<>::variable is = ev.getVariable(solField.fields());
+        // omp_set_dynamic(0);     // Explicitly disable dynamic teams
+        // omp_set_num_threads(1); // Use these threads for later parallel regions
 
-        // Recover manufactured solution for Poisson equation
-        auto u_ex = ev.getVariable(s, PP);
-        // Recover manufactured density function for MAE equation
-        auto ff           = ev.getVariable(f, PP);
-        auto coeff_convPP = ev.getVariable(coeff_conv, PP);
-        auto coeff_diffPP = ev.getVariable(coeff_diffMax, PP);
-        auto coeff_reacPP = ev.getVariable(coeff_reac, PP);
-
-       //! [errorComputation]
+        //! [errorComputation]
         timer.restart();
-        l2err[r]= math::sqrt(ev.integral( (u_ex - is).sqNorm() * meas(PP) ) );
-        h1err[r]= math::sqrt(ev.integral( (igrad(u_ex) - igrad(is,PP) ).sqNorm() * meas(PP) ));
+        l2err[r]= math::sqrt( ev.integral( (u_ex - ru_sol).sqNorm() * meas(PP) ) );
+        h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex) - igrad(ru_sol,PP) ).sqNorm() * meas(PP) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
 
         if(r < numRefine){
+        //! [beginRefLoop]
+            gsInfo << "====== Loop " << r << " of "
+                    <<numRefine<< " ======" << "\n";
         // --------------- error estimation/computation ---------------
+        // for test :ev.integralElWise( ( ilapl(ru_sol, PP) + SFunc ).sqNorm()*meas(PP) );
         // Get the element-wise norms.
-        ev.integralElWise( ( ilapl(is,PP) + ff).sqNorm()*meas(PP) );
-        //ev.integralElWise( ( coeff_diffPP * ilapl(is,PP) - igrad(is, PP)*coeff_convPP - coeff_reacPP * is + ff).sqNorm()*meas(PP) );
+        ev.integralElWise( ( coeff_diffPP * ilapl(ru_sol,PP) - igrad(ru_sol, PP)*coeff_convPP - coeff_reacPP * ru_sol + SFunc).sqNorm()*meas(PP) );
         const std::vector<real_t> & eltErrs  = ev.elementwise();
         //! [errorComputation]
 
         //! [adaptRefinementPart]
-        // Mark elements for refinement, based on the computed local a posteriori error estimate and
+        // Mark elements for refinement, based on the computed local errors and
         // the refinement-criterion and -parameter.
         std::vector<bool> elMarked( eltErrs.size() );
         gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
-        // Refine the marked elements with a N-ring of cells around marked elements
+        // Refine the marked elements with a 1-ring of cells around marked elements
+        gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
         gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
-       // Refine the marked elements with a 1-ring of cells around marked elements
-       gsRefineMarkedElements( cdrAss.multiBasis(), elMarked, NumArMarEl);
-       //! [adaptRefinementPart]
-
-
-       //! [repairInterfaces]
        // Call repair interfaces to make sure that the new meshes
        // match along patch interfaces.
-       cdrAss.multiBasis().repairInterfaces( Psi.interfaces() );
-       //! [repairInterfaces]
-
+       dbasis.repairInterfaces( Psi.interfaces() );
        //! [refreshAssembler]
        cdrAss.refresh();
-       //! [refreshAssembler]
         }
-       //! [Export to Paraview]
-       // Export the final solution
-       if(plot && r == numRefine){
+    if(plot && r == numRefine){
         // gsInfo<<"Storing paraview...\n";
         // // Write the computed solution to paraview files
         // gsWriteParaview<>( solField, "adaptRef", 1000, true);
@@ -500,9 +496,9 @@ int main(int argc, char *argv[])
         collection.options().setInt("plotElements.resolution", 16);
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
-        collection.addField(is,"numerical solution");
-        collection.addField(igrad(is,PP),"gradient_numerical solution");
-        collection.addField(ihess(u_sol,G).det(), "Jacobian function");
+        collection.addField(ru_sol,"numerical solution");
+        collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
+        collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
         collection.addField(ff,"Density function");
         collection.saveTimeStep();
@@ -510,7 +506,6 @@ int main(int argc, char *argv[])
         }
     }
     //! [Solver loop]    
-
 
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
@@ -537,12 +532,12 @@ int main(int argc, char *argv[])
                   h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     //! [Error and convergence rates]
-
-    //! [Export visualization in ParaView]
-    if (plot)
-    {
-       gsInfo<<"Plotting in Paraview...\n";
-       // Run paraview
+       //! [Export to Paraview]
+       // Export the final solution
+    if(plot){
+        //------------------------------------
+        gsInfo<<"Plotting in Paraview...\n";
+        // Run paraview
         gsFileManager::open("ParaviewOutput/solution.pvd");
     }
     else

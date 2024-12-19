@@ -258,7 +258,7 @@ int main(int argc, char *argv[])
     geometryMap G = A.getMap(mp);
 
     // Set pow for BFO method
-    auto IGdim     = 1./G.domainDim();
+    auto IGdim     = G.domainDim();
     // Set factor for BFO method
     auto gammaMAE = factorial(G.domainDim());
 
@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
     auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral(ff.val() * meas(G))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(gammaMAE * CoeffDensity/ff.val(), IGdim) * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
     if(adaptiveMesh)
     {
         //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
-            u*  CoeffConductivity * (-1.)*pow(gammaMAE* CoeffDensity/ff.val(), IGdim) * meas(G) //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
             );
             
             // Compute the Neumann terms defined on physical space
@@ -514,7 +514,7 @@ int main(int argc, char *argv[])
                 // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
                 
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), IGdim) * meas(G));
+                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
 //Optionally, assemble Nitsche
         gsMatrix<> mu_interfaces;
         //auto m_penalty = 1;
@@ -646,7 +646,7 @@ int main(int argc, char *argv[])
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
                 ,
-                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), IGdim) * meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space
@@ -715,7 +715,7 @@ int main(int argc, char *argv[])
             auto g_N = A.getBdrFunction(G);
             auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
             // ...
-            auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+gammaMAE * ff.val(), IGdim) * meas(G))};
+            auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * ff.val(), 1./IGdim) * meas(G))};
             //... end 
 
             // Initialize the system
@@ -729,7 +729,7 @@ int main(int argc, char *argv[])
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
-            u*  CoeffConductivity * (-1.)*pow(2.+gammaMAE* ff.val(), IGdim) * meas(G) //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* ff.val(), 1./IGdim) * meas(G) //rhs vector
             );
             
             // Compute the Neumann terms defined on physical space
@@ -773,13 +773,13 @@ int main(int argc, char *argv[])
                 // Compute the system matrix and right-hand side
 
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(ff.val() - ihess(u_sol,G).det()), IGdim) * meas(G));
+                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
 
                 // MAE system
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()  * meas(G) //matrix
                 ,
-                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(ff.val() - ihess(u_sol,G).det()), IGdim) *meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(ff.val() - ihess(u_sol,G).det()), 1./IGdim) *meas(G) //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space
@@ -866,9 +866,9 @@ int main(int argc, char *argv[])
         collection.addField(u_ex, "exact solution");
         }
         if(maxIter == 0)
-        collection.addField(CoeffConductivity * (-1.)*pow(2.+gammaMAE * CoeffDensity/ff.val(), IGdim) * meas(G), "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.)*pow(2.+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G), "MAE_rhs");
         else
-        collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), IGdim) * meas(G), "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G), "MAE_rhs");
         collection.saveTimeStep();
         collection.save();
 
