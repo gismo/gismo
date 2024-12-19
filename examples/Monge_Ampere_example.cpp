@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot           = false;
-    index_t numRefine   = 4;
+    index_t numRefine   = 3;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
     double eps          = 1e-5; // pinalization coefficient
@@ -90,13 +90,15 @@ int main(int argc, char *argv[])
     bool export_b64     = false;
     // ...PNormalCP: Correct the normal part of the mapping.
     bool PNormalCP      = true;
+    // Specify the file path
+    std::string fn("pde/quart_annulus.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
-    //cmd.addString( "f", "file", "Input XML file", fn );
+    cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
@@ -104,9 +106,6 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-
-    // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
 
     // Load the file
     gsFileData<> fd(fn);
@@ -127,18 +126,13 @@ int main(int argc, char *argv[])
     //mp.addAutoBoundaries();
 
     //..... Test 2
-    //convex function
-    gsFunctionExpr<> s("0.5*(x**2 + y**2)",2);
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
-    gsFunctionExpr<> f("1.+4./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2)))",2);
-    //gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01))  )",2);
-    // Manufactured density function
-    //gsFunctionExpr<> f("(1.+9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
-    //gsFunctionExpr<> f("(1.+5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    //gsFunctionExpr<> f("(1.+5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
-    gsInfo<<"Source function "<< f << "\n";
+    // Load the file
+    gsFunctionExpr<> f;
+    fd.getId(2003, f);
+    gsInfo<<"Density function "<< f << "\n";
 
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
@@ -286,11 +280,11 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         geometryMap PP = A.getMap(Psi);
         auto  comp = PP(mpLeft);
-        A.initSystem(2);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        v_sol.extract(Psi);
+        // A.initSystem(2);
+        // //Obtain control points for the gradient of mpLeft.comp(Psi)
+        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        // v_sol.extract(Psi);
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         auto ff = A.getCoeff(f, PP);
 
