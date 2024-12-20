@@ -333,20 +333,18 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
                                               const int &r,
                                               index_t i)
 {
-    const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb);
-    return localTaylor(*b,fun,r, i); 
-
-    // ????? dimension independent!!!!!!!
-    // if (const gsHTensorBasis<1,T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb))
-    //     return localL2(*b,fun,r,i);
-    // if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
-    //     return localL2(*b,fun,r,i);
-    // if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
-    //     return localL2(*b,fun,r,i);
-    // if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
-    //     return localL2(*b,fun,r,i);
-    // else
-    //     return localL2(bb,fun,i,r,bb.levelOf(i));
+    // const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb);
+    // return localTaylor(*b,fun,r, i); 
+    if (const gsHTensorBasis<1,T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb))
+        return localTaylor(*b,fun,r,i);
+    if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
+        return localTaylor(*b,fun,r,i);
+    if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
+        return localTaylor(*b,fun,r,i);
+    if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
+        return localTaylor(*b,fun,r,i);
+    else
+        return localTaylor(bb,fun,r,i);
 }
 
 

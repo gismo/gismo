@@ -13,22 +13,19 @@
                L. Venta Viñuela (UniPv)
     
     
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Strong enforcement) (Gomez et al., 2014)
-    ./bin/cahn-hilliard_example --plot -N 80 --plot
+    Tensor product (check flags in .xml file):
+    time./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000 
     
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) (Bracco et al., 2023)
-    ./bin/cahn-hilliard_example --plot -N 80 --nitsche --plot
-
-    Run a simple Cahn-Hilliard example with a random normal initial concentration distribution of mean 0.0 until (almost) equilibrium (Nitsche)
-    ./bin/cahn-hilliard_example --plot -N 1000 --nitsche --initial --plot
-    
+    THB (check flags in .xml file):
+    (For L2 projection in the coarsening) 
+        time ./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000 -c 0
+    (For QI based on local interpolation in the coarsening)
+        time ./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000 -c 1 
 
     -----------------------------------------------------------------------
     TODO;
     - Change hmax to a gsExprAssembler<>::element el; el.diam();
     -----------------------------------------------------------------------
-
-
 
 */
 
@@ -50,10 +47,13 @@ void solve( gsMultiPatch<T> & mp,
             index_t & maxSteps,
             index_t & plotmod,
             bool & plot,
+            bool & plot_error,
             index_t & numRefine,
             index_t & numElevate,
             index_t & verbose,
-            bool & random)
+            bool & random,
+            index_t & projection_Crs,
+            std::string out)
 {
 
     real_t assemblyTime = 0;
@@ -111,10 +111,15 @@ void solve( gsMultiPatch<T> & mp,
     // Determine maximum mesh size
     real_t hmax = 0;
     for (size_t p=0; p!=dbasis.nBases(); p++)
+    {
         hmax = math::max(hmax, dbasis.basis(p).getMaxCellLength());
+        gsInfo<<"Maximum degree of the basis: "<<dbasis.basis(p).maxDegree()<<"\n";
+    }
 
-    for (size_t p=0; p!=dbasis.nBases(); p++)
-        gsDebug<<dbasis.basis(p).maxDegree()<<"\n";
+    if (random)
+        out = out + "_random_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive"));
+    else
+        out = out + "_analytical_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive"));
 
     //! [Prepare the basis]
 
@@ -200,6 +205,7 @@ void solve( gsMultiPatch<T> & mp,
     // dC
 
     gsInfo<<"Starting.."<<"\n";
+    GISMO_ASSERT(projection_Crs<=1,"Projection method not implemented, index should be 0 (L2) or 1 (Local QI) for coarsening, but is "<<projection_Crs);
 
     gsInfo<<"Initial condition.."<<"\n";
 
@@ -229,10 +235,16 @@ void solve( gsMultiPatch<T> & mp,
     real_t Q0norm = 1, Qnorm = 10;
     real_t tol = TIMEopt.askReal("tol",1e-4);
 
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    gsParaviewCollection collection(out+"/solution", &ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
     collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
+
+    // new collection for errors
+    // gsParaviewCollection error_collection("ParaviewOutput/errors", &ev);
+    // error_collection.options().setSwitch("plotElements", true);
+    // error_collection.options().setInt("plotElements.resolution", 4);
+    // error_collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
 
     real_t dt_old = dt;
     real_t t_rho = TIMEopt.askReal("t_rho",0.9);
@@ -268,12 +280,16 @@ void solve( gsMultiPatch<T> & mp,
         mesher.options().setReal("RefineParam",MESHopt.askReal("RefineParam",0.1));
         mesher.options().setReal("CoarsenParam",MESHopt.askReal("CoarsenParam",0.1));
         mesher.options().setSwitch("Admissible",MESHopt.askSwitch("Admissible",false));
+        mesher.options().setInt("Jump",MESHopt.askInt("Jump",2));
         mesher.options().setInt("MaxLevel",numRefine);
         mesher.options().setSwitch("Absolute",MESHopt.askSwitch("Absolute",true));
         mesher.getOptions();
     }
     // ! [Load mesher options]
 
+    std::ofstream csvFile;
+    csvFile.open(out+"/dofs.csv");
+    csvFile << "TimeStep,NumDOFs,Mass\n";
 
 
     for (index_t step = 0; step!=maxSteps; step++)
@@ -426,9 +442,9 @@ void solve( gsMultiPatch<T> & mp,
                 // Invert and normalize the element-wise average (c/area), as:
                 // err = 1-|c|/a;
                 cvec.array() = 1-(cvec.array().abs()/avec.array());
-
+                
                 // Mark the elements for refinement
-                gsHBoxContainer<dim,real_t> refine;//, coarsen;
+                gsHBoxContainer<dim,real_t> refine;//, coarsen; // llamar markedRef???????? en vez de refine
                 mesher.markRef_into(cInt,refine);
 
                 // If elements are marked for refinement
@@ -496,6 +512,7 @@ void solve( gsMultiPatch<T> & mp,
             // Compute the integral of c over each element
             ev.integralElWise(meas(G) * cnew);
             std::vector<real_t> cInt = ev.elementwise();
+            //gsDebugVar(cInt.data());
             gsAsVector<real_t> cvec(cInt.data(),cInt.size());  // Temporary Eigen::Map
             // Compute the area of each element
             ev.integralElWise(meas(G));
@@ -506,10 +523,14 @@ void solve( gsMultiPatch<T> & mp,
             // err = 1-|c|/a;
             cvec.array() = 1-(cvec.array().abs()/avec.array());
 
+            // gsElementErrorPlotter<real_t> err_eh(dbasis.basis(0),cInt);
+            // const gsField<> elemError_eh( mp.patch(0), err_eh, true );
+            // gsWriteParaview<>( elemError_eh, "error_elem_ref", 10000, false);
+
             // Coarsen everything above threshold (opposite of refinement)
             gsHBoxContainer<dim,real_t> coarsen;
-            mesher.markCrs_into(cInt,coarsen);
-
+            mesher.markCrs_into(cInt,coarsen); // includes admissibility
+            
             // If elements are marked for refinement
             if (coarsen.totalSize()!=0)
             {
@@ -522,22 +543,39 @@ void solve( gsMultiPatch<T> & mp,
                 // Create the geometry objects
                 gsGeometry<>::uPtr Cnew_ = dbasis.basis(0).makeGeometry(give(CnewF));
                 gsGeometry<>::uPtr dCnew_ = dbasis.basis(0).makeGeometry(give(dCnewF));
-
+                
+                // save the geometry directly 
                 gsMultiBasis<> fine_basis = dbasis.basis(0);
 
                 // Refine dbasis
                 if (verbose>1) gsInfo<<"Basis before coarsening:\n "<<dbasis.basis(0)<<"\n";
                 mesher.unrefine(coarsen);
                 if (verbose>1) gsInfo<<"Basis after coarsening:\n "<<dbasis.basis(0)<<"\n";
-
                 // Project the old and new solutions onto the new basis
                 clock.restart();
-                // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
-                // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
+                
+                //  ==================== Coarsening projection ====================
+                if (projection_Crs == 0)
+                {
+                    gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*Cnew_,mp,CnewF);
+                    gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*dCnew_,mp,dCnewF);
+                }
+                else if (projection_Crs == 1)
+                {
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
+                }
+                else if (projection_Crs == 2)
+                {
+                    gsQuasiInterpolate<real_t>::localTaylor(dbasis.basis(0),*Cnew_,dbasis.basis(0).maxDegree(),CnewF);
+                    gsQuasiInterpolate<real_t>::localTaylor(dbasis.basis(0),*dCnew_,dbasis.basis(0).maxDegree(),dCnewF);
+                }
+                // ================================================================
 
-                // Input: coarse basis, fine geometry (to get coeffs), result (projected on coarse mesh)
-                gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*Cnew_,mp,CnewF);
-                gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*dCnew_,mp,dCnewF);
+                // new
+                A.initSystem();
+                auto f = A.getCoeff(*Cnew_); // gsexpression
+
                 projectionTime += clock.stop();
 
                 // Setup the space to obtain a new DoF mapper
@@ -570,22 +608,33 @@ void solve( gsMultiPatch<T> & mp,
             collection.addField(cnew,"numerical solution");
             gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
             collection.saveTimeStep();
+            real_t mass = ev.integral(meas(G)*cnew);
+            csvFile << step << "," << A.numDofs() <<"," << mass <<"\n";
         }
     }
     if (plot)
-    {
         collection.save();
-    }
+    // else if (plot_error)
+    //     error_collection.save();
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
+                  "file containing the solution.\n";    
 
+
+    csvFile << "TOTAL COMPUTATIONAL TIMES, Value\n";
+    csvFile << "Assembly  :" << assemblyTime << "\n";
+    csvFile << "Solver    :" << solverTime << "\n";
+    csvFile << "Projection:" << projectionTime << "\n";
+    csvFile << "Total     :" << assemblyTime + solverTime + projectionTime << "\n";
+    csvFile << "NSolver   :" << nSolves << "\n";
 
     gsInfo<<"[CLOCK] --- Time for assembly: "<<assemblyTime<<" [s]\n";
-    gsInfo<<"[CLOCK] --- Time for solver: "<<solverTime<<" [s]\n";
+    gsInfo<<"[CLOCK] --- Time for solver  : "<<solverTime<<" [s]\n";
     gsInfo<<"[CLOCK] --- Time for projection: "<<projectionTime<<" [s]\n";
     gsInfo<<"[CLOCK] --- Number of solves: "<<nSolves<<"\n";
 
+    csvFile.close();
+    std::cout << "Data saved to" + out + ".csv"<< std::endl;
 }
 
 
@@ -593,17 +642,17 @@ int main(int argc, char *argv[])
 {
     real_t dt = 1e-3;
     index_t maxSteps = 10;
-
     index_t plotmod = 1;
 
     //! [Parse command line]
     bool plot = false;
+    bool plot_error = false;
     index_t numRefine  = 1;
     index_t numElevate = 1;
-
     index_t verbose = 1;
     bool random = false;
-
+    index_t projection_Crs = 0;
+    std::string out("output");
     std::string fn("pde/cahn_hilliard_bvp.xml");
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
@@ -616,7 +665,11 @@ int main(int argc, char *argv[])
     cmd.addInt ( "v", "verbose", "Verbosity level",  verbose );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("ploterror", "Create a ParaView visualization file with the projection errors", plot_error);
     cmd.addSwitch("random", "Random initial condition of the CH problem", random);
+    cmd.addInt("c", "projcoars", "Projection method for coarsening", projection_Crs);
+    cmd.addString( "o", "output", "Output directory", out);
+
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -656,9 +709,9 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     if (mp.geoDim()==2)
-        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, numRefine, numElevate, verbose, random);
+        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs,out);
     else if (mp.geoDim()==3)
-        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, numRefine, numElevate, verbose, random);
+        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs,out);
     else
         GISMO_ERROR("Only 2D and 3D problems are supported.");
 

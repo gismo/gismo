@@ -1103,6 +1103,7 @@ void gsAdaptiveMeshing<d,T>::getOptions()
 
     m_admissible = m_options.getSwitch("Admissible");
     m_m = m_options.getInt("Jump");
+    GISMO_ASSERT(m_m>=2, "Jump parameter m should be >=2, but is "<<m_m);
 
     m_alpha=m_options.askInt("Convergence_alpha",-1);
     m_beta=m_options.askInt("Convergence_beta",-1);
