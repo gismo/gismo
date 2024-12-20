@@ -303,12 +303,6 @@ public:
     }
 
     // Look at gsBasis class for documentation
-    typename gsBasis<T>::domainIter makeDomainIterator() const;
-
-    // Look at gsBasis class for documentation
-    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const;
-
-    // Look at gsBasis class for documentation
     virtual typename gsGeometry<T>::uPtr interpolateAtAnchors(gsMatrix<T> const& vals) const;
 
     /// Interpolates values on a tensor-grid of points, given in

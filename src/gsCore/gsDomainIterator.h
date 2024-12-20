@@ -97,6 +97,12 @@ public:
         return m_domainIter->id() != other.id();
     }
 
+    /// Inequality operator to compare two iterators
+    bool operator<(const gsDomainIteratorWrapper& other) const
+    {
+        return m_domainIter->id() < other.id();
+    }
+
     /// Increment operator to proceed to the next element
     gsDomainIteratorWrapper& operator++()
     {
@@ -145,6 +151,29 @@ public:
 
     const gsVector<T>& upperCorner() const
     { return m_domainIter->upperCorner(); }
+
+    // REMOVE
+    GISMO_DEPRECATED
+    const gsVector<T>& centerPoint() const
+    { return m_domainIter->centerPoint(); }
+
+    const T getPerpendicularCellSize() const
+    { return m_domainIter->getPerpendicularCellSize(); }
+
+    bool isBoundaryElement() const
+    { return m_domainIter->isBoundaryElement(); }
+
+    T getCellSize() const
+    { return m_domainIter->getCellSize(); }
+
+    T getMinCellLength() const
+    { return m_domainIter->getMinCellLength(); }
+
+    T getMaxCellLength() const
+    { return m_domainIter->getMaxCellLength(); }
+
+    T volume() const
+    { return m_domainIter->volume(); }
 
 public:
     /// Returns the element id

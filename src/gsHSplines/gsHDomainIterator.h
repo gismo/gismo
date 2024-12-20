@@ -84,8 +84,6 @@ public:
             if (this->m_isGood)
                 updateElement();
         }
-
-        ++m_id; //increment id
         return this->m_isGood;
     }
 
@@ -102,7 +100,6 @@ public:
         if (this->m_isGood)
             updateElement();
 
-        m_id += increment; //increment id
         return this->m_isGood;
     }
 
@@ -110,7 +107,6 @@ public:
     /// iteration through all boundary elements.
     void reset()
     {
-        m_id = 0;
         const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
         m_leaf = hbs->tree().beginLeafIterator();
         updateLeaf();
@@ -225,9 +221,6 @@ public:
 #   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 #   undef Eigen
-
-protected:
-    using gsDomainIterator<T>::m_id;
 
 private:
 

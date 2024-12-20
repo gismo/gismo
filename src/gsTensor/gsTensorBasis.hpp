@@ -887,20 +887,6 @@ void gsTensorBasis<d,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> 
 }
 
 template<short_t d, class T>
-typename gsTensorBasis<d,T>::domainIter
-gsTensorBasis<d,T>::makeDomainIterator() const
-{
-    return this->domain()->beginAll();
-}
-
-template<short_t d, class T>
-typename gsTensorBasis<d,T>::domainIter
-gsTensorBasis<d,T>::makeDomainIterator(const boxSide & s) const
-{
-    return this->domain()->beginBdr(s);
-}
-
-template<short_t d, class T>
 typename gsGeometry<T>::uPtr
 gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 {
@@ -908,7 +894,7 @@ gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 
     for (short_t i = 0; i < d; ++i) // for all coordinate bases
         m_bases[i]->anchors_into(grid[i]);
-    
+
     return interpolateGrid(vals,grid);
 }
 

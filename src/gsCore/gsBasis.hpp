@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBasisFun.h>
+#include <gsCore/gsDomain.h>
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsGeometry.h>
@@ -488,15 +489,17 @@ template<class T>
 typename gsBasis<T>::uPtr gsBasis<T>::tensorize(const gsBasis &) const
 { GISMO_NO_IMPLEMENTATION }
 
+GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginAll()
 template<class T>
 typename gsBasis<T>::domainIter
 gsBasis<T>::makeDomainIterator() const
-{ GISMO_NO_IMPLEMENTATION }
+{ return this->domain()->beginAll(); }
 
+GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginBdr()
 template<class T>
 typename gsBasis<T>::domainIter
 gsBasis<T>::makeDomainIterator(const boxSide &) const
-{ GISMO_NO_IMPLEMENTATION }
+{ return this->domain()->beginBdr(s); }
 
 template<class T>
 size_t gsBasis<T>::numElements(boxSide const &) const
@@ -662,11 +665,10 @@ void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
 template<class T>
 T gsBasis<T>::getMinCellLength() const
 {
-    const domainIter it = this->makeDomainIterator();
     T h = 0;
-    for (; it->good(); it->next() )
+    for (domainIter it = this->domain()->beginAll(); it!=this->domain()->endAll(); ++it )
     {
-        const T sz = it->getMinCellLength();
+        const T sz = it.getMinCellLength();
         if ( sz < h || h == 0 ) h = sz;
     }
     return h;
@@ -675,11 +677,9 @@ T gsBasis<T>::getMinCellLength() const
 template<class T>
 T gsBasis<T>::getMaxCellLength() const
 {
-    const domainIter it = this->makeDomainIterator();
-    T h = 0;
-    for (; it->good(); it->next() )
+    for (domainIter it = this->domain()->beginAll(); it!=this->domain()->endAll(); ++it )
     {
-        const T sz = it->getMaxCellLength();
+        const T sz = it.getMaxCellLength();
         if ( sz > h ) h = sz;
     }
     return h;
