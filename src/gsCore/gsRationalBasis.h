@@ -257,7 +257,7 @@ public:
       }
     */
 
-    gsDomain<T> * domain() const { return m_src->domain(); }
+    memory::shared_ptr<gsDomain<T> > domain() const { return m_src->domain(); }
 
     void anchors_into(gsMatrix<T> & result) const
     { return m_src->anchors_into(result); }

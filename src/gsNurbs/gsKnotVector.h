@@ -117,6 +117,8 @@ public: // typedefs
     typedef memory::unique_ptr< gsKnotVector<T> > uPtr;
     typedef memory::shared_ptr< gsKnotVector<T> > Ptr;
 
+    typedef gsDomainIteratorWrapper<T> domainIter;
+
 public: // iterator ends
 
     /// Returns iterator pointing to the beginning of the repeated knots.
@@ -158,15 +160,14 @@ public: // iterator ends
 
     // iterator
 
-    // NOTE: problem with the name (domainBegin not possible)
-    typename gsDomainIterator<T>::uPtr begin(index_t i, const boxSide s = boundary::none) const override
+    domainIter beginAll() const override
     {
         return gsDomainIterator<T>::uPtr(new gsKnotDomainIterator<T>(*this));
     }
-
-    typename gsDomainIterator<T>::uPtr end(index_t i, const boxSide s = boundary::none) const override
+    
+    domainIter beginBdr(const boxSide   bs) const override
     {
-        return gsDomainIterator<T>::uPtr(new gsDomainIteratorEnd<T>(this->numElements(),s));
+        return gsDomainIterator<T>::uPtr(new gsKnotDomainIterator<T>(*this));
     }
 
 public: // constructors

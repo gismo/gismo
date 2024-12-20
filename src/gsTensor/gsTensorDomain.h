@@ -32,18 +32,10 @@ template<class T, int D>
 class gsTensorDomain : public gsDomain<T>
 {
 private:
-    typedef typename gsDomainIterator<T>::uPtr domainIter;
+    typedef gsDomainIteratorWrapper<T> domainIter;
+    typedef typename gsKnotVector<T>::const_uiterator knotIter;
 
-public:
-
-    // gsTensorDomain(const std::vector<gsKnotVector<T> *> & KVs)
-    // :
-    // {
-    //     GISMO_ASSERT(KVs.size() == D, "Number of knot vectors must match the dimension of the domain.");
-    //     m_knotVectors.reserve(D);
-    //     for (index_t i = 0; i < D; ++i)
-    //         m_knotVectors.push_back(memory::make_shared_not_owned(KVs[i]));
-    // }
+public: // constructors
 
     gsTensorDomain(const std::vector<typename gsDomain<T>::Ptr> & KVs)
     :
@@ -52,18 +44,19 @@ public:
         GISMO_ASSERT(KVs.size() == D, "Number of domains must match the dimension of the domain.");
     }
 
-    typename gsDomainIterator<T>::uPtr begin(index_t i, const boxSide s = boundary::none) const override
+public: // iterators
+
+    virtual domainIter beginAll() const
     {
-        return ( s == boundary::none ?
-                 domainIter(new gsTensorDomainIterator<T,D>(*this)) :
-                 domainIter(new gsTensorDomainBoundaryIterator<T,D>(*this, s))
-        );
+        return domainIter(new gsTensorDomainIterator<T,D>(*this));
     }
 
-    typename gsDomainIterator<T>::uPtr end(index_t i, const boxSide s = boundary::none) const override
+    domainIter beginBdr(const boxSide bs) const override
     {
-        return domainIter(new gsDomainIteratorEnd<T>(this->numElements(),s));
+        return domainIter(new gsTensorDomainBoundaryIterator<T,D,knotIter>(*this, bs));
     }
+
+public: // more members
 
     // Look at gsBasis class for a description
     size_t numElements(boxSide const & s = boundary::none) const override
@@ -72,7 +65,7 @@ public:
         size_t nElem = 1;
         for (short_t dim = 0; dim < D; ++dim)
         {
-            if(dim == dir && s!=boundary::none)
+            if(s!=boundary::none && dim == dir)
                 continue;
             nElem *= m_knotVectors[dim]->numElements();
         }
@@ -107,11 +100,6 @@ public:
     {
         return m_knotVectors[i];
     }
-
-    // auto breaksEnd(index_t i)
-    // {
-    //     return m_knotVectors[i]->uEnd();
-    // }
 
 protected:
     // NOTE: change vector to array?

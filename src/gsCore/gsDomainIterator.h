@@ -14,8 +14,10 @@
 #pragma once
 
 //#include <gsCore/gsBasis.h> // todo: remove
-#include <gsCore/gsDomain.h>
 #include <gsCore/gsBoundary.h>
+
+
+template<class T> class gsDomain;
 
 namespace gismo
 {
@@ -61,11 +63,102 @@ namespace gismo
  *
  */
 
+template <class T>
+class gsDomainIteratorWrapper
+{
+    typedef memory::unique_ptr< gsDomainIterator<T> > uPtr;
+    uPtr m_domainIter;
+
+public:
+    gsDomainIteratorWrapper(uPtr _iter) : m_domainIter(give(_iter))
+    { }
+
+    gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr) : m_domainIter(_itptr)
+    { }
+
+    gsDomainIteratorWrapper(gsDomainIteratorWrapper && _other) : m_domainIter(give(_other.m_domainIter))
+    { }
+
+    gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other)
+    {
+        m_domainIter = give(_other.m_domainIter);
+        return *this;
+    }
+
+    /// Equality operator to compare two iterators
+    bool operator==(const gsDomainIteratorWrapper& other) const
+    {
+        return m_domainIter->id() == other.id();
+    }
+
+    /// Inequality operator to compare two iterators
+    bool operator!=(const gsDomainIteratorWrapper& other) const
+    {
+        return m_domainIter->id() != other.id();
+    }
+
+    /// Increment operator to proceed to the next element
+    gsDomainIteratorWrapper& operator++()
+    {
+        m_domainIter->next();
+        m_domainIter->nextId();
+        return *this;
+    }
+
+    /// Decrement operator to proceed to the next element
+    gsDomainIteratorWrapper& operator--()
+    {
+        m_domainIter->prev();
+        m_domainIter->prevId();
+        return *this;
+    }
+
+    /// Incremental operator to proceed to the next element
+    gsDomainIteratorWrapper& operator+(index_t k)
+    {
+        m_domainIter->next(k);
+        m_domainIter->nextId(k);
+        return *this;
+    }
+
+    /// Decrement operator to proceed to the next element
+    gsDomainIteratorWrapper& operator-(index_t k)
+    {
+        m_domainIter->prev(k);
+        m_domainIter->prevId(k);
+        return *this;
+    }
+
+    /// Equality operator to compare two iterators
+    size_t operator-(const gsDomainIteratorWrapper& other) const
+    { return id() - other.id(); }
+
+    void reset()
+    {
+        m_domainIter->reset();
+        m_domainIter->resetId();
+    }
+public:
+
+    const gsVector<T>& lowerCorner() const
+    { return m_domainIter->lowerCorner(); }
+
+    const gsVector<T>& upperCorner() const
+    { return m_domainIter->upperCorner(); }
+
+public:
+    /// Returns the element id
+    inline size_t id() const { return m_domainIter->id(); }
+
+    inline boxSide side() const {return m_domainIter->m_side;}
+};
 
 
 template <class T>
 class gsDomainIterator
 {
+    friend class gsDomainIteratorWrapper<T>;
+
 public:
     /// Shared pointer for gsDomainIterator
     typedef memory::shared_ptr< gsDomainIterator > Ptr;
@@ -74,17 +167,17 @@ public:
 
 public:
 
-    gsDomainIterator( ) : m_basis(NULL), m_isGood( true ), m_id(0) { }
+    gsDomainIterator(index_t _id = 0) : m_basis(NULL), m_isGood( true ), m_id(_id) { }
 
     /// \brief Constructor using a basis
-    gsDomainIterator( const gsBasis<T>& basisParam, const boxSide & s = boundary::none)
-        : center( gsVector<T>::Zero(basisParam.dim()) ), m_basis( &basisParam ),
-          m_isGood( true ), m_side(s), m_id(0)
+    gsDomainIterator( const gsDomain<T>& _dom, const boxSide & _bs = boundary::none)
+    : m_domain(&_dom), m_side(_bs),
+      m_isGood( true ), m_id(0)
     { }
 
     virtual ~gsDomainIterator() { }
-
-public:
+    
+private:
 
     /** @brief Proceeds to the next element.
      *
@@ -97,37 +190,20 @@ public:
     /// \brief Proceeds to the next element (skipping \p increment elements).
     virtual bool next(index_t increment) = 0;
 
+    virtual bool prev() { GISMO_NO_IMPLEMENTATION };
+
+    virtual bool prev(index_t decrement) { GISMO_NO_IMPLEMENTATION };
+
     /// Resets the iterator so that it points to the first element
     virtual void reset()
     {
         GISMO_NO_IMPLEMENTATION
     }
 
-    /// Equality operator to compare two iterators
-    bool operator==(const gsDomainIterator& other) const
-    {
-        return m_id == other.m_id;
-    }
-
-    /// Inequality operator to compare two iterators
-    bool operator!=(const gsDomainIterator& other) const
-    {
-        return m_id != other.m_id;
-    }
-
-    /// Incremental operator to proceed to the next element
-    gsDomainIterator& operator++()
-    {
-        this->next();
-        return *this;
-    }
-
-    /// Incremental operator to proceed to the next element
-    gsDomainIterator& operator+(index_t k)
-    {
-        this->next(k);
-        return *this;
-    }
+protected:
+    inline void resetId  () { m_id = 0;}
+    inline void nextId(index_t _k = 1) { m_id += _k; }
+    inline void prevId(index_t _k = 1) { m_id -= _k; }
 
 public:
 
@@ -218,7 +294,7 @@ public:
     T volume() const
     { return (upperCorner() - lowerCorner()).prod(); }
 
-    /// Returns the number of elements.
+    /// Returns the number of elements. --REMOVE 
     virtual size_t numElements() const
     {
         //\todo Remove this implementation. Probably using a shallow
@@ -227,28 +303,24 @@ public:
         // Buggy, and probably a terrible implementation,
         // but needed and therefore can be useful
         // sometimes.
-        typename gsBasis<T>::domainIter domIter = m_basis->makeDomainIterator(m_side);
-
-        size_t numEl = 0;
-        for (; domIter->good(); domIter->next(), numEl++){}
-
-        return numEl;
+        return m_domain->numElements();
     }
 
 
     inline boxSide side() const {return m_side;}
 
-public:
-
 protected:
 
-    gsDomain<T> * m_domain;
+    const gsDomain<T> * m_domain;
 
     // \todo patchSide
     boxSide m_side;
 
+private:
     size_t m_id;
 
+protected:
+    
     //// REMOVE
 
     /// Coordinates of a central point in the element (in the parameter domain).
@@ -272,17 +344,15 @@ private:
 template <class T>
 class gsDomainIteratorEnd : public gsDomainIterator<T>
 {
-    using gsDomainIterator<T>::m_id;
     using gsDomainIterator<T>::m_side;
 
 public:
 
     explicit gsDomainIteratorEnd(size_t id, boxSide s = boundary::none)
     :
-    gsDomainIterator<T>()
+    gsDomainIterator<T>(id)
     {
         m_side = s;
-        m_id =id;
     }
 
     virtual bool next() override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }

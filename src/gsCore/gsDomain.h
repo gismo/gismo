@@ -57,6 +57,8 @@ public:
     typedef typename memory::shared_ptr<gsDomain<T> > Ptr;
     typedef typename memory::unique_ptr<gsDomain<T> > uPtr;
 
+    typedef gsDomainIteratorWrapper<T> domainIterWrapper;
+    
     virtual ~gsDomain() { }
 
 #if EIGEN_HAS_RVALUE_REFERENCES && EIGEN_GNUC_AT_MOST(4,7) && !EIGEN_COMP_PGI
@@ -103,14 +105,50 @@ public:
 
      */
 
+public: // Domain element iterators
+
+    virtual domainIterWrapper beginAll() const = 0;
+
     /** @brief Iterator over the elements of the domain.
      *
      * @param i The index of the domain.
      * @param s The side of the domain (optional).
      */
-    virtual typename gsDomainIterator<T>::uPtr begin(index_t i, const boxSide s = boundary::none) const = 0;
-    virtual typename gsDomainIterator<T>::uPtr end  (index_t i, const boxSide s = boundary::none) const = 0;
+    // Default implementation for one patch
+    virtual domainIterWrapper beginAt(index_t k, const boxSide bs = boundary::none) const
+    {
+        GISMO_ASSERT(0==k, "This is a one-piece domain.");
+        GISMO_UNUSED(k);
+        return beginAll();
+    }
 
+    virtual domainIterWrapper beginBdr (const boxSide   bs) const = 0;
+
+    virtual domainIterWrapper endAll() const
+    {
+        return domainIterWrapper(new gsDomainIteratorEnd<T>(this->numElements()));
+    }
+
+    // Default implementation for one patch
+    virtual domainIterWrapper endAt(index_t k, const boxSide bs = boundary::none) const
+    {
+        GISMO_ASSERT(0==k, "This is a one-piece domain.");
+        GISMO_UNUSED(k);
+        return endAll();
+    }
+
+    // Default implementation for one patch
+    domainIterWrapper endBdr(const boxSide bs) const
+    {
+        return domainIterWrapper(new gsDomainIteratorEnd<T>(this->numElements(bs), bs));
+    }
+
+    // for multipatch
+    virtual domainIterWrapper beginIfc(const boundaryInterface bi) const
+    {GISMO_NO_IMPLEMENTATION}
+    virtual domainIterWrapper endIfc  (const boundaryInterface bi) const
+    {GISMO_NO_IMPLEMENTATION}
+    
     /** @brief Dimension of the domain
     */
     virtual short_t dim() const
@@ -134,7 +172,7 @@ public:
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
-        os<<"Domain with dimennsion "<<dim()<<".";
+        os<<"Domain of dimennsion "<<dim()<<".";
         return os;
     }
 }; // class gsDomain

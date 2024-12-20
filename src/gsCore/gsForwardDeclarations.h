@@ -120,6 +120,7 @@ template <class T=real_t>                class gsSurface;
 template <class T=real_t>                class gsVolume;
 template <class T=real_t>                class gsBulk;
 
+template <class T=real_t>                class gsDomainIteratorWrapper;
 template <class T=real_t>                class gsDomainIterator;
 
 template <class T = real_t, int D=-1>    class gsTensorDomainIterator;

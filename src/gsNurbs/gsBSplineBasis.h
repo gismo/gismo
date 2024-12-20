@@ -583,12 +583,12 @@ public:
 
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
-        return m_knots.begin(0);
+        return m_knots.beginAll();
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
-        return m_knots.begin(0,s);
+        return m_knots.beginBdr(s);
     }
 
     /// @brief Moves the knot vectors to enforce periodicity.

@@ -31,9 +31,12 @@ namespace gismo
 // Documentation in gsDomainIterator.h
 
 template<class T, int D, typename uiter>
-//template<class T, int D=Dynamic, typename uiter = typename gsKnotVector<T>::const_uiterator>
 class gsTensorDomainBoundaryIterator : public gsDomainIterator<T>
 {
+    typedef gsDomainIteratorWrapper<T> domainIterWrapper;
+    //typedef typename gsDomainIterator<T>::uPtr domainIter;
+    using gsDomainIterator<T>::uPtr;
+    using gsDomainIterator<T>::Ptr;
 public:
 
     gsTensorDomainBoundaryIterator(const gsTensorDomain<T,D> & domain, const boxSide & s)
@@ -52,24 +55,25 @@ public:
 
         for (int i=0; i < dir; ++i)
         {
-            meshEnd[i]   = domain.component(i)->end();
-            meshStart[i] = curElement[i] = domain.component(i)->begin();
+            meshEnd[i]    = give(domain.component(i)->endAll());
+            meshStart[i]  = give(domain.component(i)->beginAll());
+            curElement[i] = give(domain.component(i)->beginAll());
 
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
         }
 
         // Fixed direction
-        meshEnd[dir]    = ( par ? domain.component(dir)->end() - 1 : domain.component(dir)->begin() + 1 );
-        curElement[dir] =
-        meshStart[dir]  = ( par ? domain.component(dir)->end() - 2 : domain.component(dir)->begin()     );
-        tindex = curElement[dir] - domain.component(dir)->begin();
+        meshEnd[dir]    = ( par ? give(domain.component(dir)->endAll() - 1) : give(domain.component(dir)->beginAll() + 1) );
+        curElement[dir] = ( par ? give(domain.component(dir)->endAll() - 2) : give(domain.component(dir)->beginAll()    ) );
+        meshStart[dir]  = ( par ? give(domain.component(dir)->endAll() - 2) : give(domain.component(dir)->beginAll()    ) );
+        tindex = curElement[dir] - domain.component(dir)->beginAll();
 
         for (int i=dir+1; i < d; ++i)
         {
-            meshEnd[i]   = domain.component(i)->end() - 1;
-            meshStart[i] = curElement[i] = domain.component(i)->begin();
-
+            meshEnd[i]    = give(domain.component(i)->endAll() - 1);
+            meshStart[i]  = give(domain.component(i)->beginAll());
+            curElement[i] = give(domain.component(i)->beginAll());
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
         }
@@ -81,9 +85,8 @@ public:
 
     gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boxSide & s )
     :
-    gsTensorDomainBoundaryIterator(static_cast<const gsTensorDomain<T,D>&>(b.domain()), s)
-    {
-    }
+    gsTensorDomainBoundaryIterator(static_cast<const gsTensorDomain<T,D>&>(*b.domain()), s)
+    { }
 
     // ---> Documentation in gsDomainIterator.h
     // proceed to the next element; returns true if end not reached yet
@@ -235,13 +238,13 @@ private:
 
 
     // First mesh-line on the tensor grid
-    gsVector<uiter, D> meshStart;
+    gsVector<domainIterWrapper, D> meshStart;
 
     // Last mesh-line on the tensor grid
-    gsVector<uiter, D> meshEnd;
+    gsVector<domainIterWrapper, D> meshEnd;
 
     // Current element as pointers to it's supporting mesh-lines
-    gsVector<uiter, D> curElement;
+    gsVector<domainIterWrapper, D> curElement;
 
     // parameter coordinates of current grid cell
     gsVector<T> lower, upper;

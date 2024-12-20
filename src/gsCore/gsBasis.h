@@ -92,7 +92,7 @@ public:
 
     static const bool IsRational = false;
 
-    typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
+    typedef gsDomainIteratorWrapper<T> domainIter;
 
     virtual ~gsBasis();
 

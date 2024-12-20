@@ -33,7 +33,8 @@ template<class T, int D>
 class gsTensorDomainIterator : public gsDomainIterator<T>
 {
 private:
-    typedef typename gsDomainIterator<T>::uPtr domainIter;
+    //typedef typename gsDomainIterator<T>::uPtr domainIter;
+    typedef gsDomainIteratorWrapper<T> domainIterWrapper;
 
 public:
 
@@ -50,9 +51,9 @@ public:
 
         for (int i=0; i < D; ++i)
         {
-            meshEnd[i]    = domain.component(i)->end(0);
-            meshStart[i]  = domain.component(i)->begin(0);
-            curElement[i] = domain.component(i)->begin(0);
+            meshEnd[i]    = give(domain.component(i)->endAll()  );
+            meshStart[i]  = give(domain.component(i)->beginAll());
+            curElement[i] = give(domain.component(i)->beginAll());
 
             if (meshEnd[i] == meshStart[i])
                 m_isGood = false;
@@ -105,7 +106,6 @@ public:
         if (m_isGood)
         {
             update();
-            ++m_id; //increment id
         }
         return m_isGood;
     }
@@ -118,7 +118,6 @@ public:
         if (m_isGood)
         {
             update();
-            m_id += increment; //increment id
         }
         return m_isGood;
     }
@@ -126,7 +125,6 @@ public:
     // Documentation in gsDomainIterator.h
     void reset()
     {
-        m_id = 0;
         for (index_t i = 0; i < D; ++i)
             curElement[i]->reset();
 
@@ -185,9 +183,9 @@ private:
     {
         for (int i = 0; i < D; ++i)
         {
-            lower[i]  = curElement[i]->lowerCorner();
-            upper[i]  = curElement[i]->upperCorner();
-            center[i] = curElement[i]->center;
+            lower[i]  = curElement[i].lowerCorner().value();
+            upper[i]  = curElement[i].upperCorner().value();
+            center[i] = ( upper[i] - lower[i] ) / 2;
         }
     }
 
@@ -219,15 +217,14 @@ public:
     using gsDomainIterator<T>::center;
 
 protected:
-    using gsDomainIterator<T>::m_id;
     using gsDomainIterator<T>::m_isGood;
 
 private:
     // Extent of the tensor grid
-    gsVector<domainIter, D> meshStart, meshEnd;
+    gsVector<domainIterWrapper, D> meshStart, meshEnd;
 
     // Current element as pointers to it's supporting mesh-lines
-    gsVector<domainIter, D> curElement;
+    gsVector<domainIterWrapper, D> curElement;
 
     // parameter coordinates of current grid cell
     gsVector<T> lower, upper;

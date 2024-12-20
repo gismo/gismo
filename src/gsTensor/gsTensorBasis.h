@@ -53,7 +53,7 @@ public:
     typedef Basis_t** iterator;
     typedef Basis_t* const* const_iterator;
 
-    typedef typename Basis_t::domainIter domainIter;
+    using typename gsBasis<T>::domainIter;
 
 public:
     

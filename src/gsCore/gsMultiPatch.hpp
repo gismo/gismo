@@ -1049,7 +1049,7 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
         std::array<size_t, 4> key;
         for (; domIt->good(); domIt->next() )
         {
-            localActives = basis->active( domIt->center );
+            localActives = basis->active( domIt->centerPoint() );
             globalActives.resizeLike(localActives);
             // Map every local active basis function to the global numbering
             for (index_t i=0; i<localActives.rows(); ++i)
@@ -1096,7 +1096,7 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
     globalWeights.setOnes();
 
     // Loop over all patches
-    for (index_t p = 0; p != this->nPatches(); p++)
+    for (size_t p = 0; p != this->nPatches(); p++)
     {
         for (index_t i=0; i != this->patch(p).coefs().rows(); ++i) // For every control point
         {
