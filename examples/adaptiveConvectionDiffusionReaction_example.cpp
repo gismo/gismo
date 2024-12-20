@@ -204,15 +204,17 @@ int main(int argc, char *argv[])
         auto coeff_convGm = ev.getVariable(coeff_conv, Gm);
         auto coeff_diffGm = ev.getVariable(coeff_diffMax, Gm);
         auto coeff_reacGm = ev.getVariable(coeff_reac, Gm);
-        //ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm()*meas(Gm) );
-        ev.integralElWise( ( ilapl(is,Gm) + SFunc).sqNorm()*meas(Gm) );
-       const std::vector<real_t> & eltErrs  = ev.elementwise();
-       //! [errorComputation]
+
         // Recover manufactured solution for Poisson equation
         auto u_ex         = ev.getVariable(Sol_ex, Gm);
         l2err[refLoop]    = math::sqrt(ev.integralElWise( (u_ex - is).sqNorm()*meas(Gm) ) );
         DoFPDE[refLoop]   = cdrAss.numDofs();
+
        // --------------- adaptive refinement ---------------
+       //ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm()*meas(Gm) );
+       ev.integralElWise( ( ilapl(is,Gm) + SFunc).sqNorm()*meas(Gm) );
+       const std::vector<real_t> eltErrs  = ev.elementwise();
+       //! [errorComputation]
 
        //! [adaptRefinementPart]
        // Mark elements for refinement, based on the computed local errors and

@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     index_t maxIter     = 30;
     double eps          = 1e-5; // pinalization coefficient
     double tolPicard    = 1e-8;
-    double IntensityMAE = 6.;
+    double IntensityMAE = 10.;
     bool ErrorPrint     = true, export_b64 =false;
     gsFunctionExpr<> sN("x","y",2); // FIX : Manufactured identity mapping
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
@@ -112,16 +112,26 @@ int main(int argc, char *argv[])
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //..... Test 1 : POISSON EQUATION
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    // Manufactured solition
-    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
     // convection coefficient:
     gsMatrix<> coeff_conv{1,2};
     // diffusion coefficient:
     double coeff_diff = 1.;
     // reaction coefficient:
     double coeff_reac = 0.;
+    // Example 1
+    // Manufactured solition
+    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
     // // Right-hand side function
     gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
+    // Manufactured density function
+    gsFunctionExpr<> f("( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
+    // Example 2
+    // // Manufactured solition
+    // gsFunctionExpr<> s("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))",2);
+    // // // Right-hand side function
+    // gsFunctionExpr<> SourceFunc("40000.0*x**2*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*x**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3 + 1.0*(75.0*pi**2*sin(pi*y) + 200)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 1.0*(40000*(y - 0.375*pi*cos(pi*y) - 0.5)**2)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 200.0*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*(y - 0.375*pi*cos(pi*y) - 0.5)**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3",2);
+    // // Manufactured density function
+    // gsFunctionExpr<> f("exp(-90 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y))**2 )",2);
 
     //..... Test 2
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
@@ -129,7 +139,6 @@ int main(int argc, char *argv[])
     //
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
-    gsFunctionExpr<> f("( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";// + 5./cosh( 10.*((x-0.2)**2 - 0.9) )
 
@@ -263,7 +272,7 @@ int main(int argc, char *argv[])
         geometryMap PP = A.getMap(Psi);    
         // Set the discretization space // different boundary condition !
         space ru = A.getSpace(dbasis);
-        if (r==0){
+        if (r == 0){
             //*********************************************************//
 
             //dbasis.uniformRefine();
@@ -427,6 +436,8 @@ int main(int argc, char *argv[])
             }
             Psi.addAutoBoundaries();
             gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
+            gsInfo<<"Source function is "<< SourceFunc << "\n";
+            gsInfo<<"adapt Ref Param is "<< adaptRefParam << "\n";
             gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
         }
         gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
@@ -485,8 +496,8 @@ int main(int argc, char *argv[])
                     <<numRefine<< " ======" << "\n";
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
-        ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm()*meas(PP) );
-        const std::vector<real_t> & eltErrs  = ev.elementwise();
+        ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+        const std::vector<real_t> eltErrs  = ev.elementwise();
         //! [errorComputation]
 
         //! [adaptRefinementPart]
