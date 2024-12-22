@@ -263,6 +263,30 @@ public:
         return values[2].reshapeCol(point, deriv2Size(), values[2].rows()/deriv2Size());
     }
 
+    static inline void deriv2lex_inplace(gsMatrix<T> & der2, index_t d)
+    {
+        // convert to lex order
+        const index_t sz = d*(d+1)/2;
+        gsVector<index_t> prm(sz);
+        unsigned m = 0;
+        for ( short_t k = 0; k<d; ++k)
+        {
+            prm[m++] = k;
+            for ( short_t l=k+1; l<d; ++l)
+            {
+                prm[m] = d + m - k - 1;
+                ++m;
+            }
+        }
+
+        //swap inplace
+        const index_t nr = der2.rows();
+        der2.resize(sz, der2.size()/sz);
+        gsMatrix<T> tmp = der2(prm,gsEigen::all);
+        tmp.resize(nr, der2.size()/nr);
+        der2.swap(tmp);
+    }
+
     inline matrixView curl (index_t point) const
     {
         GISMO_ASSERT(flags & NEED_CURL,

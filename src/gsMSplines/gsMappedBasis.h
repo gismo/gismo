@@ -377,6 +377,18 @@ public:
         return _getPatchIndex(localIndex);
     }
 
+    /// @brief  Returns the global index of the local basis function with the given index on the given patch.
+    /// @param patch The index of the patch
+    /// @param localIndex The index of the basis function in patch-local numbering
+    /// @return 
+    index_t getGlobalIndex(index_t patch, index_t localIndex); 
+
+    /// @brief Returns the global indices of the local basis functions with the given indices on the given patch.
+    /// @param patch The index of the patch
+    /// @param localIndices The indices of the basis functions in patch-local numbering
+    /// @return 
+    gsMatrix<index_t> getGlobalIndex(index_t patch, gsMatrix<index_t> localIndices); 
+
 protected:
     //////////////////////////////////////////////////
     // functions for working with Indexes

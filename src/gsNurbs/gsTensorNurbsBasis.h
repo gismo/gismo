@@ -157,7 +157,7 @@ public:
         m_src->swapDirections(i, j);
     }
 
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1, int mul=1, int dir=-1)
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1)
     {
         GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                       "Invalid dimensions" );

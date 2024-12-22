@@ -815,7 +815,7 @@ public:
     /// \endcode
     ///
     /// \sa gsBasis::uniformRefine
-    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir=-1);
+    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     /// @brief Refine the basis uniformly
     ///

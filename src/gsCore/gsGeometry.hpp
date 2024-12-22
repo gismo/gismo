@@ -303,7 +303,7 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 }
 
 template<class T>
-void gsGeometry<T>::uniformRefine(int numKnots, int mul, int dir) // todo: int dir = -1
+void gsGeometry<T>::uniformRefine(int numKnots, int mul, short_t const dir)
 {
     this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
 }

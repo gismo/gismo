@@ -1402,6 +1402,8 @@ class ternary_expr : public _expr<ternary_expr<E0, E1, E2> > {
   const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
   const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
 
+    void print(std::ostream &os) const { os << "ternary"; }
+
   /// Split needed for Temporary_t return type
 // private:
 //    typename util::enable_if<E1::ScalarValued,Scalar>::type

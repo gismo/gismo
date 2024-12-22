@@ -60,6 +60,10 @@ doc:
     - cd ../build
     - cmake --build . --target doc
     - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
+    # Add Julia docs
+    - wget https://github.com/gismo/Gismo.jl/releases/download/doc/doc.zip
+    - unzip doc.zip -d doc/html
+    # end add Julia docs
     - cd doc/html
     - rm -rf .git
     - git config --global init.defaultBranch master
