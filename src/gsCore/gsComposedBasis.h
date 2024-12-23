@@ -1,6 +1,10 @@
 /** @file gsComposedBasis.h
 
-    @brief
+    @brief Provides the implementation of a basis composed by a function
+
+    Given a parametric domain (xi,eta), a composition (u,v) = C(xi,eta),
+    every basis function B_i(xi,eta) is evaluated as B(C(xi,eta)).
+    The derivatives are defined with respect to xi, eta
 
     This file is part of the G+Smo library.
 
@@ -47,24 +51,49 @@ public:
 
 public:
 
+    /// @brief Empty constructor
     gsComposedBasis();
 
+    /**
+     * @brief Construct a composed basis from pointers
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
     gsComposedBasis(const CompositionT * composition, const BasisT * basis);
 
+    /**
+     * @brief Construct a composed basis from references
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
     gsComposedBasis(const CompositionT & composition, const BasisT & basis);
 
+    /**
+     * @brief Construct a composed basis from unique pointers
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
     gsComposedBasis(typename CompositionT::Ptr composition,
                     typename BasisT::Ptr basis);
 
+    /// See \ref gsBasis for documentation
     short_t domainDim() const override;
+    /// See \ref gsBasis for documentation
     short_t targetDim() const override;
 
+    /// See \ref gsBasis for documentation
     short_t maxDegree() const override;
 
+    /// See \ref gsBasis for documentation
     gsMatrix<T> support() const override;
 
+    /// See \ref gsBasis for documentation
     gsMatrix<T> support(const index_t & i) const override;
 
+    /// See \ref gsBasis for documentation
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override;
 
     // void evalAllDers_into(const gsMatrix<T> & u, int n,
@@ -76,14 +105,19 @@ public:
     //     m_basis->evalAllDers_into(coords,n,result,sameElement);
     // }
 
+    /// See \ref gsBasis for documentation
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
+    /// See \ref gsBasis for documentation
     void evalSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
+    /// See \ref gsBasis for documentation
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
+    /// See \ref gsBasis for documentation
     void derivSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
+    /// See \ref gsBasis for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result)
@@ -160,14 +194,19 @@ public:
     // See \ref gsBasis for documentation
     void degreeElevate(short_t const & i = 1, short_t const dir = -1) override;
 
-
-    //// NEEDS TO EVALUATE THE INVERSE MAP, NOT m_composition!!
+    /**
+     *  @brief Maps a \a mesh from the parametric domain to the composed domain
+     *
+     * @param[in,out] mesh The mesh to be mapped
+     */
     void mapMesh(gsMesh<T> & mesh) const;
 
 
     /// Return the composition
     const CompositionT & composition() const;
+    /// Return the composition
           CompositionT & composition()      ;
+
     /// Return the basis
     const BasisT & basis() const;
 

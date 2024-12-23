@@ -1,6 +1,10 @@
 /** @file gsComposedFunction.h
 
-    @brief
+    @brief Provides the implementation of a function composed by another function
+
+    Given a parametric domain (xi,eta), a composition (u,v) = C(xi,eta),
+    the function f(xi,eta) is evaluated as f(C(xi,eta)).
+    The derivatives are defined with respect to xi, eta
 
     This file is part of the G+Smo library.
 
@@ -34,14 +38,33 @@ public:
 
 public:
 
+    /// @brief Empty constructor
     gsComposedFunction();
 
+    /**
+     * @brief Construct a composed function from pointers
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
     gsComposedFunction( const CompositionT  * composition,
                         const FunctionT * function);
 
+    /**
+     * @brief Construct a composed function from references
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
     gsComposedFunction( const CompositionT  & composition,
                         const FunctionT & function);
 
+    /**
+     * @brief Construct a composed function from unique pointers
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
     gsComposedFunction( typename CompositionT::Ptr composition,
                         typename FunctionT::Ptr function);
 
@@ -50,9 +73,13 @@ public:
     /// Return the function
     const FunctionT & function() const;
 
+    /// See \ref gsFunction for more documentation
     short_t domainDim() const;
+
+    /// See \ref gsFunction for more documentation
     short_t targetDim() const;
 
+    /// See \ref gsFunction for more documentation
     gsMatrix<T> support() const;
 
     // void evalAllDers_into(const gsMatrix<T> & u, int n,
@@ -66,16 +93,16 @@ public:
 
 
 
+    /// See \ref gsFunction for more documentation
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
+    /// See \ref gsFunction for more documentation
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
+    /// See \ref gsFunction for more documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     std::ostream &print(std::ostream &os) const override;
-
-private:
-    void _applyBounds(gsMatrix<T> & coords) const;
 
 protected:
 

@@ -123,19 +123,26 @@ gsMatrix<T> gsComposedBasis<T>::support() const
 template <class T>
 gsMatrix<T> gsComposedBasis<T>::support(const index_t & i) const
 {
-    gsMatrix<T> supp = m_basis->support(i);
-    gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
-    supp = pt.toMatrix();
-    gsMatrix<T> result = supp;
+    // gsMatrix<T> supp = m_basis->support(i);
+    // gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
+    // supp = pt.toMatrix();
+    // gsMatrix<T> result = supp;
 
-    m_composition->invertPoints(supp,result,1e-4,true);
+    // m_composition->invertPoints(supp,result,1e-4,true);
 
-    supp.conservativeResize(this->domainDim(),2);
-    for (index_t d=0; d!=this->domainDim(); d++)
-        supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
+    // supp.conservativeResize(this->domainDim(),2);
+    // for (index_t d=0; d!=this->domainDim(); d++)
+    //     supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
 
-    return supp;
-    // return this->support();
+    // // If the volume is zero, the computation failed
+    // if (supp.prod()==0)
+    //     return this->support();
+    // else
+    //     return supp;
+
+    // @hverhelst: the above implementation is not robust and might yield zero volumes.
+    // Therefore, we return the full support. This function is usually only called in plots
+    return this->support();
 } // This should be the inverse map
 
 template <class T>
@@ -414,8 +421,8 @@ void gsComposedBasis<T>::mapMesh(gsMesh<T> & mesh) const
     for (size_t i = 0; i!= mesh.numVertices(); ++i)
     {
         point = tmp = mesh.vertex(i).topRows(pDim);
-        // m_composition->invertPoints(point,tmp,1e-2,true);
-        m_composition->eval_into(point,tmp);
+        m_composition->invertPoints(point,tmp,1e-2,true);
+        // m_composition->eval_into(point,tmp);
         mesh.vertex(i).topRows(pDim) = tmp.topRows(pDim);
     }
 }
@@ -455,23 +462,11 @@ std::ostream & gsComposedBasis<T>::print(std::ostream &os) const
 template <class T>
 void gsComposedBasis<T>::_applyBounds(gsMatrix<T> & coords) const
 {
-        for (index_t k=0; k!=coords.cols(); k++)
-        {
-            coords.col(k) = coords.col(k).cwiseMax(m_basis->support().col(0));
-            coords.col(k) = coords.col(k).cwiseMin(m_basis->support().col(1));
-        }
-
-// #ifndef _NDEBUG
-//         for (size_t d=0; d!=m_basis->domainDim(); d++)
-//             if( (coords.row(d).array() < m_basis->support()(d,0)).any() ||
-//                 (coords.row(d).array() > m_basis->support()(d,1)).any()   )
-//             {
-//                 gsDebugVar(coords.row(d).array());
-//                 gsDebugVar(coords.row(d).array()-1);
-//                 // GISMO_ERROR("Evaluation outside the domain.\n result.row(d) = " << result.row(d));
-//             }
-// #endif
-
+    for (index_t k=0; k!=coords.cols(); k++)
+    {
+        coords.col(k) = coords.col(k).cwiseMax(m_basis->support().col(0));
+        coords.col(k) = coords.col(k).cwiseMin(m_basis->support().col(1));
+    }
 }
 
 

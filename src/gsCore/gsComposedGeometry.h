@@ -1,6 +1,10 @@
 /** @file gsComposedGeometry.h
 
-    @brief
+    @brief Provides the implementation of a geometry composed by a function
+
+    Given a parametric domain (xi,eta), a composition (u,v) = C(xi,eta),
+    every basis function B_i(xi,eta) is evaluated as B(C(xi,eta)).
+    The derivatives are defined with respect to xi, eta
 
     This file is part of the G+Smo library.
 
@@ -41,26 +45,27 @@ public:
 
 public:
 
-
+    /// @brief Empty constructor
     gsComposedGeometry();
 
     /**
-     * @brief      XXXX
+     * @brief      Constructs a composed geometry from a composed basis and a set of coefficients
      *
-     * @param[in]  basis  The basis
+     * @param[in]  basis  The composed basis
      * @param[in]  coefs  The coefs
      */
     gsComposedGeometry( const gsComposedBasis<T> & basis,
                         const gsMatrix<T> & coefs);
 
     /**
-     * @brief      XXXX
+     * @brief      Construct a composed geometry from a composition and a geometry
      *
      * @param[in]  composition  The composition
      * @param[in]  geom         The geometry
      */
     gsComposedGeometry( const gsFunction<T> & composition,
                         const gsGeometry<T> & geom);
+
 
     // /// Copy constructor (makes deep copy)
     // gsComposedGeometry(const gsComposedGeometry& other);
@@ -87,7 +92,7 @@ public:
      * @brief      Gives the control point derivatives of \a *this. See gsFunction for more details
      *
      * @param[in]  points  The points in the parameter domain (of the composition)
-     * @param      result  The control point derivatives
+     * @param[out] result  The control point derivatives
      */
     void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const override;
 

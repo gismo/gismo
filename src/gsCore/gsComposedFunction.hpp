@@ -92,7 +92,6 @@ template <class T>
 void gsComposedFunction<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     gsMatrix<T> coords = m_composition->eval(u);
-    this->_applyBounds(coords);
     m_function->eval_into(coords,result);
 }
 
@@ -110,7 +109,6 @@ void gsComposedFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result
     coord = fd.values[0];
     compderiv = fd.values[1];
 
-    this->_applyBounds(coord);
     m_function->deriv_into(coord,deriv);
     result.resize(m_function->targetDim()*domainDim,u.cols());
     for (index_t k = 0; k!=u.cols(); k++)
@@ -143,19 +141,6 @@ std::ostream & gsComposedFunction<T>::print(std::ostream &os) const
        << *m_function<<"\n"
        << "(address: "<<m_function<<")\n";
     return os;
-}
-
-template <class T>
-void gsComposedFunction<T>::_applyBounds(gsMatrix<T> & coords) const
-{
-    // for (index_t k=0; k!=coords.cols(); k++)
-    // {
-    //     gsDebugVar(coords.col(k));
-    //     gsDebugVar(m_composition->support().col(0));
-    //     gsDebugVar(m_composition->support().col(1));
-    //     coords.col(k) = coords.col(k).cwiseMax(m_composition->support().col(0));
-    //     coords.col(k) = coords.col(k).cwiseMin(m_composition->support().col(1));
-    // }
 }
 
 namespace internal
