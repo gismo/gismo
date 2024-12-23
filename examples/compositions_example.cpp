@@ -1,6 +1,6 @@
-/** @file composed_domain_L2.cpp
+/** @file compositions_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve the Poisson equation
+    @brief Tutorial on how to generate a composed basis and a composed geometry
 
     This file is part of the G+Smo library.
 

@@ -13,8 +13,8 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        H.M. Verhelst   (2019-..., TU Delft)
-        A. Mantzaflaris (2019-..., Inria)
+        H.M. Verhelst
+        S. Imperatore
 */
 
 #pragma once
