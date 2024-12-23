@@ -162,12 +162,12 @@ public: // iterator ends
 
     domainIter beginAll() const override
     {
-        return gsDomainIterator<T>::uPtr(new gsKnotDomainIterator<T>(*this));
+        return new gsKnotDomainIterator<T>(*this);
     }
     
     domainIter beginBdr(const boxSide   bs) const override
     {
-        return gsDomainIterator<T>::uPtr(new gsKnotDomainIterator<T>(*this));
+        return new gsKnotDomainIterator<T>(*this);
     }
 
 public: // constructors

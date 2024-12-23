@@ -70,13 +70,14 @@ class gsDomainIteratorWrapper
     uPtr m_domainIter;
 
 public:
+    gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr = nullptr) : m_domainIter(_itptr)
+    { }
+
     gsDomainIteratorWrapper(uPtr _iter) : m_domainIter(give(_iter))
     { }
 
-    gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr) : m_domainIter(_itptr)
-    { }
-
-    gsDomainIteratorWrapper(gsDomainIteratorWrapper && _other) : m_domainIter(give(_other.m_domainIter))
+    gsDomainIteratorWrapper(gsDomainIteratorWrapper && _other)
+    : m_domainIter(give(_other.m_domainIter))
     { }
 
     gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other)
@@ -119,23 +120,37 @@ public:
         return *this;
     }
 
-    /// Incremental operator to proceed to the next element
-    gsDomainIteratorWrapper& operator+(index_t k)
+    /// Increment inplace by a number of steps
+    gsDomainIteratorWrapper& operator+=(index_t k)
     {
         m_domainIter->next(k);
         m_domainIter->nextId(k);
         return *this;
     }
 
+    /// Increment by a number of steps
+    gsDomainIteratorWrapper operator+(index_t k) const
+    {
+        GISMO_ERROR("cloning needed");
+        return gsDomainIteratorWrapper();
+    }
+
     /// Decrement operator to proceed to the next element
-    gsDomainIteratorWrapper& operator-(index_t k)
+    gsDomainIteratorWrapper& operator-=(index_t k)
     {
         m_domainIter->prev(k);
         m_domainIter->prevId(k);
         return *this;
     }
 
-    /// Equality operator to compare two iterators
+    /// Decrement by a number of steps
+    gsDomainIteratorWrapper operator-(index_t k) const
+    {
+        GISMO_ERROR("cloning needed");
+        return gsDomainIteratorWrapper();
+    }
+
+    /// Difference operator
     size_t operator-(const gsDomainIteratorWrapper& other) const
     { return id() - other.id(); }
 
@@ -180,6 +195,11 @@ public:
     inline size_t id() const { return m_domainIter->id(); }
 
     inline boxSide side() const {return m_domainIter->m_side;}
+
+    /// Fetches data of integer type based on string label
+    const index_t & get(const std::string & label)
+    {return m_domainIter->get(label); }
+
 };
 
 
@@ -238,7 +258,7 @@ public:
 
     /// Returns the element id
     size_t id() const   { return m_id; }
-
+    
     /// Is the iterator still pointing to a valid element?
     // \todo use !=end() instead
     GISMO_DEPRECATED
@@ -246,6 +266,10 @@ public:
 
     /// Return dimension of the elements
     short_t dim() const   { return center.size(); }
+
+    /// fetches data of integer type based on string label
+    virtual const index_t & get(const std::string & label)
+    {GISMO_ERROR("Cannot find property "<< label); }
 
     /// Updates \a other with and adjacent element
     /// \todo upgrade to return adjacent range instead
@@ -347,7 +371,7 @@ protected:
 
 private:
     size_t m_id;
-
+    
 protected:
     
     //// REMOVE

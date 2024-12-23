@@ -92,7 +92,7 @@ public:
     // proceed to the next element; returns true if end not reached yet
     bool next()
     {
-        m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
+        m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
         if (m_isGood)
             update();
         return m_isGood;
@@ -104,7 +104,7 @@ public:
     bool next(index_t increment)
     {
         for (index_t i = 0; i < increment; i++)
-            m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
+            m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
         if (m_isGood)
             update();
         return m_isGood;
@@ -115,7 +115,8 @@ public:
     /// do not know the rationale for it
     void reset()
     {
-        curElement=meshStart;
+        for(int i=0; i < d; ++i)
+            curElement[i].reset();
         m_isGood = true;
         for(int i=0; i < d; ++i)
         {
@@ -146,7 +147,7 @@ public:
 
     const T getPerpendicularCellSize() const
     {
-        return *(curElement[dir]+1) - *curElement[dir];
+        return (curElement[dir]+1) - curElement[dir];
     }
 
     GISMO_DEPRECATED
@@ -186,18 +187,18 @@ private:
     {
         for (int i = 0; i < dir ; ++i)
         {
-            lower[i]  = curElement[i]->lowerCorner();
-            upper[i]  = curElement[i]->upperCorner();
-            center[i] = curElement[i]->center;
+            lower[i]  = curElement[i].lowerCorner().value();
+            upper[i]  = curElement[i].upperCorner().value();
+            center[i] = curElement[i].centerPoint().value();
         }
         lower[dir]  =
         upper[dir]  =
-        center[dir] = (par ? curElement[dir]->upperCorner() : curElement[dir]->lowerCorner() );
+            center[dir] = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
         for (int i = dir+1; i < d; ++i)
         {
-            lower[i]  = curElement[i]->lowerCorner();
-            upper[i]  = curElement[i]->upperCorner();
-            center[i] = curElement[i]->center;
+            lower[i]  = curElement[i].lowerCorner().value();
+            upper[i]  = curElement[i].upperCorner().value();
+            center[i] = curElement[i].centerPoint().value();
         }
 
         //gsDebug<<"lower: "<< lower.transpose() <<", upper="<<upper.transpose() <<"\n";

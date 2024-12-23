@@ -28,73 +28,30 @@ private:
 
 public:
 
-    gsKnotDomainIterator(const gsKnotVector<T> & domain)
-    : lower(1),
-      upper(1)
+    gsKnotDomainIterator(const gsKnotVector<T> & _knots)
+    : m_knotvector(&_knots), m_it(_knots.domainUBegin())
     {
-        // compute breaks and mesh size
-        meshEnd    = domain->domainEnd();
-        curElement = meshStart = domain->domainBegin();
 
-        if (meshEnd == meshStart)
-            m_isGood = false;
-
-        if (m_isGood)
-            update();
     }
 
     // Documentation in gsDomainIterator.h
     bool next()
     {
-        ++curElement;
-        m_isGood = (curElement != meshEnd);
-
-        if (m_isGood)
-        {
-            update();
-            ++m_id; //increment id
-        }
+        ++m_it;
         return m_isGood;
     }
 
     // Documentation in gsDomainIterator.h
     bool next(index_t increment)
     {
-        curElement += increment;
-        m_isGood = (curElement < meshEnd);
-
-        if (m_isGood)
-        {
-            update();
-            m_id += increment; //increment id
-        }
+        m_it += increment;
         return m_isGood;
     }
 
     // Documentation in gsDomainIterator.h
     void reset()
     {
-        m_id = 0;
-        curElement = meshStart;
-
-        m_isGood = (meshEnd != meshStart);
-        if (m_isGood)
-            update();
-    }
-
-    /// return the tensor index of the current element
-    gsVector<unsigned, 1> index() const
-    {
-        gsVector<unsigned, 1> curr_index(1);
-        curr_index[0]  = curElement.uIndex();
-        return curr_index;
-    }
-
-    void getVertices(gsMatrix<T>& result)
-    {
-        result.resize( 1, 2);
-        result(0,0) = curElement.value();
-        result(0,1) = (curElement+1).value();
+        m_it.reset();
     }
 
     const gsVector<T> & lowerCorner() const
@@ -105,7 +62,7 @@ public:
 
     bool isBoundaryElement() const
     {
-        return (curElement==meshStart || curElement+1==meshEnd);
+        return ( 0==m_it.uIndex() || curElement+1==meshEnd);
     }
 
     index_t domainDim() const {return 1;}
@@ -133,24 +90,14 @@ public:
     using gsDomainIterator<T>::center;
 
 protected:
-    using gsDomainIterator<T>::m_id;
     using gsDomainIterator<T>::m_isGood;
 
 private:
-    // Extent of the tensor grid
-    gsVector<domainIter, 1> meshStart, meshEnd;
+    gsKnotVector<T> * m_knotvector;
 
-    // Current element as pointers to it's supporting mesh-lines
-    gsVector<domainIter, 1> curElement;
+    domainIter m_it;
 
-    // parameter coordinates of current grid cell
-    gsVector<T> lower, upper;
-
-public:
-#   define Eigen gsEigen
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
-}; // class gsTensorDomainIterator
+}; // class gsKnotDomainIterator
 
 
 } // namespace gismo

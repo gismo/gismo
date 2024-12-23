@@ -243,6 +243,29 @@ bool nextLexicographic(Vec& cur, const Vec& start, const Vec& end)
     GISMO_ERROR("Something went wrong in nextLexicographic, wrong input?");
 }
 
+template<class Vec>
+bool nextLexicographicIter(Vec& cur, const Vec& end)
+{
+    const index_t d = cur.size();
+    GISMO_ASSERT( d == cur.size() && d == end.size(),
+                  "Vector sizes don't match in nextLexicographic");
+
+    for (index_t i = 0; i < d; ++i)
+    {
+        // increase current dimension
+        if (++cur[i] == end[i])     // current dimension exhausted ?
+        {
+            if (i == d - 1)         // was it the last one?
+                return false;       // then all elements exhausted
+            else
+                cur[i].reset();     // otherwise, reset this and increase the next dimension
+        }
+        else
+            return true;            // current dimension not yet exhausted, return current vector
+    }
+    GISMO_ERROR("Something went wrong in nextLexicographic, wrong input?");
+}
+
 
 /// \brief Iterate in lexicographic order through the vertices of the cube
 /// [start,end]. Updates cur with the current vertex and returns true
