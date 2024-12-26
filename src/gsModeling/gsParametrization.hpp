@@ -87,10 +87,12 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
             break;
         case 2:
             corners = cornersInput;
+            goto case6;
         case 3:
         case 4:
         case 5:
         case 6: // N
+        { case6:
             if (boundaryMethod != 2)
                 corners = neighbourhood.getBoundaryCorners(boundaryMethod, rangeInput, numberInput);
 
@@ -111,6 +113,7 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
                     Neighbourhood::findPointOnBoundary(w, n + i > N ? n + i - B : n + i);
             }
             break;
+        }
         default:
             GISMO_ERROR("boundaryMethod not valid: " << boundaryMethod);
     }

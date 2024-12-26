@@ -418,9 +418,11 @@ public:
     /// @brief Refine the basis by inserting the given knots and perform knot
     /// refinement for the given coefficient matrix.
     void refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots);
+    void refine_withCoefs(gsMatrix<T>& /* coefs */, const gsMatrix<T> & /* boxes */)
+    {GISMO_NO_IMPLEMENTATION}
 
     // compatibility with tensor-bsplines
-    void refine_withCoefs(gsMatrix<T> & coefs, 
+    void refine_withCoefs(gsMatrix<T> & coefs,
                           const std::vector< std::vector<T> >& refineKnots)
     {
         refine_withCoefs(coefs,refineKnots.front() );
@@ -428,8 +430,9 @@ public:
 
     /// @brief Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots);
-
-    void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
+    void refine_withTransfer(gsMatrix<T>& /* coefs */, const gsMatrix<T> & /* boxes */)
+    {GISMO_NO_IMPLEMENTATION}
+    void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
                              const std::vector<std::vector<T> >& knots)
     {
         GISMO_ASSERT(knots.size()==1, "the knots you want to insert do not have the right dimension");
@@ -768,6 +771,53 @@ public:
         
         if( ! this->check() )
             gsWarn << "Warning: Insconsistent "<< *this<< "\n";
+    }
+
+    using gsBasis<T>::create; //unhide from gsBasis
+
+    static typename gsBasis<T>::uPtr create(KnotVectorType KV, short_t dim)
+    {
+        typedef typename gsBasis<T>::uPtr basisPtr;
+
+        switch (dim)
+        {
+        case 1:
+            return basisPtr(new gsBSplineBasis<T>(give(KV)));
+            break;
+        case 2:
+            return basisPtr(new gsTensorBSplineBasis<2,T>(give(KV),give(KV)));
+            break;
+        case 3:
+            return basisPtr(new gsTensorBSplineBasis<3,T>(give(KV),give(KV),give(KV)));
+            break;
+        case 4:
+            return basisPtr(new gsTensorBSplineBasis<4,T>(give(KV),give(KV),give(KV),give(KV)));
+            break;
+        }
+        GISMO_ERROR("Dimension should be between 1 and 4.");
+    }
+
+    static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV)
+    {
+        typedef typename gsBasis<T>::uPtr basisPtr;
+
+        const index_t dd = cKV.size();
+        switch (dd)
+        {
+        case 1:
+            return basisPtr(new gsBSplineBasis<T>(give(cKV)));
+            break;
+        case 2:
+            return basisPtr(new gsTensorBSplineBasis<2,T>(give(cKV)));
+            break;
+        case 3:
+            return basisPtr(new gsTensorBSplineBasis<3,T>(give(cKV)));
+            break;
+        case 4:
+            return basisPtr(new gsTensorBSplineBasis<4,T>(give(cKV)));
+            break;
+        }
+        GISMO_ERROR("Dimension should be between 1 and 4.");
     }
 
 /*

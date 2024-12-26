@@ -93,6 +93,7 @@ public:
      * @param      nodes    Quadrature points
      * @param      weights  Quadrature weights
      */
+    using gsQuadRule<T>::mapTo;
     void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const
     {

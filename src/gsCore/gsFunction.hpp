@@ -205,7 +205,6 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
         //arg = _argMinNormOnGrid(16);
 
         const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 250);
-        gsInfo << " "<< iter;
         if (iter>100)
             gsWarn<< "Inversion took "<<iter<<" steps for "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
 
@@ -512,7 +511,7 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
     gsVector<index_t> ind(xyz.rows()-1);
     for (index_t i = 0; i!= xyz.rows(); ++i)
         if (i<k) ind[i]=i;
-        else if (i>k) ind[i-1]=i;       
+        else if (i>k) ind[i-1]=i;
 
     gsMatrix<T> pt = xyz(ind,gsEigen::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
@@ -605,7 +604,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
-    
+
     // If the measure on a boundary is requested, calculate the outer normal vector as well
     if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
 
@@ -651,11 +650,11 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
                 // BUG: When the determinant is really close to zero but negative,
                 // the result might be the opposite of what is expected because of alt_sgn
-                
+
                 if (! (InOut.flags &SAME_ELEMENT)  )
                 {
                     T detJacTcurr = jacT.determinant();
-                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 : 
+                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 :
                         ( detJacTcurr < 0 ? -1 : 1 );
                     if ( 0 == det_sgn )
                     {
