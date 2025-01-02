@@ -74,12 +74,12 @@ public:
 
 public:
 
-    gsDomainIterator( ) : m_basis(NULL), m_isGood( true ) { }
+    gsDomainIterator( ) : m_basis(NULL), m_isGood( true ), m_id(0) { }
 
     /// \brief Constructor using a basis
     gsDomainIterator( const gsBasis<T>& basisParam, const boxSide & s = boundary::none)
         : center( gsVector<T>::Zero(basisParam.dim()) ), m_basis( &basisParam ),
-          m_isGood( true ), m_side(s)
+          m_isGood( true ), m_side(s), m_id(0)
     { }
 
     virtual ~gsDomainIterator() { }

@@ -53,23 +53,23 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
         knots1  = tb2->knots(dim).unique();
         knots2  = next_basis.knots(dim).unique();
 
-        // Check nestedness. 
+        // Check nestedness.
         intersection.clear();
         difference.clear();
         // The unique knots of the new basis must contain the ones of the previous level
         std::set_intersection(  knots2.begin(), knots2.end(),
-                                knots1.begin(), knots1.end(), 
+                                knots1.begin(), knots1.end(),
                                 std::back_inserter(intersection) );
         // The difference of the two must not contain any knot in knots1!
         std::set_difference(  knots1.begin(), knots1.end(),
-                                intersection.begin(), intersection.end(), 
+                                intersection.begin(), intersection.end(),
                                 std::back_inserter(difference) );
         GISMO_ASSERT(difference.size()==0,"Knot vector is not nested!");
 
         difference.clear();
         // The difference of the two must not contain any knot in knots1!
         std::set_difference(knots2.begin(), knots2.end(),
-                            knots1.begin(), knots1.end(), 
+                            knots1.begin(), knots1.end(),
                                 std::back_inserter(difference) );
 
         // We reverse since later on we loop and pop the elements on the back
@@ -84,7 +84,7 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
             typename std::vector<T>::iterator diff_ptr = difference.begin();
             // Find the index of the highest knot below the different knot
             i = tmpknots.uFind(*diff_ptr).uIndex(); // index of the knot span in which *it is located
-            
+
             // Count how many difference knots lay in the same span
             for (n = 0, diff_ptr = difference.begin(); diff_ptr!=difference.end() && tmpknots.uFind(*diff_ptr).uIndex()==i; n++, diff_ptr++);
             // Count the distance between two element indices. It should be larger than n
@@ -100,7 +100,7 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
             else
             {
                 // We add the first knot
-                diff_ptr = difference.begin();                
+                diff_ptr = difference.begin();
                 newIdx = dirIndices[i] + 1;
             }
 
@@ -111,7 +111,7 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
             // Remove the difference knot, since it is treated
             difference.erase(diff_ptr);
         }
-        
+
         lvlIndices[dim] = dirIndices;
     }
     m_uIndices.push_back(lvlIndices);
@@ -152,7 +152,7 @@ index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 
     if (m_manualLevels)
         this->_knotIndexToDiadicIndex(maxLevel,loIdx);
-    
+
     return m_tree.levelOf( loIdx, maxLevel);
 }
 
@@ -379,6 +379,7 @@ void gsHTensorBasis<d,T>::unrefineElements_withTransfer(std::vector<index_t> con
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int dir)
 {
+    GISMO_UNUSED(dir);
     GISMO_ASSERT(dir==-1,"Direction is not implemented");
 
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
