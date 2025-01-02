@@ -20,39 +20,34 @@ using namespace gismo;
 //! [Include namespace]
 
 
-void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
+void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
     // Projection normal of control points (exact geometry)
-    int boxMaxNumber = mp.nBoxes();
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
     {
         // test if the boundary interface is not an inner interface between patches
-        if(!mp.isInterface( patchSide(boxNumber,1) ) ){
+        auto lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]);
+        auto hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(0) ).array()[0]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
         {
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-        }
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = lVal;
         }
 
-        if(!mp.isInterface( patchSide(boxNumber,2) ) ){
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0] + 1.;
-        }
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = hVal;
         }
 
-        if(!mp.isInterface( patchSide(boxNumber,3) ) ){
+        lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(0) ).array()[1]);
+        hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(0) ).array()[1]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = lVal;
         }
-        }
-        if(!mp.isInterface( patchSide(boxNumber,4) ) ){
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = hVal;
         }
-        }
-        }
+    }
 };
 
 
@@ -67,6 +62,8 @@ int main(int argc, char *argv[])
     double eps          = 1e-5; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 10.;
+    real_t adaptRefParam = 0.;     // ... adapt parameter.
+    double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     bool ErrorPrint     = true, export_b64 =false;
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
     bool PNormalCP      = true;
@@ -76,15 +73,14 @@ int main(int argc, char *argv[])
     //MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
 
-    // ... and parameter.
-    const real_t adaptRefParam = 0.7;
-
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "e", "DegElevate",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", DegElevate);
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  UnifRefine );
     cmd.addInt( "l", "numRefine", "Number of local h-refinement loops",  numRefine );
+    cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
+    cmd.addReal( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addSwitch( "ErrorPrint", "print Error", ErrorPrint);
     //cmd.addString( "f", "file", "Input XML file", fn );
@@ -108,16 +104,16 @@ int main(int argc, char *argv[])
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //..... Test 1 : POISSON EQUATION
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    // Define Stabilization method
-    auto Stabilizationtype = stabilizerCDR::none;
-    // convection coefficient
-    gsFunctionExpr<> coeff_conv("0.","0.",2);
-    // diffusion coefficient:
-    gsFunctionExpr<> coeff_diff("1.","0","0","1.",2);
-    // For a posterior error estimate
-    gsFunctionExpr<> coeff_diffMax("1.",2);
-    // reaction coefficient:
-    gsFunctionExpr<> coeff_reac("0",2);
+    // // Define Stabilization method
+    // auto Stabilizationtype = stabilizerCDR::none;
+    // // convection coefficient
+    // gsFunctionExpr<> coeff_conv("0.","0.",2);
+    // // diffusion coefficient:
+    // gsFunctionExpr<> coeff_diff("1.","0","0","1.",2);
+    // // For a posterior error estimate
+    // gsFunctionExpr<> coeff_diffMax("1.",2);
+    // // reaction coefficient:
+    // gsFunctionExpr<> coeff_reac("0",2);
     /* *********************** Test 1 *********************** */
     // // Define  Dirichlet boundary conditions
     // gsFunctionExpr<> Dg("1./(1.+exp((y - x  - 0.2)/0.01))", 2);
@@ -128,36 +124,36 @@ int main(int argc, char *argv[])
     // // Manufactured density function
     // gsFunctionExpr<> f("( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01))  )",2);
     /* *********************** Test 2 *********************** */
-    // Define  Dirichlet boundary conditions
-    gsFunctionExpr<> Dg("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))", 2);
-    // Manufactured solition
-    gsFunctionExpr<> s("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))",2);
-    // // Right-hand side function
-    gsFunctionExpr<> SourceFunc("40000.0*x**2*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*x**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3 + 1.0*(75.0*pi**2*sin(pi*y) + 200)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 1.0*(40000*(y - 0.375*pi*cos(pi*y) - 0.5)**2)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 200.0*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*(y - 0.375*pi*cos(pi*y) - 0.5)**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3",2);
-    // Manufactured density function
-    gsFunctionExpr<> f("exp(-100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y))**2 )",2);
+    // // Define  Dirichlet boundary conditions
+    // gsFunctionExpr<> Dg("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))", 2);
+    // // Manufactured solition
+    // gsFunctionExpr<> s("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))",2);
+    // // // Right-hand side function
+    // gsFunctionExpr<> SourceFunc("40000.0*x**2*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*x**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3 + 1.0*(75.0*pi**2*sin(pi*y) + 200)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 1.0*(40000*(y - 0.375*pi*cos(pi*y) - 0.5)**2)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 200.0*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*(y - 0.375*pi*cos(pi*y) - 0.5)**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3",2);
+    // // Manufactured density function
+    // gsFunctionExpr<> f("exp(-90 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y))**2 )",2);
 
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // //..... Test 2 ADVECTION DUFFFUSION
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    // // Define Stabilization method
-    //auto Stabilizationtype = stabilizerCDR::SUPG;
-    // // Define  Dirichlet boundary conditions
-    // gsFunctionExpr<> Dg("if( y <= 0.2*(1.-x), 1,0)", 2);
-    // // Manufactured solition
-    // gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.001))",2);
-    // // convection coefficient:
-    // gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
-    // // diffusion coefficient:
-    // gsFunctionExpr<> coeff_diff("0.000001","0","0","0.000001",2);
-    // // For a posterior error estimate
-    //gsFunctionExpr<> coeff_diffMax("0.000001",2);
-    // // reaction coefficient:
-    // gsFunctionExpr<> coeff_reac("0",2);
-    // // // Right-hand side function
-    // gsFunctionExpr<> SourceFunc("0.",2);
-    // //Manufactured density function
-    // gsFunctionExpr<> f("( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) + 1/(1.+exp((0.9-x)/0.01)) )",2);
+    // Define Stabilization method
+    auto Stabilizationtype = stabilizerCDR::SUPG;
+    // Define  Dirichlet boundary conditions
+    gsFunctionExpr<> Dg("if( y <= 0.2*(1.-x), 1,0)", 2);
+    // Manufactured solition
+    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.001))",2);
+    // convection coefficient:
+    gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
+    // diffusion coefficient:
+    gsFunctionExpr<> coeff_diff("0.000001","0","0","0.000001",2);
+    // For a posterior error estimate
+    gsFunctionExpr<> coeff_diffMax("0.000001",2);
+    // reaction coefficient:
+    gsFunctionExpr<> coeff_reac("0",2);
+    // // Right-hand side function
+    gsFunctionExpr<> SourceFunc("0.",2);
+    //Manufactured density function 1./cosh(100. * ( -x - 0.2 + y ))
+    gsFunctionExpr<> f("( 1/(1.+exp((y -x  - 0.25)/0.01)) - 1/(1.+exp((y - 0.87*x  - 0.15)/0.01)) + 1/(1.+exp((0.95-x)/0.01)) )",2);
 
 
     gsInfo<<"Source function "<< f << "\n";
@@ -364,7 +360,7 @@ int main(int argc, char *argv[])
     ###   Step 3: Correct boundary
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     if (PNormalCP)
-        ProjectionNormalCPoints(Psi, mp);
+        ProjectionNormalCPoints(Psi);
     //  construct boundaries and interfaces
     if(mp.nPatches()>1){
     Psi.addInterface(0,2,1,1);
@@ -408,6 +404,8 @@ int main(int argc, char *argv[])
 
     // Recover manufactured solution for Poisson equation
     auto u_ex         = ev.getVariable(s, PP);
+    auto rho          = ev.getVariable(f, PP);
+
     // Recover rhs for Poisson equation
     auto SFunc        = ev.getVariable(SourceFunc, PP);
     // Coeffs for advection-reaction diffusion equation
@@ -464,7 +462,7 @@ int main(int argc, char *argv[])
         if(r < numRefine){
         //! [beginRefLoop]
             gsInfo << "====== Loop " << r << " of "
-                    <<numRefine<< " ======" << "\n";
+                    <<numRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
         // --------------- error estimation/computation ---------------
         // for test :ev.integralElWise( ( ilapl(ru_sol, PP) + SFunc ).sqNorm()*meas(PP) );
         // Get the element-wise norms.
@@ -487,6 +485,7 @@ int main(int argc, char *argv[])
        dbasis.repairInterfaces( Psi.interfaces() );
        //! [refreshAssembler]
        cdrAss.refresh();
+       adaptRefParam = adaptRefParam + FactRefPar;
         }
     if(plot && r == numRefine){
         // gsInfo<<"Storing paraview...\n";
@@ -503,7 +502,7 @@ int main(int argc, char *argv[])
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
         collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
-        collection.addField(ff,"Density function");
+        collection.addField(rho,"Density function");
         collection.saveTimeStep();
         collection.save();
         }

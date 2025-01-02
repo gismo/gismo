@@ -20,39 +20,34 @@ using namespace gismo;
 //! [Include namespace]
 
 
-void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
+void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
     // Projection normal of control points (exact geometry)
-    int boxMaxNumber = mp.nBoxes();
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
     {
         // test if the boundary interface is not an inner interface between patches
-        if(!mp.isInterface( patchSide(boxNumber,1) ) ){
+        auto lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]);
+        auto hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(0) ).array()[0]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
         {
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-        }
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = lVal;
         }
 
-        if(!mp.isInterface( patchSide(boxNumber,2) ) ){
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0] + 1.;
-        }
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = hVal;
         }
 
-        if(!mp.isInterface( patchSide(boxNumber,3) ) ){
+        lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(0) ).array()[1]);
+        hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(0) ).array()[1]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = lVal;
         }
-        }
-        if(!mp.isInterface( patchSide(boxNumber,4) ) ){
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = hVal;
         }
-        }
-        }
+    }
 };
 
 
@@ -68,7 +63,9 @@ int main(int argc, char *argv[])
     double eps          = 1e-5; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 10.;
-    bool ErrorPrint     = true, export_b64 =false;
+    real_t adaptRefParam = 0.;     // ... adapt parameter.
+    double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
+    bool ErrorPrint      = true, export_b64 =false;
     gsFunctionExpr<> sN("x","y",2); // FIX : Manufactured identity mapping
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
     bool PNormalCP{true};
@@ -78,9 +75,6 @@ int main(int argc, char *argv[])
     //MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
 
-    // ... and parameter.
-    const real_t adaptRefParam = 0.5;
-
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -88,6 +82,8 @@ int main(int argc, char *argv[])
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", DegElevate);
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  UnifRefine );
     cmd.addInt( "l", "numRefine", "Number of local h-refinement loops",  numRefine );
+    cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
+    cmd.addReal( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addSwitch( "ErrorPrint", "print Error", ErrorPrint);
     //cmd.addString( "f", "file", "Input XML file", fn );
@@ -119,19 +115,19 @@ int main(int argc, char *argv[])
     // reaction coefficient:
     double coeff_reac = 0.;
     // Example 1
-    // Manufactured solition
-    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
-    // // Right-hand side function
-    gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
-    // Manufactured density function
-    gsFunctionExpr<> f("( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
-    // Example 2
     // // Manufactured solition
-    // gsFunctionExpr<> s("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))",2);
+    // gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
     // // // Right-hand side function
-    // gsFunctionExpr<> SourceFunc("40000.0*x**2*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*x**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3 + 1.0*(75.0*pi**2*sin(pi*y) + 200)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 1.0*(40000*(y - 0.375*pi*cos(pi*y) - 0.5)**2)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 200.0*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*(y - 0.375*pi*cos(pi*y) - 0.5)**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3",2);
+    // gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
     // // Manufactured density function
-    // gsFunctionExpr<> f("exp(-90 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y))**2 )",2);
+    // gsFunctionExpr<> f("( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
+    // Example 2
+    // Manufactured solition
+    gsFunctionExpr<> s("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))",2);
+    // // Right-hand side function
+    gsFunctionExpr<> SourceFunc("40000.0*x**2*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*x**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3 + 1.0*(75.0*pi**2*sin(pi*y) + 200)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 1.0*(40000*(y - 0.375*pi*cos(pi*y) - 0.5)**2)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 200.0*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*(y - 0.375*pi*cos(pi*y) - 0.5)**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3",2);
+    // Manufactured density function
+    gsFunctionExpr<> f("exp(-90 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y))**2 )",2);
 
     //..... Test 2
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
@@ -273,8 +269,6 @@ int main(int argc, char *argv[])
         // Set the discretization space // different boundary condition !
         space ru = A.getSpace(dbasis);
         if (r == 0){
-            //*********************************************************//
-
             //dbasis.uniformRefine();
             // mp.uniformRefine();
             //Psi.uniformRefine();
@@ -329,6 +323,7 @@ int main(int argc, char *argv[])
             solution u_lsol = A.getSolution(u, sv0);
             for(int ip{0}; ip<=maxIter; ++ip)
             {
+                gsMultiPatch<> Psiloc;
                 gsMultiPatch<> UU;
                 u_sol.extract(UU);
                 gsWrite(UU, "U_solution");
@@ -345,12 +340,11 @@ int main(int argc, char *argv[])
                 A.assemble( v * v.tr() , v * igrad(u_s,G) );
                 vsolVector = solver.compute(A.matrix()).solve(A.rhs());
                 
-                v_sol.extract(Psi);                
-                
-                auto ff = A.getCoeff(f,PP);
-
-                // ...  0  dirichlet for boundaries
-                
+                v_sol.extract(Psiloc);
+                // Set the geometry optimal map
+                geometryMap PPloc = A.getMap(Psiloc);
+                auto ff = A.getCoeff(f,PPloc);
+                // ...  0  dirichlet for boundaries                
                 sv0 = solVector;
 
                 // Initialize the system
@@ -429,7 +423,7 @@ int main(int argc, char *argv[])
 
             // ... correct boundary
             if (PNormalCP)
-                ProjectionNormalCPoints(Psi, mp);
+                ProjectionNormalCPoints(Psi);
             if(mp.nPatches()>1){
             Psi.addInterface(0,2,1,1);
             Psi.addInterface(1,4,2,3);
@@ -440,6 +434,7 @@ int main(int argc, char *argv[])
             gsInfo<<"adapt Ref Param is "<< adaptRefParam << "\n";
             gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
         }
+
         gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
         //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
 
@@ -493,7 +488,7 @@ int main(int argc, char *argv[])
         if(r < numRefine){
         //! [beginRefLoop]
             gsInfo << "====== Loop " << r << " of "
-                    <<numRefine<< " ======" << "\n";
+                    <<numRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
         ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
@@ -509,6 +504,7 @@ int main(int argc, char *argv[])
         // Refine the marked elements with a 1-ring of cells around marked elements
         gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
         gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+        adaptRefParam = adaptRefParam + FactRefPar;
         }
     }
     //! [Solver loop]    
