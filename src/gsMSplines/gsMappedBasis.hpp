@@ -318,7 +318,7 @@ void gsMappedBasis<d,T>::derivSingle_into(const index_t patch, const index_t glo
             for(index_t j=0;j<pActive.rows();++j)
             {
                 L(2*p,pActive(j,p)+offset)=allLocals(2*j,p);
-                L(2*p+1,pActive(j,p)+offset)=allLocals(2*j+1,p); 
+                L(2*p+1,pActive(j,p)+offset)=allLocals(2*j+1,p);
             }
         Coefs(global_BF,0)=1;
         gsSparseMatrix<T> temp = L*(m_mapper->asMatrix())*Coefs;
@@ -483,14 +483,14 @@ index_t gsMappedBasis<d,T>::_getPatch(const index_t localIndex) const
 template<short_t d,class T>
 index_t gsMappedBasis<d,T>::getGlobalIndex(index_t patch, index_t localIndex)
 {
-    GISMO_ASSERT(patch>=0 && patch<m_bases.size(),"patch index out of range");
+    GISMO_ASSERT(patch>=0 && patch<(index_t)m_bases.size(),"patch index out of range");
     return _getLocalIndex(patch, localIndex);
 }
 
 template<short_t d,class T>
 gsMatrix<index_t> gsMappedBasis<d,T>::getGlobalIndex(index_t patch, gsMatrix<index_t> localIndices)
 {
-    GISMO_ASSERT(patch>=0 && patch<m_bases.size(),"patch index out of range");
+    GISMO_ASSERT(patch>=0 && patch<(index_t)m_bases.size(),"patch index out of range");
     gsMatrix<index_t> globalIndices(localIndices);
     globalIndices.array() += _getFirstLocalIndex(patch);
     return globalIndices;

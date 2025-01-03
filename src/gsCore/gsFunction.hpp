@@ -361,12 +361,13 @@ int gsFunction<T>::newtonRaphson_impl(
 
         if ( withSupport )
         {
+            // First bound the solution to the support
+            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
             if ( delta.norm()<accuracy )
             {
                 //gsInfo <<"OK: Newton reached boundary of support "<< delta.norm() <<"\n";
                 return iter;
             }
-            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
         }
 
     } while (++iter <= max_loop);

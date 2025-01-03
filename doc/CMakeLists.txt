@@ -138,3 +138,5 @@ else (DOXYGEN_FOUND)
     ${CMAKE_COMMAND} -E cmake_echo_color --cyan "Doxygen was not found! Please install doxygen and run cmake again to build the doc.")
 
 endif(DOXYGEN_FOUND)
+
+add_subdirectory(pygismo)

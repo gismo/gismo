@@ -504,22 +504,32 @@ private:
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
-            // ------- Compute  -------
-            quadrature(ee,localMat);
-
-            //  ------- Accumulate  -------
-            if (E::isMatrix())
-                if (m_elim) push<true,true>(ee.rowVar(), ee.colVar());
-                else push<true,false>(ee.rowVar(), ee.colVar());
-            else if (E::isVector())
-                if (m_elim) push<false,true>(ee.rowVar(), ee.colVar());
-                else push<false,false>(ee.rowVar(), ee.colVar());
+            GISMO_ASSERT(E::isMatrix() || E::isVector(), "Expecting a matrix or vector expression.");
+            if ((ee.rowVar().data().flags & SAME_ELEMENT) &&
+                ( E::isVector() || (ee.colVar().data().flags & SAME_ELEMENT) ) )
+            {
+                // ------- Compute  -------
+                quadrature(ee, localMat);
+                //  ------- Accumulate  -------
+                if (m_elim) push<E::isMatrix(),true>(ee.rowVar(), ee.colVar(), 0, 0);
+                else push<E::isMatrix(),false>(ee.rowVar(), ee.colVar(), 0, 0);
+            }
             else
             {
-                GISMO_ERROR("Something went terribly wrong at this point");
-                //GISMO_ASSERTrowSpan() && (!colSpan())
+                index_t k;
+                static index_t _zero(0);
+                index_t & ra = ( (ee.rowVar().data().flags & SAME_ELEMENT) ? _zero : k);
+                index_t & ca = ( (E::isVector() || ee.colVar().data().flags & SAME_ELEMENT) ? _zero : k);
+                const T * w = m_quWeights.data();
+                for (k = 0; k != m_quWeights.rows(); ++k)
+                {
+                    // ------- Compute  -------
+                    localMat.noalias() = (*(w++)) * ee.eval(k);
+                    //  ------- Accumulate  -------
+                    if (m_elim) push<E::isMatrix(),true>(ee.rowVar(), ee.colVar(), ra, ca);
+                    else push<E::isMatrix(),false>(ee.rowVar(), ee.colVar(), ra, ca);
+                }
             }
-
         }// operator()
 
         template <typename E>
@@ -581,7 +591,7 @@ private:
 
         template<bool isMatrix, bool elim = true>
         void push(const expr::gsFeSpace<T> & v,
-                  const expr::gsFeSpace<T> & u)
+                  const expr::gsFeSpace<T> & u, index_t ra = 0, index_t ca = 0)
         {
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
@@ -614,7 +624,7 @@ private:
                 const index_t rls = r * rowInd0.rows();     //local stride
                 for (index_t i = 0; i != rowInd0.rows(); ++i)
                 {
-                    const index_t ii = rowMap.index(rowInd0.at(i),v.data().patchId,r); //N_i
+                    const index_t ii = rowMap.index(rowInd0(i,ra),v.data().patchId,r); //N_i
                     if ( rowMap.is_free_index(ii) )
                     {
                         if (isMatrix)
@@ -627,7 +637,7 @@ private:
                                 {
                                     if ( 0 == localMat(rls+i,cls+j) ) continue;
 
-                                    const index_t jj = colMap.index(colInd0.at(j),u.data().patchId,c); // N_j
+                                    const index_t jj = colMap.index(colInd0(j,ca),u.data().patchId,c); // N_j
                                     if ( colMap.is_free_index(jj) )
                                     {
                                         // If matrix is symmetric, we could

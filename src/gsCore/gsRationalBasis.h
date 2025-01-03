@@ -136,13 +136,16 @@ public:
 
     index_t size() const { return m_src->size(); }
 
-    int size(int const& k) const{ return m_src->size(k); }
+    index_t size(index_t const& k) const{ return m_src->size(k); }
 
     size_t numElements(boxSide const & s = 0) const { return m_src->numElements(s); }
     //using Base::numElements; //unhide
 
     /// See \ref gsBasis for a description
     size_t elementIndex(const gsVector<T> & u ) const { return m_src->elementIndex(u); }
+
+    /// See \ref gsBasis for a description
+    gsMatrix<T> elementInSupportOf(index_t j) const { return m_src->elementInSupportOf(j); }
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
@@ -170,14 +173,14 @@ public:
     // Look at gsBasis class for a description
     short_t totalDegree() const     {return m_src->totalDegree(); }
 
-    void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
+    void uniformRefine(int numKnots = 1, int mul = 1, short_t const dir = -1)
     {
         m_src->uniformRefine_withCoefs(m_weights, numKnots, mul, dir);
     }
 
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1, int dir=-1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul = 1, short_t const dir = -1);
 
-    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
+    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul = 1);
 
     /// See \ref gsBasis
     void refine(gsMatrix<T> const & boxes, int refExt = 0)
@@ -199,6 +202,7 @@ public:
         m_src->refineElements_withCoefs( m_weights, boxes );
     }
 
+
     /**
      * @brief Refines specified areas or boxes, depending on underlying basis.
      *
@@ -210,12 +214,14 @@ public:
      */
     void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
+    gsMatrix<T> elementInSupportOf(index_t j) const { return m_src->elementInSupportOf(j);}
+
     void degreeElevate(short_t const& i = 1, short_t const dir = -1)
     {
         typename SourceBasis::GeometryType tmp(*m_src,give(m_weights));
         tmp.degreeElevate(i,dir);
         tmp.coefs().swap(m_weights);
-        std::swap(*m_src, tmp.basis() );
+        m_src->swap(tmp.basis());
     }
 
     // todo (HV): test!!
@@ -224,7 +230,7 @@ public:
         typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
         tmp.degreeIncrease(i,dir);
         tmp.coefs().swap(m_weights);
-        std::swap(*m_src, tmp.basis() );
+        m_src->swap(tmp.basis());
     }
 
     void degreeReduce(short_t const& i = 1, short_t const dir = -1)
@@ -232,7 +238,7 @@ public:
         typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
         tmp.degreeReduce(i,dir);
         tmp.coefs().swap(m_weights);
-        std::swap(*m_src, tmp.basis() );
+        m_src->swap(tmp.basis());
     }
 
     void degreeDecrease(short_t const& i = 1, short_t const dir = -1)
@@ -240,21 +246,19 @@ public:
         typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
         tmp.degreeDecrease(i,dir);
         tmp.coefs().swap(m_weights);
-        std::swap(*m_src, tmp.basis() );
+        m_src->swap(tmp.basis());
     }
 
-    /* if ever be reused, change to actual and current GISMO_UPTR_FUNCTION stuff und uPtr
-      GISMO_UPTR_FUNCTION_DEF(gsBasis<T>, boundaryBasis, boxSide const &)
-      {
-      typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
-      gsMatrix<index_t> ind = m_src->boundary(s);
-      gsMatrix<T> ww( ind.size(),1);
-      for ( index_t i=0; i<ind.size(); ++i)
-      ww(i,0) = m_weights( (*ind)(i,0), 0);
-
-      return new BoundaryBasisType(bb, give(ww));
-      return 0;
-      }
+    /*
+    GISMO_UPTR_FUNCTION_DEF(gsBasis<T>, boundaryBasis, boxSide const &)
+    {
+        typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
+        gsMatrix<index_t> ind = m_src->boundary(s);
+        gsMatrix<T> ww( ind.size(),1);
+        for ( index_t i=0; i<ind.size(); ++i)
+            ww(i,0) = m_weights( ind(i,0), 0);
+        return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
+    }
     */
 
     gsDomain<T> * domain() const { return m_src->domain(); }
@@ -603,17 +607,20 @@ void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numK
 {
     GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                   "Invalid dimensions" );
+    /* // Using uniformRefine_withTransfer
     gsSparseMatrix<T, RowMajor> transfer;
     GISMO_ENSURE(-1==dir, "!!");
     m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
 
     coefs     = transfer * ( m_weights.asDiagonal() * coefs);
     m_weights = transfer * m_weights;
-    // Alternative way
-    // gsBasis<T> * tmp = m_src->clone();
-    // tmp->uniformRefine_withCoefs(coefs, numKnots);
-    // delete tmp;
-    // m_src->uniformRefine_withCoefs(m_weights, numKnots);
+    */
+
+    // Using uniformRefine_withCoefs
+    auto tmp = m_src->clone();
+    coefs *= m_weights.asDiagonal();
+    tmp->uniformRefine_withCoefs(coefs, numKnots);
+    m_src->uniformRefine_withCoefs(m_weights, numKnots,mul,dir);
 
     // back to affine coefs
     coefs.array().colwise() /= m_weights.col(0).array();
@@ -668,6 +675,5 @@ void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,
     // weights.
     setFromProjectiveCoefs(rw, coefs, m_weights);
 }
-
 
 } // namespace gismo

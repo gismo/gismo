@@ -341,9 +341,9 @@ public:
     /// \note This is a runtime check, for compile-time check use E::ScalarValued
     bool isScalar() const { return rows()*cols()<=1; } //!rowSpan && !colSpan
 
-    static bool isVector  () { return 1==E::Space; }
-    static bool isVectorTr() { return 2==E::Space; }
-    static bool isMatrix  () { return 3==E::Space; }
+    static constexpr bool isVector  () { return 1==E::Space; }
+    static constexpr bool isVectorTr() { return 2==E::Space; }
+    static constexpr bool isMatrix  () { return 3==E::Space; }
 
     ///\brief Parse the expression and discover the list of evaluation
     ///sources, also sets the required evaluation flags
@@ -1094,7 +1094,8 @@ public:
             {
                 for (gsBoxTopology::const_iiterator it = mb->topology().iBegin();
                      it != mb->topology().iEnd(); ++it) {
-                    mb->matchInterface(*it, m_sd->mapper);
+                    if ( it->type() != interaction::contact ) // If the interface type is 'contact' ignore it.
+                        mb->matchInterface(*it, m_sd->mapper);
                 }
             }
 
@@ -1578,7 +1579,12 @@ public:
     // insert g-coefficients to the solution vector
     void insert(const gsGeometry<T> & g, const index_t p = 0) const
     {
-        const gsMatrix<T> & cf = g.coefs();
+        insert(g.coefs(), p);
+    }
+
+    // insert g-coefficients to the solution vector
+    void insert(const gsMatrix<T> & cf, const index_t p = 0) const
+    {
         gsMatrix<T> & sol = *_Sv;
         //gsMatrix<T> & fixedPart = _u.fixedPart();
         const gsDofMapper & mapper = _u.mapper();

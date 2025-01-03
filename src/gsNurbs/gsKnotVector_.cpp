@@ -12,6 +12,9 @@ namespace gismo
 CLASS_TEMPLATE_INST internal::gsXml< gsKnotVector<real_t> >;
 
 #ifdef GISMO_WITH_PYBIND11
+
+namespace py = pybind11;
+
 void pybind11_init_gsKnotVector(py::module &m)
 {
   typedef gsKnotVector<real_t>::mult_t mult_t;
@@ -21,7 +24,7 @@ void pybind11_init_gsKnotVector(py::module &m)
     // Constructors
     // Empty constructor
     .def(py::init<>()) // How to set the degree to -1?
-    
+
     .def(py::init<std::vector<real_t>, short_t>()) // knot container
 
     // Member functions
@@ -37,8 +40,8 @@ void pybind11_init_gsKnotVector(py::module &m)
     .def("multiplicities", &Class::multiplicities, "Returns vector of multiplicities of the knots")
     //There are two version of the function insert, so I need to declare its arguments.
     .def("insert", (void (Class::*)(real_t, mult_t)) &Class::insert)
-    .def("uFind", &Class::uFind, "Returns poiter to the knot at the beginning of the _knot interval_ containing the knot")
-    .def("iFind", &Class::iFind, "Returns pointer to the last occurrence of the knot at the beginning of the _knot interval_ containing the knot")
+    .def("uFind", &Class::uFind, "Returns poiter to the knot at the beginning of the knot interval containing the knot")
+    .def("iFind", &Class::iFind, "Returns pointer to the last occurrence of the knot at the beginning of the knot interval containing the knot")
     .def("first", &Class::first, "Returns the first knot")
     .def("last", &Class::last, "Returns the last knot")
     .def("check", &Class::check, "Checks whether the knot vector is in a consistent state")

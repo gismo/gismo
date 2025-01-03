@@ -623,17 +623,15 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
   /**
    * @brief Initializes the Python wrapper for the class: gsSparseMatrix
    */
-  namespace py = pybind11;
-
   template<typename T>
   void pybind11_init_gsSparseMatrix(pybind11::module &m, const std::string & typestr)
   {
     using Class = gsSparseMatrix<T>;
     std::string pyclass_name = std::string("gsSparseMatrix") + typestr;
-    py::class_<Class>(m, pyclass_name.c_str(), py::buffer_protocol(), py::dynamic_attr())
+    pybind11::class_<Class>(m, pyclass_name.c_str(), pybind11::buffer_protocol(), pybind11::dynamic_attr())
     // Constructors
-    .def(py::init<>())
-    .def(py::init<index_t, index_t>())
+    .def(pybind11::init<>())
+    .def(pybind11::init<index_t, index_t>())
     // Member functions
     .def("size",      &Class::size)
     .def("rows",      &Class::rows)
