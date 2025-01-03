@@ -38,7 +38,8 @@ class gsThreaded
 public:
 
 #ifdef _OPENMP
-    gsThreaded() : m_array(omp_get_max_threads()) { }
+    explicit gsThreaded(C a = C())
+    : m_array(omp_get_max_threads(), give(a)) { }
 
     /// Casting to the local data
     operator C&()             { return m_array[omp_get_thread_num()]; }
