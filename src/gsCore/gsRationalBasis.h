@@ -214,8 +214,6 @@ public:
      */
     void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
-    gsMatrix<T> elementInSupportOf(index_t j) const { return m_src->elementInSupportOf(j);}
-
     void degreeElevate(short_t const& i = 1, short_t const dir = -1)
     {
         typename SourceBasis::GeometryType tmp(*m_src,give(m_weights));
