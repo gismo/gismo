@@ -23,7 +23,7 @@ void pybind11_init_gsBasis(py::module &m)
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(               ) const> (&Class::support), "Get the support of the basis")
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(const index_t &) const> (&Class::support), "Get the support of the basis function with an index i")
 
-    .def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+    .def("uniformRefine", static_cast<void (Class::*)(int, int, short_t)> (&Class::uniformRefine), "Refines the basis uniformly",
         py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
     .def("uniformCoarsen", static_cast<void (Class::*)(int)> (&Class::uniformCoarsen), "Refines the basis uniformly",
         py::arg("numKnots") = 1) //default arguments

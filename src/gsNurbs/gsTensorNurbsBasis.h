@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsNurbs/gsNurbs.h>
+//#include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsNurbsBasis.h>
 #include <gsCore/gsRationalBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -84,10 +84,8 @@ public:
             new gsBSplineBasis<T>(KV3, KV3.degree()) )
     { }
 
-    // TO DO: more constructors
-    //gsTensorNurbsBasis( gsBSplineBasis * x,  gsBSplineBasis* y, Basis_t* z ) : Base(x,y,z) { };
-    //gsTensorNurbsBasis( std::vector<Basis_t* > const & bb ) : Base(bb) { };
-
+    explicit gsTensorNurbsBasis(std::vector<KnotVectorType> KV, gsMatrix<T> w)
+    : Base(new Src_t(give(KV)), give(w)) { }
 
     // Constructors forwarded from the base class
     gsTensorNurbsBasis() : Base() { };

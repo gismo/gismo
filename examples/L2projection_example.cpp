@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
     auto ori = ev.getVariable(mp);
     auto proj= ev.getVariable(*geom);
     error = ev.integral((ori-proj).sqNorm()*meas(G));
-    gsDebugVar(error);
+    gsInfo <<"Error: "<< error <<"\n";
 
 
     gsInfo<<"---------------------------------------------------------------------------------------\n";
@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
     auto fori = ev.getVariable(f);
     auto fproj= ev.getVariable(*ff);
     error = ev.integral((fori-fproj).sqNorm()*meas(G));
-    gsDebugVar(error);
+    gsInfo <<"Error: "<< error <<"\n";
 
 
     // VECTOR

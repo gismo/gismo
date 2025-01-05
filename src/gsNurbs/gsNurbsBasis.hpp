@@ -1,0 +1,53 @@
+/** @file gsNurbsBasis.hpp
+
+    @brief Implementation of 1D NURBS basis
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris
+*/
+
+#pragma once
+
+#include <gsNurbs/gsNurbs.h>
+#include <gsNurbs/gsTensorNurbs.h>
+
+namespace gismo
+{
+
+template <class T>
+memory::unique_ptr<gsGeometry<T> >
+gsNurbsBasis<T>::makeGeometry( gsMatrix<T> coefs ) const
+{ return memory::unique_ptr<gsGeometry<T> >(new gsNurbs<T>(*this, give(coefs))); }
+
+
+template <class T>
+typename gsBasis<T>::uPtr
+gsNurbsBasis<T>::create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights)
+{
+    typedef typename gsBasis<T>::uPtr basisPtr;
+
+    const index_t dd = cKV.size();
+    switch (dd)
+    {
+    case 1:
+        return basisPtr(new gsNurbsBasis<T>(give(cKV.front()), give(weights)));
+        break;
+    case 2:
+        return basisPtr(new gsTensorNurbsBasis<2,T>(give(cKV), give(weights)));
+        break;
+    case 3:
+        return basisPtr(new gsTensorNurbsBasis<3,T>(give(cKV), give(weights)));
+        break;
+    case 4:
+        return basisPtr(new gsTensorNurbsBasis<4,T>(give(cKV), give(weights)));
+        break;
+    }
+    GISMO_ERROR("Dimension should be between 1 and 4.");
+}
+
+} // namespace gismo
