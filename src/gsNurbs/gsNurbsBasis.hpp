@@ -20,30 +20,28 @@ namespace gismo
 {
 
 template <class T>
-memory::unique_ptr<gsGeometry<T> >
+typename gsNurbsBasis<T>::gsGeoPtr
 gsNurbsBasis<T>::makeGeometry( gsMatrix<T> coefs ) const
-{ return memory::unique_ptr<gsGeometry<T> >(new GeometryType(*this, give(coefs))); }
+{ return gsGeoPtr(new GeometryType(*this, give(coefs))); }
 
 template <class T>
-typename gsBasis<T>::uPtr
+typename gsNurbsBasis<T>::gsBasisPtr
 gsNurbsBasis<T>::create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights)
 {
-    typedef typename gsBasis<T>::uPtr basisPtr;
-
     const index_t dd = cKV.size();
     switch (dd)
     {
     case 1:
-        return basisPtr(new gsNurbsBasis<T>(give(cKV.front()), give(weights)));
+        return gsBasisPtr(new gsNurbsBasis<T>(give(cKV.front()), give(weights)));
         break;
     case 2:
-        return basisPtr(new gsTensorNurbsBasis<2,T>(give(cKV), give(weights)));
+        return gsBasisPtr(new gsTensorNurbsBasis<2,T>(give(cKV), give(weights)));
         break;
     case 3:
-        return basisPtr(new gsTensorNurbsBasis<3,T>(give(cKV), give(weights)));
+        return gsBasisPtr(new gsTensorNurbsBasis<3,T>(give(cKV), give(weights)));
         break;
     case 4:
-        return basisPtr(new gsTensorNurbsBasis<4,T>(give(cKV), give(weights)));
+        return gsBasisPtr(new gsTensorNurbsBasis<4,T>(give(cKV), give(weights)));
         break;
     }
     GISMO_ERROR("Dimension should be between 1 and 4.");

@@ -42,6 +42,9 @@ public:
 
     typedef gsKnotVector<T> KnotVectorType;
 
+    typedef memory::unique_ptr<gsGeometry<T> > gsGeoPtr;
+    typedef memory::unique_ptr<gsBasis<T> >    gsBasisPtr;
+    
     /// The family type
     typedef gsBSplineBasis<T> Family_t;
 
@@ -107,9 +110,9 @@ public:
     /// Clone function. Used to make a copy of a derived basis
     GISMO_CLONE_FUNCTION(gsNurbsBasis)
 
-    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) const;
+    gsGeoPtr makeGeometry( gsMatrix<T>coefs ) const;
 
-    static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights);
+    static gsGeoPtr create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights);
     using Base::create;
 
     /// Prints the object as a string.

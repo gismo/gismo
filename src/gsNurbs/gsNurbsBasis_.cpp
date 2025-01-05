@@ -2,7 +2,7 @@
 
 #define gsNurbsBasis_EXPORT
 
-#include <gsIO/gsXml.h>
+//#include <gsIO/gsXml.h>
 #include <gsCore/gsBasisFun.h>
 #include <gsNurbs/gsNurbsBasis.h>
 #include <gsNurbs/gsNurbsBasis.hpp>
