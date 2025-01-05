@@ -10,10 +10,8 @@
 namespace gismo
 {
 
-// CLASS_TEMPLATE_INST gsTensorBSplineBasis<1, real_t>;
-// CLASS_TEMPLATE_INST gsNurbsBasis<real_t>;
-
-CLASS_TEMPLATE_INST internal::gsXml< gsNurbsBasis<real_t> >;
+//CLASS_TEMPLATE_INST gsNurbsBasis<real_t>; // in export
+//CLASS_TEMPLATE_INST internal::gsXml< gsNurbsBasis<real_t> >; // at gsXmlUtils
 
 /*
 #ifdef GISMO_WITH_PYBIND11

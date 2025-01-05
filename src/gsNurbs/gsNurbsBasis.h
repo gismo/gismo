@@ -84,7 +84,7 @@ public:
     Base( bs, give(w) )  { }
 
     /// Construct NURBS basis of a knot vector
-    gsNurbsBasis( const gsKnotVector<T> KV ) :
+    gsNurbsBasis( gsKnotVector<T> KV ) :
     Base( new gsBSplineBasis<T>(give(KV)) )
     { }
 
