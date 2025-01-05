@@ -1,11 +1,7 @@
 /* Symbol export for G+Smo shared object */
 
 #define gsNurbsBasis_EXPORT
-
-//#include <gsIO/gsXml.h>
-#include <gsCore/gsBasisFun.h>
 #include <gsNurbs/gsNurbsBasis.h>
-#include <gsNurbs/gsNurbsBasis.hpp>
 
 namespace gismo
 {

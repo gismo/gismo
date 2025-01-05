@@ -103,7 +103,7 @@ public:
         if ( this != &o )
         {
             delete m_src;
-            m_src = o.source().clone();
+            m_src = o.source().clone().release();
             m_weights = o.weights()  ;
         }
         return *this;
