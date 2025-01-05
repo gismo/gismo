@@ -13,7 +13,6 @@
 
 #pragma once
 
-//#include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsNurbsBasis.h>
 #include <gsCore/gsRationalBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
