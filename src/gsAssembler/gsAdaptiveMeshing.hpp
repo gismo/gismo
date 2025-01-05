@@ -82,8 +82,8 @@ void gsAdaptiveMeshing<T>::_makeMap(const gsFunctionSet<T> * input, typename gsA
             GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
             typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
-            gsHDomainIterator<T,2> * domHIt = nullptr;
-            domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
+            gsHDomainIterator<T,2> * domHIt =
+                dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
             GISMO_ENSURE(domHIt!=nullptr,"Domain not loaded");
 
 // #ifdef _OPENMP

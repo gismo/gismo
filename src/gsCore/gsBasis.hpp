@@ -498,7 +498,7 @@ gsBasis<T>::makeDomainIterator() const
 GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginBdr()
 template<class T>
 typename gsBasis<T>::domainIter
-gsBasis<T>::makeDomainIterator(const boxSide &) const
+gsBasis<T>::makeDomainIterator(const boxSide &s) const
 { return this->domain()->beginBdr(s); }
 
 template<class T>
@@ -677,6 +677,7 @@ T gsBasis<T>::getMinCellLength() const
 template<class T>
 T gsBasis<T>::getMaxCellLength() const
 {
+    T h(0);
     for (domainIter it = this->domain()->beginAll(); it!=this->domain()->endAll(); ++it )
     {
         const T sz = it.getMaxCellLength();

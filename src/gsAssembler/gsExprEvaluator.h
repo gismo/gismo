@@ -412,7 +412,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
-        m_exprdata->getElement().set(*domIt,quWeights);
+        m_exprdata->getElement().set(domIt,quWeights);
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
@@ -489,7 +489,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(bit->patch).makeDomainIterator(bit->side());
-        m_exprdata->getElement().set(*domIt,quWeights);
+        m_exprdata->getElement().set(domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
@@ -553,7 +553,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
-        m_exprdata->getElement().set(*domIt,quWeights);
+        m_exprdata->getElement().set(domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
@@ -626,7 +626,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         typename gsBasis<T>::domainIter domIt =
             //interfaceMap.makeDomainIterator();
             m_exprdata->multiBasis().piece(patch1).makeDomainIterator(iFace.first().side());
-        m_exprdata->getElement().set(*domIt,quWeights);
+        m_exprdata->getElement().set(domIt,quWeights);
 
         // Start iteration over elements
         elVal = _op::init();

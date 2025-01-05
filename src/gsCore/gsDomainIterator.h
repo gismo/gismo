@@ -159,6 +159,9 @@ public:
         m_domainIter->reset();
         m_domainIter->resetId();
     }
+
+    gsDomainIterator<T> * get() { return m_domainIter.get(); }
+    
 public:
 
     const gsVector<T>& lowerCorner() const
@@ -197,8 +200,8 @@ public:
     inline boxSide side() const {return m_domainIter->m_side;}
 
     /// Fetches data of integer type based on string label
-    const index_t & get(const std::string & label)
-    {return m_domainIter->get(label); }
+    const index_t & label(const std::string & _label)
+    {return m_domainIter->label(_label); }
 
 };
 
@@ -268,8 +271,8 @@ public:
     short_t dim() const   { return center.size(); }
 
     /// fetches data of integer type based on string label
-    virtual const index_t & get(const std::string & label)
-    {GISMO_ERROR("Cannot find property "<< label); }
+    virtual const index_t & label(const std::string & _label)
+    {GISMO_ERROR("Cannot find property "<< _label); }
 
     /// Updates \a other with and adjacent element
     /// \todo upgrade to return adjacent range instead

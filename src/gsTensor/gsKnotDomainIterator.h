@@ -55,14 +55,14 @@ public:
     }
 
     const gsVector<T> & lowerCorner() const
-    { return lower; }
+    { return this->lower; }
 
     const gsVector<T> & upperCorner() const
-    { return upper; }
+    { return this->upper; }
 
     bool isBoundaryElement() const
     {
-        return ( 0==m_it.uIndex() || curElement+1==meshEnd);
+        return ( 0==m_it.uIndex() || this->curElement+1==this->meshEnd);
     }
 
     index_t domainDim() const {return 1;}
@@ -74,9 +74,9 @@ private:
     /// active functions.
     void update()
     {
-        lower[0]  = curElement.value();
-        upper[0]  = (curElement+1).value();
-        center  = (lower + upper) / (T)(2);
+        this->lower[0]  = this->curElement.value();
+        this->upper[0]  = (this->curElement+1).value();
+        this->center  = (this->lower + this->xupper) / (T)(2);
     }
 
 

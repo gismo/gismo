@@ -438,9 +438,10 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
         gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
 
         // Create the iterator along the given part boundary.
-        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
+        typename gsBasis<T>::domainIter bdryIter = basis->domain().beginBdr(iter->side());
+        typename gsBasis<T>::domainIter bdryEnd = basis->domain().endBdr(iter->side());
 
-        for(; bdryIter->good(); bdryIter->next() )
+        for(; bdryIter!=bdryEnd; ++bdryIter )
         {
             bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
                             md.points, quWeights);
