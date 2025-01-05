@@ -50,8 +50,6 @@ public:
 
     typedef gsRationalBasis<gsBSplineBasis<T> > Base;
 
-    typedef T Scalar_t;
-
     /// Associated Boundary basis type
     typedef gsConstantBasis<T> BoundaryBasisType;
 
@@ -79,12 +77,19 @@ public:
     /// Default empty constructor
     gsNurbsBasis() : Base() { }
 
-    /// Construct NURBS basis by a Bspline basis plus weights
+    /// Construct NURBS basis by a Bspline basis pointer (consumed) plus weights
     gsNurbsBasis( gsBSplineBasis<T> *bs, gsMatrix<T> w) :
     Base( bs, give(w) )  { }
 
+    /// Construct NURBS basis by a Bspline basis plus weights
+    gsNurbsBasis( gsBSplineBasis<T> bs, gsMatrix<T> w) :
+    Base(new gsBSplineBasis<T>(), give(w))
+    {
+        *this->m_src = give(bs);
+    }
+
     /// Construct NURBS basis of a knot vector
-    gsNurbsBasis( gsKnotVector<T> KV ) :
+    explicit gsNurbsBasis( gsKnotVector<T> KV ) :
     Base( new gsBSplineBasis<T>(give(KV)) )
     { }
 
@@ -101,7 +106,7 @@ public:
 
     /// Clone function. Used to make a copy of a derived basis
     GISMO_CLONE_FUNCTION(gsNurbsBasis)
-  
+
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) const;
 
     static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights);
