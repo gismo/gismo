@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <gsCore/gsConstantFunction.h>
+
 namespace gismo {
 
 template<short_t d, typename T>

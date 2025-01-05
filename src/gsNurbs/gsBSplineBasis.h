@@ -797,28 +797,7 @@ public:
         GISMO_ERROR("Dimension should be between 1 and 4.");
     }
 
-    static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV)
-    {
-        typedef typename gsBasis<T>::uPtr basisPtr;
-
-        const index_t dd = cKV.size();
-        switch (dd)
-        {
-        case 1:
-            return basisPtr(new gsBSplineBasis<T>(give(cKV)));
-            break;
-        case 2:
-            return basisPtr(new gsTensorBSplineBasis<2,T>(give(cKV)));
-            break;
-        case 3:
-            return basisPtr(new gsTensorBSplineBasis<3,T>(give(cKV)));
-            break;
-        case 4:
-            return basisPtr(new gsTensorBSplineBasis<4,T>(give(cKV)));
-            break;
-        }
-        GISMO_ERROR("Dimension should be between 1 and 4.");
-    }
+    static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV);
 
 /*
     /// @brief Copy Constructor

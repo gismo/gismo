@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsNurbsBasis.h>
 #include <gsCore/gsRationalBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -40,6 +39,8 @@ class gsTensorNurbsBasis : public gsRationalBasis<typename gsBSplineTraits<d,T>:
 
 public: 
     typedef gsKnotVector<T> KnotVectorType;
+
+    typedef memory::unique_ptr<gsGeometry<T> > gsGeoPtr;
 
     /// @brief Base type
     typedef gsRationalBasis<typename gsBSplineTraits<d,T>::Basis> Base;
@@ -73,21 +74,8 @@ public:
 
 public:
 
-    /// @brief Constructors for gsTensorNurbsBasis
-    gsTensorNurbsBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
-    : Base( new gsBSplineBasis<T>(KV1, KV1.degree()), new gsBSplineBasis<T>(KV2, KV2.degree()) )
-    { }
-
-    gsTensorNurbsBasis( const KnotVectorType& KV1, const KnotVectorType& KV2, const KnotVectorType& KV3 )
-    : Base( new gsBSplineBasis<T>(KV1, KV1.degree()),
-            new gsBSplineBasis<T>(KV2, KV2.degree()),
-            new gsBSplineBasis<T>(KV3, KV3.degree()) )
-    { }
-
-    // TO DO: more constructors
-    //gsTensorNurbsBasis( gsBSplineBasis * x,  gsBSplineBasis* y, Basis_t* z ) : Base(x,y,z) { };
-    //gsTensorNurbsBasis( std::vector<Basis_t* > const & bb ) : Base(bb) { };
-
+    explicit gsTensorNurbsBasis(std::vector<KnotVectorType> KV, gsMatrix<T> w)
+    : Base(new Src_t(give(KV)), give(w)) { }
 
     // Constructors forwarded from the base class
     gsTensorNurbsBasis() : Base() { };
@@ -96,18 +84,13 @@ public:
 
     gsTensorNurbsBasis( const Src_t & basis ) : Base(basis) { }
 
-    gsTensorNurbsBasis( std::vector<gsBasis<T>* > const & bb, gsMatrix<T> w ) : Base(Src_t(bb), give(w)) { }
-
     gsTensorNurbsBasis( Src_t* basis, gsMatrix<T> w ) : Base(basis, give(w)) { }
 
     gsTensorNurbsBasis(const gsTensorNurbsBasis & o) : Base(o) { }
 
     GISMO_CLONE_FUNCTION(gsTensorNurbsBasis)
 
-    //static uPtr make(std::vector<gsBasis<T>* > const & bb, gsMatrix<T> w)
-    //{ return uPtr( new gsTensorNurbsBasis(bb, w) ); }
-  
-    GISMO_MAKE_GEOMETRY_NEW
+    gsGeoPtr makeGeometry( gsMatrix<T> coefs ) const;
 
 public:
 
@@ -257,3 +240,21 @@ protected:
 
 
 } // namespace gismo
+
+// *****************************************************************
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsTensorNurbsBasis.hpp)
+#else
+#ifdef gsTensorNurbsBasis_EXPORT
+#include GISMO_HPP_HEADER(gsTensorNurbsBasis.hpp)
+#undef  EXTERN_CLASS_TEMPLATE
+#define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
+#endif
+namespace gismo
+{
+EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<2,real_t>;
+EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<3,real_t>;
+EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<4,real_t>;
+}
+#endif
+// *****************************************************************

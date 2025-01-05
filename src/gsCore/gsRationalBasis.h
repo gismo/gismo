@@ -103,7 +103,7 @@ public:
         if ( this != &o )
         {
             delete m_src;
-            m_src = o.source().clone();
+            m_src = o.source().clone().release();
             m_weights = o.weights()  ;
         }
         return *this;
@@ -173,7 +173,7 @@ public:
     // Look at gsBasis class for a description
     short_t totalDegree() const     {return m_src->totalDegree(); }
 
-    void uniformRefine(int numKnots = 1, int mul = 1, short_t const dir = -1)
+    void uniformRefine(int numKnots = 1, int mul = 1, short_t dir = -1)
     {
         m_src->uniformRefine_withCoefs(m_weights, numKnots, mul, dir);
     }
@@ -216,35 +216,36 @@ public:
 
     void degreeElevate(short_t const& i = 1, short_t const dir = -1)
     {
-        typename SourceBasis::GeometryType tmp(*m_src,give(m_weights));
-        tmp.degreeElevate(i,dir);
-        tmp.coefs().swap(m_weights);
-        m_src->swap(tmp.basis());
+        memory::unique_ptr<gsGeometry<T> > tmp = m_src->makeGeometry(give(m_weights));
+        tmp->degreeElevate(i,dir);
+        tmp->coefs().swap(m_weights);
+        delete m_src;
+        m_src = static_cast<SrcT*>(tmp->basis().clone().release());
     }
 
-    // todo (HV): test!!
     void degreeIncrease(short_t const& i = 1, short_t const dir = -1)
     {
-        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
-        tmp.degreeIncrease(i,dir);
-        tmp.coefs().swap(m_weights);
-        m_src->swap(tmp.basis());
+        memory::unique_ptr<gsGeometry<T> > tmp = m_src->makeGeometry(give(m_weights));
+        tmp->degreeIncrease(i,dir);
+        tmp->coefs().swap(m_weights);
+        delete m_src;
+        m_src = static_cast<SrcT*>(tmp->basis().clone().release());
     }
 
     void degreeReduce(short_t const& i = 1, short_t const dir = -1)
     {
-        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
-        tmp.degreeReduce(i,dir);
-        tmp.coefs().swap(m_weights);
-        m_src->swap(tmp.basis());
+        memory::unique_ptr<gsGeometry<T> > tmp = m_src->makeGeometry(give(m_weights));
+        tmp->degreeReduce(i,dir);
+        tmp->coefs().swap(m_weights);
+        delete m_src;
+        m_src = static_cast<SrcT*>(tmp->basis().clone().release());
     }
 
     void degreeDecrease(short_t const& i = 1, short_t const dir = -1)
     {
-        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
-        tmp.degreeDecrease(i,dir);
-        tmp.coefs().swap(m_weights);
-        m_src->swap(tmp.basis());
+        memory::unique_ptr<gsGeometry<T> > tmp = m_src->makeGeometry(give(m_weights));
+        tmp->degreeDecrease(i,dir);
+        tmp->coefs().swap(m_weights);
     }
 
     /*

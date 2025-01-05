@@ -120,6 +120,10 @@ if(DOXYGEN_FOUND)
     COMMENT "Generating doc: ${gismo_BINARY_DIR}/doc/html/index.html" VERBATIM
     )
 
+  add_custom_command(TARGET doc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E touch .nojekyll
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html)
+
   add_custom_target(doctar #ALL
     COMMAND ${CMAKE_COMMAND} -E rename html gismo-doc
     COMMAND ${CMAKE_COMMAND} -E remove gismo-doc/gismo-doc.tgz

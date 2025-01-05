@@ -312,7 +312,7 @@ public:
     virtual std::ostream &print(std::ostream &os) const = 0;
 
     // Look at gsBasis class for documentation 
-    virtual void uniformRefine(int numKnots = 1, int mul = 1, short_t const dir = -1)
+    virtual void uniformRefine(int numKnots = 1, int mul = 1, short_t dir = -1)
     {
         if (-1==dir)
             for (short_t j = 0; j < d; ++j)
