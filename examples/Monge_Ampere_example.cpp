@@ -82,10 +82,12 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot           = false;
     index_t numRefine   = 3;
+    index_t numLRefine  = 3;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
     double eps          = 1e-5; // pinalization coefficient
     double tolPicard    = 1e-8;
+    double IntensityMAE = 10.;
     bool plotMAeRes     = false;
     bool export_b64     = false;
     // ...PNormalCP: Correct the normal part of the mapping.
@@ -97,13 +99,15 @@ int main(int argc, char *argv[])
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
-    cmd.addString( "f", "file", "Input XML file", fn );
+    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
+    cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
     cmd.addSwitch("plotMAeRes", "PLot only result of solving MA equation", plotMAeRes);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -194,7 +198,7 @@ int main(int argc, char *argv[])
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
-    gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n"
+    gsInfo<< "(dot1=assembled, dot2=solved)\n"
         "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0);    
     gsStopwatch timer;
@@ -217,7 +221,7 @@ int main(int argc, char *argv[])
     auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral(ff.val() * meas(G))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G))};
 
     setup_time += timer.stop();
 
@@ -227,7 +231,7 @@ int main(int argc, char *argv[])
     A.assemble(
     igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G) //rhs vector
     );
     
     // Compute the Neumann terms defined on physical space
@@ -280,11 +284,11 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         geometryMap PP = A.getMap(Psi);
         auto  comp = PP(mpLeft);
-        // A.initSystem(2);
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        // v_sol.extract(Psi);
+        A.initSystem(2);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        v_sol.extract(Psi);
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         auto ff = A.getCoeff(f, PP);
 
@@ -304,12 +308,12 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         
         // .. update Coeffeicient of conductivity
-        CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
+        CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
         // MAE system
         A.assemble(
         igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
         ,
-        u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
+        u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
         );
 
         // Compute the Neumann terms defined on physical space
@@ -345,7 +349,7 @@ int main(int argc, char *argv[])
     }//for loop
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
-
+ 
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time<<"\n";
     gsInfo<<"     Setup: "<< setup_time <<"\n";
@@ -394,24 +398,63 @@ int main(int argc, char *argv[])
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * igrad(u_s,G) );
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        gsMultiPatch<> Psi;
-        v_sol.extract(Psi);
+        gsMultiPatch<> Psi, Psitp;
+        v_sol.extract(Psitp);
         //... correct the boundary
         if (PNormalCP)
-            ProjectionNormalCPoints(Psi, mp);
+            ProjectionNormalCPoints(Psitp, mp);
 
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         // Psi.addAutoBoundaries();
-        geometryMap PP = A.getMap(Psi);
+        geometryMap PP = A.getMap(Psitp);
         auto  comp = PP(mpLeft);
         A.initSystem(2);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        v_sol.extract(Psi);
+        v_sol.extract(Psitp);
+        Psitp.addAutoBoundaries();
+        Psitp.computeTopology();
+        gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
+
+        for(size_t i =0; i<Psitp.nPatches(); ++i)
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
         Psi.addAutoBoundaries();
+        Psi.computeTopology();
+        //Psi.uniformRefine();
+        gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
+
         geometryMap PPF = A.getMap(Psi);
-        auto ff_TG = A.getCoeff(f, PPF);
+        auto ff_TG      = A.getCoeff(f, PPF);
+        // --------------- adaptive refinement ---------------
+        // Specify cell-marking strategy...
+        MarkingStrategy adaptRefCrit = PUCA;
+        //MarkingStrategy adaptRefCrit = GARU;
+        //MarkingStrategy adaptRefCrit = errorFraction;
+        real_t adaptRefParam = 0.7;
+        // Elements used for numerical integration
+        A.setIntegrationElements(dbasis);
+        gsExprEvaluator<> ev(A);
+
+        for (int r=0; r<=numLRefine; ++r)
+        {
+            // --------------- error estimation/computation ---------------
+            // Get the element-wise norms.
+            ev.integralElWise( ( ff_TG ).sqNorm() );
+            const std::vector<real_t> eltErrs  = ev.elementwise();
+            //! [errorComputation]
+
+            //! [adaptRefinementPart]
+            // Mark elements for refinement, based on the computed local errors and
+            // the refinement-criterion and -parameter.
+            std::vector<bool> elMarked( eltErrs.size() );
+            gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+            gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
+            // Refine the marked elements with a 1-ring of cells around marked elements
+            gsRefineMarkedElements( dbasis, elMarked, 1);
+            gsRefineMarkedElements( Psi, elMarked, 1);
+            }
+
         //::::::::::::::::::::      end       :::::::::::::::::::::::::   
         gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);

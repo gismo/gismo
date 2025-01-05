@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
 
     gsVector<>  h1err(numRefine+1), l2err(numRefine+1);
     gsVector<int>  DoFPDE(numRefine+1);
-    gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n";
+    gsInfo<< "(dot1=assembled, dot2=solved)\n";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     gsStopwatch timer;
     //... 
