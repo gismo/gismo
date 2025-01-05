@@ -110,6 +110,7 @@ public:
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) const;
 
     static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights);
+    using Base::create;
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const

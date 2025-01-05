@@ -22,8 +22,7 @@ namespace gismo
 template <class T>
 memory::unique_ptr<gsGeometry<T> >
 gsNurbsBasis<T>::makeGeometry( gsMatrix<T> coefs ) const
-{ return memory::unique_ptr<gsGeometry<T> >(new gsNurbs<T>(*this, give(coefs))); }
-
+{ return memory::unique_ptr<gsGeometry<T> >(new GeometryType(*this, give(coefs))); }
 
 template <class T>
 typename gsBasis<T>::uPtr
