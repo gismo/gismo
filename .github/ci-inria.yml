@@ -42,7 +42,7 @@ Superbuild-Intel-oneAPI:
   extends: .linux-intel
   stage: compile
   before_script:
-    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
+    - source /opt/intel/oneapi/setvars.sh
     - export CC=icx
     - export CXX=icpx
   script:
