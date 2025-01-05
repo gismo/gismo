@@ -17,17 +17,12 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsCore/gsAffineFunction.h>
-#include <gsNurbs/gsKnotVector.h>
-
 #include <gsUtils/gsCombinatorics.h>
-
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsTensor/gsTensorBasis.h>
-#include <gsNurbs/gsBSpline.h>
-#include <gsNurbs/gsTensorBSpline.h>
-#include <gsNurbs/gsTensorNurbs.h>
-
 #include <gsAssembler/gsQuadrature.h>
+
+#include <gsNurbs/gsNurbsBasis.h>
 
 namespace gismo
 {
@@ -1113,13 +1108,14 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
         }
     }
 
+    std::vector<gsKnotVector<T> >  kv(domainDim());
     gsMatrix<> newCoefs, newWeights;
     for (auto const& pair : ElementBlocks)
     {
         internal::ElementBlock ElBlock = pair.second;
 
-        gsKnotVector<> kv1(0,1,0,ElBlock.PR+1);
-        gsKnotVector<> kv2(0,1,0,ElBlock.PS+1);
+        kv[0] = gsKnotVector<T>(0,1,0,ElBlock.PR+1);
+        kv[1] = gsKnotVector<T>(0,1,0,ElBlock.PS+1);
         // coefs.setZero( (ElBlock.PR+1)*(ElBlock.PS+1), controlPoints.cols()-1 );
 
         // Loop over all elements of the Element Block
@@ -1136,14 +1132,12 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
                 newWeights = Cit->transpose() * globalWeights(Ait->asVector(),0);
                 newCoefs = Cit->transpose() * globalWeights(Ait->asVector(),0).asDiagonal() * globalCoefs(Ait->asVector(),gsEigen::all);
                 newCoefs = newCoefs.array().colwise() / newWeights.col(0).array();
-
-                gsTensorNurbs<2> bezier(kv1,kv2, newCoefs, newWeights);
-                result.addPatch(bezier);
+                result.addPatch( gsNurbsBasis<T>::create(kv,newWeights)->makeGeometry(give(newCoefs)) );
             }
             else // If all weights are equal (Polynomial)
             {
-                gsTensorBSpline<2> bezier(kv1,kv2, Cit->transpose() * globalCoefs(Ait->asVector(),gsEigen::all));
-                result.addPatch(bezier);
+                result.addPatch( gsBSplineBasis<T>::create(kv)->makeGeometry(
+                       Cit->transpose() * globalCoefs(Ait->asVector(),gsEigen::all) ) );
             }
             // bezier extraction operator * original control points
         }

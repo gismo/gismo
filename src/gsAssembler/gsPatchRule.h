@@ -14,8 +14,6 @@
 #pragma once
 
 #include <gsAssembler/gsQuadRule.h>
-#include <gsNurbs/gsKnotVector.h>
-#include <gsNurbs/gsBSplineBasis.h>
 
 namespace gismo
 {
