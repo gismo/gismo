@@ -871,14 +871,18 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).
-            makeDomainIterator(it->side());
-        m_exprdata->getElement().set(*domIt,quWeights);
+            beginBdr(it->side());
+        m_exprdata->getElement().set(domIt,quWeights);
+
+        typename gsBasis<T>::domainIter domItEnd =
+                    m_exprdata->multiBasis().basis(it->patch()).
+            endBdr(it->side());
 
         // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
+        for (; domIt != domItEnd; ++domIt )
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), quWeights);
 
             if (m_exprdata->points().cols()==0)
