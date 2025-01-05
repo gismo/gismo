@@ -112,7 +112,7 @@ public:
 
     gsGeoPtr makeGeometry( gsMatrix<T>coefs ) const;
 
-    static gsGeoPtr create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights);
+    static gsBasisPtr create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights);
     using Base::create;
 
     /// Prints the object as a string.
