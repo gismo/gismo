@@ -43,10 +43,8 @@ private:
     typedef std::map<const gsFunctionSet<T>*,thFuncData>  FuncData;
     typedef std::map<const gsFunctionSet<T>*,thMapData>  MapData;
     typedef std::pair<const gsFunctionSet<T>*,thMapData*> CFuncKey;
-    typedef std::pair<const gsFunctionSet<T>*,thFuncData*> CFuncKeyAd;    
 
     typedef std::map<CFuncKey,thFuncData>  CFuncData;
-    typedef std::map<CFuncKeyAd,thFuncData>  CFuncDataAd;
 
     typedef typename FuncData::iterator FuncDataIt;
     typedef typename MapData ::iterator MapDataIt;
@@ -56,7 +54,7 @@ private:
     FuncData  m_fdata;///< functions
     MapData   m_mdata;///< maps
     CFuncData m_cdata;///< compositions
-    CFuncDataAd m_cdataAd;///< compositions
+    CFuncData m_cdataAd;///< compositions
 
 
     memory::shared_ptr<gsExprHelper> m_mirror;
@@ -360,14 +358,14 @@ public:
         //GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
         //add(sym.innerRight());//the map
         //sym.innerRight().data().flags |= NEED_VALUE;
-        expr::gsComposition<T> GNew(sym.innerRight());
-        GNew.setSource(*sym.innerLeft().m_fs);
+        //expr::gsComposition<T> GNew(sym.innerRight());
+        //GNew.setSource(*sym.innerLeft().m_fs);
 
-        add(GNew);
+        add(sym.innerLeft());
         sym.innerLeft().data().flags |= NEED_VALUE;
 
         //register the function //if !=nullptr?
-        auto k = std::make_pair(sym.m_fs,&m_fdata[sym.innerLeft().m_fs]);
+        auto k = std::make_pair(sym.m_fs,&m_mdata[sym.innerLeft().m_fs]);
         auto it = m_cdataAd.find(k);
         gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
         if (m_cdataAd.end()==it)
