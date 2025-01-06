@@ -37,8 +37,11 @@ private:
 
     gsOptionList m_options;
 
-    gsSparseMatrix<T> m_matrix;
-    gsMatrix<T>       m_rhs;
+    mutable gsSparseMatrix<T> m_matrix;
+    bool m_modified;
+
+    gsSparseRows<T>  m_fmatrix;
+    gsMatrix<T>      m_rhs;
 
     std::list<gsFeSpaceData<T> > m_sdata;
     std::vector<gsFeSpaceData<T>*> m_vrow;
@@ -117,16 +120,45 @@ public:
     gsOptionList & options() {return m_options;}
 
     /// @brief Returns the left-hand global matrix
-    const gsSparseMatrix<T> & matrix() const { return m_matrix; }
+    const gsSparseMatrix<T> & matrix() const
+    {
+        //idea: make m_matrix mutable. add a flag to all assemble functions
+        // if flag return
+        return makeMatrix();
+        // else
+        return m_matrix;
+    }
+
+    /// When calling assemble, the matrix is not filled in.
+    /// Call this function to fill the sparsematrix with all the assemblies so far
+    const gsSparseMatrix<T> & makeMatrix() const
+    {
+        m_fmatrix.toSparseMatrixTransposed(m_matrix);
+        return m_matrix;
+
+    // --- complicated + inefficient
+    // check if reallocation is needed.
+    // if yes, merge_sort sppattern and m_matrix into a new gsSparseMatrix
+    // if no, just insert new explicit zeros
+    
+    // compute new column widths
+    // reallocate if needed (look at SparseMatrix::insert)
+    // add explicit zeros to all new places
+            
+        // make m_matrix mutable
+    }
 
     /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
-    void matrix_into(gsSparseMatrix<T> & out) { out = give(m_matrix); }
+    void matrix_into(gsSparseMatrix<T> & out)
+    {
+        (void)matrix();
+        out = give(m_matrix);
+    }
 
     EIGEN_STRONG_INLINE gsSparseMatrix<T> giveMatrix()
     {
-         gsSparseMatrix<T> rvo;
-         rvo.swap(m_matrix);
-         return rvo;
+        (void)matrix();
+        return give(matrix);
     }
 
     /// @brief Returns the right-hand side vector(s)
@@ -315,17 +347,16 @@ public:
      */
     void clearMatrix(const bool& save_sparsety_pattern = true)
     {
-        if (m_matrix.nonZeros() && save_sparsety_pattern)
+        if (m_fmatrix.nonZeros() && save_sparsety_pattern)
         {
-            std::fill(m_matrix.valuePtr(),
-                      m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
+            m_fmatrix.assignZero();
         }
         else
         {
-            m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
+            m_fmatrix.resize(numTestDofs(), numDofs());
             m_sparsity = 0;
 
-            if (0 == m_matrix.rows() || 0 == m_matrix.cols())
+            if (0 == m_fmatrix.rows() || 0 == m_fmatrix.cols())
                 gsWarn << " No internal DOFs, zero sized system.\n";
             else {
                 // Pick up values from options
@@ -339,7 +370,7 @@ public:
                                     m_exprdata->multiBasis().maxDegree(i)) +
                           static_cast<T>(bdB);
 
-                m_matrix.reservePerColumn(numBlocks() *
+                m_fmatrix.reservePerColumn(numBlocks() *
                                           cast<T, index_t>(nz * (1.0 + bdO)));
             }
         }
@@ -382,6 +413,7 @@ public:
                       "initSystem() has not been called.");
         gsVector<index_t> rowSizes, colSizes;
         _blockDims(rowSizes, colSizes);
+        (void)matrix();
         return m_matrix.blockView(rowSizes,colSizes);
     }
 
@@ -394,6 +426,7 @@ public:
                       "initSystem() has not been called.");
         gsVector<index_t> rowSizes, colSizes;
         _blockDims(rowSizes, colSizes);
+        (void)matrix();
         return m_matrix.blockView(rowSizes,colSizes);
     }
 
@@ -487,17 +520,17 @@ private:
     // Evaluates expression and and assembles global matrix/rhs
     struct _eval
     {
-        gsSparseMatrix<T> & m_matrix;
+        gsSparseRows<T> & m_fmatrix;
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
         bool m_elim;
         gsMatrix<T>         localMat;
         gsMatrix<T>         aux;
 
-        _eval(gsSparseMatrix<T> & _matrix,
+        _eval(gsSparseRows<T> & _fmatrix,
               gsMatrix<T>       & _rhs,
               const gsVector<>  & _quWeights)
-        : m_matrix(_matrix), m_rhs(_rhs),
+        : m_fmatrix(_fmatrix), m_rhs(_rhs),
           m_quWeights(_quWeights), m_elim(true)
         { }
 
@@ -645,7 +678,7 @@ private:
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
 #                                       pragma omp atomic
-                                        m_matrix.coeffUpdate(ii, jj) += localMat(rls+i,cls+j);
+                                        m_fmatrix.coeffRef(jj, ii) += localMat(rls+i,cls+j);
                                     }
                                     else if (elim) // colMap.is_boundary_index(jj) )
                                     {
@@ -680,20 +713,20 @@ private:
     // Constructs the sparsity pattern of the global matrix
     struct _pattern
     {
-        gsSparseRows<T> & m_matrix;
+        gsSparseRows<T> & m_fmatrix;
         const gsMatrix<T> & m_point;
         unsigned & patchid;
         gsMatrix<index_t> rowInd0, colInd0;
 #ifdef _OPENMP
         std::vector<omp_lock_t> & m_lock;
 #endif
-        _pattern(gsSparseRows<T> & _matrix,
+        _pattern(gsSparseRows<T> & _fmatrix,
                  const gsMatrix<T> & _point, unsigned & _patchid
 #ifdef _OPENMP
 		 , std::vector<omp_lock_t> & _lock
 #endif
 		 )
-	  : m_matrix(_matrix), m_point(_point), patchid(_patchid)
+	  : m_fmatrix(_fmatrix), m_point(_point), patchid(_patchid)
 #ifdef _OPENMP
 	  , m_lock(_lock)
 #endif
@@ -734,7 +767,7 @@ private:
                                 const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
                                 if ( rowMap.is_free_index(ii) )
                                     //m_matrix.addExplicitZero(ii,jj);
-                                    m_matrix.coeffRef(jj,ii) = (T)0;
+                                    m_fmatrix.coeffRef(jj, ii) = (T)0;
                             }
 #ifdef _OPENMP
                         omp_unset_lock(&m_lock[jj]);
@@ -868,13 +901,12 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::_computePattern(const expr &... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
 #ifdef _OPENMP
-    std::vector<omp_lock_t> lock(m_matrix.cols());
+    std::vector<omp_lock_t> lock(numDofs());
     for (auto & l : lock)
         omp_init_lock(&l);
-    gsSparseRows<T> sppattern(numTestDofs(), numDofs());
 #endif
 
 #pragma omp parallel
@@ -888,7 +920,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
 
         typename gsBasis<T>::domainIter domIt;
         unsigned patchInd;
-        _pattern pp(sppattern, m_exprdata->points(), patchInd
+        _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
                     , lock
 #endif
@@ -917,24 +949,20 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     for (auto & l : lock)
         omp_destroy_lock(&l);
 #endif
-    sppattern.toSparseMatrixTransposed(m_matrix);
-    //diff of sorted lists
-    // reallocate m_matrix
 }
 
 template<class T>
 template<class... expr>
 void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
     if ( BCs.empty() || 0==numDofs() ) return;
 
 #ifdef _OPENMP
-    std::vector<omp_lock_t> lock(m_matrix.cols());
+    std::vector<omp_lock_t> lock(numDofs());
     for (auto & l : lock)
         omp_init_lock(&l);
-    gsSparseRows<T> sppattern(numTestDofs(), numDofs());
 #endif
 
 #pragma omp parallel
@@ -949,7 +977,7 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
         m_exprdata->parsePattern(arg_tpl);
         typename gsBasis<T>::domainIter domIt;
         unsigned patchInd;
-        _pattern pp(sppattern, m_exprdata->points(), patchInd
+        _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
                     , lock
 #endif
@@ -981,7 +1009,6 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
     for (auto & l : lock)
         omp_destroy_lock(&l);
 #endif
-    sppattern.toSparseMatrixTransposed(m_matrix);
 }
 
 
@@ -989,14 +1016,13 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
     if ( iFaces.empty() || 0==numDofs() ) return;
 
 #ifdef _OPENMP
-    std::vector<omp_lock_t> lock(m_matrix.cols());
+    std::vector<omp_lock_t> lock(numDofs());
     for (auto & l : lock)
         omp_init_lock(&l);
-    gsSparseRows<T> sppattern(numTestDofs(), numDofs());
 #endif
     typedef typename gsFunction<T>::uPtr ifacemap;
     typename gsBasis<T>::domainIter domIt;
@@ -1006,7 +1032,7 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
     unsigned patchInd;
-    _pattern pp(sppattern, m_exprdata->points(), patchInd
+    _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
                 , lock
 #endif
@@ -1045,7 +1071,6 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         }
     }
 }//omp parallel
-    sppattern.toSparseMatrixTransposed(m_matrix);
 }
 
 
@@ -1053,7 +1078,7 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
     if ((m_sparsity & 1) == 0)
         this->_computePattern(args...);
@@ -1071,7 +1096,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
-    _eval ee(m_matrix, m_rhs, m_exprdata->weights());
+    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
     ee.setElim(dirichlet::elimination==elim);
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     typename gsBasis<T>::domainIter domIt;
@@ -1139,7 +1164,7 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
     if ( BCs.empty() || 0==numDofs() ) return;
 
@@ -1160,7 +1185,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
-    _eval ee(m_matrix, m_rhs, m_exprdata->weights());
+    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
 //#   pragma omp parallel for
     for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
@@ -1202,7 +1227,7 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
     if ( bnd.size()==0 || 0==numDofs() ) return;
 
@@ -1211,7 +1236,7 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 
     typename gsQuadRule<T>::uPtr QuRule;
 
-    _eval ee(m_matrix, m_rhs, m_exprdata->weights());
+    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
 //#   pragma omp parallel for
 
@@ -1245,13 +1270,12 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 
 //}//omp parallel
 
-    m_matrix.makeCompressed();
 }
 
 template<class T> template<class... expr>
 void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
     // TODO
 //    if ((m_sparsity & 4) == 0)
@@ -1267,7 +1291,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
 
     typename gsQuadRule<T>::uPtr QuRule;
-    _eval ee(m_matrix, m_rhs, m_exprdata->weights());
+    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
     const bool flipSide = m_options.askSwitch("flipSide", false);
 
@@ -1320,13 +1344,12 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     }
 
 // }//omp parallel
-    m_matrix.makeCompressed();
 }
 
 template<class T> template<class expr>
 void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
     GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
 
     clearMatrix();
@@ -1345,7 +1368,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
 
-    _eval ee(m_matrix, m_rhs, m_exprdata->weights());
+    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
@@ -1383,7 +1406,6 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     }
 
 }//omp parallel
-    m_matrix.makeCompressed();
 }
 
 
@@ -1391,7 +1413,7 @@ template<class T> template<class expr>
 void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
                                              const expr residual, solution  u)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
     GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
 
     // clearMatrix();
@@ -1402,7 +1424,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
-    _eval ee(m_matrix, m_rhs, m_exprdata->weights());
+    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
     const bool flipSide = m_options.askSwitch("flipSide", false);
     const bool movingInterface = m_options.askSwitch("movingInterface", false);
 
@@ -1506,14 +1528,12 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             }
         }
     }
-
-    m_matrix.makeCompressed();
 }
 
 template<class T>
 void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, std::vector<gsVector<T> > & cWeights)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
 #pragma omp parallel
 {
@@ -1524,7 +1544,7 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
-    _eval ee(m_matrix, m_rhs, m_exprdata->weights());
+    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
     const index_t elim = m_options.getInt("DirichletStrategy");
     ee.setElim(dirichlet::elimination==elim);
 
@@ -1566,7 +1586,6 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
     }
 }//omp parallel
 
-    m_matrix.makeCompressed();
 }
 
 

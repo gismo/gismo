@@ -25,8 +25,8 @@ namespace gismo
  *  This allows efficient row resizing and insertion
  *  operations, particularly for knot insertion algorithms.
  */
-template <class T>
-class gsSparseRows // rename as gsFiberMatrix
+template <class T, bool IsRowMajor = true>
+class gsSparseRows // todo: rename as gsFiberMatrix
 {
 public:
     typedef gsEigen::SparseVector<T> Row;
@@ -81,9 +81,17 @@ public:
     Row& row(index_t i)             { return *m_rows[i]; }
     const Row& row(index_t i) const { return *m_rows[i]; }
 
-    T & coef(index_t i, index_t j) { return m_rows[i]->coeff(j); }
+    T & coef(index_t i, index_t j)
+    {
+        if (!IsRowMajor) std::swap(i,j);
+        return m_rows[i]->coeff(j);
+    }
 
-    T & coeffRef(index_t i, index_t j) { return m_rows[i]->coeffRef(j); }
+    T & coeffRef(index_t i, index_t j)
+    {
+        if (!IsRowMajor) std::swap(i,j);
+        return m_rows[i]->coeffRef(j);
+    }
 
     void clear()
     {
