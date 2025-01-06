@@ -26,7 +26,7 @@ namespace gismo
  *  operations, particularly for knot insertion algorithms.
  */
 template <class T>
-class gsSparseRows
+class gsSparseRows // rename as gsFiberMatrix
 {
 public:
     typedef gsEigen::SparseVector<T> Row;
@@ -107,6 +107,12 @@ public:
             m_rows[i]->insert(i) = (T)(1.0);
     }
 
+    void assignZero()
+    {
+        for (index_t i = 0; i < rows(); ++i)
+            std::fill(m_rows[i]->valuePtr(), m_rows[i]->valuePtr() + nonZeros(), (T)0.);
+    }
+
     void resize(index_t rows, index_t cols)
     {
         GISMO_ASSERT( rows >= 0 && cols >= 0, "Invalid row/col in resize.");
@@ -115,6 +121,12 @@ public:
         m_rows.resize(rows);
         for (index_t i = 0; i < rows; ++i)
             m_rows[i] = new Row(cols);
+    }
+
+    void reservePerColumn(index_t nz)
+    {
+        for (index_t i = 0; i < rows(); ++i)
+            m_rows[i]->reserve(nz);
     }
 
     void conservativeResize(index_t newRows, index_t newCols)
@@ -184,7 +196,7 @@ public:
         for (index_t i = 0; i < rows(); ++i)
         {
             for (typename Row::InnerIterator it(*m_rows[i]); it; ++it)
-                m.derived().insert(it.index(), i) = it.value();
+                m.derived().coeffRef(it.index(), i) = it.value();
         }
         m.derived().makeCompressed();
     }
