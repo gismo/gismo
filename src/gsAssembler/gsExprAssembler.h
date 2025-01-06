@@ -18,7 +18,8 @@
 #include <gsAssembler/gsExprHelper.h>
 
 #include <gsAssembler/gsCPPInterface.h>
-#include <unordered_set>
+
+#include <gsMatrix/gsSparseRows.h>
 
 namespace gismo
 {
@@ -674,22 +675,19 @@ private:
                 }
             }
         }//push
-
     };
 
     // Constructs the sparsity pattern of the global matrix
     struct _pattern
     {
-        //typedef std::set<gsRowCol<T> > RowColSet;
-        //RowColSet & m_positions;
-        gsSparseMatrix<T> & m_matrix;
-	const gsMatrix<T> & m_point;
+        gsSparseRows<T> & m_matrix;
+        const gsMatrix<T> & m_point;
         unsigned & patchid;
         gsMatrix<index_t> rowInd0, colInd0;
 #ifdef _OPENMP
         std::vector<omp_lock_t> & m_lock;
 #endif
-        _pattern(gsSparseMatrix<T> & _matrix,
+        _pattern(gsSparseRows<T> & _matrix,
                  const gsMatrix<T> & _point, unsigned & _patchid
 #ifdef _OPENMP
 		 , std::vector<omp_lock_t> & _lock
@@ -705,21 +703,20 @@ private:
         {
             //  ------- Accumulate  -------
             if (E::isMatrix())
-                push<true>(ee.rowVar(), ee.colVar());
+                push(ee.rowVar(), ee.colVar());
         }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
-        template<bool isMatrix>
         void push(const expr::gsFeSpace<T> & v,
                   const expr::gsFeSpace<T> & u)
         {
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
-            GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
+            GISMO_ASSERT(u.isValid(), "The column space is not valid");
             const index_t rd            = v.dim();//row
             const index_t cd            = u.dim();//col
             const gsDofMapper  & rowMap = v.mapper();
-            const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
+            const gsDofMapper  & colMap = u.mapper();
             rowInd0 = v.source().piece(patchid).active(m_point);
             colInd0 = u.source().piece(patchid).active(m_point);
             for (index_t c = 0; c != cd; ++c)
@@ -736,7 +733,8 @@ private:
                             {
                                 const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
                                 if ( rowMap.is_free_index(ii) )
-                                    m_matrix.addExplicitZero(ii,jj);
+                                    //m_matrix.addExplicitZero(ii,jj);
+                                    m_matrix.coeffRef(jj,ii) = (T)0;
                             }
 #ifdef _OPENMP
                         omp_unset_lock(&m_lock[jj]);
@@ -876,6 +874,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     std::vector<omp_lock_t> lock(m_matrix.cols());
     for (auto & l : lock)
         omp_init_lock(&l);
+    gsSparseRows<T> sppattern(numTestDofs(), numDofs());
 #endif
 
 #pragma omp parallel
@@ -889,7 +888,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
 
         typename gsBasis<T>::domainIter domIt;
         unsigned patchInd;
-        _pattern pp(m_matrix, m_exprdata->points(), patchInd
+        _pattern pp(sppattern, m_exprdata->points(), patchInd
 #ifdef _OPENMP
                     , lock
 #endif
@@ -918,7 +917,9 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     for (auto & l : lock)
         omp_destroy_lock(&l);
 #endif
-    m_matrix.makeCompressed();
+    sppattern.toSparseMatrixTransposed(m_matrix);
+    //diff of sorted lists
+    // reallocate m_matrix
 }
 
 template<class T>
@@ -933,6 +934,7 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
     std::vector<omp_lock_t> lock(m_matrix.cols());
     for (auto & l : lock)
         omp_init_lock(&l);
+    gsSparseRows<T> sppattern(numTestDofs(), numDofs());
 #endif
 
 #pragma omp parallel
@@ -947,7 +949,7 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
         m_exprdata->parsePattern(arg_tpl);
         typename gsBasis<T>::domainIter domIt;
         unsigned patchInd;
-        _pattern pp(m_matrix, m_exprdata->points(), patchInd
+        _pattern pp(sppattern, m_exprdata->points(), patchInd
 #ifdef _OPENMP
                     , lock
 #endif
@@ -979,7 +981,7 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
     for (auto & l : lock)
         omp_destroy_lock(&l);
 #endif
-    m_matrix.makeCompressed();
+    sppattern.toSparseMatrixTransposed(m_matrix);
 }
 
 
@@ -994,6 +996,7 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     std::vector<omp_lock_t> lock(m_matrix.cols());
     for (auto & l : lock)
         omp_init_lock(&l);
+    gsSparseRows<T> sppattern(numTestDofs(), numDofs());
 #endif
     typedef typename gsFunction<T>::uPtr ifacemap;
     typename gsBasis<T>::domainIter domIt;
@@ -1003,7 +1006,7 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
     unsigned patchInd;
-    _pattern pp(m_matrix, m_exprdata->points(), patchInd
+    _pattern pp(sppattern, m_exprdata->points(), patchInd
 #ifdef _OPENMP
                 , lock
 #endif
@@ -1042,7 +1045,7 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         }
     }
 }//omp parallel
-    m_matrix.makeCompressed();
+    sppattern.toSparseMatrixTransposed(m_matrix);
 }
 
 

@@ -4,7 +4,7 @@
 #include <gsNurbs/gsBoehm.hpp>
 #include <gsNurbs/gsKnotVector.h>
 
-#include <gsMatrix/gsSparseRows.hpp>
+#include <gsMatrix/gsSparseRows.h>
 
 #define T real_t
 

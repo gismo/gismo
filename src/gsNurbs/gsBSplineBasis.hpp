@@ -22,7 +22,7 @@
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
-#include <gsMatrix/gsSparseRows.hpp>
+#include <gsMatrix/gsSparseRows.h>
 
 #include <gsIO/gsXml.h>
 
