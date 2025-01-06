@@ -1023,6 +1023,32 @@ public:
     }
 };
 
+template<class T>
+class gsCompositionAd : public symbol_expr< gsCompositionAd<T> >
+{ //comp(f,G)
+    friend class gismo::gsExprHelper<T>;
+    typedef symbol_expr< gsCompositionAd<T> > Base;
+    typename gsGeometryMap<T>::Nested_t _GLeft, _GRight;
+protected:
+    explicit gsCompositionAd(const gsGeometryMap<T> & GLeft,const gsGeometryMap<T> & GRight, index_t _d = 1)
+    : Base(_d), _GLeft(GLeft), _GRight(GRight) { }
+public:
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+
+    typename gsMatrix<T>::constColumn
+    eval(const index_t k) const { return this->m_fd->values[0].col(k); }
+
+    const gsGeometryMap<T> & innerLeft() const { return _GLeft;};
+    const gsGeometryMap<T> & innerRight() const { return _GRight;};
+
+    void parse(gsExprHelper<T> & evList) const
+    {
+        //evList.add(_G); //done in gsExprHelper
+        evList.add(*this);
+        this->data().flags |= NEED_VALUE|NEED_ACTIVE;
+        //_G.data().flags  |= NEED_VALUE; //done in gsExprHelper
+    }
+};
 
 /**
    Expression for finite element variable in an isogeometric function

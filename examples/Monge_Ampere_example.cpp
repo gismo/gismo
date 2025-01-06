@@ -282,15 +282,17 @@ int main(int argc, char *argv[])
         //    CorrectCornersLshape(Psi, mp); 
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         Psi.addAutoBoundaries();
+        Psi.computeTopology();
         geometryMap PP = A.getMap(Psi);
-        auto  comp = PP(mpLeft);
-        A.initSystem(2);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        v_sol.extract(Psi);
+        // auto  comp = PP(mpLeft);
+        // A.initSystem(2);
+        // //Obtain control points for the gradient of mpLeft.comp(Psi)
+        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        // v_sol.extract(Psi);
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        auto ff = A.getCoeff(f, PP);
+        auto ff = A.getCoeff(f, GLeft, PP);
+        ev.integral(ff.val());
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;

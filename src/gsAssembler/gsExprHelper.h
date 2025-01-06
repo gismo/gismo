@@ -43,7 +43,10 @@ private:
     typedef std::map<const gsFunctionSet<T>*,thFuncData>  FuncData;
     typedef std::map<const gsFunctionSet<T>*,thMapData>  MapData;
     typedef std::pair<const gsFunctionSet<T>*,thMapData*> CFuncKey;
+    typedef std::pair<const gsFunctionSet<T>*,thFuncData*> CFuncKeyAd;    
+
     typedef std::map<CFuncKey,thFuncData>  CFuncData;
+    typedef std::map<CFuncKeyAd,thFuncData>  CFuncDataAd;
 
     typedef typename FuncData::iterator FuncDataIt;
     typedef typename MapData ::iterator MapDataIt;
@@ -53,6 +56,8 @@ private:
     FuncData  m_fdata;///< functions
     MapData   m_mdata;///< maps
     CFuncData m_cdata;///< compositions
+    CFuncDataAd m_cdataAd;///< compositions
+
 
     memory::shared_ptr<gsExprHelper> m_mirror;
 
@@ -76,6 +81,7 @@ public:
     typedef const expr::gsFeVariable<T>    variable;
     typedef const expr::gsFeSpace<T>       space;
     typedef const expr::gsComposition<T>   composition;
+    typedef const expr::gsCompositionAd<T>   compositionAd;
     typedef const expr::gsNullExpr<T>      nullExpr;
 
 public:
@@ -168,6 +174,13 @@ public:
     composition getVar(const gsFunctionSet<T> & mp, geometryMap & G)
     {
         expr::gsComposition<T> var(G);
+        var.setSource(mp);
+        return var;
+    }
+
+    compositionAd getVar(const gsFunctionSet<T> & mp, geometryMap & GLeft, geometryMap & GRight)
+    {
+        expr::gsCompositionAd<T> var(GLeft, GRight);
         var.setSource(mp);
         return var;
     }
@@ -342,6 +355,32 @@ public:
                 .setData(eh.m_cdata[ give(k) ]);
     }
 
+    void add(const expr::gsCompositionAd<T> & sym)
+    {
+        //GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
+        //add(sym.innerRight());//the map
+        //sym.innerRight().data().flags |= NEED_VALUE;
+        expr::gsComposition<T> GNew(sym.innerRight());
+        GNew.setSource(*sym.innerLeft().m_fs);
+
+        add(GNew);
+        sym.innerLeft().data().flags |= NEED_VALUE;
+
+        //register the function //if !=nullptr?
+        auto k = std::make_pair(sym.m_fs,&m_fdata[sym.innerLeft().m_fs]);
+        auto it = m_cdataAd.find(k);
+        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
+        if (m_cdataAd.end()==it)
+            // when the variable is added for the first time,
+            // we have to be thread-safe (atomic).
+#           pragma omp critical (m_cdataAd_first_touch)
+            const_cast<expr::gsCompositionAd<T>&>(sym)
+                .setData(eh.m_cdataAd[ give(k) ]);
+        else
+            const_cast<expr::gsCompositionAd<T>&>(sym)
+                .setData(eh.m_cdataAd[ give(k) ]);
+    }
+
     template <class E>
     void add(const expr::symbol_expr<E> & sym)
     {
@@ -409,6 +448,16 @@ public:
 
         for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
         {
+            it->first.first->piece(patchIndex)
+                .compute(it->first.second->mine().values[0], it->second.mine());
+            it->second.mine().patchId = patchIndex;
+        }
+
+        for (auto it = m_cdataAd.begin(); it != m_cdataAd.end(); ++it)
+        {
+            gsInfo << "f "<< *it->first.first <<"\n";
+            gsInfo << "Points FoPsi "<< it->first.second->mine().values.size() <<"\n";
+             
             it->first.first->piece(patchIndex)
                 .compute(it->first.second->mine().values[0], it->second.mine());
             it->second.mine().patchId = patchIndex;
