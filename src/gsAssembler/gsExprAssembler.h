@@ -38,8 +38,6 @@ private:
     gsOptionList m_options;
 
     mutable gsSparseMatrix<T> m_matrix;
-    bool m_modified;
-
     gsSparseRows<T>  m_fmatrix;
     gsMatrix<T>      m_rhs;
 
@@ -48,6 +46,7 @@ private:
     std::vector<gsFeSpaceData<T>*> m_vcol;
 
     int m_sparsity;//0:unknown, 1:volume, 2:boundary, 4:interface pre-allocated
+    mutable bool m_modified;
 
     typedef typename gsExprHelper<T>::nullExpr    nullExpr;
 
@@ -79,7 +78,7 @@ public:
     /// \param _cBlocks Number of spaces for solution variables
     gsExprAssembler(index_t _rBlocks = 1, index_t _cBlocks = 1)
     : m_exprdata(gsExprHelper<T>::make()), m_gmap(nullptr), m_options(defaultOptions()),
-      m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr), m_sparsity(0)
+      m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr), m_sparsity(0), m_modified(false)
     { }
 
     // The copy constructor replicates the same environent but does
@@ -122,10 +121,8 @@ public:
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const
     {
-        //idea: make m_matrix mutable. add a flag to all assemble functions
-        // if flag return
-        return makeMatrix();
-        // else
+        if (m_modified) (void)makeMatrix();
+        m_modified = false;
         return m_matrix;
     }
 
@@ -515,7 +512,17 @@ private:
             GISMO_ASSERT(!m || u.isValid(), "The column space is not valid");
             GISMO_ASSERT(m || (ea.numDofs()==ee.rhs().size()), "The right-hand side vector is not initialized");
         }
-    } _checkExpr;
+    };
+
+    // Checks if an expression is a matrix
+    struct _checkMatrix
+    {
+        bool & m_result;
+        _checkMatrix( bool & _result) : m_result(_result) { }
+        template <typename E> void operator() (const gismo::expr::_expr<E> &)
+        { m_result |= E::isMatrix(); }
+    };
+
 
     // Evaluates expression and and assembles global matrix/rhs
     struct _eval
@@ -1096,6 +1103,10 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
+    // check if matrix is modified
+    _checkMatrix CM(m_modified);
+    op_tuple(CM, arg_tpl);
+
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
     ee.setElim(dirichlet::elimination==elim);
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
@@ -1185,6 +1196,9 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
+    // check if matrix is modified
+    _checkMatrix CM(m_modified);
+    op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
 //#   pragma omp parallel for
@@ -1236,6 +1250,9 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 
     typename gsQuadRule<T>::uPtr QuRule;
 
+    // check if matrix is modified
+    _checkMatrix CM(m_modified);
+    op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
 //#   pragma omp parallel for
@@ -1291,6 +1308,10 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
 
     typename gsQuadRule<T>::uPtr QuRule;
+
+    // check if matrix is modified
+    _checkMatrix CM(m_modified);
+    op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
     const bool flipSide = m_options.askSwitch("flipSide", false);
@@ -1368,6 +1389,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
 
+    m_modified = true;
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
@@ -1424,6 +1446,8 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
+    // check if matrix is modified
+    m_modified = true;
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
     const bool flipSide = m_options.askSwitch("flipSide", false);
     const bool movingInterface = m_options.askSwitch("movingInterface", false);
@@ -1543,11 +1567,6 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
 #   endif
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
-
-    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
-    const index_t elim = m_options.getInt("DirichletStrategy");
-    ee.setElim(dirichlet::elimination==elim);
-
     cPoints.resize( m_exprdata->multiBasis().nBases() );
     cWeights.resize( m_exprdata->multiBasis().nBases() );
 

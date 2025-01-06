@@ -29,7 +29,7 @@ template <class T, bool IsRowMajor = true>
 class gsSparseRows // todo: rename as gsFiberMatrix
 {
 public:
-    typedef gsEigen::SparseVector<T> Row;
+    typedef gsEigen::SparseVector<T> Fiber;
 
     struct RowBlockXpr;
 
@@ -37,24 +37,24 @@ public:
     { }
 
     gsSparseRows(index_t rows, index_t cols)
-    : m_rows(rows)
+    : m_fibers(rows)
     {
         for (index_t i = 0; i < rows; ++i)
-            m_rows[i] = new Row(cols);
+            m_fibers[i] = new Fiber(cols);
     }
 
     gsSparseRows(const gsSparseRows& other)
-    : m_rows(other.rows())
+    : m_fibers(other.rows())
     {
         for (int i = 0; i < rows(); ++i)
-            m_rows[i] = new Row( *other.m_rows[i] );
+            m_fibers[i] = new Fiber( *other.m_fibers[i] );
     }
 
     gsSparseRows(const RowBlockXpr& rowxpr)
-    : m_rows(rowxpr.num)
+    : m_fibers(rowxpr.num)
     {
         for (index_t i = 0; i < rowxpr.num; ++i)
-            m_rows[i] = new Row( *rowxpr.mat.m_rows[rowxpr.start + i] );
+            m_fibers[i] = new Fiber( *rowxpr.mat.m_fibers[rowxpr.start + i] );
     }
 
     ~gsSparseRows()
@@ -75,34 +75,39 @@ public:
         return *this;
     }
 
-    index_t rows() const { return m_rows.size(); }
-    index_t cols() const { return (m_rows.size() > 0) ? m_rows[0]->size() : 0; }
+    index_t fibers() const { return m_fibers.size(); }
 
-    Row& row(index_t i)             { return *m_rows[i]; }
-    const Row& row(index_t i) const { return *m_rows[i]; }
+    index_t rows() const { return m_fibers.size(); }
+    index_t cols() const { return (m_fibers.size() > 0) ? m_fibers[0]->size() : 0; }
+
+    Fiber& fiber(index_t i)              { return *m_fibers[i]; }
+    const Fiber& fiber(index_t i) const { return *m_fibers[i]; }
+
+    Fiber& row(index_t i)             { return *m_fibers[i]; }
+    const Fiber& row(index_t i) const { return *m_fibers[i]; }
 
     T & coef(index_t i, index_t j)
     {
         if (!IsRowMajor) std::swap(i,j);
-        return m_rows[i]->coeff(j);
+        return m_fibers[i]->coeff(j);
     }
 
     T & coeffRef(index_t i, index_t j)
     {
         if (!IsRowMajor) std::swap(i,j);
-        return m_rows[i]->coeffRef(j);
+        return m_fibers[i]->coeffRef(j);
     }
 
     void clear()
     {
-        for (int i = 0; i < rows(); ++i)
-            delete m_rows[i];
-        m_rows.clear();
+        for (int i = 0; i < fibers(); ++i)
+            delete m_fibers[i];
+        m_fibers.clear();
     }
 
     void swap(gsSparseRows& other)
     {
-        m_rows.swap( other.m_rows );
+        m_fibers.swap( other.m_fibers );
     }
 
     void setIdentity(index_t n)
@@ -112,65 +117,69 @@ public:
         resize(n, n);
 
         for (index_t i = 0; i < n; ++i)
-            m_rows[i]->insert(i) = (T)(1.0);
+            m_fibers[i]->insert(i) = (T)(1.0);
     }
 
     void assignZero()
     {
-        for (index_t i = 0; i < rows(); ++i)
-            std::fill(m_rows[i]->valuePtr(), m_rows[i]->valuePtr() + nonZeros(), (T)0.);
+        for (index_t i = 0; i < fibers(); ++i)
+            std::fill(m_fibers[i]->valuePtr(), m_fibers[i]->valuePtr() + nonZeros(), (T)0.);
     }
 
     void resize(index_t rows, index_t cols)
     {
         GISMO_ASSERT( rows >= 0 && cols >= 0, "Invalid row/col in resize.");
+        if (!IsRowMajor) std::swap(rows,cols);
 
         clear();
-        m_rows.resize(rows);
+        m_fibers.resize(rows);
         for (index_t i = 0; i < rows; ++i)
-            m_rows[i] = new Row(cols);
+            m_fibers[i] = new Fiber(cols);
     }
 
     void reservePerColumn(index_t nz)
     {
-        for (index_t i = 0; i < rows(); ++i)
-            m_rows[i]->reserve(nz);
+        for (index_t i = 0; i < fibers(); ++i)
+            m_fibers[i]->reserve(nz);
     }
 
     void conservativeResize(index_t newRows, index_t newCols)
     {
         GISMO_ASSERT(rows() > 0 && cols() != newCols, "Cannot resize columns -- not implemented");
+        if (!IsRowMajor) std::swap(newRows,newCols);
 
-        const index_t oldRows = rows();
-        resizeRows(newRows);
+        const index_t oldRows = fibers();
+        resizeFibers(newRows);
 
         // allocate newly added rows, if any
         for (index_t i = oldRows; i < newRows; ++i)
-            m_rows[i] = new Row(newCols);
+            m_fibers[i] = new Fiber(newCols);
     }
 
-    void duplicateRow(index_t k)
+    void duplicateRow(index_t k) //..
     {
-        GISMO_ASSERT( 0 <= k && k < rows(), "k out of bounds.");
+        GISMO_ASSERT( 0 <= k && k < fibers(), "k out of bounds.");
 
-        // add one new row
-        resizeRows( rows() + 1 );
+        //todo, something like: m_fibers.insert(m_fibers.begin()+k, new Fiber( fiber(k) );
+        
+        // add one new fiber
+        resizeFibers( fibers() + 1 );
 
         // shift rows [k+1,...) down to [k+2,...)
-        for (index_t i = rows() - 1; i > k + 1; --i)
-            m_rows[i] = m_rows[i-1];
+        for (index_t i = fibers() - 1; i > k + 1; --i)
+            m_fibers[i] = m_fibers[i-1];
 
         // allocate new row
-        m_rows[k+1] = new Row( row(k) );
+        m_fibers[k+1] = new Fiber( row(k) );
     }
 
-    // row expressions
+    // row expressions //..
 
     RowBlockXpr topRows(index_t num)       { return RowBlockXpr(*this, 0, num); }
     const RowBlockXpr topRows(index_t num) const { return RowBlockXpr(*this, 0, num); }
 
-    RowBlockXpr bottomRows(index_t num)       { return RowBlockXpr(*this, rows() - num, num); }
-    const RowBlockXpr bottomRows(index_t num) const { return RowBlockXpr(*this, rows() - num, num); }
+    RowBlockXpr bottomRows(index_t num)       { return RowBlockXpr(*this, fibers() - num, num); }
+    const RowBlockXpr bottomRows(index_t num) const { return RowBlockXpr(*this, fibers() - num, num); }
 
     RowBlockXpr middleRows(index_t start, index_t num)        { return RowBlockXpr(*this, start, num); }
     const RowBlockXpr middleRows(index_t start, index_t num) const  { return RowBlockXpr(*this, start, num); }
@@ -178,8 +187,8 @@ public:
     index_t nonZeros() const
     {
         index_t nnz = 0;
-        for (index_t i = 0; i < rows(); ++i)
-            nnz += m_rows[i]->nonZeros();
+        for (index_t i = 0; i < fibers(); ++i)
+            nnz += m_fibers[i]->nonZeros();
         return nnz;
     }
 
@@ -188,9 +197,9 @@ public:
     {
         m.derived().resize( rows(), cols() );
         m.derived().reserve( nonZeros() );
-        for (index_t i = 0; i < rows(); ++i)
+        for (index_t i = 0; i < fibers(); ++i)
         {
-            for (typename Row::InnerIterator it(*m_rows[i]); it; ++it)
+            for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it)
                 m.derived().insert(i, it.index()) = it.value();
         }
         m.derived().makeCompressed();
@@ -201,9 +210,9 @@ public:
     {
         m.derived().resize(cols(), rows() );
         m.derived().reserve( nonZeros() );
-        for (index_t i = 0; i < rows(); ++i)
+        for (index_t i = 0; i < fibers(); ++i)
         {
-            for (typename Row::InnerIterator it(*m_rows[i]); it; ++it)
+            for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it)
                 m.derived().coeffRef(it.index(), i) = it.value();
         }
         m.derived().makeCompressed();
@@ -243,17 +252,17 @@ public:
     };
 
 private:
-    std::vector< Row* > m_rows;
-
-    /// Change the number of rows without allocating newly added rows
-    void resizeRows(index_t newRows)
+    std::vector< Fiber* > m_fibers;
+  
+    /// Change the number of fibers without allocating newly added rows
+    void resizeFibers(index_t newRows)
     {
-        // delete rows which will be removed from the array
-        // (does nothing if newRows >= rows())
-        for (index_t i = newRows; i < rows(); ++i)
-            delete m_rows[i];
+        // delete fibers which will be removed from the array
+        // (does nothing if newRows >= fibers())
+        for (index_t i = newRows; i < fibers(); ++i)
+            delete m_fibers[i];
 
-        m_rows.resize(newRows);
+        m_fibers.resize(newRows);
     }
 
 };
