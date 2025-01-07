@@ -118,19 +118,20 @@ public:
     /// Returns a reference to the options structure
     gsOptionList & options() {return m_options;}
 
+    /// Returns the internally stored sparse fiber matrix
+    const gsSparseRows<T> & fiberMatrix() const
+    { return m_fmatrix; }
+
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const
-    {
-        if (m_modified) (void)makeMatrix();
-        m_modified = false;
-        return m_matrix;
-    }
+    { return m_modified ? makeMatrix() : m_matrix; }
 
-    /// When calling assemble, the matrix is not filled in.
+    /// When calling assemble, the matrix is not filled (but only stored internally).
     /// Call this function to fill the sparsematrix with all the assemblies so far
     const gsSparseMatrix<T> & makeMatrix() const
     {
         m_fmatrix.toSparseMatrixTransposed(m_matrix);
+        m_modified = false;
         return m_matrix;
 
     // --- complicated + inefficient
@@ -141,8 +142,6 @@ public:
     // compute new column widths
     // reallocate if needed (look at SparseMatrix::insert)
     // add explicit zeros to all new places
-            
-        // make m_matrix mutable
     }
 
     /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
@@ -155,7 +154,8 @@ public:
     EIGEN_STRONG_INLINE gsSparseMatrix<T> giveMatrix()
     {
         (void)matrix();
-        return give(matrix);
+        m_modified = true;
+        return give(m_matrix);
     }
 
     /// @brief Returns the right-hand side vector(s)
@@ -773,8 +773,7 @@ private:
                             {
                                 const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
                                 if ( rowMap.is_free_index(ii) )
-                                    //m_matrix.addExplicitZero(ii,jj);
-                                    m_fmatrix.coeffRef(jj, ii) = (T)0;
+                                    m_fmatrix.insertExplicitZero(jj, ii);
                             }
 #ifdef _OPENMP
                         omp_unset_lock(&m_lock[jj]);
@@ -1294,11 +1293,10 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
-    // TODO
-//    if ((m_sparsity & 4) == 0)
-//        this->_computePatternIfc(ifContainer, args...);
+    if ((m_sparsity & 4) == 0)
+        this->_computePatternIfc(iFaces, args...);
 
-// #pragma omp parallel
+// #pragma omp parallel //TODO
 // {
     typedef typename gsFunction<T>::uPtr ifacemap;
 

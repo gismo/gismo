@@ -1,6 +1,7 @@
 /** @file gsSparseRows.h
 
     @brief A specialized sparse matrix class which stores separately
+    each fiber.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +9,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C. Hofreither, A. Mantzaflaris
+    Author(s): A. Mantzaflaris
 */
 
 #pragma once
@@ -75,10 +76,16 @@ public:
         return *this;
     }
 
-    index_t fibers() const { return m_fibers.size(); }
+    inline index_t fibers() const { return m_fibers.size(); }
+    inline index_t outerSize() const { return m_fibers.size(); }
+    inline index_t innerSize() const
+    { return ( m_fibers.empty() ? 0 : m_fibers.front()->size() ); }
 
-    index_t rows() const { return m_fibers.size(); }
-    index_t cols() const { return (m_fibers.size() > 0) ? m_fibers[0]->size() : 0; }
+    /** \returns the number of rows of the matrix */
+    inline index_t rows() const { return IsRowMajor ?outerSize() : innerSize(); }
+
+    /** \returns the number of columns of the matrix */
+    inline index_t cols() const { return IsRowMajor ? innerSize() : outerSize(); }
 
     Fiber& fiber(index_t i)              { return *m_fibers[i]; }
     const Fiber& fiber(index_t i) const { return *m_fibers[i]; }
@@ -98,6 +105,20 @@ public:
         return m_fibers[i]->coeffRef(j);
     }
 
+    void insertExplicitZero(index_t i, index_t j)
+    { 
+        if (!IsRowMajor) std::swap(i,j);
+        m_fibers[i]->data().atWithInsertion(j);
+    }
+
+    bool isExplicitZero(index_t i, index_t j) const
+    {
+        if (!IsRowMajor) std::swap(i,j);
+        auto & vdata = m_fibers[i]->data();
+        const index_t jj = vdata.searchLowerIndex(j);
+        return ((jj==vdata.size()) || (vdata.index(jj)!=j));
+    }
+
     void clear()
     {
         for (int i = 0; i < fibers(); ++i)
@@ -105,6 +126,8 @@ public:
         m_fibers.clear();
     }
 
+    //void prune()
+    
     void swap(gsSparseRows& other)
     {
         m_fibers.swap( other.m_fibers );
@@ -149,11 +172,15 @@ public:
         if (!IsRowMajor) std::swap(newRows,newCols);
 
         const index_t oldRows = fibers();
+
         resizeFibers(newRows);
 
         // allocate newly added rows, if any
         for (index_t i = oldRows; i < newRows; ++i)
             m_fibers[i] = new Fiber(newCols);
+
+        // for existing fibers, to do
+        //  m_fibers[i].conservativeResize(newCols);
     }
 
     void duplicateRow(index_t k) //..
@@ -163,7 +190,7 @@ public:
         //todo, something like: m_fibers.insert(m_fibers.begin()+k, new Fiber( fiber(k) );
         
         // add one new fiber
-        resizeFibers( fibers() + 1 );
+        m_fibers.resize(m_fibers.size()+1);
 
         // shift rows [k+1,...) down to [k+2,...)
         for (index_t i = fibers() - 1; i > k + 1; --i)
