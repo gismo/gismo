@@ -281,24 +281,25 @@ public:
        \f[
        \left[
        \begin{array}{ccccc}
-       f_1(p_1) & f_1(p_2) & \ldots & f_1(p_N)\\
-       f_2(p_1) & f_2(p_2) & \ldots & f_2(p_N)\\
+       f_1(\mathbf{u}_1) & f_1(\mathbf{u}_2) & \ldots & f_1(\mathbf{u}_N)\\
+       f_2(\mathbf{u}_1) & f_2(\mathbf{u}_2) & \ldots & f_2(\mathbf{u}_N)\\
        \vdots       & \vdots       &        & \vdots\\
-       f_S(p_1) & f_S(p_2) & \ldots & f_S(p_N)
+       f_S(\mathbf{u}_1) & f_S(\mathbf{u}_2) & \ldots & f_S(\mathbf{u}_N)
        \end{array}
        \right]
        \f]
+
        For vector valued functions function \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}^m\f$ the format is:
        \f[
        \left[
        \begin{array}{ccccc}
-       f_1^1(p_1) & f_1^{(1)}(p_2) & \ldots & f_1^{(1)}(p_N)\\
-       f_1^2(p_1) & f_1^{(2)}(p_2) & \ldots & f_1^{(2)}(p_N)\\
-       \vdots     & \vdots     &        & \vdots\\
-       f_1^{(m)}(p_1) & f_1^{(m)}(p_2) & \ldots & f_1^{(m)}(p_N)\\
-       f_2^{(1)}(p_1) & f_2^{(1)}(p_2) & \ldots & f_2^{(1)}(p_N)\\
-       \vdots     & \vdots     &        & \vdots\\
-       f_S^{(m)}(p_1) & f_S^{(m)}(p_2) & \ldots & f_S^{(m)}(p_N)
+       f_1^{(1)}(\mathbf{u}_1) & f_1^{(1)}(\mathbf{u}_2) & \ldots & f_1^{(1)}(\mathbf{u}_N) \\
+       \vdots              &            \vdots       &        &             \vdots      \\
+       f_1^{(m)}(\mathbf{u}_1) & f_1^{(m)}(\mathbf{u}_2) & \ldots & f_1^{(m)}(\mathbf{u}_N)\\
+       \vdots              &            \vdots       &        &             \vdots      \\
+       f_S^{(1)}(\mathbf{u}_1) & f_S^{(1)}(\mathbf{u}_2) & \ldots & f_S^{(1)}(\mathbf{u}_N) \\
+       \vdots              &        \vdots           &        &         \vdots          \\
+       f_S^{(m)}(\mathbf{u}_1) & f_S^{(m)}(\mathbf{u}_2) & \ldots & f_S^{(m)}(\mathbf{u}_N)
        \end{array}
        \right]
        \f]
@@ -312,35 +313,55 @@ public:
        @brief First derivatives.
 
        For scalar valued functions \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}\f$ format is:
+       
        \f[
        \left[
        \begin{array}{ccccc}
-       \partial_{1}f_1(p_1) & \partial_{1}f_1(p_2) & \ldots & \partial_{1}f_1(p_N)\\
-       \partial_{2}f_1(p_1) & \partial_{2}f_1(p_2) & \ldots & \partial_{2}f_1(p_N)\\
-       \vdots       & \vdots       &        & \vdots\\
-       \partial_{k}f_1(p_1) & \partial_{k}f_1(p_2) & \ldots & \partial_{k}f_1(p_N)\\
-       \partial_{1}f_2(p_1) & \partial_{1}f_2(p_2) & \ldots & \partial_{1}f_2(p_N)\\
-       \vdots       & \vdots       &        & \vdots\\
-       \partial_{k}f_S(p_1) & \partial_{k}f_S(p_2) & \ldots & \partial_{k}f_S(p_N)\\
+       \partial_{1}f_1(\mathbf{u}_1) & \partial_{1}f_1(\mathbf{u}_2) & \ldots & \partial_{1}f_1(\mathbf{u}_N)                  \\
+       \vdots                              & \vdots                              &        &               \vdots               \\
+       \partial_{n}f_1(\mathbf{u}_1) & \partial_{n}f_1(\mathbf{u}_2) & \ldots & \partial_{n}f_1(\mathbf{u}_N)                  \\
+
+       \vdots                              & \vdots                              &        &               \vdots               \\
+
+       \partial_{1}f_S(\mathbf{u}_S) & \partial_{1}f_S(\mathbf{u}_2) & \ldots & \partial_{1}f_S(\mathbf{u}_N)                  \\
+       \vdots                              & \vdots                              &        &               \vdots               \\
+       \partial_{n}f_S(\mathbf{u}_S) & \partial_{n}f_S(\mathbf{u}_2) & \ldots & \partial_{n}f_S(\mathbf{u}_N)                  \\
        \end{array}
-       \right]
+       \right],
        \f]
+
        For vector valued functions function \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}^{m}\f$ the format is:
+       
        \f[
        \left[
        \begin{array}{ccccc}
-       \partial_{1}f_1^1(p_1) & \partial_{1}f_1^1(p_2) & \ldots & \partial_{1}f_1^1(p_N)\\
-       \partial_{2}f_1^1(p_1) & \partial_{1}f_2^1(p_2) & \ldots & \partial_{1}f_2^1(p_N)\\
-       \vdots     & \vdots     &        & \vdots\\
-       \partial_{k}f_1^1(p_1) & \partial_{k}f_1^1(p_2) & \ldots & \partial_{k}f_1^1(p_N)\\
-       \partial_{1}f_1^2(p_1) & \partial_{1}f_1^2(p_2) & \ldots & \partial_{1}f_1^2(p_N)\\
-       \vdots     & \vdots     &        & \vdots\\
-       \partial_{k}f_1^2(p_1) & \partial_{k}f_1^2(p_2) & \ldots & \partial_{k}f_1^2(p_N)\\
-       \partial_{1}f_2^1(p_1) & \partial_{1}f_2^1(p_2) & \ldots & \partial_{1}f_2^1(p_N)\\
-       \vdots     & \vdots     &        & \vdots\\
-       \partial_{k}f_S^{(m)}(p_1) & \partial_{k}f_S^{(m)}(p_2) & \ldots & \partial_{k}f_S^{(m)}(p_N)
+       \partial_{1}f_1^{(1)}(\mathbf{u}_1) & \partial_{1}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}f_1^{(1)}(\mathbf{u}_N)\\
+       \vdots                              & \vdots                              &        &               \vdots               \\
+       \partial_{n}f_1^{(1)}(\mathbf{u}_1) & \partial_{n}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n}f_1^{(1)}(\mathbf{u}_N)\\
+       
+       \partial_{1}f_1^{(2)}(\mathbf{u}_1) & \partial_{1}f_1^{(2)}(\mathbf{u}_2) & \ldots & \partial_{1}f_1^{(2)}(\mathbf{u}_N)\\
+       \vdots                              & \vdots                              &        &               \vdots               \\
+       \partial_{n}f_1^{(2)}(\mathbf{u}_1) & \partial_{n}f_1^{(2)}(\mathbf{u}_2) & \ldots & \partial_{n}f_1^{(2)}(\mathbf{u}_N)\\
+       
+       \partial_{1}f_1^{(m)}(\mathbf{u}_1) & \partial_{1}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}f_1^{(m)}(\mathbf{u}_N)\\
+       \vdots                              & \vdots                              &        &               \vdots               \\
+       \partial_{n}f_1^{(m)}(\mathbf{u}_1) & \partial_{n}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n}f_1^{(m)}(\mathbf{u}_N)\\
+
+       \vdots                              & \vdots                              &        &               \vdots               \\
+
+       \partial_{1}f_S^{(1)}(\mathbf{u}_S) & \partial_{1}f_S^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}f_S^{(1)}(\mathbf{u}_N)\\
+       \vdots                              & \vdots                              &        &               \vdots               \\
+       \partial_{n}f_S^{(1)}(\mathbf{u}_S) & \partial_{n}f_S^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n}f_S^{(1)}(\mathbf{u}_N)\\
+       
+       \partial_{1}f_S^{(2)}(\mathbf{u}_S) & \partial_{1}f_S^{(2)}(\mathbf{u}_2) & \ldots & \partial_{1}f_S^{(2)}(\mathbf{u}_N)\\
+       \vdots                              & \vdots                              &        &               \vdots               \\
+       \partial_{n}f_S^{(2)}(\mathbf{u}_S) & \partial_{n}f_S^{(2)}(\mathbf{u}_2) & \ldots & \partial_{n}f_S^{(2)}(\mathbf{u}_N)\\
+       
+       \partial_{1}f_S^{(m)}(\mathbf{u}_S) & \partial_{1}f_S^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}f_S^{(m)}(\mathbf{u}_N)\\
+       \vdots                              & \vdots                              &        &               \vdots               \\
+       \partial_{n}f_S^{(m)}(\mathbf{u}_S) & \partial_{n}f_S^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n}f_S^{(m)}(\mathbf{u}_N)\\
        \end{array}
-       \right]
+       \right],
        \f]
        where \f$f^{(i)}_j\f$ is the \f$i\f$-th component of function \f$f_j\f$ of the set.
        @param u
@@ -355,23 +376,24 @@ public:
      \f[
      \left[
      \begin{array}{ccccc}
-     \partial_{1}\partial_{1}f_1(p_1) & \partial_{1}\partial_{1}f_1(p_2) & \ldots & \partial_{1}\partial_{1}f_1(p_N)\\
-     \partial_{2}\partial_{2}f_1(p_1) & \partial_{2}\partial_{2}f_1(p_2) & \ldots & \partial_{2}\partial_{2}f_1(p_N)\\
+     \partial_{1}\partial_{1}f_1(\mathbf{u}_1) & \partial_{1}\partial_{1}f_1(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f_1(\mathbf{u}_N)\\
+     \partial_{2}\partial_{2}f_1(\mathbf{u}_1) & \partial_{2}\partial_{2}f_1(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{2}f_1(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &         \vdots                           \\
+     \partial_{n}\partial_{n}f_1(\mathbf{u}_1) & \partial_{n}\partial_{n}f_1(\mathbf{u}_2) & \ldots & \partial_{n}\partial_{n}f_1(\mathbf{u}_N)\\
+     \partial_{1}\partial_{2}f_1(\mathbf{u}_1) & \partial_{1}\partial_{2}f_1(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{2}f_1(\mathbf{u}_N)\\
+     \partial_{1}\partial_{3}f_1(\mathbf{u}_1) & \partial_{1}\partial_{3}f_1(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{3}f_1(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &          \vdots                          \\
+     \partial_{1}\partial_{n}f_1(\mathbf{u}_1) & \partial_{1}\partial_{n}f_1(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{n}f_1(\mathbf{u}_N)\\
+     \partial_{2}\partial_{3}f_1(\mathbf{u}_1) & \partial_{2}\partial_{3}f_1(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{3}f_1(\mathbf{u}_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k}\partial_{k}f_1(p_1) & \partial_{k}\partial_{k}f_1(p_2) & \ldots & \partial_{k}\partial_{k}f_1(p_N)\\
-     \partial_{1}\partial_{2}f_1(p_1) & \partial_{1}\partial_{2}f_1(p_2) & \ldots & \partial_{1}\partial_{2}f_1(p_N)\\
-     \partial_{1}\partial_{3}f_1(p_1) & \partial_{1}\partial_{3}f_1(p_2) & \ldots & \partial_{1}\partial_{3}f_1(p_N)\\
-     \vdots       & \vdots       &        & \vdots\\
-     \partial_{1}\partial_{k}f_1(p_1) & \partial_{1}\partial_{k}f_1(p_2) & \ldots & \partial_{1}\partial_{k}f_1(p_N)\\
-     \partial_{2}\partial_{3}f_1(p_1) & \partial_{2}\partial_{3}f_1(p_2) & \ldots & \partial_{2}\partial_{3}f_1(p_N)\\
-     \vdots       & \vdots       &        & \vdots\\
-     \partial_{2}\partial_{k}f_1(p_1) & \partial_{2}\partial_{k}f_1(p_2) & \ldots & \partial_{2}\partial_{k}f_1(p_N)\\
-     \partial_{3}\partial_{4}f_1(p_1) & \partial_{3}\partial_{4}f_1(p_2) & \ldots & \partial_{3}\partial_{4}f_1(p_N)\\
-     \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_1(p_1) & \partial_{k-1}\partial_{k}f_1(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1(p_N)\\
-     \partial_{1}\partial_{1}f_2(p_1) & \partial_{1}\partial_{1}f_2(p_2) & \ldots & \partial_{1}\partial_{1}f_2(p_N)\\
-     \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_S(p_1) & \partial_{k-1}\partial_{k}f_S(p_2) & \ldots & \partial_{k-1}\partial_{k}f_S(p_N)\\
+     \partial_{2}\partial_{n}f_1(\mathbf{u}_1) & \partial_{2}\partial_{n}f_1(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{n}f_1(\mathbf{u}_N)\\
+     \partial_{3}\partial_{4}f_1(\mathbf{u}_1) & \partial_{3}\partial_{4}f_1(\mathbf{u}_2) & \ldots & \partial_{3}\partial_{4}f_1(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &            \vdots                        \\
+     \partial_{n-1}\partial_{n}f_1(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f_1(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f_1(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{1}\partial_{1}f_S(\mathbf{u}_1) & \partial_{1}\partial_{1}f_S(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f_S(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{n-1}\partial_{n}f_S(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f_S(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f_S(\mathbf{u}_N)\\
      \end{array}
      \right]
      \f]
@@ -379,19 +401,32 @@ public:
      \f[
      \left[
      \begin{array}{ccccc}
-     \partial_{1}\partial_{1}f_1^{(1)}(p_1) & \partial_{1}\partial_{1}f_1^{(1)}(p_2) & \ldots & \partial_{1}\partial_{1}f_1^{(1)}(p_N)\\
-     \partial_{2}\partial_{2}f_1^{(1)}(p_1) & \partial_{2}\partial_{2}f_1^{(1)}(p_2) & \ldots & \partial_{2}\partial_{2}f_1^{(1)}(p_N)\\
+     \partial_{1}\partial_{1}f_1^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{1}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f_1^{(1)}(\mathbf{u}_N)\\
+     \partial_{2}\partial_{2}f_1^{(1)}(\mathbf{u}_1) & \partial_{2}\partial_{2}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{2}f_1^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &         \vdots                           \\
+     \partial_{n}\partial_{n}f_1^{(1)}(\mathbf{u}_1) & \partial_{n}\partial_{n}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n}\partial_{n}f_1^{(1)}(\mathbf{u}_N)\\
+     \partial_{1}\partial_{2}f_1^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{2}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{2}f_1^{(1)}(\mathbf{u}_N)\\
+     \partial_{1}\partial_{3}f_1^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{3}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{3}f_1^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &          \vdots                          \\
+     \partial_{1}\partial_{n}f_1^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{n}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{n}f_1^{(1)}(\mathbf{u}_N)\\
+     \partial_{2}\partial_{3}f_1^{(1)}(\mathbf{u}_1) & \partial_{2}\partial_{3}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{3}f_1^{(1)}(\mathbf{u}_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k}\partial_{k}f_1^{(1)}(p_1) & \partial_{k}\partial_{k}f_1^{(1)}(p_2) & \ldots & \partial_{k}\partial_{k}f_1^{(1)}(p_N)\\
-     \partial_{1}\partial_{2}f_1^{(1)}(p_1) & \partial_{1}\partial_{2}f_1^{(1)}(p_2) & \ldots & \partial_{1}\partial_{2}f_1^{(1)}(p_N)\\
-     \partial_{1}\partial_{3}f_1^{(1)}(p_1) & \partial_{1}\partial_{3}f_1^{(1)}(p_2) & \ldots & \partial_{1}\partial_{3}f_1^{(1)}(p_N)\\
-     \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_1{(1)}(p_1) & \partial_{k-1}\partial_{k}f_1^{(1)}(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^{(1)}(p_N)\\
-     \partial_{1}\partial_{1}f_1^{(2)}(p_1) & \partial_{1}\partial_{1}f_1^{(2)}(p_2) & \ldots & \partial_{1}\partial_{1}f_1^{(2)}(p_N)\\
-     \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_1^{(m)}(p_1) & \partial_{k-1}\partial_{k}f_1^{(m)}(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^{(m)}(p_N)\\
-     \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_S^{(m)}(p_1) & \partial_{k-1}\partial_{k}f_S^{(m)}(p_2) & \ldots & \partial_{k-1}\partial_{k}f_S^{(m)}(p_N)\\
+     \partial_{2}\partial_{n}f_1^{(1)}(\mathbf{u}_1) & \partial_{2}\partial_{n}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{n}f_1^{(1)}(\mathbf{u}_N)\\
+     \partial_{3}\partial_{4}f_1^{(1)}(\mathbf{u}_1) & \partial_{3}\partial_{4}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{3}\partial_{4}f_1^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &            \vdots                        \\
+     \partial_{n-1}\partial_{n}f_1^{(1)}(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f_1^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{1}\partial_{1}f_1^{(m)}(\mathbf{u}_1) & \partial_{1}\partial_{1}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f_1^{(m)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_N)\\   
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{1}\partial_{1}f_S^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{1}f_S^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f_S^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{n-1}\partial_{n}f_S^{(1)}(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f_S^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f_S^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{1}\partial_{1}f_S^{(m)}(\mathbf{u}_1) & \partial_{1}\partial_{1}f_S^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f_S^{(m)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{n-1}\partial_{n}f_S^{(m)}(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f_S^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f_S^{(m)}(\mathbf{u}_N)\\
      \end{array}
      \right]
      \f]
