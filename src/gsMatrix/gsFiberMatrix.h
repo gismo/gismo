@@ -1,4 +1,4 @@
-/** @file gsSparseRows.h
+/** @file gsFiberMatrix.h
 
     @brief A specialized sparse matrix class which stores separately
     each fiber.
@@ -27,51 +27,51 @@ namespace gismo
  *  operations, particularly for knot insertion algorithms.
  */
 template <class T, bool IsRowMajor = true>
-class gsSparseRows // todo: rename as gsFiberMatrix
+class gsFiberMatrix // todo: rename as gsFiberMatrix
 {
 public:
     typedef gsEigen::SparseVector<T> Fiber;
 
     struct RowBlockXpr;
 
-    gsSparseRows()
+    gsFiberMatrix()
     { }
 
-    gsSparseRows(index_t rows, index_t cols)
+    gsFiberMatrix(index_t rows, index_t cols)
     : m_fibers(rows)
     {
         for (index_t i = 0; i < rows; ++i)
             m_fibers[i] = new Fiber(cols);
     }
 
-    gsSparseRows(const gsSparseRows& other)
+    gsFiberMatrix(const gsFiberMatrix& other)
     : m_fibers(other.rows())
     {
         for (int i = 0; i < rows(); ++i)
             m_fibers[i] = new Fiber( *other.m_fibers[i] );
     }
 
-    gsSparseRows(const RowBlockXpr& rowxpr)
+    gsFiberMatrix(const RowBlockXpr& rowxpr)
     : m_fibers(rowxpr.num)
     {
         for (index_t i = 0; i < rowxpr.num; ++i)
             m_fibers[i] = new Fiber( *rowxpr.mat.m_fibers[rowxpr.start + i] );
     }
 
-    ~gsSparseRows()
+    ~gsFiberMatrix()
     {
         clear();
     }
 
-    gsSparseRows& operator= (const gsSparseRows other)
+    gsFiberMatrix& operator= (const gsFiberMatrix other)
     {
         this->swap( other );
         return *this;
     }
 
-    gsSparseRows& operator= (const RowBlockXpr& rowxpr)
+    gsFiberMatrix& operator= (const RowBlockXpr& rowxpr)
     {
-        gsSparseRows temp(rowxpr);
+        gsFiberMatrix temp(rowxpr);
         this->swap( temp );
         return *this;
     }
@@ -128,7 +128,7 @@ public:
 
     //void prune()
     
-    void swap(gsSparseRows& other)
+    void swap(gsFiberMatrix& other)
     {
         m_fibers.swap( other.m_fibers );
     }
@@ -247,18 +247,18 @@ public:
 
     struct RowBlockXpr
     {
-        RowBlockXpr(const gsSparseRows& _mat, index_t _start, index_t _num)
-        : mat(const_cast<gsSparseRows&>(_mat)), start(_start), num(_num)
+        RowBlockXpr(const gsFiberMatrix& _mat, index_t _start, index_t _num)
+        : mat(const_cast<gsFiberMatrix&>(_mat)), start(_start), num(_num)
         {
             // HACK: We cast away the constness of the matrix, otherwise we would need two versions of
             // this expression class.
-            // It's still safe because the row block methods in gsSparseRows above return the proper constness.
+            // It's still safe because the row block methods in gsFiberMatrix above return the proper constness.
             GISMO_ASSERT( 0 <= num && 0 <= start   , "Invalid block.");
             GISMO_ASSERT( start < mat.rows()       , "Invalid block.");
             GISMO_ASSERT( start + num <= mat.rows(), "Invalid block.");
         }
 
-        gsSparseRows & mat;
+        gsFiberMatrix & mat;
         index_t start, num;
 
         RowBlockXpr& operator= (const RowBlockXpr& other)
@@ -269,7 +269,7 @@ public:
             return *this;
         }
 
-        RowBlockXpr& operator= (const gsSparseRows& other)
+        RowBlockXpr& operator= (const gsFiberMatrix & other)
         {
             GISMO_ASSERT(num == other.rows(), "Wrong size in assignment.");
             for (index_t i = 0; i < num; ++i)

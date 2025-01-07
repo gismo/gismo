@@ -22,7 +22,7 @@
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
-#include <gsMatrix/gsSparseRows.h>
+#include <gsMatrix/gsFiberMatrix.h>
 
 #include <gsIO/gsXml.h>
 
@@ -1054,7 +1054,7 @@ template <class T>
 void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
 {
     // See remark about periodic basis in refine_withCoefs, please.
-    gsSparseRows<T> trans;
+    gsFiberMatrix<T> trans;
     trans.setIdentity( this->size() );
     gsBoehmRefine(this->knots(), trans, m_p, knots.begin(), knots.end());
     trans.toSparseMatrix( transfer );
