@@ -19,7 +19,7 @@
 
 #include <gsAssembler/gsCPPInterface.h>
 
-#include <gsMatrix/gsSparseRows.h>
+#include <gsMatrix/gsFiberMatrix.h>
 
 namespace gismo
 {
@@ -38,7 +38,7 @@ private:
     gsOptionList m_options;
 
     mutable gsSparseMatrix<T> m_matrix;
-    gsSparseRows<T>  m_fmatrix;
+    gsFiberMatrix<T>  m_fmatrix;
     gsMatrix<T>      m_rhs;
 
     std::list<gsFeSpaceData<T> > m_sdata;
@@ -119,7 +119,7 @@ public:
     gsOptionList & options() {return m_options;}
 
     /// Returns the internally stored sparse fiber matrix
-    const gsSparseRows<T> & fiberMatrix() const
+    const gsFiberMatrix<T> & fiberMatrix() const
     { return m_fmatrix; }
 
     /// @brief Returns the left-hand global matrix
@@ -527,14 +527,14 @@ private:
     // Evaluates expression and and assembles global matrix/rhs
     struct _eval
     {
-        gsSparseRows<T> & m_fmatrix;
+        gsFiberMatrix<T> & m_fmatrix;
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
         bool m_elim;
         gsMatrix<T>         localMat;
         gsMatrix<T>         aux;
 
-        _eval(gsSparseRows<T> & _fmatrix,
+        _eval(gsFiberMatrix<T> & _fmatrix,
               gsMatrix<T>       & _rhs,
               const gsVector<>  & _quWeights)
         : m_fmatrix(_fmatrix), m_rhs(_rhs),
@@ -720,14 +720,14 @@ private:
     // Constructs the sparsity pattern of the global matrix
     struct _pattern
     {
-        gsSparseRows<T> & m_fmatrix;
+        gsFiberMatrix<T> & m_fmatrix;
         const gsMatrix<T> & m_point;
         unsigned & patchid;
         gsMatrix<index_t> rowInd0, colInd0;
 #ifdef _OPENMP
         std::vector<omp_lock_t> & m_lock;
 #endif
-        _pattern(gsSparseRows<T> & _fmatrix,
+        _pattern(gsFiberMatrix<T> & _fmatrix,
                  const gsMatrix<T> & _point, unsigned & _patchid
 #ifdef _OPENMP
 		 , std::vector<omp_lock_t> & _lock
