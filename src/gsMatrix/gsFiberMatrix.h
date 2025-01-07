@@ -27,7 +27,7 @@ namespace gismo
  *  operations, particularly for knot insertion algorithms.
  */
 template <class T, bool IsRowMajor = true>
-class gsFiberMatrix // todo: rename as gsFiberMatrix
+class gsFiberMatrix
 {
 public:
     typedef gsEigen::SparseVector<T> Fiber;
@@ -77,12 +77,20 @@ public:
     }
 
     inline index_t fibers() const { return m_fibers.size(); }
-    inline index_t outerSize() const { return m_fibers.size(); }
+
+    /** \returns the size of the storage major dimension,
+     * i.e., the number of columns for a columns major matrix, and the number of rows otherwise */
+    inline index_t outerSize() const
+    { return m_fibers.size(); }
+
+    /** \returns the size of the inner dimension according to the storage order,
+      * i.e., the number of rows for a columns major matrix, and the number of cols otherwise */
     inline index_t innerSize() const
-    { return ( m_fibers.empty() ? 0 : m_fibers.front()->size() ); }
+    //    { return ( m_fibers.empty() ? 0 : m_fibers.front()->size() ); }
+    { return ( m_fibers.size()>0 ? m_fibers.front()->size() : 0 ); }
 
     /** \returns the number of rows of the matrix */
-    inline index_t rows() const { return IsRowMajor ?outerSize() : innerSize(); }
+    inline index_t rows() const { return IsRowMajor ? outerSize() : innerSize(); }
 
     /** \returns the number of columns of the matrix */
     inline index_t cols() const { return IsRowMajor ? innerSize() : outerSize(); }
@@ -90,29 +98,58 @@ public:
     Fiber& fiber(index_t i)              { return *m_fibers[i]; }
     const Fiber& fiber(index_t i) const { return *m_fibers[i]; }
 
-    Fiber& row(index_t i)             { return *m_fibers[i]; }
-    const Fiber& row(index_t i) const { return *m_fibers[i]; }
+    Fiber& row(index_t i)
+    {
+        GISMO_ASSERT( i>=0 && i<rows(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows());
+        GISMO_ENSURE(IsRowMajor, "Cannot access row in col-major fiber matrix");
+        return *m_fibers[i];
+    }
+
+    const Fiber& row(index_t i) const
+    {
+        GISMO_ASSERT( i>=0 && i<rows(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows());
+        GISMO_ENSURE(IsRowMajor, "Cannot access row in col-major fiber matrix");
+        return *m_fibers[i];
+    }
+
+    Fiber& col(index_t i)
+    {
+        GISMO_ASSERT(i>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<cols()"<<"="<<cols());
+        GISMO_ENSURE(!IsRowMajor, "Cannot access col in col-major fiber matrix");
+        return *m_fibers[i];
+    }
+
+    const Fiber& col(index_t i) const
+    {
+        GISMO_ASSERT(i>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<cols()"<<"="<<cols());
+        GISMO_ENSURE(!IsRowMajor, "Cannot access col in row-major fiber matrix");
+        return *m_fibers[i];
+    }
 
     T & coef(index_t i, index_t j)
     {
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         return m_fibers[i]->coeff(j);
     }
 
     T & coeffRef(index_t i, index_t j)
     {
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         return m_fibers[i]->coeffRef(j);
     }
 
     void insertExplicitZero(index_t i, index_t j)
-    { 
+    {
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         m_fibers[i]->data().atWithInsertion(j);
     }
 
     bool isExplicitZero(index_t i, index_t j) const
     {
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         auto & vdata = m_fibers[i]->data();
         const index_t jj = vdata.searchLowerIndex(j);
@@ -168,7 +205,7 @@ public:
 
     void conservativeResize(index_t newRows, index_t newCols)
     {
-        GISMO_ASSERT(rows() > 0 && cols() != newCols, "Cannot resize columns -- not implemented");
+        GISMO_ENSURE(rows() == 0 || cols() == newCols, "Cannot resize columns (not  implemented)");
         if (!IsRowMajor) std::swap(newRows,newCols);
 
         const index_t oldRows = fibers();
@@ -185,7 +222,7 @@ public:
 
     void duplicateRow(index_t k) //..
     {
-        GISMO_ASSERT( 0 <= k && k < fibers(), "k out of bounds.");
+        GISMO_ASSERT(IsRowMajor &&  0 <= k && k < fibers(), "k out of bounds.");
 
         //todo, something like: m_fibers.insert(m_fibers.begin()+k, new Fiber( fiber(k) );
         
@@ -227,20 +264,7 @@ public:
         for (index_t i = 0; i < fibers(); ++i)
         {
             for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it)
-                m.derived().insert(i, it.index()) = it.value();
-        }
-        m.derived().makeCompressed();
-    }
-
-    template <class Derived>
-    void toSparseMatrixTransposed(gsEigen::SparseMatrixBase<Derived>& m) const
-    {
-        m.derived().resize(cols(), rows() );
-        m.derived().reserve( nonZeros() );
-        for (index_t i = 0; i < fibers(); ++i)
-        {
-            for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it)
-                m.derived().coeffRef(it.index(), i) = it.value();
+                m.derived().insert(IsRowMajor?i:it.index(), IsRowMajor?it.index():i) = it.value();
         }
         m.derived().makeCompressed();
     }
@@ -280,7 +304,7 @@ public:
 
 private:
     std::vector< Fiber* > m_fibers;
-  
+
     /// Change the number of fibers without allocating newly added rows
     void resizeFibers(index_t newRows)
     {

@@ -38,7 +38,8 @@ private:
     gsOptionList m_options;
 
     mutable gsSparseMatrix<T> m_matrix;
-    gsFiberMatrix<T>  m_fmatrix;
+    typedef gsFiberMatrix<T,false> FiberMatrix;
+    FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
     std::list<gsFeSpaceData<T> > m_sdata;
@@ -119,7 +120,7 @@ public:
     gsOptionList & options() {return m_options;}
 
     /// Returns the internally stored sparse fiber matrix
-    const gsFiberMatrix<T> & fiberMatrix() const
+    const FiberMatrix & fiberMatrix() const
     { return m_fmatrix; }
 
     /// @brief Returns the left-hand global matrix
@@ -130,30 +131,21 @@ public:
     /// Call this function to fill the sparsematrix with all the assemblies so far
     const gsSparseMatrix<T> & makeMatrix() const
     {
-        m_fmatrix.toSparseMatrixTransposed(m_matrix);
+        m_fmatrix.toSparseMatrix(m_matrix);
         m_modified = false;
         return m_matrix;
-
-    // --- complicated + inefficient
-    // check if reallocation is needed.
-    // if yes, merge_sort sppattern and m_matrix into a new gsSparseMatrix
-    // if no, just insert new explicit zeros
-    
-    // compute new column widths
-    // reallocate if needed (look at SparseMatrix::insert)
-    // add explicit zeros to all new places
     }
 
     /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
     void matrix_into(gsSparseMatrix<T> & out)
     {
-        (void)matrix();
+        matrix();
         out = give(m_matrix);
     }
 
     EIGEN_STRONG_INLINE gsSparseMatrix<T> giveMatrix()
     {
-        (void)matrix();
+        matrix();
         m_modified = true;
         return give(m_matrix);
     }
@@ -410,7 +402,7 @@ public:
                       "initSystem() has not been called.");
         gsVector<index_t> rowSizes, colSizes;
         _blockDims(rowSizes, colSizes);
-        (void)matrix();
+        matrix();
         return m_matrix.blockView(rowSizes,colSizes);
     }
 
@@ -423,7 +415,7 @@ public:
                       "initSystem() has not been called.");
         gsVector<index_t> rowSizes, colSizes;
         _blockDims(rowSizes, colSizes);
-        (void)matrix();
+        matrix();
         return m_matrix.blockView(rowSizes,colSizes);
     }
 
@@ -527,14 +519,14 @@ private:
     // Evaluates expression and and assembles global matrix/rhs
     struct _eval
     {
-        gsFiberMatrix<T> & m_fmatrix;
+        FiberMatrix & m_fmatrix;
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
         bool m_elim;
         gsMatrix<T>         localMat;
         gsMatrix<T>         aux;
 
-        _eval(gsFiberMatrix<T> & _fmatrix,
+        _eval(FiberMatrix & _fmatrix,
               gsMatrix<T>       & _rhs,
               const gsVector<>  & _quWeights)
         : m_fmatrix(_fmatrix), m_rhs(_rhs),
@@ -685,7 +677,7 @@ private:
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
 #                                       pragma omp atomic
-                                        m_fmatrix.coeffRef(jj, ii) += localMat(rls+i,cls+j);
+                                        m_fmatrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
                                     else if (elim) // colMap.is_boundary_index(jj) )
                                     {
@@ -720,14 +712,14 @@ private:
     // Constructs the sparsity pattern of the global matrix
     struct _pattern
     {
-        gsFiberMatrix<T> & m_fmatrix;
+        FiberMatrix & m_fmatrix;
         const gsMatrix<T> & m_point;
         unsigned & patchid;
         gsMatrix<index_t> rowInd0, colInd0;
 #ifdef _OPENMP
         std::vector<omp_lock_t> & m_lock;
 #endif
-        _pattern(gsFiberMatrix<T> & _fmatrix,
+        _pattern(FiberMatrix & _fmatrix,
                  const gsMatrix<T> & _point, unsigned & _patchid
 #ifdef _OPENMP
 		 , std::vector<omp_lock_t> & _lock
@@ -773,7 +765,7 @@ private:
                             {
                                 const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
                                 if ( rowMap.is_free_index(ii) )
-                                    m_fmatrix.insertExplicitZero(jj, ii);
+                                    m_fmatrix.insertExplicitZero(ii, jj);
                             }
 #ifdef _OPENMP
                         omp_unset_lock(&m_lock[jj]);
