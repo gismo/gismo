@@ -315,6 +315,7 @@ public:
                                   bool sameElement = false) const;
 
     // Look at gsBasis class for a description
+    GISMO_DEPRECATED
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
@@ -323,7 +324,7 @@ public:
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Asked for degree(i) in 1D basis.");
-        return m_p; 
+        return m_p;
     }
 
     short_t degree() const {return m_p;}
@@ -403,10 +404,10 @@ public:
     { GISMO_UNUSED(dir); m_knots.uniformRefine(numKnots,mul); }
 
     // Look at gsBasis class for a description
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul=1, int dir=-1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     // Look at gsBasis class for a description
-    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
+    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul = 1);
     
     // Look at gsBasis class for a description
     void uniformCoarsen(int numKnots = 1)
@@ -785,40 +786,19 @@ public:
             return basisPtr(new gsBSplineBasis<T>(give(KV)));
             break;
         case 2:
-            return basisPtr(new gsTensorBSplineBasis<2,T>(give(KV),give(KV)));
+            return basisPtr(new gsTensorBSplineBasis<2,T>(KV,KV));
             break;
         case 3:
-            return basisPtr(new gsTensorBSplineBasis<3,T>(give(KV),give(KV),give(KV)));
+            return basisPtr(new gsTensorBSplineBasis<3,T>(KV,KV,KV));
             break;
         case 4:
-            return basisPtr(new gsTensorBSplineBasis<4,T>(give(KV),give(KV),give(KV),give(KV)));
+            return basisPtr(new gsTensorBSplineBasis<4,T>(KV,KV,KV,KV));
             break;
         }
         GISMO_ERROR("Dimension should be between 1 and 4.");
     }
 
-    static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV)
-    {
-        typedef typename gsBasis<T>::uPtr basisPtr;
-
-        const index_t dd = cKV.size();
-        switch (dd)
-        {
-        case 1:
-            return basisPtr(new gsBSplineBasis<T>(give(cKV)));
-            break;
-        case 2:
-            return basisPtr(new gsTensorBSplineBasis<2,T>(give(cKV)));
-            break;
-        case 3:
-            return basisPtr(new gsTensorBSplineBasis<3,T>(give(cKV)));
-            break;
-        case 4:
-            return basisPtr(new gsTensorBSplineBasis<4,T>(give(cKV)));
-            break;
-        }
-        GISMO_ERROR("Dimension should be between 1 and 4.");
-    }
+    static typename gsBasis<T>::uPtr create(std::vector<KnotVectorType> cKV);
 
 /*
     /// @brief Copy Constructor

@@ -955,7 +955,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         file <<"</VTKFile>\n";
 
         std::string mfn = fn + ".pvd";
-        gsInfo << mfn << "\n";
+        // gsInfo << mfn << "\n";
         std::ofstream f( mfn.c_str() );
         GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
         f << file.rdbuf();

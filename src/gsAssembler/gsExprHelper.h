@@ -111,7 +111,7 @@ public:
             m_cdata.clear();
             //mutSrc = nullptr;
             mutMap = nullptr;
-            mutData.mine().flags = 0;
+            mutData.mine().clear();
             if (isMirrored())
             {
                 m_mirror->m_mdata.clear();
@@ -119,7 +119,7 @@ public:
                 m_mirror->m_cdata.clear();
                 //m_mirror->mutSrc = nullptr;
                 m_mirror->mutMap = nullptr;
-                m_mirror->mutData.mine().flags = 0;
+                m_mirror->mutData.mine().clear();
             }
         }//implicit barrier
     }
@@ -453,7 +453,7 @@ public:
         {
             mutSrc->piece(patchIndex)
                 .compute( mutMap ? m_mdata[mutMap].mine().values[0]
-                          : m_points, mutData );
+                          : m_points, mutData.mine() );
         }
     }
 

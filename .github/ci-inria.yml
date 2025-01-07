@@ -9,7 +9,7 @@
 stages:
   - compile
   - test
-  - doc
+  - compile2
 
 .linux-gcc:
   tags:
@@ -19,12 +19,12 @@ stages:
 
 .linux-intel:
   before_script:
-    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
+    - source /opt/intel/oneapi/setvars.sh
   variables:
     #GIT_STRATEGY: clone
     GIT_CLEAN_FLAGS: none
   tags:
-    - CentOS-gs
+    - ubuntu-gs
 
 .windows:
   variables:
@@ -42,15 +42,15 @@ Superbuild-Intel-oneAPI:
   extends: .linux-intel
   stage: compile
   before_script:
-    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
+    - source /opt/intel/oneapi/setvars.sh
     - export CC=icx
     - export CXX=icpx
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=../build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D LABELS_FOR_SUBPROJECTS="gismo;examples;doc-snippets" -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=13 -D CTEST_BINARY_DIRECTORY=../build -D CTEST_CONFIGURATION_TYPE=Release -D LABELS_FOR_SUBPROJECTS="gismo;unittests;doc-snippets" -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" -D CMAKE_ARGS="-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_SUBMODULES_HEAD=ON;-DGISMO_WITH_PYBIND11=ON;-DGISMO_WITH_OPENMP=ON;-DGISMO_WITH_PARDISO=ON;-DPARDISO_USE_MKL=ON-DEIGEN_USE_MKL_ALL=OFF;-DMKL_ARCH=intel64;-DMKL_INTERFACE=lp64" #-VV
 
 doc:
   extends: .linux-intel
-  stage: doc
+  stage: compile2
   needs:
     - Superbuild-Intel-oneAPI
   only:
@@ -58,8 +58,14 @@ doc:
   interruptible: false
   script:
     - cd ../build
-    - cmake --build . --target doc
+    - cmake --build . -j 10 --target pygismo
+    - cmake --build . -j 10 --target doc
     - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
+    # Add Julia docs
+    - rm -rf doc.zip*
+    - wget https://github.com/gismo/Gismo.jl/releases/download/doc/doc.zip
+    - unzip -o doc.zip -d doc/html
+    # end add Julia docs
     - cd doc/html
     - rm -rf .git
     - git config --global init.defaultBranch master
@@ -71,14 +77,25 @@ doc:
     - git push --force --quiet https://$GITHUB@github.com/gismo/gismo.github.io.git master:master
     - echo "CDASH report with Doxygen log:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&filtercombine=and&field1=buildname&compare1=65&value1=Superbuild-Intel-oneAPI&field2=site&compare2=65&value2=$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [inria-ci]"
 
+build-examples:
+  extends: .linux-intel
+  stage: compile2
+  needs:
+    - Superbuild-Intel-oneAPI
+  only:
+    - stable
+  interruptible: false
+  script:
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=13 -D CTEST_BINARY_DIRECTORY=../build -D CTEST_CONFIGURATION_TYPE=Release -D LABELS_FOR_SUBPROJECTS="examples;doc-snippets" -D CTEST_BUILD_NAME="Superbuild-Intel-oneAPI[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" -D CMAKE_ARGS="-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=ON;-DGISMO_SUBMODULES_HEAD=ON;-DGISMO_WITH_PYBIND11=ON;-DGISMO_WITH_OPENMP=ON" #-VV
+
 Superbuild-VS_17_2022:
   extends: .windows
   stage: compile
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="%CI_COMMIT_BRANCH%-%CI_COMMIT_SHORT_SHA%_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="%CI_JOB_NAME%[%CI_EXTERNAL_PULL_REQUEST_IID%]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=9 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Superbuild-MSVC[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
 
 Superbuild-OSX-AppleClang:
   extends: .macos-clang
   stage: compile
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=13 -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV

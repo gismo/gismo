@@ -631,17 +631,15 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
   /**
    * @brief Initializes the Python wrapper for the class: gsMatrix
    */
-  namespace py = pybind11;
-  
   template<typename T>
   void pybind11_init_gsMatrix(pybind11::module &m, const std::string & typestr)
   {
     using Class = gsMatrix<T>;
     std::string pyclass_name = std::string("gsMatrix") + typestr;
-    py::class_<Class>(m, pyclass_name.c_str(), py::buffer_protocol(), py::dynamic_attr())
+    pybind11::class_<Class>(m, pyclass_name.c_str(), pybind11::buffer_protocol(), pybind11::dynamic_attr())
     // Constructors
-    .def(py::init<>())
-    .def(py::init<index_t, index_t>())
+    .def(pybind11::init<>())
+    .def(pybind11::init<index_t, index_t>())
     // Member functions
     .def("size",       &Class::size)
     .def("rows",       &Class::rows)

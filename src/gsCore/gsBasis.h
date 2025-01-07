@@ -672,6 +672,12 @@ public:
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n,
+                                  std::vector<gsMatrix<T> >& result) const;
+
+    /// @brief Evaluate the basis function \a i and its derivatives up
+    /// to order \a n at points \a u into \a result.
+    GISMO_DEPRECATED
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
@@ -800,7 +806,7 @@ public:
 
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
+    virtual void uniformRefine(int numKnots = 1, int mul=1, short_t dir=-1);
 
     /// @brief Refine the basis uniformly
     ///
@@ -815,7 +821,7 @@ public:
     /// \endcode
     ///
     /// \sa gsBasis::uniformRefine
-    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir=-1);
+    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     /// @brief Refine the basis uniformly
     ///

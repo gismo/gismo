@@ -77,7 +77,7 @@ inline long long to_int64_impl(const T& v, mpq_type_tag)
 template <typename T>
 inline unsigned long long to_uint64_impl(const T& v, mpq_type_tag)
 {
-    return static_cast<unsigned long long>(v.getValue());
+    return static_cast<unsigned long long>(v.get_d());
 }
 
 template <typename T> inline T   abs_impl(const T& v, mpq_type_tag) { return abs  (v); }

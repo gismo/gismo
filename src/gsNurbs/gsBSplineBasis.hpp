@@ -22,7 +22,7 @@
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
-#include <gsMatrix/gsSparseRows.hpp>
+#include <gsMatrix/gsFiberMatrix.h>
 
 #include <gsIO/gsXml.h>
 
@@ -1054,7 +1054,7 @@ template <class T>
 void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
 {
     // See remark about periodic basis in refine_withCoefs, please.
-    gsSparseRows<T> trans;
+    gsFiberMatrix<T> trans;
     trans.setIdentity( this->size() );
     gsBoehmRefine(this->knots(), trans, m_p, knots.begin(), knots.end());
     trans.toSparseMatrix( transfer );
@@ -1237,6 +1237,30 @@ const gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i) const
     return const_cast<gsBSplineBasis&>(*this);
 }
 
+template <class T>
+typename gsBasis<T>::uPtr
+gsBSplineBasis<T>::create(std::vector<KnotVectorType> cKV)
+{
+    typedef typename gsBasis<T>::uPtr basisPtr;
+
+    const index_t dd = cKV.size();
+    switch (dd)
+    {
+    case 1:
+        return basisPtr(new gsBSplineBasis<T>(give(cKV)));
+        break;
+    case 2:
+        return basisPtr(new gsTensorBSplineBasis<2,T>(give(cKV)));
+        break;
+    case 3:
+        return basisPtr(new gsTensorBSplineBasis<3,T>(give(cKV)));
+        break;
+    case 4:
+        return basisPtr(new gsTensorBSplineBasis<4,T>(give(cKV)));
+        break;
+    }
+    GISMO_ERROR("Dimension should be between 1 and 4.");
+}
 
 namespace internal
 {

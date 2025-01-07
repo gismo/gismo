@@ -447,7 +447,7 @@ public:
     /// @{
 
     /// Refine the geometry uniformly, inserting \a numKnots new knots into each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1); // todo: int dir = -1
+    virtual void uniformRefine(int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     /// Coarsen the geometry uniformly, removing \a numKnots new knots into each knot span
     virtual void uniformCoarsen(int numKnots = 1); // todo: int dir = -1

@@ -389,6 +389,11 @@ public:
     void setFurthestCorner(gsMatrix<T> const &v);
 
     void swapDirections(const unsigned i, const unsigned j);
+    
+private:
+
+    // Avoid hidden overloads w.r.t. gsGeometry
+    using Base::insertKnot;
 
 protected:
     

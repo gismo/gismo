@@ -205,7 +205,7 @@ public:
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n, gsMatrix<T>& result) const
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result) const override
     {
         GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(n); GISMO_UNUSED(result);
         GISMO_NO_IMPLEMENTATION;
@@ -370,7 +370,7 @@ public:
         return indices.front();
     }
 
-    
+
 // Data members
 private:
     gsMappedBasis<d,T> * m_basis;
