@@ -32,23 +32,31 @@ Knot vector container initialization:
 
 To define uniform knot vector on \f$[0,1]\f$, we can use the following constructors:
 - initUniform: sets the knot vector so that it has prescribed number of interior knots and the multiplicities of the ending knots (0, 1) are also set.
-- initClamped: defines the knot vector so that it is uniform and has clamped endknots.
+- initClamped: defines the knot vector so that it is uniform and has clamped ending knots.
 
-For a knot vector, we can query its properties, such as the degree, the number of knots, the number of basis functions, the number of interior knots, the number of distinct knots, the multiplicity of a knot, the knot values, the knot values with multiplicities, the knot values without multiplicities, the knot values with multiplicities and multiplicities, the knot values without multiplicities and multiplicities, the knot values with multiplicities and indices, the knot values without multiplicities and indices, the knot values with multiplicities and indices and multiplicities, the knot values without multiplicities and indices and multiplicities, the knot values with multiplicities and indices and multiplicities and multiplicities, the knot values without multiplicities and indices and multiplicities and multiplicities, the knot values with multiplicities and indices and multiplicities and indices, the knot values without multiplicities and indices and multiplicities and indices, the knot values with multiplicities and indices and multiplicities and indices and multiplicities, the knot values without multiplicities and indices and multiplicities and indices and multiplicities, the knot values with multiplicities and indices and multiplicities and indices and indices, the knot values without multiplicities and indices and multiplicities and indices and indices, the knot values with multiplicities and indices and multiplicities and indices and indices and multiplicities, the knot values without multiplicities and indices and multiplicities and indices and indices and multiplicities, the knot values with multiplicities and indices and multiplicities and indices and indices and indices, the knot values without multiplicities and indices and multiplicities and indices and indices and indices, the knot values with multiplicities and indices and multiplicities and indices and indices and indices and multiplicities, the knot values without multiplicities and indices and multiplicities and indices and indices and indices and multiplicities, the knot values with multiplicities and indices and multiplicities and indices and indices and indices and indices, the knot values without multiplicities and indices and multiplicities and indices and indices and indices and indices, the knot values with multiplicities and indices and multiplicities and indices and indices and indices and indices and multiplicities, the knot values without multiplicities and indices and multiplicities and indices and indices and indices and indices and multiplicities, the knot values with multiplicities and indices and multiplicities and indices and indices and indices and indices and indices, the knot values without multiplicities and indices and multiplicities and indices and indices and indices and indices and indices, the knot values with multiplic
+For a gsKnotVector, we can query its properties, such as
+- size(): returns the total number of knots;
+- iFind(u): returns an iterator to the last occurrence of the knot at the beginning of the knot interval containing the value \a u;
+- has(u): returns true iff the knot exists in the vector;
+- isUniform(): checks whether the knot vector is uniform;
+- isOpen(): returns true iff the knot is open (i.e., both endpoints have multiplicities equal to degree+1);
+- multiplicity(u): returns the multiplicity of the knot at the value \a u;
+- etc.
+\snippet knotVector_example.cpp kv properties
 
-isOpen Returns true iff the knot is open (i.e., both endpoints have multiplicities equal to degree+1).
+Morevoer, we can perform operations, such as
+- unique(): returns unique knot values, without repetitions;
+- greville(): returns the greville points of the B-splines defined on this knot vector;
+- multiplicities(): returns vector of multiplicities of the knots;
+- uniformRefine(numKnots, mult): inserts \a numKnots (default = 1),  each of them \a mult - times (default = 1),  between each pair of knots;
+- degreeElevate(): elevates the degree, i.e., increase the multiplicity of all the knots by one and increment the degree;
+- etc.
+\snippet knotVector_example.cpp kv operations
 
-isUniform Checks whether the knot vector is uniform.
+Finally, here we show how to loop over the knots of a knot vector.
+\snippet knotVector_example.cpp kv loop
 
-
-
-Moreover, a knot vector can be modified by inserting new knots, removing knots, or changing the multiplicity of knots.
-For these and additional properites and operations, see the source files of gsKnotVector.
-
-
-
-
-
+For these and additional capabilities, see the source files of gsKnotVector.
 
 \section knotVector_exampleAnnotated Annotated source file
 

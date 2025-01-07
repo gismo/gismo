@@ -105,15 +105,17 @@ int main(int argc, char* argv[])
     
     printKnotVector(kv7, "kv7");
 
-    gsInfo  << "kv7.size(): "            << kv7.size() << "\n"
+    //! [kv properties]
+    gsInfo  << "kv7.size(): "            << kv7.size()                   << "\n"
             << "kv7.findspan(1.5): "     << kv7.iFind(1.5) - kv7.begin() << "\n"
-            << "kv7.findspan(2): "       << kv7.iFind(2) - kv7.begin() << "\n"
-            << "kv7.has(2): "            << kv7.has(2) << "\n"
-            << "kv7.has(2.1): "          << kv7.has(2.1) << "\n"
-            << "kv7.isUniform(): "       << kv7.isUniform() << "\n"
-            << "kv7.numKnotSpans(): "    << kv7.uSize() - 1 << "\n"
-            << "kv7.isOpen(): "          << kv7.isOpen() << "\n"
-            << "kv7.multiplicity(4/3): " << kv7.multiplicity(4./3) << "\n\n";
+            << "kv7.findspan(2): "       << kv7.iFind(2) - kv7.begin()   << "\n"
+            << "kv7.has(2): "            << kv7.has(2)                   << "\n"
+            << "kv7.has(2.1): "          << kv7.has(2.1)                 << "\n"
+            << "kv7.isUniform(): "       << kv7.isUniform()              << "\n"
+            << "kv7.isOpen(): "          << kv7.isOpen()                 << "\n"
+            << "kv7.multiplicity(4/3): " << kv7.multiplicity(4./3)       << "\n"
+            << "kv7.numKnotSpans(): "    << kv7.uSize() - 1              << "\n\n";
+    //! [kv properties]
 
     // ======================================================================
     // some operations
@@ -122,7 +124,7 @@ int main(int argc, char* argv[])
     gsInfo << "------------- Some operations -------------\n";
     printKnotVector(kv6, "kv6");
 
-
+    //! [kv operations]
     std::vector<real_t> unique = kv6.unique();
     gsInfo << "\nUnique knots: \n";
     std::for_each(unique.begin(), unique.end(), print);
@@ -144,7 +146,7 @@ int main(int argc, char* argv[])
     gsInfo << "kv6.degreeElevate()\n";
     kv6.degreeElevate();
     printKnotVector(kv6);
-
+    //! [kv operations]
 
     // ======================================================================
     // looping over knots
@@ -153,6 +155,7 @@ int main(int argc, char* argv[])
     gsInfo << "\n"
               << "------------- Looping over knots -------------\n"
               << "kv4: \n";
+    //![kv loop]
     for (gsKnotVector<>::iterator it = kv4.begin(); it != kv4.end(); it++)
     {
         gsInfo << *it << " ";
@@ -165,6 +168,7 @@ int main(int argc, char* argv[])
         gsInfo << *it << " ";
     }
     gsInfo << "\n\n";
+    //![kv loop]
 
 
     gsInfo << "For other capabilites of gsKnotVector look at "
