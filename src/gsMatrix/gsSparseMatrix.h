@@ -63,48 +63,6 @@ protected:
 
 };
 
-template<typename Scalar>
-//typename _Index
-class gsRowCol
-{
-    typedef index_t StorageIndex;
-    StorageIndex m_row, m_col;
-public:
-    gsRowCol() : m_row(0), m_col(0) {}
-
-    inline gsRowCol(StorageIndex i, StorageIndex j)
-    : m_row(give(i)), m_col(give(j))
-    {}
-
-    explicit gsRowCol(std::pair<StorageIndex,StorageIndex> & ij)
-    : m_row(give(ij.first)), m_col(give(ij.second))
-    {}
-
-    /** \returns the row index of the element */
-    const StorageIndex& row() const { return m_row; }
-
-    /** \returns the column index of the element */
-    const StorageIndex& col() const { return m_col; }
-
-    /** \returns the value of the element */
-    static const Scalar value() { return (Scalar)(0); }
-
-    inline size_t hashValue() const
-    { return m_row ^ ( m_col + 0x9e3779b9 + (m_row << 6) + (m_row >> 2) ); }
-
-    inline bool operator==(const gsRowCol &other) const
-    { return ( m_col==other.m_col &&  m_row==other.m_row ); }
-
-    inline bool operator<(const gsRowCol &other) const
-    { return ( m_col<other.m_col || (m_col==other.m_col && m_row<other.m_row) ); }
-};
-
-/** Hash operator **/
-struct gsRowColHash
-{ size_t operator()(const gsRowCol<real_t> & _val) const noexcept
-    { return _val.hashValue(); }
-};
-
 /**
     @brief Iterator over the non-zero entries of a sparse matrix
 
@@ -345,7 +303,7 @@ public:
     }
 
     /// Adds an explicit zero, only if (row,col) is not in the matrix
-    inline void addExplicitZero(_Index row, _Index col)
+    inline void insertExplicitZero(_Index row, _Index col)
     {
         GISMO_ASSERT(row>=0 && row<this->rows() && col>=0 && col<this->cols(), "Invalid row/col index.");
         const _Index outer = gsSparseMatrix::IsRowMajor ? row : col;
