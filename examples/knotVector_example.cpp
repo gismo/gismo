@@ -45,8 +45,8 @@ int main(int argc, char* argv[])
     // --- only with degree
     gsKnotVector<> kv1(3);
     //! [empty initialization]
-    printKnotVector(kv1, "kv1");
     printKnotVector(kv0, "kv0");
+    printKnotVector(kv1, "kv1");
 
     //! [uniform initialization]
     // --- uniform initialization
@@ -63,9 +63,9 @@ int main(int argc, char* argv[])
     index_t degree = 5; // degree of the spline space (default = -1);
     gsKnotVector<> kv4(a, b, interior, multEnd, multInt, degree);
     //! [uniform initialization]
-    printKnotVector(kv4, "kv4");
-    printKnotVector(kv3, "kv3");
     printKnotVector(kv2, "kv2");
+    printKnotVector(kv3, "kv3");
+    printKnotVector(kv4, "kv4");
     
 
     //! [knotContainer initialization]
