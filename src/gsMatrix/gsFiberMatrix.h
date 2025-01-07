@@ -63,7 +63,7 @@ public:
         clear();
     }
 
-    gsFiberMatrix& operator= (const gsFiberMatrix other)
+    gsFiberMatrix& operator= (gsFiberMatrix other)
     {
         this->swap( other );
         return *this;
@@ -182,8 +182,8 @@ public:
 
     void assignZero()
     {
-        for (index_t i = 0; i < fibers(); ++i)
-            std::fill(m_fibers[i]->valuePtr(), m_fibers[i]->valuePtr() + nonZeros(), (T)0.);
+        for (auto & fb : m_fibers)
+            std::fill(fb->valuePtr(), fb->valuePtr() + fb->nonZeros(), (T)0.);
     }
 
     void resize(index_t rows, index_t cols)
