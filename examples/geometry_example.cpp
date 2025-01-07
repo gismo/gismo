@@ -8,13 +8,14 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Speh
+    Author(s): J. Speh, S. Imperatore
 */
-
+//! [Include namespace]
 #include <iostream>
 #include <gismo.h>
 
 using namespace gismo;
+//! [Include namespace]
 
 
 // Returns the string with the size of a matrix.
@@ -30,19 +31,21 @@ std::string size(const gsMatrix<T>& matrix)
 
 int main(int argc, char* argv[])
 {
-
+    //! [Parse command line]
     std::string input("surfaces/simple.xml");
     std::string output("");
 
     gsCmdLine cmd("Tutorial on gsGeometry class.");
-    cmd.addPlainString("filename", "G+Smo input geometry file.", input);
+    cmd.addString("f", "filename", "G+Smo input geometry file.", input);
     cmd.addString("o", "output", "Name of the output file", output);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-
+    //! [Parse command line]
+    
+    
     // ======================================================================
     // reading the geometry
     // ======================================================================
-
+    //! [Read input file]
     gsFileData<> fileData(input);
 
     gsGeometry<>::uPtr pGeom;
@@ -62,6 +65,7 @@ int main(int argc, char* argv[])
         gsInfo << "Didn't find any geometry." << "\n";
         return -1;
     }
+    //! [Read input file]
 
     // ======================================================================
     // printing some information about the basis
@@ -115,7 +119,7 @@ int main(int argc, char* argv[])
 
     // geoDim x 1 matrix
     gsMatrix<> value = pGeom->eval(u);
-    // geoDim x parDim matrix (columns represent gradients)
+    // geoDim * parDim x 1 matrix (columns represent gradients)
     gsMatrix<> der1 = pGeom->deriv(u);
     // [geoDim * (parDim + parDim * (parDim - 1) / 2)] x 1 matrix
     gsMatrix<> der2 = pGeom->deriv2(u);
