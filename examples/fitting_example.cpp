@@ -11,9 +11,11 @@
     Author(s): G. Kiss, A. Mantzaflaris
 */
 
+//![Include namespace]
 #include <gismo.h>
 
 using namespace gismo;
+//![Include namespace]
 
 int main(int argc, char *argv[])
 {
@@ -32,6 +34,7 @@ int main(int argc, char *argv[])
     std::string fn = "fitting/deepdrawingC.xml";
 
     // Reading options from the command line
+    //![Parse command line]
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
             "file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. "
             "Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a "
@@ -50,6 +53,7 @@ int main(int argc, char *argv[])
     cmd.addString("d", "data", "Input sample data", fn);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    //![Parse command line]
 
     if (deg_x < 1)
     { gsInfo << "Degree x must be positive.\n";  return 0;}
@@ -94,6 +98,7 @@ int main(int argc, char *argv[])
         v_min = uv.row(1).minCoeff(),
         v_max = uv.row(1).maxCoeff();
 
+    //! [Create initial space]
     // Create knot-vectors without interior knots
     gsKnotVector<> u_knots (u_min, u_max, 0, deg_x+1 ) ;
     gsKnotVector<> v_knots (v_min, v_max, 0, deg_y+1 ) ;
@@ -105,15 +110,17 @@ int main(int argc, char *argv[])
     // Create Initial hierarchical basis
 
     gsTHBSplineBasis<2>  THB ( T_tbasis ) ;
-    //gsHBSplineBasis<2>  THB ( T_tbasis ) ;
+    //! [Create initial space]
 
     // Specify extension size in u and v cells
     std::vector<unsigned> ext;
     ext.push_back(extension);
     ext.push_back(extension);
 
+    //! [Create  Hfitter]
     // Create hierarchical refinement object
     gsHFitting<2, real_t> ref( uv, xyz, THB, refPercent, ext, lambda);
+    //! [Create  Hfitter]
 
     const std::vector<real_t> & errors = ref.pointWiseErrors();
 
@@ -130,6 +137,7 @@ int main(int argc, char *argv[])
 
     gsStopwatch time;
 
+    //! [adaptive loop]
     for(int i = 0; i <= iter; i++)
     {
         gsInfo<<"----------------\n";
@@ -151,9 +159,10 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    //! [adaptive loop]
 
     gsInfo<<"----------------\n";
-
+    //! [paraview]
     if ( save )
     {
         gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
@@ -166,4 +175,5 @@ int main(int argc, char *argv[])
                   "file containing the solution.\n";
 
     return 0;
+    //! [paraview]
 }

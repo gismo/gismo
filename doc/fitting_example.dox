@@ -4,6 +4,128 @@ namespace gismo {
 \page fitting_example fitting_example.cpp
 
 
+The spline data fitting problem can be mathematically described as follows.
+
+
+
+Given a (noisy) data set of the form,
+\f{eqnarray*}{
+	\mathrm{P} = \{\mathbf{p}_i\in\mathbb{R}^N \, \vert\, i = 0, \ldots, m-1\},
+\f}
+where \f$N=2\f$ for data points laying a plane and \f$N=3\f$ for data points which belong to the three-dimensional space,
+find a spline model \f$\mathbf{s}: \Omega\subseteq\mathbb{R}^D\to\mathbb{R}^N\f$, which approximates the data \f$\mathrm{P}\f$ within a certain tolerance \f$\epsilon\in\mathbb{R}_{>0}\f$,
+in the sense that, for each \f$i=0, \ldots, m-1\f$,
+\f{eqnarray*}{
+    \mathrm{dist}\left(\mathbf{s}_i, \mathbf{p}_i\right) \leq \epsilon,
+\f}
+where \f$\mathbf{s}_i\f$ denotes a point on the geometric model associated with the data point \f$\mathbf{p}_i\f$,
+and
+\f$\mathrm{dist}\left(\cdot,\cdot\right)\f$ is a certain distance metric.
+
+
+Therefore, the (TH)B-spline fitting problem can be stated in the following way. Given a point cloud \f$\mathrm{P}\f$ and an error tolerance \f$\epsilon > 0\f$, find a (TH)B-spline model \f$\mathbf{s}:\Omega\subseteq\mathbb{R}^D \to \mathbb{R}^N\f$, so that
+\f{eqnarray*}{
+	\mathrm{dist}\left(\mathbf{s}(\mathbf{u}_i), \mathbf{p}_i\right) \leq \epsilon, \quad  \text{with}\, \mathbf{u}_i\in\Omega, \quad \text{for each}\quad i=0, \ldots, m-1,
+\f}
+where \f$\mathbf{u}_i\f$ denotes a point on the parametric domain \f$\Omega\f$ associated with the data point \f$\mathbf{p}_i\f$.
+
+\section alg01 Leveraging moving parameterization and adaptive THB-splines for CAD surface reconstruction
+
+Given a point cloud \f$\mathrm{P}= \{\mathbf{p}_i\in\mathbb{R}^3 \, \vert\, i = 0, \ldots, m-1\}\f$, its parametrization \f$\mathrm{U} = \{\mathbf{u}_i\in\Omega\subset\mathbb{R}^2 \, \vert\, i = 0, \ldots, m-1\}\f$, once an initial parameter and mesh configuration is chosen,
+the adaptive (TH)B-spline fitting procedure is characterised by four main
+steps, which are successively repeated:
+    - (1) SOLVE: computation of the approximation on the current mesh,
+    - (2) ESTIMATE: error estimation,
+    - (3) MARK: marking the mesh elements with a too high error,
+    - (4) REFINE: refinement strategies to suitably identify the adaptive mesh to be used in the next iteration of the adaptive loop.
+
+\subsection sec01 SOLVE
+For a fixed THB-spline space \f$V\f$, the first step of the adaptive loop consists in finding \f$\mathbf{s}\in V\f$, that solves the penalized least squares problem
+\f{eqnarray*}{
+    \mathbf{s} = \arg\min_{\mathbf{v}\in V}\frac{1}{2}\sum_{i=0}^{m-1}\left\| \mathbf{v}\left(\mathbf{u}_i\right) - \mathbf{p}_i\right\|_2^2 + \lambda J\left(\mathbf{v}\right),
+\f}
+where the penalization term \f$J\f$ is the thin-plate energy functional, whose influence is controlled by a weight \f$\lambda \geq 0\f$, i.e. for \f$\mathbf{u} = (u,v)\in\Omega\f$,
+\f{eqnarray*}{
+J\left(\mathbf{s}\right) = \int_{\Omega}\left\|\frac{\partial^2\mathbf{s}}{\partial u\partial u}\right\|_2^2 + 2\left\|\frac{\partial^2\mathbf{s}}{\partial u\partial v}\right\|_2^2 + \left\|\frac{\partial^2\mathbf{s}}{\partial v\partial v}\right\|_2^2 \mbox{d}u\mbox{d}v.
+\f}
+
+\subsection sec02 ESTIMATE
+Subsequently, the second step of the adaptive fitting loop consists of evaluating the THB-spline approximant on the parameter sites \f$\mathbf{u}_i\in\Omega\f$ related to the data points \f$\mathbf{p}_i\f$ to compute a suitable error indicator.
+
+
+In particular, we choose the point-wise error distance \f$\left\|\mathbf{s}(\mathbf{u}_i) - \mathbf{p}_i\right\|_2\f$ for each \f$i=0, \ldots, m-1\f$, among others. The error indicator indicates the region of the domain \f$\Omega\f$ where additional degrees of freedom are needed to meet the prescribed surface accuracy, 
+by individuating the parametric sites \f$\mathbf{u}_i \in U\f$ where it exceeds a certain input threshold, i.e. 
+
+\f{eqnarray*}{
+    \left\|\mathbf{s}(\mathbf{u}_i) - \mathbf{p}_i\right\|_2 \geq \epsilon.
+\f}
+
+\subsection sec03 MARK \& REFINE
+Therefore, we identify the cells of the current hierarchical level which contain the parameters \f$\mathbf{u}_i\f$ identified by the error indicator and mark them for refinement, together with \a ext surrounding rings of cells in the hierarchical mesh.
+Finally, the marked cells are dyadically split, according to the possible hierarchical configurations.
+\image html figs/mark-ref-ext.png "Marking and refinement of cells in the hierarchical mesh, with \a ext = 2 and bi-degree (2,2)."
+
+\subsection sec04 MOVING PARAMETERS
+In the context of surface fitting, the parameters update within the described adaptive methodology is performed by adding a parameter correction (PC) routine,
+at the end of the standard adaptive loop. This method consists of locating the points on the geometric model which are the closest to the data points, in terms of Euclidean distance.
+
+
+Given a point cloud \f$P\f$, its parameterization \f$U\f$ and a surface \f$\mathbf{s}: \Omega\subset\mathbb{R}^2 \to \mathbb{R}^3\f$, the surface closest point problem consists in solving the following minimization problem, 
+\f{eqnarray*}{
+    \min_{\left(u_i, v_i\right)}\frac{1}{2}\left\|\mathbf{s}\left(u_i, v_i\right) - \mathbf{p}_i\right\|_2^2,\ 
+    \quad \text{for each}\ i=0,\ldots,m-1.
+\f}
+This two-dimensional nonlinear problem can be explicitly formulated as
+\f{eqnarray*}{
+    \left(\mathbf{s}\left(u_i, v_i\right) - \mathbf{p}_i\right)^{\top} \nabla \mathbf{s}\left(u_i, v_i\right) = 0
+\f}
+for each \f$i=0,\ldots, m-1\f$, where \f$\nabla\mathbf{s}\f$ indicates the gradient of the surface \f$\mathbf{s}\f$, and solved by employing a suitable optimizer.
+
+
+The vector connecting the data point \f$\mathbf{p}_i\f$ to the surface point \f$\mathbf{s}(u_i, v_i)\f$ has to be orthogonal to the tangent plane of the surface and \f$\mathbf{s}\left( {u}_i, {v}_i\right)\f$ is then usually called the foot-point of \f$\mathbf{p}_i\f$ over \f$\mathbf{s}\f$
+for each \f$i=0, \ldots, m-1\f$. The updated parameterization \f$\bar{\mathbf{u}}_i = \left( \bar{u}_i, \bar{v}_i\right)\f$ is defined as the solution the minimization problem, for \f$i=0,\ldots, m-1\f$.
+Note that after performing one step of PC, the geometric model can be updated by fitting again the surface \f$\mathbf{s}\f$ to the points \f$P\f$ with the corrected parameters.
+Consequently, a new projection and the corresponding correction can take place.
+\image html figs/projection.png "Parameter correction."
+
+
+\section exm01 Leveraging moving parameterization and adaptive THB-splines in G+Smo
+In this example, we show how to fit an adaptive THB-spline surface to an input 3D point cloud.
+
+First we include the library and use the gismo namespace.
+\snippet fitting_example.cpp Include namespace
+
+Then we define our command line options.
+For example, we use the options
+    -  \c -d or \c --data to set the path to the file that contains our parameterized point cloud;
+    -  \c -e or \c --epsilon to set the error tolerance;
+    -  \c -s or \c --lambda to set the weight of the thin-plate energy functional;
+    -  \c -c or \c --parcor to set the number of parameter correction steps;
+    -  \c -i or \c --iter to set the number of adaptive refinement loops;
+    -  \c -p or \c --refPercent to set the percentage of points to refine in each iteration;
+    -  ...
+
+\snippet fitting_example.cpp Parse command line
+
+Then we read the input from the file that contains the parametrized point cloud.
+In this example, we use the function gsFileData::getId() to read input from an \c xml file.
+In this function, the first argument specifies the ID of the object in the \c xml file (the \c id flag) and the second argument is the object to which the file info is written.
+\snippet fitting_example.cpp Read data
+
+
+Set the initial mesh configuration and THB spline space,
+\snippet fitting_example.cpp Create initial space
+
+as well as the fitting object.
+\snippet fitting_example.cpp Create  Hfitter
+
+Perform the adaptive loop:
+\snippet fitting_example.cpp adaptive loop
+
+Finally, export the results to ParaView.
+\snippet fitting_example.cpp paraview
+
+
 <!-- more info on the file examples/fitting_example.cpp goes here -->
 
 
