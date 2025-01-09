@@ -224,8 +224,8 @@ v25.01.0 (https://github.com/gismo/gismo/releases/tag/v25.01.0)
   - `toDataArray` now also supports integers, matrices of integers, and custom xml tag attribute-value pairs. -- https://github.com/gismo/gismo/pull/740
   - A flag has been added to `inputOutput_example`, which exports the geometry as bezier elements. -- https://github.com/gismo/gismo/pull/740
   - `filedata/surfaces/teapot.xml` now contains a multi patch definition. -- https://github.com/gismo/gismo/pull/740
-  - Take out the example runs from GitLab CI, since the total GitLabl CI time was around 90 minutes (which is the time limit) hence some runs were failing
-due to time limit. -- https://github.com/gismo/gismo/pull/751
+  - Take out the example runs from GitLab CI, since the total GitLabl CI time was around 90 minutes (which is the time limit) hence some runs were failingdue to time limit. -- https://github.com/gismo/gismo/pull/751
+  - Improve geometry tutorial -- https://github.com/gismo/gismo/pull/770
   - Support export of fields with more than 3 components (e.g. full stress tensor in 3D) to Paraview -- https://github.com/gismo/gismo/pull/748
   - Remove warnings in `gsMultiPatch` -- https://github.com/gismo/gismo/pull/759
   - Remove `gsDebugVar` in `gsBiharmonicExprAssembler` -- https://github.com/gismo/gismo/pull/759
