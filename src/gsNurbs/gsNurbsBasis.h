@@ -71,7 +71,7 @@ public:
     /// \param degree degree of the spline space
     /// \param mult_interior multiplicity at the interior knots
     gsNurbsBasis(T u0, T u1, unsigned interior, int degree, unsigned mult_interior=1):
-    Base( gsBSplineBasis<T>(u0,01,interior,degree,mult_interior) )
+    Base( gsBSplineBasis<T>(u0,u1,interior,degree,mult_interior) )
     { 
         // if( ! check()  )
         //   gsWarn << "Warning: Inconsistent "<< *this<< "\n";
@@ -182,7 +182,8 @@ public:
   
     /// Apply k-refinement to the basis i times
     void uniform_k_refine(int const & i = 1) 
-    { 
+    {
+        GISMO_NO_IMPLEMENTATION
         //m_p += i;
         //m_knots->degreeElevate(i);
         //m_knots->uniformRefine();
