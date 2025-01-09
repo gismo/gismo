@@ -3,7 +3,7 @@ namespace gismo {
 
 \page Python_cppyy_interface Python via cppyy
 
-Cppyy-bindings are generated at runtime based on just-in-time compilation. For using G+Smo this is useful, since the bilinear forms are usually assembled using the expression assembler. Since gismo::gsExprAssembler is based on templated expressions, its assembly method can only be compiled once the bilinear form has been defined, which makes precompiled bindings impossible unless we restrict the available bilinear forms. Cppyy's just-in-time compilation solves this problem.
+The <a href="https://cppyy.readthedocs.io/en/latest/">cppyy</a>-bindings are generated at runtime based on just-in-time compilation. For using G+Smo this is useful, since the bilinear forms are usually assembled using the expression assembler. Since gismo::gsExprAssembler is based on templated expressions, its assembly method can only be compiled once the bilinear form has been defined, which makes precompiled bindings impossible unless we restrict the available bilinear forms. Cppyy's just-in-time compilation solves this problem.
 
 <h3>Configuration</h3>
 Configure G+Smo with the options `-DGISMO_WITH_CPPYY=On -DCMAKE_CXX_STANDARD=20`. This creates the Python package `gismo_cppyy` in the subdirectory `cppyy` of your build folder.
@@ -18,24 +18,24 @@ This means that these directories need to stay in place.
 
 <h3>Usage</h3>
 The bindings can be imported in Python using
-```
+~~~~{.py}
 from gismo_cppyy import gismo
-```
+~~~~
 All classes and functions from G+Smo can be found in the `gismo` namespace,
 templates are resolved using brackets containing either a string or a Python type.
 For example, you can access the expression assembler using
-```
+~~~~{.py}
 A = gismo.gsExprAssembler["real_t"]()
-```
+~~~~
 and, after defining the spaces and variables, assemble the matrix using
-```
+~~~~{.py}
 A.assemble(gismo.expr.igrad(u, G) * gismo.expr.igrad(u, G).tr() * gismo.expr.meas(G), u * ff * gismo.expr.meas(G))
-```
+~~~~
 just as in C++. Before evaluating the `assemble()` method, the just-in-time compiler
 will compile the templated method
-```
+~~~~{.cpp}
 template<class... expr> void assemble(const expr &... args);
-```
+~~~~
 of gismo::gsExprAssembler for the employed expressions.
 
 An example for solving the Poisson equation can be found in `python_examples/poisson_example_cppyy.py`.
@@ -48,19 +48,21 @@ The conversion from gismo objects to numpy arrays is done using the
 The class method `fromnumpy()` of these classes constructs a gismo object from a numpy array.
 
 For example, you can run
-```
+~~~~{.py}
 >>> from gismo_cppyy import gismo
 >>> import numpy as np
 >>> a = np.array([[1,0],[0,1]], dtype=np.double)
 >>> A = gismo.gsMatrix["double"].fromnumpy(a)
 >>> b = A.tonumpy()
 >>> B = gismo.gsAsMatrix["double"].fromnumpy(b)
-```
+~~~~
 
 Note that `gismo.gsMatrix["double"].fromnumpy()`
 copies the underlying data, while `gismo.gsAsMatrix["double"].fromnumpy()` does not.
 `tonumpy()` never copies the data.
 
+<h3>Further information and examples</h3>
+\todo @felixfeliz
 
 */
 }
