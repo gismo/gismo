@@ -66,7 +66,7 @@ public:
 public:
 
     /// Default empty constructor
-    gsRationalBasis() :  Base() { }
+    gsRationalBasis() :  Base(), m_src(nullptr) { }
 
     /// Construct a rational counterpart of basis
     gsRationalBasis(SrcT* basis)
@@ -110,7 +110,7 @@ public:
     }
 
     // Destructor
-    ~gsRationalBasis()
+    virtual ~gsRationalBasis()
     {
         delete m_src;
     }

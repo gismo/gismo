@@ -36,7 +36,7 @@ namespace gismo
 */
 
 template<class T>
-class gsNurbsBasis : public gsRationalBasis<gsBSplineBasis<T> >
+class GISMO_EXPORT gsNurbsBasis : public gsRationalBasis<gsBSplineBasis<T> >
 {
 public:
 
@@ -103,7 +103,7 @@ public:
     /// Copy Constructor 
     gsNurbsBasis( const gsNurbsBasis & o) : Base(o) { }
 
-    ~gsNurbsBasis() { }  //destructor
+    virtual ~gsNurbsBasis();
 
 public:
 
@@ -192,6 +192,7 @@ public:
 
 
 } // namespace gismo
+
 
 // *****************************************************************
 #ifndef GISMO_BUILD_LIB
