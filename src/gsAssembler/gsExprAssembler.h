@@ -749,7 +749,7 @@ private:
             const index_t cd            = u.dim();//col
             const gsDofMapper  & rowMap = v.mapper();
             const gsDofMapper  & colMap = u.mapper();
-            rowInd0 = v.source().piece(patchid).active(m_point);
+            rowInd0 = v.source().piece(patchid).active(m_point); //.. pattern ifc ?
             colInd0 = u.source().piece(patchid).active(m_point);
             for (index_t c = 0; c != cd; ++c)
                 for (index_t j = 0; j != colInd0.rows(); ++j)
@@ -1029,7 +1029,7 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
 {
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
-    unsigned patchInd;
+    unsigned patchInd(0);
     _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
                 , lock
