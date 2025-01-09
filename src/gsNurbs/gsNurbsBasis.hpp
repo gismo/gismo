@@ -16,7 +16,6 @@
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsIO/gsXml.h>
-#include <gsIO/gsXmlGenericUtils.hpp>
 
 namespace gismo
 {
