@@ -1072,6 +1072,7 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
             // Map the quadrature points to the current element.
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(), quPoints, quWeights);
             basis->source().eval_into(quPoints, values); // Evaluate given basis at the mapped quadrature points
+
             // Append the local Bezier Extraction matrix to the ElementBlock.coefVectors
             ElementBlocks[key].coefVectors.push_back(solver.solve(values.transpose()).transpose());
         }

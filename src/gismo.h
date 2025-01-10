@@ -81,6 +81,9 @@ namespace internal
 
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
+#include <gsCore/gsComposedBasis.h>
+#include <gsCore/gsComposedGeometry.h>
+
 // Tensors
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>

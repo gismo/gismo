@@ -253,7 +253,6 @@ gsMatrix<T> gsFitting<T>::principal_curvatures(const gsMatrix<T> & params)
       pcs = out.template selfadjointView<gsEigen::Lower>().eigenvalues();
 
       m_pointCurvature.row(d) = pcs.transpose();
-
     }
 
     return m_pointCurvature;
@@ -350,7 +349,6 @@ void gsFitting<T>::assembleSystem(const gsMatrix<T> & points_int, const gsMatrix
                                   const index_t & num_basis, const gsSparseMatrix<T> & NNT,
                                   gsSparseMatrix<T> & A_tilde, gsMatrix<T> & rhs)
 {
-
     gsSparseMatrix<T> B_int, B_bdy;
     gsMatrix<T> X_int, X_bdy;
 
