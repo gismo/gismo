@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     index_t numLRefine  = 3;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
-    double eps          = 1e-7; // pinalization coefficient
+    double eps          = 1e-5; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 6.;
     bool export_b64     = false;

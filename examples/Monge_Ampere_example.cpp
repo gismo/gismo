@@ -17,65 +17,36 @@
 using namespace gismo;
 //! [Include namespace]
 
-void ProjectionNormalCPointsAll(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
+void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
     // Projection normal of control points (exact geometry)
-    int boxMaxNumber = mp.nBoxes();
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
     {
         // test if the boundary interface is not an inner interface between patches
+        auto lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]);
+        auto hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(0) ).array()[0]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
         {
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = lVal;
         }
+
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0] + 1.;
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = hVal;
         }
+
+        lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(0) ).array()[1]);
+        hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(0) ).array()[1]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = lVal;
         }
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
         {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = hVal;
         }
-        }
+    }
 };
 
-void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mp){
-    // Projection normal of control points (exact geometry)
-    int boxMaxNumber = mp.nBoxes();
-    for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
-    {
-        // test if the boundary interface is not an inner interface between patches
-        if(!mp.isInterface( patchSide(boxNumber,1) ) ){
-        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
-        {
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0];
-        }
-        }
-
-        if(!mp.isInterface( patchSide(boxNumber,2) ) ){
-        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
-        {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[0] + 1.;
-        }
-        }
-
-        if(!mp.isInterface( patchSide(boxNumber,3) ) ){
-        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
-        {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1];
-        }
-        }
-        if(!mp.isInterface( patchSide(boxNumber,4) ) ){
-        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
-        {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = mp.patch(boxNumber).coef( mp.patch(boxNumber).basis().boundary(1).at(0) ).array()[1]+1.;
-        }
-        }
-        }
-};
 
 int main(int argc, char *argv[])
 {
@@ -83,17 +54,16 @@ int main(int argc, char *argv[])
     bool plot           = false;
     index_t numRefine   = 3;
     index_t numLRefine  = 3;
-    index_t numElevate  = 0;
+    index_t numElevate  = 1;
     index_t maxIter     = 30;
-    double eps          = 1e-7; // pinalization coefficient
+    double eps          = 1e-5; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 10.;
     bool plotMAeRes     = false;
     bool export_b64     = false;
-    // ...PNormalCP: Correct the normal part of the mapping.
-    bool PNormalCP      = true;
     // Specify the file path
     std::string fn("pde/quart_annulus.xml");
+    //std::string fn("surfaces/cylinder.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -115,7 +85,7 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft;
+    gsMultiPatch<> mpLeft; // = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -123,6 +93,7 @@ int main(int argc, char *argv[])
     mpLeft.computeTopology();
 
     // .... one single patch
+    //gsInfo << "INFO IN PARAMETRIC DOMAIN "<< mpLeft.dim() << mpLeft.parDim() <<"\n";
     gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     //Get all interfaces and boundaries:
     mp.degreeElevate(numElevate);
@@ -176,8 +147,12 @@ int main(int argc, char *argv[])
     // Set the Target geometry map
     geometryMap GLeft = A.getMap(mpLeft);
 
-    // Set pow for BFO method
+    // Set pow for BFO method dim in parameteric domain
     auto IGdim     = G.domainDim();
+
+    // Set dimension of target geometry
+    auto ITdim     = mpLeft.geoDim();
+
     // Set factor for BFO method
     auto gammaMAE = factorial(G.domainDim());
 
@@ -185,7 +160,7 @@ int main(int argc, char *argv[])
     space u = A.getSpace(dbasis);
     
     // Set the source term with respect to target geometry
-    auto ff = A.getCoeff(f, G);
+    auto ff = A.getCoeff(f, GLeft);
 
     //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
     auto u_I = ev.getVariable(sN, G);
@@ -217,11 +192,13 @@ int main(int argc, char *argv[])
     A.initSystem();
     // Initialize the system : start Computing the conductivity coeffeicient ...
     // Compute the Neumann terms defined on physical space
+    gsInfo << "evaluate integral " << ev.integral(ff.val()) << "\n";
+
     auto g_N = A.getBdrFunction(G);
     auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral((1.+IntensityMAE*ff.val())* meas(G))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G))};
 
     setup_time += timer.stop();
 
@@ -231,7 +208,7 @@ int main(int argc, char *argv[])
     A.assemble(
     igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G) //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G) //rhs vector
     );
     
     // Compute the Neumann terms defined on physical space
@@ -276,16 +253,14 @@ int main(int argc, char *argv[])
         v_sol.extract(Psi);
 
         // ... correct boundary
-        if (PNormalCP)
-            ProjectionNormalCPoints(Psi, mp);
-        //if (CornersLshape)
-        //    CorrectCornersLshape(Psi, mp); 
+        ProjectionNormalCPoints(Psi);
+
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PPLoc = A.getMap(Psi);
         auto  comp = PPLoc(mpLeft);
-        A.initSystem(2);
+        A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
@@ -293,7 +268,6 @@ int main(int argc, char *argv[])
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         geometryMap PP = A.getMap(Psi);
         auto ff = A.getCoeff(f, PP);
-        //ev.integral(ff.val());
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -311,12 +285,12 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         
         // .. update Coeffeicient of conductivity
-        CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
+        CoeffConductivity = Neumann_Int/ev.integral(pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
         // MAE system
         A.assemble(
         igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
         ,
-        u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
+        u * CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
         );
 
         // Compute the Neumann terms defined on physical space
@@ -372,9 +346,9 @@ int main(int argc, char *argv[])
         collection.addField(ff, "density function");
         collection.addField(ihess(u_sol,G).det(), "Jacobian function");
         if(maxIter == 0)
-        collection.addField(CoeffConductivity * (-1.)*pow(2.+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G), "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G), "MAE_rhs");
         else
-        collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G), "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G), "MAE_rhs");
         collection.saveTimeStep();
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");
@@ -392,7 +366,7 @@ int main(int argc, char *argv[])
         space v = A.getSpace(dbasis);
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
-        A.initSystem(2);
+        A.initSystem(IGdim);
 
         //gsVector<> pt(2); pt.setConstant(0.5);
         //ev.testEval( v, pt );
@@ -404,14 +378,13 @@ int main(int argc, char *argv[])
         gsMultiPatch<> Psi, Psitp;
         v_sol.extract(Psitp);
         //... correct the boundary
-        if (PNormalCP)
-            ProjectionNormalCPoints(Psitp, mp);
+        ProjectionNormalCPoints(Psitp);
 
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         // Psi.addAutoBoundaries();
         geometryMap PP = A.getMap(Psitp);
         auto  comp = PP(mpLeft);
-        A.initSystem(2);
+        A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
@@ -424,6 +397,7 @@ int main(int argc, char *argv[])
             Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
         Psi.addAutoBoundaries();
         Psi.computeTopology();
+
         //Psi.uniformRefine();
         gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
