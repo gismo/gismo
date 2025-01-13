@@ -62,8 +62,9 @@ int main(int argc, char *argv[])
     bool plotMAeRes     = false;
     bool export_b64     = false;
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
-    //std::string fn("surfaces/cylinder.xml");
+    //std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/infinit_plate.xml");
+    std::string fn("pde/circle.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -197,8 +198,8 @@ int main(int argc, char *argv[])
     auto g_N = A.getBdrFunction(G);
     auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
-    auto CoeffDensity{ev.integral((1.+IntensityMAE*ff.val())* meas(G))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G))};
+    auto CoeffDensity{ev.integral((1.+IntensityMAE*ff.val()))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) )};
 
     setup_time += timer.stop();
 
@@ -206,9 +207,9 @@ int main(int argc, char *argv[])
 
     timer.restart();
     A.assemble(
-    igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
+    igrad(u, G) * igrad(u, G).tr()  + eps * u *u.tr() //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G) //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim)  //rhs vector
     );
     
     // Compute the Neumann terms defined on physical space
@@ -249,25 +250,26 @@ int main(int argc, char *argv[])
         A.assemble( v * v.tr() , v * igrad(u_s,G) );
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         
-        gsMultiPatch<> Psi;
+        gsMultiPatch<> Psi, PsiLoc;
         v_sol.extract(Psi);
+        v_sol.extract(PsiLoc);
 
         // ... correct boundary
         ProjectionNormalCPoints(Psi);
-
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         Psi.addAutoBoundaries();
         Psi.computeTopology();
-        geometryMap PPLoc = A.getMap(Psi);
-        auto  comp = PPLoc(mpLeft);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        v_sol.extract(Psi);
-        //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        geometryMap PP = A.getMap(Psi);
-        auto ff = A.getCoeff(f, PP);
+        geometryMap PP    = A.getMap(Psi);
+        // geometryMap PPLoc = A.getMap(PsiLoc);
+        // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        // auto  comp = PPLoc(mpLeft);
+        // A.initSystem(ITdim);
+        // //Obtain control points for the gradient of mpLeft.comp(Psi)
+        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        // v_sol.extract(PsiLoc);
+        // //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
+        // geometryMap PPfLoc = A.getMap(PsiLoc);
+        auto ff = A.getCoeff(f, GLeft, PP);
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -285,13 +287,17 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         
         // .. update Coeffeicient of conductivity
-        CoeffConductivity = Neumann_Int/ev.integral(pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
+        auto  ExprMAE = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - jac(PP).det()), 1./IGdim);
+        auto IntegDensity = ev.integral(ExprMAE);
+        CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
+        gsInfo << " end value coeff "<< CoeffConductivity << "\n";
         A.assemble(
-        igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
+        igrad(u, G) * igrad(u, G).tr()  +  eps * u * u.tr()//matrix
         ,
-        u * CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
+        u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
         );
+        gsInfo << " Assemnles \n";
 
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
@@ -317,7 +323,7 @@ int main(int argc, char *argv[])
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
         ++NiterPicard;
-        auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+        auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm()  ));
         if ( l2errRes < tolPicard || ip == maxIter ){
             // ! end Picard loop
             gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
@@ -346,9 +352,9 @@ int main(int argc, char *argv[])
         collection.addField(ff, "density function");
         collection.addField(ihess(u_sol,G).det(), "Jacobian function");
         if(maxIter == 0)
-        collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G), "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) , "MAE_rhs");
         else
-        collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G), "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) , "MAE_rhs");
         collection.saveTimeStep();
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");
