@@ -50,7 +50,7 @@ SUITE(gsExprAssembler_test)
     {
         // Create a circle
         gsMultiPatch<> mp;
-        mp.addPatch(gsNurbsCreator<>::NurbsDisk(0.5));
+        mp.addPatch(gsNurbsCreator<>::NurbsDisk(1.0));
         mp.computeTopology();
         mp.embed(3);
         mp.uniformRefine(1);

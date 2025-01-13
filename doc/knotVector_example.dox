@@ -2,10 +2,61 @@ namespace gismo {
 /**
 
 \page knotVector_example knotVector_example.cpp
+In this example, we show how to create a knot vector, and how to perform some basic operations on it.
+
+First we include the library and use the gismo namespace.
+\snippet knotVector_example.cpp Include namespace
+
+Then we consider different knot vector initializations.
+Empty knot vector initialization:
+- empty constructor: sets the degree to -1 and leaves the knots empty.
+- only with degree: set the degree and leaves the knots uninitialized.
+\snippet knotVector_example.cpp empty initialization
+
+To construct a uniform knot vector, we need to specify in the following order:
+- the first knot value;
+- the last knot value;
+- the number of interior knots;
+- the multiplicity at the two end knots;
+- the multiplicity of the interior knots (default = 1);
+- the degree of the spline space (default = -1).
+If the degree is -1, than the degree is inferred from the multiplicities of the ending knots, assuming clamped knots.
+
+Uniform knot vector initialization:
+\snippet knotVector_example.cpp uniform initialization
 
 
-<!-- more info on the file examples/knotVector_example.cpp go here -->
+A knot vector can be defined also by specifying the knot values directly via, passed to the constructor via a container.
+Knot vector container initialization:
+\snippet knotVector_example.cpp knotContainer initialization
 
+To define uniform knot vector on \f$[0,1]\f$, we can use the following constructors:
+- initUniform: sets the knot vector so that it has prescribed number of interior knots and the multiplicities of the ending knots (0, 1) are also set.
+- initClamped: defines the knot vector so that it is uniform and has clamped ending knots.
+
+For a gsKnotVector, we can query its properties, such as
+- size(): returns the total number of knots;
+- iFind(u): returns an iterator to the last occurrence of the knot at the beginning of the knot interval containing the value \a u;
+- has(u): returns true iff the knot exists in the vector;
+- isUniform(): checks whether the knot vector is uniform;
+- isOpen(): returns true iff the knot is open (i.e., both endpoints have multiplicities equal to degree+1);
+- multiplicity(u): returns the multiplicity of the knot at the value \a u;
+- etc.
+\snippet knotVector_example.cpp kv properties
+
+Morevoer, we can perform operations, such as
+- unique(): returns unique knot values, without repetitions;
+- greville(): returns the greville points of the B-splines defined on this knot vector;
+- multiplicities(): returns vector of multiplicities of the knots;
+- uniformRefine(numKnots, mult): inserts \a numKnots (default = 1),  each of them \a mult - times (default = 1),  between each pair of knots;
+- degreeElevate(): elevates the degree, i.e., increase the multiplicity of all the knots by one and increment the degree;
+- etc.
+\snippet knotVector_example.cpp kv operations
+
+Finally, here we show how to loop over the knots of a knot vector.
+\snippet knotVector_example.cpp kv loop
+
+For these and additional capabilities, see the source files of gsKnotVector.
 
 \section knotVector_exampleAnnotated Annotated source file
 

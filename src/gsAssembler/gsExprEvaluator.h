@@ -291,6 +291,20 @@ public:
     evalIfc(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
             const boundaryInterface & ifc);
 
+    template<class E>
+#ifdef __DOXYGEN__
+    gsAsConstMatrix<T>
+#else
+    typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+#endif
+    evalBdr(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
+            const patchSide & ps);
+
+    template<class E>
+    typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+    evalBdr(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
+            const patchSide & ps);
+
     /// Computes value of the expression \a expr at the point \a pt of
     /// patch \a patchId, and displays the result
     template<class E> void
@@ -319,6 +333,11 @@ public:
     //( expression \a expr over the isogeometric domain \a G.
     ///
     /// Plotting properties are controlled by entries in the options
+    // template<class E>
+    // void writeParaview(const expr::_expr<E> & expr, const gsMatrix<T> & uv,
+    //                    geometryMap G, std::string const & fn)
+    // { writeParaview_impl<E,true>(expr,uv,G,fn); }
+
     template<class E>
     void writeParaview(const expr::_expr<E> & expr,
                        geometryMap G, std::string const & fn)
@@ -361,18 +380,35 @@ private:
         static inline T init() { return 0; }
         static inline void acc(const T contrib, const T w, T & res)
         { res += w * contrib; }
+
+        static inline void acc_global(const T contrib, T & res)
+        {
+#           pragma omp atomic update
+            res += contrib;
+        }
     };
     struct min_op
     {
         static inline T init() { return math::limits::max(); }
         static inline void acc (const T contrib, const T, T & res)
-        { res = math::min(contrib, res); } //note: min/max are not atomic
+        {res = math::min(contrib, res);	}
+        static inline void acc_global(const T contrib, T & res)
+        {
+#           pragma omp atomic write
+            res = math::min(contrib, res);
+        }
+
     };
     struct max_op
     {
         static inline T init() { return math::limits::min(); }
         static inline void acc (const T contrib, const T, T & res)
         { res = math::max(contrib, res); }
+        static inline void acc_global(const T contrib, T & res)
+        {
+#           pragma omp atomic write
+            res = math::max(contrib, res);
+        }
     };
 
 };
@@ -388,71 +424,60 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
 #pragma omp parallel
 {
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-    index_t patch_cnt = 0;
-#   endif
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+        T thValue = _op::init();
+#endif
+        gsQuadRule<T> QuRule;  // Quadrature rule
+        auto _arg = expr.val();
+        m_exprdata->parse(_arg);
+        m_exprdata->activateFlags(SAME_ELEMENT);
 
-    gsQuadRule<T> QuRule;  // Quadrature rule
-    gsVector<T> quWeights; // quadrature weights
-
-    auto _arg = expr.val();
-    m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
-    
-    // Computed value on element
-    T elVal;
-    index_t c = 0;
-    for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
-    {
-        // Quadrature rule
-        QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
-
-        // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
-        m_exprdata->getElement().set(*domIt,quWeights);
-
-        // Start iteration over elements of patchInd
-#       ifdef _OPENMP
-        if ( storeElWise )
+        // Computed value on element
+        T elVal;
+        index_t poffset = 0;
+        typename gsBasis<T>::domainIter domIt;
+        for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
         {
-            c = patch_cnt + tid;
-            patch_cnt += domIt->numElements();// a bit costy
+            // Quadrature rule
+            QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
+
+            // Initialize domain element iterator
+            domIt = m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
+#ifdef _OPENMP
+            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+                for (; domIt->good(); domIt->next() )
+#endif
+                {
+                    // Map the Quadrature rule to the element
+                    QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                                  m_exprdata->points(), m_exprdata->weights());
+
+                    // Perform required pre-computations on the quadrature nodes
+                    m_exprdata->precompute(patchInd);
+
+                    // Compute on element
+                    elVal = _op::init();
+                    for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quad. nodes
+                        _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
+                    _op::acc(elVal, (T)1,
+#ifdef _OPENMP
+                    thValue);
+#else
+                    m_value);
+#endif
+                    if ( storeElWise )
+                    {
+                        m_elWise[poffset+domIt->id()] = elVal;
+                    }
+               }
+               poffset += m_exprdata->multiBasis().basis(patchInd).numElements();
         }
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#       else
-        for (; domIt->good(); domIt->next() )
-#       endif
-        {
-            // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
-
-            // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patchInd);
-
-            // Compute on element
-            elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
-                _op::acc(_arg.eval(k), quWeights[k], elVal);
-
-            if ( storeElWise )
-            {
-#               ifdef _OPENMP
-                m_elWise[c] = elVal;
-                c += nt;
-#               else
-                m_elWise[c++] = elVal;
-#               endif
-            }
-
-#           pragma omp critical (_op_acc)
-            _op::acc(elVal, 1, m_value);
-        }
-    }
-
+#ifdef _OPENMP
+    _op::acc_global(thValue, m_value);
+#endif
 }//omp parallel
     return m_value;
 }
@@ -469,8 +494,6 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
     //expr.print(gsInfo);
 
     gsQuadRule<T> QuRule;  // Quadrature rule
-    gsVector<T> quWeights; // quadrature weights
-
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     m_exprdata->activateFlags(SAME_ELEMENT);
@@ -479,7 +502,6 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
     T elVal;
     m_value = _op::init();
     m_elWise.clear();
-
     for (typename gsBoxTopology::const_biterator bit = //!! not multipatch!
              bdrlist.begin(); bit != bdrlist.end(); ++bit)
     {
@@ -489,22 +511,21 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(bit->patch).makeDomainIterator(bit->side());
-        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+                          m_exprdata->points(), m_exprdata->weights());
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(bit->patch, bit->side() );
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(_arg.eval(k), quWeights[k], elVal);
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quadrature nodes
+                _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
 
             _op::acc(elVal, 1, m_value);
             //if ( storeElWise ) m_elWise.push_back( elVal );
@@ -529,8 +550,6 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
     m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
-    gsVector<T> quWeights; // quadrature weights
-
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     m_exprdata->activateFlags(SAME_ELEMENT);
@@ -553,14 +572,13 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
-        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+                          m_exprdata->points(), m_exprdata->weights());
 
             if (m_exprdata->points().cols()==0)
                 continue;
@@ -570,8 +588,8 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(_arg.eval(k), quWeights[k], elVal);
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quadrature nodes
+                _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
 
             _op::acc(elVal, 1, m_value);
             //if ( storeElWise ) m_elWise.push_back( elVal );
@@ -590,8 +608,6 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     // m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule;
-    gsVector<T> quWeights; // quadrature weights
-
     // Computed value
     T elVal;
     m_value = _op::init();
@@ -626,7 +642,6 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         typename gsBasis<T>::domainIter domIt =
             //interfaceMap.makeDomainIterator();
             m_exprdata->multiBasis().piece(patch1).makeDomainIterator(iFace.first().side());
-        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         elVal = _op::init();
@@ -634,16 +649,16 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         {
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           m_exprdata->points(), quWeights);
+                           m_exprdata->points(), m_exprdata->weights());
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(iFace);
 
             // Compute on element
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over qu-nodes
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over qu-nodes
             {
-                _op::acc(arg_tpl.eval(k), quWeights[k], elVal);
+                _op::acc(arg_tpl.eval(k), m_exprdata->weights()[k], elVal);
             }
         }
         _op::acc(elVal, 1, m_value);
@@ -879,6 +894,45 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
 
+// This is a copy of the above (commented out ) function, which has parts
+// of gsParaviewCollection pasted in it. In this way the inclusion of
+// gsParaviewCollection.h is prevented. This is a temporary modification.
+template<class T>
+template<class E>
+typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::evalBdr(const expr::_expr<E> & expr, const gsVector<T> & pt,
+                            const patchSide & ps)
+{
+    GISMO_ASSERT(pt(ps.side().direction())==ps.side().parameter(),"Point "<<pt.transpose()<<" is not on boundary "<<ps.side());
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
+    m_elWise.clear();
+
+    m_exprdata->points() = pt;
+    m_exprdata->precompute(ps.patch, ps.side());
+
+    m_value = _arg.eval(0);
+    return gsAsConstMatrix<T>(&m_value,1,1);
+}
+
+template<class T>
+template<class E>
+typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::evalBdr(const expr::_expr<E> & expr, const gsVector<T> & pt,
+                            const patchSide & ps)
+{
+    GISMO_ASSERT(pt(ps.side().direction())==ps.side().parameter(),"Point "<<pt.transpose()<<" is not on boundary "<<ps.side());
+    m_exprdata->parse(expr);
+    m_exprdata->points() = pt;
+    m_exprdata->precompute(ps.patch, ps.side());
+
+    gsMatrix<T> tmp = expr.eval(0);
+    const index_t r = tmp.rows();
+    const index_t c = tmp.cols();
+    m_elWise.resize(r*c);
+    gsAsMatrix<T>(m_elWise, r, c) = tmp; //expr.eval(0);
+    return gsAsConstMatrix<T>(m_elWise, r, c);
+}
 
 template<class T>
 template<class E, bool gmap>
@@ -957,7 +1011,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         file <<"</VTKFile>\n";
 
         std::string mfn = fn + ".pvd";
-        gsInfo << mfn << "\n";
+        // gsInfo << mfn << "\n";
         std::ofstream f( mfn.c_str() );
         GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
         f << file.rdbuf();
@@ -965,6 +1019,6 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         file.str("");
         counter = -1;
         // End snippet from gsParaviewCollection
-    }    
+    }
 
 } //namespace gismo

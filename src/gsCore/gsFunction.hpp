@@ -16,10 +16,16 @@
 #include <gsCore/gsFuncCoordinate.h>
 #include <gsTensor/gsGridIterator.h>
 
+#ifdef gsIpOpt_ENABLED
+#include <gsIpOpt/gsIpOpt.h>
+#endif
+
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
 #endif
-//#include <gsOptimizer/gsGradientDescent.h>
+
+#include <gsOptimizer/gsGradientDescent.h>
+
 #include <gsOptimizer/gsFunctionAdaptor.h>
 
 #pragma once
@@ -361,12 +367,13 @@ int gsFunction<T>::newtonRaphson_impl(
 
         if ( withSupport )
         {
+            // First bound the solution to the support
+            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
             if ( delta.norm()<accuracy )
             {
                 //gsInfo <<"OK: Newton reached boundary of support "<< delta.norm() <<"\n";
                 return iter;
             }
-            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
         }
 
     } while (++iter <= max_loop);
@@ -463,7 +470,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         result = _argMinOnGrid(20);
     }
 
-    #ifdef gsHLBFGS_ENABLED
+#ifdef gsHLBFGS_ENABLED
     gsFunctionAdaptor<T> fmin(*this);
     // gsIpOpt<T> solver( &fmin );
     //gsGradientDescent<T> solver( &fmin );
@@ -473,7 +480,6 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     //MinStep..1e-12
     solver.solve(result);
     result = solver.currentDesign();
-    //gsDebugVar(result);
     return result;
 #else
     int dd=domainDim();
@@ -493,16 +499,6 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
 }
 
 //argMax
-
-/*
-template <class T>
-int gsFunction<T>::domainDim() const
-{ GISMO_NO_IMPLEMENTATION }
-
-template <class T>
-int gsFunction<T>::targetDim() const
-{ GISMO_NO_IMPLEMENTATION }
-*/
 
 template<class T>
 void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,

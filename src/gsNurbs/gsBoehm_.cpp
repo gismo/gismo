@@ -4,7 +4,7 @@
 #include <gsNurbs/gsBoehm.hpp>
 #include <gsNurbs/gsKnotVector.h>
 
-#include <gsMatrix/gsSparseRows.hpp>
+#include <gsMatrix/gsFiberMatrix.h>
 
 #define T real_t
 
@@ -41,7 +41,7 @@ void gsBoehmSingle<T, gsKnotVector<T>::iterator, gsMatrix<T> >(
     );
 
 // gsBoehmRefine gsKnotVector + gsMatrix + iterator / const_iterator
-//               gsKnotVector + gsSparseRows + const_iterator
+//               gsKnotVector + gsFiberMatrix + const_iterator
 
 TEMPLATE_INST
 void gsBoehmRefine<gsKnotVector<T>,
@@ -69,10 +69,10 @@ void gsBoehmRefine<gsKnotVector<T>,
 
 TEMPLATE_INST
 void gsBoehmRefine<gsKnotVector<T>,
-                   gsSparseRows<T>,
+                   gsFiberMatrix<T>,
                    std::vector<T>::const_iterator>(
     gsKnotVector<T> & knots,
-    gsSparseRows<T> & coefs,
+    gsFiberMatrix<T> & coefs,
     int p,
     std::vector<T>::const_iterator valBegin,
     std::vector<T>::const_iterator valEnd,

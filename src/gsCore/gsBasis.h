@@ -408,17 +408,17 @@ public:
     */
 
     /// Only for compatibility reasons, with gsRationalBasis. It returns an empty matrix.
-    virtual const gsMatrix<T> & weights() const 
+    virtual const gsMatrix<T> & weights() const
     {
         static gsMatrix<T> dummy;
-        return dummy; 
+        return dummy;
     }
 
     /// Only for compatibility reasons, with gsRationalBasis. It returns an empty matrix.
     virtual gsMatrix<T> & weights()
     {
         static gsMatrix<T> dummy;
-        return dummy; 
+        return dummy;
     }
 
     /// Returns false, since all bases that inherit from gsBasis are not rational.
@@ -672,6 +672,12 @@ public:
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n,
+                                  std::vector<gsMatrix<T> >& result) const;
+
+    /// @brief Evaluate the basis function \a i and its derivatives up
+    /// to order \a n at points \a u into \a result.
+    GISMO_DEPRECATED
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
@@ -745,7 +751,7 @@ public:
     /// @brief Returns (the coordinates of) an element in the support
     /// of basis function \a j
     virtual gsMatrix<T> elementInSupportOf(index_t j) const;
-    
+
     /// @brief For a tensor product basis, return the (const) 1-d
     /// basis for the \a i-th parameter component.
     virtual const gsBasis<T> & component(short_t i) const;
@@ -800,7 +806,7 @@ public:
 
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
+    virtual void uniformRefine(int numKnots = 1, int mul=1, short_t dir=-1);
 
     /// @brief Refine the basis uniformly
     ///
@@ -815,7 +821,7 @@ public:
     /// \endcode
     ///
     /// \sa gsBasis::uniformRefine
-    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir=-1);
+    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     /// @brief Refine the basis uniformly
     ///
@@ -941,8 +947,9 @@ public:
     /// basis function \em j at evaluation point \em i.
     gsSparseMatrix<T> collocationMatrix(gsMatrix<T> const& u) const;
 
-    std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u);
-    
+    std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsMatrix<T> & u) const;
+    static std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u);
+
     /// Reverse the basis
     virtual void reverse();
 

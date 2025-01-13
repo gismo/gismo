@@ -114,7 +114,8 @@ endif()
 
 #set(CTEST_CUSTOM_MAXIMUM_NUMBER_OF_ERRORS           "200" )
 #set(CTEST_CUSTOM_MAXIMUM_NUMBER_OF_WARNINGS         "500" )
-#set(CTEST_CUSTOM_MAXIMUM_PASSED_TEST_OUTPUT_SIZE    "104857600") # 100 MB
+set(CTEST_CUSTOM_MAXIMUM_PASSED_TEST_OUTPUT_SIZE    "2048")
+#set(CTEST_CUSTOM_MAXIMUM_FAILED_TEST_OUTPUT_SIZE    "10240")
 #set(CTEST_CUSTOM_COVERAGE_EXCLUDE                   "")
 
 if (DEFINED KEEPCONFIG)
@@ -534,7 +535,6 @@ macro(run_ctests)
     return()
   endif()
 
-  #"${CMAKE_VERSION}" VERSION_LESS "3.10"
   if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
 
     foreach(subproject ${LABELS_FOR_SUBPROJECTS})
@@ -567,17 +567,22 @@ macro(run_ctests)
 
   else() # No subprojects
 
-
     message("Building")
     if("x${CTEST_CMAKE_GENERATOR}" STREQUAL "xNinja")
       ctest_build(TARGET UnitTestPP APPEND) # for older versions of ninja
+      ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
     endif()
-    ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
     ctest_build(APPEND)
     ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
     message("Building unittests")
     ctest_build(TARGET unittests APPEND)
     ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
+
+    #foreach(obj ${BUILD_TARGETS})
+    #     message("Building ${obj}")
+    #...
+    #endforeach()
+
     if (DO_TESTS)
       message("Testing")
       ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)

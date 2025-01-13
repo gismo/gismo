@@ -1,0 +1,25 @@
+namespace gismo {
+/**
+
+\page Julia_interface Julia interface
+
+The <a href="https://julialang.org">Julia</a> interface of \gismo is enabled via the \ref C_interface of \gismo.
+
+<h3>Gismo.jl package hierarchy</h3>
+The package <a href="https://github.com/gismo/Gismo.jl">Gismo.jl</a> is developed on top of the package <a href="https://github.com/JuliaBinaryWrappers/gismo_jll.jl">`gismo_jll`</a>, which is an automatically generated package using Julia's <a href="https://github.com/JuliaPackaging/BinaryBuilder.jl">BinaryBuilder</a>, using \gismo's <a href="https://github.com/JuliaPackaging/Yggdrasil/blob/master/G/gismo/build_tarballs.jl">`build_tarballs.jl` file</a>.
+
+<h3>Calling the C interface in Julia</h3>
+Inside Julia, any function from the C interface can be called by the function `ccall`. For example, the function \ref gsMultiPatch_addPatch is binded to Julia as follows:
+~~~~{.jl}
+function addPatch!(obj::MultiPatch,geom::Geometry)::Nothing
+    ccall((:gsMultiPatch_addPatch,libgismo),Cvoid,(Ptr{gsCMultiPatch},Ptr{gsCGeometry},),obj.ptr,geom.ptr)
+end
+~~~~
+
+\note Since Julia does not natively offer an interface to Eigen, the \ref gsMatrix is binded to Julia using the `EigenMatrix` types. This type can easily convert to a Julia matrix and can be given to the C interface of \gismo.
+
+<h3>Further information and examples</h3>
+For further information and examples regarding the Julia interface, we refer to the <a href="https://github.com/gismo/Gismo.jl">Gismo.jl</a> repository, the <a href="julia">Gismo.jl documentation</a>, and the notebooks in the <a href="https://github.com/gismo/try_gismo">`try_gismo`</a> repository.
+*/
+}
+

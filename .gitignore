@@ -31,9 +31,10 @@ CMakeFiles/
 *.rej
 
 # paraview result files
-*.vtp
 *.pvd
-
+*.vtk
+*.vts
+*.vtp
 
 #Mac OS
 **/.DS_Store

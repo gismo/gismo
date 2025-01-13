@@ -336,7 +336,7 @@ public:
 
     /// \brief Refine uniformly all patches by inserting \a numKnots
     /// in each knot-span with multipliplicity \a mul
-    void uniformRefine(int numKnots = 1, int mul = 1);
+    void uniformRefine(int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     /// \brief Elevate the degree of all patches by \a elevationSteps, preserves smoothness
     void degreeElevate(short_t const elevationSteps = 1, short_t const dir = -1);
@@ -345,6 +345,9 @@ public:
 
     /// \brief Reduce the degree of all patches by \a elevationSteps.
     void degreeReduce(int elevationSteps = 1);
+
+    /// \brief Decrease the degree of all patches by \a elevationSteps.
+    void degreeDecrease(int elevationSteps = 1);
 
     /// \brief Coarsen uniformly all patches by removing \a numKnots
     /// in each knot-span
@@ -419,8 +422,11 @@ public:
             sthChanged = false;
             for( size_t i = 0; i < bivec.size(); i++ )
             {
-                change = repairInterface( bivec[i] );
-                sthChanged = sthChanged || change;
+                if ( bivec[i].type() != interaction::contact)
+                {
+                    change = repairInterface( bivec[i] );
+                    sthChanged = sthChanged || change;
+                }
             }
             k++; // just to be sure this cannot go on infinitely
         }

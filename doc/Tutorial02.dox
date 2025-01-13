@@ -4,31 +4,74 @@ namespace gismo {
 
 In this tutorial you will get to know the main geometric objects and
 operations available in the library.
+Since all parametric curves, surfaces or volumes are geometric
+objects, all these derive from gsGeometry, which in turn derives from
+gsFunction.
 
-\section bsp02 B-splines
+\section bsp02 Univariate B-splines
 
-The classes/naming convention regarding B-splines is as follows:
+- gsKnotVector
+  The main ingredient for constructing a B-spline basis is a knot vector.
+  See \ref knotVector_example.
 
 - gsBSplineBasis
 
   This class derives from gsBasis, representing a set of B-spline basis
   functions. These are polynomial functions, i.e. there are no weights
   (the weights if we regard them as NURBS are all equal to 1,
-  therefore not stored). 
-  The main ingredient for constructing a
-  B-spline basis is a knot vector, see \ref knotVector_example
+  therefore not stored).   
 
+  Here is an example of how to create a knot
+  vector and a B-spline basis, followed by uniform refinement.
+
+  \include bspline_basis.cpp
+  Output: \verbinclude bspline_basis.out
+
+  Here is an example of how to get basis functions active on one point,
+  and their corresponding values.
+
+  \include bspline_basiseval.cpp
+  Output: \verbinclude bspline_basiseval.out
+
+  And similarly here is an example of how to compute the Greville
+  abscissae, determine the basis functions active on them, and compute their values.
+
+  \include bspline_greville.cpp
+  Output: \verbinclude bspline_greville.out
+  
+
+  Several basic operations are available: degree elevation, knot
+  insertion, uniform refinement, interpolation, and so on, see 
+  \ref bSplineBasis_example for a few of them.
+
+
+Contrusction of a B-spline curve.
 - gsBSpline 
-
   This class derives from gsCurve and consists of a gsBSplineBasis
   plus a matrix which represents the coefficients in the
   basis. Therefore, the matrix contains the control points of the
   B-spline curve.
 
+  Here is an example of how to create a B-spline curve, by declaring its basis and coefficients.
+  \snippet bSplineCurve_example.cpp make curve
+
+These B-spline related classes are implemented in the \ref Nurbs.
+
+\section bsp03 Multi-variate B-splines
+
+The extantion to multi dimentional space is based on tensor-product constructions.
+
 - gsTensorBSplineBasis\<d\>
 
   The tensor-product basis of dimension d where the coordinates are
-  gsBSplineBasis.
+  gsBSplineBasis. This class derives from gsBasis, representing a set of tensor-product B-spline basis
+  functions.
+
+  Here is an example how to construct a bivariate tensor product BSpline basis,
+  compute the domain tesselations (meshes) and visualize these elements in paraview.
+  \include bivariate_basis.cpp
+  
+  For additional properites and operations, e.g. basis size, basis support, evaluation, derivation, refinement, etc., see \ref basis_example.
   
 - gsTensorBSpline\<d\>
 
@@ -41,37 +84,21 @@ Similarly, gsNurbsBasis, gsNurbs, gsTensorNurbsBasis and gsTensorNurbs
 refer to Non-uniform rational B-spline bases patches (functions) of
 dimension one, or more, respectively.
 
-  Here is an example of how to create a knot
-  vector and a B-spline basis, followed by uniform refinement.
+\section bsp04 Hierarchical B-splines
 
-  \include bspline_basis.cpp
-  Output: \verbinclude bspline_basis.out
+gsHBSplineBasis and gsTHBSplineBasis defines the hierarchical B-spline and the truncated hierarchical B-spline basis, respectively.
+Note that both are derived from gsHTensorBasis.
 
-  And here is an example of how to compute the Greville
-  abscissae, and evaluate the basis on them.
+The corresponding geometric objects are gsHBSpline<d, T> and gsTHBSpline<d, T>, where \a d stands for the dimension and \a T templates the type.
 
-  \include bspline_greville.cpp
-  Output: \verbinclude bspline_greville.out
-  
-These B-spline related classes are implemented in the \ref Nurbs.
+\ref thbSplineBasis_example contains a brief introduction and overview to gsTHBSplineBasis.
+Additional examples can be found in
+\ref thbRefinement_example for standard refinement operations, as well as in
+\ref gsHBox_example, and \ref gsAdaptiveMeshing for admissible refinement and coarsening operations.
 
-Several basic operations are available: degree elevation, knot
-insertion, uniform refinement, interpolation, and so on, see 
-\ref bSplineBasis_example for a few of them.
-
-Since all parametric curves, surfaces or volumes are geometric
-objects, all these derive from gsGeometry, which in turn derives from
-gsFunction.
-
-We can obtain the control net of a geometry by
-
-\snippet geometry_example.cpp control net
-
-Finally, we can export tesselations (meshes) as files for
-visualization in Paraview as follows:
-
-\snippet geometry_example.cpp write to paraview
-
+\section geometry01 gsGeometry example
+All parametric objects (curves, surfaces or volumes) derive from the class gsGeometry.
+\ref geometry_example illustrates a more generic example to create an analysis any given geometric object.
 
 \subsection crgeo02 Creating simple geometries
 
@@ -79,6 +106,9 @@ visualization in Paraview as follows:
 (compute) the B-spline basis and the control points of some standard
 geometries.
 
+
+
+\subsection crgeo03 Re-constructing geometries
 - The \ref fitting_example shows how we can fit data points with B-splines.
 
 \section multipatch02 Multi-patch

@@ -948,7 +948,7 @@ template <short_t d, class T>
 void gsHBox<d, T>::clean(Container & container) const
 {
     std::function<bool(const gsHBox<d,T> &)> pred = [](const gsHBox<d,T> & box) { return !(box.good()); };
-    cIterator beg = std::remove_if(container.begin(),container.end(),pred);
+    Iterator beg = std::remove_if(container.begin(),container.end(),pred);
     container.erase(beg,container.end());
 }
 

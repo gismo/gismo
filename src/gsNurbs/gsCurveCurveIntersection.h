@@ -127,9 +127,9 @@ struct gsCurveIntersectionResult
     // Equality operators
     bool operator==(const gsCurveIntersectionResult& other) const
     {
-    return  m_paramOnCurve1 == other.paramOnCurve1 &&
-            m_paramOnCurve2 == other.paramOnCurve2 &&
-            m_point == other.point;
+    return  m_paramOnCurve1 == other.m_paramOnCurve1 &&
+            m_paramOnCurve2 == other.m_paramOnCurve2 &&
+            m_point == other.m_point;
     }
 
     bool operator!=(const gsCurveIntersectionResult& other) const

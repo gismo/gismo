@@ -178,10 +178,84 @@ v24.08.0 (https://github.com/gismo/gismo/releases/tag/v24.08.0)
   - Intel MKL support
   - in paraview collection output
   - linker error: undefined reference (#707)
-  - issue #702m fix in gsTensorBasis::elementIndex
+  - issue #702 fix in gsTensorBasis::elementIndex
   - CurveIntersection: Type fixes (#713)
   - const correctness in gsBoundary.h (#715)
   - mex files
   - Change return type of gsTensorNurbs::weights() const to be a const reference
   - inconsistency of types in generic assembler class
   - include dependencies in header-only mode
+
+v25.01.0 (https://github.com/gismo/gismo/releases/tag/v25.01.0)
+------
+* NEW:
+  - add optional/gsOptim/ -- https://github.com/gismo/gismo/pull/721
+  - Added a function to create a global mesh from a gsMultiPatch -- https://github.com/gismo/gismo/pull/724
+  - Installs a pkg-config file to be used by build systems that are not cmake. -- https://github.com/gismo/gismo/pull/736
+  - `gsWriteParaviewBezier` accepts a `gsMultiPatch` and exports it as a *single* `.vtu` file containing `VTK_BEZIER_QUADRILATERAL` elements. Currently this is implemented only for bivariate geometries. -- https://github.com/gismo/gismo/pull/740
+  - `gsMultiPatch::BezierExtraction()` implements Bezier extraction via quasi interpolation and has been brought over from `gismo/gsLsDyna` and returns a multi patch consisting of all the bezier elements.. The struct `ElementBlock` and method `BezierOperator` are necessary for its  operation. The struct has been 'hidden' inside the `internal` namespace and `BezierOperator` has been marked private. -- https://github.com/gismo/gismo/pull/740
+  - gsRationalBasis::refine -- https://github.com/gismo/gismo/pull/751
+  - gsBSplineBasis::refine -- https://github.com/gismo/gismo/pull/751
+  - gsTensorBSplineBasis::refine_withTransfer, taking box matrix (needed for gsElasticity) -- https://github.com/gismo/gismo/pull/751
+  - gsTensorBSplineBasis::refine_withCoefs, taking box matrix (needed for gsElasticity) -- https://github.com/gismo/gismo/pull/751
+  - CMake macro for subdirectories (needed for gsPreCICE) -- https://github.com/gismo/gismo/pull/751
+  - options to `gsL2Projection` methods -- https://github.com/gismo/gismo/pull/723
+  - `L2Projection_example.cpp` -- https://github.com/gismo/gismo/pull/723
+  - Pygismo docs -- https://github.com/gismo/gismo/pull/762
+  - Introduced new function for `getAllNodes` to evaluate all quadrature nodes on a side of a geometry,  geometries (`gsGeometry`) or multi-patch geometries (`gsMultiPatch`). -- https://github.com/gismo/gismo/pull/757
+  - Implemented support to obtain all quadratures points on specific sides (`patchSide`). -- https://github.com/gismo/gismo/pull/757
+  - gsPreCICE module can run with stable G+Smo -- https://github.com/gismo/gismo/pull/757
+  - Introduction of `gsRationalTHBSplineBasis, gsRationalTHBSpline` the rational counterparts of the polynomial THB. -- https://github.com/gismo/gismo/pull/743
+  - `gsFesolution::insert(gsMatrix)` is an generalisation of the existing 'insert(gsGeometry)' -- https://github.com/gismo/gismo/pull/743
+  - `gsMultiPatch::degreeDecrease` -- https://github.com/gismo/gismo/pull/743
+  - `gsFileData::hasLabel` same as `hasId` but looks for a label string -- https://github.com/gismo/gismo/pull/743
+  - `gsXml::searchLabel` same as `searchId` but for labels -- https://github.com/gismo/gismo/pull/743
+  - Paraview write for boxes represented by matrices -- https://github.com/gismo/gismo/pull/712
+  - Nestedness check of knot vector-- https://github.com/gismo/gismo/pull/712
+  - Extra constructor for `gsTensorDomainBoundaryIterator` -- https://github.com/gismo/gismo/pull/712
+  - `paraview_example.cpp`  an example showcasing some of the different ways one can export data to view in ParaView -- https://github.com/gismo/gismo/pull/767
+  - `paraview_example.dox` the accompanying doxygen page that explains the various functions used in the example. -- https://github.com/gismo/gismo/pull/767
+  - Advanced fitting features -- https://github.com/gismo/gismo/pull/765
+
+* IMPROVED:
+  - Update ExprTk v0.0.3 by @ArashPartow in -- https://github.com/gismo/gismo/pull/742
+  - Prevent overflow in searchLowerIndex -- https://github.com/gismo/gismo/pull/749
+  - Static functions of `gsParaviewDataSet` moved to a separate file, `gsParaviewUtils`. These deal mainly with formatting data to the .vtk format. -- https://github.com/gismo/gismo/pull/740
+  - `toDataArray` now also supports integers, matrices of integers, and custom xml tag attribute-value pairs. -- https://github.com/gismo/gismo/pull/740
+  - A flag has been added to `inputOutput_example`, which exports the geometry as bezier elements. -- https://github.com/gismo/gismo/pull/740
+  - `filedata/surfaces/teapot.xml` now contains a multi patch definition. -- https://github.com/gismo/gismo/pull/740
+  - Take out the example runs from GitLab CI, since the total GitLabl CI time was around 90 minutes (which is the time limit) hence some runs were failingdue to time limit. -- https://github.com/gismo/gismo/pull/751
+  - Improve geometry tutorial -- https://github.com/gismo/gismo/pull/770
+  - Support export of fields with more than 3 components (e.g. full stress tensor in 3D) to Paraview -- https://github.com/gismo/gismo/pull/748
+  - Remove warnings in `gsMultiPatch` -- https://github.com/gismo/gismo/pull/759
+  - Remove `gsDebugVar` in `gsBiharmonicExprAssembler` -- https://github.com/gismo/gismo/pull/759
+  - One (overloaded) implementation for `gsL2Projection` -- https://github.com/gismo/gismo/pull/723
+  - Streamlined handling of multi-sides and multi-bases for quadrature evaluation. -- https://github.com/gismo/gismo/pull/757
+  - Contact interfaces are skipped when using `matchInterface` and `repairInterface` -- https://github.com/gismo/gismo/pull/743
+  - `gsFileData::hasLabel` appends the comment to the root node -- https://github.com/gismo/gismo/pull/743
+  - `gsXml` now export `gsMultiPatch` interfaces, marking the ones set as 'contact' with a label. -- https://github.com/gismo/gismo/pull/743
+  - A map of gismo & xml IDs is used when exporting `gsMultiPatch/Basis` for consistency. -- https://github.com/gismo/gismo/pull/743
+  - Optimize file inclusions -- https://github.com/gismo/gismo/pull/766
+  - README badges -- https://github.com/gismo/gismo/pull/763
+  - Impove dramatically openmp parallelization of assembly -- https://github.com/gismo/gismo/pull/764
+  - Docs in Light Mode -- https://github.com/gismo/gismo/pull/769
+
+* FIXED:
+  - A gismo.pc file is installed to lib/pkgconfig/.
+In meson, for example, in order to compile and link to an installed G+Smo package, you just have to add dependency('gismo') to your list of dependencies. -- https://github.com/gismo/gismo/pull/736
+  - Included intrin.h for MinGW compiler -- https://github.com/gismo/gismo/pull/739
+  - Add character replacement for sub-modules with special characters (CMakeLists.txt) -- https://github.com/gismo/gismo/pull/747
+  - Remove gsPreCICE since gsPreCICE is already a separate repo. by -- https://github.com/gismo/gismo/pull/750
+  - Fix compiler warnings coming from compilation with `GISMO_WITH_WARNINGS=ON` -- https://github.com/gismo/gismo/pull/751
+  - Add cast operators to DScalar1 and DScalar2 types -- https://github.com/gismo/gismo/pull/756
+  - Fixed bug in Python bindings -- https://github.com/gismo/gismo/pull/760
+  - `swap` in `gsRationalBasis`: See [this](https://cdash-ci.irisa.fr/viewBuildError.php?buildid=137728) compilation error in Windows (appeared in [gsUnstructuredSplines](https://github.com/gismo/gsUnstructuredSplines/pull/23)) -- https://github.com/gismo/gismo/pull/759
+  - Fix the interface assembly process for cases where the mesh is non-conforming or contacting -- https://github.com/gismo/gismo/pull/758
+  - `gsFunction::newtonRaphson_impl` when used with `withSupport` option, used to (falsely) return values outside the support. Now the result is first bound to the support and then returned. -- https://github.com/gismo/gismo/pull/743
+  - ID of `gsTensorDomainIterator` -- https://github.com/gismo/gismo/pull/712
+  - Pybind build failure for fitting -- https://github.com/gismo/gismo/pull/768
+
+* API:
+  - gsOptProblem::numConstraints() returned the number of lower bounds (which are box constraints). Now it returns the member m_numConstraints which is a user-defined flag. This keeps it functional for non-linear constraints, but the user has to set it explicitly. -- https://github.com/gismo/gismo/pull/721
+  - Replace `gsL2Projection::projectFunction` and `gsL2Projection::projectGeometry` with `gsL2Projection::project` -- https://github.com/gismo/gismo/pull/723
+  - Make `gsBasis<T>::evalAllDersSingle_into` with argument `gsMatrix<T> &` deprecated, and add `gsBasis<T>::evalAllDersSingle_into` with argument `std::vector<gsMatrix<T>>` in line with `evalAllDers_into`. Only `gsBSplineBasis::evalAllDersSingle_into` overloads, but throws a warning for a bug anyways. -- https://github.com/gismo/gismo/pull/712
