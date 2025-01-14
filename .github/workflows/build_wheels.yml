@@ -3,6 +3,7 @@ name: build_python_wheels
 on:
   push:
     branches: ["stable"]
+  pull_request:
 
     
 concurrency:
@@ -109,7 +110,7 @@ jobs:
         path: ./dist/*
 
 
-  upload_test_pypi:
+  upload_pypi:
     needs: [macos_wheel, linux_wheel, linux_wheel_qemu, source_dist]
     runs-on: ubuntu-latest
     # try to publish only if this is a push to stable branch
