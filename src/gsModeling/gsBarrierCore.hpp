@@ -328,10 +328,10 @@ void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T> &mp,
   gsHLBFGS<T> optFoldoverFree(&objFoldoverFree);
   optFoldoverFree.options().setInt("MaxIterations",
                                    options.askInt("ff_MaxIterations", 1e4));
-  optFoldoverFree.options().setReal("MinGradientLength",
+  optFoldoverFree.options().setReal("MinGradLen",
                                     options.askReal("ff_MinGradientLength",
                                                     1e-12));
-  optFoldoverFree.options().setReal("MinStepLength",
+  optFoldoverFree.options().setReal("MinStepLen",
                                     options.askReal("ff_MinStepLength", 1e-12));
   optFoldoverFree.options().setInt("Verbose", options.askInt("Verbose", 0));
 
