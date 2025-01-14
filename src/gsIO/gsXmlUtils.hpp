@@ -24,7 +24,6 @@
 #include <gsCore/gsMultiBasis.h>
 #include <gsCore/gsBoundary.h>
 
-#include <gsNurbs/gsNurbsBasis.h>
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorNurbs.h>
 
@@ -397,29 +396,6 @@ public:
 /*
  * Getting Bases from XML data
  */
-    
-/// Get a NurbsBasis from XML data
-template<class T>
-class gsXml< gsNurbsBasis<T> >
-{
-private:
-    gsXml() { }
-public:
-    GSXML_COMMON_FUNCTIONS(gsNurbsBasis<T>);
-    static std::string tag () { return "Basis"; }
-    static std::string type () { return "NurbsBasis"; }
-
-    static gsNurbsBasis<T> * get (gsXmlNode * node)
-    {
-        return getRationalBasisFromXml<gsNurbsBasis<T> >(node);
-    }
-
-    static gsXmlNode * put (const gsNurbsBasis<T> & obj,
-                            gsXmlTree & data )
-    {
-        return putRationalBasisToXml(obj,data);
-    }
-};
 
 
 /// Get a TensorNurbsBasis from XML data

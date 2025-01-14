@@ -858,6 +858,7 @@ EXAMPLE_PATH           = "${gismo_BINARY_DIR}/doc/snippets" \
 			 "${gismo_SOURCE_DIR}optional" \
              "${gismo_SOURCE_DIR}/optional/gsKLShell/tutorials"\
              "${gismo_SOURCE_DIR}/optional/gsStructuralAnalysis/tutorials"\
+             "${gismo_SOURCE_DIR}/optional/gsElasticity/tutorials"\
              "${gismo_SOURCE_DIR}/optional/gsUnstructuredSplines/tutorials"\
 	     "${gismo_SOURCE_DIR}/filedata"
 
@@ -1127,6 +1128,17 @@ HTML_EXTRA_STYLESHEET  =
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
 HTML_EXTRA_FILES       = "${gismo_SOURCE_DIR}/doc/gismodoxy.css"
+
+# The HTML_COLORSTYLE tag can be used to specify if the generated HTML output
+# should be rendered with a dark or light theme. Possible values are: LIGHT
+# always generates light mode output, DARK always generates dark mode output,
+# AUTO_LIGHT automatically sets the mode according to the user preference, uses
+# light mode if no preference is set (the default), AUTO_DARK automatically sets
+# the mode according to the user preference, uses dark mode if no preference is
+# set and TOGGLE allows a user to switch between light and dark mode via a button.
+# The default value is: AUTO_LIGHT.
+
+HTML_COLORSTYLE    = ${GISMO_DOXY_HTML_COLORSTYLE}
 
 # The HTML_COLORSTYLE_HUE tag controls the color of the HTML output. Doxygen
 # will adjust the colors in the stylesheet and background images according to

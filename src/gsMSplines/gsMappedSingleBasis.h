@@ -205,6 +205,7 @@ public:
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
+    using Base::evalAllDersSingle_into;
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result) const override
     {
         GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(n); GISMO_UNUSED(result);

@@ -291,6 +291,20 @@ public:
     evalIfc(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
             const boundaryInterface & ifc);
 
+    template<class E>
+#ifdef __DOXYGEN__
+    gsAsConstMatrix<T>
+#else
+    typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+#endif
+    evalBdr(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
+            const patchSide & ps);
+
+    template<class E>
+    typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+    evalBdr(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
+            const patchSide & ps);
+
     /// Computes value of the expression \a expr at the point \a pt of
     /// patch \a patchId, and displays the result
     template<class E> void
@@ -319,6 +333,11 @@ public:
     //( expression \a expr over the isogeometric domain \a G.
     ///
     /// Plotting properties are controlled by entries in the options
+    // template<class E>
+    // void writeParaview(const expr::_expr<E> & expr, const gsMatrix<T> & uv,
+    //                    geometryMap G, std::string const & fn)
+    // { writeParaview_impl<E,true>(expr,uv,G,fn); }
+
     template<class E>
     void writeParaview(const expr::_expr<E> & expr,
                        geometryMap G, std::string const & fn)
@@ -410,9 +429,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         const int nt  = omp_get_num_threads();
         T thValue = _op::init();
 #endif
-
         gsQuadRule<T> QuRule;  // Quadrature rule
-
         auto _arg = expr.val();
         m_exprdata->parse(_arg);
         m_exprdata->activateFlags(SAME_ELEMENT);
@@ -877,6 +894,45 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
 
+// This is a copy of the above (commented out ) function, which has parts
+// of gsParaviewCollection pasted in it. In this way the inclusion of
+// gsParaviewCollection.h is prevented. This is a temporary modification.
+template<class T>
+template<class E>
+typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::evalBdr(const expr::_expr<E> & expr, const gsVector<T> & pt,
+                            const patchSide & ps)
+{
+    GISMO_ASSERT(pt(ps.side().direction())==ps.side().parameter(),"Point "<<pt.transpose()<<" is not on boundary "<<ps.side());
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
+    m_elWise.clear();
+
+    m_exprdata->points() = pt;
+    m_exprdata->precompute(ps.patch, ps.side());
+
+    m_value = _arg.eval(0);
+    return gsAsConstMatrix<T>(&m_value,1,1);
+}
+
+template<class T>
+template<class E>
+typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::evalBdr(const expr::_expr<E> & expr, const gsVector<T> & pt,
+                            const patchSide & ps)
+{
+    GISMO_ASSERT(pt(ps.side().direction())==ps.side().parameter(),"Point "<<pt.transpose()<<" is not on boundary "<<ps.side());
+    m_exprdata->parse(expr);
+    m_exprdata->points() = pt;
+    m_exprdata->precompute(ps.patch, ps.side());
+
+    gsMatrix<T> tmp = expr.eval(0);
+    const index_t r = tmp.rows();
+    const index_t c = tmp.cols();
+    m_elWise.resize(r*c);
+    gsAsMatrix<T>(m_elWise, r, c) = tmp; //expr.eval(0);
+    return gsAsConstMatrix<T>(m_elWise, r, c);
+}
 
 template<class T>
 template<class E, bool gmap>
@@ -963,6 +1019,6 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         file.str("");
         counter = -1;
         // End snippet from gsParaviewCollection
-    }    
+    }
 
 } //namespace gismo

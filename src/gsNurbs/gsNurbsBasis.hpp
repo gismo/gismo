@@ -15,9 +15,14 @@
 
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorNurbs.h>
+#include <gsIO/gsXml.h>
+#include <gsIO/gsXmlGenericUtils.hpp>
 
 namespace gismo
 {
+
+template <class T>
+gsNurbsBasis<T>::~gsNurbsBasis() { }
 
 template <class T>
 typename gsNurbsBasis<T>::gsGeoPtr
@@ -45,6 +50,32 @@ gsNurbsBasis<T>::create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights)
         break;
     }
     GISMO_ERROR("Dimension should be between 1 and 4.");
+}
+
+namespace internal {
+/// Get a NurbsBasis from XML data
+template<class T>
+class gsXml< gsNurbsBasis<T> >
+{
+private:
+    gsXml() { }
+public:
+    GSXML_COMMON_FUNCTIONS(gsNurbsBasis<T>);
+    static std::string tag () { return "Basis"; }
+    static std::string type () { return "NurbsBasis"; }
+
+    static gsNurbsBasis<T> * get (gsXmlNode * node)
+    {
+        return getRationalBasisFromXml<gsNurbsBasis<T> >(node);
+    }
+
+    static gsXmlNode * put (const gsNurbsBasis<T> & obj,
+                            gsXmlTree & data )
+    {
+        return putRationalBasisToXml(obj,data);
+    }
+};
+
 }
 
 } // namespace gismo

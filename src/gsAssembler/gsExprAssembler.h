@@ -629,6 +629,70 @@ private:
             }
         }//push
 
+    // Constructs the sparsity pattern of the global matrix
+    struct _pattern
+    {
+        FiberMatrix & m_fmatrix;
+        const gsMatrix<T> & m_point;
+        unsigned & patchid;
+        gsMatrix<index_t> rowInd0, colInd0;
+#ifdef _OPENMP
+        std::vector<omp_lock_t> & m_lock;
+#endif
+        _pattern(FiberMatrix & _fmatrix,
+                 const gsMatrix<T> & _point, unsigned & _patchid
+#ifdef _OPENMP
+		 , std::vector<omp_lock_t> & _lock
+#endif
+		 )
+	  : m_fmatrix(_fmatrix), m_point(_point), patchid(_patchid)
+#ifdef _OPENMP
+	  , m_lock(_lock)
+#endif
+        { }
+
+        template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
+        {
+            //  ------- Accumulate  -------
+            if (E::isMatrix())
+                push(ee.rowVar(), ee.colVar());
+        }
+
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
+
+        void push(const expr::gsFeSpace<T> & v,
+                  const expr::gsFeSpace<T> & u)
+        {
+            GISMO_ASSERT(v.isValid(), "The row space is not valid");
+            GISMO_ASSERT(u.isValid(), "The column space is not valid");
+            const index_t rd            = v.dim();//row
+            const index_t cd            = u.dim();//col
+            const gsDofMapper  & rowMap = v.mapper();
+            const gsDofMapper  & colMap = u.mapper();
+            rowInd0 = v.source().piece(patchid).active(m_point); //.. pattern ifc ?
+            colInd0 = u.source().piece(patchid).active(m_point);
+            for (index_t c = 0; c != cd; ++c)
+                for (index_t j = 0; j != colInd0.rows(); ++j)
+                {
+                    const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
+                    if ( colMap.is_free_index(jj) )
+                    {
+#ifdef _OPENMP
+                        omp_set_lock(&m_lock[jj]);
+#endif
+                        for (index_t r = 0; r != rd; ++r)
+                            for (index_t i = 0; i != rowInd0.rows(); ++i)
+                            {
+                                const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
+                                if ( rowMap.is_free_index(ii) )
+                                    m_fmatrix.insertExplicitZero(ii, jj);
+                            }
+#ifdef _OPENMP
+                        omp_unset_lock(&m_lock[jj]);
+#endif
+                    }
+                }
+        }//push
     };
 
 }; // gsExprAssembler
@@ -750,6 +814,183 @@ void op_tuple_impl (op & _op, const std::tuple<Ts...> &tuple)
 template<class op, typename... Ts>
 void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 { op_tuple_impl<0>(_op,tuple); }
+
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::_computePattern(const expr &... args)
+{
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
+
+#ifdef _OPENMP
+    std::vector<omp_lock_t> lock(numDofs());
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+
+#pragma omp parallel
+    {
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+#endif
+        auto arg_tpl = std::make_tuple(args...);
+        m_exprdata->parsePattern(arg_tpl);
+
+        typename gsBasis<T>::domainIter domIt;
+        unsigned patchInd;
+        _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+                    , lock
+#endif
+            );
+        const unsigned nP = m_exprdata->multiBasis().nBases();
+#ifdef _OPENMP
+        const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
+        for (unsigned Ind = 0; Ind != nP; ++Ind)
+        {
+            patchInd = (Ind + offset * tid) % nP;
+            domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+            for ( domIt->next(tid); domIt->good(); domIt->next(nt) ) //tid>numElements??? barrier.
+#else
+        for (patchInd = 0; patchInd != nP; ++patchInd)
+        {
+            domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+            for (; domIt->good(); domIt->next() )
+#endif
+            {
+                m_exprdata->points() = domIt->centerPoint();
+                op_tuple(pp, arg_tpl);
+            }
+        }
+    }//parallel
+#ifdef _OPENMP
+    for (auto & l : lock)
+        omp_destroy_lock(&l);
+#endif
+}
+
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &... args)
+{
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
+
+    if ( BCs.empty() || 0==numDofs() ) return;
+
+#ifdef _OPENMP
+    std::vector<omp_lock_t> lock(numDofs());
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+
+#pragma omp parallel
+{
+/*
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+#endif
+*/
+        auto arg_tpl = std::make_tuple(args...);
+        m_exprdata->parsePattern(arg_tpl);
+        typename gsBasis<T>::domainIter domIt;
+        unsigned patchInd;
+        _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+                    , lock
+#endif
+            );
+
+    for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
+    {
+            const boundary_condition<T> * it = &iit->get();
+
+            patchInd = it->patch();
+            domIt = m_exprdata->multiBasis().basis(it->patch()).
+                makeDomainIterator(it->side());
+
+            // Start iteration over elements
+            //for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+            for (; domIt->good(); domIt->next() )
+            {
+#               pragma omp single nowait
+                {
+                    m_exprdata->points() = domIt->centerPoint();
+                    op_tuple(pp, arg_tpl);
+                }
+            }
+
+    }
+}//omp parallel
+
+#ifdef _OPENMP
+    for (auto & l : lock)
+        omp_destroy_lock(&l);
+#endif
+}
+
+
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... args)
+{
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
+    if ( iFaces.empty() || 0==numDofs() ) return;
+
+#ifdef _OPENMP
+    std::vector<omp_lock_t> lock(numDofs());
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+    typedef typename gsFunction<T>::uPtr ifacemap;
+    typename gsBasis<T>::domainIter domIt;
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+#pragma omp parallel
+{
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parsePattern(arg_tpl);
+    unsigned patchInd(0);
+    _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+                , lock
+#endif
+        );
+
+    ifacemap interfaceMap;
+    for (gsBoxTopology::const_iiterator it = iFaces.begin();
+         it != iFaces.end(); ++it )
+    {
+        // If flipSide switch is enabled, then the integration will be
+        // performed on the opposite side of the interface
+        const boundaryInterface & iFace =  flipSide ? it->getInverse() : *it;
+        const index_t patch1 = iFace.first() .patch;
+        const index_t patch2 = iFace.second().patch;
+
+        if (iFace.type() == interaction::conforming)
+            interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                      m_exprdata->multiBasis().basis(patch1).support(),
+                                                      m_exprdata->multiBasis().basis(patch2).support() );
+        else
+            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), m_exprdata->multiBasis(), iFace);
+
+        domIt = m_exprdata->multiBasis().basis(patch1)
+            .makeDomainIterator(iFace.first().side());
+
+        // Start iteration over elements
+        //for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+        for (; domIt->good(); domIt->next() )
+        {
+#           pragma omp single nowait
+            {
+                m_exprdata->points() = domIt->centerPoint();
+                interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                op_tuple(pp, arg_tpl);
+            }
+        }
+    }
+}//omp parallel
+}
+
 
 template<class T>
 template<class... expr>

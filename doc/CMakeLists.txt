@@ -41,6 +41,7 @@ if(DOXYGEN_FOUND)
   #set(GISMO_DOXY_INPUT                    " \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/optional\" ")
   set(IMAGE_PATH        "\"${gismo_SOURCE_DIR}/doc/figs\"")
   set(GISMO_DOXY_EXCLUDE                    "\"${gismo_SOURCE_DIR}/external\" ${IMAGE_PATH} ")
+  set(GISMO_DOXY_HTML_COLORSTYLE      "LIGHT") #220
   set(GISMO_DOXY_HTML_COLORSTYLE_HUE      "120") #220
   set(GISMO_DOXY_HTML_COLORSTYLE_SAT      "100") #100
   set(GISMO_DOXY_HTML_COLORSTYLE_GAMMA    "100")  # 80
