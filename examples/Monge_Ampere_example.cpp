@@ -269,7 +269,12 @@ int main(int argc, char *argv[])
         // v_sol.extract(PsiLoc);
         // //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         // geometryMap PPfLoc = A.getMap(PsiLoc);
+        // auto ff = A.getCoeff(f, PPfLoc);
+
         auto ff = A.getCoeff(f, GLeft, PP);
+        auto ffG = A.getCoeff(f, GLeft);
+        gsInfo << "ff" << ev.integral(ff.val()) << "\n";
+        gsInfo << "ffG" << ev.integral(ffG.val()) << "\n";
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -297,7 +302,7 @@ int main(int argc, char *argv[])
         ,
         u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
         );
-        gsInfo << " Assemnles \n";
+        gsInfo << "End Assemnles \n";
 
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);

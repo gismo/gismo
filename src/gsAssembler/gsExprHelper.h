@@ -358,12 +358,19 @@ public:
         //GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
         //add(sym.innerRight());//the map
         //sym.innerRight().data().flags |= NEED_VALUE;
-        //expr::gsComposition<T> GNew(sym.innerRight());
+        gsInfo << "do the composition with two mappings \n";
         //GNew.setSource(*sym.innerLeft().m_fs);
+        add(sym.innerRight());
+        sym.innerRight().data().flags |= NEED_VALUE;
 
         add(sym.innerLeft());
         sym.innerLeft().data().flags |= NEED_VALUE;
 
+        expr::gsComposition<T> GNew(sym.innerRight());
+        GNew.setSource(*sym.innerLeft().m_fs);
+        add(GNew);
+        GNew.data().flags |= NEED_VALUE;
+        
         //register the function //if !=nullptr?
         auto k = std::make_pair(sym.m_fs,&m_mdata[sym.innerLeft().m_fs]);
         auto it = m_cdataAd.find(k);
@@ -442,6 +449,7 @@ public:
             it->second.mine().patchId = patchIndex;
             it->first->piece(patchIndex)
                 .compute(m_points, it->second.mine());
+            //gsInfo << "Points m_fdata "<< it->second.mine().values.size() <<"\n";
         }
 
         for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
@@ -449,12 +457,15 @@ public:
             it->first.first->piece(patchIndex)
                 .compute(it->first.second->mine().values[0], it->second.mine());
             it->second.mine().patchId = patchIndex;
+            //gsInfo << "Points m_cdata "<< it->first.second->mine().values.size() <<"\n";
         }
 
         for (auto it = m_cdataAd.begin(); it != m_cdataAd.end(); ++it)
         {
-            gsInfo << "f "<< *it->first.first <<"\n";
-            gsInfo << "Points FoPsi "<< it->first.second->mine().values.size() <<"\n";
+            //gsInfo << "f "<< *it->first.first <<"\n";
+
+            //gsInfo << "Points FoPsi "<< it->first.second->mine().values.size() <<"\n";
+            //gsInfo << "Points FoPsi "<< it->first.second->mine().values[0] <<"\n";
              
             it->first.first->piece(patchIndex)
                 .compute(it->first.second->mine().values[0], it->second.mine());

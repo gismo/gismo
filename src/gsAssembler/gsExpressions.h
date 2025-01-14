@@ -1043,7 +1043,8 @@ public:
 
     void parse(gsExprHelper<T> & evList) const
     {
-        //evList.add(_G); //done in gsExprHelper
+        evList.add(_GLeft); //done in gsExprHelper
+        evList.add(_GRight); //done in gsExprHelper
         evList.add(*this);
         this->data().flags |= NEED_VALUE|NEED_ACTIVE;
         //_G.data().flags  |= NEED_VALUE; //done in gsExprHelper
