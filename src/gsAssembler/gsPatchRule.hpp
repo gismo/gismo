@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBasis.h>
+#include <gsAssembler/gsGaussRule.h>
 #include <gsIO/gsOptionList.h>
 
 namespace gismo
@@ -306,10 +307,11 @@ std::pair<gsMatrix<T>,gsVector<T> > gsPatchRule<T>::_integrate(const gsKnotVecto
     gsVector<T> weights;
 
     // obtain the exact integrals of the functions
-    typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
-    for (; domIt->good(); domIt->next() )
+    typename gsBasis<T>::domainIter domIt    = basis.domain()->beginAll();
+    typename gsBasis<T>::domainIter domItEnd = basis.domain()->endAll();
+    for (; domIt<domItEnd; ++domIt )
     {
-        quRule.mapTo(domIt->lowerCorner(),domIt->upperCorner(),nodes,weights);
+        quRule.mapTo(domIt.lowerCorner(),domIt.upperCorner(),nodes,weights);
         basis.active_into(nodes,actives);
         basis.eval_into(nodes,tmp);
         tmp *= weights;

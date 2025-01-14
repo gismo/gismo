@@ -800,8 +800,8 @@ public:
 
     gsFeElement() : m_di(NULL), m_weights(nullptr) { }
 
-    void set(const gsDomainIterator<T> & di, const gsVector<T> & weights)
-    { m_di = &di, m_weights = &weights; }
+    void set(const gsDomainIterator<T> * di, const gsVector<T> & weights)
+    { m_di = di, m_weights = &weights; }
 
     bool isValid() const { return nullptr!=m_weights; }
 

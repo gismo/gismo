@@ -400,7 +400,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     m_exprdata->activateFlags(SAME_ELEMENT);
-    
+
     // Computed value on element
     T elVal;
     index_t c = 0;
@@ -411,23 +411,26 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
-        m_exprdata->getElement().set(domIt,quWeights);
+            m_exprdata->multiBasis().piece(patchInd).domain()->beginAt(0);
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->multiBasis().piece(patchInd).domain()->endAt(0);
+        m_exprdata->getElement().set(domIt.get(),quWeights);
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
         if ( storeElWise )
         {
             c = patch_cnt + tid;
-            patch_cnt += domIt->numElements();// a bit costy
+            patch_cnt += domIt.numElements();// a bit costy
         }
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+        domIt += (tid);
+        for ( domIt; domIt<domItEnd; domIt+=(nt) )
 #       else
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt )
 #       endif
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                           m_exprdata->points(), quWeights);
 
             // Perform required pre-computations on the quadrature nodes
@@ -489,13 +492,13 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(bit->patch).makeDomainIterator(bit->side());
-        m_exprdata->getElement().set(domIt,quWeights);
+        m_exprdata->getElement().set(domIt.get(),quWeights);
 
         // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
+        for (; domIt.good(); domIt.next() )
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                           m_exprdata->points(), quWeights);
 
             // Perform required pre-computations on the quadrature nodes
@@ -553,13 +556,13 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
-        m_exprdata->getElement().set(domIt,quWeights);
+        m_exprdata->getElement().set(domIt.get(),quWeights);
 
         // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
+        for (; domIt.good(); domIt.next() )
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                           m_exprdata->points(), quWeights);
 
             if (m_exprdata->points().cols()==0)
@@ -624,16 +627,17 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
-            //interfaceMap.makeDomainIterator();
-            m_exprdata->multiBasis().piece(patch1).makeDomainIterator(iFace.first().side());
-        m_exprdata->getElement().set(domIt,quWeights);
+            m_exprdata->multiBasis().piece(patch1).domain()->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->multiBasis().piece(patch1).domain()->endBdr(iFace.first().side());
+        m_exprdata->getElement().set(domIt.get(),quWeights);
 
         // Start iteration over elements
         elVal = _op::init();
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt)
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), quWeights);
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
@@ -965,6 +969,6 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         file.str("");
         counter = -1;
         // End snippet from gsParaviewCollection
-    }    
+    }
 
 } //namespace gismo

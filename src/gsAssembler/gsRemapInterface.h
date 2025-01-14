@@ -129,7 +129,9 @@ public:
     /// The domain iterator lives on \f$ \widehat \Gamma_1 \f$. Its break points are the union of
     /// the brakpoints of the basis on \f$ \widehat \Omega_1 \f$ and the breakpoints of the basis
     /// on \f$ \widehat \Omega_2 \f$, mapped to \f$ \widehat \Omega_1 \f$.
-    typename gsDomainIterator<T>::uPtr makeDomainIterator() const;
+    // typename gsDomainIterator<T>::uPtr makeDomainIterator() const;
+    gsDomainIteratorWrapper<T> beginBdr() const;
+    gsDomainIteratorWrapper<T> endBdr() const;
 
     /// Returns true iff the interface is matching
     bool isMatching() const { return m_isMatching; }

@@ -46,7 +46,6 @@ public:
     lower  ( gsVector<T, D>::Zero(d) ),
     upper  ( gsVector<T, D>::Zero(d) )
     {
-        center  = gsVector<T, D>::Zero(d);
         par = s.parameter();
         dir = s.direction();
         meshStart.resize(d);
@@ -77,9 +76,6 @@ public:
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
         }
-
-        if (m_isGood)
-            update();
     }
 
 
@@ -93,8 +89,6 @@ public:
     bool next()
     {
         m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
-        if (m_isGood)
-            update();
         return m_isGood;
     }
 
@@ -105,8 +99,6 @@ public:
     {
         for (index_t i = 0; i < increment; i++)
             m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
-        if (m_isGood)
-            update();
         return m_isGood;
     }
 
@@ -123,8 +115,6 @@ public:
             if (i!=dir && curElement[i]==meshEnd[i])
                 m_isGood=false;
         }
-        if (m_isGood)
-            update();
     }
 
     /// Return the tensor index of the current element
@@ -139,11 +129,27 @@ public:
         return curr_index;
     }
 
-    const gsVector<T> & lowerCorner() const
-    { return lower; }
+    gsVector<T> lowerCorner() const override
+    {
+        gsVector<T,D> lower;
+        for (short_t i = 0; i < dir ; ++i)
+            lower[i]  = curElement[i].lowerCorner().value();
+        lower[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
+        for (short_t i = dir+1; i < d; ++i)
+            lower[i]  = curElement[i].lowerCorner().value();
+        return lower;
+    }
 
-    const gsVector<T> & upperCorner() const
-    { return upper; }
+    gsVector<T> upperCorner() const override
+    {
+        gsVector<T,D> upper;
+        for (short_t i = 0; i < dir ; ++i)
+            upper[i]  = curElement[i].upperCorner().value();
+        upper[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].upperCorner().value() );
+        for (short_t i = dir+1; i < d; ++i)
+            upper[i]  = curElement[i].upperCorner().value();
+        return upper;
+    }
 
     const T getPerpendicularCellSize() const
     {
@@ -181,29 +187,6 @@ public:
 
 private:
 
-    /// Computes lower, upper and center point of the current element, and computes the
-    /// active functions. Plus some additional, boundary-iterator-specific things.
-    void update()
-    {
-        for (int i = 0; i < dir ; ++i)
-        {
-            lower[i]  = curElement[i].lowerCorner().value();
-            upper[i]  = curElement[i].upperCorner().value();
-            center[i] = curElement[i].centerPoint().value();
-        }
-        lower[dir]  =
-        upper[dir]  =
-            center[dir] = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
-        for (int i = dir+1; i < d; ++i)
-        {
-            lower[i]  = curElement[i].lowerCorner().value();
-            upper[i]  = curElement[i].upperCorner().value();
-            center[i] = curElement[i].centerPoint().value();
-        }
-
-        //gsDebug<<"lower: "<< lower.transpose() <<", upper="<<upper.transpose() <<"\n";
-    }
-
     void advance()
     {
         for (index_t i = 0; i < D; ++i)
@@ -224,7 +207,6 @@ private:
 // Data members
 protected:
     using gsDomainIterator<T>::m_isGood;
-    using gsDomainIterator<T>::center;
     using gsDomainIterator<T>::m_side;
 
 private:

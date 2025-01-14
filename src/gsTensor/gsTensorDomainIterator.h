@@ -42,8 +42,6 @@ public:
     : lower  ( gsVector<T, D>::Zero(D) ),
       upper  ( gsVector<T, D>::Zero(D) )
     {
-        center  = gsVector<T, D>::Zero(D);
-
         // compute breaks and mesh size
         meshStart.resize(D);
         meshEnd.resize(D);
@@ -58,55 +56,12 @@ public:
             if (meshEnd[i] == meshStart[i])
                 m_isGood = false;
         }
-
-        if (m_isGood)
-            update();
     }
-
-    // gsTensorDomainIterator(const gsTensorDomain<T,D> & domain, boxSide s=boundary::none)
-    // : lower  ( gsVector<T, D>::Zero(D) ),
-    //   upper  ( gsVector<T, D>::Zero(D) )
-    // {
-    //     center  = gsVector<T, D>::Zero(D);
-
-    //     // compute breaks and mesh size
-    //     meshStart.resize(D);
-    //     meshEnd.resize(D);
-    //     curElement.resize(D);
-
-    //     for (int i=0; i < D; ++i)
-    //     {
-    //         meshEnd[i]    = domain.component(i)->end();
-    //         curElement[i] = meshStart[i] = domain.component(i)->begin();
-
-    //         if (meshEnd[i] == meshStart[i])
-    //             m_isGood = false;
-    //     }
-
-    //     if (s!=boundary::none)
-    //     {
-    //         auto par = s.parameter();
-    //         auto dir = s.direction();
-    //         // Fixed direction
-    //         meshEnd[dir]    = ( par ? domain.component(dir)->end() - 1 : domain.component(dir)->begin() + 1 );
-    //         curElement[dir] =
-    //         meshStart[dir]  = ( par ? domain.component(dir)->end() - 2 : domain.component(dir)->begin()     );
-    //         // tindex = curElement[dir] - domain.component(dir)->begin();
-    //     }
-
-
-    //     if (m_isGood)
-    //         update();
-    // }
 
     // Documentation in gsDomainIterator.h
     bool next()
     {
         this->advance();
-        if (m_isGood)
-        {
-            update();
-        }
         return m_isGood;
     }
 
@@ -115,10 +70,6 @@ public:
     {
         for (index_t i = 0; i < increment; i++)
             this->advance();
-        if (m_isGood)
-        {
-            update();
-        }
         return m_isGood;
     }
 
@@ -129,8 +80,6 @@ public:
             curElement[i].reset();
 
 //        m_isGood = ( meshEnd.array() != curElement.array() ).all() ;
-        if (m_isGood)
-            update();
     }
 
     /// return the tensor index of the current element
@@ -158,11 +107,21 @@ public:
         while ( nextCubeVertex(v, l, u) );
     }
 
-    const gsVector<T> & lowerCorner() const
-    { return lower; }
+    gsVector<T> lowerCorner() const override
+    {
+        gsVector<T,D> lower;
+        for (short_t i = 0; i < D ; ++i)
+            lower[i]  = curElement[i].lowerCorner().value();
+        return lower;
+    }
 
-    const gsVector<T> & upperCorner() const
-    { return upper; }
+    gsVector<T> upperCorner() const override
+    {
+        gsVector<T,D> upper;
+        for (short_t i = 0; i < D ; ++i)
+            upper[i]  = curElement[i].upperCorner().value();
+        return upper;
+    }
 
     bool isBoundaryElement() const
     {
@@ -175,19 +134,6 @@ public:
     index_t domainDim() const {return D;}
 
 private:
-
-    /// Computes lower, upper and center point of the current element, maps the reference
-    /// quadrature nodes and weights to the current element, and computes the
-    /// active functions.
-    void update()
-    {
-        for (int i = 0; i < D; ++i)
-        {
-            lower[i]  = curElement[i].lowerCorner().value();
-            upper[i]  = curElement[i].upperCorner().value();
-            center[i] = ( upper[i] - lower[i] ) / 2;
-        }
-    }
 
     void advance()
     {
@@ -213,9 +159,6 @@ private:
 //    }
 
 // Data members
-public:
-    using gsDomainIterator<T>::center;
-
 protected:
     using gsDomainIterator<T>::m_isGood;
 

@@ -1,13 +1,14 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsHSplines/gsHDomain.h>
+#include <gsHSplines/gsHTree.h>
+#include <gsHSplines/gsHTree.hpp>
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST gsHDomain<1,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<2,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<3,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<4,real_t,index_t>;
+    CLASS_TEMPLATE_INST gsHTree<1,index_t>;
+    CLASS_TEMPLATE_INST gsHTree<2,index_t>;
+    CLASS_TEMPLATE_INST gsHTree<3,index_t>;
+    CLASS_TEMPLATE_INST gsHTree<4,index_t>;
 
 /*
     // Explicit member instansiations. Quite ugly for now..

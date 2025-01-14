@@ -785,21 +785,22 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-        // typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-        //     m_exprdata->domain().iterator();
+            m_exprdata->multiBasis().basis(patchInd).domain()->beginAt(0);
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            m_exprdata->multiBasis().basis(patchInd).domain()->endAt(0);
 
-        m_exprdata->getElement().set(*domIt,quWeights);
+        m_exprdata->getElement().set(domIt.get(),quWeights);
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good() && (!failed); domIt->next(nt) )
+        domIt += tid;
+        for ( ; domIt<domItEnd && (!failed); domIt+=nt )
 #       else
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt )
 #       endif
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), quWeights);
 
             if (m_exprdata->points().cols()==0)
@@ -870,16 +871,14 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
         m_exprdata->setMutSource(*it->function());
 
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(it->patch()).
-            beginBdr(it->side());
-        m_exprdata->getElement().set(domIt,quWeights);
-
+            m_exprdata->multiBasis().basis(it->patch()).domain()->beginBdr(it->side());
         typename gsBasis<T>::domainIter domItEnd =
-                    m_exprdata->multiBasis().basis(it->patch()).
-            endBdr(it->side());
+            m_exprdata->multiBasis().basis(it->patch()).domain()->endBdr(it->side());
+
+        m_exprdata->getElement().set(domIt.get(),quWeights);
 
         // Start iteration over elements
-        for (; domIt != domItEnd; ++domIt )
+        for (; domIt < domItEnd; ++domIt )
         {
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
@@ -996,15 +995,17 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
                                    m_options, iFace.first().side().direction());
 
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(patch1)
-            .makeDomainIterator(iFace.first().side());
-        m_exprdata->getElement().set(*domIt, quWeights);
+            m_exprdata->multiBasis().basis(patch1).domain()->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->multiBasis().basis(patch1).domain()->endBdr(iFace.first().side());
+
+        m_exprdata->getElement().set(domIt.get(), quWeights);
 
         // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt)
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), quWeights);
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 

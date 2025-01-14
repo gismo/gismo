@@ -77,7 +77,7 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & /*element*/,
+    inline void assemble(gsDomainIteratorWrapper<T>    & /*element*/,
                          gsVector<T> const      & quWeights)
     {
         gsMatrix<T> &bVals = basisData[0];

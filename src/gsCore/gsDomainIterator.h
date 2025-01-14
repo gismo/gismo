@@ -161,18 +161,19 @@ public:
     }
 
     gsDomainIterator<T> * get() { return m_domainIter.get(); }
-    
+
 public:
 
-    const gsVector<T>& lowerCorner() const
+    short_t dim() const
+    { return this->centerPoint().rows(); }
+
+    gsVector<T> lowerCorner() const
     { return m_domainIter->lowerCorner(); }
 
-    const gsVector<T>& upperCorner() const
+    gsVector<T> upperCorner() const
     { return m_domainIter->upperCorner(); }
 
-    // REMOVE
-    GISMO_DEPRECATED
-    const gsVector<T>& centerPoint() const
+    gsVector<T> centerPoint() const
     { return m_domainIter->centerPoint(); }
 
     const T getPerpendicularCellSize() const
@@ -228,7 +229,7 @@ public:
     { }
 
     virtual ~gsDomainIterator() { }
-    
+
 private:
 
     /** @brief Proceeds to the next element.
@@ -261,14 +262,14 @@ public:
 
     /// Returns the element id
     size_t id() const   { return m_id; }
-    
+
     /// Is the iterator still pointing to a valid element?
     // \todo use !=end() instead
     GISMO_DEPRECATED
     bool good() const   { return m_isGood; }
 
     /// Return dimension of the elements
-    short_t dim() const   { return center.size(); }
+    short_t dim() const   { return centerPoint().size(); }
 
     /// fetches data of integer type based on string label
     virtual const index_t & label(const std::string & _label)
@@ -289,8 +290,11 @@ public:
     /// The coordinates of its upper corner is returned as a gsVector of length \a d.\n
     /// \n
     /// E.g., if the current two-dimensional element is defined by <em>[a,b]x[c,d]</em>, then <em>[b,d]</em> is returned (see also lowerCorner()).
-    const gsVector<T>& centerPoint () const
-    { return center; }
+    gsVector<T> centerPoint () const
+    {
+        gsVector<T> center = (this->lowerCorner()+this->upperCorner()).rowwise().mean();
+        return center;
+    }
 
     /// \brief Returns the lower corner of the current element.
     ///
@@ -298,7 +302,7 @@ public:
     /// The coordinates of its lower corner is returned as a gsVector of length \a d.\n
     /// \n
     /// E.g., if the current two-dimensional element is defined by <em>[a,b]x[c,d]</em>, then <em>[a,c]</em> is returned (see also upperCorner()).
-    virtual const gsVector<T>& lowerCorner() const
+    virtual gsVector<T> lowerCorner() const
     {
         GISMO_NO_IMPLEMENTATION
     }
@@ -309,7 +313,7 @@ public:
     /// The coordinates of its upper corner is returned as a gsVector of length \a d.\n
     /// \n
     /// E.g., if the current two-dimensional element is defined by <em>[a,b]x[c,d]</em>, then <em>[b,d]</em> is returned (see also lowerCorner()).
-    virtual const gsVector<T>& upperCorner() const
+    virtual gsVector<T> upperCorner() const
     {
         GISMO_NO_IMPLEMENTATION
     }
@@ -350,7 +354,7 @@ public:
     T volume() const
     { return (upperCorner() - lowerCorner()).prod(); }
 
-    /// Returns the number of elements. --REMOVE 
+    /// Returns the number of elements. --REMOVE
     virtual size_t numElements() const
     {
         //\todo Remove this implementation. Probably using a shallow
@@ -372,23 +376,23 @@ protected:
     // \todo patchSide
     boxSide m_side;
 
-private:
-    size_t m_id;
-    
 protected:
-    
+
     //// REMOVE
 
     /// Coordinates of a central point in the element (in the parameter domain).
-    gsVector<T> center;
+    // gsVector<T> center;
 
+    /// The basis on which the domain iterator is defined.
+    const gsBasis<T> * m_basis;
 
     /// Flag indicating whether the domain iterator is "good". If it
     /// is "good", the iterator can continue to the next element.
     bool m_isGood;
 
-    /// The basis on which the domain iterator is defined.
-    const gsBasis<T> * m_basis;
+private:
+    /// The element ID
+    size_t m_id;
 
 private:
     // disable copying

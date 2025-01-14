@@ -79,7 +79,7 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & /*element*/,
+    inline void assemble(gsDomainIteratorWrapper<T>    & /*element*/,
                          gsVector<T> const      & quWeights)
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes

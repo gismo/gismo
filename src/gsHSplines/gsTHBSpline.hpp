@@ -3,7 +3,7 @@
     @brief Provides implementation of gsTHBSpline class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -28,9 +28,9 @@ namespace gismo
 template<short_t d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
-    typedef typename gsHDomain<d>::point point;
+    typedef typename gsHTree<d,index_t>::point point;
 
-    const gsHDomain<d>& tree = this->basis().tree();
+    const gsHTree<d,index_t>& tree = this->basis().tree();
 
     // Construct a box covering the whole parameter domain.
     const point & uCornerGlob = tree.upperCorner();
@@ -361,7 +361,7 @@ void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,
         anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
         anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
         this->eval_into(anchorsInGeom,vals);
-        THBBoundary* geom = 
+        THBBoundary* geom =
             dynamic_cast<THBBoundary*>(bBasis->interpolateData(vals,anchorsSlice).release());
         GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
         result = *geom;

@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gsHSplines/gsHTree.h>
 #include <gsHSplines/gsHDomain.h>
 #include <gsHSplines/gsKdNode.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -34,25 +35,46 @@ namespace gismo
   * \ingroup HSplines
   */
 
-template<typename T, unsigned d>
+template<typename T, short_t d, typename Z = index_t>
 class gsHDomainIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdNode<d, index_t> node;
+    typedef gsKdNode<d,Z> node;
 
     typedef typename node::point point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHDomain<d,index_t> hDomain;
+    typedef gsHTree<d,Z> hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 
 public:
 
+    gsHDomainIterator(const gsHTree<d,Z> & tree)
+    :
+    gsDomainIterator<T>(),
+    m_tree(tree)
+    {
+        m_leaf = this->init(m_tree);
+    }
+
+
+    gsHDomainIterator(const gsHDomain<d,T,Z> & domain)
+    :
+    gsHDomainIterator(domain.tree())
+    {
+    }
+
+    GISMO_DEPRECATED
     gsHDomainIterator(const gsHTensorBasis<d, T> & hbs)
-    : gsDomainIterator<T>(hbs)
+    :
+    gsHDomainIterator(static_cast<const gsHDomain<d,T,Z>&>(*hbs.domain()))
+    {
+    }
+
+    leafIterator init(const gsHTree<d,Z> & tree)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
@@ -66,9 +88,7 @@ public:
         // Allocate breaks
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
 
-        m_leaf = hbs.tree().beginLeafIterator();
-        updateLeaf();
-        updateElement();
+        return tree.beginLeafIterator();
     }
 
     // ---> Documentation in gsDomainIterator.h
@@ -107,15 +127,26 @@ public:
     /// iteration through all boundary elements.
     void reset()
     {
-        const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
-        m_leaf = hbs->tree().beginLeafIterator();
+        m_leaf = m_tree.beginLeafIterator();
         updateLeaf();
         updateElement();
     }
 
-    const gsVector<T>& lowerCorner() const { return m_lower; }
+    gsVector<T> lowerCorner() const override
+    {
+        gsVector<T,d> lower;
+        for (short_t D=0; D!=d; D++)
+            lower[D] = *m_curElement[D];
+        return lower;
+    }
 
-    const gsVector<T>& upperCorner() const { return m_upper; }
+    gsVector<T> upperCorner() const override
+    {
+        gsVector<T,d> upper;
+        for (short_t D=0; D!=d; D++)
+            upper[D] = *(m_curElement[D]+1);
+        return upper;
+    }
 
     int getLevel() const
     {
@@ -162,7 +193,7 @@ private:
         const int level2 = m_leaf.level();
 
         // Update leaf box
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (size_t dim = 0; dim < d; ++dim)
         {
             index_t start = lower(dim);
             index_t end  = upper(dim) ;
@@ -196,26 +227,20 @@ private:
     /// Computes lower, upper and center point of the current element, maps the reference
     /// quadrature nodes and weights to the current element, and computes the
     /// active functions.
+    GISMO_DEPRECATED
     void updateElement()
     {
-        // Update cell data
-        for (unsigned i = 0; i < d ; ++i)
-        {
-            m_lower[i]  = *m_curElement[i];
-            m_upper[i]  = *(m_curElement[i]+1);
-            center[i] = (T)(0.5) * (m_lower[i] + m_upper[i]);
-        }
     }
 
 // =============================================================================
 // members
 // =============================================================================
 
+    GISMO_DEPRECATED
     const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
 
 public:
 
-    using gsDomainIterator<T>::center;
     using gsDomainIterator<T>::m_basis;
 
 #   define Eigen gsEigen
@@ -223,6 +248,8 @@ public:
 #   undef Eigen
 
 private:
+
+    const gsHTree<d,Z> & m_tree;
 
     // The current leaf node of the tree
     leafIterator m_leaf;

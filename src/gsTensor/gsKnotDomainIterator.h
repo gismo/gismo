@@ -21,7 +21,7 @@ namespace gismo
 {
 
 template<class T>
-class gsKnotDomainIterator : public gsTensorDomainIterator<T,1>
+class gsKnotDomainIterator : public gsDomainIterator<T>
 {
 private:
     typedef typename gsKnotVector<T>::const_uiterator domainIter;
@@ -29,7 +29,9 @@ private:
 public:
 
     gsKnotDomainIterator(const gsKnotVector<T> & _knots)
-    : m_knotvector(&_knots), m_it(_knots.domainUBegin())
+    :
+    m_it(_knots.domainUBegin()),
+    m_itEnd(_knots.domainUEnd())
     {
 
     }
@@ -54,48 +56,35 @@ public:
         m_it.reset();
     }
 
-    const gsVector<T> & lowerCorner() const
-    { return this->lower; }
+    gsVector<T> lowerCorner() const override
+    {
+        gsVector<T,1> lower;
+        lower[0] = m_it.value();
+        return lower;
+    }
 
-    const gsVector<T> & upperCorner() const
-    { return this->upper; }
+    gsVector<T> upperCorner() const override
+    {
+        gsVector<T,1> upper;
+        upper[0] = (m_it+1).value();
+        return upper;
+    }
 
     bool isBoundaryElement() const
     {
-        return ( 0==m_it.uIndex() || this->curElement+1==this->meshEnd);
+        return ( 0==m_it.uIndex() || m_it+1==m_itEnd);
     }
 
     index_t domainDim() const {return 1;}
 
-private:
-
-    /// Computes lower, upper and center point of the current element, maps the reference
-    /// quadrature nodes and weights to the current element, and computes the
-    /// active functions.
-    void update()
-    {
-        this->lower[0]  = this->curElement.value();
-        this->upper[0]  = (this->curElement+1).value();
-        this->center  = (this->lower + this->xupper) / (T)(2);
-    }
-
-
-//    size_t numElements() const
-//    {
-//
-//    }
-
 // Data members
-public:
-    using gsDomainIterator<T>::center;
-
 protected:
     using gsDomainIterator<T>::m_isGood;
 
 private:
-    gsKnotVector<T> * m_knotvector;
+    gsVector<T,1> lower, upper;
 
-    domainIter m_it;
+    domainIter m_it, m_itEnd;
 
 }; // class gsKnotDomainIterator
 
