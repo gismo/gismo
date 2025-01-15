@@ -102,48 +102,77 @@ public:
     mutable gsMatrix<T> r_tilde;
 
     gsMatrix<T> solve(const gsMatrix<T>& b) const {
-        s_tilde = b;
-        r_tilde = forward * b;
         if (_rdim == 2) {
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
+
+            s_tilde = b.reshape(n1,n2);
+            s_tilde = t_Us[1] * s_tilde *Us[0];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
-                    index_t k = i2 + i1 * n2;
-                    s_tilde(k,0) = r_tilde(k,0) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+                    s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
                 }
             }
+            s_tilde = Us[1] * s_tilde * t_Us[0];
+            s_tilde = s_tilde.reshape(n1*n2, 1);
+            return s_tilde;
         } else {
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
             index_t n3 = ds[3].rows();
-            
+
+            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
                     for (index_t i3 = 0; i3 < n3; ++i3) {
-                        index_t k = i3 + i2 * n3 + i1 * n2 * n3;
-                        s_tilde(k,0) = r_tilde(k,0) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                        index_t k = i3 + i2 * n3;
+                        s_tilde(i1,k) = s_tilde(i1, k) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
                     }
                 }
             }            
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            s_tilde = s_tilde.reshape(n1*n2*n3, 1);
+            return s_tilde;
         }
 
-        return backward * s_tilde;
     }
     // Computes the L2-projection of a function using M_proj * ∫(funct * v),
     // where M_proj is the mass matrix inverse, funct is the input function, and v is the test function.
     gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const {
-        return M_proj * b;
+        if(_rdim == 2){
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+
+            s_tilde = b.reshape(n1,n2);
+            s_tilde = t_Us[1] * s_tilde *Us[0];
+
+            s_tilde = Us[1] * s_tilde * t_Us[0];
+            s_tilde = s_tilde.reshape(n1*n2, 1);
+            return s_tilde;
+        } else{
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            index_t n3 = ds[3].rows();
+
+            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            s_tilde = s_tilde.reshape(n1*n2*n3, 1);
+            return s_tilde;
+        }
     }
     // Computes the L2-projection of a function using M_proj * ∫(funct * v),
     // where M_proj is the mass matrix inverse, funct is the input function, and v is the test function.
     gsMatrix<T> L2ProjectVec(const gsMatrix<T>& b, bool other = false) const {
-        // If 'other' is true and the surface is 3D, set _rdim to 3.
+        // other = true : the surface is in 3D, set _rdim to 3.
         s_tilde = b;
         index_t nsize = (int)(b.size()/_rdim);
         if(other){
+            nsize = (int)(b.size()/3);
             s_tilde.reshape(nsize,3);
             s_tilde.col(0) = M_proj *s_tilde.col(0);
             s_tilde.col(1) = M_proj *s_tilde.col(1); 
@@ -152,38 +181,21 @@ public:
             return s_tilde;
         }
         if (_rdim == 2) {
+            // TODO
+
             s_tilde.reshape(nsize,2);
             s_tilde.col(0) = M_proj *s_tilde.col(0);
             s_tilde.col(1) = M_proj *s_tilde.col(1); 
             s_tilde.reshape(nsize*2,1);
-            // #pragma omp parallel for
-            // for (index_t i1 = 0; i1 < nsize; ++i1) {
-            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
-            //         s_tilde(i1,0) += M_proj(i1, i2)*b(i2,0);
-            //     }
-            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
-            //         s_tilde(i1+nsize,0) += M_proj(i1, i2)*b(i2+nsize,0);
-            //     }
-            // }
+
+
         } else {
+            // TODO
             s_tilde.reshape(nsize,3);
             s_tilde.col(0) = M_proj *s_tilde.col(0);
             s_tilde.col(1) = M_proj *s_tilde.col(1); 
             s_tilde.col(2) = M_proj *s_tilde.col(2); 
             s_tilde.reshape(nsize*3,1);
-
-            // #pragma omp parallel for
-            // for (index_t i1 = 0; i1 < nsize; ++i1) {
-            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
-            //         s_tilde(i1,0) += M_proj(i1, i2)*b(i2,0);
-            //     }
-            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
-            //         s_tilde(i1+nsize,0) += M_proj(i1, i2)*b(i2+nsize,0);
-            //     }
-            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
-            //         s_tilde(i1+2*nsize,0) += M_proj(i1, i2)*b(i2+2*nsize,0);
-            //     }
-            // }
         }
         return s_tilde;
     }
@@ -536,7 +548,7 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 1000);
+        //collection.options().setInt("numPoints", 1000);
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
         collection.addField(igrad(u_sol,G),"gradient_numerical solution");
@@ -638,7 +650,7 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 10000);
+        //collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
         collection.addField(ff_TG, "density function");
         collection.addField(jac(PPF).det(), "Jacobian function");
