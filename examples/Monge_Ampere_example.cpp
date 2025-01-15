@@ -142,7 +142,7 @@ public:
         //TODO: if it is a 3D surface you need to change _rdim to 3
         s_tilde = b;
         if (_rdim == 2) {
-            gsInfo << "2D\n" <<;
+            gsInfo << "2D\n";
             index_t nsize = (int)(b.size()/_rdim);
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < nsize; ++i1) {
@@ -154,7 +154,7 @@ public:
                 }
             }
         } else {
-            gsInfo << "3D\n" <<;
+            gsInfo << "3D\n";
             index_t nsize = (int)(b.size()/_rdim);
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < nsize; ++i1) {
