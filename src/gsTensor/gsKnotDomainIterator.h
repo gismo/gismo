@@ -28,39 +28,39 @@ private:
 
 public:
 
-    gsKnotDomainIterator(const gsKnotVector<T> & _knots)
+    gsKnotDomainIterator(const gsKnotVector<T> & _knots, bool start = true)
     :
-    m_it(_knots.domainUBegin()),
+    m_it(start ? _knots.domainUBegin() : _knots.domainUEnd()),
     m_itEnd(_knots.domainUEnd())
     {
 
     }
 
     // Documentation in gsDomainIterator.h
-    bool next()
+    bool next() override
     {
         ++m_it;
         return m_isGood;
     }
 
     // Documentation in gsDomainIterator.h
-    bool next(index_t increment)
+    bool next(index_t increment) override
     {
         m_it += increment;
         return m_isGood;
     }
 
     // Documentation in gsDomainIterator.h
-    bool prev()
+    bool prev() override
     {
         --m_it;
         return m_isGood;
     }
 
     // Documentation in gsDomainIterator.h
-    bool prev(index_t increment)
+    bool prev(index_t decrement) override
     {
-        m_it -= increment;
+        m_it -= decrement;
         return m_isGood;
     }
 

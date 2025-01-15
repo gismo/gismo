@@ -408,6 +408,11 @@ public:
 
     virtual bool next(index_t increment) override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
 
+    virtual bool prev() override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
+
+    virtual bool prev(index_t decrement) override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
+
+
 };
 
 /// Print (as string) operator to be used by all derived classes

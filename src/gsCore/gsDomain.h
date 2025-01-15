@@ -58,7 +58,7 @@ public:
     typedef typename memory::unique_ptr<gsDomain<T> > uPtr;
 
     typedef gsDomainIteratorWrapper<T> domainIterWrapper;
-    
+
     virtual ~gsDomain() { }
 
 #if EIGEN_HAS_RVALUE_REFERENCES && EIGEN_GNUC_AT_MOST(4,7) && !EIGEN_COMP_PGI
@@ -138,7 +138,7 @@ public: // Domain element iterators
     }
 
     // Default implementation for one patch
-    domainIterWrapper endBdr(const boxSide bs) const
+    virtual domainIterWrapper endBdr(const boxSide bs) const
     {
         return domainIterWrapper(new gsDomainIteratorEnd<T>(this->numElements(bs), bs));
     }
@@ -148,7 +148,7 @@ public: // Domain element iterators
     {GISMO_NO_IMPLEMENTATION}
     virtual domainIterWrapper endIfc  (const boundaryInterface bi) const
     {GISMO_NO_IMPLEMENTATION}
-    
+
     /** @brief Dimension of the domain
     */
     virtual short_t dim() const

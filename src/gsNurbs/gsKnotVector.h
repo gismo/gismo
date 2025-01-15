@@ -170,6 +170,16 @@ public: // iterator ends
         return new gsKnotDomainIterator<T>(*this);
     }
 
+    domainIter endAll() const override
+    {
+        return new gsKnotDomainIterator<T>(*this,false);
+    }
+
+    domainIter endBdr(const boxSide   bs) const override
+    {
+        return new gsKnotDomainIterator<T>(*this,false);
+    }
+
 public: // constructors
 
     /// Empty constructor sets the degree to -1 and leaves the knots empty.
