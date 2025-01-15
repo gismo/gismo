@@ -86,6 +86,7 @@ public:
             Us.push_back(es.eigenvectors());
             t_Us.push_back(es.eigenvectors().transpose());
         }
+        // TODO :  avoid kron !
         if (rdim == 2) {
             forward  = t_Us[0].kron(t_Us[1]).eval();
             backward = Us[0].kron(Us[1]).eval();
@@ -138,36 +139,51 @@ public:
     }
     // Computes the L2-projection of a function using M_proj * ∫(funct * v),
     // where M_proj is the mass matrix inverse, funct is the input function, and v is the test function.
-    gsMatrix<T> L2ProjectVec(const gsMatrix<T>& b) const {
-        //TODO: if it is a 3D surface you need to change _rdim to 3
+    gsMatrix<T> L2ProjectVec(const gsMatrix<T>& b, bool other = false) const {
+        // If 'other' is true and the surface is 3D, set _rdim to 3.
         s_tilde = b;
+        index_t nsize = (int)(b.size()/_rdim);
+        if(other){
+            s_tilde.reshape(nsize,3);
+            s_tilde.col(0) = M_proj *s_tilde.col(0);
+            s_tilde.col(1) = M_proj *s_tilde.col(1); 
+            s_tilde.col(2) = M_proj *s_tilde.col(2); 
+            s_tilde.reshape(nsize*2,1);
+            return s_tilde;
+        }
         if (_rdim == 2) {
-            gsInfo << "2D\n";
-            index_t nsize = (int)(b.size()/_rdim);
-            #pragma omp parallel for
-            for (index_t i1 = 0; i1 < nsize; ++i1) {
-                for (index_t i2 = 0; i2 < nsize; ++i2) {
-                    s_tilde(i1,0) += M_proj(i1, i2)*b(i2,0);
-                }
-                for (index_t i2 = 0; i2 < nsize; ++i2) {
-                    s_tilde(i1+nsize,0) += M_proj(i1, i2)*b(i2+nsize,0);
-                }
-            }
+            s_tilde.reshape(nsize,2);
+            s_tilde.col(0) = M_proj *s_tilde.col(0);
+            s_tilde.col(1) = M_proj *s_tilde.col(1); 
+            s_tilde.reshape(nsize*2,1);
+            // #pragma omp parallel for
+            // for (index_t i1 = 0; i1 < nsize; ++i1) {
+            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
+            //         s_tilde(i1,0) += M_proj(i1, i2)*b(i2,0);
+            //     }
+            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
+            //         s_tilde(i1+nsize,0) += M_proj(i1, i2)*b(i2+nsize,0);
+            //     }
+            // }
         } else {
-            gsInfo << "3D\n";
-            index_t nsize = (int)(b.size()/_rdim);
-            #pragma omp parallel for
-            for (index_t i1 = 0; i1 < nsize; ++i1) {
-                for (index_t i2 = 0; i2 < nsize; ++i2) {
-                    s_tilde(i1,0) += M_proj(i1, i2)*b(i2,0);
-                }
-                for (index_t i2 = 0; i2 < nsize; ++i2) {
-                    s_tilde(i1+nsize,0) += M_proj(i1, i2)*b(i2+nsize,0);
-                }
-                for (index_t i2 = 0; i2 < nsize; ++i2) {
-                    s_tilde(i1+2*nsize,0) += M_proj(i1, i2)*b(i2+2*nsize,0);
-                }
-            }
+            s_tilde.reshape(nsize,3);
+            s_tilde.col(0) = M_proj *s_tilde.col(0);
+            s_tilde.col(1) = M_proj *s_tilde.col(1); 
+            s_tilde.col(2) = M_proj *s_tilde.col(2); 
+            s_tilde.reshape(nsize*3,1);
+
+            // #pragma omp parallel for
+            // for (index_t i1 = 0; i1 < nsize; ++i1) {
+            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
+            //         s_tilde(i1,0) += M_proj(i1, i2)*b(i2,0);
+            //     }
+            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
+            //         s_tilde(i1+nsize,0) += M_proj(i1, i2)*b(i2+nsize,0);
+            //     }
+            //     for (index_t i2 = 0; i2 < nsize; ++i2) {
+            //         s_tilde(i1+2*nsize,0) += M_proj(i1, i2)*b(i2+2*nsize,0);
+            //     }
+            // }
         }
         return s_tilde;
     }
@@ -417,9 +433,8 @@ int main(int argc, char *argv[])
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * igrad(u_s,G) );
-        gsInfo <<"rhs vec = " << A.rhs().size() << "\n";
+        //gsInfo <<"rhs vec = " << A.rhs().size() << "\n";
         vsolVector = Poisson.L2ProjectVec(A.rhs());
-        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         
         gsMultiPatch<> Psi, PsiLoc;
         v_sol.extract(Psi);
@@ -468,13 +483,13 @@ int main(int argc, char *argv[])
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
-        gsInfo << " end value coeff "<< CoeffConductivity << "\n";
+        //gsInfo << " end value coeff "<< CoeffConductivity << "\n";
         A.assemble(
         igrad(u, G) * igrad(u, G).tr()  +  eps * u * u.tr()//matrix
         ,
         u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
         );
-        gsInfo << "End Assemnles \n";
+        //gsInfo << "End Assemnles \n";
 
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
@@ -490,8 +505,6 @@ int main(int argc, char *argv[])
         gsInfo<< " ." <<std::flush;// Assemblying done
 
         timer.restart();
-        // solver.compute( A.matrix() );
-        // solVector = solver.solve(A.rhs());
         solVector = Poisson.solve(A.rhs());
         slv_time += timer.stop();
 
@@ -557,8 +570,8 @@ int main(int argc, char *argv[])
         //ev.testEval( igrad(u_sol,G), pt );
 
         // Obtain control points for the gradient of Psi
-        A.assemble( v * v.tr() , v * igrad(u_s,G) );
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        A.assemble( v * v.tr() , v * igrad(u_s,G));
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
         gsMultiPatch<> Psi, Psitp;
         v_sol.extract(Psitp);
         //... correct the boundary
@@ -571,7 +584,7 @@ int main(int argc, char *argv[])
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
         v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
         Psitp.computeTopology();
