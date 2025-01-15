@@ -51,6 +51,20 @@ public:
     }
 
     // Documentation in gsDomainIterator.h
+    bool prev()
+    {
+        --m_it;
+        return m_isGood;
+    }
+
+    // Documentation in gsDomainIterator.h
+    bool prev(index_t increment)
+    {
+        m_it -= increment;
+        return m_isGood;
+    }
+
+    // Documentation in gsDomainIterator.h
     void reset()
     {
         m_it.reset();
