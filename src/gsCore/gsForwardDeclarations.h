@@ -164,6 +164,7 @@ template <short_t d, class T=real_t>     class gsTensorBernsteinBasis;
 template <short_t d, class T=real_t>     class gsHBSplineBasis;
 template <short_t d, class T=real_t>     class gsTHBSplineBasis;
 template <short_t d, class T=real_t>     class gsTHBSpline;
+template <short_t d, class T=real_t, class Z=index_t>     class gsHDomain;
 
 // Geometries
 template <class T=real_t>                class gsBSpline;

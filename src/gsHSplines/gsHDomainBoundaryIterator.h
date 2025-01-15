@@ -16,7 +16,6 @@
 #include <gsHSplines/gsHTree.h>
 #include <gsHSplines/gsHDomain.h>
 #include <gsHSplines/gsKdNode.h>
-#include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsCore/gsDomainIterator.h>
 
@@ -232,7 +231,7 @@ private:
         const int level2 = m_leaf.level();
 
         // Update leaf box
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (short_t dim = 0; dim < d; ++dim)
         {
             index_t start = lower(dim);
             index_t end  = upper(dim) ;

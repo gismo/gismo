@@ -16,7 +16,6 @@
 #include <gsHSplines/gsHTree.h>
 #include <gsHSplines/gsHDomain.h>
 #include <gsHSplines/gsKdNode.h>
-#include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsCore/gsDomainIterator.h>
 

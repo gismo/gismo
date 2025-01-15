@@ -3,7 +3,7 @@
     @brief Provides declaration of the HDomain class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -75,7 +75,7 @@ Template parameters
 */
 
 
-template<short_t d, class T, class Z = index_t>
+template<short_t d, class T, class Z>
 class gsHDomain : public gsDomain<T> // is template correct?
 {
 public:
