@@ -17,6 +17,169 @@
 using namespace gismo;
 //! [Include namespace]
 
+template<typename T>
+std::vector< gsSparseMatrix<T> > assembleTensorMass(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+    )
+{
+    const index_t d = basis.dim();
+    std::vector< gsSparseMatrix<T> > result(d);
+    for ( index_t i=0; i!=d; ++i )
+    {
+        result[i] = gsPatchPreconditionersCreator<>::massMatrix(basis.component(d-1-i));
+        //eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
+    }
+    return result;
+}
+
+template<typename T>
+std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+    )
+{
+    const index_t d = basis.dim();
+    std::vector< gsSparseMatrix<T> > result(d);
+    for ( index_t i=0; i!=d; ++i )
+    {
+        result[i] = gsPatchPreconditionersCreator<>::stiffnessMatrix(basis.component(d-1-i));
+        //eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
+    }
+    return result;
+}
+
+template<typename T>
+class Poisson_FastDiag {
+public:
+    // This class implements the fast diagonalization algorithm 
+    // described in the paper: https://doi.org/10.1016/j.cma.2023.116570
+    Poisson_FastDiag(const gsBasis<T>& basis,
+            const gsBoundaryConditions<T>& bc,
+            const gsOptionList& opt,
+            T tau = 0.0)
+        : _tau(tau)
+    {
+        const index_t rdim = basis.dim();
+
+        // Assemble univariate local stiff matrix
+        std::vector< gsSparseMatrix<T> > Ks = assembleTensorStiffness(basis, bc, opt);
+        // Assemble univariate local mass matrix
+        std::vector< gsSparseMatrix<T> > Ms  = assembleTensorMass(basis, bc, opt);
+
+        typedef typename gsMatrix<T>::GenSelfAdjEigenSolver EVSolver;
+        EVSolver es;
+
+        for (size_t i = 0; i < Ms.size(); ++i) {
+            /*
+            We first consider the generalized eigendecompositions problems
+            𝐾1 𝑈1 = 𝑀1𝑈1d1, 𝐾2𝑈2 = 𝑀2𝑈2d2, 𝐾3𝑈3 = 𝑀3𝑈3d3,
+            where d1, d2 and d3 are diagonal matrices such that 𝑈1, 𝑈2 and 𝑈3 fulfills
+            𝑈^𝑇𝑀_1𝑈_1 = 𝐼1, 𝑈^𝑇𝑀_2𝑈_2 = 𝐼_2, 𝑈^𝑇𝑀_3𝑈_3 = 𝐼_3
+            */
+            //gsEigen::GeneralizedSelfAdjointEigenSolver<gsSparseMatrix<T>> es(Ks[i], Ms[i]);
+            es.compute(Ks[i], Ms[i], gsEigen::ComputeEigenvectors);
+
+            ds.push_back(es.eigenvalues());
+            Us.push_back(es.eigenvectors());
+            t_Us.push_back(es.eigenvectors().transpose());
+        }
+        if (rdim == 2) {
+            forward  = t_Us[0].kron(t_Us[1]).eval();
+            backward = Us[0].kron(Us[1]).eval();
+        } else {
+            forward  = t_Us[0].kron(t_Us[1].kron(t_Us[2])).eval();
+            backward = Us[0].kron(Us[1].kron(Us[2])).eval();
+        }
+        
+        M_proj = backward * forward;        
+        this->_rdim = rdim;
+    }
+    mutable gsMatrix<T> s_tilde;
+    mutable gsMatrix<T> r_tilde;
+
+    gsMatrix<T> solve(const gsMatrix<T>& b) const {
+        s_tilde = b;
+        r_tilde = forward * b;
+        if (_rdim == 2) {
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            #pragma omp parallel for
+            for (index_t i1 = 0; i1 < n1; ++i1) {
+                for (index_t i2 = 0; i2 < n2; ++i2) {
+                    index_t k = i2 + i1 * n2;
+                    s_tilde(k,0) = r_tilde(k,0) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+                }
+            }
+        } else {
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            index_t n3 = ds[3].rows();
+            
+            #pragma omp parallel for
+            for (index_t i1 = 0; i1 < n1; ++i1) {
+                for (index_t i2 = 0; i2 < n2; ++i2) {
+                    for (index_t i3 = 0; i3 < n3; ++i3) {
+                        index_t k = i3 + i2 * n3 + i1 * n2 * n3;
+                        s_tilde(k,0) = r_tilde(k,0) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                    }
+                }
+            }            
+        }
+
+        return backward * s_tilde;
+    }
+    // Computes the L2-projection of a function using M_proj * ∫(funct * v),
+    // where M_proj is the mass matrix inverse, funct is the input function, and v is the test function.
+    gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const {
+        return M_proj * b;
+    }
+    // Computes the L2-projection of a function using M_proj * ∫(funct * v),
+    // where M_proj is the mass matrix inverse, funct is the input function, and v is the test function.
+    gsMatrix<T> L2ProjectVec(const gsMatrix<T>& b) const {
+        //TODO: if it is a 3D surface you need to change _rdim to 3
+        s_tilde = b;
+        if (_rdim == 2) {
+            gsInfo << "2D\n" <<;
+            index_t nsize = (int)(b.size()/_rdim);
+            #pragma omp parallel for
+            for (index_t i1 = 0; i1 < nsize; ++i1) {
+                for (index_t i2 = 0; i2 < nsize; ++i2) {
+                    s_tilde(i1,0) += M_proj(i1, i2)*b(i2,0);
+                }
+                for (index_t i2 = 0; i2 < nsize; ++i2) {
+                    s_tilde(i1+nsize,0) += M_proj(i1, i2)*b(i2+nsize,0);
+                }
+            }
+        } else {
+            gsInfo << "3D\n" <<;
+            index_t nsize = (int)(b.size()/_rdim);
+            #pragma omp parallel for
+            for (index_t i1 = 0; i1 < nsize; ++i1) {
+                for (index_t i2 = 0; i2 < nsize; ++i2) {
+                    s_tilde(i1,0) += M_proj(i1, i2)*b(i2,0);
+                }
+                for (index_t i2 = 0; i2 < nsize; ++i2) {
+                    s_tilde(i1+nsize,0) += M_proj(i1, i2)*b(i2+nsize,0);
+                }
+                for (index_t i2 = 0; i2 < nsize; ++i2) {
+                    s_tilde(i1+2*nsize,0) += M_proj(i1, i2)*b(i2+2*nsize,0);
+                }
+            }
+        }
+        return s_tilde;
+    }
+private:
+
+    std::vector<gsMatrix<T>> ds;
+    std::vector<gsMatrix<T>> Us, t_Us;
+    gsMatrix<T> M_proj, forward, backward;
+    int _rdim;
+    T _tau;
+};
+
 void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
     // Projection normal of control points (exact geometry)
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
@@ -121,7 +284,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     //! [Refinement]
-    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
     
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
@@ -173,7 +336,7 @@ int main(int argc, char *argv[])
 
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
-
+    
     gsInfo<< "(dot1=assembled, dot2=solved)\n"
         "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0);    
@@ -186,6 +349,10 @@ int main(int argc, char *argv[])
         mp.uniformRefine();
         mpLeft.uniformRefine();
     }
+    
+    //auto Poisson  = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(dbasis.basis(0),bc,A.options(), 1.,eps,0.);
+    Poisson_FastDiag<double> Poisson(dbasis.basis(0), bc, A.options(), eps);
+
     u.setup(bc, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
 
@@ -221,10 +388,12 @@ int main(int argc, char *argv[])
     ma_time += timer.stop();
 
     gsInfo<< "." <<std::flush;// Assemblying done
-
+    solVector = A.rhs();
     timer.restart();
-    solver.compute( A.matrix() );
-    solVector = solver.solve(A.rhs());
+    solVector = Poisson.solve(A.rhs());
+
+    // solver.compute( A.matrix() );
+    // solVector = solver.solve(A.rhs());
     slv_time += timer.stop();
 
     gsInfo<< "." <<std::flush; // Linear solving done
@@ -248,7 +417,9 @@ int main(int argc, char *argv[])
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * igrad(u_s,G) );
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        gsInfo <<"rhs vec = " << A.rhs().size() << "\n";
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         
         gsMultiPatch<> Psi, PsiLoc;
         v_sol.extract(Psi);
@@ -259,22 +430,23 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        // geometryMap PPLoc = A.getMap(PsiLoc);
-        // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        // auto  comp = PPLoc(mpLeft);
-        // A.initSystem(ITdim);
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        // v_sol.extract(PsiLoc);
-        // //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        // geometryMap PPfLoc = A.getMap(PsiLoc);
-        // auto ff = A.getCoeff(f, PPfLoc);
+        geometryMap PPLoc = A.getMap(PsiLoc);
+        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        auto  comp = PPLoc(mpLeft);
+        A.initSystem(ITdim);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        v_sol.extract(PsiLoc);
+        //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
+        geometryMap PPfLoc = A.getMap(PsiLoc);
+        auto ff = A.getCoeff(f, PPfLoc);
 
-        auto ff = A.getCoeff(f, GLeft, PP);
-        auto ffG = A.getCoeff(f, GLeft);
-        gsInfo << "ff" << ev.integral(ff.val()) << "\n";
-        gsInfo << "ffG" << ev.integral(ffG.val()) << "\n";
+        // auto ff = A.getCoeff(f, GLeft, PP);
+        // auto ffG = A.getCoeff(f, GLeft);
+        // gsInfo << "ff" << ev.integral(ff.val()) << "\n";
+        // gsInfo << "ffG" << ev.integral(ffG.val()) << "\n";
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -318,8 +490,9 @@ int main(int argc, char *argv[])
         gsInfo<< " ." <<std::flush;// Assemblying done
 
         timer.restart();
-        solver.compute( A.matrix() );
-        solVector = solver.solve(A.rhs());
+        // solver.compute( A.matrix() );
+        // solVector = solver.solve(A.rhs());
+        solVector = Poisson.solve(A.rhs());
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done

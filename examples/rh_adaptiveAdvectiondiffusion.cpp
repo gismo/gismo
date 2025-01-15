@@ -153,8 +153,7 @@ int main(int argc, char *argv[])
     // // Right-hand side function
     gsFunctionExpr<> SourceFunc("0.",2);
     //Manufactured density function 1./cosh(100. * ( -x - 0.2 + y ))
-    gsFunctionExpr<> f("( 1/(1.+exp((y -x  - 0.25)/0.01)) - 1/(1.+exp((y - 0.87*x  - 0.15)/0.01)) + 1/(1.+exp((0.95-x)/0.01)) )",2);
-
+    gsFunctionExpr<> f("( 1./cosh( 10.*( -x+y -0.2 ) )**2 + 1/(1.+exp((0.95-x)/0.01)) )",2);
 
     gsInfo<<"Source function "<< f << "\n";
 
@@ -218,7 +217,7 @@ int main(int argc, char *argv[])
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
-
+    auto tt = A.rhs();
     // Set the discretization space
     space u = A.getSpace(dbasis); 
 
