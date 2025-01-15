@@ -18,6 +18,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsTensor/gsTensorDomainIterator.h>
+#include <gsAssembler/gsGaussRule.h>
 
 
 
@@ -328,19 +329,20 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
         gsGaussRule<T> QuRule(numNodes); // Reference Quadrature rule
 
-        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
-
+        typename gsBasis<T>::domainIter domIt = basis.domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = basis.domain()->endAll();
 
 #       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+        domIt += tid;
+        for ( ; domIt<domItEnd && (!failed); domIt+=nt )
 #       else
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt )
 #       endif
         {
             // Map the Quadrature rule to the element and compute basis derivatives
-            QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+            QuRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights);
             basis.deriv2_into(quNodes, der2);
-            basis.active_into(domIt->center, actives);
+            basis.active_into(domIt.centerPoint(), actives);
             const index_t numActive = actives.rows();
             localA.setZero(numActive, numActive);
 

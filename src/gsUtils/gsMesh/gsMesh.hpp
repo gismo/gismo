@@ -15,7 +15,7 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsUtils/gsCombinatorics.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsCore/gsDomain.h>
 
 namespace gismo
 {
@@ -35,7 +35,8 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int midPts)
     const unsigned d = basis.dim();
 
     typedef typename gsMesh<T>::VertexHandle vtx;
-    typename gsBasis<T>::domainIter domIter = basis.makeDomainIterator();
+    typename gsBasis<T>::domainIter domIter = basis.domain()->beginAll();
+    typename gsBasis<T>::domainIter domIterEnd = basis.domain()->endAll();
 
     // variables for iterating over a cube (element is a cube)
     const gsVector<unsigned> zeros = gsVector<unsigned>::Zero(d);
@@ -70,11 +71,11 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int midPts)
 
     gsVector<T> vv(d);
 
-    for (; domIter->good(); domIter->next())
+    for (; domIter<domIterEnd; ++domIter )
     {
-        const gsVector<T>& low = domIter->lowerCorner();
-        const gsVector<T>& upp = domIter->upperCorner();
-        const T vol = domIter->volume();
+        const gsVector<T>& low = domIter.lowerCorner();
+        const gsVector<T>& upp = domIter.upperCorner();
+        const T vol = domIter.volume();
 
         vv.setZero();
         cur.setZero();
