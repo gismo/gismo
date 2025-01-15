@@ -164,7 +164,7 @@ public: // iterator ends
     {
         return new gsKnotDomainIterator<T>(*this);
     }
-    
+
     domainIter beginBdr(const boxSide   bs) const override
     {
         return new gsKnotDomainIterator<T>(*this);
@@ -284,7 +284,11 @@ public: // queries
     { return this->operator()(i); }
 
     /// Number of knot intervals inside domain.
-    inline size_t numElements() const { return (domainUEnd() - domainUBegin()); }
+    inline size_t numElements(boxSide const & s = boundary::none) const override
+    {
+        GISMO_ASSERT(s==boundary::none, "Boundary side not supported.");
+        return (domainUEnd() - domainUBegin());
+    }
 
 public: // getters
 

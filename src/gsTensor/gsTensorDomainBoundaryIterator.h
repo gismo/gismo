@@ -63,14 +63,29 @@ public:
         }
 
         // Fixed direction
-        meshEnd[dir]    = ( par ? give(domain.component(dir)->endAll() - 1) : give(domain.component(dir)->beginAll() + 1) );
-        curElement[dir] = ( par ? give(domain.component(dir)->endAll() - 2) : give(domain.component(dir)->beginAll()    ) );
-        meshStart[dir]  = ( par ? give(domain.component(dir)->endAll() - 2) : give(domain.component(dir)->beginAll()    ) );
+        if (par)
+        {
+            meshEnd[dir]    = give(domain.component(dir)->endAll());
+            meshEnd[dir]   -=1;
+            curElement[dir] = give(domain.component(dir)->endAll());
+            curElement[dir]-=2;
+            meshStart[dir]  = give(domain.component(dir)->endAll());
+            meshStart[dir] -=2;
+        }
+        else
+        {
+            meshEnd[dir]    = give(domain.component(dir)->beginAll());
+            meshEnd[dir]   +=1;
+            curElement[dir] = give(domain.component(dir)->beginAll());
+            meshStart[dir]  = give(domain.component(dir)->beginAll());
+        }
+
         tindex = curElement[dir] - domain.component(dir)->beginAll();
 
         for (int i=dir+1; i < d; ++i)
         {
-            meshEnd[i]    = give(domain.component(i)->endAll() - 1);
+            meshEnd[i]    = give(domain.component(i)->endAll());
+            meshEnd[i]   -=1;
             meshStart[i]  = give(domain.component(i)->beginAll());
             curElement[i] = give(domain.component(i)->beginAll());
             if (meshEnd[i] == curElement[i])
@@ -153,7 +168,9 @@ public:
 
     const T getPerpendicularCellSize() const
     {
-        return (curElement[dir]+1) - curElement[dir];
+        GISMO_NO_IMPLEMENTATION
+        // @todo: implement
+        // return (curElement[dir]+1) - curElement[dir];
     }
 
     GISMO_DEPRECATED

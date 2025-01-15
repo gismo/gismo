@@ -129,11 +129,12 @@ public:
     }
 
     /// Increment by a number of steps
-    gsDomainIteratorWrapper operator+(index_t k) const
-    {
-        GISMO_ERROR("cloning needed");
-        return gsDomainIteratorWrapper();
-    }
+    // gsDomainIteratorWrapper operator+(index_t k) const
+    // {
+    //     gsDomainIteratorWrapper result(m_domainIter->clone());
+    //     result += k;
+    //     return result;
+    // }
 
     /// Decrement operator to proceed to the next element
     gsDomainIteratorWrapper& operator-=(index_t k)
@@ -144,11 +145,12 @@ public:
     }
 
     /// Decrement by a number of steps
-    gsDomainIteratorWrapper operator-(index_t k) const
-    {
-        GISMO_ERROR("cloning needed");
-        return gsDomainIteratorWrapper();
-    }
+    // gsDomainIteratorWrapper operator-(index_t k) const
+    // {
+    //     gsDomainIteratorWrapper result(m_domainIter->clone());
+    //     result -= k;
+    //     return result;
+    // }
 
     /// Difference operator
     size_t operator-(const gsDomainIteratorWrapper& other) const
