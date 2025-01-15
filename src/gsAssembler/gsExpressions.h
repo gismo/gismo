@@ -341,9 +341,9 @@ public:
     /// \note This is a runtime check, for compile-time check use E::ScalarValued
     bool isScalar() const { return rows()*cols()<=1; } //!rowSpan && !colSpan
 
-    static bool isVector  () { return 1==E::Space; }
-    static bool isVectorTr() { return 2==E::Space; }
-    static bool isMatrix  () { return 3==E::Space; }
+    static constexpr bool isVector  () { return 1==E::Space; }
+    static constexpr bool isVectorTr() { return 2==E::Space; }
+    static constexpr bool isMatrix  () { return 3==E::Space; }
 
     ///\brief Parse the expression and discover the list of evaluation
     ///sources, also sets the required evaluation flags
@@ -788,26 +788,19 @@ template<class T>
 class gsFeElement
 {
     friend class cdiam_expr<T>;
-
-    const gsDomainIterator<T> * m_di; ///< Pointer to the domain iterator
-
-    const gsVector<T> * m_weights;
-    //const gsMatrix<T> * m_points;
+    const gsExprHelper<T> * m_exprdata;
 
     gsFeElement(const gsFeElement &);
 public:
     typedef T Scalar;
 
-    gsFeElement() : m_di(NULL), m_weights(nullptr) { }
+    gsFeElement(const gsExprHelper<T> & eh) : m_exprdata(&eh) { }
 
-    void set(const gsDomainIterator<T> & di, const gsVector<T> & weights)
-    { m_di = &di, m_weights = &weights; }
+    bool isValid() const { return nullptr!=m_exprdata; }
 
-    bool isValid() const { return nullptr!=m_weights; }
+    const gsVector<T> & weights() const {return m_exprdata->weights();}
 
-    const gsVector<T> & weights() const {return *m_weights;}
-
-    template<class E>
+    template<class E> inline
     integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
 
@@ -830,15 +823,14 @@ public:
     PHDiamRetType diam(const gsGeometryMap<Scalar> & _G) const
     { return pow(integral(meas_expr<T>(_G)),(T)(1)/(T)(2)); }
 
-    //const gsMatrix<T> points() const {return pts;}
-
+    //auto points() const {return point_expr<T>(*this);}
     //index_t dim() { return di->
 
     void print(std::ostream &os) const { os << "e"; }
 
     void parse(gsExprHelper<T> & evList) const
     {
-        GISMO_ERROR("EL");
+        GISMO_ERROR("Call desired member of element expression instead.");
     }
 };
 
@@ -863,6 +855,7 @@ public:
 
     const Scalar & eval(const index_t k) const
     {
+        GISMO_UNUSED(k);
         GISMO_ENSURE(_e.isValid(), "Element is valid within integrals only.");
         // if (0==k)
         {
@@ -1101,7 +1094,8 @@ public:
             {
                 for (gsBoxTopology::const_iiterator it = mb->topology().iBegin();
                      it != mb->topology().iEnd(); ++it) {
-                    mb->matchInterface(*it, m_sd->mapper);
+                    if ( it->type() != interaction::contact ) // If the interface type is 'contact' ignore it.
+                        mb->matchInterface(*it, m_sd->mapper);
                 }
             }
 
@@ -1495,6 +1489,7 @@ public:
     /// val: perturbation value, j: global index, p: patch
     void perturbLocal(T val, index_t j, index_t p = 0)
     {
+        GISMO_UNUSED(p);
         // GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
         //if (_u.mapper().is_free_index(j) )
         //{
@@ -1584,7 +1579,12 @@ public:
     // insert g-coefficients to the solution vector
     void insert(const gsGeometry<T> & g, const index_t p = 0) const
     {
-        const gsMatrix<T> & cf = g.coefs();
+        insert(g.coefs(), p);
+    }
+
+    // insert g-coefficients to the solution vector
+    void insert(const gsMatrix<T> & cf, const index_t p = 0) const
+    {
         gsMatrix<T> & sol = *_Sv;
         //gsMatrix<T> & fixedPart = _u.fixedPart();
         const gsDofMapper & mapper = _u.mapper();

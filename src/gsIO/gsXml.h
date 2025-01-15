@@ -248,7 +248,7 @@ inline gsXmlNode * searchNode(gsXmlNode * root,
 
 /// Helper to fetch a node with a certain \em id value.
 /// \param root parent node, we check his children for the given \em id
-/// \param id the ID number which is seeked for
+/// \param id the ID number which is sought for
 /// \param tag_name Limit search to tags named \em tag_name .
 /// \param print_warning Print warning if search was not successful
 inline gsXmlNode* searchId(const int id, gsXmlNode* root,
@@ -265,18 +265,19 @@ inline gsXmlNode* searchId(const int id, gsXmlNode* root,
   return NULL;
 }
 
-/// Helper to fetch a node with a certain \em label value.
-/// \param root parent node, we check his children for the given \em label
-/// \param label the label which is seeked for
+/// Helper to fetch a node with a certain \em id value.
+/// \param root parent node, we check his children for the given \em id
+/// \param label the label which is sought for
 /// \param tag_name Limit search to tags named \em tag_name .
 /// \param print_warning Print warning if search was not successful
-inline gsXmlNode* searchLabel(const std::string & label, gsXmlNode* root,
+inline gsXmlNode* searchLabel(const std::string label, 
+                           gsXmlNode* root,
                            const char* tag_name = NULL,
                            const bool print_warning = true) {
   for (gsXmlNode* child = root->first_node(tag_name); child;
        child = child->next_sibling(tag_name)) {
-    const gsXmlAttribute* label_at = child->first_attribute("label");
-    if (label_at && !strcmp(label_at->value(),label.c_str())) return child;
+    const gsXmlAttribute* label_attr = child->first_attribute("label");
+    if (label_attr && !strcmp(label_attr->value(), label.c_str()) ) return child;
   }
   if (print_warning) {
     gsWarn << "gsXmlUtils: No object with label = " << label << " found.\n";
@@ -390,6 +391,7 @@ GISMO_EXPORT void getInterfaces(gsXmlNode* node,
 
 GISMO_EXPORT void appendBoxTopology(const gsBoxTopology& topology,
                                     gsXmlNode* node,
+                                    std::map<index_t, index_t> id_map,
                                     gsXmlTree& data);
 
 /// Helper to allocate XML node with gsMatrix value

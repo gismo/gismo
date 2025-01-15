@@ -13,8 +13,7 @@
 
 #include<gsIO/gsParaviewDataSet.h>
 #include<gsIO/gsWriteParaview.h>
-
-
+#include<gsIO/gsParaviewUtils.h>
 
 namespace gismo
 {

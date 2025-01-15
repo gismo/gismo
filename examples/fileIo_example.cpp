@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 #endif
 #ifdef gsOpenCascade_ENABLED
       gsInfo<< "  Write back to mp.igs\n";
-      extensions::writeON_MultiPatch(*o,"mp");
+      extensions::writeOcctIgesMp(*o,"mp");
 #endif
   }
 

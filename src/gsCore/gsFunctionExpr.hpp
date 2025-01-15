@@ -611,23 +611,23 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 
             for ( index_t k=0; k!=d; ++k)
             {
-                result(k,p) = Hmat(k,k);
+                result(c*stride + k,p) = Hmat(k,k);
                 index_t m = d;
                 for ( index_t l=k+1; l<d; ++l)
-                    result(m++,p) = Hmat(k,l);
+                    result(c*stride + m++,p) = Hmat(k,l);
             }
 #           else
             for (short_t k = 0; k!=d; ++k)
             {
                 // H_{k,k}
-                result(k,p) = exprtk::
+                result(c*stride + k,p) = exprtk::
                     second_derivative<T>(my->expression[c], my->vars[k], 0.00001);
 
                 short_t m = d;
                 for (short_t l=k+1; l<d; ++l)
                 {
                     // H_{k,l}
-                    result(m++,p) =
+                    result(c*stride + m++,p) =
                         mixed_derivative<T>( my->expression[c], my->vars[k],
                                              my->vars[l], 0.00001 );
                 }

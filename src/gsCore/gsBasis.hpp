@@ -179,7 +179,6 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     }
 }
 
-
 template<class T>
 inline gsMatrix<T> gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 {
@@ -192,26 +191,50 @@ template<class T> inline
 gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 {
     gsSparseMatrix<T> result( u.cols(), this->size() );
+    //gsInfo << "collocation matrix rows x cols = " << u.cols() << " x " << this->size() << "\n";
+
+    gsVector<index_t> nact( this->size() );
+    nact.setOnes(this->size());
+    gsMatrix<index_t> tmp;
+
+#   pragma omp parallel for default(shared) private(tmp) //firstprivate(nact)
+    for (index_t k=0; k<u.cols(); k++)
+    {
+        active_into(u.col(k), tmp);
+        for (index_t t = 0; t<tmp.size(); t++)
+        {
+//#       pragma omp critical (collocation_nact)
+#         pragma omp atomic
+          nact[tmp(t,0)] += 1;//tmp.rows();
+        }
+        // nact[k] = tmp.rows();
+    }
+//
+//     result.reserve( nact );
+
     gsMatrix<T> ev;
     gsMatrix<index_t> act;
-
-    eval_into  (u.col(0), ev);
-    active_into(u.col(0), act);
-    result.reservePerColumn( act.rows() );
-    for (index_t i=0; i!=act.rows(); ++i)
-        result.insert(0, act.at(i) ) = ev.at(i);
-
-    for (index_t k=1; k!=u.cols(); ++k)
+    std::vector<gsEigen::Triplet<T,index_t>> alltriplets;
+    alltriplets.reserve(nact.sum());
+#   pragma omp parallel for default(shared) private(ev, act)
+    for (index_t k=0; k<u.cols(); k++)
     {
         eval_into  (u.col(k), ev );
         active_into(u.col(k), act);
+        std::vector<gsEigen::Triplet<T,index_t>>tripletList(act.rows());
         for (index_t i=0; i!=act.rows(); ++i)
-            result.insert(k, act.at(i) ) = ev.at(i);
+            tripletList[i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev.at(i));
+
+#       pragma omp critical (collocation)
+        alltriplets.insert(alltriplets.end(), tripletList.begin(), tripletList.end());
     }
 
+    result.setFromTriplets(alltriplets.begin(), alltriplets.end());
     result.makeCompressed();
     return result;
 }
+
+
 
 template<class T> inline
 memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> const& vals,
@@ -468,6 +491,32 @@ void gsBasis<T>::deriv2Single_into(index_t,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n,
+                                        std::vector<gsMatrix<T> >& result) const
+{
+    result.resize(n+1);
+
+    switch(n)
+    {
+    case 0:
+        evalSingle_into(i,u, result[0]);
+        break;
+    case 1:
+        evalSingle_into (i,u, result[0]);
+        derivSingle_into(i,u, result[1]);
+        break;
+    case 2:
+        evalSingle_into  (i,u, result[0]);
+        derivSingle_into (i,u, result[1]);
+        deriv2Single_into(i,u, result[2]);
+        break;
+    default:
+        GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n<< " for "<<*this);
+        break;
+    }
+}
+
+template<class T>
 void gsBasis<T>::evalAllDersSingle_into(index_t, const gsMatrix<T> &,
                                         int, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
@@ -551,11 +600,11 @@ void gsBasis<T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> c
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine(int, int, int)
+void gsBasis<T>::uniformRefine(int, int, short_t)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int , int )
+void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int , short_t const )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -688,48 +737,78 @@ T gsBasis<T>::getMaxCellLength() const
 
 template<class T> inline
 std::vector<gsSparseMatrix<T> >
-gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u)
+gsBasis<T>::collocationMatrixWithDeriv(const gsMatrix<T> & u) const
+{
+  return this->collocationMatrixWithDeriv(*this,u);
+}
+
+template<class T> inline
+std::vector<gsSparseMatrix<T> >
+gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u) //const
 {
     int dim = b.domainDim();
     std::vector<gsSparseMatrix<T>> result(dim+1, gsSparseMatrix<T>( u.cols(), b.size() ));
-    std::vector<gsMatrix<T>> ev;
-    gsMatrix<index_t> act;
 
-    b.evalAllDers_into  (u.col(0), 1, ev);
-    b.active_into(u.col(0), act);
-    result[0].reservePerColumn( act.rows() );
-    result[1].reservePerColumn( act.rows() );
-    if (dim==2)
-        result[2].reservePerColumn( act.rows() );
-    for (index_t i=0; i!=act.rows(); ++i)
+    //gsVector<index_t> nact(u.cols());
+    gsVector<index_t> nact(b.size());
+    nact.setOnes();
+    gsMatrix<index_t> tmp;
+#   pragma omp parallel for default(shared) private(tmp)
+    for (index_t k=0; k<u.cols(); k++)
     {
-        result[0].insert(0, act.at(i) ) = ev[0].at(i);
-        result[1].insert(0, act.at(i) ) = ev[1].at(dim*i);
-        if (dim == 2)
-            result[2].insert(0, act.at(i) ) = ev[1].at(dim*i+1);
+      b.active_into(u.col(k), tmp);
+      for (index_t t = 0; t<tmp.size(); t++)
+      {
+#       pragma omp atomic
+        nact[tmp(t,0)] += 1;//tmp.rows();
+      }
+      // active_into(u.col(k), tmp);
+      // nact[k] = tmp.rows();
     }
-    for (index_t k=1; k!=u.cols(); ++k)
+
+    std::vector<std::vector<gsEigen::Triplet<T,index_t>>> alltriplets(2+(dim==2));
+
+    for (index_t d=0; d!=2+(dim==2); d++)
     {
+        //result[d].reserve( nact );
+        alltriplets[d].reserve(nact.sum());
+    }
+
+#   pragma omp parallel for
+    for (index_t k=0; k<u.cols(); ++k)
+    {
+        std::vector<gsMatrix<T>> ev;
+        gsMatrix<index_t> act;
         b.evalAllDers_into  (u.col(k), 1, ev );
         b.active_into(u.col(k), act);
-        for (index_t i=0; i!=act.rows(); ++i)
+        std::vector<std::vector<gsEigen::Triplet<T,index_t>>> tripletLists(2+(dim==2));
+	    for (index_t d=0; d!=2+(dim==2); d++)
+            tripletLists[d].resize(act.rows());
+
+    	for (index_t i=0; i!=act.rows(); ++i)
         {
-            result[0].insert(k, act.at(i) ) = ev[0].at(i);
-            result[1].insert(k, act.at(i) ) = ev[1].at(dim*i);
-            if (dim == 2)
-                result[2].insert(k, act.at(i) ) = ev[1].at(dim*i +1);
+      	    tripletLists[0][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[0].at(i));
+    	    tripletLists[1][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i));
+            if (dim==2)
+                tripletLists[2][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i+1));
+        }
+
+#       pragma omp critical (collocation)
+        {
+            for (index_t d=0; d!=2+(dim==2); d++)
+                alltriplets[d].insert(alltriplets[d].end(), tripletLists[d].begin(), tripletLists[d].end());
         }
     }
 
-    result[0].makeCompressed();
-    result[1].makeCompressed();
-    if (dim == 2)
-        result[2].makeCompressed();
+
+    for (index_t d=0; d!=2+(dim==2); d++)
+    {
+        result[d].setFromTriplets(alltriplets[d].begin(), alltriplets[d].end());
+        result[d].makeCompressed();
+    }
+
     return result;
 }
-
-
-
 
 // gsBasis<T>::linearComb(active, evals, m_tmpCoefs, result);
 // gsBasis<T>::jacobianFromGradients(active, grads, m_tmpCoefs, result);

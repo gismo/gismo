@@ -55,7 +55,7 @@ public:
         result[0].at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
         if (n==0) return;
 
-        // f' = x'*(x-pt)        
+        // f' = x'*(x-pt)
         auto jacT = m_gd[1].reshaped(u.rows(),m_pt->rows());
         result[1].noalias() = jacT * (m_gd[0] - *m_pt);
         if (n==1) return;
@@ -154,7 +154,7 @@ boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
      */
 
 template<class T>
-gsGeometry<T>::gsGeometry(const gsGeometry<T> & o) 
+gsGeometry<T>::gsGeometry(const gsGeometry<T> & o)
 : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
 { }
 
@@ -303,7 +303,7 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 }
 
 template<class T>
-void gsGeometry<T>::uniformRefine(int numKnots, int mul, int dir) // todo: int dir = -1
+void gsGeometry<T>::uniformRefine(int numKnots, int mul, short_t const dir)
 {
     this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
 }
@@ -387,19 +387,33 @@ T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamp
     }
 }
 
-// template<class T>
-// T gsGeometry<T>::hausdorffDistance() const
 
+// Recovers the points of the geometry from the given points and parameters
+template<class T>
+void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                                  const T accuracy) const
+{
+    gsVector<index_t> ind(xyz.rows()-1);
+    for (index_t i = 0; i!= xyz.rows(); ++i)
+        if (i<k) ind[i]=i;
+        else if (i>k) ind[i-1]=i;
+
+    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsFuncCoordinate<T> fc(*this, give(ind));
+    fc.invertPoints(pt,uv,accuracy,false);
+    xyz = this->eval(uv);
+    //possible check: pt close to xyz
+}
 
 
 template<class T>
 std::ostream & gsGeometry<T>::print(std::ostream &os) const
 {
-    os << "Geometry "<< "R^"<< this->parDim() << 
+    os << "Geometry "<< "R^"<< this->parDim() <<
         " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
-        ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
+        ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1);
     os<<"\nBasis:\n" << this->basis();
-    return os; 
+    return os;
 }
 
 template<class T>
@@ -500,7 +514,7 @@ gsGeometry<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
     m_basis->deriv2_into(u, B) ;
     // col j = indices of active functions at column point u(..,j)
     m_basis->active_into(u, ind);
-    
+
     result.setZero(d,d);
     static const index_t j = 0;// just one column
     //for ( unsigned j=0; j< u.cols(); j++ ) // for all points (columns of u)

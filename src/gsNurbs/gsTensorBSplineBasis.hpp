@@ -2,12 +2,12 @@
 
     @brief Provides declaration of tensor-product B-spline basis class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -47,7 +47,7 @@ gsTensorBSplineBasis<d,T>::gsTensorBSplineBasis(std::vector<gsBasis<T>*> & bb )
 
 template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
-active_cwise(const gsMatrix<T> & u, 
+active_cwise(const gsMatrix<T> & u,
              gsVector<index_t,d>& low,
              gsVector<index_t,d>& upp ) const
 {
@@ -63,18 +63,18 @@ active_cwise(const gsMatrix<T> & u,
 
 template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
-refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
+refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
                     const std::vector< std::vector<T> >& refineKnots)
 {
     GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
     gsSparseMatrix<T,RowMajor> B[d];
-    
+
     // refine component bases and obtain their transfer matrices
     for (unsigned i = 0; i < d; ++i)
     {
         this->component(i).refine_withTransfer( B[i], refineKnots[i] );
     }
-    
+
     tensorCombineTransferMatrices<d, T>( B, transfer );
 }
 
@@ -94,7 +94,7 @@ refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refine
         {
             gsTensorBoehmRefine(this->component(i).knots(), coefs, i, strides,
                                 refineKnots[i].begin(), refineKnots[i].end(), true);
-            
+
             for (index_t j = i+1; j<strides.rows(); ++j)
                 strides[j]=this->stride(j); //new stride for this direction
         }
@@ -103,20 +103,20 @@ refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refine
 
 
 template<short_t d, class T>
-void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
+std::vector<std::vector<T>> gsTensorBSplineBasis<d,T>::_boxToKnots(gsMatrix<T> const & boxes)
 {
-    // Note: refExt parameter is ignored
-    GISMO_ASSERT( boxes.rows() == this->dim() , 
+    std::vector<std::vector<T>> result(d);
+    GISMO_ASSERT( boxes.rows() == this->dim() ,
                   "Number of rows of refinement boxes must equal dimension of parameter space.");
-    GISMO_ASSERT( boxes.cols() % 2 == 0, 
+    GISMO_ASSERT( boxes.cols() % 2 == 0,
                   "Refinement boxes must have even number of columns.");
-    
+
     const T tol = 0.000000001;
-    
+
     // for each coordinate direction of the parameter domain:
-    for( int di = 0; di < this->dim(); di++)
+    for( short_t di = 0; di < this->dim(); di++)
     {
-        
+
         // for simplicity, get the corresponding knot vector.
         KnotVectorType kold_di = Self_t::component(di).knots();
 
@@ -145,11 +145,21 @@ void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
             if( flagInsertKt[i] )
             {
                 T midpt = (kold_di[i] + kold_di[i-1])/(T)(2);
-                Self_t::component(di).insertKnot( midpt );
+                result[di].push_back(midpt);
+                // Self_t::component(di).insertKnot( midpt );
             }
-
     } // for( int di )
+    return result;
+}
 
+template<short_t d, class T>
+void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
+{
+    // Note: refExt parameter is ignored
+    std::vector<std::vector<T>> knots = this->_boxToKnots(boxes);
+    for( short_t di = 0; di < d; di++)
+        for( size_t i=1; i < knots[di].size(); i++ )
+            Self_t::component(di).insertKnot(knots[di][i]);
 
 } // refine()
 
@@ -178,8 +188,8 @@ active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
         numAct *= size[i];
     }
 
-    result.resize( numAct, u.cols() );  
-  
+    result.resize( numAct, u.cols() );
+
     // Fill with active bases indices
     for (index_t j = 0; j < u.cols(); ++j)
     {
@@ -242,8 +252,8 @@ public:
 
         return getTensorBasisFromXml<Object >( node );
     }
-    
-    static gsXmlNode * put (const Object & obj, 
+
+    static gsXmlNode * put (const Object & obj,
                             gsXmlTree & data )
     {
         return putTensorBasisToXml<Object >(obj,data);
