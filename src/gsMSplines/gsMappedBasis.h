@@ -46,7 +46,7 @@ private:
     typedef typename std::vector<T>::const_iterator ConstWeightIter;
     typedef gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
 
-    typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
+    typedef typename gsBasis<T>::domainIter domainIter;
 
 public:
     /// Shared pointer for gsMappedBasis
@@ -210,7 +210,7 @@ public:
     //const gsFunctionSet & piece(const index_t k) const { return m_sb[k]; }
 
     /// gives back the domain iterator of the boundary side \a s of a given \a patch
-    domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
+    typename gsBasis<T>::domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
     { return m_bases[patch]->makeDomainIterator(s); }
 
     /** exports the patch \a i of this geometry (with coefs) to a Geometry object
@@ -380,14 +380,14 @@ public:
     /// @brief  Returns the global index of the local basis function with the given index on the given patch.
     /// @param patch The index of the patch
     /// @param localIndex The index of the basis function in patch-local numbering
-    /// @return 
-    index_t getGlobalIndex(index_t patch, index_t localIndex); 
+    /// @return
+    index_t getGlobalIndex(index_t patch, index_t localIndex);
 
     /// @brief Returns the global indices of the local basis functions with the given indices on the given patch.
     /// @param patch The index of the patch
     /// @param localIndices The indices of the basis functions in patch-local numbering
-    /// @return 
-    gsMatrix<index_t> getGlobalIndex(index_t patch, gsMatrix<index_t> localIndices); 
+    /// @return
+    gsMatrix<index_t> getGlobalIndex(index_t patch, gsMatrix<index_t> localIndices);
 
 protected:
     //////////////////////////////////////////////////

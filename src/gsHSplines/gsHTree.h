@@ -15,6 +15,7 @@
 
 #include <gsHSplines/gsKdNode.h>
 #include <gsHSplines/gsHDomainLeafIter.h>
+#include <gsCore/gsBoundary.h>
 
 namespace gismo
 {

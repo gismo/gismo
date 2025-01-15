@@ -13,12 +13,12 @@
 
 #pragma once
 
-#include <gsHSplines/gsHTree.h>
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsDomain.h>
+#include <gsHSplines/gsHTree.h>
 #include <gsHSplines/gsHDomainLeafIter.h>
 #include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHDomainBoundaryIterator.h>
-#include <gsCore/gsBoundary.h>
 
 namespace gismo
 {
@@ -87,13 +87,7 @@ public:
 
 public:
 
-    gsHDomain(const gsHTensorBasis<d,T> & basis)
-    :
-    m_tree(basis.tree())
-    {
-    }
-
-    gsHDomain(const gsHTree<d,Z>& tree)
+    explicit gsHDomain(const gsHTree<d,Z>& tree)
     :
     m_tree(tree)
     {
@@ -110,7 +104,6 @@ public:
     }
 
     const gsHTree<d,Z> & tree() const { return m_tree; }
-          gsHTree<d,Z> & tree()       { return m_tree; }
 
 protected:
     const gsHTree<d,Z> & m_tree;

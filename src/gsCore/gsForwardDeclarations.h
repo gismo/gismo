@@ -124,9 +124,11 @@ template <class T=real_t>                class gsDomainIteratorWrapper;
 template <class T=real_t>                class gsDomainIterator;
 
 template <class T = real_t, int D=-1>    class gsTensorDomainIterator;
+template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainIterator;
 
 template <class T, int D=-1, class uiter=typename std::vector<T>::const_iterator>
                                          class gsTensorDomainBoundaryIterator;
+template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainBoundaryIterator;
 
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;

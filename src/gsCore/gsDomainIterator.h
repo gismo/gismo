@@ -363,7 +363,8 @@ public:
         // Buggy, and probably a terrible implementation,
         // but needed and therefore can be useful
         // sometimes.
-        return m_domain->numElements();
+        GISMO_NO_IMPLEMENTATION
+
     }
 
 

@@ -16,6 +16,7 @@
 #include <gsHSplines/gsHTree.h>
 #include <gsHSplines/gsHDomain.h>
 #include <gsHSplines/gsKdNode.h>
+#include <gsHSplines/gsHTensorBasis.h>
 
 #include <gsCore/gsDomainIterator.h>
 
@@ -36,7 +37,7 @@ namespace gismo
   * \ingroup HSplines
   */
 
-template<typename T, short_t d, typename Z = index_t>
+template<typename T, short_t d, typename Z>
 class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
@@ -66,14 +67,6 @@ public:
                               const boxSide & s)
     :
     gsHDomainBoundaryIterator(domain.tree(),s)
-    {
-    }
-
-    GISMO_DEPRECATED
-    gsHDomainBoundaryIterator(const gsHTensorBasis<d,T> & hbs,
-                              const boxSide & s)
-    :
-    gsHDomainBoundaryIterator(static_cast<const gsHDomain<d,T,Z>&>(*hbs.domain()), s)
     {
     }
 
@@ -121,8 +114,7 @@ public:
     /// iteration through all boundary elements.
     void reset()
     {
-        const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
-        initLeaf(hbs->tree());
+        initLeaf(m_tree);
     }
 
     gsVector<T> lowerCorner() const

@@ -914,14 +914,15 @@ public:
 
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
-        return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this));
+        return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree()));
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return ( s == boundary::none ?
-                 typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
-                 typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(*this,s) )
+
+                 typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree())) :
+                 typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(this->tree(),s) )
             );
     }
 

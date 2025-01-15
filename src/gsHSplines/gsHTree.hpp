@@ -15,7 +15,6 @@
 #include <gsHSplines/gsVSegment.h>
 #include <gsHSplines/gsKdNode.h>
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsBoundary.h>
 
 #include <queue>
 

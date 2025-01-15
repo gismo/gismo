@@ -34,7 +34,7 @@ namespace gismo
   * \ingroup HSplines
   */
 
-template<typename T, short_t d, typename Z = index_t>
+template<typename T, short_t d, typename Z>
 class gsHDomainIterator: public gsDomainIterator<T>
 {
 public:
@@ -63,13 +63,6 @@ public:
     gsHDomainIterator(const gsHDomain<d,T,Z> & domain)
     :
     gsHDomainIterator(domain.tree())
-    {
-    }
-
-    GISMO_DEPRECATED
-    gsHDomainIterator(const gsHTensorBasis<d, T> & hbs)
-    :
-    gsHDomainIterator(static_cast<const gsHDomain<d,T,Z>&>(*hbs.domain()))
     {
     }
 
