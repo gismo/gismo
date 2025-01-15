@@ -490,12 +490,15 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(bit->patch), m_options,bit->direction());
 
         // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().piece(bit->patch).makeDomainIterator(bit->side());
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            m_exprdata->multiBasis().piece(bit->patch).domain()->beginAt(0,bit->side());
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            m_exprdata->multiBasis().piece(bit->patch).domain()->endAt(0,bit->side());
         m_exprdata->getElement().set(domIt.get(),quWeights);
 
         // Start iteration over elements
-        for (; domIt.good(); domIt.next() )
+        for (; domIt<domItEnd; ++domIt )
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(),
@@ -554,12 +557,14 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
         m_exprdata->setMutSource(*it->function());
 
         // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            m_exprdata->multiBasis().piece(it->patch()).domain()->beginAt(0,it->side());
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            m_exprdata->multiBasis().piece(it->patch()).domain()->endAt(0,it->side());
         m_exprdata->getElement().set(domIt.get(),quWeights);
 
         // Start iteration over elements
-        for (; domIt.good(); domIt.next() )
+        for (; domIt<domItEnd; ++domIt )
         {
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),

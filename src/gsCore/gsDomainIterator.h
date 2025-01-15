@@ -354,20 +354,6 @@ public:
     T volume() const
     { return (upperCorner() - lowerCorner()).prod(); }
 
-    /// Returns the number of elements. --REMOVE
-    virtual size_t numElements() const
-    {
-        //\todo Remove this implementation. Probably using a shallow
-        //copy, "reset" and "next" would do this better.
-
-        // Buggy, and probably a terrible implementation,
-        // but needed and therefore can be useful
-        // sometimes.
-        GISMO_NO_IMPLEMENTATION
-
-    }
-
-
     inline boxSide side() const {return m_side;}
 
 protected:

@@ -454,7 +454,9 @@ gsDomainIteratorWrapper<T> gsRemapInterface<T>::endBdr() const
         if (i!=m_bi.first().direction())
             tdi->setBreaks(m_breakpoints[i],i);
     }
-    return gsDomainIteratorWrapper<T>(new gsDomainIteratorEnd<T>(tdi->numElements(), m_bi.first()));
+    // return gsDomainIteratorWrapper<T>(new gsDomainIteratorEnd<T>(tdi->numElements(), m_bi.first()));
+    // @todo: fix this
+    GISMO_NO_IMPLEMENTATION
 }
 
 template <class T>
