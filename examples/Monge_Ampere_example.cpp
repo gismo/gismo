@@ -86,21 +86,13 @@ public:
             Us.push_back(es.eigenvectors());
             t_Us.push_back(es.eigenvectors().transpose());
         }
-        // TODO :  avoid kron !
-        if (rdim == 2) {
-            forward  = t_Us[0].kron(t_Us[1]).eval();
-            backward = Us[0].kron(Us[1]).eval();
-        } else {
-            forward  = t_Us[0].kron(t_Us[1].kron(t_Us[2])).eval();
-            backward = Us[0].kron(Us[1].kron(Us[2])).eval();
-        }
-        
-        M_proj = backward * forward;        
+        // dimension of paraemtric space
         this->_rdim = rdim;
     }
     mutable gsMatrix<T> s_tilde;
     mutable gsMatrix<T> r_tilde;
-
+    // Computes the approximate solution of ∫-\nabla u *\nabla v + eps * u *v = ∫(funct * v) as input,
+    // where funct is the input function, and v is the test function.
     gsMatrix<T> solve(const gsMatrix<T>& b) const {
         if (_rdim == 2) {
             index_t n1 = ds[0].rows();
@@ -139,8 +131,8 @@ public:
         }
 
     }
-    // Computes the L2-projection of a function using M_proj * ∫(funct * v),
-    // where M_proj is the mass matrix inverse, funct is the input function, and v is the test function.
+    // Computes the L2-projection of a function using ∫(funct * v) as input,
+    // where funct is the input function, and v is the test function.
     gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const {
         if(_rdim == 2){
             index_t n1 = ds[0].rows();
@@ -165,45 +157,112 @@ public:
             return s_tilde;
         }
     }
-    // Computes the L2-projection of a function using M_proj * ∫(funct * v),
-    // where M_proj is the mass matrix inverse, funct is the input function, and v is the test function.
+    // Computes the L2-projection of a function using ∫(funct * v) as input,
+    // where funct is the input function, and v is the test function. 
+    // ... replace (A\otimes B)x by vec(BXA^T)
+    // ... replace (A\otimes B\otimes C)x by vec(CXBA^T)            
     gsMatrix<T> L2ProjectVec(const gsMatrix<T>& b, bool other = false) const {
         // other = true : the surface is in 3D, set _rdim to 3.
-        s_tilde = b;
-        index_t nsize = (int)(b.size()/_rdim);
+        r_tilde = b;
         if(other){
-            nsize = (int)(b.size()/3);
-            s_tilde.reshape(nsize,3);
-            s_tilde.col(0) = M_proj *s_tilde.col(0);
-            s_tilde.col(1) = M_proj *s_tilde.col(1); 
-            s_tilde.col(2) = M_proj *s_tilde.col(2); 
-            s_tilde.reshape(nsize*2,1);
-            return s_tilde;
+            // This is for composing surface mapping in 3D that has 3 component and square mapping
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            index_t n3 = n2;
+            // three components
+            r_tilde = r_tilde.reshape(n1*n2*n3,3);
+            //// ...step 1: reshape first component *****
+            s_tilde = r_tilde.col(0);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: first component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(0) = s_tilde.reshape(n1*n2*n3,1);
+            //// ...step 1: reshape second component *****
+            s_tilde = r_tilde.col(1);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: second component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(1) = s_tilde.reshape(n1*n2*n3,1);
+            //// ...step 1: reshape third component *****
+            s_tilde = r_tilde.col(2);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: third component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(2) = s_tilde.reshape(n1*n2*n3,1);
+            //... result
+            r_tilde.reshape(3*n1*n2*n3, 1);
+            return r_tilde;
         }
         if (_rdim == 2) {
-            // TODO
-
-            s_tilde.reshape(nsize,2);
-            s_tilde.col(0) = M_proj *s_tilde.col(0);
-            s_tilde.col(1) = M_proj *s_tilde.col(1); 
-            s_tilde.reshape(nsize*2,1);
-
+            // 2D
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            // two components
+            r_tilde.reshape(n1*n2,2);
+            //// ...step 1: reshape first component *****
+            s_tilde = r_tilde.col(0);
+            s_tilde = s_tilde.reshape(n1,n2);
+            // step 2: first component            
+            s_tilde = t_Us[1] * s_tilde * Us[0];
+            s_tilde = Us[1]   * s_tilde * t_Us[0];
+            // step 4: reshape
+            r_tilde.col(0) = s_tilde.reshape(n1*n2,1);
+            //// ...step 1: reshape second component *****
+            s_tilde = r_tilde.col(1);
+            s_tilde = s_tilde.reshape(n1,n2);
+            // step 2: first component            
+            s_tilde = t_Us[1] * s_tilde * Us[0];
+            s_tilde = Us[1]   * s_tilde * t_Us[0];
+            // step 4: reshape
+            r_tilde.col(1) = s_tilde.reshape(n1*n2,1);
+            r_tilde.reshape(2*n1*n2,1);
 
         } else {
-            // TODO
-            s_tilde.reshape(nsize,3);
-            s_tilde.col(0) = M_proj *s_tilde.col(0);
-            s_tilde.col(1) = M_proj *s_tilde.col(1); 
-            s_tilde.col(2) = M_proj *s_tilde.col(2); 
-            s_tilde.reshape(nsize*3,1);
+            // 3D
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            index_t n3 = ds[3].rows();
+            // two components
+            r_tilde = r_tilde.reshape(n1*n2*n3,3);
+            //// ...step 1: reshape first component *****
+            s_tilde = r_tilde.col(0);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: first component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(0) = s_tilde.reshape(n1*n2*n3,1);
+            //// ...step 1: reshape second component *****
+            s_tilde = r_tilde.col(1);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: second component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(1) = s_tilde.reshape(n1*n2*n3,1);
+            //// ...step 1: reshape third component *****
+            s_tilde = r_tilde.col(2);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: third component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(2) = s_tilde.reshape(n1*n2*n3,1);
+            //... result
+            r_tilde.reshape(3*n1*n2*n3, 1);
         }
-        return s_tilde;
+        return r_tilde;
     }
 private:
 
     std::vector<gsMatrix<T>> ds;
     std::vector<gsMatrix<T>> Us, t_Us;
-    gsMatrix<T> M_proj, forward, backward;
     int _rdim;
     T _tau;
 };
