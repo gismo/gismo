@@ -17,6 +17,257 @@
 using namespace gismo;
 //! [Include namespace]
 
+template<typename T>
+std::vector< gsSparseMatrix<T> > assembleTensorMass(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+    )
+{
+    const index_t d = basis.dim();
+    std::vector< gsSparseMatrix<T> > result(d);
+    for ( index_t i=0; i!=d; ++i )
+    {
+        result[i] = gsPatchPreconditionersCreator<>::massMatrix(basis.component(d-1-i));
+        //eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
+    }
+    return result;
+}
+
+template<typename T>
+std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+    )
+{
+    const index_t d = basis.dim();
+    std::vector< gsSparseMatrix<T> > result(d);
+    for ( index_t i=0; i!=d; ++i )
+    {
+        result[i] = gsPatchPreconditionersCreator<>::stiffnessMatrix(basis.component(d-1-i));
+        //eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
+    }
+    return result;
+}
+
+template<typename T>
+class Poisson_FastDiag {
+public:
+    // This class implements the fast diagonalization algorithm 
+    // described in the paper: https://doi.org/10.1016/j.cma.2023.116570
+    Poisson_FastDiag(const gsBasis<T>& basis,
+            const gsBoundaryConditions<T>& bc,
+            const gsOptionList& opt,
+            T tau = 0.0)
+        : _tau(tau)
+    {
+        const index_t rdim = basis.dim();
+
+        // Assemble univariate local stiff matrix
+        std::vector< gsSparseMatrix<T> > Ks = assembleTensorStiffness(basis, bc, opt);
+        // Assemble univariate local mass matrix
+        std::vector< gsSparseMatrix<T> > Ms  = assembleTensorMass(basis, bc, opt);
+
+        typedef typename gsMatrix<T>::GenSelfAdjEigenSolver EVSolver;
+        EVSolver es;
+
+        for (size_t i = 0; i < Ms.size(); ++i) {
+            /*
+            We first consider the generalized eigendecompositions problems
+            𝐾1 𝑈1 = 𝑀1𝑈1d1, 𝐾2𝑈2 = 𝑀2𝑈2d2, 𝐾3𝑈3 = 𝑀3𝑈3d3,
+            where d1, d2 and d3 are diagonal matrices such that 𝑈1, 𝑈2 and 𝑈3 fulfills
+            𝑈^𝑇𝑀_1𝑈_1 = 𝐼1, 𝑈^𝑇𝑀_2𝑈_2 = 𝐼_2, 𝑈^𝑇𝑀_3𝑈_3 = 𝐼_3
+            */
+            //gsEigen::GeneralizedSelfAdjointEigenSolver<gsSparseMatrix<T>> es(Ks[i], Ms[i]);
+            es.compute(Ks[i], Ms[i], gsEigen::ComputeEigenvectors);
+
+            ds.push_back(es.eigenvalues());
+            Us.push_back(es.eigenvectors());
+            t_Us.push_back(es.eigenvectors().transpose());
+        }
+        // dimension of paraemtric space
+        this->_rdim = rdim;
+    }
+    mutable gsMatrix<T> s_tilde;
+    mutable gsMatrix<T> r_tilde;
+    // Computes the approximate solution of ∫-\nabla u *\nabla v + eps * u *v = ∫(funct * v) as input,
+    // where funct is the input function, and v is the test function.
+    gsMatrix<T> solve(const gsMatrix<T>& b) const {
+        if (_rdim == 2) {
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+
+            s_tilde = b.reshape(n1,n2);
+            s_tilde = t_Us[1] * s_tilde *Us[0];
+            #pragma omp parallel for
+            for (index_t i1 = 0; i1 < n1; ++i1) {
+                for (index_t i2 = 0; i2 < n2; ++i2) {
+                    s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+                }
+            }
+            s_tilde = Us[1] * s_tilde * t_Us[0];
+            s_tilde = s_tilde.reshape(n1*n2, 1);
+            return s_tilde;
+        } else {
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            index_t n3 = ds[3].rows();
+
+            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            #pragma omp parallel for
+            for (index_t i1 = 0; i1 < n1; ++i1) {
+                for (index_t i2 = 0; i2 < n2; ++i2) {
+                    for (index_t i3 = 0; i3 < n3; ++i3) {
+                        index_t k = i3 + i2 * n3;
+                        s_tilde(i1,k) = s_tilde(i1, k) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                    }
+                }
+            }            
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            s_tilde = s_tilde.reshape(n1*n2*n3, 1);
+            return s_tilde;
+        }
+
+    }
+    // Computes the L2-projection of a function using ∫(funct * v) as input,
+    // where funct is the input function, and v is the test function.
+    gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const {
+        if(_rdim == 2){
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+
+            s_tilde = b.reshape(n1,n2);
+            s_tilde = t_Us[1] * s_tilde *Us[0];
+
+            s_tilde = Us[1] * s_tilde * t_Us[0];
+            s_tilde = s_tilde.reshape(n1*n2, 1);
+            return s_tilde;
+        } else{
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            index_t n3 = ds[3].rows();
+
+            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            s_tilde = s_tilde.reshape(n1*n2*n3, 1);
+            return s_tilde;
+        }
+    }
+    // Computes the L2-projection of a function using ∫(funct * v) as input,
+    // where funct is the input function, and v is the test function. 
+    // ... replace (A\otimes B)x by vec(BXA^T)
+    // ... replace (A\otimes B\otimes C)x by vec(CXBA^T)            
+    gsMatrix<T> L2ProjectVec(const gsMatrix<T>& b, bool other = false) const {
+        // other = true : the surface is in 3D, set _rdim to 3.
+        r_tilde = b;
+        if(other){
+            // This is for composing surface mapping in 3D that has 3 component and square mapping
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            index_t n3 = n2;
+            // three components
+            r_tilde = r_tilde.reshape(n1*n2*n3,3);
+            //// ...step 1: reshape first component *****
+            s_tilde = r_tilde.col(0);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: first component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(0) = s_tilde.reshape(n1*n2*n3,1);
+            //// ...step 1: reshape second component *****
+            s_tilde = r_tilde.col(1);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: second component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(1) = s_tilde.reshape(n1*n2*n3,1);
+            //// ...step 1: reshape third component *****
+            s_tilde = r_tilde.col(2);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: third component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(2) = s_tilde.reshape(n1*n2*n3,1);
+            //... result
+            r_tilde.reshape(3*n1*n2*n3, 1);
+            return r_tilde;
+        }
+        if (_rdim == 2) {
+            // 2D
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            // two components
+            r_tilde.reshape(n1*n2,2);
+            //// ...step 1: reshape first component *****
+            s_tilde = r_tilde.col(0);
+            s_tilde = s_tilde.reshape(n1,n2);
+            // step 2: first component            
+            s_tilde = t_Us[1] * s_tilde * Us[0];
+            s_tilde = Us[1]   * s_tilde * t_Us[0];
+            // step 4: reshape
+            r_tilde.col(0) = s_tilde.reshape(n1*n2,1);
+            //// ...step 1: reshape second component *****
+            s_tilde = r_tilde.col(1);
+            s_tilde = s_tilde.reshape(n1,n2);
+            // step 2: first component            
+            s_tilde = t_Us[1] * s_tilde * Us[0];
+            s_tilde = Us[1]   * s_tilde * t_Us[0];
+            // step 4: reshape
+            r_tilde.col(1) = s_tilde.reshape(n1*n2,1);
+            r_tilde.reshape(2*n1*n2,1);
+
+        } else {
+            // 3D
+            index_t n1 = ds[0].rows();
+            index_t n2 = ds[1].rows();
+            index_t n3 = ds[3].rows();
+            // two components
+            r_tilde = r_tilde.reshape(n1*n2*n3,3);
+            //// ...step 1: reshape first component *****
+            s_tilde = r_tilde.col(0);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: first component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(0) = s_tilde.reshape(n1*n2*n3,1);
+            //// ...step 1: reshape second component *****
+            s_tilde = r_tilde.col(1);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: second component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(1) = s_tilde.reshape(n1*n2*n3,1);
+            //// ...step 1: reshape third component *****
+            s_tilde = r_tilde.col(2);
+            s_tilde = s_tilde.reshape(n1,n2*n3);
+            // step 2: third component            
+            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            // step 4: reshape
+            r_tilde.col(2) = s_tilde.reshape(n1*n2*n3,1);
+            //... result
+            r_tilde.reshape(3*n1*n2*n3, 1);
+        }
+        return r_tilde;
+    }
+private:
+
+    std::vector<gsMatrix<T>> ds;
+    std::vector<gsMatrix<T>> Us, t_Us;
+    int _rdim;
+    T _tau;
+};
+
+
 void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
     // Projection normal of control points (exact geometry)
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
@@ -192,6 +443,9 @@ int main(int argc, char *argv[])
         mp.uniformRefine();
         mpLeft.uniformRefine();
     }
+    //Initialization of Fast diagonalization solver
+    Poisson_FastDiag<double> Poisson(dbasis.basis(0), bcMAE, A.options(), eps);
+
     u.setup(bcMAE, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
 
@@ -203,7 +457,7 @@ int main(int argc, char *argv[])
     auto Neumann_Int{ev.integralBdrBc(bcMAE.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral((1.+IntensityMAE*ff.val())* meas(G))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) )};
 
     setup_time += timer.stop();
 
@@ -213,7 +467,7 @@ int main(int argc, char *argv[])
     A.assemble(
     igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G) //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) * meas(G) //rhs vector
     );
     
     // Compute the Neumann terms defined on physical space
@@ -227,8 +481,9 @@ int main(int argc, char *argv[])
     gsInfo<< "." <<std::flush;// Assemblying done
 
     timer.restart();
-    solver.compute( A.matrix() );
-    solVector = solver.solve(A.rhs());
+    // solver.compute( A.matrix() );
+    // solVector = solver.solve(A.rhs());
+    solVector = Poisson.solve(A.rhs());
     slv_time += timer.stop();
 
     gsInfo<< "." <<std::flush; // Linear solving done
@@ -252,30 +507,31 @@ int main(int argc, char *argv[])
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * igrad(u_s,G) );
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
         
-        gsMultiPatch<> Psi;
+        gsMultiPatch<> Psi, PsiLoc;
         v_sol.extract(Psi);
+        v_sol.extract(PsiLoc);
 
         // ... correct boundary
-        if (PNormalCP)
-            ProjectionNormalCPoints(Psi);
-        //if (CornersLshape)
-        //    CorrectCornersLshape(Psi, mp); 
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        ProjectionNormalCPoints(Psi);
         Psi.addAutoBoundaries();
         Psi.computeTopology();
-        geometryMap PPLoc = A.getMap(Psi);
+        geometryMap PP    = A.getMap(Psi);
+        geometryMap PPLoc = A.getMap(PsiLoc);
+        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         auto  comp = PPLoc(mpLeft);
+
         A.initSystem(2);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        v_sol.extract(Psi);
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        v_sol.extract(PsiLoc);
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        geometryMap PP = A.getMap(Psi);
-        auto ff = A.getCoeff(f, PP);
-        //ev.integral(ff.val());
+        geometryMap PPfLoc = A.getMap(PsiLoc);
+        auto ff = A.getCoeff(f, PPfLoc);
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -293,12 +549,14 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         
         // .. update Coeffeicient of conductivity
-        CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
+        auto  ExprMAE = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - jac(PP).det()), 1./IGdim);
+        auto IntegDensity = ev.integral(ExprMAE);
+        CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
         A.assemble(
         igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
         ,
-        u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
+        u * CoeffConductivity * (-1.) * ExprMAE * meas(G) //rhs vector
         );
 
         // Compute the Neumann terms defined on physical space
@@ -315,8 +573,10 @@ int main(int argc, char *argv[])
         gsInfo<< " ." <<std::flush;// Assemblying done
 
         timer.restart();
-        solver.compute( A.matrix() );
-        solVector = solver.solve(A.rhs());
+        // solver.compute( A.matrix() );
+        // solVector = solver.solve(A.rhs());
+        solVector = Poisson.solve(A.rhs());
+
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done

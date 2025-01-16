@@ -516,23 +516,23 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        geometryMap PPLoc = A.getMap(PsiLoc);
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        auto  comp = PPLoc(mpLeft);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
-        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        v_sol.extract(PsiLoc);
-        //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        geometryMap PPfLoc = A.getMap(PsiLoc);
-        auto ff = A.getCoeff(f, PPfLoc);
+        // geometryMap PPLoc = A.getMap(PsiLoc);
+        // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        // auto  comp = PPLoc(mpLeft);
+        // A.initSystem(ITdim);
+        // //Obtain control points for the gradient of mpLeft.comp(Psi)
+        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // vsolVector = Poisson.L2ProjectVec(A.rhs());
+        // //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        // v_sol.extract(PsiLoc);
+        // //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
+        // geometryMap PPfLoc = A.getMap(PsiLoc);
+        // auto ff = A.getCoeff(f, PPfLoc);
 
-        // auto ff = A.getCoeff(f, GLeft, PP);
-        // auto ffG = A.getCoeff(f, GLeft);
-        // gsInfo << "ff" << ev.integral(ff.val()) << "\n";
-        // gsInfo << "ffG" << ev.integral(ffG.val()) << "\n";
+        auto ff = A.getCoeff(f, GLeft, PP);
+        auto ffG = A.getCoeff(f, GLeft);
+        gsInfo << "ff" << ev.integral(ff.val()) << "...\n";
+        gsInfo << "ffG " << ev.integral(ffG.val()) << "...\n";
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
