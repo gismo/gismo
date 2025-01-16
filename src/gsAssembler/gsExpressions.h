@@ -119,6 +119,7 @@ template<class E> class normalized_expr;
 template<class E> class trace_expr;
 template<class E> class integral_expr;
 template<class E> class adjugate_expr;
+template<class E> class sqrt_expr;
 template<class E> class norm_expr;
 template<class E> class sqNorm_expr;
 template<class E> class det_expr;
@@ -274,6 +275,10 @@ public:
     /// Returns the adjugate of the expression (for matrix-valued expressions)
     adjugate_expr<E> adj() const
     { return adjugate_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the square root of the expression (for matrix-valued expressions)
+    sqrt_expr<E> sqrt() const
+    { return sqrt_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the Euclidean norm of the expression
     norm_expr<E> norm() const
@@ -1877,6 +1882,58 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
     void print(std::ostream &os) const { os << "adj("; _u.print(os); os<<")"; }
+};
+
+/*
+  Expression for the square root of a matrix expression
+*/
+template<class E>
+class sqrt_expr  : public _expr<sqrt_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0, ColBlocks = E::ColBlocks};
+    enum {Space = E::Space};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> res;
+
+public:
+    sqrt_expr(_expr<E> const& u) : _u(u)
+    {
+        GISMO_ASSERT(_u.cols() == _u.rows(), "Expecting square-block expression, got " << _u.rows() <<" x "<< _u.cols() );
+    }
+
+    // choose if ColBlocks
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        gsMatrix<Scalar> tmp = _u.eval(k);
+        const index_t cb = _u.rows();
+        const index_t r  = _u.cols() / cb;
+        res.resize(_u.rows(),_u.cols());
+        // Can be made faster by templating over the dimension of tmp.
+        gsEigen::SelfAdjointEigenSolver<gsMatrix<Scalar>> es(tmp.rows());
+        for (index_t i = 0; i!=r; ++i)
+        {
+            es.compute(tmp.middleCols(i*cb,cb));
+            res.middleCols(i*cb,cb) = es.operatorSqrt();
+        }
+        return res;
+    }
+
+    // choose if !ColBlocks
+    //todo: Scalar eval(const index_t k) const
+
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return _u.cols(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
+    void print(std::ostream &os) const { os << "sqrt("; _u.print(os); os<<")"; }
 };
 
 template<class E>
@@ -3886,64 +3943,81 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
-template <typename E1, typename E2, typename E3>
-class ternary_expr : public _expr<ternary_expr<E1, E2, E3> >
+template<class E0, class E1, class E2>
+class ternary_expr : public _expr<ternary_expr<E0, E1, E2> >
 {
-    typename E1::Nested_t _c;
-    typename E2::Nested_t _t;
-    typename E3::Nested_t _f;
+  typename E0::Nested_t _u;
+  typename E1::Nested_t _v;
+  typename E2::Nested_t _w;
+ public:
+  typedef typename E1::Scalar Scalar;
 
-public:
-    enum {  ScalarValued = E2::ScalarValued,
-            ColBlocks = E2::ColBlocks,
-            Space = E2::Space };
+  explicit ternary_expr(_expr<E0> const &u,
+                        _expr<E1> const &v,
+                        _expr<E2> const &w)
+      :
+      _u(u),
+      _v(v),
+      _w(w) {
+    GISMO_ASSERT(E0::ScalarValued, "Condition must be scalar valued");
+    GISMO_ASSERT((int) E1::ScalarValued == (int) E2::ScalarValued,
+                 "Both v and w must be scalar valued (or not).");
+    GISMO_ASSERT((int) E1::ColBlocks == (int) E2::ColBlocks,
+                 "Both v and w must be colblocks (or not).");
+    GISMO_ASSERT((int) E1::Space == (int) E2::Space,
+                 "Both v and w must be space (or not), but E1::Space = "
+                     << E1::Space << " and E2::Space = " << E2::Space);
+    GISMO_ASSERT(_v.rows() == _w.rows(),
+                 "Rows of v and w differ. _v.rows() = " << _v.rows()
+                                                        << ", _w.rows() = "
+                                                        << _w.rows());
+    GISMO_ASSERT(_v.cols() == _w.cols(),
+                 "Columns of v and w differ. _v.cols() = " << _v.cols()
+                                                           << ", _w.cols() = "
+                                                           << _w.cols());
+    GISMO_ASSERT(_v.rowVar() == _w.rowVar(), "rowVar of v and w differ.");
+    GISMO_ASSERT(_v.colVar() == _w.colVar(), "colVar of v and w differ.");
+  }
+ public:
+  enum {
+    ScalarValued = E1::ScalarValued,
+    ColBlocks = E1::ColBlocks,
+    Space = E1::Space
+  }; // == E2::Space
 
-    typedef typename E1::Scalar Scalar;
+//  const Scalar eval(const index_t k) const { return (_u.eval(k) > 0 ? _v.eval
+//  (k) : _w.eval(k)); }
 
-    ternary_expr(const E1 & c,
-                 const E2 & t,
-                 const E3 & f)
-    : _c(c), _t(t), _f(f)
-    {
-        GISMO_ASSERT(E1::ScalarValued, "Condition must be scalar valued");
-        GISMO_ASSERT((int) E2::ScalarValued == (int) E3::ScalarValued,"Both v and w must be scalar valued (or not).");
-        GISMO_ASSERT((int) E2::ColBlocks == (int) E3::ColBlocks,"Both v and w must be colblocks (or not).");
-        GISMO_ASSERT((int) E2::Space == (int) E3::Space,"Both v and w must be space (or not), but E2::Space = "
-                         << E2::Space << " and E3::Space = " << E3::Space);
-        GISMO_ASSERT(_t.rows() == _f.rows(),"Rows of v and w differ. _t.rows() = " << _t.rows()<< ", _f.rows() = "<< _f.rows());
-        GISMO_ASSERT(_t.cols() == _f.cols(),"Columns of v and w differ. _t.cols() = " << _t.cols()<< ", _f.cols() = "<< _f.cols());
-        GISMO_ASSERT(_t.rowVar() == _f.rowVar(), "rowVar of v and w differ.");
-        GISMO_ASSERT(_t.colVar() == _f.colVar(), "colVar of v and w differ.");
-    }
+  const Temporary_t eval(const index_t k) const
+  {
+    return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
+  }
 
+  // { res = eval_impl(_u,_v,_w,k); return  res;}
 
-    AutoReturn_t eval(const index_t k) const
-    {
-        return (_c.val().eval(k) > 0.0  ? _t.eval(k) : _f.eval(k));
-    }
+  index_t rows() const { return _v.rows(); }
+  index_t cols() const { return _v.cols(); }
+  void parse(gsExprHelper<Scalar> &evList) const {
+    _u.parse(evList);
+    _v.parse(evList);
+    _w.parse(evList);
+  }
 
-    index_t rows() const { return _t.rows(); }
-    index_t cols() const { return _t.cols(); }
-    void parse(gsExprHelper<Scalar> & evList) const
-    { _c.parse(evList); _t.parse(evList); _f.parse(evList); }
+  const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
 
-
-    index_t cardinality_impl() const
-    { return _t.cardinality(); }
-
-    const gsFeSpace<Scalar> & rowVar() const
-    { return _t.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const
-    { return _t.colVar(); }
-
-    void print(std::ostream &os) const { os<<"( "; _c.print(os); os<<" > 0) ? "; _t.print(os); os<<" : "; _f.print(os); }
 };
 
-// Ternary expression, (c > 0) ? t : f
-template <typename E1, typename E2, typename E3> //EIGEN_STRONG_INLINE
-//collapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
-ternary_expr<E1,E2,E3> ternary( _expr<E1> const& c, _expr<E1> const& t, _expr<E3> const& f)
-{ return ternary_expr<E1, E2, E3>(c, t, f); }
+
+/// Ternary ternary_expr
+template<class E0, class E1, class E2>
+EIGEN_STRONG_INLINE
+ternary_expr<E0, E1, E2> ternary(const E0 &u,
+                                 const E1 &v,
+                                 const E2 &w)
+{
+  return ternary_expr<E0, E1, E2>(u, v, w);
+}
 
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >
@@ -4416,7 +4490,7 @@ public:
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
         GISMO_ASSERT(_u.cols() == _v.cols(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation:\n" << _u <<" minus \n" << _v );
-        GISMO_ASSERT(_u.cardinality() == _u.cardinality(),
+        GISMO_ASSERT(E1::Space==0 || _u.cardinality() == _u.cardinality(),
                      "Cardinality "<< _u.cardinality()<<" != "<< _v.cardinality());
         //return (_u.eval(k) - _v.eval(k) ).eval();
         //return (_u.eval(k) - _v.eval(k) ); // any temporary matrices eval(.) will leak mem.

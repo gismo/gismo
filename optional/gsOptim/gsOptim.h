@@ -15,6 +15,10 @@
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsOptimizer.h>
 
+#define GISMO_OPTIM_MAKE_CONSTRUCTOR(gsname)                                   \
+gsname()                          : Base()        { this->defaultOptions(); }  \
+gsname(gsOptProblem<T> * problem) : Base(problem) { this->defaultOptions(); }
+
 #   define Eigen gsEigen
 #define OPTIM_ENABLE_EIGEN_WRAPPERS
 #include <optim/header_only_version/optim.hpp>
@@ -148,7 +152,13 @@ public:
 public:
 
     /// Empty constructor
-    gsOptim() {};
+    gsOptim()
+    :
+    Base(),
+    m_success(false)
+    {
+        this->defaultOptions();
+    }
 
 
     /**
@@ -187,6 +197,30 @@ public:
         if (slv=="SUMT") return uPtr(new SUMT(problem));
         GISMO_ERROR("Solver \'"<< slv << "\' not known to G+Smo");
     }
+
+    /**
+     * @brief      Getter for a specific solver
+     *
+     * @param[in]  slv  The solver name
+     *
+     * @return     Pointer to the solver
+     */
+    static uPtr get(const std::string & slv)
+    {
+        if (slv=="BFGS") return uPtr(new BFGS());
+        if (slv=="LBFGS") return uPtr(new LBFGS());
+        if (slv=="CG") return uPtr(new CG());
+        if (slv=="GD") return uPtr(new GD());
+        // if (slv=="Newton") return uPtr(new Newton());
+        if (slv=="NM") return uPtr(new NM());
+        if (slv=="DE") return uPtr(new DE());
+        if (slv=="DEPRMM") return uPtr(new DEPRMM());
+        if (slv=="PSO") return uPtr(new PSO());
+        if (slv=="PSODV") return uPtr(new PSODV());
+        if (slv=="SUMT") return uPtr(new SUMT());
+        GISMO_ERROR("Solver \'"<< slv << "\' not known to G+Smo");
+    }
+
 
     /// Default options
     virtual void defaultOptions()
@@ -290,11 +324,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimBFGS(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimBFGS)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -337,11 +367,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimLBFGS(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimLBFGS)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -386,11 +412,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimCG(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimCG)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -439,11 +461,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimGD(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimGD)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -554,11 +572,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimNM(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimNM)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -619,11 +633,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimDE(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimDE)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -717,10 +727,8 @@ class gsOptimDEPRMM : public gsOptimDE<T>
 {
     using Base = gsOptimDE<T>;
 public:
-    gsOptimDEPRMM(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimDEPRMM)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -742,11 +750,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimPSO(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimPSO)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -839,11 +843,7 @@ class gsOptimPSODV : public gsOptimPSO<T>
     using Base = gsOptimPSO<T>;
 public:
 
-    /// See \ref gsOptim
-    gsOptimPSODV(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimPSODV)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,
@@ -865,11 +865,7 @@ public:
 
 public:
 
-    /// See \ref gsOptim
-    gsOptimSUMT(gsOptProblem<T> * problem) : Base(problem)
-    {
-        this->defaultOptions();
-    }
+    GISMO_OPTIM_MAKE_CONSTRUCTOR(gsOptimSUMT)
 
     /// See \ref gsOptim
     bool callOptim( gsVector<T> & x,

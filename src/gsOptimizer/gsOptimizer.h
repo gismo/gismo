@@ -46,6 +46,11 @@ public:
 
 public:
 
+    virtual void setProblem(gsOptProblem<T> * problem)
+    {
+        m_op=problem;
+    }
+
     virtual void defaultOptions()
     {
         m_options.addInt("MaxIterations","Maximum iterations",100);
