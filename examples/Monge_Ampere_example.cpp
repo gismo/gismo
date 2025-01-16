@@ -530,9 +530,9 @@ int main(int argc, char *argv[])
         // auto ff = A.getCoeff(f, PPfLoc);
 
         auto ff = A.getCoeff(f, GLeft, PP);
-        auto ffG = A.getCoeff(f, GLeft);
-        gsInfo << "ff" << ev.integral(ff.val()) << "...\n";
-        gsInfo << "ffG " << ev.integral(ffG.val()) << "...\n";
+        // auto ffG = A.getCoeff(f, GLeft);
+        // gsInfo << "ff" << ev.integral(ff.val()) << "...\n";
+        // gsInfo << "ffG " << ev.integral(ffG.val()) << "...\n";
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -550,7 +550,7 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         
         // .. update Coeffeicient of conductivity
-        auto  ExprMAE = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - jac(PP).det()), 1./IGdim);
+        auto  ExprMAE     = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - jac(PP).det()), 1./IGdim);
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
@@ -568,10 +568,6 @@ int main(int argc, char *argv[])
         A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
         A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
         ma_time += timer.stop();
-
-        // gsDebugVar(A.matrix().toDense());
-        // gsDebugVar(A.rhs().transpose()   );
-        
 
         gsInfo<< " ." <<std::flush;// Assemblying done
 

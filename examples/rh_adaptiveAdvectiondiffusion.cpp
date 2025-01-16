@@ -570,7 +570,7 @@ int main(int argc, char *argv[])
         setup_time += timer.stop();
         timer.restart();
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
-        auto  ExprMAE = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - jac(PP).det()), 1./IGdim);
+        auto  ExprMAE     = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - jac(PP).det()), 1./IGdim);
         auto IntegDensity = ev.integral(ExprMAE);
         
         // .. update Coeffeicient of conductivity
