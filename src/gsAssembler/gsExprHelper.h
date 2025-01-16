@@ -108,6 +108,7 @@ public:
             m_mdata.clear();
             m_fdata.clear();
             m_cdata.clear();
+            m_cdataAd.clear();
             //mutSrc = nullptr;
             mutMap = nullptr;
             mutData.mine().flags = 0;
@@ -116,6 +117,7 @@ public:
                 m_mirror->m_mdata.clear();
                 m_mirror->m_fdata.clear();
                 m_mirror->m_cdata.clear();
+                m_mirror->m_cdataAd.clear();
                 //m_mirror->mutSrc = nullptr;
                 m_mirror->mutMap = nullptr;
                 m_mirror->mutData.mine().flags = 0;
