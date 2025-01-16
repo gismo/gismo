@@ -305,8 +305,8 @@ int main(int argc, char *argv[])
     index_t numRefine   = 3;
     index_t numLRefine  = 3;
     index_t numElevate  = 1;
-    index_t maxIter     = 30;
-    double eps          = 1e-5; // pinalization coefficient
+    index_t maxIter     = 50;
+    double eps          = 1e-7; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 10.;
     bool plotMAeRes     = false;

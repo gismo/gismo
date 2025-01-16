@@ -309,8 +309,8 @@ int main(int argc, char *argv[])
     index_t DegElevate  = 2; // degree Elevation
     index_t NumArMarEl  = 1; // Number of ring of cells around marked elements
     index_t maxIter     = 50;
-    double eps          = 1e-5; // pinalization coefficient
-    double tolPicard    = 1e-7;
+    double eps          = 1e-7; // pinalization coefficient
+    double tolPicard    = 1e-8;
     double IntensityMAE = 10.;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
     double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
