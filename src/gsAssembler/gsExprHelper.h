@@ -43,8 +43,10 @@ private:
     typedef std::map<const gsFunctionSet<T>*,thFuncData>  FuncData;
     typedef std::map<const gsFunctionSet<T>*,thMapData>  MapData;
     typedef std::pair<const gsFunctionSet<T>*,thMapData*> CFuncKey;
+    typedef std::pair<const gsFunctionSet<T>*,thFuncData*> CFuncKeyAd;
 
     typedef std::map<CFuncKey,thFuncData>  CFuncData;
+    typedef std::map<CFuncKeyAd,thFuncData>  CFuncDataAd;
 
     typedef typename FuncData::iterator FuncDataIt;
     typedef typename MapData ::iterator MapDataIt;
@@ -54,7 +56,7 @@ private:
     FuncData  m_fdata;///< functions
     MapData   m_mdata;///< maps
     CFuncData m_cdata;///< compositions
-    CFuncData m_cdataAd;///< compositions
+    CFuncDataAd m_cdataAd;///< compositions
 
 
     memory::shared_ptr<gsExprHelper> m_mirror;
@@ -176,10 +178,11 @@ public:
         return var;
     }
 
+    //// Represents the function:  mp o Gleft o GRight 
     compositionAd getVar(const gsFunctionSet<T> & mp, geometryMap & GLeft, geometryMap & GRight)
     {
-        expr::gsCompositionAd<T> var(GLeft, GRight);
-        var.setSource(mp);
+        expr::gsCompositionAd<T> var(GLeft, GRight); // Gleft o GRight
+        var.setSource(mp); // outer (on the left) function
         return var;
     }
 
@@ -355,35 +358,21 @@ public:
 
     void add(const expr::gsCompositionAd<T> & sym)
     {
-        //GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
-        //add(sym.innerRight());//the map
-        //sym.innerRight().data().flags |= NEED_VALUE;
-        gsInfo << "do the composition with two mappings \n";
-        //GNew.setSource(*sym.innerLeft().m_fs);
+        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
+
+        // register the innerRight
         add(sym.innerRight());
         sym.innerRight().data().flags |= NEED_VALUE;
 
-        add(sym.innerLeft());
-        sym.innerLeft().data().flags |= NEED_VALUE;
+        // register innerLeft o innerRight as composition
+        auto k2 = std::make_pair(sym.innerLeft().m_fs, &eh.m_mdata[sym.innerRight().m_fs]);
+        eh.m_cdata[k2].mine().flags |= NEED_VALUE;
 
-        expr::gsComposition<T> GNew(sym.innerRight());
-        GNew.setSource(*sym.innerLeft().m_fs);
-        add(GNew);
-        GNew.data().flags |= NEED_VALUE;
-        
-        //register the function //if !=nullptr?
-        auto k = std::make_pair(sym.m_fs,&m_mdata[sym.innerLeft().m_fs]);
-        auto it = m_cdataAd.find(k);
-        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
-        if (m_cdataAd.end()==it)
-            // when the variable is added for the first time,
-            // we have to be thread-safe (atomic).
-#           pragma omp critical (m_cdataAd_first_touch)
-            const_cast<expr::gsCompositionAd<T>&>(sym)
-                .setData(eh.m_cdataAd[ give(k) ]);
-        else
-            const_cast<expr::gsCompositionAd<T>&>(sym)
-                .setData(eh.m_cdataAd[ give(k) ]);
+        // register F o (innerLeft o innerRight) as second-step composition
+        auto k3 = std::make_pair(sym.m_fs, &eh.m_cdata[k2]);
+        eh.m_cdataAd[k3].mine().flags |= NEED_VALUE;
+        const_cast<expr::gsCompositionAd<T>&>(sym)
+            .setData( eh.m_cdataAd[ give(k3) ]);
     }
 
     template <class E>
@@ -435,16 +424,17 @@ public:
                     boundary::side bs = boundary::none)
     {
         //First compute the maps
-        for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
+        for (auto it = m_mdata.begin(); it != m_mdata.end(); ++it)
         {
             it->second.mine().points.swap(m_points.mine());//swap
             it->second.mine().side    = bs;
             it->second.mine().patchId = patchIndex;
             it->first->function(patchIndex).computeMap(it->second.mine());
             it->second.mine().points.swap(m_points.mine());
+            //gsInfo << "Points m_mdata "<< it->second.mine().values.size() <<"\n";
         }
 
-        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+        for (auto it = m_fdata.begin(); it != m_fdata.end(); ++it)
         {
             it->second.mine().patchId = patchIndex;
             it->first->piece(patchIndex)
@@ -452,7 +442,7 @@ public:
             //gsInfo << "Points m_fdata "<< it->second.mine().values.size() <<"\n";
         }
 
-        for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
+        for (auto it = m_cdata.begin(); it != m_cdata.end(); ++it)
         {
             it->first.first->piece(patchIndex)
                 .compute(it->first.second->mine().values[0], it->second.mine());
@@ -462,14 +452,13 @@ public:
 
         for (auto it = m_cdataAd.begin(); it != m_cdataAd.end(); ++it)
         {
-            //gsInfo << "f "<< *it->first.first <<"\n";
-
-            //gsInfo << "Points FoPsi "<< it->first.second->mine().values.size() <<"\n";
-            //gsInfo << "Points FoPsi "<< it->first.second->mine().values[0] <<"\n";
-             
             it->first.first->piece(patchIndex)
                 .compute(it->first.second->mine().values[0], it->second.mine());
             it->second.mine().patchId = patchIndex;
+
+            //gsInfo << "Points m_cdataAd "<< it->first.second->mine().values.size()
+            //       << " evaluated on: "<< it->first.second->mine().values[0].transpose()
+            //       <<"\n";
         }
 
         // Mutable variable to treat BCs
