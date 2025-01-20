@@ -225,7 +225,7 @@ public:
             r_tilde.reshape(n1*n2,2);
             //// ...step 1: reshape first component *****
             s_tilde = r_tilde.col(0);
-            gsInfo << s_tilde.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
+            //gsInfo << s_tilde.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
             s_tilde = s_tilde.reshape(n2,n1);
             // step 2: first component            
             s_tilde = t_Us[1] * s_tilde * Us[0];
@@ -291,8 +291,8 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
     {
         // test if the boundary interface is not an inner interface between patches
-        auto lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]);
-        auto hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(0) ).array()[0]);
+        auto lVal = 0.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]);
+        auto hVal = 1.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(0) ).array()[0]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
         {
             Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = lVal;
@@ -303,8 +303,8 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
         Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = hVal;
         }
 
-        lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(0) ).array()[1]);
-        hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(0) ).array()[1]);
+        lVal = 0.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(0) ).array()[1]);
+        hVal = 1.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(0) ).array()[1]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
         {
         Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = lVal;
@@ -325,16 +325,16 @@ int main(int argc, char *argv[])
     index_t numLRefine  = 3;
     index_t numElevate  = 1;
     index_t maxIter     = 50;
-    double eps          = 1e-7; // pinalization coefficient
+    double eps          = 1e-6; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 10.;
     bool plotMAeRes     = false;
     bool export_b64     = false;
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/infinit_plate.xml");
-    //std::string fn("pde/circle.xml");
-    //std::string fn("surfaces/cylinder.xml");
+    //std::string fn("pde/infinit_plate.xml");
+    std::string fn("pde/circle.xml");
+    //std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -548,11 +548,12 @@ int main(int argc, char *argv[])
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         geometryMap PPfLoc = A.getMap(PsiLoc);
         auto ff = A.getCoeff(f, PPfLoc);
+        // gsInfo << "Error_" << ev.integral((PP-grad(u_sol).tr()).sqNorm() ) << "...\n";
 
         // auto ff = A.getCoeff(f, GLeft, PP);
         // auto ffG = A.getCoeff(f, GLeft);
-        // gsInfo << "ff" << ev.integral(ff.val()) << "...\n";
-        // gsInfo << "ffG " << ev.integral(ffG.val()) << "...\n";
+        // gsInfo << "ff2" << ev.integral(ff.val()) << "...\n";
+        // gsInfo << "ff3 " << ev.integral(ffG.val()) << "...\n";
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -727,7 +728,7 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
-        //collection.options().setInt("numPoints", 10000);
+        collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
         collection.addField(ff_TG, "density function");
         collection.addField(jac(PPF).det(), "Jacobian function");

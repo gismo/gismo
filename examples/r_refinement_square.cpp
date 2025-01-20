@@ -57,12 +57,12 @@ int main(int argc, char *argv[])
     bool plot           = false;
     index_t numRefine   = 3;// for local refinement:  0 means no local h-refinement
     index_t UnifRefine  = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
-    index_t DegElevate  = 2; // degree Elevation
+    index_t DegElevate  = 1; // degree Elevation
     index_t NumArMarEl  = 1; // Number of ring of cells around marked elements
     index_t maxIter     = 30;
     double eps          = 1e-5; // pinalization coefficient
     double tolPicard    = 1e-8;
-    double IntensityMAE = 10.;
+    double IntensityMAE = 6.;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
     double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     bool ErrorPrint      = true, export_b64 =false;
@@ -437,6 +437,7 @@ int main(int argc, char *argv[])
 
         gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
         //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
+        auto ff         = A.getCoeff(f, PP);
 
         ru.setup(bc, dirichlet::l2Projection, 0);
 
@@ -492,6 +493,9 @@ int main(int argc, char *argv[])
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
         ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+        if(IntensityMAE > 1.)
+            ev.integralElWise( ff );
+
         const std::vector<real_t> eltErrs  = ev.elementwise();
         //! [errorComputation]
 

@@ -101,34 +101,50 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n1,n2);
+            s_tilde = b.reshape(n2,n1);
+            //gsInfo <<"solv"<< b.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
             s_tilde = t_Us[1] * s_tilde *Us[0];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
-                    s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+                    s_tilde(i2, i1) = s_tilde(i2, i1) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
                 }
             }
             s_tilde = Us[1] * s_tilde * t_Us[0];
             s_tilde = s_tilde.reshape(n1*n2, 1);
             return s_tilde;
         } else {
+            // TODO
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
-            index_t n3 = ds[3].rows();
+            index_t n3 = ds[2].rows();
 
-            s_tilde = b.reshape(n1,n2*n3);
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = b.reshape(n3,n2*n1);
+            s_tilde = t_Us[2] * s_tilde;
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n1*n3,n2);
+            s_tilde = s_tilde * Us[1];
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n2*n3,n1);
+            s_tilde = s_tilde * Us[0];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
                     for (index_t i3 = 0; i3 < n3; ++i3) {
                         index_t k = i3 + i2 * n3;
-                        s_tilde(i1,k) = s_tilde(i1, k) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                        s_tilde(k,i1) = s_tilde(k,i1) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
                     }
                 }
             }            
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n3,n2*n1);
+            s_tilde = Us[2] * s_tilde;
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n1*n3,n2);
+            s_tilde = s_tilde * t_Us[1];
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n2*n3,n1);
+            s_tilde = s_tilde * t_Us[0];
             s_tilde = s_tilde.reshape(n1*n2*n3, 1);
             return s_tilde;
         }
@@ -141,18 +157,19 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n1,n2);
+            s_tilde = b.reshape(n2,n1);
             s_tilde = t_Us[1] * s_tilde *Us[0];
 
             s_tilde = Us[1] * s_tilde * t_Us[0];
             s_tilde = s_tilde.reshape(n1*n2, 1);
             return s_tilde;
         } else{
+            // TODO
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
             index_t n3 = ds[3].rows();
 
-            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = b.reshape(n3,n2*n1);
             s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
 
             s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
@@ -168,6 +185,7 @@ public:
         // other = true : the surface is in 3D, set _rdim to 3.
         r_tilde = b;
         if(other){
+            // TODO :  mybe need kron after all
             // This is for composing surface mapping in 3D that has 3 component and square mapping
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
@@ -175,29 +193,29 @@ public:
             // three components
             r_tilde = r_tilde.reshape(n1*n2*n3,3);
             //// ...step 1: reshape first component *****
-            s_tilde = r_tilde.col(0);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: first component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(0) = s_tilde.reshape(n1*n2*n3,1);
-            //// ...step 1: reshape second component *****
-            s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: second component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(1) = s_tilde.reshape(n1*n2*n3,1);
-            //// ...step 1: reshape third component *****
-            s_tilde = r_tilde.col(2);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: third component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(2) = s_tilde.reshape(n1*n2*n3,1);
+            for (index_t i = 0; i<2; ++i){
+                s_tilde = r_tilde.col(i);
+                // step 2: first component            
+                s_tilde = s_tilde.reshape(n3,n2*n1);
+                s_tilde = t_Us[2] * s_tilde;
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n1*n3,n2);
+                s_tilde = s_tilde * Us[1];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n2*n3,n1);
+                s_tilde = s_tilde * Us[0];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n3,n2*n1);
+                s_tilde = Us[2] * s_tilde;
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n1*n3,n2);
+                s_tilde = s_tilde * t_Us[1];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n2*n3,n1);
+                s_tilde = s_tilde * t_Us[0];
+                // step 4: reshape
+                r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
+            }
             //... result
             r_tilde.reshape(3*n1*n2*n3, 1);
             return r_tilde;
@@ -210,7 +228,8 @@ public:
             r_tilde.reshape(n1*n2,2);
             //// ...step 1: reshape first component *****
             s_tilde = r_tilde.col(0);
-            s_tilde = s_tilde.reshape(n1,n2);
+            //gsInfo << s_tilde.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
+            s_tilde = s_tilde.reshape(n2,n1);
             // step 2: first component            
             s_tilde = t_Us[1] * s_tilde * Us[0];
             s_tilde = Us[1]   * s_tilde * t_Us[0];
@@ -218,7 +237,7 @@ public:
             r_tilde.col(0) = s_tilde.reshape(n1*n2,1);
             //// ...step 1: reshape second component *****
             s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n1,n2);
+            s_tilde = s_tilde.reshape(n2,n1);
             // step 2: first component            
             s_tilde = t_Us[1] * s_tilde * Us[0];
             s_tilde = Us[1]   * s_tilde * t_Us[0];
@@ -234,29 +253,29 @@ public:
             // two components
             r_tilde = r_tilde.reshape(n1*n2*n3,3);
             //// ...step 1: reshape first component *****
-            s_tilde = r_tilde.col(0);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: first component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(0) = s_tilde.reshape(n1*n2*n3,1);
-            //// ...step 1: reshape second component *****
-            s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: second component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(1) = s_tilde.reshape(n1*n2*n3,1);
-            //// ...step 1: reshape third component *****
-            s_tilde = r_tilde.col(2);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: third component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(2) = s_tilde.reshape(n1*n2*n3,1);
+            for (index_t i = 0; i<2; ++i){
+                s_tilde = r_tilde.col(i);
+                // step 2: first component            
+                s_tilde = s_tilde.reshape(n3,n2*n1);
+                s_tilde = t_Us[2] * s_tilde;
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n1*n3,n2);
+                s_tilde = s_tilde * Us[1];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n2*n3,n1);
+                s_tilde = s_tilde * Us[0];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n3,n2*n1);
+                s_tilde = Us[2] * s_tilde;
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n1*n3,n2);
+                s_tilde = s_tilde * t_Us[1];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n2*n3,n1);
+                s_tilde = s_tilde * t_Us[0];
+                // step 4: reshape
+                r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
+            }
             //... result
             r_tilde.reshape(3*n1*n2*n3, 1);
         }
@@ -275,8 +294,8 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
     {
         // test if the boundary interface is not an inner interface between patches
-        auto lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]);
-        auto hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(0) ).array()[0]);
+        auto lVal = 0.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]);
+        auto hVal = 1.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(0) ).array()[0]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
         {
             Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = lVal;
@@ -287,8 +306,8 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
         Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = hVal;
         }
 
-        lVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(0) ).array()[1]);
-        hVal = int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(0) ).array()[1]);
+        lVal = 0.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(0) ).array()[1]);
+        hVal = 1.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(0) ).array()[1]);
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
         {
         Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = lVal;
@@ -309,9 +328,9 @@ int main(int argc, char *argv[])
     index_t DegElevate  = 2; // degree Elevation
     index_t NumArMarEl  = 1; // Number of ring of cells around marked elements
     index_t maxIter     = 50;
-    double eps          = 1e-7; // pinalization coefficient
+    double eps          = 1e-5; // pinalization coefficient
     double tolPicard    = 1e-8;
-    double IntensityMAE = 10.;
+    double IntensityMAE = 6.;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
     double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     bool ErrorPrint     = true, export_b64 =false;
@@ -391,7 +410,7 @@ int main(int argc, char *argv[])
     // Define  Dirichlet boundary conditions
     gsFunctionExpr<> Dg("if( y <= 0.2*(1.-x), 1,0)", 2);
     // Manufactured solition
-    gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.001))",2);
+    gsFunctionExpr<> s("if( y <1., 1./(1.+exp((y - x  - 0.2)/0.0001))-1/(1.+exp((1.-x)/0.0001)),0)",2);
     // convection coefficient:
     gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
     // diffusion coefficient:
@@ -720,7 +739,10 @@ int main(int argc, char *argv[])
         // --------------- error estimation/computation ---------------
         // for test :ev.integralElWise( ( ilapl(ru_sol, PP) + SFunc ).sqNorm()*meas(PP) );
         // Get the element-wise norms.
-        ev.integralElWise( ( coeff_diffPP * ilapl(ru_sol,PP) - igrad(ru_sol, PP)*coeff_convPP - coeff_reacPP * ru_sol + SFunc).sqNorm() );
+        ev.integralElWise( ( coeff_diffPP * ilapl(ru_sol,PP) - igrad(ru_sol, PP)[0]*0.7071067811865476- igrad(ru_sol, PP)[1]*0.7071067811865476 - coeff_reacPP * ru_sol + SFunc).sqNorm() );
+        if(IntensityMAE > 1.)
+            ev.integralElWise( rho );
+
         const std::vector<real_t> eltErrs  = ev.elementwise();
         //! [errorComputation]
 
