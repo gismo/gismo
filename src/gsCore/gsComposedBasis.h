@@ -79,6 +79,18 @@ public:
     gsComposedBasis(typename CompositionT::Ptr composition,
                     typename BasisT::Ptr basis);
 
+    /**
+     *  @brief Copy constructor
+     *  @note  Clones the basis, but copies the pointer to the composition
+     */
+    gsComposedBasis(const gsComposedBasis<T> & other);
+
+    /**
+     *  @brief Assignment operator
+     *  @note  Clones the basis, but copies the pointer to the composition
+     */
+    gsComposedBasis<T> & operator=(const gsComposedBasis<T> & other);
+
     /// See \ref gsBasis for documentation
     short_t domainDim() const override;
     /// See \ref gsBasis for documentation
@@ -191,8 +203,12 @@ public:
     /// See \ref gsBasis for documentation
     void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir=-1) override;
 
-    // See \ref gsBasis for documentation
+    /// See \ref gsBasis for documentation
     void degreeElevate(short_t const & i = 1, short_t const dir = -1) override;
+
+    /// See \ref gsBasis for documentation
+    virtual short_t minDegree() const override {return m_basis->minDegree();}
+
 
     /**
      *  @brief Maps a \a mesh from the parametric domain to the composed domain
