@@ -68,24 +68,24 @@ m_basis(basis)
         " and composition.targetDim() = )"<<m_composition->targetDim());
 }
 
-// template <class T>
-// gsComposedBasis<T>::gsComposedBasis(const gsComposedBasis<T> & other)
-// :
-// m_composition(other.m_composition->clone()),
-// m_basis(other.m_basis->clone())
-// {
-// }
+template <class T>
+gsComposedBasis<T>::gsComposedBasis(const gsComposedBasis<T> & other)
+:
+m_composition(other.m_composition),
+m_basis(other.m_basis->clone())
+{
+}
 
-// template <class T>
-// gsComposedBasis<T> & gsComposedBasis<T>::operator=(const gsComposedBasis<T> & other)
-// {
-//     if (this != &other)
-//     {
-//         m_composition = other.m_composition->clone();
-//         m_basis = other.m_basis->clone();
-//     }
-//     return *this;
-// }
+template <class T>
+gsComposedBasis<T> & gsComposedBasis<T>::operator=(const gsComposedBasis<T> & other)
+{
+    if (this != &other)
+    {
+        m_composition = other.m_composition;
+        m_basis = other.m_basis->clone();
+    }
+    return *this;
+}
 
 template <class T>
 short_t gsComposedBasis<T>::domainDim() const
@@ -451,12 +451,12 @@ template <class T>
 std::ostream & gsComposedBasis<T>::print(std::ostream &os) const
 {
     os <<"Composite basis:\n";
-    os << "* Composition "
-        << " ( R^" << m_composition->domainDim() << " --> R^" << m_composition->targetDim() << "):\n"
-        << m_composition<<"\n";
-    os << "* Basis "
-        << " ( R^" << m_basis->domainDim() << " --> R^" << m_basis->targetDim() << "):\n"
-        << m_basis<<"\n";
+    os << "* Composition"
+        << " ( R^" << m_composition->domainDim() << " --> R^" << m_composition->targetDim() << ") at "<<m_composition<<":\n"
+        << *m_composition<<"\n";
+    os << "* Basis"
+        << " ( R^" << m_basis->domainDim() << " --> R^" << m_basis->targetDim() << ") at "<<m_basis<<":\n"
+        << *m_basis<<"\n";
     return os;
 }
 
