@@ -98,34 +98,50 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n1,n2);
+            s_tilde = b.reshape(n2,n1);
+            //gsInfo <<"solv"<< b.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
             s_tilde = t_Us[1] * s_tilde *Us[0];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
-                    s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+                    s_tilde(i2, i1) = s_tilde(i2, i1) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
                 }
             }
             s_tilde = Us[1] * s_tilde * t_Us[0];
             s_tilde = s_tilde.reshape(n1*n2, 1);
             return s_tilde;
         } else {
+            // TODO
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
-            index_t n3 = ds[3].rows();
+            index_t n3 = ds[2].rows();
 
-            s_tilde = b.reshape(n1,n2*n3);
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
+            s_tilde = b.reshape(n3,n2*n1);
+            s_tilde = t_Us[2] * s_tilde;
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n1*n3,n2);
+            s_tilde = s_tilde * Us[1];
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n2*n3,n1);
+            s_tilde = s_tilde * Us[0];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
                     for (index_t i3 = 0; i3 < n3; ++i3) {
                         index_t k = i3 + i2 * n3;
-                        s_tilde(i1,k) = s_tilde(i1, k) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                        s_tilde(k,i1) = s_tilde(k,i1) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
                     }
                 }
             }            
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n3,n2*n1);
+            s_tilde = Us[2] * s_tilde;
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n1*n3,n2);
+            s_tilde = s_tilde * t_Us[1];
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n2*n3,n1);
+            s_tilde = s_tilde * t_Us[0];
             s_tilde = s_tilde.reshape(n1*n2*n3, 1);
             return s_tilde;
         }
@@ -138,18 +154,19 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n1,n2);
+            s_tilde = b.reshape(n2,n1);
             s_tilde = t_Us[1] * s_tilde *Us[0];
 
             s_tilde = Us[1] * s_tilde * t_Us[0];
             s_tilde = s_tilde.reshape(n1*n2, 1);
             return s_tilde;
         } else{
+            // TODO
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
             index_t n3 = ds[3].rows();
 
-            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = b.reshape(n3,n2*n1);
             s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
 
             s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
@@ -165,6 +182,7 @@ public:
         // other = true : the surface is in 3D, set _rdim to 3.
         r_tilde = b;
         if(other){
+            // TODO :  mybe need kron after all
             // This is for composing surface mapping in 3D that has 3 component and square mapping
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
@@ -172,29 +190,29 @@ public:
             // three components
             r_tilde = r_tilde.reshape(n1*n2*n3,3);
             //// ...step 1: reshape first component *****
-            s_tilde = r_tilde.col(0);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: first component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(0) = s_tilde.reshape(n1*n2*n3,1);
-            //// ...step 1: reshape second component *****
-            s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: second component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(1) = s_tilde.reshape(n1*n2*n3,1);
-            //// ...step 1: reshape third component *****
-            s_tilde = r_tilde.col(2);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: third component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(2) = s_tilde.reshape(n1*n2*n3,1);
+            for (index_t i = 0; i<2; ++i){
+                s_tilde = r_tilde.col(i);
+                // step 2: first component            
+                s_tilde = s_tilde.reshape(n3,n2*n1);
+                s_tilde = t_Us[2] * s_tilde;
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n1*n3,n2);
+                s_tilde = s_tilde * Us[1];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n2*n3,n1);
+                s_tilde = s_tilde * Us[0];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n3,n2*n1);
+                s_tilde = Us[2] * s_tilde;
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n1*n3,n2);
+                s_tilde = s_tilde * t_Us[1];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n2*n3,n1);
+                s_tilde = s_tilde * t_Us[0];
+                // step 4: reshape
+                r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
+            }
             //... result
             r_tilde.reshape(3*n1*n2*n3, 1);
             return r_tilde;
@@ -207,7 +225,8 @@ public:
             r_tilde.reshape(n1*n2,2);
             //// ...step 1: reshape first component *****
             s_tilde = r_tilde.col(0);
-            s_tilde = s_tilde.reshape(n1,n2);
+            gsInfo << s_tilde.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
+            s_tilde = s_tilde.reshape(n2,n1);
             // step 2: first component            
             s_tilde = t_Us[1] * s_tilde * Us[0];
             s_tilde = Us[1]   * s_tilde * t_Us[0];
@@ -215,7 +234,7 @@ public:
             r_tilde.col(0) = s_tilde.reshape(n1*n2,1);
             //// ...step 1: reshape second component *****
             s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n1,n2);
+            s_tilde = s_tilde.reshape(n2,n1);
             // step 2: first component            
             s_tilde = t_Us[1] * s_tilde * Us[0];
             s_tilde = Us[1]   * s_tilde * t_Us[0];
@@ -231,29 +250,29 @@ public:
             // two components
             r_tilde = r_tilde.reshape(n1*n2*n3,3);
             //// ...step 1: reshape first component *****
-            s_tilde = r_tilde.col(0);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: first component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(0) = s_tilde.reshape(n1*n2*n3,1);
-            //// ...step 1: reshape second component *****
-            s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: second component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(1) = s_tilde.reshape(n1*n2*n3,1);
-            //// ...step 1: reshape third component *****
-            s_tilde = r_tilde.col(2);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            // step 2: third component            
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
-            // step 4: reshape
-            r_tilde.col(2) = s_tilde.reshape(n1*n2*n3,1);
+            for (index_t i = 0; i<2; ++i){
+                s_tilde = r_tilde.col(i);
+                // step 2: first component            
+                s_tilde = s_tilde.reshape(n3,n2*n1);
+                s_tilde = t_Us[2] * s_tilde;
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n1*n3,n2);
+                s_tilde = s_tilde * Us[1];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n2*n3,n1);
+                s_tilde = s_tilde * Us[0];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n3,n2*n1);
+                s_tilde = Us[2] * s_tilde;
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n1*n3,n2);
+                s_tilde = s_tilde * t_Us[1];
+                s_tilde = s_tilde.reshape(n3*n2*n1,1);
+                s_tilde = s_tilde.reshape(n2*n3,n1);
+                s_tilde = s_tilde * t_Us[0];
+                // step 4: reshape
+                r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
+            }
             //... result
             r_tilde.reshape(3*n1*n2*n3, 1);
         }
@@ -313,8 +332,9 @@ int main(int argc, char *argv[])
     bool export_b64     = false;
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/infinit_plate.xml");
-    std::string fn("pde/circle.xml");
+    std::string fn("pde/infinit_plate.xml");
+    //std::string fn("pde/circle.xml");
+    //std::string fn("surfaces/cylinder.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -516,20 +536,20 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        // geometryMap PPLoc = A.getMap(PsiLoc);
-        // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        // auto  comp = PPLoc(mpLeft);
-        // A.initSystem(ITdim);
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
-        // //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        // v_sol.extract(PsiLoc);
-        // //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        // geometryMap PPfLoc = A.getMap(PsiLoc);
-        // auto ff = A.getCoeff(f, PPfLoc);
+        geometryMap PPLoc = A.getMap(PsiLoc);
+        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        auto  comp = PPLoc(mpLeft);
+        A.initSystem(ITdim);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        v_sol.extract(PsiLoc);
+        //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
+        geometryMap PPfLoc = A.getMap(PsiLoc);
+        auto ff = A.getCoeff(f, PPfLoc);
 
-        auto ff = A.getCoeff(f, GLeft, PP);
+        // auto ff = A.getCoeff(f, GLeft, PP);
         // auto ffG = A.getCoeff(f, GLeft);
         // gsInfo << "ff" << ev.integral(ff.val()) << "...\n";
         // gsInfo << "ffG " << ev.integral(ffG.val()) << "...\n";
@@ -647,6 +667,8 @@ int main(int argc, char *argv[])
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         // Psi.addAutoBoundaries();
         geometryMap PP = A.getMap(Psitp);
+        gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
+
         auto  comp = PP(mpLeft);
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
