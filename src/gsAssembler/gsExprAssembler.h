@@ -168,7 +168,7 @@ public:
 
     const gsMultiPatch<T>& getGeometryMap() const
     {
-        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap); 
+        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap);
     }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
@@ -792,16 +792,17 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
+    opt.addSwitch("SameElement","Activates optimization if all quadrature points are located in the same element", true);
     return opt;
 
     /// dirichlet treatment? elimination ????
 
     //storage of quadrature points, TP, ... non-linear assembly.
-    
+
     //gsExpressions.h -> split ?
 
     //parallel interface assembly..
-    
+
     // mpi assemly. ???
 }
 
@@ -1091,7 +1092,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 #   endif
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     // check if matrix is modified
@@ -1183,7 +1184,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 // #   endif
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
@@ -1295,7 +1296,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
+    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
 
     typename gsQuadRule<T>::uPtr QuRule;
 
@@ -1374,7 +1375,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 #   endif
 
     m_exprdata->parse(residual, u);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
@@ -1431,7 +1432,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
     // clearMatrix();
 
     m_exprdata->parse(residual, u);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
