@@ -53,6 +53,7 @@ void solve( gsMultiPatch<T> & mp,
             index_t & verbose,
             bool & random,
             index_t & projection_Crs,
+            index_t & pattern,
             std::string out)
 {
 
@@ -117,9 +118,12 @@ void solve( gsMultiPatch<T> & mp,
     }
 
     if (random)
-        out = out + "_random_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive"));
+        if(pattern==0)
+            out = out + "_random_nuc_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive")) + "_refIt_" + std::to_string(MESHopt.askInt("RefIt"));
+        else
+            out = out + "_random_spin_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive"))+ "_refIt_" + std::to_string(MESHopt.askInt("RefIt"));
     else
-        out = out + "_analytical_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive"));
+        out = out + "_analytical_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive")) + "_refIt_" + std::to_string(MESHopt.askInt("RefIt"));
 
     //! [Prepare the basis]
 
@@ -147,7 +151,7 @@ void solve( gsMultiPatch<T> & mp,
     // basis.init(dbasis, cf);
 
     // Solution vector and solution variable
-    gsMatrix<> Cnew, Calpha, Cold;
+    gsMatrix<> Cnew, Calpha, Cold, Cold1;
     gsMatrix<> dCnew,dCalpha,dCold, dCupdate;
 
     // Solution variables for the intermediate solutions (during time integration)
@@ -205,16 +209,35 @@ void solve( gsMultiPatch<T> & mp,
     // dC
 
     gsInfo<<"Starting.."<<"\n";
-    GISMO_ASSERT(projection_Crs<=1,"Projection method not implemented, index should be 0 (L2) or 1 (Local QI) for coarsening, but is "<<projection_Crs);
+    GISMO_ASSERT(projection_Crs<=2,"Projection method not implemented, index should be 0 (L2) or 1 (Local QI) for coarsening, but is "<<projection_Crs);
 
     gsInfo<<"Initial condition.."<<"\n";
 
     if (random)
     {
-        // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
-        gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-        Cold = tmp.array()*CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
-        Cold.array() += CHopt.askReal("mean",0.0); // 0.45
+        // // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
+        // gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
+        // Cold = tmp.array()*CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
+        // Cold.array() += CHopt.askReal("mean",0.0); // 0.45
+    
+        // // %%%%%%%%%%%%%%%%%%%%%%%% XML initial condition %%%%%%%%%%%%%%%%%%%%%%%%
+        gsFileData<> fd1;
+        std::string file_name;
+        if (pattern==0) // nucleation
+            file_name = "/Users/lucasventavinuela/gismo/build/new.xml";
+        else
+            file_name = "/Users/lucasventavinuela/gismo/build/new_spin.xml";
+        
+        fd1.read(file_name);
+
+        gsMultiBasis<> dbasis_IC;
+        gsMatrix<> Coefs;
+
+        fd1.getId(0,dbasis_IC);
+        fd1.getId(1,Coefs);
+
+        gsGeometry<>::uPtr IC_function = dbasis_IC.basis(0).makeGeometry(give(Coefs));
+        gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*IC_function,Cold);
     }
     else
     {
@@ -634,7 +657,7 @@ void solve( gsMultiPatch<T> & mp,
     gsInfo<<"[CLOCK] --- Number of solves: "<<nSolves<<"\n";
 
     csvFile.close();
-    std::cout << "Data saved to" + out + ".csv"<< std::endl;
+    std::cout << "Data saved to " + out + ".csv"<< std::endl;
 }
 
 
@@ -652,6 +675,7 @@ int main(int argc, char *argv[])
     index_t verbose = 1;
     bool random = false;
     index_t projection_Crs = 0;
+    index_t pattern = 0; // 0 for nucleation 1 for spinoidal decomposition
     std::string out("output");
     std::string fn("pde/cahn_hilliard_bvp.xml");
 
@@ -668,6 +692,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("ploterror", "Create a ParaView visualization file with the projection errors", plot_error);
     cmd.addSwitch("random", "Random initial condition of the CH problem", random);
     cmd.addInt("c", "projcoars", "Projection method for coarsening", projection_Crs);
+    cmd.addInt("s", "pattern", "Phase separation pattern", pattern);
     cmd.addString( "o", "output", "Output directory", out);
 
 
@@ -709,9 +734,9 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     if (mp.geoDim()==2)
-        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs,out);
+        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs, pattern, out);
     else if (mp.geoDim()==3)
-        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs,out);
+        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs, pattern, out);
     else
         GISMO_ERROR("Only 2D and 3D problems are supported.");
 
