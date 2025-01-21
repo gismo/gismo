@@ -92,8 +92,43 @@ public:
             mat.innerIndexPtr() + oind + mat.innerNonZeroPtr()[outer];
     }
 
+    static gsSparseMatrixIter end(const SparseMatrix& mat, const _Index outer)
+    {
+        gsSparseMatrixIter o(mat,outer);
+        o.m_values += o.m_end - o.m_indices;
+        o.m_indices = o.m_end;
+        return o;
+    }
+
     inline gsSparseMatrixIter& operator++()
     { ++m_values; ++m_indices; return *this; }
+
+    inline gsSparseMatrixIter& operator+=(size_t a)
+    { m_values+=a; m_indices+=a; return *this; }
+
+    inline gsSparseMatrixIter& operator+(size_t a)
+    {
+        gsSparseMatrixIter tmp(*this);
+        return tmp+=a;
+    }
+
+    inline gsSparseMatrixIter& operator--()
+    { --m_values; --m_indices; return *this; }
+
+    inline gsSparseMatrixIter& operator-=(index_t a)
+    { m_values-=a; m_indices-=a; return *this; }
+
+    inline gsSparseMatrixIter& operator-(size_t a)
+    {
+        gsSparseMatrixIter tmp(*this);
+        return tmp-=a;
+    }
+
+    inline const T& operator[](size_t i) const
+    { return *(m_values+i); }
+
+    inline T& operator[](size_t i)
+    { return const_cast<T&>(*(m_values+i)); }
 
     inline const T& value() const { return *m_values; }
     inline T& valueRef() { return const_cast<T&>(*m_values); }
