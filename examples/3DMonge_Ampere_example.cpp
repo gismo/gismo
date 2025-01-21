@@ -98,16 +98,16 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n1,n2);
+            s_tilde = b.reshape(n2,n1);
             //gsInfo <<"solv"<< b.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
-            s_tilde = (s_tilde*Us[1]).transpose() *Us[0];
+            s_tilde = t_Us[1] * s_tilde *Us[0];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
-                    s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+                    s_tilde(i2, i1) = s_tilde(i2, i1) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
                 }
             }
-            s_tilde = Us[1] * (Us[0]*s_tilde).transpose();
+            s_tilde = Us[1] * s_tilde * t_Us[0];
             s_tilde = s_tilde.reshape(n1*n2, 1);
             return s_tilde;
         } else {
@@ -116,14 +116,14 @@ public:
             index_t n2 = ds[1].rows();
             index_t n3 = ds[2].rows();
 
-            s_tilde = b.reshape(n1*n2,n3);
-            s_tilde = (s_tilde * Us[2]).transpose();
-            s_tilde = s_tilde.reshape(n1*n2*n3,1);
-            s_tilde = s_tilde.reshape(n1*n2,n3);
+            s_tilde = b.reshape(n3,n2*n1);
+            s_tilde = t_Us[2] * s_tilde;
+            s_tilde = s_tilde.reshape(n3*n2*n1,1);
+            s_tilde = s_tilde.reshape(n1*n3,n2);
             s_tilde = s_tilde * Us[1];
             s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            s_tilde = s_tilde.transpose() * Us[0];
+            s_tilde = s_tilde.reshape(n2*n3,n1);
+            s_tilde = s_tilde * Us[0];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
@@ -149,16 +149,17 @@ public:
     }
     // Computes the L2-projection of a function using ∫(funct * v) as input,
     // where funct is the input function, and v is the test function.
-    // (A\otimesB)x = vec(BXA^T)
     gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const {
         if(_rdim == 2){
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n1,n2);
-            s_tilde = (s_tilde*Us[1]).transpose() *Us[0];
-            s_tilde = Us[1] * (Us[0]*s_tilde).transpose();
+            s_tilde = b.reshape(n2,n1);
+            s_tilde = t_Us[1] * s_tilde *Us[0];
+
+            s_tilde = Us[1] * s_tilde * t_Us[0];
             s_tilde = s_tilde.reshape(n1*n2, 1);
+            return s_tilde;
         } else{
             // TODO
             index_t n1 = ds[0].rows();
@@ -225,18 +226,18 @@ public:
             //// ...step 1: reshape first component *****
             s_tilde = r_tilde.col(0);
             //gsInfo << s_tilde.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
-            s_tilde = s_tilde.reshape(n1,n2);
-            // step 2: first component
-            s_tilde = (s_tilde*Us[1]).transpose() *Us[0];
-            s_tilde = Us[1] * (Us[0]*s_tilde).transpose();
+            s_tilde = s_tilde.reshape(n2,n1);
+            // step 2: first component            
+            s_tilde = t_Us[1] * s_tilde * Us[0];
+            s_tilde = Us[1]   * s_tilde * t_Us[0];
             // step 4: reshape
             r_tilde.col(0) = s_tilde.reshape(n1*n2,1);
             //// ...step 1: reshape second component *****
             s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n1,n2);
+            s_tilde = s_tilde.reshape(n2,n1);
             // step 2: first component            
-            s_tilde = (s_tilde*Us[1]).transpose() *Us[0];
-            s_tilde = Us[1] * (Us[0]*s_tilde).transpose();
+            s_tilde = t_Us[1] * s_tilde * Us[0];
+            s_tilde = Us[1]   * s_tilde * t_Us[0];
             // step 4: reshape
             r_tilde.col(1) = s_tilde.reshape(n1*n2,1);
             r_tilde.reshape(2*n1*n2,1);
@@ -320,20 +321,19 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot           = false;
-    index_t numRefine   = 3;
-    index_t numLRefine  = 3;
-    index_t numElevate  = 1;
-    index_t maxIter     = 50;
+    index_t numRefine   = 2;
+    index_t numLRefine  = 2;
+    index_t numElevate  = 0;
+    index_t maxIter     = 30;
     double eps          = 1e-6; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 6.;
     bool plotMAeRes     = false;
     bool export_b64     = false;
     // Specify the file path
-    //std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/infinit_plate.xml");
-    std::string fn("pde/circle.xml");
-    //std::string fn("domain2d/lake.xml");
+    //std::string fn("volumes/GshapedVolume.xml");
+    std::string fn("volumes/cylinder.xml");
+
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; // = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    gsMultiPatch<> mpLeft; 
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -363,8 +363,7 @@ int main(int argc, char *argv[])
     mpLeft.computeTopology();
 
     // .... one single patch
-    //gsInfo << "INFO IN PARAMETRIC DOMAIN "<< mpLeft.dim() << mpLeft.parDim() <<"\n";
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
     //Get all interfaces and boundaries:
     mp.degreeElevate(numElevate);
     mp.computeTopology();
@@ -372,7 +371,7 @@ int main(int argc, char *argv[])
 
     //..... Test 2
     // Manufactured identity mapping
-    gsFunctionExpr<> sN("x","y",2);
+    gsFunctionExpr<> sN("x","y","z",3);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
     // Load the file
     gsFunctionExpr<> f;
@@ -496,14 +495,13 @@ int main(int argc, char *argv[])
     gsInfo<< "." <<std::flush;// Assemblying done
     solVector = A.rhs();
     timer.restart();
-    solVector = Poisson.solve(A.rhs());
+    //solVector = Poisson.solve(A.rhs());
 
-    // solver.compute( A.matrix() );
-    // solVector = solver.solve(A.rhs());
+    solver.compute( A.matrix() );
+    solVector = solver.solve(A.rhs());
     slv_time += timer.stop();
 
-    gsInfo<< "." << solVector.size() <<std::flush; // Linear solving done
-    gsInfo << "evaluate integral " << ev.integral(u_sol.val()) << "\n";
+    gsInfo<< "." <<std::flush; // Linear solving done
 
     // Picard loop
     index_t NiterPicard{0};
@@ -520,12 +518,16 @@ int main(int argc, char *argv[])
         space v = A.getSpace(dbasis);
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
-        A.initSystem(2);
+        A.initSystem(IGdim);
+        gsInfo<< "+" <<std::flush; // 
 
         // Obtain control points for the gradient of Psi
-        A.assemble( v * v.tr() , v * igrad(u_s,G) );
+        A.assemble( v * v.tr() , v * grad(u_s) );
+        gsInfo<< "+" <<std::flush; // 
         //gsInfo <<"rhs vec = " << A.rhs().size() << "\n";
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        // vsolVector = Poisson.L2ProjectVec(A.rhs());
+        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        gsInfo<< "+" <<std::flush; // 
         
         gsMultiPatch<> Psi, PsiLoc;
         v_sol.extract(Psi);
@@ -542,8 +544,10 @@ int main(int argc, char *argv[])
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
-        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        gsInfo<< "+" <<std::flush; // 
+        //vsolVector = Poisson.L2ProjectVec(A.rhs());
+        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        gsInfo<< "+" <<std::flush; // 
         v_sol.extract(PsiLoc);
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         geometryMap PPfLoc = A.getMap(PsiLoc);
@@ -593,7 +597,9 @@ int main(int argc, char *argv[])
         gsInfo<< " ." <<std::flush;// Assemblying done
 
         timer.restart();
-        solVector = Poisson.solve(A.rhs());
+        //solVector = Poisson.solve(A.rhs());
+        solver.compute( A.matrix() );
+        solVector = solver.solve(A.rhs());
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done
@@ -659,26 +665,14 @@ int main(int argc, char *argv[])
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * igrad(u_s,G));
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        // vsolVector = Poisson.L2ProjectVec(A.rhs());
+        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+
         gsMultiPatch<> Psi, Psitp;
         v_sol.extract(Psitp);
         //... correct the boundary
         ProjectionNormalCPoints(Psitp);
 
-        for (index_t i = 0; i < 1; i++){
-            // Psi.addAutoBoundaries();
-            geometryMap PP = A.getMap(Psitp);
-            gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
-
-            auto  comp = PP(Psitp);
-            A.initSystem(ITdim);
-            //Obtain control points for the gradient of mpLeft.comp(Psi)
-            A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-            vsolVector = Poisson.L2ProjectVec(A.rhs());
-            v_sol.extract(Psitp);
-            Psitp.addAutoBoundaries();
-            Psitp.computeTopology();
-        }
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         // Psi.addAutoBoundaries();
         geometryMap PP = A.getMap(Psitp);
@@ -688,14 +682,16 @@ int main(int argc, char *argv[])
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        // vsolVector = Poisson.L2ProjectVec(A.rhs());
+
         v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
         Psitp.computeTopology();
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
 
         for(size_t i =0; i<Psitp.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
+            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(Psitp.patch(i)) ));
         Psi.addAutoBoundaries();
         Psi.computeTopology();
 

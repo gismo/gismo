@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 24.8.0-->
 <xml>
+  <!--3D Manufactured density function : Right-hand side function of MAE : -->
+  <Function type="FunctionExpr" id="2003" dim="3">1.+4./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2+(z-0.5)**2)))</Function>
+  
  <Geometry type="TensorBSpline3" id="0">
     <Basis type="TensorBSplineBasis3">
     <Basis type="BSplineBasis" index="0">
@@ -97,6 +101,15 @@
     0.492 0.505 1.0
 </coefs>
  </Geometry>
+  <MultiPatch parDim="3" id="1">
+  <patches type="id_range">0 0</patches>
+  <boundary>0 1
+   0 2
+   0 3
+   0 4
+   0 5
+   0 6
+  </boundary>
+ </MultiPatch>
 </xml>
-
  
