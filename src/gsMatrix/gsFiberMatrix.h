@@ -29,7 +29,7 @@ namespace gismo
 template <class T, int Major = ColMajor> // RowMajor==0, ColMajor==1
 class gsFiberMatrix
 {
-    bool IsRowMajor = (Major==RowMajor);
+    static bool IsRowMajor = (Major==RowMajor);
 public:
     typedef gsEigen::SparseVector<T> Fiber;
 
