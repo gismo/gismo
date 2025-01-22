@@ -290,6 +290,10 @@ public:
     /// column \ a outer (or row \a outer if the matrix is RowMajor)
     inline iterator begin(const index_t outer) const { return iterator(*this,outer);}
 
+    /// \brief Returns an iterator to the  end position of
+    /// column \ a outer (or row \a outer if the matrix is RowMajor)
+    inline iterator end(const index_t outer) const { return iterator::end(*this,outer);}
+
     void clear()
     {
         this->resize(0,0);

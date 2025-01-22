@@ -38,7 +38,7 @@ private:
     gsOptionList m_options;
 
     mutable gsSparseMatrix<T> m_matrix;
-    typedef gsFiberMatrix<T,false> FiberMatrix;
+    typedef gsFiberMatrix<T,ColMajor> FiberMatrix;
     FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
