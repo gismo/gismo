@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     {
         std::vector<gsGeometry<>::uPtr> geo = fileData.getAll< gsGeometry<> >();
         // Put all geometries in mPatch
-        for (index_t g = 0; g < geo.size(); ++g)
+        for (index_t g = 0; g < (index_t)geo.size(); ++g)
         {
             mPatch.addPatch(give(*geo[g]));
         }
@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
     // Perturb each patch of the multi patch with random numbers
     // This simulates a deformation of the geometry that might 
     // be the result of a structural simulation
-    for (index_t p=0; p < mPatch.nPatches(); ++p)
+    for (index_t p=0; p < (index_t)mPatch.nPatches(); ++p)
     {
         mPatch.patch(p).coefs() +=  gsEigen::MatrixXd::Random(mPatch.patch(p).coefs().rows(), mPatch.patch(p).coefs().cols());
     }

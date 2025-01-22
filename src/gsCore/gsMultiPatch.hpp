@@ -878,9 +878,9 @@ T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
     gsVector<T> tmp;
 
 #ifndef _MSC_VER
-#   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
+#   pragma omp declare reduction(min : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
     struct __closestPointHelper cph;
-#   pragma omp parallel for default(shared) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
+#   pragma omp parallel for default(shared) private(tmp) reduction(min:cph) //OpenMP 4.0, will not work on VS2019
 #else
     struct __closestPointHelper cph;
 #endif

@@ -42,11 +42,13 @@
 | [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/gismo-ci%2Fgismo?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
 | [GitHub Actions](https://github.com/gismo/gismo/actions) | [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/gismo/gismo/gismo.yml?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[github]) | Latest Linux/MacOS/Windows |
 | [GitLab-Inria]() | [![Build Status](https://gitlab.inria.fr/gismo/gismo/badges/stable/pipeline.svg)](https://gitlab.inria.fr/gismo/gismo/-/pipelines) | CI at Inria |
+| [OpenSUSE](https://build.opensuse.org/package/show/science) | [![build result](https://build.opensuse.org/projects/science/packages/gismo/badge.svg?type=default)](https://build.opensuse.org/package/show/science/gismo)| Latest OpenSUSE build as part of the *science* repository|
 | GCC Farm | [Status](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
 | [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
 | [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
 
-This README file contains brief information. More details are found in
+
+This README file contains brief information. More details are found ina
 the [Wiki pages](https://github.com/gismo/gismo/wiki).
 
 The latest revision of the code can be obtained using git (via https):
