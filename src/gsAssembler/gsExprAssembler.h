@@ -168,7 +168,7 @@ public:
 
     const gsMultiPatch<T>& getGeometryMap() const
     {
-        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap); 
+        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap);
     }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
@@ -797,11 +797,11 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     /// dirichlet treatment? elimination ????
 
     //storage of quadrature points, TP, ... non-linear assembly.
-    
+
     //gsExpressions.h -> split ?
 
     //parallel interface assembly..
-    
+
     // mpi assemly. ???
 }
 
@@ -1137,7 +1137,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 continue;
 
 // Activate the try-catch only if G+Smo is in DEBUG
-#ifndef NDEBUG
+#ifdef NDEBUG
             // Perform required pre-computations on the quadrature nodes
             try
             {
