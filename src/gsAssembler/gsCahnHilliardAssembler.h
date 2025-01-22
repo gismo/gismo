@@ -87,21 +87,21 @@ public:
      * @param C The solution
      * @param DC The time-derivative of the solution
      */
-    void assembleJacobian(const gsMultiPatch<T> & C, const gsMultiPatch<T> & DC);
+    void assembleJacobian(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
 
     /**
      * @brief Assembles the residual
      * @param C The solution
      * @param DC The time-derivative of the solution
      */
-    void assembleResidual(const gsMultiPatch<T> & C, const gsMultiPatch<T> & DC);
+    void assembleResidual(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
 
     /**
      * @brief Assembles the Nitsche vector for boundary conditions separately
      * @param C The solution
      * @param DC The time-derivative of the solution
      */
-    void assembleNitscheVector(const gsMultiPatch<T> & C, const gsMultiPatch<T> & DC);
+    void assembleNitscheVector(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
 
     /**
      * @brief Assembles the Nitsche matrix for boundary conditions separately

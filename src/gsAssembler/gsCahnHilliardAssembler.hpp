@@ -145,7 +145,7 @@ void gsCahnHilliardAssembler<T>::initialize()
 }
 
 template <class T>
-void gsCahnHilliardAssembler<T>::assembleResidual(const gsMultiPatch<T> & C, const gsMultiPatch<T> & DC)
+void gsCahnHilliardAssembler<T>::assembleResidual(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
     // m_assembler.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
@@ -213,7 +213,7 @@ void gsCahnHilliardAssembler<T>::assembleMassMatrix()
 }
 
 template <class T>
-void gsCahnHilliardAssembler<T>::assembleJacobian(const gsMultiPatch<T> & C, const gsMultiPatch<T> & DC)
+void gsCahnHilliardAssembler<T>::assembleJacobian(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
 {
     GISMO_UNUSED(DC);
 
@@ -266,7 +266,7 @@ void gsCahnHilliardAssembler<T>::assembleJacobian(const gsMultiPatch<T> & C, con
 }
 
 template <class T>
-void gsCahnHilliardAssembler<T>::assembleNitscheVector(const gsMultiPatch<T> & C, const gsMultiPatch<T> & DC)
+void gsCahnHilliardAssembler<T>::assembleNitscheVector(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
 {
     GISMO_UNUSED(DC);
 

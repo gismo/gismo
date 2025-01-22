@@ -48,11 +48,8 @@ int main(int argc, char *argv[])
 
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 1;
-    index_t numElevate = 1;
 
     index_t verbose = 1;
-    bool random = false;
 
     /* TIME INTEGRATION OPTIONS */
     // Generalized-alpha method parameters
@@ -61,41 +58,51 @@ int main(int argc, char *argv[])
     /* NONLINEAR SOLVER OPTIONS */
     index_t maxIt = 50;
 
-
-
-
-    std::string fn("pde/cahn_hilliard_bvp.xml");
+    std::string fn, fn_g;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addReal( "t", "dt","dt parameter",dt); // -t () or --dt ()
     cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
     cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
     cmd.addInt ( "v", "verbose", "Verbosity level",  verbose );
-    cmd.addString( "f", "file", "Input XML file", fn );
+    cmd.addString( "f", "file", "Input XML file for the options", fn );
+    cmd.addString( "g", "geom", "Input XML file for the geometry", fn_g );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("random", "Random initial condition of the CH problem", random);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    //! [Read input file]
-    gsFileData<> fd(fn);
-    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+    GISMO_ENSURE(fn_g.empty()==false,"Geometry file not provided");
+    GISMO_ENSURE(fn.empty()==false,"Options file not provided");
+
+    // Get geometry
+    gsFileData<> fd_g(fn_g);
+    gsInfo << "Loaded file "<< fd_g.lastPath() <<"\n";
 
     gsMultiPatch<> mp;
-    fd.getId(0, mp); // id=0: Multipatch domain
+    gsMultiBasis<> mb;
+    gsSparseMatrix<> cf;
 
-    gsFunctionExpr<> source;
-    fd.getId(1, source); // id=1: initial condition function
-    gsInfo<<"Initial condition function "<< source << "\n";
+    fd_g.getFirst(mp);
+    gsInfo<<"Read geometry from file "<<fn_g<<"\n";
+    gsInfo<<mp<<"\n";
+    fd_g.getFirst(mb);
+    fd_g.getFirst(cf);
+    gsMappedBasis<2, real_t> mbasis;
+    mbasis.init(mb, cf);
 
-    gsBoundaryConditions<> bc;
-    fd.getId(2, bc); // id=2: boundary conditions
-    bc.setGeoMap(mp);
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+
+
+    // Get options
+    gsFileData<> fd(fn);
+    // gsFunctionExpr<> source;
+    // fd.getId(1, source); // id=1: initial condition function
+    // gsInfo<<"Initial condition function "<< source << "\n";
+
+    // gsBoundaryConditions<> bc;
+    // fd.getId(2, bc); // id=2: boundary conditions
+    // bc.setGeoMap(mp);
+    // gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     gsOptionList CHopt;
     fd.getId(3, CHopt); // id=3: reference solution
@@ -117,32 +124,31 @@ int main(int argc, char *argv[])
 
     gsOptionList Aopt;
     fd.getId(5, Aopt); // id=5: assembler options
-    //! [Read input file]
 
-    //! [Refinement]
-    gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
+    // Set boundary conditions:
+    gsBoundaryConditions<> bc;
+    bc.setGeoMap(mp);
+    // Set all BCs to homogeneous clamped
+    for ( gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+        bc.addCondition( *bit, condition_type::clamped,0);
 
-    // Elevate and p-refine the basis to order p + numElevate
-    // where p is the highest degree in the bases
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-
-    // h-refine each basis
-    for (int r =0; r < numRefine; ++r)
-        dbasis.uniformRefine();
-
-    gsCahnHilliardAssembler<real_t> assembler(mp, dbasis, bc);
+    // Define the assembler
+    gsCahnHilliardAssembler<real_t> assembler(mp, mb, bc);
+    assembler.setSpaceBasis(mbasis);
     assembler.options().setReal("Lambda",lambda);
     assembler.options().setReal("Penalty",penalty);
+    assembler.options().setInt("Continuity",0);
     assembler.options().setSwitch("AssembleWeakBCs",false);
     // assembler.options().setReal("M0",M0);
     assembler.initialize();
 
-    gsSparseMatrix<> K_nitsche, M;
-    if (bc.get("Weak Clamped").size()!=0 && !assembler.options().getSwitch("AssembleWeakBCs"))
-    {
-        assembler.assembleNitscheMatrix();
-        assembler.matrix_into(K_nitsche); // .matrix_into() moves the matrix A into K_nitsche (avoids having two matrices A and K_nitsche)
-    }
+    // gsSparseMatrix<> K_nitsche;
+    // if (bc.get("Weak Clamped").size()!=0 && !assembler.options().getSwitch("AssembleWeakBCs"))
+    // {
+    //     assembler.assembleNitscheMatrix();
+    //     assembler.matrix_into(K_nitsche); // .matrix_into() moves the matrix A into K_nitsche (avoids having two matrices A and K_nitsche)
+    // }
+    gsSparseMatrix<> M;
     assembler.assembleMassMatrix();
     assembler.matrix_into(M);
 
@@ -154,8 +160,8 @@ int main(int argc, char *argv[])
 #endif
 
 
-    gsMatrix<> Q, Q1, Q2, Qnitsche;
-    gsSparseMatrix<> K, K_m, K_f;
+    gsMatrix<> Q, Qnitsche;
+    gsSparseMatrix<> K;
 
     // Legend:
     // C_old   = C_n
@@ -169,42 +175,25 @@ int main(int argc, char *argv[])
     // Solution vector and solution variable
     gsMatrix<> Cnew, Calpha, Cold;
     gsMatrix<> dCnew,dCalpha,dCold, dCupdate;
-    gsMultiPatch<> cnew, dcnew;
-    if (random)
-    {
-        // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
-        gsMatrix<> tmp = gsMatrix<>::Random(assembler.numDofs(),1);
-        Cold = tmp.array()*CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
-        Cold.array() += CHopt.askReal("mean",0.0); // 0.45
-    }
-    else
-    {
-        // // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
-        GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
-        gsMatrix<> tmp;
-        gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),source,tmp);
-        // real_t error = gsL2Projection<real_t>::project(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
-        // if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
+    gsMappedSpline<2,real_t> cnew, dcnew;
 
-        gsMultiPatch<> cold;
-        cold.addPatch(*dbasis.basis(0).makeGeometry(give(tmp)));
-        assembler.constructSolution(cold,Cold);
-    }
+    // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
+    gsMatrix<> tmp = gsMatrix<>::Random(assembler.numDofs(),1);
+    Cold = tmp.array()*CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
+    Cold.array() += CHopt.askReal("mean",0.0); // 0.45
 
     Calpha = Cold;
     dCold.setZero(assembler.numDofs(),1);
 
     real_t Q0norm = 1, Qnorm = 10;
 
+    // USE A MESH FOR PLOTTING
+    gsSurfMesh mesh = mp.toMesh();
+    auto pid = mesh.get_vertex_property<index_t>("v:patch");
+    auto aid = mesh.get_vertex_property<index_t>("v:anchor");
+    auto field = mesh.add_vertex_property<real_t>("v:field");
 
-    gsExprEvaluator<> ev;
-    ev.setIntegrationElements(dbasis);
-    auto c = ev.getVariable(cnew);
-    gsParaviewCollection collection("ParaviewOutput/solution",&ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
-
+    // Time step settings
     real_t dt_old = dt;
     real_t t_err = 1;
     index_t lmax = 1;
@@ -280,9 +269,6 @@ int main(int argc, char *argv[])
                     K *= (tmp_alpha_f * tmp_gamma * dt);
                     K += tmp_alpha_m * M;
 
-                    if (bc.get("Weak Clamped").size()!=0 && !assembler.options().getSwitch("AssembleWeakBCs"))
-                        K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
-
                     solver.compute(K);
                     dCupdate = solver.solve(-Q);
 
@@ -324,18 +310,22 @@ int main(int argc, char *argv[])
         //! [Export visualization in ParaView]
         if (plot && step % plotmod==0)
         {
-            assembler.constructSolution(Cnew,  cnew);
-            collection.newTimeStep(&mp);
-            collection.addField(c,"numerical solution");
-            collection.saveTimeStep();
+            gsExprEvaluator<> ev;
+            auto c = ev.getVariable(cnew);
+
+            gsVector<> pt;
+            for (auto vit = mesh.vertices_begin(); vit < mesh.vertices_end(); ++vit)
+            {
+                index_t k = pid[*vit];
+                pt = mp.patch(k).basis().anchor(aid[*vit]);
+                field[*vit] = ev.eval( c , pt, k ).value();//any expression
+            }
+            std::string fileName = "ParaviewOutput/solution"+util::to_string(step);
+            gsWriteParaview(mesh,fileName, {"v:field"} );
         }
     }
 
-    if (plot)
-    {
-        collection.save();
-    }
-    else
+    if (!plot)
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
 

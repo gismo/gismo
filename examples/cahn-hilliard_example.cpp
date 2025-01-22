@@ -175,10 +175,10 @@ int main(int argc, char *argv[])
     //! [Problem setup]
 
     // Define linear solver (install SuperLUMT-devel)
-#ifdef GISMO_WITH_SUPERLU
-    gsSparseSolver<>::SuperLU solver;
-#   else
-    gsSparseSolver<>::LU solver;
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver;
+#else
+    gsSparseSolver<>::CGDiagonal solver;
 #endif
 
     // Generalized-alpha method parameters
@@ -335,13 +335,7 @@ int main(int argc, char *argv[])
                     if (bc.get("Weak Clamped").size()!=0)
                         K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
 
-#ifdef GISMO_WITH_SUPERLU
-                    if (0==k)
-                        solver.analyzePattern(K);
-                    solver.factorize(K);
-#else
                     solver.compute(K);
-#endif
                     dCupdate = solver.solve(-Q);
 
                     dCnew += dCupdate;
