@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris & M. BAHARI
+    Author(s): A. Mantzaflaris & M. BAHARI(one iter in MAE then correct and do the composition)
 */
 
 //! [Include namespace]

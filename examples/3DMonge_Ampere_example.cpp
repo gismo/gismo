@@ -1,6 +1,6 @@
-/** @file Monge_Ampere_example.cpp
+/** @file 3DMonge_Ampere_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation
+    @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation in three dimension
 
     This file is part of the G+Smo library.
 
@@ -84,13 +84,14 @@ public:
 
             ds.push_back(es.eigenvalues());
             Us.push_back(es.eigenvectors());
-            t_Us.push_back(es.eigenvectors().transpose());
         }
         // dimension of paraemtric space
         this->_rdim = rdim;
     }
     mutable gsMatrix<T> s_tilde;
     mutable gsMatrix<T> r_tilde;
+    mutable gsMatrix<T> t_tilde;
+
     // Computes the approximate solution of ∫-\nabla u *\nabla v + eps * u *v = ∫(funct * v) as input,
     // where funct is the input function, and v is the test function.
     gsMatrix<T> solve(const gsMatrix<T>& b) const {
@@ -98,16 +99,15 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n2,n1);
-            //gsInfo <<"solv"<< b.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
-            s_tilde = t_Us[1] * s_tilde *Us[0];
+            s_tilde = b.reshape(n1,n2);
+            s_tilde = Us[0].transpose()*s_tilde*Us[1];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
-                    s_tilde(i2, i1) = s_tilde(i2, i1) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+                    s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
                 }
             }
-            s_tilde = Us[1] * s_tilde * t_Us[0];
+            s_tilde = Us[0]*s_tilde * Us[1].transpose();
             s_tilde = s_tilde.reshape(n1*n2, 1);
             return s_tilde;
         } else {
@@ -116,60 +116,61 @@ public:
             index_t n2 = ds[1].rows();
             index_t n3 = ds[2].rows();
 
-            s_tilde = b.reshape(n3,n2*n1);
-            s_tilde = t_Us[2] * s_tilde;
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n1*n3,n2);
-            s_tilde = s_tilde * Us[1];
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n2*n3,n1);
-            s_tilde = s_tilde * Us[0];
+            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = s_tilde.transpose() * Us[0];
+            // matrix become (n2*n3, n1)
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
+                r_tilde         = s_tilde.col(i1);
+                r_tilde         = r_tilde.reshape(n2, n3);
+                r_tilde         = Us[1].transpose() * r_tilde * Us[2];
+                //...
                 for (index_t i2 = 0; i2 < n2; ++i2) {
                     for (index_t i3 = 0; i3 < n3; ++i3) {
-                        index_t k = i3 + i2 * n3;
-                        s_tilde(k,i1) = s_tilde(k,i1) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                        r_tilde(i2, i3) = r_tilde(i2, i3) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
                     }
                 }
-            }            
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n3,n2*n1);
-            s_tilde = Us[2] * s_tilde;
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n1*n3,n2);
-            s_tilde = s_tilde * t_Us[1];
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n2*n3,n1);
-            s_tilde = s_tilde * t_Us[0];
+                r_tilde         = Us[1] * r_tilde * Us[2].transpose();
+                s_tilde.col(i1) = r_tilde.reshape(n2*n3,1);
+            }
+            s_tilde = Us[0] * s_tilde.transpose();
+
             s_tilde = s_tilde.reshape(n1*n2*n3, 1);
             return s_tilde;
         }
-
     }
     // Computes the L2-projection of a function using ∫(funct * v) as input,
     // where funct is the input function, and v is the test function.
+    // (A\otimesB)x = vec(BXA^T)
     gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const {
         if(_rdim == 2){
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n2,n1);
-            s_tilde = t_Us[1] * s_tilde *Us[0];
-
-            s_tilde = Us[1] * s_tilde * t_Us[0];
+            s_tilde = b.reshape(n1,n2);
+            s_tilde = Us[0].transpose()*s_tilde*Us[1];
+            //...
+            s_tilde = Us[0]*s_tilde * Us[1].transpose();
             s_tilde = s_tilde.reshape(n1*n2, 1);
-            return s_tilde;
         } else{
             // TODO
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
-            index_t n3 = ds[3].rows();
+            index_t n3 = ds[2].rows();
 
-            s_tilde = b.reshape(n3,n2*n1);
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = s_tilde.transpose() * Us[0];
+            // matrix become (n2*n3, n1)
+            #pragma omp parallel for
+            for (index_t i1 = 0; i1 < n1; ++i1) {
+                r_tilde         = s_tilde.col(i1);
+                r_tilde         = r_tilde.reshape(n2, n3);
+                r_tilde         = Us[1].transpose() * r_tilde * Us[2];
+                //...
+                r_tilde         = Us[1] * r_tilde * Us[2].transpose();
+                s_tilde.col(i1) = r_tilde.reshape(n2*n3,1);
+            }
+            s_tilde = Us[0] * s_tilde.transpose();
             s_tilde = s_tilde.reshape(n1*n2*n3, 1);
             return s_tilde;
         }
@@ -187,29 +188,26 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
             index_t n3 = n2;
-            // three components
+
+            // two components
             r_tilde = r_tilde.reshape(n1*n2*n3,3);
             //// ...step 1: reshape first component *****
-            for (index_t i = 0; i<2; ++i){
+            #pragma omp parallel for
+            for (index_t i = 0; i<3; ++i){
                 s_tilde = r_tilde.col(i);
                 // step 2: first component            
-                s_tilde = s_tilde.reshape(n3,n2*n1);
-                s_tilde = t_Us[2] * s_tilde;
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n1*n3,n2);
-                s_tilde = s_tilde * Us[1];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n2*n3,n1);
-                s_tilde = s_tilde * Us[0];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n3,n2*n1);
-                s_tilde = Us[2] * s_tilde;
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n1*n3,n2);
-                s_tilde = s_tilde * t_Us[1];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n2*n3,n1);
-                s_tilde = s_tilde * t_Us[0];
+                s_tilde = s_tilde.reshape(n1,n2*n3);
+                s_tilde = s_tilde.transpose() * Us[0];
+                // matrix become (n2*n3, n1)
+                for (index_t i1 = 0; i1 < n1; ++i1) {
+                    t_tilde         = s_tilde.col(i1);
+                    t_tilde         = t_tilde.reshape(n2, n3);
+                    t_tilde         = Us[1].transpose() * t_tilde * Us[2];
+                    //...
+                    t_tilde         = Us[1] * t_tilde * Us[2].transpose();
+                    s_tilde.col(i1) = t_tilde.reshape(n2*n3,1);
+                }
+                s_tilde = Us[0] * s_tilde.transpose();
                 // step 4: reshape
                 r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
             }
@@ -225,19 +223,18 @@ public:
             r_tilde.reshape(n1*n2,2);
             //// ...step 1: reshape first component *****
             s_tilde = r_tilde.col(0);
-            //gsInfo << s_tilde.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
-            s_tilde = s_tilde.reshape(n2,n1);
-            // step 2: first component            
-            s_tilde = t_Us[1] * s_tilde * Us[0];
-            s_tilde = Us[1]   * s_tilde * t_Us[0];
+            s_tilde = s_tilde.reshape(n1,n2);
+            // step 2: first component
+            s_tilde = Us[0].transpose()*s_tilde*Us[1];
+            s_tilde = Us[0]*s_tilde * Us[1].transpose();
             // step 4: reshape
             r_tilde.col(0) = s_tilde.reshape(n1*n2,1);
             //// ...step 1: reshape second component *****
             s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n2,n1);
+            s_tilde = s_tilde.reshape(n1,n2);
             // step 2: first component            
-            s_tilde = t_Us[1] * s_tilde * Us[0];
-            s_tilde = Us[1]   * s_tilde * t_Us[0];
+            s_tilde = Us[0].transpose()*s_tilde*Us[1];
+            s_tilde = Us[0]*s_tilde * Us[1].transpose();
             // step 4: reshape
             r_tilde.col(1) = s_tilde.reshape(n1*n2,1);
             r_tilde.reshape(2*n1*n2,1);
@@ -246,30 +243,27 @@ public:
             // 3D
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
-            index_t n3 = ds[3].rows();
+            index_t n3 = ds[2].rows();
+
             // two components
             r_tilde = r_tilde.reshape(n1*n2*n3,3);
             //// ...step 1: reshape first component *****
-            for (index_t i = 0; i<2; ++i){
+            #pragma omp parallel for
+            for (index_t i = 0; i<3; ++i){
                 s_tilde = r_tilde.col(i);
                 // step 2: first component            
-                s_tilde = s_tilde.reshape(n3,n2*n1);
-                s_tilde = t_Us[2] * s_tilde;
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n1*n3,n2);
-                s_tilde = s_tilde * Us[1];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n2*n3,n1);
-                s_tilde = s_tilde * Us[0];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n3,n2*n1);
-                s_tilde = Us[2] * s_tilde;
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n1*n3,n2);
-                s_tilde = s_tilde * t_Us[1];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n2*n3,n1);
-                s_tilde = s_tilde * t_Us[0];
+                s_tilde = s_tilde.reshape(n1,n2*n3);
+                s_tilde = s_tilde.transpose() * Us[0];
+                // matrix become (n2*n3, n1)
+                for (index_t i1 = 0; i1 < n1; ++i1) {
+                    t_tilde         = s_tilde.col(i1);
+                    t_tilde         = t_tilde.reshape(n2, n3);
+                    t_tilde         = Us[1].transpose() * t_tilde * Us[2];
+                    //...
+                    t_tilde         = Us[1] * t_tilde * Us[2].transpose();
+                    s_tilde.col(i1) = t_tilde.reshape(n2*n3,1);
+                }
+                s_tilde = Us[0] * s_tilde.transpose();
                 // step 4: reshape
                 r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
             }
@@ -281,7 +275,7 @@ public:
 private:
 
     std::vector<gsMatrix<T>> ds;
-    std::vector<gsMatrix<T>> Us, t_Us;
+    std::vector<gsMatrix<T>> Us;
     int _rdim;
     T _tau;
 };
@@ -331,8 +325,8 @@ int main(int argc, char *argv[])
     bool plotMAeRes     = false;
     bool export_b64     = false;
     // Specify the file path
-    //std::string fn("volumes/GshapedVolume.xml");
-    std::string fn("volumes/cylinder.xml");
+    std::string fn("volumes/GshapedVolume.xml");
+   // std::string fn("volumes/cylinder.xml");
 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -355,8 +349,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; 
-    fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft= gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
+    //fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -420,7 +414,7 @@ int main(int argc, char *argv[])
     auto IGdim     = G.domainDim();
 
     // Set dimension of target geometry
-    auto ITdim     = mpLeft.geoDim();
+    //auto ITdim     = mpLeft.geoDim();
 
     // Set factor for BFO method
     auto gammaMAE = factorial(G.domainDim());
@@ -495,10 +489,10 @@ int main(int argc, char *argv[])
     gsInfo<< "." <<std::flush;// Assemblying done
     solVector = A.rhs();
     timer.restart();
-    //solVector = Poisson.solve(A.rhs());
+    solVector = Poisson.solve(A.rhs());
 
-    solver.compute( A.matrix() );
-    solVector = solver.solve(A.rhs());
+    //solver.compute( A.matrix() );
+    //solVector = solver.solve(A.rhs());
     slv_time += timer.stop();
 
     gsInfo<< "." <<std::flush; // Linear solving done
@@ -519,15 +513,13 @@ int main(int argc, char *argv[])
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
         A.initSystem(IGdim);
-        gsInfo<< "+" <<std::flush; // 
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * grad(u_s) );
-        gsInfo<< "+" <<std::flush; // 
         //gsInfo <<"rhs vec = " << A.rhs().size() << "\n";
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        gsInfo<< "+" <<std::flush; // 
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+
         
         gsMultiPatch<> Psi, PsiLoc;
         v_sol.extract(Psi);
@@ -538,24 +530,24 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        geometryMap PPLoc = A.getMap(PsiLoc);
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        auto  comp = PPLoc(mpLeft);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        gsInfo<< "+" <<std::flush; // 
-        //vsolVector = Poisson.L2ProjectVec(A.rhs());
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        gsInfo<< "+" <<std::flush; // 
-        v_sol.extract(PsiLoc);
-        //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        geometryMap PPfLoc = A.getMap(PsiLoc);
-        auto ff = A.getCoeff(f, PPfLoc);
+        // geometryMap PPLoc = A.getMap(PsiLoc);
+        // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        // auto  comp = PPLoc(mpLeft);
+        // A.initSystem(ITdim);
+        // //Obtain control points for the gradient of mpLeft.comp(Psi)
+        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // gsInfo<< "+" <<std::flush; // 
+        // vsolVector = Poisson.L2ProjectVec(A.rhs());
+        //// vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        // gsInfo<< "+" <<std::flush; // 
+        // v_sol.extract(PsiLoc);
+        // //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
+        // geometryMap PPfLoc = A.getMap(PsiLoc);
+        // auto ff = A.getCoeff(f, PPfLoc);
         // gsInfo << "Error_" << ev.integral((PP-grad(u_sol).tr()).sqNorm() ) << "...\n";
 
         // auto ff = A.getCoeff(f, GLeft, PP);
-        // auto ffG = A.getCoeff(f, GLeft);
+        auto ff = A.getCoeff(f, PP);
         // gsInfo << "ff2" << ev.integral(ff.val()) << "...\n";
         // gsInfo << "ff3 " << ev.integral(ffG.val()) << "...\n";
 
@@ -665,27 +657,27 @@ int main(int argc, char *argv[])
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * igrad(u_s,G));
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
 
         gsMultiPatch<> Psi, Psitp;
         v_sol.extract(Psitp);
         //... correct the boundary
         ProjectionNormalCPoints(Psitp);
 
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        // Psi.addAutoBoundaries();
-        geometryMap PP = A.getMap(Psitp);
-        gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
+        // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        // // Psi.addAutoBoundaries();
+        // geometryMap PP = A.getMap(Psitp);
+        // gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
 
-        auto  comp = PP(mpLeft);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
+        // auto  comp = PP(mpLeft);
+        // A.initSystem(ITdim);
+        // //Obtain control points for the gradient of mpLeft.comp(Psi)
+        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        // // vsolVector = Poisson.L2ProjectVec(A.rhs());
+        // v_sol.extract(Psitp);
 
-        v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
         Psitp.computeTopology();
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";

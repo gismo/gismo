@@ -84,13 +84,14 @@ public:
 
             ds.push_back(es.eigenvalues());
             Us.push_back(es.eigenvectors());
-            t_Us.push_back(es.eigenvectors().transpose());
         }
         // dimension of paraemtric space
         this->_rdim = rdim;
     }
     mutable gsMatrix<T> s_tilde;
     mutable gsMatrix<T> r_tilde;
+    mutable gsMatrix<T> t_tilde;
+
     // Computes the approximate solution of ∫-\nabla u *\nabla v + eps * u *v = ∫(funct * v) as input,
     // where funct is the input function, and v is the test function.
     gsMatrix<T> solve(const gsMatrix<T>& b) const {
@@ -98,16 +99,15 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n2,n1);
-            //gsInfo <<"solv"<< b.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
-            s_tilde = t_Us[1] * s_tilde *Us[0];
+            s_tilde = b.reshape(n1,n2);
+            s_tilde = Us[0].transpose()*s_tilde*Us[1];
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
                 for (index_t i2 = 0; i2 < n2; ++i2) {
-                    s_tilde(i2, i1) = s_tilde(i2, i1) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+                    s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
                 }
             }
-            s_tilde = Us[1] * s_tilde * t_Us[0];
+            s_tilde = Us[0]*s_tilde * Us[1].transpose();
             s_tilde = s_tilde.reshape(n1*n2, 1);
             return s_tilde;
         } else {
@@ -116,60 +116,61 @@ public:
             index_t n2 = ds[1].rows();
             index_t n3 = ds[2].rows();
 
-            s_tilde = b.reshape(n3,n2*n1);
-            s_tilde = t_Us[2] * s_tilde;
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n1*n3,n2);
-            s_tilde = s_tilde * Us[1];
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n2*n3,n1);
-            s_tilde = s_tilde * Us[0];
+            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = s_tilde.transpose() * Us[0];
+            // matrix become (n2*n3, n1)
             #pragma omp parallel for
             for (index_t i1 = 0; i1 < n1; ++i1) {
+                r_tilde         = s_tilde.col(i1);
+                r_tilde         = r_tilde.reshape(n2, n3);
+                r_tilde         = Us[1].transpose() * r_tilde * Us[2];
+                //...
                 for (index_t i2 = 0; i2 < n2; ++i2) {
                     for (index_t i3 = 0; i3 < n3; ++i3) {
-                        index_t k = i3 + i2 * n3;
-                        s_tilde(k,i1) = s_tilde(k,i1) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                        r_tilde(i2, i3) = r_tilde(i2, i3) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
                     }
                 }
-            }            
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n3,n2*n1);
-            s_tilde = Us[2] * s_tilde;
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n1*n3,n2);
-            s_tilde = s_tilde * t_Us[1];
-            s_tilde = s_tilde.reshape(n3*n2*n1,1);
-            s_tilde = s_tilde.reshape(n2*n3,n1);
-            s_tilde = s_tilde * t_Us[0];
+                r_tilde         = Us[1] * r_tilde * Us[2].transpose();
+                s_tilde.col(i1) = r_tilde.reshape(n2*n3,1);
+            }
+            s_tilde = Us[0] * s_tilde.transpose();
+
             s_tilde = s_tilde.reshape(n1*n2*n3, 1);
             return s_tilde;
         }
-
     }
     // Computes the L2-projection of a function using ∫(funct * v) as input,
     // where funct is the input function, and v is the test function.
+    // (A\otimesB)x = vec(BXA^T)
     gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const {
         if(_rdim == 2){
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
 
-            s_tilde = b.reshape(n2,n1);
-            s_tilde = t_Us[1] * s_tilde *Us[0];
-
-            s_tilde = Us[1] * s_tilde * t_Us[0];
+            s_tilde = b.reshape(n1,n2);
+            s_tilde = Us[0].transpose()*s_tilde*Us[1];
+            //...
+            s_tilde = Us[0]*s_tilde * Us[1].transpose();
             s_tilde = s_tilde.reshape(n1*n2, 1);
-            return s_tilde;
         } else{
             // TODO
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
-            index_t n3 = ds[3].rows();
+            index_t n3 = ds[2].rows();
 
-            s_tilde = b.reshape(n3,n2*n1);
-            s_tilde = t_Us[2] * s_tilde * Us[1]* Us[0];
-
-            s_tilde = Us[2] * s_tilde * t_Us[1]* t_Us[0];
+            s_tilde = b.reshape(n1,n2*n3);
+            s_tilde = s_tilde.transpose() * Us[0];
+            // matrix become (n2*n3, n1)
+            #pragma omp parallel for
+            for (index_t i1 = 0; i1 < n1; ++i1) {
+                r_tilde         = s_tilde.col(i1);
+                r_tilde         = r_tilde.reshape(n2, n3);
+                r_tilde         = Us[1].transpose() * r_tilde * Us[2];
+                //...
+                r_tilde         = Us[1] * r_tilde * Us[2].transpose();
+                s_tilde.col(i1) = r_tilde.reshape(n2*n3,1);
+            }
+            s_tilde = Us[0] * s_tilde.transpose();
             s_tilde = s_tilde.reshape(n1*n2*n3, 1);
             return s_tilde;
         }
@@ -187,29 +188,26 @@ public:
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
             index_t n3 = n2;
-            // three components
+
+            // two components
             r_tilde = r_tilde.reshape(n1*n2*n3,3);
             //// ...step 1: reshape first component *****
-            for (index_t i = 0; i<2; ++i){
+            #pragma omp parallel for
+            for (index_t i = 0; i<3; ++i){
                 s_tilde = r_tilde.col(i);
                 // step 2: first component            
-                s_tilde = s_tilde.reshape(n3,n2*n1);
-                s_tilde = t_Us[2] * s_tilde;
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n1*n3,n2);
-                s_tilde = s_tilde * Us[1];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n2*n3,n1);
-                s_tilde = s_tilde * Us[0];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n3,n2*n1);
-                s_tilde = Us[2] * s_tilde;
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n1*n3,n2);
-                s_tilde = s_tilde * t_Us[1];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n2*n3,n1);
-                s_tilde = s_tilde * t_Us[0];
+                s_tilde = s_tilde.reshape(n1,n2*n3);
+                s_tilde = s_tilde.transpose() * Us[0];
+                // matrix become (n2*n3, n1)
+                for (index_t i1 = 0; i1 < n1; ++i1) {
+                    t_tilde         = s_tilde.col(i1);
+                    t_tilde         = t_tilde.reshape(n2, n3);
+                    t_tilde         = Us[1].transpose() * t_tilde * Us[2];
+                    //...
+                    t_tilde         = Us[1] * t_tilde * Us[2].transpose();
+                    s_tilde.col(i1) = t_tilde.reshape(n2*n3,1);
+                }
+                s_tilde = Us[0] * s_tilde.transpose();
                 // step 4: reshape
                 r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
             }
@@ -225,19 +223,18 @@ public:
             r_tilde.reshape(n1*n2,2);
             //// ...step 1: reshape first component *****
             s_tilde = r_tilde.col(0);
-            //gsInfo << s_tilde.dim() <<"ee"  << n1 << " n "<< n2 <<"\n" ;
-            s_tilde = s_tilde.reshape(n2,n1);
-            // step 2: first component            
-            s_tilde = t_Us[1] * s_tilde * Us[0];
-            s_tilde = Us[1]   * s_tilde * t_Us[0];
+            s_tilde = s_tilde.reshape(n1,n2);
+            // step 2: first component
+            s_tilde = Us[0].transpose()*s_tilde*Us[1];
+            s_tilde = Us[0]*s_tilde * Us[1].transpose();
             // step 4: reshape
             r_tilde.col(0) = s_tilde.reshape(n1*n2,1);
             //// ...step 1: reshape second component *****
             s_tilde = r_tilde.col(1);
-            s_tilde = s_tilde.reshape(n2,n1);
+            s_tilde = s_tilde.reshape(n1,n2);
             // step 2: first component            
-            s_tilde = t_Us[1] * s_tilde * Us[0];
-            s_tilde = Us[1]   * s_tilde * t_Us[0];
+            s_tilde = Us[0].transpose()*s_tilde*Us[1];
+            s_tilde = Us[0]*s_tilde * Us[1].transpose();
             // step 4: reshape
             r_tilde.col(1) = s_tilde.reshape(n1*n2,1);
             r_tilde.reshape(2*n1*n2,1);
@@ -246,30 +243,27 @@ public:
             // 3D
             index_t n1 = ds[0].rows();
             index_t n2 = ds[1].rows();
-            index_t n3 = ds[3].rows();
+            index_t n3 = ds[2].rows();
+
             // two components
             r_tilde = r_tilde.reshape(n1*n2*n3,3);
             //// ...step 1: reshape first component *****
-            for (index_t i = 0; i<2; ++i){
+            #pragma omp parallel for
+            for (index_t i = 0; i<3; ++i){
                 s_tilde = r_tilde.col(i);
                 // step 2: first component            
-                s_tilde = s_tilde.reshape(n3,n2*n1);
-                s_tilde = t_Us[2] * s_tilde;
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n1*n3,n2);
-                s_tilde = s_tilde * Us[1];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n2*n3,n1);
-                s_tilde = s_tilde * Us[0];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n3,n2*n1);
-                s_tilde = Us[2] * s_tilde;
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n1*n3,n2);
-                s_tilde = s_tilde * t_Us[1];
-                s_tilde = s_tilde.reshape(n3*n2*n1,1);
-                s_tilde = s_tilde.reshape(n2*n3,n1);
-                s_tilde = s_tilde * t_Us[0];
+                s_tilde = s_tilde.reshape(n1,n2*n3);
+                s_tilde = s_tilde.transpose() * Us[0];
+                // matrix become (n2*n3, n1)
+                for (index_t i1 = 0; i1 < n1; ++i1) {
+                    t_tilde         = s_tilde.col(i1);
+                    t_tilde         = t_tilde.reshape(n2, n3);
+                    t_tilde         = Us[1].transpose() * t_tilde * Us[2];
+                    //...
+                    t_tilde         = Us[1] * t_tilde * Us[2].transpose();
+                    s_tilde.col(i1) = t_tilde.reshape(n2*n3,1);
+                }
+                s_tilde = Us[0] * s_tilde.transpose();
                 // step 4: reshape
                 r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
             }
@@ -281,7 +275,7 @@ public:
 private:
 
     std::vector<gsMatrix<T>> ds;
-    std::vector<gsMatrix<T>> Us, t_Us;
+    std::vector<gsMatrix<T>> Us;
     int _rdim;
     T _tau;
 };
