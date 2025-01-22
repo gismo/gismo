@@ -26,9 +26,10 @@ namespace gismo
  *  This allows efficient row resizing and insertion
  *  operations, particularly for knot insertion algorithms.
  */
-template <class T, bool IsRowMajor = true>
+template <class T, int Major = ColMajor> // RowMajor==0, ColMajor==1
 class gsFiberMatrix
 {
+    bool IsRowMajor = (Major==RowMajor);
 public:
     typedef gsEigen::SparseVector<T> Fiber;
 
