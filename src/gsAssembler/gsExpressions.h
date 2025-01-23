@@ -1916,6 +1916,7 @@ public:
         for (index_t i = 0; i!=r; ++i)
         {
             es.compute(tmp.middleCols(i*cb,cb));
+            GISMO_ASSERT(es.info()==gsEigen::Success,"Eigenvalue computation was not succesful");
             res.middleCols(i*cb,cb) = es.operatorSqrt();
         }
         return res;
