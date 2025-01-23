@@ -14,6 +14,7 @@
 //! [Include namespace]
 #include <gismo.h>
 # include <gsAssembler/gsAdaptiveRefUtils.h>
+#include <fstream> // For file operations
 
 using namespace std;
 using namespace gismo;
@@ -513,6 +514,8 @@ int main(int argc, char *argv[])
         //mp.uniformRefine();
         Psi.uniformRefine();
     }
+    Poisson_FastDiag<double> Poisson(dbasis.basis(0), bc, A.options(), eps);
+
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     for (int r=0; r<=numRefine; ++r)
     {
@@ -572,8 +575,10 @@ int main(int argc, char *argv[])
             gsInfo<< "." <<std::flush;// Assemblying done
 
             timer.restart();
-            solver.compute( A.matrix() );
-            solVector = solver.solve(A.rhs());
+            //solver.compute( A.matrix() );
+            //solVector = solver.solve(A.rhs());
+            solVector = Poisson.solve(A.rhs());
+
 
             slv_time += timer.stop();
 
@@ -600,7 +605,9 @@ int main(int argc, char *argv[])
 
                 // Obtain control points for the gradient of Psi
                 A.assemble( v * v.tr() , v * igrad(u_s,G) );
-                vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+                //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+                vsolVector = Poisson.L2ProjectVec(A.rhs());
+
                 
                 v_sol.extract(Psiloc);
                 // Set the geometry optimal map
@@ -640,8 +647,10 @@ int main(int argc, char *argv[])
                 gsInfo<< " ." <<std::flush;// Assemblying done
 
                 timer.restart();
-                solver.compute( A.matrix() );
-                solVector = solver.solve(A.rhs());
+                //solver.compute( A.matrix() );
+                //solVector = solver.solve(A.rhs());
+                solVector = Poisson.solve(A.rhs());
+
                 
                 slv_time += timer.stop();
 
@@ -677,8 +686,9 @@ int main(int argc, char *argv[])
 
             // Obtain control points for the gradient of Psi
             A.assemble( v * v.tr() , v * igrad(u_s,G) );
-            vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-            
+            //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+            vsolVector = Poisson.L2ProjectVec(A.rhs());
+
             v_sol.extract(Psi);
             //.....
             timer.restart();
@@ -754,9 +764,8 @@ int main(int argc, char *argv[])
                     <<numRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
-        ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
-        if(IntensityMAE > 1.)
-            ev.integralElWise( ff );
+        // ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+        ev.integralElWise( ff );
 
         const std::vector<real_t> eltErrs  = ev.elementwise();
         //! [errorComputation]
@@ -788,6 +797,22 @@ int main(int argc, char *argv[])
     gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
     gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
+
+    // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
+    std::ofstream outFile("/home/mbahari/Downloads/error_analysis_ex2.txt", std::ios::app); // Open file in append mode
+
+    if (outFile.is_open())
+    {
+        outFile << "#DoF_PDE: " << adaptRefParam <<" "<< FactRefPar <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
+        outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
+        outFile.close(); // Close the file after writing
+    }
+    else
+    {
+        gsInfo << "Error: Unable to open file for writing.\n";
+    }
 
     if (ErrorPrint && numRefine>0)
     {

@@ -13,6 +13,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <fstream> // For file operations
 
 using namespace gismo;
 //! [Include namespace]
@@ -323,7 +324,7 @@ int main(int argc, char *argv[])
     double IntensityMAE = 6.;
     bool export_b64     = false;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
-    double FactRefPar    = 0.7;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
+    double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // ...PNormalCP: Correct the normal part of the mapping.
     bool PNormalCP      = true;
     // Specify the file path
@@ -774,7 +775,7 @@ int main(int argc, char *argv[])
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( dbasis, elMarked, 1);
             gsRefineMarkedElements( Psi, elMarked, 1);
-            adaptRefParam = FactRefPar;
+            adaptRefParam = adaptRefParam + FactRefPar;
             }
     }
     //! [Solver loop]    
@@ -792,7 +793,23 @@ int main(int argc, char *argv[])
     gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
     gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
+    // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
+    std::ofstream outFile("/home/mbahari/Downloads/error_analysis_ex3.txt", std::ios::app); // Open file in append mode
 
+    if (outFile.is_open())
+    {
+        outFile << "#DoF_PDE: " << adaptRefParam <<" "<< FactRefPar <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
+        outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
+        outFile.close(); // Close the file after writing
+    }
+    else
+    {
+        gsInfo << "Error: Unable to open file for writing : /home/mbahari/Downloads/error_analysis_ex3.txt.\n";
+    }
+
+    //! [Error and convergence rates]
     if (numLRefine>0)
     {
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)

@@ -329,6 +329,7 @@ int main(int argc, char *argv[])
     //std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/infinit_plate.xml");
     std::string fn("pde/circle.xml");
+    //std::string fn("surfaces/egg.xml");
     //std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -500,8 +501,7 @@ int main(int argc, char *argv[])
     slv_time += timer.stop();
 
     gsInfo<< "." << solVector.size() <<std::flush; // Linear solving done
-    gsInfo << "evaluate integral " << ev.integral(u_sol.val()) << "\n";
-
+ 
     // Picard loop
     index_t NiterPicard{0};
     gsMatrix<> sv0; //
@@ -668,7 +668,7 @@ int main(int argc, char *argv[])
             gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
 
             auto  comp = PP(Psitp);
-            A.initSystem(ITdim);
+            A.initSystem(IGdim);
             //Obtain control points for the gradient of mpLeft.comp(Psi)
             A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
             vsolVector = Poisson.L2ProjectVec(A.rhs());
