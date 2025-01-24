@@ -66,11 +66,13 @@ public:
         if (par)
         {
             meshEnd[dir]    = give(domain.component(dir)->endAll());
-            meshEnd[dir]   -=1;
+            // meshEnd[dir]   -=1;
             curElement[dir] = give(domain.component(dir)->endAll());
-            curElement[dir]-=2;
+            // curElement[dir]-=2;
+            curElement[dir]-=1;
             meshStart[dir]  = give(domain.component(dir)->endAll());
-            meshStart[dir] -=2;
+            // meshStart[dir] -=2;
+            meshStart[dir] -=1;
         }
         else
         {
@@ -85,12 +87,14 @@ public:
         for (int i=dir+1; i < d; ++i)
         {
             meshEnd[i]    = give(domain.component(i)->endAll());
-            meshEnd[i]   -=1;
             meshStart[i]  = give(domain.component(i)->beginAll());
             curElement[i] = give(domain.component(i)->beginAll());
+
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
         }
+
+        gsDebug<<"------------------------------------------------------------\n";
     }
 
 
@@ -160,7 +164,7 @@ public:
         gsVector<T,D> upper;
         for (short_t i = 0; i < dir ; ++i)
             upper[i]  = curElement[i].upperCorner().value();
-        upper[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].upperCorner().value() );
+        upper[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
         for (short_t i = dir+1; i < d; ++i)
             upper[i]  = curElement[i].upperCorner().value();
         return upper;
@@ -202,24 +206,6 @@ public:
         // reset();
     }
 
-private:
-
-    void advance()
-    {
-        for (index_t i = 0; i < D; ++i)
-        {
-            // increase current dimension
-            if (++(*curElement[i]) == meshEnd[i])     // current dimension exhausted ?
-            {
-                if (i == D - 1)         // was it the last one?
-                    m_isGood = false;       // then all elements exhausted
-                else
-                    curElement[i]->reset();  // otherwise, reset this and increase the next dimension
-            }
-            else
-                m_isGood = true;            // current dimension not yet exhausted, return current vector
-        }
-    }
 
 // Data members
 protected:

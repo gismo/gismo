@@ -306,6 +306,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
 
         for (; bdrIter<bdrIterEnd; ++bdrIter)
         {
+            gsDebug<<"ID: "<<bdrIter.id()<<"; Lower corner: "<<bdrIter.lowerCorner().transpose()<<"; Upper corner: "<<bdrIter.upperCorner().transpose()<<"\n";
             bdQuRule.mapTo(bdrIter.lowerCorner(), bdrIter.upperCorner(),
                            md.points, quWeights);
 

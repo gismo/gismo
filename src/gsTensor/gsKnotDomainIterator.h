@@ -30,8 +30,9 @@ public:
 
     gsKnotDomainIterator(const gsKnotVector<T> & _knots, bool start = true)
     :
-    m_it(start ? _knots.domainUBegin() : _knots.domainUEnd()-1),
-    m_itEnd(_knots.domainUEnd()-1)
+    gsDomainIterator<T>(start ? 0 : _knots.numElements()),
+    m_it(start ? _knots.domainUBegin() : _knots.domainUEnd()),
+    m_itEnd(_knots.domainUEnd())
     {
 
     }
@@ -41,7 +42,6 @@ public:
     {
         ++m_it;
         m_isGood = (m_it != m_itEnd);
-        gsDebugVar(m_it.value());
         return m_isGood;
     }
 
@@ -50,7 +50,6 @@ public:
     {
         m_it += increment;
         m_isGood = (m_it < m_itEnd);
-        gsDebugVar(m_it.value());
         return m_isGood;
     }
 
@@ -80,7 +79,6 @@ public:
     {
         gsVector<T,1> lower;
         lower[0] = m_it.value();
-        gsDebugVar(lower[0]);
         return lower;
     }
 

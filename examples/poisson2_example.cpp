@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
         dbasis.uniformRefine();
 
 //        u.setup(bc, dirichlet::interpolation, 0);
+        gsDebug<<"Setup-------------------------------------------------\n";
         u.setup(bc, dirichlet::l2Projection, 0);
 
         // Initialize the system
@@ -141,6 +142,7 @@ int main(int argc, char *argv[])
         gsInfo<< A.numDofs() <<std::flush;
 
         timer.restart();
+        gsDebug<<"Interior-------------------------------------------------\n";
         // Compute the system matrix and right-hand side
         A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
@@ -149,6 +151,7 @@ int main(int argc, char *argv[])
             );
 
         // Compute the Neumann terms defined on physical space
+        gsDebug<<"Boundary-------------------------------------------------\n";
         auto g_N = A.getBdrFunction(G);
         A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
 
@@ -169,9 +172,10 @@ int main(int argc, char *argv[])
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
+        gsDebug<<"Error-------------------------------------------------\n";
         timer.restart();
         l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-        
+
         h1err[r]= l2err[r] +
             math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();

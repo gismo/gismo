@@ -2,12 +2,12 @@
 
     @brief Provides combinatorial unitilies.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Bressan, A. Mantzaflaris
 */
 
@@ -56,7 +56,7 @@ return precomputed[n];
    This functions computes a single binomial coefficient, if many
    binomial coefficients with fixed \a n are needed then it is probably
    faster use the function binomial_into.  This function uses a loop
-   implementation.  
+   implementation.
 
    \param n binomial power
    \param r term of the binomial expansion
@@ -140,19 +140,19 @@ inline Vec stridesOf(const Vec & sz)
 template<class Vec>
 void firstCombination(const unsigned n, const unsigned r, Vec & res)
 {
-    if (r<=n) 
+    if (r<=n)
         res= Vec::LinSpaced(r,0,r-1);
     else
         std::cerr << "Error: r>n combination requested. r="<< r<<", n="<< n<<"\n";
 }
-  
+
 /// \brief Computes the next r-combination of {0,..,n-1}, where r = \a v.size().
 /// The input \a v is expected to be a valid combination
 /// \ingroup combinatorics
 template<class Vec>
 bool nextCombination (Vec & v, const unsigned n)
 {
-    const index_t r = v.rows() ;            
+    const index_t r = v.rows() ;
     if  (v == Vec::LinSpaced(r,n-r,n-1)) return false;
     int i = r-1;
     while (v[i] == n-r+i) --i;
@@ -255,6 +255,7 @@ bool nextLexicographicIter(Vec& cur, const Vec& end)
         // increase current dimension
         if (++cur[i] == end[i])     // current dimension exhausted ?
         {
+            gsDebug<<"EXHAUSTED "<<i<<"\n";
             if (i == d - 1)         // was it the last one?
                 return false;       // then all elements exhausted
             else
@@ -429,17 +430,17 @@ bool nextCubeBoundary(Vec& cur, const Vec& start, const Vec& end)
                   "Vector sizes don't match in nextCubeBoundary");
 
     for (index_t i = 0; i != d; ++i)
-    {        
+    {
         if ( cur[i] != end[i] )
         {
             if ( cur[i] == start[i] && ( i!=d-1 || d==1) ) // || d==1 to treat 1D
             {
                 int c=i+1;
                 for (int j = c; j!=d; ++j)
-                    if ( (cur[j] == start[j]) || 
+                    if ( (cur[j] == start[j]) ||
                          (cur[j] == end[j]) )
                         c++;
-                
+
                 if ( c==1 )
                     cur[i] = end[i];
                 else
@@ -469,7 +470,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, Vec & of
                   "Vector sizes don't match in nextCubeBoundaryOffset");
 
     for (index_t i = 0; i != d; ++i)
-    {        
+    {
         if ( cur[i] != end[i] )
         {
             if ( cur[i] == start[i]+offset[i] && ( i!=d-1 || d==1) ) // || d==1 to treat 1D
@@ -479,7 +480,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, Vec & of
                     if (cur[j] <=  start[j] + offset[j] ||
                         cur[j] >=    end[j] - offset[j] )
                         c++;
-                
+
                 if ( c==1 )
                     cur[i] = end[i] - offset[i];
                 else
@@ -503,7 +504,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, Vec & of
 /// true if another point is available. Cube may be degenerate.
 /// \ingroup combinatorics
 template<class Vec>
-bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, 
+bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end,
                             Vec & loffset, Vec & uoffset)
 {
     const index_t d = cur.size();
@@ -511,7 +512,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end,
                   "Vector sizes don't match in nextCubeBoundaryOffset");
 
     for (index_t i = 0; i != d; ++i)
-    {        
+    {
         if ( cur[i] != end[i] )
         {
             if ( cur[i] == start[i]+loffset[i] && ( i!=d-1 || d==1) ) // || d==1 to treat 1D
@@ -521,7 +522,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end,
                     if (cur[j] <=  start[j] + loffset[j] ||
                         cur[j] >=    end[j] - uoffset[j] )
                         c++;
-                
+
                 if ( c==1 )
                     cur[i] = end[i] - uoffset[i];
                 else
@@ -539,7 +540,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end,
     return false;
 }
 
-/// \brief Returns the number of elements (faces) of dimension \a k 
+/// \brief Returns the number of elements (faces) of dimension \a k
 /// of a \a d-cube
 /// \ingroup combinatorics
 inline index_t numCubeElements(const index_t k, const index_t d)
@@ -595,7 +596,7 @@ bool nextCubeElement(Vec & cur, const index_t k)
                 if ( (cur.array() == 2).count() == k ) // dimCubeElement(cur)==k ?
                     return true;
                 else
-                    break;// skip face 
+                    break;// skip face
             }
             else
                 cur[i] = 0;
@@ -606,7 +607,7 @@ bool nextCubeElement(Vec & cur, const index_t k)
     return false;
 }
 
-/// \brief Computes the isometry of the unit d-cube 
+/// \brief Computes the isometry of the unit d-cube
 /// implied by a permutation \a perm of the cube directions
 /// plus a relocation \a flip of the cube vertices
 ///
@@ -618,7 +619,7 @@ bool nextCubeElement(Vec & cur, const index_t k)
 /// \ingroup combinatorics
 template <typename Z, int d>
 void cubeIsometry( const gsVector<bool,d>    & flip,
-                   const gsVector<index_t,d> & perm, 
+                   const gsVector<index_t,d> & perm,
                    gsVector<Z> & result)
 {
     const index_t dd = flip.size(); //binary sequence of length d
@@ -639,7 +640,7 @@ void cubeIsometry( const gsVector<bool,d>    & flip,
         c = 0;
         for (index_t k=0; k!=dd; ++k)
             c += ( flip[perm[k]] == v[k] ) * pstr[k];
-        
+
         for (i = 0; i != dd; ++i)
         {
             if ( !v[i] )
@@ -678,7 +679,7 @@ void cubeIsometryMatrix ( const gsVector<bool,d>    & flip,
 /// \ingroup combinatorics
 template<class Vec>
 void firstComposition( typename Vec::Scalar sum, index_t dim, Vec & res)
-{  
+{
     res.derived().resize(dim);
     res.setZero();
     res[0] = sum;
@@ -690,7 +691,7 @@ template<class Vec>
 inline bool nextComposition(Vec & v)
 {
     const index_t k = v.size() - 1;
-    
+
     if (v[k] != v.sum())
     {
         for (index_t i = 0; i <= k; ++i)
@@ -722,26 +723,26 @@ inline unsigned numCompositions(int sum, short_t dim)
 */
 template<class Vec, class Mat>
 void firstMultiComposition(const Vec & a, index_t k, Mat & res)
-{  
+{
     const index_t d = a.size();
     res.setZero(k, d);
     res.row(0) = a.transpose();
 }
 
 /**
-   \brief Returns (inplace) the next multi-composition 
+   \brief Returns (inplace) the next multi-composition
    in lexicographic order
 
    \f$ m \in \mathbb N^{k\times d} \f$
 
    \ingroup combinatorics
-*/ 
+*/
 template<class Mat>
 inline bool nextMultiComposition(Mat & m)
 {
     const index_t k = m.rows();
     const index_t d = m.cols();
-           
+
     for (index_t j = 0; j != d; ++j)
     {
         typename Mat::ColXpr c_j = m.col(j);

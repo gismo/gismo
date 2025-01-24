@@ -800,9 +800,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 #       endif
         {
             // Map the Quadrature rule to the element
-            gsDebugVar(domIt.lowerCorner());
-            gsDebugVar(domIt.id());
-            gsDebugVar(domItEnd.id());
+            gsDebug<<"ID: "<<domIt.id()<<"; Lower corner: "<<domIt.lowerCorner().transpose()<<"; Upper corner: "<<domIt.upperCorner().transpose()<<"\n";
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), quWeights);
 
@@ -883,6 +881,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
         // Start iteration over elements
         for (; domIt < domItEnd; ++domIt )
         {
+            gsDebug<<"ID: "<<domIt.id()<<"; Lower corner: "<<domIt.lowerCorner().transpose()<<"; Upper corner: "<<domIt.upperCorner().transpose()<<"\n";
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), quWeights);

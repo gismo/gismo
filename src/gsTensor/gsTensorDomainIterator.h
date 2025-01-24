@@ -55,18 +55,13 @@ public:
             curElement[i] = give(domain.component(i)->beginAll());
 
             if (meshEnd[i] == meshStart[i])
-            {
-                gsDebug<<"AAAAAA";
                 m_isGood = false;
-            }
         }
     }
 
     // Documentation in gsDomainIterator.h
     bool next()
     {
-        gsDebug<<"TensorDomainIterator: next\n";
-        gsDebugVar(m_isGood);
         m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
         return m_isGood;
     }
@@ -74,8 +69,6 @@ public:
     // Documentation in gsDomainIterator.h
     bool next(index_t increment)
     {
-        gsDebug<<"TensorDomainIterator: next increment "<<increment<<"\n";
-        gsDebug<<typeid(*curElement[0].get()).name()<<"\n";
         for (index_t i = 0; i < increment; i++)
             m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
         return m_isGood;
