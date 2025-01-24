@@ -399,6 +399,11 @@ int main(int argc, char *argv[])
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     //A.setOptions(Aopt);
+    // A.options().addInt("quRule",
+    //              "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
+    //              1);
+    A.options().setReal("quA", 2.0);
+    A.options().setInt("quB", 2);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -535,7 +540,22 @@ int main(int argc, char *argv[])
         geometryMap PP    = A.getMap(Psi);
         geometryMap PPLoc = A.getMap(PsiLoc);
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        auto  comp = PPLoc(mpLeft);
+        auto comp = PPLoc(mpLeft);
+        auto comp0  = A.getCoeff(mpLeft, PPLoc);
+        gsMatrix<> ptst(2, 1); // Create a 2x1 matrix (2D point)
+        ptst(0, 0) = 0.1;     // Set the x-coordinate
+        ptst(1, 0) = 0.2;     // Set the y-coordinate
+
+        gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt2\n";        
+        ptst(0, 0) = 0.385;     // Set the x-coordinate
+        ptst(1, 0) = 1.;     // Set the y-coordinate
+        gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt2\n";        
+        ptst(0, 0) = 0.2155;     // Set the x-coordinate
+        ptst(1, 0) = 0.876;     // Set the y-coordinate
+        gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt3\n";        
+        gsInfo << ev.integral( (comp0-comp).sqNorm()) <<" : integral error\n";
+
+
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
@@ -668,6 +688,7 @@ int main(int argc, char *argv[])
             gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
 
             auto  comp = PP(Psitp);
+            //auto comp = A.getCoeff(Psitp, PP);
             A.initSystem(IGdim);
             //Obtain control points for the gradient of mpLeft.comp(Psi)
             A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
@@ -681,7 +702,8 @@ int main(int argc, char *argv[])
         geometryMap PP = A.getMap(Psitp);
         gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
 
-        auto  comp = PP(mpLeft);
+        // auto  comp = PP(mpLeft);
+        auto comp = A.getCoeff(mpLeft, PP);
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
