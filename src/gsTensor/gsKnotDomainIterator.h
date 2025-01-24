@@ -30,8 +30,8 @@ public:
 
     gsKnotDomainIterator(const gsKnotVector<T> & _knots, bool start = true)
     :
-    m_it(start ? _knots.domainUBegin() : _knots.domainUEnd()),
-    m_itEnd(_knots.domainUEnd())
+    m_it(start ? _knots.domainUBegin() : _knots.domainUEnd()-1),
+    m_itEnd(_knots.domainUEnd()-1)
     {
 
     }
@@ -40,6 +40,7 @@ public:
     bool next() override
     {
         ++m_it;
+        m_isGood = (m_it != m_itEnd);
         return m_isGood;
     }
 
@@ -47,6 +48,7 @@ public:
     bool next(index_t increment) override
     {
         m_it += increment;
+        m_isGood = (m_it < m_itEnd);
         return m_isGood;
     }
 
@@ -54,6 +56,7 @@ public:
     bool prev() override
     {
         --m_it;
+        // WARNING: This does not check whether the iterator passes the beginning
         return m_isGood;
     }
 
@@ -61,6 +64,7 @@ public:
     bool prev(index_t decrement) override
     {
         m_it -= decrement;
+        // WARNING: This does not check whether the iterator passes the beginning
         return m_isGood;
     }
 

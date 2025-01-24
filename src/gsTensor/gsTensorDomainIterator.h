@@ -61,7 +61,7 @@ public:
     // Documentation in gsDomainIterator.h
     bool next()
     {
-        this->advance();
+        m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
         return m_isGood;
     }
 
@@ -69,7 +69,7 @@ public:
     bool next(index_t increment)
     {
         for (index_t i = 0; i < increment; i++)
-            this->advance();
+            m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
         return m_isGood;
     }
 
@@ -132,25 +132,6 @@ public:
     }
 
     index_t domainDim() const {return D;}
-
-private:
-
-    void advance()
-    {
-        for (index_t i = 0; i < D; ++i)
-        {
-            // increase current dimension
-            if (++curElement[i] == meshEnd[i])     // current dimension exhausted ?
-            {
-                if (i == D - 1)         // was it the last one?
-                    m_isGood = false;       // then all elements exhausted
-                else
-                    curElement[i].reset();  // otherwise, reset this and increase the next dimension
-            }
-            else
-                m_isGood = true;            // current dimension not yet exhausted, return current vector
-        }
-    }
 
 
 //    size_t numElements() const
