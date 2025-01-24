@@ -283,7 +283,7 @@ int main(int argc, char *argv[])
         ptst(0, 0) = 0.1;     // Set the x-coordinate
         ptst(1, 0) = 0.2;     // Set the y-coordinate
 
-        gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt2\n";        
+        gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt1\n";        
         ptst(0, 0) = 0.385;     // Set the x-coordinate
         ptst(1, 0) = 1.;     // Set the y-coordinate
         gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt2\n";        

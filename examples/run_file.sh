@@ -1,6 +1,9 @@
 #!/bin/bash
 
 #Make It Executable : chmod +x ../examples/run_file.sh
+ 
+# Delete existing error analysis file if it exists
+rm -r ../build/ParaviewOutput/error_analysis.txt
 
 # Build r_refinement_square before running
 make r_refinement_square -j 15
@@ -22,6 +25,6 @@ TAGS=(
 # Run the executable with each set of parameters
 for TAG in "${TAGS[@]}"; do
     echo "Running $EXECUTABLE with parameters: $TAG"
-    $EXECUTABLE --errorsave --plot $TAG
+    $EXECUTABLE --errorsave $TAG
     echo "-------------------------------------------------"
 done
