@@ -1,6 +1,11 @@
 #!/bin/bash
 
-#Make It Executable : chmod +x ../examples/run_r_refinement_square.sh
+#Make It Executable : chmod +x ../examples/run_file.sh
+
+# Build r_refinement_square before running
+make r_refinement_square -j 15
+#make r_refinement_ComplexGeometry -j 15
+
 # Path to the executable
 EXECUTABLE="./bin/r_refinement_square"
 #EXECUTABLE="./bin/r_refinement_ComplexGeometry"
@@ -17,6 +22,6 @@ TAGS=(
 # Run the executable with each set of parameters
 for TAG in "${TAGS[@]}"; do
     echo "Running $EXECUTABLE with parameters: $TAG"
-    $EXECUTABLE $TAG
+    $EXECUTABLE --errorsave --plot $TAG
     echo "-------------------------------------------------"
 done

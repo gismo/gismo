@@ -163,7 +163,39 @@ public:
         const gsOptionList& opt = gsAssembler<T>::defaultOptions()
     );
 
-};
+    // This nested class implements the fast diagonalization algorithm 
+    // described in the paper: https://doi.org/10.1016/j.cma.2023.116570
+    ///----- @ M. BAHARI
+    /// The stiffness matrix represents
+    /// \f$ (\nabla u, \nabla v)_{L_2} + \tau (u, v)_{L_2} \f$
+    /// and a projection L^2 of a scalar and vector
+    /// \f$ (u, v)_{L_2} \f$
+    /// \param basis  A tensor basis
+    /// \param bc     Boundary conditions
+    /// \param opt    Assembler options
+    /// \param tau  Scaling parameter (see above)
+    class Poisson_FastDiag {
+        public:
+            Poisson_FastDiag(const gsBasis<T>& basis,
+                            const gsBoundaryConditions<T>& bc,
+                            const gsOptionList& opt,
+                            T tau = 0.0);
+
+            gsMatrix<T> solve(const gsMatrix<T>& b) const;
+            gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const;
+            gsMatrix<T> L2ProjectVec(const gsMatrix<T>& b, bool other = false) const;
+
+        private:
+            std::vector<gsMatrix<T>> ds;
+            std::vector<gsMatrix<T>> Us;
+            int _rdim;
+            T _tau;
+
+            mutable gsMatrix<T> s_tilde;
+            mutable gsMatrix<T> r_tilde;
+            mutable gsMatrix<T> t_tilde;
+        };
+    };
 
 } // namespace gismo
 
