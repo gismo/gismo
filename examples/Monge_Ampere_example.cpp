@@ -685,7 +685,7 @@ int main(int argc, char *argv[])
         for (index_t i = 0; i < numrRefine; i++){
             // Psi.addAutoBoundaries();
             geometryMap PP = A.getMap(Psitp);
-            gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
+            //gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
 
             auto  comp = PP(Psitp);
             //auto comp = A.getCoeff(Psitp, PP);
