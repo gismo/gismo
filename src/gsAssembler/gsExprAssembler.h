@@ -800,6 +800,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 #       endif
         {
             // Map the Quadrature rule to the element
+            gsDebugVar(domIt.lowerCorner());
+            gsDebugVar(domIt.id());
+            gsDebugVar(domItEnd.id());
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), quWeights);
 

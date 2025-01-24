@@ -41,6 +41,7 @@ public:
     {
         ++m_it;
         m_isGood = (m_it != m_itEnd);
+        gsDebugVar(m_it.value());
         return m_isGood;
     }
 
@@ -49,6 +50,7 @@ public:
     {
         m_it += increment;
         m_isGood = (m_it < m_itEnd);
+        gsDebugVar(m_it.value());
         return m_isGood;
     }
 
@@ -78,6 +80,7 @@ public:
     {
         gsVector<T,1> lower;
         lower[0] = m_it.value();
+        gsDebugVar(lower[0]);
         return lower;
     }
 
