@@ -244,7 +244,7 @@ bool nextLexicographic(Vec& cur, const Vec& start, const Vec& end)
 }
 
 template<class Vec>
-bool nextLexicographicIter(Vec& cur, const Vec& end)
+bool nextLexicographicIter(Vec& cur, const Vec& end, index_t dir = -1)
 {
     const index_t d = cur.size();
     GISMO_ASSERT( d == cur.size() && d == end.size(),
@@ -252,6 +252,14 @@ bool nextLexicographicIter(Vec& cur, const Vec& end)
 
     for (index_t i = 0; i < d; ++i)
     {
+        if (dir==i)
+        {
+            if (i == d-1)
+                return false;
+            else
+                continue;
+        }
+
         // increase current dimension
         if (++cur[i] == end[i])     // current dimension exhausted ?
         {
