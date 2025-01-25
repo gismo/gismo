@@ -66,13 +66,10 @@ public:
         if (par)
         {
             meshEnd[dir]    = give(domain.component(dir)->endAll());
-            // meshEnd[dir]   -=1;
             curElement[dir] = give(domain.component(dir)->endAll());
-            // curElement[dir]-=2;
             curElement[dir]-=1;
             meshStart[dir]  = give(domain.component(dir)->endAll());
-            // meshStart[dir] -=2;
-            meshStart[dir] -=1;
+            meshStart[dir] -=1; //note: ending value
         }
         else
         {
@@ -107,7 +104,7 @@ public:
     // proceed to the next element; returns true if end not reached yet
     bool next()
     {
-        m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
+        m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd, dir);
         return m_isGood;
     }
 
@@ -117,7 +114,7 @@ public:
     bool next(index_t increment)
     {
         for (index_t i = 0; i < increment; i++)
-            m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
+            m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd, dir);
         return m_isGood;
     }
 
@@ -150,9 +147,11 @@ public:
 
     gsVector<T> lowerCorner() const override
     {
-        gsVector<T,D> lower;
+        gsVector<T> lower;
+        lower.resize(D);
         for (short_t i = 0; i < dir ; ++i)
             lower[i]  = curElement[i].lowerCorner().value();
+        //lower[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
         lower[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
         for (short_t i = dir+1; i < d; ++i)
             lower[i]  = curElement[i].lowerCorner().value();
@@ -161,7 +160,8 @@ public:
 
     gsVector<T> upperCorner() const override
     {
-        gsVector<T,D> upper;
+        gsVector<T> upper;
+        upper.resize(D);
         for (short_t i = 0; i < dir ; ++i)
             upper[i]  = curElement[i].upperCorner().value();
         upper[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
