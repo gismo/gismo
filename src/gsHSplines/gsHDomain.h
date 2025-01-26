@@ -81,6 +81,7 @@ class gsHDomain : public gsDomain<T> // is template correct?
 public:
 
     typedef gsDomainIteratorWrapper<T> domainIter;
+    typedef typename gsHTree<d,Z>::const_literator leafIterator;
 
     template <class _T, short_t _d, class _Z>
     friend class gsHDomainIterator;
@@ -101,6 +102,19 @@ public:
     domainIter beginBdr(const boxSide bs) const override
     {
         return domainIter(new gsHDomainBoundaryIterator<T,d,Z>(m_tree, bs));
+    }
+
+    size_t numElements(boxSide const & s = boundary::none) const override
+    {
+        GISMO_ASSERT(s == boundary::none, "Not implemented");
+        leafIterator it = m_tree.beginLeafIterator();
+        size_t nel(0);
+        while (it.good())
+        {
+            nel +=  ( it.upperCorner() - it.lowerCorner() ).prod();
+            it.next();
+        }
+        return nel;
     }
 
     const gsHTree<d,Z> & tree() const { return m_tree; }
