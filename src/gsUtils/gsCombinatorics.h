@@ -263,7 +263,6 @@ bool nextLexicographicIter(Vec& cur, const Vec& end, index_t dir = -1)
         // increase current dimension
         if (++cur[i] == end[i])     // current dimension exhausted ?
         {
-            gsDebug<<"EXHAUSTED "<<i<<"\n";
             if (i == d - 1)         // was it the last one?
                 return false;       // then all elements exhausted
             else
