@@ -119,7 +119,10 @@ public: // Domain element iterators
     {
         GISMO_ASSERT(0==k, "This is a one-piece domain.");
         GISMO_UNUSED(k);
-        return beginAll();
+        if (bs == boundary::none)
+            return beginAll();
+        else
+            return beginBdr(bs);
     }
 
     virtual domainIterWrapper beginBdr (const boxSide   bs) const = 0;
@@ -134,7 +137,10 @@ public: // Domain element iterators
     {
         GISMO_ASSERT(0==k, "This is a one-piece domain.");
         GISMO_UNUSED(k);
-        return endAll();
+        if (bs == boundary::none)
+            return endAll();
+        else
+            return endBdr(bs);
     }
 
     // Default implementation for one patch

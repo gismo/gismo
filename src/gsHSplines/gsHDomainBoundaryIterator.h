@@ -190,7 +190,7 @@ private:
             // AM: a little ugly for now, to be improved
             size_t diadicSize;
             const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(m_basis);
-            if (basis().manualLevels() )
+            if (hbasis->manualLevels() )
             {
                 gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.level()).knots(dir);
                 index_t start = 0;
@@ -200,7 +200,7 @@ private:
                 diadicSize = end - start;
             }
             else
-                diadicSize = static_cast<const gsHTensorBasis<d,T>*>(m_basis)->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;
+                diadicSize = hbasis->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;
 
             return static_cast<size_t>(m_leaf.upperCorner().at(dir) ) == diadicSize;// todo: more efficient
         }
@@ -228,7 +228,8 @@ private:
             index_t start = lower(dim);
             index_t end  = upper(dim) ;
 
-            if (basis().manualLevels() )
+            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(m_basis);
+            if (hbasis->manualLevels() )
             {
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
                     _diadicIndexToKnotIndex(level2,dim,start);
