@@ -1137,7 +1137,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 continue;
 
 // Activate the try-catch only if G+Smo is in DEBUG
-#ifndef NDEBUG
+#ifdef NDEBUG
             // Perform required pre-computations on the quadrature nodes
             try
             {
