@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; // gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    gsMultiPatch<> mpLeft ; //= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -282,10 +282,7 @@ int main(int argc, char *argv[])
         auto comp0 = A.getCoeff(mpLeft, PP);
 
         gsInfo << std::setprecision(14) <<"\n\n";
-        auto int_ex = ev.integral( (GLeft).sqNorm()/meas(PP)); /// Exact integral
-        gsInfo << "integral getCoef ERR "<< int_ex - ev.integral( (PP).sqNorm()) <<"\n";
-        gsInfo << "integral getCoef ERR "<< int_ex - ev.integral( (comp0).sqNorm()) <<"\n";//Strange behavior
-        gsInfo << "integral Comp ERR "<< int_ex - ev.integral( (PPLoc).sqNorm()) <<"\n";//Strange behavior
+        gsInfo << "integral Comp ERR "<< ev.integral( (comp0-PPLoc).sqNorm()) <<"\n";//Strange behavior
         gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Strange behavior they are the same
 
         A.initSystem(ITdim);
