@@ -35,6 +35,58 @@
 using namespace gismo;
 //! [Include namespace]
 
+template <class T>
+T interpolate_crs(const gsMultiBasis<T> & dbasis_fine, 
+                  const gsMultiBasis<T> & dbasis_coarse, 
+                  const typename gsGeometry<T>::uPtr & fine, 
+                  gsMatrix<T> & coefs, 
+                  gsMultiPatch<T> & mp,
+                  index_t & projection_Crs)
+{
+    if (projection_Crs == 0)
+    {
+        gsL2Projection<real_t>::projectFunction(dbasis_fine, dbasis_coarse,*fine,mp,coefs);
+    }
+    else if(projection_Crs == 1)
+    {
+        gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0),*fine,coefs);
+    }            
+    
+    gsExprEvaluator<> ev;
+    auto G = ev.getMap(mp);
+    ev.setIntegrationElements(dbasis_fine);
+
+    gsGeometry<>::uPtr coarse_ptr = dbasis_coarse.basis(0).makeGeometry(coefs);
+    auto cfine = ev.getVariable(*fine,G);
+    auto ccoarse = ev.getVariable(*coarse_ptr,G);
+    
+    real_t err_proj_crs = ev.integral(meas(G) * (ccoarse-cfine).sqNorm());
+
+    return err_proj_crs;
+}
+
+
+template <class T>
+T interpolate_ref(const gsMultiBasis<T> & dbasis_fine, 
+                  const typename gsGeometry<T>::uPtr & coarse, 
+                  gsMatrix<T> & coefs, 
+                  gsMultiPatch<T> & mp)
+{    
+    gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0),*coarse,coefs);
+
+    gsExprEvaluator<> ev;
+    auto G = ev.getMap(mp);
+    ev.setIntegrationElements(dbasis_fine);
+
+    gsGeometry<>::uPtr fine_ptr = dbasis_fine.basis(0).makeGeometry(coefs);
+    auto cfine = ev.getVariable(*fine_ptr,G);
+    auto ccoarse = ev.getVariable(*coarse,G);
+    
+    real_t err_proj_ref = ev.integral(meas(G) * (ccoarse-cfine).sqNorm());
+
+    return err_proj_ref;
+}
+
 template <short_t dim, class T>
 void solve( gsMultiPatch<T> & mp,
             gsFunctionExpr<T> & source,
@@ -219,7 +271,7 @@ void solve( gsMultiPatch<T> & mp,
         // gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
         // Cold = tmp.array()*CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
         // Cold.array() += CHopt.askReal("mean",0.0); // 0.45
-    
+
         // // %%%%%%%%%%%%%%%%%%%%%%%% XML initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsFileData<> fd1;
         std::string file_name;
@@ -228,16 +280,30 @@ void solve( gsMultiPatch<T> & mp,
         else
             file_name = "/Users/lucasventavinuela/gismo/build/new_spin.xml";
         
-        fd1.read(file_name);
-
         gsMultiBasis<> dbasis_IC;
         gsMatrix<> Coefs;
 
+        fd1.read(file_name);
         fd1.getId(0,dbasis_IC);
         fd1.getId(1,Coefs);
-
+     
         gsGeometry<>::uPtr IC_function = dbasis_IC.basis(0).makeGeometry(give(Coefs));
         gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*IC_function,Cold);
+
+        // New: to update the values of the free DoFs
+        const gsDofMapper & mapper = w.mapper();
+        gsGeometry<>::uPtr geom  = dbasis.basis(0).makeGeometry(give(Cold));
+        Cold.resize(mapper.freeSize(),1);
+
+        for (index_t c = 0; c!=geom->coefs().cols(); c++) // for all components
+        {
+            for (index_t i = 0; i != geom->coefs().rows(); ++i)
+            {
+                const index_t ii = mapper.index(i, c);
+                if ( mapper.is_free_index(ii) ) // DoF value is in the solVector 
+                    Cold.at(ii) = geom->coefs()(i, c);
+            }
+        }
     }
     else
     {
@@ -286,6 +352,15 @@ void solve( gsMultiPatch<T> & mp,
     gsSparseMatrix<> K_nitsche; // empty variable
 
 
+    // Errors projection
+    real_t error_crs_c = 0;
+    real_t error_crs_dc = 0;
+    
+    real_t error_ref_cnew = 0;
+    real_t error_ref_dcnew = 0;
+    real_t error_ref_cold = 0;
+    real_t error_ref_dcold = 0;
+
     // ! [Load mesher options]
     // DIMENSION-INDEPENDENT
     // gsAdaptiveMeshingBase<real_t> * mesher;
@@ -312,8 +387,7 @@ void solve( gsMultiPatch<T> & mp,
 
     std::ofstream csvFile;
     csvFile.open(out+"/dofs.csv");
-    csvFile << "TimeStep,NumDOFs,Mass\n";
-
+    csvFile << "TimeStep, NumDOFs, Mass, ErrorRefCnew, ErrorRefdCnew, ErrorRefCold, ErrorRefdCold\n";
 
     for (index_t step = 0; step!=maxSteps; step++)
     {
@@ -494,10 +568,14 @@ void solve( gsMultiPatch<T> & mp,
 
                     // Project the old and new solutions onto the new basis
                     clock.restart();
-                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cold_,ColdF);
-                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCold_,dColdF);
-                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
-                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
+                    // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cold_,ColdF);
+                    // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCold_,dColdF);
+                    // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
+                    // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
+                    error_ref_cnew += interpolate_ref(dbasis, Cnew_, CnewF, mp);
+                    error_ref_dcnew += interpolate_ref(dbasis, dCnew_, dCnewF, mp);
+                    error_ref_cold += interpolate_ref(dbasis, Cold_, ColdF, mp);
+                    error_ref_dcold += interpolate_ref(dbasis, dCold_, dColdF, mp);
                     projectionTime += clock.stop();
 
                     // Setup the space to obtain a new DoF mapper
@@ -578,21 +656,23 @@ void solve( gsMultiPatch<T> & mp,
                 clock.restart();
                 
                 //  ==================== Coarsening projection ====================
-                if (projection_Crs == 0)
-                {
-                    gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*Cnew_,mp,CnewF);
-                    gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*dCnew_,mp,dCnewF);
-                }
-                else if (projection_Crs == 1)
-                {
-                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
-                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
-                }
-                else if (projection_Crs == 2)
-                {
-                    gsQuasiInterpolate<real_t>::localTaylor(dbasis.basis(0),*Cnew_,dbasis.basis(0).maxDegree(),CnewF);
-                    gsQuasiInterpolate<real_t>::localTaylor(dbasis.basis(0),*dCnew_,dbasis.basis(0).maxDegree(),dCnewF);
-                }
+                // if (projection_Crs == 0)
+                // {
+                //     gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*Cnew_,mp,CnewF);
+                //     gsL2Projection<real_t>::projectFunction(fine_basis, dbasis,*dCnew_,mp,dCnewF);
+                // }
+                // else if (projection_Crs == 1)
+                // {
+                //     gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*Cnew_,CnewF);
+                //     gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*dCnew_,dCnewF);
+                // }
+                // else if (projection_Crs == 2)
+                // {
+                //     gsQuasiInterpolate<real_t>::localTaylor(dbasis.basis(0),*Cnew_,dbasis.basis(0).maxDegree(),CnewF);
+                //     gsQuasiInterpolate<real_t>::localTaylor(dbasis.basis(0),*dCnew_,dbasis.basis(0).maxDegree(),dCnewF);
+                // }
+                error_crs_c  = interpolate_crs(fine_basis, dbasis, Cnew_, CnewF, mp, projection_Crs);
+                error_crs_dc = interpolate_crs(fine_basis, dbasis, dCnew_, dCnewF, mp, projection_Crs); 
                 // ================================================================
 
                 // new
@@ -632,7 +712,12 @@ void solve( gsMultiPatch<T> & mp,
             gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
             collection.saveTimeStep();
             real_t mass = ev.integral(meas(G)*cnew);
-            csvFile << step << "," << A.numDofs() <<"," << mass <<"\n";
+            csvFile << step << "," << A.numDofs() <<"," << mass <<  "," << error_ref_cnew << ","<< error_ref_dcnew << ","<< error_ref_cold <<","<< error_ref_dcold<< "\n";
+            // Reset the errors after the loop
+            error_ref_cnew  = 0;
+            error_ref_cold  = 0;
+            error_ref_dcnew = 0;
+            error_ref_dcold = 0;
         }
     }
     if (plot)
