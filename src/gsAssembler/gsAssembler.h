@@ -701,12 +701,13 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
     // Start iteration over elements
 #ifdef _OPENMP
     domIt += tid;
-    for (; domIt != domItEnd; domIt+=(nt) )
+    for (; domIt < domItEnd; domIt+=(nt) )
 #else
-    for (; domIt != domItEnd; ++domIt )
+    for (; domIt < domItEnd; ++domIt )
 #endif
     {
         // Map the Quadrature rule to the element
+        gsDebug<<"lowerCorner: "<<domIt.lowerCorner().transpose()<<", upperCorner: "<<domIt.upperCorner().transpose()<<"\n";
         quRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights );
 
         // Perform required evaluations on the quadrature nodes

@@ -105,6 +105,7 @@ public:
     /// Dimension of the parameter domain
     static const short_t Dim = d;
 
+    friend class gsHDomain<d,T,index_t>;
     friend class gsHDomainIterator<T,d>;
     friend class gsHDomainBoundaryIterator<T,d>;
 public:
@@ -599,7 +600,7 @@ public:
     /// Returns the domain (same as the tree)
     virtual memory::shared_ptr<gsDomain<T> > domain() const
     {
-        return memory::make_shared(new gsHDomain<d,T,index_t>(m_tree));
+        return memory::make_shared(new gsHDomain<d,T,index_t>(m_tree,*this));
     }
 
     /// Returns a reference to m_tree
@@ -914,15 +915,15 @@ public:
 
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
-        return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree()));
+        return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree(),*this));
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return ( s == boundary::none ?
 
-                 typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree())) :
-                 typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(this->tree(),s) )
+                 typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree(),*this)) :
+                 typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(this->tree(),*this,s) )
             );
     }
 
@@ -977,7 +978,7 @@ public:
     // TO DO: use gsHDomainLeafIterator for a better implementation
     size_t numElements(boxSide const & s = 0) const
     {
-        return gsHDomain<d,T,index_t>(m_tree).numElements(s);
+        return gsHDomain<d,T,index_t>(m_tree,*this).numElements(s);
     }
 
     /// @brief transformes a sortedVector \a indexes of flat tensor index

@@ -55,18 +55,21 @@ public:
 public:
 
     gsHDomainBoundaryIterator(const gsHTree<d,Z> & tree,
+                              const gsHTensorBasis<d,T> & basis,
                               const boxSide & s)
     :
     gsDomainIterator<T>(),
-    m_tree(tree)
+    m_tree(tree),
+    m_basis(basis)
     {
         init(m_tree,s);
     }
 
     gsHDomainBoundaryIterator(const gsHDomain<d,T,Z> & domain,
+                              const gsHTensorBasis<d,T> & basis,
                               const boxSide & s)
     :
-    gsHDomainBoundaryIterator(domain.tree(),s)
+    gsHDomainBoundaryIterator(domain.tree(),basis,s)
     {
     }
 
@@ -119,9 +122,9 @@ public:
 
     gsVector<T> lowerCorner() const
     {
-        gsVector<T,d> lower;
+        gsVector<T> lower(d);
         for (short_t i = 0; i < dir ; ++i)
-            lower[i]  = *m_curElement[i]; // in gsTensorDomainBoundaryIterator, we have: lower[i]  = m_curElement[i].lowerCorner().value();
+            lower[i] = *m_curElement[i]; // in gsTensorDomainBoundaryIterator, we have: lower[i]  = m_curElement[i].lowerCorner().value();
         lower[dir] = (par ? *(m_curElement[dir]+1) : *m_curElement[dir] ); // in gsTensorDomainBoundaryIterator, we have: lower[dir] = (par ? m_curElement[dir].upperCorner().value() : m_curElement[dir].lowerCorner().value() );
         for (short_t i = dir+1; i < d; ++i)
             lower[i] = *m_curElement[i]; // in gsTensorDomainBoundaryiterator, we have: lower[i]  = m_curElement[i].lowerCorner().value();
@@ -130,7 +133,7 @@ public:
 
     gsVector<T> upperCorner() const
     {
-        gsVector<T,d> upper;
+        gsVector<T> upper(d);
         for (short_t i = 0; i < dir ; ++i)
             upper[i] = *(m_curElement[i]+1); // in gsTensorDomainBoundaryiterator, we have: upper[i]  = m_curElement[i].upperCorner().value();
         upper[dir] = (par ? *(m_curElement[dir]+1) : *m_curElement[dir] ); // in gsTensorDomainBoundaryIterator, we have: upper[dir] = (par ? m_curElement[dir].upperCorner().value() : m_curElement[dir].upperCorner().value() );
@@ -189,7 +192,7 @@ private:
         {
             // AM: a little ugly for now, to be improved
             size_t diadicSize;
-            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(m_basis);
+            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(&m_basis);
             if (hbasis->manualLevels() )
             {
                 gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.level()).knots(dir);
@@ -228,17 +231,17 @@ private:
             index_t start = lower(dim);
             index_t end  = upper(dim) ;
 
-            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(m_basis);
+            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(&m_basis);
             if (hbasis->manualLevels() )
             {
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)->
                     _diadicIndexToKnotIndex(level2,dim,start);
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)->
                     _diadicIndexToKnotIndex(level2,dim,end);
             }
 
             const gsKnotVector<T> & kv =
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)
                 ->tensorLevel(level2).component(dim).knots();
 
             m_breaks[dim].clear();
@@ -274,12 +277,11 @@ private:
 // members
 // =============================================================================
 
-    GISMO_DEPRECATED
-    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
+public:
+    // GISMO_DEPRECATED
+    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(&m_basis); }
 
 public:
-
-    using gsDomainIterator<T>::m_basis;
 
 #   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -288,6 +290,7 @@ public:
 private:
 
     const gsHTree<d,Z> & m_tree;
+    const gsHTensorBasis<d,T> & m_basis;
 
     // Boundary parameters
     short_t dir; // direction normal to the boundary

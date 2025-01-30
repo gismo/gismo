@@ -54,7 +54,7 @@ m_index(-1),
 m_marked(false)
 {
     m_basis = nullptr;
-    m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
+    m_basis = static_cast<const gsHTensorBasis<d,T> *>(&domHIt->basis());
     GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
 
     m_coords.resize(d,2);

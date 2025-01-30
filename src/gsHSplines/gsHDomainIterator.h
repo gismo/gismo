@@ -51,18 +51,21 @@ public:
 
 public:
 
-    gsHDomainIterator(const gsHTree<d,Z> & tree)
+    gsHDomainIterator(const gsHTree<d,Z> & tree,
+                      const gsHTensorBasis<d,T> & basis)
     :
     gsDomainIterator<T>(),
-    m_tree(tree)
+    m_tree(tree),
+    m_basis(basis)
     {
         m_leaf = this->init(m_tree);
     }
 
 
-    gsHDomainIterator(const gsHDomain<d,T,Z> & domain)
+    gsHDomainIterator(const gsHDomain<d,T,Z> & domain,
+                      const gsHTensorBasis<d,T> & basis)
     :
-    gsHDomainIterator(domain.tree())
+    gsHDomainIterator(domain.tree(),basis)
     {
     }
 
@@ -126,17 +129,18 @@ public:
 
     gsVector<T> lowerCorner() const override
     {
-        gsVector<T,d> lower;
-        for (short_t D=0; D!=d; D++)
-            lower[D] = *m_curElement[D];
+        gsVector<T> lower(d);
+        for (short_t i = 0; i < d ; ++i)
+            lower[i] = *m_curElement[i];
+        gsDebugVar(lower);
         return lower;
     }
 
     gsVector<T> upperCorner() const override
     {
-        gsVector<T,d> upper;
-        for (short_t D=0; D!=d; D++)
-            upper[D] = *(m_curElement[D]+1);
+        gsVector<T> upper(d);
+        for (short_t i = 0; i < d ; ++i)
+            upper[i]  = *(m_curElement[i]+1);
         return upper;
     }
 
@@ -192,14 +196,14 @@ private:
 
             if (basis().manualLevels() )
             {
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)->
                     _diadicIndexToKnotIndex(level2,dim,start);
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)->
                     _diadicIndexToKnotIndex(level2,dim,end);
             }
 
             const gsKnotVector<T> & kv =
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)
                 ->tensorLevel(level2).component(dim).knots();
 
             // knotVals = kv.unique()
@@ -228,12 +232,11 @@ private:
 // members
 // =============================================================================
 
-    GISMO_DEPRECATED
-    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
+public:
+    // GISMO_DEPRECATED
+    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(&m_basis); }
 
 public:
-
-    using gsDomainIterator<T>::m_basis;
 
 #   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -242,6 +245,7 @@ public:
 private:
 
     const gsHTree<d,Z> & m_tree;
+    const gsHTensorBasis<d,T> & m_basis;
 
     // The current leaf node of the tree
     leafIterator m_leaf;

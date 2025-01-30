@@ -85,33 +85,49 @@ public:
 
     template <class _T, short_t _d, class _Z>
     friend class gsHDomainIterator;
+    template <class _T, short_t _d, class _Z>
+    friend class gsHDomainBoundaryIterator;
 
 public:
 
-    explicit gsHDomain(const gsHTree<d,Z>& tree)
+    explicit gsHDomain(const gsHTree<d,Z>& tree,
+                       const gsHTensorBasis<d,T>& basis)
     :
-    m_tree(tree)
+    m_tree(tree),
+    m_basis(basis)
     {
     }
 
     domainIter beginAll() const
     {
-        return domainIter(new gsHDomainIterator<T,d,Z>(m_tree));
+        return domainIter(new gsHDomainIterator<T,d,Z>(m_tree,m_basis));
     }
 
     domainIter beginBdr(const boxSide bs) const override
     {
-        return domainIter(new gsHDomainBoundaryIterator<T,d,Z>(m_tree, bs));
+        return domainIter(new gsHDomainBoundaryIterator<T,d,Z>(m_tree,m_basis, bs));
     }
 
     size_t numElements(boxSide const & s = boundary::none) const override
     {
-        GISMO_ASSERT(s == boundary::none, "Not implemented");
         leafIterator it = m_tree.beginLeafIterator();
         size_t nel(0);
+        size_t nel_local;
         while (it.good())
         {
-            nel +=  ( it.upperCorner() - it.lowerCorner() ).prod();
+            nel_local = 1;
+            if (s==boundary::none)
+                nel_local = ( it.upperCorner() - it.lowerCorner() ).prod();
+            else if  (leafOnBoundary(s,it))
+            {
+                for (short_t i = 0; i < d; ++i)
+                    if (i != s.direction())
+                        nel_local *= it.upperCorner()[i] - it.lowerCorner()[i];
+            }
+            else // not on boundary
+                nel_local = 0;
+
+            nel +=  nel_local;
             it.next();
         }
         return nel;
@@ -119,8 +135,37 @@ public:
 
     const gsHTree<d,Z> & tree() const { return m_tree; }
 
+private:
+
+    // WE SHOULD REMOVE THIS
+    bool leafOnBoundary(const boxSide & s, const leafIterator leaf) const
+    {
+        if ( s.parameter() )
+        {
+            // AM: a little ugly for now, to be improved
+            size_t diadicSize;
+            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(&m_basis);
+            if (hbasis->manualLevels() )
+            {
+                gsKnotVector<T> kv = hbasis->tensorLevel(leaf.level()).knots(s.direction());
+                index_t start = 0;
+                index_t end  = kv.uSize()-1;
+                hbasis->_knotIndexToDiadicIndex(leaf.level(),s.direction(),start);
+                hbasis->_knotIndexToDiadicIndex(leaf.level(),s.direction(),end);
+                diadicSize = end - start;
+            }
+            else
+                diadicSize = hbasis->tensorLevel(leaf.level()).knots(s.direction()).uSize() - 1;
+            gsDebugVar(diadicSize);
+            return static_cast<size_t>(leaf.upperCorner().at(s.direction()) ) == diadicSize;// todo: more efficient
+        }
+        else
+            return leaf.lowerCorner().at(s.direction()) == 0;
+    }
+
 protected:
     const gsHTree<d,Z> & m_tree;
+    const gsHTensorBasis<d,T> & m_basis;
 
 };
 

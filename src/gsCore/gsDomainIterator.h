@@ -85,7 +85,6 @@ public:
         m_domainIter = give(_other.m_domainIter);
         return *this;
     }
-
     /// Equality operator to compare two iterators
     bool operator==(const gsDomainIteratorWrapper& other) const
     {
@@ -222,7 +221,7 @@ public:
 
 public:
 
-    gsDomainIterator(index_t _id = 0) : m_basis(NULL), m_isGood( true ), m_id(_id) { }
+    gsDomainIterator(index_t _id = 0) : m_isGood( true ), m_id(_id) { }
 
     /// \brief Constructor using a basis
     gsDomainIterator( const gsDomain<T>& _dom, const boxSide & _bs = boundary::none)
@@ -373,7 +372,7 @@ protected:
     // gsVector<T> center;
 
     /// The basis on which the domain iterator is defined.
-    const gsBasis<T> * m_basis;
+    // const gsBasis<T> * m_basis;
 
     /// Flag indicating whether the domain iterator is "good". If it
     /// is "good", the iterator can continue to the next element.
@@ -408,13 +407,13 @@ public:
 
     virtual bool next(index_t increment) override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
 
-    virtual bool prev() override 
-    { 
+    virtual bool prev() override
+    {
         GISMO_NO_IMPLEMENTATION
     }
 
-    virtual bool prev(index_t decrement) override 
-    { 
+    virtual bool prev(index_t decrement) override
+    {
         GISMO_NO_IMPLEMENTATION
     }
 
