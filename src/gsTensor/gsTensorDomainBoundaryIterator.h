@@ -90,8 +90,6 @@ public:
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
         }
-
-        gsDebug<<"------------------------------------------------------------\n";
     }
 
 
@@ -172,9 +170,7 @@ public:
 
     const T getPerpendicularCellSize() const
     {
-        GISMO_NO_IMPLEMENTATION
-        // @todo: implement
-        // return (curElement[dir]+1) - curElement[dir];
+        return curElement[dir].upperCorner().value() - curElement[dir].lowerCorner().value();
     }
 
     GISMO_DEPRECATED

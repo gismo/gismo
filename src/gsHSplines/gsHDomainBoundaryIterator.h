@@ -142,6 +142,11 @@ public:
         return upper;
     }
 
+    const T getPerpendicularCellSize() const
+    {
+        return *(m_curElement[dir]+1) - *m_curElement[dir];
+    }
+
     int getLevel() const
     {
         return m_leaf.level();
