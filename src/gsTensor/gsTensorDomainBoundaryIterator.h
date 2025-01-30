@@ -16,6 +16,7 @@
 #include <gsCore/gsDomainIterator.h>
 #include <gsTensor/gsTensorDomain.h>
 #include <gsUtils/gsCombinatorics.h>
+#include <gsTensor/gsBreaksIterator.h>
 
 namespace gismo
 {
@@ -193,9 +194,12 @@ public:
     }
 
     /// Function to set the breakpoints in direction \a i manually
-    void setBreaks(std::vector<T> newBreaks, index_t i) // i: direction
+    void setBreaks(const std::vector<T> & newBreaks, index_t i) // i: direction
     {
-        GISMO_NO_IMPLEMENTATION
+        meshStart[i] = gsBreaksIterator<T>::make(newBreaks, true);
+        curElement[i] = gsBreaksIterator<T>::make(newBreaks, true);
+        meshEnd[i]   = gsBreaksIterator<T>::make(newBreaks, false);
+        reset();
         // breaks[i].swap(newBreaks);
         // meshEnd[i]   = breaks[i].end() - 1;
         // meshStart[i] = curElement[i] = breaks[i].begin();
