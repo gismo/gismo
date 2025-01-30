@@ -339,7 +339,7 @@ public:
 
     /// @brief Evaluate the basis function \a global_BF at \a patch and its derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const index_t n,gsMatrix<T> & result ) const;
+    void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const index_t n,std::vector<gsMatrix<T> >& result) const;
 
     /// @}
 

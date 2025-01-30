@@ -13,21 +13,42 @@
 ======================================================================
 ```
 
+![GitHub License](https://img.shields.io/github/license/gismo/gismo?color=008A00)
+
+![Static Badge](https://img.shields.io/badge/C%2B%2B-008A00)
+![GitHub Release](https://img.shields.io/github/v/release/gismo/gismo?label=Latest%20release&color=008A00)
+![GitHub Release Date](https://img.shields.io/github/release-date/gismo/gismo?display_date=published_at&label=%20&color=008A00)
+![GitHub commits since latest release](https://img.shields.io/github/commits-since/gismo/gismo/latest?label=commits%20since&color=008A00)
+![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/gismo/gismo/latest/total?color=008A00)
+
+
+![Static Badge](https://img.shields.io/badge/Python-008A00)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pygismo?label=versions&color=008A00)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/pygismo?color=008A00)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/gismo/gismo/build_wheels.yml)
+[![badge](https://img.shields.io/badge/Launch-pygismo-579ACA.svg?logo=data:image/png;base64,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)](https://mybinder.org/v2/gh/gismo/try_gismo/python_binder?urlpath=git-pull%3Frepo%3Dhttps%253A%252F%252Fgithub.com%252Fgismo%252Ftry_gismo%26urlpath%3Dlab%252Ftree%252Ftry_gismo%252Fpython%252F%26branch%3Dmain)
+
+![Static Badge](https://img.shields.io/badge/Julia-008A00)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/JuliaBinaryWrappers/gismo_jll.jl/total?label=Downloads%20(gismo_jll)&color=008A00)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/gismo/Gismo.jl/total?label=Downloads%20(Gismo.jl)&color=008A00)
+[![badge](https://img.shields.io/badge/Launch-Gismo.jl-579ACA.svg?logo=data:image/png;base64,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)](https://mybinder.org/v2/gh/gismo/try_gismo/julia_binder?urlpath=git-pull%3Frepo%3Dhttps%253A%252F%252Fgithub.com%252Fgismo%252Ftry_gismo%26urlpath%3Dlab%252Ftree%252Ftry_gismo%252Fjulia%252F%26branch%3Dmain)
+---
+
 # Continuous Integration status
 | **System** | **Status** | **More information** |
 |------------|------------|----------------------|
-| [CDash](https://cdash-ci.irisa.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.irisa.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.irisa.fr/index.php?project=Gismo) | Report results from all builds |
-| [Appveyor](https://ci.appveyor.com/project/gismo/gismo)  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[appVeyor]) | Windows MSVC 14.0 |
-| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | MacOS XCode 14.3 (x86_64/arm64) |
-| [Codeship](https://app.codeship.com/projects/123289)  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[codeship]) | |
-| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
-| [GitHub Actions](https://github.com/gismo/gismo/actions) | [![Build Status](https://github.com/gismo/gismo/workflows/gismo/badge.svg?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[actions]) | Latest Linux/MacOS/Windows |
+| [CDash](https://cdash-ci.irisa.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=008A00&up_message=up&url=https%3A%2F%2Fcdash-ci.irisa.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.irisa.fr/index.php?project=Gismo) | Report results from all builds |
+| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![CircleCI](https://img.shields.io/circleci/build/github/gismo/gismo)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[circleci]) | MacOS XCode 14.3 (x86_64/arm64) |
+| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/gismo-ci%2Fgismo?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
+| [GitHub Actions](https://github.com/gismo/gismo/actions) | [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/gismo/gismo/gismo.yml?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[github]) | Latest Linux/MacOS/Windows |
 | [GitLab-Inria]() | [![Build Status](https://gitlab.inria.fr/gismo/gismo/badges/stable/pipeline.svg)](https://gitlab.inria.fr/gismo/gismo/-/pipelines) | CI at Inria |
+| [OpenSUSE](https://build.opensuse.org/package/show/science) | [![build result](https://build.opensuse.org/projects/science/packages/gismo/badge.svg?type=default)](https://build.opensuse.org/package/show/science/gismo)| Latest OpenSUSE build as part of the *science* repository|
 | GCC Farm | [Status](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
 | [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
 | [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
 
-This README file contains brief information. More details are found in
+
+This README file contains brief information. More details are found ina
 the [Wiki pages](https://github.com/gismo/gismo/wiki).
 
 The latest revision of the code can be obtained using git (via https):
@@ -62,7 +83,7 @@ or as a tar.gz or zip file:
   - [Mingw64](http://mingw-w64.org/)
   - [MS Visual Studio C++](https://visualstudio.microsoft.com)
   - [PGI C/C++](https://www.pgroup.com/index.htm) only with `GISMO_WITH_OPENMP=OFF`
-  
+
 * Compilers known to not work
   - [Oracle Developer Studio](https://www.oracle.com/application-development/technologies/developerstudio.html) fails to compile Eigen
   - [IBM XLC C/C++](https://www.ibm.com/products/xl-cpp-linux-compiler-power) fails to compile Eigen
@@ -82,7 +103,7 @@ at a new, empty folder (in-source builds are disabled).
   choose your own build folder and execute CMake pointing to the
   sources.
 
-* On **MS Windows**: 
+* On **MS Windows**:
      * To compile G+Smo natively, you can use MS Visual Studio which has [built-in CMake
        support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
        since version 2015. Alternatively, you can run the `cmake-gui` tool
@@ -93,10 +114,10 @@ at a new, empty folder (in-source builds are disabled).
        create a QtCreator project.
      * Another option is to install [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install)
        which:
-       > lets developers install a Linux distribution [...] and use Linux applications, utilities, 
-       > and Bash command-line tools directly on Windows, unmodified, without the overhead of 
+       > lets developers install a Linux distribution [...] and use Linux applications, utilities,
+       > and Bash command-line tools directly on Windows, unmodified, without the overhead of
        > a traditional virtual machine or dualboot setup.
-     
+
        Then you can download, compile and use G+Smo as if your were using a native Linux machine.
 
 After successful compilation a dynamic library is created in `./lib` and

@@ -73,13 +73,13 @@ public:
 
 public:
 
-    short_t domainDim() const
+    short_t domainDim() const override
     {
         return d;
     }
 
     void connectivity(const gsMatrix<T> & nodes,
-                      gsMesh<T>   & mesh) const
+                      gsMesh<T>   & mesh) const override
     {
         GISMO_UNUSED(nodes); GISMO_UNUSED(mesh);
         GISMO_NO_IMPLEMENTATION;
@@ -87,7 +87,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements(boxSide const & s = 0) const { return m_basis->getBase(m_index).numElements(s); }
+    size_t numElements(boxSide const & s = 0) const override { return m_basis->getBase(m_index).numElements(s); }
 
     /*
       void refine(gsMatrix<T> const & boxes)
@@ -111,13 +111,13 @@ public:
     }
 
     /// Returns a bounding box for the basis' domain
-    gsMatrix<T> support() const
+    gsMatrix<T> support() const override
     {
         return m_basis->getBase(m_index).support();
     }
 
     /// Returns a bounding box for basis function \a kk domain on the domain of *this
-    gsMatrix<T> support(const index_t & kk) const
+    gsMatrix<T> support(const index_t & kk) const override
     {
         typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
         m_basis->getMapper().targetToSource(kk,sourceIndices);
@@ -149,26 +149,26 @@ public:
         // return m_basis->getBase(m_index).support();
     }
     /// Returns the boundary basis on side s
-    gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
+    gsBasis<T>* boundaryBasis_impl(boxSide const & s) const override
     {
         return m_basis->getBase(m_index).boundaryBasis(s).release(); // Wrong, Should return 1-D mappedSingleBasis
     }
 
     /// Evaluates the non-zero basis functions at value u.
-    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override
     {
         // m_basis->evalGlobal_into(m_index,u,result);
         m_basis->eval_into(m_index,u,result);
     }
 
     /// Evaluates i-th basis functions at value u.
-    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override
     {
         m_basis->evalSingle_into(m_index,i,u,result);
     }
 
     /// Evaluates the (partial) derivatives of non-zero basis functions at (the columns of) u.
-    void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override
     {
         m_basis->deriv_into(m_index,u,result);
     }
@@ -182,7 +182,7 @@ public:
     }
 
     /// Evaluates the (partial) derivatives of the nonzero basis functions at points \a u into \a result.
-    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override
     {
         m_basis->deriv2_into(m_index,u,result);
     }
@@ -205,7 +205,8 @@ public:
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n, gsMatrix<T>& result) const
+    using Base::evalAllDersSingle_into;
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result) const override
     {
         GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(n); GISMO_UNUSED(result);
         GISMO_NO_IMPLEMENTATION;
@@ -370,7 +371,7 @@ public:
         return indices.front();
     }
 
-    
+
 // Data members
 private:
     gsMappedBasis<d,T> * m_basis;

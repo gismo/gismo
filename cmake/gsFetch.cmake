@@ -111,6 +111,8 @@ function(gismo_fetch_module SUBMODULE)
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
       execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "rebase"
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
     endif()
 
     # Restore submodules to their proper hash
@@ -137,6 +139,9 @@ function(gismo_fetch_module SUBMODULE)
       endif()
       message("Hash is now ${${SUBMODULE}_HASH}")
     endif()
+
+    # HERE:
+    # add target unshallow_${SUBMODULE}
 
     gismo_add_extension(${SUBMODULE})
     return()

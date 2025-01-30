@@ -416,12 +416,13 @@ void gsMappedBasis<d,T>::evalAllDers_into(const index_t patch, const gsMatrix<T>
 }
 
 template<short_t d,class T>
-void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u,const index_t n,gsMatrix<T> & result ) const
+void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u,const index_t n, std::vector<gsMatrix<T> >& result ) const
 {
     GISMO_ASSERT( n<2, "gsTensorBasis::evalAllDers() not implemented for 1<n." );
-    result.resize(( 2*n + 1 ), u.cols());
+    result.resize(n);
+    // result.resize(( 2*n + 1 ), u.cols());
     BasisType * this_patch = m_bases[patch];
-    result.setZero();
+    // result.setZero();
     IndexContainer allLocalIndizes,localIndizes;
     WeightContainer allWeights,weights;
     gsMatrix<T> res;
@@ -440,16 +441,20 @@ void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index
         for(ConstIndexIter it=localIndizes.begin();it!=localIndizes.end();++it)
         {
             if(i==0)
+            {
                 this_patch->evalSingle_into(_getPatchIndex(*it),u,res);
+                result[i].resize(1,u.cols());
+            }
             else if(i==1)
+            {
                 this_patch->derivSingle_into(_getPatchIndex(*it),u,res);
+                result[i].resize(d,u.cols());
+            }
             else
                 GISMO_ERROR("only for n<2");
             for(index_t j=0;j<u.cols();j++)
             {
-                result(i,j)+=res(0,j)*(*wIter);
-                if(i==1)
-                    result(i+1,j)+=res(1,j)*(*wIter);
+                result[i].col(j)+=res.col(j)*(*wIter);
             }
             ++wIter;
         }

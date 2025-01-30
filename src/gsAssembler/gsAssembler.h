@@ -20,6 +20,7 @@
 #include <gsCore/gsMultiBasis.h>
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsAffineFunction.h>
+#include <gsCore/gsDomain.h>
 
 #include <gsIO/gsOptionList.h>
 

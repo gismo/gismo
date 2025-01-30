@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     cmd.addSwitch("plot","Plot with paraview",paraview);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsInfo << "------------- Constructions -----------------------------\n";
+    gsInfo << "------------- Constructions -------------\n";
 
     int degree = multEnd - 1;
     gsKnotVector<> kv(a, b, interior, multEnd);
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     // ======================================================================
 
 
-    gsInfo << "------------- Some properties    -----------------------\n\n";
+    gsInfo << "------------- Some properties -------------\n\n";
 
     gsInfo << "bsb0.size(): " << bsb0.size() << "\n\n"
               << "bsb0.numElements(): " << bsb0.numElements() << "\n\n"
@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
     // some operations
     // ======================================================================
 
-    gsInfo << "------------- Some operations    -----------------------\n\n";
+    gsInfo << "------------- Some operations -------------\n\n";
 
     const gsKnotVector<>& knots = bsb0.knots();
     gsInfo << "Knots: \n";

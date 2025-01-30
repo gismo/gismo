@@ -17,17 +17,12 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsCore/gsAffineFunction.h>
-#include <gsNurbs/gsKnotVector.h>
-
 #include <gsUtils/gsCombinatorics.h>
-
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsTensor/gsTensorBasis.h>
-#include <gsNurbs/gsBSpline.h>
-#include <gsNurbs/gsTensorBSpline.h>
-#include <gsNurbs/gsTensorNurbs.h>
-
 #include <gsAssembler/gsQuadrature.h>
+
+#include <gsNurbs/gsNurbsBasis.h>
 
 namespace gismo
 {
@@ -273,12 +268,12 @@ gsMatrix<T> gsMultiPatch<T>::pointOn( const patchSide& ps )
 }
 
 template<class T>
-void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
+void gsMultiPatch<T>::uniformRefine(int numKnots, int mul, short_t const dir)
 {
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
-        ( *it )->uniformRefine(numKnots, mul);
+        ( *it )->uniformRefine(numKnots, mul, dir);
     }
 }
 
@@ -300,6 +295,16 @@ void gsMultiPatch<T>::degreeIncrease(short_t const elevationSteps, short_t const
           it != m_patches.end(); ++it )
     {
         ( *it )->degreeIncrease(elevationSteps, dir);
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::degreeDecrease(int elevationSteps)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->degreeDecrease(elevationSteps, -1);
     }
 }
 
@@ -873,9 +878,9 @@ T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
     gsVector<T> tmp;
 
 #ifndef _MSC_VER
-#   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
+#   pragma omp declare reduction(min : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
     struct __closestPointHelper cph;
-#   pragma omp parallel for default(shared) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
+#   pragma omp parallel for default(shared) private(tmp) reduction(min:cph) //OpenMP 4.0, will not work on VS2019
 #else
     struct __closestPointHelper cph;
 #endif
@@ -1011,28 +1016,28 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
     // of each Bezier element
     std::map<std::array<size_t, 4>, internal::ElementBlock> ElementBlocks;
 
-    index_t NN; // Number of control points of the Bezier element
     gsMatrix<index_t> localActives, globalActives; // Active basis functions
     gsDofMapper mapper = getMapper((T)1e-7);
 
     gsMatrix<T> quPoints, values;
     gsVector<T> quWeights;
+    gsVector<index_t, 2> numNodes;
+    gsMatrix<T> Bd;
+    std::array<size_t, 4> key;
+    std::vector<gsKnotVector<T> >  kv(domainDim());
 
     for (size_t p=0; p<nPatches(); ++p)
     {
         gsBasis<T> * basis = & patch(p).basis();
+        // index_t NN; // Number of control points of the Bezier element // @hverhelst this is not used anywhere
 
         // Create the Bezier Basis
-        gsKnotVector<T> kv1;
-        kv1.initClamped(basis->degree(0));
-        gsKnotVector<T> kv2;
-        kv2.initClamped(basis->degree(1));
-        gsTensorBSplineBasis<2,T> bezBasis(kv1,kv2);
-        gsMatrix<> res;
+        kv[0].initClamped(basis->degree(0));
+        kv[1].initClamped(basis->degree(1));
+        typename gsBasis<T>::uPtr bezBasis = gsBSplineBasis<T>::create(give(kv));
 
         // Initialize the quadrature rule that will be used for fitting
         // the given basis with the Bezier basis
-        gsVector<index_t, 2> numNodes;
         numNodes << basis->degree(0)+1, basis->degree(1)+1 ;
         typename gsNewtonCotesRule<T>::uPtr QuRule;
         QuRule = gsNewtonCotesRule<T>::make(numNodes);
@@ -1043,10 +1048,9 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
 
         // Calculate the collocation matrix of the Bezier Basis
         // It will be used to fit the Bez. Basis to the original basis' elements.
-        gsMatrix<T> Bd = bezBasis.collocationMatrix(bezBasis.anchors());
+        Bd = bezBasis->collocationMatrix(bezBasis->anchors());
         auto solver = Bd.fullPivLu();
 
-        std::array<size_t, 4> key;
         for (; domIt<domItEnd; ++domIt)
         {
             localActives = basis->active( domIt.centerPoint() );
@@ -1055,12 +1059,11 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
             for (index_t i=0; i<localActives.rows(); ++i)
                 globalActives.at(i) = mapper.index(localActives.at(i), p);
 
-
             key[0]     = globalActives.rows();
             key[1] = basis->degree(0);
             key[2] = basis->degree(1);
             key[3] = 0; // TODO: if implemented for trivariates fix this
-            NN = localActives.size();
+
             ElementBlocks[key].numElements += 1;                  // Increment the Number of Elements contained in the ElementBlock
             ElementBlocks[key].actives.push_back(globalActives);  // Append the active basis functions ( = the Node IDs ) for this element.
             ElementBlocks[key].PR = basis->degree(0);
@@ -1106,13 +1109,14 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
         }
     }
 
+    std::vector<gsKnotVector<T> >  kv(domainDim());
     gsMatrix<> newCoefs, newWeights;
     for (auto const& pair : ElementBlocks)
     {
         internal::ElementBlock ElBlock = pair.second;
 
-        gsKnotVector<> kv1(0,1,0,ElBlock.PR+1);
-        gsKnotVector<> kv2(0,1,0,ElBlock.PS+1);
+        kv[0] = gsKnotVector<T>(0,1,0,ElBlock.PR+1);
+        kv[1] = gsKnotVector<T>(0,1,0,ElBlock.PS+1);
         // coefs.setZero( (ElBlock.PR+1)*(ElBlock.PS+1), controlPoints.cols()-1 );
 
         // Loop over all elements of the Element Block
@@ -1129,14 +1133,12 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
                 newWeights = Cit->transpose() * globalWeights(Ait->asVector(),0);
                 newCoefs = Cit->transpose() * globalWeights(Ait->asVector(),0).asDiagonal() * globalCoefs(Ait->asVector(),gsEigen::all);
                 newCoefs = newCoefs.array().colwise() / newWeights.col(0).array();
-
-                gsTensorNurbs<2> bezier(kv1,kv1, newCoefs, newWeights);
-                result.addPatch(bezier);
+                result.addPatch( gsNurbsBasis<T>::create(kv,newWeights)->makeGeometry(give(newCoefs)) );
             }
             else // If all weights are equal (Polynomial)
             {
-                gsTensorBSpline<2> bezier(kv1,kv2, Cit->transpose() * globalCoefs(Ait->asVector(),gsEigen::all));
-                result.addPatch(bezier);
+                result.addPatch( gsBSplineBasis<T>::create(kv)->makeGeometry(
+                       Cit->transpose() * globalCoefs(Ait->asVector(),gsEigen::all) ) );
             }
             // bezier extraction operator * original control points
         }

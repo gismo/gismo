@@ -1,0 +1,92 @@
+namespace gismo {
+/**
+
+\page paraview_example paraview_example.cpp
+
+This example file showcases many of the different ways you can export data from G+Smo
+in formats that can be imported in <a href="https://www.paraview.org">ParaView</a>.
+
+First a basic command line interface is set up so that the input and output files
+can be specified. Furthermore, the flag \c -b enables the export of Bezier patches,
+more details are provided later.
+\snippet paraview_example.cpp Parse command line
+
+Next the contents of the provided file are parsed and a gsMultiPatch object is read
+or created using all gsGeometry objects of the file.
+\snippet paraview_example.cpp Read geometry
+
+\section paraview_example1 Output using gsWriteParaview
+
+The first examples of writing data to ParaView formats are showcased in the following snippet. 
+Here, the functions of the gsWriteParaview header are utilised.
+This contains many functions that can handle the output of many different G+Smo objects.
+Here a gsMultiPatch object is exported as well as its underlying gsMultiBasis plotted as colours over its physical domain.
+A gsMatrix containing the geometry's control points is created and exported, as an example of outputting a point set to ParaView.
+Lastly, gsWriteCsv ( although not contained in gsWriteParaview ) is used to export data for a line plot to ParaView, that could
+for example be some time dependent data or an evaluation over the edge of some geometry etc.
+\snippet paraview_example.cpp gsWriteParaview
+
+\section paraview_example2 Output via the expression evaluator
+
+G+Smo's gsExprEvaluator is a valuable tool that allows to evaluate arbitrary mathematical expressions or solutions of PDEs
+that have been formulated using  the gsExprAssembler.
+It can also be used in order to export these evaluations to ParaView as seen here, where the expressions for the measure \c meas(geoMap)
+of geometrical map and the outward surface normal \c usn(geoMap) of the geometry are exported.
+\snippet paraview_example.cpp gsExprEvaluator
+
+
+\section paraview_example3 Using gsParaviewCollection
+
+The structure of a typical \c .pvd file is the following
+~~~~{.xml}
+<?xml version="1.0"?>
+<VTKFile type="Collection" version="0.1">
+<Collection>
+<!-- Time = 0 -->
+<DataSet timestep="0" name="Geometry" file="./hertz_pvd/hertz_t0.000000_patch0.vts"/>
+<DataSet timestep="0" name="Mesh" file="./hertz_pvd/hertz_t0.000000_mesh1.vtp"/>
+<!-- Time = 1 -->
+<DataSet timestep="1" name="Geometry" file="./hertz_pvd/hertz_t1.000000_patch0.vts"/>
+<DataSet timestep="1" name="Mesh" file="./hertz_pvd/hertz_t1.000000_mesh1.vtp"/>
+</Collection>
+</VTKFile>
+~~~~
+
+As it is apparent a \c .pvd file is a collection of references to other files that contain the actual data.
+The gsParaviewCollection class follows the same logic, as it is used as a handler for exporting multiple fields
+over the same geometry (e.g. temperature and displacement) and across many time steps.
+
+
+After the object is initialized and the options are set by the user, a new time step is created by passing a gsMultiPatch
+object to it. This is done for every time step, since the geometry might change over time ( e.g in structural problems ).
+
+Next, the desired expressions are evaluated and exported using gsParaviewCollection::addField(), this can be some solution
+field or any other expression. After all desired data has been written gsParaviewCollection::saveTimeStep() must be called,
+so that all files are closed and properly referenced in the main \c .pvd file.
+
+These steps can be repeated for all time instants of the solution process and finally gsParaviewCollection::save() must be called.
+
+\snippet paraview_example.cpp gsParaviewCollection
+
+\section paraview_example4 Output of Bezier elements
+A few years ago, rendering of rational Bezier cells has been 
+<a href="https://www.kitware.com/main/wp-content/uploads/2020/03/Implementation-of-rational-Bézier-cells-into-VTK-Report.pdf">introduced </a> to ParaView.
+All previous methods of exporting data, rely on sampling the actual spline data at discrete points, and visualising these in ParaView.
+Althought the number of sampling points and thus the quality of the results is user-specified, higher sampling leads to long evaluation times.
+
+With gsWriteParaviewBezier a Bezier extraction is performed on the geometry via gsMultiPatch::BezierOperator() and then each bezier element is written to ParaView's format. 
+Thus the level of detail can be specified at render-time, so evaluation time is kept relatively low during the solution, and also the resulting files
+are significantly smaller. 
+\snippet paraview_example.cpp Bezier
+
+
+\section paraview_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/paraview_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include paraview_example.cpp
+
+*/
+
+}

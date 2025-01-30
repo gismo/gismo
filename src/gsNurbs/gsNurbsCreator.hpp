@@ -738,9 +738,9 @@ gsNurbsCreator<T>::BSplineCube( T const & r, T const & x,
         , -0.5 , -0.5 , 0.5, 0.5 , -0.5 , 0.5
         , -0.5 , 0.5 , 0.5, 0.5 , 0.5 , 0.5 ;
     C *= r;
-    C.col(0).array() += x;
-    C.col(1).array() += y;
-    C.col(2).array() += z;
+    C.col(0).array() += x + 0.5;
+    C.col(1).array() += y + 0.5;
+    C.col(2).array() += z + 0.5;
 
     return TensorBSpline3Ptr(new gsTensorBSpline<3,T>(KV,KV,KV, give(C)));
 }
@@ -1574,9 +1574,9 @@ gsNurbsCreator<T>::NurbsDisk(T const & r, T const & x, T const & y)
     gsKnotVector<T> kv(0,1,0,3);
     gsMatrix<T> C(9,2);
 
-    C << 0, -2 ,  2,-2 , 2, 0
-        ,-2, -2 ,  0, 0 , 2 ,2
-        ,-2 , 0 , -2, 2 , 0 ,2 ;
+    C << 0, -1 ,  1,-1 , 1, 0
+        ,-1, -1 ,  0, 0 , 1 ,1
+        ,-1 , 0 , -1, 1 , 0 ,1 ;
 
     C *= r;
 

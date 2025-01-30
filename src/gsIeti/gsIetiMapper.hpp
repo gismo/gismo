@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsAssembler/gsGenericAssembler.h>
+#include <gsCore/gsConstantFunction.h>
 
 /*    Concerning the status flag m_status:
  *       (m_status&1)!=0    means that the object has been initialized by calling init or the value constructor

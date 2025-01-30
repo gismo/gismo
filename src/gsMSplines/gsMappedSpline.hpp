@@ -205,12 +205,12 @@ std::map<std::array<size_t, 4>, internal::ElementBlock> gsMappedSpline<d,T>::Bez
     // of each Bezier element
     std::map<std::array<size_t, 4>, internal::ElementBlock> ElementBlocks;
 
-    index_t NNj; // Number of control points of the Bezier elements of block j
+    // index_t NNj; // Number of control points of the Bezier elements of block j
     gsMatrix<index_t> mappedActives, globalActives, localActives; // Active basis functions
 
     gsMatrix<T> coefVectors, center_point(2,1);
     // Center point of the Bezier element, all basis functions are active here
-    center_point.setConstant( (T)(0.5) );   
+    center_point.setConstant( (T)(0.5) );
 
     // The control points of the MappedSpline
     gsMatrix<T> globalCoefs = this->getMappedCoefs();
@@ -218,9 +218,9 @@ std::map<std::array<size_t, 4>, internal::ElementBlock> gsMappedSpline<d,T>::Bez
     // The transpose of the global Bezier Operator
     gsWeightMapper<T> mapper = this->getMapper();
 
-    // The Bezier operator, transpose is used because we are constructing 
+    // The Bezier operator, transpose is used because we are constructing
     // the basis functions, the mapper.asMatrix() is used for the control points
-    gsMatrix<> bezOperator = mapper.asMatrix().transpose(); 
+    gsMatrix<> bezOperator = mapper.asMatrix().transpose();
 
 // TODO: Delete if implementation is OK as is
 /*     gsMultiPatch<> mp = this->exportToPatches();
@@ -272,11 +272,11 @@ std::map<std::array<size_t, 4>, internal::ElementBlock> gsMappedSpline<d,T>::Bez
         // gsInfo << "Global("<< globalActives.rows()<<"):" << globalActives.transpose() << "\n";
         // gsInfo << "Mapped("<< mappedActives.rows()<<"):" << mappedActives.transpose() <<"\n";
 
-        
+
         // coefVectors is the patch-local Bezier operator, size (NNj x NCVCj), NCVCj = (PR+1)*(PS+1)*(PT+1)
         coefVectors.resize(mappedActives.rows(), globalActives.rows());
         coefVectors.setZero();
-        
+
         // std::vector<std::pair<index_t,index_t> > preImage;
         // Extract the local bezier operator from the global one
         for (index_t i=0; i<mappedActives.rows(); ++i)
@@ -305,7 +305,7 @@ std::map<std::array<size_t, 4>, internal::ElementBlock> gsMappedSpline<d,T>::Bez
                 coefVectors(i,j) = bezOperator(mappedActives(i), globalActives(j)) ;
             }
 
-        } 
+        }
         // gsInfo << "Coefs size:" << coefVectors.rows() << "x" << coefVectors.cols() << "\n\n";
 
         // Put everything in the ElementBlock

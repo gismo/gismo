@@ -89,9 +89,9 @@ template<typename T>
 void setOptimizerOptions(gsHLBFGS<T> &optimizer, const gsOptionList &options) {
   optimizer.options().setInt("MaxIterations",
                              options.askInt("qi_MaxIterations", 1e4));
-  optimizer.options().setReal("MinGradientLength",
+  optimizer.options().setReal("MinGradLen",
                               options.askReal("qi_MinGradientLength", 1e-4));
-  optimizer.options().setReal("MinStepLength",
+  optimizer.options().setReal("MinStepLen",
                               options.askReal("qi_MinStepLength", 1e-4));
   optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
 }
