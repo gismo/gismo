@@ -334,7 +334,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
 #       ifdef _OPENMP
         domIt += tid;
-        for ( ; domIt<domItEnd && (!failed); domIt+=nt )
+        for ( ; domIt<domItEnd; domIt+=nt )
 #       else
         for (; domIt<domItEnd; ++domIt )
 #       endif

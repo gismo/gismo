@@ -1071,7 +1071,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
         domIt += tid;
-        for ( ; domIt<domItEnd && (!failed); domIt+=nt )
+        for ( ; domIt<domItEnd; domIt+=nt )
 #       else
         for (; domIt<domItEnd; ++domIt )
 #       endif

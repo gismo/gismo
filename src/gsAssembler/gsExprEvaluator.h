@@ -421,10 +421,10 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         if ( storeElWise )
         {
             c = patch_cnt + tid;
-            patch_cnt += domIt.numElements();// a bit costy
+            patch_cnt += m_exprdata->multiBasis().piece(patchInd).domain()->numElements(); // a bit costy
         }
         domIt += (tid);
-        for ( domIt; domIt<domItEnd; domIt+=(nt) )
+        for (; domIt<domItEnd; domIt+=(nt) )
 #       else
         for (; domIt<domItEnd; ++domIt )
 #       endif
