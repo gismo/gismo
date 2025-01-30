@@ -60,12 +60,11 @@ int main(int argc, char *argv[])
     double eps          = 1e-6; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 6.;
-    bool plotMAeRes     = false;
     bool export_b64     = false;
     // Specify the file path
-    //std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/infinit_plate.xml");
-    std::string fn("pde/circle.xml");
+    //std::string fn("pde/circle.xml");
     //std::string fn("surfaces/egg.xml");
     //std::string fn("domain2d/lake.xml");
 
@@ -80,7 +79,6 @@ int main(int argc, char *argv[])
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
-    cmd.addSwitch("plotMAeRes", "PLot only result of solving MA equation", plotMAeRes);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
 
@@ -195,9 +193,10 @@ int main(int argc, char *argv[])
         mp.uniformRefine();
         mpLeft.uniformRefine();
     }
-    
+    timer.restart();
     //auto Poisson  = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(dbasis.basis(0),bc,A.options(), 1.,eps,0.);
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc, A.options(), eps);
+    slv_time += timer.stop();
 
     u.setup(bc, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
@@ -245,7 +244,6 @@ int main(int argc, char *argv[])
     gsInfo<< "." << solVector.size() <<std::flush; // Linear solving done
  
     // Picard loop
-    index_t NiterPicard{0};
     gsMatrix<> sv0; //
     solution u_lsol = A.getSolution(u, sv0);
     for(int ip{0}; ip<=maxIter; ++ip)
@@ -262,7 +260,7 @@ int main(int argc, char *argv[])
         A.initSystem(2);
 
         // Obtain control points for the gradient of Psi
-        A.assemble( v * v.tr() , v * igrad(u_s,G) );
+        A.assemble( v * v.tr() , v * grad(u_s) );
         //gsInfo <<"rhs vec = " << A.rhs().size() << "\n";
         vsolVector = Poisson.L2ProjectVec(A.rhs());
         
@@ -272,42 +270,50 @@ int main(int argc, char *argv[])
 
         // ... correct boundary
         ProjectionNormalCPoints(Psi);
+        ProjectionNormalCPoints(PsiLoc);
+        PsiLoc.addAutoBoundaries();
+        PsiLoc.computeTopology();
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
         geometryMap PPLoc = A.getMap(PsiLoc);
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        auto comp = PPLoc(mpLeft);
-        auto comp0  = A.getCoeff(mpLeft, PPLoc);
-        gsMatrix<> ptst(2, 1); // Create a 2x1 matrix (2D point)
-        ptst(0, 0) = 0.1;     // Set the x-coordinate
-        ptst(1, 0) = 0.2;     // Set the y-coordinate
+        PPLoc(mpLeft);
+        auto comp0 = A.getCoeff(mpLeft, PP);
 
-        gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt1\n";        
-        ptst(0, 0) = 0.385;     // Set the x-coordinate
-        ptst(1, 0) = 1.;     // Set the y-coordinate
-        gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt2\n";        
-        ptst(0, 0) = 0.2155;     // Set the x-coordinate
-        ptst(1, 0) = 0.876;     // Set the y-coordinate
-        gsInfo << (ev.eval(comp0, ptst)- ev.eval(comp,ptst)).squaredNorm() <<" : error in pt3\n";        
-        gsInfo << ev.integral( (comp0-comp).sqNorm()) <<" : integral error\n";
-
+        gsInfo << std::setprecision(14) <<"\n\n";
+        auto int_ex = ev.integral( (GLeft).sqNorm()/jac(PP).det());
+        gsInfo << "integral Exact "<< int_ex <<"\n";
+        gsInfo << "integral getCoef "<< ev.integral( (comp0).sqNorm()) <<"\n";
+        gsInfo << "integral Comp "<< ev.integral( (PPLoc).sqNorm()) <<"\n";
+        gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Stringe behavior they are the same
 
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        A.assemble( v * v.tr() , v * PPLoc.tr() );// blocked by this one
         vsolVector = Poisson.L2ProjectVec(A.rhs());
         //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        v_sol.extract(PsiLoc);
+        v_sol.extract(PsiLoc);// Psiloc is reparameterization of Gleft o Psi by L2projection
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         geometryMap PPfLoc = A.getMap(PsiLoc);
-        auto ff = A.getCoeff(f, PPfLoc);
+        auto ffG     = A.getCoeff(f, PPfLoc);/// Gleft o Psi
+        auto ff     = A.getCoeff(f, GLeft, PP);/// Exact composition
+
+
+        // gsMatrix<> ptst(2, 1); // Create a 2x1 matrix (2D point)
+        // ptst(0, 0) = 0.385;     // Set the x-coordinate
+        // ptst(1, 0) = 1.;     // Set the y-coordinate
+        // auto CCff  =  f.eval(mpLeft.piece(0).eval( Psi.piece(0).eval(ptst) ));
+        // gsInfo <<"foFoPsi exact : "<< CCff <<"\n";
+        // gsInfo <<" pt3-Stcompo : "<< ev.eval(ffG, ptst) <<"\n";
+        // gsInfo <<" pt3-getCoeff : "<< ev.eval(ff, ptst) <<"\n";
         // gsInfo << "Error_" << ev.integral((PP-grad(u_sol).tr()).sqNorm() ) << "...\n";
 
         // auto ff = A.getCoeff(f, GLeft, PP);
         // auto ffG = A.getCoeff(f, GLeft);
-        // gsInfo << "ff2" << ev.integral(ff.val()) << "...\n";
-        // gsInfo << "ff3 " << ev.integral(ffG.val()) << "...\n";
+        gsInfo << "ff" << ev.integral(ff.val()) << "...\n";
+        gsInfo << "ffG " << ev.integral(ffG.val()) << "...\n";
+        gsInfo << "ffDiff " << ev.integral(ff.val()-ffG.val()) << "...\n";
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -329,9 +335,10 @@ int main(int argc, char *argv[])
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
-        //gsInfo << " end value coeff "<< CoeffConductivity << "\n";
+        gsInfo << " Err Mae RHS :  "<< IntegDensity -ev.integral(pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ffG.val()) - jac(PP).det()), 1./IGdim))<< "\n";
+        
         A.assemble(
-        igrad(u, G) * igrad(u, G).tr()  +  eps * u * u.tr()//matrix
+        grad(u) * grad(u).tr()  +  eps * u * u.tr()//matrix
         ,
         u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
         );
@@ -355,11 +362,11 @@ int main(int argc, char *argv[])
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
-        ++NiterPicard;
-        auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm()  ));
+        auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol) - grad(u_sol) ).sqNorm()  ));
+        auto L2MAERes = math::sqrt(ev.integral( pow( CoeffDensity - (1.+IntensityMAE*ff.val())*jac(PP).det(),2)  ));
+        gsInfo<< "\n Niter in Picard : " << ip << ".. H1 residual : "<<std::scientific<<l2errRes<< ".. L2 MAE residual : "<<std::scientific<<L2MAERes<<"\n";
         if ( l2errRes < tolPicard || ip == maxIter ){
             // ! end Picard loop
-            gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
             break; 
             } // 
     }//for loop
@@ -372,26 +379,6 @@ int main(int argc, char *argv[])
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
 
-    if(plotMAeRes){
-        gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
-        //collection.options().setInt("numPoints", 1000);
-        collection.newTimeStep(&mp);
-        collection.addField(u_sol,"numerical solution");
-        collection.addField(igrad(u_sol,G),"gradient_numerical solution");
-        collection.addField(ff, "density function");
-        collection.addField(ihess(u_sol,G).det(), "Jacobian function");
-        if(maxIter == 0)
-        collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) , "MAE_rhs");
-        else
-        collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) , "MAE_rhs");
-        collection.saveTimeStep();
-        collection.save();
-        gsFileManager::open("ParaviewOutput/solution.pvd");
-        }
     //! [Export visualization in ParaView]
     if (plot)
     {
@@ -439,11 +426,11 @@ int main(int argc, char *argv[])
         geometryMap PP = A.getMap(Psitp);
         gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
 
-        auto  comp = PP(mpLeft);
+        PP(mpLeft);
         //auto comp = A.getCoeff(mpLeft, PP);
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        A.assemble( v * v.tr() , v * PP.tr() );// blocked by this one
         vsolVector = Poisson.L2ProjectVec(A.rhs());
         v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
