@@ -122,7 +122,8 @@ public:
 
     gsVector<T> lowerCorner() const
     {
-        gsVector<T> lower(d);
+        gsVector<T> lower;
+        lower.resize(d);
         for (short_t i = 0; i < dir ; ++i)
             lower[i] = *m_curElement[i]; // in gsTensorDomainBoundaryIterator, we have: lower[i]  = m_curElement[i].lowerCorner().value();
         lower[dir] = (par ? *(m_curElement[dir]+1) : *m_curElement[dir] ); // in gsTensorDomainBoundaryIterator, we have: lower[dir] = (par ? m_curElement[dir].upperCorner().value() : m_curElement[dir].lowerCorner().value() );
@@ -133,7 +134,8 @@ public:
 
     gsVector<T> upperCorner() const
     {
-        gsVector<T> upper(d);
+        gsVector<T> upper;
+        upper.resize(d);
         for (short_t i = 0; i < dir ; ++i)
             upper[i] = *(m_curElement[i]+1); // in gsTensorDomainBoundaryiterator, we have: upper[i]  = m_curElement[i].upperCorner().value();
         upper[dir] = (par ? *(m_curElement[dir]+1) : *m_curElement[dir] ); // in gsTensorDomainBoundaryIterator, we have: upper[dir] = (par ? m_curElement[dir].upperCorner().value() : m_curElement[dir].upperCorner().value() );

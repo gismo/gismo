@@ -131,7 +131,8 @@ public:
 
     gsVector<T> lowerCorner() const override
     {
-        gsVector<T> lower(d);
+        gsVector<T> lower;
+        lower.resize(d);
         for (short_t i = 0; i < d ; ++i)
             lower[i] = *m_curElement[i];
         return lower;
@@ -139,7 +140,8 @@ public:
 
     gsVector<T> upperCorner() const override
     {
-        gsVector<T> upper(d);
+        gsVector<T> upper;
+        upper.resize(d);
         for (short_t i = 0; i < d ; ++i)
             upper[i]  = *(m_curElement[i]+1);
         return upper;
