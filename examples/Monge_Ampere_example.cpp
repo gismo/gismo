@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; // = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    gsMultiPatch<> mpLeft; // gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -282,11 +282,11 @@ int main(int argc, char *argv[])
         auto comp0 = A.getCoeff(mpLeft, PP);
 
         gsInfo << std::setprecision(14) <<"\n\n";
-        auto int_ex = ev.integral( (GLeft).sqNorm()/jac(PP).det());
-        gsInfo << "integral Exact "<< int_ex <<"\n";
-        gsInfo << "integral getCoef "<< ev.integral( (comp0).sqNorm()) <<"\n";
-        gsInfo << "integral Comp "<< ev.integral( (PPLoc).sqNorm()) <<"\n";
-        gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Stringe behavior they are the same
+        auto int_ex = ev.integral( (GLeft).sqNorm()/meas(PP)); /// Exact integral
+        gsInfo << "integral getCoef ERR "<< int_ex - ev.integral( (PP).sqNorm()) <<"\n";
+        gsInfo << "integral getCoef ERR "<< int_ex - ev.integral( (comp0).sqNorm()) <<"\n";//Strange behavior
+        gsInfo << "integral Comp ERR "<< int_ex - ev.integral( (PPLoc).sqNorm()) <<"\n";//Strange behavior
+        gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Strange behavior they are the same
 
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
@@ -296,8 +296,8 @@ int main(int argc, char *argv[])
         v_sol.extract(PsiLoc);// Psiloc is reparameterization of Gleft o Psi by L2projection
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         geometryMap PPfLoc = A.getMap(PsiLoc);
-        auto ffG     = A.getCoeff(f, PPfLoc);/// Gleft o Psi
-        auto ff     = A.getCoeff(f, GLeft, PP);/// Exact composition
+        auto ff     = A.getCoeff(f, PPfLoc);/// Gleft o Psi
+        auto ffG     = A.getCoeff(f, GLeft, PP);/// Exact composition
 
 
         // gsMatrix<> ptst(2, 1); // Create a 2x1 matrix (2D point)
