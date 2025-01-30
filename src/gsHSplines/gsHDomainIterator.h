@@ -59,6 +59,8 @@ public:
     m_basis(basis)
     {
         m_leaf = this->init(m_tree);
+        updateLeaf();
+        updateElement();
     }
 
 
@@ -132,7 +134,6 @@ public:
         gsVector<T> lower(d);
         for (short_t i = 0; i < d ; ++i)
             lower[i] = *m_curElement[i];
-        gsDebugVar(lower);
         return lower;
     }
 

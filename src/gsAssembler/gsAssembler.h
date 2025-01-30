@@ -707,7 +707,6 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 #endif
     {
         // Map the Quadrature rule to the element
-        gsDebug<<"lowerCorner: "<<domIt.lowerCorner().transpose()<<", upperCorner: "<<domIt.upperCorner().transpose()<<"\n";
         quRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights );
 
         // Perform required evaluations on the quadrature nodes
