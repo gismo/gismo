@@ -156,7 +156,6 @@ private:
             }
             else
                 diadicSize = hbasis->tensorLevel(leaf.level()).knots(s.direction()).uSize() - 1;
-            gsDebugVar(diadicSize);
             return static_cast<size_t>(leaf.upperCorner().at(s.direction()) ) == diadicSize;// todo: more efficient
         }
         else
