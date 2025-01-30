@@ -183,7 +183,7 @@ void gsCahnHilliardAssembler<T>::assembleResidual(const gsFunctionSet<T> & C, co
         if (m_bcs.get("Weak Clamped").size()==0)
             gsWarn<<"Nitsche boundary assembly is requested, but no boundaries are marked 'Weak Clamped'";
         // Determine maximum mesh size
-        gsWarn<<"Mesh size computation needs to be checked!\n";
+        // gsWarn<<"Mesh size computation needs to be checked!\n";
         T hmax = 0;
         for (size_t p=0; p!=m_patches.nPatches(); p++)
             hmax = math::max(hmax, m_patches.basis(p).getMaxCellLength());
@@ -253,7 +253,7 @@ void gsCahnHilliardAssembler<T>::assembleJacobian(const gsFunctionSet<T> & C, co
             gsWarn<<"Nitsche boundary assembly is requested, but no boundaries are marked 'Weak Clamped'";
 
         // Determine maximum mesh size
-        gsWarn<<"Mesh size computation needs to be checked!\n";
+        // gsWarn<<"Mesh size computation needs to be checked!\n";
         T hmax = 0;
         for (size_t p=0; p!=m_patches.nPatches(); p++)
             hmax = math::max(hmax, m_patches.basis(p).getMaxCellLength());
@@ -291,7 +291,7 @@ void gsCahnHilliardAssembler<T>::assembleNitscheVector(const gsFunctionSet<T> & 
     auto w = m_assembler.trialSpace(0);
 
     // Determine maximum mesh size
-    gsWarn<<"Mesh size computation needs to be checked!\n";
+    // gsWarn<<"Mesh size computation needs to be checked!\n";
     T hmax = 0;
     for (size_t p=0; p!=m_patches.nPatches(); p++)
         hmax = math::max(hmax, m_patches.basis(p).getMaxCellLength());
@@ -321,7 +321,7 @@ void gsCahnHilliardAssembler<T>::assembleNitscheMatrix()
     auto w = m_assembler.trialSpace(0);
 
     // Determine maximum mesh size
-    gsWarn<<"Mesh size computation needs to be checked!\n";
+    // gsWarn<<"Mesh size computation needs to be checked!\n";
     T hmax = 0;
     for (size_t p=0; p!=m_patches.nPatches(); p++)
         hmax = math::max(hmax, m_patches.basis(p).getMaxCellLength());

@@ -28,7 +28,7 @@ T gsL2Projection<T>::_project(  const gsMultiBasis<T>  & integrationBasis,
                                 const gsOptionList     & options)
 {
     // Clear the result
-    coefs.clear();    
+    coefs.clear();
 
     // Create an assembler
     gsExprAssembler<T> A(1,1);
