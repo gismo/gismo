@@ -32,9 +32,9 @@ public:
     gsBreaksIterator(const std::vector<T> & _knots, bool start = true)
     :
     gsDomainIterator<T>(start ? 0 : _knots.size()),
-    m_it(start ? _knots.begin() : _knots.end()),
+    m_it(start ? _knots.begin() : _knots.end()-1),
     m_itBegin(_knots.begin()),
-    m_itEnd(_knots.end())
+    m_itEnd(_knots.end()-1)
     {
     }
 
@@ -95,9 +95,9 @@ public:
 
     index_t domainDim() const {return 1;}
 
-    static memory::shared_ptr<gsDomainIterator<T>> make(const std::vector<T> & knots, bool start = true)
+    static gsDomainIteratorWrapper<T> make(const std::vector<T> & knots, bool start = true)
     {
-        return memory::make_shared(new gsBreaksIterator<T>(knots, start));
+        return gsDomainIteratorWrapper<T>(new gsBreaksIterator<T>(knots, start));
     }
 
 // Data members

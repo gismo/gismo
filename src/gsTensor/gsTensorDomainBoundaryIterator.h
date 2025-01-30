@@ -196,9 +196,9 @@ public:
     /// Function to set the breakpoints in direction \a i manually
     void setBreaks(const std::vector<T> & newBreaks, index_t i) // i: direction
     {
-        meshStart[i] = gsBreaksIterator<T>::make(newBreaks, true);
-        curElement[i] = gsBreaksIterator<T>::make(newBreaks, true);
-        meshEnd[i]   = gsBreaksIterator<T>::make(newBreaks, false);
+        meshStart[i] = give(gsBreaksIterator<T>::make(newBreaks, true));
+        curElement[i] = give(gsBreaksIterator<T>::make(newBreaks, true));
+        meshEnd[i]   = give(gsBreaksIterator<T>::make(newBreaks, false));
         reset();
         // breaks[i].swap(newBreaks);
         // meshEnd[i]   = breaks[i].end() - 1;

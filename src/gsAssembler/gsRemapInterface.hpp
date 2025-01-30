@@ -449,14 +449,14 @@ template <class T>
 gsDomainIteratorWrapper<T> gsRemapInterface<T>::endBdr() const
 {
     gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (*m_b1, m_bi.first());
+    size_t nElements = 0;
     for (index_t i=0; i<domainDim(); ++i)
     {
         if (i!=m_bi.first().direction())
             tdi->setBreaks(m_breakpoints[i],i);
+        nElements += m_breakpoints[i].size();
     }
-    // return gsDomainIteratorWrapper<T>(new gsDomainIteratorEnd<T>(tdi->numElements(), m_bi.first()));
-    // @todo: fix this
-    GISMO_NO_IMPLEMENTATION
+    return gsDomainIteratorWrapper<T>(new gsDomainIteratorEnd<T>(nElements, m_bi.first()));
 }
 
 template <class T>
