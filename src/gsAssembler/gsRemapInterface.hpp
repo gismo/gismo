@@ -434,7 +434,7 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result)
 }
 
 template <class T>
-gsDomainIteratorWrapper<T> gsRemapInterface<T>::beginBdr() const
+gsDomainIteratorWrapper<T> gsRemapInterface<T>::beginAll() const
 {
     gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (*m_b1, m_bi.first());
     for (index_t i=0; i<domainDim(); ++i)
@@ -446,19 +446,19 @@ gsDomainIteratorWrapper<T> gsRemapInterface<T>::beginBdr() const
 }
 
 template <class T>
-gsDomainIteratorWrapper<T> gsRemapInterface<T>::endBdr() const
+gsDomainIteratorWrapper<T> gsRemapInterface<T>::endAll() const
 {
-    gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (*m_b1, m_bi.first());
+    return domainIterWrapper(new gsDomainIteratorEnd<T>(this->numElements()));
+}
+
+template <class T>
+size_t gsRemapInterface<T>::numElements() const
+{
     size_t nElements = 1;
     for (index_t i=0; i<domainDim(); ++i)
-    {
         if (i!=m_bi.first().direction())
-        {
-            tdi->setBreaks(m_breakpoints[i],i);
             nElements *= m_breakpoints[i].size() - 1;
-        }
-    }
-    return gsDomainIteratorWrapper<T>(new gsDomainIteratorEnd<T>(nElements, m_bi.first()));
+    return nElements;
 }
 
 template <class T>

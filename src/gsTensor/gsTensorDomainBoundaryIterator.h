@@ -122,6 +122,7 @@ public:
     /// do not know the rationale for it
     void reset()
     {
+        GISMO_ERROR("reset() called.");
         //curElement=meshBegin; // this is what we would like
         for(int i=0; i < d; ++i)
             curElement[i].reset(); //bug: the reset will always set it to begin(), but this might be wrong

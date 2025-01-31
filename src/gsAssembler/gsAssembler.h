@@ -748,8 +748,8 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     const gsGeometry<T> & patch2 = m_pde_ptr->patches()[patchIndex2];
 
     // Initialize domain element iterators
-    typename gsBasis<T>::domainIter domIt    = interfaceMap.beginBdr();
-    typename gsBasis<T>::domainIter domItEnd = interfaceMap.endBdr();
+    typename gsBasis<T>::domainIter domIt    = interfaceMap.beginAll();
+    typename gsBasis<T>::domainIter domItEnd = interfaceMap.endAll();
     //int count = 0;
 
     // iterate over all boundary grid cells on the "left"

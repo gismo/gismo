@@ -38,7 +38,7 @@ private:
 
 public:
 
-    gsTensorDomainIterator(const gsTensorDomain<T,D> & domain)
+    explicit gsTensorDomainIterator(const gsTensorDomain<T,D> & domain)
     : gsDomainIterator<T>(),
       lower  ( gsVector<T, D>::Zero(D) ),
       upper  ( gsVector<T, D>::Zero(D) )

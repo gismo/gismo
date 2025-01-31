@@ -29,9 +29,9 @@ private:
 
 public:
 
-    gsBreaksIterator(const std::vector<T> & _knots, bool start = true)
+    explicit gsBreaksIterator(const std::vector<T> & _knots, bool start = true)
     :
-    gsDomainIterator<T>(start ? 0 : _knots.size()),
+    gsDomainIterator<T>(start ? 0 : _knots.size()-1),
     m_it(start ? _knots.begin() : _knots.end()-1),
     m_itBegin(_knots.begin()),
     m_itEnd(_knots.end()-1)
