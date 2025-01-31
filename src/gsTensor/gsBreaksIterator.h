@@ -1,6 +1,6 @@
-/** @file gsTensorDomainIterator.h
+/** @file gsBreaksIterator.h
 
-    @brief Iterator over the elements of a tensor-structured grid
+    @brief Iterator over the elements of 1D elements defined by breaks in a std container
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C. Hofreither, A. Mantzaflaris
+    Author(s): H. Verhelst, A. Mantzaflaris
 */
 
 #pragma once
@@ -76,14 +76,16 @@ public:
 
     gsVector<T> lowerCorner() const override
     {
-        gsVector<T,1> lower;
+        gsVector<T> lower;
+        lower.resize(1);
         lower[0] = *m_it;
         return lower;
     }
 
     gsVector<T> upperCorner() const override
     {
-        gsVector<T,1> upper;
+        gsVector<T> upper;
+        upper.resize(1);
         upper[0] = *(m_it+1);
         return upper;
     }
@@ -102,8 +104,6 @@ public:
 
 // Data members
 private:
-    gsVector<T,1> lower, upper;
-
     domainIter m_it, m_itBegin, m_itEnd;
 
 }; // class gsBreaksIterator

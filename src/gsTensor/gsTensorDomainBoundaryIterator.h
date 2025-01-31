@@ -122,8 +122,9 @@ public:
     /// do not know the rationale for it
     void reset()
     {
+        //curElement=meshBegin; // this is what we would like
         for(int i=0; i < d; ++i)
-            curElement[i].reset();
+            curElement[i].reset(); //bug: the reset will always set it to begin(), but this might be wrong
         m_isGood = true;
         for(int i=0; i < d; ++i)
         {
@@ -196,14 +197,15 @@ public:
     /// Function to set the breakpoints in direction \a i manually
     void setBreaks(const std::vector<T> & newBreaks, index_t i) // i: direction
     {
+        GISMO_ASSERT(i!=dir, "Changing non-boundary breakpoints is not supported.");
         meshStart[i] = give(gsBreaksIterator<T>::make(newBreaks, true));
         curElement[i] = give(gsBreaksIterator<T>::make(newBreaks, true));
         meshEnd[i]   = give(gsBreaksIterator<T>::make(newBreaks, false));
-        reset();
-        // breaks[i].swap(newBreaks);
-        // meshEnd[i]   = breaks[i].end() - 1;
-        // meshStart[i] = curElement[i] = breaks[i].begin();
-        // reset();
+
+        // Note: reset() has a bug, therefore we do not call it at all
+        //reset();
+        // instead we update m_isGood right here
+        m_isGood &= (meshEnd[i] != curElement[i]);
     }
 
 

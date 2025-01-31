@@ -77,14 +77,16 @@ public:
 
     gsVector<T> lowerCorner() const override
     {
-        gsVector<T,1> lower;
+        gsVector<T> lower;
+        lower.resize(1);
         lower[0] = m_it.value();
         return lower;
     }
 
     gsVector<T> upperCorner() const override
     {
-        gsVector<T,1> upper;
+        gsVector<T> upper;
+        upper.resize(1);
         upper[0] = (m_it+1).value();
         return upper;
     }
@@ -101,8 +103,6 @@ protected:
     using gsDomainIterator<T>::m_isGood;
 
 private:
-    gsVector<T,1> lower, upper;
-
     domainIter m_it, m_itEnd;
 
 }; // class gsKnotDomainIterator
