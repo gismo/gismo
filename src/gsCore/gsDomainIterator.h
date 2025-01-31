@@ -287,8 +287,7 @@ public:
     /// E.g., if the current two-dimensional element is defined by <em>[a,b]x[c,d]</em>, then <em>[b,d]</em> is returned (see also lowerCorner()).
     gsVector<T> centerPoint () const
     {
-        gsVector<T> center = (this->lowerCorner()+this->upperCorner()).rowwise().mean();
-        return center;
+        return (this->lowerCorner()+this->upperCorner()).array()/(T)2;
     }
 
     /// \brief Returns the lower corner of the current element.
