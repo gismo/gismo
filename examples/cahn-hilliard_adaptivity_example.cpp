@@ -387,7 +387,7 @@ void solve( gsMultiPatch<T> & mp,
 
     std::ofstream csvFile;
     csvFile.open(out+"/dofs.csv");
-    csvFile << "TimeStep, NumDOFs, Mass, ErrorRefCnew, ErrorRefdCnew, ErrorRefCold, ErrorRefdCold\n";
+    csvFile << "TimeStep, NumDOFs, Mass, ErrorRefCnew, ErrorRefdCnew, ErrorRefCold, ErrorRefdCold, ErrorCrsCnew, ErrorCrsdCnew\n";
 
     for (index_t step = 0; step!=maxSteps; step++)
     {
@@ -712,7 +712,7 @@ void solve( gsMultiPatch<T> & mp,
             gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
             collection.saveTimeStep();
             real_t mass = ev.integral(meas(G)*cnew);
-            csvFile << step << "," << A.numDofs() <<"," << mass <<  "," << error_ref_cnew << ","<< error_ref_dcnew << ","<< error_ref_cold <<","<< error_ref_dcold<< "\n";
+            csvFile << step << "," << A.numDofs() <<"," << mass <<  "," << error_ref_cnew << ","<< error_ref_dcnew << ","<< error_ref_cold <<","<< error_ref_dcold<< ","<<error_crs_c<<","<<error_crs_dc<< "\n";
             // Reset the errors after the loop
             error_ref_cnew  = 0;
             error_ref_cold  = 0;
