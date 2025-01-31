@@ -81,7 +81,8 @@ void gsAdaptiveMeshing<T>::_makeMap(const gsFunctionSet<T> * input, typename gsA
             if ( nullptr != (mb = dynamic_cast<const gsMultiBasis<T>*>(input)) ) basis = &(mb->basis(patchInd));
             GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
-            typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
+            typename gsBasis<T>::domainIter domIt = basis->domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = basis->domain()->endAll();
             gsHDomainIterator<T,2> * domHIt =
                 dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
             GISMO_ENSURE(domHIt!=nullptr,"Domain not loaded");
@@ -91,7 +92,7 @@ void gsAdaptiveMeshing<T>::_makeMap(const gsFunctionSet<T> * input, typename gsA
 //             patch_cnt += domHIt->numElements();// a bit costy
 //             for ( domHIt->next(tid); domHIt->good(); domHIt->next(nt) )
 // #else
-            for (; domHIt->good(); domHIt->next())
+            for (; domIt<domItEnd; ++domIt)
 // #endif
             {
                 // #pragma omp critical (gsAdaptiveMeshingmakeBoxesinsert1)
@@ -1417,7 +1418,8 @@ typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer(
             if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input))!= nullptr ) basis = &(mb->basis(patchInd));
             GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
-            typename gsBasis<T>::domainIter domIt  = basis->makeDomainIterator();
+            typename gsBasis<T>::domainIter domIt  = basis->domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = basis->domain()->endAll();
             gsHDomainIterator<T,2> * domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
             GISMO_ENSURE(domHIt!=nullptr,"Domain should be hierarchical");
 
@@ -1426,7 +1428,7 @@ typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer(
             patch_cnt += basis->domain()->numElements(); // a bit costy
             for ( domHIt->next(tid); domHIt->good(); domHIt->next(nt) )
 #else
-            for (; domHIt->good(); domHIt->next() )
+                for (; domIt<domItEnd; ++domIt)
 #endif
             {
                 if (bools[c])

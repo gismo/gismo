@@ -67,7 +67,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     }
 
     constructBreaks();
-
+    
 }
 
 namespace {

@@ -93,24 +93,25 @@ public:
     // ---> Documentation in gsDomainIterator.h
     bool next()
     {
-        this->m_isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+        bool isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
 
-        if (!this->m_isGood) // went through all elements in m_leaf
-            this->m_isGood = nextLeaf();
+        if (!isGood) // went through all elements in m_leaf
+            isGood = nextLeaf();
 
-        return this->m_isGood;
+        return isGood;
     }
 
     // ---> Documentation in gsDomainIterator.h
     bool next(index_t increment)
     {
+        bool isGood(true);
         for (index_t i = 0; i < increment; i++)
-            this->m_isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+            isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
 
-        if (!this->m_isGood) // went through all elements in m_leaf
-            this->m_isGood = nextLeaf();
+        if (isGood) // went through all elements in m_leaf
+            isGood = nextLeaf();
 
-        return this->m_isGood;
+        return isGood;
     }
 
     /// Resets the iterator so that it can be used for another

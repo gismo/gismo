@@ -41,16 +41,14 @@ public:
     bool next() override
     {
         ++m_it;
-        m_isGood = (m_it != m_itEnd);
-        return m_isGood;
+        return (m_it != m_itEnd);
     }
 
     // Documentation in gsDomainIterator.h
     bool next(index_t increment) override
     {
         m_it += increment;
-        m_isGood = (m_it < m_itEnd);
-        return m_isGood;
+        return (m_it < m_itEnd);
     }
 
     // Documentation in gsDomainIterator.h
@@ -58,7 +56,7 @@ public:
     {
         --m_it;
         // WARNING: This does not check whether the iterator passes the beginning
-        return m_isGood;
+        return true;
     }
 
     // Documentation in gsDomainIterator.h
@@ -66,7 +64,7 @@ public:
     {
         m_it -= decrement;
         // WARNING: This does not check whether the iterator passes the beginning
-        return m_isGood;
+        return true;
     }
 
     // Documentation in gsDomainIterator.h
@@ -99,9 +97,6 @@ public:
     index_t domainDim() const {return 1;}
 
 // Data members
-protected:
-    using gsDomainIterator<T>::m_isGood;
-
 private:
     domainIter m_it, m_itEnd;
 

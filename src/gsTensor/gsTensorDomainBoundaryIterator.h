@@ -58,9 +58,6 @@ public:
             meshEnd[i]    = give(domain.component(i)->endAll());
             meshStart[i]  = give(domain.component(i)->beginAll());
             curElement[i] = give(domain.component(i)->beginAll());
-
-            if (meshEnd[i] == curElement[i])
-                m_isGood = false;
         }
 
         // Fixed direction
@@ -87,9 +84,6 @@ public:
             meshEnd[i]    = give(domain.component(i)->endAll());
             meshStart[i]  = give(domain.component(i)->beginAll());
             curElement[i] = give(domain.component(i)->beginAll());
-
-            if (meshEnd[i] == curElement[i])
-                m_isGood = false;
         }
     }
 
@@ -103,8 +97,7 @@ public:
     // proceed to the next element; returns true if end not reached yet
     bool next()
     {
-        m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd, dir);
-        return m_isGood;
+        return nextLexicographicIter(curElement, meshEnd, dir);
     }
 
     // ---> Documentation in gsDomainIterator.h
@@ -112,9 +105,10 @@ public:
     // returns true if end not reached yet
     bool next(index_t increment)
     {
+        bool isGood(true);
         for (index_t i = 0; i < increment; i++)
-            m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd, dir);
-        return m_isGood;
+            isGood = isGood && nextLexicographicIter(curElement, meshEnd, dir);
+        return isGood;
     }
 
     /// Resets the iterator implementation copied from the constructor
@@ -126,12 +120,6 @@ public:
         //curElement=meshBegin; // this is what we would like
         for(int i=0; i < d; ++i)
             curElement[i].reset(); //bug: the reset will always set it to begin(), but this might be wrong
-        m_isGood = true;
-        for(int i=0; i < d; ++i)
-        {
-            if (i!=dir && curElement[i]==meshEnd[i])
-                m_isGood=false;
-        }
     }
 
     /// Return the tensor index of the current element
@@ -205,14 +193,11 @@ public:
 
         // Note: reset() has a bug, therefore we do not call it at all
         //reset();
-        // instead we update m_isGood right here
-        m_isGood &= (meshEnd[i] != curElement[i]);
     }
 
 
 // Data members
 protected:
-    using gsDomainIterator<T>::m_isGood;
     using gsDomainIterator<T>::m_side;
 
 private:

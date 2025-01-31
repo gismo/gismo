@@ -221,12 +221,11 @@ public:
 
 public:
 
-    gsDomainIterator(index_t _id = 0) : m_isGood( true ), m_id(_id) { }
+    gsDomainIterator(index_t _id = 0) : m_id(_id) { }
 
     /// \brief Constructor using a basis
     gsDomainIterator( const gsDomain<T>& _dom, const boxSide & _bs = boundary::none)
-    : m_domain(&_dom), m_side(_bs),
-      m_isGood( true ), m_id(0)
+    : m_domain(&_dom), m_side(_bs), m_id(0)
     { }
 
     virtual ~gsDomainIterator() { }
@@ -263,11 +262,6 @@ public:
 
     /// Returns the element id
     size_t id() const   { return m_id; }
-
-    /// Is the iterator still pointing to a valid element?
-    // \todo use !=end() instead
-    GISMO_DEPRECATED
-    bool good() const   { return m_isGood; }
 
     /// Return dimension of the elements
     short_t dim() const   { return centerPoint().size(); }
@@ -364,21 +358,6 @@ protected:
     // \todo patchSide
     boxSide m_side;
 
-protected:
-
-    //// REMOVE
-
-    /// Coordinates of a central point in the element (in the parameter domain).
-    // gsVector<T> center;
-
-    /// The basis on which the domain iterator is defined.
-    // const gsBasis<T> * m_basis;
-
-    /// Flag indicating whether the domain iterator is "good". If it
-    /// is "good", the iterator can continue to the next element.
-    bool m_isGood;
-
-private:
     /// The element ID
     size_t m_id;
 

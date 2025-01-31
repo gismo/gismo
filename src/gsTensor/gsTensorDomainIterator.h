@@ -53,25 +53,22 @@ public:
             meshEnd[i]    = give(domain.component(i)->endAll()  );
             meshStart[i]  = give(domain.component(i)->beginAll());
             curElement[i] = give(domain.component(i)->beginAll());
-
-            if (meshEnd[i] == meshStart[i])
-                m_isGood = false;
         }
     }
 
     // Documentation in gsDomainIterator.h
     bool next()
     {
-        m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
-        return m_isGood;
+        return nextLexicographicIter(curElement, meshEnd);
     }
 
     // Documentation in gsDomainIterator.h
     bool next(index_t increment)
     {
+        bool isGood(true);
         for (index_t i = 0; i < increment; i++)
-            m_isGood = m_isGood && nextLexicographicIter(curElement, meshEnd);
-        return m_isGood;
+            isGood = isGood && nextLexicographicIter(curElement, meshEnd);
+        return isGood;
     }
 
     // Documentation in gsDomainIterator.h
@@ -79,8 +76,6 @@ public:
     {
         for (index_t i = 0; i < D; ++i)
             curElement[i].reset();
-
-//        m_isGood = ( meshEnd.array() != curElement.array() ).all() ;
     }
 
     /// return the tensor index of the current element
@@ -141,9 +136,6 @@ public:
 //    }
 
 // Data members
-protected:
-    using gsDomainIterator<T>::m_isGood;
-
 private:
     // Extent of the tensor grid
     gsVector<domainIterWrapper, D> meshStart, meshEnd;

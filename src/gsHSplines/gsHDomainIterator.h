@@ -91,33 +91,34 @@ public:
     // ---> Documentation in gsDomainIterator.h
     bool next()
     {
-        this->m_isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+        bool isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
 
-        if (this->m_isGood) // new element in m_leaf
+        if (isGood) // new element in m_leaf
             updateElement();
         else // went through all elements in m_leaf
         {
-            this->m_isGood = nextLeaf();
-            if (this->m_isGood)
+            isGood = nextLeaf();
+            if (isGood)
                 updateElement();
         }
-        return this->m_isGood;
+        return isGood;
     }
 
     // ---> Documentation in gsDomainIterator.h
     bool next(index_t increment)
     {
-        for (index_t i = 0; i != increment && this->m_isGood; ++i)
+        bool isGood(false);
+        for (index_t i = 0; i != increment && isGood; ++i)
         {
-            this->m_isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
-            if (!this->m_isGood)
-                this->m_isGood = nextLeaf();
+            isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+            if (isGood)
+                isGood = nextLeaf();
         }
 
-        if (this->m_isGood)
+        if (isGood)
             updateElement();
 
-        return this->m_isGood;
+        return isGood;
     }
 
     /// Resets the iterator so that it can be used for another
@@ -171,12 +172,12 @@ private:
     /// returns true if there is a another leaf with a boundary element
     bool nextLeaf()
     {
-        this->m_isGood = m_leaf.next();
+        bool isGood = m_leaf.next();
 
         if ( m_leaf.good() )
             updateLeaf();
 
-        return this->m_isGood;
+        return isGood;
     }
 
     /// Computes lower, upper and center point of the current element, maps the reference
