@@ -442,15 +442,16 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         {
             // Initialize domain element iterator
             typename gsBasis<T>::domainIter domIt =
-                m_exprdata->multiBasis().piece(patchInd).domain()->beginAt(0);
+                m_exprdata->multiBasis().piece(patchInd).domain()->beginAll();
             typename gsBasis<T>::domainIter domItEnd =
-                m_exprdata->multiBasis().piece(patchInd).domain()->endAt(0);
+                m_exprdata->multiBasis().piece(patchInd).domain()->endAll();
             // Quadrature rule
             QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
 
             // Initialize domain element iterator
             domIt = m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
 #ifdef _OPENMP
+            domIt+=tid;
             for (; domIt<domItEnd; domIt+=(nt) )
 #else
             for (; domIt<domItEnd; ++domIt )
@@ -516,7 +517,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         // Initialize domain element iterator
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().piece(bit->patch).domain()->beginAt(0,bit->side());
+            m_exprdata->multiBasis().piece(bit->patch).domain()->beginBdr(bit->side());
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
             m_exprdata->multiBasis().piece(bit->patch).domain()->endAt(0,bit->side());
 
@@ -579,9 +580,9 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().piece(it->patch()).domain()->beginAt(0,it->side());
+            m_exprdata->multiBasis().piece(it->patch()).domain()->beginBdr(it->side());
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().piece(it->patch()).domain()->endAt(0,it->side());
+            m_exprdata->multiBasis().piece(it->patch()).domain()->endBdr(it->side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )

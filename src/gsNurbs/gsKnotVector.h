@@ -294,11 +294,8 @@ public: // queries
     { return this->operator()(i); }
 
     /// Number of knot intervals inside domain.
-    inline size_t numElements(boxSide const & s = boundary::none) const override
-    {
-        GISMO_ASSERT(s==boundary::none, "Boundary side not supported.");
-        return (domainUEnd() - domainUBegin());
-    }
+    inline size_t numElements() const override
+    { return (domainUEnd() - domainUBegin()); }
 
 public: // getters
 

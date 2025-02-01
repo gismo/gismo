@@ -978,7 +978,10 @@ public:
     // TO DO: use gsHDomainLeafIterator for a better implementation
     size_t numElements(boxSide const & s = 0) const
     {
-        return gsHDomain<d,T,index_t>(m_tree,*this).numElements(s);
+        if (0==s)
+            return gsHDomain<d,T,index_t>(m_tree,*this).numElements();
+        else
+            return gsHDomain<d,T,index_t>(m_tree,*this).numElementsBdr(s);
     }
 
     /// @brief transformes a sortedVector \a indexes of flat tensor index

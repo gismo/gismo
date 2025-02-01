@@ -108,7 +108,7 @@ public:
         return domainIter(new gsHDomainBoundaryIterator<T,d,Z>(m_tree,m_basis, bs));
     }
 
-    size_t numElements(boxSide const & s = boundary::none) const override
+    size_t numElements() const override
     {
         leafIterator it = m_tree.beginLeafIterator();
         size_t nel(0);
@@ -116,18 +116,39 @@ public:
         while (it.good())
         {
             nel_local = 1;
-            if (s==boundary::none)
-                nel_local = ( it.upperCorner() - it.lowerCorner() ).prod();
+            nel_local = ( it.upperCorner() - it.lowerCorner() ).prod();
+
+            /*
             else if  (leafOnBoundary(s,it))
             {
                 for (short_t i = 0; i < d; ++i)
                     if (i != s.direction())
                         nel_local *= it.upperCorner()[i] - it.lowerCorner()[i];
             }
-            else // not on boundary
-                nel_local = 0;
+            */
 
             nel +=  nel_local;
+            it.next();
+        }
+        return nel;
+    }
+
+    size_t numElementsBdr(boxSide const & s = boundary::none) const override
+    {
+        GISMO_ASSERT(s != boundary::none, "Not implemented");
+        leafIterator it = m_tree.beginLeafIterator();
+        size_t nel(0);
+        size_t nel_local;
+        while (it.good())
+        {
+            if  (leafOnBoundary(s,it))
+            {
+                nel_local = 1;
+                for (short_t i = 0; i < d; ++i)
+                    if (i != s.direction())
+                        nel_local *= it.upperCorner()[i] - it.lowerCorner()[i];
+                nel +=  nel_local;
+            }
             it.next();
         }
         return nel;

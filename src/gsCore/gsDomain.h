@@ -1,6 +1,6 @@
 /** @file gsDomain.h
 
-    @brief Abstracgt Base class representing a domain. i.e. a
+    @brief Abstract Base class representing a domain. i.e. a
     collection of elements (triangles, rectangles, cubes, simplices.
 
     This file is part of the G+Smo library.
@@ -23,10 +23,33 @@ namespace gismo
 {
 
 /**
-    @brief Class representing a domain. i.e. a collection of
-    elements (triangles, rectangles, cubes, simplices.
+    @brief Class representing a domain. i.e. a collection of elements
+    (triangles, rectangles, cubes, simplices.
 
-    \warning  This interface is under development and is not used yet...
+    gsDomain<> dom;
+
+    // Iterate over all elements
+    for (auto it = dom.beginAll(); it!=dom.endAll(); ++it)
+
+    // Iterate over all elements of patch k
+    for (auto it = dom.subdomain(k).beginAll(); it!=dom.subdomain(k).endAll(); ++it)
+
+    // Iterate over all elements of the boundary of the domain
+    for (auto it = dom.beginBdr(); it!=dom.endBdr(); ++it)
+
+    // Iterate over all elements of the boundary of the subdomain k
+    for (auto it = dom.subdomain(k).beginBdr(); it!=dom.subdomain(k).endBdr(); ++it)
+
+    // Iterate over all elements of the boundary side bs of the subdomain k
+    for (auto it = dom.subdomain(k).beginBdr(bs); it!=dom.subdomain(k).endBdr(bs); ++it)
+
+    // Iterate over all elements of all the interfaces of the domain
+    for (auto it = dom.beginIfc(); it!=dom.endIfc(); ++it)
+
+    // Iterate over all elements of the interface \a bi
+    for (auto it = dom.beginIfc(bi); it!=dom.endIfc(bi); ++it)
+
+    // Number of elements of 
 
     \ingroup Core
 */
@@ -52,12 +75,12 @@ namespace gismo
 template<class T>
 class gsDomain
 {
-public:
+    public:
 
     typedef typename memory::shared_ptr<gsDomain<T> > Ptr;
     typedef typename memory::unique_ptr<gsDomain<T> > uPtr;
 
-    typedef gsDomainIteratorWrapper<T> domainIterWrapper;
+    typedef gsDomainIteratorWrapper<T> iterator;
 
     virtual ~gsDomain() { }
 
@@ -105,64 +128,60 @@ public:
 
      */
 
+public:
+
+    /// Return the k-th subdomain, in the case that there are more than one
+    virtual Ptr subdomain(index_t k) const
+    {
+        GISMO_ASSERT(0==k, "This is a single-piece domain.");
+        return memory::make_shared_not_owned(this);
+    }
+
 public: // Domain element iterators
 
-    virtual domainIterWrapper beginAll() const = 0;
+    /// Returns iterator over the elements in this domain
+    virtual iterator beginAll() const = 0;
 
-    /** @brief Iterator over the elements of the domain.
-     *
-     * @param i The index of the domain.
-     * @param s The side of the domain (optional).
-     */
-    // Default implementation for one patch
-    virtual domainIterWrapper beginAt(index_t k, const boxSide bs = boundary::none) const
+    /// Returns iterator at the past-to-end element in this domain
+    virtual iterator endAll() const
     {
-        GISMO_ASSERT(0==k, "This is a one-piece domain.");
-        GISMO_UNUSED(k);
-        if (bs == boundary::none)
-            return beginAll();
-        else
-            return beginBdr(bs);
+        return iterator(new gsDomainIteratorEnd<T>(this->numElements()));
     }
 
-    virtual domainIterWrapper beginBdr (const boxSide   bs) const = 0;
+    /// Returns an iterator over the boundary.
+    /// special value \a none: ????????????????? all boundaries
+    virtual iterator beginBdr (const boxSide bs = boundary::none) const
+    {GISMO_NO_IMPLEMENTATION}
 
-    virtual domainIterWrapper endAll() const
+    /// Returns an iterator to the end of the boundary elements
+    /// special value \a none: ????????????????? all boundaries
+    virtual iterator endBdr(const boxSide bs = boundary::none) const
     {
-        return domainIterWrapper(new gsDomainIteratorEnd<T>(this->numElements()));
-    }
 
-    // Default implementation for one patch
-    virtual domainIterWrapper endAt(index_t k, const boxSide bs = boundary::none) const
-    {
-        GISMO_ASSERT(0==k, "This is a one-piece domain.");
-        GISMO_UNUSED(k);
-        if (bs == boundary::none)
-            return endAll();
-        else
-            return endBdr(bs);
-    }
-
-    // Default implementation for one patch
-    virtual domainIterWrapper endBdr(const boxSide bs) const
-    {
-        return domainIterWrapper(new gsDomainIteratorEnd<T>(this->numElements(bs), bs));
+        return iterator(new gsDomainIteratorEnd<T>(this->numElementsBdr(bs)));
     }
 
     // for multipatch
-    virtual domainIterWrapper beginIfc(const boundaryInterface bi) const
+    virtual iterator beginIfc(const boundaryInterface bi) const
     {GISMO_NO_IMPLEMENTATION}
-    virtual domainIterWrapper endIfc  (const boundaryInterface bi) const
-    {GISMO_NO_IMPLEMENTATION}
-
-    /** @brief Dimension of the domain
-    */
-    virtual short_t dim() const
+    virtual iterator endIfc  (const boundaryInterface bi) const
     {GISMO_NO_IMPLEMENTATION}
 
     /** @brief Number of elements in the domain
     */
-    virtual size_t numElements(boxSide const & s = boundary::none) const
+    //todo: REMOVE ARGUMENT s
+    virtual size_t numElements() const = 0;
+
+    /** @brief Number of elements in the domain
+     */
+    virtual size_t numElementsBdr(boxSide const & s = boundary::none) const
+    {GISMO_NO_IMPLEMENTATION}
+
+    //virtual size_t numBackgroundElements() const;
+    
+    /** @brief Dimension of the domain
+    */
+    virtual short_t dim() const
     {GISMO_NO_IMPLEMENTATION}
 
     /** @brief Bounding box of the domain
@@ -178,7 +197,7 @@ public: // Domain element iterators
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
-        os<<"Domain of dimennsion "<<dim()<<".";
+        os<<"Domain of dimennsion "<<dim()<<", "<< "number of elements: "<< numElements()<<"\n";
         return os;
     }
 }; // class gsDomain

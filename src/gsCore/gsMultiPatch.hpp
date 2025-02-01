@@ -1043,8 +1043,8 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
         QuRule = gsNewtonCotesRule<T>::make(numNodes);
 
         // Initialize an iterator over all the elements of the given basis
-        typename gsBasis<T>::domainIter domIt    = basis->domain()->beginAt(0);
-        typename gsBasis<T>::domainIter domItEnd = basis->domain()->endAt(0);
+        typename gsBasis<T>::domainIter domIt    = basis->domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = basis->domain()->endAll();
 
         // Calculate the collocation matrix of the Bezier Basis
         // It will be used to fit the Bez. Basis to the original basis' elements.

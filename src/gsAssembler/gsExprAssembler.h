@@ -33,6 +33,8 @@ template<class T>
 class gsExprAssembler
 {
 private:
+    typedef typename gsDomain<T>::iterator elementIterator;
+    
     typename gsExprHelper<T>::Ptr m_exprdata;
     const gsMultiPatch<T>* m_gmap;
 
@@ -931,15 +933,15 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
         for (unsigned Ind = 0; Ind != nP; ++Ind)
         {
             patchInd = (Ind + offset * tid) % nP;
-            domIt = m_exprdata->multiBasis().basis(patchInd).domain()->beginAt(0);
-            domItEnd = m_exprdata->multiBasis().basis(patchInd).domain()->endAt(0);
+            domIt = m_exprdata->multiBasis().basis(patchInd).domain()->beginAll();
+            domItEnd = m_exprdata->multiBasis().basis(patchInd).domain()->endAll();
         domIt += tid;
         for ( ; domIt<domItEnd; domIt+=nt )
 #else
         for (patchInd = 0; patchInd != nP; ++patchInd)
         {
-            domIt = m_exprdata->multiBasis().basis(patchInd).domain()->beginAt(0);
-            domItEnd = m_exprdata->multiBasis().basis(patchInd).domain()->endAt(0);
+            domIt = m_exprdata->multiBasis().basis(patchInd).domain()->beginAll();
+            domItEnd = m_exprdata->multiBasis().basis(patchInd).domain()->endAll();
             for (; domIt<domItEnd; ++domIt )
 #endif
             {
@@ -993,8 +995,8 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
 
             patchInd = it->patch();
 
-            domIt = m_exprdata->multiBasis().basis(it->patch()).domain()->beginAt(0,it->side());
-            domItEnd = m_exprdata->multiBasis().basis(it->patch()).domain()->endAt(0,it->side());
+            domIt = m_exprdata->multiBasis().basis(it->patch()).domain()->beginBdr(it->side());
+            domItEnd = m_exprdata->multiBasis().basis(it->patch()).domain()->endBdr(it->side());
 
             // Start iteration over elements
             //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
@@ -1061,9 +1063,9 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), m_exprdata->multiBasis(), iFace);
 
         typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
-            m_exprdata->multiBasis().basis(patch1).domain()->beginAt(0,iFace.first().side());
+            m_exprdata->multiBasis().basis(patch1).domain()->beginBdr(iFace.first().side());
         typename gsBasis<T>::domainIter domItEnd =  // add patch1 to domainiter ?
-            m_exprdata->multiBasis().basis(patch1).domain()->endAt(0,iFace.first().side());
+            m_exprdata->multiBasis().basis(patch1).domain()->endBdr(iFace.first().side());
 
         // Start iteration over elements
         //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
@@ -1117,25 +1119,28 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     const unsigned nP = m_exprdata->multiBasis().nBases();
 #ifdef _OPENMP
     const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
-    for (unsigned Ind = 0; Ind < nP && (!failed); ++Ind)
+    for (unsigned Ind = 0; Ind < nP && (!failed); ++Ind)        // all threads loop over all patches
      {
-        // Spread the threads on different patches
+        // Spread the threads on different patches (each thread starts working on a different patch)
         const unsigned patchInd = (Ind + offset * tid) % nP;
 #else
      for (unsigned patchInd = 0; patchInd < nP && (!failed); ++patchInd)
      {
 #endif
+        //quadrature rule: in parallel mode check/update number of points at each element?
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).domain()->beginAt(0);
+            m_exprdata->multiBasis().basis(patchInd).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).domain()->endAt(0);
+            m_exprdata->multiBasis().basis(patchInd).domain()->endAll();
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
-        domIt += tid;
+        domIt += tid; // if one elemnent, only tid==0 works whatsoever
+        // PROBLEM: when numEl<nt then nt-numEl threads are doing nothing.
+        // At the limit nt-1 threads are inactive
         for ( ; domIt<domItEnd && (!failed); domIt+=nt )
 #       else
         for (; domIt<domItEnd; ++domIt )
@@ -1269,9 +1274,9 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add it->patch to domainiter ?
-            m_exprdata->multiBasis().basis(it->patch).domain()->beginAt(0,it->side());
+            m_exprdata->multiBasis().basis(it->patch).domain()->beginAll(it->side());
         typename gsBasis<T>::domainIter domItEnd =  // add it->patch to domainiter ?
-            m_exprdata->multiBasis().basis(it->patch).domain()->endAt(0,it->side());
+            m_exprdata->multiBasis().basis(it->patch).domain()->endAll(it->side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )
@@ -1406,9 +1411,9 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).domain()->beginAt(0);
+            m_exprdata->multiBasis().basis(patchInd).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).domain()->endAt(0);
+            m_exprdata->multiBasis().basis(patchInd).domain()->endAll();
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
@@ -1478,9 +1483,9 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
-            m_exprdata->multiBasis().basis(patch1).domain()->beginAt(0,iFace.first().side());
+            m_exprdata->multiBasis().basis(patch1).domain()->beginAll(iFace.first().side());
         typename gsBasis<T>::domainIter domItEnd =  // add patch1 to domainiter ?
-            m_exprdata->multiBasis().basis(patch1).domain()->endAt(0,iFace.first().side());
+            m_exprdata->multiBasis().basis(patch1).domain()->endAll(iFace.first().side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )
@@ -1596,8 +1601,8 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
         cWeights[patchInd].resize( sz );
 
         // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt = bb.domain()->beginAt(0);
-        typename gsBasis<T>::domainIter domItEnd = bb.domain()->endAt(0);
+        typename gsBasis<T>::domainIter domIt = bb.domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = bb.domain()->endAll();
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP

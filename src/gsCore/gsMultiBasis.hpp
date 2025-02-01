@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsMultiPatch.h>
+#include <gsCore/gsCompositeDomain.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>
 #include <gsIO/gsOptionList.h>
@@ -65,6 +66,12 @@ template<class T>
 gsMultiBasis<T>::~gsMultiBasis()
 {
     freeAll(m_bases);
+}
+
+template<class T>
+memory::shared_ptr<gsDomain<T> > gsMultiBasis<T>::domain() const
+{
+    return memory::make_shared_not_owned( new gsCompositeDomain<T>(*this) );
 }
 
 template<class T>

@@ -67,7 +67,7 @@ template <class T>
 class gsDomainIteratorWrapper
 {
     typedef memory::unique_ptr< gsDomainIterator<T> > uPtr;
-    uPtr m_domainIter;
+    uPtr m_domainIter;//change as Ptr
 
 public:
     gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr = nullptr) : m_domainIter(_itptr)
@@ -79,6 +79,11 @@ public:
     gsDomainIteratorWrapper(gsDomainIteratorWrapper && _other)
     : m_domainIter(give(_other.m_domainIter))
     { }
+
+    gsDomainIteratorWrapper(const gsDomainIteratorWrapper & _other)
+    {
+        m_domainIter = _other.clone();
+    }
 
     gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other)
     {
@@ -199,7 +204,9 @@ public:
     /// Returns the element id
     inline size_t id() const { return m_domainIter->id(); }
 
-    inline boxSide side() const {return m_domainIter->m_side;}
+    inline boxSide side() const {return m_domainIter->side();}
+
+    inline index_t patch() const {return m_domainIter->patch();}
 
     /// Fetches data of integer type based on string label
     const index_t & label(const std::string & _label)
@@ -221,14 +228,16 @@ public:
 
 public:
 
-    gsDomainIterator(index_t _id = 0) : m_id(_id) { }
+    explicit gsDomainIterator(index_t _id = 0) : m_id(_id) { }
 
     /// \brief Constructor using a basis
-    gsDomainIterator( const gsDomain<T>& _dom, const boxSide & _bs = boundary::none)
-    : m_domain(&_dom), m_side(_bs), m_id(0)
+    explicit gsDomainIterator( const gsDomain<T>& _dom, const boxSide & _bs = boundary::none)
+    : m_domain(&_dom), m_pside(0,_bs), m_id(0)
     { }
 
     virtual ~gsDomainIterator() { }
+
+    void setPatch(index_t k) { m_pside.patch = k; }
 
 private:
 
@@ -240,17 +249,28 @@ private:
      */
     virtual bool next() = 0;
 
-    /// \brief Proceeds to the next element (skipping \p increment elements).
-    virtual bool next(index_t increment) = 0;
-
     virtual bool prev() { GISMO_NO_IMPLEMENTATION };
 
-    virtual bool prev(index_t decrement) { GISMO_NO_IMPLEMENTATION };
+    /// \brief Proceeds to the next element (skipping \p increment elements).
+    virtual bool next(index_t increment)
+    {
+        for(index_t i = 0; i!=increment; ++i)
+            this->next();
+        return true;// note: return value not used/not good
+    }
+
+    virtual bool prev(index_t decrement)
+    {
+        for(index_t i = 0; i!=decrement; ++i)
+            this->prev();
+        return true;// note: return value not used/not good
+    }
 
     /// Resets the iterator so that it points to the first element
     virtual void reset()
     {
         GISMO_NO_IMPLEMENTATION
+        //*this = give(*m_domain->beginAll().get());
     }
 
 protected:
@@ -260,7 +280,7 @@ protected:
 
 public:
 
-    /// Returns the element id
+    /// Returns the element id -- see also patch() for the patch index
     size_t id() const   { return m_id; }
 
     /// Return dimension of the elements
@@ -348,14 +368,13 @@ public:
     T volume() const
     { return (upperCorner() - lowerCorner()).prod(); }
 
-    inline boxSide side() const {return m_side;}
-
+    inline boxSide side() const {return m_pside.side();}
+    inline index_t patch() const {return m_pside.patch;}
 protected:
 
     const gsDomain<T> * m_domain;
 
-    // \todo patchSide
-    boxSide m_side;
+    patchSide m_pside;
 
     /// The element ID
     size_t m_id;
@@ -370,20 +389,17 @@ private:
 template <class T>
 class gsDomainIteratorEnd : public gsDomainIterator<T>
 {
-    using gsDomainIterator<T>::m_side;
-
 public:
 
-    explicit gsDomainIteratorEnd(size_t id, boxSide s = boundary::none)
-    :
-    gsDomainIterator<T>(id)
-    {
-        m_side = s;
-    }
+    explicit gsDomainIteratorEnd(size_t id)
+    : gsDomainIterator<T>(id)
+    { }
 
-    virtual bool next() override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
+    virtual bool next() override
+    { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
 
-    virtual bool next(index_t increment) override { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
+    virtual bool next(index_t increment) override
+    { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
 
     virtual bool prev() override
     {

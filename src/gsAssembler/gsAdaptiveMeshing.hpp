@@ -1426,9 +1426,9 @@ typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer(
 #ifdef _OPENMP
             c = patch_cnt + tid;
             patch_cnt += basis->domain()->numElements(); // a bit costy
-            for ( domHIt->next(tid); domHIt->good(); domHIt->next(nt) )
+            for ( ; domIt<domItEnd; domIt+=nt )
 #else
-                for (; domIt<domItEnd; ++domIt)
+            for (; domIt<domItEnd; ++domIt)
 #endif
             {
                 if (bools[c])

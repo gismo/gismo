@@ -59,13 +59,27 @@ public: // iterators
 public: // more members
 
     // Look at gsBasis class for a description
-    size_t numElements(boxSide const & s = boundary::none) const override
+    size_t numElements() const override
     {
+        size_t nElem = 1;
+        for (short_t dim = 0; dim < D; ++dim)
+            nElem *= m_knotVectors[dim]->numElements();
+        return nElem;
+    }
+
+        // Look at gsBasis class for a description
+    size_t numElementsBdr(boxSide const & s = boundary::none) const override
+    {
+        if(s==boundary::none)
+        {
+            GISMO_NO_IMPLEMENTATION
+        }
+                
         const short_t dir =  s.direction();
         size_t nElem = 1;
         for (short_t dim = 0; dim < D; ++dim)
         {
-            if(s!=boundary::none && dim == dir)
+            if(dim == dir)
                 continue;
             nElem *= m_knotVectors[dim]->numElements();
         }

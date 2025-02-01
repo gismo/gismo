@@ -696,8 +696,12 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
     const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIndex];
 
     // Initialize domain element iterator -- using unknown 0
-    typename gsBasis<T>::domainIter domIt    = bases[0].domain()->beginAt(0,side);
-    typename gsBasis<T>::domainIter domItEnd = bases[0].domain()->endAt(0,side);
+    typename gsBasis<T>::domainIter domIt    = ( side == boundary::none ?
+                                                 bases[0].domain()->beginAll()  :
+                                                 bases[0].domain()->beginBdr(side)) ;
+    typename gsBasis<T>::domainIter domItEnd = ( side == boundary::none ?
+                                                 bases[0].domain()->endAll()  :
+                                                 bases[0].domain()->endBdr(side)) ;
 
     // Start iteration over elements
 #ifdef _OPENMP

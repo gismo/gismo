@@ -245,9 +245,9 @@ std::vector<gsMatrix<T>> gsGetRefinementBoxes(  gsMultiBasis<T> & basis,
         // for all elements in patch pn
                 // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            basis.basis(pn).domain()->beginAt(0);
+            basis.basis(pn).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            basis.basis(pn).domain()->endAt(0);
+            basis.basis(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
@@ -352,9 +352,9 @@ void gsRefineMarkedElements(gsMultiPatch<T> & mp,
 
         // for all elements in patch pn
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            mp.patch(pn).domain()->beginAt(0);
+            mp.patch(pn).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            mp.patch(pn).domain()->endAt(0);
+            mp.patch(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
@@ -472,9 +472,9 @@ void gsUnrefineMarkedElements(gsMultiBasis<T> & basis,
 
         // for all elements in patch pn
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            basis.basis(pn).domain()->beginAt(0);
+            basis.basis(pn).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            basis.basis(pn).domain()->endAt(0);
+            basis.basis(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
@@ -533,9 +533,9 @@ void gsProcessMarkedElements(gsMultiBasis<T> & basis,
 
         // for all elements in patch pn
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            basis.basis(pn).domain()->beginAt(0);
+            basis.basis(pn).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            basis.basis(pn).domain()->endAt(0);
+            basis.basis(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             if( elRefined[ globalCount ] ) // refine this element ?
@@ -605,9 +605,9 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
 
         // for all elements in patch pn
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            mp.patch(pn).domain()->beginAt(0);
+            mp.patch(pn).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            mp.patch(pn).domain()->endAt(0);
+            mp.patch(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             if( elRefined[ globalCount ] ) // refine this element ?
@@ -675,9 +675,9 @@ void gsUnrefineMarkedElements(gsMultiPatch<T> & mp,
 
         // for all elements in patch pn
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            mp.patch(pn).domain()->beginAt(0);
+            mp.patch(pn).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            mp.patch(pn).domain()->endAt(0);
+            mp.patch(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?

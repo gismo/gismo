@@ -111,17 +111,6 @@ public:
         return isGood;
     }
 
-    /// Resets the iterator implementation copied from the constructor
-    /// note that it fails for sides containing 1 element in any direction
-    /// do not know the rationale for it
-    void reset()
-    {
-        GISMO_ERROR("reset() called.");
-        //curElement=meshBegin; // this is what we would like
-        for(int i=0; i < d; ++i)
-            curElement[i].reset(); //bug: the reset will always set it to begin(), but this might be wrong
-    }
-
     /// Return the tensor index of the current element
     gsVector<unsigned, D> index() const
     {
@@ -197,9 +186,6 @@ public:
 
 
 // Data members
-protected:
-    using gsDomainIterator<T>::m_side;
-
 private:
 
     // the dimension of the parameter space
