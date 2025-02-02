@@ -37,7 +37,6 @@ class gsCompositeDomainIterator : public gsDomainIterator<T>
     typedef std::vector<domainPtr> domainContainer;
     domainContainer m_domains;
     std::vector<size_t> m_numEl;
-    size_t m_index;
     gsDomainIteratorWrapper<T> m_cur;
 
 public:
@@ -46,8 +45,6 @@ public:
     gsCompositeDomainIterator(domainContainer _dom)
     : Base(), m_domains(give(_dom))
     {
-        //gsDebug<<"\ntid="<<omp_get_thread_num()<<";  Constructor.\n";
-
         GISMO_ASSERT(!m_domains.empty(), "Empty..");
         m_numEl.reserve(m_domains.size()+1);
         m_numEl.push_back(0);
@@ -62,7 +59,8 @@ private:
 
     bool next()
     {
-        if (this->id() + 1 == m_numEl[this->patch()+1])
+        //note: we cannot rely on this->id()
+        if (m_cur.id() + 1 == m_numEl[this->patch()+1]-m_numEl[this->patch()])
         {
             ++this->patch();
             if ((size_t)this->patch()<m_domains.size())
@@ -71,22 +69,16 @@ private:
                 //m_cur->get()->patch() = this->patch(); // not needed
             }
             else
-            {
                 return false;
-            }
         }
         else
             ++m_cur;
-
         return true;
     }
-/*
+
     /// \brief Proceeds to the next element (skipping \p increment elements).
     bool next(index_t increment)
     {
-#pragma omp critical
-        gsDebug<<"\ntid="<<omp_get_thread_num()<<"; INCR="<< increment<<"; element="<< this->id() <<"\n";
-
         const size_t pos = this->id() + increment;
         if ( pos < m_numEl[this->patch()+1])
         {
@@ -94,23 +86,14 @@ private:
             return true;
         }
 
-        //note: could end at min( m_numEl.end() - m_numEl.begin() - this->patch(), increment)
-        auto it = std::lower_bound(m_numEl.begin()+this->patch(), m_numEl.end(), pos);
+        //note: could end at min( --m_numEl.end(), m_numEl.begin() + increment)
+        auto it = --std::upper_bound(m_numEl.begin()+this->patch(), --m_numEl.end(), pos);
         this->patch() = it - m_numEl.begin();
-        if ( (size_t)this->patch() >= m_domains.size() )
-        {
-            this->patch() = m_domains.size()-1;
-            return false;
-        }
         m_cur  = m_domains[this->patch()]->beginAll();
         m_cur +=  pos - m_numEl[this->patch()];
-        //m_cur->get()->patch() = this->patch(); // not needed
-
-        gsDebugVar( this->patch() );
-        gsDebugVar( this->id() );
         return true;
     }
-*/
+
     virtual gsVector<T> lowerCorner() const
     { return m_cur.lowerCorner(); }
 
