@@ -71,7 +71,7 @@ gsMultiBasis<T>::~gsMultiBasis()
 template<class T>
 memory::shared_ptr<gsDomain<T> > gsMultiBasis<T>::domain() const
 {
-    return memory::make_shared_not_owned( new gsCompositeDomain<T>(*this) );
+    return memory::make_shared( new gsCompositeDomain<T>(*this) );
 }
 
 template<class T>

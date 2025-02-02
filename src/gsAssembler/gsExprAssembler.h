@@ -1092,91 +1092,57 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     if ((m_sparsity & 1) == 0)
         this->_computePattern(args...);
 
-    bool failed = false;
+    //bool failed = false;
     const index_t elim = m_options.getInt("DirichletStrategy");
-#pragma omp parallel shared(failed)
+    typename gsDomain<T>::iterator domItEnd = m_exprdata->multiBasis().domain()->endAll();
+#pragma omp parallel
 {
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
+//#   ifdef _OPENMP
+    //const int tid = omp_get_thread_num();
+    //const int nt  = omp_get_num_threads();
+//#   endif
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
     m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
-    // check if matrix is modified
+    // check if the expression is a matrix, therefore being modified
+#pragma omp single nowait
+{
     _checkMatrix CM(m_modified);
     op_tuple(CM, arg_tpl);
-
+}
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
     ee.setElim(dirichlet::elimination==elim);
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
-    typename gsBasis<T>::domainIter domIt;
 
-    // Note: omp thread will loop over all patches and will work on Ep/nt
-    // elements, where Ep is the elements on the patch.
-    const unsigned nP = m_exprdata->multiBasis().nBases();
-#ifdef _OPENMP
-    const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
-    for (unsigned Ind = 0; Ind < nP && (!failed); ++Ind)        // all threads loop over all patches
-     {
-        // Spread the threads on different patches (each thread starts working on a different patch)
-        const unsigned patchInd = (Ind + offset * tid) % nP;
-#else
-     for (unsigned patchInd = 0; patchInd < nP && (!failed); ++patchInd)
-     {
-#endif
-        //quadrature rule: in parallel mode check/update number of points at each element?
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
+    typename gsQuadRule<T>::uPtr
+    //quadrature rule: check/update number of points at each patch jump?
+    QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(0), m_options);
 
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).domain()->beginAll();
-        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).domain()->endAll();
+#pragma omp for
+    for (auto domIt = m_exprdata->multiBasis().domain()->beginAll();
+         domIt<domItEnd; ++domIt)
+    {
+//#pragma omp critical
+//        gsDebug<<"\n------> tid="<<omp_get_thread_num()<<"; patch="<< domIt.patch()<<"; element="<< domIt.id() <<"\n";
 
-        // Start iteration over elements of patchInd
-#       ifdef _OPENMP
-        domIt += tid; // if one elemnent, only tid==0 works whatsoever
-        // PROBLEM: when numEl<nt then nt-numEl threads are doing nothing.
-        // At the limit nt-1 threads are inactive
-        for ( ; domIt<domItEnd && (!failed); domIt+=nt )
-#       else
-        for (; domIt<domItEnd; ++domIt )
-#       endif
-        {
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
-                           m_exprdata->points(), m_exprdata->weights());
+        // Map the Quadrature rule to the element
+        QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+                       m_exprdata->points(), m_exprdata->weights());
 
-            if (m_exprdata->points().cols()==0)
-                continue;
+        if (m_exprdata->points().cols()==0)
+            continue;// is this useful?
 
-// Activate the try-catch only if G+Smo is in DEBUG
-#ifndef NDEBUG
-            // Perform required pre-computations on the quadrature nodes
-            try
-            {
-                m_exprdata->precompute(patchInd);
-                //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
-            }
-            catch (...)
-            {
-                #pragma omp atomic write
-                failed = true;
-                break;
-            }
-#else
-            m_exprdata->precompute(patchInd);
-#endif
-            // Assemble contributions of the element
-            op_tuple(ee, arg_tpl);
-        }
+        m_exprdata->precompute( domIt.patch() );
+        //m_exprdata->precompute( domIt ); //todo
+
+        // Assemble contributions of the element
+        op_tuple(ee, arg_tpl);
     }
+
 }//omp parallel
     // Throw something else?? (floating point exception?)
-    GISMO_ENSURE(!failed,"Assembly failed due to an error");
+//    GISMO_ENSURE(!failed,"Assembly failed due to an error");
 }
 
 template<class T>

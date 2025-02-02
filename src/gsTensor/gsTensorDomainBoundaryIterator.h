@@ -35,17 +35,17 @@ template<class T, int D, typename uiter>
 class gsTensorDomainBoundaryIterator : public gsDomainIterator<T>
 {
     typedef gsDomainIteratorWrapper<T> domainIterWrapper;
-    //typedef typename gsDomainIterator<T>::uPtr domainIter;
+    typedef typename gsDomain<T>::uPtr domainPtr;
     using gsDomainIterator<T>::uPtr;
     using gsDomainIterator<T>::Ptr;
 public:
 
-    gsTensorDomainBoundaryIterator(const gsTensorDomain<T,D> & domain, const boxSide & s)
-    :
-    gsDomainIterator<T>(domain, s),
-    d( domain.dim() ),
-    lower  ( gsVector<T, D>::Zero(d) ),
-    upper  ( gsVector<T, D>::Zero(d) )
+    explicit gsTensorDomainBoundaryIterator(const gsTensorDomain<T,D> & domain,
+                                            const boxSide & s)
+    : gsDomainIterator<T>(0, s),
+      d( domain.dim() ),
+      lower  ( gsVector<T, D>::Zero(d) ),
+      upper  ( gsVector<T, D>::Zero(d) )
     {
         par = s.parameter();
         dir = s.direction();

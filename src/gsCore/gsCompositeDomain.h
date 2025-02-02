@@ -32,23 +32,28 @@ template<class T> class gsCompositeDomain;
 template <class T>
 class gsCompositeDomainIterator : public gsDomainIterator<T>
 {
+    typedef gsDomainIterator<T> Base;
+    typedef typename gsDomain<T>::Ptr domainPtr;
+    typedef std::vector<domainPtr> domainContainer;
+    domainContainer m_domains;
     std::vector<size_t> m_numEl;
     size_t m_index;
     gsDomainIteratorWrapper<T> m_cur;
-    typedef gsDomainIterator<T> Base;
-    using Base::m_domain;
 
 public:
-    explicit gsCompositeDomainIterator(index_t _id = 0) : Base(_id), m_index(0) { }
+    explicit gsCompositeDomainIterator(index_t _id = 0) : Base(_id) { }
 
-    gsCompositeDomainIterator( const gsCompositeDomain<T>& _dom)
-    : Base(_dom), m_index(1)
+    gsCompositeDomainIterator(domainContainer _dom)
+    : Base(), m_domains(give(_dom))
     {
-        m_numEl.reserve(_dom.numPieces()+1);
+        //gsDebug<<"\ntid="<<omp_get_thread_num()<<";  Constructor.\n";
+
+        GISMO_ASSERT(!m_domains.empty(), "Empty..");
+        m_numEl.reserve(m_domains.size()+1);
         m_numEl.push_back(0);
-        for( auto & sd : _dom.subdomains() )
+        for( auto & sd : m_domains )
             m_numEl.push_back(m_numEl.back()+sd->numElements());
-        m_cur = _dom.subdomain(0)->beginAll();
+        m_cur = m_domains.front()->beginAll();
     }
 
     virtual ~gsCompositeDomainIterator() { }
@@ -57,38 +62,55 @@ private:
 
     bool next()
     {
-        ++m_cur;
-        if (this->id() + 1 == m_numEl[m_index])
+        if (this->id() + 1 == m_numEl[this->patch()+1])
         {
-            ++m_index;
-            if (m_index<m_numEl.size())
+            ++this->patch();
+            if ((size_t)this->patch()<m_domains.size())
             {
-                m_cur = m_domain->subdomain(m_index-1)->beginAll();
-                m_cur.get()->setPatch(m_index-1);
+                m_cur = m_domains[this->patch()]->beginAll();
+                //m_cur->get()->patch() = this->patch(); // not needed
             }
             else
+            {
                 return false;
+            }
         }
+        else
+            ++m_cur;
+
         return true;
     }
-
+/*
     /// \brief Proceeds to the next element (skipping \p increment elements).
     bool next(index_t increment)
     {
-        const size_t pos = increment + this->id();
-        if ( pos < m_numEl[m_index])
+#pragma omp critical
+        gsDebug<<"\ntid="<<omp_get_thread_num()<<"; INCR="<< increment<<"; element="<< this->id() <<"\n";
+
+        const size_t pos = this->id() + increment;
+        if ( pos < m_numEl[this->patch()+1])
         {
             m_cur += increment;
             return true;
         }
 
-        auto it = std::lower_bound(m_numEl.begin()+m_index, m_numEl.end(), pos);
-        m_index = it - m_numEl.begin();
-        m_cur = m_domain->subdomain(m_index-1)->beginAll();
-        m_cur +=  pos - m_numEl[m_index];
+        //note: could end at min( m_numEl.end() - m_numEl.begin() - this->patch(), increment)
+        auto it = std::lower_bound(m_numEl.begin()+this->patch(), m_numEl.end(), pos);
+        this->patch() = it - m_numEl.begin();
+        if ( (size_t)this->patch() >= m_domains.size() )
+        {
+            this->patch() = m_domains.size()-1;
+            return false;
+        }
+        m_cur  = m_domains[this->patch()]->beginAll();
+        m_cur +=  pos - m_numEl[this->patch()];
+        //m_cur->get()->patch() = this->patch(); // not needed
+
+        gsDebugVar( this->patch() );
+        gsDebugVar( this->id() );
         return true;
     }
-
+*/
     virtual gsVector<T> lowerCorner() const
     { return m_cur.lowerCorner(); }
 
@@ -119,11 +141,13 @@ public:
      */
     //gsCompositeDomain(const gsFunctionSet<T> & multiBasis)
     gsCompositeDomain(const gsMultiBasis<T> & multiBasis)
-    : Base(), m_domains(multiBasis.size()), m_topology(&multiBasis.topology())
+    : Base(), m_domains(multiBasis.nPieces()), m_topology(&multiBasis.topology())
     {
         for (index_t i = 0; i != multiBasis.nPieces(); ++i)
             m_domains[i] = multiBasis.basis(i).domain();
     }
+
+    // void insert(Ptr other);
 
     Ptr subdomain(index_t k) const { return m_domains[k]; }
 
@@ -134,15 +158,15 @@ public:
 
     const domainContainer & subdomains() const { return m_domains;}
 
-    iterator beginAll() const { return new gsCompositeDomainIterator<T>(*this); }
+    iterator beginAll() const { return new gsCompositeDomainIterator<T>(m_domains); }
 
     /// See \ref gsDomain.h for documentation.
     size_t numElements() const override
     {
-        size_t size = 0;
+        size_t sz = 0;
         for (size_t i = 0; i < m_domains.size(); ++i)
-            size += m_domains[i]->numElements();
-        return size;
+            sz += m_domains[i]->numElements();
+        return sz;
     }
 
     /// See \ref gsDomain.h for documentation.

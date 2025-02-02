@@ -207,7 +207,7 @@ public:
     inline boxSide side() const {return m_domainIter->side();}
 
     inline index_t patch() const {return m_domainIter->patch();}
-
+    
     /// Fetches data of integer type based on string label
     const index_t & label(const std::string & _label)
     {return m_domainIter->label(_label); }
@@ -228,11 +228,8 @@ public:
 
 public:
 
-    explicit gsDomainIterator(index_t _id = 0) : m_id(_id) { }
-
-    /// \brief Constructor using a basis
-    explicit gsDomainIterator( const gsDomain<T>& _dom, const boxSide & _bs = boundary::none)
-    : m_domain(&_dom), m_pside(0,_bs), m_id(0)
+    explicit gsDomainIterator(index_t _id = 0, const boxSide & _bs = boundary::none)
+    : m_id(_id), m_pside(0,_bs)
     { }
 
     virtual ~gsDomainIterator() { }
@@ -370,14 +367,13 @@ public:
 
     inline boxSide side() const {return m_pside.side();}
     inline index_t patch() const {return m_pside.patch;}
+    inline index_t & patch() {return m_pside.patch;}
 protected:
 
-    const gsDomain<T> * m_domain;
+    
+    size_t m_id; ///< The element ID
 
-    patchSide m_pside;
-
-    /// The element ID
-    size_t m_id;
+    patchSide m_pside; ///< The patch side, when applicable
 
 private:
     // disable copying

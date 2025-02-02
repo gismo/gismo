@@ -52,9 +52,7 @@ public: // iterators
     }
 
     domainIter beginBdr(const boxSide bs) const override
-    {
-        return domainIter(new gsTensorDomainBoundaryIterator<T,D,knotIter>(*this, bs));
-    }
+    { return domainIter(new gsTensorDomainBoundaryIterator<T,D,knotIter>(*this, bs)); }
 
 public: // more members
 
