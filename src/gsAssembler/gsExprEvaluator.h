@@ -519,7 +519,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
             m_exprdata->multiBasis().piece(bit->patch).domain()->beginBdr(bit->side());
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().piece(bit->patch).domain()->endAt(0,bit->side());
+            m_exprdata->multiBasis().piece(bit->patch).domain()->endBdr(bit->side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )
