@@ -107,11 +107,11 @@ public:
     // ---> Documentation in gsDomainIterator.h
     bool next(index_t increment)
     {
-        bool isGood(false);
+        bool isGood(m_leaf.good());
         for (index_t i = 0; i != increment && isGood; ++i)
         {
             isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
-            if (isGood)
+            if (!isGood)
                 isGood = nextLeaf();
         }
 
