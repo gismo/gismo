@@ -107,6 +107,10 @@ public:
     // ---> Documentation in gsDomainIterator.h
     bool next(index_t increment)
     {
+        //todo: better implementation
+        // compute the number of elements between curElement and meshEnd
+        // use m_leaf.numElements() to skip leaves
+        // arrive at the element or end
         bool isGood(m_leaf.good());
         for (index_t i = 0; i != increment && isGood; ++i)
         {
