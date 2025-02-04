@@ -54,25 +54,26 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool plot           = false;
-    index_t numRefine   = 3;// for local refinement:  0 means no local h-refinement
-    index_t UnifRefine  = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
-    index_t DegElevate  = 1; // degree Elevation
-    index_t NumArMarEl  = 1; // Number of ring of cells around marked elements
-    index_t maxIter     = 30;
-    double eps          = 1e-5; // pinalization coefficient
-    double tolPicard    = 1e-8;
-    double IntensityMAE = 6.;
+    bool plot            = false;
+    index_t numRefine    = 3;// for local refinement:  0 means no local h-refinement
+    index_t UnifRefine   = 3;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
+    index_t DegElevate   = 1; // degree Elevation
+    index_t NumArMarEl   = 0; // Number of ring of cells around marked elements
+    index_t maxIter      = 30;
+    double eps           = 1e-5; // pinalization coefficient
+    double tolPicard     = 1e-8;
+    double IntensityMAE  = 6.;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
-    double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
+    double FactRefPar   = 0.;    // ... adapt parameter : NumArMarEl += FactRefPar in each iter
     bool ErrorPrint      = true, export_b64 =false;
-    bool errorsave      = false;
+    bool errorsave       = false;
     gsFunctionExpr<> sN("x","y",2); // FIX : Manufactured identity mapping
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy...
     MarkingStrategy adaptRefCrit = PUCA;
     //MarkingStrategy adaptRefCrit = GARU;
-    //MarkingStrategy adaptRefCrit = errorFraction;
+    //MarkingStrategy adaptRefCrit = BULK;
+    //MarkingStrategy adaptRefCrit = PBULK;
 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -82,7 +83,8 @@ int main(int argc, char *argv[])
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  UnifRefine );
     cmd.addInt( "l", "numRefine", "Number of local h-refinement loops",  numRefine );
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addReal( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
+    cmd.addReal( "p", "FactRefPar", "augement FactRefPar with such quantity in local h-refinement loops",  FactRefPar );
+    cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addSwitch( "ErrorPrint", "print Error", ErrorPrint);
     //cmd.addString( "f", "file", "Input XML file", fn );
@@ -322,7 +324,6 @@ int main(int argc, char *argv[])
             gsInfo<< "." <<std::flush; // Linear solving done
 
             // Picard loop
-            index_t NiterPicard{0};
             gsMatrix<> sv0; //
             solution u_lsol = A.getSolution(u, sv0);
             for(int ip{0}; ip<=maxIter; ++ip)
@@ -398,11 +399,10 @@ int main(int argc, char *argv[])
                 // omp_set_dynamic(0);     // Explicitly disable dynamic teams
                 // omp_set_num_threads(1); // Use these threads for later parallel regions
 
-                ++NiterPicard;
                 auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
                 if ( l2errRes < tolPicard || ip == maxIter ){
                     // ! end Picard loop
-                    gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
+                    gsInfo<< "\n Niter in Picard : " << ip << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
                     break; 
                     } // 
             }//for loop
@@ -443,6 +443,7 @@ int main(int argc, char *argv[])
             gsInfo<<"Source function is "<< SourceFunc << "\n";
             gsInfo<<"adapt Ref Param is "<< adaptRefParam << "\n";
             gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+            gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
         }
 
         gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
@@ -502,7 +503,7 @@ int main(int argc, char *argv[])
                     <<numRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
-        // ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+        //ev.integralElWise( ( ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
         ev.integralElWise( ff );
 
         const std::vector<real_t> eltErrs  = ev.elementwise();
@@ -540,10 +541,10 @@ int main(int argc, char *argv[])
     if (errorsave)
     {
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
-    std::ofstream outFile("ParaviewOutput/error_analysis.txt", std::ios::app); // Open file in append mode
+    std::ofstream outFile("error_analysis.txt", std::ios::app); // Open file in append mode
     if (outFile.is_open())
     {
-        outFile << "#DoF_PDE: " << adaptRefParam <<" "<< FactRefPar <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#DoF_PDE: " << adaptRefParam <<" "<< NumArMarEl <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
         outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
@@ -551,7 +552,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo << "Error: Unable to open file for writing : ParaviewOutput/error_analysis.txt.\n";
+        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
     }
     }
     else

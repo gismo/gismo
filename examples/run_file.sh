@@ -3,23 +3,19 @@
 #Make It Executable : chmod +x ../examples/run_file.sh
  
 # Delete existing error analysis file if it exists
-rm -r ../build/ParaviewOutput/error_analysis.txt
+rm -r ../build/error_analysis.txt
 
 # Build r_refinement_square before running
-make r_refinement_square -j 15
-#make r_refinement_ComplexGeometry -j 15
+#make r_refinement_square -j 15
+make r_refinement_ComplexGeometry -j 15
 
 # Path to the executable
-EXECUTABLE="./bin/r_refinement_square"
-#EXECUTABLE="./bin/r_refinement_ComplexGeometry"
+#EXECUTABLE="./bin/r_refinement_square"
+EXECUTABLE="./bin/r_refinement_ComplexGeometry"
 
 # Parameters (tags) to run the executable with
 TAGS=(
-    "-u 3 -f 0. -l 5 -a 0."
-    "-u 3 -f 0. -l 5 -a 0.25"
-    "-u 3 -f 0. -l 5 -a 0.5"
-    "-u 3 -f 0. -l 5 -a 0.7"
-    "-u 3 -f 0. -l 5 -a 0. -p 0.2"
+    "-u 4 -f 9. -l 5 -a 0.3 -c 1 -p 1"
 )
 
 # Run the executable with each set of parameters

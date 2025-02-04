@@ -547,7 +547,6 @@ int main(int argc, char *argv[])
     gsInfo<< "." <<std::flush; // Linear solving done
 
     // Picard loop
-    index_t NiterPicard{0};
     gsMatrix<> sv0; //
     solution u_lsol = A.getSolution(u, sv0);
     for(int ip{0}; ip<=maxIter; ++ip)
@@ -614,11 +613,10 @@ int main(int argc, char *argv[])
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
-        ++NiterPicard;
         auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         if ( l2errRes < tolPicard || ip == maxIter ){
             // ! end Picard loop
-            gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
+            gsInfo<< "\n Niter in Picard : " << ip << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
             break; 
             } // 
     }//for loop

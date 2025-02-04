@@ -61,6 +61,8 @@ int main(int argc, char *argv[])
     double tolPicard    = 1e-8;
     double IntensityMAE = 6.;
     bool export_b64     = false;
+    bool errorsave      = false;
+
     // Specify the file path
     std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/infinit_plate.xml");
@@ -80,6 +82,7 @@ int main(int argc, char *argv[])
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -102,7 +105,7 @@ int main(int argc, char *argv[])
     mp.degreeElevate(numElevate);
     mp.computeTopology();
     //mp.addAutoBoundaries();
-
+    
     //..... Test 2
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
@@ -244,6 +247,7 @@ int main(int argc, char *argv[])
     gsInfo<< "." << solVector.size() <<std::flush; // Linear solving done
  
     // Picard loop
+    gsVector<>  h1Res(maxIter+1), l2err(maxIter+1), Iter_mae(maxIter+1);
     gsMatrix<> sv0; //
     solution u_lsol = A.getSolution(u, sv0);
     for(int ip{0}; ip<=maxIter; ++ip)
@@ -293,7 +297,7 @@ int main(int argc, char *argv[])
         v_sol.extract(PsiLoc);// Psiloc is reparameterization of Gleft o Psi by L2projection
         //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
         geometryMap PPfLoc = A.getMap(PsiLoc);
-        auto ff     = A.getCoeff(f, PPfLoc);/// Gleft o Psi
+        auto ff      = A.getCoeff(f, PPfLoc);/// Gleft o Psi
         auto ffG     = A.getCoeff(f, GLeft, PP);/// Exact composition
 
 
@@ -361,9 +365,12 @@ int main(int argc, char *argv[])
 
         auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol) - grad(u_sol) ).sqNorm()  ));
         auto L2MAERes = math::sqrt(ev.integral( pow( CoeffDensity - (1.+IntensityMAE*ff.val())*jac(PP).det(),2)  ));
-        gsInfo<< "\n Niter in Picard : " << ip << ".. H1 residual : "<<std::scientific<<l2errRes<< ".. L2 MAE residual : "<<std::scientific<<L2MAERes<<"\n";
+        Iter_mae[ip]  = ip;
+        h1Res[ip]     = l2errRes;// Compute the H1 residual
+        l2err[ip]     = L2MAERes;// Compute the L2 error in MA equation
         if ( l2errRes < tolPicard || ip == maxIter ){
             // ! end Picard loop
+            gsInfo<< "\n Niter in Picard : " << ip << ".. H1 residual : "<<std::scientific<<l2errRes<< ".. L2 MAE residual : "<<std::scientific<<L2MAERes<<"\n";
             break; 
             } // 
     }//for loop
@@ -375,6 +382,28 @@ int main(int argc, char *argv[])
     gsInfo<<"     Setup: "<< setup_time <<"\n";
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
+
+    if (errorsave)
+    {
+        // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
+        std::ofstream outFile("MAEerror_analysis.txt", std::ios::trunc);
+        if (outFile.is_open())
+        {
+            outFile << "#DoF_PDE: " << IntensityMAE << " \n"<< std::scientific << Iter_mae.transpose() << "\n";
+            outFile << "# H1_resid  \\"<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+            outFile <<  "# l2_error  \\"<<std::scientific<<std::setprecision(3)<<h1Res.transpose()<<"\n";
+            outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
+            outFile.close(); // Close the file after writing
+        }
+        else
+        {
+            gsInfo << "Error: Unable to open file for writing : MAEerror_analysis.txt.\n";
+        }
+    }
+    else
+    {
+        gsInfo << "Errors are not saved. To save them, try with --errorsave.\n";
+    }
 
     //! [Export visualization in ParaView]
     if (plot)

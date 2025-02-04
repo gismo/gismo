@@ -56,13 +56,14 @@ int main(int argc, char *argv[])
     index_t numLRefine  = 3;
     index_t numElevate  = 0;
     index_t maxIter     = 50;
+    index_t NumArMarEl   = 0; // Number of ring of cells around marked elements
     double eps          = 1e-7; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 6.;
     bool export_b64     = false;
     bool errorsave      = false;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
-    double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
+    index_t FactRefPar    = 0;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     std::string fn("pde/quart_annulus.xml");
 
@@ -77,10 +78,11 @@ int main(int argc, char *argv[])
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addReal( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
+    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
+    cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -239,7 +241,6 @@ int main(int argc, char *argv[])
     gsInfo<< "." <<std::flush; // Linear solving done
 
     // Picard loop
-    index_t NiterPicard{0};
     gsMatrix<> sv0; //
     solution u_lsol = A.getSolution(u, sv0);
     for(int ip{0}; ip<=maxIter; ++ip)
@@ -266,16 +267,17 @@ int main(int argc, char *argv[])
 
         // ... correct boundary
         ProjectionNormalCPoints(Psi);
+        ProjectionNormalCPoints(PsiLoc);
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
         geometryMap PPLoc = A.getMap(PsiLoc);
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        auto  comp = PPLoc(mpLeft);
+        PPLoc(mpLeft);
 
         A.initSystem(2);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        A.assemble( v * v.tr() , v * PPLoc.tr() );// blocked by this one
         vsolVector = Poisson.L2ProjectVec(A.rhs());
         //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         v_sol.extract(PsiLoc);
@@ -334,11 +336,10 @@ int main(int argc, char *argv[])
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
-        ++NiterPicard;
         auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         if ( l2errRes < tolPicard || ip == maxIter ){
             // ! end Picard loop
-            gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
+            gsInfo<< "\n Niter in Picard : " << ip << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
             break; 
             } // 
     }//for loop
@@ -417,7 +418,7 @@ int main(int argc, char *argv[])
     auto ff_GPsi   = A.getCoeff(f, PP);
     
     // --------------- adaptive refinement ---------------
-    // Specify cell-marking strategy...
+    // Specify cell-marking strategy... 2  PUCA AND 1 GARU
     MarkingStrategy adaptRefCrit = PUCA;
     //MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
@@ -494,9 +495,9 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
-            if (IntensityMAE > 1.)
-                ev.integralElWise( ff_GPsi );
+            //ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+            //if (IntensityMAE > 1.)
+            ev.integralElWise( ff_GPsi );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -509,9 +510,9 @@ int main(int argc, char *argv[])
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
             // Refine the marked elements with a 1-ring of cells around marked elements
-            gsRefineMarkedElements( dbasis, elMarked, 1);
-            gsRefineMarkedElements( Psi, elMarked, 1);
-            adaptRefParam = adaptRefParam + FactRefPar;
+            gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
+            gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+            NumArMarEl = NumArMarEl + FactRefPar;
             }
     }
     //! [Solver loop]    
@@ -533,10 +534,10 @@ int main(int argc, char *argv[])
     if (errorsave)
     {
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
-    std::ofstream outFile("ParaviewOutput/error_analysis.txt", std::ios::app); // Open file in append mode
+    std::ofstream outFile("error_analysis.txt", std::ios::app); // Open file in append mode
     if (outFile.is_open())
     {
-        outFile << "#DoF_PDE: " << adaptRefParam <<" "<< FactRefPar <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#DoF_PDE: " << adaptRefParam <<" "<< NumArMarEl <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
         outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
@@ -544,7 +545,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo << "Error: Unable to open file for writing : ParaviewOutput/error_analysis.txt.\n";
+        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
     }
     }
     else
@@ -553,7 +554,7 @@ int main(int argc, char *argv[])
     }
 
     //! [Error and convergence rates]
-    if (numLRefine>0)
+    if (numLRefine>0 && false)
     {
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
               <<  ( l2err.head(numRefine).array()  /
