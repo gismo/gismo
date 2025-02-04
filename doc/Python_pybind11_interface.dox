@@ -21,7 +21,11 @@ pip install wheel_file.whl
 Alternative to installing pygismo from a pre-compiled wheel via pip, one can compile pygismo locally:
 ~~~~{.sh}
 cd /path/to/build
+<<<<<<< HEAD
 cmake . -DGISMO_WITH_PYBIND=ON -Dpybind11_DIR=path/to/pybind11 -DPYBIND11_PYTHON_VERSION=<your python version>
+=======
+cmake . -DGISMO_WITH_PYBIND11=ON -Dpybind11_DIR=path/to/pybind11 -DPYBIND11_PYTHON_VERSION=<your python version>
+>>>>>>> origin/stable
 make pygismo
 ~~~~
 Then, in your Python file, you can import pygismo as follows:

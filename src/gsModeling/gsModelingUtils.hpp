@@ -1050,7 +1050,7 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
 
         // Sample the boundary and the corner parameters
         if (numBdr < 2)
-            numBdr = math::ceil(math::sqrt(numSamples)) + 2; // number of boundary points
+            numBdr = cast<T,index_t>(math::ceil(math::sqrt(numSamples))) + 2; // number of boundary points
         
         gsMatrix<T> uv_boundary(2, numBdr*4-4);
         gsMatrix<T> b_0(1, numBdr-1);

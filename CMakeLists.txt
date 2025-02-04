@@ -298,7 +298,12 @@ foreach(gssm ${GISMO_OPTIONAL})
   #message("Fetch ${SUBMODULE}")
   gismo_fetch_module(${SUBMODULE})
   # Prevent special characters to be used in the variable name
-  string(REGEX REPLACE ["\.\,\!\@\#\$\%\^\&\*\+\-\="] "_" SUBMODULE_NAME ${SUBMODULE})
+  string(REPLACE "-" "_" SUBMODULE_NAME ${SUBMODULE})
+  string(REPLACE "+" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "=" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "." "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "!" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "*" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
   set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE_NAME}_ENABLED\n")
 endforeach()
 
