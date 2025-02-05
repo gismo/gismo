@@ -229,16 +229,16 @@ public:
 
 private:
     // Avoid warnings for hidden overloads w.r.t gsFunctionSet
-    void active_into(const gsMatrix<T> & u,gsMatrix<index_t>& result) const
+    void active_into(const gsMatrix<T> &,gsMatrix<index_t>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void eval_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void deriv_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv2_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    void deriv2_into(const gsMatrix<T> &,gsMatrix<T>&) const
     { GISMO_NO_IMPLEMENTATION; }
-    void evalAllDers_into(const gsMatrix<T> & u, const index_t n,
-                          std::vector<gsMatrix<T> >& result ) const
+    void evalAllDers_into(const gsMatrix<T> &, int,
+                          std::vector<gsMatrix<T> >&, bool) const
     { GISMO_NO_IMPLEMENTATION; }
 
 public:
@@ -334,11 +334,12 @@ public:
     /// @brief Evaluate the nonzero basis functions of \a patch and their derivatives up
     /// to order \a n at points \a u into \a result.
     void evalAllDers_into(const index_t patch, const gsMatrix<T> & u,
-                          const index_t n, std::vector<gsMatrix<T> >& result ) const;
+                          const index_t n, std::vector<gsMatrix<T> >& result,
+                          bool sameElement = false) const;
 
     /// @brief Evaluate the basis function \a global_BF at \a patch and its derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const index_t n,gsMatrix<T> & result ) const;
+    void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const index_t n,std::vector<gsMatrix<T> >& result) const;
 
     /// @}
 
@@ -375,6 +376,18 @@ public:
     {
         return _getPatchIndex(localIndex);
     }
+
+    /// @brief  Returns the global index of the local basis function with the given index on the given patch.
+    /// @param patch The index of the patch
+    /// @param localIndex The index of the basis function in patch-local numbering
+    /// @return
+    index_t getGlobalIndex(index_t patch, index_t localIndex);
+
+    /// @brief Returns the global indices of the local basis functions with the given indices on the given patch.
+    /// @param patch The index of the patch
+    /// @param localIndices The indices of the basis functions in patch-local numbering
+    /// @return
+    gsMatrix<index_t> getGlobalIndex(index_t patch, gsMatrix<index_t> localIndices);
 
 protected:
     //////////////////////////////////////////////////

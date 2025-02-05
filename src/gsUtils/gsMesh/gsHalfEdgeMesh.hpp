@@ -35,6 +35,7 @@ template<class T>
 gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision, bool periodic)
     : gsMesh<T>(mesh), m_precision(precision)
 {
+    GISMO_UNUSED(periodic);
     //this->cleanMesh();
     //std::sort(this->m_vertex.begin(), this->m_vertex.end(), less_than_ptr());
     //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator

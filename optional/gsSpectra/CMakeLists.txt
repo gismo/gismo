@@ -19,7 +19,7 @@ include(gsConfig)
 
 include(gsFetch)
 gismo_fetch_directory(Spectra
-  GIT_REPOSITORY https://github.com/yixuan/spectra.git
+  GIT_REPOSITORY http://github.com/yixuan/spectra.git
   #SVN_REPOSITORY https://github.com/yixuan/spectra/trunk/include
   #SVN_TRUST_CERT 1
   DESTINATION external

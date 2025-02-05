@@ -76,10 +76,10 @@ int main(int argc, char* argv[])
 
     // printing some properties of the basis
     gsInfo << "Dimension of the parameter space: " << pBasis->dim() << "\n"
-           << "Number of basis functions: " << pBasis->size() << "\n"
-           << "Number of elements: " << pBasis->numElements() << "\n"
-           << "Max degree of the basis: " << pBasis->maxDegree() << "\n"
-           << "Min degree of the basis: " << pBasis->minDegree() << "\n"
+           << "Number of basis functions: "        << pBasis->size() << "\n"
+           << "Number of elements: "               << pBasis->numElements() << "\n"
+           << "Max degree of the basis: "          << pBasis->maxDegree() << "\n"
+           << "Min degree of the basis: "          << pBasis->minDegree() << "\n"
            << "\n";
 
 
@@ -92,20 +92,15 @@ int main(int argc, char* argv[])
 
 
     // ======================================================================
-    // evaluation
+    // basis evaluation
     // ======================================================================
-
-
-    // ----------------------------------------------------------------------
-    // values
-    // ----------------------------------------------------------------------
 
     gsMatrix<> u = 0.3 * support.col(0) + 0.7 * support.col(1);
     gsInfo << "u " << size(u) << ": \n" << u << "\n\n";
 
     // indices of active (nonzero) functions at parameter u
     gsMatrix<index_t> active = pBasis->active(u);
-    gsInfo << "Active functions at u " << size(active) << ": \n"
+    gsInfo << "#Active basis functions at u: " << size(active) << ": \n"
            << active << "\n\n";
 
     gsInfo << "Is number 2 active at the point ? " <<pBasis->isActive(0,u.col(0)) << ": \n"
@@ -190,7 +185,7 @@ int main(int argc, char* argv[])
     {
         gsInfo << "Writing the basis to a paraview file: " << output
                << "\n\n";
-        gsWriteParaview(*pBasis, output);
+        gsWriteParaview(*pBasis, output, 1000);
     }
     else
     {

@@ -55,8 +55,8 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-set(gismo_VERSION_MAJOR 23) #year
-set(gismo_VERSION_MINOR 12) #month
+set(gismo_VERSION_MAJOR 25) #year
+set(gismo_VERSION_MINOR 01) #month
 set(gismo_VERSION_PATCH 0 ) #patch
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
@@ -95,7 +95,7 @@ endif()
 ## #################################################################
 
 #Fix for Eigen directory
-if (NOT EXISTS "${PROJECT_BINARY_DIR}/external/Eigen")
+if (NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
   execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
 endif()
 
@@ -297,8 +297,16 @@ foreach(gssm ${GISMO_OPTIONAL})
   string(STRIP ${gssm} SUBMODULE)
   #message("Fetch ${SUBMODULE}")
   gismo_fetch_module(${SUBMODULE})
-  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE}_ENABLED\n")
+  # Prevent special characters to be used in the variable name
+  string(REPLACE "-" "_" SUBMODULE_NAME ${SUBMODULE})
+  string(REPLACE "+" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "=" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "." "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "!" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "*" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE_NAME}_ENABLED\n")
 endforeach()
+
 foreach(gssm ${GISMO_EXTERNALS})
   string(STRIP ${gssm} EXTMOD)
   #message("Fetch ext: ${EXTMOD}")

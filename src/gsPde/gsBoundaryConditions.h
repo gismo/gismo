@@ -129,8 +129,66 @@ struct boundary_condition
     }
 
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
-                        condition_type::type t, short_t unknown,
-                        short_t unkcomp, bool parametric)
+                        condition_type::type t, short_t unknown, bool parametric)
+            : ps(p, s),
+              m_function(f_shptr),
+              m_type(t),
+              m_unknown(unknown),
+              m_unkcomp(-1),
+              m_parametric(parametric)
+    {
+        switch (t)
+        {
+            case condition_type::dirichlet:
+            {
+                //GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");//.
+                m_label = "Dirichlet";
+                break;
+            }
+            case condition_type::weak_dirichlet:
+            {
+                //GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");//.
+                m_label = "Weak Dirichlet";
+                break;
+            }
+            case condition_type::neumann:
+            {
+                m_label = "Neumann";
+                break;
+            }
+            case condition_type::robin:
+            {
+                m_label = "Robin";
+                break;
+            }
+            case condition_type::clamped:
+            {
+                m_label = "Clamped";
+                break;
+            }
+            case condition_type::weak_clamped:
+            {
+                m_label = "weak Clamped";
+                break;
+            }
+            case condition_type::collapsed:
+            {
+                m_label = "Collapsed";
+                break;
+            }
+            case condition_type::laplace:
+            {
+                m_label = "Laplace";
+                break;
+            }
+            default:
+                m_label = "Unknown";
+                break;
+        };
+    }
+
+    boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
+                        condition_type::type t, int unknown, int unkcomp, bool parametric)
             : ps(p, s),
               m_function(f_shptr),
               m_type(t),
@@ -690,18 +748,47 @@ public:
         coupled_boundaries.push_back( coupled_boundary<T>(p1,s1,p2,s2,dim,unknown,comp));
     }
 
-
     /// Prints the object as a string.
-    std::ostream & print(std::ostream &os) const
-    {
-        //os << "gsBoundaryConditions :\n";
-        for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
-            os << "* "<<std::setw(13)<<std::left<<it->first<<" : "<< it->second.size() <<"\n";
+    std::ostream &print(std::ostream &os, const bool verbose = false) const {
+      // os << "gsBoundaryConditions :\n";
+      for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end();
+           ++it)
+        os << "* " << std::setw(13) << std::left << it->first << " : "
+           << it->second.size() << "\n";
 
-        if (!corner_values.empty())
-            os << "* Corner values : "<< corner_values.size() <<"\n";
+      if (!corner_values.empty())
+        os << "* Corner values : " << corner_values.size() << "\n";
 
-        return os;
+      // This block prints out all boundary conditions with more information
+      if (verbose) {
+        os << "*\n* Summary\n*\n* " << std::right << std::setw(15) << "Type"
+           << std::setw(8) << "Patch" << std::setw(7) << "Side" << std::setw(9)
+           << "Unknown" << std::setw(13) << "Components" << std::setw(11)
+           << "Function" << std::endl;
+        for (auto a = beginAll(); a != endAll(); a++) {
+          for (const auto &element : a->second) {
+            os << "* " << std::right << std::setw(15) << element.ctype()
+               << std::setw(8) << element.patch() << std::setw(7)
+               << element.side().index() << std::setw(9) << element.unknown();
+
+            const auto &component = element.unkComponent();
+            if (component == -1) {
+              os << std::setw(13) << "all";
+            } else {
+              os << std::setw(13) << (element.unkComponent());
+            }
+            if (element.function()) {
+              os << "   " << *element.function();
+            } else {
+              os << "   Homogeneous";
+            }
+            os << "\n";
+          }
+        }
+        os << "*" << std::endl;
+      }
+
+      return os;
     }
 
     /**

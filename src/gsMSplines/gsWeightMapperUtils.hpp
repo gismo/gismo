@@ -98,7 +98,7 @@ void combineMappers (const std::vector<gsWeightMapper<T>*> &mappers, bool needSh
     index_t startingGlobal=0;
     for (size_t m=0;m<mappers.size();++m)
     {
-        copyToBlock( mappers[m]->asMatrix(), resultMatrix, shifts[m], startingGlobal);
+        copyToBlock( *mappers[m], resultMatrix, shifts[m], startingGlobal);
         if (needShifting)
            startingGlobal+= mappers[m]->getNrOfTargets();
     }

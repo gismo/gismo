@@ -490,6 +490,7 @@ std::tuple<T,T,T> gsBiharmonicExprAssembler<T>::errors(gsMatrix<T> & solVector, 
 template <class T>
 T gsBiharmonicExprAssembler<T>::interfaceError(gsMatrix<T> & solVector, const gsFunctionSet<T> & exact)
 {
+    GISMO_UNUSED(exact);
     if (const gsMappedBasis<2,T> * bb2 = dynamic_cast<const gsMappedBasis<2,T> *>(m_spaceBasis))
     {
         geometryMap G = m_assembler.getMap(m_patches);
@@ -602,9 +603,6 @@ void gsBiharmonicExprAssembler<T>::_getDirichletNeumannValuesL2Projection(
                                                                         const expr::gsFeSpace<T> & u
                                                                         )
 {
-    gsDebugVar(bc.dirichletSides().size());
-    gsDebugVar(bc.neumannSides().size());
-
     if (bc.dirichletSides().size()==0 && bc.neumannSides().size()==0)
         return;
     if (const gsMappedBasis<2,T> * bb2 = dynamic_cast<const gsMappedBasis<2,T> *>(&spaceBasis))

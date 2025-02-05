@@ -178,6 +178,10 @@ public:
     /// Only available after \ref computeJumpMatrices has been called
     const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
 
+    /// @brief Incorporates fixedPart (eg. from eliminated Dirichlet dofs)
+    /// to given patch-local solution
+    Matrix incorporateFixedPart(index_t k, const gsMatrix<T>& localSolution) const;
+
     /// @brief Reference to the multi basis object being passed to constructur or \ref init
     const gsMultiBasis<T>& multiBasis() const                              { return *m_multiBasis;                }
 

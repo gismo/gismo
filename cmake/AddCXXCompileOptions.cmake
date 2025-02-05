@@ -6,6 +6,7 @@
 ######################################################################
 
 set(CMAKE_CXX_STANDARD_DEFAULT 14)
+set(CMAKE_C_STANDARD           11) #90,99,11,17,23
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
 

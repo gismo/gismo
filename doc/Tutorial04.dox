@@ -118,7 +118,7 @@ Problems or bugs might also be related to the platform or operating
 system. Nightly compilations and tests on several systems detects such
 problems. The CDash server:
 
-https://cdash-ci.inria.fr/index.php?project=Gismo
+https://cdash-ci.irisa.fr/index.php?project=Gismo
 
 collects the result of compilation and testing from compilation nodes.
 To Submit your compilation and test log to the CDash server you can type:
