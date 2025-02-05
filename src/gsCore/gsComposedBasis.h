@@ -132,6 +132,9 @@ public:
     /// See \ref gsBasis for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
+    /// See \ref gsBasis for documentation
+    void deriv2Single_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override;
+
     // void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result)
     // {
     //     // The number of rows is the target dimension times the number of controls
@@ -171,6 +174,8 @@ public:
 
     /// See \ref gsBasis for documentation
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override;
+
+    index_t functionAtCorner(boxCorner const & c) const;
 
     /// See \ref gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
@@ -225,6 +230,7 @@ public:
 
     /// Return the basis
     const BasisT & basis() const;
+          BasisT & basis()      ;
 
     /// See \ref gsBasis for the documentation of this function
     std::ostream &print(std::ostream &os) const override;

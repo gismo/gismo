@@ -40,10 +40,10 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addInt("ff_MaxIterations",
                  "Max iterations for quality improvement",
                  1e4);
-  options.addReal("ff_tolRelG",
+  options.addReal("ff_MinGradLen",
                   "Min gradient length for foldover-free optimization",
                   1e-20);
-  options.addReal("ff_minStepL",
+  options.addReal("ff_MinStepLen",
                   "Min step length for foldover-free optimization",
                   1e-20);
 
@@ -51,10 +51,10 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addInt("qi_MaxIterations",
                  "Max iterations for quality improvement",
                  1e4);
-  options.addReal("qi_tolRelG",
+  options.addReal("qi_MinGradLen",
                   "Min gradient length for quality improvement",
                   1e-4);
-  options.addReal("qi_minStepL",
+  options.addReal("qi_MinStepLen",
                   "Min step length for quality improvement",
                   1e-4);
 
@@ -328,11 +328,11 @@ void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T> &mp,
   gsHLBFGS<T> optFoldoverFree(&objFoldoverFree);
   optFoldoverFree.options().setInt("MaxIterations",
                                    options.askInt("ff_MaxIterations", 1e4));
-  optFoldoverFree.options().setReal("tolRelG",
-                                    options.askReal("ff_tolRelG",
+  optFoldoverFree.options().setReal("MinGradLen",
+                                    options.askReal("ff_MinGradLen",
                                                     1e-12));
-  optFoldoverFree.options().setReal("minStepL",
-                                    options.askReal("ff_minStepL", 1e-12));
+  optFoldoverFree.options().setReal("MinStepLen",
+                                    options.askReal("ff_MinStepLen", 1e-12));
   optFoldoverFree.options().setInt("Verbose", options.askInt("Verbose", 0));
 
   T Efoldover = std::numeric_limits<T>::max();

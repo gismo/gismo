@@ -83,6 +83,12 @@ gsSquareDomain<T> & gsSquareDomain<T>::operator=(const gsSquareDomain<T> & other
 }
 
 template <class T>
+void gsSquareDomain<T>::addInterface(const boundaryInterface & bi)
+{
+    m_interfaces.push_back(bi);
+}
+
+template <class T>
 gsOptionList & gsSquareDomain<T>::options()
 {
     return m_options;
@@ -147,30 +153,42 @@ template <class T>
 void gsSquareDomain<T>::setControls(const gsVector<T> & controls)
 {
     GISMO_ASSERT((size_t)controls.rows()==m_indices.size(),"Wrong size of controls vector");
-    for (size_t i = 0; i!=m_indices.size(); i++)
-        m_domain->coefs()(m_indices[i].first,m_indices[i].second) = controls[i];
+    index_t ii;
+    for (index_t d = 0; d!=m_domain->domainDim(); d++)
+        for (index_t k = 0; k!=m_domain->coefs().rows(); k++)
+        {
+            ii = m_mapper.index(k,0,d);
+            if (m_mapper.is_free_index(ii))
+                m_domain->coefs()(k,d) = controls[ii];
+        }
 }
 
 template <class T>
 gsVector<T> gsSquareDomain<T>::getControls() const
 {
     gsVector<T> controls(m_indices.size());
-    for (size_t i = 0; i!=m_indices.size(); i++)
-        controls[i] = m_domain->coefs()(m_indices[i].first,m_indices[i].second);
+    index_t ii;
+    for (index_t d = 0; d!=m_domain->domainDim(); d++)
+        for (index_t k = 0; k!=m_domain->coefs().rows(); k++)
+        {
+            ii = m_mapper.index(k,0,d);
+            if (m_mapper.is_free_index(ii))
+                controls[ii] = m_domain->coefs()(k,d);
+        }
     return controls;
 }
 
-template <class T>
-const T & gsSquareDomain<T>::control(index_t i) const
-{
-    return m_domain->coefs()(m_indices[i].first,m_indices[i].second);
-}
+// template <class T>
+// const T & gsSquareDomain<T>::control(index_t i) const
+// {
+//     return m_domain->coefs()(m_indices[i].first,m_indices[i].second);
+// }
 
-template <class T>
-T & gsSquareDomain<T>::control(index_t i)
-{
-    return m_domain->coefs()(m_indices[i].first,m_indices[i].second);
-}
+// template <class T>
+// T & gsSquareDomain<T>::control(index_t i)
+// {
+//     return m_domain->coefs()(m_indices[i].first,m_indices[i].second);
+// }
 
 template <class T>
 size_t gsSquareDomain<T>::nControls() const
@@ -201,15 +219,15 @@ void gsSquareDomain<T>::control_deriv_into(const gsMatrix<T> & points, gsMatrix<
 template <class T>
 void gsSquareDomain<T>::perturb(T factor)
 {
-    gsVector<T> rand = gsVector<T>::Random(m_indices.size());
-    for (size_t i = 0; i!=m_indices.size(); i++)
-        m_domain->coefs()(m_indices[i].first,m_indices[i].second) += factor * rand[i];
+    gsVector<T> controls = getControls();
+    controls += factor * gsVector<T>::Random(m_indices.size());
+    setControls(controls);
 }
 
 template <class T>
 void gsSquareDomain<T>::_initMapper(const gsGeometry<T> & domain, gsDofMapper & mapper) const
 {
-    mapper = gsDofMapper(domain.basis(),domain.targetDim());
+    mapper = gsDofMapper(domain.basis(),domain.domainDim());
 
     gsBoxTopology topology(domain.domainDim(),1);
     topology.addAutoBoundaries();
@@ -220,10 +238,38 @@ void gsSquareDomain<T>::_initMapper(const gsGeometry<T> & domain, gsDofMapper & 
         if (m_options.askSwitch("Slide",false))
             mapper.markBoundary(0,boundary,it->direction());
         else
-            for (index_t d = 0; d!=domain.targetDim(); d++)
+            for (index_t d = 0; d!=domain.domainDim(); d++)
                 mapper.markBoundary(0,boundary,d);
 
     }
+
+    gsMatrix<index_t> int10, int20, int11, int21;
+    for (typename std::vector<boundaryInterface>::const_iterator ifc = m_interfaces.cbegin();
+                                                                 ifc!= m_interfaces.cend(); ++ifc)
+    {
+        GISMO_ENSURE(ifc->first().patch == 0 && ifc->second().patch == 0,"Interfaces are only supported for single patch domains");
+        GISMO_ENSURE(ifc->first().direction() == ifc->second().direction(),"Interfaces are only supported for same direction");
+
+        int10 = domain.basis().boundaryOffset(ifc->first().side(), 0);
+        int20 = domain.basis().boundaryOffset(ifc->second().side(), 0);
+        int11 = domain.basis().boundaryOffset(ifc->first().side(), 1);
+        int21 = domain.basis().boundaryOffset(ifc->second().side(), 1);
+        GISMO_ASSERT(int10.rows() == int20.rows() && int10.rows() == int11.rows() && int10.rows() == int21.rows(),"Boundary offsets have different sizes");
+        index_t sz = int10.rows();
+        for (index_t d = 0; d!=domain.domainDim(); d++)
+        {
+            if (d!=ifc->first().direction())
+            {
+                for ( index_t k=0; k<sz; ++k)
+                {
+                    mapper.matchDof( ifc->first().patch, int10(k,0), ifc->second().patch, int20(k,0), d );
+                    mapper.matchDof( ifc->first().patch, int10(k,0), ifc->second().patch, int11(k,0), d );
+                    mapper.matchDof( ifc->first().patch, int20(k,0), ifc->second().patch, int21(k,0), d );
+                }
+            }
+        }
+    }
+
     mapper.finalize();
 }
 
@@ -233,10 +279,14 @@ void gsSquareDomain<T>::_initIndices(const gsGeometry<T> & domain, const gsDofMa
     indices.resize(mapper.freeSize());
     // std::vector<index_t> i(mapper.freeSize());
     // std::vector<index_t> j(mapper.freeSize());
+    index_t ii;
     for (index_t k = 0; k!=domain.coefs().rows(); k++)
-        for (index_t d = 0; d!=domain.targetDim(); d++)
-            if (mapper.is_free(k,0,d))
+        for (index_t d = 0; d!=domain.domainDim(); d++)
+        {
+            ii = mapper.index(k,0,d);
+            if (mapper.is_free_index(ii))
                 indices[mapper.index(k,0,d)] = std::make_pair(k,d);
+        }
 }
 
 

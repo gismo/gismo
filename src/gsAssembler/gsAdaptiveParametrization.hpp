@@ -274,8 +274,7 @@ m_parametric(parametric)
     m_numDesignVars = m_comp->nControls();
     m_curDesign.resize(m_numDesignVars,1);
     m_controls.resize(m_numDesignVars,1);
-    for (index_t k=0; k!=m_numDesignVars; k++)
-        m_controls(k,0) = m_comp->control(k);
+    m_controls.col(0) = m_comp->getControls();
 
     m_options.addReal("Smoothing","Smoothing parameter for the monitor function",0.1);
     m_options.addReal("Penalty","Penalty parameter for the monitor function",1e-2);
@@ -300,12 +299,10 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
     gsExprEvaluator<T> evaluator;
 
     evaluator.setIntegrationElements(m_mb); // does not work when in constructor
-    for (index_t k=0; k!=m_numDesignVars; k++)
-        m_comp->control(k) = u[k];
+    m_comp->setControls(u);
 
     // Penalty constant
     gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
-
     geometryMap G = evaluator.getMap(m_mp);
     auto eps = evaluator.getVariable(pen);
 
@@ -344,12 +341,25 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
     else if (m_cgeom.domainDim()<m_cgeom.targetDim())
     {
         auto fform = jac(G).tr()*jac(G);
+        // SQUARE ROOT:
         auto detG = pow(fform.det().val(),0.5); //jacobian determinant for a surface, i.e. the measure
+        // SQUARED:
+        // auto detG = fform.det().val(); //jacobian determinant for a surface, i.e. the measure
+
+        // OPTION 1
         // Compute the chi part
-        auto chiPPart = eps * ((detG.val() - eps.val()).exp());
+        // auto chiPPart = eps * ((detG.val() - eps.val()).exp());
         // Ternary operation to compute chi and chip
-        auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
+        // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
+        // OPTION 2
+        auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
+        // SQUARED
+        // auto chi = 0.5 * (pow(detG,0.5) + pow(pow(eps.val(),2.0) + detG, 0.5));
+
+        // SQUARE ROOT:
         auto invJacMat = fform.sqrt().adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
+        // SQUARED:
+        // auto invJacMat = fform.adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
 
         if (m_fun==nullptr)
         {
@@ -514,8 +524,8 @@ m_optimizer(optimizer)
             targetDegree = ibasis.degree(d) * comp_tbasis.degree(d);
             ibasis.degreeIncrease(targetDegree-ibasis.degree(d),d);
 
-            m_integrationBasis = memory::make_unique(new gsTensorBSplineBasis<2,T>(ibasis));
         }
+        m_integrationBasis = memory::make_unique(new gsTensorBSplineBasis<2,T>(ibasis));
     }
     m_optProblem = gsOptMesh<T,MODE>(m_comp,m_geom,m_fun,m_integrationBasis.get(),parametric);
     this->defaultOptions();
@@ -524,7 +534,7 @@ m_optimizer(optimizer)
 template <class T, enum MonitorMode MODE>
 gsOptionList & gsAdaptiveParametrization<T,MODE>::options()
 {
-    return m_optProblem.options();
+    return m_options;
 }
 
 template <class T, enum MonitorMode MODE>
@@ -541,18 +551,13 @@ void gsAdaptiveParametrization<T,MODE>::solve()
     // Set the optimization problem
     m_optProblem.options().setReal("Smoothing",m_options.getReal("Smoothing"));
     m_optProblem.options().setReal("Penalty",m_options.getReal("Penalty"));
-
     m_optimizer.setProblem(&m_optProblem);
     // Solve the optimization problem
-    gsVector<T> controls(m_optProblem.composition().nControls());
-    for (size_t k=0; k!=m_optProblem.composition().nControls(); k++)
-        controls[k] = m_optProblem.composition().control(k);
-
+    gsVector<T> controls = m_optProblem.composition().getControls();
     m_optimizer.solve(controls);
     controls = m_optimizer.currentDesign();
-    // Write the optimized solution back to the composition
-    for (index_t k=0; k!=controls.rows(); k++)
-        m_optProblem.composition().control(k) = controls[k];
+    m_optProblem.composition().setControls(controls);
+    gsInfo<<"Finished with objective value: "<<m_optimizer.objective()<<std::endl;
 }
 
 

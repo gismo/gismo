@@ -301,6 +301,41 @@ void gsComposedBasis<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) 
     }
 }
 
+template <class T>
+void gsComposedBasis<T>::deriv2Single_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const
+{
+    index_t domainDim, targetDim, bDomainDim, bTargetDim;
+    domainDim = m_composition->domainDim();
+    targetDim = m_composition->targetDim();
+    bDomainDim = m_basis->domainDim();
+    bTargetDim = m_basis->targetDim();
+    GISMO_ASSERT(bTargetDim==1,"The basis should be scalar-valued"); // HMV: I think
+
+    gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
+    m_composition->compute(u,fd);
+
+    gsMatrix<T> coord, deriv2, tmphess, tmpder2, compderiv, hessMat;
+    coord = fd.values[0];
+    compderiv = fd.values[1];
+
+    // Compute the second derivative of the basis
+    // The number of second derivatives per component is d(d+1)/2
+    const index_t numSecDeriv = bDomainDim*(bDomainDim+1)/2;
+    m_basis->deriv2Single_into(i,coord,deriv2);
+
+    result.resize(numSecDeriv,u.cols());
+    for (index_t k = 0; k!=u.cols(); k++)
+    {
+        gsAsMatrix<T,Dynamic,Dynamic> compderivMat = compderiv.reshapeCol(k,domainDim,targetDim);
+        gsAsMatrix<T,Dynamic,Dynamic> deriv2Mat = deriv2.reshapeCol(k,numSecDeriv,1);
+        hessMat = util::secDerToHessian(deriv2Mat,bDomainDim).reshape(bDomainDim,bDomainDim);
+        tmphess = compderivMat*hessMat*compderivMat.transpose();
+        util::hessianToSecDer(tmphess,bDomainDim,tmpder2);
+        gsAsMatrix<T,Dynamic,Dynamic> resultMat = result.reshapeCol(k,numSecDeriv,1);
+        resultMat = tmpder2;
+    }
+}
+
 // void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result)
 // {
 //     // The number of rows is the target dimension times the number of controls
@@ -343,6 +378,12 @@ template <class T>
 gsMatrix<index_t> gsComposedBasis<T>::boundaryOffset(boxSide const & s, index_t offset) const
 {
     return m_basis->boundaryOffset(s,offset);
+}
+
+template <class T>
+index_t gsComposedBasis<T>::functionAtCorner(boxCorner const & c) const
+{
+    return m_basis->functionAtCorner(c);
 }
 
 template <class T>
@@ -443,6 +484,12 @@ typename gsComposedBasis<T>::CompositionT & gsComposedBasis<T>::composition()
 
 template <class T>
 const typename gsComposedBasis<T>::BasisT & gsComposedBasis<T>::basis() const
+{
+    return *m_basis;
+}
+
+template <class T>
+typename gsComposedBasis<T>::BasisT & gsComposedBasis<T>::basis()
 {
     return *m_basis;
 }

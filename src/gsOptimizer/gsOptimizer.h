@@ -93,6 +93,7 @@ public:
         m_curDesign.resize(m_op->numDesignVars(),1);
         m_curDesign.setZero();
         this->solve(m_curDesign);
+        m_finalObjective = this->currentObjValue();
     }
 
     std::ostream &print(std::ostream &os) const

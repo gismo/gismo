@@ -132,7 +132,9 @@ public:
 // Virtual member functions overriding source basis
 // ***********************************************
 
-    short_t domainDim() const { return Dim; }
+    short_t dim() const { return m_src->dim();}
+
+    short_t domainDim() const { return m_src->domainDim();}
 
     index_t size() const { return m_src->size(); }
 

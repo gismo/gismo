@@ -45,13 +45,13 @@ public:
     gsSquareDomain(const gsBasis<T> & basis);
 
 
-    /**
-     * @brief      Constructs a new instance.
-     *
-     * @param[in]  numElevation  The number elevation
-     * @param[in]  numRefine     The number refine
-     */
-    gsSquareDomain(index_t numElevation = 0, index_t numRefine = 0);
+    // /**
+    //  * @brief      Constructs a new instance.
+    //  *
+    //  * @param[in]  numElevation  The number elevation
+    //  * @param[in]  numRefine     The number refine
+    //  */
+    // gsSquareDomain(index_t numElevation = 0, index_t numRefine = 0);
 
     // Copy constructor
     gsSquareDomain(const gsSquareDomain<T> & other);
@@ -60,6 +60,10 @@ public:
     gsSquareDomain<T> & operator=(const gsSquareDomain<T> & other);
 
     GISMO_CLONE_FUNCTION(gsSquareDomain)
+
+    /// @brief Couples the DoFs along the interface \a bi
+    /// @param bi the interface
+    void addInterface(const boundaryInterface & bi);
 
     gsOptionList & options();
 
@@ -97,9 +101,8 @@ public:
     gsVector<T> getControls() const override;
 
     /// Returns the \a i th control of the function
-    // const typename gsMatrix<T>::CoeffReturnType & control(index_t i) const override { return gsAsConstVector<T>(m_parameters.data(),m_parameters.size())(i);}
-    const T & control(index_t i) const override;
-          T & control(index_t i)       override;
+    // const T & control(index_t i) const override;
+    //       T & control(index_t i)       override;
 
 
     // const gsVector<T> & parameters() const { return m_parameters; };
@@ -129,6 +132,7 @@ private:
 protected:
     typename gsGeometry<T>::uPtr m_domain;
     gsDofMapper m_mapper;
+    std::vector<boundaryInterface> m_interfaces;
     std::vector<std::pair<index_t,index_t>> m_indices;
     gsOptionList m_options;
 };
