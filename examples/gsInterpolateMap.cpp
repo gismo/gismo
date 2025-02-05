@@ -44,6 +44,9 @@
     - Cone
     ./bin/gsInterpolateMap -d 2 -X "cosh(2*pi*x)*cos(2*pi*y)" -Y "cosh(2*pi*x)*sin(2*pi*y)" -Z "sinh(2*pi*x)"
 
+    - a spiral
+    ./bin/gsInterpolateMap -d 2 -X "(2+cos(2*pi*y))*cos(4*pi*x)*exp(-3*x)" -Y "(2+cos(2*pi*y))*sin(4*pi*x)*exp(-3*x)" -Z "sin(2*pi*y)*exp(-3*x)" -k 7
+
     - 3D pipe
     ./bin/gsInterpolateMap -d 3 -X "cos(2*pi*x)*(y+2)" -Y "sin(2*pi*x)*(y+2)" -Z "4*z"
 
@@ -57,6 +60,7 @@
     ./bin/gsInterpolateMap -d 3 -X "5*cos(2*pi*x)" -Y "5*sin(2*pi*y)" -Z "15*z"
 
     ./bin/gsInterpolateMap -d 3 -X "(z+1)*sqrt(1+4*(y-1/2)^2)*cos(2*pi*x)" -Y "(z+1)*4*(y-1/2)" -Z "(z+1)*sqrt(1+4*(y-1/2)^2)*sin(2*pi*x)"  -k 4
+
 
     Try more from http://virtualmathmuseum.org/Surface/gallery_o.html
     (take care of the parameter range ;) )
