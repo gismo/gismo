@@ -78,8 +78,7 @@ int main(int argc, char *argv[])
     mbasis.init(mb, cf);
 
     fd.clear();
-    if (!fn_g.empty())
-        fd.read(fn);
+    fd.read(fn);
 
     gsOptionList CHopt;
     fd.getId(3, CHopt); // id=3: reference solution

@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xml>
 
-  <!-- Initial condition -->
-  <Function type="FunctionExpr" id="1" dim="2">0.1 * cos(2*pi*x) * cos(2*pi*y)</Function>
-
-  <!-- The boundary conditions (multipatch=number of patches)-->
-  <boundaryConditions id="2" multipatch="0">
-  </boundaryConditions>
-
   <!-- Cahn Hilliard options -->
  <OptionList id="3">
   <real label="theta" desc="theta parameter" value="1.5"/>
