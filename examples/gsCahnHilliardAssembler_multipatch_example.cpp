@@ -1,6 +1,6 @@
-/** @file cahn-hilliard.cpp
+/** @file gsCahnHilliardAssembler_multipatch_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve the Cahn-Hilliard equation
+    @brief Tutorial on how to the gsCahnHilliardAssembler class on multi-patches
 
     This file is part of the G+Smo library.
 
@@ -11,25 +11,6 @@
     Author(s): M. Marsala (UniFi)
                H.M. Verhelst (UniFi)
                L. Venta Viñuela (UniPv)
-
-
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Strong enforcement) (Gomez et al., 2014)
-    ./bin/cahn-hilliard_example --plot -N 80 --plot
-
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) (Bracco et al., 2023)
-    ./bin/cahn-hilliard_example --plot -N 80 --nitsche --plot
-
-    Run a simple Cahn-Hilliard example with a random normal initial concentration distribution of mean 0.0 until (almost) equilibrium (Nitsche)
-    ./bin/cahn-hilliard_example --plot -N 1000 --nitsche --initial --plot
-
-
-    -----------------------------------------------------------------------
-    TODO;
-    - Change hmax to a gsExprAssembler<>::element el; el.diam();
-    -----------------------------------------------------------------------
-
-
-
 */
 
 //! [Include namespace]
@@ -58,51 +39,47 @@ int main(int argc, char *argv[])
     /* NONLINEAR SOLVER OPTIONS */
     index_t maxIt = 50;
 
-    std::string fn, fn_g;
+    std::string fn = "pde/cahn_hilliard_multipatch_bvp.xml";
+    std::string fn_g;
 
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    gsCmdLine cmd("Tutorial on solving a Cahn-Hilliard problem on multi-patches.");
     cmd.addReal( "t", "dt","dt parameter",dt); // -t () or --dt ()
     cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
     cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
     cmd.addInt ( "v", "verbose", "Verbosity level",  verbose );
     cmd.addString( "f", "file", "Input XML file for the options", fn );
-    cmd.addString( "g", "geom", "Input XML file for the geometry", fn_g );
+    cmd.addString( "g", "geo",  "Input XML file for the geometry (if not in the other file)", fn_g);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    GISMO_ENSURE(fn_g.empty()==false,"Geometry file not provided");
     GISMO_ENSURE(fn.empty()==false,"Options file not provided");
-
-    // Get geometry
-    gsFileData<> fd_g(fn_g);
-    gsInfo << "Loaded file "<< fd_g.lastPath() <<"\n";
 
     gsMultiPatch<> mp;
     gsMultiBasis<> mb;
     gsSparseMatrix<> cf;
-
-    fd_g.getFirst(mp);
-    gsInfo<<"Read geometry from file "<<fn_g<<"\n";
-    gsInfo<<mp<<"\n";
-    fd_g.getFirst(mb);
-    fd_g.getFirst(cf);
     gsMappedBasis<2, real_t> mbasis;
-    mbasis.init(mb, cf);
-
-
 
     // Get options
-    gsFileData<> fd(fn);
-    // gsFunctionExpr<> source;
-    // fd.getId(1, source); // id=1: initial condition function
-    // gsInfo<<"Initial condition function "<< source << "\n";
+    gsFileData<> fd;
+    if (!fn_g.empty())
+        fd.read(fn_g);
+    else
+        fd.read(fn);
 
-    // gsBoundaryConditions<> bc;
-    // fd.getId(2, bc); // id=2: boundary conditions
-    // bc.setGeoMap(mp);
-    // gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+    fd.getFirst(mp);
+    gsInfo<<"Read geometry from file "<<fd.lastPath()<<"\n";
+    gsInfo<<"* patches:\n"<<mp<<"\n";
+    fd.getFirst(mb);
+    gsInfo<<"* bases:\n"<<mb<<"\n";
+    fd.getFirst(cf);
+    gsInfo<<"* mapper "<<cf.rows()<<" x "<<cf.cols()<<"\n";
+    mbasis.init(mb, cf);
+
+    fd.clear();
+    if (!fn_g.empty())
+        fd.read(fn);
 
     gsOptionList CHopt;
     fd.getId(3, CHopt); // id=3: reference solution
@@ -310,6 +287,7 @@ int main(int argc, char *argv[])
         //! [Export visualization in ParaView]
         if (plot && step % plotmod==0)
         {
+
             gsExprEvaluator<> ev;
             auto c = ev.getVariable(cnew);
 

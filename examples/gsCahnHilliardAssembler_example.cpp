@@ -1,6 +1,6 @@
-/** @file cahn-hilliard.cpp
+/** @file gsCahnHilliardAssembler_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve the Cahn-Hilliard equation
+    @brief Tutorial on how to the gsCahnHilliardAssembler class
 
     This file is part of the G+Smo library.
 
@@ -11,25 +11,6 @@
     Author(s): M. Marsala (UniFi)
                H.M. Verhelst (UniFi)
                L. Venta Viñuela (UniPv)
-
-
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Strong enforcement) (Gomez et al., 2014)
-    ./bin/cahn-hilliard_example --plot -N 80 --plot
-
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) (Bracco et al., 2023)
-    ./bin/cahn-hilliard_example --plot -N 80 --nitsche --plot
-
-    Run a simple Cahn-Hilliard example with a random normal initial concentration distribution of mean 0.0 until (almost) equilibrium (Nitsche)
-    ./bin/cahn-hilliard_example --plot -N 1000 --nitsche --initial --plot
-
-
-    -----------------------------------------------------------------------
-    TODO;
-    - Change hmax to a gsExprAssembler<>::element el; el.diam();
-    -----------------------------------------------------------------------
-
-
-
 */
 
 //! [Include namespace]
@@ -60,9 +41,6 @@ int main(int argc, char *argv[])
     // time stepping options
     /* NONLINEAR SOLVER OPTIONS */
     index_t maxIt = 50;
-
-
-
 
     std::string fn("pde/cahn_hilliard_bvp.xml");
 
@@ -154,8 +132,8 @@ int main(int argc, char *argv[])
 #endif
 
 
-    gsMatrix<> Q, Q1, Q2, Qnitsche;
-    gsSparseMatrix<> K, K_m, K_f;
+    gsMatrix<> Q, Qnitsche;
+    gsSparseMatrix<> K;
 
     // Legend:
     // C_old   = C_n

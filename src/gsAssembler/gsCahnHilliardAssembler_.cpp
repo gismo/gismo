@@ -23,27 +23,26 @@ namespace gismo
                   gsMultiBasis<real_t>&,
                   gsBoundaryConditions<real_t> & >())
 
-
-
     // Member functions
+    .def("initialize", &Class::initialize, "Initializes the assembler")
+    .def("options", &Class::options, "Returns the options")
+    .def("setOptions", &Class::setOptions, "Sets the options, ignores unknown options")
     .def("numDofs", &Class::numDofs, "Returns the number of degrees of freedom of the system")
-    // .def("setSpaceBasis", &Class::setSpaceBasis, "Sets the basis used for discretization (but not for quadrature)")
-    // .def("assemble", &Class::assemble, "Assembles the linear system")
 
-    // .def("matrix", &Class::matrix, "Returns the matrix")
-    // .def("rhs"   , &Class::rhs,    "Returns the RHS vector")
+    .def("setSpaceBasis", &Class::setSpaceBasis, "Sets the basis used for discretization (but not for quadrature)")
+    .def("assembleResidual", &Class::assembleResidual, "Assembles the residual")
+    .def("assembleJacobian", &Class::assembleJacobian, "Assembles the Jacobian matrix")
+    .def("assembleJacobian", &Class::assembleJacobian, "Assembles the Jacobian matrix")
+    .def("assembleNitscheVector", &Class::assembleNitscheVector, "Assembles the vector containing Nitsche boundary terms on weakly clamped boundaries")
+    .def("assembleNitscheMatrix", &Class::assembleNitscheMatrix, "Assembles the matrix containing Nitsche boundary terms on weakly clamped boundaries")
+    .def("assembleMassMatrix", &Class::assembleMassMatrix, "Assembles the mass matrix")
 
-    // .def("penalty", &Class::penalty, "Returns the penalty factor for Nitsche's method")
+    .def("matrix_into", &Class::matrix_into, "Returns the matrix")
+    .def("rhs_into"   , &Class::rhs_into,    "Returns the RHS vector")
 
-    // .def("l2error", &Class::l2error, "Returns the L2 error between the discrete solution and the exact solution")
-    // .def("h1error", &Class::h1error, "Returns the H1 error between the discrete solution and the exact solution")
-    // .def("h2error", &Class::h2error, "Returns the H2 error between the discrete solution and the exact solution")
-    // .def("errors", &Class::errors, "Returns the L2, H1 and H2 errors between the discrete solution and the exact solution")
-    // .def("interfaceError", &Class::interfaceError, "Returns the interface error between the discrete solution and the exact solution")
-
-    // .def("options", &Class::options, "Returns the options")
-    // .def("setOptions", &Class::setOptions, "Sets the options, ignores unknown options")
-
+    .def("constructSolution", static_cast<void (Class::*)(gsMatrix<real_t> &, gsMultiPatch<real_t> &)>(&Class::constructSolution), "Constructs a spline solution from a solution vector")
+    .def("constructSolution", static_cast<void (Class::*)(gsMatrix<real_t> &, gsMappedSpline<2,real_t> &)>(&Class::constructSolution), "Constructs a mapped spline solution from a solution vector")
+    .def("constructSolution", static_cast<void (Class::*)(const gsMultiPatch<real_t> &, gsMatrix<real_t> &)>(&Class::constructSolution), "Constructs a solution vector from a multi-patch solution")
     ;
   }
 
