@@ -14,8 +14,6 @@
 #pragma once
 
 #include <gsAssembler/gsQuadRule.h>
-#include <gsNurbs/gsKnotVector.h>
-#include <gsNurbs/gsBSplineBasis.h>
 
 namespace gismo
 {
@@ -158,8 +156,8 @@ public:
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const;
 
     /// Not implemented! See \ref gsQuadRule for documentation
-    void mapToAll( const std::vector<T> & breaks,
-                   gsMatrix<T> & nodes, gsVector<T> & weights ) const
+    void mapToAll( const std::vector<T> &,
+                   gsMatrix<T> &, gsVector<T> &) const
     { GISMO_NO_IMPLEMENTATION }
 
     index_t dim() const { return m_basis->dim(); }

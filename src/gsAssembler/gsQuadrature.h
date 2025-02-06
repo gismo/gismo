@@ -19,6 +19,9 @@
 #include <gsAssembler/gsNewtonCotesRule.h>
 #include <gsAssembler/gsPatchRule.h>
 #include <gsAssembler/gsOverIntegrateRule.h>
+#include <gsAssembler/gsGaussRule.h>
+
+#include <gsCore/gsDomainIterator.h>
 
 namespace gismo
 {
@@ -170,18 +173,24 @@ struct gsQuadrature
         return nnodes;
     }
 
+    // template<class T>
+    // static std::pair<gsMatrix<T>,gsVector<T>> getAllNodesAndWeights(const gsBasis<T> & basis,
+    //                          const gsOptionList & options)
+    // {
 
-    /**
-     * @brief      Gets all parametric quadrature nodes for a @a basis, provided
-     *             @a options
-     *
-     * @param[in]  basis    The basis
-     * @param[in]  options  The options for quadrature
-     *
-     * @tparam     T        real type
-     *
-     * @return     All quadrature nodes.
-     */
+    // }
+
+/**
+ * @brief Retrieves all quadrature nodes for the given basis.
+ *
+ * This function computes and returns all quadrature nodes for a given 
+ * \p basis, using the provided \p options to determine the quadrature rules.
+ *
+ * @tparam T          Real type.
+ * @param[in] basis   The basis for which quadrature nodes are computed.
+ * @param[in] options Options specifying the quadrature rule.
+ * @return            A matrix where each column represents a quadrature node in the parametric domain.
+ */
     template<class T>
     static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
                              const gsOptionList & options)
@@ -216,17 +225,15 @@ struct gsQuadrature
     }
 
     /**
-     * @brief      Gets all parametric quadrature nodes for a @a basis, provided
-     *             @a options, on \a side
+     * @brief Get all quadrature nodes for a specified side of a given basis.
      *
-     * @param[in]  basis    The basis
-     * @param[in]  options  The options for quadrature
-     * @param[in]  side     The side for quadrature
-     *
-     * @tparam     T        real type
-     *
-     * @return     All quadrature nodes.
+     * @tparam T        Real type.
+     * @param[in] basis     The basis for which the quadrature nodes are to be collected.
+     * @param[in] options   Quadrature rule.
+     * @param[in] side      The side of the basis.
+     * @return result   A matrix of quadrature nodes, where each column corresponds to a quadrature node.
      */
+
     template<class T>
     static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
                              const gsOptionList & options, const patchSide side)
@@ -261,37 +268,18 @@ struct gsQuadrature
     }
 
     /**
-     * @brief      Gets all quadrature nodes on the @a geometry for a @a basis,
-     *             provided @a options, on \a side
-     *
-     * @param[in]  basis     The basis
-     * @param[in]  geometry  The geometry
-     * @param[in]  options   The options for quadrature
-     * @param[in]  side      The side for quadrature
-     *
-     * @tparam     T         real type
-     *
-     * @return     All quadrature nodes.
+     * @brief Get all quadrature nodes for a specified side of a basis and evaluates them using a geometry.
      */
     template<class T>
-    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geometry,
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geom,
                              const gsOptionList & options, const patchSide side)
     {
         gsMatrix<T> nodes = getAllNodes(basis,options,side);
-        return geometry.eval(nodes);
+        return geom.eval(nodes);
     }
 
     /**
-     * @brief      Gets all parametric quadrature nodes for a @a basis, provided
-     *             @a options, on \a sides
-     *
-     * @param[in]  basis    The basis
-     * @param[in]  options  The options for quadrature
-     * @param[in]  sides    A container with the sides for quadrature
-     *
-     * @tparam     T        real type
-     *
-     * @return     All quadrature nodes.
+     * @brief Retrieves all quadrature nodes for multiple sides of a given basis.
      */
     template<class T>
     static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
@@ -317,17 +305,7 @@ struct gsQuadrature
     }
 
     /**
-     * @brief      Gets all quadrature nodes on the @a geometry for a @a basis,
-     *             provided @a options, on @a sides
-     *
-     * @param[in]  basis    The basis
-     * @param[in]  geom     The geometry
-     * @param[in]  options  The options for quadrature
-     * @param[in]  sides    A container with the sides for quadrature
-     *
-     * @tparam     T        real type
-     *
-     * @return     All quadrature nodes.
+     * @brief Collects and evaluates all quadrature nodes for multiple sides of a given basis.
      */
     template<class T>
     static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geom,
@@ -337,39 +315,15 @@ struct gsQuadrature
         return geom.eval(nodes);
     }
 
-    /**
-     * @brief      Gets all parametric quadrature nodes for multiple @a bases,
-     *             provided @a options
-     *
-     * @param[in]  bases    The basis
-     * @param[in]  options  The options for quadrature
-     *
-     * @tparam     T        real type
-     *
-     * @return     All quadrature nodes, stored patch-wise
-     */
     template<class T>
-    static std::vector<gsMatrix<T>> getAllNodes(const gsMultiBasis<T> & bases,
+    static gsMatrix<T> getAllNodes(const gsMultiBasis<T> & bases,
                              const gsOptionList & options)
     {
-        std::vector<gsMatrix<T>> nodes(bases.nBases());
-        for (size_t p = 0; p != bases.nBases(); p++)
-            nodes[p] = getAllNodes(bases.basis(p),options);
-
-        return nodes;
+        return getAllNodes(bases,options);
     }
 
     /**
-     * @brief      Gets all parametric quadrature nodes for multiple @a bases,
-     *             provided @a options, on @a sides
-     *
-     * @param[in]  bases    The basis
-     * @param[in]  options  The options for quadrature
-     * @param[in]  sides    The sides
-     *
-     * @tparam     T        real type
-     *
-     * @return     All quadrature nodes, stored patch-wise
+     * @brief Collects all quadrature nodes for a multi-basis.
      */
     template<class T>
     static std::vector<gsMatrix<T>> getAllNodes(const gsMultiBasis<T> & bases,
@@ -383,21 +337,20 @@ struct gsQuadrature
         return nodes;
     }
 
+
     /**
-     * @brief      Gets all quadrature nodes on the multi-patch @a geometry for
-     *             a @a basis, provided @a options, on @a sides
+     * @brief Gets all quadrature nodes for several sides of a multi-basis for multi-patch geometry.
      *
-     * @param[in]  bases     The basis
-     * @param[in]  geometry  The geometry
-     * @param[in]  options   The options for quadrature
-     * @param[in]  sides     A container with the sides for quadrature
-     *
-     * @tparam     T         real type
-     *
-     * @return     All quadrature nodes, in a matrix stored per column
+     * @tparam T        Data type for computations.
+     * @param[in] bases     The multi-basis for which the quadrature nodes are to be collected.
+     * @param[in] options   Options specifying the quadrature rule and other settings.
+     * @param[in] sides     A vector of sides corresponding to the patches in the multi-basis.
+     * @param[in] mp        A multi-patch geometry.
+     * @return              A vector of matrices, where each matrix contains quadrature nodes for a specific patch.
      */
+
     template<class T>
-    static gsMatrix<T> getAllNodes(const gsMultiBasis<T> & bases, const gsMultiPatch<T> & geometry,
+    static gsMatrix<T> getAllNodes(const gsMultiBasis<T> & bases, const gsMultiPatch<T> & mp,
                              const gsOptionList & options, const std::vector<patchSide> sides)
     {
         std::vector<gsMatrix<T>> nodes = getAllNodes(bases,options,sides);
@@ -405,18 +358,17 @@ struct gsQuadrature
         for (size_t p = 0; p != nodes.size(); p++)
             cols += nodes[p].cols();
 
-        gsMatrix<T> result(geometry.targetDim(),cols);
+        gsMatrix<T> result(mp.targetDim(),cols);
         cols = 0;
         for (size_t p = 0; p != nodes.size(); p++)
         {
-            result.block(0,cols,geometry.targetDim(),nodes[p].cols()) = geometry.patch(p).eval(nodes[p]);
+            result.block(0,cols,mp.targetDim(),nodes[p].cols()) = mp.patch(p).eval(nodes[p]);
             cols += nodes[p].cols();
         }
 
         return result;
     }
-
-
 };
+
 
 }// namespace gismo

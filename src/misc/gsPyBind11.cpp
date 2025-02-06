@@ -237,8 +237,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsKLShell( klshell );
 #endif
 
-// #ifdef gsStructuralAnalysis_ENABLED
-#ifdef false
+#ifdef gsStructuralAnalysis_ENABLED
   py::module structuralanalysis = m.def_submodule("structuralanalysis");
 
   structuralanalysis.attr("__name__") = "pygismo.structuralanalysis";

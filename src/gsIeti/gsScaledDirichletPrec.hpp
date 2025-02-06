@@ -33,7 +33,7 @@ gsScaledDirichletPrec<T>::skeletonDofs( const JumpMatrix& jm )
 
 template <class T>
 typename gsScaledDirichletPrec<T>::JumpMatrix
-gsScaledDirichletPrec<T>::restrictJumpMatrix( const JumpMatrix& jm, const std::vector<index_t> dofs )
+gsScaledDirichletPrec<T>::restrictJumpMatrix( const JumpMatrix& jm, const std::vector<index_t>& dofs )
 {
     gsVector<index_t> reverse;
     reverse.setZero( jm.cols() );
@@ -61,7 +61,7 @@ gsScaledDirichletPrec<T>::restrictJumpMatrix( const JumpMatrix& jm, const std::v
 
 template <class T>
 typename gsScaledDirichletPrec<T>::Blocks
-gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vector<index_t> dofs )
+gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vector<index_t>& dofs )
 {
     gsVector<index_t> reverse;
     reverse.setZero( mat.cols() );

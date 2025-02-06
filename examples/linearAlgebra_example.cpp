@@ -18,7 +18,7 @@
 using namespace gismo;
 
 int main(int argc, char**argv)
-{
+{     
     gsCmdLine cmd("Tutorial on matrix operations and linear algebra.");
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -41,7 +41,11 @@ int main(int argc, char**argv)
     A(0,0) -= 1 ;
 
     gsInfo << "A=\n"<< A <<"\n";
-    
+
+    gsInfo<< math::isnan(A(0,0)) <<"\n";
+    gsInfo<< math::isinf(A(0,0)) <<"\n";
+            
+            
     // If the type of the entries of the matrix is not given, the
     // default type is real_t (e.g. double)
     gsMatrix<> E (3,1);

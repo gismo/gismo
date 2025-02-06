@@ -39,7 +39,7 @@ public:
 
     /// Initialize
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
+                    const index_t,
                     const gsOptionList & options,
                     gsQuadRule<T>    & rule)
     {
@@ -62,7 +62,7 @@ public:
         numActive = actives.rows();
 
         // Evaluate basis functions on element
-        basis.evalAllDers_into(md.points, 0, basisData);
+        basis.evalAllDers_into(md.points, 0, basisData, true);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);
@@ -98,7 +98,7 @@ public:
 
     /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patchIndex,
-                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              const std::vector<gsMatrix<T> > & /*eliminatedDofs*/,
                               gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs

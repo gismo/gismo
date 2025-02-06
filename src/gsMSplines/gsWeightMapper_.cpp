@@ -28,9 +28,12 @@ namespace gismo
 
     //Utils
 
-    TEMPLATE_INST index_t reorderMapperTarget (gsWeightMapper<real_t> &mapper, const std::vector<index_t>& permutation, gsPermutationMatrix* permMatrix=NULL);
-    TEMPLATE_INST gsWeightMapper<real_t>* combineMappers (const std::vector<gsWeightMapper<real_t>*> &mappers, std::vector<index_t> &shifts, bool needShifting=true);
-    TEMPLATE_INST void combineMappers (const std::vector<gsWeightMapper<real_t>*> &mappers, bool needShifting, std::vector<index_t> &shifts, gsWeightMapper<real_t>& result);
+    TEMPLATE_INST
+    index_t reorderMapperTarget (gsWeightMapper<real_t> &mapper, const std::vector<index_t>& permutation, gsPermutationMatrix* permMatrix);
+    TEMPLATE_INST
+    gsWeightMapper<real_t>* combineMappers (const std::vector<gsWeightMapper<real_t>*> &mappers, std::vector<index_t> &shifts, bool needShifting);
+    TEMPLATE_INST
+    void combineMappers (const std::vector<gsWeightMapper<real_t>*> &mappers, bool needShifting, std::vector<index_t> &shifts, gsWeightMapper<real_t>& result);
 
 
 } // end namespace gismo

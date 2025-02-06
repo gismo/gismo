@@ -772,15 +772,21 @@ public: // things required by gsKnotVector
     }
 
     /// Inverse of degreeIncrease.
-    void degreeDecrease(int const & i = 1 )
+    void degreeDecrease(int const & i = 1, bool updateInterior = false)
     {
-        // note: multiplicities are already updated after each call
         remove( ubegin()  , i );
         remove( uend() - 1, i );
         m_deg -= i;
-        for (uiterator itr = ubegin()+1; itr != uend()-1; ++itr)
-            if ( itr.multiplicity() > m_deg )
-                remove( itr, itr.multiplicity() - m_deg );
+
+        if (updateInterior)
+        {        
+            if ( m_deg <= 0 )
+                initUniform(first(), last(), 0, 1, 0, 0);
+            else
+                for (uiterator itr = ubegin()+1; itr != uend()-1; ++itr)
+                    if ( itr.multiplicity() > m_deg )
+                        remove( itr, itr.multiplicity() - m_deg );
+        }
     }
 
     /// Increase the multiplicity of all the knots by \a i. If \a

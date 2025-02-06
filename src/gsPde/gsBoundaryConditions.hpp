@@ -84,13 +84,13 @@ public:
                     gsWarn<<"Unknown tag in XML multipatch object.\n";
                 }
 
-                for (gsXmlNode * child = mp_node->first_node("boundary"); child;
-                        child = child->next_sibling("boundary"))
+                for (gsXmlNode * ch= mp_node->first_node("boundary"); ch;
+                        ch = ch->next_sibling("boundary"))
                 {
                     std::vector< patchSide > tmp_boundaries;
-                    if (child)
+                    if (ch)
                     {
-                        getBoundaries(child, tmp_ids, tmp_boundaries);
+                        getBoundaries(ch, tmp_ids, tmp_boundaries);
                         allboundaries.insert( allboundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
                     }
                 }

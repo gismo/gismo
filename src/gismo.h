@@ -104,6 +104,8 @@ namespace internal
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsHSplines/gsRationalTHBSplineBasis.h>
+#include <gsHSplines/gsRationalTHBSpline.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 #include <gsHSplines/gsHBox.h>
@@ -207,6 +209,7 @@ namespace internal
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
+#include <gsIO/gsCsv.h>
 
 /* ----------- Parallel ----------- */
 #include <gsParallel/gsMpi.h>

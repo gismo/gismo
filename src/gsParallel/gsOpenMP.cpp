@@ -2,12 +2,12 @@
 
     @brief Implementation of OpenMP stub routines to be used when libomp is not available
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): M. Moller
 */
 
@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void omp_set_num_threads(int num_threads)
+void omp_set_num_threads(int /* num_threads */)
 {}
 
 int  omp_get_num_threads(void)
@@ -50,7 +50,7 @@ int  omp_in_parallel(void)
     return 0;
 }
 
-void omp_set_dynamic(int dynamic_threads)
+void omp_set_dynamic(int /* dynamic_threads */)
 {}
 
 int  omp_get_dynamic(void)
@@ -63,7 +63,7 @@ int  omp_get_cancellation(void)
     return 0;
 }
 
-void omp_set_nested(int nested)
+void omp_set_nested(int /* nested */)
 {}
 
 int  omp_get_nested(void)
@@ -71,7 +71,7 @@ int  omp_get_nested(void)
     return 0;
 }
 
-void omp_set_schedule(omp_sched_t kind, int chunk_size)
+void omp_set_schedule(omp_sched_t /* kind */, int /* chunk_size */)
 {}
 
 void omp_get_schedule(omp_sched_t *kind, int *chunk_size)
@@ -85,7 +85,7 @@ int omp_get_thread_limit(void)
     return 1;
 }
 
-void omp_set_max_active_levels(int max_active_levels)
+void omp_set_max_active_levels(int /* max_active_levels */)
 {}
 
 int omp_get_max_active_levels(void)
@@ -128,12 +128,12 @@ int omp_get_num_places(void)
     return 0;
 }
 
-int omp_get_place_num_procs(int place_num)
+int omp_get_place_num_procs(int /* place_num */)
 {
     return 0;
 }
 
-void  omp_get_place_proc_ids(int place_num, int *ids)
+void  omp_get_place_proc_ids(int /* place_num */, int */* ids */)
 {}
 
 int omp_get_place_num(void)
@@ -146,10 +146,10 @@ int omp_get_partition_num_places(void)
     return 0;
 }
 
-void omp_get_partition_place_nums(int *place_nums)
+void omp_get_partition_place_nums(int */* place_nums */)
 {}
 
-void omp_set_default_device(int device_num)
+void omp_set_default_device(int /* device_num */)
 {}
 
 int omp_get_default_device(void)
@@ -192,7 +192,7 @@ void omp_init_lock(omp_lock_t *arg)
     arg->lock = OMP_UNLOCKED;
 }
 
-void omp_init_lock_with_hint(omp_lock_t *arg, omp_lock_hint_t hint)
+void omp_init_lock_with_hint(omp_lock_t *arg, omp_lock_hint_t /* hint */)
 {
     omp_init_lock(arg);
 }
@@ -261,7 +261,7 @@ void omp_init_nest_lock(omp_nest_lock_t *arg)
 }
 
 void omp_init_nest_lock_with_hint(omp_nest_lock_t *arg,
-                                  omp_lock_hint_t hint)
+                                  omp_lock_hint_t /* hint */)
 {
     omp_init_nest_lock(arg);
 }
@@ -343,12 +343,12 @@ void * omp_target_alloc(size_t size, int device_num)
     return malloc(size);
 }
 
-void omp_target_free(void *device_ptr, int device_num)
+void omp_target_free(void *device_ptr, int /* device_num */)
 {
     free(device_ptr);
 }
 
-int omp_target_is_present(void *ptr, int device_num)
+int omp_target_is_present(void */* ptr */, int /* device_num */)
 {
     return 1;
 }
@@ -381,7 +381,7 @@ int omp_target_memcpy_rect(void *dst, void *src,
     // Both null, return number of dimensions supported,
     // this stub supports an arbitrary number
     if (dst == NULL && src == NULL) return INT_MAX;
-  
+
     if (!volume || !dst_offsets || !src_offsets
         || !dst_dimensions || !src_dimensions
         || num_dims < 1 ) {
@@ -424,16 +424,16 @@ done:
     return ret;
 }
 
-int omp_target_associate_ptr(void *host_ptr, void *device_ptr,
-                             size_t size, size_t device_offset,
-                             int device_num)
+int omp_target_associate_ptr(void */* host_ptr */, void */* device_ptr */,
+                             size_t /* size */, size_t /* device_offset */,
+                             int /* device_num */)
 {
     // No association is possible because all host pointers
     // are considered present
     return EINVAL;
 }
 
-int omp_target_disassociate_ptr(void *ptr, int device_num)
+int omp_target_disassociate_ptr(void */* ptr */, int /* device_num */)
 {
     return EINVAL;
 }

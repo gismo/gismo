@@ -30,25 +30,29 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-
+    //! [make curve]
     // Make a BSpline curve
-    gsKnotVector<> kv(0, 1, 1, 3);//start,end,interior knots, start/end multiplicites of knots1
+    gsKnotVector<> kv(0, 1, 1, 3);//start,end,interior knots, start/end multiplicites of knots
     gsMatrix<> coefs(4, 3);
     coefs << 0, 0, 0,
              1, 2, 3,
              2, 1, 4,
              4, 4, 4;
 
-    gsBSpline<> curve( kv, give(coefs));
+    gsBSpline<> curve(kv, coefs);
+    //! [make curve]
 
     // Print the Bspline curve
     gsInfo << "I am a " << curve << "\n";
 
     if (plot)
-    {
+    {   
         // Output a paraview file
-        gsWriteParaview( curve, "bsplinecurve", 100);
-        gsFileManager::open("bsplinecurve.pvd");
+        coefs.transposeInPlace();
+        gsWriteParaview( curve, "bsplinecurve0", 100);
+        gsWriteParaview( curve, "bsplinecurve", 100, true, true);
+        gsWriteParaviewPoints( coefs, "coefficients");
+        gsFileManager::open("bsplinecurve0.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
@@ -89,7 +93,8 @@ int main(int argc, char *argv[])
       gsInfo << "Done. Re-run with --trim to learn basic trim/merge operations\n";
 
     // Basic intersection operations between two BSpline curves - @Ye
-    if (intersect){
+    if (intersect)
+    {
       gsMatrix<real_t> ctrPts1(4, 2);
       ctrPts1 << 0,0, 1,1, 2,1, 3,1;
       gsBSpline<real_t> bsp1(0, 1, 0, 3, ctrPts1);
@@ -101,10 +106,12 @@ int main(int argc, char *argv[])
 
       gsInfo << intersectPts.size() << " intersections are found!" << "\n";
       gsMatrix<> iPts(bsp1.geoDim(), intersectPts.size());
-      for (int j = 0; j < intersectPts.size(); ++j) {
+      for (size_t j = 0; j < intersectPts.size(); ++j)
+      {
         iPts.col(j) = intersectPts[j].getPoint();
       }
-      if (!intersectPts.empty()) {
+      if (!intersectPts.empty())
+      {
         gsWriteParaviewPoints(iPts, "intersect");
       }
 

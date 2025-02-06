@@ -38,6 +38,12 @@ class gsTensorDomainBoundaryIterator : public gsDomainIterator<T>
 {
 public:
 
+    /**
+     * @brief      Constructor using explicitly defined breaks
+     *
+     * @param[in]  breaks_  The breaks
+     * @param[in]  s        The side
+     */
     gsTensorDomainBoundaryIterator( const std::vector< std::vector<T> > & breaks_, const boxSide & s )
     : d( breaks_.size() ),
       lower ( gsVector<T, D>::Zero(d) ),
@@ -80,6 +86,12 @@ public:
             update();
     }
 
+    /**
+     * @brief      Constructs a new instance.
+     *
+     * @param[in]  b     The basis
+     * @param[in]  s     The side
+     */
     gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boxSide & s )
     : gsDomainIterator<T>(b, s),
       d( m_basis->dim() ),

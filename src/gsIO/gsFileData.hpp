@@ -91,7 +91,7 @@ template<class T> void
 gsFileData<T>::addComment(std::string const & message)
 {
     gsXmlNode * comment = internal::makeComment(message, *data);
-    data->prepend_node(comment);
+    data->appendToRoot(comment);
 }
 
 template<class T> void
@@ -527,7 +527,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
 
     // Temporaries
     bool rational;
-    int  ncp, deg, c, parDim, geoDim;
+    int  ncp, deg, c, parDim(0), geoDim;
 
     // Structure:
     // type, version
@@ -566,7 +566,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
         case 210:  // Class_BoundedSurface
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Reading GoTools trimmed surface (ClassType="<<ncp<<") not implemented.\n";
-
+            break;
         case 110:  // Class_CurveOnSurface
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Reading GoTools CurveOnSurface (ClassType="<<ncp<<") not implemented.\n";

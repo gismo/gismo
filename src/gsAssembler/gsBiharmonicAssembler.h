@@ -69,7 +69,8 @@ public:
     }
 
     void refresh();
-    
+
+    using Base::assemble;
     void assemble();
 
 protected:
