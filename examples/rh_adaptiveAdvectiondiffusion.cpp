@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
     double tolPicard    = 1e-8;
     double IntensityMAE = 6.;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
-    double FactRefPar    = 0.;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
+    index_t FactRefPar    = 0;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     bool ErrorPrint     = true, export_b64 =false;
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
     bool PNormalCP      = true;
@@ -342,7 +342,8 @@ int main(int argc, char *argv[])
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  UnifRefine );
     cmd.addInt( "l", "numRefine", "Number of local h-refinement loops",  numRefine );
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addReal( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
+    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
+    cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addSwitch( "ErrorPrint", "print Error", ErrorPrint);
     //cmd.addString( "f", "file", "Input XML file", fn );
@@ -752,7 +753,8 @@ int main(int argc, char *argv[])
        dbasis.repairInterfaces( Psi.interfaces() );
        //! [refreshAssembler]
        cdrAss.refresh();
-       adaptRefParam = adaptRefParam + FactRefPar;
+       if(r%2==0)
+       NumArMarEl = NumArMarEl + FactRefPar;
         }
     if(plot && r == numRefine){
         // gsInfo<<"Storing paraview...\n";

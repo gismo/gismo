@@ -418,7 +418,7 @@ int main(int argc, char *argv[])
     auto ff_GPsi   = A.getCoeff(f, PP);
     
     // --------------- adaptive refinement ---------------
-    // Specify cell-marking strategy... 2  PUCA AND 1 GARU
+    // Specify cell-marking strategy... 
     MarkingStrategy adaptRefCrit = PUCA;
     //MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
@@ -512,6 +512,7 @@ int main(int argc, char *argv[])
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+            if (r%2==0)
             NumArMarEl = NumArMarEl + FactRefPar;
             }
     }

@@ -64,9 +64,10 @@ int main(int argc, char *argv[])
     bool errorsave      = false;
 
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
+    // std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/butterfly.xml");
     //std::string fn("pde/infinit_plate.xml");
-    //std::string fn("pde/circle.xml");
+    std::string fn("pde/circle.xml");
     //std::string fn("surfaces/egg.xml");
     //std::string fn("domain2d/lake.xml");
 
@@ -127,6 +128,8 @@ int main(int argc, char *argv[])
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<double> Hdivbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    Hdivbasis.degreeElevate(1);
     
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
@@ -449,16 +452,16 @@ int main(int argc, char *argv[])
         }
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         // Psi.addAutoBoundaries();
-        geometryMap PP = A.getMap(Psitp);
-        gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
+        // geometryMap PP = A.getMap(Psitp);
+        // gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
 
-        PP(mpLeft);
-        //auto comp = A.getCoeff(mpLeft, PP);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * PP.tr() );// blocked by this one
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
-        v_sol.extract(Psitp);
+        // PP(mpLeft);
+        // //auto comp = A.getCoeff(mpLeft, PP);
+        // A.initSystem(ITdim);
+        // //Obtain control points for the gradient of mpLeft.comp(Psi)
+        // A.assemble( v * v.tr() , v * PP.tr() );// blocked by this one
+        // vsolVector = Poisson.L2ProjectVec(A.rhs());
+        // v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
         Psitp.computeTopology();
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";

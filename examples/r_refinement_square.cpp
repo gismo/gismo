@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     double tolPicard     = 1e-8;
     double IntensityMAE  = 6.;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
-    double FactRefPar   = 0.;    // ... adapt parameter : NumArMarEl += FactRefPar in each iter
+    index_t FactRefPar   = 0;    // ... adapt parameter : NumArMarEl += FactRefPar in each iter
     bool ErrorPrint      = true, export_b64 =false;
     bool errorsave       = false;
     gsFunctionExpr<> sN("x","y",2); // FIX : Manufactured identity mapping
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  UnifRefine );
     cmd.addInt( "l", "numRefine", "Number of local h-refinement loops",  numRefine );
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addReal( "p", "FactRefPar", "augement FactRefPar with such quantity in local h-refinement loops",  FactRefPar );
+    cmd.addInt( "p", "FactRefPar", "augement FactRefPar with such quantity in local h-refinement loops",  FactRefPar );
     cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addSwitch( "ErrorPrint", "print Error", ErrorPrint);
@@ -518,7 +518,8 @@ int main(int argc, char *argv[])
         // Refine the marked elements with a 1-ring of cells around marked elements
         gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
         gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
-        adaptRefParam = adaptRefParam + FactRefPar;
+        if (r%2 == 0)
+        NumArMarEl = NumArMarEl + FactRefPar;
         }
     }
     //! [Solver loop]    
