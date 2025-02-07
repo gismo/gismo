@@ -728,8 +728,10 @@ public: // things required by gsKnotVector
     }
 
     /// Returns the degree of the knot vector.
-    int degree () const;
-
+    short_t degree(short_t i = 0) const override //overload from gsDomain
+    {
+        return m_deg;
+    }
 
     /// Writes Greville abscissae of the B-splines defined on this
     /// knot vector to \a result.

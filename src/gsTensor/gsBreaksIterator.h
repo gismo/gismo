@@ -39,33 +39,27 @@ public:
     }
 
     // Documentation in gsDomainIterator.h
-    bool next() override
+    void next() override
     {
         ++m_it;
-        return (m_it != m_itEnd);
     }
 
     // Documentation in gsDomainIterator.h
-    bool next(index_t increment) override
+    void next(index_t increment) override
     {
         m_it += increment;
-        return (m_it < m_itEnd);
     }
 
     // Documentation in gsDomainIterator.h
-    bool prev() override
+    void prev() override
     {
         --m_it;
-        // WARNING: This does not check whether the iterator passes the beginning
-        return (m_it >= m_itBegin);
     }
 
     // Documentation in gsDomainIterator.h
-    bool prev(index_t decrement) override
+    void prev(index_t decrement) override
     {
         m_it -= decrement;
-        // WARNING: This does not check whether the iterator passes the beginning
-        return (m_it >= m_itBegin);
     }
 
     // Documentation in gsDomainIterator.h

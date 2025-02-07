@@ -57,18 +57,17 @@ public:
     }
 
     // Documentation in gsDomainIterator.h
-    bool next()
+    void next() override
     {
-        return nextLexicographicIter(curElement, meshEnd);
+        nextLexicographicIter(curElement, meshEnd);
     }
 
     // Documentation in gsDomainIterator.h
-    bool next(index_t increment)
+    void next(index_t increment) override
     {
         bool isGood(true);
         for (index_t i = 0; i < increment; i++)
             isGood = isGood && nextLexicographicIter(curElement, meshEnd);
-        return isGood;
     }
 
     // Documentation in gsDomainIterator.h

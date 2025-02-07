@@ -85,7 +85,7 @@ public:
                     gsQuadRule<T> & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
-        rule = gsQuadrature::get(basis, options, m_side.direction());
+        rule = gsQuadrature::get(*basis.domain(), options, m_side.direction());
 
         m_penalty     = options.askReal("Nitsche.Penalty",-1);
         // If not given, use default

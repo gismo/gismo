@@ -49,7 +49,7 @@ namespace gismo
     // Iterate over all elements of the interface \a bi
     for (auto it = dom.beginIfc(bi); it!=dom.endIfc(bi); ++it)
 
-    // Number of elements of 
+    // Number of elements of
 
     \ingroup Core
 */
@@ -137,6 +137,9 @@ public:
         return memory::make_shared_not_owned(this);
     }
 
+    virtual size_t nPieces() const { return 0; }
+
+
 public: // Domain element iterators
 
     /// Returns iterator over the elements in this domain
@@ -149,15 +152,14 @@ public: // Domain element iterators
     }
 
     /// Returns an iterator over the boundary.
-    /// special value \a none: ????????????????? all boundaries
-    virtual iterator beginBdr (const boxSide bs = boundary::none) const
+    /// special value \a all: iterate over all boundaries
+    virtual iterator beginBdr (const boxSide bs = boundary::all) const
     {GISMO_NO_IMPLEMENTATION}
 
     /// Returns an iterator to the end of the boundary elements
-    /// special value \a none: ????????????????? all boundaries
-    virtual iterator endBdr(const boxSide bs = boundary::none) const
+    /// special value \a all: iterate over all boundaries
+    virtual iterator endBdr(const boxSide bs = boundary::all) const
     {
-
         return iterator(new gsDomainIteratorEnd<T>(this->numElementsBdr(bs)));
     }
 
@@ -169,16 +171,21 @@ public: // Domain element iterators
 
     /** @brief Number of elements in the domain
     */
-    //todo: REMOVE ARGUMENT s
     virtual size_t numElements() const = 0;
 
     /** @brief Number of elements in the domain
      */
-    virtual size_t numElementsBdr(boxSide const & s = boundary::none) const
+    virtual size_t numElementsBdr(boxSide const & s = boundary::all) const
     {GISMO_NO_IMPLEMENTATION}
 
+    // NOTE: for immersed
     //virtual size_t numBackgroundElements() const;
-    
+
+    /** @brief Degree of the domain
+    */
+    virtual short_t degree(short_t i = 0) const
+    {GISMO_NO_IMPLEMENTATION}
+
     /** @brief Dimension of the domain
     */
     virtual short_t dim() const

@@ -89,7 +89,7 @@ public:
     }
 
     // ---> Documentation in gsDomainIterator.h
-    bool next()
+    void next() override
     {
         bool isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
 
@@ -101,11 +101,10 @@ public:
             if (isGood)
                 updateElement();
         }
-        return isGood;
     }
 
     // ---> Documentation in gsDomainIterator.h
-    bool next(index_t increment)
+    void next(index_t increment) override
     {
         //todo: better implementation
         // compute the number of elements between curElement and meshEnd
@@ -121,8 +120,6 @@ public:
 
         if (isGood)
             updateElement();
-
-        return isGood;
     }
 
     /// Resets the iterator so that it can be used for another

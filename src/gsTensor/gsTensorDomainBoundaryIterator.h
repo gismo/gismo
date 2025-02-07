@@ -95,20 +95,19 @@ public:
 
     // ---> Documentation in gsDomainIterator.h
     // proceed to the next element; returns true if end not reached yet
-    bool next()
+    void next() override
     {
-        return nextLexicographicIter(curElement, meshEnd, dir);
+        nextLexicographicIter(curElement, meshEnd, dir);
     }
 
     // ---> Documentation in gsDomainIterator.h
     // proceed to the next element (skipping #increment elements);
     // returns true if end not reached yet
-    bool next(index_t increment)
+    void next(index_t increment) override
     {
         bool isGood(true);
         for (index_t i = 0; i < increment; i++)
             isGood = isGood && nextLexicographicIter(curElement, meshEnd, dir);
-        return isGood;
     }
 
     /// Return the tensor index of the current element

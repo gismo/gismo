@@ -72,7 +72,7 @@ public: // more members
         {
             GISMO_NO_IMPLEMENTATION
         }
-                
+
         const short_t dir =  s.direction();
         size_t nElem = 1;
         for (short_t dim = 0; dim < D; ++dim)
@@ -82,6 +82,11 @@ public: // more members
             nElem *= m_knotVectors[dim]->numElements();
         }
         return nElem;
+    }
+
+    short_t degree(short_t i) const override
+    {
+        return m_knotVectors[i]->degree();
     }
 
     short_t dim() const override { return D; }

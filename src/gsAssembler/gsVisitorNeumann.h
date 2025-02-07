@@ -74,7 +74,7 @@ public:
                     gsQuadRule<T>      & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
-        rule = gsQuadrature::get(basis, options, side.direction());
+        rule = gsQuadrature::get(*basis.domain(), options, side.direction());
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;

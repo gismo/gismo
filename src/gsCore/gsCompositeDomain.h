@@ -36,7 +36,7 @@ class gsCompositeDomainIterator : public gsDomainIterator<T>
     typedef typename gsDomain<T>::Ptr domainPtr;
     typedef std::vector<domainPtr> domainContainer;
     domainContainer m_domains;
-    std::vector<size_t> m_numEl;
+    std::vector<size_t> m_numEl; //offsets
     gsDomainIteratorWrapper<T> m_cur;
 
 public:
@@ -57,7 +57,7 @@ public:
 
 private:
 
-    bool next()
+    void next() override
     {
         //note: we cannot rely on this->id()
         if (m_cur.id() + 1 == m_numEl[this->patch()+1]-m_numEl[this->patch()])
@@ -69,21 +69,21 @@ private:
                 //m_cur->get()->patch() = this->patch(); // not needed
             }
             else
-                return false;
+                return;
         }
         else
             ++m_cur;
-        return true;
+        return;
     }
 
     /// \brief Proceeds to the next element (skipping \p increment elements).
-    bool next(index_t increment)
+    void next(index_t increment) override
     {
         const size_t pos = this->id() + increment;
         if ( pos < m_numEl[this->patch()+1])
         {
             m_cur += increment;
-            return true;
+            return;
         }
 
         //note: could end at min( --m_numEl.end(), m_numEl.begin() + increment)
@@ -91,7 +91,7 @@ private:
         this->patch() = it - m_numEl.begin();
         m_cur  = m_domains[this->patch()]->beginAll();
         m_cur +=  pos - m_numEl[this->patch()];
-        return true;
+        return;
     }
 
     virtual gsVector<T> lowerCorner() const
@@ -132,12 +132,12 @@ public:
 
     // void insert(Ptr other);
 
-    Ptr subdomain(index_t k) const { return m_domains[k]; }
+    Ptr subdomain(index_t k) const override { return m_domains[k]; }
 
     // returns the index of the first element on subdomain \a k in the global numbering
     //size_t offset(size_t k) const;
-                
-    size_t numPieces() const { return m_domains.size(); }
+
+    size_t nPieces() const override { return m_domains.size(); }
 
     const domainContainer & subdomains() const { return m_domains;}
 
@@ -177,6 +177,8 @@ public:
         os << "Domain container with " << m_domains.size() << " domains.";
         return os;
     }
+
+    const gsBoxTopology & topology() const { return *m_topology; }
 
 }; // class gsCompositeDomain
 

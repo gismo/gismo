@@ -30,13 +30,20 @@ gsMesh<T>::~gsMesh()
 
 template<class T>
 gsMesh<T>::gsMesh(const gsBasis<T> & basis, int midPts)
+:
+gsMesh<T>(*basis.domain(), midPts)
+{
+}
+
+template<class T>
+gsMesh<T>::gsMesh(const gsDomain<T> & domain, int midPts)
 : MeshElement()
 {
-    const unsigned d = basis.dim();
+    const unsigned d = domain.dim();
 
     typedef typename gsMesh<T>::VertexHandle vtx;
-    typename gsBasis<T>::domainIter domIter = basis.domain()->beginAll();
-    typename gsBasis<T>::domainIter domIterEnd = basis.domain()->endAll();
+    typename gsBasis<T>::domainIter domIter = domain.beginAll();
+    typename gsBasis<T>::domainIter domIterEnd = domain.endAll();
 
     // variables for iterating over a cube (element is a cube)
     const gsVector<unsigned> zeros = gsVector<unsigned>::Zero(d);

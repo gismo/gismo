@@ -46,7 +46,7 @@ public:
         typename gsKnotVector<T>::knotContainer knotValues;
 
         gsXmlAttribute * mode = node->first_attribute("mode");
-        
+
         // Generate Knotvectors based on key
         // mode: uniform, graded, ..
         if (mode)
@@ -697,12 +697,6 @@ void gsKnotVector<T>::initClamped(int degree, unsigned numKnots, unsigned mult_i
 }
 
 template<typename T>
-int gsKnotVector<T>::degree() const
-{
-    return m_deg;
-}
-
-template<typename T>
 int gsKnotVector<T>::deduceDegree() const
 {
     return uSize() == 0 ? -1 :
@@ -733,7 +727,7 @@ template<typename T>
 typename gsKnotVector<T>::mult_t gsKnotVector<T>::minInteriorMultiplicity() const
 {
     // No interior knots
-    if (uSize()==2) 
+    if (uSize()==2)
         return 0;
 
     mult_t result = m_deg+2;

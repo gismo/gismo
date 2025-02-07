@@ -207,7 +207,7 @@ public:
     inline boxSide side() const {return m_domainIter->side();}
 
     inline index_t patch() const {return m_domainIter->patch();}
-    
+
     /// Fetches data of integer type based on string label
     const index_t & label(const std::string & _label)
     {return m_domainIter->label(_label); }
@@ -243,24 +243,25 @@ private:
      * The function returns true if there are still elements remaining that have not been treated.\n
      * For the typical usage of this function, see the example in the
      * documentation of gsDomainIterator.
+     *
+     * @todo: remove the return value
      */
-    virtual bool next() = 0;
 
-    virtual bool prev() { GISMO_NO_IMPLEMENTATION };
+    virtual void next() = 0;
+
+    virtual void prev() { GISMO_NO_IMPLEMENTATION };
 
     /// \brief Proceeds to the next element (skipping \p increment elements).
-    virtual bool next(index_t increment)
+    virtual void next(index_t increment)
     {
         for(index_t i = 0; i!=increment; ++i)
             this->next();
-        return true;// note: return value not used/not good
     }
 
-    virtual bool prev(index_t decrement)
+    virtual void prev(index_t decrement)
     {
         for(index_t i = 0; i!=decrement; ++i)
             this->prev();
-        return true;// note: return value not used/not good
     }
 
     /// Resets the iterator so that it points to the first element
@@ -370,7 +371,7 @@ public:
     inline index_t & patch() {return m_pside.patch;}
 protected:
 
-    
+
     size_t m_id; ///< The element ID
 
     patchSide m_pside; ///< The patch side, when applicable
@@ -391,18 +392,18 @@ public:
     : gsDomainIterator<T>(id)
     { }
 
-    virtual bool next() override
+    virtual void next() override
     { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
 
-    virtual bool next(index_t increment) override
+    virtual void next(index_t increment) override
     { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
 
-    virtual bool prev() override
+    virtual void prev() override
     {
         GISMO_NO_IMPLEMENTATION
     }
 
-    virtual bool prev(index_t decrement) override
+    virtual void prev(index_t decrement) override
     {
         GISMO_NO_IMPLEMENTATION
     }

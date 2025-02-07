@@ -23,7 +23,7 @@
 namespace gismo {
 
 /** @brief Provides a mapping between the corresponding sides of two patches sharing an interface,
-  * by means of a closest point projection.  
+  * by means of a closest point projection.
   *
   *
   * @ingroup Assembler
@@ -51,27 +51,27 @@ public:
     ///  | CheckAffine             | The number of interior points (per direction) in point grid used to
     ///  |                         | default: 1e-10
     gsCPPInterface(const gsMultiPatch<T>   & mp,
-                     const gsMultiBasis<T>   & mb,
+                    //  const gsMultiBasis<T>   & mb,
                      const boundaryInterface & bi,
                      const gsOptionList      & opt = defaultOptions() );
 
     static uPtr make (const gsMultiPatch<T>   & mp,
-                     const gsMultiBasis<T>   & mb,
+                    //  const gsMultiBasis<T>   & mb,
                      const boundaryInterface & bi,
                      const gsOptionList      & opt = defaultOptions() )
-    { return uPtr(new gsCPPInterface(mp,mb,bi,opt)); }
-    
+    { return uPtr(new gsCPPInterface(mp,bi,opt)); }
+
 private:
-    const gsGeometry<T>* m_slaveGeom, *m_masterGeom; ///< Geometry of first (Slave) patch and second patch (master) 
+    const gsGeometry<T>* m_slaveGeom, *m_masterGeom; ///< Geometry of first (Slave) patch and second patch (master)
     typename gsGeometry<T>::Ptr m_masterBdr;  ///< The boundary geometry of second patch -- Master
 
-    const gsBasis<T> * m_slaveBasis ;        ///< Basis on first patch
-    const gsBasis<T> * m_masterBasis;        ///< Basis on second patch
+    // const gsBasis<T> * m_slaveBasis ;        ///< Basis on first patch
+    // const gsBasis<T> * m_masterBasis;        ///< Basis on second patch
 
     boundaryInterface m_boundaryInterface;   ///< Corresponding boundary interface
 
     T m_Tolerance;                            ///< Tolerance for closest point algorithm
-    
+
     std::vector<index_t> m_freeDirs;
     index_t m_fixedParam;
     index_t m_fixedDir;

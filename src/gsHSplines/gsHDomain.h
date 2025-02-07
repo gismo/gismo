@@ -154,6 +154,18 @@ public:
         return nel;
     }
 
+    short_t degree(short_t i) const override
+    {
+        return m_basis.degree(i);
+    }
+
+    short_t dim() const override { return d; }
+
+    gsMatrix<T> boundingBox() const override
+    {
+        return m_basis.support();
+    }
+
     const gsHTree<d,Z> & tree() const { return m_tree; }
 
 private:

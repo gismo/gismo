@@ -91,18 +91,16 @@ public:
     }
 
     // ---> Documentation in gsDomainIterator.h
-    bool next()
+    void next() override
     {
         bool isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
 
         if (!isGood) // went through all elements in m_leaf
             isGood = nextLeaf();
-
-        return isGood;
     }
 
     // ---> Documentation in gsDomainIterator.h
-    bool next(index_t increment)
+    void next(index_t increment) override
     {
         bool isGood(true);
         for (index_t i = 0; i < increment; i++)
@@ -110,8 +108,6 @@ public:
 
         if (isGood) // went through all elements in m_leaf
             isGood = nextLeaf();
-
-        return isGood;
     }
 
     /// Resets the iterator so that it can be used for another
