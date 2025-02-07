@@ -1,4 +1,4 @@
-/** @file composed_domain_test.cpp
+/** @file composed_integration_test.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
@@ -14,9 +14,25 @@
 //! [Include namespace]
 #include <gismo.h>
 #include <gsNurbs/gsSquareDomain.h>
+#include <iostream>
+#include <numeric>
 
 using namespace gismo;
 //! [Include namespace]
+
+// Function to return LCM of two numbers
+index_t LCM(index_t a, index_t b)
+{
+    index_t greater  = std::max(a, b);
+    index_t smallest = std::min(a, b);
+    for (index_t i = greater; ; i += greater) {
+        if (i % smallest  == 0)
+            return i;
+    }
+}
+
+
+
 
 template <short_t _DIM, class T>
 gsTensorBSplineBasis<_DIM,T> integrationBasis(const gsTensorBSplineBasis<_DIM,T> & basis1,
@@ -37,6 +53,8 @@ gsTensorBSplineBasis<_DIM,T> integrationBasis(const gsTensorBSplineBasis<_DIM,T>
                 ibasis.insertKnot(*it,d);
             }
         // 2. Increase the degree
+        index_t lcmdeg = LCM(ibasis.degree(d), basis2.degree(d));
+        gsInfo << "LCM of degrees: " << lcmdeg << "\n";
         targetDegree = ibasis.degree(d) * basis2.degree(d);
         ibasis.degreeIncrease(targetDegree-ibasis.degree(d),d);
 
@@ -47,8 +65,8 @@ gsTensorBSplineBasis<_DIM,T> integrationBasis(const gsTensorBSplineBasis<_DIM,T>
 int main(int argc, char *argv[])
 {
     // Input options
-    index_t numKnots    = 2;
-    index_t degree      = 2;
+    index_t numKnots    = 3;
+    index_t degree      = 3;
     index_t numKnotsMap = 2;
     index_t degreeMap   = 2;
     bool plot           = false;
@@ -76,17 +94,17 @@ int main(int argc, char *argv[])
     gsKnotVector<T> kv1(0,1,numKnotsMap,degreeMap+1);
     gsKnotVector<T> kv2(0,1,numKnots   ,degree+1   );
 
-    gsTensorBSplineBasis<2,T> basis1(kv1,kv1);
-    gsTensorBSplineBasis<2,T> basis2(kv2,kv2);
-    gsTensorBSplineBasis<2,T> basisI = integrationBasis<2,T>(basis1,basis2);
+    gsTensorBSplineBasis<2,T> basisMap(kv1,kv1);
+    gsTensorBSplineBasis<2,T> basisAnalysis(kv2,kv2);
+    gsTensorBSplineBasis<2,T> basisI = integrationBasis<2,T>(basisMap,basisAnalysis);
 
     gsInfo<<"Knots of basis 1: "<<kv1<<"\n";
     gsInfo<<"Knots of basis 2: "<<kv2<<"\n";
     gsInfo<<"Knots of integration basis: "<<basisI.knots(0)<<"\n";
     // Construct a square domain
-    gsSquareDomain<T> squareDomain(basis1);
+    gsSquareDomain<T> squareDomain(basisMap);
     gsVector<T> controls = squareDomain.getControls();
-    controls += basis2.knots(0).maxIntervalLength()*0.25*gsVector<T>::Random(controls.size());
+    controls += basisAnalysis.knots(0).maxIntervalLength()*0.25*gsVector<T>::Random(controls.size());
     squareDomain.setControls(controls);
 
     // Construct a composed basis
@@ -109,7 +127,7 @@ int main(int argc, char *argv[])
     auto cF = ev.getVariable(cf);
 
     gsInfo<<"Original basis:\n";
-    gsMultiBasis<T> ob(basis2);
+    gsMultiBasis<T> ob(basisAnalysis);
     ev.setIntegrationElements(ob);
     gsInfo<<"* int( F*| G|) = "<<ev.integral( F * meas( G))<<"\n";
     gsInfo<<"* int(cF*|cG|) = "<<ev.integral(cF * meas(cG))<<"\n";
@@ -120,47 +138,47 @@ int main(int argc, char *argv[])
     gsInfo<<"* int(cF*|cG|) = "<<ev.integral(cF * meas(cG))<<"\n";
 
     // Export quadrature points
-    gsMatrix<T> nodes1 = gsQuadrature::getAllNodes(basis1,evaluatorOptions);
-    gsMatrix<T> nodes2 = gsQuadrature::getAllNodes(basis2,evaluatorOptions);
+    gsMatrix<T> nodesMap = gsQuadrature::getAllNodes(basisMap,evaluatorOptions);
+    gsMatrix<T> nodesAnalysis = gsQuadrature::getAllNodes(basisAnalysis,evaluatorOptions);
     gsMatrix<T> nodesI = gsQuadrature::getAllNodes(basisI,evaluatorOptions);
-    gsMatrix<T> cnodes1, cnodes2, cnodesI;
+    gsMatrix<T> cnodesMap, cnodesAnalysis, cnodesI;
 
-    squareDomain.eval_into(nodes1,cnodes1);
-    squareDomain.eval_into(nodes2,cnodes2);
+    squareDomain.eval_into(nodesMap,cnodesMap);
+    squareDomain.eval_into(nodesAnalysis,cnodesAnalysis);
     squareDomain.eval_into(nodesI,cnodesI);
 
-    gsWriteParaviewPoints(nodes1,"nodes1");
-    gsWriteParaviewPoints(nodes2,"nodes2");
+    gsWriteParaviewPoints(nodesMap,"nodesMap");
+    gsWriteParaviewPoints(nodesAnalysis,"nodesAnalysis");
     gsWriteParaviewPoints(nodesI,"nodesI");
-    gsWriteParaviewPoints(cnodes1,"cnodes1");
-    gsWriteParaviewPoints(cnodes2,"cnodes2");
+    gsWriteParaviewPoints(cnodesMap,"cnodesMap");
+    gsWriteParaviewPoints(cnodesAnalysis,"cnodesAnalysis");
     gsWriteParaviewPoints(cnodesI,"cnodesI");
 
-    gsMesh<T> mesh1(basis1,2);
-    gsMesh<T> mesh2(basis2,2);
+    gsMesh<T> meshMap(basisMap,2);
+    gsMesh<T> meshAnalysis(basisAnalysis,2);
     gsMesh<T> meshI(basisI,2);
 
-    gsWriteParaview(mesh1,"mesh1",false);
-    gsWriteParaview(mesh2,"mesh2",false);
+    gsWriteParaview(meshMap,"meshMap",false);
+    gsWriteParaview(meshAnalysis,"meshAnalysis",false);
     gsWriteParaview(meshI,"meshI",false);
 
-    gsWriteParaview(composedGeometry,"composedGeometry",1000);
+    gsWriteParaview(composedGeometry,"composedGeometry",1000, true, true);
     gsWriteParaview(squareDomain.domain(),"squareDomain",1000,true,true);
-
+    gsWriteParaview(composedBasis,"composedBasis",1000, true);
 
 
     std::vector<std::string> headers = {"X","Y"};
-    nodes1.transposeInPlace();
-    nodes2.transposeInPlace();
+    nodesMap.transposeInPlace();
+    nodesAnalysis.transposeInPlace();
     nodesI.transposeInPlace();
-    cnodes1.transposeInPlace();
-    cnodes2.transposeInPlace();
+    cnodesMap.transposeInPlace();
+    cnodesAnalysis.transposeInPlace();
     cnodesI.transposeInPlace();
-    gsWriteCsv("nodes1.csv",nodes1,headers);
-    gsWriteCsv("nodes2.csv",nodes2,headers);
+    gsWriteCsv("nodesMap.csv",nodesMap,headers);
+    gsWriteCsv("nodesAnalysis.csv",nodesAnalysis,headers);
     gsWriteCsv("nodesI.csv",nodesI,headers);
-    gsWriteCsv("cnodes1.csv",cnodes1,headers);
-    gsWriteCsv("cnodes2.csv",cnodes2,headers);
+    gsWriteCsv("cnodesMap.csv",cnodesMap,headers);
+    gsWriteCsv("cnodesAnalysis.csv",cnodesAnalysis,headers);
     gsWriteCsv("cnodesI.csv",cnodesI,headers);
 
 
