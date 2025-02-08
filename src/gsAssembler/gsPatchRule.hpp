@@ -71,7 +71,7 @@ gsPatchRule<T>::gsPatchRule(const gsDomain<T> & domain,
             // Construct temporary basis (must be B-spline because we use knots!)
             // Bbasis = const_cast<gsBSplineBasis<T> *>(static_cast<const gsBSplineBasis<T> * >(&m_basis->component(d)));
             // Bbasis = const_cast<gsKnotVector<T> *>(static_cast<const gsKnotVector<T> * >(&m_domain->component(d)));
-            Bbasis = static_cast<const gsKnotVector<T> * >(&m_domain->component(d));
+            Bbasis = static_cast<const gsKnotVector<T> * >(m_domain->component(d).get());
 
             // Find the knots
             knots = this->_init(Bbasis);
@@ -218,7 +218,7 @@ template<class T>
 gsKnotVector<T> gsPatchRule<T>::_init(const gsKnotVector<T> * Bbasis) const
 {
     // get the knot vector and the size of the basis
-    gsKnotVector<T> knots = Bbasis->knots();
+    gsKnotVector<T> knots = *Bbasis;
     index_t size = Bbasis->size() - Bbasis->degree() - 1;
 
     // check the difference in the current order and the desired order
