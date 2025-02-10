@@ -465,7 +465,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         for (auto domIt = m_exprdata->domain().beginAll();
             domIt<domItEnd; ++domIt)
         {
-            if (changeQuadrature && QuPatch!=domIt.patch())
+            if (changeQuadrature || QuPatch!=domIt.patch())
             {
                 QuPatch = domIt.patch();
                 // get Degree of the domain

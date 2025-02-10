@@ -926,7 +926,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     m_exprdata->parsePattern(arg_tpl);
 
     typename gsBasis<T>::domainIter domIt;
-    typename gsBasis<T>::domainIter domItEnd;
+    typename gsBasis<T>::domainIter domItEnd = m_exprdata->domain().endAll();
     unsigned patchInd;
     _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
@@ -1057,8 +1057,8 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domIt = basis1.domain()->subdomain(iFace.first().patch)->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->subdomain(iFace.first().patch)->endBdr(iFace.first().side());
 
         // Start iteration over elements
         //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
@@ -1115,7 +1115,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     {
 //#pragma omp critical
 //        gsDebug<<"\n------> tid="<<omp_get_thread_num()<<"; patch="<< domIt.patch()<<"; element="<< domIt.id() <<"\n";
-        if (changeQuadrature && QuPatch!=domIt.patch())
+        if (/*changeQuadrature && */QuPatch!=domIt.patch())
         {
             QuPatch = domIt.patch();
             // get Degree of the domain
@@ -1182,9 +1182,9 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
         m_exprdata->setMutSource(*it->function());
 
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->domain().beginBdr(it->side());
+            m_exprdata->domain().subdomain(it->patch())->beginBdr(it->side());
         typename gsBasis<T>::domainIter domItEnd =
-            m_exprdata->domain().endBdr(it->side());
+            m_exprdata->domain().subdomain(it->patch())->endBdr(it->side());
 
         // Start iteration over elements
         for (; domIt < domItEnd; ++domIt )
@@ -1236,9 +1236,9 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add it->patch to domainiter ?
-            m_exprdata->domain().beginBdr(it->side());
+            m_exprdata->domain().subdomain(it->patch)->beginBdr(it->side());
         typename gsBasis<T>::domainIter domItEnd =  // add it->patch to domainiter ?
-            m_exprdata->domain().endBdr(it->side());
+            m_exprdata->domain().subdomain(it->patch)->endBdr(it->side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )
@@ -1311,9 +1311,9 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 
         // TODO [later]: Use beginIfc instead of beginBdr
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->domain().beginBdr(iFace.first().side());
+            m_exprdata->domain().subdomain(iFace.first().patch)->beginBdr(iFace.first().side());
         typename gsBasis<T>::domainIter domItEnd =
-            m_exprdata->domain().endBdr(iFace.first().side());
+            m_exprdata->domain().subdomain(iFace.first().patch)->endBdr(iFace.first().side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt)
