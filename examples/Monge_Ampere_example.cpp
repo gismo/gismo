@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
     bool plot           = false;
     index_t numRefine   = 3;
     index_t numLRefine  = 3;
+    index_t numML       = 0;
     index_t numElevate  = 1;
     index_t numrRefine  = -1; // number of composition bewteen adaptive mappings ()
     index_t maxIter     = 50;
@@ -78,6 +79,8 @@ int main(int argc, char *argv[])
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
     cmd.addInt( "r", "numrRefine", "Number of local r-refinement compostion loops",  numrRefine);
+    cmd.addInt( "m", "numML", "Number of multi levels loops",  numML);
+
     cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
@@ -248,7 +251,19 @@ int main(int argc, char *argv[])
     slv_time += timer.stop();
 
     gsInfo<< "." << solVector.size() <<std::flush; // Linear solving done
- 
+
+    for (int r=0; r<=numML; ++r)
+    {
+    if (r >1)
+    {
+        dbasis.uniformRefine();
+        mp.uniformRefine();
+        mpLeft.uniformRefine();
+        timer.restart();
+        //auto Poisson  = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(dbasis.basis(0),bc,A.options(), 1.,eps,0.);
+        gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc, A.options(), eps);
+        slv_time += timer.stop();
+    }
     // Picard loop
     gsVector<>  h1Res(maxIter+1), l2err(maxIter+1), Iter_mae(maxIter+1);
     gsMatrix<> sv0; //
@@ -379,7 +394,7 @@ int main(int argc, char *argv[])
     }//for loop
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
- 
+
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time<<"\n";
     gsInfo<<"     Setup: "<< setup_time <<"\n";
@@ -408,6 +423,7 @@ int main(int argc, char *argv[])
         gsInfo << "Errors are not saved. To save them, try with --errorsave.\n";
     }
 
+    }//for loop
     //! [Export visualization in ParaView]
     if (plot)
     {
@@ -451,17 +467,17 @@ int main(int argc, char *argv[])
             Psitp.computeTopology();
         }
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        // Psi.addAutoBoundaries();
-        // geometryMap PP = A.getMap(Psitp);
-        // gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
+        Psi.addAutoBoundaries();
+        geometryMap PP = A.getMap(Psitp);
+        gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
 
-        // PP(mpLeft);
-        // //auto comp = A.getCoeff(mpLeft, PP);
-        // A.initSystem(ITdim);
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * PP.tr() );// blocked by this one
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
-        // v_sol.extract(Psitp);
+        PP(mpLeft);
+        //auto comp = A.getCoeff(mpLeft, PP);
+        A.initSystem(ITdim);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * PP.tr() );// blocked by this one
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
         Psitp.computeTopology();
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
