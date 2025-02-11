@@ -36,7 +36,6 @@ public:
     /// Default empty constructor
     gsOverIntegrateRule()
     :
-    m_domain(nullptr),
     m_interior(),
     m_boundary()
     {}
@@ -70,13 +69,12 @@ public:
                         const  std::vector<gsQuadRule<T> > & quadInterior,
                         const  std::vector<gsQuadRule<T> > & quadBoundary)
     :
-    m_domain(&domain),
     m_interior(quadInterior),
-    m_boundary(quadBoundary)
+    m_boundary(quadBoundary),
+    m_dim(domain.dim()),
+    m_start(domain.boundingBox().col(0)),
+    m_end(domain.boundingBox().col(1))
     {
-        std::vector< gsVector<T> > nodes(m_domain->dim());
-        m_start = m_domain->boundingBox().col(0);
-        m_end = m_domain->boundingBox().col(1);
     };
 
     /**
@@ -114,7 +112,7 @@ public:
 
 public:
     /// \brief Dimension of the rule
-    index_t dim() const { return m_domain->dim(); }
+    index_t dim() const { return m_dim; }
 
     /**
      * @brief      Maps the points in the d-dimensional cube with points lower and upper
@@ -131,8 +129,8 @@ public:
 
         gsVector<T> bot = lower-m_start;
         gsVector<T> top = upper-m_end;
-        std::vector<gsVector<T> > elNodes(m_domain->dim());
-        std::vector<gsVector<T> > elWeights(m_domain->dim());
+        std::vector<gsVector<T> > elNodes(m_dim);
+        std::vector<gsVector<T> > elWeights(m_dim);
         gsMatrix<T> tmp;
         for (index_t d = 0; d!=dim(); d++)
         {
@@ -153,9 +151,10 @@ public:
     }
 
 private:
-    const gsDomain<T> * m_domain;
     std::vector<gsQuadRule<T> > m_interior, m_boundary;
-    gsVector<T> m_start,m_end;
+    const short_t m_dim;
+    const gsVector<T> m_start;
+    const gsVector<T> m_end;
 
 }; // class gsOverIntegrateRule
 
