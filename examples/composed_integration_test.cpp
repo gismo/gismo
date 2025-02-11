@@ -66,10 +66,10 @@ int main(int argc, char *argv[])
 {
     // Input options
     index_t numKnots    = 3;
-    index_t degree      = 4;
+    index_t degree      = 3;
 
     index_t numKnotsMap = 2;
-    index_t degreeMap   = 3;
+    index_t degreeMap   = 2;
     bool plot           = false;
 
     std::string options = "options/assembler_options.xml";
@@ -130,13 +130,19 @@ int main(int argc, char *argv[])
     gsInfo<<"Original basis:\n";
     gsMultiBasis<T> ob(basisAnalysis);
     ev.setIntegrationElements(ob);
+    real_t gt = 8./15;
     gsInfo<<"* int( F*| G|) = "<<ev.integral( F * meas( G))<<"\n";
+    gsInfo<<"* error: int( F*| G|) = "<<ev.integral( F * meas( G)) - gt <<"\n";
     gsInfo<<"* int(cF*|cG|) = "<<ev.integral(cF * meas(cG))<<"\n";
-    gsInfo<<"Integration basis:\n";
+    gsInfo<<"* error int(cF*|cG|) = "<<ev.integral(cF * meas(cG)) - gt <<"\n";
+
+    gsInfo<<"\nIntegration basis:\n";
     gsMultiBasis<T> ib(basisI);
     ev.setIntegrationElements(ib);
     gsInfo<<"* int( F*| G|) = "<<ev.integral( F * meas( G))<<"\n";
+    gsInfo<<"* error: int( F*| G|) = "<<ev.integral( F * meas( G)) - gt <<"\n";
     gsInfo<<"* int(cF*|cG|) = "<<ev.integral(cF * meas(cG))<<"\n";
+    gsInfo<<"* error: int(cF*|cG|) = "<<ev.integral(cF * meas(cG)) - gt <<"\n";
 
     // Export quadrature points
     gsMatrix<T> nodesMap = gsQuadrature::getAllNodes(basisMap,evaluatorOptions);
@@ -166,6 +172,16 @@ int main(int argc, char *argv[])
     gsWriteParaview(composedGeometry,"composedGeometry",1000, true, true);
     gsWriteParaview(squareDomain.domain(),"squareDomain",1000,true,true);
     gsWriteParaview(composedBasis,"composedBasis",1000, true);
+
+
+    // Plot iso lines for composed meshes
+    composedGeometry.evaluateMesh(meshAnalysis);
+    gsWriteParaview(meshAnalysis,"isolines_analysis", 10000);
+    composedGeometry.evaluateMesh(meshI);
+    gsWriteParaview(meshI,"isolines_integral", 10000);
+
+    
+
 
     /*
     std::vector<std::string> headers = {"X","Y"};
