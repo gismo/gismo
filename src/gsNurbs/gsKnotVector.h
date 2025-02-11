@@ -180,6 +180,15 @@ public: // iterator ends
         return new gsKnotDomainIterator<T>(*this,false);
     }
 
+    short_t dim() const override { return 1; }
+
+    gsMatrix<T> boundingBox() const override
+    {
+        gsMatrix<T> box(2,1);
+        box << m_repKnots.front(), m_repKnots.back();
+        return box;
+    }
+
 public: // constructors
 
     /// Empty constructor sets the degree to -1 and leaves the knots empty.

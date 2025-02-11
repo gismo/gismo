@@ -939,6 +939,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
         domIt<domItEnd; ++domIt)
     {
         m_exprdata->points() = domIt.centerPoint();
+        patchInd = domIt.patch();
         op_tuple(pp, arg_tpl);
     }
 }//parallel
@@ -1088,7 +1089,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     //bool failed = false;
     const index_t elim = m_options.getInt("DirichletStrategy");
     // Optimization for the case when the quadrature rule is the same for all patches
-    bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+    // bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
     typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 #pragma omp parallel

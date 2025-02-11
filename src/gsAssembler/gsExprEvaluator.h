@@ -175,8 +175,8 @@ public:
     template<class E> // note: integralBdrElWise not offered
     T integralBdr(const expr::_expr<E> & expr)
     {
-        if (const gsCompositeDomain<T> & cdomain = dynamic_cast<const gsCompositeDomain<T>&>(m_exprdata->domain()))
-            return computeBdr_impl<E,plus_op>(expr, cdomain.topology().boundaries());
+        if ((dynamic_cast<const gsCompositeDomain<T>*>(&m_exprdata->domain())))
+            return computeBdr_impl<E,plus_op>(expr, static_cast<const gsCompositeDomain<T> & >(m_exprdata->domain()).topology().boundaries());
         else
             return 0;
     }
@@ -527,14 +527,14 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
              bdrlist.begin(); bit != bdrlist.end(); ++bit)
     {
         // Quadrature rule
-        QuRule = gsQuadrature::get(m_exprdata->domain().subdomain(bit->patch), m_options,bit->direction());
+        QuRule = gsQuadrature::get(*m_exprdata->domain().subdomain(bit->patch), m_options,bit->direction());
 
         // Initialize domain element iterator
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->domain()->beginBdr(bit->side());
+            m_exprdata->domain().subdomain(bit->patch)->beginBdr(bit->side());
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            m_exprdata->domain()->endBdr(bit->side());
+            m_exprdata->domain().subdomain(bit->patch)->endBdr(bit->side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )
@@ -595,9 +595,9 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->domain()->beginBdr(it->side());
+            m_exprdata->domain().subdomain(it->patch())->beginBdr(it->side());
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            m_exprdata->domain()->endBdr(it->side());
+            m_exprdata->domain().subdomain(it->patch())->endBdr(it->side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )
@@ -665,9 +665,9 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->domain().beginBdr(iFace.first().side());
+            m_exprdata->domain().subdomain(patch1)->beginBdr(iFace.first().side());
         typename gsBasis<T>::domainIter domItEnd =
-            m_exprdata->domain().endBdr(iFace.first().side());
+            m_exprdata->domain().subdomain(patch1)->endBdr(iFace.first().side());
 
         // Start iteration over elements
         elVal = _op::init();
@@ -1018,7 +1018,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
 
             if ( mesh )
             {
-                gsMesh<T> msh(m_exprdata->domain().subdomain(i), 2);
+                gsMesh<T> msh(*m_exprdata->domain().subdomain(i), 2);
                 static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
                 gsWriteParaview(msh, fileName + "_mesh", false);
                 // Snippet from gsParaviewCollection
