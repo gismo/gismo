@@ -14,6 +14,8 @@
 //! [Include namespace]
 #include <gismo.h>
 #include <fstream> // For file operations
+#include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -53,14 +55,14 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot           = false;
     index_t numRefine   = 3;
-    index_t numLRefine  = 3;
+    index_t numLRefine  = 0;
     index_t numElevate  = 0;
     index_t maxIter     = 50;
     index_t NumArMarEl   = 0; // Number of ring of cells around marked elements
     double eps          = 1e-7; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 6.;
-    bool export_b64     = false;
+    //bool export_b64     = false;
     bool errorsave      = false;
     real_t adaptRefParam = 0.;     // ... adapt parameter.
     index_t FactRefPar    = 0;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
@@ -104,43 +106,6 @@ int main(int argc, char *argv[])
     mp.computeTopology();
     //mp.addAutoBoundaries();
 
-    //..... Test 1
-    //... data for Elasiticity
-    auto En              = 1e5;
-    auto nu              = 0.3;
-    auto mu              = En/(2.*(1+nu));
-    auto lanbda_3d       = nu*En/((1+nu)*(1-2.*nu));
-    auto lanbda          = 2.*lanbda_3d*mu/(lanbda_3d+2.*mu);
-    // convection coefficient:
-    std::vector<gsMatrix<>> coeff_diff1;
-    gsMatrix<> coefdiff1{1,2}; coefdiff1 << 2.*mu+lanbda, 0.;
-    coeff_diff1.push_back(coefdiff1);
-    coefdiff1 << 0., lanbda;
-    coeff_diff1.push_back(coefdiff1);
-    coefdiff1 << lanbda, 0.;
-    coeff_diff1.push_back(coefdiff1);
-    coefdiff1 << 0., 2.*mu+lanbda;
-    coeff_diff1.push_back(coefdiff1);
-    //§§
-    std::vector<gsMatrix<>> coeff_diff;
-    //gsMatrix<> coefdiff{2,2}; coefdiff << 2.*mu+lanbda, 0., 0., mu;
-    gsMatrix<> coefdiff{2,2}; coefdiff << 1., 0., 0., 1.;
-    coeff_diff.push_back(coefdiff);
-    // convection coefficient:1
-    coefdiff << 0., mu, lanbda, 0.;
-    coeff_diff.push_back(coefdiff);
-    // convection coefficient:2
-    coefdiff << 0., lanbda, mu, 0.;
-    coeff_diff.push_back(coefdiff);
-    // convection coefficient:3
-    coefdiff << mu, 0., 0., 2.*mu+lanbda;
-    coeff_diff.push_back(coefdiff);
-    // manufactured stress field 
-    gsFunctionExpr<> sigma_yy("(y**2/(x**2+y**2))*(0.5*10.*(1.-1./(x**2+y**2) + (1.-4.*1./(x**2+y**2)+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + (x**2/(x**2+y**2))*(0.5*10.*(1.+1./(x**2+y**2) - (1.+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + 2.*(x*y/(x**2+y**2))*(-1*0.5*10.*(1.+2.*1./(x**2+y**2) -3.*1.**2/(x**2+y**2)**2)*(2.*x*y)/(x**2+y**2)) ",2);
-    gsFunctionExpr<> sigma_xx("(x**2/(x**2+y**2))*(0.5*10.*(1.-1./(x**2+y**2) + (1.-4.*1./(x**2+y**2)+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + (y**2/(x**2+y**2))*(0.5*10.*(1.+1./(x**2+y**2) - (1.+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) - 2.*(x*y/(x**2+y**2))*(-1*0.5*10.*(1.+2.*1./(x**2+y**2) -3.*1.**2/(x**2+y**2)**2)*(2.*x*y)/(x**2+y**2)) ",2);
-    gsFunctionExpr<> sigma_xy("(x*y/(x**2+y**2))*(0.5*10.*(1.-1./(x**2+y**2) + (1.-4.*1./(x**2+y**2)+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) - (x*y/(x**2+y**2))*(0.5*10.*(1.+1./(x**2+y**2) - (1.+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + ((x**2-y**2)/(x**2+y**2))*(-1*0.5*10.*(1.+2.*1./(x**2+y**2) -3.*1.**2/(x**2+y**2)**2)*(2.*x*y)/(x**2+y**2))",2);
-    gsFunctionExpr<> StressN1("(x**2/(x**2+y**2))*(0.5*10.*(1.-1./(x**2+y**2) + (1.-4.*1./(x**2+y**2)+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + (y**2/(x**2+y**2))*(0.5*10.*(1.+1./(x**2+y**2) - (1.+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) - 2.*(x*y/(x**2+y**2))*(-1*0.5*10.*(1.+2.*1./(x**2+y**2) -3.*1.**2/(x**2+y**2)**2)*(2.*x*y)/(x**2+y**2))","(x*y/(x**2+y**2))*(0.5*10.*(1.-1./(x**2+y**2) + (1.-4.*1./(x**2+y**2)+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) - (x*y/(x**2+y**2))*(0.5*10.*(1.+1./(x**2+y**2) - (1.+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + ((x**2-y**2)/(x**2+y**2))*(-1*0.5*10.*(1.+2.*1./(x**2+y**2) -3.*1.**2/(x**2+y**2)**2)*(2.*x*y)/(x**2+y**2))",2);
-    gsFunctionExpr<> StressN2("(x*y/(x**2+y**2))*(0.5*10.*(1.-1./(x**2+y**2) + (1.-4.*1./(x**2+y**2)+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) - (x*y/(x**2+y**2))*(0.5*10.*(1.+1./(x**2+y**2) - (1.+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + ((x**2-y**2)/(x**2+y**2))*(-1*0.5*10.*(1.+2.*1./(x**2+y**2) -3.*1.**2/(x**2+y**2)**2)*(2.*x*y)/(x**2+y**2))","(y**2/(x**2+y**2))*(0.5*10.*(1.-1./(x**2+y**2) + (1.-4.*1./(x**2+y**2)+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + (x**2/(x**2+y**2))*(0.5*10.*(1.+1./(x**2+y**2) - (1.+3.*1.**2/(x**2+y**2)**2)*(x**2-y**2)/(x**2+y**2))) + 2.*(x*y/(x**2+y**2))*(-1*0.5*10.*(1.+2.*1./(x**2+y**2) -3.*1.**2/(x**2+y**2)**2)*(2.*x*y)/(x**2+y**2)) ",2);
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
@@ -162,7 +127,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Boundary conditions:\n"<< bc_mae <<"\n";
 
     //! [Refinement]
-    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
     
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
@@ -380,8 +345,8 @@ int main(int argc, char *argv[])
 
     //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
     // Psi.addAutoBoundaries();
-    geometryMap PP = A.getMap(Psitp);
-    auto  comp = PP(mpLeft);
+    geometryMap PPi = A.getMap(Psitp);
+    auto  comp = PPi(mpLeft);
     A.initSystem(2);
     //Obtain control points for the gradient of mpLeft.comp(Psi)
     A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
@@ -394,127 +359,149 @@ int main(int argc, char *argv[])
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    for(size_t i =0; i<Psitp.nPatches(); ++i)
-        Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
+    // for(size_t i =0; i<Psitp.nPatches(); ++i)
+    //     Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
+    v_sol.extract(Psi);
     Psi.addAutoBoundaries();
     Psi.computeTopology();
+    gsWrite(Psi, "Psi_mapping");
     //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time<<"\n";
     gsInfo<<"     Setup: "<< setup_time <<"\n";
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
-
-    //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
-    // Dirichlet BCs
-    gsFunctionExpr<> g("0",2);
+    //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
     if (true){
-    gsBoundaryConditions<> bc, bc2;
-    bc.setGeoMap(Psi);
-    bc.addCondition(0,2, condition_type::dirichlet, &g,0,false);
-    //... Dirichlet BCs
-    bc2.setGeoMap(Psi);
-    bc.addCondition(0,1, condition_type::dirichlet, &g,0,false);
+    // creating basis
+    gsMultiBasis<> basis(Psi);
+    
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
+
+    gsFunctionExpr<> analyticalStresses("1-1/(x^2+y^2)*(3/2*cos(2*atan2(y,x)) + cos(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))",
+                                        "-1/(x^2+y^2)*(1/2*cos(2*atan2(y,x)) - cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))",
+                                        "-1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))",2);
+    // boundary load neumann BC
+    gsFunctionExpr<> traction("(-1+1/(x^2+y^2)*(3/2*cos(2*atan2(y,x)) + cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))) * (x==-4) +"
+                              "(-1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))) * (y==4)",
+                              "(1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))) * (x==-4) +"
+                              "(-1/(x^2+y^2)*(1/2*cos(2*atan2(y,x)) - cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))) * (y==4)",2);
+    // material parameters
+    real_t youngsModulus = 1.0e3;
+    real_t poissonsRatio = 0.3;
+
+    // boundary conditions
+    gsBoundaryConditions<> bcInfo;
+    bcInfo.addCondition(0,boundary::north,condition_type::neumann,&traction);
+    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,nullptr,1); // last number is a component (coordinate) number
+    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,nullptr,0);
+
+    // source function, rhs
+    gsConstantFunction<> g(0.,0.,2);
 
     gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
-    gsInfo<<"Source function is "<< rhs << "\n";
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-
-
-    dbasis.clear();
-    gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
-
-    geometryMap PP = A.getMap(Psi);
-    auto ff_GPsi   = A.getCoeff(f, PP);
+    gsInfo<<"Source function is "<< g << "\n";
+    gsInfo<<"Boundary conditions:\n"<< bcInfo <<"\n";
     
+    //=============================================//
+            // Assembling & solving //
+    //=============================================//    
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
     MarkingStrategy adaptRefCrit = PUCA;
     //MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
-    // Set the discretization space // different boundary condition !
-    space ru = A.getSpace(dbasis);
-
-    // Set the source term for Poisson equation
-    auto SFunc      = A.getCoeff(rhs, PP);
-
-    // Recover manufactured solution for Poisson equation
-    auto sigmx_ex   = ev.getVariable(sigma_xx, PP);
-    auto sigmy_ex   = ev.getVariable(sigma_xx, PP);
-
-    // Solution vector and solution variable
-    gsMatrix<> rsolVector;
-    solution ru_sol = A.getSolution(ru, rsolVector);
- 
-    gsMatrix<> ssolVector;
-    solution su_sol = A.getSolution(ru, ssolVector);
-
-    gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
+    gsElasticityAssembler<real_t> assembler(Psi,basis,bcInfo,g);
+    // constructing displacement as an IGA function
+    gsMultiPatch<> u_disp;
+    // constructing stress tensor
+    gsPiecewiseFunction<> stresses;
+    gsVector<>   l2err(numLRefine+1);//h1err(numLRefine+1),
     gsVector<int>  DoFPDE(numLRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved)\n";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     for (int r=0; r<=numLRefine; ++r)
     {
-        //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
+        //=============================================//
+                    // Assembling & solving //
+        //=============================================//
+        // creating assembler
+        gsElasticityAssembler<real_t> assembler(Psi,basis,bcInfo,g);
+        assembler.options().setReal("YoungsModulus",youngsModulus);
+        assembler.options().setReal("PoissonsRatio",poissonsRatio);
+        gsInfo<<"Assembling...\n";
+        gsStopwatch clock;
+        clock.restart();
+        assembler.assemble();
+        gsInfo << "Assembled a system (matrix and load vector) with "
+                << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
 
-        // Compute the system matrix and right-hand side
-        // gsMatrix<> GA;
+        gsInfo << "Solving...\n";
+        clock.restart();
 
-        gsInfo<< "Solving PDEs " <<std::flush;
-        gsInfo<< A.numDofs() <<std::flush;
-        
-        //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
-        // Initialize the system
-        //std::vector<gismo::gsSparseMatrix<double>> GA;
-        ru.setup(bc, dirichlet::l2Projection, 0);
-        gsInfo << coeff_diff[0] << "coeff diff\n";
+        #ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLLT solver(assembler.matrix());
+        gsVector<> ssolVector = solver.solve(assembler.rhs());
+        gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
+        #else
+        gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+        gsVector<> ssolVector = solver.solve(assembler.rhs());
+        gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
+        #endif
 
-        A.initSystem();
-        setup_time += timer.stop();
+        //=============================================//
+                            // Output //
+        //=============================================//
+
+        // constructing displacement as an IGA function
+        gsMultiPatch<> u_disp;
+        assembler.constructSolution(ssolVector,assembler.allFixedDofs(),u_disp);
+        // constructing stress tensor
+        gsPiecewiseFunction<> stresses;
+        assembler.constructCauchyStresses(u_disp,stresses,stress_components::all_2D_vector);
+
+        // constructing an IGA field (geometry + solution) for displacement
+        gsField<> solutionField(assembler.patches(),u_disp);
+        // constructing an IGA field (geometry + solution) for stresses
+        gsField<> stressField(assembler.patches(),stresses,true);
+        // analytical stresses
+        gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
+
+        gsExprEvaluator<> ev;
+        ev.setIntegrationElements(assembler.multiBasis());
+        gsExprEvaluator<>::geometryMap PP = ev.getMap(Psi);
+        auto sigm_ex   = ev.getVariable(analyticalStresses, PP);
+        auto ff_GPsi   = ev.getVariable(f, PP);
+        gsExprEvaluator<>::variable istress = ev.getVariable(stresses);
+
+            // omp_set_num_threads(1); // Use these threads for later parallel regions
+        DoFPDE[r] = assembler.numDofs();
         timer.restart();
-        A.assemble(
-        igrad(ru, PP) * (coeff_diff[0]* igrad(ru, PP).tr()) * meas(PP) //matrix
-        ,
-        ru * SFunc * meas(PP) //rhs vector
-        );
-        ma_time += timer.stop();
-
-        //GA.push_back(A.matrix());
-
-        // gsDebugVar(A.matrix().toDense());
-        // gsDebugVar(A.rhs().transpose()   );
-
-        gsInfo<< "." <<std::flush;// Assemblying done
-
-        timer.restart();
-        solver.compute( A.matrix() );
-        rsolVector = solver.solve(A.rhs());
-
-        slv_time += timer.stop();
-
-        gsInfo<< "." <<std::flush; // Linear solving done
-
-        // omp_set_dynamic(0);     // Explicitly disable dynamic teams
-        // omp_set_num_threads(1); // Use these threads for later parallel regions
-        DoFPDE[r] = A.numDofs();
-
-        timer.restart();
-        l2err[r]= math::sqrt( ev.integral( (sigmx_ex - ( coeff_diff1[0] *igrad(ru_sol,PP).tr()+coeff_diff1[1]*igrad(ru_sol,PP).tr() )).sqNorm() * meas(PP) ));
-        h1err[r]= math::sqrt(ev.integral( ( sigmy_ex - ( coeff_diff1[2] *igrad(ru_sol,PP).tr()+coeff_diff1[3]*igrad(ru_sol,PP).tr() )).sqNorm() * meas(PP)));
-
+        l2err[r]= math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
+        //h1err[r]= math::sqrt(ev.max( (sigm_ex - istress).sqNorm()));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
+    
+        // eval stress at the top of the circular cut
+        gsMatrix<> A(2,1);
+        A << 1.,0.; // parametric coordinates for the isogeometric solution
+        gsMatrix<> res;
+        stresses.piece(0).eval_into(A,res);
+        A << 0., 1.; // spatial coordinates for the analytical solution
+        gsMatrix<> analytical;
+        analyticalStresses.eval_into(A,analytical);
+        gsInfo << "XX-stress at the top of the circle: " << res.at(0) << " (computed), " << analytical.at(0) << " (analytical)\n";
+        gsInfo << "YY-stress at the top of the circle: " << res.at(1) << " (computed), " << analytical.at(1) << " (analytical)\n";
+        gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
         if(r < numLRefine){
         //! [beginRefLoop]
             gsInfo << "====== Loop " << r << " of "
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
-            // Get the element-wise norms.
-            //ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
-            //if (IntensityMAE > 1.)
+            // Compute the error indicators
             ev.integralElWise( ff_GPsi );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
@@ -528,8 +515,10 @@ int main(int argc, char *argv[])
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
             // Refine the marked elements with a 1-ring of cells around marked elements
-            gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
+            gsRefineMarkedElements( basis, elMarked, NumArMarEl);
+            gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+            assembler.refresh();
             if (r%2==0)
             NumArMarEl = NumArMarEl + FactRefPar;
             }
@@ -547,8 +536,8 @@ int main(int argc, char *argv[])
 
     //! [Error and convergence rates]
     gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
-    gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
+    gsInfo<< "L2_error_x = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    //gsInfo<< "L2_error_y= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
 
     if (errorsave)
     {
@@ -558,7 +547,7 @@ int main(int argc, char *argv[])
     {
         outFile << "#DoF_PDE: " << adaptRefParam <<" "<< NumArMarEl <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
-        outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        //outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
     }
@@ -580,30 +569,33 @@ int main(int argc, char *argv[])
                    l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
                    <<"\n";
 
-        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
-              <<( h1err.head(numRefine).array() /
-                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+        //gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
+        //     <<( h1err.head(numRefine).array() /
+        //          h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     //! [Error and convergence rates]
     //! [Export visualization in ParaView]
     if (plot)
     {
-        gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(&Psi);
-        collection.addField(ru_sol,"numerical solution");
-        collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
-        collection.addField(jac(PP).det(), "Jacobian function");
-        collection.addField(sigmx_ex, "exact stress/x");
-        collection.addField(sigmy_ex, "exact stress/y");
-        collection.addField(ff_GPsi,"Density function");
-        collection.saveTimeStep();
-        collection.save();
-        gsFileManager::open("ParaviewOutput/solution.pvd");
+        // constructing an IGA field (geometry + solution) for displacement
+        gsField<> solutionField(assembler.patches(),u_disp);
+        // constructing an IGA field (geometry + solution) for stresses
+        gsField<> stressField(assembler.patches(),stresses,true);
+        // analytical stresses
+        gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
+        //... density function
+        //gsField<> densityfunction(assembler.patches(),f,false);
+        // creating a container to plot all fields to one Paraview file
+        std::map<std::string,const gsField<> *> fields;
+        fields["Deformation"] = &solutionField;
+        fields["Stress"] = &stressField;
+        fields["StressAnalytical"] = &analyticalStressField;
+        //fields["DensityAnalytical"] = &densityfunction;
+        gsWriteParaviewMultiPhysics(fields,"plateWithHole",100000,plot);
+        gsInfo << "Open \"plateWithHole.pvd\" in Paraview for visualization. Stress wiggles on the left side are caused by "
+                  "a singularity in the parametrization.\n";
+        gsFileManager::open("plateWithHole.pvd");
+
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
