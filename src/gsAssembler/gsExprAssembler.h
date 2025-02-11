@@ -920,7 +920,6 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
 
-    typename gsBasis<T>::domainIter domIt;
     typename gsBasis<T>::domainIter domItEnd = m_exprdata->domain().endAll();
     unsigned patchInd;
     _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
@@ -1021,7 +1020,6 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         omp_init_lock(&l);
 #endif
     typedef typename gsFunction<T>::uPtr ifacemap;
-    typename gsBasis<T>::domainIter domIt;
     const bool flipSide = m_options.askSwitch("flipSide", false);
 #pragma omp parallel
 {
@@ -1522,7 +1520,6 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
-    typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 #pragma omp parallel
 {
 #   ifdef _OPENMP
