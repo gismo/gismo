@@ -111,9 +111,7 @@ public: // more members
 // Specific for gsTensorDomain
 public:
 
-
-
-    auto component(index_t i) const
+    typename gsDomain<T>::Ptr component(index_t i) const
     {
         return m_knotVectors[i];
     }
