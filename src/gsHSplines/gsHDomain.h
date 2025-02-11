@@ -98,7 +98,7 @@ public:
     {
     }
 
-    domainIter beginAll() const
+    domainIter beginAll() const override
     {
         return domainIter(new gsHDomainIterator<T,d,Z>(m_tree,m_basis));
     }

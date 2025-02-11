@@ -124,7 +124,7 @@ public:
 
     /// Resets the iterator so that it can be used for another
     /// iteration through all boundary elements.
-    void reset()
+    void reset() override
     {
         m_leaf = m_tree.beginLeafIterator();
         updateLeaf();

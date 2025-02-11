@@ -36,8 +36,8 @@ class gsTensorDomainBoundaryIterator : public gsDomainIterator<T>
 {
     typedef gsDomainIteratorWrapper<T> domainIterWrapper;
     typedef typename gsDomain<T>::uPtr domainPtr;
-    using gsDomainIterator<T>::uPtr;
-    using gsDomainIterator<T>::Ptr;
+    using typename  gsDomainIterator<T>::uPtr;
+    using typename  gsDomainIterator<T>::Ptr;
 public:
 
     explicit gsTensorDomainBoundaryIterator(const gsTensorDomain<T,D> & domain,

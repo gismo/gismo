@@ -362,7 +362,7 @@ public: // miscellaneous
 
     /// Print the knot vector to the given stream.
     /// TODO: Improve.
-    std::ostream &print(std::ostream &os = gsInfo ) const;
+    std::ostream &print(std::ostream &os = gsInfo ) const override;
 
     /// Checks whether the knot vector is in a consistent state
     bool check() const;

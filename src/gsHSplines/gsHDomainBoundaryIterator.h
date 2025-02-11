@@ -112,12 +112,12 @@ public:
 
     /// Resets the iterator so that it can be used for another
     /// iteration through all boundary elements.
-    void reset()
+    void reset() override
     {
         initLeaf(m_tree);
     }
 
-    gsVector<T> lowerCorner() const
+    gsVector<T> lowerCorner() const override
     {
         gsVector<T> lower;
         lower.resize(d);
@@ -129,7 +129,7 @@ public:
         return lower;
     }
 
-    gsVector<T> upperCorner() const
+    gsVector<T> upperCorner() const override
     {
         gsVector<T> upper;
         upper.resize(d);
@@ -141,7 +141,7 @@ public:
         return upper;
     }
 
-    const T getPerpendicularCellSize() const
+    const T getPerpendicularCellSize() const override
     {
         return *(m_curElement[dir]+1) - *m_curElement[dir];
     }
