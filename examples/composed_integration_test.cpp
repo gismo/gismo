@@ -66,14 +66,15 @@ int main(int argc, char *argv[])
 {
     // Input options
     index_t numKnots    = 3;
-    index_t degree      = 3;
+    index_t degree      = 4;
+
     index_t numKnotsMap = 2;
-    index_t degreeMap   = 2;
+    index_t degreeMap   = 3;
     bool plot           = false;
 
     std::string options = "options/assembler_options.xml";
-    std::string fun     = "x^2*y^2";
-    gsCmdLine cmd("Shell modal solver.");
+    std::string fun     = "(1-x)^2 + (y-x^2)^2";
+    gsCmdLine cmd("Integration test.");
 
     cmd.addInt("n", "numKnots", "Number of interior knots", numKnots);
     cmd.addInt("p", "degree", "Degree of the basis", degree);
@@ -166,7 +167,7 @@ int main(int argc, char *argv[])
     gsWriteParaview(squareDomain.domain(),"squareDomain",1000,true,true);
     gsWriteParaview(composedBasis,"composedBasis",1000, true);
 
-
+    /*
     std::vector<std::string> headers = {"X","Y"};
     nodesMap.transposeInPlace();
     nodesAnalysis.transposeInPlace();
@@ -180,6 +181,7 @@ int main(int argc, char *argv[])
     gsWriteCsv("cnodesMap.csv",cnodesMap,headers);
     gsWriteCsv("cnodesAnalysis.csv",cnodesAnalysis,headers);
     gsWriteCsv("cnodesI.csv",cnodesI,headers);
+    */
 
 
     return EXIT_SUCCESS;
