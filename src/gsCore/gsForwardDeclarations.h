@@ -123,6 +123,9 @@ template <class T=real_t>                class gsBulk;
 template <class T=real_t>                class gsDomainIteratorWrapper;
 template <class T=real_t>                class gsDomainIterator;
 
+template <class T=real_t>                class gsPointDomain;
+template <class T=real_t>                class gsPointDomainIterator;
+
 template <class T = real_t, int D=-1>    class gsTensorDomainIterator;
 template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainIterator;
 

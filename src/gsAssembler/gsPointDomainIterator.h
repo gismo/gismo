@@ -29,8 +29,7 @@ public:
     gsPointDomainIterator(const gsPointDomain<T> & domain)
     :
     gsDomainIterator<T>(),
-    lower  ( domain.points().col(0) ),
-    upper  ( domain.points().col(0) ),
+    m_domain(domain)
     {
     }
 
@@ -58,15 +57,16 @@ public:
         /* Transparent, since only the ID needs to be updated (delegated to operator-= in gsDomainIterator) */
     }
 
-    const gsVector<T> & lowerCorner() const
+    gsVector<T> lowerCorner() const
     { return m_domain.points().col(m_id); }
 
-    const gsVector<T> & upperCorner() const
+    gsVector<T> upperCorner() const
     { return m_domain.points().col(m_id); }
 
 // Data members
 protected:
     using gsDomainIterator<T>::m_id;
+    const gsPointDomain<T> & m_domain;
 
 }; // class gsPointDomainIterator
 

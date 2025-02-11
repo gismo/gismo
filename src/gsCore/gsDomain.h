@@ -204,7 +204,7 @@ public: // Domain element iterators
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
-        os<<"Domain of dimennsion "<<dim()<<", "<< "number of elements: "<< numElements()<<"\n";
+        os<<"Domain of dimension "<<dim()<<", "<< "number of elements: "<< numElements()<<"\n";
         return os;
     }
 }; // class gsDomain

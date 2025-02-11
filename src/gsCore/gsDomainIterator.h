@@ -17,8 +17,6 @@
 #include <gsCore/gsBoundary.h>
 
 
-template<class T> class gsDomain;
-
 namespace gismo
 {
 

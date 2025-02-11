@@ -173,6 +173,9 @@ namespace internal
 #include <gsAssembler/gsAdaptiveMeshing.h>
 #include <gsAssembler/gsAdaptiveMeshingUtils.h>
 
+#include <gsAssembler/gsPointDomain.h>
+#include <gsAssembler/gsPointDomainIterator.h>
+
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMinimalResidual.h>

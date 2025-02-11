@@ -28,22 +28,21 @@ public:
 
     gsPointDomain(const gsMatrix<T> & points)
     :
-    m_points(points),
-    d( points.rows() )
+    m_points(points)
     {
     }
 
     /// Documentation in gsDomain.h
     domainIter beginAll() const override
     {
-        return domainIter(new gsPointDomainIterator<T,d>(*this));
+        return domainIter(new gsPointDomainIterator<T>(*this));
     }
 
     /// Documentation in gsDomain.h
     domainIter beginBdr(const boxSide bs) const override
     {
         GISMO_ENSURE(bs==boundary::none, "Point domain does not have boundary elements.");
-        return domainIter(new gsPointDomainIterator<T,d>(*this));
+        return domainIter(new gsPointDomainIterator<T>(*this));
     }
 
     /// Documentation in gsDomain.h
@@ -59,7 +58,7 @@ public:
         return 0;
     }
 
-    short_t dim() const override { return d; }
+    short_t dim() const override { return m_points.rows(); }
 
 public:
     // Specific for gsPointDomain
@@ -67,7 +66,6 @@ public:
 
 protected:
     const gsMatrix<T> & m_points;
-
 };
 
 } // namespace gismo

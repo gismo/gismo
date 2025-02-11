@@ -917,11 +917,6 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
 
 #pragma omp parallel
 {
-#ifdef _OPENMP
-        const int tid = omp_get_thread_num();
-        const int nt  = omp_get_num_threads();
-#endif
-
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
 

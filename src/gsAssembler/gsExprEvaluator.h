@@ -452,6 +452,9 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 #pragma omp parallel
 {
+#ifdef _OPENMP
+        T thValue = _op::init();
+#endif
         auto _arg = expr.val();
         m_exprdata->parse(_arg);
         m_exprdata->activateFlags(SAME_ELEMENT);
