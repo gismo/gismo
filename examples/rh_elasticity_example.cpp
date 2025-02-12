@@ -20,8 +20,11 @@
 using namespace gismo;
 //! [Include namespace]
 
-void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
+void ProjectionNormalCPoints(gsMultiPatch<>& Psi, gsMultiPatch<> mpLeft, bool Left){
+    int boxMaxNumber = 1;
     // Projection normal of control points (exact geometry)
+    if (Left){
+    //gsInfo << "ProjectionNormalCPoints for left geometry\n";
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
     {
         // test if the boundary interface is not an inner interface between patches
@@ -48,23 +51,60 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
         Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = hVal;
         }
     }
+}
+    else{
+    gsInfo << "ProjectionNormalCPoints for right geometry\n";
+    for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
+    {
+        // test if the boundary interface is not an inner interface between patches
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
+        {
+            //auto lVal = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0];
+            auto hVal = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1];
+            //Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = lVal;
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = hVal;
+        }
+
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
+        {
+            auto lVal = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0];
+            //auto hVal = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[1];
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = lVal;
+            //Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[1] = hVal;
+        }
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
+        {
+            auto lVal = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[0];
+            auto hVal = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1];
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[0] = lVal;
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = hVal;
+        }
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
+        {
+            auto lVal = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[0];
+            auto hVal = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1];
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[0] = lVal;
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = hVal;
+        }
+    }
+    }
 };
 
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool plot           = false;
-    index_t numRefine   = 3;
-    index_t numLRefine  = 0;
-    index_t numElevate  = 0;
-    index_t maxIter     = 50;
-    index_t NumArMarEl   = 0; // Number of ring of cells around marked elements
-    double eps          = 1e-7; // pinalization coefficient
-    double tolPicard    = 1e-8;
-    double IntensityMAE = 6.;
+    bool plot             = true;
+    index_t numRefine     = 3;
+    index_t numLRefine    = 0;
+    index_t numElevate    = 0;
+    index_t maxIter       = 50;
+    index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
+    double eps            = 1e-7; // pinalization coefficient
+    double tolPicard      = 1e-8;
+    double IntensityMAE   = 6.;
     //bool export_b64     = false;
-    bool errorsave      = false;
-    real_t adaptRefParam = 0.;     // ... adapt parameter.
+    bool errorsave        = false;
+    real_t adaptRefParam  = 0.;     // ... adapt parameter.
     index_t FactRefPar    = 0;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     std::string fn("pde/infinit_plate.xml");
@@ -127,7 +167,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Boundary conditions:\n"<< bc_mae <<"\n";
 
     //! [Refinement]
-    gsMultiBasis<> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
+    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
     
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
@@ -258,7 +298,7 @@ int main(int argc, char *argv[])
         v_sol.extract(Psi);
 
         // ... correct boundary
-        ProjectionNormalCPoints(Psi);
+        ProjectionNormalCPoints(Psi, mpLeft, true);
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
@@ -341,7 +381,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<> Psi, Psitp;
     v_sol.extract(Psitp);
     //... correct the boundary
-    ProjectionNormalCPoints(Psitp);
+    ProjectionNormalCPoints(Psitp, mpLeft, true);
 
     //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
     // Psi.addAutoBoundaries();
@@ -352,6 +392,7 @@ int main(int argc, char *argv[])
     A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
     vsolVector = solver.compute(A.matrix()).solve(A.rhs());
     v_sol.extract(Psitp);
+    ProjectionNormalCPoints(Psitp, mpLeft, false);
     Psitp.addAutoBoundaries();
     Psitp.computeTopology();
     gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
@@ -359,9 +400,8 @@ int main(int argc, char *argv[])
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    // for(size_t i =0; i<Psitp.nPatches(); ++i)
-    //     Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
-    v_sol.extract(Psi);
+    for(size_t i =0; i<Psitp.nPatches(); ++i)
+        Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
     Psi.addAutoBoundaries();
     Psi.computeTopology();
     gsWrite(Psi, "Psi_mapping");
@@ -375,7 +415,10 @@ int main(int argc, char *argv[])
     if (true){
     // creating basis
     gsMultiBasis<> basis(Psi);
-    
+    gsVector<>   l2err(numLRefine+1);//h1err(numLRefine+1),
+    gsVector<int>  DoFPDE(numLRefine+1);
+    gsInfo<< "(dot1=assembled, dot2=solved)\n";
+    double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     //=============================================//
         // Setting loads and boundary conditions //
     //=============================================//
@@ -401,33 +444,114 @@ int main(int argc, char *argv[])
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
 
-    gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
-    gsInfo<<"Source function is "<< g << "\n";
-    gsInfo<<"Boundary conditions:\n"<< bcInfo <<"\n";
-    
     //=============================================//
-            // Assembling & solving //
-    //=============================================//    
+              // Assembling & solving //
+    //=============================================//
+
+    // creating assembler
+    gsElasticityAssembler<real_t> assembler(Psi,basis,bcInfo,g);
+    assembler.options().setReal("YoungsModulus",youngsModulus);
+    assembler.options().setReal("PoissonsRatio",poissonsRatio);
+    gsInfo<<"Assembling...\n";
+    gsStopwatch clock;
+    clock.restart();
+    assembler.assemble();
+    gsInfo << "Assembled a system (matrix and load vector) with "
+           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
+
+    gsInfo << "Solving...\n";
+    clock.restart();
+
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLLT solver(assembler.matrix());
+    gsVector<> solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
+#else
+    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+    gsVector<> solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
+#endif
+
+    //=============================================//
+                      // Output //
+    //=============================================//
+
+    // constructing displacement as an IGA function
+    gsMultiPatch<> u_disp;
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),u_disp);
+    // constructing stress tensor
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(u_disp,stresses,stress_components::all_2D_vector);
+
+    // constructing an IGA field (geometry + solution) for displacement
+    gsField<> solutionField(assembler.patches(),u_disp);
+    // constructing an IGA field (geometry + solution) for stresses
+    gsField<> stressField(assembler.patches(),stresses,true);
+    // analytical stresses
+    gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
     MarkingStrategy adaptRefCrit = PUCA;
     //MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
     // Elements used for numerical integration
-    gsElasticityAssembler<real_t> assembler(Psi,basis,bcInfo,g);
-    // constructing displacement as an IGA function
-    gsMultiPatch<> u_disp;
-    // constructing stress tensor
-    gsPiecewiseFunction<> stresses;
-    gsVector<>   l2err(numLRefine+1);//h1err(numLRefine+1),
-    gsVector<int>  DoFPDE(numLRefine+1);
-    gsInfo<< "(dot1=assembled, dot2=solved)\n";
-    double setup_time(0), ma_time(0), slv_time(0), err_time(0);
-    for (int r=0; r<=numLRefine; ++r)
+
+    gsExprEvaluator<> ev;
+    ev.setIntegrationElements(assembler.multiBasis());
+    gsExprEvaluator<>::geometryMap PP = ev.getMap(Psi);
+    auto sigm_ex   = ev.getVariable(analyticalStresses, PP);
+    auto ff_GPsi   = ev.getVariable(f, PP);
+    //... error computation
+    auto istress = ev.getVariable(stressField.fields());
+        // omp_set_num_threads(1); // Use these threads for later parallel regions
+    DoFPDE[0] = assembler.numDofs();
+    timer.restart();
+    l2err[0]= math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
+    //h1err[0]= math::sqrt(ev.max( (sigm_ex - istress).sqNorm()));
+    // eval stress at the top of the circular cut
+    gsMatrix<> A(2,1);
+    A << 1.,0.; // parametric coordinates for the isogeometric solution
+    gsMatrix<> res;
+    stresses.piece(0).eval_into(A,res);
+    A << 0., 1.; // spatial coordinates for the analytical solution
+    gsMatrix<> analytical;
+    analyticalStresses.eval_into(A,analytical);
+    gsInfo << "XX-stress at the top of the circle: " << res.at(0) << " (computed), " << analytical.at(0) << " (analytical)\n";
+    gsInfo << "YY-stress at the top of the circle: " << res.at(1) << " (computed), " << analytical.at(1) << " (analytical)\n";
+    gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
+    for (int r=1; r<=numLRefine; ++r)
     {
+        // // if(r < numLRefine){
+        // //! [beginRefLoop]
+        //     gsInfo << "====== Loop " << r << " of "
+        //             <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
+        //     // --------------- error estimation/computation ---------------
+        //     // Compute the error indicators
+        //     ev.integralElWise( ff_GPsi );
+
+        //     const std::vector<real_t> eltErrs  = ev.elementwise();
+        //     //! [errorComputation]
+
+        //     //! [adaptRefinementPart]
+        //     // Mark elements for refinement, based on the computed local errors and
+        //     // the refinement-criterion and -parameter.
+        //     std::vector<bool> elMarked( eltErrs.size() );
+        //     gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+        //     gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
+
+        //     // Refine the marked elements with a 1-ring of cells around marked elements
+        //     gsRefineMarkedElements( basis, elMarked, NumArMarEl);
+        //     gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
+        //     gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+        //     assembler.refresh();
+        //     if (r%2==0)
+        //     NumArMarEl = NumArMarEl + FactRefPar;
+        //     // }
         //=============================================//
-                    // Assembling & solving //
+                // Assembling & solving //
         //=============================================//
+        basis.uniformRefine();
+        Psi.uniformRefine();
         // creating assembler
         gsElasticityAssembler<real_t> assembler(Psi,basis,bcInfo,g);
         assembler.options().setReal("YoungsModulus",youngsModulus);
@@ -437,28 +561,27 @@ int main(int argc, char *argv[])
         clock.restart();
         assembler.assemble();
         gsInfo << "Assembled a system (matrix and load vector) with "
-                << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
+            << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
 
         gsInfo << "Solving...\n";
         clock.restart();
 
-        #ifdef GISMO_WITH_PARDISO
+    #ifdef GISMO_WITH_PARDISO
         gsSparseSolver<>::PardisoLLT solver(assembler.matrix());
-        gsVector<> ssolVector = solver.solve(assembler.rhs());
+        gsVector<> solVector = solver.solve(assembler.rhs());
         gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
-        #else
+    #else
         gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
-        gsVector<> ssolVector = solver.solve(assembler.rhs());
+        gsVector<> solVector = solver.solve(assembler.rhs());
         gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
-        #endif
+    #endif
 
         //=============================================//
-                            // Output //
+                        // Output //
         //=============================================//
-
-        // constructing displacement as an IGA function
+        // // constructing displacement as an IGA function
         gsMultiPatch<> u_disp;
-        assembler.constructSolution(ssolVector,assembler.allFixedDofs(),u_disp);
+        assembler.constructSolution(solVector,assembler.allFixedDofs(),u_disp);
         // constructing stress tensor
         gsPiecewiseFunction<> stresses;
         assembler.constructCauchyStresses(u_disp,stresses,stress_components::all_2D_vector);
@@ -475,16 +598,13 @@ int main(int argc, char *argv[])
         gsExprEvaluator<>::geometryMap PP = ev.getMap(Psi);
         auto sigm_ex   = ev.getVariable(analyticalStresses, PP);
         auto ff_GPsi   = ev.getVariable(f, PP);
-        gsExprEvaluator<>::variable istress = ev.getVariable(stresses);
-
+        //... error computation
+        auto istress = ev.getVariable(stressField.fields());
             // omp_set_num_threads(1); // Use these threads for later parallel regions
         DoFPDE[r] = assembler.numDofs();
         timer.restart();
-        l2err[r]= math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
-        //h1err[r]= math::sqrt(ev.max( (sigm_ex - istress).sqNorm()));
-        err_time += timer.stop();
-        gsInfo<< ". " <<std::flush; // Error computations done
-    
+        l2err[r]  = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
+        //h1err[0]= math::sqrt(ev.max( (sigm_ex - istress).sqNorm()));
         // eval stress at the top of the circular cut
         gsMatrix<> A(2,1);
         A << 1.,0.; // parametric coordinates for the isogeometric solution
@@ -496,32 +616,6 @@ int main(int argc, char *argv[])
         gsInfo << "XX-stress at the top of the circle: " << res.at(0) << " (computed), " << analytical.at(0) << " (analytical)\n";
         gsInfo << "YY-stress at the top of the circle: " << res.at(1) << " (computed), " << analytical.at(1) << " (analytical)\n";
         gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
-        if(r < numLRefine){
-        //! [beginRefLoop]
-            gsInfo << "====== Loop " << r << " of "
-                    <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
-            // --------------- error estimation/computation ---------------
-            // Compute the error indicators
-            ev.integralElWise( ff_GPsi );
-
-            const std::vector<real_t> eltErrs  = ev.elementwise();
-            //! [errorComputation]
-
-            //! [adaptRefinementPart]
-            // Mark elements for refinement, based on the computed local errors and
-            // the refinement-criterion and -parameter.
-            std::vector<bool> elMarked( eltErrs.size() );
-            gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-            gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
-
-            // Refine the marked elements with a 1-ring of cells around marked elements
-            gsRefineMarkedElements( basis, elMarked, NumArMarEl);
-            gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
-            gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
-            assembler.refresh();
-            if (r%2==0)
-            NumArMarEl = NumArMarEl + FactRefPar;
-            }
     }
     //! [Solver loop]    
 
@@ -584,18 +678,38 @@ int main(int argc, char *argv[])
         // analytical stresses
         gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
         //... density function
-        //gsField<> densityfunction(assembler.patches(),f,false);
+        gsField<> densityField(assembler.patches(),f,false);
+
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation"] = &solutionField;
         fields["Stress"] = &stressField;
         fields["StressAnalytical"] = &analyticalStressField;
-        //fields["DensityAnalytical"] = &densityfunction;
-        gsWriteParaviewMultiPhysics(fields,"plateWithHole",100000,plot);
-        gsInfo << "Open \"plateWithHole.pvd\" in Paraview for visualization. Stress wiggles on the left side are caused by "
+        fields["DensityAnalytical"] = &densityField;
+        gsWriteParaviewMultiPhysics(fields,"infinit_plate",10000,plot);
+        gsInfo << "Open \"infinit_plate.pvd\" in Paraview for visualization. Stress wiggles on the left side are caused by "
                   "a singularity in the parametrization.\n";
-        gsFileManager::open("plateWithHole.pvd");
+        gsFileManager::open("infinit_plate.pvd");
 
+        gsInfo<<"Storing paraview...\n";
+        // Write the computed solution to paraview files
+        // gsInfo<<"Making in Paraview...\n";
+        // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        // collection.options().setSwitch("plotElements", true);
+        // collection.options().setSwitch("base64", false);
+        // collection.options().setInt("plotElements.resolution", 16);
+        // collection.options().setInt("numPoints", 10000);
+        // collection.newTimeStep(&Psi);
+        // collection.addField(istress,"numerical stress");
+        // collection.addField(jac(PP).det(), "Jacobian function");
+        // collection.addField(sigm_ex, "exact stress");
+        // collection.addField(ff_GPsi,"Density function");
+        // collection.saveTimeStep();
+        // collection.save();
+        // //------------------------------------
+        // gsInfo<<"Plotting in Paraview...\n";
+        // // Run paraview
+        // gsFileManager::open("ParaviewOutput/solution.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
