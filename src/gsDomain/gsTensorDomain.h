@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 #include <gsNurbs/gsKnotVector.h>
 
 namespace gismo

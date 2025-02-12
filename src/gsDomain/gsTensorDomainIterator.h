@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsCore/gsDomainIterator.h>
-#include <gsTensor/gsTensorDomain.h>
+#include <gsDomain/gsDomainIterator.h>
+#include <gsDomain/gsTensorDomain.h>
 #include <gsUtils/gsCombinatorics.h>
 
 namespace gismo

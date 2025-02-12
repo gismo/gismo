@@ -20,7 +20,7 @@
 #include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsNurbs/gsBSpline.h>
-#include <gsTensor/gsTensorDomainIterator.h>
+#include <gsDomain/gsTensorDomainIterator.h>
 #include <gsAssembler/gsGaussRule.h>
 
 #include <gsModeling/gsModelingUtils.hpp>

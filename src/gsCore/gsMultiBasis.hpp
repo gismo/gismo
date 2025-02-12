@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsCompositeDomain.h>
+#include <gsDomain/gsCompositeDomain.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>
 #include <gsIO/gsOptionList.h>

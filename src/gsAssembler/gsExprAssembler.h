@@ -16,7 +16,7 @@
 #include <gsUtils/gsPointGrid.h>
 #include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsExprHelper.h>
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 
 #include <gsAssembler/gsCPPInterface.h>
 

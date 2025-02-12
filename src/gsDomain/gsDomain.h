@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 

@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsAssembler/gsQuadRule.h>
-#include <gsTensor/gsTensorDomain.h>
+#include <gsDomain/gsTensorDomain.h>
 
 namespace gismo
 {

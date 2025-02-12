@@ -15,7 +15,7 @@
 
 #include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {

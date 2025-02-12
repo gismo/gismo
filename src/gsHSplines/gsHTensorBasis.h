@@ -15,9 +15,9 @@
 
 #include <gsCore/gsBasis.h>
 
-#include <gsHSplines/gsHDomain.h>
-#include <gsHSplines/gsHDomainIterator.h>
-#include <gsHSplines/gsHDomainBoundaryIterator.h>
+#include <gsDomain/gsHDomain.h>
+#include <gsDomain/gsHDomainIterator.h>
+#include <gsDomain/gsHDomainBoundaryIterator.h>
 
 #include <gsCore/gsBoundary.h>
 

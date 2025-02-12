@@ -18,8 +18,8 @@
 #include <gsCore/gsConstantBasis.h>
 
 #include <gsTensor/gsTensorBasis.h>
-#include <gsTensor/gsTensorDomainIterator.h>
-#include <gsTensor/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsTensorDomainIterator.h>
+#include <gsDomain/gsTensorDomainBoundaryIterator.h>
 
 #include <gsNurbs/gsKnotVector.h>
 

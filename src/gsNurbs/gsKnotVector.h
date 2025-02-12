@@ -14,10 +14,10 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 
 #include <gsNurbs/gsKnotIterator.h>
-#include <gsTensor/gsKnotDomainIterator.h>//change path
+#include <gsDomain/gsKnotDomainIterator.h>//change path
 
 namespace gismo
 {

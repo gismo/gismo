@@ -15,7 +15,7 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsBoundary.h>
-#include <gsTensor/gsTensorDomain.h>
+#include <gsDomain/gsTensorDomain.h>
 
 namespace gismo
 {
@@ -314,7 +314,7 @@ public:
     /// Prints the object as a string, pure virtual function of gsTensorBasis.
     virtual std::ostream &print(std::ostream &os) const = 0;
 
-    // Look at gsBasis class for documentation 
+    // Look at gsBasis class for documentation
     virtual void uniformRefine(int numKnots = 1, int mul = 1, short_t dir = -1)
     {
         if (-1==dir)

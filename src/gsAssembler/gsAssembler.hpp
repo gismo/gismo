@@ -14,7 +14,7 @@
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGaussRule.h>
 #include <gsCore/gsMultiBasis.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsField.h>
 #include <gsUtils/gsPointGrid.h>
 

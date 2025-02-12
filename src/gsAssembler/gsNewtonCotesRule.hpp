@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 #include <gsCore/gsBasis.h>
 #include <gsIO/gsOptionList.h>
 

@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsCore/gsDomain.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomain.h>
+#include <gsDomain/gsDomainIterator.h>
 
 #include <gsUtils/gsCombinatorics.h>
 

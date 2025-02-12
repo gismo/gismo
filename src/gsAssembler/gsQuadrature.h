@@ -21,7 +21,7 @@
 #include <gsAssembler/gsOverIntegrateRule.h>
 #include <gsAssembler/gsGaussRule.h>
 
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {

@@ -18,7 +18,7 @@
 
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsWeightMapper.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsBasisFun.h>
 

@@ -14,8 +14,8 @@
 #pragma once
 
 #include <gsTensor/gsTensorTools.h>
-#include <gsTensor/gsTensorDomainIterator.h>
-#include <gsTensor/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsTensorDomainIterator.h>
+#include <gsDomain/gsTensorDomainBoundaryIterator.h>
 
 #include <gsCore/gsBoundary.h>
 #include <gsUtils/gsMesh/gsMesh.h>

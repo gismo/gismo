@@ -14,11 +14,11 @@
 #pragma once
 
 #include <gsHSplines/gsHTree.h>
-#include <gsHSplines/gsHDomain.h>
+#include <gsDomain/gsHDomain.h>
 #include <gsHSplines/gsKdNode.h>
 #include <gsHSplines/gsHTensorBasis.h>
 
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {

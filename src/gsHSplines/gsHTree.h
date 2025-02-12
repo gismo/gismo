@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsHSplines/gsKdNode.h>
-#include <gsHSplines/gsHDomainLeafIter.h>
+#include <gsDomain/gsHDomainLeafIter.h>
 #include <gsCore/gsBoundary.h>
 
 namespace gismo

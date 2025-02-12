@@ -17,7 +17,7 @@
 #include <gsMSplines/gsMappedSingleSpline.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsMappedBasis.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {
@@ -126,7 +126,7 @@ public:
     /// getter for m_topol
     gsBoxTopology const & getTopol() const
     { return m_mbases->getTopol(); }
-    
+
     /// @brief Performs Bezier extraction on the multipatch
     /// @return The ElementBlock structure of the Bezier extraction,
     /// which contains the Bezier coefficients and the active nodes

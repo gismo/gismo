@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBasis.h>
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 #include <gsIO/gsOptionList.h>
 
 namespace gismo

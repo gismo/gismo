@@ -18,9 +18,9 @@
 #include <gsCore/gsDofMapper.h>
 #include <gsCore/gsStdVectorRef.h>
 #include <gsCore/gsMultiBasis.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsAffineFunction.h>
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 
 #include <gsIO/gsOptionList.h>
 

@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsDebug.h>
-#include <gsHSplines/gsHDomainIterator.h>
+#include <gsDomain/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsIO/gsBase64.h>
 

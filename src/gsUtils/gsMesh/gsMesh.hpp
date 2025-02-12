@@ -15,7 +15,7 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsUtils/gsCombinatorics.h>
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 
 namespace gismo
 {

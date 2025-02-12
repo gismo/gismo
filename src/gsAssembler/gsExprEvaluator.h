@@ -15,9 +15,9 @@
 
 // #include<gsIO/gsParaviewCollection.h>
 #include <fstream>
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 #include <gsAssembler/gsQuadrature.h>
-#include <gsCore/gsCompositeDomain.h>
+#include <gsDomain/gsCompositeDomain.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include <gsAssembler/gsCPPInterface.h>
 //#include <gsIO/gsWriteParaview.h>

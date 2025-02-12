@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsAssembler/gsQuadRule.h>
-#include <gsCore/gsDomain.h>
+#include <gsDomain/gsDomain.h>
 
 namespace gismo
 {
