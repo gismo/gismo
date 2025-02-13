@@ -137,7 +137,7 @@ public:
         return memory::make_shared_not_owned(this);
     }
 
-    virtual size_t nPieces() const { return 0; }
+    virtual size_t nPieces() const { return 1; }
 
 
 public: // Domain element iterators

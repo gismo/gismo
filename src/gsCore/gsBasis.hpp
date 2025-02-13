@@ -538,13 +538,11 @@ template<class T>
 typename gsBasis<T>::uPtr gsBasis<T>::tensorize(const gsBasis &) const
 { GISMO_NO_IMPLEMENTATION }
 
-GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginAll()
 template<class T>
 typename gsBasis<T>::domainIter
 gsBasis<T>::makeDomainIterator() const
 { return this->domain()->beginAll(); }
 
-GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginBdr()
 template<class T>
 typename gsBasis<T>::domainIter
 gsBasis<T>::makeDomainIterator(const boxSide &s) const

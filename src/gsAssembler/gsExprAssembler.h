@@ -364,7 +364,8 @@ public:
                 T nz = 1;
                 const short_t dim = m_exprdata->domain().dim();
                 for (short_t i = 0; i != dim; ++i)
-                    nz *= bdA * static_cast<T>(static_cast<const gsMultiBasis<T>&>(this->testSpace(0).source()).maxDegree(i)) + // NOTE: THIS CAST DOES NOT WORK FOR gsMAPPEDSPLINE
+                    nz *= bdA * static_cast<T>(
+                                    m_exprdata->domain().degree(i)) +
                           static_cast<T>(bdB);
 
                 m_fmatrix.reservePerColumn(numBlocks() *
@@ -1551,6 +1552,7 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
         typename gsBasis<T>::domainIter domItEnd = bb.domain()->endAll();
 
         // Start iteration over elements of patchInd
+        // use parallel for instead
 #       ifdef _OPENMP
         domIt += tid;
         for ( ; domIt<domItEnd; domIt+=nt )

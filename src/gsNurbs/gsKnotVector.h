@@ -17,7 +17,7 @@
 #include <gsDomain/gsDomain.h>
 
 #include <gsNurbs/gsKnotIterator.h>
-#include <gsDomain/gsKnotDomainIterator.h>//change path
+#include <gsDomain/gsKnotDomainIterator.h>
 
 namespace gismo
 {

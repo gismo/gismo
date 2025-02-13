@@ -178,7 +178,7 @@ public:
         if ((dynamic_cast<const gsCompositeDomain<T>*>(&m_exprdata->domain())))
             return computeBdr_impl<E,plus_op>(expr, static_cast<const gsCompositeDomain<T> & >(m_exprdata->domain()).topology().boundaries());
         else
-            return 0;
+            return (T)0;
     }
 
     /// Calculates the integral of the expression \a expr on the
@@ -201,7 +201,7 @@ public:
         if (const gsCompositeDomain<T> * cdomain = dynamic_cast<const gsCompositeDomain<T>*>(&m_exprdata->domain()))
             return computeInterface_impl<E,plus_op>(expr, cdomain->topology().interfaces());
         else
-            return 0;
+            return (T)0;
     }
 
     /// Calculates the integral of the expression \a expr on the
@@ -230,7 +230,7 @@ public:
         if (const gsCompositeDomain<T> & cdomain = dynamic_cast<const gsCompositeDomain<T>&>(m_exprdata->domain()))
             return computeInterface_impl<E,max_op>(expr, cdomain.topology().interfaces());
         else
-            return 0;
+            return (T)0;
     }
     /// Calculates the maximum of the expression \a expr on the
     /// interfaces of the (multi-basis) integration domain
@@ -246,7 +246,7 @@ public:
         if (const gsCompositeDomain<T> & cdomain = dynamic_cast<const gsCompositeDomain<T>&>(m_exprdata->domain()))
             return computeInterface_impl<E,min_op>(expr, cdomain.topology().interfaces());
         else
-            return 0;
+            return (T)0;
     }
 
     /// Calculates the minimum of the expression \a expr on the
@@ -472,7 +472,6 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             {
                 QuPatch = domIt.patch();
                 // get Degree of the domain
-                // NOTE: Trailspace not available...
                 QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
             }
 

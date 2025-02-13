@@ -103,15 +103,9 @@ public:
     /// Returns parameter dimension of the domains
     virtual short_t domainDim() const { return m_slaveGeom->domainDim(); }
 
-    /// @brief Returns a domain iterator
-    ///
-    /// The domain iterator lives on \f$ \widehat \Gamma_1 \f$. Its break points are the union of
-    /// the brakpoints of the basis on \f$ \widehat \Omega_1 \f$ and the breakpoints of the basis
-    /// on \f$ \widehat \Omega_2 \f$, mapped to \f$ \widehat \Omega_1 \f$.
-    typename gsDomainIterator<T>::uPtr makeDomainIterator() const;
 
 
-    /// Returns the break points used in \ref makeDomainIterator
+    /// Returns the break points used in domain iteration
     const std::vector< std::vector<T> > & breakPoints() const { return m_breakpoints; }
 
     /// Prints the state of the object

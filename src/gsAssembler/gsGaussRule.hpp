@@ -81,23 +81,31 @@ gsGaussRule<T>::gsGaussRule(const gsDomain<T> & domain,
 }
 
 template<class T>
+gsGaussRule<T>::gsGaussRule(const gsDomain<T> & domain,
+                            const gsOptionList & options,
+                            const short_t fixDir)
+{
+    const T       quA = options.getReal("quA");
+    const index_t quB = options.getInt ("quB");
+    init(domain, quA, quB, fixDir);
+}
+
+template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis,
                             const T quA, const index_t quB,
                             const short_t fixDir)
-//const unsigned digits)
+:
+gsGaussRule(*basis.domain(), quA, quB, fixDir)
 {
-    init(*basis.domain(), quA, quB, fixDir);
 }
 
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis,
                             const gsOptionList & options,
                             const short_t fixDir)
-//const unsigned digits)
+:
+gsGaussRule(*basis.domain(),options,fixDir)
 {
-    const T       quA = options.getReal("quA");
-    const index_t quB = options.getInt ("quB");
-    init(*basis.domain(), quA, quB, fixDir);
 }
 
 

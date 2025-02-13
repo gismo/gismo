@@ -125,21 +125,6 @@ void gsCPPInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) c
 }
 
 
-template <class T>
-typename gsDomainIterator<T>::uPtr gsCPPInterface<T>::makeDomainIterator() const
-{
-    /*
-    gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (*m_slaveBasis, m_boundaryInterface.first());
-    for (index_t i=0; i<domainDim(); ++i)
-    {
-        if (i!=m_boundaryInterface.first().direction())
-            tdi->setBreaks(m_breakpoints[i],i);
-    }
-    return typename gsDomainIterator<T>::uPtr(tdi);
-    */
-    return typename gsDomainIterator<T>::uPtr(nullptr);
-}
-
 
 template <class T>
 std::ostream& gsCPPInterface<T>::print(std::ostream & os) const

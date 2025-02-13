@@ -72,8 +72,17 @@ template<class T>
 gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsDomain<T> & domain,
                             const T quA, const index_t quB,
                             const short_t fixDir)
-//const unsigned digits)
 {
+    init(domain, quA, quB, fixDir);
+}
+
+template<class T>
+gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsDomain<T> & domain,
+                            const gsOptionList & options,
+                            const short_t fixDir)
+{
+    const T       quA = options.getReal("quA");
+    const index_t quB = options.getInt ("quB");
     init(domain, quA, quB, fixDir);
 }
 
@@ -81,20 +90,18 @@ template<class T>
 gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsBasis<T> & basis,
                             const T quA, const index_t quB,
                             const short_t fixDir)
-//const unsigned digits)
+:
+gsNewtonCotesRule(*basis.domain(), quA, quB, fixDir)
 {
-    init(*basis.domain(), quA, quB, fixDir);
 }
 
 template<class T>
 gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsBasis<T> & basis,
                             const gsOptionList & options,
                             const short_t fixDir)
-//const unsigned digits)
+:
+gsNewtonCotesRule(*basis.domain(), options, fixDir)
 {
-    const T       quA = options.getReal("quA");
-    const index_t quB = options.getInt ("quB");
-    init(*basis.domain(), quA, quB, fixDir);
 }
 
 
