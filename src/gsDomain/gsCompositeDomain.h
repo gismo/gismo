@@ -152,6 +152,9 @@ public:
         return sz;
     }
 
+    short_t degree(short_t i = 0) const override
+    { return m_domains.front()->degree(i); }
+
     /// See \ref gsDomain.h for documentation.
     short_t dim() const override { return m_domains.front()->dim(); }
 

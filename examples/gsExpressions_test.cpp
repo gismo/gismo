@@ -620,6 +620,7 @@ int main(int argc, char *argv[])
                 <<"Exact:\n"<<exact<<"\n";
     gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
+    A.setIntegrationElements(basis);
     A.initSystem();
     gsMatrix<> solVec;
     auto u_sol = A.getSolution(u2,solVec);
