@@ -53,7 +53,7 @@ m_error_crs(0),
 m_index(-1),
 m_marked(false)
 {
-    GISMO_ASSERT(dynamic_cast<const gsHTensorBasis<d,T> *>(&domHIt->basis())!=nullptr,"basis is not a gsHTensorBasis");
+    GISMO_ASSERT((dynamic_cast<const gsHTensorBasis<d,T> *>(&domHIt->basis())!=nullptr),"basis is not a gsHTensorBasis");
     m_basis = static_cast<const gsHTensorBasis<d,T> *>(&domHIt->basis());
     m_coords.resize(d,2);
     m_coords.col(0) = domHIt->lowerCorner();
