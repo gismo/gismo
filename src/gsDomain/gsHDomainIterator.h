@@ -15,7 +15,7 @@
 
 #include <gsDomain/gsHTree.h>
 #include <gsDomain/gsHDomain.h>
-#include <gsHSplines/gsKdNode.h>
+#include <gsDomain/gsKndNode.h>
 
 #include <gsDomain/gsDomainIterator.h>
 

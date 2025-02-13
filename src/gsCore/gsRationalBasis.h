@@ -362,13 +362,14 @@ public:
         // equiv: coefs = pr_coefs.leftCols(n).array() / weights.replicate(1,n).array();
     }
 
-
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
 //        gsWarn<< "rational domain iterator with evaluate the source.\n";
         return m_src->makeDomainIterator();
     }
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
 //        gsWarn<< "rational domain boundary iterator with evaluate the source.\n";

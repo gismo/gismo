@@ -913,11 +913,13 @@ public:
     // Look at gsBasis.h for the documentation of this function
     //virtual void uniformRefine(int numKnots = 1);
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
         return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree(),*this));
     }
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return ( s == boundary::none ?

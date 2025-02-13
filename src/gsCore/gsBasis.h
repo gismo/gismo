@@ -719,11 +719,13 @@ public:
 
     /// @brief Create a domain iterator for the computational mesh of
     /// this basis, that points to the first element of the domain
+    GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginAll()
     virtual domainIter makeDomainIterator() const;
 
     /// @brief Create a boundary domain iterator for the computational
     /// mesh this basis, that points to the first element on the
     /// boundary of the domain
+    GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginBdr()
     virtual domainIter makeDomainIterator(const boxSide & s) const;
 
     /// Prints the object as a string.

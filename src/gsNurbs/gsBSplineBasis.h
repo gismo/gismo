@@ -583,11 +583,13 @@ public:
     /// of the corresponding knot at the end, returns zero.
     int borderKnotMult() const;
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
         return m_knots.beginAll();
     }
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return m_knots.beginBdr(s);

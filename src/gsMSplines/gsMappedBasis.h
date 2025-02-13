@@ -210,6 +210,7 @@ public:
     //const gsFunctionSet & piece(const index_t k) const { return m_sb[k]; }
 
     /// gives back the domain iterator of the boundary side \a s of a given \a patch
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
     { return m_bases[patch]->makeDomainIterator(s); }
 

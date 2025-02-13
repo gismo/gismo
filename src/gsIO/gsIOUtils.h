@@ -31,7 +31,6 @@ void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
     const unsigned d = basis.dim();
 
     typedef typename gsMesh<T>::VertexHandle Vertex;
-    typename gsBasis<T>::domainIter domIter = basis.makeDomainIterator();
 
     // variables for iterating over a cube (element is a cube)
     const gsVector<unsigned> zeros = gsVector<unsigned>::Zero(d);
@@ -66,11 +65,12 @@ void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
 
     gsVector<T> vertex(d);
 
-    for (; domIter->good(); domIter->next())
+    typename gsBasis<T>::domainIter domItEnd =  basis.domain()->endAll();
+    for (auto domIt = basis.domain()->beginAll(); domIt<domItEnd; ++domIt)
     {
-        const gsVector<T>& low = domIter->lowerCorner();
-        const gsVector<T>& upp = domIter->upperCorner();
-        const T vol = domIter->volume();
+        const gsVector<T>& low = domIter.lowerCorner();
+        const gsVector<T>& upp = domIter.upperCorner();
+        const T vol = domIter.volume();
 
         vertex.setZero();
         cur.setZero();
