@@ -65,8 +65,8 @@ void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
 
     gsVector<T> vertex(d);
 
-    typename gsBasis<T>::domainIter domItEnd =  basis.domain()->endAll();
-    for (auto domIt = basis.domain()->beginAll(); domIt<domItEnd; ++domIt)
+    typename gsBasis<T>::domainIter domIterEnd =  basis.domain()->endAll();
+    for (auto domIter = basis.domain()->beginAll(); domIter<domIterEnd; ++domIter)
     {
         const gsVector<T>& low = domIter.lowerCorner();
         const gsVector<T>& upp = domIter.upperCorner();
