@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsHSplines/gsHTree.h>
+#include <gsDomain/gsHTree.h>
 #include <gsDomain/gsHDomain.h>
 #include <gsHSplines/gsKdNode.h>
 

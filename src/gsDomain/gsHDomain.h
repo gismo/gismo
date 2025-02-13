@@ -15,7 +15,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsDomain/gsDomain.h>
-#include <gsHSplines/gsHTree.h>
+#include <gsDomain/gsHTree.h>
 #include <gsDomain/gsHDomainLeafIter.h>
 #include <gsDomain/gsHDomainIterator.h>
 #include <gsDomain/gsHDomainBoundaryIterator.h>
