@@ -1418,14 +1418,14 @@ typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer(
             if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input))!= nullptr ) basis = &(mb->basis(patchInd));
             GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
-            typename gsBasis<T>::domainIter domIt  = basis->basis(patchInd).domain().beginAll();
-            typename gsBasis<T>::domainIter domItEnd = basis->basis(patchInd).domain().endAll();
+            typename gsBasis<T>::domainIter domIt  = basis->basis(patchInd).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = basis->basis(patchInd).domain()->endAll();
             gsHDomainIterator<T,2> * domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
             GISMO_ENSURE(domHIt!=nullptr,"Domain should be hierarchical");
 
 #ifdef _OPENMP
             c = patch_cnt + tid;
-            patch_cnt += basis->basis(patchInd).domain().numElements(); // a bit costy
+            patch_cnt += basis->basis(patchInd).domain()->numElements(); // a bit costy
             for ( ; domIt<domItEnd; domIt+=nt )
 #else
             for (; domIt<domItEnd; ++domIt)
