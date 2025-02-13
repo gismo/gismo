@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsDomain/gsKndNode.h>
+#include <gsDomain/gsKdNode.h>
 #include <gsDomain/gsHDomainLeafIter.h>
 #include <gsCore/gsBoundary.h>
 
