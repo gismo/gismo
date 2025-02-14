@@ -1,6 +1,6 @@
-/** @file Monge_Ampere_example.cpp
+/** @file rh_elasticity_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation
+    @brief Tutorial on how to use expression assembler to solve a linear elasticity equation
 
     This file is part of the G+Smo library.
 
@@ -540,10 +540,10 @@ int main(int argc, char *argv[])
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
             // Refine the marked elements with a 1-ring of cells around marked elements
-            //gsRefineMarkedElements( basis, elMarked, NumArMarEl);
+            gsRefineMarkedElements( basis, elMarked, NumArMarEl);
             gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
             // assembler.multiBasis().repairInterfaces( Psi.interfaces() );
-            //gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+            gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
             
             if (r%2==0)
             NumArMarEl = NumArMarEl + FactRefPar;
@@ -551,8 +551,8 @@ int main(int argc, char *argv[])
         //=============================================//
                 // Assembling & solving //
         //=============================================//
-        basis.uniformRefine();
-        Psi.uniformRefine();
+        // basis.uniformRefine();
+        // Psi.uniformRefine();
         // creating assembler
         gsElasticityAssembler<real_t> assembler(Psi,basis,bcInfo,g);
         assembler.options().setReal("YoungsModulus",youngsModulus);
@@ -695,23 +695,23 @@ int main(int argc, char *argv[])
 
         gsInfo<<"Storing paraview...\n";
         // Write the computed solution to paraview files
-        // gsInfo<<"Making in Paraview...\n";
-        // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        // collection.options().setSwitch("plotElements", true);
-        // collection.options().setSwitch("base64", false);
-        // collection.options().setInt("plotElements.resolution", 16);
-        // collection.options().setInt("numPoints", 10000);
-        // collection.newTimeStep(&Psi);
+        gsInfo<<"Making in Paraview...\n";
+        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        collection.options().setSwitch("plotElements", true);
+        collection.options().setSwitch("base64", false);
+        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("numPoints", 10000);
+        collection.newTimeStep(&Psi);
         // collection.addField(istress,"numerical stress");
         // collection.addField(jac(PP).det(), "Jacobian function");
         // collection.addField(sigm_ex, "exact stress");
         // collection.addField(ff_GPsi,"Density function");
-        // collection.saveTimeStep();
-        // collection.save();
-        // //------------------------------------
-        // gsInfo<<"Plotting in Paraview...\n";
-        // // Run paraview
-        // gsFileManager::open("ParaviewOutput/solution.pvd");
+        collection.saveTimeStep();
+        collection.save();
+        //------------------------------------
+        gsInfo<<"Plotting in Paraview...\n";
+        // Run paraview
+        gsFileManager::open("ParaviewOutput/solution.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
