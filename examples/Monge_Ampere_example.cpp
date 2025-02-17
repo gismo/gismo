@@ -65,10 +65,10 @@ int main(int argc, char *argv[])
     bool errorsave      = false;
 
     // Specify the file path
-    // std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/butterfly.xml");
     //std::string fn("pde/infinit_plate.xml");
-    std::string fn("pde/circle.xml");
+    //std::string fn("pde/circle.xml");
     //std::string fn("surfaces/egg.xml");
     //std::string fn("domain2d/lake.xml");
 
@@ -101,51 +101,50 @@ int main(int argc, char *argv[])
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
-
+    gsInfo << "INFO IN PARAMETRIC DOMAIN "<< mpLeft.dim() << mpLeft.parDim() <<"\n";
+    //================================== -------------------------- ==================================
+    //==================================   Who cares about geometry ==================================
+    //================================== This part is fixed for all ==================================
+    //================================== -------------------------- ==================================
     // .... one single patch
-    //gsInfo << "INFO IN PARAMETRIC DOMAIN "<< mpLeft.dim() << mpLeft.parDim() <<"\n";
     gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     //Get all interfaces and boundaries:
     mp.degreeElevate(numElevate);
     mp.computeTopology();
     //mp.addAutoBoundaries();
-    
-    //..... Test 2
+
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
-    // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
+    // Right-hand side function : Analytical density function rho_1
     // Load the file
     gsFunctionExpr<> f;
     fd.getId(2003, f);
     gsInfo<<"Density function "<< f << "\n";
 
-    gsBoundaryConditions<> bc;
-    bc.setGeoMap(mp);
+    gsBoundaryConditions<> bc_mae;
+    bc_mae.setGeoMap(mp);
     // For simplicity, set Neumann boundary conditions
    for ( gsMultiPatch<>::const_biterator
             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
    {
-       bc.addCondition( *bit, condition_type::neumann, &sN );
+       bc_mae.addCondition( *bit, condition_type::neumann, &sN );
    }
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+    gsInfo<<"Boundary conditions:\n"<< bc_mae <<"\n";
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
-    gsMultiBasis<double> Hdivbasis(mpLeft, true);//true: poly-splines (not NURBS)
-    Hdivbasis.degreeElevate(1);
-    
+    // TODO : build Hdiv solver
+    //gsMultiBasis<double> Hdivbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    //Hdivbasis.degreeElevate(1);
+
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
     //! [Refinement]
-    
+
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    //A.setOptions(Aopt);
-    // A.options().addInt("quRule",
-    //              "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-    //              1);
     A.options().setReal("quA", 2.0);
     A.options().setInt("quB", 2);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
@@ -175,7 +174,7 @@ int main(int argc, char *argv[])
 
     // Set the discretization space
     space u = A.getSpace(dbasis);
-    
+
     // Set the source term with respect to target geometry
     auto ff = A.getCoeff(f, GLeft);
 
@@ -188,11 +187,11 @@ int main(int argc, char *argv[])
     //! [Problem setup]
 
     //! [Solver loop]
-    gsSparseSolver<>::CGDiagonal solver;
-    
+    //gsSparseSolver<>::CGDiagonal solver;
+
     gsInfo<< "(dot1=assembled, dot2=solved)\n"
         "\nDoFs: ";
-    double setup_time(0), ma_time(0), slv_time(0);    
+    double setup_time(0), ma_time(0), slv_time(0);
     gsStopwatch timer;
     timer.restart();
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
@@ -203,24 +202,52 @@ int main(int argc, char *argv[])
         mpLeft.uniformRefine();
     }
     timer.restart();
-    //auto Poisson  = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(dbasis.basis(0),bc,A.options(), 1.,eps,0.);
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc, A.options(), eps);
+    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
     slv_time += timer.stop();
 
-    u.setup(bc, dirichlet::l2Projection, 0);
+    // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
+    // Solution vector and solution variable
+    gsMatrix<> densityVector;
+    solution density_sol = A.getSolution(u, densityVector);
+    u.setup(bc_mae, dirichlet::l2Projection, 0);
+    A.initSystem();
+    A.assemble(
+    u *u.tr() //matrix
+    ,
+    u* ff.val()  //rhs vector
+    );
+    densityVector = Poisson.L2ProjectScalar(A.rhs());
+    gsMultiPatch<> density;
+    density_sol.extract(density);
+    auto rho = A.getCoeff(density, G);
+    // ... manipulation of density function
+    auto empldensity = (ev.max(rho)-ev.min(rho));
+    double  int_uh_0 = 0.;
+    double  int_uh_1  = 1.;
+    if (empldensity < 1e-5)
+    {
+        gsInfo << "Density function is constant in the domain rho = 1.\n";
+    }
+    else{
+        int_uh_0  = (IntensityMAE-1.)/empldensity;
+        int_uh_1  = (1.*ev.max(rho)-IntensityMAE*ev.min(rho))/empldensity;
+        gsInfo << "Density function is not constant in the domain\n";
+    }
+    gsInfo << "Density function min :"<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<" max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
+    // ......... End initialization for density.........
+
+    u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
 
     // Initialize the system :  identity mapping as initial guess
     A.initSystem();
     // Initialize the system : start Computing the conductivity coeffeicient ...
     // Compute the Neumann terms defined on physical space
-    gsInfo << "evaluate integral " << ev.integral(ff.val()) << "\n";
-
     auto g_N = A.getBdrFunction(G);
-    auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
+    auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
-    auto CoeffDensity{ev.integral((1.+IntensityMAE*ff.val()))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) )};
+    auto CoeffDensity{ev.integral((int_uh_0*abs(rho.val()) + int_uh_1))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) )};
 
     setup_time += timer.stop();
 
@@ -228,14 +255,14 @@ int main(int argc, char *argv[])
 
     timer.restart();
     A.assemble(
-    igrad(u, G) * igrad(u, G).tr()  + eps * u *u.tr() //matrix
+    grad(u) * grad(u).tr()  + eps * u *u.tr() //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim)  //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE* CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim)  //rhs vector
     );
-    
+
     // Compute the Neumann terms defined on physical space
     //auto g_N = A.getBdrFunction(G);
-    A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+    A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
     A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
     A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
 
@@ -260,8 +287,8 @@ int main(int argc, char *argv[])
         mp.uniformRefine();
         mpLeft.uniformRefine();
         timer.restart();
-        //auto Poisson  = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(dbasis.basis(0),bc,A.options(), 1.,eps,0.);
-        gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc, A.options(), eps);
+        //auto Poisson  = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(dbasis.basis(0),bc_mae,A.options(), 1.,eps,0.);
+        gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
         slv_time += timer.stop();
     }
     // Picard loop
@@ -273,7 +300,6 @@ int main(int argc, char *argv[])
         timer.restart();
         gsMultiPatch<> UU;
         u_sol.extract(UU);
-        gsWrite(UU, "U_solution");
         auto u_s = A.getCoeff(UU);
 
         space v = A.getSpace(dbasis);
@@ -283,79 +309,38 @@ int main(int argc, char *argv[])
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * grad(u_s) );
-        //gsInfo <<"rhs vec = " << A.rhs().size() << "\n";
         vsolVector = Poisson.L2ProjectVec(A.rhs());
-        
+
         gsMultiPatch<> Psi, PsiLoc;
         v_sol.extract(Psi);
         v_sol.extract(PsiLoc);
 
         // ... correct boundary
         ProjectionNormalCPoints(Psi);
-        ProjectionNormalCPoints(PsiLoc);
-        PsiLoc.addAutoBoundaries();
-        PsiLoc.computeTopology();
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        geometryMap PPLoc = A.getMap(PsiLoc);
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        PPLoc(mpLeft);
-        auto comp0 = A.getCoeff(mpLeft, PP);
+        geometryMap PPLoc = A.getMap(Psi);
 
-        gsInfo << std::setprecision(14) <<"\n\n";
-        gsInfo << "integral Comp ERR "<< ev.integral( (comp0-PPLoc).sqNorm()) <<"\n";//Strange behavior
-        gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Strange behavior they are the same
-
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * PPLoc.tr() );// blocked by this one
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
-        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        v_sol.extract(PsiLoc);// Psiloc is reparameterization of Gleft o Psi by L2projection
-        //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        geometryMap PPfLoc = A.getMap(PsiLoc);
-        auto ff      = A.getCoeff(f, PPfLoc);/// Gleft o Psi
-        auto ffG     = A.getCoeff(f, GLeft, PP);/// Exact composition
-
-
-        // gsMatrix<> ptst(2, 1); // Create a 2x1 matrix (2D point)
-        // ptst(0, 0) = 0.385;     // Set the x-coordinate
-        // ptst(1, 0) = 1.;     // Set the y-coordinate
-        // auto CCff  =  f.eval(mpLeft.piece(0).eval( Psi.piece(0).eval(ptst) ));
-        // gsInfo <<"foFoPsi exact : "<< CCff <<"\n";
-        // gsInfo <<" pt3-Stcompo : "<< ev.eval(ffG, ptst) <<"\n";
-        // gsInfo <<" pt3-getCoeff : "<< ev.eval(ff, ptst) <<"\n";
-        // gsInfo << "Error_" << ev.integral((PP-grad(u_sol).tr()).sqNorm() ) << "...\n";
-
-        // auto ff = A.getCoeff(f, GLeft, PP);
-        // auto ffG = A.getCoeff(f, GLeft);
-        gsInfo << "ff" << ev.integral(ff.val()) << "...\n";
-        gsInfo << "ffG " << ev.integral(ffG.val()) << "...\n";
-        gsInfo << "ffDiff " << ev.integral(ff.val()-ffG.val()) << "...\n";
-
+        auto rho = A.getCoeff(density, PP);
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
-        u.setup(bc, dirichlet::l2Projection, 0);
-    
+        u.setup(bc_mae, dirichlet::l2Projection, 0);
+
         solution u_sol = A.getSolution(u, solVector);
 
         // Initialize the system
         A.initSystem();
         setup_time += timer.stop();
 
-        //gsInfo<< A.numDofs() <<std::flush;
-
         timer.restart();
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
-        
+
         // .. update Coeffeicient of conductivity
-        auto  ExprMAE     = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - jac(PP).det()), 1./IGdim);
+        auto  ExprMAE     = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1) - jac(PP).det()), 1./IGdim);
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
-        gsInfo << " Err Mae RHS :  "<< IntegDensity -ev.integral(pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ffG.val()) - jac(PP).det()), 1./IGdim))<< "\n";
-        
         A.assemble(
         grad(u) * grad(u).tr()  +  eps * u * u.tr()//matrix
         ,
@@ -365,7 +350,7 @@ int main(int argc, char *argv[])
 
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
-        A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+        A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
         A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
         A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
         ma_time += timer.stop();
@@ -382,15 +367,19 @@ int main(int argc, char *argv[])
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
         auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol) - grad(u_sol) ).sqNorm()  ));
-        auto L2MAERes = math::sqrt(ev.integral( pow( CoeffDensity - (1.+IntensityMAE*ff.val())*jac(PP).det(),2)  ));
+        auto L2MAERes = math::sqrt(ev.integral( pow( CoeffDensity - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det(),2)  ));
         Iter_mae[ip]  = ip;
         h1Res[ip]     = l2errRes;// Compute the H1 residual
         l2err[ip]     = L2MAERes;// Compute the L2 error in MA equation
         if ( l2errRes < tolPicard || ip == maxIter ){
             // ! end Picard loop
-            gsInfo<< "\n Niter in Picard : " << ip << ".. H1 residual : "<<std::scientific<<l2errRes<< ".. L2 MAE residual : "<<std::scientific<<L2MAERes<<"\n";
-            break; 
-            } // 
+            auto ffG = A.getCoeff(f, GLeft, PP);
+            gsInfo<< "\n Niter in Picard : " << ip
+                    << ".. H1 residual : "<<std::scientific<<l2errRes
+                    << ".. L2 MAE residual : "<<std::scientific<<L2MAERes
+                    <<".. L2 error density : "<<ev.integral((rho-ffG).norm())<<"\n";
+            break;
+            } //
     }//for loop
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
@@ -429,7 +418,7 @@ int main(int argc, char *argv[])
     {
         gsMultiPatch<> UU;
         u_sol.extract(UU);
-        gsWrite(UU, "U_solution");
+        //gsWrite(UU, "U_solution");
         auto u_s = A.getCoeff(UU);
 
         //gsMultiBasis<> gbasis(dbasis);
@@ -438,10 +427,6 @@ int main(int argc, char *argv[])
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
         A.initSystem(IGdim);
-
-        //gsVector<> pt(2); pt.setConstant(0.5);
-        //ev.testEval( v, pt );
-        //ev.testEval( igrad(u_sol,G), pt );
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * igrad(u_s,G));
@@ -452,12 +437,9 @@ int main(int argc, char *argv[])
         ProjectionNormalCPoints(Psitp);
 
         for (index_t i = 0; i < numrRefine; i++){
-            // Psi.addAutoBoundaries();
+            /// compose adaptive mappings : not working after 2nd composition.(can be used for the blew-ip prblem)
             geometryMap PP = A.getMap(Psitp);
-            //gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
-
             auto  comp = PP(Psitp);
-            //auto comp = A.getCoeff(Psitp, PP);
             A.initSystem(IGdim);
             //Obtain control points for the gradient of mpLeft.comp(Psi)
             A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
@@ -469,13 +451,18 @@ int main(int argc, char *argv[])
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         Psi.addAutoBoundaries();
         geometryMap PP = A.getMap(Psitp);
-        gsInfo<< " Int  "<< ev.integral(PP.sqNorm()) << "\n";
+        //:::::::::::::::::::: TESTUNG THE COMPOSITION : BUG ---  TODO ::::::::::::::::::::::::: 
+        // geometryMap PPLoc = A.getMap(Psitp);
+        // PPLoc(mpLeft);
+        // auto comp0 = A.getCoeff(mpLeft, PP);
+        // gsInfo << std::setprecision(14) <<"\n\n";
+        // gsInfo << "integral Comp ERR "<< ev.integral( (comp0-PPLoc).sqNorm()) <<"\n";//Strange behavior
+        // gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Strange behavior they are the same
 
-        PP(mpLeft);
-        //auto comp = A.getCoeff(mpLeft, PP);
+        auto comp  = PP(mpLeft);
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * PP.tr() );// blocked by this one
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
         vsolVector = Poisson.L2ProjectVec(A.rhs());
         v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
@@ -524,7 +511,7 @@ int main(int argc, char *argv[])
             gsRefineMarkedElements( Psi, elMarked, 1);
             }
 
-        //::::::::::::::::::::      end       :::::::::::::::::::::::::   
+        //::::::::::::::::::::      end       :::::::::::::::::::::::::
         gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);

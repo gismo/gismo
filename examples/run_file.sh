@@ -15,8 +15,8 @@ EXECUTABLE="./bin/r_refinement_ComplexGeometry"
 
 # Parameters (tags) to run the executable with
 TAGS=(
-    "-u 4 -f 0. -l 5 -a 0.3 -c 1 -p 0"
-    "-u 4 -f 0. -l 6 -a 0.7 -c 2 -p 0"
+    "-u 4 -f 10. -l 5 -a 0.3 -c 1 -p 0"
+    "-u 4 -f 10. -l 6 -a 0.7 -c 2 -p 0"
 )
 
 # Run the executable with each set of parameters
