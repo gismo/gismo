@@ -1252,43 +1252,45 @@ void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value)
 
 /// Writes \a boxes to a file with name \a fn
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, T value)
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const std::vector<T> & values)
 {
-    gsParaviewCollection collection(fn);
-
-    std::string fileName;
+    GISMO_ASSERT(boxes.cols()/2==(index_t)values.size() || values.size()==0,"Values should have size 0 or equal to the number of boxes (i.e., boxes.cols()/2)");
+    const short_t d = boxes.rows();
+    gsMesh<T> mesh; // only needs vertices
+    gsMatrix<> tmpbox;
     for (index_t k=0; k!=boxes.cols()/2; k++)
     {
-        gsMatrix<> tmpbox = boxes.middleCols(2*k,2);
-        fileName = fn + "_" + util::to_string(k);
-        writeSingleBox(tmpbox,fileName,value);
-        fileName = gsFileManager::getFilename(fileName);
-        collection.addPart(fileName + ".vts");
+        tmpbox = boxes.middleCols(2*k,2);
+
+        gsGridIterator<T,VERTEX> grid(tmpbox,math::pow(2,d));
+        for(; grid; ++grid)
+        {
+            typename gsMesh<T>::VertexHandle vertex = mesh.addVertex(*grid);
+            if (values.size()!=0)
+                vertex->data = values[k];
+        }
     }
 
-    // Write out the collection file
-    collection.save();
+    if ( boxes.rows() == 3)
+        writeSingleBasisMesh3D(mesh,fn);
+    else if ( boxes.rows() == 2)
+        writeSingleBasisMesh2D(mesh,fn);
+    else
+        gsWriteParaview(mesh, fn, false);
 }
 
-/// Writes \a boxes to a file with name \a fn
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & boxes, const gsVector<T> & values, std::string const & fn)
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const gsVector<T> & values)
 {
-    gsParaviewCollection collection(fn);
+    std::vector<T> v(values.data(), values.data() + values.size());
+    gsWriteParaview(boxes,fn,v);
+}
 
-    std::string fileName;
-    GISMO_ASSERT(boxes.cols()/2==values.rows(),"Number of boxes and values does not match!");
-    for (index_t k=0; k!=boxes.cols()/2; k++)
-    {
-        gsMatrix<> tmpbox = boxes.middleCols(2*k,2);
-        fileName = fn + "_" + util::to_string(k);
-        writeSingleBox(tmpbox,fileName,values[k]);
-        fileName = gsFileManager::getFilename(fileName);
-        collection.addPart(fileName + ".vts");
-    }
-
-    // Write out the collection file
-    collection.save();
+template<class T>
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const T & value)
+{
+    std::vector<T> v(value);
+    gsWriteParaview(boxes,fn,v);
 }
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
