@@ -4462,6 +4462,342 @@ public:
    symm(_expr<E> const& u) { return symm_expr<E>(u);}
 */
 
+//////////////////////////////////////////////////////////////////////////////////////
+// BEGIN EXPRESSIONS
+//////////////////////////////////////////////////////////////////////////////////////
+    /*
+  Expression for the gradient of a finite element variable
+
+  Transposed gradient vectors are returned as a matrix
+*/
+template<class E>
+class subgrad_expr : public _expr<subgrad_expr<E> >
+{
+    typename E::Nested_t _u;
+public:
+    enum {Space = E::Space, ScalarValued= 0, ColBlocks= 0};
+
+    typedef typename E::Scalar Scalar;
+    mutable gsMatrix<Scalar> tmp;
+    short_t _start, _end;
+
+    subgrad_expr(const E & u, short_t startOffset = 0, short_t endOffset = 0)
+    :
+    _u(u),
+    _start(startOffset),
+    _end(endOffset)
+    {
+        GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");
+        GISMO_ASSERT(0<=startOffset && 0<=endOffset,"grad(.) requires non-negative offsets.");
+        GISMO_ASSERT(startOffset+endOffset<=u.source().domainDim(),"grad(.) requires startOffset+endOffset<=u.source().domainDim().");
+        GISMO_ASSERT(startOffset<u.source().domainDim() && endOffset<u.source().domainDim(),"grad(.) requires startOffset<endOffset<u.sourceDomainDim().");
+        // GISMO_ASSERT(startOffset<u.source().domainDim()-
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        // Assumes: derivatives are in _u.data().values[1]
+        // gsExprHelper acounts for compositions/physical expressions
+        // so that derivs are directly computed
+        tmp = _u.data().values[1].reshapeCol(k, _u.source().domainDim(), cardinality_impl()).transpose()(gsEigen::all, gsEigen::seq(_start,gsEigen::last-_end));
+        return tmp;
+    }
+
+    index_t rows() const { return 1 /*==u.dim()*/; }
+
+    index_t cols() const { return _u.source().domainDim()-_start-_end; }
+
+    index_t cardinality_impl() const
+    { return _u.data().values[1].rows() /  _u.source().domainDim(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_GRAD;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os << "\u2207("; _u.print(os); os <<")"; }
+private:
+
+    template<class U> static inline
+    typename util::enable_if<util::is_same<U,gsComposition<Scalar> >::value,
+                             const gsMatrix<Scalar> &>::type
+    eval_impl(const U & u, const index_t k)
+    {
+        return u.eval(k);
+    }
+};
+
+/*
+  \brief Expression for the gradient of a finite element variable
+
+  Transposed gradient vectors are returned as a matrix.
+  This specialization is for a gsFeSolution object
+*/
+
+template<class T>
+class subgrad_expr<gsFeSolution<T> > : public _expr<subgrad_expr<gsFeSolution<T> > >
+{
+protected:
+    const gsFeSolution<T> _u;
+
+public:
+    typedef T Scalar;
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+    short_t _start, _end;
+
+    explicit subgrad_expr(const gsFeSolution<T> & u, short_t startOffset = 0, short_t endOffset = 0)
+    :
+    _u(u),
+    _start(startOffset),
+    _end(endOffset)
+    {
+        GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");
+        GISMO_ASSERT(0<=startOffset && 0<=endOffset,"grad(.) requires non-negative offsets.");
+        GISMO_ASSERT(startOffset+endOffset<=u.parDim(),"grad(.) requires startOffset+endOffset<=u.parDim().");
+        GISMO_ASSERT(startOffset<u.parDim() && endOffset<u.parDim(),"grad(.) requires startOffset<endOffset<u.sourceDomainDim().");
+    }
+
+    mutable gsMatrix<T> res;
+    mutable gsMatrix<T> der;
+    const gsMatrix<T> & eval(index_t k) const
+    {
+        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+
+        res.setZero(_u.dim(), _u.parDim()-_start-_end);
+        const gsDofMapper & map = _u.mapper();
+        for (index_t c = 0; c!= _u.dim(); c++)
+        {
+            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+            {
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                der = _u.data().values[1].col(k)
+                            .segment(i*_u.parDim(), _u.parDim()).transpose()
+                                        ( 0,gsEigen::seq(_start,gsEigen::last-_end) );
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                    res.row(c) += _u.coefs().at(ii) * der;
+                else
+                    res.row(c) += _u.fixedPart().at( map.global_to_bindex(ii) ) * der;
+            }
+        }
+        return res;
+    }
+
+    index_t rows() const {return _u.dim();}
+    index_t cols() const {return _u.parDim()-_start-_end; }
+
+    const gsFeSpace<Scalar> & rowVar() const
+    {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const
+    {return gsNullExpr<Scalar>::get();}
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        _u.parse(evList);                         // add symbol
+        evList.add(_u.space());
+        _u.data().flags |= NEED_GRAD|NEED_ACTIVE; // define flags
+    }
+
+    void print(std::ostream &os) const { os << "\u2207(s)"; }
+};
+
+
+/*
+  Expression for the Jacobian matrix of a geometry map
+*/
+template<class T>
+class subjac_expr : public _expr<subjac_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    typedef T Scalar;
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+    short_t _start, _end;
+
+    subjac_expr(const gsGeometryMap<T> & G, short_t startOffset, short_t endOffset)
+    :
+    _G(G),
+    _start(startOffset),
+    _end(endOffset)
+    {
+        GISMO_ASSERT(0<=startOffset && 0<=endOffset,"grad(.) requires non-negative offsets.");
+        GISMO_ASSERT(startOffset+endOffset<=_G.source().domainDim(),"grad(.) requires startOffset+endOffset<=_G.source().domainDim().");
+        GISMO_ASSERT(startOffset<_G.source().domainDim() && endOffset<_G.source().domainDim(),"grad(.) requires startOffset<endOffset<u.sourceDomainDim().");
+        // GISMO_ASSERT(startOffset<_G.source().domainDim()-
+    }
+
+    auto eval(const index_t k) const
+    {
+        // TarDim x ParDim
+        return _G.data().values[1]
+            .reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose()(gsEigen::all, gsEigen::seq(_start,gsEigen::last-_end));
+    }
+
+    index_t rows() const { return _G.source().targetDim(); }
+
+    index_t cols() const { return _G.source().domainDim()-_start-_end; }
+
+    static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
+    static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_G);
+        _G.data().flags |= NEED_DERIV;
+    }
+
+    meas_expr<T> absDet() const
+    {
+        GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
+        return meas_expr<T>(_G);
+    }
+
+    jacInv_expr<T> inv() const
+    {
+        GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
+        return jacInv_expr<T>(_G);
+    }
+
+    /// The generalized Jacobian matrix inverse, i.e.: (J^t J)^{-t} J^t
+    jacInv_expr<T> ginv() const { return jacInv_expr<T>(_G); }
+
+    void print(std::ostream &os) const { os << "\u2207("; _G.print(os); os <<")"; }
+};
+
+/**
+   Expression for the Laplacian of a finite element variable
+*/
+template<class E>
+class sublapl_expr : public _expr<sublapl_expr<E> >
+{
+    typename E::Nested_t _u;
+
+public:
+    typedef typename E::Scalar Scalar;
+    enum {Space = E::Space, ScalarValued= 0, ColBlocks= 0};
+    short_t _start, _end;
+    mutable gsMatrix<Scalar> der2, hess, result;
+
+    sublapl_expr(const E & u, short_t startOffset, short_t endOffset)
+    :
+    _u(u),
+    _start(startOffset),
+    _end(endOffset)
+    {
+        GISMO_ASSERT(1==u.dim(),"lapl(.) requires 1D variable, use lapl(.) instead.");
+        GISMO_ASSERT(0<=startOffset && 0<=endOffset,"lapl(.) requires non-negative offsets.");
+        GISMO_ASSERT(startOffset+endOffset<=u.source().domainDim(),"lapl(.) requires startOffset+endOffset<=u.source().domainDim().");
+        GISMO_ASSERT(startOffset<u.source().domainDim() && endOffset<u.source().domainDim(),"lapl(.) requires startOffset<endOffset<u.sourceDomainDim().");
+    }
+
+    const gsMatrix<Scalar> eval(const index_t k) const
+    {
+        index_t numActs = _u.data().values[0].rows();
+        index_t numDers = _u.parDim() * (_u.parDim() + 1) / 2;
+        result.resize(numActs,1);
+        for (index_t i = 0; i!=numActs; ++i)
+        {
+            der2 = _u.data().values[2].block(i*numDers,k,_u.parDim(),1); // this only takes d11, d22, d33 part. For all the derivatives [d11, d22, d33, d12, d13, d23]: col.block(i*numDers,k,numDers,1)
+            result(i,0) = der2(gsEigen::seq(_start,gsEigen::last-_end),0).sum();
+        }
+        return result;
+    }
+
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
+
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_DERIV2;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
+
+    void print(std::ostream &os) const { os << "\u2206("; _u.print(os); os <<")"; } //or \u0394
+};
+
+/*
+  Expression for the Laplacian of a finite element solution
+*/
+template<class T>
+class sublapl_expr<gsFeSolution<T> > : public _expr<sublapl_expr<gsFeSolution<T> > >
+{
+protected:
+    const gsFeSolution<T> _u;
+
+public:
+    typedef T Scalar;
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+    short_t _start, _end;
+    mutable gsMatrix<Scalar> der2, hess, result;
+
+    sublapl_expr(const gsFeSolution<T> & u, short_t startOffset, short_t endOffset)
+    :
+    _u(u),
+    _start(startOffset),
+    _end(endOffset)
+    {
+        GISMO_ASSERT(1==u.dim(),"lapl(.) requires 1D variable, use lapl(.) instead.");
+        GISMO_ASSERT(0<=startOffset && 0<=endOffset,"lapl(.) requires non-negative offsets.");
+        GISMO_ASSERT(startOffset+endOffset<=u.parDim(),"lapl(.) requires startOffset+endOffset<=u.parDim().");
+        GISMO_ASSERT(startOffset<u.parDim() && endOffset<u.parDim(),"lapl(.) requires startOffset<endOffset<u.sourceDomainDim().");
+    }
+
+    mutable gsMatrix<T> res;
+    const gsMatrix<T> & eval(const index_t k) const
+    {
+        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+
+        res.setZero(_u.dim(), 1); //  scalar, but per component
+        const gsDofMapper & map = _u.mapper();
+
+        index_t numActs = _u.data().values[0].rows();
+        index_t numDers = _u.parDim() * (_u.parDim() + 1) / 2;
+        gsMatrix<T> deriv2;
+
+        for (index_t c = 0; c!= _u.dim(); c++)
+            for (index_t i = 0; i!=numActs; ++i)
+            {
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                deriv2 = _u.data().values[2].block(i*numDers,k,_u.parDim(),1); // this only takes d11, d22, d33 part. For all the derivatives [d11, d22, d33, d12, d13, d23]: col.block(i*numDers,k,numDers,1)
+                deriv2 = deriv2(gsEigen::seq(_start,gsEigen::last-_end),0);
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                    res.at(c) += _u.coefs().at(ii) * deriv2.sum();
+                else
+                    res.at(c) +=_u.fixedPart().at( map.global_to_bindex(ii) ) * deriv2.sum();
+            }
+        return res;
+    }
+
+    index_t rows() const { return _u.dim(); }
+    index_t cols() const { return 1; }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u.space());
+        _u.data().flags |= NEED_ACTIVE | NEED_DERIV2;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
+
+    void print(std::ostream &os) const { os << "\u2206(s)"; }
+};
+
+//////////////////////////////////////////////////////////////////////////////////////
+// END NEW EXPRESSIONS
+//////////////////////////////////////////////////////////////////////////////////////
+
+
 #undef MatExprType
 #undef AutoReturn_t
 //----------------------------------------------------------------------------------
@@ -4649,6 +4985,34 @@ operator-(typename E2::Scalar const& s, _expr<E2> const& v)
     return sub_expr<_expr<typename E2::Scalar>, E2>(_expr<typename E2::Scalar>(s), v);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
+// BEGIN NEW EXPRESSIONS
+//////////////////////////////////////////////////////////////////////////////////////
+/// The gradient of a variable
+template<class E> EIGEN_STRONG_INLINE
+subgrad_expr<E> subgrad(const E & u, short_t startOffset, short_t endOffset)
+{ return subgrad_expr<E>(u,startOffset,endOffset); }
+
+/// The gradient of a finite element solution
+template<class T> EIGEN_STRONG_INLINE
+subgrad_expr<gsFeSolution<T> > subgrad(const gsFeSolution<T> & u, short_t startOffset, short_t endOffset)
+{ return subgrad_expr<gsFeSolution<T> >(u,startOffset,endOffset); }
+
+/// The Jacobian matrix of a geometry map
+template<class T> EIGEN_STRONG_INLINE
+subjac_expr<T> subjac(const gsGeometryMap<T> & G, short_t startOffset, short_t endOffset)
+{return subjac_expr<T>(G,startOffset,endOffset);}
+
+template<class E> EIGEN_STRONG_INLINE
+sublapl_expr<E> sublapl(const symbol_expr<E> & u, short_t startOffset, short_t endOffset)
+{ return sublapl_expr<E>(u,startOffset,endOffset); }
+
+template<class T> EIGEN_STRONG_INLINE
+sublapl_expr<gsFeSolution<T> > sublapl(const gsFeSolution<T> & u, short_t startOffset, short_t endOffset)
+{ return sublapl_expr<gsFeSolution<T> >(u,startOffset,endOffset); }
+//////////////////////////////////////////////////////////////////////////////////////
+// END NEW EXPRESSIONS
+//////////////////////////////////////////////////////////////////////////////////////
 
 // Shortcuts for common quantities, for instance function
 // transformations by the geometry map \a G

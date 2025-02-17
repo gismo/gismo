@@ -37,17 +37,17 @@ namespace gismo
  *
  * @tparam     T     { description }
  */
-template <class T>
+template <short_t d, class T>
 class gsAdaptiveMeshing
 {
 public:
-    typedef          gsHBox<2,T>                                HBox;
-    typedef          gsHBox<2,T> *                              HBox_ptr;
-    typedef          gsHBoxContainer<2,T>                       HBoxContainer;
+    typedef          gsHBox<d,T>                                HBox;
+    typedef          gsHBox<d,T> *                              HBox_ptr;
+    typedef          gsHBoxContainer<d,T>                       HBoxContainer;
     typedef typename HBox::SortedContainer                      boxContainer;
-    typedef          std::map<gsHBox<2,T>,index_t,gsHBoxCompare<2,T>>  indexMapType;
-    typedef          std::map<index_t,gsHBox<2,T>*>                 boxMapType;
-    typedef          gsHBoxUtils<2,T>                 HBoxUtils;
+    typedef          std::map<gsHBox<d,T>,index_t,gsHBoxCompare<d,T>>  indexMapType;
+    typedef          std::map<index_t,gsHBox<d,T>*>                 boxMapType;
+    typedef          gsHBoxUtils<d,T>                 HBoxUtils;
 
 public:
 
@@ -101,7 +101,7 @@ public:
     T nonBlockedError() const;
 
 private:
-    void _makeMap(const gsFunctionSet<T> * input, typename gsAdaptiveMeshing<T>::indexMapType & indexMap, typename gsAdaptiveMeshing<T>::boxMapType & boxMap);
+    void _makeMap(const gsFunctionSet<T> * input, typename gsAdaptiveMeshing<d,T>::indexMapType & indexMap, typename gsAdaptiveMeshing<d,T>::boxMapType & boxMap);
 
     void _assignErrors(boxMapType & container, const std::vector<T> & elError);
 
@@ -121,100 +121,100 @@ private:
     std::vector<index_t> _sortPermutationProjectedCrs( const boxMapType & container);
     // void _sortPermutated( const std::vector<index_t> & permutation, boxContainer & container);
 
-    void _crsPredicates_into( std::vector<gsHBoxCheck<2,T> *> & predicates);
-    void _crsPredicates_into(const HBoxContainer & markedRef, std::vector<gsHBoxCheck<2,T> *> & predicates);
-    void _refPredicates_into( std::vector<gsHBoxCheck<2,T> *> & predicates);
+    void _crsPredicates_into( std::vector<gsHBoxCheck<d,T> *> & predicates);
+    void _crsPredicates_into(const HBoxContainer & markedRef, std::vector<gsHBoxCheck<d,T> *> & predicates);
+    void _refPredicates_into( std::vector<gsHBoxCheck<d,T> *> & predicates);
 
     template<bool _coarsen,bool _admissible>
-    void _markElements(  const std::vector<T> & elError, const index_t refCriterion, const std::vector<gsHBoxCheck<2,T> *> & predicates, HBoxContainer & elMarked) const;
+    void _markElements(  const std::vector<T> & elError, const index_t refCriterion, const std::vector<gsHBoxCheck<d,T> *> & predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
-    void _markFraction( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const
+    void _markFraction( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const
     {
         _markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
     }
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen &&  _admissible, void>::type
-    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen && !_admissible, void>::type
-    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen &&  _admissible, void>::type
-    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen && !_admissible, void>::type
-    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
-    void _markProjectedFraction( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const
+    void _markProjectedFraction( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const
     {
         _markProjectedFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
     }
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen &&  _admissible, void>::type
-    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen && !_admissible, void>::type
-    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen &&  _admissible, void>::type
-    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen && !_admissible, void>::type
-    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
 
     template<bool _coarsen,bool _admissible>
-    void _markPercentage( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const
+    void _markPercentage( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const
     {
         _markPercentage_impl<_coarsen,_admissible>(elements,predicates,elMarked);
     }
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen &&  _admissible, void>::type
-    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen && !_admissible, void>::type
-    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen &&  _admissible, void>::type
-    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen && !_admissible, void>::type
-    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
-    void _markThreshold( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const
+    void _markThreshold( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const
     {
         _markThreshold_impl<_coarsen,_admissible>(elements,predicates,elMarked);
     }
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen &&  _admissible, void>::type
-    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen && !_admissible, void>::type
-    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen &&  _admissible, void>::type
-    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen && !_admissible, void>::type
-    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<d,T> *> predicates, HBoxContainer & elMarked) const;
 
-    bool _checkBox  ( const          HBox            & box  , const std::vector<gsHBoxCheck<2,T> *> predicates) const;
-    bool _checkBoxes( const typename HBox::Container & boxes, const std::vector<gsHBoxCheck<2,T> *> predicates) const;
+    bool _checkBox  ( const          HBox            & box  , const std::vector<gsHBoxCheck<d,T> *> predicates) const;
+    bool _checkBoxes( const typename HBox::Container & boxes, const std::vector<gsHBoxCheck<d,T> *> predicates) const;
 
     T _totalError(const boxMapType & elements);
 
@@ -227,7 +227,7 @@ private:
 
     HBox * _boxPtr(const HBox & box) const;
 
-    typename gsAdaptiveMeshing<T>::HBoxContainer _toContainer( const std::vector<bool> & bools) const;
+    typename gsAdaptiveMeshing<d,T>::HBoxContainer _toContainer( const std::vector<bool> & bools) const;
 
 protected:
     // M & m_basis;
@@ -286,29 +286,33 @@ protected:
 #endif
 namespace gismo
 {
-    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<real_t>;
+    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<1,real_t>;
+    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<2,real_t>;
+    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<3,real_t>;
+    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<4,real_t>;
+
     // EXTERN_CLASS_TEMPLATE gsHBoxCheck<1,real_t>;
-    // EXTERN_CLASS_TEMPLATE gsHBoxCheck<2,real_t>;
+    // EXTERN_CLASS_TEMPLATE gsHBoxCheck<d,real_t>;
     // EXTERN_CLASS_TEMPLATE gsHBoxCheck<3,real_t>;
     // EXTERN_CLASS_TEMPLATE gsHBoxCheck<4,real_t>;
 
     // EXTERN_CLASS_TEMPLATE gsLvlCompare<1,real_t>;
-    // EXTERN_CLASS_TEMPLATE gsLvlCompare<2,real_t>;
+    // EXTERN_CLASS_TEMPLATE gsLvlCompare<d,real_t>;
     // EXTERN_CLASS_TEMPLATE gsLvlCompare<3,real_t>;
     // EXTERN_CLASS_TEMPLATE gsLvlCompare<4,real_t>;
 
     // EXTERN_CLASS_TEMPLATE gsSmallerErrCompare<1,real_t>;
-    // EXTERN_CLASS_TEMPLATE gsSmallerErrCompare<2,real_t>;
+    // EXTERN_CLASS_TEMPLATE gsSmallerErrCompare<d,real_t>;
     // EXTERN_CLASS_TEMPLATE gsSmallerErrCompare<3,real_t>;
     // EXTERN_CLASS_TEMPLATE gsSmallerErrCompare<4,real_t>;
 
     // EXTERN_CLASS_TEMPLATE gsLargerErrCompare<1,real_t>;
-    // EXTERN_CLASS_TEMPLATE gsLargerErrCompare<2,real_t>;
+    // EXTERN_CLASS_TEMPLATE gsLargerErrCompare<d,real_t>;
     // EXTERN_CLASS_TEMPLATE gsLargerErrCompare<3,real_t>;
     // EXTERN_CLASS_TEMPLATE gsLargerErrCompare<4,real_t>;
 
     // EXTERN_CLASS_TEMPLATE gsOverlapCompare<1,real_t>;
-    // EXTERN_CLASS_TEMPLATE gsOverlapCompare<2,real_t>;
+    // EXTERN_CLASS_TEMPLATE gsOverlapCompare<d,real_t>;
     // EXTERN_CLASS_TEMPLATE gsOverlapCompare<3,real_t>;
     // EXTERN_CLASS_TEMPLATE gsOverlapCompare<4,real_t>;
 }
