@@ -81,6 +81,7 @@ public:
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
         opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
         opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
+        opt.addSwitch("SameElement","Activates optimization if all quadrature points are located in the same element", true);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
     }
@@ -432,7 +433,9 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         gsQuadRule<T> QuRule;  // Quadrature rule
         auto _arg = expr.val();
         m_exprdata->parse(_arg);
-        m_exprdata->activateFlags(SAME_ELEMENT);
+        if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
+    gsMatrix<T> tmpPoints;
+    gsVector<T> tmpWeights;
 
         // Computed value on element
         T elVal;
@@ -451,6 +454,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
                 for (; domIt->good(); domIt->next() )
 #endif
                 {
+                    /*
                     // Map the Quadrature rule to the element
                     QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                                   m_exprdata->points(), m_exprdata->weights());
@@ -468,10 +472,42 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 #else
                     m_value);
 #endif
+
                     if ( storeElWise )
                     {
                         m_elWise[poffset+domIt->id()] = elVal;
                     }
+
+*/
+                    // Map the Quadrature rule to the element
+                    QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                                tmpPoints, tmpWeights);
+                    for (index_t p = 0; p!=tmpPoints.cols(); p++)
+                    {
+                        m_exprdata->points() = tmpPoints.col(p);
+                        m_exprdata->weights() = tmpWeights.row(p);
+
+                        // Perform required pre-computations on the quadrature nodes
+                        m_exprdata->precompute(patchInd);
+
+                        // Compute on element
+                        elVal = _op::init();
+                        for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quad. nodes
+                            _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
+                        _op::acc(elVal, (T)1,
+#ifdef _OPENMP
+                    thValue);
+#else
+                    m_value);
+#endif
+
+
+                        if ( storeElWise )
+                        {
+                            m_elWise[poffset+domIt->id()] = elVal;
+                        }
+                    }
+
                }
                poffset += m_exprdata->multiBasis().basis(patchInd).numElements();
         }
@@ -496,7 +532,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
     gsQuadRule<T> QuRule;  // Quadrature rule
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
 
     // Computed value
     T elVal;
@@ -552,7 +588,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
 
     // Computed value
     T elVal;
@@ -605,7 +641,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 {
     auto arg_tpl = expr.val();
     m_exprdata->parse(arg_tpl);
-    // m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule;
     // Computed value
