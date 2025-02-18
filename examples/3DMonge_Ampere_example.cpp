@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     index_t maxIter     = 30;
     double eps          = 1e-6; // pinalization coefficient
     double tolPicard    = 1e-8;
-    double IntensityMAE = 6.;
+    double IntensityMAE = 9.;
     bool plotMAeRes     = false;
     bool export_b64     = false;
     // Specify the file path
@@ -98,12 +98,17 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
-    //fd.getId(1,mpLeft);
+    // fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
 
+
+    //================================== -------------------------- =====================================
+    //==================================   Independent of the geometry ==================================
+    //================================== This part is fixed for all    ==================================
+    //================================== -------------------------- =====================================
     // .... one single patch
     gsMultiPatch<> mp = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
     //Get all interfaces and boundaries:
@@ -111,7 +116,6 @@ int main(int argc, char *argv[])
     mp.computeTopology();
     //mp.addAutoBoundaries();
 
-    //..... Test 2
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y","z",3);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
@@ -120,20 +124,20 @@ int main(int argc, char *argv[])
     fd.getId(2003, f);
     gsInfo<<"Density function "<< f << "\n";
 
-    gsBoundaryConditions<> bc;
-    bc.setGeoMap(mp);
+    gsBoundaryConditions<> bc_mae;
+    bc_mae.setGeoMap(mp);
     // For simplicity, set Neumann boundary conditions
    for ( gsMultiPatch<>::const_biterator
             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
    {
-       bc.addCondition( *bit, condition_type::neumann, &sN );
+       bc_mae.addCondition( *bit, condition_type::neumann, &sN );
    }
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+    gsInfo<<"Boundary conditions:\n"<< bc_mae <<"\n";
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
     
-    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
@@ -160,9 +164,6 @@ int main(int argc, char *argv[])
 
     // Set pow for BFO method dim in parameteric domain
     auto IGdim     = G.domainDim();
-
-    // Set dimension of target geometry
-    //auto ITdim     = mpLeft.geoDim();
 
     // Set factor for BFO method
     auto gammaMAE = factorial(G.domainDim());
@@ -196,11 +197,43 @@ int main(int argc, char *argv[])
         mp.uniformRefine();
         mpLeft.uniformRefine();
     }
-    
-    //Poisson_FastDiag<double> Poisson(dbasis.basis(0), bc, A.options(), eps);
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc, A.options(), eps);
+    timer.restart();
+    //Poisson_FastDiag<double> Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
+    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
+    slv_time += timer.stop();
+    // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
+    // Solution vector and solution variable
+    gsMatrix<> densityVector;
+    solution density_sol = A.getSolution(u, densityVector);
+    u.setup(bc_mae, dirichlet::l2Projection, 0);
+    A.initSystem();
+    A.assemble(
+    u *u.tr() //matrix
+    ,
+    u* abs(ff.val())  //rhs vector
+    );
+    densityVector = Poisson.L2ProjectScalar(A.rhs());
+    gsMultiPatch<> density;
+    density_sol.extract(density);
+    auto rho = A.getCoeff(density, G);
+    // ... manipulation of density function
+    auto empldensity  = (ev.max(rho)-ev.min(rho));
+    double  int_uh_0  = 0.;
+    double  int_uh_1  = 1.;
+    if (empldensity < 1e-5|| IntensityMAE <= 1. )
+    {
+        gsInfo << "Density function is constant in the domain rho = 1.\n";
+    }
+    else{
+        int_uh_0  = (IntensityMAE-1.)/empldensity;
+        int_uh_1  = (1.*ev.max(rho)-IntensityMAE*ev.min(rho))/empldensity;
+        gsInfo << "Density function is not constant in the domain\n";
+    }
+    gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
+    // ......... End initialization for density.........
 
-    u.setup(bc, dirichlet::l2Projection, 0);
+    // ......... Start solving the Monge-Ampere equation .........
+    u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
 
     // Initialize the system :  identity mapping as initial guess
@@ -210,10 +243,10 @@ int main(int argc, char *argv[])
     gsInfo << "evaluate integral " << ev.integral(ff.val()) << "\n";
 
     auto g_N = A.getBdrFunction(G);
-    auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
+    auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
-    auto CoeffDensity{ev.integral((1.+IntensityMAE*ff.val()))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) )};
+    auto CoeffDensity{ev.integral((int_uh_0*abs(rho.val()) + int_uh_1))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) )};
 
     setup_time += timer.stop();
 
@@ -223,12 +256,12 @@ int main(int argc, char *argv[])
     A.assemble(
     igrad(u, G) * igrad(u, G).tr()  + eps * u *u.tr() //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE* CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim)  //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE* CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim)  //rhs vector
     );
     
     // Compute the Neumann terms defined on physical space
     //auto g_N = A.getBdrFunction(G);
-    A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+    A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
     A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
     A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
 
@@ -254,20 +287,16 @@ int main(int argc, char *argv[])
         timer.restart();
         gsMultiPatch<> UU;
         u_sol.extract(UU);
-        gsWrite(UU, "U_solution");
         auto u_s = A.getCoeff(UU);
 
         space v = A.getSpace(dbasis);
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
         A.initSystem(IGdim);
-
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * grad(u_s) );
-        //gsInfo <<"rhs vec = " << A.rhs().size() << "\n";
         vsolVector = Poisson.L2ProjectVec(A.rhs());
         //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-
         
         gsMultiPatch<> Psi, PsiLoc;
         v_sol.extract(Psi);
@@ -278,32 +307,12 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        // geometryMap PPLoc = A.getMap(PsiLoc);
-        // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        // auto  comp = PPLoc(mpLeft);
-        // A.initSystem(ITdim);
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // gsInfo<< "+" <<std::flush; // 
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
-        //// vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        // gsInfo<< "+" <<std::flush; // 
-        // v_sol.extract(PsiLoc);
-        // //::::::::::::::::::::      end       ::::::::::::::::::::::::: 
-        // geometryMap PPfLoc = A.getMap(PsiLoc);
-        // auto ff = A.getCoeff(f, PPfLoc);
-        // gsInfo << "Error_" << ev.integral((PP-grad(u_sol).tr()).sqNorm() ) << "...\n";
-
-        auto ff = A.getCoeff(f, GLeft, PP);
-        //auto ff = A.getCoeff(f, PP);
-        gsInfo << "ff2" << ev.integral(ff.val()) << "...\n";
-        // gsInfo << "ff3 " << ev.integral(ffG.val()) << "...\n";
+        geometryMap PPrho = A.getMap(Psi);
+        auto rho = PPrho(density);
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
-        u.setup(bc, dirichlet::l2Projection, 0);
-    
-        solution u_sol = A.getSolution(u, solVector);
+        u.setup(bc_mae, dirichlet::l2Projection, 0);
 
         // Initialize the system
         A.initSystem();
@@ -315,13 +324,12 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         
         // .. update Coeffeicient of conductivity
-        auto  ExprMAE     = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - jac(PP).det()), 1./IGdim);
+        auto  ExprMAE     = pow( abs( pow(div(PP).val(),IGdim) -gammaMAE*jac(PP).det()) + gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
-        //gsInfo << " end value coeff "<< CoeffConductivity << "\n";
         A.assemble(
-        igrad(u, G) * igrad(u, G).tr()  +  eps * u * u.tr()//matrix
+        grad(u) * grad(u).tr()  +  eps * u * u.tr()//matrix
         ,
         u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
         );
@@ -329,7 +337,7 @@ int main(int argc, char *argv[])
 
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
-        A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+        A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
         A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
         A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
         ma_time += timer.stop();
@@ -349,9 +357,9 @@ int main(int argc, char *argv[])
 
         ++NiterPicard;
         auto l2errRes = math::sqrt(ev.integral( ( igrad(u_lsol,G) - igrad(u_sol,G) ).sqNorm()  ));
-        if ( l2errRes < tolPicard || ip == maxIter ){
+        if ( l2errRes < tolPicard || ip == maxIter || ev.min(jac(PP).det()) < 0.){
             // ! end Picard loop
-            gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<<"\n";
+            gsInfo<< "\n Niter in Picard : " << NiterPicard << ".. L2 residual : "<<std::scientific<<l2errRes<< ".. min Jac : "<<std::scientific<<ev.min(jac(PP).det())<<"\n";
             break; 
             } // 
     }//for loop
@@ -377,9 +385,9 @@ int main(int argc, char *argv[])
         collection.addField(ff, "density function");
         collection.addField(ihess(u_sol,G).det(), "Jacobian function");
         if(maxIter == 0)
-        collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(1.+IntensityMAE*ff.val()), 1./IGdim) , "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) , "MAE_rhs");
         else
-        collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(1.+IntensityMAE*ff.val()) - ihess(u_sol,G).det()), 1./IGdim) , "MAE_rhs");
+        collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1) - ihess(u_sol,G).det()), 1./IGdim) , "MAE_rhs");
         collection.saveTimeStep();
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");

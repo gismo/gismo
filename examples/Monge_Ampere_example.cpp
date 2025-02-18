@@ -52,23 +52,22 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot           = false;
-    index_t numRefine   = 3;
+    index_t numRefine   = 4;
     index_t numLRefine  = 3;
-    index_t numML       = 0;
     index_t numElevate  = 1;
     index_t numrRefine  = -1; // number of composition bewteen adaptive mappings ()
     index_t maxIter     = 50;
-    double eps          = 1e-6; // pinalization coefficient
+    double eps          = 1e-7; // pinalization coefficient
     double tolPicard    = 1e-8;
-    double IntensityMAE = 6.;
+    double IntensityMAE = 9.;
     bool export_b64     = false;
     bool errorsave      = false;
 
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/butterfly.xml");
     //std::string fn("pde/infinit_plate.xml");
-    //std::string fn("pde/circle.xml");
+    std::string fn("pde/circle.xml");
     //std::string fn("surfaces/egg.xml");
     //std::string fn("domain2d/lake.xml");
 
@@ -79,7 +78,6 @@ int main(int argc, char *argv[])
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
     cmd.addInt( "r", "numrRefine", "Number of local r-refinement compostion loops",  numrRefine);
-    cmd.addInt( "m", "numML", "Number of multi levels loops",  numML);
 
     cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt("quRule",
@@ -95,17 +93,17 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft ; //= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    gsMultiPatch<> mpLeft; //= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
     gsInfo << "INFO IN PARAMETRIC DOMAIN "<< mpLeft.dim() << mpLeft.parDim() <<"\n";
-    //================================== -------------------------- ==================================
-    //==================================   Who cares about geometry ==================================
-    //================================== This part is fixed for all ==================================
-    //================================== -------------------------- ==================================
+    //================================== -------------------------- =====================================
+    //==================================   Independent of the geometry ==================================
+    //================================== This part is fixed for all    ==================================
+    //================================== -------------------------- =====================================
     // .... one single patch
     gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     //Get all interfaces and boundaries:
@@ -145,8 +143,8 @@ int main(int argc, char *argv[])
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    A.options().setReal("quA", 2.0);
-    A.options().setInt("quB", 2);
+    // A.options().setReal("quA", 2.0);
+    // A.options().setInt("quB", 2);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -221,21 +219,22 @@ int main(int argc, char *argv[])
     density_sol.extract(density);
     auto rho = A.getCoeff(density, G);
     // ... manipulation of density function
-    auto empldensity = (ev.max(rho)-ev.min(rho));
+    auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
     double  int_uh_1  = 1.;
-    if (empldensity < 1e-5)
+    if (empldensity < 1e-5|| IntensityMAE <= 1. )
     {
         gsInfo << "Density function is constant in the domain rho = 1.\n";
     }
     else{
         int_uh_0  = (IntensityMAE-1.)/empldensity;
-        int_uh_1  = (1.*ev.max(rho)-IntensityMAE*ev.min(rho))/empldensity;
+        int_uh_1  = (1.*ev.max(abs(rho.val()))-IntensityMAE*ev.min(abs(rho.val())))/empldensity;
         gsInfo << "Density function is not constant in the domain\n";
     }
-    gsInfo << "Density function min :"<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<" max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
+    gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-
+    
+    // ......... Start solving the Monge-Ampere equation .........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
 
@@ -250,8 +249,6 @@ int main(int argc, char *argv[])
     auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) )};
 
     setup_time += timer.stop();
-
-    gsInfo<< A.numDofs() <<std::flush;
 
     timer.restart();
     A.assemble(
@@ -277,20 +274,9 @@ int main(int argc, char *argv[])
     // solVector = solver.solve(A.rhs());
     slv_time += timer.stop();
 
-    gsInfo<< "." << solVector.size() <<std::flush; // Linear solving done
-
-    for (int r=0; r<=numML; ++r)
-    {
-    if (r >1)
-    {
-        dbasis.uniformRefine();
-        mp.uniformRefine();
-        mpLeft.uniformRefine();
-        timer.restart();
-        //auto Poisson  = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(dbasis.basis(0),bc_mae,A.options(), 1.,eps,0.);
-        gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
-        slv_time += timer.stop();
-    }
+    gsInfo<< "." <<std::flush; // Linear solving done
+    //! [Solver loop]
+    gsInfo<< A.numDofs() <<std::flush;
     // Picard loop
     gsVector<>  h1Res(maxIter+1), l2err(maxIter+1), Iter_mae(maxIter+1);
     gsMatrix<> sv0; //
@@ -320,9 +306,10 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        geometryMap PPLoc = A.getMap(Psi);
+        geometryMap PPrho = A.getMap(Psi);
+        auto rho = PPrho(density);
+        // auto rho = A.getCoeff(density, PP);
 
-        auto rho = A.getCoeff(density, PP);
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
         u.setup(bc_mae, dirichlet::l2Projection, 0);
@@ -335,9 +322,10 @@ int main(int argc, char *argv[])
 
         timer.restart();
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
-
         // .. update Coeffeicient of conductivity
-        auto  ExprMAE     = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1) - jac(PP).det()), 1./IGdim);
+        auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+        // if (dbasis.minCwiseDegree() > 2)
+        // auto  ExprMAE     = pow( abs(pow(lapl(u_sol).val(),IGdim) - gammaMAE*hess(u_sol).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
@@ -373,11 +361,9 @@ int main(int argc, char *argv[])
         l2err[ip]     = L2MAERes;// Compute the L2 error in MA equation
         if ( l2errRes < tolPicard || ip == maxIter ){
             // ! end Picard loop
-            auto ffG = A.getCoeff(f, GLeft, PP);
             gsInfo<< "\n Niter in Picard : " << ip
                     << ".. H1 residual : "<<std::scientific<<l2errRes
-                    << ".. L2 MAE residual : "<<std::scientific<<L2MAERes
-                    <<".. L2 error density : "<<ev.integral((rho-ffG).norm())<<"\n";
+                    << ".. L2 MAE residual : "<<std::scientific<<L2MAERes<<"\n";
             break;
             } //
     }//for loop
@@ -397,8 +383,8 @@ int main(int argc, char *argv[])
         if (outFile.is_open())
         {
             outFile << "#DoF_PDE: " << IntensityMAE << " \n"<< std::scientific << Iter_mae.transpose() << "\n";
-            outFile << "# H1_resid  \\"<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-            outFile <<  "# l2_error  \\"<<std::scientific<<std::setprecision(3)<<h1Res.transpose()<<"\n";
+            outFile << "# H1_resid  \n"<<std::scientific<<std::setprecision(3)<<h1Res.transpose()<<"\n";
+            outFile <<  "# l2_error  \n"<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
             outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
             outFile.close(); // Close the file after writing
         }
@@ -411,8 +397,6 @@ int main(int argc, char *argv[])
     {
         gsInfo << "Errors are not saved. To save them, try with --errorsave.\n";
     }
-
-    }//for loop
     //! [Export visualization in ParaView]
     if (plot)
     {
@@ -435,6 +419,7 @@ int main(int argc, char *argv[])
         v_sol.extract(Psitp);
         //... correct the boundary
         ProjectionNormalCPoints(Psitp);
+        Psitp.addAutoBoundaries();
 
         for (index_t i = 0; i < numrRefine; i++){
             /// compose adaptive mappings : not working after 2nd composition.(can be used for the blew-ip prblem)
@@ -449,7 +434,6 @@ int main(int argc, char *argv[])
             Psitp.computeTopology();
         }
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        Psi.addAutoBoundaries();
         geometryMap PP = A.getMap(Psitp);
         //:::::::::::::::::::: TESTUNG THE COMPOSITION : BUG ---  TODO ::::::::::::::::::::::::: 
         // geometryMap PPLoc = A.getMap(Psitp);

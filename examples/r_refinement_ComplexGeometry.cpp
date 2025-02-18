@@ -105,28 +105,57 @@ int main(int argc, char *argv[])
     // reaction coefficient:
     //double coeff_reac = 0.;
 
-    // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
-    // Load the file
-    gsFunctionExpr<> f;
-    fd.getId(2003, f);
+    // source term: and manufactured solution
     gsFunctionExpr<> s;
     fd.getId(2000, s);
     gsFunctionExpr<> rhs;
     fd.getId(2001, rhs);
+
+    //================================== -------------------------- =====================================
+    //==================================   Independent of the geometry ==================================
+    //================================== This part is fixed for all    ==================================
+    //================================== -------------------------- =====================================
+    // .... one single patch
+    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    //Get all interfaces and boundaries:
+    mp.degreeElevate(numElevate);
+    mp.computeTopology();
+    //mp.addAutoBoundaries();
+
+    // Manufactured identity mapping
+    gsFunctionExpr<> sN("x","y",2);
+    // Right-hand side function : Analytical density function rho_1
+    // Load the file
+    gsFunctionExpr<> f;
+    fd.getId(2003, f);
     gsInfo<<"Density function "<< f << "\n";
 
+    gsBoundaryConditions<> bc_mae;
+    bc_mae.setGeoMap(mp);
+    // For simplicity, set Neumann boundary conditions
+   for ( gsMultiPatch<>::const_biterator
+            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+   {
+       bc_mae.addCondition( *bit, condition_type::neumann, &sN );
+   }
+    gsInfo<<"Boundary conditions:\n"<< bc_mae <<"\n";
+
     //! [Refinement]
-    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
-    
+    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    // TODO : build Hdiv solver
+    //gsMultiBasis<double> Hdivbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    //Hdivbasis.degreeElevate(1);
+
     gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
     //! [Refinement]
-    
+
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    //A.setOptions(Aopt);
+    // A.options().setReal("quA", 2.0);
+    // A.options().setInt("quB", 2);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -137,12 +166,29 @@ int main(int argc, char *argv[])
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
+    // Set the geometry map
+    geometryMap G = A.getMap(mp);
 
     // Set the Target geometry map
     geometryMap GLeft = A.getMap(mpLeft);
 
+    // Set pow for BFO method dim in parameteric domain
+    auto IGdim     = G.domainDim();
+
+    // Set dimension of target geometry
+    // auto ITdim     = mpLeft.geoDim();
+
+    // Set factor for BFO method
+    auto gammaMAE = factorial(G.domainDim());
+
     // Set the discretization space
     space u = A.getSpace(dbasis);
+
+    // Set the source term with respect to target geometry
+    auto ff = A.getCoeff(f, GLeft);
+
+    //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
+    auto u_I = ev.getVariable(sN, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
@@ -154,52 +200,21 @@ int main(int argc, char *argv[])
 
     gsInfo<< "(dot1=assembled, dot2=solved)\n"
         "\nDoFs: ";
-    double setup_time(0), ma_time(0), slv_time(0);    
+    double setup_time(0), ma_time(0), slv_time(0);
     gsStopwatch timer;
     timer.restart();
-
-    //::::::::::::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
-    //================================== -------------------------- ==================================
-    //==================================   Who cares about geometry ==================================
-    //================================== This part is fixed for all ==================================
-    //================================== -------------------------- ==================================
-    // .... one single patch
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    //Get all interfaces and boundaries:
-    mp.degreeElevate(numElevate);
-    mp.computeTopology();
-    //...
-    // Set the geometry map
-    geometryMap G  = A.getMap(mp);
-    // Set pow for BFO method
-    auto IGdim     = G.domainDim();
-    // Set factor for BFO method
-    auto gammaMAE  = factorial(G.domainDim());
-    // Manufactured identity mapping
-    gsFunctionExpr<> sN("x","y",2);
-    gsBoundaryConditions<> bc_mae;
-    bc_mae.setGeoMap(mp);
-    // For simplicity, set Neumann boundary conditions
-    for ( gsMultiPatch<>::const_biterator
-                bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-    {
-        bc_mae.addCondition( *bit, condition_type::neumann, &sN );
-    }
-    //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
-    auto u_I = ev.getVariable(sN, G);
-
-    // refine a mesh for the first time by the user
+    //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     for (int r=0; r<=numRefine; ++r)
     {
         dbasis.uniformRefine();
         mp.uniformRefine();
         mpLeft.uniformRefine();
     }
-    //Initialization of Fast diagonalization solver
+    timer.restart();
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
+    slv_time += timer.stop();
+
     // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
-    // Set the source term with respect to target geometry
-    auto ff = A.getCoeff(f, GLeft);
     // Solution vector and solution variable
     gsMatrix<> densityVector;
     solution density_sol = A.getSolution(u, densityVector);
@@ -215,21 +230,32 @@ int main(int argc, char *argv[])
     density_sol.extract(density);
     auto rho = A.getCoeff(density, G);
     // ... manipulation of density function
-    auto empldensity = (ev.max(rho)-ev.min(rho));
+    auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
     double  int_uh_1  = 1.;
-    if (empldensity < 1e-5)
+    if (empldensity < 1e-5|| IntensityMAE <= 1. )
     {
         gsInfo << "Density function is constant in the domain rho = 1.\n";
     }
     else{
         int_uh_0  = (IntensityMAE-1.)/empldensity;
-        int_uh_1  = (1.*ev.max(rho)-IntensityMAE*ev.min(rho))/empldensity;
+        int_uh_1  = (1.*ev.max(abs(rho.val()))-IntensityMAE*ev.min(abs(rho.val())))/empldensity;
         gsInfo << "Density function is not constant in the domain\n";
     }
-    gsInfo << "Density function min :"<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<" max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
+    gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-
+    gsInfo<<"Plotting in Paraview...\n";
+    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    collection.options().setSwitch("plotElements", true);
+    collection.options().setSwitch("base64", export_b64);
+    collection.options().setInt("plotElements.resolution", 16);
+    collection.options().setInt("numPoints", 10000);
+    collection.newTimeStep(&mp);
+    collection.addField(rho, "density function");
+    collection.saveTimeStep();
+    collection.save();
+    gsFileManager::open("ParaviewOutput/solution.pvd");
+    // ......... Start solving the Monge-Ampere equation .........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
 
@@ -244,8 +270,6 @@ int main(int argc, char *argv[])
     auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) )};
 
     setup_time += timer.stop();
-
-    gsInfo<< A.numDofs() <<std::flush;
 
     timer.restart();
     A.assemble(
@@ -271,8 +295,9 @@ int main(int argc, char *argv[])
     // solVector = solver.solve(A.rhs());
     slv_time += timer.stop();
 
-    gsInfo<< "." << solVector.size() <<std::flush; // Linear solving done
-
+    gsInfo<< "." <<std::flush; // Linear solving done
+    //! [Solver loop]
+    gsInfo<< A.numDofs() <<std::flush;
     // Picard loop
     gsVector<>  h1Res(maxIter+1), l2err(maxIter+1), Iter_mae(maxIter+1);
     gsMatrix<> sv0; //
@@ -302,9 +327,10 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        geometryMap PPLoc = A.getMap(Psi);
+        geometryMap PPrho = A.getMap(Psi);
+        auto rho = PPrho(density);
+        // auto rho = A.getCoeff(density, PP);
 
-        auto rho = A.getCoeff(density, PP);
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
         u.setup(bc_mae, dirichlet::l2Projection, 0);
@@ -317,9 +343,10 @@ int main(int argc, char *argv[])
 
         timer.restart();
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
-
         // .. update Coeffeicient of conductivity
-        auto  ExprMAE     = pow( pow(div(PP).val(),IGdim) + gammaMAE*(CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1) - jac(PP).det()), 1./IGdim);
+        auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+        // if (dbasis.minCwiseDegree() > 2)
+        // auto  ExprMAE     = pow( abs(pow(lapl(u_sol).val(),IGdim) - gammaMAE*hess(u_sol).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
@@ -432,8 +459,8 @@ int main(int argc, char *argv[])
     
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
-    MarkingStrategy adaptRefCrit = PUCA;
-    //MarkingStrategy adaptRefCrit = GARU;
+    //MarkingStrategy adaptRefCrit = PUCA;
+    MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
