@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     index_t numLRefine  = 2;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
-    double eps          = 1e-6; // pinalization coefficient
+    double eps          = 1e-7; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 9.;
     bool plotMAeRes     = false;
@@ -97,8 +97,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
-    // fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft ; //= gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
+    fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
     space u = A.getSpace(dbasis);
     
     // Set the source term with respect to target geometry
-    auto ff = A.getCoeff(f, GLeft);
+    auto ff = A.getCoeff(f, G);
 
     //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
     auto u_I = ev.getVariable(sN, G);
@@ -210,15 +210,15 @@ int main(int argc, char *argv[])
     A.assemble(
     u *u.tr() //matrix
     ,
-    u* abs(ff.val())  //rhs vector
+    u* ff.val()  //rhs vector
     );
     densityVector = Poisson.L2ProjectScalar(A.rhs());
     gsMultiPatch<> density;
     density_sol.extract(density);
     auto rho = A.getCoeff(density, G);
     // ... manipulation of density function
-    auto empldensity  = (ev.max(rho)-ev.min(rho));
-    double  int_uh_0  = 0.;
+    auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
+    double  int_uh_0 = 0.;
     double  int_uh_1  = 1.;
     if (empldensity < 1e-5|| IntensityMAE <= 1. )
     {
@@ -226,12 +226,22 @@ int main(int argc, char *argv[])
     }
     else{
         int_uh_0  = (IntensityMAE-1.)/empldensity;
-        int_uh_1  = (1.*ev.max(rho)-IntensityMAE*ev.min(rho))/empldensity;
+        int_uh_1  = (1.*ev.max(abs(rho.val()))-IntensityMAE*ev.min(abs(rho.val())))/empldensity;
         gsInfo << "Density function is not constant in the domain\n";
     }
     gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-
+    gsInfo<<"Plotting in Paraview...\n";
+    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    collection.options().setSwitch("plotElements", true);
+    collection.options().setSwitch("base64", export_b64);
+    collection.options().setInt("plotElements.resolution", 16);
+    collection.options().setInt("numPoints", 10000);
+    collection.newTimeStep(&mp);
+    collection.addField((int_uh_0*abs(rho.val()) + int_uh_1), "density function");
+    collection.saveTimeStep();
+    collection.save();
+    gsFileManager::open("ParaviewOutput/solution.pvd");
     // ......... Start solving the Monge-Ampere equation .........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
@@ -309,7 +319,7 @@ int main(int argc, char *argv[])
         geometryMap PP    = A.getMap(Psi);
         geometryMap PPrho = A.getMap(Psi);
         auto rho = PPrho(density);
-
+        gsInfo << "Jacobian test " << ev.min(jac(PP).det()) << "\n";
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
         u.setup(bc_mae, dirichlet::l2Projection, 0);
