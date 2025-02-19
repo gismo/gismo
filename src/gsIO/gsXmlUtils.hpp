@@ -24,7 +24,6 @@
 #include <gsCore/gsMultiBasis.h>
 #include <gsCore/gsBoundary.h>
 
-#include <gsNurbs/gsNurbsBasis.h>
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorNurbs.h>
 
@@ -397,29 +396,6 @@ public:
 /*
  * Getting Bases from XML data
  */
-    
-/// Get a NurbsBasis from XML data
-template<class T>
-class gsXml< gsNurbsBasis<T> >
-{
-private:
-    gsXml() { }
-public:
-    GSXML_COMMON_FUNCTIONS(gsNurbsBasis<T>);
-    static std::string tag () { return "Basis"; }
-    static std::string type () { return "NurbsBasis"; }
-
-    static gsNurbsBasis<T> * get (gsXmlNode * node)
-    {
-        return getRationalBasisFromXml<gsNurbsBasis<T> >(node);
-    }
-
-    static gsXmlNode * put (const gsNurbsBasis<T> & obj,
-                            gsXmlTree & data )
-    {
-        return putRationalBasisToXml(obj,data);
-    }
-};
 
 
 /// Get a TensorNurbsBasis from XML data
@@ -1073,11 +1049,13 @@ public:
         // First insert all geometries
         int max_id = data.maxId();
         gsXmlNode * tmp;
+        std::map<index_t, index_t> id_map;
         for ( typename gsMultiPatch<T>::const_iterator it = obj.begin();
               it != obj.end(); ++it )
         {
             tmp = gsXml<gsGeometry<T> >::put(**it,data);
             data.appendToRoot(tmp);
+            id_map[obj.findPatchIndex(*it)] =  std::stoi(tmp->first_attribute("id")->value());
         }
         
         std::ostringstream str;
@@ -1091,7 +1069,7 @@ public:
         mp_node->append_attribute( internal::makeAttribute("parDim", obj.parDim() , data) );
         mp_node->append_node(tmp);
       
-        appendBoxTopology(obj, mp_node, data);
+        appendBoxTopology(obj, mp_node, id_map, data);
 
         if (obj.numBoxProperties()!=0)
             gsWarn<<"Multi-patch object has box properties that are not written to XML\n";
@@ -1177,12 +1155,14 @@ public:
                           gsXmlTree& data)
     {
         // Insert all the basis
+        std::map<index_t, index_t> id_map;
         int max_id = data.maxId();
         for ( typename gsMultiBasis<T>::const_iterator it = obj.begin();
               it != obj.end(); ++it )
         {
             gsXmlNode* basisXml = gsXml< gsBasis<T> >::put(**it, data);
             data.appendToRoot( basisXml );
+            id_map[obj.findBasisIndex(*it) ] =  std::stoi(basisXml->first_attribute("id")->value());
         }
 
         std::ostringstream oss;
@@ -1196,7 +1176,7 @@ public:
         mbNode->append_attribute( internal::makeAttribute("parDim", obj.dim(), data) );
         mbNode->append_node(node);
 
-        appendBoxTopology(obj.topology(), mbNode, data);
+        appendBoxTopology(obj.topology(), mbNode, id_map, data);
 
         return mbNode;
     }

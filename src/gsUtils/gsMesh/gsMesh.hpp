@@ -15,7 +15,7 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsUtils/gsCombinatorics.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomain.h>
 
 namespace gismo
 {
@@ -30,12 +30,20 @@ gsMesh<T>::~gsMesh()
 
 template<class T>
 gsMesh<T>::gsMesh(const gsBasis<T> & basis, int midPts)
+:
+gsMesh<T>(*basis.domain(), midPts)
+{
+}
+
+template<class T>
+gsMesh<T>::gsMesh(const gsDomain<T> & domain, int midPts)
 : MeshElement()
 {
-    const unsigned d = basis.dim();
+    const unsigned d = domain.dim();
 
     typedef typename gsMesh<T>::VertexHandle vtx;
-    typename gsBasis<T>::domainIter domIter = basis.makeDomainIterator();
+    typename gsBasis<T>::domainIter domIter = domain.beginAll();
+    typename gsBasis<T>::domainIter domIterEnd = domain.endAll();
 
     // variables for iterating over a cube (element is a cube)
     const gsVector<unsigned> zeros = gsVector<unsigned>::Zero(d);
@@ -70,11 +78,11 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int midPts)
 
     gsVector<T> vv(d);
 
-    for (; domIter->good(); domIter->next())
+    for (; domIter<domIterEnd; ++domIter )
     {
-        const gsVector<T>& low = domIter->lowerCorner();
-        const gsVector<T>& upp = domIter->upperCorner();
-        const T vol = domIter->volume();
+        const gsVector<T>& low = domIter.lowerCorner();
+        const gsVector<T>& upp = domIter.upperCorner();
+        const T vol = domIter.volume();
 
         vv.setZero();
         cur.setZero();

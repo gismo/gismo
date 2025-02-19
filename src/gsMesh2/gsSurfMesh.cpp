@@ -938,7 +938,7 @@ quad_split(Face f, Vertex v, Halfedge s)
     Halfedge hnext = next_halfedge(next_halfedge(s));
     Halfedge h  = s;
     //std::cout<< "h: "<< from_vertex(h) <<"->"<<to_vertex(h) <<std::endl;
-        
+
     //first step
     Halfedge e0 = new_edge(v,from_vertex(h));
     set_halfedge(v, e0);
@@ -964,7 +964,7 @@ quad_split(Face f, Vertex v, Halfedge s)
         //std::cout<< "e0: "<< from_vertex(e0) <<"->"<<to_vertex(e0) <<std::endl;
         //std::cout<< "h: "<< from_vertex(h) <<"->"<<to_vertex(h) <<std::endl;
         f = new_face();
-        e = ( hnext!=s ? new_edge(from_vertex(hnext),v) : 
+        e = ( hnext!=s ? new_edge(from_vertex(hnext),v) :
               opposite_halfedge(halfedge(v)) );
         //std::cout<< "e: "<< from_vertex(e) <<"->"<<to_vertex(e) <<std::endl;
         set_halfedge(f, e0);
@@ -1918,7 +1918,7 @@ void gsSurfMesh::cc_subdivide()
                 pt *= 2;
                 pt += points[*vv]; // first boundary neighbor
                 pt += points[*(--vv.end())]; // last boundary neighbor
-                pt /= 4;               
+                pt /= 4;
             }
             continue;
         }
@@ -1951,10 +1951,10 @@ gsSurfMesh::cc_limit_points(std::string label)
         if (is_boundary(*vit))
         {
             gsWarn<< "Boundary vertex is ignored.\n";
-            
+
             if (2>n)
             {
-                
+
             }
             continue;
         }
@@ -1965,7 +1965,7 @@ gsSurfMesh::cc_limit_points(std::string label)
         {
             if (is_boundary(he))
             {
-                gsWarn<< "Boundary halfedge is ignored.\n";                
+                gsWarn<< "Boundary halfedge is ignored.\n";
             }
 
             pt += 4 * points[ to_vertex(he) ] +
@@ -2097,7 +2097,7 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
 #   pragma omp parallel for default(shared) private(n,v,h2,coefs) shared(mp)
     for (auto fit = faces_begin(); fit < faces_end(); ++fit)
     {
-        //gsInfo << "face id: "<< fit->idx() <<"\n"; 
+        //gsInfo << "face id: "<< fit->idx() <<"\n";
         coefs.resize(16,3);//thread privates must be initialized for each thread
         index_t s = 0;
 
@@ -2499,7 +2499,8 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 gsXmlNode *
 gsXml<gsSurfMesh>::put (const gsSurfMesh & obj, gsXmlTree & data)
 {
-
+    GISMO_UNUSED(obj);
+    GISMO_UNUSED(data);
     return nullptr;
 };
 

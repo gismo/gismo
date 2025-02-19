@@ -21,6 +21,72 @@
 namespace gismo
 {
 
+namespace internal
+{
+
+/**
+ * @struct ElementBlock
+ * @brief Represents a bezier extraction operator as a collection of element blocks.
+ *
+ * This structure holds information about a block of elements, including the number
+ * of elements, active nodes, Bezier coefficient vectors, and polynomial degrees
+ * in the R, S, and T directions.
+ *
+ * @var ElementBlock::numElements
+ * Number of (Bezier) elements in the block.
+ *
+ * @var ElementBlock::actives
+ * List of basis functions represented as matrices of indices.
+ *
+ * @var ElementBlock::coefVectors
+ * List of Bezier coefficient vectors represented as matrices of real numbers.
+ *
+ * 
+ * 
+ * @var ElementBlock::PR
+ * Polynomial degree in the R direction.
+ *
+ * @var ElementBlock::PS
+ * Polynomial degree in the S direction.
+ *
+ * @var ElementBlock::PT
+ * Polynomial degree in the T direction.
+ * 
+ * Each local bezier operator is constructed as:
+ * \f$ 
+ * NN_e = \texttt{size(actives)}\left \{ \begin{bmatrix}
+ * N_1 \\ N_2 \\ \vdots \\ N_i
+ * \end{bmatrix}\right.
+ * =
+ * NN_e \left{ \underbrace{
+ * \begin{bmatrix}
+ * \dots & CV_1 & \dots \\ 
+ * \dots & CV_2 & \dots \\ 
+ * & \vdots & \\ 
+ * \dots & CV_i & \dots
+ * \end{bmatrix}
+ * }_{NCVC_i}
+ * \right.
+ * 
+ * 
+ * \left. \begin{bmatrix}
+ * B_1 \\ B_2 \\ B_3 \\ \vdots \\ B_{j-1} \\ B_j
+ * \end{bmatrix}\right \} NCVC_i = \texttt{(PR+1)(PS+1)(PT+1)}
+ * \f$
+ * 
+ */
+struct ElementBlock
+{
+    index_t numElements;    // NE
+    std::list<gsMatrix<index_t>> actives;       // Nodes ( size = NE )
+    std::list<gsMatrix<real_t>>  coefVectors;   // Bezier Coefficient Vectors ID ( size = NE )
+    index_t PR; // Polynomial degree in R direction  
+    index_t PS; // Polynomial degree in S direction  
+    index_t PT; // Polynomial degree in T direction  
+};
+} // end namespace internal
+
+
 /** @brief Container class for a set of geometry patches and their
     topology, that is, the interface connections and outer boundary
     faces.
@@ -270,7 +336,7 @@ public:
 
     /// \brief Refine uniformly all patches by inserting \a numKnots
     /// in each knot-span with multipliplicity \a mul
-    void uniformRefine(int numKnots = 1, int mul = 1);
+    void uniformRefine(int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     /// \brief Elevate the degree of all patches by \a elevationSteps, preserves smoothness
     void degreeElevate(short_t const elevationSteps = 1, short_t const dir = -1);
@@ -279,6 +345,9 @@ public:
 
     /// \brief Reduce the degree of all patches by \a elevationSteps.
     void degreeReduce(int elevationSteps = 1);
+
+    /// \brief Decrease the degree of all patches by \a elevationSteps.
+    void degreeDecrease(int elevationSteps = 1);
 
     /// \brief Coarsen uniformly all patches by removing \a numKnots
     /// in each knot-span
@@ -353,8 +422,11 @@ public:
             sthChanged = false;
             for( size_t i = 0; i < bivec.size(); i++ )
             {
-                change = repairInterface( bivec[i] );
-                sthChanged = sthChanged || change;
+                if ( bivec[i].type() != interaction::contact)
+                {
+                    change = repairInterface( bivec[i] );
+                    sthChanged = sthChanged || change;
+                }
             }
             k++; // just to be sure this cannot go on infinitely
         }
@@ -416,6 +488,18 @@ public:
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }
     const BoundaryRep & sides() const { return m_sides; }
+
+    /**
+     * @brief Extracts a Bezier representation of the current gsMultiPatch object.
+     *
+     * This function extracts the Bezier representation of the current gsMultiPatch object.
+     *
+     * @tparam T The numerical type used for the definition of the gsMultiPatch object.
+     * @return A gsMultiPatch object containing the Bezier representation of the original object.
+     *
+     * @note Currently, only bivariate splines are supported.
+     */
+    gsMultiPatch<T> extractBezier() const;
     
 protected:
 
@@ -448,6 +532,11 @@ private:
            const gsVector<bool> &matched,
            gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
            T tol, index_t reference=0);
+
+public:
+    /// @brief Performs Bezier extraction on the multipatch
+    /// @return The ElementBlock structure of the Bezier extraction, which contains the Bezier coefficients and the active nodes for each bezier patch;
+    std::map< std::array<size_t, 4>, internal::ElementBlock> BezierOperator() const;
 
 }; // class gsMultiPatch
 

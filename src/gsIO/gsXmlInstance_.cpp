@@ -26,7 +26,6 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsTrimSurface<real_t> >;
 
     CLASS_TEMPLATE_INST gsXml< gsNurbs<real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsNurbsBasis<real_t> >;
         
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<2,real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<3,real_t> >;

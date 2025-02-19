@@ -231,6 +231,14 @@ public:
       return (bool)nd;
     }
 
+    /// Returns true if an Object with such label exists in the filedata
+    inline bool hasLabel(std::string label) const {
+      gsXmlNode* root = getXmlRoot();
+      // const gsXmlAttribute * id_at;
+      gsXmlNode* nd = internal::searchLabel(label, root, NULL, false);
+      return (bool)nd;
+    }
+
     /// Returns true if an entry of \em tag exists in the xml file
     inline bool hasTag(std::string tag) const
     {

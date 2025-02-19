@@ -128,12 +128,12 @@ int main(int argc, char *argv[])
     gsHTensorBasis<2,real_t> * basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
 
     // Assigns errors to the elements, based on their level: e = 10^{l-1}
-    typename gsBasis<>::domainIter domIt = mp.basis(0).makeDomainIterator();
-    gsHDomainIterator<real_t,2> * domHIt = nullptr;
-    domHIt = dynamic_cast<gsHDomainIterator<real_t,2> *>(domIt.get());
+    typename gsBasis<>::domainIter domIt = mp.basis(0).domain()->beginAll();
+    typename gsBasis<>::domainIter domItEnd = mp.basis(0).domain()->endAll();
+    gsHDomainIterator<real_t,2> * domHIt = dynamic_cast<gsHDomainIterator<real_t,2> *>(domIt.get());
     std::vector<real_t> errors(gsMultiBasis<>(mp).totalElements());
     index_t i=0;
-    for (; domHIt->good(); domHIt->next(), i++ )
+    for (; domIt<domItEnd; ++domIt)
         errors[i] = math::pow(10,domHIt->getLevel()-1);// + i;
 
     index_t offset = 0;

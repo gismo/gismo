@@ -55,8 +55,8 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-set(gismo_VERSION_MAJOR 24) #year
-set(gismo_VERSION_MINOR 08) #month
+set(gismo_VERSION_MAJOR 25) #year
+set(gismo_VERSION_MINOR 01) #month
 set(gismo_VERSION_PATCH 0 ) #patch
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
@@ -297,8 +297,16 @@ foreach(gssm ${GISMO_OPTIONAL})
   string(STRIP ${gssm} SUBMODULE)
   #message("Fetch ${SUBMODULE}")
   gismo_fetch_module(${SUBMODULE})
-  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE}_ENABLED\n")
+  # Prevent special characters to be used in the variable name
+  string(REPLACE "-" "_" SUBMODULE_NAME ${SUBMODULE})
+  string(REPLACE "+" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "=" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "." "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "!" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "*" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE_NAME}_ENABLED\n")
 endforeach()
+
 foreach(gssm ${GISMO_EXTERNALS})
   string(STRIP ${gssm} EXTMOD)
   #message("Fetch ext: ${EXTMOD}")

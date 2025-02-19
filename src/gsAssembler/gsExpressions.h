@@ -256,7 +256,7 @@ public:
     { return ppartval_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the expression's negative part
-    mult_expr<real_t, ppart_expr<mult_expr<double,E,false>> , false> 
+    mult_expr<real_t, ppart_expr<mult_expr<double,E,false>> , false>
     npart() const { return -1* ( -(*this) ).ppart() ; }
 
     /// Returns an evaluation of the (sub-)expression in temporary memory
@@ -341,9 +341,9 @@ public:
     /// \note This is a runtime check, for compile-time check use E::ScalarValued
     bool isScalar() const { return rows()*cols()<=1; } //!rowSpan && !colSpan
 
-    static bool isVector  () { return 1==E::Space; }
-    static bool isVectorTr() { return 2==E::Space; }
-    static bool isMatrix  () { return 3==E::Space; }
+    static constexpr bool isVector  () { return 1==E::Space; }
+    static constexpr bool isVectorTr() { return 2==E::Space; }
+    static constexpr bool isMatrix  () { return 3==E::Space; }
 
     ///\brief Parse the expression and discover the list of evaluation
     ///sources, also sets the required evaluation flags
@@ -646,7 +646,7 @@ public:
 
     index_t targetDim() const { return m_fs->targetDim();}
     index_t domainDim() const { return m_fs->domainDim();}
- 
+
     /// Copy the coefficients of another gsGeometryMap to this one, if they are compatible.
     void copyCoefs( const gsGeometryMap<T> & other) const
     {
@@ -657,7 +657,7 @@ public:
         GISMO_ASSERT( (thisMP.domainDim()==otherMP.domainDim())&&
                       (thisMP.geoDim()==otherMP.geoDim())&&
                       (thisMP.coefsSize() == otherMP.coefsSize())&&
-                      (thisMP.nPatches()==otherMP.nPatches()), 
+                      (thisMP.nPatches()==otherMP.nPatches()),
                 "The geometryMaps are not compatible!");
 
         // For every patch of the MultiPatch
@@ -788,26 +788,19 @@ template<class T>
 class gsFeElement
 {
     friend class cdiam_expr<T>;
-
-    const gsDomainIterator<T> * m_di; ///< Pointer to the domain iterator
-
-    const gsVector<T> * m_weights;
-    //const gsMatrix<T> * m_points;
+    const gsExprHelper<T> * m_exprdata;
 
     gsFeElement(const gsFeElement &);
 public:
     typedef T Scalar;
 
-    gsFeElement() : m_di(NULL), m_weights(nullptr) { }
+    gsFeElement(const gsExprHelper<T> & eh) : m_exprdata(&eh) { }
 
-    void set(const gsDomainIterator<T> & di, const gsVector<T> & weights)
-    { m_di = &di, m_weights = &weights; }
+    bool isValid() const { return nullptr!=m_exprdata; }
 
-    bool isValid() const { return nullptr!=m_weights; }
+    const gsVector<T> & weights() const {return m_exprdata->weights();}
 
-    const gsVector<T> & weights() const {return *m_weights;}
-
-    template<class E>
+    template<class E> inline
     integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
 
@@ -830,17 +823,14 @@ public:
     PHDiamRetType diam(const gsGeometryMap<Scalar> & _G) const
     { return pow(integral(meas_expr<T>(_G)),(T)(1)/(T)(2)); }
 
-    //const gsMatrix<T> points() const {return pts;}
-
+    //auto points() const {return point_expr<T>(*this);}
     //index_t dim() { return di->
-    
+
     void print(std::ostream &os) const { os << "e"; }
 
     void parse(gsExprHelper<T> & evList) const
     {
-        GISMO_ERROR("EL");
-        evList.add(*this);
-        this->data().flags |= NEED_VALUE;
+        GISMO_ERROR("Call desired member of element expression instead.");
     }
 };
 
@@ -865,6 +855,7 @@ public:
 
     const Scalar & eval(const index_t k) const
     {
+        GISMO_UNUSED(k);
         GISMO_ENSURE(_e.isValid(), "Element is valid within integrals only.");
         // if (0==k)
         {
@@ -1103,7 +1094,8 @@ public:
             {
                 for (gsBoxTopology::const_iiterator it = mb->topology().iBegin();
                      it != mb->topology().iEnd(); ++it) {
-                    mb->matchInterface(*it, m_sd->mapper);
+                    if ( it->type() != interaction::contact ) // If the interface type is 'contact' ignore it.
+                        mb->matchInterface(*it, m_sd->mapper);
                 }
             }
 
@@ -1401,7 +1393,7 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
-        bool singleActives = (1 == _u.data().actives.cols()); 
+        bool singleActives = (1 == _u.data().actives.cols());
 
         res.setZero(_u.dim(), 1);
         const gsDofMapper & map = _u.mapper();
@@ -1458,8 +1450,8 @@ public:
     void setSolutionVector(gsMatrix<T>& solVector)
     { _Sv = & solVector; }
 
-    /// @brief Sets all coefficients of the solution vector that belong to 
-    ///    patch \a p , and refer to the specified \a component equal to \a value. 
+    /// @brief Sets all coefficients of the solution vector that belong to
+    ///    patch \a p , and refer to the specified \a component equal to \a value.
     /// @param component The index of the component to be set.
     /// @param value The value that the coefficients will be set to.
     /// @param patch The index of the patch whose coefficients will be set. By default all patches are affected,
@@ -1468,9 +1460,9 @@ public:
         gsMatrix<T> & solVector = *_Sv;
         const gsDofMapper & mapper = _u.mapper();
 
-        index_t patchStart, patchEnd; 
+        index_t patchStart, patchEnd;
         if (patch==-1){
-            patchStart = 0; 
+            patchStart = 0;
             patchEnd   = _u.mapper().numPatches();
         }
         else{
@@ -1491,12 +1483,13 @@ public:
 
     const gsMatrix<T> & coefs() const { return *_Sv; }
     //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
-    
+
     //const gsMatrix<T> & coefs(component, patch) const { return *_Sv; }
 
     /// val: perturbation value, j: global index, p: patch
     void perturbLocal(T val, index_t j, index_t p = 0)
     {
+        GISMO_UNUSED(p);
         // GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
         //if (_u.mapper().is_free_index(j) )
         //{
@@ -1586,7 +1579,12 @@ public:
     // insert g-coefficients to the solution vector
     void insert(const gsGeometry<T> & g, const index_t p = 0) const
     {
-        const gsMatrix<T> & cf = g.coefs();
+        insert(g.coefs(), p);
+    }
+
+    // insert g-coefficients to the solution vector
+    void insert(const gsMatrix<T> & cf, const index_t p = 0) const
+    {
         gsMatrix<T> & sol = *_Sv;
         //gsMatrix<T> & fixedPart = _u.fixedPart();
         const gsDofMapper & mapper = _u.mapper();
@@ -2049,9 +2047,9 @@ flat_expr<E> const flat(E const & u)
 
     public:
         diag_expr(_expr<E> const& u) : _u(u)
-        { 
+        {
             GISMO_ASSERT(0== _u.cols()%_u.rows(), "Expecting square-block expression, got "
-            << _u.rows() <<" x "<< _u.cols() ); 
+            << _u.rows() <<" x "<< _u.cols() );
         }
 
         const gsMatrix<Scalar> & eval(const index_t k) const
@@ -2374,7 +2372,7 @@ public:
     typedef typename E::Scalar Scalar;
     enum {ScalarValued = 1, Space = E::Space, ColBlocks= 0};
 
-    sign_expr(_expr<E> const& u, Scalar tolerance = 0.0) : _u(u),_tol(tolerance){ 
+    sign_expr(_expr<E> const& u, Scalar tolerance = 0.0) : _u(u),_tol(tolerance){
         GISMO_ASSERT( _tol >= 0, "Tolerance for sign_expr should be a positive number.");
     }
 
@@ -4471,10 +4469,10 @@ public:
 /// The identity matrix of dimension \a dim
 EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
 
-EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim) { 
+EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim) {
     gsMatrix<real_t> ones(dim, dim);
     ones.fill(1);
-    return constMat_expr(ones); 
+    return constMat_expr(ones);
     }
 
 EIGEN_STRONG_INLINE constMat_expr mat(const gsMatrix<real_t> mat) { return constMat_expr(mat); }
