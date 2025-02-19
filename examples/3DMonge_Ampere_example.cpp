@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot           = false;
-    index_t numRefine   = 2;
+    index_t numRefine   = 4;
     index_t numLRefine  = 2;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
