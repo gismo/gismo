@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     bool plotMAeRes     = false;
     bool export_b64     = false;
     // Specify the file path
-    std::string fn("pde/Gexample3D.xml");
+    std::string fn("pde/example3D.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
