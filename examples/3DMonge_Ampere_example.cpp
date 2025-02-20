@@ -73,9 +73,7 @@ int main(int argc, char *argv[])
     bool plotMAeRes     = false;
     bool export_b64     = false;
     // Specify the file path
-    std::string fn("volumes/GshapedVolume.xml");
-   // std::string fn("volumes/cylinder.xml");
-
+    std::string fn("pde/Gexample3D.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -97,8 +95,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
-    // fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft; // = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
+    fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     // mpLeft.degreeElevate(numElevate);
@@ -165,7 +163,7 @@ int main(int argc, char *argv[])
     auto IGdim     = G.domainDim();
 
     // Set factor for BFO method
-    auto gammaMAE = factorial(G.domainDim());
+    auto gammaMAE = IGdim*(IGdim-1);
 
     // Set the discretization space
     space u = A.getSpace(dbasis);
@@ -319,7 +317,7 @@ int main(int argc, char *argv[])
         geometryMap PPrho = A.getMap(Psi);
         auto rho = PPrho(density);
         // auto rho = A.getCoeff(density, PP);
-        //gsInfo <<std::scientific<< ev.min(jac(PP).det())<< " / "<<std::scientific<< ev.max(jac(PP).det()) << "\n";
+        gsInfo << " "<<std::scientific<< ev.min(jac(PP).det())<< " / "<<std::scientific<< ev.max(jac(PP).det()) << "\n";
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -332,6 +330,7 @@ int main(int argc, char *argv[])
         setup_time += timer.stop();
 
         timer.restart();
+        gsInfo << "\n ;;; "<< gammaMAE << "\n";
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         // .. update Coeffeicient of conductivity
         auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
@@ -339,6 +338,8 @@ int main(int argc, char *argv[])
         // auto  ExprMAE     = pow( abs(pow(lapl(u_sol).val(),IGdim) - gammaMAE*hess(u_sol).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
+        gsInfo << " "<<std::scientific<< ev.min(ExprMAE)<< " / "<<std::scientific<< ev.max(ExprMAE) << "\n";
+
         // MAE system
         A.assemble(
         grad(u) * grad(u).tr()  +  eps * u * u.tr()//matrix

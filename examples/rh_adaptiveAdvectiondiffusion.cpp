@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
     bool PNormalCP      = true;
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy...
-    //MarkingStrategy adaptRefCrit = PUCA;
-    MarkingStrategy adaptRefCrit = GARU;
+    MarkingStrategy adaptRefCrit = PUCA;
+    //MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -475,6 +475,7 @@ int main(int argc, char *argv[])
 
         const std::vector<real_t> eltErrs  = ev.elementwise();
         //! [errorComputation]
+        //gsInfo<< "\n ..size of "<< eltErrs.size() << " "<< rsolVector.size() <<std::flush<< "\n"; // Linear solving done
 
         //! [adaptRefinementPart]
         // Mark elements for refinement, based on the computed local errors and
@@ -491,7 +492,7 @@ int main(int argc, char *argv[])
        dbasis.repairInterfaces( Psi.interfaces() );
        //! [refreshAssembler]
        cdrAss.refresh();
-       if(r%2==0)
+       if(r%2==0 && r>0)
        NumArMarEl = NumArMarEl + FactRefPar;
         }
     if(plot && r == numRefine){

@@ -65,7 +65,9 @@ int main(int argc, char *argv[])
     real_t adaptRefParam = 0.;     // ... adapt parameter.
     index_t FactRefPar    = 0;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/circle.xml");
+
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -244,17 +246,7 @@ int main(int argc, char *argv[])
     }
     gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-    gsInfo<<"Plotting in Paraview...\n";
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setSwitch("base64", export_b64);
-    collection.options().setInt("plotElements.resolution", 16);
-    collection.options().setInt("numPoints", 10000);
-    collection.newTimeStep(&mp);
-    collection.addField(rho, "density function");
-    collection.saveTimeStep();
-    collection.save();
-    gsFileManager::open("ParaviewOutput/solution.pvd");
+
     // ......... Start solving the Monge-Ampere equation .........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
