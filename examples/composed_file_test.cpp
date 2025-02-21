@@ -48,7 +48,7 @@ gsTensorBSplineBasis<_DIM,T> integrationBasis(const gsTensorBSplineBasis<_DIM,T>
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    std::string fn;
+    std::string fn = "../filedata/monitor_results/monitor_example_face_nn_r0_e1_R3_E1/composedGeometry.xml";
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addString( "f", "file", "Input XML file", fn );
@@ -94,10 +94,41 @@ int main(int argc, char *argv[])
     ev.setIntegrationElements(mb);
     auto G = ev.getMap(*geometry);
     auto cG = ev.getMap(*cgeom);
-    gsInfo<<"Area = "<<ev.integral(meas(G))<<"\n";
-    gsInfo<<"Area = "<<ev.integral(meas(cG))<<"\n";
 
-    // auto ....
+    auto GArea = ev.integral(meas(G));
+    auto cGArea = ev.integral(meas(cG));
+
+    gsInfo<<"Area = "<< GArea  <<"\n";
+    gsInfo<<"Area = "<< cGArea <<"\n";
+
+    /*
+    gsExprEvaluator<T> evaluator;
+
+    evaluator.setIntegrationElements(m_mb); // does not work when in constructor
+    m_comp->setControls(u);
+
+    // Penalty constant
+    gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
+    geometryMap G = evaluator.getMap(m_mp);
+    */
+
+    //jacobian determinant for a surface, i.e. the measure
+    auto fform = jac(G).tr()*jac(G);
+    auto detG = pow(fform.det().val(),0.5); 
+    auto G_frob = jac(G).norm();
+
+    
+
+    auto cfform = jac(cG).tr()*jac(G);
+    auto detcG = pow(cfform.det().val(),0.5); 
+    auto cG_frob = jac(cG).norm();
+
+    gsInfo << " ----------------- G ---------- cG ---------- \n";
+    
+    
+    //ev.eval(expr,p)
+    gsInfo << "Area distortion: " << ev.integral(detG*meas(G))/GArea << ' ----- '<< ev.integral(detcG*meas(cG))/cGArea << "\n";
+    //gsInfo << "Angular distortion:" << detG/GArea << ' ----- '<< detcG/cGArea << "\n";
 
     return EXIT_SUCCESS;
 
