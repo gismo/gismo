@@ -26,8 +26,16 @@
   <!-- The boundary conditions (multipatch=number of patches)-->
   <boundaryConditions id="2" multipatch="0">
   <!-- Corner values -->
-    <!-- <cv unknown="0" patch="0" corner="0">0.0</cv> -->
-    <Function type="FunctionExpr" dim="3" index="0">0</Function>
+    <!-- <Function type="FunctionExpr" dim="3" index="0">
+    0
+    </Function> -->
+    <Function type="FunctionExpr" dim="3" index="0">
+    u:=atan2(y,x);
+    v:=atan2(sqrt(x^2+y^2),z);
+    w:=sqrt(x^2+y^2+z^2);
+    t:=100;
+    exp(-t*(v - 1/2)^2)
+    </Function>
 
     <bc type="Dirichlet" function="0" unknown="0" >
     0 1
@@ -54,8 +62,8 @@
   <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
   <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
   <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
-  <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="1"/>
-  <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+  <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="2"/>
+  <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="2"/>
   <int label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
   <bool label="SameElement" desc="Activates optimization if all quadrature points are located in the same element" value="0"/>
  </OptionList>
