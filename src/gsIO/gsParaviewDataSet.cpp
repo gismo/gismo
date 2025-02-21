@@ -71,7 +71,7 @@ namespace gismo
         }
     }
 
-    
+
     const std::vector<std::string> gsParaviewDataSet::filenames()
     {
         return m_filenames;
@@ -99,7 +99,7 @@ namespace gismo
             for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
             {
                 std::ofstream file;
-                file.open(m_filenames[k].c_str(), std::ios_base::app); // Append to file 
+                file.open(m_filenames[k].c_str(), std::ios_base::app); // Append to file
                 file <<"</PointData>\n\n\n<!-- GEOMETRY -->\n<Points>\n";
                 file << points[k];
                 file << "</Points>\n</Piece>\n</StructuredGrid>\n</VTKFile>";
@@ -108,7 +108,7 @@ namespace gismo
                 {
                     writeSingleControlNet( m_geometry->piece(k), m_basename + "_cnet" + std::to_string(k));
                     m_filenames.push_back( m_basename + "_cnet" + std::to_string(k)+".vtp");
-                } 
+                }
                 if ( plotElements)
                 {
                     int numPoints = m_options.getInt("plotElements.resolution");
@@ -122,7 +122,7 @@ namespace gismo
                             * math::pow(evalPtsPerElem, (real_t)(1.0)/static_cast<real_t>(m_geometry->domainDim())) );
                     }
                     //gsMesh<real_t> msh( gsMultiBasis<real_t>(*m_geometry).basis(k), numPoints);
-                    gsMesh<real_t> msh( m_evaltr->exprData()->multiBasis().basis(k), numPoints);
+                    gsMesh<real_t> msh(*m_evaltr->exprData()->domain().subdomain(k), numPoints);
                     static_cast<const gsGeometry<real_t>&>(m_geometry->piece(k)).evaluateMesh(msh);
                     gsWriteParaview(msh, m_basename + "_mesh" + std::to_string(k), false);
                     m_filenames.push_back( m_basename + "_mesh" + std::to_string(k)+".vtp");
@@ -143,7 +143,7 @@ namespace gismo
     }
 
     void gsParaviewDataSet::initFilenames()
-    {   
+    {
         std::vector<std::string> names;
         for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
         {

@@ -1043,16 +1043,17 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
         QuRule = gsNewtonCotesRule<T>::make(numNodes);
 
         // Initialize an iterator over all the elements of the given basis
-        typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
+        typename gsBasis<T>::domainIter domIt    = basis->domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = basis->domain()->endAll();
 
         // Calculate the collocation matrix of the Bezier Basis
         // It will be used to fit the Bez. Basis to the original basis' elements.
         Bd = bezBasis->collocationMatrix(bezBasis->anchors());
         auto solver = Bd.fullPivLu();
 
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt)
         {
-            localActives = basis->active( domIt->center );
+            localActives = basis->active( domIt.centerPoint() );
             globalActives.resizeLike(localActives);
             // Map every local active basis function to the global numbering
             for (index_t i=0; i<localActives.rows(); ++i)
@@ -1070,7 +1071,7 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
             ElementBlocks[key].PT = 0;                            // TODO: if implemented for trivariates fix this
 
             // Map the quadrature points to the current element.
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(), quPoints, quWeights);
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(), quPoints, quWeights);
             basis->source().eval_into(quPoints, values); // Evaluate given basis at the mapped quadrature points
             // Append the local Bezier Extraction matrix to the ElementBlock.coefVectors
             ElementBlocks[key].coefVectors.push_back(solver.solve(values.transpose()).transpose());

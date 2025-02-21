@@ -3,7 +3,7 @@
     @brief Provides declaration of HDomainSliceIter class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -13,19 +13,19 @@
 
 #pragma once
 
-#include <gsHSplines/gsKdNode.h>
+#include <gsDomain/gsKdNode.h>
 #include <gsCore/gsTemplateTools.h>
 
 namespace gismo
 {
 
-/** 
-    @brief Iterates over the leaves of an gsHDomain (tree) that
+/**
+    @brief Iterates over the leaves of an gsHTree (tree) that
     intersect with a slice position.
-    
-    A slice in this context is defined by: 
+
+    A slice in this context is defined by:
     - The direction index \a dir which is perpendicular to the slice position
-    - A span index \a pos along direction \a dir which indicates the position 
+    - A span index \a pos along direction \a dir which indicates the position
       of the "cut"
 
     \ingroup HSplines
@@ -49,17 +49,17 @@ public:
 
 public:
 
-    gsHDomainSliceIter() 
+    gsHDomainSliceIter()
     : m_dir(0), m_pos(0), m_last(0), curNode(0), m_index_level(0)
     { }
 
-    gsHDomainSliceIter( node * const root_node, 
-                        const unsigned _dir, 
+    gsHDomainSliceIter( node * const root_node,
+                        const unsigned _dir,
                         const unsigned _pos,
                         const unsigned _last,
                         const unsigned index_level)
     : m_dir(m_dir), m_pos(_pos), m_last(_last), m_index_level(index_level)
-    { 
+    {
         m_stack.push(root_node);
 
         // Go to the first leaf
@@ -73,14 +73,14 @@ public:
         {
             curNode = m_stack.top();
             m_stack.pop();
-            
+
             if ( curNode->isLeaf() )
             {
-                // does this box intersect the slice ?  
+                // does this box intersect the slice ?
                 // note: boxes are considered half-open, eg. products
                 // of intervals [a,b), except from the rightmost
                 // interval which is closed
-                // if ( (curNode->box->lowCorner()[m_dir] <= m_pos) && 
+                // if ( (curNode->box->lowCorner()[m_dir] <= m_pos) &&
                 //      (curNode->box->uppCorner()[m_dir] >  m_pos  ||
                 //      (m_pos == m_last && curNode->box->uppCorner()[m_dir] == m_pos) )
                 //    )
@@ -92,7 +92,7 @@ public:
                 {
                     if (m_pos < curNode->pos)
                         m_stack.push(curNode->left);
-                    else 
+                    else
                         m_stack.push(curNode->right);
                 }
                 else
@@ -123,7 +123,7 @@ public:
     /// \brief The lower corner of the sliced box.
     /// Note that \a m_dir is skipped
     point lowerCorner() const
-    { 
+    {
         point result;
         result.topRows   (m_dir  ) = curNode->box->first.topRows(m_dir     );
         result.bottomRows(d-m_dir) = curNode->box->first.bottomRows(d-m_dir);
@@ -133,13 +133,13 @@ public:
         for ( index_t i = 0; i!= result.size(); ++i )
             result[i] = result[i] >> (m_index_level-lvl) ;
 
-        return result; 
+        return result;
     }
 
     /// \brief The upper corner of the sliced box.
     /// Note that \a m_dir is skipped
     point upperCorner() const
-    { 
+    {
         point result = curNode->box->second;
         result.topRows   (m_dir  ) = curNode->box->second.topRows(m_dir     );
         result.bottomRows(d-m_dir) = curNode->box->second.bottomRows(d-m_dir);
@@ -149,7 +149,7 @@ public:
         for ( index_t i = 0; i!=result.size(); ++i )
             result[i] = result[i] >> (m_index_level-lvl) ;
 
-        return result; 
+        return result;
     }
 
     unsigned indexLevel() const {return m_index_level;}

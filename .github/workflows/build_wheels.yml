@@ -35,7 +35,7 @@ jobs:
         CIBW_TEST_SKIP: "*-macosx_arm64"
         CIBW_SKIP: "*36* *37*"
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: ./wheelhouse/*.whl
 
@@ -55,7 +55,7 @@ jobs:
         CIBW_BUILD: "cp*manylinux*"
         CIBW_SKIP: "*36* *37*"
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: ./wheelhouse/*.whl
 
@@ -89,7 +89,7 @@ jobs:
         CIBW_BUILD: ${{ matrix.cw_build }}
         CIBW_TEST_SKIP: "*-*linux_{aarch64,ppc64le,s390x}"
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: ./wheelhouse/*.whl
 
@@ -104,7 +104,7 @@ jobs:
     - name: Build sdist
       run: pipx run build --sdist
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: ./dist/*
 
@@ -115,7 +115,7 @@ jobs:
     # try to publish only if this is a push to stable branch
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stable' }}
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: artifact
           path: dist

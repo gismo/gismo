@@ -21,16 +21,71 @@
 #include <gsAssembler/gsOverIntegrateRule.h>
 #include <gsAssembler/gsGaussRule.h>
 
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {
 
 /// Helper class for obtaining a quadrature rule
 struct gsQuadrature
+/**
+ * @file gsQuadrature.h
+ * @brief This file contains the definition and implementation of various quadrature rules and methods for constructing quadrature rules based on input options.
+ *
+ * The quadrature rules supported include:
+ * - Gauss-Legendre quadrature
+ * - Gauss-Lobatto quadrature
+ * - Patch-wise quadrature rule (Johannessen 2017)
+ *
+ * The file provides functions to construct quadrature rules, retrieve quadrature nodes, and evaluate them using geometries.
+ *
+ * Reference:
+ * Johannessen, K. A. (2017). Optimal quadrature for univariate and tensor product splines.
+ * Computer Methods in Applied Mechanics and Engineering, 316, 84–99.
+ * https://doi.org/10.1016/j.cma.2016.04.030
+ *
+ * @typedef Real
+ * Type alias for GISMO_COEFF_TYPE.
+ *
+ * @enum rule
+ * Enumeration of quadrature rule types.
+ *
+ * @function get
+ * Constructs a quadrature rule based on input options.
+ *
+ * @function getPtr
+ * Constructs a quadrature rule based on input options and returns a unique pointer to the quadrature rule.
+ *
+ * @function getUnivariate
+ * Constructs a univariate quadrature rule based on input options.
+ *
+ * @function numNodes
+ * Computes the number of nodes for the quadrature rule based on the domain and input options.
+ *
+ * @function getAllNodes
+ * Retrieves all quadrature nodes for the given basis or domain.
+ *
+ * @function getAllNodes
+ * Retrieves all quadrature nodes for a specified side of a given basis.
+ *
+ * @function getAllNodes
+ * Retrieves all quadrature nodes for a specified side of a basis and evaluates them using a geometry.
+ *
+ * @function getAllNodes
+ * Retrieves all quadrature nodes for multiple sides of a given basis.
+ *
+ * @function getAllNodes
+ * Collects and evaluates all quadrature nodes for multiple sides of a given basis.
+ *
+ * @function getAllNodes
+ * Collects all quadrature nodes for a multi-basis.
+ *
+ * @function getAllNodes
+ * Collects all quadrature nodes for a multi-basis and evaluates them using a multi-patch geometry.
+ */
 {
     typedef GISMO_COEFF_TYPE Real;
-  
+
     /// Quadrature rule types
     enum rule
     {
@@ -51,10 +106,17 @@ struct gsQuadrature
     static gsQuadRule<T> get(const gsBasis<T> & basis,
                              const gsOptionList & options, short_t fixDir = -1)
     {
+        return get<T>(*basis.domain(),options,fixDir);
+    }
+
+    template<class T>
+    static gsQuadRule<T> get(const gsDomain<T> & domain,
+                             const gsOptionList & options, short_t fixDir = -1)
+    {
         const index_t qu  = options.askInt("quRule", GaussLegendre);
         const Real    quA = options.getReal("quA");
         const index_t quB = options.getInt ("quB");
-        const gsVector<index_t> nnodes = numNodes(basis,quA,quB,fixDir);
+        const gsVector<index_t> nnodes = numNodes(domain,quA,quB,fixDir);
         return get<T>(qu, nnodes);
     }
 
@@ -62,6 +124,15 @@ struct gsQuadrature
     template<class T>
     static typename gsQuadRule<T>::uPtr
                       getPtr(const gsBasis<T> & basis,
+                             const gsOptionList & options, short_t fixDir = -1)
+    {
+        return getPtr<T>(*basis.domain(),options,fixDir);
+    }
+
+    /// Constructs a quadrature rule based on input \a options
+    template<class T>
+    static typename gsQuadRule<T>::uPtr
+                      getPtr(const gsDomain<T> & domain,
                              const gsOptionList & options, short_t fixDir = -1)
     {
         const index_t qu   = options.askInt("quRule", GaussLegendre);
@@ -76,9 +147,9 @@ struct gsQuadrature
                 switch (qu)
                 {
                     case GaussLegendre :
-                        return gsGaussRule<T>::make(numNodes(basis,quA,quB,fixDir));
+                        return gsGaussRule<T>::make(numNodes(domain,quA,quB,fixDir));
                     case GaussLobatto :
-                        return gsLobattoRule<T>::make(numNodes(basis,quA,quB,fixDir));
+                        return gsLobattoRule<T>::make(numNodes(domain,quA,quB,fixDir));
                     default:
                         GISMO_ERROR("Invalid Quadrature rule request ("<<qu<<")");
                 };
@@ -92,8 +163,8 @@ struct gsQuadrature
                 const Real    quAb  = options.askReal("quAb",quA+1);
                 const index_t quBb  = options.askInt ("quBb",quB);
 
-                const gsVector<index_t> nnodesI = numNodes(basis,quA,quB,fixDir);
-                const gsVector<index_t> nnodesB = numNodes(basis,quAb,quBb,fixDir);
+                const gsVector<index_t> nnodesI = numNodes(domain,quA,quB,fixDir);
+                const gsVector<index_t> nnodesB = numNodes(domain,quAb,quBb,fixDir);
 
                 std::vector<gsQuadRule<T> > quInterior(nnodesI.size());
                 std::vector<gsQuadRule<T> > quBoundary(nnodesB.size());
@@ -104,14 +175,14 @@ struct gsQuadrature
                     quBoundary[d] = getUnivariate<T>(qu,nnodesB[d]);
                 }
 
-                return gsOverIntegrateRule<T>::make(basis,quInterior,quBoundary);
+                return gsOverIntegrateRule<T>::make(domain,quInterior,quBoundary);
             }
         }
         else if (qu==PatchRule)
         {
             // quA: Order of the target space
             // quB: Regularity of the target space
-            return gsPatchRule<T>::make(basis,cast<T,index_t>(quA),quB,over,fixDir);
+            return gsPatchRule<T>::make(domain,cast<T,index_t>(quA),quB,over,fixDir);
         }
         else
         {
@@ -150,12 +221,21 @@ struct gsQuadrature
     }
 
     /// Computes and integer quA*deg_i + quB where deg_i is the degree
-    /// of \a basis
+    /// of \a domain
     template<class T>
     static gsVector<index_t> numNodes(const gsBasis<T> & basis,
                                const Real quA, const index_t quB, short_t fixDir = -1)
     {
-        const short_t d  = basis.dim();
+        return numNodes(*basis.domain(),quA,quB,fixDir);
+    }
+
+    /// Computes and integer quA*deg_i + quB where deg_i is the degree
+    /// of \a domain
+    template<class T>
+    static gsVector<index_t> numNodes(const gsDomain<T> & domain,
+                               const Real quA, const index_t quB, short_t fixDir = -1)
+    {
+        const short_t d  = domain.dim();
         GISMO_ASSERT( fixDir < d && fixDir>-2, "Invalid input fixDir = "<<fixDir);
         gsVector<index_t> nnodes(d);
 
@@ -167,9 +247,9 @@ struct gsQuadrature
         short_t i;
         for(i=0; i!=fixDir; ++i )
             //note: +0.5 for rounding
-            nnodes[i] = cast<Real,index_t>(quA * basis.degree(i) + quB + 0.5);
+            nnodes[i] = cast<Real,index_t>(quA * domain.degree(i) + quB + 0.5);
         for(++i; i<d; ++i )
-            nnodes[i] = cast<Real,index_t>(quA * basis.degree(i) + quB + 0.5);
+            nnodes[i] = cast<Real,index_t>(quA * domain.degree(i) + quB + 0.5);
         return nnodes;
     }
 
@@ -180,48 +260,67 @@ struct gsQuadrature
 
     // }
 
-/**
- * @brief Retrieves all quadrature nodes for the given basis.
- *
- * This function computes and returns all quadrature nodes for a given 
- * \p basis, using the provided \p options to determine the quadrature rules.
- *
- * @tparam T          Real type.
- * @param[in] basis   The basis for which quadrature nodes are computed.
- * @param[in] options Options specifying the quadrature rule.
- * @return            A matrix where each column represents a quadrature node in the parametric domain.
- */
+    /**
+     * @brief Retrieves all quadrature nodes for the given basis.
+     *
+     * This function computes and returns all quadrature nodes for a given
+     * \p domain, using the provided \p options to determine the quadrature rules.
+     *
+     * @tparam T          Real type.
+     * @param[in] domain  The domain for which quadrature nodes are computed.
+     * @param[in] options Options specifying the quadrature rule.
+     * @return            A matrix where each column represents a quadrature node in the parametric domain.
+     */
     template<class T>
-    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
-                             const gsOptionList & options)
+    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain,
+                                   const gsOptionList & options)
     {
-        typename gsBasis<real_t>::domainIter domIt = basis.makeDomainIterator();
+        typename gsBasis<T>::domainIter domIt    = domain.domain()->beginAll();
+        typename gsBasis<    T>::    domainIter domItEnd = domain.domain()->endAll();
 
-        index_t quadSize = 0;
+        index_t     quadSize = 0;
         typename gsQuadRule<T>::uPtr QuRule;
-        QuRule = getPtr(basis, options);
+        QuRule = getPtr(domain, options);
 
-        for (; domIt->good(); domIt->next())
+        for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(basis, options);
+            QuRule = gsQuadrature::getPtr(domain, options);
             quadSize+=QuRule->numNodes();
         }
 
-        gsMatrix<T> result(basis.domainDim(),quadSize);
+        gsMatrix<T> result(domain.dim(),quadSize);
 
         index_t offset = 0;
         gsMatrix<T> nodes;
         gsVector<T> weights;
-        for (domIt->reset(); domIt->good(); domIt->next() )
+
+        domIt = domain.domain()->beginAll();
+        for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(basis, options);
+            QuRule = gsQuadrature::getPtr(domain, options);
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            nodes, weights);
-            result.block(0,offset,basis.domainDim(),QuRule->numNodes()) = nodes;
+            result.block(0,offset,domain.dim(),QuRule->numNodes()) = nodes;
             offset += QuRule->numNodes();
         }
         return result;
+    }
+
+    /**
+     * @brief Retrieves all quadrature nodes for the given basis and evaluates them using a geometry.
+     *
+     * @tparam T        Real type.
+     * @param[in] basis The basis for which quadrature nodes are computed.
+     * @param[in] geom  The geometry used to evaluate the quadrature nodes.
+     * @param[in] options Options specifying the quadrature rule.
+     * @return result   A matrix of quadrature nodes, where each column corresponds to a quadrature node.
+     */
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
+                                   const gsOptionList & options)
+    {
+        return getAllNodes(*basis.domain(),options);
     }
 
     /**
@@ -233,40 +332,67 @@ struct gsQuadrature
      * @param[in] side      The side of the basis.
      * @return result   A matrix of quadrature nodes, where each column corresponds to a quadrature node.
      */
-
     template<class T>
     static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
                              const gsOptionList & options, const patchSide side)
     {
-        typename gsBasis<real_t>::domainIter domIt = basis.makeDomainIterator(side);
+        return getAllNodes(*basis.domain(),options,side);
+    }
+
+    /**
+     * @brief Get all quadrature nodes for a specified side of a given domain.
+     *
+     * @tparam T        Real type.
+     * @param[in] domain    The domain for which the quadrature nodes are to be collected.
+     * @param[in] options   Quadrature rule.
+     * @param[in] side      The side of the domain.
+     * @return result   A matrix of quadrature nodes, where each column corresponds to a quadrature node.
+     */
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain,
+                             const gsOptionList & options, const patchSide side)
+    {
+        typename gsBasis<T>::domainIter domIt    = domain.domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = domain.domain()->endAll();
 
         index_t quadSize = 0;
         typename gsQuadRule<T>::uPtr QuRule;
-        QuRule = getPtr(basis, options,side.side().direction());
+        QuRule = getPtr(domain, options,side.side().direction());
 
-        for (; domIt->good(); domIt->next())
+        for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(basis, options, side.side().direction());
+            QuRule = gsQuadrature::getPtr(domain, options, side.side().direction());
             quadSize+=QuRule->numNodes();
         }
 
-        gsMatrix<T> result(basis.domainDim(),quadSize);
+        gsMatrix<T> result(domain.dim(),quadSize);
 
         index_t offset = 0;
         gsMatrix<T> nodes;
         gsVector<T> weights;
-        for (domIt->reset(); domIt->good(); domIt->next() )
+        domIt = domain.domain()->beginAll();
+        for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(basis, options, side.side().direction());
+            QuRule = gsQuadrature::getPtr(domain, options, side.side().direction());
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            nodes, weights);
-            result.block(0,offset,basis.domainDim(),QuRule->numNodes()) = nodes;
+            result.block(0,offset,domain.dim(),QuRule->numNodes()) = nodes;
             offset += QuRule->numNodes();
         }
         return result;
     }
 
+    /**
+     * @brief Get all quadrature nodes for a specified side of a domain and evaluates them using a geometry.
+     */
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain, const gsGeometry<T> & geom,
+                             const gsOptionList & options, const patchSide side)
+    {
+        gsMatrix<T> nodes = getAllNodes(domain,options,side);
+        return geom.eval(nodes);
+    }
     /**
      * @brief Get all quadrature nodes for a specified side of a basis and evaluates them using a geometry.
      */
@@ -274,25 +400,24 @@ struct gsQuadrature
     static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geom,
                              const gsOptionList & options, const patchSide side)
     {
-        gsMatrix<T> nodes = getAllNodes(basis,options,side);
-        return geom.eval(nodes);
+        return getAllNodes(*basis.domain(),geom,options,side);
     }
 
     /**
-     * @brief Retrieves all quadrature nodes for multiple sides of a given basis.
+     * @brief Retrieves all quadrature nodes for multiple sides of a given domain.
      */
     template<class T>
-    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
+    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain,
                              const gsOptionList & options, const std::vector<patchSide> sides)
     {
         std::vector<gsMatrix<T>> nodes(sides.size());
         index_t cols = 0;
         for (size_t s = 0; s != sides.size(); s++)
         {
-            nodes[s] = getAllNodes(basis,options,sides[s]);
+            nodes[s] = getAllNodes(domain,options,sides[s]);
             cols += nodes[s].cols();
         }
-        gsMatrix<T> result(basis.domainDim(),cols);
+        gsMatrix<T> result(domain.dim(),cols);
         cols = 0;
 
         for (size_t s = 0; s != sides.size(); s++)
@@ -303,18 +428,39 @@ struct gsQuadrature
 
         return result;
     }
+    /**
+     * @brief Retrieves all quadrature nodes for multiple sides of a given domain.
+     */
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
+                             const gsOptionList & options, const std::vector<patchSide> sides)
+    {
+        return getAllNodes(*basis.domain(),options,sides);
+    }
 
     /**
-     * @brief Collects and evaluates all quadrature nodes for multiple sides of a given basis.
+     * @brief Collects and evaluates all quadrature nodes for multiple sides of a given domain.
+     */
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain, const gsGeometry<T> & geom,
+                             const gsOptionList & options, const std::vector<patchSide> sides)
+    {
+        gsMatrix<T> nodes = getAllNodes(domain,options,sides);
+        return geom.eval(nodes);
+    }
+    /**
+     * @brief Retrieves all quadrature nodes for multiple sides of a given basis.
      */
     template<class T>
     static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geom,
                              const gsOptionList & options, const std::vector<patchSide> sides)
     {
-        gsMatrix<T> nodes = getAllNodes(basis,options,sides);
-        return geom.eval(nodes);
+        return getAllNodes(*basis.domain(),geom,options,sides);
     }
 
+    /**
+     * @brief Collects all quadrature nodes for a multi-basis.
+     */
     template<class T>
     static gsMatrix<T> getAllNodes(const gsMultiBasis<T> & bases,
                              const gsOptionList & options)

@@ -111,7 +111,7 @@ public:
     * @param admissibleRef if true, the marking for refinement is admissible.
     */
     bool nextRefinement(T tolerance, T err_threshold, index_t maxPcIter = 0, bool admissibleRef = false);
-    
+
     /**
      * @brief Like \a nextRefinement without \a fixedSides but keeping the values
      * on these sides unchanged throughout the fit.
@@ -129,7 +129,7 @@ public:
      * @param admissibleRef if true, the refinement is admissible.
      */
     bool nextIteration_tdm(T tolerance, T err_threshold, index_t maxPcIter, T mu, T sigma, const std::vector<index_t> & interpIdx, tdm_method method, bool admissibleRef = false);
-    
+
     /**
      * @brief Like \a nextIteration_tdm without \a fixedSides but keeping the values
      * on these sides unchanged throughout the fit.
@@ -150,7 +150,7 @@ public:
      * @param admissibleRef if true, the refinement is admissible.
      */
     bool nextIteration_pdm(T tolerance, T err_threshold, index_t maxPcIter, const std::vector<index_t> & interpIdx, bool admissibleRef = false);
-    
+
     /**
      * @brief Like \a nextIteration_pdm without \a fixedSides but keeping the values
      * on these sides unchanged throughout the fit.
@@ -389,7 +389,7 @@ bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
 
     // SOLVE one PDM fitting step
     this->compute(m_lambda);
-    
+
     //spply maxPcIter parameter correction steps separating interior and boundary points
     this->parameterCorrectionSepBoundary_pdm(1e-6, maxPcIter,interpIdx);//closestPoint accuracy, orthogonality tolerance
 
@@ -643,7 +643,7 @@ void gsHFitting<d, T>::appendBox(std::vector<index_t>& boxes,
     }
 }
 
-// Check if a cell is already inserted in (the refinement) container of cells 
+// Check if a cell is already inserted in (the refinement) container of cells
 template <short_t d, class T>
 bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
                                              const std::vector<index_t>& cells)
@@ -738,22 +738,22 @@ gsHBoxContainer<d> gsHFitting<d, T>::getMarkedHBoxesFromBasis_max(const gsHTenso
                                                 T extension)
 {
     gsHBoxContainer<d> markedHBoxes;
-    typename gsHTensorBasis<d, T>::domainIter domIt = basis.makeDomainIterator();
-        for (; domIt->good(); domIt->next() )    // loop over all elements
+    typename gsBasis<T>::domainIter domItEnd =  basis.domain()->endAll();
+    for (auto domIt = basis.domain()->beginAll(); domIt<domItEnd; ++domIt )    // loop over all elements
+    {
+        gsMatrix<T> elMatrix(d,d);
+        elMatrix.col(0)<< domIt.lowerCorner(); // first column  = lower corner
+        elMatrix.col(1)<< domIt.upperCorner(); // second column = upper corner
+        T cellMaxError = getCellMaxError(elMatrix, errors, parameters);
+        if (cellMaxError >= threshold)
         {
-            gsMatrix<T> elMatrix(d,d);
-            elMatrix.col(0)<< domIt->lowerCorner(); // first column  = lower corner
-            elMatrix.col(1)<< domIt->upperCorner(); // second column = upper corner
-            T cellMaxError = getCellMaxError(elMatrix, errors, parameters);
-            if (cellMaxError >= threshold)
-            {
-              gsHDomainIterator<T,d> * domHIt = nullptr;
-              domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
-              gsHBox<d> a_box(domHIt);
-              gsHBoxContainer<d> tmp(gsHBoxUtils<d,T>::markAdmissible(a_box,extension));
-              markedHBoxes.add(tmp);
-            }
+            gsHDomainIterator<T,d> * domHIt = nullptr;
+            domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
+            gsHBox<d> a_box(domHIt);
+            gsHBoxContainer<d> tmp(gsHBoxUtils<d,T>::markAdmissible(a_box,extension));
+            markedHBoxes.add(tmp);
         }
+    }
     return markedHBoxes;
 }
 

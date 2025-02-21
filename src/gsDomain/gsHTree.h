@@ -3,7 +3,7 @@
     @brief Provides declaration of the HDomain class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -13,15 +13,12 @@
 
 #pragma once
 
-#include <gsCore/gsLinearAlgebra.h>
-#include <gsHSplines/gsHDomainLeafIter.h>
+#include <gsDomain/gsKdNode.h>
+#include <gsDomain/gsHDomainLeafIter.h>
 #include <gsCore/gsBoundary.h>
 
-namespace gismo 
+namespace gismo
 {
-
-template<typename T, unsigned d>
-class gsHDomainIterator;
 
 template<class T>
 class gsSegment;
@@ -71,8 +68,9 @@ Template parameters
 \ingroup HSplines
 */
 
+
 template<short_t d, class Z = index_t>
-class gsHDomain
+class gsHTree // rename to gsHTree
 {
 public:
     typedef gsKdNode<d, Z> node;
@@ -85,8 +83,6 @@ public:
 
     typedef gsHDomainLeafIter<node,true> const_literator;
 
-    template <class U, unsigned dd> friend class gsHDomainIterator;
-
 private:
 
     struct numLeaves_visitor;
@@ -98,11 +94,11 @@ private:
     /// Pointer to the root node of the tree
     node * m_root;
 
-    /// Keeps the highest upper indices (at level gsHDomain::m_indexLevel)
+    /// Keeps the highest upper indices (at level gsHTree::m_indexLevel)
     point m_upperIndex;
-#   define Eigen gsEigen
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
+// #   define Eigen gsEigen
+//     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+// #   undef Eigen
 
     /// The level of the box representation (global indices)
     unsigned m_indexLevel;
@@ -114,14 +110,14 @@ private:
 
 public:
 
-    gsHDomain() : m_indexLevel(0)
+    gsHTree() : m_indexLevel(0)
     {
         m_root = nullptr;
         m_maxInsLevel = 0;
         m_maxPath = 0;
     }
-    
-    gsHDomain(point const & upp)
+
+    gsHTree(point const & upp)
     {
         m_root = nullptr;
         m_maxInsLevel = 0;
@@ -130,7 +126,7 @@ public:
     }
 
     /// Copy constructor (makes a deep copy)
-    gsHDomain( const gsHDomain & o) :
+    gsHTree( const gsHTree & o) :
         m_upperIndex(o.m_upperIndex),
         m_indexLevel(o.m_indexLevel),
         m_maxInsLevel(o.m_maxInsLevel),
@@ -140,11 +136,11 @@ public:
     }
 
     /// Assignment operator (makes a deep copy)
-    gsHDomain& operator=( const gsHDomain & o)
+    gsHTree& operator=( const gsHTree & o)
     {
         if ( this == &o )
             return *this;
-        
+
         m_root = new node(*o.m_root);
 
         m_upperIndex  = o.m_upperIndex;
@@ -156,7 +152,7 @@ public:
     }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
-    gsHDomain(gsHDomain&& o) :
+    gsHTree(gsHTree&& o) :
     m_root(o.m_root),
     m_upperIndex(std::move(o.m_upperIndex)),
     m_indexLevel(o.m_indexLevel),
@@ -166,7 +162,7 @@ public:
         o.m_root = nullptr;
     }
 
-    gsHDomain & operator=(gsHDomain&& o)
+    gsHTree & operator=(gsHTree&& o)
     {
         delete m_root; m_root = o.m_root; o.m_root = nullptr;
         m_upperIndex  = std::move(o.m_upperIndex);
@@ -222,10 +218,10 @@ public:
     }
 
     /// Destructor deletes the whole tree
-    ~gsHDomain() { delete m_root; }
+    ~gsHTree() { delete m_root; }
 
     /// Clones the object
-    gsHDomain * clone() const;
+    gsHTree * clone() const;
 
 public:
 
@@ -245,7 +241,7 @@ public:
                            unsigned lvl,
                            gsVector<Z, d> & result) const;
 
-    /// Accessor for gsHDomain::m_upperIndex
+    /// Accessor for gsHTree::m_upperIndex
     const point & upperCorner() const
     {
         return m_upperIndex;
@@ -424,7 +420,7 @@ public:
      * true or false value we remember the lowest level, which is returned
      * at the end.
      */
-    int query3(point const & k1, point const & k2, 
+    int query3(point const & k1, point const & k2,
                int level, node *_node ) const;
 
     /** \brief Returns the lowest level \f$\ell\f$ s.t.
@@ -469,7 +465,7 @@ public:
 
     /// Increment the level index globally
     void incrementLevel();
-    
+
     /// Multiply all coordinates by two
     void multiplyByTwo();
 
@@ -490,7 +486,7 @@ public:
     }
 
     void makeCompressed();
-    
+
     /// Returns the number of nodes in the tree
     int size() const;
 
@@ -519,10 +515,10 @@ public:
     * The boxes \em b1 and \em b2 are given as matrices
     * of size <em>n</em> x <em>d</em>, where \em d is the dimension
     * of the domain, and where \em n is the number of boxes of
-    * the gsHDomain.\n
+    * the gsHTree.\n
     *
     * The numbers in \em b1 and \em b2 are given as
-    * unique knot indices of gsHDomain::m_maxInsLevel
+    * unique knot indices of gsHTree::m_maxInsLevel
     *
     * \param[out] b1 <em>n</em> x <em>d</em>-matrix, left bottom corners of boxes
     * \param[out] b2 <em>n</em> x <em>d</em>-matrix, right upper corners of boxes
@@ -587,7 +583,7 @@ public:
     void computeMaxInsLevel();
 
 private:
-    
+
     /// Returns true if the boxes overlap
     /// \param box1
     /// \param box2
@@ -605,8 +601,8 @@ private:
     /// \param k4 the upper right corner of the second box
     static std::pair<point,point> select_part(point const & k1, point const & k2,
                                               point const & k3, point const & k4);
-    
-    static void bisectBox(box const & original, 
+
+    static void bisectBox(box const & original,
                           int k, Z coord,
                           box & leftBox,
                           box & rightBox );
@@ -636,7 +632,7 @@ private:
     /// (i.e., for each \em i, the size of
     /// \em boxes[i] is <em>2d+1</em>, where \em d is
     /// the dimension of the domain).\n
-    /// All indexing is in terms of level gsHDomain::m_maxInsLevel. \n
+    /// All indexing is in terms of level gsHTree::m_maxInsLevel. \n
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
     void getBoxes_vec(std::vector<std::vector<Z>>& boxes) const;
@@ -650,7 +646,7 @@ private:
     /// \param[in,out] boxes Format as of getBoxes_vec(), i.e., each box
     /// is represented as vector of size <em>2*d + 1</em> containing
     /// [ [lower corner],[upper corner], Level ], where the corners
-    /// are defined by the knot indices on level gsHDomain::m_maxInsLevel.
+    /// are defined by the knot indices on level gsHTree::m_maxInsLevel.
     void connect_Boxes(std::vector<std::vector<Z> > &boxes) const;
     void connect_Boxes2d(std::vector<std::vector<Z> > &boxes) const;
 
@@ -664,7 +660,7 @@ private:
     /// Sweepline algorithm.
     void sweeplineConnectAndMerge( std::vector< std::vector< std::vector<Z> > >& result,
                                    std::list< std::list< gsVSegment<Z> > >& vert_seg_lists ) const;
-    
+
 
 private:
 
@@ -673,7 +669,7 @@ private:
     /// type at every leaf node
     template<typename visitor>
     typename visitor::return_type
-    boxSearch(point const & k1, point const & k2, 
+    boxSearch(point const & k1, point const & k2,
               int level, node  *_node) const;
 
     /// Iterates on the leafs of the tree and applies \ visitor.  The
@@ -699,19 +695,19 @@ private:
     {
         typedef int return_type;
         static return_type init() {return 0;}
-        
+
         static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &i)
         {
             if (leafNode->level>i) i=leafNode->level;
         }
     };
-    
+
     /// Increases the level by 1 for all leaves
     struct levelUp_visitor
     {
         typedef int return_type;
         static return_type init() {return 0;}
-        
+
         static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
         {
             leafNode->level++;
@@ -723,7 +719,7 @@ private:
     {
         typedef int return_type;
         static return_type init() {return 0;}
-        
+
         static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
         {
             leafNode->level--;
@@ -735,7 +731,7 @@ private:
     {
         typedef int return_type;
         static return_type init() {return 0;}
-        
+
         static void visitLeaf(gsKdNode<d, Z> * , return_type & i)
         {
             i++;
@@ -747,7 +743,7 @@ private:
     {
         typedef int return_type;
         static return_type init() {return 0;}
-        
+
         static void visitNode(gsKdNode<d, Z> * , return_type & i)
         {
             i++;
@@ -759,7 +755,7 @@ private:
     {
         typedef int return_type;
         static return_type init() {return 0;}
-        
+
         static void visitNode(gsKdNode<d, Z> * leafNode, return_type &)
         {
             leafNode->multiplyByTwo();
@@ -783,7 +779,7 @@ private:
     {
         typedef int return_type;
         static return_type init() {return 0;}
-        
+
         static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
         {
             gsInfo << *leafNode;
@@ -815,11 +811,10 @@ private:
 
 };
 
-
 }// end namespace gismo
 
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsHDomain.hpp)
+#include GISMO_HPP_HEADER(gsHTree.hpp)
 #endif
 

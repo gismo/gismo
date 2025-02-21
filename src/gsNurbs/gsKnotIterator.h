@@ -311,18 +311,12 @@ public:
     mult_t multSum() const
     { return m_mlt[m_upos];}
 
-private:
-
-    /*
-       \brief Sets the iterator to the first (without repetitions)
-       knot in the knot sequence
-
-    // needed ?
+    ///\brief Sets the iterator to the first (without repetitions)
+    ///  knot in the knot sequence
     void reset()
     {
         m_upos = 0;
     }
-     */
 };
 
 /**

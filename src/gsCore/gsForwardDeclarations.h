@@ -120,12 +120,18 @@ template <class T=real_t>                class gsSurface;
 template <class T=real_t>                class gsVolume;
 template <class T=real_t>                class gsBulk;
 
+template <class T=real_t>                class gsDomainIteratorWrapper;
 template <class T=real_t>                class gsDomainIterator;
 
+template <class T=real_t>                class gsPointDomain;
+template <class T=real_t>                class gsPointDomainIterator;
+
 template <class T = real_t, int D=-1>    class gsTensorDomainIterator;
+template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainIterator;
 
 template <class T, int D=-1, class uiter=typename std::vector<T>::const_iterator>
                                          class gsTensorDomainBoundaryIterator;
+template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainBoundaryIterator;
 
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;
@@ -163,6 +169,7 @@ template <short_t d, class T=real_t>     class gsTensorBernsteinBasis;
 template <short_t d, class T=real_t>     class gsHBSplineBasis;
 template <short_t d, class T=real_t>     class gsTHBSplineBasis;
 template <short_t d, class T=real_t>     class gsTHBSpline;
+template <short_t d, class T=real_t, class Z=index_t>     class gsHDomain;
 template <short_t d, class T=real_t>     class gsRationalTHBSplineBasis;
 template <short_t d, class T=real_t>     class gsRationalTHBSpline;
 
