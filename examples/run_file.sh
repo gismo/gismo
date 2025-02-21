@@ -13,9 +13,9 @@ make r_refinement_ComplexGeometry -j 15
 #EXECUTABLE="./bin/r_refinement_square"
 EXECUTABLE="./bin/r_refinement_ComplexGeometry"
 
-# Parameters (tags) to run the executable with
+# Parameters (tags) to run the executable with -r 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
 TAGS=(
-    "-u 4 -f 9. -l 3 -a 0.7 -c 2 -p 0"
+    "-r 2 -u 4 -f 0. -l 1 -a 0.7 -c 2 -p 0"
 )
 
 # Run the executable with each set of parameters
