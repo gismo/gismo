@@ -78,7 +78,6 @@ int main(int argc, char *argv[])
     gsInfo<<"Geometry:\n"<<*geometry<<"\n";
     gsInfo<<"Basis:\n"<<*basis<<"\n";
 
-
     gsWriteParaview(*geometry,"geometry");
     gsWriteParaview(*cgeom,"cgeometry");
 
@@ -87,9 +86,14 @@ int main(int argc, char *argv[])
     GISMO_ASSERT((dynamic_cast<gsTensorBSplineBasis<2>*>(&composition->basis())),"The composition must be a tensor basis.");
     gsTensorBSplineBasis<2> * composition_basis = static_cast<gsTensorBSplineBasis<2>*>(&composition->basis());
 
+    gsInfo<<"Basis: "<<tbasis->knots(0).asMatrix()<<"\n";
+
     gsTensorBSplineBasis<2> ibasis = integrationBasis(*tbasis,*composition_basis);
 
     gsExprEvaluator<> ev;
+    ev.options().setSwitch("SameElement",false);
+    ev.options().setReal("quA",2.0);
+    ev.options().setInt("quB",2.0);
     gsMultiBasis<> mb(ibasis);
     ev.setIntegrationElements(mb);
     auto G = ev.getMap(*geometry);
@@ -114,21 +118,19 @@ int main(int argc, char *argv[])
 
     //jacobian determinant for a surface, i.e. the measure
     auto fform = jac(G).tr()*jac(G);
-    auto detG = pow(fform.det().val(),0.5); 
+    auto detG = pow(fform.det().val(),0.5);
     auto G_frob = jac(G).norm();
 
-    
-
-    auto cfform = jac(cG).tr()*jac(G);
-    auto detcG = pow(cfform.det().val(),0.5); 
+    auto cfform = jac(cG).tr()*jac(cG);
+    auto detcG = pow(cfform.det().val(),0.5);
     auto cG_frob = jac(cG).norm();
 
     gsInfo << " ----------------- G ---------- cG ---------- \n";
-    
-    
+
+
     //ev.eval(expr,p)
-    gsInfo << "Area distortion: " << ev.integral(detG*meas(G))/GArea << ' ----- '<< ev.integral(detcG*meas(cG))/cGArea << "\n";
-    //gsInfo << "Angular distortion:" << detG/GArea << ' ----- '<< detcG/cGArea << "\n";
+    gsInfo << "Area distortion: " << ev.integral(detG*meas(G))/GArea << " ----- "<< ev.integral(detcG*meas(cG))/cGArea << "\n";
+    // gsInfo << "Angular distortion:" << detG/GArea << ' ----- '<< detcG/cGArea << "\n";
 
     return EXIT_SUCCESS;
 

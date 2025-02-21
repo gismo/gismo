@@ -434,11 +434,9 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         auto _arg = expr.val();
         m_exprdata->parse(_arg);
         if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
-    gsMatrix<T> tmpPoints;
-    gsVector<T> tmpWeights;
         // m_exprdata->activateFlags(SAME_ELEMENT);
-    gsMatrix<T> tmpPoints;
-    gsVector<T> tmpWeights;
+        gsMatrix<T> tmpPoints;
+        gsVector<T> tmpWeights;
 
         // Computed value on element
         T elVal;
