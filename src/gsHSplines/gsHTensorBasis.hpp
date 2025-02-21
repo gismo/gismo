@@ -1978,11 +1978,12 @@ index_t gsHTensorBasis<d,T>::gradingParameter() const
 
     index_t grading = 0;
     // Loop over each element
-    for (const std::unique_ptr<gsDomainIterator<>> it = this->makeDomainIterator(); it->good(); it->next())
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
     {
         index_t min(0), max(0);
         // Indices of active basis functions over the element
-        gsVector<index_t> indices = this->active(it->center);
+        gsVector<index_t> indices = this->active(it.centerPoint());
         for (index_t l = 0; l < this->numLevels(); ++l)
         {
             // Indices are sorted, so taken two functions of different levels,
@@ -2000,8 +2001,9 @@ template<int d,class T>
 index_t gsHTensorBasis<d,T>::maxLoading() const
 {
     index_t max = 0;
-    for (const std::unique_ptr<gsDomainIterator<>> it = this->makeDomainIterator(); it->good(); it->next())
-        max = max > this->active(it->center).size() ? max : this->active(it->center).size();
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+        max = max > this->active(it.centerPoint()).size() ? max : this->active(it.centerPoint()).size();
 
     return max;
 }
@@ -2010,8 +2012,9 @@ template<int d,class T>
 index_t gsHTensorBasis<d,T>::minLoading() const
 {
     index_t min = this->normalLoading();
-    for (const std::unique_ptr<gsDomainIterator<>> it = this->makeDomainIterator(); it->good(); it->next())
-        min = min < this->active(it->center).size() ? min : this->active(it->center).size();
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+        min = min < this->active(it.centerPoint()).size() ? min : this->active(it.centerPoint()).size();
 
     return min;
 }
@@ -2020,8 +2023,9 @@ template<int d, class T>
 real_t gsHTensorBasis<d,T>::averageLoading() const
 {
     index_t sum(0), count(0);
-    for (const std::unique_ptr<gsDomainIterator<>> it = this->makeDomainIterator(); it->good(); it->next(), ++count)
-        sum += this->active(it->center).size();
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it, ++count)
+        sum += this->active(it.centerPoint()).size();
 
     return sum/static_cast<real_t>(count);
 }
@@ -2031,8 +2035,9 @@ index_t gsHTensorBasis<d, T>::overloadedElements() const
 {
     index_t count(0);
     index_t normal = this->normalLoading();
-    for (const std::unique_ptr<gsDomainIterator<>> it = this->makeDomainIterator(); it->good(); it->next())
-        count = this->active(it->center).size() > normal ? count+1 : count;
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+        count = this->active(it.centerPoint()).size() > normal ? count+1 : count;
 
     return count;
 }
@@ -2042,10 +2047,11 @@ real_t gsHTensorBasis<d, T>::averageOverloading() const
 {
     index_t sum(0), count(0);
     index_t normal = this->normalLoading();
-    for (const std::unique_ptr<gsDomainIterator<>> it = this->makeDomainIterator(); it->good(); it->next())
-        if (this->active(it->center).size() > normal)
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+        if (this->active(it.centerPoint()).size() > normal)
         {
-            sum += this->active(it->center).size();
+            sum += this->active(it.centerPoint()).size();
             ++count;
         }
 
