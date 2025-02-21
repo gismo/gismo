@@ -103,10 +103,10 @@ public:
 public:
 
     // Returns the dimension of the basis
-    short_t domainDim() const { return Dim; }
+    short_t domainDim() const override { return Dim; }
 
     /// Returns the number of elements in the basis
-    index_t size() const
+    index_t size() const override
     {
         index_t r=1;
         for (short_t i = 0; i < d; ++i)
@@ -124,7 +124,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements(boxSide const & s = boundary::none) const
+    size_t numElements(boxSide const & s = boundary::none) const override
     {
         if (0==s.index()) return this->numTotalElements();
         const short_t dir =  s.direction();
@@ -139,7 +139,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t elementIndex(const gsVector<T> & u ) const
+    size_t elementIndex(const gsVector<T> & u ) const override
     {
         GISMO_ASSERT( u.rows() == d, "Wrong vector dimension");
 
@@ -152,7 +152,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    gsMatrix<T> elementInSupportOf(index_t j) const;
+    gsMatrix<T> elementInSupportOf(index_t j) const override;
 
     /// Returns the number of elements (component wise)
     void numElements_cwise(gsVector<unsigned>& result) const
@@ -163,10 +163,10 @@ public:
     }
 
     /// Returns the anchors (graville absissae) that represent the members of the basis
-    void anchors_into(gsMatrix<T>& result) const;
+    void anchors_into(gsMatrix<T>& result) const override;
 
     /// Returns the anchors (graville absissae) that represent the members of the basis
-    void anchor_into(index_t i, gsMatrix<T>& result) const;
+    void anchor_into(index_t i, gsMatrix<T>& result) const override;
 
     // TODO: Why is this documentation not in gsBasis?
     /**
@@ -205,10 +205,10 @@ public:
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>)
      *
      */
-    virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
+    virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override;
 
     // Look at gsBasis class for documentation
-    bool isActive(const index_t i, const gsVector<T>& u) const;
+    bool isActive(const index_t i, const gsVector<T>& u) const override;
 
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
@@ -218,38 +218,38 @@ public:
                       gsVector<index_t,d>& upp ) const;
 
     // Look at gsBasis class for documentation
-    virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;
+    virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const override;
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<index_t> allBoundary( ) const ;
+    gsMatrix<index_t> allBoundary( ) const override;
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const;
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override;
 
-    index_t functionAtCorner(boxCorner const & c) const;
+    index_t functionAtCorner(boxCorner const & c) const override;
 
     /// Returns the components for a basis on the face \a s
     void getComponentsForSide(boxSide const & s, std::vector<Basis_t*> & rr) const;
 
     // see gsBasis for doxygen documentation
     // Returns a bounding box for the basis' domain
-    gsMatrix<T> support() const ;
+    gsMatrix<T> support() const override;
 
     // see gsBasis for doxygen documentation
     // Returns a bounding box for the support of the ith basis function
-    gsMatrix<T> support(const index_t & i ) const ;
+    gsMatrix<T> support(const index_t & i ) const override;
 
     // see gsBasis for doxygen documentation
     // Evaluates the non-zero basis functions (and optionally their
     // first k derivatives) at value u into result
-    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     // see gsBasis for doxygen documentation
     // Evaluate the i-th basis function at all columns of the matrix
     // (or vector) u
-    virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     /// Evaluate an element of the space given by coefs at points u
     virtual void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
@@ -259,14 +259,14 @@ public:
     // order n at all columns of u
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> >& result,
-                                  bool sameElement = false) const;
+                                  bool sameElement = false) const override;
 
     // see gsBasis for doxygen documentation
     // Evaluates the gradient the non-zero basis functions at value u.
-    virtual void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    virtual void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override;
 
     // Evaluates the second derivatives of the non-zero basis functions at value u.
-    virtual void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    virtual void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override;
 
 private:
     // Internal function
@@ -287,9 +287,9 @@ private:
 public:
     // see gsBasis for doxygen documentation
     // Evaluate the i-th basis function derivative at all columns of
-    virtual void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    virtual void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
-    virtual void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    virtual void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     // Evaluates the (partial) derivatives of an element given by coefs at (the columns of) u.
     //void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
@@ -303,7 +303,7 @@ public:
     }
 
     // Look at gsBasis class for documentation
-    virtual typename gsGeometry<T>::uPtr interpolateAtAnchors(gsMatrix<T> const& vals) const;
+    virtual typename gsGeometry<T>::uPtr interpolateAtAnchors(gsMatrix<T> const& vals) const override;
 
     /// Interpolates values on a tensor-grid of points, given in
     /// tensor form (d coordinate-wise vectors). Samples \a vals
@@ -312,10 +312,10 @@ public:
                                     std::vector<gsMatrix<T> >const& grid) const;
 
     /// Prints the object as a string, pure virtual function of gsTensorBasis.
-    virtual std::ostream &print(std::ostream &os) const = 0;
+    virtual std::ostream &print(std::ostream &os) const override = 0;
 
     // Look at gsBasis class for documentation
-    virtual void uniformRefine(int numKnots = 1, int mul = 1, short_t dir = -1)
+    virtual void uniformRefine(int numKnots = 1, int mul = 1, short_t dir = -1) override
     {
         if (-1==dir)
             for (short_t j = 0; j < d; ++j)
@@ -338,28 +338,28 @@ public:
      * \param[in] elements vector of unsigned containing the
      * indices of the elements that should be refined (see above).
      */
-    void refineElements(std::vector<index_t> const & elements);
+    void refineElements(std::vector<index_t> const & elements) override;
 
     /// Refine the basis uniformly and perform knot refinement for the
     /// given coefficient vector
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1) override;
 
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
-    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul = 1);
+    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul = 1) override;
 
     // Look at gsBasis class for documentation
-    virtual void uniformCoarsen(int numKnots = 1)
+    virtual void uniformCoarsen(int numKnots = 1) override
     {
         for (short_t j = 0; j < d; ++j)
             m_bases[j]->uniformCoarsen(numKnots);
     }
 
     // Look at gsBasis class for documentation
-    void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1);
+    void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1) override;
 
     // Look at gsBasis class for documentation
-    virtual void degreeElevate(short_t const & i = 1, short_t const dir = -1)
+    virtual void degreeElevate(short_t const & i = 1, short_t const dir = -1) override
     {
         if (dir == -1)
         {
@@ -375,7 +375,7 @@ public:
     }
 
     // Look at gsBasis class for documentation
-    virtual void degreeIncrease(short_t const & i = 1, short_t const dir = -1)
+    virtual void degreeIncrease(short_t const & i = 1, short_t const dir = -1) override
     {
         if (dir == -1)
         {
@@ -391,7 +391,7 @@ public:
     }
 
     // Look at gsBasis class for documentation
-    virtual void degreeDecrease(short_t const & i = 1, short_t const dir = -1)
+    virtual void degreeDecrease(short_t const & i = 1, short_t const dir = -1) override
     {
         if (dir == -1)
         {
@@ -407,7 +407,7 @@ public:
     }
 
     // Look at gsBasis class for documentation
-    virtual void degreeReduce(short_t const & i = 1, short_t const dir = -1)
+    virtual void degreeReduce(short_t const & i = 1, short_t const dir = -1) override
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir < this->dim(),
@@ -465,12 +465,12 @@ public:
     gsMatrix<index_t> coefSlice(short_t dir, index_t k) const;
 
     /// Returns the degree of the basis wrt variable \a i
-    short_t degree(short_t i) const
+    short_t degree(short_t i) const override
     {
         return m_bases[i]->degree(0);
     }
 
-    short_t maxDegree() const
+    short_t maxDegree() const override
     {
         short_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
@@ -479,7 +479,7 @@ public:
         return td;
     }
 
-    short_t minDegree() const
+    short_t minDegree() const override
     {
         short_t td = m_bases[0]->degree(0);
         // take minimum of coordinate bases degrees
@@ -488,7 +488,7 @@ public:
         return td;
     }
 
-    short_t totalDegree() const
+    short_t totalDegree() const override
     {
         short_t td = 0;
         for (short_t k=0; k!=d; ++k)
@@ -570,13 +570,13 @@ public:
 
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const;
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const override;
 
     /// Get the minimum mesh size, as expected for inverse inequalities
-    virtual T getMinCellLength() const;
+    virtual T getMinCellLength() const override;
 
     /// Get the maximum mesh size, as expected for approximation error estimates
-    virtual T getMaxCellLength() const;
+    virtual T getMaxCellLength() const override;
 
     Basis_t& x() const
     {
@@ -596,14 +596,14 @@ public:
             GISMO_ERROR("gsTensorBasis has no z component");
     }
 
-    Basis_t& component(short_t dir)
+    Basis_t& component(short_t dir) override
     {
         GISMO_ASSERT( dir < Dim,
                       "Invalid basis component requested" );
         return *m_bases[dir];
     }
 
-    const Basis_t & component(short_t dir) const
+    const Basis_t & component(short_t dir) const override
     {
         GISMO_ASSERT( dir < Dim,
                       "Invalid basis component requested" );

@@ -62,7 +62,7 @@ public:
     }
 
     // Documentation in gsDomainIterator.h
-    void reset()
+    void reset() override
     {
         m_it.reset();
     }
@@ -83,7 +83,7 @@ public:
         return upper;
     }
 
-    bool isBoundaryElement() const
+    bool isBoundaryElement() const override
     {
         return ( 0==m_it.uIndex() || m_it+1==m_itEnd);
     }

@@ -71,7 +71,7 @@ public:
     }
 
     // Documentation in gsDomainIterator.h
-    void reset()
+    void reset() override
     {
         for (index_t i = 0; i < D; ++i)
             curElement[i].reset();
@@ -118,7 +118,7 @@ public:
         return upper;
     }
 
-    bool isBoundaryElement() const
+    bool isBoundaryElement() const override
     {
         for (int i = 0; i< D; ++i)
             if ( curElement[i].isBoundaryElement() )

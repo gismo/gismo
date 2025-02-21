@@ -46,7 +46,7 @@ public: // constructors
 
 public: // iterators
 
-    virtual domainIter beginAll() const
+    virtual domainIter beginAll() const override
     {
         return domainIter(new gsTensorDomainIterator<T,D>(*this));
     }
