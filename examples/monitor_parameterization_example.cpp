@@ -164,6 +164,8 @@ int main(int arg, char *argv[])
     {
         gsComposedFunction<real_t> cfun = (PARoptions.askSwitch("Parametric",true)) ? gsComposedFunction<real_t>(domain,function) : gsComposedFunction<real_t>(cspline,function);
         gsWriteParaview(mp,cfun,output+"cfun",nSamples);
+        gsField<> fun(mp,function);
+        gsWriteParaview(fun,output+"fun",nSamples);
     }
 
     // Export jacobian determinants

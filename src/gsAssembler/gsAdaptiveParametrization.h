@@ -281,6 +281,12 @@ public:
 
     void solve();
 
+public:
+
+      template <short_t d>
+      static gsTensorBSplineBasis<d,T> makeIntegrationBasis(const gsTensorBSplineBasis<d,T> & basis1,
+                                                            const gsTensorBSplineBasis<d,T> & basis2);
+
 protected:
 
     gsFunction<T>             & m_comp;

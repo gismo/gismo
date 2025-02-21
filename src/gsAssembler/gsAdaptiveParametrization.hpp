@@ -19,6 +19,7 @@
 #include <gsAssembler/gsExpressions.h>
 #include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
+#include <gsNurbs/gsTensorNurbsBasis.h>
 
 namespace gismo
 {
@@ -264,7 +265,7 @@ m_comp(&composition),
 m_geom(&geometry),
 m_fun(fun),
 m_ib(integrationBasis),
-m_mb(*m_ib),
+m_mb(*m_ib,true),
 m_cgeom(*m_comp,geometry),
 // THIS DOES NOT WORK FOR PARAMETRIC=FALSE. POINTER IS LOST WHEN ARRIVING IN evalObj
 // m_cfun(parametric ? gsComposedFunction<T>(*m_comp,fun) : gsComposedFunction<T>(m_cgeom,fun)),
@@ -503,32 +504,49 @@ m_geom(geometry),
 m_fun(function),
 m_optimizer(optimizer)
 {
+    GISMO_ASSERT((dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&composition.domain().basis())),"The composition must be a tensor B-spline basis");
+    const gsTensorBSplineBasis<2,T> & comp_tbasis = static_cast<const gsTensorBSplineBasis<2,T> &>(composition.domain().basis());
     if (const gsTensorBSplineBasis<2,T> * tbasis = dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&integrationBasis))
     {
-        gsTensorBSplineBasis<2,T> ibasis(*tbasis);
-        // Integration basis: parent basis with knots of composition basis inserted, and the degree is the sum of the two degrees (?)
-        index_t targetDegree;
-        const gsTensorBSplineBasis<2,T> & comp_tbasis = dynamic_cast<const gsTensorBSplineBasis<2,T> &>(composition.domain().basis());
-        for (size_t d = 0; d!=2; d++)
-        {
-            // 1. Insert interior knots of composition basis
-            for (typename gsKnotVector<real_t>::uiterator it = std::next(comp_tbasis.knots(d).ubegin());
-                                                        it!= std::prev(comp_tbasis.knots(d).uend());
-                                                        ++it)
-                {
-                    if (ibasis.knots(d).has(*it))
-                        continue;
-                    ibasis.insertKnot(*it,d);
-                }
-            // 2. Increase the degree
-            targetDegree = ibasis.degree(d) * comp_tbasis.degree(d);
-            ibasis.degreeIncrease(targetDegree-ibasis.degree(d),d);
-
-        }
+        gsTensorBSplineBasis<2,T> ibasis = makeIntegrationBasis(*tbasis,comp_tbasis);
         m_integrationBasis = memory::make_unique(new gsTensorBSplineBasis<2,T>(ibasis));
     }
+    else if (const gsTensorNurbsBasis<2,T> * nbasis = dynamic_cast<const gsTensorNurbsBasis<2,T> *>(&integrationBasis))
+    {
+        gsTensorNurbsBasis<2,T> ibasis = makeIntegrationBasis(nbasis->source(),comp_tbasis);
+        m_integrationBasis = memory::make_unique(new gsTensorNurbsBasis<2,T>(ibasis));
+    }
+    else
+        GISMO_ERROR("The integration basis must be either a tensor B-spline or a tensor NURBS basis");
     m_optProblem = gsOptMesh<T,MODE>(m_comp,m_geom,m_fun,m_integrationBasis.get(),parametric);
     this->defaultOptions();
+}
+
+template <class T, enum MonitorMode MODE>
+template <short_t _d>
+gsTensorBSplineBasis<_d,T> gsAdaptiveParametrization<T,MODE>::makeIntegrationBasis(const gsTensorBSplineBasis<_d,T> & basis1,
+                                                                                  const gsTensorBSplineBasis<_d,T> & basis2)
+{
+    gsTensorBSplineBasis<_d,T> ibasis(basis1);
+    // Integration basis: parent basis with knots of composition basis inserted, and the degree is the sum of the two degrees (?)
+    index_t targetDegree;
+    for (size_t d = 0; d!=_d; d++)
+    {
+        // 1. Insert interior knots of composition basis
+        for (typename gsKnotVector<T>::uiterator it = std::next(basis2.knots(d).ubegin());
+                                                    it!= std::prev(basis2.knots(d).uend());
+                                                    ++it)
+            {
+                if (ibasis.knots(d).has(*it))
+                    continue;
+                ibasis.insertKnot(*it,d);
+            }
+        // 2. Increase the degree
+        targetDegree = ibasis.degree(d) * basis2.degree(d);
+        ibasis.degreeIncrease(targetDegree-ibasis.degree(d),d);
+
+    }
+    return ibasis;
 }
 
 template <class T, enum MonitorMode MODE>
