@@ -28,6 +28,7 @@ int main(int arg, char *argv[])
     index_t numRefineG=0, numRefineD=0, numElevateG=0, numElevateD=0;
     index_t nIsolines = 20;
     index_t nSamples = 10000;
+    index_t mode = MonitorMode::ValueBased;
     std::string input = "domain2d/lake.xml";
     std::string output = "output";
 
@@ -42,6 +43,7 @@ int main(int arg, char *argv[])
     cmd.addSwitch("gradient", "Use gradient-based monitor", gradient);
     cmd.addInt("n","plotLines","number of isolines to export",nIsolines);
     cmd.addInt("s","plotPoints","number of sampling points for plot",nSamples);
+    cmd.addInt("m","mode","Monitor mode: 0 ValueBased, 1 GradientBased",mode);
     try { cmd.getValues(arg,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
@@ -125,18 +127,36 @@ int main(int arg, char *argv[])
     optimizer->options().update(OPToptions);
 
     gsInfo<<domain.domain().coefs()<<"\n";
-    // gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> * relocator;
-    gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> * relocator;
-
+    gsAdaptiveParametrizationBase<real_t> * relocator;
     if (function.domainDim()==0)
-        relocator = new gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>(domain,gpatch0,gbasis0,*optimizer,PARoptions.askSwitch("Parametric",false));
+        if (mode==MonitorMode::GradientBased)
+        {
+            relocator = new gsAdaptiveParametrization<real_t,MonitorMode::GradientBased>(domain,gpatch0,gbasis0,*optimizer,PARoptions.askSwitch("Parametric",false));
+            gsInfo<<"Using the gradient-based approach without an indicator function (does not make sense)\n";
+        }
+        else if (mode==MonitorMode::ValueBased)
+        {
+            relocator = new gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>(domain,gpatch0,gbasis0,*optimizer,PARoptions.askSwitch("Parametric",false));
+            gsInfo<<"Using the value-based approach without an indicator function\n";
+        }
+        else
+            GISMO_ERROR("Unknown mode");
     else
-        relocator = new gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>(domain,gpatch0,function,gbasis0,*optimizer,PARoptions.askSwitch("Parametric",false));
+        if (mode==MonitorMode::GradientBased)
+        {
+            relocator = new gsAdaptiveParametrization<real_t,MonitorMode::GradientBased>(domain,gpatch0,function,gbasis0,*optimizer,PARoptions.askSwitch("Parametric",false));
+            gsInfo<<"Using the gradient-based approach with the indicator function:\n"<<function<<"\n";
+        }
+        else if (mode==MonitorMode::ValueBased)
+        {
+            relocator = new gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>(domain,gpatch0,function,gbasis0,*optimizer,PARoptions.askSwitch("Parametric",false));
+            gsInfo<<"Using the value-based approach with the indicator function:\n"<<function<<"\n";
+        }
+        else
+            GISMO_ERROR("Unknown mode");
 
-    gsDebugVar(PARoptions.askReal("Penalty",1e-2));
     relocator->options().setReal("Penalty",PARoptions.askReal("Penalty",1e-2));
     relocator->options().setReal("Smoothing",PARoptions.askReal("Smoothing",1e-2));
-    gsDebugVar(relocator->options().getReal("Penalty"));
     relocator->solve();
 
     gsInfo<<domain.domain().coefs()<<"\n";

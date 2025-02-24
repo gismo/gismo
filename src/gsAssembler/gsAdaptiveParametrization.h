@@ -84,13 +84,39 @@ protected:
       gsOptionList                  m_options;
 };
 
-/*
-    NOTES:
-    * Give the integration basis?? The integration elements should be the finest of the elements of the composition and the basis/geometry
-    * There should be a rule of thumb for the number of integration points. Given a composition of degree p and a geometry of degree q, the number of integration points should be at least p*q+1?? or p+q+1??
+/**
+ * @brief The gsAdaptiveParametrizationBase class is independent of the monitor mode
+ */
+template<class T>
+class gsAdaptiveParametrizationBase
+{
+
+public:
+
+    /// Default empty constructor
+    gsAdaptiveParametrizationBase() {};
+
+    /// Default deconstructor
+    virtual ~gsAdaptiveParametrizationBase() {};
+
+public:
+      virtual gsOptionList & options() = 0;
+
+      virtual void defaultOptions() = 0;
+
+      virtual void solve() = 0;
+
+};
+
+
+/**
+ * @brief The gsAdaptiveParametrization class is a template class that can be used to perform adaptive parametrization.
+ *
+ * @tparam T the type of the scalar values
+ * @tparam MODE the monitor mode (ValueBased or GradientBased)
  */
 template<class T, enum MonitorMode MODE=MonitorMode::ValueBased>
-class gsAdaptiveParametrization
+class gsAdaptiveParametrization : public gsAdaptiveParametrizationBase<T>
 {
 protected:
 
@@ -275,11 +301,11 @@ public:
 
 
 
-    gsOptionList & options();
+      gsOptionList & options() override;
 
-    void defaultOptions();
+      void defaultOptions() override;
 
-    void solve();
+      void solve() override;
 
 public:
 

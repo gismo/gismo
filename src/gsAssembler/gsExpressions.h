@@ -257,7 +257,7 @@ public:
     { return ppartval_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the expression's negative part
-    mult_expr<real_t, ppart_expr<mult_expr<double,E,false>> , false>
+    mult_expr<real_t, ppart_expr<mult_expr<real_t,E,false>> , false>
     npart() const { return -1* ( -(*this) ).ppart() ; }
 
     /// Returns an evaluation of the (sub-)expression in temporary memory

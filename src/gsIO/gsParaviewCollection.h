@@ -55,7 +55,7 @@ namespace gismo {
     {
         // Create new file(s) for this timestep
         pc.newTimestep(&multiPatch)
-        // Solve here 
+        // Solve here
 
         // Write solution fields ( e.g Pressure, Temperature, Stress )
         pc.addField( gsExpression_1, "label_1" );
@@ -99,20 +99,20 @@ public:
         gsFileManager::mkdir( path );
 
         // if ( "" != m_filename.parent_path())
-        // GISMO_ENSURE( fsystem::exists( m_filename.parent_path() ), 
-        //     "The specified folder " << m_filename.parent_path() << " does not exist, please create it first.");  
+        // GISMO_ENSURE( fsystem::exists( m_filename.parent_path() ),
+        //     "The specified folder " << m_filename.parent_path() << " does not exist, please create it first.");
         mfile <<"<?xml version=\"1.0\"?>\n";
         mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">\n";
         mfile <<"<Collection>\n";
     }
 
     /// @brief Appends a file to the Paraview collection (.pvd file).
-    /// @param fn Filename to be added. Can also be a path relative to the where the collection file is. 
+    /// @param fn Filename to be added. Can also be a path relative to the where the collection file is.
     /// @param tStep Time step ( optional )
     /// @param name An optional name for this part. This is the name that will show up  in Paraview's MultiBlock inspector for this Part. It is not the filename.
     /// @param part Part ID ( optional )
     void addPart(String const & fn, real_t tStep=-1, std::string name="", index_t part=-1)
-    {   
+    {
         std::string ext = "";
         if (gsFileManager::getExtension(fn) == "")
         {
@@ -131,11 +131,11 @@ public:
         if (name != "") mfile << "name=\"" << name << "\" ";
         mfile << "file=\"" << fn+ext <<"\"/>\n";
     }
-    // CAUTION! 
+    // CAUTION!
     // The previous 3 versions of gsParaviewCollection::addPart() have been combined into the one above
     // since they were all doing basiacally the same thing. Below you can see a 'conversion table' that
     // can help you adapt your code to the new syntax. For questions contact C. Karampatzakis (Github @ckarampa )
-    // OLD SYNTAX ( Deprecated )                              |   NEW SYNTAX 
+    // OLD SYNTAX ( Deprecated )                              |   NEW SYNTAX
     //-----------------------------------------------------------------------------------------------------------
     // addPart(String const & fn)                             |   addPart( fn, -1, "", counter++);               |
     //                                                                                                           |
@@ -146,13 +146,13 @@ public:
 
     // The following functions are all deprecated, only here for backwards compatibility!
 
-    GISMO_DEPRECATED void addTimestep(String const & fn, double tstep, String const & ext)
+    GISMO_DEPRECATED void addTimestep(String const & fn, real_t tstep, String const & ext)
     {
         // mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
         addPart( fn+ext, tstep);
     }
 
-    GISMO_DEPRECATED void addTimestep(String const & fn, int part, double tstep, String const & ext)
+    GISMO_DEPRECATED void addTimestep(String const & fn, int part, real_t tstep, String const & ext)
     {
         // mfile << "<DataSet part=\""<<part<<"\" timestep=\""<<tstep<<"\" file=\""<<fn<<"_"<<part<<ext<<"\"/>\n";
         addPart( fn+"_"+std::to_string(part)+ext, tstep, "", part);
@@ -175,7 +175,7 @@ public:
     /// @param time Value of time for this timestep (optional, else an internal integer counter is used)
     void newTimeStep(gsMultiPatch<real_t> * geometry, real_t time=-1);
 
- 
+
     /// @brief All arguments are forwarded to gsParaviewDataSet::addField().
     template <typename... Rest>
     void addField(Rest... rest)

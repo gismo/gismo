@@ -20,7 +20,7 @@ namespace gismo
     // The part does not need to be specified as long as the <DataSet> appear
     // in the same order for each timestep
 
-    // A gsParaviewDataSet is meant to be an abstraction for multiple <DataSet> tags in paraview, 
+    // A gsParaviewDataSet is meant to be an abstraction for multiple <DataSet> tags in paraview,
     // that all stem from the same gsGeometryMap, and refer to the same timestep.
     void gsParaviewCollection::addDataSet(gsParaviewDataSet & dataSet, real_t time)
     {
@@ -31,7 +31,7 @@ namespace gismo
         std::vector<std::string> filenames( dataSet.filenames() );
 
         time = time==-1 ? m_time : time;
-        mfile << "<!-- Time = " << time << " -->\n"; 
+        mfile << "<!-- Time = " << time << " -->\n";
         for (size_t i=0; i!=filenames.size(); i++)
         {
             // Keep only the filename because <DataSet> tags in the .pvd
@@ -49,13 +49,13 @@ namespace gismo
             // This is so only the relative part of the path in filenames[] is kept
             std::string relativeFilename = gsFileManager::makeRelative(
                 gsFileManager::getPath(m_filename), filenames[i]);
-            
-            addPart( relativeFilename, time, name); 
+
+            addPart( relativeFilename, time, name);
         }
     }
 
     void gsParaviewCollection::newTimeStep(gsMultiPatch<real_t> * geometry, real_t time)
-    {   
+    {
         GISMO_ASSERT( m_dataset.isEmpty() || m_dataset.isSaved(), "Previous timestep has not been saved. try running saveTimeStep() before newTimeStep().");
         GISMO_ASSERT(-1==time || time>=0, "Time should be a non-negative real number.");
 
@@ -64,14 +64,14 @@ namespace gismo
             m_time += 1.0;
             time = m_time;
         }
-        else { m_time = cast<real_t,int>( time ); }
+        else { m_time = cast<real_t,index_t>( time ); }
 
         std::string name;
         if ( m_options.askSwitch("makeSubfolder",true) )
         {
             std::string subfolder = m_options.askString("subfolder");
             subfolder = ("" == subfolder ) ? gsFileManager::getBasename(m_filename)+"_pvd" : subfolder;
-            gsFileManager::mkdir( gsFileManager::getPath(m_filename) + subfolder ); 
+            gsFileManager::mkdir( gsFileManager::getPath(m_filename) + subfolder );
             char sep = gsFileManager::getNativePathSeparator();
 
             name = gsFileManager::getPath(m_filename) + subfolder + sep + gsFileManager::getBasename(m_filename);
@@ -82,8 +82,8 @@ namespace gismo
         }
 
 
-        name += "_t" + std::to_string( cast<real_t, double>( time ) );
-       
+        name += "_t" + std::to_string( time );
+
         m_dataset = gsParaviewDataSet(name, geometry, m_evaluator, m_options);
     }
 }
