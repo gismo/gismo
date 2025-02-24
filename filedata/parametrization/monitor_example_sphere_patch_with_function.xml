@@ -23,9 +23,17 @@
     u:=atan2(y,x);
     v:=atan2(sqrt(x^2+y^2),z);
     w:=sqrt(x^2+y^2+z^2);
+    t:=0.01;
+    tanh((1/2-v)/t) + 1
+    </Function>
+
+    <!-- <Function type="FunctionExpr" label="function" dim="3">
+    u:=atan2(y,x);
+    v:=atan2(sqrt(x^2+y^2),z);
+    w:=sqrt(x^2+y^2+z^2);
     t:=100;
     exp(-t*(v - 1/2)^2)
-    </Function>
+    </Function> -->
 
 
     <!-- Assembler options -->
@@ -38,7 +46,7 @@
 
     <!-- Assembler options -->
     <OptionList label="parametrization_options">
-        <bool label="Slide"             desc="" value="1"/>
+        <bool label="Slide"             desc="" value="0"/>
         <bool label="Parametric"        desc="" value="0"/>
         <real label="Smoothing"         desc="" value="1e1"/>
         <real label="Penalty"           desc="" value="1e-4"/>
