@@ -136,8 +136,19 @@ int main(int arg, char *argv[])
 
     // Source function:
     const index_t dimexpr = mp.geoDim();
-    std::string fstring = "u:=atan2(y,x);v:=atan2(sqrt(x^2+y^2),z);w:=sqrt(x^2+y^2+z^2);t:=100;-(-2*cos(v)*t*(v - 1/2)*exp(-t*(v - 1/2)^2) - 2*sin(v)*t*exp(-t*(v - 1/2)^2) + 4*sin(v)*t^2*(v - 1/2)^2*exp(-t*(v - 1/2)^2))/(w^2*sin(v))";
-    std::string msstring = "u:=atan2(y,x);v:=atan2(sqrt(x^2+y^2),z);w:=sqrt(x^2+y^2+z^2);t:=100;exp(-t*(v - 1/2)^2)";
+    // std::string fstring = "u:=atan2(y,x);v:=atan2(sqrt(x^2+y^2),z);w:=sqrt(x^2+y^2+z^2);t:=100;-(-2*cos(v)*t*(v - 1/2)*exp(-t*(v - 1/2)^2) - 2*sin(v)*t*exp(-t*(v - 1/2)^2) + 4*sin(v)*t^2*(v - 1/2)^2*exp(-t*(v - 1/2)^2))/(w^2*sin(v))";
+    // std::string msstring = "u:=atan2(y,x);v:=atan2(sqrt(x^2+y^2),z);w:=sqrt(x^2+y^2+z^2);t:=100;exp(-t*(v - 1/2)^2)";
+
+    std::string fstring =  "u:=atan2(y,x);              \
+                            v:=atan2(sqrt(x^2+y^2),z);  \
+                            w:=sqrt(x^2+y^2+z^2);       \
+                            t:=0.05;                     \
+                            -(-1 + tanh((-1 + 2*v)/(2*t))^2)*(t*cot(v) - 2*tanh((-1 + 2*v)/(2*t)))/(w^2*t^2)";
+    std::string msstring = "u:=atan2(y,x);              \
+                            v:=atan2(sqrt(x^2+y^2),z);  \
+                            w:=sqrt(x^2+y^2+z^2);       \
+                            t:=0.05                     \
+                            tanh((1/2-v)/t) + 1";
 
     gsFunctionExpr<> f(fstring, dimexpr);
     gsFunctionExpr<> ms(msstring,dimexpr);
@@ -167,9 +178,13 @@ int main(int arg, char *argv[])
     gsExprEvaluator<> ev(A);
     gsMatrix<> solVector;
 
-    A.options().setReal("quA",2.0);
-    A.options().setInt("quB",2.0);
+    A.options().setReal("quA",1.0);
+    A.options().setInt("quB",1);
     A.options().setSwitch("SameElement",false);
+
+    ev.options().setReal("quA",2.0);
+    ev.options().setInt("quB",2);
+    ev.options().setSwitch("SameElement",false);
 
     // Set the geometry map
     geometryMap G = A.getMap(cmp);
