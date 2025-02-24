@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     index_t numLRefine    = 3;
     index_t numElevate    = 0;
     index_t maxIter       = 50;
-    index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
+    index_t NumArMarEl    = 0;    // Number of ring of cells around marked elements
     double eps            = 1e-7; // pinalization coefficient
     double tolPicard      = 1e-8;
     double IntensityMAE   = 9.;
@@ -64,9 +64,9 @@ int main(int argc, char *argv[])
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
-    index_t adaptRefCrit  = 2; // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
-    real_t adaptRefParam  = 0.;     // ... adapt parameter.
-    index_t FactRefPar    = 0;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
+    index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
+    real_t adaptRefParam  = 0.; // ... adapt parameter.
+    index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
     std::string fn("pde/circle.xml");
@@ -118,8 +118,6 @@ int main(int argc, char *argv[])
     fd.getId(2000, s);
     gsFunctionExpr<> rhs;
     fd.getId(2001, rhs);
-
-
 
     //================================== -------------------------- =====================================
     //==================================   Independent of the geometry ==================================
@@ -242,7 +240,7 @@ int main(int argc, char *argv[])
     // ... manipulation of density function
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
-    double  int_uh_1  = 1.;
+    double  int_uh_1 = 1.;
     if (empldensity < 1e-5|| IntensityMAE <= 1. )
     {
         gsInfo << "Density function is constant in the domain rho = 1.\n";
@@ -497,7 +495,7 @@ int main(int argc, char *argv[])
         igrad(ru, PP) * igrad(ru, PP).tr() * meas(PP) //matrix
         ,
         ru * SFunc * meas(PP) //rhs vector
-        );
+        );        
 
         ma_time += timer.stop();
 
@@ -530,9 +528,9 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            //ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+            ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
             //if (IntensityMAE > 1.)
-            ev.integralElWise( ff_GPsi );
+            //ev.integralElWise( ff_GPsi );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]

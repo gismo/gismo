@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; //= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -216,7 +216,11 @@ int main(int argc, char *argv[])
     );
     densityVector = Poisson.L2ProjectScalar(A.rhs());
     gsMultiPatch<> density;
-    density_sol.extract(density);
+    //density_sol.extract(density);
+    std::string fs("pde/density_hand.xml");
+    gsFileData<> fds(fs);
+    fds.getId(1, density);
+    //gsWrite(density, "U_solution");
     auto rho = A.getCoeff(density, G);
     // ... manipulation of density function
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
@@ -480,7 +484,7 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            ev.integralElWise( ( ff_TG ).sqNorm() );
+            ev.integralElWise( 1./(0.0001+jac(PPF).det()) );
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
 
