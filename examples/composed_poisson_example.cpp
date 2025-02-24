@@ -191,8 +191,9 @@ int main(int arg, char *argv[])
     gsParaviewCollection collection(dirname+"solution",&ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints", 1000);
-    typename gsSparseSolver<>::CGDiagonal solver;
+    collection.options().setInt("numPoints", 100000);
+    collection.options().setInt("precision",10);
+    typename gsSparseSolver<>::QR solver;
 
     gsVector<> l2err(numRefine+1), h1err(numRefine+1), dofs(numRefine+1), bsize(numRefine+1);
     for (index_t i = 0; i <= numRefine; i++)
@@ -234,6 +235,7 @@ int main(int arg, char *argv[])
 
         if (plot)
         {
+            if (i >= 3) collection.options().setSwitch("plotElements", false);
             collection.newTimeStep(&cmp);
             collection.addField(u_sol,"numerical solution");
             collection.addField(u_ex, "exact solution");
