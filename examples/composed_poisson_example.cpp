@@ -143,11 +143,11 @@ int main(int arg, char *argv[])
                             v:=atan2(sqrt(x^2+y^2),z);  \
                             w:=sqrt(x^2+y^2+z^2);       \
                             t:=0.05;                     \
-                            -(-1 + tanh((-1 + 2*v)/(2*t))^2)*(t*cot(v) - 2*tanh((-1 + 2*v)/(2*t)))/(w^2*t^2)";
+                            -(-cos(v)*(1 - tanh((1/2 - v)/t)^2)/t - 2*sin(v)*tanh((1/2 - v)/t)*(1 - tanh((1/2 - v)/t)^2)/t^2)/(w^2*sin(v))";
     std::string msstring = "u:=atan2(y,x);              \
                             v:=atan2(sqrt(x^2+y^2),z);  \
                             w:=sqrt(x^2+y^2+z^2);       \
-                            t:=0.05                     \
+                            t:=0.05;                    \
                             tanh((1/2-v)/t) + 1";
 
     gsFunctionExpr<> f(fstring, dimexpr);
@@ -182,8 +182,8 @@ int main(int arg, char *argv[])
     A.options().setInt("quB",1);
     A.options().setSwitch("SameElement",false);
 
-    ev.options().setReal("quA",2.0);
-    ev.options().setInt("quB",2);
+    ev.options().setReal("quA",1.0);
+    ev.options().setInt("quB",1);
     ev.options().setSwitch("SameElement",false);
 
     // Set the geometry map
@@ -206,7 +206,7 @@ int main(int arg, char *argv[])
     gsParaviewCollection collection(dirname+"solution",&ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints", 100000);
+    collection.options().setInt("numPoints", 10000);
     collection.options().setInt("precision",10);
     typename gsSparseSolver<>::QR solver;
 

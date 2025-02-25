@@ -29,10 +29,15 @@ int main(int arg, char *argv[])
     index_t nIsolines = 20;
     index_t nSamples = 10000;
     index_t mode = MonitorMode::ValueBased;
+
+    real_t penalty = -1;
+    real_t smoothing = -1;
     std::string input = "domain2d/lake.xml";
     std::string output = "output";
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    cmd.addReal("P","penalty","Override penalty parameter for the monitor function",penalty);
+    cmd.addReal("S","smoothing","Override smoothing parameter for the monitor function",smoothing);
     cmd.addInt("r","numRefG","Number of Uniform h-refinement loops for the geometry",numRefineG);
     cmd.addInt("e","numElevG","Number of degree elevation steps to perform for the geometry",numElevateG);
     cmd.addInt("R","numRefD","Number of Uniform h-refinement loops for the domain",numRefineD);
@@ -155,8 +160,8 @@ int main(int arg, char *argv[])
         else
             GISMO_ERROR("Unknown mode");
 
-    relocator->options().setReal("Penalty",PARoptions.askReal("Penalty",1e-2));
-    relocator->options().setReal("Smoothing",PARoptions.askReal("Smoothing",1e-2));
+    relocator->options().setReal("Penalty",(penalty==-1) ? PARoptions.askReal("Penalty",1e-2) : penalty);
+    relocator->options().setReal("Smoothing",(smoothing==-1) ? PARoptions.askReal("Smoothing",1e-2) : smoothing);
     relocator->solve();
 
     gsInfo<<domain.domain().coefs()<<"\n";
