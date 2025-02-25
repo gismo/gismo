@@ -152,8 +152,17 @@ public:
         return sz;
     }
 
-    short_t degree(short_t i = 0) const override
-    { return m_domains.front()->degree(i); }
+    /** @brief Degree (maximum) of the domain
+    */
+    short_t degree(short_t i = 0) const
+    {
+        GISMO_ASSERT(m_domains.size(), "Empty composite domain.");
+        short_t result = m_domains[0]->degree(i);
+        for (size_t p = 0; p < m_domains.size(); ++p)
+            if (m_domains[p]->degree(i) > result )
+                result = m_domains[p]->degree(i);
+        return result;
+    }
 
     /// See \ref gsDomain.h for documentation.
     short_t dim() const override { return m_domains.front()->dim(); }

@@ -275,8 +275,8 @@ struct gsQuadrature
     static gsMatrix<T> getAllNodes(const gsDomain<T> & domain,
                                    const gsOptionList & options)
     {
-        typename gsBasis<T>::domainIter domIt    = domain.domain()->beginAll();
-        typename gsBasis<    T>::    domainIter domItEnd = domain.domain()->endAll();
+        typename gsBasis<T>::domainIter domIt    = domain->beginAll();
+        typename gsBasis<    T>::    domainIter domItEnd = domain->endAll();
 
         index_t     quadSize = 0;
         typename gsQuadRule<T>::uPtr QuRule;
@@ -294,7 +294,7 @@ struct gsQuadrature
         gsMatrix<T> nodes;
         gsVector<T> weights;
 
-        domIt = domain.domain()->beginAll();
+        domIt = domain->beginAll();
         for (; domIt<domItEnd; ++domIt )
         {
             QuRule = gsQuadrature::getPtr(domain, options);
@@ -352,8 +352,8 @@ struct gsQuadrature
     static gsMatrix<T> getAllNodes(const gsDomain<T> & domain,
                              const gsOptionList & options, const patchSide side)
     {
-        typename gsBasis<T>::domainIter domIt    = domain.domain()->beginAll();
-        typename gsBasis<T>::domainIter domItEnd = domain.domain()->endAll();
+        typename gsBasis<T>::domainIter domIt    = domain.beginAll();
+        typename gsBasis<T>::domainIter domItEnd = domain.endAll();
 
         index_t quadSize = 0;
         typename gsQuadRule<T>::uPtr QuRule;
@@ -370,7 +370,7 @@ struct gsQuadrature
         index_t offset = 0;
         gsMatrix<T> nodes;
         gsVector<T> weights;
-        domIt = domain.domain()->beginAll();
+        domIt = domain.beginAll();
         for (; domIt<domItEnd; ++domIt )
         {
             QuRule = gsQuadrature::getPtr(domain, options, side.side().direction());

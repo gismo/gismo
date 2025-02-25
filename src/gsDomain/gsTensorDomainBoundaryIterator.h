@@ -16,7 +16,7 @@
 #include <gsDomain/gsDomainIterator.h>
 #include <gsDomain/gsTensorDomain.h>
 #include <gsUtils/gsCombinatorics.h>
-#include <gsTensor/gsBreaksIterator.h>
+#include <gsDomain/gsBreaksIterator.h>
 
 namespace gismo
 {
