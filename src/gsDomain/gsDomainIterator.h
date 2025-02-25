@@ -79,7 +79,7 @@ public:
         this-operator=(_other);
     }
 
-    #if EIGEN_HAS_RVALUE_REFERENCES
+#if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsDomainIteratorWrapper(gsDomainIteratorWrapper && _other)
     : m_domainIter(give(_other.m_domainIter))
@@ -251,7 +251,7 @@ public:
 
     virtual ~gsDomainIterator() { }
 
-    uPtr clone() const { GISMO_NO_IMPLEMENTATION }
+    virtual uPtr clone() const { GISMO_NO_IMPLEMENTATION }
 
     void setPatch(index_t k) { m_pside.patch = k; }
 
