@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
   gsMultiPatch<real_t>::uPtr mp = gsReadFile<>(INPUT_FILE);
   gsInfo << "Loaded geometry: " << *mp << "\n";
 
+
   gsWriteParaview(*mp, "input_surface", 1000);
 
   // Create the surface reparametrization object
