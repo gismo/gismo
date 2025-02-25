@@ -265,10 +265,7 @@ private:
             else
             {
                 for (index_t index = start; index <= end; ++index)
-                {
-                    gsInfo<<"index = "<<index<<"; knotIndex = "<<kv(index)<<"\n";
                     m_breaks[dim].push_back( kv(index) );// unique index
-                }
             }
 
             m_curElement(dim) =
