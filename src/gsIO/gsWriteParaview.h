@@ -121,8 +121,8 @@ void gsWriteParaview(const gsField<T> & field, std::string const & fn,
 
 /// \brief Write a file containing a solution \a func (as color on its geometry \a geo), defined using functionsets, to paraview file
 ///
-/// \param func a \a gsFunctionSet representing the function to be plotted
 /// \param geo  a \a gsFunctionSet representing the geometry to be plotted
+/// \param func a \a gsFunctionSet representing the function to be plotted
 /// \param fn filename where paraview file is written
 /// \param npts number of points used for sampling each patch
 template<class T>
