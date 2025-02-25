@@ -176,6 +176,7 @@ public:
     /// \param tau  Scaling parameter (see above)
     class Poisson_FastDiag {
         public:
+            explicit Poisson_FastDiag(){};
             Poisson_FastDiag(const gsBasis<T>& basis,
                             const gsBoundaryConditions<T>& bc,
                             const gsOptionList& opt,

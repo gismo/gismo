@@ -440,14 +440,13 @@ int main(int argc, char *argv[])
     bc.setGeoMap(Psi);
     // For simplicity, set Dirichlet boundary conditions
     for ( gsMultiPatch<>::const_biterator
-            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+            bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
     {
        bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
     }
     gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
     gsInfo<<"Source function is "<< rhs << "\n";
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-
 
     dbasis.clear();
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
