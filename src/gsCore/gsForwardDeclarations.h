@@ -144,6 +144,7 @@ template <class T=real_t>                class gsPiecewiseFunction;
 template <class T=real_t>                class gsConstantFunction;
 template <class T=real_t>                class gsAffineFunction;
 template <class T=real_t>                class gsMultiPatch;
+template <class T=real_t>                class gsComposedBasis;
 
 // Bases
 template <class basis_t >                class gsRationalBasis;
@@ -183,6 +184,7 @@ template <short_t d, class T=real_t>     class gsTensorBezier;
 template <short_t d, class T=real_t>     class gsHBSpline;
 template <class T=real_t>                class gsTrimSurface;
 template <short_t d, class T=real_t>     class gsMappedSpline;
+template <class T=real_t>                class gsComposedGeometry;
 
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;

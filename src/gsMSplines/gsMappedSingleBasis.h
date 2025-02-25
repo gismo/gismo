@@ -327,19 +327,19 @@ public:
         return m_basis->getBase(m_index).domain();
     }
 
-    GISMO_DEPRECATED
-    typename gsBasis<T>::domainIter makeDomainIterator() const override
-    {
-        // TODO Not always working: make it more general
-        return m_basis->getBase(m_index).makeDomainIterator();
-    }
-
-    GISMO_DEPRECATED
-    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const override
-    {
-        // TODO Not always working: make it more general
-        return m_basis->getBase(m_index).makeDomainIterator(s);
-    }
+//    GISMO_DEPRECATED
+//    typename gsBasis<T>::domainIter makeDomainIterator() const override
+//    {
+//        // TODO Not always working: make it more general
+//        return m_basis->getBase(m_index).makeDomainIterator();
+//    }
+//
+//    GISMO_DEPRECATED
+//    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const override
+//    {
+//        // TODO Not always working: make it more general
+//        return m_basis->getBase(m_index).makeDomainIterator(s);
+//    }
 
 
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override
