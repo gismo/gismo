@@ -33,7 +33,7 @@ template<class T, int D>
 class gsTensorDomainIterator : public gsDomainIterator<T>
 {
 private:
-    //typedef typename gsDomainIterator<T>::uPtr domainIter;
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
     typedef gsDomainIteratorWrapper<T> domainIterWrapper;
 
 public:
@@ -55,6 +55,9 @@ public:
             curElement[i] = give(domain.component(i)->beginAll());
         }
     }
+
+    gsTensorDomainIterator(const gsTensorDomainIterator & other) = default;
+    domainIter clone() const override { return domainIter(new gsTensorDomainIterator(*this)); }
 
     // Documentation in gsDomainIterator.h
     void next() override

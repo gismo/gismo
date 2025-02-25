@@ -76,7 +76,7 @@ public:
 
     gsDomainIteratorWrapper(const gsDomainIteratorWrapper & _other)
     {
-        this-operator=(_other);
+        this->operator=(_other);
     }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
@@ -395,21 +395,23 @@ protected:
 
     patchSide m_pside; ///< The patch side, when applicable
 
-private:
+protected:
     // disable copying
-    gsDomainIterator( const gsDomainIterator& );
-    gsDomainIterator& operator= ( const gsDomainIterator& );
+    gsDomainIterator( const gsDomainIterator& ) = default;
+    gsDomainIterator& operator= ( const gsDomainIterator& ) = default;
+
 }; // class gsDomainIterator
 
 
 template <class T>
 class gsDomainIteratorEnd : public gsDomainIterator<T>
 {
+    typedef memory::unique_ptr< gsDomainIterator<T> > uPtr;
 public:
 
-    explicit gsDomainIteratorEnd(size_t id)
-    : gsDomainIterator<T>(id)
-    { }
+    explicit gsDomainIteratorEnd(size_t id) : gsDomainIterator<T>(id) { }
+
+    uPtr clone() const override { return uPtr(new gsDomainIteratorEnd(this->m_id)); }
 
     virtual void next() override
     { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }

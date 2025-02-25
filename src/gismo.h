@@ -84,6 +84,7 @@ namespace internal
 // Tensors
 #include <gsDomain/gsTensorDomainIterator.h>
 #include <gsDomain/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsPointDomain.h>
 #include <gsTensor/gsGridIterator.h>
 #include <gsTensor/gsGenericTensorBasis.h>
 

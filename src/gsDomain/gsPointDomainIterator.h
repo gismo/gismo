@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C. Hofreither, A. Mantzaflaris
+    Author(s): H. Verhelst, A. Mantzaflaris
 */
 
 #pragma once
@@ -24,14 +24,15 @@ class gsPointDomainIterator : public gsDomainIterator<T>
 private:
     typedef typename std::vector<T>::const_iterator  uiter;
 
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
 public:
 
     gsPointDomainIterator(const gsPointDomain<T> & domain)
     :
-    gsDomainIterator<T>(),
-    m_domain(domain)
-    {
-    }
+    gsDomainIterator<T>(), m_domain(domain)
+    { }
+
+    domainIter clone() const override { return domainIter(new gsPointDomainIterator(*this)); }
 
     /// Documentation in gsDomainIterator.h
     void next() override

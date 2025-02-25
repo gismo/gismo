@@ -13,7 +13,6 @@
 
 #include <iostream>
 #include <gismo.h>
-#include <gsDomain/gsPointDomain.h>
 
 using namespace gismo;
 
