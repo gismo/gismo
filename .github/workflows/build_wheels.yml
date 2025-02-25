@@ -15,6 +15,7 @@ jobs:
   # build wheels for macos cpython (both archs)
   macos_wheel:
     runs-on: macos-latest
+    if: github.event_name != 'pull_request'
     strategy:
       matrix:
         arch: [x86_64, arm64]
@@ -65,6 +66,7 @@ jobs:
   # here, we pack each wheel in a separate job, since it requires a longer time
   # to build
   linux_wheel_qemu:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -96,6 +98,7 @@ jobs:
 
 
   source_dist:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
