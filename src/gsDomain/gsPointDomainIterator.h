@@ -57,10 +57,10 @@ public:
         /* Transparent, since only the ID needs to be updated (delegated to operator-= in gsDomainIterator) */
     }
 
-    gsVector<T> lowerCorner() const
+    gsVector<T> lowerCorner() const override
     { return m_domain.points().col(m_id); }
 
-    gsVector<T> upperCorner() const
+    gsVector<T> upperCorner() const override
     { return m_domain.points().col(m_id); }
 
 // Data members

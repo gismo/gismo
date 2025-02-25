@@ -147,14 +147,14 @@ public:
         return upper;
     }
 
-    const T getPerpendicularCellSize() const
+    const T getPerpendicularCellSize() const override
     {
         return curElement[dir].upperCorner().value() - curElement[dir].lowerCorner().value();
     }
 
     GISMO_DEPRECATED
     void adjacent( const gsVector<bool> & orient,
-                   gsDomainIterator<T>  & other )
+                   gsDomainIterator<T>  & other ) override
     {
         GISMO_NO_IMPLEMENTATION
         // // 2D only for now
