@@ -399,7 +399,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+//    m_exprdata->activateFlags(SAME_ELEMENT);
     
     // Computed value on element
     T elVal;
@@ -473,7 +473,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+//    m_exprdata->activateFlags(SAME_ELEMENT);
 
     // Computed value
     T elVal;
@@ -533,7 +533,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+//    m_exprdata->activateFlags(SAME_ELEMENT);
 
     // Computed value
     T elVal;

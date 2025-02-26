@@ -2846,13 +2846,13 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+//        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected: \n"<< _u.data().actives);
 
         res.setZero(_u.dim(), _u.parDim());
         const gsDofMapper & map = _u.mapper();
         for (index_t c = 0; c!= _u.dim(); c++)
         {
-            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+            for (index_t i = 0; i!=_u.data().actives.rows(); ++i)
             {
                 const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
@@ -3567,7 +3567,7 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(const index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected. Actives: \n"<<_u.data().actives);
+//        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected. Actives: \n"<<_u.data().actives);
 
         const gsDofMapper & map = _u.mapper();
 
