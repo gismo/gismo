@@ -457,7 +457,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 #endif
         auto _arg = expr.val();
         m_exprdata->parse(_arg);
-        m_exprdata->activateFlags(SAME_ELEMENT);
+        if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
 
         // Computed value on element
         T elVal;
@@ -519,7 +519,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
     gsQuadRule<T> QuRule;  // Quadrature rule
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
 
     // Computed value
     T elVal;
@@ -578,7 +578,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
 
     // Computed value
     T elVal;
@@ -633,7 +633,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 {
     auto arg_tpl = expr.val();
     m_exprdata->parse(arg_tpl);
-    // m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule;
     // Computed value
