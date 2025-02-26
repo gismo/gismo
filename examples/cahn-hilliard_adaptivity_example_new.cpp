@@ -576,17 +576,21 @@ void solve( gsMultiPatch<T> & mp,
             dcnew.extract(mp_dcnew);
 
             gsInfo<< "Value at mid-point :" << ev.eval(cnew, pt) <<"\n";
+            //! [Export visualization in ParaView]
             if (plot && step % plotmod==0)
-            {                
-                //gsInfo<< "Value pt      :" << pt.transpose() <<"\n";
-                //gsInfo<< "Value at of G      :" << ev.eval(G, pt).transpose() <<"\n";
-                //gsInfo<< "Value at of G      :" << mp.patch(0).eval(pt).transpose() <<"\n";
-                //gsInfo<< "Value at mid-mpatch:" << mp_cnew.piece(0).eval(pt) <<"\n";
+            {
                 // Export the mesh
                 collection.newTimeStep(&mp);
                 collection.addField(cnew,"numerical solution");
                 gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
                 collection.saveTimeStep();
+                real_t mass = ev.integral(meas(G)*cnew);
+                csvFile << step << "," << A.numDofs() <<"," << mass <<  "," << error_ref_cnew << ","<< error_ref_dcnew << ","<< error_ref_cold <<","<< error_ref_dcold<< ","<<error_crs_c<<","<<error_crs_dc<< "\n";
+                // Reset the errors after the loop
+                error_ref_cnew  = 0;
+                error_ref_cold  = 0;
+                error_ref_dcnew = 0;
+                error_ref_dcold = 0;
             }
 
             if (MESHopt.askSwitch("Adaptive",true))
@@ -690,22 +694,6 @@ void solve( gsMultiPatch<T> & mp,
         mp_cold.swap(mp_cnew);
         mp_dcold.swap(mp_dcnew);
 
-        //! [Export visualization in ParaView]
-        if (plot && step % plotmod==0)
-        {
-            // Export the mesh
-             collection.newTimeStep(&mp);
-            // collection.addField(cnew,"numerical solution");
-            // gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
-            // collection.saveTimeStep();
-            real_t mass = ev.integral(meas(G)*cnew);
-            csvFile << step << "," << A.numDofs() <<"," << mass <<  "," << error_ref_cnew << ","<< error_ref_dcnew << ","<< error_ref_cold <<","<< error_ref_dcold<< ","<<error_crs_c<<","<<error_crs_dc<< "\n";
-            // Reset the errors after the loop
-            error_ref_cnew  = 0;
-            error_ref_cold  = 0;
-            error_ref_dcnew = 0;
-            error_ref_dcold = 0;
-        }
     }
     if (plot)
         collection.save();
