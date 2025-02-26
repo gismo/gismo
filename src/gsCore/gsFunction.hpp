@@ -791,8 +791,6 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
         }
     }
 
-
-
     /*
     // Curvature of isoparametric curve
     if ( InOut.flags & NEED_CURVATURE)

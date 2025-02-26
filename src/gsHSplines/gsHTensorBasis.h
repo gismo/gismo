@@ -15,9 +15,9 @@
 
 #include <gsCore/gsBasis.h>
 
-#include <gsHSplines/gsHDomain.h>
-#include <gsHSplines/gsHDomainIterator.h>
-#include <gsHSplines/gsHDomainBoundaryIterator.h>
+#include <gsDomain/gsHDomain.h>
+#include <gsDomain/gsHDomainIterator.h>
+#include <gsDomain/gsHDomainBoundaryIterator.h>
 
 #include <gsCore/gsBoundary.h>
 
@@ -84,7 +84,7 @@ public:
 
     typedef T Scalar_t;
 
-    typedef gsHDomain<d> hdomain_type;
+    typedef gsHTree<d, index_t> hdomain_type;
 
     typedef typename hdomain_type::point point;
 
@@ -105,6 +105,7 @@ public:
     /// Dimension of the parameter domain
     static const short_t Dim = d;
 
+    friend class gsHDomain<d,T,index_t>;
     friend class gsHDomainIterator<T,d>;
     friend class gsHDomainBoundaryIterator<T,d>;
 public:
@@ -122,7 +123,7 @@ public:
     :
     m_manualLevels(manualLevels)
     {
-        if (!m_manualLevels) 
+        if (!m_manualLevels)
         {
             initialize_class(tbasis);
             // Build the characteristic matrices
@@ -292,7 +293,7 @@ public:
             m_deg            = o.m_deg;
             m_tree           = o.m_tree;
             m_xmatrix        = o.m_xmatrix;
-            m_manualLevels   = o.m_manualLevels; 
+            m_manualLevels   = o.m_manualLevels;
             m_uIndices       = o.m_uIndices;
 
             freeAll( m_bases );
@@ -336,7 +337,7 @@ public:
 
     /// Adds a level, only if manual levels are activated.
     void addLevel( const gsTensorBSplineBasis<d, T>& next_basis);
-    
+
     /// \brief Inserts a domain into the basis
     void only_insert_box(point const & k1, point const & k2, int lvl);
 
@@ -592,16 +593,21 @@ public:
     virtual index_t functionAtCorner(boxCorner const & c) const;
     virtual index_t functionAtCorner(boxCorner const & c, index_t level) const;//..
 
-
     // Look at gsBasis.h for the documentation of this function
     //void evalAllDers_into(const gsMatrix<T> & u, int n,
     //                      std::vector<gsMatrix<T> >& result, bool sameElement) const;
 
-    /// Returns a reference to m_tree
-    const gsHDomain<d> & tree() const { return m_tree; }
+    /// Returns the domain (same as the tree)
+    virtual memory::shared_ptr<gsDomain<T> > domain() const
+    {
+        return memory::make_shared(new gsHDomain<d,T,index_t>(m_tree,*this));
+    }
 
     /// Returns a reference to m_tree
-    gsHDomain<d> &       tree()       { return m_tree; }
+    const gsHTree<d,index_t> & tree() const { return m_tree; }
+
+    /// Returns a reference to m_tree
+    gsHTree<d,index_t> &       tree()       { return m_tree; }
 
     /// Cleans the basis, removing any inactive levels
     void makeCompressed();
@@ -907,16 +913,19 @@ public:
     // Look at gsBasis.h for the documentation of this function
     //virtual void uniformRefine(int numKnots = 1);
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
-        return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this));
+        return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree(),*this));
     }
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return ( s == boundary::none ?
-                 typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
-                 typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(*this,s) )
+
+                 typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree(),*this)) :
+                 typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(this->tree(),*this,s) )
             );
     }
 
@@ -971,18 +980,10 @@ public:
     // TO DO: use gsHDomainLeafIterator for a better implementation
     size_t numElements(boxSide const & s = 0) const
     {
-        typename gsBasis<T>::domainIter domIter =
-            s == boundary::none ?
-            typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
-            typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(*this,s) );
-
-        size_t numEl = 0;
-        for (; domIter->good(); domIter->next())
-        {
-            numEl++;
-        }
-
-        return numEl;
+        if (0==s)
+            return gsHDomain<d,T,index_t>(m_tree,*this).numElements();
+        else
+            return gsHDomain<d,T,index_t>(m_tree,*this).numElementsBdr(s);
     }
 
     /// @brief transformes a sortedVector \a indexes of flat tensor index

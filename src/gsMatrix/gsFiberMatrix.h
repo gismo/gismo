@@ -32,6 +32,12 @@ class gsFiberMatrix
 public:
     typedef gsEigen::SparseVector<T> Fiber;
 
+    class InnerIterator : Fiber::InnerIterator
+    {
+        typedef typename Fiber::InnerIterator Base;
+        InnerIterator(gsFiberMatrix fm, index_t j) : Base() { }
+    };
+
     struct RowBlockXpr;
 
     gsFiberMatrix()
@@ -205,19 +211,23 @@ public:
 
     void conservativeResize(index_t newRows, index_t newCols)
     {
-        GISMO_ENSURE(rows() == 0 || cols() == newCols, "Cannot resize columns (not  implemented)");
         if (!IsRowMajor) std::swap(newRows,newCols);
 
         const index_t oldRows = fibers();
 
-        resizeFibers(newRows);
+        // delete any fibers which will be removed, if any
+        for (index_t i = newRows; i < oldRows; ++i)
+            delete m_fibers[i];
 
-        // allocate newly added rows, if any
+        m_fibers.resize(newRows);
+
+        // allocate newly added fibers, if any
         for (index_t i = oldRows; i < newRows; ++i)
             m_fibers[i] = new Fiber(newCols);
 
-        // for existing fibers, to do
-        //  m_fibers[i].conservativeResize(newCols);
+        const index_t m = std::min(oldRows, newRows);
+        for (index_t i = 0; i < m; ++i)
+            m_fibers[i]->conservativeResize(newCols);
     }
 
     void duplicateRow(index_t k) //..

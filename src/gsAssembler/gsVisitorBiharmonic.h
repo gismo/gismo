@@ -71,7 +71,7 @@ public:
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
-        rule = gsQuadrature::get(basis, options);
+        rule = gsQuadrature::get(*basis.domain(), options);
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
@@ -106,7 +106,7 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & ,
+    inline void assemble(gsDomainIteratorWrapper<T>    & ,
                          const gsVector<T>      & quWeights)
     {
         gsMatrix<T> & basisVals  = basisData[0];

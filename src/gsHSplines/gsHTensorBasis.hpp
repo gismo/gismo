@@ -883,7 +883,7 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
     }
 
     // reconstruct the whole tree to fix alignment
-    gsHDomain<d> newtree( m_tree.upperCornerIndex() );
+    gsHTree<d,index_t> newtree( m_tree.upperCornerIndex() );
     auto leafIt = m_tree.beginLeafIterator();
     for (; leafIt.good(); leafIt.next())
     {

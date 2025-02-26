@@ -16,6 +16,7 @@
 #include <gsUtils/gsCombinatorics.h>
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsDomain/gsHDomainIterator.h>
 #include <gsHSplines/gsAABB.h>
 
 #include <gsIO/gsXml.h>
@@ -52,10 +53,8 @@ m_error_crs(0),
 m_index(-1),
 m_marked(false)
 {
-    m_basis = nullptr;
-    m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
-    GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
-
+    GISMO_ASSERT((dynamic_cast<const gsHTensorBasis<d,T> *>(&domHIt->basis())!=nullptr),"basis is not a gsHTensorBasis");
+    m_basis = static_cast<const gsHTensorBasis<d,T> *>(&domHIt->basis());
     m_coords.resize(d,2);
     m_coords.col(0) = domHIt->lowerCorner();
     m_coords.col(1) = domHIt->upperCorner();

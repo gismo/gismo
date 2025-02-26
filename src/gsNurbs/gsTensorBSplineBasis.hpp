@@ -158,7 +158,7 @@ void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
     // Note: refExt parameter is ignored
     std::vector<std::vector<T>> knots = this->_boxToKnots(boxes);
     for( short_t di = 0; di < d; di++)
-        for( size_t i=1; i < knots[di].size(); i++ )
+        for( size_t i=0; i < knots[di].size(); i++ )
             Self_t::component(di).insertKnot(knots[di][i]);
 
 } // refine()

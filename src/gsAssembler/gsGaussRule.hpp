@@ -14,16 +14,17 @@
 #pragma once
 
 #include <gsCore/gsBasis.h>
+#include <gsDomain/gsDomain.h>
 #include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
 
 template<class T> void
-gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, short_t fixDir)
+gsGaussRule<T>::init(const gsDomain<T> & domain, const T quA, const index_t quB, short_t fixDir)
 //const unsigned digits)
 {
-    const short_t d  = basis.dim();
+    const short_t d  = domain.dim();
     GISMO_ASSERT( fixDir < d && fixDir>-2, "Invalid input fixDir = "<<fixDir);
 
     std::vector<gsVector<T> > nodes(d);
@@ -44,8 +45,8 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, s
     for(i=0; i!=fixDir; ++i )
     {
         //note: +0.5 for rounding
-        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(basis.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
-        //const bool found = 
+        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(domain.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
+        //const bool found =
         lookupReference(numNodes, nodes[i], weights[i]);
         //if (!found)
         //    computeReference(numNodes, nodes[i], weights[i], digits);
@@ -53,7 +54,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, s
     ++i;// skip fixed direction
     for(; i<d; ++i )
     {
-        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(basis.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
+        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(domain.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
         lookupReference(numNodes, nodes[i], weights[i]);
     }
 
@@ -66,33 +67,50 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, s
     //        computeReference(numNodes, nodes[i], weights[i], digits);
     //    }
     //}
-    
+
     this->computeTensorProductRule(nodes, weights);
 }
 
 template<class T>
-gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
+gsGaussRule<T>::gsGaussRule(const gsDomain<T> & domain,
                             const T quA, const index_t quB,
                             const short_t fixDir)
 //const unsigned digits)
 {
-    init(basis, quA, quB, fixDir);
+    init(domain, quA, quB, fixDir);
 }
 
 template<class T>
-gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
+gsGaussRule<T>::gsGaussRule(const gsDomain<T> & domain,
                             const gsOptionList & options,
                             const short_t fixDir)
-//const unsigned digits)
 {
     const T       quA = options.getReal("quA");
     const index_t quB = options.getInt ("quB");
-    init(basis, quA, quB, fixDir);
+    init(domain, quA, quB, fixDir);
+}
+
+template<class T>
+gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis,
+                            const T quA, const index_t quB,
+                            const short_t fixDir)
+:
+gsGaussRule(*basis.domain(), quA, quB, fixDir)
+{
+}
+
+template<class T>
+gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis,
+                            const gsOptionList & options,
+                            const short_t fixDir)
+:
+gsGaussRule(*basis.domain(),options,fixDir)
+{
 }
 
 
 template<class T> void
-gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes, 
+gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes,
                           unsigned digits)
 {
     const index_t d = numNodes.rows();
@@ -130,10 +148,10 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
 
     const unsigned max_its = digits;
     const T tolerance = math::pow( static_cast<T>(0.1), static_cast<int>(digits) );
-    
+
     // Find only half the roots because of symmetry
     const unsigned m = n / 2 ;
-    
+
     // Three recurrence relation values and one derivative value.
     T   pn(0.0),  // P_{n}
         pnm1(0.0),// P_{n-1}
@@ -155,52 +173,52 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
         dpn  = static_cast<T>(n)*pn;
         w[m] = static_cast<T>(2.0) / ( dpn*dpn );
     }
-    
+
     for (unsigned i=0; i<m; ++i)
     {
         // Remarkably, this simple relation provides a very
         // good initial guess for x_i.  See, for example,
         // F. G. Lether and P. R. Wenston
-        // Journal of Computational and Applied Mathematics  
+        // Journal of Computational and Applied Mathematics
         // Minimax approximations to the zeros of Pn(x) and
         // Gauss-Legendre quadrature, Volume 59,
-        // Issue 2  (May 1995), p. 245-252, 1995 
+        // Issue 2  (May 1995), p. 245-252, 1995
       x[i] = math::cos( (T)(EIGEN_PI)*(i+0.75)/(n+0.5));
-        
+
         // Newton loop iteration counter
         unsigned n_its = 0;
-        
+
         // Begin Newton iterations
         do
         {
             // Initialize recurrence relation
             pn=1.0; pnm1=0.0;
-            
+
             // Use recurrence relation to compute P_n(x[i])
             for (index_t j=0; j<n; ++j)
             {
-                pnm2 = pnm1; 
-                pnm1 = pn;            
+                pnm2 = pnm1;
+                pnm1 = pn;
                 pn   = (static_cast<T>(2.0*j+1.0)*x[i]*pnm1 - static_cast<T>(j)*pnm2)/static_cast<T>(j+1);
             }
-            
+
             // A recurrence relation also gives the derivative.
             dpn=static_cast<T>(n)*(x[i]*pn-pnm1)/(x[i]*x[i]-static_cast<T>(1));
-            
+
             // Compute Newton update
             x[i] -= pn/dpn;
-            
+
             // Increment iteration counter
-            n_its++;            
+            n_its++;
         }
         while ( (math::abs(pn) > tolerance) && (n_its < max_its) );
-        
+
         // if (n_its>=max_its)
         //     gsWarn << "Max ("<<n_its<<") Newton iterations reached, error="
         //            <<math::abs(pn)<<" for node "<<i<<"(tolerance="<<tolerance<<").\n";
         //     gsDebug << "Newton converged in " << n_its << " iterations, ";
         //     gsDebug << "with tolerance=" << math::abs(pn) << std::endl;
-        
+
         // Set x[i] and its mirror image.  We set these in increasing order.
         x[n-1-i] =  x[i];
         x[i]     = -x[i];
@@ -230,7 +248,7 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
     x.resize(n);
     w.resize(n);
 
-    switch (n) 
+    switch (n)
     {
     case 1 :
     {
@@ -242,7 +260,7 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
     case 2 :
     {
         x << -0.577350269189625764509148780502, 0.577350269189625764509148780502;
-        
+
         w << 1.000000000000000000000000000000, 1.000000000000000000000000000000;
         return true;
     }
@@ -389,7 +407,7 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
     case 22 :
     {
         x << -0.99429458548239929207303142, -0.97006049783542872712395099, -0.92695677218717400052069294, -0.86581257772030013653642564, -0.78781680597920816200427796, -0.69448726318668278005068984, -0.58764040350691159295887693, -0.46935583798675702640633071, -0.34193582089208422515814742, -0.20786042668822128547884653, -0.06973927331972222121384180, 0.06973927331972222121384180, 0.20786042668822128547884653, 0.34193582089208422515814742, 0.46935583798675702640633071, 0.58764040350691159295887693, 0.69448726318668278005068984, 0.78781680597920816200427796, 0.86581257772030013653642564, 0.92695677218717400052069294, 0.97006049783542872712395099, 0.99429458548239929207303142;
- 
+
         w << 0.014627995298272200684991098047, 0.033774901584814154793302246866, 0.052293335152683285940312051273, 0.06979646842452048809496141893, 0.08594160621706772741444368137, 0.10041414444288096493207883783, 0.11293229608053921839340060742, 0.12325237681051242428556098615, 0.13117350478706237073296499253, 0.13654149834601517135257383123, 0.13925187285563199337541024834, 0.13925187285563199337541024834, 0.13654149834601517135257383123, 0.13117350478706237073296499253, 0.12325237681051242428556098615, 0.11293229608053921839340060742, 0.10041414444288096493207883783, 0.08594160621706772741444368137, 0.06979646842452048809496141893, 0.052293335152683285940312051273, 0.033774901584814154793302246866, 0.014627995298272200684991098047;
         return true;
     }
@@ -446,7 +464,7 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
     {
         x << -0.99689348407464954027163005, -0.98366812327974720997003258, -0.96002186496830751221687103, -0.92620004742927432587932428, -0.88256053579205268154311646, -0.82956576238276839744289812, -0.76777743210482619491797734, -0.69785049479331579693229239, -0.62052618298924286114047756, -0.53662414814201989926416979, -0.44703376953808917678060990, -0.35270472553087811347103721, -0.25463692616788984643980513, -0.15386991360858354696379467, -0.05147184255531769583302521, 0.05147184255531769583302521, 0.15386991360858354696379467, 0.25463692616788984643980513, 0.35270472553087811347103721, 0.44703376953808917678060990, 0.53662414814201989926416979, 0.62052618298924286114047756, 0.69785049479331579693229239, 0.76777743210482619491797734, 0.82956576238276839744289812, 0.88256053579205268154311646, 0.92620004742927432587932428, 0.96002186496830751221687103, 0.98366812327974720997003258, 0.99689348407464954027163005;
 
-        w << 0.007968192496166605615465883475, 0.018466468311090959142302131912, 0.028784707883323369349719179611, 0.038799192569627049596801936446, 0.048402672830594052902938140423, 0.057493156217619066481721689402, 0.06597422988218049512812851512, 0.07375597473770520626824385002, 0.08075589522942021535469493846, 0.08689978720108297980238753072, 0.09212252223778612871763270709, 0.09636873717464425963946862635, 0.09959342058679526706278028210, 0.10176238974840550459642895217, 0.10285265289355884034128563671, 0.10285265289355884034128563671, 0.10176238974840550459642895217, 0.09959342058679526706278028210, 0.09636873717464425963946862635, 0.09212252223778612871763270709, 0.08689978720108297980238753072, 0.08075589522942021535469493846, 0.07375597473770520626824385002, 0.06597422988218049512812851512, 0.057493156217619066481721689402, 0.048402672830594052902938140423, 0.038799192569627049596801936446, 0.028784707883323369349719179611, 0.018466468311090959142302131912, 0.007968192496166605615465883475;    
+        w << 0.007968192496166605615465883475, 0.018466468311090959142302131912, 0.028784707883323369349719179611, 0.038799192569627049596801936446, 0.048402672830594052902938140423, 0.057493156217619066481721689402, 0.06597422988218049512812851512, 0.07375597473770520626824385002, 0.08075589522942021535469493846, 0.08689978720108297980238753072, 0.09212252223778612871763270709, 0.09636873717464425963946862635, 0.09959342058679526706278028210, 0.10176238974840550459642895217, 0.10285265289355884034128563671, 0.10285265289355884034128563671, 0.10176238974840550459642895217, 0.09959342058679526706278028210, 0.09636873717464425963946862635, 0.09212252223778612871763270709, 0.08689978720108297980238753072, 0.08075589522942021535469493846, 0.07375597473770520626824385002, 0.06597422988218049512812851512, 0.057493156217619066481721689402, 0.048402672830594052902938140423, 0.038799192569627049596801936446, 0.028784707883323369349719179611, 0.018466468311090959142302131912, 0.007968192496166605615465883475;
         return true;
     }
     case 31 :

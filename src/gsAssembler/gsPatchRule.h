@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsAssembler/gsQuadRule.h>
+#include <gsDomain/gsTensorDomain.h>
 
 namespace gismo
 {
@@ -90,7 +91,7 @@ public:
     /// Default empty constructor
     gsPatchRule()
     :
-    m_basis(nullptr),
+    // m_basis(nullptr),
     m_deg(0),
     m_reg(0),
     m_over(false),
@@ -105,7 +106,8 @@ public:
      * @param[in]  regularity     The regularity of the target space
      * @param[in]  overintegrate  Over-integrate (i.e. add p points in boundary elements) when true
      */
-    gsPatchRule(const gsBasis<T> & basis,
+    // gsPatchRule(const gsBasis<T> & basis,
+    gsPatchRule(const gsDomain<T> & domain,
                 const index_t degree,
                 const index_t regularity,
                 const bool overintegrate,
@@ -123,12 +125,13 @@ public:
      *
      * @return     QuadRule pointer
      */
-    static uPtr make(   const gsBasis<T> & basis,
+    // static uPtr make(   const gsBasis<T> & basis,
+    static uPtr make(   const gsDomain<T> & domain,
                         const index_t degree,
                         const index_t regularity,
                         const bool overintegrate,
                         const short_t fixDir = -1)
-    { return uPtr( new gsPatchRule(basis,degree,regularity,overintegrate,fixDir) ); }
+    { return uPtr( new gsPatchRule(domain,degree,regularity,overintegrate,fixDir) ); }
 
 
     /**
@@ -160,7 +163,7 @@ public:
                    gsMatrix<T> &, gsVector<T> &) const
     { GISMO_NO_IMPLEMENTATION }
 
-    index_t dim() const { return m_basis->dim(); }
+    index_t dim() const { return m_domain->dim(); }
 
     gsVector<T> nodes(const index_t d=0) const { return m_nodes.at(d); }
     gsVector<T> weights(const index_t d=0) const { return m_weights.at(d); }
@@ -209,7 +212,7 @@ protected:
      *
      * @return     knot vector
      */
-    gsKnotVector<T> _init(const gsBSplineBasis<T> * Bbasis) const;
+    gsKnotVector<T> _init(const gsKnotVector<T> * Bbasis) const;
 
     /**
      * @brief      Integrates all basis functions from a knot vector (numerically with Gauss)
@@ -238,7 +241,7 @@ protected:
                                                 const T tol = 1e-10) const;
 
 private:
-    const gsBasis<T> * m_basis;
+    const gsTensorDomain<T,2> * m_domain; // change dimension
     const index_t m_deg,m_reg;
     const bool m_over;
     const short_t m_fixDir;

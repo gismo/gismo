@@ -47,7 +47,7 @@ Superbuild-Intel-oneAPI:
     - export CXX=icpx
   interruptible: true
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=13 -D CTEST_BINARY_DIRECTORY=../build -D CTEST_CONFIGURATION_TYPE=Release -D LABELS_FOR_SUBPROJECTS="gismo;unittests;doc-snippets" -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" -D CMAKE_ARGS="-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_SUBMODULES_HEAD=ON;-DGISMO_WITH_PYBIND11=ON;-DGISMO_WITH_OPENMP=ON;-DGISMO_WITH_PARDISO=ON;-DPARDISO_USE_MKL=ON-DEIGEN_USE_MKL_ALL=OFF;-DMKL_ARCH=intel64;-DMKL_INTERFACE=lp64" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=13 -D CTEST_BINARY_DIRECTORY=../build -D CTEST_CONFIGURATION_TYPE=Release -D LABELS_FOR_SUBPROJECTS="gismo;unittests;doc-snippets" -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS\\;gsIncompressibleFlow" -D CMAKE_ARGS="-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_SUBMODULES_HEAD=ON;-DGISMO_WITH_PYBIND11=ON;-DGISMO_WITH_OPENMP=ON;-DGISMO_WITH_PARDISO=ON;-DPARDISO_USE_MKL=ON-DEIGEN_USE_MKL_ALL=OFF;-DMKL_ARCH=intel64;-DMKL_INTERFACE=lp64" #-VV
 
 doc:
   extends: .linux-intel
