@@ -343,7 +343,7 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
     {
         auto fform = jac(G).tr()*jac(G);
         // SQUARE ROOT:
-        auto detG = pow(fform.det().val(),0.5); //jacobian determinant for a surface, i.e. the measure
+        auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
         // SQUARED:
         // auto detG = fform.det().val(); //jacobian determinant for a surface, i.e. the measure
 
@@ -353,8 +353,13 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
         // Ternary operation to compute chi and chip
         // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
         // OPTION 2
-        auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
+        // auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
+        // OPTION 3
+        auto chi = detG;
+        // auto chiPPart = -(-2.0 + pow(eps.val(),2) + eps.val())*pow(detG,3)/pow(eps.val(),4) + (- 3.0 + 2.0*pow(eps.val(),2) + 2.0*eps.val())*pow(detG,2)/pow(eps.val(),3) - detG/eps.val() + 1.0/eps.val();
+        // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
         // SQUARED
+        //
         // auto chi = 0.5 * (pow(detG,0.5) + pow(pow(eps.val(),2.0) + detG, 0.5));
 
         // SQUARE ROOT:

@@ -19,8 +19,8 @@
     u:=atan2(y,x);
     v:=atan2(sqrt(x^2+y^2),z);
     w:=sqrt(x^2+y^2+z^2);
-    t:=100;
-    -(-2*cos(v)*t*(v - 1/2)*exp(-t*(v - 1/2)^2) - 2*sin(v)*t*exp(-t*(v - 1/2)^2) + 4*sin(v)*t^2*(v - 1/2)^2*exp(-t*(v - 1/2)^2))/(w^2*sin(v))
+    t:=0.05;
+    -(-cos(v)*(1 - tanh((1/2 - v)/t)^2)/t - 2*sin(v)*tanh((1/2 - v)/t)*(1 - tanh((1/2 - v)/t)^2)/t^2)/(w^2*sin(v))
   </Function>
 
   <!-- The boundary conditions (multipatch=number of patches)-->
@@ -33,8 +33,8 @@
     u:=atan2(y,x);
     v:=atan2(sqrt(x^2+y^2),z);
     w:=sqrt(x^2+y^2+z^2);
-    t:=100;
-    exp(-t*(v - 1/2)^2)
+    t:=0.05;
+    tanh((1/2 - v)/t) + 1
     </Function>
 
     <bc type="Dirichlet" function="0" unknown="0" >
@@ -50,8 +50,8 @@
     u:=atan2(y,x);
     v:=atan2(sqrt(x^2+y^2),z);
     w:=sqrt(x^2+y^2+z^2);
-    t:=100;
-    exp(-t*(v - 1/2)^2)
+    t:=0.05;
+    tanh((1/2 - v)/t) + 1
   </Function>
 
   <!-- Assembler options -->
@@ -62,8 +62,8 @@
   <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
   <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
   <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
-  <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="2"/>
-  <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="2"/>
+  <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+  <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="1"/>
   <int label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
   <bool label="SameElement" desc="Activates optimization if all quadrature points are located in the same element" value="0"/>
  </OptionList>
