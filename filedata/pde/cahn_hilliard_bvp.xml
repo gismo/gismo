@@ -67,7 +67,7 @@
   <bool label="Admissible" desc="Mark the admissible region" value="1"/>
   <bool label="Absolute" desc="Take the threshold using refine/coarsen param not relatively" value="1"/>
   <int label="RefIt" desc="Number of refinement iterations" value="1"/>
-  <bool label="Adaptive" desc="Switch to enable adaptive meshing (1: ON, 0: OFF)" value="0"/>
+  <bool label="Adaptive" desc="Switch to enable adaptive meshing (1: ON, 0: OFF)" value="1"/>
   <bool label="THB" desc="Use THB basis" value="1"/>
  </OptionList>
   <!-- other options -->
