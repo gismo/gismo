@@ -128,7 +128,6 @@ public:
         lower.resize(d);
         for (short_t i = 0; i < dir ; ++i)
             lower[i]  = curElement[i].lowerCorner().value();
-        //lower[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
         lower[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
         for (short_t i = dir+1; i < d; ++i)
             lower[i]  = curElement[i].lowerCorner().value();

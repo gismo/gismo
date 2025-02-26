@@ -159,7 +159,7 @@ public:
 
     /** @brief Degree (maximum) of the domain
     */
-    short_t degree(short_t i = 0) const
+    short_t degree(short_t i = 0) const override
     {
         GISMO_ASSERT(m_domains.size(), "Empty composite domain.");
         short_t result = m_domains[0]->degree(i);
