@@ -43,9 +43,7 @@ public:
     explicit gsTensorDomainBoundaryIterator(const gsTensorDomain<T,D> & domain,
                                             const boxSide & s)
     : gsDomainIterator<T>(0, s),
-      d( domain.dim() ),
-      lower  ( gsVector<T, D>::Zero(d) ),
-      upper  ( gsVector<T, D>::Zero(d) )
+      d( domain.dim() )
     {
         par = s.parameter();
         dir = s.direction();
@@ -203,9 +201,6 @@ private:
 
     // Current element as pointers to it's supporting mesh-lines
     gsVector<domainIterWrapper, D> curElement;
-
-    // parameter coordinates of current grid cell
-    gsVector<T> lower, upper;
 
 public:
 #   define Eigen gsEigen
