@@ -55,29 +55,32 @@ public:
     gsAdaptiveMultiPatchBuilder(const gsMultiBasis<double>& basis,
                                 const gsMultiPatch<>& mapping,
                                 const index_t   numElevate,
-                                const gsFunctionExpr<>   f,
                                 const index_t maxIter     = 30,
                                 const double IntensityMAE = 9.0
                                 )
-    : m_basis(basis), m_mapping(mapping), m_numElevate(numElevate), m_maxIter(maxIter), m_f(f), m_IntensityMAE(IntensityMAE)
     {
+    this->m_basis        = basis;
+    this->m_mapping      = mapping; 
+    this->m_numElevate   = numElevate;
+    this->m_maxIter      = maxIter;
+    this->m_IntensityMAE = IntensityMAE;
     // .... one single patch
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    this->mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     //Get all interfaces and boundaries:
-    mp.degreeElevate(numElevate);
-    mp.computeTopology();
+    this->mp.degreeElevate(numElevate);
+    this->mp.computeTopology();
     //mp.addAutoBoundaries();
 
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
+    this->sN = sN;
 
-    gsBoundaryConditions<> bc_mae;
-    bc_mae.setGeoMap(mp);
+    this->bc_mae.setGeoMap(mp);
     // For simplicity, set Neumann boundary conditions
    for ( gsMultiPatch<>::const_biterator
             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
    {
-       bc_mae.addCondition( *bit, condition_type::neumann, &sN );
+        this->bc_mae.addCondition( *bit, condition_type::neumann, &sN );
    }
     gsInfo<<"\n Initialization for r-refinement - Monge-Ampere equation - \n";
     //! [Problem setup]
@@ -85,10 +88,11 @@ public:
 
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(basis.basis(0), bc_mae, A.options(), 1e-6);
+    this->Poisson = Poisson;    
     }
 
     // Build and return a MultiPatch object
-    gsMultiPatch<> buildDensity() const 
+    gsMultiPatch<> buildDensity(gsFunctionExpr<>   f) const 
     {
         gsInfo<<"... start Picard iterations -\n";
         //! [Problem setup]
@@ -107,7 +111,7 @@ public:
         geometryMap GLeft = A.getMap(m_mapping);
 
         // Set the source term with respect to target geometry
-        auto ff = A.getCoeff(m_f, GLeft);
+        auto ff = A.getCoeff(f, GLeft);
         // Solution vector and solution variable
         gsMatrix<> densityVector;
         solution density_sol = A.getSolution(u, densityVector);
@@ -161,7 +165,10 @@ public:
         solution u_sol = A.getSolution(u, solVector);
 
         // ---- manipulation of density function ----
-        auto rho = A.getCoeff(density, G);
+        gsWrite(density, "density");
+        auto rho         = A.getCoeff(density, G);
+        gsInfo << "density..";
+        //gsInfo << "density: min "<< ev.min(abs(rho.val()))<<"/ max " << ev.max(abs(rho.val())) << "\n";
         auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
         double  int_uh_0 = 0.;
         double  int_uh_1 = 1.;
@@ -339,7 +346,6 @@ private:
     gsMultiPatch<>                         mp;
     index_t                                m_numElevate;
     index_t                                m_maxIter;
-    gsFunctionExpr<>                       m_f;
     double                                 m_IntensityMAE;
     gsBoundaryConditions<>                 bc_mae;
     gsFunctionExpr<>                       sN;
@@ -443,11 +449,16 @@ int main(int argc, char *argv[])
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
+    for (int r=0; r<=numRefine; ++r)
+    {
+        dbasis.uniformRefine();
+        mpLeft.uniformRefine();
+    }
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, f, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity();
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
+    auto density = MAE.buildDensity(f);
     auto Psitp = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
