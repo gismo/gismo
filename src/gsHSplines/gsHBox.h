@@ -15,7 +15,6 @@
 
 #include <gsIO/gsXml.h>
 #include <gsCore/gsLinearAlgebra.h> // due to EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsHSplines/gsHBoxUtils.h>
 
@@ -28,25 +27,25 @@ struct gsAABB;
 
 /**
  * @brief      This class provides a Hierarchical Box (gsHBox)
- * 
+ *
  * A gsHBox is a 'smart' object that represents an element or multiple elements in a mesh.
  * It closely relates to the element definition used in \ref gsHTensorBasis::asElements.
  * Using the gsHBox as an element, it can provide its parent and its children on other levels,
  * its support extensions and its refinement neighborhoods. Furthermore, the gsHBox has functions
  * to check if it is equal to or contained in other gsHBoxes.
- * 
+ *
  * The \ref gsHBoxContainer is a container of gsHBoxes, that can be used to perform operations
- * on multiple gsHBoxes. Furthermore, it is an object that can be used to store neighborhoods. 
+ * on multiple gsHBoxes. Furthermore, it is an object that can be used to store neighborhoods.
  * Other containers are the \a gsHBox::Container or the \a gsHBoxSortedContainer.
- * 
+ *
  * Operations such as domain intersections, unions, or the sorting of gsHBoxContainers
  * are provided in \ref gsHBoxUtils.
  *
  * @tparam     d     Domain dimension
  * @tparam     T     Real type
- * 
+ *
  * \ingroup HSplines
- * 
+ *
  */
 
 

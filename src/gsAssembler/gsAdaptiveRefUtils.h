@@ -243,15 +243,19 @@ std::vector<gsMatrix<T>> gsGetRefinementBoxes(  gsMultiBasis<T> & basis,
         numMarked = 0;// counting current patch element to be refined
 
         // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = basis.basis(pn).makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+                // Initialize domain element iterator
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            basis.basis(pn).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            basis.basis(pn).domain()->endAll();
+        for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
-                refBoxes.col(2*numMarked  ) = domIt->lowerCorner();
-                refBoxes.col(2*numMarked+1) = domIt->upperCorner();
+                refBoxes.col(2*numMarked  ) = domIt.lowerCorner();
+                refBoxes.col(2*numMarked+1) = domIt.upperCorner();
 
                 // Advance marked cells counter
                 numMarked++;
@@ -347,15 +351,18 @@ void gsRefineMarkedElements(gsMultiPatch<T> & mp,
         numMarked = 0;// counting current patch element to be refined
 
         // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = mp.patch(pn).basis().makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            mp.patch(pn).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            mp.patch(pn).domain()->endAll();
+        for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
                 refBoxes.col(2*numMarked  ) =
-                        refBoxes.col(2*numMarked+1) = domIt->centerPoint();
+                        refBoxes.col(2*numMarked+1) = domIt.centerPoint();
 
                 // Advance marked cells counter
                 numMarked++;
@@ -464,15 +471,18 @@ void gsUnrefineMarkedElements(gsMultiBasis<T> & basis,
         numMarked = 0;// counting current patch element to be refined
 
         // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = basis.basis(pn).makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            basis.basis(pn).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            basis.basis(pn).domain()->endAll();
+        for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
-                refBoxes.col(2*numMarked  ) = domIt->lowerCorner();
-                refBoxes.col(2*numMarked+1) = domIt->upperCorner();
+                refBoxes.col(2*numMarked  ) = domIt.lowerCorner();
+                refBoxes.col(2*numMarked+1) = domIt.upperCorner();
 
                 // Advance marked cells counter
                 numMarked++;
@@ -522,15 +532,18 @@ void gsProcessMarkedElements(gsMultiBasis<T> & basis,
         numCoarsened = 0;// counting current patch element to be refined
 
         // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = basis.basis(pn).makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            basis.basis(pn).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            basis.basis(pn).domain()->endAll();
+        for (; domIt<domItEnd; ++domIt )
         {
             if( elRefined[ globalCount ] ) // refine this element ?
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
-                refBoxes.col(2*numRefined  ) = domIt->lowerCorner();
-                refBoxes.col(2*numRefined+1) = domIt->upperCorner();
+                refBoxes.col(2*numRefined  ) = domIt.lowerCorner();
+                refBoxes.col(2*numRefined+1) = domIt.upperCorner();
 
                 // Advance marked cells counter
                 numRefined++;
@@ -539,8 +552,8 @@ void gsProcessMarkedElements(gsMultiBasis<T> & basis,
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
-                crsBoxes.col(2*numCoarsened  ) = domIt->lowerCorner();
-                crsBoxes.col(2*numCoarsened+1) = domIt->upperCorner();
+                crsBoxes.col(2*numCoarsened  ) = domIt.lowerCorner();
+                crsBoxes.col(2*numCoarsened+1) = domIt.upperCorner();
 
                 // Advance marked cells counter
                 numCoarsened++;
@@ -591,15 +604,18 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
         numCoarsened = 0;// counting current patch element to be refined
 
         // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = mp.patch(pn).basis().makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            mp.patch(pn).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            mp.patch(pn).domain()->endAll();
+        for (; domIt<domItEnd; ++domIt )
         {
             if( elRefined[ globalCount ] ) // refine this element ?
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
-                refBoxes.col(2*numRefined  ) = domIt->lowerCorner();
-                refBoxes.col(2*numRefined+1) = domIt->upperCorner();
+                refBoxes.col(2*numRefined  ) = domIt.lowerCorner();
+                refBoxes.col(2*numRefined+1) = domIt.upperCorner();
 
                 // Advance marked cells counter
                 numRefined++;
@@ -608,8 +624,8 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
-                crsBoxes.col(2*numCoarsened  ) = domIt->lowerCorner();
-                crsBoxes.col(2*numCoarsened+1) = domIt->upperCorner();
+                crsBoxes.col(2*numCoarsened  ) = domIt.lowerCorner();
+                crsBoxes.col(2*numCoarsened+1) = domIt.upperCorner();
 
                 // Advance marked cells counter
                 numCoarsened++;
@@ -658,15 +674,18 @@ void gsUnrefineMarkedElements(gsMultiPatch<T> & mp,
         numMarked = 0;// counting current patch element to be refined
 
         // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = mp.patch(pn).basis().makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            mp.patch(pn).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
+            mp.patch(pn).domain()->endAll();
+        for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
                 refBoxes.col(2*numMarked  ) =
-                        refBoxes.col(2*numMarked+1) = domIt->centerPoint();
+                        refBoxes.col(2*numMarked+1) = domIt.centerPoint();
 
                 // Advance marked cells counter
                 numMarked++;

@@ -42,6 +42,9 @@ public:
 
     typedef gsKnotVector<T> KnotVectorType;
 
+    typedef memory::unique_ptr<gsGeometry<T> > gsGeoPtr;
+    typedef memory::unique_ptr<gsBasis<T> >    gsBasisPtr;
+    
     /// The family type
     typedef gsBSplineBasis<T> Family_t;
 
@@ -49,8 +52,6 @@ public:
     typedef gsNurbs<T> GeometryType;
 
     typedef gsRationalBasis<gsBSplineBasis<T> > Base;
-
-    typedef T Scalar_t;
 
     /// Associated Boundary basis type
     typedef gsConstantBasis<T> BoundaryBasisType;
@@ -70,7 +71,7 @@ public:
     /// \param degree degree of the spline space
     /// \param mult_interior multiplicity at the interior knots
     gsNurbsBasis(T u0, T u1, unsigned interior, int degree, unsigned mult_interior=1):
-    Base( gsBSplineBasis<T>(u0,01,interior,degree,mult_interior) )
+    Base( gsBSplineBasis<T>(u0,u1,interior,degree,mult_interior) )
     { 
         // if( ! check()  )
         //   gsWarn << "Warning: Inconsistent "<< *this<< "\n";
@@ -79,30 +80,40 @@ public:
     /// Default empty constructor
     gsNurbsBasis() : Base() { }
 
-    /// Construct NURBS basis by a Bspline basis plus weights
+    /// Construct NURBS basis by a Bspline basis pointer (consumed) plus weights
     gsNurbsBasis( gsBSplineBasis<T> *bs, gsMatrix<T> w) :
     Base( bs, give(w) )  { }
 
+    /// Construct NURBS basis by a Bspline basis plus weights
+    gsNurbsBasis( gsBSplineBasis<T> bs, gsMatrix<T> w) :
+    Base(new gsBSplineBasis<T>(), give(w))
+    {
+        *this->m_src = give(bs);
+    }
+
     /// Construct NURBS basis of a knot vector
-    gsNurbsBasis( const gsKnotVector<T> & KV ) :
-    Base( new gsBSplineBasis<T>(KV) )
+    explicit gsNurbsBasis( gsKnotVector<T> KV ) :
+    Base( new gsBSplineBasis<T>(give(KV)) )
     { }
 
     /// Construct a rational counterpart of B-spline basis given by knots and weights
-    gsNurbsBasis(const gsKnotVector<T> & KV, gsMatrix<T> w) :
-    Base( new gsBSplineBasis<T>(KV), give(w) ) { }
+    gsNurbsBasis(gsKnotVector<T> KV, gsMatrix<T> w) :
+    Base( new gsBSplineBasis<T>(give(KV)), give(w) ) { }
 
     /// Copy Constructor 
     gsNurbsBasis( const gsNurbsBasis & o) : Base(o) { }
 
-    ~gsNurbsBasis() { }  //destructor
+    virtual ~gsNurbsBasis();
 
 public:
 
     /// Clone function. Used to make a copy of a derived basis
     GISMO_CLONE_FUNCTION(gsNurbsBasis)
-  
-    GISMO_MAKE_GEOMETRY_NEW
+
+    gsGeoPtr makeGeometry( gsMatrix<T>coefs ) const;
+
+    static gsBasisPtr create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights);
+    using Base::create;
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -137,8 +148,8 @@ public:
 
     /// Returns the index of the first active (ie. non-zero) basis
     /// function at all columns (points) of u
-    inline gsMatrix<unsigned,1> * firstActive(const gsMatrix<T,1> & u) const
-    { return this->source().firstActive(u); };
+    inline index_t firstActive(const gsMatrix<T,1> & u) const
+    { return this->source().firstActive(u.value()); };
 
     // /// Returns the knot vector of the basis
     const KnotVectorType & knots() const { return this->source().knots(); }
@@ -171,7 +182,8 @@ public:
   
     /// Apply k-refinement to the basis i times
     void uniform_k_refine(int const & i = 1) 
-    { 
+    {
+        GISMO_NO_IMPLEMENTATION
         //m_p += i;
         //m_knots->degreeElevate(i);
         //m_knots->uniformRefine();
@@ -181,3 +193,20 @@ public:
 
 
 } // namespace gismo
+
+
+// *****************************************************************
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsNurbsBasis.hpp)
+#else
+#ifdef gsNurbsBasis_EXPORT
+#include GISMO_HPP_HEADER(gsNurbsBasis.hpp)
+#undef  EXTERN_CLASS_TEMPLATE
+#define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
+#endif
+namespace gismo
+{
+EXTERN_CLASS_TEMPLATE gsNurbsBasis<real_t>;
+}
+#endif
+// *****************************************************************

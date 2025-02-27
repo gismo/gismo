@@ -30,7 +30,13 @@ void pybind11_init_gsTensorBSplineBasis2(py::module &m)
 
     // Constructors
     .def(py::init<gsKnotVector<real_t>,    gsKnotVector<real_t>    >())
-    .def(py::init<gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *>())
+    .def(py::init([](gsBSplineBasis<real_t> * b1,
+                     gsBSplineBasis<real_t> * b2
+                    )
+                    {
+                      return Class(b1->clone().release(),
+                                   b2->clone().release());
+                    }))
 
     // Member functions
     .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")
@@ -66,6 +72,15 @@ void pybind11_init_gsTensorBSplineBasis3(py::module &m)
     // Constructors
     .def(py::init<gsKnotVector<real_t>,    gsKnotVector<real_t>,    gsKnotVector<real_t>    >())
     .def(py::init<gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *>())
+    .def(py::init([](gsBSplineBasis<real_t> * b1,
+                     gsBSplineBasis<real_t> * b2,
+                     gsBSplineBasis<real_t> * b3
+                    )
+                    {
+                      return Class(b1->clone().release(),
+                                   b2->clone().release(),
+                                   b3->clone().release());
+                    }))
 
     // Member functions
     .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")
@@ -97,6 +112,17 @@ void pybind11_init_gsTensorBSplineBasis4(py::module &m)
 
     // Constructors
     .def(py::init<gsKnotVector<real_t>,    gsKnotVector<real_t>,    gsKnotVector<real_t>,    gsKnotVector<real_t>    >())
+    .def(py::init([](gsBSplineBasis<real_t> * b1,
+                     gsBSplineBasis<real_t> * b2,
+                     gsBSplineBasis<real_t> * b3,
+                     gsBSplineBasis<real_t> * b4
+                    )
+                    {
+                      return Class(b1->clone().release(),
+                                   b2->clone().release(),
+                                   b3->clone().release(),
+                                   b4->clone().release());
+                    }))
     .def(py::init<gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *>())
 
     // Member functions

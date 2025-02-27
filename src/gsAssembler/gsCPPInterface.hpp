@@ -17,28 +17,27 @@
 
 #include <gsCore/gsMultiPatch.h>
 #include <gsUtils/gsSortedVector.h>
-#include <gsNurbs/gsTensorNurbsBasis.h>
 #include <gsModeling/gsCurveFitting.h>
 
 namespace gismo {
 
 template<class T>
 gsCPPInterface<T>::gsCPPInterface(const gsMultiPatch<T>   & mp,
-                                  const gsMultiBasis<T>   & basis,
+                                //   const gsMultiBasis<T>   & mb,
                                   const boundaryInterface & bi,
                                   const gsOptionList      & opt)
     : m_slaveGeom( &(mp[bi.first().patch ])),
       m_masterGeom( &(mp[bi.second().patch ])),
       m_masterBdr((mp[bi.second().patch]).boundary(bi.second())),
-      m_slaveBasis(&(basis[bi.first().patch ])),
-      m_masterBasis(&(basis[bi.second().patch])),
+    //   m_slaveBasis(&(basis[bi.first().patch ])),
+    //   m_masterBasis(&(basis[bi.second().patch])),
       m_boundaryInterface(bi),
       m_Tolerance(opt.getReal("Tolerance"))
 {
-    
+
     GISMO_ASSERT( m_slaveGeom->geoDim()==m_masterBdr->geoDim(), "gsCPPInterface: Dimensions do not agree." );
 
-    m_fixedDir   = m_boundaryInterface.second().direction(); 
+    m_fixedDir   = m_boundaryInterface.second().direction();
     // Index of the parametric direction which is normal to the boundary of the master surface
     m_fixedParam = m_boundaryInterface.second().parameter();
     // Value of the parameter in the fixed direction ( usually 0 or 1).
@@ -125,18 +124,6 @@ void gsCPPInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) c
     //--- closest point version
 }
 
-
-template <class T>
-typename gsDomainIterator<T>::uPtr gsCPPInterface<T>::makeDomainIterator() const
-{
-    gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (*m_slaveBasis, m_boundaryInterface.first());
-    for (index_t i=0; i<domainDim(); ++i)
-    {
-        if (i!=m_boundaryInterface.first().direction())
-            tdi->setBreaks(m_breakpoints[i],i);
-    }
-    return typename gsDomainIterator<T>::uPtr(tdi);
-}
 
 
 template <class T>

@@ -13,8 +13,6 @@
 
 #include <gismo.h>
 
-#include <gsAssembler/gsExprEvaluator.h>
-
 using namespace gismo;
 
 int main(int argc, char *argv[])
@@ -620,6 +618,7 @@ int main(int argc, char *argv[])
                 <<"Exact:\n"<<exact<<"\n";
     gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
+    A.setIntegrationElements(basis);
     A.initSystem();
     gsMatrix<> solVec;
     auto u_sol = A.getSolution(u2,solVec);
@@ -884,6 +883,7 @@ int main(int argc, char *argv[])
     gsInfo<<"---------------------------------Assemblers------------------------------"<<"\n";
     gsInfo<<"-------------------------------------------------------------------------"<<"\n";
 
+    A.setIntegrationElements(basis);
     A.initSystem();
     A.assemble(u2 * u2.tr(),u2 * u_sol);
     gsInfo<<( (A.matrix()*solVec-A.rhs()).norm() < 1e-10 ? "passed" : "failed" )<<"\n";

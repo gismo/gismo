@@ -597,11 +597,20 @@ namespace gismo
     unsigned   nExIds, i =  0;
     char CPUBrandString[0x40];
 
+#if defined(__GNUC__)
+    __cpuid(0x80000000, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
+#else
     __cpuid(CPUInfo, 0x80000000);
+#endif
     nExIds = CPUInfo[0];
 
-    for (i=0x80000000; i<=nExIds; ++i) {
-      __cpuid(CPUInfo, i);
+    for (i=0x80000000; i<=nExIds; ++i)
+    {
+#if defined(__GNUC__)
+        __cpuid(i, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
+#else
+        __cpuid(CPUInfo, i);
+#endif
       if  (i == 0x80000002)
         memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
       else if  (i == 0x80000003)
@@ -638,7 +647,7 @@ namespace gismo
     memset(CPUBrandString, 0, sizeof(CPUBrandString));
 
     for (unsigned int i = 0x80000000; i <= nExIds; ++i)
-      {
+    {
         __cpuid(i, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
 
         if (i == 0x80000002)
@@ -653,8 +662,8 @@ namespace gismo
 
 #   else
 
-    char hostname[256];
-    gethostname(hostname, 256);
+    char hostname[128];
+    gethostname(hostname, 128);
 
     std::string str = "Unknown-CPU [";
     str += hostname;

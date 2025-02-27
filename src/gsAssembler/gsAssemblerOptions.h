@@ -13,11 +13,13 @@
 
 #pragma once
 
+#include<gsCore/gsBasis.h>
+
 namespace gismo
 {
 
 struct dirichlet
-{	
+{
     enum strategy
     {
         elimination  = 11, ///< Enforce Dirichlet BCs by eliminating them from the system
@@ -25,7 +27,7 @@ struct dirichlet
         penalize     = 13, ///< Penalize the diagonal at the position of Dirichlet DoFs,
 
         nitsche      = 12, ///< Enforce the boundary condition weakly by a penalty term
-        
+
         /// Compute Dirichlet DoFs in the normal direction (for a vector valued function),
         /// The tangential component are handled with the Nitsche method.
         eliminatNormal = 14,
@@ -38,15 +40,15 @@ struct dirichlet
         homogeneous   = 100, ///< Assume homogeneous Dirichlet conditions
 
         interpolation = 101, ///< Compute Dirichlet DoFs by using interpolation on the boundary
-        
+
         l2Projection  = 102, ///< Compute Dirichlet DoFs by using L2 projection on the boundary
-        
+
         user          = 103 ///< User will provide values of the Dirichlet dofs
     };
 };
 
 struct iFace
-{	
+{
     enum strategy
     {
         /// Glue patches together by merging DoFs across an
@@ -61,7 +63,7 @@ struct iFace
 
         /// Use enhanced smoothness splines between interfaces of adjacent patches.
         smooth = 3,
-        
+
         /// Do absolutely nothing for coupling the interfaces.
         none = 0
     };
@@ -89,7 +91,7 @@ struct transform
 
 // for mixed formulations
 struct discreteSpace
-{	
+{
     enum type
     {
         taylorHood    = 1,
@@ -153,7 +155,7 @@ public:
      //  every component (sequentially numbered) to each basis see
      //  also SparseSystem. This information is contained in both
      //  clases.
-     
+
     template<typename T>
     void init(const gsPde<T>& pde, const gsVector<index_t>& comp2basis)
     {
@@ -303,7 +305,7 @@ public: // Utility functions that return values implied by the settings
         {
             res *= static_cast<index_t>(_quA * b.degree(i) + _quB + 0.5);
         }
-        
+
         return res;
     }
 

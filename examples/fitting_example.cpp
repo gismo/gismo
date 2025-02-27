@@ -11,27 +11,33 @@
     Author(s): G. Kiss, A. Mantzaflaris
 */
 
+//![Include namespace]
 #include <gismo.h>
 
 using namespace gismo;
+//![Include namespace]
 
 int main(int argc, char *argv[])
 {
     // Options with default values
-    bool save     = false;
-    index_t numURef   = 3;
-    index_t iter      = 2;
-    index_t deg_x     = 2;
-    index_t deg_y     = 2;
-    index_t maxPcIter = 1;
-    real_t lambda = 1e-07;
-    real_t threshold = 1e-02;
-    real_t tolerance = 1e-02;
-    index_t extension = 2;
-    real_t refPercent = 0.1;
-    std::string fn = "fitting/deepdrawingC.xml";
+    bool save     = false;  // save
+    index_t numURef   = 0;  // r
+    index_t numKnots   = 0; // n
+    index_t nx   = -1; // a
+    index_t ny   = -1; // b
+    index_t iter      = 2;  // i
+    index_t deg_x     = 2;  // x
+    index_t deg_y     = 2;  // y
+    index_t maxPcIter = 0;  // c
+    real_t lambda = 1e-06;  // s
+    real_t threshold = 1e-02; // t
+    real_t tolerance = 1e-02; // e
+    index_t extension = 2;  // q
+    real_t refPercent = 0.1;// p
+    std::string fn = "fitting/deepdrawingC.xml"; // d
 
     // Reading options from the command line
+    //![Parse command line]
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
             "file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. "
             "Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a "
@@ -46,10 +52,14 @@ int main(int argc, char *argv[])
     cmd.addReal("p", "refPercent", "percentage of points to refine in each iteration", refPercent);
     cmd.addInt("q", "extension", "extension size", extension);
     cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);
+    cmd.addInt("n", "iknots", "number of interior knots in each direction", numKnots);
+    cmd.addInt("a", "uknots", "number of interior knots in u-direction", nx);
+    cmd.addInt("b", "vknots", "number of interior knots in v-direction", ny);
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    //![Parse command line]
 
     if (deg_x < 1)
     { gsInfo << "Degree x must be positive.\n";  return 0;}
@@ -85,7 +95,7 @@ int main(int argc, char *argv[])
     gsFileData<> fd;
 
     // Check if matrix sizes are OK
-    GISMO_ASSERT( uv.cols() == xyz.cols() && uv.rows() == 2 && xyz.rows() == 3,
+    GISMO_ASSERT( uv.cols() == xyz.cols() && uv.rows() == 2,
                   "Wrong input");
 
     // Determine the parameter domain by mi/max of parameter values
@@ -94,9 +104,14 @@ int main(int argc, char *argv[])
         v_min = uv.row(1).minCoeff(),
         v_max = uv.row(1).maxCoeff();
 
+    //! [Create initial space]
     // Create knot-vectors without interior knots
-    gsKnotVector<> u_knots (u_min, u_max, 0, deg_x+1 ) ;
-    gsKnotVector<> v_knots (v_min, v_max, 0, deg_y+1 ) ;
+    if( nx < 0)
+      nx = numKnots;
+    if( ny < 0)
+      ny = numKnots;
+    gsKnotVector<> u_knots (u_min, u_max, nx, deg_x+1 ) ;
+    gsKnotVector<> v_knots (v_min, v_max, ny, deg_y+1 ) ;
 
     // Create a tensor-basis nad apply initial uniform refinement
     gsTensorBSplineBasis<2> T_tbasis( u_knots, v_knots );
@@ -105,15 +120,17 @@ int main(int argc, char *argv[])
     // Create Initial hierarchical basis
 
     gsTHBSplineBasis<2>  THB ( T_tbasis ) ;
-    //gsHBSplineBasis<2>  THB ( T_tbasis ) ;
+    //! [Create initial space]
 
     // Specify extension size in u and v cells
     std::vector<unsigned> ext;
     ext.push_back(extension);
     ext.push_back(extension);
 
+    //! [Create  Hfitter]
     // Create hierarchical refinement object
     gsHFitting<2, real_t> ref( uv, xyz, THB, refPercent, ext, lambda);
+    //! [Create  Hfitter]
 
     const std::vector<real_t> & errors = ref.pointWiseErrors();
 
@@ -130,6 +147,7 @@ int main(int argc, char *argv[])
 
     gsStopwatch time;
 
+    //! [adaptive loop]
     for(int i = 0; i <= iter; i++)
     {
         gsInfo<<"----------------\n";
@@ -151,9 +169,10 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    //! [adaptive loop]
 
     gsInfo<<"----------------\n";
-
+    //! [paraview]
     if ( save )
     {
         gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
@@ -166,4 +185,5 @@ int main(int argc, char *argv[])
                   "file containing the solution.\n";
 
     return 0;
+    //! [paraview]
 }
