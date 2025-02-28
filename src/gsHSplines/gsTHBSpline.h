@@ -123,7 +123,7 @@ private:
 
 public:
 
-    /// Constucts an isoparametric slice of this THBSpline by fixing
+    /// Constructs an isoparametric slice of this THBSpline by fixing
     /// \a par in direction \a dir_fixed. The resulting THBSpline has
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;

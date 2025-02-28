@@ -4,7 +4,7 @@
     set and accessed easily
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -20,7 +20,7 @@
 namespace gismo
 {
 
-/** 
+/**
     @brief Class which holds a list of parameters/options, and
     provides easy access to them.
 
@@ -195,21 +195,21 @@ public:
         return *this;
     }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
-    // Note: functions cannot be defaulted/deleted in VS2013 or older
-
     gsOptionList() {}
 
+    // Copy constructor
     gsOptionList(const gsOptionList & other) :
-        m_strings(other.m_strings), 
-        m_ints(other.m_ints), 
-        m_reals(other.m_reals), 
+        m_strings(other.m_strings),
+        m_ints(other.m_ints),
+        m_reals(other.m_reals),
         m_switches(other.m_switches) { }
 
+#if EIGEN_HAS_RVALUE_REFERENCES
+    // Note: functions cannot be defaulted/deleted in VS2013 or older
     gsOptionList(gsOptionList && other) :
         m_strings(std::move(other.m_strings)),
-        m_ints(std::move(other.m_ints)), 
-        m_reals(std::move(other.m_reals)), 
+        m_ints(std::move(other.m_ints)),
+        m_reals(std::move(other.m_reals)),
         m_switches(std::move(other.m_switches)) { }
 
     gsOptionList& operator=(gsOptionList && other)
@@ -233,7 +233,7 @@ public:
 
 protected:
     index_t & getIntRef(const std::string & label);
-    
+
 private:
 
     /// \brief Gives information regarding the option named \a label
@@ -315,7 +315,7 @@ public:
    * @brief Initializes the Python wrapper for the class: gsOptionList
    */
   void pybind11_init_gsOptionList(pybind11::module &m);
-  
+
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

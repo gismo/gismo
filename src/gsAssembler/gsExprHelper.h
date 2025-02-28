@@ -28,13 +28,13 @@ class gsExprHelper
 private:
     gsExprHelper(const gsExprHelper &);
 
-    gsExprHelper() : m_mirror(nullptr), mesh_ptr(nullptr),
-                     mutSrc(nullptr), mutMap(nullptr)
+    gsExprHelper() : m_mirror(nullptr), m_domain(nullptr),
+                     mutSrc(nullptr), mutMap(nullptr), m_element(*this)
     { }
 
     explicit gsExprHelper(gsExprHelper * m)
     : m_mirror(memory::make_shared_not_owned(m)),
-      mesh_ptr(m->mesh_ptr), mutSrc(nullptr), mutMap(nullptr)
+      m_domain(m->m_domain), mutSrc(nullptr), mutMap(nullptr), m_element(*this)
     { }
 
 private:
@@ -53,6 +53,7 @@ private:
     typedef typename CFuncData ::iterator CFuncDataIt;
 
     util::gsThreaded<gsMatrix<T> > m_points;
+    util::gsThreaded<gsVector<T> > m_weights;
     FuncData  m_fdata;///< functions
     MapData   m_mdata;///< maps
     CFuncData m_cdata;///< compositions
@@ -61,7 +62,7 @@ private:
 
     memory::shared_ptr<gsExprHelper> m_mirror;
 
-    const gsMultiBasis<T> * mesh_ptr;
+    typename gsDomain<T>::Ptr m_domain;
 
     // mutable pair of variable and data,
     // ie. not uniquely assigned to a gsFunctionSet
@@ -70,7 +71,7 @@ private:
     thFuncData               mutData;
 
     // Represents the current element
-    expr::gsFeElement<T> m_element;
+    expr::gsFeElement<T> m_element; //sharedby all threads
 
 public:
     typedef memory::unique_ptr<gsExprHelper> uPtr;
@@ -90,6 +91,12 @@ public:
 
     gsMatrix<T> & points()    { return m_points; }
     gsMatrix<T> & pointsIfc() { return this->iface().m_points; }
+
+    gsVector<T> & weights()    { return m_weights; }
+    const gsVector<T> & weights() const { return m_weights; }
+
+    gsVector<T> & weightsIfc() { return this->iface().m_weights; }
+    const gsVector<T> & weightsIfc() const { return this->iface().m_weights; }
 
     bool isMirrored() const { return nullptr!=m_mirror; }
 
@@ -111,7 +118,7 @@ public:
             m_cdataAd.clear();
             //mutSrc = nullptr;
             mutMap = nullptr;
-            mutData.mine().flags = 0;
+            mutData.mine().clear();
             if (isMirrored())
             {
                 m_mirror->m_mdata.clear();
@@ -120,20 +127,16 @@ public:
                 m_mirror->m_cdataAd.clear();
                 //m_mirror->mutSrc = nullptr;
                 m_mirror->mutMap = nullptr;
-                m_mirror->mutData.mine().flags = 0;
+                m_mirror->mutData.mine().clear();
             }
         }//implicit barrier
     }
 
-    void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
+    void setDomain(typename gsDomain<T>::Ptr domain) { m_domain = give(domain); }
 
-    bool multiBasisSet() { return NULL!=mesh_ptr;}
+    bool domainSet() { return NULL!=m_domain;}
 
-    const gsMultiBasis<T> & multiBasis()
-    {
-        GISMO_ASSERT(multiBasisSet(), "Integration elements not set.");
-        return *mesh_ptr;
-    }
+    const gsDomain<T> & domain() const { return *m_domain; }
 
     const gsMultiPatch<T> & multiPatch() const
     {
@@ -266,6 +269,21 @@ private:
     template<typename... Ts>
     void _parse_tuple (const std::tuple<Ts...> &tuple) {_parse_tuple_i<0>(tuple);}
 
+    template<size_t I, typename... Ts>
+    void _parse_tt_tuple_i (const std::tuple<Ts...> &tuple)
+    {
+        if (std::get<I>(tuple).isMatrix())
+        {
+            std::get<I>(tuple).rowVar().parse(*this);
+            std::get<I>(tuple).colVar().parse(*this);
+        }
+        if (I + 1 < sizeof... (Ts))
+            _parse_tt_tuple_i<(I+1 < sizeof... (Ts) ? I+1 : I)> (tuple);
+    }
+
+    template<typename... Ts>
+    void _parse_tt_tuple (const std::tuple<Ts...> &tuple) {_parse_tt_tuple_i<0>(tuple);}
+
     void setInitialFlags()
     {
         // Additional evaluation flags
@@ -301,6 +319,18 @@ public:
         cleanUp(); //assumes parse is called once.
         _parse_tuple(tuple);
         setInitialFlags();
+    }
+
+    template<class... Ts>
+    void parsePattern(const std::tuple<Ts...> &tuple)
+    {
+        cleanUp(); //assumes parse is called once.
+        _parse_tt_tuple(tuple);
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+            it->second.mine().flags = NEED_ACTIVE;
+        if (isMirrored())
+            for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
+                it->second.mine().flags = NEED_ACTIVE;
     }
 
     template<class... expr>
@@ -468,7 +498,7 @@ public:
         {
             mutSrc->piece(patchIndex)
                 .compute( mutMap ? m_mdata[mutMap].mine().values[0]
-                          : m_points, mutData );
+                          : m_points, mutData.mine() );
         }
     }
 

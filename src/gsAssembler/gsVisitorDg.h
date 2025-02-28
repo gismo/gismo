@@ -90,7 +90,7 @@ public:
         m_side2 = bi.second();
 
         // Setup Quadrature
-        rule = gsQuadrature::get(basis1, options, m_side1.direction());
+        rule = gsQuadrature::get(*basis1.domain(), options, m_side1.direction());
 
         m_penalty     = options.askReal("DG.Penalty",-1);
         // If not given, use default
@@ -159,8 +159,8 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & /*element1*/,
-                         gsDomainIterator<T>    & /*element2*/,
+    inline void assemble(gsDomainIteratorWrapper<T>    & /*element1*/,
+                         gsDomainIteratorWrapper<T>    & /*element2*/,
                          gsVector<T>            & quWeights)
     {
         const index_t numActive1 = actives1.rows();
@@ -235,9 +235,10 @@ public:
     {
         T result = 0;
         bool first = true;
-        typename gsDomainIterator<T>::uPtr domIt = basis.makeDomainIterator(side);
+        typename gsBasis<T>::domainIter element    = basis.domain()->beginBdr(side);
+        typename gsBasis<T>::domainIter elementEnd = basis.domain()->endBdr(side);
 
-        for (gsDomainIterator<T>& element = *domIt; element.good(); element.next() )
+        for ( ; element < elementEnd; ++element )
         {
             gsVector<T> parameterCenter = element.centerPoint();
             const gsMatrix<T> center1 = geo.eval(parameterCenter);

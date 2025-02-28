@@ -2,20 +2,20 @@
 
     @brief Provides implementation of TensorBasis class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
 #pragma once
 
 #include <gsTensor/gsTensorTools.h>
-#include <gsTensor/gsTensorDomainIterator.h>
-#include <gsTensor/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsTensorDomainIterator.h>
+#include <gsDomain/gsTensorDomainBoundaryIterator.h>
 
 #include <gsCore/gsBoundary.h>
 #include <gsUtils/gsMesh/gsMesh.h>
@@ -39,7 +39,7 @@ gsTensorBasis<d,T>::gsTensorBasis( Basis_t* x,  Basis_t* y)
     {
         m_bases[0] = x;
         m_bases[1] = y;
-    } else 
+    } else
         GISMO_ERROR("gsTensorBasis error: Spaces must be of topological dimension 1.");
 }
 
@@ -48,17 +48,17 @@ template<short_t d, class T>
 gsTensorBasis<d,T>::gsTensorBasis(Basis_t* x, Basis_t* y, Basis_t* z)
 {
     GISMO_ASSERT( d==3, "gsTensorBasis error: wrong dimension." );
-  
+
     GISMO_ASSERT( x->dim() == 1 && y->dim() == 1 && z->dim() == 1,
                   "Spaces must be of topological dimension 1." );
-  
+
     if ( d==3 )
     {
         m_bases[0] = x;
         m_bases[1] = y;
         m_bases[2] = z;
-    } 
-    else 
+    }
+    else
         GISMO_ERROR("gsTensorBasis incorrect constructor for "<<d<<"D basis");
 }
 
@@ -66,18 +66,18 @@ template<short_t d, class T>
 gsTensorBasis<d,T>::gsTensorBasis(Basis_t* x, Basis_t* y, Basis_t* z, Basis_t* w)
 {
     GISMO_ASSERT( d==4, "gsTensorBasis error: wrong dimension." );
-  
+
     GISMO_ASSERT( x->dim() == 1 && y->dim() == 1 && z->dim() == 1 && w->dim() == 1,
                   "Spaces must be of topological dimension 1." );
-  
+
     if ( d==4 )
     {
         m_bases[0] = x;
         m_bases[1] = y;
         m_bases[2] = z;
         m_bases[3] = w;
-    } 
-    else 
+    }
+    else
         GISMO_ERROR("gsTensorBasis incorrect constructor for "<<d<<"D basis");
 }
 
@@ -85,7 +85,7 @@ gsTensorBasis<d,T>::gsTensorBasis(Basis_t* x, Basis_t* y, Basis_t* z, Basis_t* w
 /*
 template<short_t d, class T>
 gsTensorBasis<d,T>::gsTensorBasis( std::vector<Basis_t*> const & bb )
-{ 
+{
     GISMO_ASSERT( d==bb.size(), "gsTensorBasis error: wrong number of bases given ("
                   << bb.size()<< ", expected "<< d );
 
@@ -155,7 +155,7 @@ void gsTensorBasis<d,T>::anchor_into(index_t i, gsMatrix<T>& result) const
     for (short_t l = 0; l < d; ++l)
     {
         m_bases[l]->anchor_into(ti[l], gr);
-        result(l,0) = gr.value(); 
+        result(l,0) = gr.value();
     }
 }
 
@@ -187,7 +187,7 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
         upp    = end;
         upp[i] = 0; // suppress to face v[i]==0
 
-        do // Insert all edges normal to axis i 
+        do // Insert all edges normal to axis i
         {
             k = index(v);
             for (index_t j = 0; j != end[i]; ++j)
@@ -207,7 +207,7 @@ void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& r
 
     gsMatrix<index_t> act[d];
     gsVector<index_t, d> v, size;
- 
+
     // Get component active basis functions
     index_t nb = 1;
     for (short_t i = 0; i < d; ++i)
@@ -218,7 +218,7 @@ void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& r
     }
 
     result.resize( nb, u.cols() );
-   
+
     // iterate over all tensor product active functions
     unsigned r = 0;
     v.setZero();
@@ -315,10 +315,10 @@ index_t gsTensorBasis<d,T>::functionAtCorner(boxCorner const & c) const
 {
     gsVector<bool> position(d);
     c.parameters_into(d, position);
-    
+
     index_t index = 0;
     index_t str   = 1;
-    
+
     for(short_t i = 0; i!=d; ++i)
     {
         const index_t sz_i = size(i);
@@ -375,7 +375,7 @@ struct MakeBoundaryBasis<2, BB, B>
 template<short_t d, class T>
 void
 gsTensorBasis<d,T>::getComponentsForSide(boxSide const& s, std::vector<Basis_t*> & rr) const
-{   
+{
     index_t dir = s.direction( );
 
     rr.clear();
@@ -439,7 +439,7 @@ void gsTensorBasis<d,T>::derivSingle_into(index_t i,
     {
         m_bases[k]->evalSingle_into ( ti[k], u.row(k), ev  );
         m_bases[k]->derivSingle_into( ti[k], u.row(k), dev );
- 
+
         result.row(k)            = result.row(k).cwiseProduct(dev);
         result.topRows(k)        = result.topRows(k) * ev.asDiagonal();
         // for (unsigned j = 0; j != k; ++j)
@@ -502,7 +502,7 @@ template<short_t d, class T>
 void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
                                          gsMatrix<T>& result) const
 {
-    GISMO_ASSERT( u.rows() == d, 
+    GISMO_ASSERT( u.rows() == d,
                   "Attempted to evaluate the tensor-basis on points with the wrong dimension" );
 
     /// \todo more efficient ?
@@ -518,7 +518,7 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
         nb *= ev[i].rows();
         size[i] = ev[i].rows();
     }
-  
+
     // initialize result
     result.resize( nb, u.cols() );
 
@@ -530,7 +530,7 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
         result.row( r )=  ev[0].row( v(0) );
         for ( short_t i=1; i<d; ++i)
             result.row( r )= result.row( r ).cwiseProduct( ev[i].row( v(i) ) ) ;
-      
+
         ++r ;
     } while (nextLexicographic(v, size));
 };
@@ -548,16 +548,16 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
     unsigned sz = this->size()/m_bases[0]->size();
     unsigned n  = coefs.cols();
     gsAsMatrix<T> cc(coefs.data(), m_bases[0]->size(),  n * sz);
-    gsMatrix<T> e0,e1; 
+    gsMatrix<T> e0,e1;
 
     for ( index_t j=0; j< u.cols() ; j++ ) // for all points (columns of u)
     { // to try:: all points at once instead
         gsMatrix<T> uu = u.col(j);
         //gsDebug<< "uu : \n"<< uu <<std::endl;
         //gsDebug<< "coefs: \n"<< cc <<std::endl;
-        
+
         m_bases[0]->eval_into(uu.row(0), cc, e0);
-        
+
         for ( short_t i=1; i< d ; ++i )
         {
             sz /= m_bases[i]->size();
@@ -571,21 +571,21 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
     }
     //gsDebug<< "final: \n"<< *result  <<std::endl;
 #endif
-  
+
     // Default version - linear combination of basis functions
     // Basis_t:: eval_into(u,coefs,result);
     result.resize( coefs.cols(), u.cols() ) ;
     gsMatrix<T> B ;
     gsMatrix<index_t> ind;
-    
+
     this->eval_into(u, B);   // col j = nonzero basis functions at column point u(..,j)
     this->active_into(u,ind);// col j = indices of active functions at column point u(..,j)
-    
+
     for ( index_t j=0; j< u.cols() ; j++ ) // for all points (columns of u)
     {
         result.col(j) = coefs.row( ind(0,j) ) * B(0,j);
         for ( index_t i = 1; i < ind.rows(); ++i ) // for all non-zero basis functions
-            result.col(j) += coefs.row( ind(i,j) ) * B(i,j); 
+            result.col(j) += coefs.row( ind(i,j) ) * B(i,j);
     }
 }
 
@@ -602,7 +602,7 @@ void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u,
     for (short_t i = 0; i < d; ++i)
     {
         // evaluate basis functions and their first derivatives
-        m_bases[i]->evalAllDers_into( u.row(i), 1, values[i]); 
+        m_bases[i]->evalAllDers_into( u.row(i), 1, values[i]);
 
         // number of basis functions
         const index_t num_i = values[i].front().rows();
@@ -650,14 +650,14 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     for (short_t i = 0; i < d; ++i)
     {
         // evaluate basis functions/derivatives
-        m_bases[i]->evalAllDers_into( u.row(i), n, values[i], sameElement); 
+        m_bases[i]->evalAllDers_into( u.row(i), n, values[i], sameElement);
 
         // number of basis functions
         const index_t num_i = values[i].front().rows();
         nb_cwise[i] = num_i;
         nb         *= num_i;
     }
-    
+
     // iterate over all tensor product basis functions
     v.setZero();
     gsMatrix<T> & vals = result[0];
@@ -669,10 +669,10 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         vals.row( r )=  values[0].front().row( v[0] );
         for ( short_t i=1; i!=d; ++i) // for all variables
             vals.row(r).array() *= values[i].front().row( v[i] ).array();
-    
+
         ++r;
     } while (nextLexicographic(v, nb_cwise));
-  
+
     // iterate again and write derivatives
     if ( n>=1)
     {
@@ -706,7 +706,7 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
             gsMatrix<T> & der = result[i];
             der.resize( nb*numCompositions(i,d), u.cols());
             v.setZero();
-            
+
             r = 0;
             do // for all basis functions
             {
@@ -736,7 +736,7 @@ void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u,
 
     for (short_t i = 0; i < d; ++i)
     {
-        m_bases[i]->evalAllDers_into( u.row(i), 2, values[i]); 
+        m_bases[i]->evalAllDers_into( u.row(i), 2, values[i]);
         const int num_i = values[i].front().rows();
         nb_cwise[i] = num_i;
     }
@@ -796,7 +796,7 @@ void gsTensorBasis<d,T>::refineElements(std::vector<index_t> const & elements)
 {
     gsSortedVector<index_t> elIndices[d];
     index_t tmp, mm;
-    
+
     // Get coordinate wise element indices
     for ( typename  std::vector<index_t>::const_iterator
               it = elements.begin(); it != elements.end(); ++it )
@@ -810,7 +810,7 @@ void gsTensorBasis<d,T>::refineElements(std::vector<index_t> const & elements)
                 elIndices[i].push_sorted_unique(tmp);
             }
     }
-    
+
     // Refine in each coordinate
     // Element refinement propagates along knot-lines
     for (short_t i = 0; i<d; ++i )
@@ -887,23 +887,6 @@ void gsTensorBasis<d,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> 
 }
 
 template<short_t d, class T>
-typename gsTensorBasis<d,T>::domainIter
-gsTensorBasis<d,T>::makeDomainIterator() const
-{
-    return domainIter(new gsTensorDomainIterator<T, d>(*this));
-}
-
-template<short_t d, class T>
-typename gsTensorBasis<d,T>::domainIter
-gsTensorBasis<d,T>::makeDomainIterator(const boxSide & s) const
-{
-    return ( s == boundary::none ? 
-             domainIter(new gsTensorDomainIterator<T,d>(*this)) :
-             domainIter(new gsTensorDomainBoundaryIterator<T,d>(*this, s))
-        );
-}
-
-template<short_t d, class T>
 typename gsGeometry<T>::uPtr
 gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 {
@@ -911,7 +894,7 @@ gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 
     for (short_t i = 0; i < d; ++i) // for all coordinate bases
         m_bases[i]->anchors_into(grid[i]);
-    
+
     return interpolateGrid(vals,grid);
 }
 
@@ -921,13 +904,13 @@ typename gsGeometry<T>::uPtr
 gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
                                           std::vector<gsMatrix<T> >const& grid) const
 {
-    GISMO_ASSERT (this->size() == vals.cols(), 
+    GISMO_ASSERT (this->size() == vals.cols(),
                   "Expecting as many values as the number of basis functions." );
 
     const index_t n  = vals.rows();
     const int sz = this->size();
 
-    // Note: algorithm relies on col-major matrices    
+    // Note: algorithm relies on col-major matrices
     gsMatrix<T, Dynamic, Dynamic, ColMajor> q0, q1;
 
     //Note: Sparse LU might fail for rank deficient Cmat
@@ -946,7 +929,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
 
         // Solve for i-th coordinate basis
         Cmat = m_bases[i]->collocationMatrix(grid[i]);
-        solver.compute(Cmat); 
+        solver.compute(Cmat);
         #ifndef NDEBUG
         if ( solver.info() != gsEigen::Success )
         {
@@ -991,7 +974,7 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         const index_t s2 = bi.second().direction();
         const gsVector<bool>    & dirOr = bi.dirOrientation();
         const gsVector<index_t> & bMap  = bi.dirMap();
-        
+
         // Compute the tensor structure of bndThis
         gsVector<index_t>  bSize(d-1);
         index_t c = 0;
@@ -1011,21 +994,21 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         {
             if ( k == s1 ) // skip ?
                 continue;
-            
+
             if ( ! dirOr[k] ) // flip ?
                 flipTensorVector(c, bSize, bndThis);
-            
+
             bPerm[c] = ( bMap[k] < s2 ? bMap[k] : bMap[k]-1 );
             c++;
         }
-    
+
         // Apply permutation to bndThis and bndOther so that they
         // finally match on both sides
         permuteTensorVector<index_t,-1>(bPerm, bSize, bndThis);
 
         return;
     }
-    
+
     gsWarn<<"Cannot match with "<< other <<"\n";
 }
 
@@ -1074,12 +1057,12 @@ gsMatrix<T> gsTensorBasis<d,T>::elementInSupportOf(index_t j) const
     }
     return res;
 }
-    
+
 //template<short_t d, class T>
 //gsDomain<T> * gsTensorBasis<d,T>::makeDomain() const
 //{
 //  return new gsTensorDomain<T>();
-//} 
- 
+//}
+
 
 } // namespace gismo

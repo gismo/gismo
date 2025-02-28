@@ -603,9 +603,6 @@ void gsBiharmonicExprAssembler<T>::_getDirichletNeumannValuesL2Projection(
                                                                         const expr::gsFeSpace<T> & u
                                                                         )
 {
-    gsDebugVar(bc.dirichletSides().size());
-    gsDebugVar(bc.neumannSides().size());
-
     if (bc.dirichletSides().size()==0 && bc.neumannSides().size()==0)
         return;
     if (const gsMappedBasis<2,T> * bb2 = dynamic_cast<const gsMappedBasis<2,T> *>(&spaceBasis))

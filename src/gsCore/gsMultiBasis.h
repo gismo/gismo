@@ -94,6 +94,8 @@ public:
     /// Copy constructor (makes deep copy)
     gsMultiBasis( const gsMultiBasis& other );
 
+    memory::shared_ptr<gsDomain<T> > domain() const;
+    
 #if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsMultiBasis(gsMultiBasis&& other) : m_bases(give(other.m_bases)), m_topology(give(other.m_topology)) {}
@@ -493,8 +495,11 @@ public:
             sthChanged = false;
             for( size_t i = 0; i < bivec.size(); i++ )
             {
-                change = repairInterface( bivec[i] );
-                sthChanged = sthChanged || change;
+                if ( bivec[i].type() != interaction::contact)
+                {
+                    change = repairInterface( bivec[i] );
+                    sthChanged = sthChanged || change;
+                }
             }
             k++; // just to be sure this cannot go on infinitely
         }

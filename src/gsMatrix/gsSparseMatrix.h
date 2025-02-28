@@ -42,7 +42,7 @@ public:
     inline void add( int i, int j, T value )
     { this->push_back( Triplet(i,j,value) ); }
 
-    inline void addSorted(int i, int j, T value)
+    inline void addSorted(int i, int j, T value = 0)
     {
         Triplet t(i,j,value);
         iterator pos = std::lower_bound(Base::begin(), Base::end(), t, compTriplet );
@@ -62,8 +62,6 @@ protected:
     } compTriplet ;
 
 };
-
-
 
 /**
     @brief Iterator over the non-zero entries of a sparse matrix
@@ -294,6 +292,46 @@ public:
             this->insert(i,j) = val;
     }
 
+    inline bool isExplicitZero(_Index row, _Index col) const
+    {
+        const _Index outer = gsSparseMatrix::IsRowMajor ? row : col;
+        const _Index inner = gsSparseMatrix::IsRowMajor ? col : row;
+        const _Index end = this->m_innerNonZeros ?
+            this->m_outerIndex[outer] + this->m_innerNonZeros[outer] : this->m_outerIndex[outer+1];
+        const _Index id = this->m_data.searchLowerIndex(this->m_outerIndex[outer], end-1, inner);
+        return !((id<end) && ( this->m_data.index(id)==inner));
+    }
+
+    /// Adds an explicit zero, only if (row,col) is not in the matrix
+    inline void insertExplicitZero(_Index row, _Index col)
+    {
+        GISMO_ASSERT(row>=0 && row<this->rows() && col>=0 && col<this->cols(), "Invalid row/col index.");
+        const _Index outer = gsSparseMatrix::IsRowMajor ? row : col;
+        const _Index inner = gsSparseMatrix::IsRowMajor ? col : row;
+        const _Index start = this->m_outerIndex[outer];
+        const _Index end   = this->m_innerNonZeros ?
+            this->m_outerIndex[outer] + this->m_innerNonZeros[outer] : this->m_outerIndex[outer+1];
+        if(end<=start)
+        { this->insert(row,col); return; }
+        const _Index p = this->m_data.searchLowerIndex(start,end-1,inner);
+        if(! ((p<end) && (this->m_data.index(p)==inner)) )
+            this->insert(row,col);
+    }
+
+    inline T& coeffUpdate(_Index row, _Index col)
+    {
+        GISMO_ASSERT(row>=0 && row<this->rows() && col>=0 && col<this->cols(), "Invalid row/col index.");
+        const _Index outer = gsSparseMatrix::IsRowMajor ? row : col;
+        _Index start = this->m_outerIndex[outer];
+        _Index end = this->m_innerNonZeros ? this->m_outerIndex[outer] + this->m_innerNonZeros[outer]
+            : this->m_outerIndex[outer+1];
+        const _Index inner = gsSparseMatrix::IsRowMajor ? col : row;
+        const _Index p = this->m_data.searchLowerIndex(start,end-1,inner);
+        if((p<end) && (this->m_data.index(p)==inner))
+            return this->m_data.value(p);
+        GISMO_ERROR("(row,col) = ("<< row <<","<<col<<") is not in the matrix (sparsity pattern).");
+    }
+
     /// Return a block view of the matrix with \a rowSizes and \a colSizes
     BlockView blockView(const gsVector<index_t> & rowSizes,
                         const gsVector<index_t> & colSizes)
@@ -329,11 +367,16 @@ public:
         for (index_t i = 0; i!=this->rows(); ++i)
         {
             for (index_t j = 0; j!=this->cols(); ++j)
-                os<< ( 0 == this->coeff(i,j) ? "\u00B7" : "x");
+                os << ( isExplicitZero(i,j) ? "\u00B7" :
+                        ( 0 == this->coeff(i,j) ? "o" : "x") );
             os<<"\n";
         }
         return os.str();
     }
+
+    /// Allocates the sparsity pattern
+    //template<typename InputIterator>
+    //void setPattern(const InputIterator& begin, const InputIterator& end)
 
     void rrefInPlace();
 
@@ -538,17 +581,15 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
   /**
    * @brief Initializes the Python wrapper for the class: gsSparseMatrix
    */
-  namespace py = pybind11;
-
   template<typename T>
   void pybind11_init_gsSparseMatrix(pybind11::module &m, const std::string & typestr)
   {
     using Class = gsSparseMatrix<T>;
     std::string pyclass_name = std::string("gsSparseMatrix") + typestr;
-    py::class_<Class>(m, pyclass_name.c_str(), py::buffer_protocol(), py::dynamic_attr())
+    pybind11::class_<Class>(m, pyclass_name.c_str(), pybind11::buffer_protocol(), pybind11::dynamic_attr())
     // Constructors
-    .def(py::init<>())
-    .def(py::init<index_t, index_t>())
+    .def(pybind11::init<>())
+    .def(pybind11::init<index_t, index_t>())
     // Member functions
     .def("size",      &Class::size)
     .def("rows",      &Class::rows)

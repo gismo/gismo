@@ -75,15 +75,16 @@ namespace internal
 
 #include <gsCore/gsFieldCreator.h>
 
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 #include <gsCore/gsSysInfo.h>
 
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
 // Tensors
-#include <gsTensor/gsTensorDomainIterator.h>
-#include <gsTensor/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsTensorDomainIterator.h>
+#include <gsDomain/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsPointDomain.h>
 #include <gsTensor/gsGridIterator.h>
 #include <gsTensor/gsGenericTensorBasis.h>
 
@@ -104,6 +105,8 @@ namespace internal
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsHSplines/gsRationalTHBSplineBasis.h>
+#include <gsHSplines/gsRationalTHBSpline.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 #include <gsHSplines/gsHBox.h>
@@ -170,6 +173,9 @@ namespace internal
 
 #include <gsAssembler/gsAdaptiveMeshing.h>
 #include <gsAssembler/gsAdaptiveMeshingUtils.h>
+
+#include <gsDomain/gsPointDomain.h>
+#include <gsDomain/gsPointDomainIterator.h>
 
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>

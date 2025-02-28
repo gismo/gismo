@@ -46,6 +46,7 @@ POSITION_INDEPENDENT_CODE ON
 LINKER_LANGUAGE CXX
 CXX_VISIBILITY_PRESET "hidden"
 FOLDER "G+Smo libraries"
+LABELS "${PROJECT_NAME}"
 OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
 
 ###################################################################
@@ -130,6 +131,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   LINKER_LANGUAGE CXX
   CXX_VISIBILITY_PRESET "hidden"
   #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
+  LABELS "${PROJECT_NAME}"
   FOLDER "G+Smo libraries"
   )
   #generate_export_header(${PROJECT_NAME})

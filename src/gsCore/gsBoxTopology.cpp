@@ -31,6 +31,14 @@ namespace gismo
       .def(py::init<>())
       .def("boundaries", static_cast<std::vector< patchSide >& (Class::*)()> (&Class::boundaries))
       .def("interfaces", static_cast<std::vector< boundaryInterface >& (Class::*)()> (&Class::interfaces))
+      .def("__str__",
+         [] (Class & self)
+        {
+            std::ostringstream os;
+            self.print(os);
+            return os.str();
+        },
+        "Returns a string with information about the object.")
 
       ;
   }

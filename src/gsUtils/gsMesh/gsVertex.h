@@ -43,7 +43,8 @@ public:
 
     template<typename OtherDerived>
     gsVertex(const gsEigen::MatrixBase<OtherDerived>& other) :
-    MeshElement(), gsVector3d<T>(other) { }
+    MeshElement(), gsVector3d<T>(other),sharp(0), numEdges(0), data()
+    { }
 
     /// @brief Constructor, take 3 scalars.
     /// \param x, y, z Coordinates of position in 3D space.
@@ -72,6 +73,23 @@ public:
         this->head(r) = u;
     }
 
+    // Copy costructor
+    gsVertex(const gsVertex & other) :
+    MeshElement(other), gsVector3d<T>(other), sharp(other.sharp), numEdges(other.numEdges), data(other.data)
+    { }
+
+    // Copy assignment operator
+    gsVertex & operator=(const gsVertex & other)
+    {
+        MeshElement::operator=(other);
+        gsVector3d<T>::operator=(other);
+        sharp = other.sharp;
+        numEdges = other.numEdges;
+        data = other.data;
+        return *this;
+    }
+
+    // Destructor
     virtual ~gsVertex() { };
 
 
@@ -80,12 +98,6 @@ public:
         this->gsVector3d<T>::operator=(coord);
     }
 
-    gsVertex & operator=(const gsVertex & other)
-    {
-        this->gsVector3d<T>::operator=(other);
-        return *this;
-    }
-    
     //GISMO_CLONE_FUNCTION(gsVertex)
     /// @brief Clone Function (deep copy)
     uPtr clone() const { return uPtr(new gsVertex(*this)); }
