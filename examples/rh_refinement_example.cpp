@@ -34,8 +34,8 @@ int main(int argc, char *argv[])
     real_t adaptRefParam  = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
-    //std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/circle.xml");
+    std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/circle.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -62,8 +62,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    //fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft; //= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -120,10 +120,6 @@ int main(int argc, char *argv[])
     {
        bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
     }
-    gsInfo<<"The PDE domain is "<< mpLeft.detail() << "\n";
-    gsInfo<<"Source function is "<< rhs << "\n";
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-
     geometryMap GLeft = A.getMap(mpLeft);
     gsStopwatch timer;
 

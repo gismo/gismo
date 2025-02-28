@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     bool plot           = false;
     index_t numRefine   = 4;
     index_t numLRefine  = 3;
-    index_t numElevate  = 1;
+    index_t numElevate  = 0;
     index_t numrRefine  = -1; // number of composition bewteen adaptive mappings ()
     index_t maxIter     = 50;
     double eps          = 1e-7; // pinalization coefficient
@@ -435,7 +435,7 @@ int main(int argc, char *argv[])
         }
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         geometryMap PP = A.getMap(Psitp);
-        //:::::::::::::::::::: TESTUNG THE COMPOSITION : BUG ---  TODO ::::::::::::::::::::::::: 
+        // //:::::::::::::::::::: TESTUNG THE COMPOSITION : BUG ---  TODO ::::::::::::::::::::::::: 
         // geometryMap PPLoc = A.getMap(Psitp);
         // PPLoc(mpLeft);
         // auto comp0 = A.getCoeff(mpLeft, PP);
@@ -443,7 +443,8 @@ int main(int argc, char *argv[])
         // gsInfo << "integral Comp ERR "<< ev.integral( (comp0-PPLoc).sqNorm()) <<"\n";//Strange behavior
         // gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Strange behavior they are the same
 
-        auto comp  = PP(mpLeft);
+        //auto comp  = PP(mpLeft);
+        auto comp  = A.getCoeff(mpLeft, PP);
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one

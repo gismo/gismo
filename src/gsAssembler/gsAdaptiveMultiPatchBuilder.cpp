@@ -360,7 +360,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
             // ! end Picard loop
             gsInfo<< "\n Niter in Picard : " << ip
                     << ".. H1 residual : "<<std::scientific<<l2errRes
-                    << ".. L2 MAE residual : "<<std::scientific<<L2MAERes<<"\n";
+                    << ".. L2 MAE residual : "<<std::scientific<<L2MAERes<<"..";
             break;
             } //
     }//for loop
@@ -400,6 +400,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
     slv_time += timer.stop();
     timer.stop();
-    gsInfo<<" CPU-time for Solving MAE : "<< slv_time   <<"<>\n";
+    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
     return Psi;
 };

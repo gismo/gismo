@@ -6,23 +6,23 @@
 rm -r ../build/error_analysis.txt
 
 # Build r_refinement_square before running
-#make r_refinement_square -j 15
-make r_refinement_ComplexGeometry -j 15
+make rh_refinement_example -j 15
+#make r_refinement_ComplexGeometry -j 15
 
 # Path to the executable
-#EXECUTABLE="./bin/r_refinement_square"
-EXECUTABLE="./bin/r_refinement_ComplexGeometry"
+EXECUTABLE="./bin/rh_refinement_example"
+#EXECUTABLE="./bin/r_refinement_ComplexGeometry"
 
 # Parameters (tags) to run the executable with -r 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
 TAGS=(
-    "-r 2 -u 4 -f 9. -l 1 -a 0.0 -c 1 -p 0"
-    "-r 2 -u 4 -f 9. -l 1 -a 0.3 -c 1 -p 0"
-    "-r 2 -u 4 -f 9. -l 1 -a 0.7 -c 1 -p 1"
+    "-r 2 -u 4 -f 20. -l 5 -a 0.0 -c 1 -p 0 -e 1"
+    "-r 2 -u 4 -f 20. -l 5 -a 0.3 -c 1 -p 0 -e 1"
+    "-r 2 -u 4 -f 20. -l 5 -a 0.7 -c 1 -p 1 -e 1"
 )
 
 # Run the executable with each set of parameters
 for TAG in "${TAGS[@]}"; do
     echo "Running $EXECUTABLE with parameters: $TAG"
-    $EXECUTABLE --errorsave --plot $TAG
+    $EXECUTABLE --errorsave $TAG
     echo "-------------------------------------------------"
 done
