@@ -18,12 +18,9 @@
   <Function type="FunctionExpr" id="2003" dim="2">1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01))  )</Function>
     -->
   <!-- For poisson test -->
-  <Function type="FunctionExpr" id="2000" dim="2"> 1./(1.+exp((y*sin(pi*x) - x  - 0.2)/0.01))</Function>
-  <Function type="FunctionExpr" id="2001" dim="2"> -2.06115362243856e-7*pi**2*y*exp(-100.0*x + 100.0*y*sin(pi*x))*sin(pi*x)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y*sin(pi*x)) + 1.0)**2 
-                                                    + 2.06115362243856e-9*(10000.0*(pi*y*cos(pi*x) - 1)**2)*exp(-100.0*x + 100.0*y*sin(pi*x))/(2.06115362243856e-9*exp(-100.0*x + 100.0*y*sin(pi*x)) + 1.0)**2 
-                                                    - 8.49670851058318e-18*10000.0*(pi*y*cos(pi*x) - 1)**2*exp(-200.0*x + 200.0*y*sin(pi*x))/(2.06115362243856e-9*exp(-100.0*x + 100.0*y*sin(pi*x)) + 1.0)**3 
-                                                    + 2.06115362243856e-5*exp(-100.0*x + 100.0*y*sin(pi*x))*sin(pi*x)**2/(2.06115362243856e-9*exp(-100.0*x + 100.0*y*sin(pi*x)) + 1.0)**2 
-                                                    - 8.49670851058318e-14*exp(-200.0*x + 200.0*y*sin(pi*x))*sin(pi*x)**2/(2.06115362243856e-9*exp(-100.0*x + 100.0*y*sin(pi*x)) + 1.0)**3</Function>
+  <Function type="FunctionExpr" id="2000" dim="2"> 1./(1.+exp((y - x  - 0.2)/0.01))</Function>
+  <Function type="FunctionExpr" id="2001" dim="2">  4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2
+                                                   - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3</Function>
 
  <Geometry type="TensorNurbs2" id="0">
   <Basis type="TensorNurbsBasis2">

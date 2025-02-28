@@ -28,28 +28,33 @@ int main(int argc, char *argv[])
     double IntensityMAE   = 6.;
     bool export_b64       = false;
     bool errorsave        = false;
-    real_t adaptRefParam  = 0.;     // ... adapt parameter.
-    index_t FactRefPar    = 0;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
+    // --------------- adaptive refinement ---------------
+    // Specify cell-marking strategy... 
+    index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
+    real_t adaptRefParam  = 0.; // ... adapt parameter.
+    index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/circle.xml");
+    //std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/circle.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
-    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
+    cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
+    cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
+    cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
+    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-    cmd.addString( "d", "file", "Input XML file data", fn );
+    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
+    cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
+    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
-    cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
+
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
-    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
-    cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -57,8 +62,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft;
-    fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    //fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -172,6 +177,9 @@ int main(int argc, char *argv[])
     Psi.addAutoBoundaries();
     Psi.computeTopology();
 
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 3: Start hierarchical refinement
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
     if (true){
     gsBoundaryConditions<> bc;
@@ -192,11 +200,6 @@ int main(int argc, char *argv[])
     geometryMap PP = A.getMap(Psi);
     
     gsStopwatch timer;
-    // --------------- adaptive refinement ---------------
-    // Specify cell-marking strategy... 
-    //MarkingStrategy adaptRefCrit = PUCA;
-    MarkingStrategy adaptRefCrit = GARU;
-    //MarkingStrategy adaptRefCrit = errorFraction;
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     

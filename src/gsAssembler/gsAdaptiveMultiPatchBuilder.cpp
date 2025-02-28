@@ -113,7 +113,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine, index_t circleN) const 
 {
     gsInfo<<"<>density function";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -138,7 +138,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     //..
     index_t n = errorVector.rows();
     for (index_t i1 = 0; i1 < n; i1++){
-        errorVector(i1) = elwiseERROR[i1];
+        auto Elcontr = elwiseERROR[i1];
+        index_t s = 1;
+        for (index_t i2 = std::max(0,i1-circleN); i2 < std::min(n,i1+circleN); i2++){
+            Elcontr += elwiseERROR[i2];
+            s       += 1;
+        }
+        errorVector(i1) = Elcontr/s;
     }
     //...............End error as a function
 
