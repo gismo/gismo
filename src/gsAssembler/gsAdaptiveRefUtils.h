@@ -352,7 +352,7 @@ void gsRefineMarkedElements(gsMultiPatch<T> & mp,
 
         // for all elements in patch pn
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            mp.pbasis(pn).domain()->beginAll();
+            mp.basis(pn).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
             mp.basis(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
