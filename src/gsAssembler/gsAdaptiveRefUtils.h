@@ -352,9 +352,9 @@ void gsRefineMarkedElements(gsMultiPatch<T> & mp,
 
         // for all elements in patch pn
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            mp.patch(pn).domain()->beginAll();
+            mp.pbasis(pn).domain()->beginAll();
         typename gsBasis<T>::domainIter domItEnd =  // add patchInd to domainiter ?
-            mp.patch(pn).domain()->endAll();
+            mp.basis(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
