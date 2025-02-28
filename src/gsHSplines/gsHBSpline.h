@@ -39,7 +39,7 @@ class gsHBSpline : public gsGeoTraits<d,T>::GeometryBase
 public:
     typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
-    typedef gsHBSplineBasis<d,T> Basis;
+    typedef gsTHBSplineBasis<d,T,false> Basis;
 
     /// Shared pointer for gsHBSpline
     typedef memory::shared_ptr< gsHBSpline > Ptr;
@@ -51,7 +51,7 @@ public:
     util::conditional<d==1, gsConstantFunction<T>, gsHBSpline<static_cast<short_t>(d-1),T>
                       >::type BoundaryGeometryType;
 
-    typedef typename gsHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
+    typedef typename gsTHBSplineBasis<d,T,false>::BoundaryBasisType BoundaryBasisType;
 
 public:
 

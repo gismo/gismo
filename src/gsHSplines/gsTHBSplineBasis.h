@@ -27,16 +27,17 @@ namespace gismo
  *
  * \param d the dimension of the parameter domain
  * \param T the coefficient type
+ * \param Trunc switch between THB and HB
  *
  * \ingroup basis
  * \ingroup HSplines
  */
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
     /// @brief Associated geometry type.
-    typedef gsTHBSpline<d,T> GeometryType;
+    typedef typename util::conditional<Trunc, gsTHBSpline<d,T>, gsHBSpline<d,T>>::type GeometryType;
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
 
@@ -54,7 +55,7 @@ public:
 
     /// @brief Associated Boundary basis type.
     typedef typename
-    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T> >::type BoundaryBasisType;
+    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T, Trunc> >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
     using gsHTensorBasis<d, T>::m_manualLevels;

@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
         // lvl 3: {0, 0, 0, 0, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, ...}
         // etc
         if (HB)
-            HTB = new gsHBSplineBasis<2,real_t>(tbb,true);
+            HTB = new gsTHBSplineBasis<2,real_t,false>(tbb,true);
         else
             HTB = new gsTHBSplineBasis<2,real_t>(tbb,true);
 
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
     else
     {
         if (HB)
-            HTB = new gsHBSplineBasis<2,real_t>(tbb,false);
+            HTB = new gsTHBSplineBasis<2,real_t,false>(tbb,false);
         else
             HTB = new gsTHBSplineBasis<2,real_t>(tbb,false);
     }
