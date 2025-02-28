@@ -77,11 +77,6 @@ int main(int argc, char *argv[])
     fd.getId(2000, s);
     gsFunctionExpr<> rhs;
     fd.getId(2001, rhs);
-    // Right-hand side function : Analytical density function rho_1
-    // Load the file
-    gsFunctionExpr<> f;
-    fd.getId(2003, f);
-    gsInfo<<"Density function "<< f << "\n";
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
@@ -90,8 +85,6 @@ int main(int argc, char *argv[])
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
-    //! [Refinement]
-
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     //A.setOptions(Aopt);
@@ -127,7 +120,6 @@ int main(int argc, char *argv[])
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     geometryMap GLeft = A.getMap(mpLeft);
-    auto ff_GPsi   = A.getCoeff(f, GLeft);
     gsStopwatch timer;
 
     // Set the discretization space // different boundary condition !
@@ -138,7 +130,10 @@ int main(int argc, char *argv[])
 
     // Solution vector and solution variable
     gsMatrix<> rsolVector;
-    //...
+
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 0: Computes the initial solution of the PDEs 
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     ru.setup(bc, dirichlet::l2Projection, 0);
     // Initialize the system
     A.initSystem();
@@ -158,40 +153,19 @@ int main(int argc, char *argv[])
     solution u_sol = A.getSolution(ru, rsolVector);
     ev.integralElWise( (igrad(u_sol, GLeft) ).sqNorm() );
     auto elwise = ev.elementwise();
-    // auto minelwise = ev.min((ilapl(u_sol, GLeft)+ SFunc ).sqNorm());
-    // auto maxelwise = ev.max((ilapl(u_sol, GLeft)+ SFunc ).sqNorm());
-    // for (index_t i = 0; i < 4096; i++){
-    //     rsolVector(i) = elwise[i];
-    //     // if(elwise[i] >= 0.25*(3.*maxelwise+minelwise)){
-    //     //     rsolVector(i) = 0.25*(3.*maxelwise+minelwise);
-    //     //     }
-    // }
-    gsInfo<< "elwise: "<< elwise.size() <<"\n";
     gsInfo<< "." <<std::flush; // Linear solving done
 
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 1-2 : Computes the density function
+    ###         and the multipatch adaptove mapping
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise);
-    // gsMultiPatch<> density;
-    // u_sol.extract(density);
-    // auto rho = A.getCoeff(density, GLeft);
-    // gsInfo<<"Plotting in Paraview...\n";
-    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    // collection.options().setSwitch("plotElements", true);
-    // collection.options().setSwitch("base64", export_b64);
-    // collection.options().setInt("plotElements.resolution", 16);
-    // collection.options().setInt("numPoints", 10000);
-    // collection.newTimeStep(&mpLeft);
-    // collection.addField((ilapl(u_sol, GLeft)+ SFunc ).sqNorm(),"Density function");
-    // collection.saveTimeStep();
-    // collection.save();
-    // gsFileManager::open("ParaviewOutput/solution.pvd");
-    // return 0;
-    //auto density = MAE.buildDensity(f);
-    auto Psitp = MAE.buildMultiPatch(density);
+    auto density = MAE.buildDensity(elwise, numRefine);
+    auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 4: Define hierarchical adaptive mapping
-     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    ###   Step 3: Define hierarchical adaptive mapping
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsMultiPatch<> Psi;
     for(size_t i =0; i<Psitp.nPatches(); ++i)
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
@@ -216,7 +190,6 @@ int main(int argc, char *argv[])
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
     geometryMap PP = A.getMap(Psi);
-    auto ff_GPsi   = A.getCoeff(f, PP);
     
     gsStopwatch timer;
     // --------------- adaptive refinement ---------------
@@ -298,9 +271,8 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            // ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
-            //if (IntensityMAE > 1.)
-            ev.integralElWise( ff_GPsi );
+            ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
             // Compute the global error indicators.
@@ -385,7 +357,6 @@ int main(int argc, char *argv[])
         //collection.addField(rhu_sol,"density function");
         collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
-        collection.addField(ff_GPsi,"Density function");
         collection.saveTimeStep();
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");

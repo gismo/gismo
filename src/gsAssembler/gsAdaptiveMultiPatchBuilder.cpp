@@ -113,13 +113,34 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(std::vector<double> elwiseERROR) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine) const 
 {
     gsInfo<<"<>density function";
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
+    //...............error as a piecewise constant function
+    gsMultiBasis<double> basis_0(m_mapping, true);
+    basis_0.setDegree(0);
+    for (int r=0; r<=m_numRefine; ++r)
+    {
+        basis_0.uniformRefine();
+    }
+    gsExprAssembler<> A_0(1,1);
+    // Elements used for numerical integration
+    A_0.setIntegrationElements(basis_0);    
+    // Set the discretization space
+    space u_0          = A_0.getSpace(basis_0);
+    A_0.initSystem();
+    auto errorVector = A_0.rhs();
+    solution error_sol = A_0.getSolution(u_0, errorVector);
+    //..
+    index_t n = errorVector.rows();
+    for (index_t i1 = 0; i1 < n; i1++){
+        errorVector(i1) = elwiseERROR[i1];
+    }
+    //...............End error as a function
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -143,69 +164,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(std::vector<double> elw
     A.assemble(
     u *u.tr() //matrix
     ,
-    u * 1.  //rhs vector
+    u * error_sol  //rhs vector
     );
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
-
-    index_t n = densityVector.rows();
-    index_t nx = std::sqrt(n);
-    index_t ny = std::sqrt(n);
-    assert(m_basis.minCwiseDegree() == this->m_basis.maxCwiseDegree() && "Error: Degrees in all directions are not equal!");
-    index_t degree = m_basis.minCwiseDegree();
-
-    for (index_t i1 = 0; i1 < degree; i1++){
-        for (index_t i2 = 0; i2 <= i1; i2++){
-                for (index_t j1 = 0; j1 < degree; j1++){
-                    for (index_t j2 = 0; j2 <= j1; j2++){
-                        index_t k1 = i1 * nx + j1;
-                        index_t k2 = i2 * nx + j2;
-                        densityVector(k1) += elwiseERROR[k2]/((i1+1)*(j1+1));
-                        //.. lasqt basis functions
-                        i1 = nx - i1 - 1;
-                        i2 = nx - i2 - 1;  
-                        j1 = ny - j1 - 1;
-                        j2 = ny - j2 - 1;
-                        k1 = i1 * nx + j1;
-                        k2 = i2 * nx + j2;
-                        densityVector(k1) += elwiseERROR[k2]/((i1+1)*(j1+1));
-                    }
-                }
-                //... higher than degree
-                for (index_t j1 = degree; j1 < ny-degree; j1++){
-                    for (index_t j2 = j1-degree; j2 <= j1; j2++){
-                        index_t k1 = i1 * nx + j1;
-                        index_t k2 = i2 * nx + j2;
-                        densityVector(k1) += elwiseERROR[k2]/((i1+1)*(degree+1));
-                    }
-                }
-        }
-    }
-    for (index_t i1 = degree; i1 < nx-degree; i1++){
-        for (index_t i2 = i1-degree; i2 <= i1; i2++){
-                for (index_t j1 = 0; j1 < degree; j1++){
-                    for (index_t j2 = 0; j2 <= j1; j2++){
-                        index_t k1 = i1 * nx + j1;
-                        index_t k2 = i2 * nx + j2;
-                        densityVector(k1) += elwiseERROR[k2]/((degree+1)*(j1+1));
-                    }
-                }
-                //... higher than degree
-                for (index_t j1 = degree; j1 < ny-degree; j1++){
-                    for (index_t j2 = j1-degree; j2 <= j1; j2++){
-                        index_t k1 = i1 * nx + j1;
-                        index_t k2 = i2 * nx + j2;
-                        densityVector(k1) += elwiseERROR[k2]/((degree+1)*(degree+1));
-                    }
-                }
-        }
-    }
-    //u.setup(bc_mae, dirichlet::l2Projection, 0);
-    A.initSystem();
-    A.assemble(
-    u *u.tr() //matrix
-    ,
-    u * density_sol.val()  //rhs vector
-    );
+    //...
     gsMultiPatch<> density;
     density_sol.extract(density);
     gsInfo<<"<>\n";

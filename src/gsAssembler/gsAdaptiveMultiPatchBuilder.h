@@ -21,7 +21,8 @@ public:
     // Method to build a density function
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
-    gsMultiPatch<> buildDensity(std::vector<double> elwiseERROR) const;
+    // Method to build a density function from a given solution vector
+    gsMultiPatch<> buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine) const;
 
     // Method to build a multipatch solution
     gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density) const;
