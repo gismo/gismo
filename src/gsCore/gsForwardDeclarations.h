@@ -166,8 +166,9 @@ template <class T=real_t>                class gsBernsteinBasis;
 template <short_t d, class T=real_t>     class gsTensorBernsteinBasis;
 
 //template <class T=real_t>              class gsHKnotVector;
-template <short_t d, class T=real_t>     class gsHBSplineBasis;
+// template <short_t d, class T=real_t>     class gsHBSplineBasis;
 template <short_t d, class T=real_t, bool Trunc=true>     class gsTHBSplineBasis;
+template <short_t d, class T=real_t>     using gsHBSplineBasis = gsTHBSplineBasis<d,T,false>;
 template <short_t d, class T=real_t>     class gsTHBSpline;
 template <short_t d, class T=real_t, class Z=index_t>     class gsHDomain;
 template <short_t d, class T=real_t>     class gsRationalTHBSplineBasis;
