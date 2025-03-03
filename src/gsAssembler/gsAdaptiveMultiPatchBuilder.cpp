@@ -133,18 +133,33 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     // Set the discretization space
     space u_0          = A_0.getSpace(basis_0);
     A_0.initSystem();
-    auto errorVector = A_0.rhs();
+    auto errorVector   = A_0.rhs();
     solution error_sol = A_0.getSolution(u_0, errorVector);
     //..
-    index_t n = errorVector.rows();
-    for (index_t i1 = 0; i1 < n; i1++){
-        auto Elcontr = elwiseERROR[i1];
-        index_t s = 1;
-        for (index_t i2 = std::max(0,i1-circleN); i2 < std::min(n,i1+circleN); i2++){
-            Elcontr += elwiseERROR[i2];
-            s       += 1;
+    index_t n1   = basis_0.basis(0).component(0).numElements();
+    index_t n2   = basis_0.basis(0).component(1).numElements();
+    index_t n  = errorVector.rows();
+    for (index_t i1 = 0; i1 < n1; i1++){
+        for (index_t j1 = 0; j1 < n2; j1++){
+            auto i = i1*n2 + j1;
+            auto Elcontr = elwiseERROR[i];
+            index_t s = 1;
+            for (index_t i2 = std::max(0,i1-circleN); i2 < std::min(n1,i1+circleN); i2++){
+                for (index_t j2 = std::max(0,j1-circleN); j2 < std::min(n2,j1+circleN); j2++){
+                    auto j   = i2*n2 + j2;
+                    Elcontr += elwiseERROR[j];
+                    s       += 1;
+                }
+            }
+            errorVector(i) = Elcontr/s;
         }
-        errorVector(i1) = Elcontr/s;
+    }
+    auto Maxvalue  = errorVector.maxCoeff();
+    auto Minvalue  = errorVector.minCoeff();
+    auto meanvalue = 0.1*(Maxvalue + Minvalue);
+    for (index_t i1 = 0; i1 < n; i1++){
+        if (errorVector(i1) > Minvalue+meanvalue)
+        errorVector(i1) = Minvalue+meanvalue;
     }
     //...............End error as a function
 

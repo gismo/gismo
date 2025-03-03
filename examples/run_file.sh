@@ -15,14 +15,13 @@ EXECUTABLE="./bin/rh_refinement_example"
 
 # Parameters (tags) to run the executable with -r 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
 TAGS=(
-    "-r 2 -u 4 -f 20. -l 5 -a 0.0 -c 1 -p 0 -e 1"
-    "-r 2 -u 4 -f 20. -l 5 -a 0.3 -c 1 -p 0 -e 1"
-    "-r 2 -u 4 -f 20. -l 5 -a 0.7 -c 1 -p 1 -e 1"
+    "-r 2 -u 4 -f 13. -l 2 -a 0.0 -c 0 -p 0 -e 1"
+    #"-r 2 -u 4 -f 10. -l 5 -a 0.7 -c 3 -p 2 -e 0"
 )
 
 # Run the executable with each set of parameters
 for TAG in "${TAGS[@]}"; do
     echo "Running $EXECUTABLE with parameters: $TAG"
-    $EXECUTABLE --errorsave $TAG
+    $EXECUTABLE --errorsave --plot $TAG
     echo "-------------------------------------------------"
 done

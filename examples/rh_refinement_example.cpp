@@ -31,11 +31,12 @@ int main(int argc, char *argv[])
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
-    real_t adaptRefParam  = 0.; // ... adapt parameter.
+    real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
+    index_t circleN       = 1;
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/circle.xml");
+    //std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/circle.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -62,8 +63,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; //= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -152,16 +153,15 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
     solution u_sol = A.getSolution(ru, rsolVector);
-    ev.integralElWise( (igrad(u_sol, GLeft) ).sqNorm() );
+    ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
     auto elwise = ev.elementwise();
-    gsInfo<< "." <<std::flush; // Linear solving done
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, numRefine);
+    auto density = MAE.buildDensity(elwise, numRefine, circleN);
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -204,6 +204,8 @@ int main(int argc, char *argv[])
 
     // Set the source term for Poisson equation
     auto SFunc      = A.getCoeff(rhs, PP);
+
+    auto DFunc    = A.getCoeff(density);
 
     // Recover manufactured solution for Poisson equation
     auto u_ex       = ev.getVariable(s, PP);
@@ -271,6 +273,7 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
             ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+            //ev.integralElWise( DFunc.val() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -353,7 +356,7 @@ int main(int argc, char *argv[])
         collection.newTimeStep(&Psi);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
-        //collection.addField(rhu_sol,"density function");
+        collection.addField(DFunc,"density function");
         collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();
