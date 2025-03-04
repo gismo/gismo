@@ -37,7 +37,7 @@ class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
     /// @brief Associated geometry type.
-    typedef typename util::conditional<Trunc, gsTHBSpline<d,T>, gsHBSpline<d,T>>::type GeometryType;
+    typedef typename util::conditional<Trunc, gsTHBSpline<d,T>, gsTHBSpline<d,T,false>>::type GeometryType;
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
 

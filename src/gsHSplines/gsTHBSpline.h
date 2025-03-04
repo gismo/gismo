@@ -33,11 +33,11 @@ namespace gismo
     \ingroup HSplines
 */
 
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 class gsTHBSpline : public gsGeoTraits<d,T>::GeometryBase
 {
 public:
-    typedef gsTHBSplineBasis<d,T> Basis;
+    typedef gsTHBSplineBasis<d,T,Trunc> Basis;
 
     typedef typename Basis::tensorBasis tensorBasis;
 
@@ -53,7 +53,7 @@ public:
     util::conditional<d==1, gsConstantFunction<T>, gsTHBSpline<static_cast<short_t>(d-1),T>
                       >::type BoundaryGeometryType;
 
-    typedef typename gsTHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
+    typedef typename gsTHBSplineBasis<d,T,Trunc>::BoundaryBasisType BoundaryBasisType;
 
 public:
 
@@ -110,14 +110,19 @@ public:
 
 private:
 
+    // TODO Miss implementation
     ///get B-spline control points on a given box of a certain level by refining eveywhere
     void getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned l, gsTensorBSpline<2> geo) const;
+    
+    // TODO Miss implementation
     ///function for getBsplinePatchGlobal
     void globalRefinement(int level)const;
-
+    
+    // TODO Miss implementation
     ///initialization of cmatrix
     void initialize_cmatrix(int col, int c_level) const;
 
+    // TODO Miss implementation
     ///convert the coefficient matrix mat in the given direction to a column of the control points matrix
     void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
 
