@@ -116,13 +116,6 @@ void gsTHBSplineBasis<d,T,Trunc>::representBasis()
             this->_knotIndexToDiadicIndex(level,high);
         }
         
-        // Switch between  HB-Spline and THB-Spline
-        if(!Trunc)
-        {
-            this->m_is_truncated[j] = -1;
-            continue;
-        }
-
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
         // based only on B-Splines (and not THB-Splines).
@@ -1468,7 +1461,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalSingle_into(index_t i,
                                             const gsMatrix<T>& u,
                                             gsMatrix<T>& result) const
 {
-    if (this->m_is_truncated[i] == -1)  // basis function not truncated
+    if (!isTruncated(i))  // basis function not truncated
     {
         unsigned level = this->levelOf(i);
         unsigned tensor_index = flatTensorIndexOf(i, level);
@@ -1493,7 +1486,7 @@ void gsTHBSplineBasis<d,T,Trunc>::deriv2Single_into(index_t i,
                                               gsMatrix<T>& result) const
 {
 
-    if (this->m_is_truncated[i] == -1) // basis function not truncated
+    if (isTruncated(i)) // basis function not truncated
     {
         const unsigned level = this->levelOf(i);
         const unsigned fl_tensor_index = flatTensorIndexOf(i, level);
@@ -1600,7 +1593,7 @@ void gsTHBSplineBasis<d,T,Trunc>::derivSingle_into(index_t i,
                                              gsMatrix<T>& result) const
 {
 
-    if (this->m_is_truncated[i] == -1) // basis function not truncated
+    if (!isTruncated(i)) // basis function not truncated
     {
         unsigned level = this->levelOf(i);
         unsigned fl_tensor_index = flatTensorIndexOf(i, level);
