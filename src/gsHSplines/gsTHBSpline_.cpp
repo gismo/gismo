@@ -61,10 +61,16 @@ CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<2,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<3,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<4,real_t,false> >;
 
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<1,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<2,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<3,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<4,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsTHBSpline<1,real_t,true> >;
+CLASS_TEMPLATE_INST gsXml< gsTHBSpline<2,real_t,true> >;
+CLASS_TEMPLATE_INST gsXml< gsTHBSpline<3,real_t,true> >;
+CLASS_TEMPLATE_INST gsXml< gsTHBSpline<4,real_t,true> >;
+
+CLASS_TEMPLATE_INST gsXml< gsTHBSpline<1,real_t,false> >;
+CLASS_TEMPLATE_INST gsXml< gsTHBSpline<2,real_t,false> >;
+CLASS_TEMPLATE_INST gsXml< gsTHBSpline<3,real_t,false> >;
+CLASS_TEMPLATE_INST gsXml< gsTHBSpline<4,real_t,false> >;
+
 }
 
 #ifdef GISMO_WITH_PYBIND11

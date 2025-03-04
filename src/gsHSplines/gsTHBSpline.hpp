@@ -380,7 +380,7 @@ class gsXml< gsTHBSpline<d,T,Trunc> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTHBSpline<TMPLA2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsTHBSpline<TMPLA3(d,T,Trunc)>);
     static std::string tag () { return "Geometry"; }
     static std::string type () { return "THBSpline"+to_string(d); }
 

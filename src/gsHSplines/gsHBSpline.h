@@ -1,131 +1,131 @@
-/** @file gsHBSpline.h
+// /** @file gsHBDeprecated.h
 
-    @brief Provides declaration of THBSplineBasis class.
+//     @brief Provides declaration of THBSplineBasis class.
 
-    This file is part of the G+Smo library.
+//     This file is part of the G+Smo library.
 
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//     This Source Code Form is subject to the terms of the Mozilla Public
+//     License, v. 2.0. If a copy of the MPL was not distributed with this
+//     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): G. Kiss, A. Mantzaflaris, J. Speh
-*/
+//     Author(s): G. Kiss, A. Mantzaflaris, J. Speh
+// */
 
-#pragma once
+// #pragma once
 
-#include <ostream>
+// #include <ostream>
 
-#include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsGeometry.h>
-#include <gsHSplines/gsTHBSplineBasis.h>
+// #include <gsCore/gsLinearAlgebra.h>
+// #include <gsCore/gsGeometry.h>
+// #include <gsHSplines/gsTHBSplineBasis.h>
 
-namespace gismo
-{
+// namespace gismo
+// {
 
-/** \brief
-    A hierarchical B-Spline function, in \em d dimensions.
+// /** \brief
+//     A hierarchical B-Spline function, in \em d dimensions.
 
-    This is the geometry type associated with gsHBSplineBasis.
+//     This is the geometry type associated with gsHBSplineBasis.
 
-    \tparam T is the coefficient type
+//     \tparam T is the coefficient type
 
-    \ingroup geometry
-    \ingroup HSplines
-*/
+//     \ingroup geometry
+//     \ingroup HSplines
+// */
 
-template<short_t d, class T>
-class gsHBSpline : public gsGeoTraits<d,T>::GeometryBase
-{
-public:
-    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
+// template<short_t d, class T>
+// class gsHBDeprecated : public gsGeoTraits<d,T>::GeometryBase
+// {
+// public:
+//     typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
-    typedef gsTHBSplineBasis<d,T,false> Basis;
+//     typedef gsTHBSplineBasis<d,T,false> Basis;
 
-    /// Shared pointer for gsHBSpline
-    typedef memory::shared_ptr< gsHBSpline > Ptr;
+//     /// Shared pointer for gsHBDeprecated
+//     typedef memory::shared_ptr< gsHBDeprecated > Ptr;
 
-    /// Unique pointer for gsHBSpline
-    typedef memory::unique_ptr< gsHBSpline > uPtr;
+//     /// Unique pointer for gsHBDeprecated
+//     typedef memory::unique_ptr< gsHBDeprecated > uPtr;
 
-    typedef typename
-    util::conditional<d==1, gsConstantFunction<T>, gsHBSpline<static_cast<short_t>(d-1),T>
-                      >::type BoundaryGeometryType;
+//     typedef typename
+//     util::conditional<d==1, gsConstantFunction<T>, gsHBDeprecated<static_cast<short_t>(d-1),T>
+//                       >::type BoundaryGeometryType;
 
-    typedef typename gsTHBSplineBasis<d,T,false>::BoundaryBasisType BoundaryBasisType;
+//     typedef typename gsTHBSplineBasis<d,T,false>::BoundaryBasisType BoundaryBasisType;
 
-public:
+// public:
 
-    /// Default empty constructor
-    gsHBSpline() { }
+//     /// Default empty constructor
+//     gsHBDeprecated() { }
 
-    /// Construct HB-Spline by basis functions and coefficient matrix
-    gsHBSpline( const Basis * basis, const gsMatrix<T> * coefs ) :
-    Base( basis, coefs ) { }
+//     /// Construct HB-Spline by basis functions and coefficient matrix
+//     gsHBDeprecated( const Basis * basis, const gsMatrix<T> * coefs ) :
+//     Base( basis, coefs ) { }
 
-    /// Construct HB-Spline by basis functions and coefficient matrix
-    gsHBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
-    Base( basis, coefs ) { }
+//     /// Construct HB-Spline by basis functions and coefficient matrix
+//     gsHBDeprecated( const Basis & basis, const gsMatrix<T> & coefs ) :
+//     Base( basis, coefs ) { }
 
-    /// Construct B-Spline from a Tensor B-Spline
-    explicit gsHBSpline( const gsTensorBSpline<d,T> & tbsp )
-    {
-        this->m_basis = new Basis( tbsp.basis() );
-        this->m_coefs = tbsp.coefs();
-    }
+//     /// Construct B-Spline from a Tensor B-Spline
+//     explicit gsHBDeprecated( const gsTensorBSpline<d,T> & tbsp )
+//     {
+//         this->m_basis = new Basis( tbsp.basis() );
+//         this->m_coefs = tbsp.coefs();
+//     }
 
-    GISMO_CLONE_FUNCTION(gsHBSpline)
+//     GISMO_CLONE_FUNCTION(gsHBDeprecated)
 
-    GISMO_BASIS_ACCESSORS
+//     GISMO_BASIS_ACCESSORS
 
-public:
+// public:
 
-    /// Constucts an isoparametric slice of this HBSpline by fixing
-    /// \a par in direction \a dir_fixed. The resulting HBSpline has
-    /// one less dimension and is given back in \a result.
-    void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const
-    {
-        GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
-        GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
-        const BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
-        if(d==1)
-        {
-            gsMatrix<T> val(1,1),point;
-            val(0,0)=par;
-            this->eval_into(val,point);
-            result=BoundaryGeometryType(*bBasis,point);
-        }
-        else
-        {
-            gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
-            bBasis->anchors_into(anchorsSlice);
-            anchorsInGeom.resize(anchorsSlice.rows()+1,anchorsSlice.cols());
-            anchorsInGeom.topRows(dir_fixed)=anchorsSlice.topRows(dir_fixed);
-            anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
-            anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
-            this->eval_into(anchorsInGeom,vals);
-            BoundaryGeometryType* geom =
-                    dynamic_cast<BoundaryGeometryType *>(bBasis->interpolateAtAnchors(vals).release()); //todo make it better
-            GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
-            result = *geom;
-            delete geom;
-        }
-        delete bBasis;
-    }
-}; // class gsHBSpline
+//     /// Constucts an isoparametric slice of this HBSpline by fixing
+//     /// \a par in direction \a dir_fixed. The resulting HBSpline has
+//     /// one less dimension and is given back in \a result.
+//     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const
+//     {
+//         GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
+//         GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
+//         const BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
+//         if(d==1)
+//         {
+//             gsMatrix<T> val(1,1),point;
+//             val(0,0)=par;
+//             this->eval_into(val,point);
+//             result=BoundaryGeometryType(*bBasis,point);
+//         }
+//         else
+//         {
+//             gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
+//             bBasis->anchors_into(anchorsSlice);
+//             anchorsInGeom.resize(anchorsSlice.rows()+1,anchorsSlice.cols());
+//             anchorsInGeom.topRows(dir_fixed)=anchorsSlice.topRows(dir_fixed);
+//             anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
+//             anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
+//             this->eval_into(anchorsInGeom,vals);
+//             BoundaryGeometryType* geom =
+//                     dynamic_cast<BoundaryGeometryType *>(bBasis->interpolateAtAnchors(vals).release()); //todo make it better
+//             GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
+//             result = *geom;
+//             delete geom;
+//         }
+//         delete bBasis;
+//     }
+// }; // class gsHBDeprecated
 
-#ifdef GISMO_WITH_PYBIND11
+// #ifdef GISMO_WITH_PYBIND11
 
-  /**
-   * @brief Initializes the Python wrapper for the class: gsHBSpline
-   */
-  void pybind11_init_gsHBSpline2(pybind11::module &m);
-  void pybind11_init_gsHBSpline3(pybind11::module &m);
-  void pybind11_init_gsHBSpline4(pybind11::module &m);
+//   /**
+//    * @brief Initializes the Python wrapper for the class: gsHBDeprecated
+//    */
+//   void pybind11_init_gsHBSpline2(pybind11::module &m);
+//   void pybind11_init_gsHBSpline3(pybind11::module &m);
+//   void pybind11_init_gsHBSpline4(pybind11::module &m);
 
-#endif // GISMO_WITH_PYBIND11
+// #endif // GISMO_WITH_PYBIND11
 
-} // namespace gismo
+// } // namespace gismo
 
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsHBSpline.hpp)
-#endif
+// #ifndef GISMO_BUILD_LIB
+// #include GISMO_HPP_HEADER(gsHBSpline.hpp)
+// #endif

@@ -11,10 +11,10 @@ namespace gismo
 namespace internal
 {
 
-CLASS_TEMPLATE_INST gsXml< gsHBSpline<1,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHBSpline<2,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHBSpline<3,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHBSpline<4,real_t> >;
+// CLASS_TEMPLATE_INST gsXml< gsHBDeprecated<1,real_t> >;
+// CLASS_TEMPLATE_INST gsXml< gsHBDeprecated<2,real_t> >;
+// CLASS_TEMPLATE_INST gsXml< gsHBDeprecated<3,real_t> >;
+// CLASS_TEMPLATE_INST gsXml< gsHBDeprecated<4,real_t> >;
 
 }
 
