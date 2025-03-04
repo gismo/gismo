@@ -2,32 +2,20 @@
 
 #include <gsHSplines/gsTHBSplineBasis.h>
 
-// #include <gsHSplines/gsHBSplineBasis.h>
-// #include <gsHSplines/gsHBSplineBasis.hpp>
-
 #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsHBSpline.hpp>
 
 namespace gismo
 {
 
-// CLASS_TEMPLATE_INST gsDeprecated <1,real_t>;
-// CLASS_TEMPLATE_INST gsDeprecated <2,real_t>;
-// CLASS_TEMPLATE_INST gsDeprecated <3,real_t>;
-// CLASS_TEMPLATE_INST gsDeprecated <4,real_t>;
-
 namespace internal
 {
-
-// CLASS_TEMPLATE_INST gsXml< gsDeprecated<1,real_t> >;
-// CLASS_TEMPLATE_INST gsXml< gsDeprecated<2,real_t> >;
-// CLASS_TEMPLATE_INST gsXml< gsDeprecated<3,real_t> >;
-// CLASS_TEMPLATE_INST gsXml< gsDeprecated<4,real_t> >;
 
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<1,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<2,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<3,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<4,real_t> >;
+
 }
 
 #ifdef GISMO_WITH_PYBIND11
