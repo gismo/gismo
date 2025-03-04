@@ -2,21 +2,10 @@
 
 #include <gsHSplines/gsTHBSplineBasis.h>
 
-#include <gsHSplines/gsHBSpline.h>
-#include <gsHSplines/gsHBSpline.hpp>
 
 namespace gismo
 {
 
-namespace internal
-{
-
-// CLASS_TEMPLATE_INST gsXml< gsHBDeprecated<1,real_t> >;
-// CLASS_TEMPLATE_INST gsXml< gsHBDeprecated<2,real_t> >;
-// CLASS_TEMPLATE_INST gsXml< gsHBDeprecated<3,real_t> >;
-// CLASS_TEMPLATE_INST gsXml< gsHBDeprecated<4,real_t> >;
-
-}
 
 #ifdef GISMO_WITH_PYBIND11
 

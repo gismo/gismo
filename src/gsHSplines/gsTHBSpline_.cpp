@@ -11,8 +11,6 @@
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsTHBSpline.hpp>
 
-#include <gsHSplines/gsHBSpline.h>
-
 namespace gismo
 {
 

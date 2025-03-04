@@ -103,7 +103,7 @@ namespace internal
 
 /* ----------- HSplines ----------- */
 // #include <gsHSplines/gsHBSplineBasis.h>
-#include <gsHSplines/gsHBSpline.h>
+// #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSpline.h>
