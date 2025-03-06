@@ -144,6 +144,10 @@ public:
   void pybind11_init_gsTHBSpline3(pybind11::module &m);
   void pybind11_init_gsTHBSpline4(pybind11::module &m);
 
+  void pybind11_init_gsHBSpline2(pybind11::module &m);
+  void pybind11_init_gsHBSpline3(pybind11::module &m);
+  void pybind11_init_gsHBSpline4(pybind11::module &m);
+
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
