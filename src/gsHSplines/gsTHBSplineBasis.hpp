@@ -1486,7 +1486,7 @@ void gsTHBSplineBasis<d,T,Trunc>::deriv2Single_into(index_t i,
                                               gsMatrix<T>& result) const
 {
 
-    if (isTruncated(i)) // basis function not truncated
+    if (!isTruncated(i)) // basis function not truncated
     {
         const unsigned level = this->levelOf(i);
         const unsigned fl_tensor_index = flatTensorIndexOf(i, level);
