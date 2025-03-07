@@ -238,6 +238,21 @@ int main(int argc, char *argv[])
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 
+
+    gsExprEvaluator<> ev;
+    ev.setIntegrationElements(cdrAss.multiBasis());
+    // // Set the geometry optimal map
+    geometryMap PP    = ev.getMap(Psi);  
+    // Recover rhs for Poisson equation
+    auto SFunc        = ev.getVariable(SourceFunc, PP);
+    auto u_ex         = ev.getVariable(s, PP);
+    auto frho         = ev.getVariable(f, PP);
+
+    // Coeffs for advection-reaction diffusion equation
+    auto coeff_convPP = ev.getVariable(coeff_conv, PP);
+    auto coeff_diffPP = ev.getVariable(coeff_diffMax, PP);
+    auto coeff_reacPP = ev.getVariable(coeff_reac, PP);
+
     for (int r=0; r<=numRefine; ++r)
     {
         // Generate system matrix and load vector
