@@ -33,10 +33,10 @@ int main(int argc, char *argv[])
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
-    index_t circleN       = 1;
+    index_t circleN       = 0;
     // Specify the file path
-    //std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/circle.xml");
+    std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/circle.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -63,8 +63,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    // fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft;// = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -154,6 +154,7 @@ int main(int argc, char *argv[])
     rsolVector = solver.solve(A.rhs());
     solution u_sol = A.getSolution(ru, rsolVector);
     ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
+    //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise = ev.elementwise();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -273,7 +274,6 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
             ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
-            //ev.integralElWise( DFunc.val() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -289,8 +289,11 @@ int main(int argc, char *argv[])
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
-            if (r%2==0)
+
             NumArMarEl = NumArMarEl + FactRefPar;
+            if (r%2==0){
+                FactRefPar = 2*FactRefPar;
+            }
             }
     }
     //! [Solver loop]    

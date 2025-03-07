@@ -138,14 +138,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     //..
     index_t n1   = basis_0.basis(0).component(0).numElements();
     index_t n2   = basis_0.basis(0).component(1).numElements();
-    index_t n  = errorVector.rows();
     for (index_t i1 = 0; i1 < n1; i1++){
         for (index_t j1 = 0; j1 < n2; j1++){
             auto i = i1*n2 + j1;
-            auto Elcontr = elwiseERROR[i];
-            index_t s = 1;
-            for (index_t i2 = std::max(0,i1-circleN); i2 < std::min(n1,i1+circleN); i2++){
-                for (index_t j2 = std::max(0,j1-circleN); j2 < std::min(n2,j1+circleN); j2++){
+            double Elcontr = 0.;
+            index_t s = 0;
+            for (index_t i2 = std::max(0,i1-circleN); i2 <= std::min(n1,i1+circleN); i2++){
+                for (index_t j2 = std::max(0,j1-circleN); j2 <= std::min(n2,j1+circleN); j2++){
                     auto j   = i2*n2 + j2;
                     Elcontr += elwiseERROR[j];
                     s       += 1;
@@ -154,6 +153,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
             errorVector(i) = Elcontr/s;
         }
     }
+    index_t n  = errorVector.rows();
     auto Maxvalue  = errorVector.maxCoeff();
     auto Minvalue  = errorVector.minCoeff();
     auto meanvalue = 0.1*(Maxvalue + Minvalue);
@@ -368,6 +368,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
 
         auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol) - grad(u_sol) ).sqNorm()  ));
         auto L2MAERes = math::sqrt(ev.integral( pow( CoeffDensity - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det(),2)  ));
+        auto Ddet     = ev.min(jac(PP).det());
         Iter_mae[ip]  = ip;
         h1Res[ip]     = l2errRes;// Compute the H1 residual
         l2err[ip]     = L2MAERes;// Compute the L2 error in MA equation
@@ -375,7 +376,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
             // ! end Picard loop
             gsInfo<< "\n Niter in Picard : " << ip
                     << ".. H1 residual : "<<std::scientific<<l2errRes
-                    << ".. L2 MAE residual : "<<std::scientific<<L2MAERes<<"..";
+                    << ".. L2 MAE residual : "<<std::scientific<<L2MAERes
+                    << ".. min JAcobian : "<<Ddet<<"..";
             break;
             } //
     }//for loop
