@@ -206,8 +206,6 @@ int main(int argc, char *argv[])
     // Set the source term for Poisson equation
     auto SFunc      = A.getCoeff(rhs, PP);
 
-    auto DFunc    = A.getCoeff(density);
-
     // Recover manufactured solution for Poisson equation
     auto u_ex       = ev.getVariable(s, PP);
 
@@ -217,6 +215,7 @@ int main(int argc, char *argv[])
 
     gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
+    //adapt_parameter << 0,0,0,0,0;
     gsInfo<< "(dot1=assembled, dot2=solved)\n";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     for (int r=0; r<=numLRefine; ++r)
@@ -291,9 +290,9 @@ int main(int argc, char *argv[])
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
             NumArMarEl = NumArMarEl + FactRefPar;
-            if (r%2==0){
-                FactRefPar = 2*FactRefPar;
-            }
+            // if (r%2==0){
+            FactRefPar = 2*FactRefPar;
+            //}
             }
     }
     //! [Solver loop]    
@@ -359,7 +358,7 @@ int main(int argc, char *argv[])
         collection.newTimeStep(&Psi);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
-        collection.addField(DFunc,"density function");
+        collection.addField((  ilapl(ru_sol, PP)+ SFunc ).sqNorm(),"indecator");
         collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();

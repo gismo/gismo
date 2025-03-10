@@ -223,6 +223,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     // It could be beneficial for the composition of the two mappings
     //A.options().setReal("quA", 2.0);
     //A.options().setInt("quB", 2);
+    A.options().setSwitch("SameElement",false);
 
     // Elements used for numerical integration
     A.setIntegrationElements(this->m_basis);
@@ -326,9 +327,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
-        geometryMap PPrho = A.getMap(Psi);
-        auto rho          = PPrho(density);
-        // auto rho = A.getCoeff(density, PP);
+        //geometryMap PPrho = A.getMap(Psi);
+        // auto rho          = PPrho(density);
+        auto rho = A.getCoeff(density, PP);
         // ... update residual
         sv0               = solVector;
         solution u_sol    = A.getSolution(u, solVector);
@@ -405,10 +406,11 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
     // Psi.addAutoBoundaries();
     geometryMap PP = A.getMap(Psi);
-    PP(this->m_mapping);
+    //PP(this->m_mapping);
+    auto comp = A.getCoeff(this->m_mapping, PP);
     A.initSystem(2);
     //Obtain control points for the gradient of mpLeft.comp(Psi)
-    A.assemble( v * v.tr() , v * PP.tr() );// blocked by this one
+    A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
     // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
     vsolVector = this->Poisson.L2ProjectVec(A.rhs());
     v_sol.extract(Psi);

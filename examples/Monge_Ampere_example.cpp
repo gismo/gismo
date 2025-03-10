@@ -65,9 +65,9 @@ int main(int argc, char *argv[])
 
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/butterfly.xml");
+    std::string fn("pde/mhd.xml");
     //std::string fn("pde/infinit_plate.xml");
-    std::string fn("pde/circle.xml");
+    //std::string fn("pde/circle.xml");
     //std::string fn("surfaces/egg.xml");
     //std::string fn("domain2d/lake.xml");
 
@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
     gsExprAssembler<> A(1,1);
     // A.options().setReal("quA", 2.0);
     // A.options().setInt("quB", 2);
+    A.options().setSwitch("SameElement",false);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -307,8 +308,8 @@ int main(int argc, char *argv[])
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
         geometryMap PPrho = A.getMap(Psi);
-        auto rho = PPrho(density);
-        // auto rho = A.getCoeff(density, PP);
+        //auto rho = PPrho(density);
+        auto rho = A.getCoeff(density, PP);
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;

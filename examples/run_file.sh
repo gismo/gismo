@@ -18,15 +18,15 @@ TAGS=(
     #"-r 2 -u 4 -f  0.  -l 5 -a 0.0 -c 0 -p 0 -e 1"
     #"-r 2 -u 4 -f  0.  -l 5 -a 0.5 -c 0 -p 3 -e 1"
     #"-r 2 -u 4 -f  0.  -l 5 -a 0.7 -c 1 -p 0 -e 1"
-    #"-r 2 -u 4 -f  15. -l 5 -a 0.0 -c 0 -p 0 -e 1"
-    #"-r 2 -u 4 -f  15. -l 5 -a 0.5 -c 1 -p 3  -e 1"
-    #"-r 2 -u 4 -f  15. -l 3 -a 0.5 -c 0 -p 2  -e 1"
-    #"-r 2 -u 4 -f  15. -l 5 -a 0.7 -c 2 -p 3 -e 1"
+    #"-r 2 -u 4 -f  12. -l 5 -a 0.0 -c 0 -p 0 -e 1"
+    #"-r 2 -u 4 -f  12. -l 5 -a 0.5 -c 1 -p 3  -e 1"
+    "-r 2 -u 4 -f  12. -l 5 -a 0.5 -c 1 -p 3  -e 1"
+    #"-r 2 -u 4 -f  12. -l 5 -a 0.7 -c 2 -p 3 -e 1"
 )
 
 # Run the executable with each set of parameters
 for TAG in "${TAGS[@]}"; do
     echo "Running $EXECUTABLE with parameters: $TAG"
-    $EXECUTABLE --errorsave --plot $TAG
+    $EXECUTABLE --errorsave $TAG
     echo "-------------------------------------------------"
 done
