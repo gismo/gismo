@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
-   gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+   gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1, 0.0, 0.0);
    //... patch 1
    //mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
 //    //... patch 2 (L-shape)
@@ -198,10 +198,11 @@ int main(int argc, char *argv[])
     //gsFunctionExpr<> f("1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2)))",2);
     //gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
     // Manufactured density function
-    gsFunctionExpr<> f("1.+6.*( 1/(1.+exp(( (y-0.98)**2+(x-0.899)**2  - 0.002)/0.001)) + 1/(1.+exp((y -x  - 0.25)/0.001)) - 1./(1.+exp((y - x  - 0.15)/0.001)) +  0/(1.+exp((y - 1.0)/0.001)) - 0./(1.+exp((y - 0.975)/0.001))  +  1/(1.+exp((x - 1.0)/0.001)) - 1./(1.+exp((x - 0.95)/0.001)) )",2);    
+    //gsFunctionExpr<> f("1.+6.*( 1/(1.+exp(( (y-0.98)**2+(x-0.899)**2  - 0.002)/0.001)) + 1/(1.+exp((y -x  - 0.25)/0.001)) - 1./(1.+exp((y - x  - 0.15)/0.001)) +  0/(1.+exp((y - 1.0)/0.001)) - 0./(1.+exp((y - 0.975)/0.001))  +  1/(1.+exp((x - 1.0)/0.001)) - 1./(1.+exp((x - 0.95)/0.001)) )",2);    
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
+    gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((0.*x-0.)**2-(y-0.5)**2- 0.2)))",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
@@ -313,115 +314,115 @@ int main(int argc, char *argv[])
             setup_time += timer.stop();
 
             gsInfo<< A.numDofs() <<std::flush;
-//Optionally, assemble Nitsche
-        gsMatrix<> mu_interfaces;
-        //auto m_penalty = 1;
-        index_t i = 0;
-        for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
-        {
-            auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
-           auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-           //auto mu       = 2 * stab / m_h;
-            auto alpha   = 2 * stab / m_h;
+// //Optionally, assemble Nitsche
+//         gsMatrix<> mu_interfaces;
+//         //auto m_penalty = 1;
+//         index_t i = 0;
+//         for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
+//         {
+//             auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
+//            auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
+//            auto mu       = 2 * stab / m_h;
+//             auto alpha   = 1e+4;
 
-            // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
-            // if (m_penalty == -1)
-            //     mu = mu_interfaces(i,0) / m_h;
-            // else
-            //     mu = m_penalty / m_h;
+//             // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
+//             // if (m_penalty == -1)
+//             //     mu = mu_interfaces(i,0) / m_h;
+//             // else
+//             //     mu = m_penalty / m_h;
 
-            std::vector<boundaryInterface> iFace;
-            iFace.push_back(*it);
-            A.assembleIfc(iFace,
-                    // //B11
-                        //   +mu * u.left() *
-                        //   u.left().tr() * nv(G.left()).norm(),
-                        //  -0.5*alpha *
-                        //   (igrad(u.left(), G) * tv(G.left()).normalized() * u.left().tr()).tr() *
-                        //   nv(G.left()).norm(),
-                        //  -0.5*alpha *
-                        //     (u.left()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
-                        //   nv(G.left()).norm(),
-                    // //B12
-                        //  -mu * u.left() *
-                        //   u.right().tr() * nv(G.left()).norm(),
-                        //  +0.5*alpha *
-                        //   (igrad(u.left(), G) * tv(G.left()).normalized() * u.right().tr()).tr() *
-                        //   nv(G.left()).norm(),
-                        //  -0.5*alpha *
-                        //     (u.left()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
-                        //   nv(G.left()).norm(),
-                    // //B21
-                        //  - mu * u.right() *
-                        //   u.left().tr() * nv(G.left()).norm(),
-                        //  -0.5*alpha *
-                        //   (igrad(u.right(), G) * tv(G.right()).normalized() * u.left().tr()).tr() *
-                        //   nv(G.left()).norm(),
-                        //  +0.5*alpha *
-                        //     (u.right()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
-                        //   nv(G.left()).norm(),
-                    // //B22
-                        //   + mu * u.right() *
-                        //   u.right().tr() * nv(G.left()).norm(),
-                        //  +0.5*alpha *
-                        //   (igrad(u.right(), G) * tv(G.right()).normalized() * u.right().tr()).tr() *
-                        //   nv(G.left()).norm(),
-                        //  +0.5*alpha *
-                        //     (u.right()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
-                        //   nv(G.left()).norm()
+//             std::vector<boundaryInterface> iFace;
+//             iFace.push_back(*it);
+//             A.assembleIfc(iFace,
+//                     //B11
+//                           +mu * u.left() *
+//                           u.left().tr() * nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                           (igrad(u.left(), G) * tv(G.left()).normalized() * u.left().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                             (u.left()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B12
+//                          -mu * u.left() *
+//                           u.right().tr() * nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                           (igrad(u.left(), G) * tv(G.left()).normalized() * u.right().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                             (u.left()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B21
+//                          - mu * u.right() *
+//                           u.left().tr() * nv(G.left()).norm(),
+//                          -0.5*alpha *
+//                           (igrad(u.right(), G) * tv(G.right()).normalized() * u.left().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                             (u.right()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm(),
+//                     //B22
+//                           + mu * u.right() *
+//                           u.right().tr() * nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                           (igrad(u.right(), G) * tv(G.right()).normalized() * u.right().tr()).tr() *
+//                           nv(G.left()).norm(),
+//                          +0.5*alpha *
+//                             (u.right()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
+//                           nv(G.left()).norm()
                           
-                    // // E11
-                    //      0.5*alpha * igrad(u.left(), G.left()) * nv(G.left()).normalized() *
-                    //       (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E12
-                    //       -0.5*alpha *(igrad(u.left(), G.left()) * nv(G.left()).normalized()) *
-                    //       (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E21
-                    //       -0.5*alpha *(igrad(u.right(), G.right()) * nv(G.left()).normalized()) *
-                    //       (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // // E22
-                    //      0.5*alpha * igrad(u.right(), G.right()) * nv(G.left()).normalized() *
-                    //       (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm()
+//                     // // E11
+//                     //      0.5*alpha * igrad(u.left(), G.left()) * nv(G.left()).normalized() *
+//                     //       (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E12
+//                     //       -0.5*alpha *(igrad(u.left(), G.left()) * nv(G.left()).normalized()) *
+//                     //       (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E21
+//                     //       -0.5*alpha *(igrad(u.right(), G.right()) * nv(G.left()).normalized()) *
+//                     //       (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // // E22
+//                     //      0.5*alpha * igrad(u.right(), G.right()) * nv(G.left()).normalized() *
+//                     //       (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm()
 
-                    // //E11
-                    //     0.5* alpha * igrad(u.left(), G.left()) * tv(G.left()).normalized() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E12
-                    //       -0.5* alpha *(igrad(u.left(), G.left()) * tv(G.left()).normalized()) *
-                    //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E21
-                    //       - 0.5*alpha *(igrad(u.right(), G.right()) * tv(G.right()).normalized()) *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //E22
-                    //       0.5*alpha * igrad(u.right(), G.right()) * tv(G.right()).normalized() *
-                    //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm()
+//                     // //E11
+//                     //     0.5* alpha * igrad(u.left(), G.left()) * tv(G.left()).normalized() *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E12
+//                     //       -0.5* alpha *(igrad(u.left(), G.left()) * tv(G.left()).normalized()) *
+//                     //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E21
+//                     //       - 0.5*alpha *(igrad(u.right(), G.right()) * tv(G.right()).normalized()) *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //E22
+//                     //       0.5*alpha * igrad(u.right(), G.right()) * tv(G.right()).normalized() *
+//                     //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm()
                     
-                     //E11  Nitsche or Penality method for forcing tangential part
-                        - u.left() *
-                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * meas(G),
-                    //-E12
-                          u.left() *
-                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * meas(G),
-                    //-E21
-                        -  u.right() *
-                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * meas(G),
-                    //E22
-                          u.right() *
-                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * meas(G),
-                    //E11
-                          alpha * u.left() *
-                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //-E12
-                          -alpha *u.left() *
-                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //-E21
-                          alpha * u.right() *
-                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //E22
-                         - alpha *u.right() *
-                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm()
-            );
-        }
+//                     //  //E11  Nitsche or Penality method for forcing tangential part
+//                     //     - u.left() *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * meas(G),
+//                     // //-E12
+//                     //       u.left() *
+//                     //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * meas(G),
+//                     // //-E21
+//                     //     -  u.right() *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * meas(G),
+//                     // //E22
+//                     //       u.right() *
+//                     //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * meas(G),
+//                     // //E11
+//                     //       alpha * u.left() *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E12
+//                     //       -alpha *u.left() *
+//                     //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //-E21
+//                     //       alpha * u.right() *
+//                     //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
+//                     // //E22
+//                     //      - alpha *u.right() *
+//                     //       (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm()
+//             );
+//         }
             timer.restart();
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
@@ -491,7 +492,7 @@ int main(int argc, char *argv[])
 
                 // ... correct boundary
                 //if (PNormalCP)
-                //    ProjectionNormalCPoints(Psi, mp);
+                    ProjectionNormalCPoints(Psi, mp);
                 //if (CornersLshape)
                 //    CorrectCornersLshape(Psi, mp);
                 
@@ -515,133 +516,6 @@ int main(int argc, char *argv[])
                 
                 // .. update Coeffeicient of conductivity
                 CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
-//Optionally, assemble Nitsche
-        gsMatrix<> mu_interfaces;
-        //auto m_penalty = 1;
-        index_t i = 0;
-        for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
-        {
-            //auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
-           //auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-           // auto mu       = 10.;//2 * stab / m_h;
-            auto alpha = 1e+4;
-
-            // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
-            // if (m_penalty == -1)
-            //     mu = mu_interfaces(i,0) / m_h;
-            // else
-            //     mu = m_penalty / m_h;
-
-            std::vector<boundaryInterface> iFace;
-            iFace.push_back(*it);
-            solution u_lsol = A.getSolution(u, sv0);
-            A.assembleIfc(iFace,
-                    // //B11
-                    //       +mu * u.left() *
-                    //       u.left().tr() * nv(G.left()).norm(),
-                    //      -0.5*alpha *
-                    //       (igrad(u.left(), G) * nv(G.left()).normalized() * u.left().tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    //      -0.5*alpha *
-                    //         (u.left()*(igrad(u.left(), G) * nv(G.left()).normalized()).tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    // //B12
-                    //      -mu * u.left() *
-                    //       u.right().tr() * nv(G.left()).norm(),
-                    //      +0.5*alpha *
-                    //       (igrad(u.left(), G) * nv(G.left()).normalized() * u.right().tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    //      -0.5*alpha *
-                    //         (u.left()*(igrad(u.right(), G) * nv(G.right()).normalized()).tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    // //B21
-                    //      - mu * u.right() *
-                    //       u.left().tr() * nv(G.left()).norm(),
-                    //      -0.5*alpha *
-                    //       (igrad(u.right(), G) * nv(G.right()).normalized() * u.left().tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    //      +0.5*alpha *
-                    //         (u.right()*(igrad(u.left(), G) * nv(G.left()).normalized()).tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    // //B22
-                    //       + mu * u.right() *
-                    //       u.right().tr() * nv(G.left()).norm(),
-                    //      +0.5*alpha *
-                    //       (igrad(u.right(), G) * nv(G.right()).normalized() * u.right().tr()).tr() *
-                    //       nv(G.left()).norm(),
-                    //      +0.5*alpha *
-                    //         (u.right()*(igrad(u.right(), G) * nv(G.right()).normalized()).tr()).tr() *
-                    //       nv(G.left()).norm()
-                          
-                    // // E11
-                    //      0.5*alpha * igrad(u.left(), G.left()) * nv(G.left()).normalized() *
-                    //       (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E12
-                    //       -0.5*alpha *(igrad(u.left(), G.left()) * nv(G.left()).normalized()) *
-                    //       (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E21
-                    //       -0.5*alpha *(igrad(u.right(), G.right()) * nv(G.left()).normalized()) *
-                    //       (igrad(u.left(), G.left()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // // E22
-                    //      0.5*alpha * igrad(u.right(), G.right()) * nv(G.left()).normalized() *
-                    //       (igrad(u.right(), G.right()) * nv(G.left()).normalized()).tr() * nv(G.left()).norm()
-
-                    // //E11
-                    //     0.5* alpha * igrad(u.left(), G.left()) * tv(G.left()).normalized() *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E12
-                    //       -0.5* alpha *(igrad(u.left(), G.left()) * tv(G.left()).normalized()) *
-                    //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm(),
-                    // //-E21
-                    //       - 0.5*alpha *(igrad(u.right(), G.right()) * tv(G.right()).normalized()) *
-                    //       (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    // //E22
-                    //       0.5*alpha * igrad(u.right(), G.right()) * tv(G.right()).normalized() *
-                    //       (igrad(u.right(), G.right()) * tv(G.right()).normalized()).tr() * nv(G.left()).norm()
-                    
-                     //E11  Nitsche or Penality method for forcing tangential part
-                        - u.left() *
-                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //-E12
-                          u.left() *
-                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //-E21
-                        -  u.right() *
-                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //E22
-                          u.right() *
-                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //E11
-                          alpha * u.left() *
-                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //-E12
-                          -alpha *u.left() *
-                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //-E21
-                          -alpha * u.right() *
-                          (igrad(u.left(), G.left()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm(),
-                    //E22
-                          alpha *u.right() *
-                          (igrad(u.right(), G.right()) * tv(G.left()).normalized()).tr() * nv(G.left()).norm()
-
-                    // // //
-                    //      +0.5*alpha *
-                    //       (igrad(u.left(), G) * tv(G.left()).normalized()) * u.left().tr() *
-                    //       nv(G.left()).norm(),
-                    //     //
-                    //      -0.5*alpha *
-                    //       (igrad(u.left(), G) * tv(G.left()).normalized()) * u.right().tr() *
-                    //        nv(G.left()).norm(),
-                    //     //
-                    //      -0.5*alpha *
-                    //       (igrad(u.right(), G) * tv(G.left()).normalized()) * u.left().tr() *
-                    //       nv(G.left()).norm(),
-                    //     //
-                    //      +0.5*alpha *
-                    //       (igrad(u.right(), G) * tv(G.left()).normalized() )* u.right().tr() *
-                    //       nv(G.left()).norm()
-            );
-        }
                 // MAE system
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
@@ -906,7 +780,18 @@ int main(int argc, char *argv[])
         //geometryMap PP = A.getMap(Psi);
         //auto fp = A.getCoeff(f,PP);
 
-        gsWrite(Psi, "Psi_mapping");
+        //gsWrite(Psi, "Psi_mapping");
+        gsInfo<<"Plotting in Paraview...\n";
+        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        collection.options().setSwitch("plotElements", true);
+        collection.options().setSwitch("base64", export_b64);
+        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("numPoints", 100000);
+        collection.newTimeStep(&Psi);
+        collection.saveTimeStep();
+        collection.save();
+        gsFileManager::open("ParaviewOutput/solution.pvd");
+
         gsInfo << "Result written in Psi_mapping.xml \n";
     }
     else

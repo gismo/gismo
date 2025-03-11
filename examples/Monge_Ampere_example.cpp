@@ -13,6 +13,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <fstream>  // For file operations
 
 using namespace gismo;
 //! [Include namespace]
@@ -218,6 +219,7 @@ int main(int argc, char *argv[])
     densityVector = Poisson.L2ProjectScalar(A.rhs());
     gsMultiPatch<> density;
     density_sol.extract(density);
+    gsWrite(density, "density");
     auto rho = A.getCoeff(density, G);
     // ... manipulation of density function
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
