@@ -21,6 +21,7 @@
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsTensor/gsTensorBasis.h>
 #include <gsAssembler/gsQuadrature.h>
+#include <gsDomain/gsCompositeDomain.h>
 
 #include <gsNurbs/gsNurbsBasis.h>
 
@@ -55,6 +56,12 @@ gsMultiPatch<T>::gsMultiPatch( const gsMultiPatch& other )
     // clone all geometries
     cloneAll( other.m_patches.begin(), other.m_patches.end(),
               this->m_patches.begin());
+}
+
+template<class T>
+memory::shared_ptr<gsDomain<T> > gsMultiPatch<T>::domain() const
+{
+    return memory::make_shared( new gsCompositeDomain<T>(*this) );
 }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
