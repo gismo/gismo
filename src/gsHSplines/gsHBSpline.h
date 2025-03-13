@@ -79,7 +79,7 @@ public:
 
 public:
 
-    /// Constucts an isoparametric slice of this HBSpline by fixing
+    /// Constructs an isoparametric slice of this HBSpline by fixing
     /// \a par in direction \a dir_fixed. The resulting HBSpline has
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const

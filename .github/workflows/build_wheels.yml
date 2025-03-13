@@ -3,6 +3,7 @@ name: build_python_wheels
 on:
   push:
     branches: ["stable"]
+  pull_request:
 
     
 concurrency:
@@ -14,6 +15,7 @@ jobs:
   # build wheels for macos cpython (both archs)
   macos_wheel:
     runs-on: macos-latest
+    if: github.event_name != 'pull_request'
     strategy:
       matrix:
         arch: [x86_64, arm64]
@@ -37,7 +39,9 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: artifact-macos_wheel
         path: ./wheelhouse/*.whl
+        overwrite: true
 
   # build wheels for linux cpython / x86_64
   linux_wheel:
@@ -57,13 +61,15 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: artifact-linux_wheel
         path: ./wheelhouse/*.whl
-
+        overwrite: true
 
   # build wheels for linux cpython / {aarch64, ppc64le}
   # here, we pack each wheel in a separate job, since it requires a longer time
   # to build
   linux_wheel_qemu:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -91,10 +97,12 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: artifact-linux_wheel_qemu
         path: ./wheelhouse/*.whl
-
+        overwrite: true
 
   source_dist:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -106,10 +114,11 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: artifact-source_dist
         path: ./dist/*
+        overwrite: true
 
-
-  upload_test_pypi:
+  upload_pypi:
     needs: [macos_wheel, linux_wheel, linux_wheel_qemu, source_dist]
     runs-on: ubuntu-latest
     # try to publish only if this is a push to stable branch
@@ -117,8 +126,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: artifact
+          pattern: artifact-*
           path: dist
+          merge-multiple: true
 
       - uses: pypa/gh-action-pypi-publish@v1.6.1
         with:

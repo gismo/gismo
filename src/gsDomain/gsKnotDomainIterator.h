@@ -24,7 +24,11 @@ template<class T>
 class gsKnotDomainIterator : public gsDomainIterator<T>
 {
 private:
-    typedef typename gsKnotVector<T>::const_uiterator domainIter;
+    typedef typename gsKnotVector<T>::const_uiterator knotIterator;
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
+
+    // Data members
+    knotIterator m_it, m_itEnd;
 
 public:
 
@@ -36,6 +40,9 @@ public:
     {
 
     }
+
+    gsKnotDomainIterator(const gsKnotDomainIterator & other) = default;
+    domainIter clone() const override { return domainIter(new gsKnotDomainIterator(*this)); }
 
     // Documentation in gsDomainIterator.h
     void next() override
@@ -62,7 +69,7 @@ public:
     }
 
     // Documentation in gsDomainIterator.h
-    void reset()
+    void reset() override
     {
         m_it.reset();
     }
@@ -83,16 +90,12 @@ public:
         return upper;
     }
 
-    bool isBoundaryElement() const
+    bool isBoundaryElement() const override
     {
         return ( 0==m_it.uIndex() || m_it+1==m_itEnd);
     }
 
     index_t domainDim() const {return 1;}
-
-// Data members
-private:
-    domainIter m_it, m_itEnd;
 
 }; // class gsKnotDomainIterator
 

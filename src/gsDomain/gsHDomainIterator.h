@@ -49,6 +49,7 @@ public:
 
     typedef typename hDomain::const_literator leafIterator;
 
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
 public:
 
     gsHDomainIterator(const gsHTree<d,Z> & tree,
@@ -70,6 +71,9 @@ public:
     gsHDomainIterator(domain.tree(),basis)
     {
     }
+
+    gsHDomainIterator(const gsHDomainIterator & other) = default;
+    domainIter clone() const override { return domainIter(new gsHDomainIterator(*this)); }
 
     leafIterator init(const gsHTree<d,Z> & tree)
     {

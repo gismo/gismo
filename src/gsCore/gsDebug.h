@@ -183,7 +183,6 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 /*
   Disable some Warnings
 */
-
 #ifdef _MSC_VER
 // 4100 - unreferenced formal parameter
 // 4101 - unreferenced local variable
@@ -225,15 +224,16 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 // 161  - unrecognized pragma
 // 175  - subscript out of range
 //        to avoid warnings on #pragma GCC diagnostic          
-  #pragma warning push
+#pragma warning push
   #pragma warning disable 2196 279 161 175
 
-#elif defined __clang__
+#elif defined __clang__ // or Intel icpx
 // -Wconstant-logical-operand - warning: use of logical && with constant operand; switch to bitwise & or remove constant
 // -Wbind-to-temporary-copy - warning: Warn about an unusable copy constructor when binding a reference to a temporary
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wconstant-logical-operand"
   #pragma clang diagnostic ignored "-Wbind-to-temporary-copy"
+//  #pragma clang diagnostic ignored "-Winconsistent-missing-override"
 
 #elif defined __GNUC__ // major version >=4
 // typedef locally defined but not used [-Wunused-local-typedefs]
