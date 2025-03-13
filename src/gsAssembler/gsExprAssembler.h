@@ -1053,8 +1053,8 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        typename gsBasis<T>::domainIter domIt = basis1.domain()->subdomain(iFace.first().patch)->beginBdr(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->subdomain(iFace.first().patch)->endBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
 
         // Start iteration over elements
         //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
