@@ -24,7 +24,6 @@ CLASS_TEMPLATE_INST gsTHBSplineBasis <2,real_t,true>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <3,real_t,true>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <4,real_t,true>;
 
-
 CLASS_TEMPLATE_INST gsTHBSplineBasis <1,real_t,false>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <2,real_t,false>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <3,real_t,false>;
@@ -53,7 +52,6 @@ CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<2,real_t,true> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<3,real_t,true> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<4,real_t,true> >;
 
-
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<1,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<2,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<3,real_t,false> >;
@@ -78,7 +76,7 @@ namespace py = pybind11;
 void pybind11_init_gsTHBSplineBasis2(py::module &m)
 {
   using Base  = gsHTensorBasis<2,real_t>;
-  using Class = gsTHBSplineBasis<2,real_t,true>;
+  using Class = gsTHBSplineBasis<2,real_t>;
   py::class_<Class,Base>(m, "gsTHBSplineBasis2")
 
     // Constructors
@@ -92,7 +90,7 @@ void pybind11_init_gsTHBSplineBasis2(py::module &m)
 void pybind11_init_gsTHBSplineBasis3(py::module &m)
 {
   using Base  = gsHTensorBasis<3,real_t>;
-  using Class = gsTHBSplineBasis<3,real_t,true>;
+  using Class = gsTHBSplineBasis<3,real_t>;
   py::class_<Class,Base>(m, "gsTHBSplineBasis3")
 
     // Constructors
@@ -106,7 +104,7 @@ void pybind11_init_gsTHBSplineBasis3(py::module &m)
 void pybind11_init_gsTHBSplineBasis4(py::module &m)
 {
   using Base  = gsHTensorBasis<4,real_t>;
-  using Class = gsTHBSplineBasis<4,real_t,true>;
+  using Class = gsTHBSplineBasis<4,real_t>;
   py::class_<Class,Base>(m, "gsTHBSplineBasis4")
 
     // Constructors
@@ -120,14 +118,14 @@ void pybind11_init_gsTHBSplineBasis4(py::module &m)
 void pybind11_init_gsTHBSpline2(py::module &m)
 {
   using Base  = gsGeometry<real_t>;
-	using Class = gsTHBSpline<2,real_t,true>;
+	using Class = gsTHBSpline<2,real_t>;
 	py::class_<Class,Base>(m, "gsTHBSpline2")
 
 	// Constructors
 	.def(py::init<>())
 	// this one does not work:
 	// .def(py::init<const gsTHBSplineBasis<2,real_t> *, const gsMatrix<real_t> * >())
-	.def(py::init<const gsTHBSplineBasis<2,real_t,true> &, const gsMatrix<real_t> & >())
+	.def(py::init<const gsTHBSplineBasis<2,real_t> &, const gsMatrix<real_t> & >())
 	.def(py::init<const gsTensorBSpline<2,real_t> &                      >())
 	;
 }
@@ -135,14 +133,14 @@ void pybind11_init_gsTHBSpline2(py::module &m)
 void pybind11_init_gsTHBSpline3(py::module &m)
 {
   using Base  = gsGeometry<real_t>;
-	using Class = gsTHBSpline<3,real_t,true>;
+	using Class = gsTHBSpline<3,real_t>;
 	py::class_<Class,Base>(m, "gsTHBSpline3")
 
 	// Constructors
 	.def(py::init<>())
 	// this one does not work:
 	// .def(py::init<const gsTHBSplineBasis<3,real_t> *, const gsMatrix<real_t> * >())
-	.def(py::init<const gsTHBSplineBasis<3,real_t,true> &, const gsMatrix<real_t> & >())
+	.def(py::init<const gsTHBSplineBasis<3,real_t> &, const gsMatrix<real_t> & >())
 	.def(py::init<const gsTensorBSpline<3,real_t> &                      >())
 	;
 }
@@ -150,14 +148,14 @@ void pybind11_init_gsTHBSpline3(py::module &m)
 void pybind11_init_gsTHBSpline4(py::module &m)
 {
   using Base  = gsGeometry<real_t>;
-	using Class = gsTHBSpline<4,real_t,true>;
+	using Class = gsTHBSpline<4,real_t>;
 	py::class_<Class,Base>(m, "gsTHBSpline4")
 
 	// Constructors
 	.def(py::init<>())
 	// this one does not work:
 	// .def(py::init<const gsTHBSplineBasis<4,real_t> *, const gsMatrix<real_t> * >())
-	.def(py::init<const gsTHBSplineBasis<4,real_t,true> &, const gsMatrix<real_t> & >())
+	.def(py::init<const gsTHBSplineBasis<4,real_t> &, const gsMatrix<real_t> & >())
 	.def(py::init<const gsTensorBSpline<4,real_t> &                      >())
 	;
 }
@@ -201,7 +199,7 @@ void pybind11_init_gsHTensorBasis4(py::module &m)
 void pybind11_init_gsHBSplineBasis2(py::module &m)
 {
   using Base  = gsHTensorBasis<2,real_t>;
-  using Class = gsTHBSplineBasis<2,real_t,false>;
+  using Class = gsHBSplineBasis<2,real_t>;
   py::class_<Class,Base>(m, "gsHBSplineBasis2")
 
     // Constructors
@@ -215,7 +213,7 @@ void pybind11_init_gsHBSplineBasis2(py::module &m)
 void pybind11_init_gsHBSplineBasis3(py::module &m)
 {
 	using Base  = gsHTensorBasis<3,real_t>;
-	using Class = gsTHBSplineBasis<3,real_t,false>;
+	using Class = gsHBSplineBasis<3,real_t>;
 	py::class_<Class,Base>(m, "gsHBSplineBasis3")
 
 
@@ -231,7 +229,7 @@ void pybind11_init_gsHBSplineBasis3(py::module &m)
 void pybind11_init_gsHBSplineBasis4(py::module &m)
 {
 	using Base  = gsHTensorBasis<4,real_t>;
-	using Class = gsTHBSplineBasis<4,real_t,false>;
+	using Class = gsHBSplineBasis<4,real_t>;
 	py::class_<Class,Base>(m, "gsHBSplineBasis4")
 
     // Constructors
@@ -246,7 +244,7 @@ void pybind11_init_gsHBSplineBasis4(py::module &m)
 void pybind11_init_gsHBSpline2(py::module &m)
 {
 	using Base  = gsGeometry<real_t>;
-	using Class = gsTHBSpline<2,real_t,false>;
+	using Class = gsHBSpline<2,real_t>;
 	py::class_<Class,Base>(m, "gsHBSpline2")
 
 
@@ -254,7 +252,7 @@ void pybind11_init_gsHBSpline2(py::module &m)
 	.def(py::init<>())
 	// this one does not work:
 	// .def(py::init<const gsHBSplineBasis<2,real_t> *, const gsMatrix<real_t> * >())
-	.def(py::init<const gsTHBSplineBasis<2,real_t,false> &, const gsMatrix<real_t> & >())
+	.def(py::init<const gsHBSplineBasis<2,real_t> &, const gsMatrix<real_t> & >())
 	.def(py::init<const gsTensorBSpline<2,real_t> &                           >())
 
 	// Member functions
@@ -281,14 +279,14 @@ void pybind11_init_gsHBSpline2(py::module &m)
 void pybind11_init_gsHBSpline3(py::module &m)
 {
 	using Base  = gsGeometry<real_t>;
-	using Class = gsTHBSpline<3,real_t,false>;
+	using Class = gsHBSpline<3,real_t>;
 	py::class_<Class,Base>(m, "gsHBSpline3")
 
 	// Constructors
 	.def(py::init<>())
 	// this one does not work:
 	// .def(py::init<const gsHBSplineBasis<3,real_t> *, const gsMatrix<real_t> * >())
-	.def(py::init<const gsTHBSplineBasis<3,real_t,false> &, const gsMatrix<real_t> & >())
+	.def(py::init<const gsHBSplineBasis<3,real_t> &, const gsMatrix<real_t> & >())
 	.def(py::init<const gsTensorBSpline<3,real_t> &                           >())
 
 	// Member functions
@@ -315,14 +313,14 @@ void pybind11_init_gsHBSpline3(py::module &m)
 void pybind11_init_gsHBSpline4(py::module &m)
 {
 	using Base  = gsGeometry<real_t>;
-	using Class = gsTHBSpline<4,real_t,false>;
+	using Class = gsHBSpline<4,real_t>;
 	py::class_<Class,Base>(m, "gsHBSpline4")
 
 	// Constructors
 	.def(py::init<>())
 	// this one does not work:
 	// .def(py::init<const gsHBSplineBasis<4,real_t> *, const gsMatrix<real_t> * >())
-	.def(py::init<const gsTHBSplineBasis<4,real_t,false> &, const gsMatrix<real_t> & >())
+	.def(py::init<const gsHBSplineBasis<4,real_t> &, const gsMatrix<real_t> & >())
 	.def(py::init<const gsTensorBSpline<4,real_t> &                           >())
 
 	// Member functions

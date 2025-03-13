@@ -99,7 +99,7 @@ public:
     //void getBsplinePatches(gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, std::vector< gsTensorBSpline<2> > & bpatches) const;
 
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
-//    void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
+    // void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
 
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
     void convertToBSpline( gsTensorBSpline<d,T>& result );
@@ -108,23 +108,19 @@ public:
     void increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult = 1);
 
 
-private:
+// private:
 
-    // TODO Miss implementation
     ///get B-spline control points on a given box of a certain level by refining eveywhere
-    void getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned l, gsTensorBSpline<2> geo) const;
+    // void getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned l, gsTensorBSpline<2> geo) const;
     
-    // TODO Miss implementation
     ///function for getBsplinePatchGlobal
-    void globalRefinement(int level)const;
+    // void globalRefinement(int level)const;
     
-    // TODO Miss implementation
     ///initialization of cmatrix
-    void initialize_cmatrix(int col, int c_level) const;
+    // void initialize_cmatrix(int col, int c_level) const;
 
-    // TODO Miss implementation
     ///convert the coefficient matrix mat in the given direction to a column of the control points matrix
-    void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
+    // void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
 
 public:
 
