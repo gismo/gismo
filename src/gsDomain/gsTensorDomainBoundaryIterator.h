@@ -16,7 +16,7 @@
 #include <gsDomain/gsDomainIterator.h>
 #include <gsDomain/gsTensorDomain.h>
 #include <gsUtils/gsCombinatorics.h>
-#include <gsTensor/gsBreaksIterator.h>
+#include <gsDomain/gsBreaksIterator.h>
 
 namespace gismo
 {
@@ -43,9 +43,7 @@ public:
     explicit gsTensorDomainBoundaryIterator(const gsTensorDomain<T,D> & domain,
                                             const boxSide & s)
     : gsDomainIterator<T>(0, s),
-      d( domain.dim() ),
-      lower  ( gsVector<T, D>::Zero(d) ),
-      upper  ( gsVector<T, D>::Zero(d) )
+      d( domain.dim() )
     {
         par = s.parameter();
         dir = s.direction();
@@ -128,7 +126,6 @@ public:
         lower.resize(d);
         for (short_t i = 0; i < dir ; ++i)
             lower[i]  = curElement[i].lowerCorner().value();
-        //lower[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
         lower[dir]  = (par ? curElement[dir].upperCorner().value() : curElement[dir].lowerCorner().value() );
         for (short_t i = dir+1; i < d; ++i)
             lower[i]  = curElement[i].lowerCorner().value();
@@ -147,14 +144,14 @@ public:
         return upper;
     }
 
-    const T getPerpendicularCellSize() const
+    const T getPerpendicularCellSize() const override
     {
         return curElement[dir].upperCorner().value() - curElement[dir].lowerCorner().value();
     }
 
     GISMO_DEPRECATED
     void adjacent( const gsVector<bool> & orient,
-                   gsDomainIterator<T>  & other )
+                   gsDomainIterator<T>  & other ) override
     {
         GISMO_NO_IMPLEMENTATION
         // // 2D only for now
@@ -204,9 +201,6 @@ private:
 
     // Current element as pointers to it's supporting mesh-lines
     gsVector<domainIterWrapper, D> curElement;
-
-    // parameter coordinates of current grid cell
-    gsVector<T> lower, upper;
 
 public:
 #   define Eigen gsEigen

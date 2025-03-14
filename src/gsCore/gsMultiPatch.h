@@ -162,6 +162,8 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMultiPatch)
 
+    memory::shared_ptr<gsDomain<T> > domain() const;
+
 public:
 
     /// Get a const-iterator to the patches

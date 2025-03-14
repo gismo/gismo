@@ -112,22 +112,24 @@ public:
     {
         leafIterator it = m_tree.beginLeafIterator();
         size_t nel(0);
-        size_t nel_local;
         while (it.good())
         {
-            nel_local = 1;
-            nel_local = ( it.upperCorner() - it.lowerCorner() ).prod();
-
-            /*
-            else if  (leafOnBoundary(s,it))
+            if (m_basis.manualLevels() )
             {
+                index_t ll, uu;
+                size_t nel_local = 1;
                 for (short_t i = 0; i < d; ++i)
-                    if (i != s.direction())
-                        nel_local *= it.upperCorner()[i] - it.lowerCorner()[i];
+                {
+                    ll = it.lowerCorner()[i];
+                    uu = it.upperCorner()[i];
+                    m_basis._diadicIndexToKnotIndex(it.level(),i,ll);
+                    m_basis._diadicIndexToKnotIndex(it.level(),i,uu);
+                    nel_local *= uu - ll;
+                }
+                nel += nel_local;
             }
-            */
-
-            nel +=  nel_local;
+            else
+                nel += ( it.upperCorner() - it.lowerCorner() ).prod();
             it.next();
         }
         return nel;
@@ -146,7 +148,18 @@ public:
                 nel_local = 1;
                 for (short_t i = 0; i < d; ++i)
                     if (i != s.direction())
-                        nel_local *= it.upperCorner()[i] - it.lowerCorner()[i];
+                    {
+                        if (m_basis.manualLevels() )
+                        {
+                            index_t ll = it.lowerCorner()[i];
+                            index_t uu = it.upperCorner()[i];
+                            m_basis._diadicIndexToKnotIndex(it.level(),s.direction(),ll);
+                            m_basis._diadicIndexToKnotIndex(it.level(),s.direction(),uu);
+                            nel_local *= uu - ll;
+                        }
+                        else
+                            nel_local *= it.upperCorner()[i] - it.lowerCorner()[i];
+                    }
                 nel +=  nel_local;
             }
             it.next();
@@ -177,18 +190,17 @@ private:
         {
             // AM: a little ugly for now, to be improved
             size_t diadicSize;
-            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(&m_basis);
-            if (hbasis->manualLevels() )
+            if (m_basis.manualLevels() )
             {
-                gsKnotVector<T> kv = hbasis->tensorLevel(leaf.level()).knots(s.direction());
+                const gsKnotVector<T> & kv = m_basis.tensorLevel(leaf.level()).knots(s.direction());
                 index_t start = 0;
                 index_t end  = kv.uSize()-1;
-                hbasis->_knotIndexToDiadicIndex(leaf.level(),s.direction(),start);
-                hbasis->_knotIndexToDiadicIndex(leaf.level(),s.direction(),end);
+                m_basis._knotIndexToDiadicIndex(leaf.level(),s.direction(),start);
+                m_basis._knotIndexToDiadicIndex(leaf.level(),s.direction(),end);
                 diadicSize = end - start;
             }
             else
-                diadicSize = hbasis->tensorLevel(leaf.level()).knots(s.direction()).uSize() - 1;
+                diadicSize = m_basis.tensorLevel(leaf.level()).knots(s.direction()).uSize() - 1;
             return static_cast<size_t>(leaf.upperCorner().at(s.direction()) ) == diadicSize;// todo: more efficient
         }
         else

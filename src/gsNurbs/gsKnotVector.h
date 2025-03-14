@@ -184,7 +184,7 @@ public: // iterator ends
 
     gsMatrix<T> boundingBox() const override
     {
-        gsMatrix<T> box(2,1);
+        gsMatrix<T> box(1,2);
         box << m_repKnots.front(), m_repKnots.back();
         return box;
     }

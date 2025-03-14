@@ -35,6 +35,8 @@ class gsCompositeDomainIterator : public gsDomainIterator<T>
     typedef gsDomainIterator<T> Base;
     typedef typename gsDomain<T>::Ptr domainPtr;
     typedef std::vector<domainPtr> domainContainer;
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
+
     domainContainer m_domains;
     std::vector<size_t> m_numEl; //offsets
     gsDomainIteratorWrapper<T> m_cur;
@@ -52,6 +54,9 @@ public:
             m_numEl.push_back(m_numEl.back()+sd->numElements());
         m_cur = m_domains.front()->beginAll();
     }
+
+    gsCompositeDomainIterator(const gsCompositeDomainIterator & other) = default;
+    domainIter clone() const override { return domainIter(new gsCompositeDomainIterator(*this)); }
 
     virtual ~gsCompositeDomainIterator() { }
 
@@ -130,6 +135,18 @@ public:
             m_domains[i] = multiBasis.basis(i).domain();
     }
 
+    /** @brief Constructor from a \ref gsMultipatch.
+     *
+     * @param mp The multipatch from which the domains are extracted.
+     */
+    //gsCompositeDomain(const gsFunctionSet<T> & multiBasis)
+    gsCompositeDomain(const gsMultiPatch<T> & mp)
+    : Base(), m_domains(mp.nPieces()), m_topology(&mp.topology())
+    {
+        for (index_t i = 0; i != mp.nPieces(); ++i)
+            m_domains[i] = mp.patch(i).basis().domain();
+    }
+
     // void insert(Ptr other);
 
     Ptr subdomain(index_t k) const override { return m_domains[k]; }
@@ -152,8 +169,17 @@ public:
         return sz;
     }
 
+    /** @brief Degree (maximum) of the domain
+    */
     short_t degree(short_t i = 0) const override
-    { return m_domains.front()->degree(i); }
+    {
+        GISMO_ASSERT(m_domains.size(), "Empty composite domain.");
+        short_t result = m_domains[0]->degree(i);
+        for (size_t p = 0; p < m_domains.size(); ++p)
+            if (m_domains[p]->degree(i) > result )
+                result = m_domains[p]->degree(i);
+        return result;
+    }
 
     /// See \ref gsDomain.h for documentation.
     short_t dim() const override { return m_domains.front()->dim(); }
