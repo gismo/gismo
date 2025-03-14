@@ -1091,9 +1091,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 {
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
-
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
-
     //op_tuple(__printExpr(), arg_tpl);
 
     // check if the expression is a matrix, therefore being modified
@@ -1160,7 +1158,6 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 // #   endif
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
-
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
