@@ -713,7 +713,7 @@ public:
 
 };
 
-/// Get a FunctionSet from XML data
+/// Get a Function from XML data
 template<class T>
 class gsXml< gsFunction<T> >
 {
