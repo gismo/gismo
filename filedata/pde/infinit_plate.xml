@@ -2,9 +2,9 @@
 <!--This file was created by G+Smo 24.8.0-->
 <xml>
 
-  <!-- Manufactured density function : Right-hand side function of MAE : exp(-100 * ( x**2 + y**2-0.75)**2) -->
+  <!-- Manufactured density function : Right-hand side function of MAE :1./(1.+exp(((x-0.)**2+(y-0.)**2-1.5)))  -->
 
-  <Function type="FunctionExpr" id="2003" dim="2">1./(1.+exp(((x-0.)**2+(y-0.)**2-1.5))) </Function>
+  <Function type="FunctionExpr" id="2003" dim="2">exp( 20.*( x+y )) </Function>
 
     <!--
   <Function type="FunctionExpr" id="2003" dim="2"> 1./cosh( 20.*( -x+y -0.2 ) )**2 </Function>

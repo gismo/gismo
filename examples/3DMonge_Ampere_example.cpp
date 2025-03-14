@@ -95,8 +95,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; // = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
-    fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
+    // fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     // mpLeft.degreeElevate(numElevate);
@@ -143,6 +143,8 @@ int main(int argc, char *argv[])
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     //A.setOptions(Aopt);
+    A.options().setSwitch("SameElement",false);
+    
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;

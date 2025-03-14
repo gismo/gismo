@@ -66,9 +66,9 @@ int main(int argc, char *argv[])
 
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/mhd.xml");
+    //std::string fn("pde/mhd.xml");
     //std::string fn("pde/infinit_plate.xml");
-    //std::string fn("pde/circle.xml");
+    std::string fn("pde/circle.xml");
     //std::string fn("surfaces/egg.xml");
     //std::string fn("domain2d/lake.xml");
 
@@ -94,8 +94,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; //= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -207,19 +207,23 @@ int main(int argc, char *argv[])
 
     // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
     // Solution vector and solution variable
-    gsMatrix<> densityVector;
-    solution density_sol = A.getSolution(u, densityVector);
-    u.setup(bc_mae, dirichlet::l2Projection, 0);
-    A.initSystem();
-    A.assemble(
-    u *u.tr() //matrix
-    ,
-    u* ff.val()  //rhs vector
-    );
-    densityVector = Poisson.L2ProjectScalar(A.rhs());
+    // gsMatrix<> densityVector;
+    // solution density_sol = A.getSolution(u, densityVector);
+    // u.setup(bc_mae, dirichlet::l2Projection, 0);
+    // A.initSystem();
+    // A.assemble(
+    // u *u.tr() //matrix
+    // ,
+    // u* ff.val()  //rhs vector
+    // );
+    // densityVector = Poisson.L2ProjectScalar(A.rhs());
+    // gsMultiPatch<> density;
+    // density_sol.extract(density);
+    // gsWrite(density, "density");
+    std::string fr("pde/density_hand.xml");
     gsMultiPatch<> density;
-    density_sol.extract(density);
-    gsWrite(density, "density");
+    gsFileData<> fdr(fr);
+    fdr.getId(1, density);
     auto rho = A.getCoeff(density, G);
     // ... manipulation of density function
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
@@ -466,13 +470,13 @@ int main(int argc, char *argv[])
         gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
         geometryMap PPF = A.getMap(Psi);
-        auto ff_TG      = A.getCoeff(f, PPF);
+        auto ff_TG      = A.getCoeff(density, PPF);
         // --------------- adaptive refinement ---------------
         // Specify cell-marking strategy...
         MarkingStrategy adaptRefCrit = PUCA;
         //MarkingStrategy adaptRefCrit = GARU;
         //MarkingStrategy adaptRefCrit = errorFraction;
-        real_t adaptRefParam = 0.7;
+        real_t adaptRefParam = 0.75;
         // Elements used for numerical integration
         A.setIntegrationElements(dbasis);
         gsExprEvaluator<> ev(A);
@@ -485,6 +489,8 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
             ev.integralElWise( ( ff_TG ).sqNorm() );
+            //ev.integralElWise( 1/jac(PPF).absDet() );
+
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
 
