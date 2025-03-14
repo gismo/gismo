@@ -1315,6 +1315,12 @@ bool gsFileData<T>::readOffFile( String const & fn )
         else
             return false;
 
+    for (int i = 0; i < nedges; i++)
+        if ( getline(file, line) )
+            tmp << line.substr(0,line.size()) << std::endl;
+        else
+            return false;
+
     g->value( internal::makeValue( tmp.str(), *data) );
     tmp.clear();
 

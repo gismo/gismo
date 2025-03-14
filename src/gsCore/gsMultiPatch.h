@@ -188,6 +188,20 @@ public:
 
 public:
 
+    /// Utility function to reserve \a N patches (caution: empty pointers)
+    void reserve(size_t N)
+    {
+        clear();
+        m_patches.reserve(N);
+        setBoxes(N);
+    }
+
+    void setPatch(index_t pid, typename gsGeometry<T>::uPtr ptr)
+    {
+        ptr->setId(pid);
+        m_patches[pid] = ptr.release();
+    }
+
     const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
 
     gsMultiPatch<T> coord(const index_t c) const;

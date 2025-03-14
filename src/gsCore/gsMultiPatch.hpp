@@ -46,7 +46,7 @@ gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
     m_patches.push_back(geo.clone().release());
     //m_patches[0]->setId(0); // Note: for the single-patch constructor the id remains unchanged
     addBox();
-    this->addAutoBoundaries();
+    this->addAutoBoundaries();//inefficient
 }
 
 template<class T>
