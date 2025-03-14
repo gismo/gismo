@@ -26,10 +26,8 @@
 namespace gismo
 {
 
-
-template<short_t d, class T>
-gsMatrix<index_t>  gsTHBSplineBasis<d,T>::
-boundaryOffset(boxSide const & s,index_t offset) const
+template<short_t d, class T, bool Trunc>
+gsMatrix<index_t>  gsTHBSplineBasis<d,T, Trunc>::boundaryOffset(boxSide const & s,index_t offset) const
 {
     if (1!=offset)
         return gsHTensorBasis<d,T>::boundaryOffset(s,offset);
@@ -72,16 +70,16 @@ boundaryOffset(boxSide const & s,index_t offset) const
 
 }
 
-template<short_t d, class T>
-typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
+template<short_t d, class T, bool Trunc>
+typename gsTHBSplineBasis<d,T,Trunc>::BoundaryBasisType * gsTHBSplineBasis<d,T,Trunc>::basisSlice(index_t dir_fixed,T par ) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
     GISMO_ASSERT(dir_fixed>=0 && static_cast<index_t>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
     const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType::uPtr bBSplineBasis =
         this->m_bases[0]->boundaryBasis(side);
-    typename gsTHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
-        new typename gsTHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
+    typename gsTHBSplineBasis<d,T,Trunc>::BoundaryBasisType* bBasis =
+        new typename gsTHBSplineBasis<d,T,Trunc>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
 
     if(d!=1)
     {
@@ -92,8 +90,8 @@ typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basis
     return bBasis;
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::representBasis()
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::representBasis()
 {
     // Cleanup previous basis
     this->m_is_truncated.resize(this->size());
@@ -117,7 +115,7 @@ void gsTHBSplineBasis<d,T>::representBasis()
             this->_knotIndexToDiadicIndex(level,low);
             this->_knotIndexToDiadicIndex(level,high);
         }
-
+        
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
         // based only on B-Splines (and not THB-Splines).
@@ -139,8 +137,8 @@ void gsTHBSplineBasis<d,T>::representBasis()
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::_representBasisFunction(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T, Trunc>::_representBasisFunction(
     const unsigned j,
     const unsigned pres_level,
     const gsVector<index_t, d>& finest_low,
@@ -237,8 +235,8 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T, Trunc>::_saveNewBasisFunPresentation(
     const gsMatrix<T>& coefs,
     const gsVector<index_t, d>& act_size_of_coefs,
     const unsigned j,
@@ -296,8 +294,8 @@ void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
 }
 
 
-template<short_t d, class T>
-unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
+template<short_t d, class T, bool Trunc>
+unsigned gsTHBSplineBasis<d,T,Trunc>::_basisFunIndexOnLevel(
     const gsVector<index_t, d>& index,
     const unsigned level,
     const gsVector<index_t, d>& fin_low,
@@ -335,8 +333,8 @@ unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::_truncate(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T, Trunc>::_truncate(
     gsMatrix<T>& coefs,
     const gsVector<index_t, d>& act_size_of_coefs,
     const gsVector<index_t, d>& size_of_coefs,
@@ -420,8 +418,8 @@ void gsTHBSplineBasis<d,T>::_truncate(
 }
 
 
-template<short_t d, class T>
-unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
+template<short_t d, class T, bool Trunc>
+unsigned gsTHBSplineBasis<d,T,Trunc>::_updateSizeOfCoefs(
     const unsigned clevel,
     const unsigned flevel,
     const gsVector<index_t, d>& finest_low,
@@ -467,10 +465,10 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
 }
 
 // return the B-spline representation of a THB-spline subpatch
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 template<short_t dd>
 typename util::enable_if<dd==2,void>::type
-gsTHBSplineBasis<d,T>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
+gsTHBSplineBasis<d,T, Trunc>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
                                                   gsVector<index_t> b2,
                                                   unsigned level, 
                                                   const gsMatrix<T>& geom_coef,
@@ -518,8 +516,8 @@ gsTHBSplineBasis<d,T>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
 }
 
 // returns the list of B-spline patches to represent a THB-spline geometry
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
                                               gsMatrix<index_t>& b1, gsMatrix<index_t>& b2,
                                               gsVector<index_t>& level, gsMatrix<index_t>& nvertices) const
 { 
@@ -575,8 +573,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMa
 }
 
 // returns the list of B-spline patches to represent a THB-spline geometry
-template<short_t d, class T>
-gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const
+template<short_t d, class T, bool Trunc>
+gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const
 {
     GISMO_ASSERT(d==2,"Dim must be 2 for now");
 
@@ -603,8 +601,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
     return result;
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getConnectedComponents(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::getConnectedComponents(
     std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const
 {
     //identify the outer polylines- conected components
@@ -713,8 +711,8 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
 }
 
 //return data for trimming in parasolid
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches_trimming(
     const gsMatrix<T>& geom_coef,
     gsMatrix<T>& cp,
     gsMatrix<index_t>& b1,
@@ -883,8 +881,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
 
 
 //return data for trimming in parasolid
-template<short_t d, class T>
-gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
+template<short_t d, class T, bool Trunc>
+gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch_trimming(
     const gsMatrix<T>& geom_coef,
     std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const
 {
@@ -1033,8 +1031,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
 */
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::globalRefinement(const gsMatrix<T> & thbCoefs,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::globalRefinement(const gsMatrix<T> & thbCoefs,
                                              int level, gsMatrix<T> & lvlCoefs) const
 {
     const index_t n = thbCoefs.cols();
@@ -1160,8 +1158,8 @@ bool findNextMatch(const gsSparseVector<T> & sv, index_t & ii,
 }
 
  /*
-//template<short_t d, class T>
-//index_t gsTHBSplineBasis<d,T>::
+//template<short_t d, class T, bool Trunc>
+//index_t gsTHBSplineBasis<d,T,Trunc>::
 template<class T>
 active_detail(const gsMatrix<T> & u,
               gsMatrix<index_t> &actives,//sorted active functions
@@ -1245,8 +1243,8 @@ active_detail(const gsMatrix<T> & u,
 }
 // */
 
-template<short_t d, class T>
-index_t gsTHBSplineBasis<d,T>::numActiveMax(const gsMatrix<T> & u,
+template<short_t d, class T, bool Trunc>
+index_t gsTHBSplineBasis<d,T,Trunc>::numActiveMax(const gsMatrix<T> & u,
                                             gsMatrix<index_t> & offset) const
 {
     point low, upp, cur, mstr, str, ll, uu, cc;
@@ -1323,8 +1321,8 @@ index_t gsTHBSplineBasis<d,T>::numActiveMax(const gsMatrix<T> & u,
 
 // returns all actives at \a u from level \a lvl only
 // Does not clear result, only appends data
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::activeAtLevel_into(index_t lvl, const gsMatrix<T>& u,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::activeAtLevel_into(index_t lvl, const gsMatrix<T>& u,
                                                std::vector<index_t> & result) const
 {
     gsMatrix<index_t> ind;
@@ -1413,8 +1411,8 @@ void gsTHBSplineBasis<d,T>::activeAtLevel_into(index_t lvl, const gsMatrix<T>& u
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const
 {
     gsMatrix<T> currPoint; // HIGHLY INEFFICIENT
     point low;
@@ -1458,12 +1456,12 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::evalSingle_into(index_t i,
                                             const gsMatrix<T>& u,
                                             gsMatrix<T>& result) const
 {
-    if (this->m_is_truncated[i] == -1)  // basis function not truncated
+    if (!isTruncated(i))  // basis function not truncated
     {
         unsigned level = this->levelOf(i);
         unsigned tensor_index = flatTensorIndexOf(i, level);
@@ -1482,13 +1480,13 @@ void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::deriv2Single_into(index_t i,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::deriv2Single_into(index_t i,
                                               const gsMatrix<T>& u,
                                               gsMatrix<T>& result) const
 {
 
-    if (this->m_is_truncated[i] == -1) // basis function not truncated
+    if (!isTruncated(i)) // basis function not truncated
     {
         const unsigned level = this->levelOf(i);
         const unsigned fl_tensor_index = flatTensorIndexOf(i, level);
@@ -1506,8 +1504,8 @@ void gsTHBSplineBasis<d,T>::deriv2Single_into(index_t i,
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     /*
     // slightly slower currently (!sameElement)
@@ -1537,8 +1535,8 @@ void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const
 {
     gsMatrix<index_t> indices;
     this->active_into(u, indices);
@@ -1564,8 +1562,8 @@ void gsTHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& resul
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     gsMatrix<index_t> indices;
     this->active_into(u, indices);
@@ -1589,13 +1587,13 @@ void gsTHBSplineBasis<d,T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::derivSingle_into(index_t i,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::derivSingle_into(index_t i,
                                              const gsMatrix<T> & u,
                                              gsMatrix<T>& result) const
 {
 
-    if (this->m_is_truncated[i] == -1) // basis function not truncated
+    if (!isTruncated(i)) // basis function not truncated
     {
         unsigned level = this->levelOf(i);
         unsigned fl_tensor_index = flatTensorIndexOf(i, level);
@@ -1669,8 +1667,8 @@ inline void eval_tp(const std::vector<std::vector<gsMatrix<T> > > & cw,
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
                                              std::vector<gsMatrix<T> >& result,
                                              bool sameElement) const
 {
@@ -1947,10 +1945,10 @@ void gsTHBSplineBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::decomposeDomain(
-    typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& boundaryAABB,
-    typename gsTHBSplineBasis<d, T>::TrimmingCurves& trimCurves) const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::decomposeDomain(
+    typename gsTHBSplineBasis<d, T, Trunc>::AxisAlignedBoundingBox& boundaryAABB,
+    typename gsTHBSplineBasis<d, T, Trunc>::TrimmingCurves& trimCurves) const
 {
     Polylines polylines;
     AxisAlignedBoundingBox aabb;
@@ -2025,10 +2023,10 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 }
 
 
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 template<short_t dd>
 typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
-gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
+gsTHBSplineBasis<d,T,Trunc>::getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
                                             const unsigned level,
                                             const gsMatrix<T>& geomCoefs) const
 {
@@ -2081,8 +2079,8 @@ gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& bounding
     return gsTensorBSpline<d, T> (basis, newCoefs);
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::getBsplinePatchGlobal(gsVector<index_t> b1,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::getBsplinePatchGlobal(gsVector<index_t> b1,
                           gsVector<index_t> b2,
                           unsigned level,
                           const gsMatrix<T>& geom_coef,
@@ -2090,17 +2088,17 @@ void gsTHBSplineBasis<d, T>::getBsplinePatchGlobal(gsVector<index_t> b1,
                           gsKnotVector<T>& k2) const
 { getBsplinePatchGlobal_impl<d>(b1,b2,level,geom_coef,cp,k1,k2); };
 
-template<short_t d, class T>
-gsTensorBSpline<d,T> gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<index_t>& boundingBox,
+template<short_t d, class T, bool Trunc>
+gsTensorBSpline<d,T> gsTHBSplineBasis<d, T, Trunc>::getBSplinePatch(const std::vector<index_t>& boundingBox,
                                          const unsigned level,
                                          const gsMatrix<T>& geomCoefs) const
 { return getBSplinePatch_impl<d>(boundingBox, level, geomCoefs); }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::breakCycles(
-    typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& aabb,
-    typename gsTHBSplineBasis<d, T>::Polylines& polylines) const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::breakCycles(
+    typename gsTHBSplineBasis<d, T, Trunc>::AxisAlignedBoundingBox& aabb,
+    typename gsTHBSplineBasis<d, T, Trunc>::Polylines& polylines) const
 {
     for (size_t level = 0; level != polylines.size(); level++)
     {
@@ -2137,8 +2135,8 @@ void gsTHBSplineBasis<d, T>::breakCycles(
 // ......................................................................
 
 // utility funcition for breakCycles
-template<short_t d, class T>
-index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T> >& line,
+template<short_t d, class T, bool Trunc>
+index_t gsTHBSplineBasis<d, T, Trunc>::identifyCycle(const std::vector< std::vector< T> >& line,
                                               std::pair<T, T>& pt) const
 {
     std::map< std::pair<T, T>, index_t > times;
@@ -2185,8 +2183,8 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T>
 }
 
 // utility funcition for breakCycles
-template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::breakPolylineIntoTwoParts(
     const std::vector< std::vector< T> >& line,
     const index_t segment,
     const std::pair<T, T>& meetingPt,
@@ -2239,8 +2237,8 @@ void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
 }
 
 // utility funcition for breakCycles
-template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& polyline,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::findNewAABB(const std::vector< std::vector<T> >& polyline,
                                          std::vector<index_t>& aabb) const
 {
     T minX = polyline[0][0];
@@ -2307,8 +2305,8 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
 // Code for hierarchical coarsening
 // --------------------------------------------------------------------------------
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& result)
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::transferbyLvl (std::vector<gsSparseMatrix<T> >& result)
 {
     result.clear();
     gsVector<index_t> level;
@@ -2352,8 +2350,8 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resu
 }
 
 //todo remove
-template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
+template<short_t d, class T, bool Trunc>
+gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
 {
     int size1= 0, size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -2419,8 +2417,8 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedV
     }
     return result;
 }
-template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
+template<short_t d, class T, bool Trunc>
+gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
                                                        const std::vector<gsSortedVector<index_t> >& n,
                                                        const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
@@ -2596,8 +2594,8 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<g
     return result;
 }
 
-template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
+template<short_t d, class T, bool Trunc>
+gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
                                                       const std::vector<gsSortedVector<index_t> >& n,
                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
@@ -2833,25 +2831,25 @@ namespace internal
 {
 
 /// Get a Truncated Hierarchical B-spline basis from XML data
-template<short_t d, class T>
-class gsXml< gsTHBSplineBasis<d,T> >
+template<short_t d, class T, bool Trunc>
+class gsXml< gsTHBSplineBasis<d,T,Trunc> >
 {
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<TMPLA2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<TMPLA3(d,T,Trunc)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "THBSplineBasis"+ (d>1 ? to_string(d):""); }
 
-    static gsTHBSplineBasis<d,T> * get (gsXmlNode * node)
+    static gsTHBSplineBasis<d,T,Trunc> * get (gsXmlNode * node)
     {
-        return getHTensorBasisFromXml< gsTHBSplineBasis<d,T> > (node);
+        return getHTensorBasisFromXml< gsTHBSplineBasis<d,T,Trunc> > (node);
     }
 
-    static gsXmlNode * put (const gsTHBSplineBasis<d,T> & obj,
+    static gsXmlNode * put (const gsTHBSplineBasis<d,T,Trunc> & obj,
                             gsXmlTree & data )
     {
-        return putHTensorBasisToXml< gsTHBSplineBasis<d,T> > (obj, data);
+        return putHTensorBasisToXml< gsTHBSplineBasis<d,T,Trunc> > (obj, data);
     }
 };
 

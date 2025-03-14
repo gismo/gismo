@@ -32,7 +32,7 @@
 #include <gsOpenCascade/gsReadOcct.h>
 #endif
 
-#ifdef GISMO_WITH_PSOLID               // Extension files
+#ifdef gsParasolid_ENABLED // Extension files
 #include <gsParasolid/gsReadParasolid.h>
 #endif
 
@@ -196,7 +196,7 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
     //else if (ext== "step")
     //    return readStepFile(m_lastPath);
 #endif
-#ifdef GISMO_WITH_PSOLID
+#ifdef gsParasolid_ENABLED
     else if (ext== "xmt_txt")
         return readParasolidFile(m_lastPath);
     else if (ext== "x_t")
@@ -1310,6 +1310,12 @@ bool gsFileData<T>::readOffFile( String const & fn )
             return false;
 
     for (int i = 0; i < nfaces; i++)
+        if ( getline(file, line) )
+            tmp << line.substr(0,line.size()) << std::endl;
+        else
+            return false;
+
+    for (int i = 0; i < nedges; i++)
         if ( getline(file, line) )
             tmp << line.substr(0,line.size()) << std::endl;
         else
@@ -2541,7 +2547,7 @@ bool gsFileData<T>::readParasolidFile( String const & fn )
     // Remove extension and pass to parasolid
     //int lastindex = fn.find_last_of(".");
     //return extensions::gsReadParasolid( fn.substr(0, lastindex).c_str(), *data);
-#ifdef GISMO_WITH_PSOLID
+#ifdef gsParasolid_ENABLED
     return extensions::gsReadParasolid( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);

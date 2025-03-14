@@ -13,8 +13,6 @@
 
 #include <gismo.h>
 
-#include <gsAssembler/gsExprEvaluator.h>
-
 using namespace gismo;
 
 int main(int argc, char *argv[])

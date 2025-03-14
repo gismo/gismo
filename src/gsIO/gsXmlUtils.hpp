@@ -28,7 +28,6 @@
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorNurbs.h>
 
-#include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSpline.h>
 
 #include <gsModeling/gsPlanarDomain.h>

@@ -106,8 +106,8 @@ namespace internal
 #include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
-#include <gsHSplines/gsHBSplineBasis.h>
-#include <gsHSplines/gsHBSpline.h>
+// #include <gsHSplines/gsHBSplineBasis.h>
+// #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSpline.h>

@@ -17,7 +17,9 @@ using namespace gismo;
 
 void report( const gsVector<>& computedSolution, const gsVector<>& exactSolution, bool& succeeded )
 {
-    gsInfo << "  Computed solution: " << computedSolution.transpose() << "\n";
+    if ( computedSolution.size() < 50 )
+        gsInfo << "  Computed solution: " << computedSolution.transpose() << "\n";
+
     if ( (computedSolution-exactSolution).norm() <= 1.e-10 )
     {
         gsInfo << "  Test passed.\n";
@@ -67,6 +69,48 @@ int main(int argc, char** argv)
         return succeeded ? 0 : 1;
     }
 
+    #ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLU solverpLU;
+    solverpLU.compute(Q);
+    x = solverpLU.solve(b);
+    gsInfo << "Error code of pardiso "<< solverpLU.info() <<"\n";
+    gsInfo << "Solve Ax = b with PardisoLU.\n";
+    report( x, x0, succeeded );
+
+    gsSparseSolver<>::PardisoLDLT solverLDLT;
+    solverLDLT.compute(Q);
+    x = solverLDLT.solve(b);
+    gsInfo << "Error code of pardiso "<< solverLDLT.info() <<"\n";
+    gsInfo << "Solve Ax = b with PardisoLDLT.\n";
+    report( x, x0, succeeded );
+
+    gsSparseSolver<>::PardisoLLT solverLLT;
+    solverLLT.compute(Q);
+    x = solverLLT.solve(b);
+    gsInfo << "Error code of pardiso "<< solverLLT.info() <<"\n";
+    gsInfo << "Solve Ax = b with PardisoLLT.\n";
+    report( x, x0, succeeded );
+#   else
+    gsInfo << "PARDISO is not available.\n";
+#   endif
+
+#ifdef GISMO_WITH_SUPERLU
+    gsSparseSolver<>::SuperLU solverSLU;
+    solverSLU.compute(Q);
+    x = solverSLU.solve(b);
+    gsInfo << "Solve Ax = b with Super.\n";
+    report( x, x0, succeeded );
+
+#   else
+    gsInfo << "SuperLU is not available.\n";
+#   endif
+
+    #ifdef GISMO_WITH_PASTIX
+    gsInfo << "PastiX is not available.\n";
+#   else
+    gsInfo << "PastiX is not available.\n";
+#   endif
+
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);
     x = solverCGI.solve(b);
@@ -113,48 +157,6 @@ int main(int argc, char** argv)
     x = solverLU.solve(b);
     gsInfo << "Solve Ax = b with Eigen's LU factorization.\n";
     report( x, x0, succeeded );
-
-#ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLU solverpLU;
-    solverpLU.compute(Q);
-    x = solverpLU.solve(b);
-    gsInfo << "Error code of pardiso "<< solverpLU.info() <<"\n";
-    gsInfo << "Solve Ax = b with PardisoLU.\n";
-    report( x, x0, succeeded );
-
-    gsSparseSolver<>::PardisoLDLT solverLDLT;
-    solverLDLT.compute(Q);
-    x = solverLDLT.solve(b);
-    gsInfo << "Error code of pardiso "<< solverLDLT.info() <<"\n";
-    gsInfo << "Solve Ax = b with PardisoLDLT.\n";
-    report( x, x0, succeeded );
-
-    gsSparseSolver<>::PardisoLLT solverLLT;
-    solverLLT.compute(Q);
-    x = solverLLT.solve(b);
-    gsInfo << "Error code of pardiso "<< solverLLT.info() <<"\n";
-    gsInfo << "Solve Ax = b with PardisoLLT.\n";
-    report( x, x0, succeeded );
-#   else
-    gsInfo << "PARDISO is not available.\n";
-#   endif
-
-#ifdef GISMO_WITH_SUPERLU
-    gsSparseSolver<>::SuperLU solverSLU;
-    solverSLU.compute(Q);
-    x = solverSLU.solve(b);
-    gsInfo << "Solve Ax = b with Super.\n";
-    report( x, x0, succeeded );
-
-#   else
-    gsInfo << "SuperLU is not available.\n";
-#   endif
-
-    #ifdef GISMO_WITH_PASTIX
-    gsInfo << "PastiX is not available.\n";
-#   else
-    gsInfo << "PastiX is not available.\n";
-#   endif
 
     return succeeded ? 0 : 1;
 }
