@@ -108,19 +108,8 @@ short_t gsComposedBasis<T>::maxDegree() const
 template <class T>
 gsMatrix<T> gsComposedBasis<T>::support() const
 {
-    gsMatrix<T> supp = m_basis->support();
-    // gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
-    // supp = pt.toMatrix();
-    // gsMatrix<T> result = supp;
-
-    // m_composition->invertPoints(supp,result,1e-10,true);
-
-    // supp.conservativeResize(this->domainDim(),2);
-    // for (short_t d=0; d!=this->domainDim(); d++)
-    //     supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
-
-    return supp;
-} // This should be the inverse map
+    return m_basis->support();
+}
 
 template <class T>
 gsMatrix<T> gsComposedBasis<T>::support(const index_t & i) const
@@ -145,7 +134,7 @@ gsMatrix<T> gsComposedBasis<T>::support(const index_t & i) const
     // @hverhelst: the above implementation is not robust and might yield zero volumes.
     // Therefore, we return the full support. This function is usually only called in plots
     return this->support();
-} // This should be the inverse map
+}
 
 template <class T>
 void gsComposedBasis<T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
@@ -325,12 +314,6 @@ void gsComposedBasis<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) 
 //         gsAsMatrix<T> DG = result.reshapeCol(k,nControls,td);
 //         DG = dc.reshapeCol(k,nControls,dd) * dG.reshapeCol(k,dd,td);
 //     }
-// }
-
-// memory::unique_ptr<gsGeometry<T> > makeGeometry(gsMatrix<T> coefs) const override
-// {
-//     return memory::unique_ptr<gsGeometry<T> >(new gsGeometry<T>(*this, give(coefs)));
-//     // GISMO_NO_IMPLEMENTATION;
 // }
 
 template <class T>
