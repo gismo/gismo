@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
   gsMultiPatch<real_t> optSurface = reparam.solve();
 
   // Output the resulting geometry to a Paraview file
-//  gsWriteParaview(optSurface, "optimized_surface", 1000);
+  gsWriteParaview(optSurface, "optimized_surface", 1000);
 #endif
 
   return EXIT_SUCCESS;
