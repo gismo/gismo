@@ -14,7 +14,6 @@
 #pragma once
 
 
-#include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 
 namespace gismo
