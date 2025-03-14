@@ -19,7 +19,7 @@
 #include <gsIO/gsXmlGenericUtils.hpp>
 #include <gsTensor/gsGridIterator.h>
 #include <gsUtils/gsMesh/gsMesh.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {
