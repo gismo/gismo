@@ -133,21 +133,22 @@ public:
 
     /// Returns the \a i th control of the function
     // const typename gsMatrix<T>::CoeffReturnType & control(index_t i) const override { return gsAsConstVector<T>(m_parameters.data(),m_parameters.size())(i);}
-    const T & control(index_t i) const override { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
-          T & control(index_t i)       override { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
-
+//    const T & control(index_t i) const override { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
+//          T & control(index_t i)       override { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
+    const T & control(index_t i) const { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
+    T & control(index_t i)       { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
 
     // const gsVector<T> & parameters() const { return m_parameters; };
     //       gsVector<T> & parameters()       { return m_parameters; };
 
     /// Returns the number of controls of the function
-    size_t nControls() const override
+    size_t nControls() const
     {
         return m_mapper.freeSize();
     }
 
     /// Returns the control derivative
-    virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const override
+    virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const
     {
         gsMatrix<T> tmp;
 
@@ -190,7 +191,6 @@ private:
             else
                 for (index_t d = 0; d!=domain.targetDim(); d++)
                     mapper.markBoundary(0,boundary,d);
-
         }
         mapper.finalize();
     }

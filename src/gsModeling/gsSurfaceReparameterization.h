@@ -84,6 +84,7 @@ namespace gismo {
 	geometryMap G = m_evaluator.getMap(cgeom);
 	auto FFF = jac(G).tr() * jac(G);
 	auto m_integration = (FFF.trace() / meas(G)).val() + pow(FFF.det().val(), 2) / pow(m_area, 2);
+//        auto m_integration = (FFF.trace() / meas(G)).val();
 
 	return m_evaluator.integral(m_integration);
   }
@@ -164,12 +165,11 @@ namespace gismo {
 	return result;
   }
 
-
   template <typename T>
   class SurfaceReparameterization {
    public:
-	// Constructor takes the multipatch input and alpha matrix for the Mobius domain
-	SurfaceReparameterization(const gsMultiPatch<T>& patches)
+	// Constructor takes a multi-patch input and alpha matrix for the Mobius domain
+	explicit SurfaceReparameterization(const gsMultiPatch<T>& patches)
 		: m_mp(patches) {
 	  gsMatrix<T, 2, 2> alpha;
 	  alpha.setConstant(0.5);

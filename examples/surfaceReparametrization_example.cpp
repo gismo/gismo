@@ -31,9 +31,9 @@ int main(int argc, char *argv[]) {
   gsMultiPatch<real_t>::uPtr mp = gsReadFile<>(INPUT_FILE);
   gsInfo << "Loaded geometry: " << *mp << "\n";
 
-
   gsWriteParaview(*mp, "input_surface", 1000);
 
+#ifdef gsHLBFGS_ENABLED
   // Create the surface reparametrization object
   SurfaceReparameterization<real_t> reparam(*mp);
 
@@ -41,7 +41,8 @@ int main(int argc, char *argv[]) {
   gsMultiPatch<real_t> optSurface = reparam.solve();
 
   // Output the resulting geometry to a Paraview file
-  gsWriteParaview(optSurface, "optimized_surface", 1000);
+//  gsWriteParaview(optSurface, "optimized_surface", 1000);
+#endif
 
   return EXIT_SUCCESS;
 }
