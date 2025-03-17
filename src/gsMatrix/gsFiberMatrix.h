@@ -135,28 +135,28 @@ public:
 
     T & coef(index_t i, index_t j)
     {
-        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         return m_fibers[i]->coeff(j);
     }
 
     T & coeffRef(index_t i, index_t j)
     {
-        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         return m_fibers[i]->coeffRef(j);
     }
 
     void insertExplicitZero(index_t i, index_t j)
     {
-        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         m_fibers[i]->data().atWithInsertion(j);
     }
 
     bool isExplicitZero(index_t i, index_t j) const
     {
-        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         auto & vdata = m_fibers[i]->data();
         const index_t jj = vdata.searchLowerIndex(j);
