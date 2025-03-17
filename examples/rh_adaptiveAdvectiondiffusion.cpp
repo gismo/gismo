@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     bool plot             = false;
     index_t numRefine     = 3;// for local refinement:  0 means no local h-refinement
     index_t UnifRefine    = 4;// initial refinement: for MAE resolution take at least >=3 for Bejictive mapping 
-    index_t DegElevate    = 2; // degree Elevation
+    index_t DegElevate    = 1; // degree Elevation
     index_t NumArMarEl    = 1; // Number of ring of cells around marked elements
     index_t maxIter       = 30;
     double IntensityMAE   = 9.;
@@ -49,8 +49,21 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    //gsFileData<> fd(fn);
-    //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+    // // Specify the file path
+    // std::string fn("pde/infinit_plate.xml");
+    //     // Load the file
+    // gsFileData<> fd(fn);
+    // gsInfo << "Loaded file " << fd.lastPath() << "\n";
+    // // Create a gsMultipatch and add the loaded geometry
+    // gsMultiPatch<> Psi;
+    // fd.getId(1,Psi);
+    // // Elevate and p-refine the basis to order p + numElevate
+    // // where p is the highest degree in the bases
+    // Psi.degreeElevate(DegElevate);
+    // Psi.computeTopology();
+    //...
+    // gsFileData<> fd(fn);
+    // gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
     gsMultiPatch<> Psi = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     Psi.degreeElevate(DegElevate);
@@ -59,53 +72,46 @@ int main(int argc, char *argv[])
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //..... Test 1 : POISSON EQUATION
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    // // Define Stabilization method
-    // auto Stabilizationtype = stabilizerCDR::none;
-    // // convection coefficient
-    // gsFunctionExpr<> coeff_conv("0.","0.",2);
-    // // diffusion coefficient:
-    // gsFunctionExpr<> coeff_diff("1.","0","0","1.",2);
-    // // For a posterior error estimate
-    // gsFunctionExpr<> coeff_diffMax("1.",2);
-    // // reaction coefficient:
-    // gsFunctionExpr<> coeff_reac("0",2);
-    /* *********************** Test 1 *********************** */
-    // // Define  Dirichlet boundary conditions
-    // gsFunctionExpr<> Dg("1./(1.+exp((y - x  - 0.2)/0.01))", 2);
-    // // Manufactured solition
-    // gsFunctionExpr<> s("1./(1.+exp((y - x  - 0.2)/0.01))",2);
-    // // // Right-hand side function
-    // gsFunctionExpr<> SourceFunc("4.12230724487712e-5*exp(-100.0*x + 100.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**2 - 1.69934170211664e-13*exp(-200.0*x + 200.0*y)/(2.06115362243856e-9*exp(-100.0*x + 100.0*y) + 1.0)**3",2);
-    /* *********************** Test 2 *********************** */
-    // // Define  Dirichlet boundary conditions
-    // gsFunctionExpr<> Dg("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))", 2);
-    // // Manufactured solition
-    // gsFunctionExpr<> s("1./(1.+exp(100 * ( x**2 + (y-0.5)**2-0.75*sin(pi*y)) ))",2);
-    // // // Right-hand side function
-    // gsFunctionExpr<> SourceFunc("40000.0*x**2*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*x**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3 + 1.0*(75.0*pi**2*sin(pi*y) + 200)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 1.0*(40000*(y - 0.375*pi*cos(pi*y) - 0.5)**2)*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 + 200.0*exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**2 - 80000.0*(y - 0.375*pi*cos(pi*y) - 0.5)**2*exp(200*x**2 + 200*(y - 0.5)**2 - 150.0*sin(pi*y))/(exp(100*x**2 + 100*(y - 0.5)**2 - 75.0*sin(pi*y)) + 1.0)**3",2);
-
+    // Define Stabilization method
+    auto Stabilizationtype = stabilizerCDR::none;
+    // convection coefficient
+    gsFunctionExpr<> coeff_conv("1/(1.+exp((x +y  - 0.5)/(0.005*2)))","1/(1.+exp((x +y  - 0.5)/(0.005*2)))",2);
+    // diffusion coefficient:
+    gsFunctionExpr<> coeff_diff("0.005","0","0","0.005",2);
+    // For a posterior error estimate
+    gsFunctionExpr<> coeff_diffMax("0.005",2);
+    // reaction coefficient:
+    gsFunctionExpr<> coeff_reac("1./(0.005*2)*( 1.- 1/(1.+exp((x +y  - 0.5)/(0.005*2))) )",2);
+    // Define  Dirichlet boundary conditions
+    gsFunctionExpr<> Dg("1/(1.+exp((x +y  - 0.5)/(0.005*2)))", 2);
+    // Manufactured solition
+    gsFunctionExpr<> s("1/(1.+exp((x +y  - 0.5)/(0.005*2)))",2);
+    // // Right-hand side function
+    gsFunctionExpr<> SourceFunc("0.",2);
+    // analytic density function
+    gsFunctionExpr<> f("1./cosh( 10.*( x+y -0.5 ) )",2);
 
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // //..... Test 2 ADVECTION DUFFFUSION
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    // Define Stabilization method
-    auto Stabilizationtype = stabilizerCDR::SUPG;
-    // Define  Dirichlet boundary conditions
-    gsFunctionExpr<> Dg("if( y <= 0.2*(1.-x), 1,0)", 2);
-    // Manufactured solition
-    gsFunctionExpr<> s("if( y <1., 1./(1.+exp((y - x  - 0.2)/0.0001))-1/(1.+exp((1.-x)/0.0001)),0)",2);
-    // convection coefficient:
-    gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
-    // diffusion coefficient:
-    gsFunctionExpr<> coeff_diff("0.000001","0","0","0.000001",2);
-    // For a posterior error estimate
-    gsFunctionExpr<> coeff_diffMax("0.000001",2);
-    // reaction coefficient:
-    gsFunctionExpr<> coeff_reac("0",2);
-    // // Right-hand side function
-    gsFunctionExpr<> SourceFunc("0.",2);
-    //Manufactured density function 1./cosh(100. * ( -x - 0.2 + y ))
-    gsFunctionExpr<> f("( 1./cosh( 10.*( -x+y -0.2 ) )**2 + 1/(1.+exp((0.95-x)/0.01)) )",2);
+    // // Define Stabilization method
+    // auto Stabilizationtype = stabilizerCDR::SUPG;
+    // // Define  Dirichlet boundary conditions
+    // gsFunctionExpr<> Dg("if( y <= 0.2*(1.-x), 1,0)", 2);
+    // // Manufactured solition
+    // gsFunctionExpr<> s("if( y <1., 1./(1.+exp((y - x  - 0.2)/0.0001))-1/(1.+exp((1.-x)/0.0001)),0)",2);
+    // // convection coefficient:
+    // gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
+    // // diffusion coefficient:
+    // gsFunctionExpr<> coeff_diff("0.000001","0","0","0.000001",2);
+    // // For a posterior error estimate
+    // gsFunctionExpr<> coeff_diffMax("0.000001",2);
+    // // reaction coefficient:
+    // gsFunctionExpr<> coeff_reac("0",2);
+    // // // Right-hand side function
+    // gsFunctionExpr<> SourceFunc("0.",2);
+    // //Manufactured density function 1./cosh(100. * ( -x - 0.2 + y ))
+    // gsFunctionExpr<> f("( 1./cosh( 10.*( -x+y -0.2 ) )**2 + 1/(1.+exp((0.95-x)/0.01)) )",2);
     
     gsInfo<<"The Initial domain is "<< Psi.detail() << "\n";
 
@@ -184,7 +190,6 @@ int main(int argc, char *argv[])
     // Recover rhs for Poisson equation
     auto SFunc        = ev.getVariable(SourceFunc, PP);
     auto u_ex         = ev.getVariable(s, PP);
-    auto frho         = ev.getVariable(f, PP);
 
     // Coeffs for advection-reaction diffusion equation
     auto coeff_convPP = ev.getVariable(coeff_conv, PP);
@@ -208,16 +213,18 @@ int main(int argc, char *argv[])
     gsExprEvaluator<>::variable ru_sol = ev.getVariable(solField.fields());
 
     // Get the element-wise norms.
-    //ev.integralElWise( ( coeff_diffPP * ilapl(ru_sol,PP) - igrad(ru_sol, PP)[0]*0.7071067811865476- igrad(ru_sol, PP)[1]*0.7071067811865476 - coeff_reacPP * ru_sol + SFunc).sqNorm() );
+    //ev.integralElWise( ( coeff_diffPP * ilapl(ru_sol,PP) - igrad(ru_sol, PP) * coeff_convPP- coeff_reacPP * ru_sol + SFunc).sqNorm() );
     ev.integralElWise( (igrad(ru_sol, PP)).sqNorm() );
-    //ev.integralElWise( frho);
+    // ev.integralElWise( frho);
     auto elwise = ev.elementwise();
+    
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : CoPsiutes the density function
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, Psi, DegElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, UnifRefine, 0);
+    // auto density = MAE.buildDensity(elwise, UnifRefine, 0);
+    auto density = MAE.buildAnalyticDensity(f);
     auto Psitp   = MAE.buildMultiPatch(density);
     if (true){
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

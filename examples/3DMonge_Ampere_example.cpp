@@ -1,6 +1,6 @@
-/** @file 3DMonge_Ampere_example.cpp
+/** @file Monge_Ampere_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation in three dimension
+    @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation
 
     This file is part of the G+Smo library.
 
@@ -13,6 +13,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <fstream>  // For file operations
 
 using namespace gismo;
 //! [Include namespace]
@@ -58,20 +59,21 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
     }
 };
 
-
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot           = false;
     index_t numRefine   = 4;
-    index_t numLRefine  = 2;
+    index_t numLRefine  = 3;
     index_t numElevate  = 0;
-    index_t maxIter     = 30;
+    index_t numrRefine  = -1; // number of composition bewteen adaptive mappings ()
+    index_t maxIter     = 50;
     double eps          = 1e-7; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 9.;
-    bool plotMAeRes     = false;
     bool export_b64     = false;
+    bool errorsave      = false;
+
     // Specify the file path
     std::string fn("pde/example3D.xml");
 
@@ -81,12 +83,14 @@ int main(int argc, char *argv[])
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
+    cmd.addInt( "r", "numrRefine", "Number of local r-refinement compostion loops",  numrRefine);
+
     cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
-    cmd.addSwitch("plotMAeRes", "PLot only result of solving MA equation", plotMAeRes);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -95,13 +99,13 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.); 
+    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
     // fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    // mpLeft.degreeElevate(numElevate);
-    // mpLeft.computeTopology();
-
+    mpLeft.degreeElevate(numElevate);
+    mpLeft.computeTopology();
+    gsInfo << "INFO IN PARAMETRIC DOMAIN "<< mpLeft.dim() << mpLeft.parDim() <<"\n";
     //================================== -------------------------- =====================================
     //==================================   Independent of the geometry ==================================
     //================================== This part is fixed for all    ==================================
@@ -115,7 +119,7 @@ int main(int argc, char *argv[])
 
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y","z",3);
-    // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
+    // Right-hand side function : Analytical density function rho_1
     // Load the file
     gsFunctionExpr<> f;
     fd.getId(2003, f);
@@ -132,19 +136,22 @@ int main(int argc, char *argv[])
     gsInfo<<"Boundary conditions:\n"<< bc_mae <<"\n";
 
     //! [Refinement]
-    gsMultiBasis<double> dbasis(mp, true);//true: poly-splines (not NURBS)
-    
+    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    // TODO : build Hdiv solver
+    //gsMultiBasis<double> Hdivbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    //Hdivbasis.degreeElevate(1);
+
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
     //! [Refinement]
-    
+
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    //A.setOptions(Aopt);
+    // A.options().setReal("quA", 2.0);
+    // A.options().setInt("quB", 2);
     A.options().setSwitch("SameElement",false);
-    
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -164,12 +171,15 @@ int main(int argc, char *argv[])
     // Set pow for BFO method dim in parameteric domain
     auto IGdim     = G.domainDim();
 
+    // Set dimension of target geometry
+    auto ITdim     = mpLeft.geoDim();
+
     // Set factor for BFO method
-    auto gammaMAE = IGdim*(IGdim-1);
+    auto gammaMAE = factorial(G.domainDim());
 
     // Set the discretization space
     space u = A.getSpace(dbasis);
-    
+
     // Set the source term with respect to target geometry
     auto ff = A.getCoeff(f, GLeft);
 
@@ -182,11 +192,11 @@ int main(int argc, char *argv[])
     //! [Problem setup]
 
     //! [Solver loop]
-    gsSparseSolver<>::CGDiagonal solver;
-    
+    //gsSparseSolver<>::CGDiagonal solver;
+
     gsInfo<< "(dot1=assembled, dot2=solved)\n"
         "\nDoFs: ";
-    double setup_time(0), ma_time(0), slv_time(0);    
+    double setup_time(0), ma_time(0), slv_time(0);
     gsStopwatch timer;
     timer.restart();
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
@@ -194,12 +204,12 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine();
         mp.uniformRefine();
-        // mpLeft.uniformRefine();
+        mpLeft.uniformRefine();
     }
     timer.restart();
-    //Poisson_FastDiag<double> Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
     slv_time += timer.stop();
+
     // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
     // Solution vector and solution variable
     gsMatrix<> densityVector;
@@ -214,11 +224,8 @@ int main(int argc, char *argv[])
     densityVector = Poisson.L2ProjectScalar(A.rhs());
     gsMultiPatch<> density;
     density_sol.extract(density);
-    // gsWrite(density, "density");
-    // auto rho = A.getCoeff(density, G);
-    geometryMap Gloc = A.getMap(mp);
-    auto rho     = Gloc(density);
-
+    gsWrite(density, "density");
+    auto rho = A.getCoeff(density, G);
     // ... manipulation of density function
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
@@ -234,19 +241,7 @@ int main(int argc, char *argv[])
     }
     gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-    auto rhoE     = A.getCoeff(f,G);
-    gsInfo<<"Plotting in Paraview...\n";
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setSwitch("base64", export_b64);
-    collection.options().setInt("plotElements.resolution", 16);
-    collection.options().setInt("numPoints", 10000);
-    collection.newTimeStep(&mp);
-    collection.addField(ff, "density function");
-    collection.saveTimeStep();
-    collection.save();
-    gsFileManager::open("ParaviewOutput/solution.pvd");
-    return 0;    
+    
     // ......... Start solving the Monge-Ampere equation .........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
@@ -259,17 +254,15 @@ int main(int argc, char *argv[])
     auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral((int_uh_0*abs(rho.val()) + int_uh_1))};
-    // .. update Coeffeicient of conductivity
-    auto  ExprMAE     = pow( abs(pow(IGdim,IGdim) - gammaMAE)+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
-    auto IntegDensity = ev.integral(ExprMAE);
-    auto CoeffConductivity = Neumann_Int/IntegDensity;
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) )};
+
     setup_time += timer.stop();
 
     timer.restart();
     A.assemble(
     grad(u) * grad(u).tr()  + eps * u *u.tr() //matrix
     ,
-    u*  CoeffConductivity * (-1.)*ExprMAE  //rhs vector
+    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE* CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim)  //rhs vector
     );
 
     // Compute the Neumann terms defined on physical space
@@ -306,7 +299,7 @@ int main(int argc, char *argv[])
         space v = A.getSpace(dbasis);
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
-        A.initSystem(3);
+        A.initSystem(2);
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * grad(u_s) );
@@ -322,9 +315,8 @@ int main(int argc, char *argv[])
         Psi.computeTopology();
         geometryMap PP    = A.getMap(Psi);
         geometryMap PPrho = A.getMap(Psi);
-        auto rho = PPrho(density);
-        // auto rho = A.getCoeff(density, PP);
-        gsInfo << " "<<std::scientific<< ev.min(jac(PP).det())<< " / "<<std::scientific<< ev.max(jac(PP).det()) << "\n";
+        //auto rho = PPrho(density);
+        auto rho = A.getCoeff(density, PP);
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -337,7 +329,6 @@ int main(int argc, char *argv[])
         setup_time += timer.stop();
 
         timer.restart();
-        gsInfo << "\n ;;; "<< gammaMAE << "\n";
         // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
         // .. update Coeffeicient of conductivity
         auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
@@ -345,8 +336,6 @@ int main(int argc, char *argv[])
         // auto  ExprMAE     = pow( abs(pow(lapl(u_sol).val(),IGdim) - gammaMAE*hess(u_sol).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
-        gsInfo << " "<<std::scientific<< ev.min(ExprMAE)<< " / "<<std::scientific<< ev.max(ExprMAE) << "\n";
-
         // MAE system
         A.assemble(
         grad(u) * grad(u).tr()  +  eps * u * u.tr()//matrix
@@ -388,39 +377,40 @@ int main(int argc, char *argv[])
     }//for loop
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
- 
+
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time<<"\n";
     gsInfo<<"     Setup: "<< setup_time <<"\n";
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
 
-    if(plotMAeRes){
-        gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
-        //collection.options().setInt("numPoints", 1000);
-        collection.newTimeStep(&mp);
-        collection.addField(u_sol,"numerical solution");
-        collection.addField(igrad(u_sol,G),"gradient_numerical solution");
-        collection.addField(ff, "density function");
-        collection.addField(ihess(u_sol,G).det(), "Jacobian function");
-        // if(maxIter == 0)
-        // collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) , "MAE_rhs");
-        // else
-        // collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1) - ihess(u_sol,G).det()), 1./IGdim) , "MAE_rhs");
-        collection.saveTimeStep();
-        collection.save();
-        gsFileManager::open("ParaviewOutput/solution.pvd");
+    if (errorsave)
+    {
+        // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
+        std::ofstream outFile("MAEerror_analysis.txt", std::ios::trunc);
+        if (outFile.is_open())
+        {
+            outFile << "#DoF_PDE: " << IntensityMAE << " \n"<< std::scientific << Iter_mae.transpose() << "\n";
+            outFile << "# H1_resid  \n"<<std::scientific<<std::setprecision(3)<<h1Res.transpose()<<"\n";
+            outFile <<  "# l2_error  \n"<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+            outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
+            outFile.close(); // Close the file after writing
         }
+        else
+        {
+            gsInfo << "Error: Unable to open file for writing : MAEerror_analysis.txt.\n";
+        }
+    }
+    else
+    {
+        gsInfo << "Errors are not saved. To save them, try with --errorsave.\n";
+    }
     //! [Export visualization in ParaView]
     if (plot)
     {
         gsMultiPatch<> UU;
         u_sol.extract(UU);
-        gsWrite(UU, "U_solution");
+        //gsWrite(UU, "U_solution");
         auto u_s = A.getCoeff(UU);
 
         //gsMultiBasis<> gbasis(dbasis);
@@ -430,37 +420,50 @@ int main(int argc, char *argv[])
         solution v_sol = A.getSolution(v, vsolVector);
         A.initSystem(IGdim);
 
-        //gsVector<> pt(2); pt.setConstant(0.5);
-        //ev.testEval( v, pt );
-        //ev.testEval( igrad(u_sol,G), pt );
-
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * igrad(u_s,G));
         vsolVector = Poisson.L2ProjectVec(A.rhs());
-        //vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-
         gsMultiPatch<> Psi, Psitp;
         v_sol.extract(Psitp);
         //... correct the boundary
         ProjectionNormalCPoints(Psitp);
+        Psitp.addAutoBoundaries();
 
-        // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        // Psi.addAutoBoundaries();
-        // geometryMap PP = A.getMap(Psitp);
-        // auto  comp = PP(mpLeft);
-        // A.initSystem(3);
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
-        // v_sol.extract(Psitp);
+        for (index_t i = 0; i < numrRefine; i++){
+            /// compose adaptive mappings : not working after 2nd composition.(can be used for the blew-ip prblem)
+            geometryMap PP = A.getMap(Psitp);
+            auto  comp = PP(Psitp);
+            A.initSystem(IGdim);
+            //Obtain control points for the gradient of mpLeft.comp(Psi)
+            A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+            vsolVector = Poisson.L2ProjectVec(A.rhs());
+            v_sol.extract(Psitp);
+            Psitp.addAutoBoundaries();
+            Psitp.computeTopology();
+        }
+        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        geometryMap PP = A.getMap(Psitp);
+        // //:::::::::::::::::::: TESTUNG THE COMPOSITION : BUG ---  TODO ::::::::::::::::::::::::: 
+        // geometryMap PPLoc = A.getMap(Psitp);
+        // PPLoc(mpLeft);
+        // auto comp0 = A.getCoeff(mpLeft, PP);
+        // gsInfo << std::setprecision(14) <<"\n\n";
+        // gsInfo << "integral Comp ERR "<< ev.integral( (comp0-PPLoc).sqNorm()) <<"\n";//Strange behavior
+        // gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Strange behavior they are the same
 
+        //auto comp  = PP(mpLeft);
+        auto comp  = A.getCoeff(mpLeft, PP);
+        A.initSystem(ITdim);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
         Psitp.computeTopology();
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
 
         for(size_t i =0; i<Psitp.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(Psitp.patch(i)) ));
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
         Psi.addAutoBoundaries();
         Psi.computeTopology();
 
@@ -468,19 +471,16 @@ int main(int argc, char *argv[])
         gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
         geometryMap PPF = A.getMap(Psi);
-        auto ff_TG      = A.getCoeff(f, PPF);
+        auto ff_TG      = A.getCoeff(density, PPF);
         // --------------- adaptive refinement ---------------
         // Specify cell-marking strategy...
         MarkingStrategy adaptRefCrit = PUCA;
         //MarkingStrategy adaptRefCrit = GARU;
         //MarkingStrategy adaptRefCrit = errorFraction;
-        real_t adaptRefParam = 0.95;
+        real_t adaptRefParam = 0.75;
         // Elements used for numerical integration
         A.setIntegrationElements(dbasis);
         gsExprEvaluator<> ev(A);
-
-        gsInfo << " jacobian functiob min max = " << ev.min(jac(PPF).det())<<" " << ev.max(jac(PPF).det());
-        
 
         for (int r=0; r<=numLRefine; ++r)
         {
@@ -490,6 +490,8 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
             ev.integralElWise( ( ff_TG ).sqNorm() );
+            //ev.integralElWise( 1/jac(PPF).absDet() );
+
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
 
@@ -504,7 +506,7 @@ int main(int argc, char *argv[])
             gsRefineMarkedElements( Psi, elMarked, 1);
             }
 
-        //::::::::::::::::::::      end       :::::::::::::::::::::::::   
+        //::::::::::::::::::::      end       :::::::::::::::::::::::::
         gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
@@ -512,9 +514,9 @@ int main(int argc, char *argv[])
         collection.options().setInt("plotElements.resolution", 16);
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
-        // collection.addField(ff_TG, "density function");
-        // collection.addField(jac(PPF).det(), "Jacobian function");
-         collection.saveTimeStep();
+        collection.addField(ff_TG, "density function");
+        collection.addField(jac(PPF).det(), "Jacobian function");
+        collection.saveTimeStep();
         collection.save();
 
         gsFileManager::open("ParaviewOutput/solution.pvd");
