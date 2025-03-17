@@ -49,47 +49,47 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    // // Specify the file path
-    // std::string fn("pde/infinit_plate.xml");
-    //     // Load the file
-    // gsFileData<> fd(fn);
-    // gsInfo << "Loaded file " << fd.lastPath() << "\n";
-    // // Create a gsMultipatch and add the loaded geometry
-    // gsMultiPatch<> Psi;
-    // fd.getId(1,Psi);
-    // // Elevate and p-refine the basis to order p + numElevate
-    // // where p is the highest degree in the bases
-    // Psi.degreeElevate(DegElevate);
-    // Psi.computeTopology();
+    // Specify the file path
+    std::string fn("pde/infinit_plate.xml");
+        // Load the file
+    gsFileData<> fd(fn);
+    gsInfo << "Loaded file " << fd.lastPath() << "\n";
+    // Create a gsMultipatch and add the loaded geometry
+    gsMultiPatch<> Psi;
+    fd.getId(1,Psi);
+    // Elevate and p-refine the basis to order p + numElevate
+    // where p is the highest degree in the bases
+    Psi.degreeElevate(DegElevate);
+    Psi.computeTopology();
     //...
     // gsFileData<> fd(fn);
     // gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
-    gsMultiPatch<> Psi = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    Psi.degreeElevate(DegElevate);
-    Psi.computeTopology();
+    // gsMultiPatch<> Psi = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // Psi.degreeElevate(DegElevate);
+    // Psi.computeTopology();
 
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //..... Test 1 : POISSON EQUATION
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     // Define Stabilization method
-    auto Stabilizationtype = stabilizerCDR::none;
+    auto Stabilizationtype = stabilizerCDR::SUPG;
     // convection coefficient
-    gsFunctionExpr<> coeff_conv("1/(1.+exp((x +y  - 0.5)/(0.005*2)))","1/(1.+exp((x +y  - 0.5)/(0.005*2)))",2);
+    gsFunctionExpr<> coeff_conv("1/(1.+exp((x +y  - 0.)/(0.001*2)))","1/(1.+exp((x +y  - 0.)/(0.001*2)))",2);
     // diffusion coefficient:
-    gsFunctionExpr<> coeff_diff("0.005","0","0","0.005",2);
+    gsFunctionExpr<> coeff_diff("0.001","0","0","0.001",2);
     // For a posterior error estimate
-    gsFunctionExpr<> coeff_diffMax("0.005",2);
+    gsFunctionExpr<> coeff_diffMax("0.001",2);
     // reaction coefficient:
-    gsFunctionExpr<> coeff_reac("1./(0.005*2)*( 1.- 1/(1.+exp((x +y  - 0.5)/(0.005*2))) )",2);
+    gsFunctionExpr<> coeff_reac("1./(0.001*2)*( 1.- 1/(1.+exp((x +y  - 0.)/(0.001*2))) )",2);
     // Define  Dirichlet boundary conditions
-    gsFunctionExpr<> Dg("1/(1.+exp((x +y  - 0.5)/(0.005*2)))", 2);
+    gsFunctionExpr<> Dg("1/(1.+exp((x +y  - 0.)/(0.001*2)))", 2);
     // Manufactured solition
-    gsFunctionExpr<> s("1/(1.+exp((x +y  - 0.5)/(0.005*2)))",2);
+    gsFunctionExpr<> s("1/(1.+exp((x +y  - 0.)/(0.001*2)))",2);
     // // Right-hand side function
     gsFunctionExpr<> SourceFunc("0.",2);
     // analytic density function
-    gsFunctionExpr<> f("1./cosh( 10.*( x+y -0.5 ) )",2);
+    gsFunctionExpr<> f("1./cosh( 50.*( x+y -0. ) )",2);
 
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // //..... Test 2 ADVECTION DUFFFUSION
