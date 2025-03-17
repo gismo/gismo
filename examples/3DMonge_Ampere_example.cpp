@@ -214,7 +214,11 @@ int main(int argc, char *argv[])
     densityVector = Poisson.L2ProjectScalar(A.rhs());
     gsMultiPatch<> density;
     density_sol.extract(density);
-    auto rho = A.getCoeff(density, G);
+    // gsWrite(density, "density");
+    // auto rho = A.getCoeff(density, G);
+    geometryMap Gloc = A.getMap(mp);
+    auto rho     = Gloc(density);
+
     // ... manipulation of density function
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
@@ -230,18 +234,19 @@ int main(int argc, char *argv[])
     }
     gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-    // gsInfo<<"Plotting in Paraview...\n";
-    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    // collection.options().setSwitch("plotElements", true);
-    // collection.options().setSwitch("base64", export_b64);
-    // collection.options().setInt("plotElements.resolution", 16);
-    // collection.options().setInt("numPoints", 10000);
-    // collection.newTimeStep(&mp);
-    // collection.addField((int_uh_0*abs(rho.val()) + int_uh_1), "density function");
-    // collection.saveTimeStep();
-    // collection.save();
-    // gsFileManager::open("ParaviewOutput/solution.pvd");
-    
+    auto rhoE     = A.getCoeff(f,G);
+    gsInfo<<"Plotting in Paraview...\n";
+    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    collection.options().setSwitch("plotElements", true);
+    collection.options().setSwitch("base64", export_b64);
+    collection.options().setInt("plotElements.resolution", 16);
+    collection.options().setInt("numPoints", 10000);
+    collection.newTimeStep(&mp);
+    collection.addField(ff, "density function");
+    collection.saveTimeStep();
+    collection.save();
+    gsFileManager::open("ParaviewOutput/solution.pvd");
+    return 0;    
     // ......... Start solving the Monge-Ampere equation .........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
@@ -402,10 +407,10 @@ int main(int argc, char *argv[])
         collection.addField(igrad(u_sol,G),"gradient_numerical solution");
         collection.addField(ff, "density function");
         collection.addField(ihess(u_sol,G).det(), "Jacobian function");
-        if(maxIter == 0)
-        collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) , "MAE_rhs");
-        else
-        collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1) - ihess(u_sol,G).det()), 1./IGdim) , "MAE_rhs");
+        // if(maxIter == 0)
+        // collection.addField(CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) , "MAE_rhs");
+        // else
+        // collection.addField(CoeffConductivity * (-1.) * pow( pow(ilapl(u_sol,G).val(),IGdim) + gammaMAE*(CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1) - ihess(u_sol,G).det()), 1./IGdim) , "MAE_rhs");
         collection.saveTimeStep();
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");
@@ -441,14 +446,14 @@ int main(int argc, char *argv[])
 
         // //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         // Psi.addAutoBoundaries();
-        geometryMap PP = A.getMap(Psitp);
-        auto  comp = PP(mpLeft);
-        A.initSystem(3);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
-        v_sol.extract(Psitp);
+        // geometryMap PP = A.getMap(Psitp);
+        // auto  comp = PP(mpLeft);
+        // A.initSystem(3);
+        // //Obtain control points for the gradient of mpLeft.comp(Psi)
+        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        // vsolVector = Poisson.L2ProjectVec(A.rhs());
+        // v_sol.extract(Psitp);
 
         Psitp.addAutoBoundaries();
         Psitp.computeTopology();
@@ -469,10 +474,13 @@ int main(int argc, char *argv[])
         MarkingStrategy adaptRefCrit = PUCA;
         //MarkingStrategy adaptRefCrit = GARU;
         //MarkingStrategy adaptRefCrit = errorFraction;
-        real_t adaptRefParam = 0.7;
+        real_t adaptRefParam = 0.95;
         // Elements used for numerical integration
         A.setIntegrationElements(dbasis);
         gsExprEvaluator<> ev(A);
+
+        gsInfo << " jacobian functiob min max = " << ev.min(jac(PPF).det())<<" " << ev.max(jac(PPF).det());
+        
 
         for (int r=0; r<=numLRefine; ++r)
         {
@@ -504,8 +512,8 @@ int main(int argc, char *argv[])
         collection.options().setInt("plotElements.resolution", 16);
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
-        collection.addField(ff_TG, "density function");
-        collection.addField(jac(PPF).det(), "Jacobian function");
+        // collection.addField(ff_TG, "density function");
+        // collection.addField(jac(PPF).det(), "Jacobian function");
          collection.saveTimeStep();
         collection.save();
 

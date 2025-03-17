@@ -24,7 +24,7 @@ public:
     // Method to build a density function from a given solution vector
     gsMultiPatch<> buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine, index_t circleN = 0) const;
 
-    // Method to build a multipatch solution
+    // Method to build a multipatch adaptive mapping
     gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density) const;
 
 private:
