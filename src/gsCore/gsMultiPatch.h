@@ -188,6 +188,21 @@ public:
 
 public:
 
+    /// Utility function to resize container to hold \a N patches (caution: empty pointers)
+    void resize(size_t N)
+    {
+        clear();
+        m_patches.resize(N, nullptr);
+        setBoxes(N);
+    }
+
+    void setPatch(index_t pid, typename gsGeometry<T>::uPtr ptr)
+    {
+        ptr->setId(pid);
+        delete m_patches[pid];
+        m_patches[pid] = ptr.release();
+    }
+
     const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
 
     gsMultiPatch<T> coord(const index_t c) const;
