@@ -27,16 +27,17 @@ namespace gismo
  *
  * \param d the dimension of the parameter domain
  * \param T the coefficient type
+ * \param Trunc switch between THB and HB
  *
  * \ingroup basis
  * \ingroup HSplines
  */
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
     /// @brief Associated geometry type.
-    typedef gsTHBSpline<d,T> GeometryType;
+    typedef typename util::conditional<Trunc, gsTHBSpline<d,T>, gsHBSpline<d,T>>::type GeometryType;
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
 
@@ -54,7 +55,7 @@ public:
 
     /// @brief Associated Boundary basis type.
     typedef typename
-    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T> >::type BoundaryBasisType;
+    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T, Trunc> >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
     using gsHTensorBasis<d, T>::m_manualLevels;
@@ -82,30 +83,28 @@ public:
 public:
 
     gsTHBSplineBasis()
-    { 
-        representBasis(); 
-    }
+    { if (Trunc) representBasis(); }
 
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
                      const std::vector<index_t> & boxes) 
     : gsHTensorBasis<d,T>(tbasis, boxes)
-    { representBasis(); }
+    { if (Trunc) representBasis(); }
 
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
                      gsMatrix<T> const & boxes)
     : gsHTensorBasis<d,T>(tbasis, boxes) 
-    {  representBasis(); }
+    { if (Trunc) representBasis(); }
 
     gsTHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
                       gsMatrix<T> const & boxes, 
                       const std::vector<index_t> & levels)
     : gsHTensorBasis<d,T>(tbasis, boxes, levels)
-    {  representBasis(); }
+    { if (Trunc) representBasis(); }
 
     /// @brief Constructor out of a tensor BSpline Basis
     gsTHBSplineBasis(gsBasis<T> const&  tbasis, bool manualLevels=false)
         : gsHTensorBasis<d,T>(tbasis, manualLevels)
-    {  representBasis(); }
+    { if (Trunc) representBasis(); }
 
 #ifdef __DOXYGEN__
     /// @brief Gives back the boundary basis at boxSide s
@@ -187,7 +186,7 @@ public:
                     processed(lvl) = 1;
                 }
 
-                if (m_is_truncated[index] == -1)
+                if (!isTruncated(index))
                 {
                     index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndex = -1;
@@ -252,7 +251,7 @@ public:
                     processed(lvl) = 1;
                 }
 
-                if (m_is_truncated[index] == -1)
+                if (!isTruncated(index))
                 {
                     index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndex = -1;
@@ -322,7 +321,7 @@ public:
                     processed(lvl) = 1;
                 }
 
-                if (m_is_truncated[index] == -1)
+                if (!isTruncated(index))
                 {
                     index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndx = -1;
@@ -375,9 +374,7 @@ public:
     { return m_presentation.size(); }
 
     bool isTruncated(unsigned i) const
-    {
-        return (this->m_is_truncated[i] != -1);
-    }
+    { return Trunc && (this->m_is_truncated[i] != -1); }
 
     /// @brief Returns an iterator to the representation of the first truncated basis function
     typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedBegin() const
@@ -390,7 +387,7 @@ public:
     /// @brief Returns sparse representation of the i-th basis function.
     const gsSparseVector<T>& getCoefs(unsigned i) const
     {
-        if (this->m_is_truncated[i] == -1)
+        if (!isTruncated(i))
         {
             GISMO_ERROR("This basis function has no sparse representation. "
                         "It is not truncated.");
@@ -409,10 +406,7 @@ public:
 private:
 
     index_t getPresLevelOfBasisFun(const index_t index) const
-    {
-        return (m_is_truncated[index] == -1 ?
-                this->levelOf(index) : m_is_truncated[index] );
-    }
+    { return (isTruncated(index) ? m_is_truncated[index] : this->levelOf(index)); }
 
     /// @brief Computes and saves representation of all basis functions.
     void representBasis(); // rename: precompute coeffs
@@ -783,6 +777,10 @@ private:
   void pybind11_init_gsTHBSplineBasis2(pybind11::module &m);
   void pybind11_init_gsTHBSplineBasis3(pybind11::module &m);
   void pybind11_init_gsTHBSplineBasis4(pybind11::module &m);
+
+  void pybind11_init_gsHBSplineBasis2(pybind11::module &m);
+  void pybind11_init_gsHBSplineBasis3(pybind11::module &m);
+  void pybind11_init_gsHBSplineBasis4(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 
