@@ -97,6 +97,9 @@ public:
     short_t targetDim() const override;
 
     /// See \ref gsBasis for documentation
+    memory::shared_ptr<gsDomain<T> > domain() const override;
+
+    /// See \ref gsBasis for documentation
     short_t maxDegree() const override;
 
     /// See \ref gsBasis for documentation

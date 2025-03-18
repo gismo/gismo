@@ -100,6 +100,12 @@ short_t gsComposedBasis<T>::targetDim() const
 }
 
 template <class T>
+memory::shared_ptr<gsDomain<T> > gsComposedBasis<T>::domain() const
+{
+    return m_basis->domain();
+}
+
+template <class T>
 short_t gsComposedBasis<T>::maxDegree() const
 {
     return m_basis->maxDegree();
