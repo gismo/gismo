@@ -4,7 +4,7 @@
 
   <!-- Manufactured density function : Right-hand side function of MAE :1./(1.+exp(((x-0.)**2+(y-0.)**2-1.5)))  -->
 
-  <Function type="FunctionExpr" id="2003" dim="2">exp( 20.*( x+y )) </Function>
+  <Function type="FunctionExpr" id="2003" dim="2">exp(-1*abs((x-0.)**2+(y-0.)**2-1.05**2)) </Function>
 
     <!--
   <Function type="FunctionExpr" id="2003" dim="2"> 1./cosh( 20.*( -x+y -0.2 ) )**2 </Function>
