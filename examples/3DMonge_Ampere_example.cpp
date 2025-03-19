@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
     gsExprAssembler<> A(1,1);
     // A.options().setReal("quA", 2.0);
     // A.options().setInt("quB", 2);
-    A.options().setSwitch("SameElement",false);
+    //A.options().setSwitch("SameElement",false);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
