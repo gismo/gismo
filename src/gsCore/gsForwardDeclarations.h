@@ -23,6 +23,8 @@
 #include <functional>
 #include <limits>
 
+#define Eigen gsEigen
+
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
 //#include <gsCore/gsExport.h>  // included by gsMemory.h

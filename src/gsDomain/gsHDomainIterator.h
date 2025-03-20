@@ -246,10 +246,10 @@ public:
     const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(&m_basis); }
 
 public:
+    //using gsDomainIterator<T>::center;
+    //using gsDomainIterator<T>::m_basis;
 
-#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
 
 private:
 

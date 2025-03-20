@@ -123,7 +123,7 @@ void gsFitting<T>::compute(T lambda)
 
   typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
 
-  if ( solver.preconditioner().info() != gsEigen::Success )
+  if ( solver.preconditioner().info() != Eigen::Success )
   {
       gsWarn<<  "The preconditioner failed. Aborting.\n";
 
@@ -135,7 +135,7 @@ void gsFitting<T>::compute(T lambda)
   x = solver.solve(m_B); //toDense()
 
   // If there were constraints, we obtained too many coefficients.
-  x.conservativeResize(num_basis, gsEigen::NoChange);
+  x.conservativeResize(num_basis, Eigen::NoChange);
 
   //gsMatrix<T> x (m_B.rows(), m_B.cols());
   //x=A_mat.fullPivHouseholderQr().solve( m_B);
@@ -447,7 +447,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
         // typename gsSparseSolver<T>::QR solver(A_tilde);
         typename gsSparseSolver<T>::BiCGSTABILUT solver( A_tilde );
-        if ( solver.preconditioner().info() != gsEigen::Success )
+        if ( solver.preconditioner().info() != Eigen::Success )
         {
             gsWarn<<  "The preconditioner failed. Aborting.\n";
 
@@ -457,7 +457,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         gsMatrix<T> sol_tilde = solver.solve(rhs);
 
         // If there were constraints, we obtained too many coefficients.
-        sol_tilde.conservativeResize(num_basis * 3, gsEigen::NoChange);
+        sol_tilde.conservativeResize(num_basis * 3, Eigen::NoChange);
 
         gsMatrix<T> coefs_tilde(m_basis->size(), 3);
         for(index_t j=0; j<m_basis->size(); j++)

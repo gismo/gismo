@@ -70,7 +70,7 @@ if (GISMO_WITH_PYBIND11)
   # since gismo (${PROJECT_NAME}) target includes bindings, it needs
   # pybind/python info. Those are automatically managed in
   # `pybind11_add_module`. Since we aren't using it, setup gismo target
-  # in similar fashion manually. 
+  # in similar fashion manually.
   target_link_libraries(${PROJECT_NAME}_static pybind11::module)
 
   if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
@@ -212,6 +212,21 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   endif( WIN32 )
 
 endif(GISMO_BUILD_LIB)
+
+list (FIND GISMO_OPTIONAL "gsOpennurbs" _index)
+if (${_index} GREATER -1)
+  # find_package(opennurbs REQUIRED)
+  include(${CMAKE_SOURCE_DIR}/external/gsOpenNurbs.cmake)
+
+  # TODO Check found if not cmake error
+  target_link_libraries(${PROJECT_NAME} PUBLIC opennurbs)
+endif()
+
+target_link_libraries(${PROJECT_NAME}_static PRIVATE zlibstatic)
+target_link_libraries(${PROJECT_NAME}        PRIVATE zlibstatic)
+
+target_link_libraries(${PROJECT_NAME}_static PRIVATE gzstream)
+target_link_libraries(${PROJECT_NAME}        PRIVATE gzstream)
 
 if (EIGEN_USE_MKL_ALL)
   # Note: Download and install "Intel oneAPI Base Toolkit"

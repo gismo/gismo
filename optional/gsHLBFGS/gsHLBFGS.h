@@ -33,7 +33,7 @@ namespace gismo
 struct gsHLBFGSObjective
 {
     typedef real_t T;
-    typedef gsEigen::Matrix<T, gsEigen::Dynamic, 1> Vector;
+    typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vector;
     // typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 
     gsHLBFGSObjective(gsOptProblem<T>* objective)

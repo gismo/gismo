@@ -13,14 +13,13 @@
 
 # pragma once
 
-
 namespace gismo
 {
 
 /** @brief
     A matrix with arbitrary coefficient type and fixed or dynamic size.
 
-    This class provides an interface to gsEigen::Matrix from the Eigen
+    This class provides an interface to Eigen::Matrix from the Eigen
     linear algebra library. Most operations from Eigen are supported
     on a gsMatrix.
 
@@ -36,8 +35,8 @@ namespace gismo
 */
 template<class T, int _Rows, int _Cols, int _Options>
 class gsMatrix : public gsEigen::Matrix<T,_Rows, _Cols, _Options>
-//i.e. gsEigen::PlainObjectBase<gsEigen::Matrix>
-//i.e. gsEigen::EigenBase<gsEigen::Matrix>
+//i.e. Eigen::PlainObjectBase<gsEigen::Matrix>
+//i.e. Eigen::EigenBase<gsEigen::Matrix>
 {
 public:
     // Base is the dense matrix class of Eigen
@@ -146,7 +145,7 @@ public:
 
     gsMatrix(int rows, int cols) ;
 
-    /// This constructor allows constructing a gsMatrix from Eigen expressions
+    /// This constructor allows constructing a gsMatrix from gsEigen expressions
     template<typename OtherDerived>
     gsMatrix(const gsEigen::EigenBase<OtherDerived>& other) : Base(other) { }
 
@@ -695,7 +694,8 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 
 
 namespace gsEigen { namespace internal {
-template<class T, int _Rows, int _Cols, int _Options>
-struct traits<gismo::gsMatrix<T,_Rows,_Cols,_Options> > :
-gsEigen::internal::traits<gsEigen::Matrix<T,_Rows,_Cols,_Options> > { };
-} }
+        template<class T, int _Rows, int _Cols, int _Options>
+        struct traits<gismo::gsMatrix<T,_Rows,_Cols,_Options> > :
+        gsEigen::internal::traits<gsEigen::Matrix<T,_Rows,_Cols,_Options> > { };
+    }
+}

@@ -268,7 +268,7 @@ public:
     static void printVersion();
 
     /// Returns the program's description (as specified in the constructor)
-    std::string& getMessage();
+    std::string getMessage();
 
     /// Parses the command line and returns true iff everything is okey.
     /// This function should be called *after* the parameters have been registered.

@@ -26,7 +26,7 @@
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsLinearAlgebra.h>
 
-#define Eigen gsEigen
+
 
 #include <Spectra/include/Spectra/SymEigsSolver.h>
 #include <Spectra/include/Spectra/SymEigsShiftSolver.h>
@@ -124,7 +124,7 @@ public:
 #endif
         m_solver.compute(mat);
 
-        GISMO_ASSERT(m_solver.info() == gsEigen::Success,"SpectraMatShiftSolve: factorization failed with the given shift");
+        GISMO_ASSERT(m_solver.info() == Eigen::Success,"SpectraMatShiftSolve: factorization failed with the given shift");
     }
 };
 
@@ -156,7 +156,7 @@ public:
 
     void set_shift(const Scalar& sigma)
     {
-        m_solver.compute(m_mat, gsEigen::Lower, sigma);
+        m_solver.compute(m_mat, Eigen::Lower, sigma);
         GISMO_ASSERT(m_solver.info() == Spectra::CompInfo::Successful,"SpectraMatShiftSolve: factorization failed with the given shift");
     }
 };
@@ -171,7 +171,7 @@ public:
     NestedMatrix m_mat;
     const index_t m_n;
     // NOTE: Does not work for gsSparseSolver<Scalar>::SimplicialLLT!
-    gsEigen::SimplicialLLT<gsSparseMatrix<Scalar>, gsEigen::Lower> m_solver;
+    Eigen::SimplicialLLT<gsSparseMatrix<Scalar>, Eigen::Lower> m_solver;
 
     Spectra::CompInfo m_info;  // status of the decomposition
 
@@ -184,7 +184,7 @@ public:
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
 
         m_solver.compute(mat);
-        m_info = (m_solver.info() == gsEigen::Success) ?
+        m_info = (m_solver.info() == Eigen::Success) ?
             Spectra::CompInfo::Successful :
             Spectra::CompInfo::NumericalIssue;
     }
@@ -241,7 +241,7 @@ public:
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
 
         m_solver.compute(mat);
-        m_info = (m_solver.info() == gsEigen::Success) ?
+        m_info = (m_solver.info() == Eigen::Success) ?
             Spectra::CompInfo::Successful :
             Spectra::CompInfo::NumericalIssue;
     }
@@ -309,7 +309,7 @@ public:
         #endif
         #endif
         m_solver.compute(mat);
-        GISMO_ASSERT(m_solver.info()==gsEigen::Success,"Factorization failed");
+        GISMO_ASSERT(m_solver.info()==Eigen::Success,"Factorization failed");
     }
 };
 
@@ -479,7 +479,3 @@ public:
 };
 
 } //namespace gismo
-
-
-#undef Eigen
-

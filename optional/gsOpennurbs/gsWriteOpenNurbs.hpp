@@ -23,7 +23,7 @@
 #include <gsNurbs/gsKnotVector.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 
-#include <onurbs/opennurbs.h>
+#include <opennurbs.h>
 
 #include <sstream>
 #include <string>

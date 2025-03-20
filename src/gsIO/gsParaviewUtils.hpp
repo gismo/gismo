@@ -58,7 +58,7 @@ namespace gismo
 
             if (xyzPoints.rows() < 3)
                 // Pad matrix with zeros
-                xyzPoints.conservativeResizeLike(gsEigen::MatrixXd::Zero(3,xyzPoints.cols()));
+                xyzPoints.conservativeResizeLike(Eigen::MatrixXd::Zero(3,xyzPoints.cols()));
 
             if (""!=label)
                 out.push_back( toDataArray(xyzPoints, {{"Name",label}}, precision, export_base64)  );
@@ -245,7 +245,7 @@ namespace gismo
 
         if (coefs.cols() == 2)
             // Pad matrix with zeros
-            coefs.conservativeResizeLike(gsEigen::MatrixXd::Zero(coefs.rows(),3));
+            coefs.conservativeResizeLike(Eigen::MatrixXd::Zero(coefs.rows(),3));
 
         // Format to xml
         stream <<"<Piece NumberOfPoints=\""<< totalPoints<<"\" NumberOfCells=\""<< bezierExt.nPatches()<<"\">\n";

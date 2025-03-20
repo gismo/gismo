@@ -12,7 +12,7 @@
 */
 
 
-namespace Eigen { 
+namespace gsEigen {
 
 /**
   * \class BlockDiag
@@ -200,7 +200,7 @@ protected:
 
 } // namespace internal
 
-/** \memberof gsEigen::MatrixBase
+/** \memberof Eigen::MatrixBase
   * \return an expression of the replication of \c *this
   *
   * Example: \include MatrixBase_blockDiag_int_int.cpp

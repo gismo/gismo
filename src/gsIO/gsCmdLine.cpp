@@ -28,6 +28,18 @@
 
 namespace gismo
 {
+class enrichedCmdLine : public TCLAP::CmdLine {
+public:
+    enrichedCmdLine(const std::string& message,
+	                const char delimiter = ' ',
+                    const std::string& version = "none",
+            bool helpAndVersion = true) : TCLAP::CmdLine(message, delimiter, version, helpAndVersion) {};
+
+    inline TCLAP::CmdLineOutput* getOutput()
+    {
+        return TCLAP::CmdLine::_output;
+    }
+};
 
 class gsCmdLinePrivate
 {
@@ -75,7 +87,7 @@ public:
 
 public:
 
-    TCLAP::CmdLine cmd;
+    enrichedCmdLine cmd;
 
     // Stores integer arguments
     std::vector<TCLAP::ValueArg<intVal_t>*>    intVals;
@@ -255,7 +267,7 @@ void gsCmdLine::addPlainString( const std::string& name,
 
 bool gsCmdLine::valid(int argc, char *argv[]) const
 {
-    const bool eh = my->cmd.getExceptionHandling();
+    const bool eh = my->cmd.hasExceptionHandling();
     TCLAP::CmdLineOutput * o = my->cmd.getOutput();
     my->cmd.setExceptionHandling(false);
     my->cmd.setOutput( &my->cmdNullOut );
@@ -322,7 +334,7 @@ void gsCmdLine::setExceptionHandling(const bool state)
 
 bool gsCmdLine::getExceptionHandling() const
 {
-    return my->cmd.getExceptionHandling();
+    return my->cmd.hasExceptionHandling();
 }
 
 #define ADD_OPTION_LIST_ENTRY(res,vals,addFct)                                      \
@@ -385,34 +397,14 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
 
     gsInfo <<"\n Usage: \n";
     std::list<TCLAP::Arg*> argList = c.getArgList();
-    TCLAP::XorHandler xorHandler   = c.getXorHandler();
-    std::vector< std::vector<TCLAP::Arg*> > xorList = xorHandler.getXorList();
-
-    // first the xor
-    for ( size_t i = 0; static_cast<unsigned int>(i) < xorList.size(); i++ )
-    {
-        for ( TCLAP::ArgVectorIterator it = xorList[i].begin();
-                it != xorList[i].end();
-                it++
-            )
-        {
-            spacePrint( gsInfo, (*it)->longID(), 75, 3, 3 );
-            spacePrint( gsInfo, (*it)->getDescription(), 75, 5, 0 );
-
-            if ( it+1 != xorList[i].end() )
-                spacePrint(gsInfo, "-- OR --", 75, 9, 0);
-        }
-        gsInfo << "\n\n";
-    }
 
     // then the rest
     for (std::list<TCLAP::Arg*>::reverse_iterator it = argList.rbegin(); it != argList.rend(); it++)
-        if ( !xorHandler.contains( (*it) ) )
-        {
+    {
             spacePrint( gsInfo, (*it)->longID(), 75, 3, 3 );
             spacePrint( gsInfo, (*it)->getDescription(), 75, 5, 0 );
             gsInfo << std::endl;
-        }
+    }
 }
 
 
@@ -442,7 +434,7 @@ void gsCmdLine::printVersion()
     gsInfo << "web: http://github.com/gismo\n";
 }
 
-std::string & gsCmdLine::getMessage()
+std::string gsCmdLine::getMessage()
 {
     return my->cmd.getMessage();
 }

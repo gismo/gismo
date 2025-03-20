@@ -267,7 +267,7 @@ public:
     }
 
     template <class Derived>
-    void toSparseMatrix(gsEigen::SparseMatrixBase<Derived>& m) const
+    void toSparseMatrix(Eigen::SparseMatrixBase<Derived>& m) const
     {
         m.derived().resize( rows(), cols() );
         m.derived().reserve( nonZeros() );

@@ -1,4 +1,3 @@
-
 #####################################################################
 ## CMakeLists.txt --- root
 ## This file is part of the G+Smo library.
@@ -6,7 +5,7 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.11)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -32,6 +31,14 @@ endif()
 
 if(POLICY CMP0077)# CMake 3.13
 cmake_policy(SET CMP0077 NEW)
+endif()
+
+if(POLICY CMP0135)
+cmake_policy(SET CMP0135 NEW)
+endif()
+
+if(POLICY CMP0169)
+cmake_policy(SET CMP0169 OLD)
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -93,11 +100,6 @@ endif()
 ## #################################################################
 ## Cmake Inclusions and configuration options
 ## #################################################################
-
-#Fix for Eigen directory
-if (NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
-endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
@@ -189,6 +191,10 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 #functions to fetch(download) head revision from git or Subversion
 include(gsFetch)
 
+include(external/gszlib.cmake)
+include(external/gsgzstream.cmake)
+include(external/gsEigen.cmake)
+
 if (EIGEN_USE_MKL_ALL)
   # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
   find_package(MKL REQUIRED)
@@ -204,11 +210,12 @@ if (";${GISMO_OPTIONAL};" MATCHES ";gsCoDiPack;")
   gismo_fetch_module(gsCoDiPack)
 endif()
 
+include(external/gsTCLAP.cmake)
+
+include(external/gsRapidXML.cmake)
+
 #first time
 include_directories(${GISMO_INCLUDE_DIRS})
-
-# Add externals directory
-add_subdirectory(external)
 
 if(GISMO_WITH_MPI)
   find_package(MPI REQUIRED)

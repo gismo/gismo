@@ -786,10 +786,10 @@ gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> &
 
     	for (index_t i=0; i!=act.rows(); ++i)
         {
-      	    tripletLists[0][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[0].at(i));
-    	    tripletLists[1][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i));
+      	    tripletLists[0][i] = Eigen::Triplet<T,index_t>(k,act.at(i),ev[0].at(i));
+    	    tripletLists[1][i] = Eigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i));
             if (dim==2)
-                tripletLists[2][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i+1));
+                tripletLists[2][i] = Eigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i+1));
         }
 
 #       pragma omp critical (collocation)

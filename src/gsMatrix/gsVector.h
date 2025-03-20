@@ -21,7 +21,7 @@ namespace gismo
 /** @brief
     A vector with arbitrary coefficient type and fixed or dynamic size.
 
-    This class is based on gsEigen::Matrix from the Eigen
+    This class is based on Eigen::Matrix from the Eigen
     linear algebra library. Most operations from Eigen are supported
     on a gsVector. See therefore also the Eigen documentation,
     http://eigen.tuxfamily.org/dox/.
@@ -200,7 +200,7 @@ public:
         GISMO_ASSERT( i < this->size(), "Invalid vector element." );
         const T * ce = this->data() + this->size();
         for ( T * c = this->data()+i+1; c!= ce; ++c ) *(c-1) = *c;
-        this->conservativeResize(this->size()-1,gsEigen::NoChange);
+        this->conservativeResize(this->size()-1,Eigen::NoChange);
     }
 
 }; // class gsVector
@@ -306,7 +306,7 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 
 // template<class T>
 // template<typename OtherDerived> inline
-// gsVector3d<T>::gsVector3d(const gsEigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+// gsVector3d<T>::gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
 
 
 // template<class T> inline

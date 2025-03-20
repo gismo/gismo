@@ -30,7 +30,7 @@ namespace gismo {
 
 namespace extensions {
 
-/// \todo Complete writing to onurbs
+/// \todo Complete writing to opennurbs
 /*
 template <typename T>
 void gsWriteOpenNurbs(const gsGeometry<T>& geom,

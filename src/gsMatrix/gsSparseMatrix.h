@@ -13,7 +13,7 @@
 
 # pragma once
 
-// Assumes that Eigen library has been already included
+// Assumes that gsEigen library has been already included
 
 namespace gismo
 {
@@ -115,7 +115,7 @@ protected:
 /** @brief Sparse matrix class, based on gsEigen::SparseMatrix.
  *
  * See http://eigen.tuxfamily.org/dox/group__SparseQuickRefPage.html
- * for Eigen's sparse matrix manipulations and
+ * for gsEigen's sparse matrix manipulations and
  * http://eigen.tuxfamily.org/dox/classEigen_1_1SparseMatrix.html for
  * documentation of the gsEigen::SparseMatrix class.
  *
@@ -173,7 +173,7 @@ public:
 
     gsSparseMatrix(_Index rows, _Index cols) ;
 
-    /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
+    /// This constructor allows constructing a gsSparseMatrix from gsEigen expressions
     template<typename OtherDerived>
     gsSparseMatrix(const gsEigen::EigenBase<OtherDerived>& other)  : Base(other) { }
 
@@ -182,7 +182,7 @@ public:
     gsSparseMatrix(const gsEigen::SparseSelfAdjointView<OtherDerived, UpLo>& other)
     : Base(other) { }
 
-    /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
+    /// This constructor allows constructing a gsSparseMatrix from gsEigen expressions
     template<typename OtherDerived>
     gsSparseMatrix(const gsEigen::MatrixBase<OtherDerived>& other)  : Base(other) { }
 
@@ -190,7 +190,7 @@ public:
     template<typename OtherDerived>
     gsSparseMatrix(const gsEigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { }
 
-    /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
+    /// This constructor allows constructing a gsSparseMatrix from gsEigen expressions
     template<typename OtherDerived>
     gsSparseMatrix(const gsEigen::ReturnByValue<OtherDerived>& other)  : Base(other) { }
 
@@ -210,8 +210,8 @@ public:
     }
 #else
 #  ifdef _MSC_VER
-    template <class EigenExpr>
-    gsSparseMatrix& operator= (const EigenExpr & other)
+    template <class gsEigenExpr>
+    gsSparseMatrix& operator= (const gsEigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
@@ -607,9 +607,9 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
 
 
 namespace gsEigen { namespace internal {
-template<typename T, int _Options, typename _Index>
-struct traits<gismo::gsSparseMatrix<T,_Options,_Index> >:
-gsEigen::internal::traits<gsEigen::SparseMatrix<T,_Options,_Index> > { };
+        template<typename T, int _Options, typename _Index>
+        struct traits<gismo::gsSparseMatrix<T,_Options,_Index> >:
+        gsEigen::internal::traits<gsEigen::SparseMatrix<T,_Options,_Index> > { };
 } }
 
 /* *****************************************************************

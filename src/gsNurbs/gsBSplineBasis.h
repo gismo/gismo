@@ -646,7 +646,7 @@ public:
     void expandCoefs(gsMatrix<T> & coefs) const
     {
         const index_t sz = coefs.rows();
-        coefs.conservativeResize(sz+m_periodic, gsEigen::NoChange);
+        coefs.conservativeResize(sz+m_periodic, Eigen::NoChange);
         coefs.bottomRows( m_periodic ) = coefs.topRows( m_periodic );
     }
 
@@ -655,7 +655,7 @@ public:
     void trimCoefs(gsMatrix<T> & coefs) const
     {
         const index_t sz = coefs.rows();
-        coefs.conservativeResize(sz-m_periodic, gsEigen::NoChange);
+        coefs.conservativeResize(sz-m_periodic, Eigen::NoChange);
     }
 
     /// @brief Returns the size of the basis ignoring the bureaucratic way of

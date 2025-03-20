@@ -96,9 +96,8 @@ private:
 
     /// Keeps the highest upper indices (at level gsHTree::m_indexLevel)
     point m_upperIndex;
-// #   define Eigen gsEigen
-//     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-// #   undef Eigen
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     /// The level of the box representation (global indices)
     unsigned m_indexLevel;

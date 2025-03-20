@@ -37,9 +37,9 @@ public:
 
     mutable gsMatrix<Scalar> bGrads, cJac;
     mutable gsVector<Scalar,3> m_v, normal;
-#   define Eigen gsEigen
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
+
 
     // helper function
     static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
@@ -149,9 +149,9 @@ public:
 
     mutable gsMatrix<Scalar> uGrads, vGrads, cJac, cDer2, evEf, result;
     mutable gsVector<Scalar> m_u, m_v, normal, m_uv, m_u_der, n_der, n_der2, tmp; // memomry leaks when gsVector<T,3>, i.e. fixed dimension
-#   define Eigen gsEigen
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
+
 
     // helper function
     static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
@@ -707,9 +707,9 @@ public:
     /// Unique pointer for gsMaterialMatrix
     typedef memory::unique_ptr< gsMaterialMatrix > uPtr;
 
-#   define Eigen gsEigen
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
+
 
     gsMaterialMatrix() { }
 

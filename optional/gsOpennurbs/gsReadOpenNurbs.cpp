@@ -16,7 +16,7 @@
 // Note: for building a dll use:
 // #define ON_DLL_EXPORTS
 // #define ON_DLL_IMPORTS
-#include <onurbs/opennurbs.h>
+#include <opennurbs.h>
 //#include "gsOpennurbs/examples_linking_pragmas.h"
 
 #include <sstream>

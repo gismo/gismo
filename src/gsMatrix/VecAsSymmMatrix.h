@@ -12,7 +12,7 @@
 */
 
 
-namespace Eigen { 
+namespace gsEigen {
 
 /**
   * \class VecAsSymmMatrix

@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-namespace Eigen { 
+namespace gsEigen {
 
 namespace internal {
 

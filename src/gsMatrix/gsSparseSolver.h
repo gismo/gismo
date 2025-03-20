@@ -16,24 +16,24 @@
 namespace gismo {
 
 // forward declarations
-template<typename T> class gsEigenCGIdentity;
-template<typename T> class gsEigenCGDiagonal;
-template<typename T> class gsEigenBiCGSTABIdentity;
-template<typename T> class gsEigenBiCGSTABDiagonal;
-template<typename T> class gsEigenBiCGSTABILUT;
-template<typename T> class gsEigenSparseLU;
-template<typename T> class gsEigenSparseQR;
-template<typename T> class gsEigenSimplicialLDLT;
-template<typename T> class gsEigenSimplicialDLT;
+template<typename T> class EigenCGIdentity;
+template<typename T> class EigenCGDiagonal;
+template<typename T> class EigenBiCGSTABIdentity;
+template<typename T> class EigenBiCGSTABDiagonal;
+template<typename T> class EigenBiCGSTABILUT;
+template<typename T> class EigenSparseLU;
+template<typename T> class EigenSparseQR;
+template<typename T> class EigenSimplicialLDLT;
+template<typename T> class EigenSimplicialDLT;
 
-template<typename T> class gsEigenSuperLU;
-template<typename T> class gsEigenPardisoLDLT;
-template<typename T> class gsEigenPardisoLLT;
-template<typename T> class gsEigenPardisoLU;
+template<typename T> class EigenSuperLU;
+template<typename T> class EigenPardisoLDLT;
+template<typename T> class EigenPardisoLLT;
+template<typename T> class EigenPardisoLU;
 
-template<typename T> class gsEigenMINRES;
-template<typename T> class gsEigenGMRES;
-template<typename T> class gsEigenDGMRES;
+template<typename T> class EigenMINRES;
+template<typename T> class EigenGMRES;
+template<typename T> class EigenDGMRES;
 
 /** @brief Abstract class for solvers.
     The solver interface is base on 3 methods:
@@ -68,25 +68,25 @@ class gsSparseSolver
 public:
     typedef memory::unique_ptr<gsSparseSolver> uPtr;
 
-    typedef gsEigenCGIdentity<T>           CGIdentity ;
-    typedef gsEigenCGDiagonal<T>           CGDiagonal;
-    typedef gsEigenBiCGSTABDiagonal<T>     BiCGSTABDiagonal;
-    typedef gsEigenBiCGSTABIdentity<T>     BiCGSTABIdentity;
-    typedef gsEigenBiCGSTABILUT<T>         BiCGSTABILUT;
-    typedef gsEigenSparseLU<T>             LU;
-    typedef gsEigenSparseQR<T>             QR;
-    typedef gsEigenSimplicialLDLT<T>       SimplicialLDLT;
-    typedef gsEigenSimplicialLDLT<T>       SimplicialLLT;
+    typedef EigenCGIdentity<T>           CGIdentity ;
+    typedef EigenCGDiagonal<T>           CGDiagonal;
+    typedef EigenBiCGSTABDiagonal<T>     BiCGSTABDiagonal;
+    typedef EigenBiCGSTABIdentity<T>     BiCGSTABIdentity;
+    typedef EigenBiCGSTABILUT<T>         BiCGSTABILUT;
+    typedef EigenSparseLU<T>             LU;
+    typedef EigenSparseQR<T>             QR;
+    typedef EigenSimplicialLDLT<T>       SimplicialLDLT;
+    typedef EigenSimplicialLDLT<T>       SimplicialLLT;
 
     // optionals
-    typedef gsEigenSuperLU<T>              SuperLU;
-    typedef gsEigenPardisoLDLT<T>          PardisoLDLT;
-    typedef gsEigenPardisoLLT<T>           PardisoLLT;
-    typedef gsEigenPardisoLU<T>            PardisoLU;
+    typedef EigenSuperLU<T>              SuperLU;
+    typedef EigenPardisoLDLT<T>          PardisoLDLT;
+    typedef EigenPardisoLLT<T>           PardisoLLT;
+    typedef EigenPardisoLU<T>            PardisoLU;
 
-    typedef gsEigenMINRES<T>               MINRES;
-    typedef gsEigenGMRES<T>                GMRES;
-    typedef gsEigenDGMRES<T>               DGMRES;
+    typedef EigenMINRES<T>               MINRES;
+    typedef EigenGMRES<T>                GMRES;
+    typedef EigenDGMRES<T>               DGMRES;
     
 public:
     typedef gsSparseMatrix<T> MatrixT;
@@ -177,7 +177,7 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
             return gsEigenAdaptor<T>::eigenName::solve(rhs);            \
         }                                                               \
         bool succeed() const                                            \
-        { return gsEigenAdaptor<T>::eigenName::info()==gsEigen::Success;} \
+        { return gsEigenAdaptor<T>::eigenName::info()==Eigen::Success;} \
         int info() const                                                \
         { return gsEigenAdaptor<T>::eigenName::info();}                 \
         index_t rows() const {return m_rows;}                           \
@@ -189,29 +189,29 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
         }                                                               \
     };
 
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenCGIdentity,     CGIdentity)
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenCGDiagonal,     CGDiagonal)
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenBiCGSTABIdentity, BiCGSTABIdentity)
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenBiCGSTABDiagonal, BiCGSTABDiagonal)
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenBiCGSTABILUT,     BiCGSTABILUT)
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenSparseLU,       SparseLU)
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenSparseQR,       SparseQR)
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenSimplicialLDLT, SimplicialLDLT)
-GISMO_EIGEN_SPARSE_SOLVER (gsEigenSimplicialLLT, SimplicialLLT)
+GISMO_EIGEN_SPARSE_SOLVER (EigenCGIdentity,     CGIdentity)
+GISMO_EIGEN_SPARSE_SOLVER (EigenCGDiagonal,     CGDiagonal)
+GISMO_EIGEN_SPARSE_SOLVER (EigenBiCGSTABIdentity, BiCGSTABIdentity)
+GISMO_EIGEN_SPARSE_SOLVER (EigenBiCGSTABDiagonal, BiCGSTABDiagonal)
+GISMO_EIGEN_SPARSE_SOLVER (EigenBiCGSTABILUT,     BiCGSTABILUT)
+GISMO_EIGEN_SPARSE_SOLVER (EigenSparseLU,       SparseLU)
+GISMO_EIGEN_SPARSE_SOLVER (EigenSparseQR,       SparseQR)
+GISMO_EIGEN_SPARSE_SOLVER (EigenSimplicialLDLT, SimplicialLDLT)
+GISMO_EIGEN_SPARSE_SOLVER (EigenSimplicialLLT, SimplicialLLT)
 
 #ifdef GISMO_WITH_SUPERLU
-    GISMO_EIGEN_SPARSE_SOLVER (gsEigenSuperLU, SuperLU)
+    GISMO_EIGEN_SPARSE_SOLVER (EigenSuperLU, SuperLU)
 #endif
 
 #ifdef GISMO_WITH_PARDISO
-    GISMO_EIGEN_SPARSE_SOLVER (gsEigenPardisoLDLT, PardisoLDLT)
-    GISMO_EIGEN_SPARSE_SOLVER (gsEigenPardisoLLT, PardisoLLT)
-    GISMO_EIGEN_SPARSE_SOLVER (gsEigenPardisoLU, PardisoLU)
+    GISMO_EIGEN_SPARSE_SOLVER (EigenPardisoLDLT, PardisoLDLT)
+    GISMO_EIGEN_SPARSE_SOLVER (EigenPardisoLLT, PardisoLLT)
+    GISMO_EIGEN_SPARSE_SOLVER (EigenPardisoLU, PardisoLU)
 #endif
 
-//GISMO_EIGEN_SPARSE_SOLVER (gsEigenMINRES, MINRES)
-//GISMO_EIGEN_SPARSE_SOLVER (gsEigenGMRES,  GMRES)
-//GISMO_EIGEN_SPARSE_SOLVER (gsEigenDGMRES, DGMRES)
+//GISMO_EIGEN_SPARSE_SOLVER (EigenMINRES, MINRES)
+//GISMO_EIGEN_SPARSE_SOLVER (EigenGMRES,  GMRES)
+//GISMO_EIGEN_SPARSE_SOLVER (EigenDGMRES, DGMRES)
 
 
 #undef GISMO_EIGEN_SPARSE_SOLVER

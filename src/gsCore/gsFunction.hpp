@@ -509,7 +509,7 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
         if (i<k) ind[i]=i;
         else if (i>k) ind[i-1]=i;
 
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsMatrix<T> pt = xyz(ind,Eigen::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
 
     //find low accuracy closest point
@@ -535,7 +535,7 @@ void gsFunction<T>::recoverPointGrid(gsGridIterator<T,0> & git,
         if (i<k) ind[i]=i;
         else if (i>k) ind[i-1]=i;
 
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsMatrix<T> pt = xyz(ind,Eigen::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
 
     fc.invertPointGrid(git,uv,accuracy,false); //true

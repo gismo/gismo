@@ -398,7 +398,7 @@ void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
         if (i<k) ind[i]=i;
         else if (i>k) ind[i-1]=i;
 
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsMatrix<T> pt = xyz(ind,Eigen::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
     fc.invertPoints(pt,uv,accuracy,false);
     xyz = this->eval(uv);

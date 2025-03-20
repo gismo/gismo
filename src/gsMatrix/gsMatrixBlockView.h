@@ -34,7 +34,7 @@ public:
     typedef gsEigen::Block<MatrixType>   block_t    ;
     typedef gsEigen::Block<MatrixType> * block_ptr_t;
 
-    typedef gsEigen::Matrix<index_t,gsEigen::Dynamic, 1, gsEigen::ColMajor> Vector_t;
+    typedef gsEigen::Matrix<index_t,Eigen::Dynamic, 1, gsEigen::ColMajor> Vector_t;
 
 public:
 
@@ -191,7 +191,7 @@ public:
         GISMO_ASSERT( i < m_rowSize && j < m_colSize ,
                       "Assign to invalid block requested.");
 
-        // Works for dense Eigen matrices
+        // Works for dense gsEigen matrices
         *m_blocks[j*m_colSize+i] = other;
     }
 

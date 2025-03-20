@@ -84,12 +84,6 @@ set_target_properties(gismo PROPERTIES
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
         DESTINATION include/${PROJECT_NAME}/gsCore )
 
-# For gsLinearAlgebra.h
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/gsEigen
-        DESTINATION include/${PROJECT_NAME}
-        PATTERN "*.txt" EXCLUDE
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
         DESTINATION include/${PROJECT_NAME}
@@ -106,9 +100,9 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/gdcpp.h
         DESTINATION include/${PROJECT_NAME})
 
 # For gsXmlUtils.h
-install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
-              ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
-        DESTINATION include/${PROJECT_NAME}/rapidxml/ )
+# install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
+#               ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
+#         DESTINATION include/${PROJECT_NAME}/rapidxml/ )
 
 if (GISMO_WITH_ADIFF)
   install(FILES ${PROJECT_SOURCE_DIR}/external/gsAutoDiff.h

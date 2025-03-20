@@ -2,8 +2,8 @@
 
     @brief Handles shared library creation and other class attributes
 
-    This file is part of the G+Smo library. 
-    
+    This file is part of the G+Smo library.
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -23,12 +23,12 @@
   that have to be exported must be marked with GISMO_EXPORT. Symbols
   that should not be exported can be marked with GISMO_LOCAL.
   Also:
-  
+
   - When building the shared library, gismo_EXPORTS must be defined,
   but NOT when consuming G+Smo as a shared library
-  
+
   - When building the static library, gismo_STATIC must be defined
-  
+
   - If GISMO_BUILD_LIB is defined when building or consuming the
   shared or static library then function definitions in .hpp files are
   not included after class/function declarations. Otherwise
@@ -50,7 +50,7 @@
 #    define GISMO_EXPORT __declspec(dllexport) //equiv. __attribute__ ((dllexport))
 //#    define GISMO_LOCAL
 #    define GISMO_DEFAULT_VIS
-#  else						                
+#  else
 #    define GISMO_EXPORT __attribute__((visibility("default")))
 //#    define GISMO_LOCAL  __attribute__((visibility("hidden" )))
 #    define GISMO_DEFAULT_VIS __attribute__((visibility("default")))
@@ -75,24 +75,24 @@
 
 /*
   Macros for instantiating templated structs, classes or functions.
-  
+
   - When using the shared library all instantiations are expected to
   be imported from the library are marked as "extern template".  This
   allows the compile to avoid to instantiate the template in this
   translation unit.
-  
+
   - When compiling the translation unit for an explicit template
   instantiation of a certain templated class, the
   EXTERN_CLASS_TEMPLATE must be replaced with an explicit
   instantiation directive, i.e. CLASS_TEMPLATE_INST.
-  
+
   - On GCC the scheme would work if the "extern template" where still
   present in the headers and CLASS_TEMPLATE_INST would follow later.
   Hoever, in MSVC2010, "extern template" cannot be followed later by
   an explicit instantization.  Actually MSVC considers "extern
   template" already to be an instantization, which can happen only
   once in the translation unit.  Hence the error C2960 is emitted.
-  
+
   - The compiler is free to inline any function that it has the
   definition for, if it chooses to do so.
 
@@ -109,7 +109,7 @@
 #define __has_feature(x) 0
 #endif
 
-/* 
+/*
    Override control
 
   - GISMO_FINAL
@@ -124,7 +124,7 @@
   - GISMO_OVERRIDE
   Marks a virtual method indicating it must be overriding a virtual
   method of the base class
-  
+
   Example:
   virtual void foo() GISMO_OVERRIDE;
 */
@@ -136,7 +136,7 @@
 #  define GISMO_FINAL final
 #  define GISMO_OVERRIDE override
 #elif defined(__clang__ ) && __has_feature(cxx_override_control)
-#  define GISMO_FINAL final
+#  define GISMO_FINAL
 #  define GISMO_OVERRIDE override
 #elif defined(__GNUG__) && __cplusplus >= 201103 && \
     (__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40700

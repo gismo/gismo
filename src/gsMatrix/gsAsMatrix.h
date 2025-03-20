@@ -73,8 +73,8 @@ public:
     }
     
 #ifdef _MSC_VER
-    template <class EigenExpr>
-    gsAsMatrix& operator= (const EigenExpr & other) 
+    template <class gsEigenExpr>
+    gsAsMatrix& operator= (const gsEigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
@@ -256,8 +256,8 @@ public:
     : Base( pt, n, 1) {  }
 
 #ifdef _MSC_VER
-    template <class EigenExpr>
-    gsAsVector& operator= (const EigenExpr & other) 
+    template <class gsEigenExpr>
+    gsAsVector& operator= (const gsEigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;

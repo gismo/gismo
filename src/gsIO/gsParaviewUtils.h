@@ -106,8 +106,8 @@ namespace gismo
             GISMO_ASSERT(evaluated_values.rows() <= 3, "The expression can be scalar or have at most 3 components.");
             if (evaluated_values.rows() == 2)
                 // Pad matrix with zeros
-                evaluated_values.conservativeResizeLike(gsEigen::MatrixXd::Zero(3,evaluated_values.cols()));
-
+                evaluated_values.conservativeResizeLike(Eigen::MatrixXd::Zero(3,evaluated_values.cols()));
+            
             out.push_back(toDataArray(evaluated_values,{{"Name",label}}, precision,export_base64));
 
         }

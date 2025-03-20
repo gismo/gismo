@@ -18,7 +18,7 @@
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
 
-#define Eigen gsEigen
+
 // Make Eigen use GISMO_ASSERT which throws exceptions
 //
 // Must be defined before including Eigen headers
@@ -30,7 +30,7 @@
 #define EIGEN_PLAINOBJECTBASE_PLUGIN <gsMatrix/gsPlainObjectBaseAddons.h>
 #include <gsMatrix/gsEigenDeclarations.h>
 
-#include <gsEigen/Core>
+#include <Eigen/Core>
 
 #if defined(gsMpfr_ENABLED)
 #include <unsupported/Eigen/MPRealSupport>
@@ -40,10 +40,10 @@
 #include <unsupported/Eigen/MPQClassSupport>
 #endif
 
-#include <gsEigen/Dense>
-#include <gsEigen/Sparse>
-#include <gsEigen/StdVector>
-#include <gsEigen/Geometry>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/StdVector>
+#include <Eigen/Geometry>
 
 // Extra Eigen code
 #include <gsMatrix/Adjugate.h>
@@ -52,33 +52,33 @@
 //#include <gsMatrix/RowSelection.h>
 
 #ifdef GISMO_WITH_SUPERLU
-#include <gsEigen/SuperLUSupport>
+#include <Eigen/SuperLUSupport>
 #endif
 
 #ifdef GISMO_WITH_PARDISO
-#include <gsEigen/PardisoSupport>
+#include <Eigen/PardisoSupport>
 #endif
 
 #ifdef GISMO_WITH_PASTIX
-#include <gsEigen/PaStiXSupport>
+#include <Eigen/PaStiXSupport>
 #endif
 
 // sparsesuite
-//#include <gsEigen/UmfPackSupport>
-//#include <gsEigen/SPQRSupport>
-//#include <gsEigen/CholmodSupport>
+//#include <Eigen/UmfPackSupport>
+//#include <Eigen/SPQRSupport>
+//#include <Eigen/CholmodSupport>
 
 // METIS
-//#include <gsEigen/MetisSupport>
+//#include <Eigen/MetisSupport>
 
 // PaStiX
-//#include <gsEigen/PaStiXSupport>
+//#include <Eigen/PaStiXSupport>
 
 #ifdef GISMO_WITH_PYBIND11
 #include <pybind11/eigen.h>
 #endif
 
-#undef Eigen
+
 #undef eigen_assert
 #undef EIGEN_MATRIXBASE_PLUGIN
 #undef EIGEN_PLAINOBJECTBASE_PLUGIN
@@ -150,16 +150,16 @@ struct gsEigenAdaptor
 {
 public:
     // Note: IncompleteILU is not compatible with
-    // gsEigen::ConjugateGradient because this preconditionner does not
+    // Eigen::ConjugateGradient because this preconditionner does not
     // preserve symmetry.
 
     /// Congugate gradient without preconditioner (identity as preconditioner) 
     typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
-            gsEigen::Lower|gsEigen::Upper, gsEigen::IdentityPreconditioner> CGIdentity;
+            gsEigen::Lower|Eigen::Upper, gsEigen::IdentityPreconditioner> CGIdentity;
 
     /// Congugate gradient with diagonal (Jacobi) preconditioner
-    typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>, 
-            gsEigen::Lower|gsEigen::Upper, gsEigen::DiagonalPreconditioner<T> > CGDiagonal;
+    typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
+            gsEigen::Lower|Eigen::Upper, gsEigen::DiagonalPreconditioner<T> > CGDiagonal;
 
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
     typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
