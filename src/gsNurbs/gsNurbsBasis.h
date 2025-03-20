@@ -36,7 +36,7 @@ namespace gismo
 */
 
 template<class T>
-class gsNurbsBasis : public gsRationalBasis<gsBSplineBasis<T> >
+class GISMO_EXPORT gsNurbsBasis : public gsRationalBasis<gsBSplineBasis<T> >
 {
 public:
 
