@@ -1,23 +1,56 @@
-/// This is the 2D linear elasticity benchmark "Infinite plate with circular hole"
-/// as described in V.P.Nguyen, C.Anitescu, S.P.A.Bordas, T.Rabczuk, 2015
-/// "Isogeometric analysis: An overview and computer implementation aspects".
-///
-/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
+/** @file rh_elasticity_example.cpp
+
+    @brief Tutorial on how to use expression assembler to solve a linear elasticity equation
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris & M. BAHARI
+*/
+
+//! [Include namespace]
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsAssembler/gsAdaptiveMultiPatchBuilder.h>  // Include the new class of r_refinement
 
 using namespace gismo;
+//! [Include namespace]
+// Method to Project normal control points
+void CorrecNormalCPoints(const gsMultiPatch<>& mpLeft, gsMultiPatch<>& Psi, index_t boxMaxNumber = 1)
+{
+    // Projection normal of control points (exact geometry)
+    for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
+    {
+        // test if the boundary interface is not an inner interface between patches
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
+        {
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1];
+        }
 
-int main(int argc, char* argv[]){
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
+        {
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0];
+        }
 
-    gsInfo << "This is the 2D linear elasticity benchmark: infinite plate with circular hole.\n";
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
+        {
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1];
+        }
+        // x= 4 y = -4
+        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
+        {
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1];
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[0] = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[0];
+        }
+    }
+}
 
-    //=====================================//
-                // Input //
-    //=====================================//
-    std::string filename = ("pde/infinit_plate.xml");
+int main(int argc, char *argv[])
+{
     //! [Parse command line]
     bool plot             = true;
     index_t numRefine     = 3;
@@ -34,10 +67,11 @@ int main(int argc, char* argv[]){
     std::string fn("pde/infinit_plate.xml");
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
-    //MarkingStrategy adaptRefCrit = PUCA;
+    MarkingStrategy adaptRefCrit = PUCA;
     //MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
     // Elements used for numerical integration
+
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -58,52 +92,69 @@ int main(int argc, char* argv[]){
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    //=============================================//
-        // Scanning geometry and creating bases //
-    //=============================================//
-    // scanning geometry
-    gsFileData<> fd(filename);
+    // Load the file
+    gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     gsMultiPatch<> mpLeft;
     fd.getId(1,mpLeft);
+    // Elevate and p-refine the basis to order p + numElevate
+    // where p is the highest degree in the bases
+    mpLeft.degreeElevate(numElevate);
+    mpLeft.computeTopology();
+
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
     // Load the file
     gsFunctionExpr<> f;
     fd.getId(2003, f);
+    gsFunctionExpr<> rhs;
+    fd.getId(2001, rhs);
+    gsInfo<<"Density function "<< f << "\n";
 
-    // creating basis
-    gsMultiBasis<> dbasis(mpLeft);
-    for (index_t i = 0; i < numElevate; ++i)
-        dbasis.degreeElevate();
-    for (index_t i = 0; i < numRefine; ++i)
-        dbasis.uniformRefine();    
-
+    //! [Refinement]
+    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    
+    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+#ifdef _OPENMP
+    gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
+#endif
+    //! [Refinement]
+    
+    gsInfo<< "(dot1=assembled, dot2=solved)\n"
+        "\nDoFs: ";
+    // double setup_time(0), ma_time(0), slv_time(0);    
+    // gsStopwatch timer;
+    // timer.restart();
+    //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
+    for (int r=0; r<=numRefine; ++r)
+    {
+        dbasis.uniformRefine();
+        mpLeft.uniformRefine();
+    }
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density    = MAE.buildAnalyticDensity( f);
-    auto geometry   = MAE.buildMultiPatch(density);
-
-    gsWrite(geometry, "geometry_mapping");
+    auto density = MAE.buildAnalyticDensity( f);
+    auto geometrytp   = MAE.buildMultiPatch(density);
+    CorrecNormalCPoints(mpLeft, geometrytp);
+    gsWrite(geometrytp, "geometrytp");
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    //  gsMultiPatch<> geometry;
-    //  for(size_t i =0; i<geometrytp.nPatches(); ++i)
-    //      geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(geometrytp.patch(i)) ));
-    //  geometry.addAutoBoundaries();
-    //  geometry.computeTopology();
+    gsMultiPatch<> geometry;	
+    for(size_t i =0; i<geometrytp.nPatches(); ++i)
+        geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(geometrytp.patch(i)) ));
+    geometry.addAutoBoundaries();
+    geometry.computeTopology();
+    gsWrite(geometry, "geometry_mapping");
+    //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
 
+    //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
+    if (true){
     // creating basis
     gsMultiBasis<> basis(geometry);
-    // for (index_t i = 0; i < numElevate; ++i)
-    //     basis.degreeElevate();
-    // for (index_t i = 0; i < numRefine; ++i)
-    //     basis.uniformRefine();
-
     gsVector<>   l2err(numLRefine+1);//h1err(numLRefine+1),
     gsVector<int>  DoFPDE(numLRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved)\n";
@@ -171,6 +222,22 @@ int main(int argc, char* argv[]){
     // constructing stress tensor
     gsPiecewiseFunction<> stresses;
     assembler.constructCauchyStresses(solution,stresses,stress_components::all_2D_vector);
+
+    // constructing an IGA field (geometry + solution) for displacement
+    gsField<> solutionField(assembler.patches(),solution);
+    // constructing an IGA field (geometry + solution) for stresses
+    gsField<> stressField(assembler.patches(),stresses,true);
+    // analytical stresses
+    gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
+    // creating a container to plot all fields to one Paraview file
+    std::map<std::string,const gsField<> *> fields;
+    fields["Deformation"] = &solutionField;
+    fields["Stress"] = &stressField;
+    fields["StressAnalytical"] = &analyticalStressField;
+    gsWriteParaviewMultiPhysics(fields,"plateWithHole",10000,plot);
+    gsInfo << "Open \"plateWithHole.pvd\" in Paraview for visualization. Stress wiggles on the left side are caused by "
+                "a singularity in the parametrization.\n";
+
     // eval stress at the top of the circular cut
     gsMatrix<> A(2,1);
     A << 1.,0.; // parametric coordinates for the isogeometric solution
@@ -188,26 +255,162 @@ int main(int argc, char* argv[]){
     gsExprEvaluator<>::geometryMap PP = ev.getMap(geometry);
     auto sigm_ex   = ev.getVariable(analyticalStresses, PP);
     auto ff   = ev.getVariable(f, PP);
+    // eval stress at the top of the circular cut
 
-    // constructing an IGA field (geometry + solution) for displacement
-    gsField<> solutionField(assembler.patches(),solution);
-    // constructing an IGA field (geometry + solution) for stresses
-    gsField<> stressField(assembler.patches(),stresses,true);
-    // analytical stresses
-    gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
     //... error computation
     auto istress = ev.getVariable(stressField.fields());
-
     // omp_set_num_threads(1); // Use these threads for later parallel regions
     DoFPDE[0] = assembler.numDofs();
     l2err[0]  = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
     gsInfo << " min Jacobian function and maximum " << ev.min(jac(PP).det())<< " " << ev.max(jac(PP).det())<<"\n";
+    for (int r=1; r<=numLRefine; ++r)
+    {
+        // if(r < numLRefine){
+        //! [beginRefLoop]
+            gsInfo << "====== Loop " << r << " of "
+                    <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
+            // --------------- error estimation/computation ---------------
+            // Compute the error indicators
+            ev.integralElWise( ff );
 
+            const std::vector<real_t> eltErrs  = ev.elementwise();
+            //! [errorComputation]
+
+            //! [adaptRefinementPart]
+            // Mark elements for refinement, based on the computed local errors and
+            // the refinement-criterion and -parameter.
+            std::vector<bool> elMarked( eltErrs.size() );
+            gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+            gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
+
+            // Refine the marked elements with a 1-ring of cells around marked elements
+            gsRefineMarkedElements( basis, elMarked, NumArMarEl);
+            gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
+            gsInfo << "assemble refined\n";
+            assembler.multiBasis().repairInterfaces( geometry.interfaces() );
+            gsRefineMarkedElements( geometry, elMarked, NumArMarEl);
+            
+            if (r%2==0)
+            NumArMarEl = NumArMarEl + FactRefPar;
+            assembler.refresh();
+            // }
+        //=============================================//
+                // Assembling & solving //
+        //=============================================//
+        // creating assembler
+        gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);
+        assembler.options().setReal("YoungsModulus",youngsModulus);
+        assembler.options().setReal("PoissonsRatio",poissonsRatio);
+        gsInfo<<"Assembling...\n";
+        gsStopwatch clock;
+        clock.restart();
+        assembler.assemble();
+        gsInfo << "Assembled a system (matrix and load vector) with "
+            << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
+
+        gsInfo << "Solving...\n";
+        clock.restart();
+
+    #ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLLT solver(assembler.matrix());
+        gsVector<> solVector = solver.solve(assembler.rhs());
+        gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
+    #else
+        gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+        gsVector<> solVector = solver.solve(assembler.rhs());
+        gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
+    #endif
+
+        //=============================================//
+                        // Output //
+        //=============================================//
+        // // constructing displacement as an IGA function
+        gsMultiPatch<> solution;
+        assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
+        // constructing stress tensor
+        gsPiecewiseFunction<> stresses;
+        assembler.constructCauchyStresses(solution,stresses,stress_components::all_2D_vector);
+
+        // constructing an IGA field (geometry + solution) for displacement
+        gsField<> solutionField(assembler.patches(),solution);
+        // constructing an IGA field (geometry + solution) for stresses
+        gsField<> stressField(assembler.patches(),stresses,true);
+        // analytical stresses
+        gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
+
+        gsExprEvaluator<> ev;
+        ev.setIntegrationElements(assembler.multiBasis());
+        gsExprEvaluator<>::geometryMap PP = ev.getMap(geometry);
+        auto sigm_ex   = ev.getVariable(analyticalStresses, PP);
+        auto ff_Ggeometry   = ev.getVariable(f, PP);
+        //... error computation
+        auto istress = ev.getVariable(stressField.fields());
+            // omp_set_num_threads(1); // Use these threads for later parallel regions
+        DoFPDE[r] = assembler.numDofs();
+        l2err[r]  = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
+        //h1err[0]= math::sqrt(ev.max( (sigm_ex - istress).sqNorm()));
+        // eval stress at the top of the circular cut
+        gsMatrix<> A(2,1);
+        A << 1.,0.; // parametric coordinates for the isogeometric solution
+        gsMatrix<> res;
+        stresses.piece(0).eval_into(A,res);
+        A << 0., 1.; // spatial coordinates for the analytical solution
+        gsMatrix<> analytical;
+        analyticalStresses.eval_into(A,analytical);
+        gsInfo << "XX-stress at the top of the circle: " << res.at(0) << " (computed), " << analytical.at(0) << " (analytical)\n";
+        gsInfo << "YY-stress at the top of the circle: " << res.at(1) << " (computed), " << analytical.at(1) << " (analytical)\n";
+        gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
+    }
+    //! [Solver loop]    
+
+
+    // timer.stop();
+    // gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time <<"\n";
+    // gsInfo<<"     Setup: "<< setup_time <<"\n";
+    // gsInfo<<"  Assembly: "<< ma_time    <<"\n";
+    // gsInfo<<"   Solving: "<< slv_time   <<"\n";
+    
 
     //! [Error and convergence rates]
     gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
     gsInfo<< "L2_error_x = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     //gsInfo<< "L2_error_y= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
+
+    if (errorsave)
+    {
+    // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
+    std::ofstream outFile("error_analysis.txt", std::ios::app); // Open file in append mode
+    if (outFile.is_open())
+    {
+        outFile << "#DoF_PDE: " << adaptRefParam <<" "<< NumArMarEl <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
+        //outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
+        outFile.close(); // Close the file after writing
+    }
+    else
+    {
+        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
+    }
+    }
+    else
+    {
+        gsInfo << "Errors are not saved. To save them, try with --errorsave.\n";
+    }
+
+    //! [Error and convergence rates]
+    if (numLRefine>0 && false)
+    {
+        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
+              <<  ( l2err.head(numRefine).array()  /
+                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
+                   <<"\n";
+
+        //gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
+        //     <<( h1err.head(numRefine).array() /
+        //          h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+    }
+    //! [Error and convergence rates]
     //! [Export visualization in ParaView]
     if (plot)
     {
@@ -228,7 +431,7 @@ int main(int argc, char* argv[]){
         fields["DensityAnalytical"] = &densityField;
         gsWriteParaviewMultiPhysics(fields,"infinit_plate",10000,plot);
         gsInfo << "Open \"infinit_plate.pvd\" in Paraview for visualization. Stress wiggles on the left side are caused by "
-                    "a singularity in the parametrization.\n";
+                  "a singularity in the parametrization.\n";
         gsFileManager::open("infinit_plate.pvd");
 
         // gsInfo<<"Storing paraview...\n";
@@ -253,8 +456,11 @@ int main(int argc, char* argv[]){
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                    "file containing the solution.\n";
+                  "file containing the solution.\n";
     //! [Export visualization in ParaView]
+    }
 
     return EXIT_SUCCESS;
+
+
 }// end main
