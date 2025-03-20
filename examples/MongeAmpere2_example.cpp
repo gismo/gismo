@@ -153,8 +153,7 @@ int main(int argc, char *argv[])
         {
             dbasis.uniformRefine();
             mp.uniformRefine();
-            u.setup(bc, dirichlet::l2Projection, 0);
-            // Compute the system matrix and right-hand side
+
 
             //... nromalisation of density function
             auto CoeffDensity{ev.integral(ff.val() * meas(G))};
@@ -165,21 +164,84 @@ int main(int argc, char *argv[])
             // ...
             auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
             //... end 
+            // Setup the space \a u with strongly imposed Dirichlet part
+            //u.setup(bc, dirichlet::interpolation, 0);
+            u.setup(bc, dirichlet::l2Projection, 0);
 
-            // Initialize the system using initial mapping as identity mapping
+            // Initialize the system
             A.initSystem();
+            // Compute sparsity patter: this is done automatically - but
+            // is needed if assemble(.) is called twice
+            // A.computePattern( igrad(u) * igrad(u).tr() );
             setup_time += timer.stop();
-
             gsInfo<< A.numDofs() <<std::flush;
 
             timer.restart();
-
+            // Compute the system matrix and right-hand side
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
             u*  CoeffConductivity * (-1.)*pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G) //rhs vector
             );
-            
+// //Optionally, assemble Nitsche
+//         gsMatrix<> mu_interfaces;
+//         //auto m_penalty = 1;
+//         index_t i = 0;
+//         for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
+//         {
+//             auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
+//             auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
+//             auto mu       = 2 * stab / m_h;
+//             auto alpha   = 1.;
+
+//             // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
+//             // if (m_penalty == -1)
+//             //     mu = mu_interfaces(i,0) / m_h;
+//             // else
+//             //     mu = m_penalty / m_h;
+
+//             std::vector<boundaryInterface> iFace;
+//             iFace.push_back(*it);
+            // A.assembleIfc(iFace,
+            //         //B11
+            //               +mu * u.left() *
+            //               u.left().tr() * nv(G.left()).norm(),
+            //              -0.5*alpha *
+            //               (igrad(u.left(), G) * tv(G.left()).normalized() * u.left().tr()).tr() *
+            //               nv(G.left()).norm(),
+            //              -0.5*alpha *
+            //                 (u.left()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
+            //               nv(G.left()).norm(),
+            //         //B12
+            //              -mu * u.left() *
+            //               u.right().tr() * nv(G.left()).norm(),
+            //              +0.5*alpha *
+            //               (igrad(u.left(), G) * tv(G.left()).normalized() * u.right().tr()).tr() *
+            //               nv(G.left()).norm(),
+            //              -0.5*alpha *
+            //                 (u.left()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
+            //               nv(G.left()).norm(),
+            //         //B21
+            //              - mu * u.right() *
+            //               u.left().tr() * nv(G.left()).norm(),
+            //              -0.5*alpha *
+            //               (igrad(u.right(), G) * tv(G.right()).normalized() * u.left().tr()).tr() *
+            //               nv(G.left()).norm(),
+            //              +0.5*alpha *
+            //                 (u.right()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
+            //               nv(G.left()).norm(),
+            //         //B22
+            //               + mu * u.right() *
+            //               u.right().tr() * nv(G.left()).norm(),
+            //              +0.5*alpha *
+            //               (igrad(u.right(), G) * tv(G.right()).normalized() * u.right().tr()).tr() *
+            //               nv(G.left()).norm(),
+            //              +0.5*alpha *
+            //                 (u.right()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
+            //               nv(G.left()).norm()                          
+
+            // );
+        // }            
             // Compute the Neumann terms defined on physical space
             //auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
@@ -231,14 +293,13 @@ int main(int argc, char *argv[])
 
                 //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
                 sv0 = solVector;
-                u.setup(bc, dirichlet::l2Projection, 0);
             
                 solution u_sol = A.getSolution(u, solVector);
 
                 // Initialize the system
                 A.initSystem();
                 setup_time += timer.stop();
-
+                u.setup(bc, dirichlet::l2Projection, 0);
                 //gsInfo<< A.numDofs() <<std::flush;
 
                 timer.restart();

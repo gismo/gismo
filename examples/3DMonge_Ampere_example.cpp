@@ -99,7 +99,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
+    gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
+    //gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
     // fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -111,7 +112,8 @@ int main(int argc, char *argv[])
     //================================== This part is fixed for all    ==================================
     //================================== -------------------------- =====================================
     // .... one single patch
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
+    // gsMultiPatch<> mp = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
+    gsMultiPatch<> mp; mp.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
     //Get all interfaces and boundaries:
     mp.degreeElevate(numElevate);
     mp.computeTopology();
@@ -295,29 +297,44 @@ int main(int argc, char *argv[])
         gsMultiPatch<> UU;
         u_sol.extract(UU);
         auto u_s = A.getCoeff(UU);
+        gsInfo << "getcoef uu\n";
 
         space v = A.getSpace(dbasis);
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
+         gsInfo << "get solu\n";
         A.initSystem(2);
-
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * grad(u_s) );
+        //gsQuasiInterpolate<double>::Schoenberg(dbasis.basis(0), grad(u_sol), vsolVector);
+        gsInfo << "assemble is done\n";
         vsolVector = Poisson.L2ProjectVec(A.rhs());
-
-        gsMultiPatch<> Psi, PsiLoc;
+        gsInfo << "solve is done\n";
+        gsMultiPatch<> Psi;
         v_sol.extract(Psi);
-        v_sol.extract(PsiLoc);
 
         // ... correct boundary
         ProjectionNormalCPoints(Psi);
         Psi.addAutoBoundaries();
         Psi.computeTopology();
+        gsWrite(Psi, "Psi");
+        gsInfo << "Psi is done\n";
         geometryMap PP    = A.getMap(Psi);
-        geometryMap PPrho = A.getMap(Psi);
+        // geometryMap PPrho = A.getMap(Psi);
         //auto rho = PPrho(density);
         auto rho = A.getCoeff(density, PP);
+        gsInfo<<"Plotting in Paraview...\n";
+        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        collection.options().setSwitch("plotElements", true);
+        collection.options().setSwitch("base64", export_b64);
+        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("numPoints", 10000);
+        collection.newTimeStep(&Psi);
+        collection.addField(rho, "density function");
+        collection.saveTimeStep();
+        collection.save();
 
+        gsFileManager::open("ParaviewOutput/solution.pvd");
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
         u.setup(bc_mae, dirichlet::l2Projection, 0);

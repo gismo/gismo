@@ -241,6 +241,7 @@ int main(int argc, char *argv[])
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
     A.options().addInt("InterfaceStrategy", "Interface strategy conforming", iFace::none);
+    A.options().setSwitch("SameElement",false);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -492,7 +493,7 @@ int main(int argc, char *argv[])
 
                 // ... correct boundary
                 //if (PNormalCP)
-                    ProjectionNormalCPoints(Psi, mp);
+                ProjectionNormalCPoints(Psi, mp);
                 //if (CornersLshape)
                 //    CorrectCornersLshape(Psi, mp);
                 
@@ -724,30 +725,30 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 100000);
-        collection.newTimeStep(&mp);
-        collection.addField(u_sol,"numerical solution");
-        collection.addField(igrad(u_sol,G),"gradient_numerical solution");
-        if(adaptiveMesh){
-        collection.addField(ff, "density function");
-        collection.addField(ihess(u_sol,G).det(), "Jacobian function");}
-        else{
-        collection.addField(u_ex, "exact solution");
-        }
-        if(maxIter == 0)
-        collection.addField(CoeffConductivity * (-1.)*pow(2.+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G), "MAE_rhs");
-        else
-        collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G), "MAE_rhs");
-        collection.saveTimeStep();
-        collection.save();
+        // gsInfo<<"Plotting in Paraview...\n";
+        // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        // collection.options().setSwitch("plotElements", true);
+        // collection.options().setSwitch("base64", export_b64);
+        // collection.options().setInt("plotElements.resolution", 16);
+        // collection.options().setInt("numPoints", 100000);
+        // collection.newTimeStep(&mp);
+        // collection.addField(u_sol,"numerical solution");
+        // collection.addField(igrad(u_sol,G),"gradient_numerical solution");
+        // if(adaptiveMesh){
+        // collection.addField(ff, "density function");
+        // collection.addField(ihess(u_sol,G).det(), "Jacobian function");}
+        // else{
+        // collection.addField(u_ex, "exact solution");
+        // }
+        // if(maxIter == 0)
+        // collection.addField(CoeffConductivity * (-1.)*pow(2.+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G), "MAE_rhs");
+        // else
+        // collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G), "MAE_rhs");
+        // collection.saveTimeStep();
+        // collection.save();
 
 
-        gsFileManager::open("ParaviewOutput/solution.pvd");
+        // gsFileManager::open("ParaviewOutput/solution.pvd");
 
 
         gsMultiPatch<> UU;
@@ -767,7 +768,7 @@ int main(int argc, char *argv[])
         //ev.testEval( igrad(u_sol,G), pt );
 
         // Obtain control points for the gradient of Psi
-        A.assemble( v * v.tr() , v * igrad(u_s,G) );
+        A.assemble( v * v.tr() , v * grad(u_s) );
         vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         gsMultiPatch<> Psi;
         v_sol.extract(Psi);
@@ -780,7 +781,7 @@ int main(int argc, char *argv[])
         //geometryMap PP = A.getMap(Psi);
         //auto fp = A.getCoeff(f,PP);
 
-        //gsWrite(Psi, "Psi_mapping");
+        gsWrite(Psi, "Psi_mapping");
         gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);

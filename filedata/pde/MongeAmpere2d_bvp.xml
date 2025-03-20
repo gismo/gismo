@@ -3,16 +3,21 @@
 
   <!-- Computational domain -->
   <MultiPatch parDim="2" id="0">
-    <patches type="id_range">500 501</patches>
+    <patches type="id_range">500 503</patches>
     <interfaces>501 4 500 3 0 1 1 1
+    502 4 501 3 0 1 1 1
+    503 4 502 3 0 1 1 1
+    500 4 503 3 0 1 1 1
     </interfaces>
     <boundary name="neumann">
-      501 1
-      500 4
       500 2
-      501 3
       500 1
+      501 1
       501 2
+      502 2
+      502 1
+      503 2
+      503 1
     </boundary>
   </MultiPatch>
 
@@ -121,5 +126,52 @@
     -1 0
     </coefs>
  </Geometry>
-
+ <Geometry type="TensorNurbs2" id="502">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2" parDim="2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+  <weights>1 1 1 0.707106781186548 0.707106781186548 0.707106781186548 1 1 1 </weights>
+  </Basis>
+  <coefs geoDim="2">
+    -0.5 0
+    -0.75 0
+    -1 0
+    -0.5 -0.5
+    -0.75 -0.75
+    -1 -1
+    0 -0.5
+    0 -0.75
+    0 -1
+    </coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2" id="503">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2" parDim="2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+  <weights>1 1 1 0.707106781186548 0.707106781186548 0.707106781186548 1 1 1 </weights>
+  </Basis>
+  <coefs geoDim="2">
+    0 -0.5
+    0 -0.75
+    0 -1
+    0.5 -0.5
+    0.75 -0.75
+    1 -1
+    0.5 0
+    0.75 0
+    1 0
+    </coefs>
+ </Geometry>
 </xml>
