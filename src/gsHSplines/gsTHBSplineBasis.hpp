@@ -1250,7 +1250,7 @@ index_t gsTHBSplineBasis<d,T,Trunc>::numActiveMax(const gsMatrix<T> & u,
     point low, upp, cur, mstr, str, ll, uu, cc;
     index_t ii;
     // todo: store active_cwise/stride_cwise
-    const int maxLevel = this->m_tree.getMaxInsLevel();
+    const int maxLevel = this->maxLevel();
     gsMatrix<T> currPoint;
     offset.setZero(maxLevel+1, u.cols()); //trim at the end
     // stores [rlvl]->(act,level)
@@ -1416,7 +1416,7 @@ void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsMatrix<T>& u, gsMatrix<ind
 {
     gsMatrix<T> currPoint; // HIGHLY INEFFICIENT
     point low;
-    const int maxLevel = this->m_tree.getMaxInsLevel();
+    const int maxLevel = this->maxLevel();
 
 //    gsMatrix<index_t> offset(lvl,u.cols());
 //    std::vector<std::vector<index_t> > offset_tmp(u.cols());
@@ -1676,7 +1676,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
     result.resize(n+1);
     if (0==u.cols()) return;
 
-    const int maxLevel = this->m_tree.getMaxInsLevel();
+    const int maxLevel = this->maxLevel();
     // stores [rlvl]->[act,m]
     //std::vector<index_t,std::list<std::pair<index_t,index_t> > > tfunction;
     std::vector<std::vector<std::pair<index_t,index_t> > > tfunction(maxLevel+1);
