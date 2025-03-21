@@ -210,6 +210,14 @@ public:
             m_fibers[i]->reserve(nz);
     }
 
+    template<typename Cont>
+    void reserve(const Cont &nz)
+    {
+        GISMO_ASSERT(m_fibers.size()==nz.size(), "Wrong size in nonzero vector.");
+        for (index_t i = 0; i < fibers(); ++i)
+            m_fibers[i]->reserve(nz[i]);
+    }
+
     void conservativeResize(index_t newRows, index_t newCols)
     {
         if (!IsRowMajor) std::swap(newRows,newCols);
