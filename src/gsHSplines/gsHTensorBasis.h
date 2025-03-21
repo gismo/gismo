@@ -816,7 +816,8 @@ public:
     /// Returns the maximum level of spline basis present in the hierarchy
     unsigned maxLevel() const
     {
-        return m_xmatrix.size() - 1;
+        return m_tree.getMaxInsLevel();
+            //m_xmatrix.size() - 1; //?
     }
 
     /// Returns the level of the function indexed \a i (in continued indices)

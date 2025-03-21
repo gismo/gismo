@@ -117,6 +117,8 @@ public:
 
 public:
 
+    using gsHTensorBasis<d,T>::tensorLevel;
+
     // Look at gsBasis.h for the documentation of this function
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
 
@@ -613,7 +615,7 @@ private:
     void update_structure() 
     {
         gsHTensorBasis<d,T>::update_structure(); 
-        representBasis();
+        if (Trunc) representBasis();
     }
 
     /**

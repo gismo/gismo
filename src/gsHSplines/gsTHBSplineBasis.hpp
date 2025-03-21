@@ -105,7 +105,7 @@ void gsTHBSplineBasis<d,T,Trunc>::representBasis()
         index_t tensor_index = this->flatTensorIndexOf(j, level);
 
         // element indices
-        this->m_bases[level]->elementSupport_into(tensor_index, element_ind);
+        tensorLevel(level).elementSupport_into(tensor_index, element_ind);
 
         // I tried with block, I can not trick the compiler to use references
         low = element_ind.col(0); //block<d, 1>(0, 0);
@@ -120,6 +120,9 @@ void gsTHBSplineBasis<d,T,Trunc>::representBasis()
         // support indices of the coarsest level (low & high), has presentation
         // based only on B-Splines (and not THB-Splines).
         // this is not the same as query 3
+        //
+        // Important note: if there is an orphan element of some level
+        // representation might be done in that level !
         index_t clevel = this->m_tree.query4(low, high, level);
 
         if (level != clevel) // we must compute its presentation
@@ -181,7 +184,6 @@ void gsTHBSplineBasis<d,T, Trunc>::_representBasisFunction(
     {
         _updateSizeOfCoefs(level, level + 1, finest_low,
                            finest_high, cur_size_of_coefs);
-
 
         // index of a support of the j-th basis function (l_low, l_high
         // on level, and l1_high, l1_low on level + 1)
@@ -615,7 +617,7 @@ void gsTHBSplineBasis<d,T,Trunc>::getConnectedComponents(
             break;
         }
     }
-    gsDebug<<"new min level"<<"\n";
+    //gsDebug<<"new min level"<<"\n";
     std::vector< std::vector< std::vector< std::vector<index_t> > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector<index_t > > > aabb;//axis aligned bounding box
     std::vector< std::vector<index_t > > boxes;
@@ -900,7 +902,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch_trimm
             break;
         }
     }
-    gsDebug<<"new min level"<<"\n";
+    //gsDebug<<"new min level"<<"\n";
     std::vector< std::vector< std::vector< std::vector< T > > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector<index_t > > > aabb;//axis aligned bounding box
     std::vector< std::vector<index_t > > boxes;
@@ -1432,7 +1434,7 @@ void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsMatrix<T>& u, gsMatrix<ind
         temp_output[p].reserve(ov+2);
         currPoint = u.col(p);
         for(short_t i = 0; i != d; ++i)
-            low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
+            low[i] = tensorLevel(maxLevel).knots(i).uFind( currPoint(i,0) ).uIndex();
 
         if (m_manualLevels)
             this->_knotIndexToDiadicIndex(maxLevel,low);
@@ -1469,11 +1471,9 @@ void gsTHBSplineBasis<d,T,Trunc>::evalSingle_into(index_t i,
     }
     else
     {
-
         unsigned level = this->m_is_truncated[i];
         const gsSparseVector<T>& coefs = getCoefs(i);
-        const gsTensorBSplineBasis<d, T>& base =
-            *this->m_bases[level];
+        const gsTensorBSplineBasis<d, T>& base = tensorLevel(level);
 
         gsTensorDeboor<d, T, gsKnotVector<T>, gsSparseVector<T> >
             (u, base, coefs, result);
@@ -1496,8 +1496,7 @@ void gsTHBSplineBasis<d,T,Trunc>::deriv2Single_into(index_t i,
     {
         const unsigned level = this->m_is_truncated[i];
         const gsSparseVector<T>& coefs = this->getCoefs(i);
-        const gsTensorBSplineBasis<d, T> & base =
-            *this->m_bases[level];
+        const gsTensorBSplineBasis<d, T> & base = tensorLevel(level);
 
         gsTensorDeriv2_into<d, T, gsKnotVector<T>,
                             gsSparseVector<T> >(u, base, coefs, result);
@@ -1603,8 +1602,7 @@ void gsTHBSplineBasis<d,T,Trunc>::derivSingle_into(index_t i,
     {
         unsigned level = this->m_is_truncated[i];
         const gsSparseVector<T>& coefs = this->getCoefs(i);
-        const gsTensorBSplineBasis<d,T>& base =
-            *this->m_bases[level];
+        const gsTensorBSplineBasis<d,T>& base = tensorLevel(level);
         gsTensorDeriv_into<d, T, gsKnotVector<T>,
                            gsSparseVector<T> >(u, base, coefs, result);
     }
@@ -1783,7 +1781,6 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
                 {
                     const gsSparseVector<T>& coefs = getCoefs(q.first);
 
-//                    /*
                     ii = 0;
                     tcur = kil;
                     while ( findNextMatch(coefs, ii, tcur, kil, til, tstr) )
@@ -1799,8 +1796,6 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
                         ++ii;//advance both
                         nextCubePoint(tcur,kil,til);
                     }
-
-                    //*/
 
                     /* // known to work
                     this->m_bases[level]->active_into(u.col(i), tact);// expensive
