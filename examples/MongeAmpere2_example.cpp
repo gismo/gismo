@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> mp;
     fd.getId(0, mp); // id=0: Multipatch domain
+    mp.computeTopology();
 
     gsFunctionExpr<> f;
     // id=1: source function for Monge-Ampere equation
@@ -121,6 +122,11 @@ int main(int argc, char *argv[])
     // Set the geometry map
     geometryMap G = A.getMap(mp);
 
+    // Set pow for BFO method
+    auto IGdim     = G.domainDim();
+    // Set factor for BFO method
+    auto gammaMAE = factorial(G.domainDim());
+    
     // Set the discretization space
     space u = A.getSpace(dbasis);
 
@@ -155,14 +161,13 @@ int main(int argc, char *argv[])
             mp.uniformRefine();
 
 
-            //... nromalisation of density function
-            auto CoeffDensity{ev.integral(ff.val() * meas(G))};
             // Initialize the system : start Computing the conductivity coeffeicient ...
             // Compute the Neumann terms defined on physical space
             auto g_N = A.getBdrFunction(G);
             auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
-            // ...
-            auto CoeffConductivity{Neumann_Int/ev.integral(pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G))};
+            //... nromalisation of density function
+            auto CoeffDensity{ev.integral(ff.val() * meas(G))};
+            auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim-gammaMAE+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
             //... end 
             // Setup the space \a u with strongly imposed Dirichlet part
             //u.setup(bc, dirichlet::interpolation, 0);
@@ -181,67 +186,8 @@ int main(int argc, char *argv[])
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
-            u*  CoeffConductivity * (-1.)*pow(2.+2. * CoeffDensity/ff.val(), 0.5) * meas(G) //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/ff.val(), 1./IGdim)  * meas(G) //rhs vector
             );
-// //Optionally, assemble Nitsche
-//         gsMatrix<> mu_interfaces;
-//         //auto m_penalty = 1;
-//         index_t i = 0;
-//         for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
-//         {
-//             auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
-//             auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-//             auto mu       = 2 * stab / m_h;
-//             auto alpha   = 1.;
-
-//             // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
-//             // if (m_penalty == -1)
-//             //     mu = mu_interfaces(i,0) / m_h;
-//             // else
-//             //     mu = m_penalty / m_h;
-
-//             std::vector<boundaryInterface> iFace;
-//             iFace.push_back(*it);
-            // A.assembleIfc(iFace,
-            //         //B11
-            //               +mu * u.left() *
-            //               u.left().tr() * nv(G.left()).norm(),
-            //              -0.5*alpha *
-            //               (igrad(u.left(), G) * tv(G.left()).normalized() * u.left().tr()).tr() *
-            //               nv(G.left()).norm(),
-            //              -0.5*alpha *
-            //                 (u.left()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
-            //               nv(G.left()).norm(),
-            //         //B12
-            //              -mu * u.left() *
-            //               u.right().tr() * nv(G.left()).norm(),
-            //              +0.5*alpha *
-            //               (igrad(u.left(), G) * tv(G.left()).normalized() * u.right().tr()).tr() *
-            //               nv(G.left()).norm(),
-            //              -0.5*alpha *
-            //                 (u.left()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
-            //               nv(G.left()).norm(),
-            //         //B21
-            //              - mu * u.right() *
-            //               u.left().tr() * nv(G.left()).norm(),
-            //              -0.5*alpha *
-            //               (igrad(u.right(), G) * tv(G.right()).normalized() * u.left().tr()).tr() *
-            //               nv(G.left()).norm(),
-            //              +0.5*alpha *
-            //                 (u.right()*(igrad(u.left(), G) * tv(G.left()).normalized()).tr()).tr() *
-            //               nv(G.left()).norm(),
-            //         //B22
-            //               + mu * u.right() *
-            //               u.right().tr() * nv(G.left()).norm(),
-            //              +0.5*alpha *
-            //               (igrad(u.right(), G) * tv(G.right()).normalized() * u.right().tr()).tr() *
-            //               nv(G.left()).norm(),
-            //              +0.5*alpha *
-            //                 (u.right()*(igrad(u.right(), G) * tv(G.right()).normalized()).tr()).tr() *
-            //               nv(G.left()).norm()                          
-
-            // );
-        // }            
             // Compute the Neumann terms defined on physical space
             //auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
@@ -289,7 +235,7 @@ int main(int argc, char *argv[])
                 gsMultiPatch<> Psi;
                 v_sol.extract(Psi);
                 geometryMap PP = A.getMap(Psi);
-                auto fp = A.getCoeff(f,PP);
+                auto fp = A.getCoeff(f,G, PP);
 
                 //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
                 sv0 = solVector;
@@ -304,15 +250,20 @@ int main(int argc, char *argv[])
 
                 timer.restart();
                 // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
-                
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G));
-
+                auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/ff.val(), 1./IGdim);
+                // if (dbasis.minCwiseDegree() > 2)
+                // auto  ExprMAE     = pow( abs(pow(lapl(u_sol).val(),IGdim) - gammaMAE*hess(u_sol).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+                auto IntegDensity = ev.integral(ExprMAE);
+                CoeffConductivity = Neumann_Int/IntegDensity;                
+                // .. update Coeffeicient of conductivity
+                // CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
                 // MAE system
                 A.assemble(
-                igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G) //matrix
+                igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
                 ,
-                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + 2.*(CoeffDensity/fp.val() - ihess(u_sol,G).det()), 0.5) * meas(G) //rhs vector
+                // u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * ExprMAE * meas(G)  //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space

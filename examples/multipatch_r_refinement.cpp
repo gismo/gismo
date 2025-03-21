@@ -430,14 +430,14 @@ int main(int argc, char *argv[])
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
             // u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
-            u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/ff.val(), 1./IGdim)  //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/ff.val(), 1./IGdim)  * meas(G) //rhs vector
             );
             
             // Compute the Neumann terms defined on physical space
             //auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
-            A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
-            A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
+            //A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
+            //A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
 
             ma_time += timer.stop();
 
@@ -530,14 +530,14 @@ int main(int argc, char *argv[])
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
                 ,
                 // u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
-                u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
+                u * CoeffConductivity * (-1.) * ExprMAE * meas(G)  //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space
                 auto g_N = A.getBdrFunction(G);
                 A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
-                A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
-                A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
+                //A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
+                //A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
 
 
                 ma_time += timer.stop();

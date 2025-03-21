@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
         solution v_sol = A.getSolution(v, vsolVector);
          gsInfo << "get solu\n";
         A.initSystem(2);
-        // Obtain control points for the gradient of Psi
+        // Obtain control points for the gradient of phi
         A.assemble( v * v.tr() , v * grad(u_s) );
         //gsQuasiInterpolate<double>::Schoenberg(dbasis.basis(0), grad(u_sol), vsolVector);
         gsInfo << "assemble is done\n";
