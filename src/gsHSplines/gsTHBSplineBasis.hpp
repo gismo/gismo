@@ -1210,7 +1210,7 @@ active_detail(const gsMatrix<T> & u,
                     if ( isTruncated(act) )
                     {
                         //Record truncated functions with their representation level
-                        const int rlvl = m_is_truncated.at(act);
+                        const int rlvl = repLevel(act);
                         tfunction[rlvl].push_back( std::make_pair(act,level) );
                     }
                     else
@@ -1288,7 +1288,7 @@ index_t gsTHBSplineBasis<d,T,Trunc>::numActiveMax(const gsMatrix<T> & u,
                     if ( isTruncated(act) )
                     {
                         //Record truncated functions with their representation level
-                        const int rlvl = m_is_truncated.at(act);
+                        const int rlvl = repLevel(act);
                         tfunction[rlvl].push_back( std::make_pair(act,level) );
                     }
                     else
@@ -1343,7 +1343,7 @@ void gsTHBSplineBasis<d,T,Trunc>::activeAtLevel_into(index_t lvl, const gsMatrix
         {
             const gsSparseVector<T>& coefs = getCoefs(act);
             const gsTensorBSplineBasis<d, T>& base =
-                *this->m_bases[this->m_is_truncated[act]];
+                *this->m_bases[repLevel(act)];
 
             base.active_cwise(u, ll, uu);
             base.stride_cwise(str);
@@ -1471,7 +1471,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalSingle_into(index_t i,
     }
     else
     {
-        unsigned level = this->m_is_truncated[i];
+        unsigned level = repLevel(i);
         const gsSparseVector<T>& coefs = getCoefs(i);
         const gsTensorBSplineBasis<d, T>& base = tensorLevel(level);
 
@@ -1494,7 +1494,7 @@ void gsTHBSplineBasis<d,T,Trunc>::deriv2Single_into(index_t i,
     }
     else
     {
-        const unsigned level = this->m_is_truncated[i];
+        const unsigned level = repLevel(i);
         const gsSparseVector<T>& coefs = this->getCoefs(i);
         const gsTensorBSplineBasis<d, T> & base = tensorLevel(level);
 
@@ -1600,7 +1600,7 @@ void gsTHBSplineBasis<d,T,Trunc>::derivSingle_into(index_t i,
     }
     else
     {
-        unsigned level = this->m_is_truncated[i];
+        unsigned level = repLevel(i);
         const gsSparseVector<T>& coefs = this->getCoefs(i);
         const gsTensorBSplineBasis<d,T>& base = tensorLevel(level);
         gsTensorDeriv_into<d, T, gsKnotVector<T>,
@@ -1765,7 +1765,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
                         //If remembered we can evan evaluate here instead.
                         
                         //Record truncated functions with their representation level
-                        const int rlvl = m_is_truncated.at(index);
+                        const int rlvl = repLevel(index);
                         tfunction[rlvl].push_back( std::make_pair(index,m) );
                     }
                 }
@@ -1908,7 +1908,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
             }
             else// function is truncated
             {
-                const int rlvl = m_is_truncated.at(index);
+                const int rlvl = repLevel(index);
                 const gsSparseVector<T>& coefs = getCoefs(index);
                 this->m_bases[rlvl]->active_into(u.col(i), tact);
                 this->m_bases[rlvl]->evalAllDers_into(u.col(i), n, temp, sameElement);
@@ -1932,7 +1932,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
             gsInfo <<"diff:\n"<< (result[l] - result0[l]) <<"\n";
             for (m = 0; m!= act.rows(); ++m)
                 gsInfo<< (isTruncated(act.at(m)) ? "yes : " : "" )
-                <<  m_is_truncated.at(index) <<"\n";
+                <<  repLevel(index) <<"\n";
             GISMO_ERROR("not Ok");
         }
     }
