@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     auto IGdim     = G.domainDim();
     // Set factor for BFO method
     auto gammaMAE = factorial(G.domainDim());
-    
+
     // Set the discretization space
     space u = A.getSpace(dbasis);
 
@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
                 gsMultiPatch<> Psi;
                 v_sol.extract(Psi);
                 geometryMap PP = A.getMap(Psi);
-                auto fp = A.getCoeff(f,G, PP);
+                auto fp = A.getCoeff(f,PP);
 
                 //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
                 sv0 = solVector;

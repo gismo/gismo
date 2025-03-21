@@ -125,12 +125,12 @@ int main(int argc, char *argv[])
     index_t maxIter    = 30;
     double eps         = 1e-6; // pinalization coefficient
     double tolPicard   = 1e-8;
-    bool last = false, export_b64{false}, adaptiveMesh{true};
+    bool last = true, export_b64{false}, adaptiveMesh{true};
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
-    bool PNormalCP{false};
-    if(adaptiveMesh){
-        PNormalCP = true;
-    }
+    // bool PNormalCP{false};
+    // if(adaptiveMesh){
+    //     PNormalCP = true;
+    // }
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
-    gsFunctionExpr<> f("( 1.+ 9.*exp(-50.*abs((0.*x-0.)**2-(y-0.5)**2- 0.2)))",2);
+    gsFunctionExpr<> f("(1.+10.(1.+x*(abs(y-0.5)<0.3))/cosh( 10.*(y -0.5 ) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
