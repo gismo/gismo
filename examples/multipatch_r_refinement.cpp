@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 3;
     index_t numElevate = 0;
     index_t maxIter    = 30;
-    double eps         = 1e-5; // pinalization coefficient
+    double eps         = 1e-6; // pinalization coefficient
     double tolPicard   = 1e-8;
     bool last = false, export_b64{false}, adaptiveMesh{true};
     // ...PNormalCP: Correct the normal part of the mapping and CornersLshape: adjust the corners of the three patches that form L.
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 //    mp.addInterface(1,2,7,1);
    // Get all interfaces and boundaries:
     mp.computeTopology();
-    //mp.addAutoBoundaries();
+    mp.addAutoBoundaries();
 
     //..... Test 2
     // // Manufactured solition
@@ -197,12 +197,12 @@ int main(int argc, char *argv[])
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
     //gsFunctionExpr<> f("1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2)))",2);
     //gsFunctionExpr<> f("1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01)) )",2);
-    // Manufactured density function
+    //Manufactured density function
     //gsFunctionExpr<> f("1.+6.*( 1/(1.+exp(( (y-0.98)**2+(x-0.899)**2  - 0.002)/0.001)) + 1/(1.+exp((y -x  - 0.25)/0.001)) - 1./(1.+exp((y - x  - 0.15)/0.001)) +  0/(1.+exp((y - 1.0)/0.001)) - 0./(1.+exp((y - 0.975)/0.001))  +  1/(1.+exp((x - 1.0)/0.001)) - 1./(1.+exp((x - 0.95)/0.001)) )",2);    
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
-    gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((0.*x-0.)**2-(y-0.5)**2- 0.2)))",2);
+    gsFunctionExpr<> f("( 1.+ 9.*exp(-50.*abs((0.*x-0.)**2-(y-0.5)**2- 0.2)))",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
@@ -256,6 +256,7 @@ int main(int argc, char *argv[])
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                 1);
     ev.options().addInt("InterfaceStrategy", "Interface strategy conforming", iFace::none);
+    A.options().setSwitch("SameElement",false); 
     // Set the geometry map
     geometryMap G = A.getMap(mp);
 
@@ -295,7 +296,7 @@ int main(int argc, char *argv[])
     auto Neumann_Int{ev.integralBdrBc(bc.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral(ff.val() * meas(G))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
+    auto CoeffConductivity{Neumann_Int/ev.integral(pow(IGdim*IGdim-gammaMAE+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G))};
     if(adaptiveMesh)
     {
         //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
@@ -322,8 +323,8 @@ int main(int argc, char *argv[])
 //         for ( typename gsMultiPatch<>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
 //         {
 //             auto stab     = 4 * ( dbasis.maxCwiseDegree() + dbasis.dim() ) * ( dbasis.maxCwiseDegree() + 1 );
-//            auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-//            auto mu       = 2 * stab / m_h;
+//             auto m_h      = dbasis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
+//             auto mu       = 2 * stab / m_h;
 //             auto alpha   = 1e+4;
 
 //             // //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
@@ -428,7 +429,8 @@ int main(int argc, char *argv[])
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) + eps * u *u.tr()* meas(G) //matrix
             ,
-            u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
+            // u*  CoeffConductivity * (-1.)*pow(IGdim*IGdim+gammaMAE* CoeffDensity/ff.val(), 1./IGdim) * meas(G) //rhs vector
+            u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/ff.val(), 1./IGdim)  //rhs vector
             );
             
             // Compute the Neumann terms defined on physical space
@@ -490,6 +492,7 @@ int main(int argc, char *argv[])
                 
                 gsMultiPatch<> Psi;
                 v_sol.extract(Psi);
+                gsWrite(Psi, "Psi_mapping");
 
                 // ... correct boundary
                 //if (PNormalCP)
@@ -514,14 +517,20 @@ int main(int argc, char *argv[])
 
                 timer.restart();
                 // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
-                
                 // .. update Coeffeicient of conductivity
-                CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
+                auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/ff.val(), 1./IGdim);
+                // if (dbasis.minCwiseDegree() > 2)
+                // auto  ExprMAE     = pow( abs(pow(lapl(u_sol).val(),IGdim) - gammaMAE*hess(u_sol).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+                auto IntegDensity = ev.integral(ExprMAE);
+                CoeffConductivity = Neumann_Int/IntegDensity;                
+                // .. update Coeffeicient of conductivity
+                // CoeffConductivity = Neumann_Int/ev.integral(pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G));
                 // MAE system
                 A.assemble(
                 igrad(u, G) * igrad(u, G).tr() * meas(G) +  eps * u * u.tr()* meas(G)//matrix
                 ,
-                u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
+                // u * CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G) //rhs vector
+                u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
                 );
 
                 // Compute the Neumann terms defined on physical space
@@ -529,7 +538,6 @@ int main(int argc, char *argv[])
                 A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
                 A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
                 A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
-
 
 
                 ma_time += timer.stop();
@@ -725,74 +733,30 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        // gsInfo<<"Plotting in Paraview...\n";
-        // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        // collection.options().setSwitch("plotElements", true);
-        // collection.options().setSwitch("base64", export_b64);
-        // collection.options().setInt("plotElements.resolution", 16);
-        // collection.options().setInt("numPoints", 100000);
-        // collection.newTimeStep(&mp);
-        // collection.addField(u_sol,"numerical solution");
-        // collection.addField(igrad(u_sol,G),"gradient_numerical solution");
-        // if(adaptiveMesh){
-        // collection.addField(ff, "density function");
-        // collection.addField(ihess(u_sol,G).det(), "Jacobian function");}
-        // else{
-        // collection.addField(u_ex, "exact solution");
-        // }
-        // if(maxIter == 0)
-        // collection.addField(CoeffConductivity * (-1.)*pow(2.+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G), "MAE_rhs");
-        // else
-        // collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G), "MAE_rhs");
-        // collection.saveTimeStep();
-        // collection.save();
-
-
-        // gsFileManager::open("ParaviewOutput/solution.pvd");
-
-
-        gsMultiPatch<> UU;
-        u_sol.extract(UU);
-        gsWrite(UU, "U_solution");
-        auto u_s = A.getCoeff(UU);
-
-        //gsMultiBasis<> gbasis(dbasis);
-        //gbasis.reduceContinuity(1);
-        space v = A.getSpace(dbasis);
-        gsMatrix<> vsolVector;
-        solution v_sol = A.getSolution(v, vsolVector);
-        A.initSystem(2);
-
-        //gsVector<> pt(2); pt.setConstant(0.5);
-        //ev.testEval( v, pt );
-        //ev.testEval( igrad(u_sol,G), pt );
-
-        // Obtain control points for the gradient of Psi
-        A.assemble( v * v.tr() , v * grad(u_s) );
-        vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        gsMultiPatch<> Psi;
-        v_sol.extract(Psi);
-        
-        //... correct the boundary
-        if (PNormalCP)
-            ProjectionNormalCPoints(Psi, mp);
-        //MatchtangentialCPoints(Psi, 0, 1, 4);
-        //MatchtangentialCPoints(Psi, 0, 2, 2);
-        //geometryMap PP = A.getMap(Psi);
-        //auto fp = A.getCoeff(f,PP);
-
-        gsWrite(Psi, "Psi_mapping");
         gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
         collection.options().setInt("numPoints", 100000);
-        collection.newTimeStep(&Psi);
+        collection.newTimeStep(&mp);
+        collection.addField(u_sol,"numerical solution");
+        collection.addField(igrad(u_sol,G),"gradient_numerical solution");
+        if(adaptiveMesh){
+        collection.addField(ff, "density function");
+        collection.addField(ihess(u_sol,G).det(), "Jacobian function");}
+        else{
+        collection.addField(u_ex, "exact solution");
+        }
+        if(maxIter == 0)
+        collection.addField(CoeffConductivity * (-1.)*pow(2.+gammaMAE * CoeffDensity/ff.val(), 1./IGdim) * meas(G), "MAE_rhs");
+        else
+        collection.addField(CoeffConductivity * (-1.) * pow( (ilapl(u_sol,G)*ilapl(u_sol,G).tr()).val() + gammaMAE*(CoeffDensity/ff.val() - ihess(u_sol,G).det()), 1./IGdim) * meas(G), "MAE_rhs");
         collection.saveTimeStep();
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");
 
+        // gsFileManager::open("ParaviewOutput/solution.pvd");
         gsInfo << "Result written in Psi_mapping.xml \n";
     }
     else
