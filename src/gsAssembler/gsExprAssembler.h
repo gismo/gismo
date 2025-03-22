@@ -153,6 +153,11 @@ public:
         return give(m_matrix);
     }
 
+    EIGEN_STRONG_INLINE FiberMatrix giveFiberMatrix()
+    {
+        return give(m_fmatrix);
+    }
+
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
