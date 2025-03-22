@@ -1301,7 +1301,6 @@ bool gsFileData<T>::readOffFile( String const & fn )
 
     g->append_attribute( internal::makeAttribute("vertices", nverts, *data) );
     g->append_attribute( internal::makeAttribute("faces"   , nfaces, *data) );
-    g->append_attribute( internal::makeAttribute("edges"   , nedges, *data) );
 
     for (int i = 0; i < nverts; i++)
         if ( getline(file, line) )
@@ -1315,12 +1314,14 @@ bool gsFileData<T>::readOffFile( String const & fn )
         else
             return false;
 
-    for (int i = 0; i < nedges; i++)
+    int i = 0;
+    for (; i < nedges; i++)
         if ( getline(file, line) )
             tmp << line.substr(0,line.size()) << std::endl;
         else
-            return false;
+            break;//edges are optional
 
+    g->append_attribute( internal::makeAttribute("edges", i, *data) );
     g->value( internal::makeValue( tmp.str(), *data) );
     tmp.clear();
 
