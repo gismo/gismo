@@ -302,7 +302,7 @@ public:
     gsSparseMatrix<T> toSparseMatrix() const
     {
         gsSparseMatrix<T> rvo;
-        toSparseMatrix(rvo);
+        toSparseMatrix_into(rvo);
         return rvo;
     }
 
