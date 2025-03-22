@@ -45,16 +45,16 @@ public:
     { }
 
     gsFiberMatrix(index_t rows, index_t cols)
-    : m_fibers(rows)
+    : m_fibers(IsRowMajor?rows:cols)
     {
-        for (index_t i = 0; i < rows; ++i)
+        for (size_t i = 0; i < m_fibers.size(); ++i)
             m_fibers[i] = new Fiber(cols);
     }
 
     gsFiberMatrix(const gsFiberMatrix& other)
-    : m_fibers(other.rows())
+    : m_fibers(other.outerSize())
     {
-        for (int i = 0; i < rows(); ++i)
+        for (size_t i = 0; i < m_fibers.size(); ++i)
             m_fibers[i] = new Fiber( *other.m_fibers[i] );
     }
 
@@ -70,11 +70,32 @@ public:
         clear();
     }
 
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsFiberMatrix(gsFiberMatrix&& other) : m_fibers(give(other.m_fibers)) {}
+
+    /// Assignment operator
+    gsFiberMatrix& operator= ( const gsFiberMatrix& other )
+    {
+        clear();
+        m_fibers.resize(other.outerSize());
+        for (size_t i = 0; i < m_fibers.size(); ++i)
+            m_fibers[i] = new Fiber( *other.m_fibers[i] );
+    }
+
+    /// Move assignment operator
+    gsFiberMatrix& operator= ( gsFiberMatrix&& other )
+    {
+        clear();
+        m_fibers = give(other.m_fibers);
+        return *this;
+    }
+#else
     gsFiberMatrix& operator= (gsFiberMatrix other)
     {
         this->swap( other );
         return *this;
     }
+#endif
 
     gsFiberMatrix& operator= (const RowBlockXpr& rowxpr)
     {
