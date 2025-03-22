@@ -134,7 +134,7 @@ public:
     /// Call this function to fill the sparsematrix with all the assemblies so far
     const gsSparseMatrix<T> & makeMatrix() const
     {
-        m_fmatrix.toSparseMatrix(m_matrix);
+        m_fmatrix.toSparseMatrix_into(m_matrix);
         m_modified = false;
         return m_matrix;
     }

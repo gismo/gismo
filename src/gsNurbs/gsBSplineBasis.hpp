@@ -1057,7 +1057,7 @@ void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> &
     gsFiberMatrix<T,RowMajor> trans;
     trans.setIdentity( this->size() );
     gsBoehmRefine(this->knots(), trans, m_p, knots.begin(), knots.end());
-    trans.toSparseMatrix( transfer );
+    trans.toSparseMatrix_into( transfer );
 }
 
 
