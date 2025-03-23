@@ -28,12 +28,12 @@ namespace gismo
 {
 
 /**
- * @brief      Provides adaptive meshing routines. 
- * 
- * Provided element errors, this class performs marking, 
+ * @brief      Provides adaptive meshing routines.
+ *
+ * Provided element errors, this class performs marking,
  * refinement and coarsening of a provided basis. The class
  * uses the \ref gsHBox and \ref gsHBoxContainer classes
- * to ensure admissible meshing. 
+ * to ensure admissible meshing.
  *
  * @tparam     T     { description }
  */
@@ -257,16 +257,6 @@ protected:
     T m_totalError, m_maxError, m_uniformRefError, m_uniformCrsError;
 
     std::vector<index_t> m_refPermutation, m_crsPermutation;
-
-    /*
-        The plan:
-            Make std::map<box,index> m_indices
-            Make std::map<index,box*> m_boxes
-        Which can be used to obtain the index of a box via m_indices[box] = index
-        And to obtain the box corresponding to an index m_boxes[index] = *box
-        THe latter can be used to obtain the neighborhood etc.
-
-     */
 
     // std::map<index_t,std::shared_ptr<gsHBox<d,T>>> m_toindices;
     // std::map<std::shared_ptr<gsHBox<d,T>>,index_t> m_fromindices;

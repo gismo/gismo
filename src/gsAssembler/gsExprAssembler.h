@@ -339,6 +339,7 @@ public:
         if (m_fmatrix.nonZeros() && save_sparsety_pattern)
         {
             m_fmatrix.assignZero();
+            m_modified = true;
         }
         else
         {
