@@ -37,7 +37,8 @@ public:
     {
     public:
         typedef typename Fiber::InnerIterator Base;
-        iterator(gsFiberMatrix & fm, index_t j) : Base(fm.fiber(j)) { }
+        iterator() = default;
+        iterator(const gsFiberMatrix & fm, index_t j) : Base(fm.fiber(j)) { }
     };
 
     struct RowBlockXpr;
@@ -71,7 +72,7 @@ public:
         clear();
     }
 
-    iterator begin(index_t j) { return iterator(*this, j); }
+    iterator begin(index_t j) const { return iterator(*this, j); }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsFiberMatrix(gsFiberMatrix&& other) : m_fibers(give(other.m_fibers)) {}
