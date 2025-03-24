@@ -40,8 +40,8 @@ public:
         iterator() = default;
         iterator(const gsFiberMatrix & fm, index_t j) : Base(fm.fiber(j)) { }
 
-        T operator[](index_t i)
-        { return this->operator+(i).value(); }
+        inline T& operator[](size_t i)
+        { return const_cast<T&>(*(this->m_values+i)); }
     };
 
     struct RowBlockXpr;
