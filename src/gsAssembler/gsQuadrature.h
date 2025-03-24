@@ -355,30 +355,56 @@ struct gsQuadrature
         typename gsBasis<T>::domainIter domIt    = domain.beginAll();
         typename gsBasis<T>::domainIter domItEnd = domain.endAll();
 
+        const int dir = side.side().direction();
+        const bool par = side.side().parameter();
         index_t quadSize = 0;
         typename gsQuadRule<T>::uPtr QuRule;
-        QuRule = getPtr(domain, options,side.side().direction());
+        QuRule = getPtr(domain, options, dir);
 
+        // First pass: count boundary elements
         for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(domain, options, side.side().direction());
-            quadSize+=QuRule->numNodes();
+            // Check if it's a boundary element
+            if (par) {  // Upper boundary (parameter = 1)
+                if (domIt.upperCorner().at(dir) == 1) {
+                    quadSize += QuRule->numNodes();
+                }
+            } else {  // Lower boundary (parameter = 0)
+                if (domIt.lowerCorner().at(dir) == 0) {
+                    quadSize += QuRule->numNodes();
+                }
+            }
         }
 
-        gsMatrix<T> result(domain.dim(),quadSize);
+        gsMatrix<T> result(domain.dim(), quadSize);
 
+        // Second pass: collect boundary quadrature points
         index_t offset = 0;
         gsMatrix<T> nodes;
         gsVector<T> weights;
         domIt = domain.beginAll();
         for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(domain, options, side.side().direction());
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
-                           nodes, weights);
-            result.block(0,offset,domain.dim(),QuRule->numNodes()) = nodes;
-            offset += QuRule->numNodes();
+            // Check if it's a boundary element
+            if (par) {  // Upper boundary (parameter = 1)
+                if (domIt.upperCorner().at(dir) == 1) {
+                    QuRule = gsQuadrature::getPtr(domain, options, dir);
+                    // Map the Quadrature rule to the element
+                    QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+                                   nodes, weights);
+                    result.block(0,offset,domain.dim(),QuRule->numNodes()) = nodes;
+                    offset += QuRule->numNodes();
+                }
+            } else {  // Lower boundary (parameter = 0)
+                if (domIt.lowerCorner().at(dir) == 0) {
+                    QuRule = gsQuadrature::getPtr(domain, options, dir);
+                    // Map the Quadrature rule to the element
+                    QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+                                   nodes, weights);
+                    result.block(0,offset,domain.dim(),QuRule->numNodes()) = nodes;
+                    offset += QuRule->numNodes();
+                }
+            }
         }
         return result;
     }
