@@ -400,13 +400,18 @@ public:
         }
     }
 
-
+    // Documentation in gsBasis::evalSingle_into
     void evalSingle_into(index_t i,
                          const gsMatrix<T>& u,
                          gsMatrix<T>& result) const;
 
+    /// Retruns the represenation level of basis function \a index
     index_t repLevel(const index_t index) const
     { return (isTruncated(index) ? m_is_truncated[index] : this->levelOf(index)); }
+
+    /// Returns the tensor-product basis where basis function \a index has representation in
+    const tensorBasis & repBasis(const index_t index) const
+    { return tensorLevel(repLevel(index)); }
 
 private:
 
@@ -659,7 +664,6 @@ private:
 	return secondBox[0] < firstBox[0] && secondBox[1] < firstBox[1] &&
 	       firstBox[2] < secondBox[2] && firstBox[3] < secondBox[3];   
     }
-    
 
     /// @brief Checks if the boxes are the same
     ///
@@ -791,4 +795,3 @@ private:
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTHBSplineBasis.hpp)
 #endif
-

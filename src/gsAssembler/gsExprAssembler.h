@@ -917,18 +917,18 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
         omp_init_lock(&l);
 #endif
 
-#pragma omp parallel
-{
-    auto arg_tpl = std::make_tuple(args...);
-
     // Checks if any of the expressions in args is a matrix
     // If not, then there is no need to compute sparity patterns
     // and returns
     bool isMatrix = false;
     _checkMatrix CM(isMatrix);
-    op_tuple(CM, arg_tpl);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
     if (!isMatrix) return;
-
+    
+#pragma omp parallel
+{
+    auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
 
     typename gsBasis<T>::domainIter domItEnd = m_exprdata->domain().endAll();
@@ -968,6 +968,15 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
         omp_init_lock(&l);
 #endif
 
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
 #pragma omp parallel
 {
 /*
@@ -978,15 +987,6 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
 */
         auto arg_tpl = std::make_tuple(args...);
         m_exprdata->parsePattern(arg_tpl);
-
-        // Checks if any of the expressions in args is a matrix
-        // If not, then there is no need to compute sparity patterns
-        // and returns
-        bool isMatrix = false;
-        _checkMatrix CM(isMatrix);
-        op_tuple(CM, arg_tpl);
-        if (!isMatrix) return;
-
         typename gsBasis<T>::domainIter domIt;
         typename gsBasis<T>::domainIter domItEnd;
         unsigned patchInd;
@@ -1039,20 +1039,21 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
-    typedef typename gsFunction<T>::uPtr ifacemap;
-    const bool flipSide = m_options.askSwitch("flipSide", false);
-#pragma omp parallel
-{
-    auto arg_tpl = std::make_tuple(args...);
 
     // Checks if any of the expressions in args is a matrix
     // If not, then there is no need to compute sparity patterns
     // and returns
     bool isMatrix = false;
     _checkMatrix CM(isMatrix);
-    op_tuple(CM, arg_tpl);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
     if (!isMatrix) return;
 
+    typedef typename gsFunction<T>::uPtr ifacemap;
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+#pragma omp parallel
+{
+    auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
     unsigned patchInd(0);
     _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
