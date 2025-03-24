@@ -925,6 +925,15 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    op_tuple(CM, arg_tpl);
+    if (!isMatrix) return;
+
     m_exprdata->parsePattern(arg_tpl);
 
     typename gsBasis<T>::domainIter domItEnd = m_exprdata->domain().endAll();
@@ -974,6 +983,15 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
 */
         auto arg_tpl = std::make_tuple(args...);
         m_exprdata->parsePattern(arg_tpl);
+
+        // Checks if any of the expressions in args is a matrix
+        // If not, then there is no need to compute sparity patterns
+        // and returns
+        bool isMatrix = false;
+        _checkMatrix CM(isMatrix);
+        op_tuple(CM, arg_tpl);
+        if (!isMatrix) return;
+
         typename gsBasis<T>::domainIter domIt;
         typename gsBasis<T>::domainIter domItEnd;
         unsigned patchInd;
@@ -1031,6 +1049,15 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    op_tuple(CM, arg_tpl);
+    if (!isMatrix) return;
+
     m_exprdata->parsePattern(arg_tpl);
     unsigned patchInd(0);
     _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
@@ -1058,8 +1085,8 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        typename gsBasis<T>::domainIter domIt = basis1.domain()->subdomain(iFace.first().patch)->beginBdr(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->subdomain(iFace.first().patch)->endBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
 
         // Start iteration over elements
         //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )

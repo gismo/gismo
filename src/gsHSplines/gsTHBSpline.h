@@ -33,11 +33,11 @@ namespace gismo
     \ingroup HSplines
 */
 
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 class gsTHBSpline : public gsGeoTraits<d,T>::GeometryBase
 {
 public:
-    typedef gsTHBSplineBasis<d,T> Basis;
+    typedef gsTHBSplineBasis<d,T,Trunc> Basis;
 
     typedef typename Basis::tensorBasis tensorBasis;
 
@@ -53,7 +53,7 @@ public:
     util::conditional<d==1, gsConstantFunction<T>, gsTHBSpline<static_cast<short_t>(d-1),T>
                       >::type BoundaryGeometryType;
 
-    typedef typename gsTHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
+    typedef typename gsTHBSplineBasis<d,T,Trunc>::BoundaryBasisType BoundaryBasisType;
 
 public:
 
@@ -99,7 +99,7 @@ public:
     //void getBsplinePatches(gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, std::vector< gsTensorBSpline<2> > & bpatches) const;
 
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
-//    void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
+    // void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
 
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
     void convertToBSpline( gsTensorBSpline<d,T>& result );
@@ -108,18 +108,19 @@ public:
     void increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult = 1);
 
 
-private:
+// private:
 
     ///get B-spline control points on a given box of a certain level by refining eveywhere
-    void getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned l, gsTensorBSpline<2> geo) const;
+    // void getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned l, gsTensorBSpline<2> geo) const;
+    
     ///function for getBsplinePatchGlobal
-    void globalRefinement(int level)const;
-
+    // void globalRefinement(int level)const;
+    
     ///initialization of cmatrix
-    void initialize_cmatrix(int col, int c_level) const;
+    // void initialize_cmatrix(int col, int c_level) const;
 
     ///convert the coefficient matrix mat in the given direction to a column of the control points matrix
-    void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
+    // void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
 
 public:
 
@@ -138,6 +139,10 @@ public:
   void pybind11_init_gsTHBSpline2(pybind11::module &m);
   void pybind11_init_gsTHBSpline3(pybind11::module &m);
   void pybind11_init_gsTHBSpline4(pybind11::module &m);
+
+  void pybind11_init_gsHBSpline2(pybind11::module &m);
+  void pybind11_init_gsHBSpline3(pybind11::module &m);
+  void pybind11_init_gsHBSpline4(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

@@ -19,12 +19,8 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSpline.h>
 
-//== NAMESPACE ================================================================
-
 
 namespace gismo {
-
-//== IMPLEMENTATION ===========================================================
 
 
 gsSurfMesh::
@@ -54,8 +50,6 @@ gsSurfMesh(const gsMatrix<Scalar> & pts)
         this->add_vertex(col);
 }
 
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh::
 ~gsSurfMesh()
@@ -63,7 +57,7 @@ gsSurfMesh::
 }
 
 
-//-----------------------------------------------------------------------------
+
 
 
 gsSurfMesh&
@@ -101,9 +95,6 @@ operator=(const gsSurfMesh& rhs)
 
     return *this;
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 gsSurfMesh&
@@ -159,9 +150,6 @@ assign(const gsSurfMesh& rhs)
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 bool
 gsSurfMesh::
 read(const std::string& filename)
@@ -170,18 +158,12 @@ read(const std::string& filename)
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 bool
 gsSurfMesh::
 write(const std::string& filename) const
 {
     return write_mesh(*this, filename);
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 void
@@ -200,10 +182,6 @@ clear()
     garbage_ = false;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 free_memory()
@@ -214,9 +192,6 @@ free_memory()
     fprops_.free_memory();
     mprops_.free_memory();
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 void
@@ -231,9 +206,6 @@ reserve(unsigned int nvertices,
     fprops_.reserve(nfaces);
     mprops_.reserve(1);
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 void
@@ -264,9 +236,6 @@ property_stats() const
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 gsSurfMesh::Vertex
 gsSurfMesh::
 add_vertex(const Point& p)
@@ -275,9 +244,6 @@ add_vertex(const Point& p)
     vpoint_[v] = p;
     return v;
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 gsSurfMesh::Halfedge
@@ -304,8 +270,6 @@ find_halfedge(Vertex start, Vertex end) const
 }
 
 
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh::Edge
 gsSurfMesh::
@@ -314,9 +278,6 @@ find_edge(Vertex a, Vertex b) const
     Halfedge h = find_halfedge(a,b);
     return h.is_valid() ? edge(h) : Edge();
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 void
@@ -342,9 +303,6 @@ adjust_outgoing_halfedge(Vertex v)
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 gsSurfMesh::Face
 gsSurfMesh::
 add_triangle(Vertex v0, Vertex v1, Vertex v2)
@@ -355,9 +313,6 @@ add_triangle(Vertex v0, Vertex v1, Vertex v2)
     add_face_vertices_[2] = v2;
     return add_face(add_face_vertices_);
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 gsSurfMesh::Face
@@ -570,27 +525,18 @@ add_face(const std::vector<Vertex>& vertices)
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 unsigned int
 gsSurfMesh::
 valence(Vertex v) const
 {
     unsigned int count(0);
-
-    Vertex_around_vertex_circulator vvit = vertices(v);
-    Vertex_around_vertex_circulator vvend = vvit;
-    if (vvit) do
-              {
-                  ++count;
-              } while (++vvit != vvend);
-
+    for (auto u : vertices(v))
+    {
+        std::ignore = u;
+        ++count;
+    }
     return count;
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 unsigned int
@@ -620,8 +566,6 @@ face_valence_sum() const
     return count;
 }
 
-//-----------------------------------------------------------------------------
-
 
 bool
 gsSurfMesh::
@@ -634,9 +578,6 @@ is_triangle_mesh() const
 
     return true;
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 bool
@@ -652,9 +593,6 @@ is_quad_mesh() const
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 triangulate()
@@ -667,9 +605,6 @@ triangulate()
     for (; fit!=fend; ++fit)
         triangulate(*fit);
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 void
@@ -719,9 +654,6 @@ triangulate(Face f)
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 update_face_normals()
@@ -734,9 +666,6 @@ update_face_normals()
     for (fit=faces_begin(); fit!=fend; ++fit)
         fnormal_[*fit] = compute_face_normal(*fit);
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 Normal
@@ -778,9 +707,6 @@ compute_face_normal(Face f) const
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 update_vertex_normals()
@@ -793,9 +719,6 @@ update_vertex_normals()
     for (vit=vertices_begin(); vit!=vend; ++vit)
         vnormal_[*vit] = compute_vertex_normal(*vit);
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 Normal
@@ -855,8 +778,6 @@ compute_vertex_normal(Vertex v) const
 }
 
 
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh::Scalar
 gsSurfMesh::
@@ -864,9 +785,6 @@ edge_length(Edge e) const
 {
     return (vpoint_[vertex(e,0)] - vpoint_[vertex(e,1)]).norm();
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 void
@@ -1036,8 +954,6 @@ void gsSurfMesh::quad_split()
 
 }
 
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh::Halfedge
 gsSurfMesh::
@@ -1139,8 +1055,6 @@ split(Edge e, Vertex v)
 }
 
 
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh::Halfedge
 gsSurfMesh::
@@ -1177,6 +1091,16 @@ insert_vertex(Halfedge h0, Vertex v)
     set_vertex(h1, v2);
     set_face(h1, fh);
 
+    const bool do_sharp = hprops_.has("h:sharp");
+    if (do_sharp) //inherit sharp flag to new halfedges
+    {
+        Halfedge_property<bool> sharp = get_halfedge_property<bool>("h:sharp");
+        if( sharp[h0])
+            sharp[h1] = true;
+        if( sharp[o0])
+            sharp[o1] = true;
+    }
+
     set_next_halfedge(o1, o0);
     set_next_halfedge(o2, o1);
     set_vertex(o1, v);
@@ -1194,9 +1118,6 @@ insert_vertex(Halfedge h0, Vertex v)
 
     return o1;
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 gsSurfMesh::Halfedge
@@ -1239,9 +1160,6 @@ insert_edge(Halfedge h0, Halfedge h1)
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 bool
 gsSurfMesh::
 is_flip_ok(Edge e) const
@@ -1265,9 +1183,6 @@ is_flip_ok(Edge e) const
 
     return true;
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 void
@@ -1322,8 +1237,6 @@ flip(Edge e)
         set_halfedge(vb0, b1);
 }
 
-
-//-----------------------------------------------------------------------------
 
 
 bool
@@ -1387,7 +1300,7 @@ is_collapse_ok(Halfedge v0v1)
 }
 
 
-//-----------------------------------------------------------------------------
+
 
 
 void
@@ -1410,7 +1323,7 @@ collapse(Halfedge h)
 }
 
 
-//-----------------------------------------------------------------------------
+
 
 
 void
@@ -1467,7 +1380,7 @@ remove_edge(Halfedge h)
 }
 
 
-//-----------------------------------------------------------------------------
+
 
 
 void
@@ -1520,7 +1433,7 @@ remove_loop(Halfedge h)
 }
 
 
-//-----------------------------------------------------------------------------
+
 
 
 void
@@ -1559,7 +1472,7 @@ delete_vertex(Vertex v)
 }
 
 
-//-----------------------------------------------------------------------------
+
 
 
 void
@@ -1576,7 +1489,7 @@ delete_edge(Edge e)
 }
 
 
-//-----------------------------------------------------------------------------
+
 
 void
 gsSurfMesh::
@@ -1693,8 +1606,6 @@ delete_face(Face f)
     garbage_ = true;
 }
 
-
-//-----------------------------------------------------------------------------
 
 
 void
@@ -1835,6 +1746,19 @@ garbage_collection()
     garbage_ = false;
 }
 
+// Returns true if there is a sharp halfedge emenating from vertex \a v
+inline bool gsSurfMesh::has_flag(Vertex v,
+                                 const gsSurfMesh::Halfedge_property<bool> & hflag)
+{
+    /*//count hflags
+      int c = 0;
+      for (auto hh : halfedges(v))
+      c +=  hflag[hh];
+    //*/
+    for (auto hh : halfedges(v))
+        if (hflag[hh]) return true;
+    return false;
+}
 
 void gsSurfMesh::cc_subdivide()
 {
@@ -1847,6 +1771,11 @@ void gsSurfMesh::cc_subdivide()
 
     auto points = get_vertex_property<Point>("v:point");
 
+    const bool do_sharp = hprops_.has("h:sharp");
+    Halfedge_property<bool> sharp;
+    if (do_sharp)
+        sharp = get_halfedge_property<bool>("h:sharp");
+
     index_t env = n_vertices(); // edge vertices start here
 
     // loop over all edges, add edge points
@@ -1855,7 +1784,7 @@ void gsSurfMesh::cc_subdivide()
     {
         he  = halfedge(eit,0);
         tmp = (points[from_vertex(he)]+points[to_vertex(he)]) / 2;
-        v   = add_vertex(tmp);
+        v   = add_vertex(tmp);// edge points initialized as midpoints
         insert_vertex(he,v);
     }
 
@@ -1887,20 +1816,27 @@ void gsSurfMesh::cc_subdivide()
     for (i = env; i<fnv;++i)
     {
         v = gsSurfMesh::Vertex(i); //edge points
-        if (is_boundary(v))
+
+        if (do_sharp && has_flag(v,sharp))
+            continue;
+        else if (is_boundary(v))
         {
             //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
             continue;
         }
-        auto vit = vertices(v);
-        auto vcp = vit;
-        tmp.setZero();
-        if (vit) do
-                 {
-                     tmp += points[*vit];
-                 } while (++vit != vcp);
-        tmp /= 4 ; // =valence(v);
-        points[v] = tmp;
+        else
+        {
+            //Interior edge points finalized here
+            auto vit = vertices(v);
+            auto vcp = vit;
+            tmp.setZero();
+            if (vit) do
+                     {
+                         tmp += points[*vit];
+                     } while (++vit != vcp);
+            tmp /= 4 ; // =valence(v);
+            points[v] = tmp;
+        }
     }
 
 #   pragma omp parallel for default(shared) private(v)
@@ -1908,32 +1844,48 @@ void gsSurfMesh::cc_subdivide()
     {
         v = gsSurfMesh::Vertex(i); // original vertices
         auto n = valence(v);
-        auto & pt = points[v];//original vertex positions are computed using new edge/face points only
-        if (is_boundary(v))
-        {
-            //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
-            if (2>n)
-            {
-                auto vv = vertices(v);
-                pt *= 2;
-                pt += points[*vv]; // first boundary neighbor
-                pt += points[*(--vv.end())]; // last boundary neighbor
-                pt /= 4;
-            }
-            continue;
-        }
+        //original vertex positions are computed using new edge/face points only
+        auto & pt = points[v];
 
-        auto vit = halfedges(v);
-        auto vcp = vit;
-        //formula: pt = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
-        pt *= n*(n-3);
-        if (vit)
-            do
-            { //pt += 4*E-F
-                pt += 4*points[ to_vertex(*vit) ]
-                    - points[ to_vertex(next_halfedge(*vit)) ];
-            } while (++vit != vcp);
-        pt /= n*n;
+        if (do_sharp && has_flag(v,sharp))
+        {
+            pt *= 2;
+            auto hh = halfedge(v);
+            while(!sharp[hh])
+                hh = ccw_rotated_halfedge(hh);
+            pt += points[to_vertex(hh)]; // first flagged neighbor
+            hh = ccw_rotated_halfedge(hh);
+            while(!sharp[hh])
+                hh = ccw_rotated_halfedge(hh);
+            pt += points[to_vertex(hh)]; // second flagged neighbor
+            pt /= 4;
+        }
+        else if (is_boundary(v))
+        {
+            pt *= 2;
+            auto hh = halfedge(v);
+            while(!touches_boundary(hh))
+                hh = cw_rotated_halfedge(hh);
+            //GISMO_ASSERT(touches_boundary(hh), "Did not find a boundary halfedge.");
+            pt += points[to_vertex(hh)]; //  right boundary neighbor
+            hh = next_halfedge(opposite_halfedge(hh));
+            pt += points[to_vertex(hh)]; // left boundary neighbor
+            pt /= 4;
+        }
+        else
+        {
+            auto vit = halfedges(v);
+            auto vcp = vit;
+            //formula: pt = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
+            pt *= n*(n-3);
+            if (vit)
+                do
+                { //pt += 4*E-F
+                    pt += 4*points[ to_vertex(*vit) ]
+                        - points[ to_vertex(next_halfedge(*vit)) ];
+                } while (++vit != vcp);
+            pt /= n*n;
+        }
     }
 }
 
@@ -2493,6 +2445,24 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             face[j] = gsSurfMesh::Vertex(k);
         }
         result.add_face(face);
+    }
+
+    if (0!=ne)
+    {
+        gsSurfMesh::Halfedge_property<bool> sharp = result.add_halfedge_property<bool>("h:sharp");
+        face.resize(2);
+        gsSurfMesh::Halfedge he;
+        for(unsigned i = 0; i!=ne; ++i)
+        {
+            gsGetInt(str, k);
+            face[0] = gsSurfMesh::Vertex(k);
+            gsGetInt(str, k);
+            face[1] = gsSurfMesh::Vertex(k);
+            he = result.find_halfedge(face[0], face[1]);
+            sharp[he] = true;
+            he = result.opposite_halfedge(he);
+            sharp[he] = true;
+        }
     }
 }
 

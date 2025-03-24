@@ -227,8 +227,8 @@ public:
     template<class E> // note: elementwise integral not offered
     T maxInterface(const expr::_expr<E> & expr)
     {
-        if (const gsCompositeDomain<T> & cdomain = dynamic_cast<const gsCompositeDomain<T>&>(m_exprdata->domain()))
-            return computeInterface_impl<E,max_op>(expr, cdomain.topology().interfaces());
+        if (const gsCompositeDomain<T> * cdomain = dynamic_cast<const gsCompositeDomain<T>*>(&m_exprdata->domain()))
+            return computeInterface_impl<E,max_op>(expr, cdomain->topology().interfaces());
         else
             return (T)0;
     }
@@ -243,8 +243,8 @@ public:
     template<class E> // note: elementwise integral not offered
     T minInterface(const expr::_expr<E> & expr)
     {
-        if (const gsCompositeDomain<T> & cdomain = dynamic_cast<const gsCompositeDomain<T>&>(m_exprdata->domain()))
-            return computeInterface_impl<E,min_op>(expr, cdomain.topology().interfaces());
+        if (const gsCompositeDomain<T> * cdomain = dynamic_cast<const gsCompositeDomain<T>*>(&m_exprdata->domain()))
+            return computeInterface_impl<E,min_op>(expr, cdomain->topology().interfaces());
         else
             return (T)0;
     }

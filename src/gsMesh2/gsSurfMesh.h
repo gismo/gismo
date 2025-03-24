@@ -1914,7 +1914,10 @@ public: // Catmull-Clark functions
 
     /// Generate linear tensor-product patches (possibly merging faces)
     gsMultiPatch<real_t> linear_patches() const;
-    
+
+    // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
+    inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
+
 private: //--------------------------------------------------- helper functions
 
     /** make sure that the outgoing halfedge of vertex v is a boundary halfedge
