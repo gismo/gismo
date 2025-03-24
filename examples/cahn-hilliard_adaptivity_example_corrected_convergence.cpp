@@ -321,7 +321,7 @@ void solve( gsMultiPatch<T> & mp,
                 w * qq; // source term (manuf solution)
 
     // Neumann BC term (boundary integral) for manufactured solution cos(2*pi*x) * cos(2*pi*y)
-    gsFunctionExpr<> expression("6*x^8*y^9 - (27*x^2*y)/1000 - (9*y^3)/1000 + 3*x^2*y^3*(x^6*y^6 - 1)","6*x^9*y^8 - (27*x*y^2)/1000 - (9*x^3)/1000 + 3*x^3*y^2*(x^6*y^6 - 1)",2);
+    gsFunctionExpr<> expression("- (3*pi^3*cos(2*pi*y)*sin(2*pi*x))/125 - 4*pi*cos(2*pi*x)^2*cos(2*pi*y)^3*sin(2*pi*x) - 2*pi*cos(2*pi*y)*sin(2*pi*x)*(cos(2*pi*x)^2*cos(2*pi*y)^2 - 1)","- (3*pi^3*cos(2*pi*x)*sin(2*pi*y))/125 - 4*pi*cos(2*pi*x)^3*cos(2*pi*y)^2*sin(2*pi*y) - 2*pi*cos(2*pi*x)*sin(2*pi*y)*(cos(2*pi*x)^2*cos(2*pi*y)^2 - 1)",2);
     auto g_Neumann = A.getCoeff(expression,G); // Neumann BC
 
     //! [Problem setup]
