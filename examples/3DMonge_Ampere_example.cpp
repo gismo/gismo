@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     index_t numLRefine  = 3;
     index_t numElevate  = 0;
     index_t numrRefine  = -1; // number of composition bewteen adaptive mappings ()
-    index_t maxIter     = 50;
+    index_t maxIter     = 30;
     double eps          = 1e-7; // pinalization coefficient
     double tolPicard    = 1e-8;
     double IntensityMAE = 9.;
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     gsExprAssembler<> A(1,1);
     // A.options().setReal("quA", 2.0);
     // A.options().setInt("quB", 2);
-    //A.options().setSwitch("SameElement",false);
+    A.options().setSwitch("SameElement",false);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -164,6 +164,7 @@ int main(int argc, char *argv[])
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
+    
     // Set the geometry map
     geometryMap G = A.getMap(mp);
 
@@ -243,18 +244,7 @@ int main(int argc, char *argv[])
     }
     gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-    gsWrite(density, "density");
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setSwitch("base64", export_b64);
-    collection.options().setInt("plotElements.resolution", 16);
-    collection.options().setInt("numPoints", 10000);
-    collection.newTimeStep(&mp);
-    collection.addField(G, "density function");
-    collection.saveTimeStep();
-    collection.save();
 
-    gsFileManager::open("ParaviewOutput/solution.pvd");
     // ......... Start solving the Monge-Ampere equation .........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
@@ -308,19 +298,16 @@ int main(int argc, char *argv[])
         gsMultiPatch<> UU;
         u_sol.extract(UU);
         auto u_s = A.getCoeff(UU);
-        gsInfo << "getcoef uu\n";
 
         space v = A.getSpace(dbasis);
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
-         gsInfo << "get solu\n";
-        A.initSystem(2);
+
+        A.initSystem(IGdim);
         // Obtain control points for the gradient of phi
         A.assemble( v * v.tr() , v * grad(u_s) );
-        //gsQuasiInterpolate<double>::Schoenberg(dbasis.basis(0), grad(u_sol), vsolVector);
-        gsInfo << "assemble is done\n";
+
         vsolVector = Poisson.L2ProjectVec(A.rhs());
-        gsInfo << "solve is done\n";
         gsMultiPatch<> Psi;
         v_sol.extract(Psi);
 
@@ -329,12 +316,12 @@ int main(int argc, char *argv[])
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         gsWrite(Psi, "Psi");
-        gsInfo << "Psi is done\n";
         geometryMap PP    = A.getMap(Psi);
         // geometryMap PPrho = A.getMap(Psi);
         //auto rho = PPrho(density);
         auto rho = A.getCoeff(density, PP);
-        gsInfo<<"Plotting in Paraview...\n";
+
+        gsInfo<< " ."<< ev.min(jac(PP).det())<< " ."<< ev.max(jac(PP).det()) <<std::flush; // Assemblying done
 
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
@@ -481,7 +468,7 @@ int main(int argc, char *argv[])
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
 
         for(size_t i =0; i<Psitp.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
+            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(Psitp.patch(i)) ));
         Psi.addAutoBoundaries();
         Psi.computeTopology();
 

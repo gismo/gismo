@@ -73,7 +73,9 @@ public:
 
     gsExprEvaluator(const gsExprAssembler<T> & o)
     : m_exprdata(o.exprData()), m_options(defaultOptions())
-    { }
+    { 
+        m_options.update(o.options(),gsOptionList::addIfUnknown);
+    }
 
     gsOptionList defaultOptions()
     {
