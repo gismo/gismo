@@ -10,6 +10,8 @@
     
     Author(s): A. Mantzaflaris, based on 
     https://www.thedigitalmachine.com/wiki/C%2B%2B_sorted_vector
+
+    C++23 introduces std::flat_set
 */
 
 #pragma once
