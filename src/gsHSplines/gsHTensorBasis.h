@@ -813,10 +813,11 @@ public:
                                     gsVector<index_t> & lvl,
                                     gsMatrix<index_t> & loIdx ) const;
 
-    /// Returns the level in which the indices are stored internally
+    /// Returns the maximum level of spline basis present in the hierarchy
     unsigned maxLevel() const
     {
         return m_tree.getMaxInsLevel();
+            //m_xmatrix.size() - 1; //?
     }
 
     /// Returns the level of the function indexed \a i (in continued indices)

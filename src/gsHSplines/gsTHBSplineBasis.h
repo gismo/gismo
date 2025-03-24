@@ -117,6 +117,8 @@ public:
 
 public:
 
+    using gsHTensorBasis<d,T>::tensorLevel;
+
     // Look at gsBasis.h for the documentation of this function
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
 
@@ -177,7 +179,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -242,7 +244,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -312,7 +314,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -373,7 +375,7 @@ public:
     unsigned numTruncated() const
     { return m_presentation.size(); }
 
-    bool isTruncated(unsigned i) const
+    inline bool isTruncated(unsigned i) const
     { return Trunc && (this->m_is_truncated[i] != -1); }
 
     /// @brief Returns an iterator to the representation of the first truncated basis function
@@ -403,10 +405,10 @@ public:
                          const gsMatrix<T>& u,
                          gsMatrix<T>& result) const;
 
-private:
-
-    index_t getPresLevelOfBasisFun(const index_t index) const
+    index_t repLevel(const index_t index) const
     { return (isTruncated(index) ? m_is_truncated[index] : this->levelOf(index)); }
+
+private:
 
     /// @brief Computes and saves representation of all basis functions.
     void representBasis(); // rename: precompute coeffs
@@ -613,7 +615,7 @@ private:
     void update_structure() 
     {
         gsHTensorBasis<d,T>::update_structure(); 
-        representBasis();
+        if (Trunc) representBasis();
     }
 
     /**
