@@ -205,8 +205,8 @@ int main(int argc, char *argv[])
     for (int r=0; r<=numRefine; ++r)
     {
         dbasis.uniformRefine();
-        mp.uniformRefine();
-        mpLeft.uniformRefine();
+        // mp.uniformRefine();
+        // mpLeft.uniformRefine();
     }
     timer.restart();
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
@@ -229,8 +229,8 @@ int main(int argc, char *argv[])
     gsWrite(density, "density");
     auto rho = A.getCoeff(density, G);
     // ... manipulation of density function
-    auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
-    double  int_uh_0 = 0.;
+    auto empldensity  = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
+    double  int_uh_0  = 0.;
     double  int_uh_1  = 1.;
     if (empldensity < 1e-5|| IntensityMAE <= 1. )
     {
@@ -243,7 +243,18 @@ int main(int argc, char *argv[])
     }
     gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-    
+    gsWrite(density, "density");
+    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    collection.options().setSwitch("plotElements", true);
+    collection.options().setSwitch("base64", export_b64);
+    collection.options().setInt("plotElements.resolution", 16);
+    collection.options().setInt("numPoints", 10000);
+    collection.newTimeStep(&mp);
+    collection.addField(G, "density function");
+    collection.saveTimeStep();
+    collection.save();
+
+    gsFileManager::open("ParaviewOutput/solution.pvd");
     // ......... Start solving the Monge-Ampere equation .........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
@@ -324,17 +335,7 @@ int main(int argc, char *argv[])
         //auto rho = PPrho(density);
         auto rho = A.getCoeff(density, PP);
         gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(&Psi);
-        collection.addField(rho, "density function");
-        collection.saveTimeStep();
-        collection.save();
 
-        gsFileManager::open("ParaviewOutput/solution.pvd");
         // ...  0  dirichlet for boundaries
         sv0 = solVector;
         u.setup(bc_mae, dirichlet::l2Projection, 0);
