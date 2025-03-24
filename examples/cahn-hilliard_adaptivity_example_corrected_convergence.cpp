@@ -303,11 +303,9 @@ void solve( gsMultiPatch<T> & mp,
     auto  gradc = igrad(cold,G) + af * (igrad(cnew_sol,G) - igrad(cold,G));
     auto  laplc = ilapl(cold,G) + af * (ilapl(cnew_sol,G) - ilapl(cold,G));
 
-    // // Solution variables for the intermediate solutions (during time integration)
-    // solution c = A.getSolution(w, Calpha); // C
-    // solution dc = A.getSolution(w, dCalpha); // \dot{C}
-    
-
+    // Source (volume integral) function for manufactured solution cos(2*pi*x) * cos(2*pi*y)
+    gsFunctionExpr<> sourceQ("(12*pi^4*cos(2*pi*x)*cos(2*pi*y))/125 + 16*pi^2*cos(2*pi*x)^3*cos(2*pi*y)^3 - 24*pi^2*cos(2*pi*x)*cos(2*pi*y)^3*sin(2*pi*x)^2 - 24*pi^2*cos(2*pi*x)^3*cos(2*pi*y)*sin(2*pi*y)^2 + 8*pi^2*cos(2*pi*x)*cos(2*pi*y)*(cos(2*pi*x)^2*cos(2*pi*y)^2 - 1)",2);
+    auto     qq = A.getCoeff(sourceQ,G);
 
     // Derivatives of the polynomial double well potential (M. Kästner et al., 2016)
     auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
@@ -318,9 +316,13 @@ void solve( gsMultiPatch<T> & mp,
     auto dM_c = 0.0 * gradc; // replace with const_expr(1.0) instead of using 0*c!!
 
     auto residual = w*dc + // M
-                    M_c.val() * igrad(w,G) * dmu_c * gradc.tr() + // F_bar
-                    M_c.val() * ilapl(w,G) *lambda *laplc.val(); // K_laplacian
-                    // lambda*laplc.val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
+                M_c.val() * igrad(w,G) * dmu_c * gradc.tr() + // F_bar
+                M_c.val() * ilapl(w,G) *lambda *laplc.val() - // K_laplacian
+                w * qq; // source term (manuf solution)
+
+    // Neumann BC term (boundary integral) for manufactured solution cos(2*pi*x) * cos(2*pi*y)
+    gsFunctionExpr<> expression("6*x^8*y^9 - (27*x^2*y)/1000 - (9*y^3)/1000 + 3*x^2*y^3*(x^6*y^6 - 1)","6*x^9*y^8 - (27*x*y^2)/1000 - (9*x^3)/1000 + 3*x^3*y^2*(x^6*y^6 - 1)",2);
+    auto g_Neumann = A.getCoeff(expression,G); // Neumann BC
 
     //! [Problem setup]
 
@@ -499,14 +501,6 @@ void solve( gsMultiPatch<T> & mp,
 
     for (index_t step = 0; step!=maxSteps; step++)
     {   
-        // // Variable for source function
-        // //gsFunctionExpr<> sourceQ("-cos(alpha * pi * x) * cos(beta * pi * y) * ( delta * pi * sin(delta * pi * t) + M * pi^2 * cos(delta * pi * t) * ( alpha^2 + beta^2 - lambda * pi^2 * (alpha^2 + beta^2)^2 + 3 * cos(delta * pi * t)^2 * ( alpha^2 * cos(beta * pi * y)^2 * (2 * sin(alpha * pi * x)^2 - cos(alpha * pi * x)^2) + beta^2 * cos(alpha * pi * x)^2 * (2 * sin(beta * pi * y)^2 - cos(beta * pi * y)^2) ) ) ) )", 2);
-        gsFunctionExpr<> sourceQ("-cos(2.0 * pi * x) * cos(2.0 * pi * y) * ( 2.0 * pi * sin(2.0 * pi * t) + 1.0 * pi^2 * cos(2.0 * pi * t) * ( 2.0^2 + 2.0^2 - 1.5e-3 * pi^2 * (2.0^2 + 2.0^2)^2 + 3 * cos(2.0 * pi * t)^2 * ( 2.0^2 * cos(2.0 * pi * y)^2 * (2 * sin(2.0 * pi * x)^2 - cos(2.0 * pi * x)^2) + 2.0^2 * cos(2.0 * pi * x)^2 * (2 * sin(2.0 * pi * y)^2 - cos(2.0 * pi * y)^2) ) ) ) )", 2);
-        auto     qqold = A.getCoeff(sourceQ,G);
-        sourceQ.set_t(step*dt);
-        auto     qqnew = A.getCoeff(sourceQ,G);
-        sourceQ.set_t(step*dt);
-        auto     qq = qqold + af * (qqnew - qqold);
 
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
@@ -595,6 +589,9 @@ void solve( gsMultiPatch<T> & mp,
                         A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                                     penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                                     lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+             
+                        A.assembleBdr(bc.get("Neumann"), w * (g_Neumann.tr() * nv(G)));  // assemble boundary term -- flux from manufactured solutions
+
                         assemblyTime += clock.stop();
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
@@ -623,6 +620,7 @@ void solve( gsMultiPatch<T> & mp,
                         A.initMatrix();
                         // Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
                         clock.restart();
+                        // A.assemble(meas(G)* qq); // Assemble the source term (manufactured)
                         A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
                                             (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
                                             ddmu_c * igrad(w,G) * gradc.tr() * w.tr() + // K_f2
@@ -868,13 +866,13 @@ void solve( gsMultiPatch<T> & mp,
 
 
      // ========= Calculate values =========
-     gsMatrix<> pts_eval(2,40);  // 2 rows (x, y) and 20 columns (points)
+     gsMatrix<> pts_eval(2, 40);  // 2 rows (x, y) and 40 columns (points)
      for (int i = 0; i < 40; ++i) {
-         pts_eval(0, i) = i / 39.0;  // X values range from 0 to 1 (20 points)
-         pts_eval(1, i) = 0.5;        // Y values are constant at 0.5
+         double t = i / 39.0;  // t ranges from 0 to 1
+         pts_eval(0, i) = t;    // X values range from 0 to 1
+         pts_eval(1, i) = 0.5;  // Y value
      }
-     
-     gsDebugVar(pts_eval.cols());
+
      std::ofstream csvFile2;
      csvFile2.open(out+"/numsolution.csv");
      csvFile2 << "x coord, y coord, num sol\n";
@@ -886,17 +884,14 @@ void solve( gsMultiPatch<T> & mp,
      }  
      csvFile2.close();
      // =====================================
- 
+  
      real_t mass = ev.integral(meas(G)*cnew);
  
  
      // ========= Compute L2 error ========= 
      real_t l2err;
-     // auto u_ex = ev.getVariable(source, G); // the source is an initial condition not the final solution in equilibrium
-     gsFunctionExpr<> ms("cos(2*pi*x) * cos(2*pi*y)",2);
-     gsInfo << "Exact function: " << ms << "\n";
-     auto u_ex = ev.getVariable(ms, G);
-     l2err = math::sqrt( ev.integral( (u_ex - cnew_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
+     auto u_manufactured = ev.getVariable(source, G);
+     l2err = math::sqrt( ev.integral( (u_manufactured - cnew_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
      gsInfo << " L2 error: " << l2err << "\n";
      gsInfo << " Mesh-size: "<< dbasis.basis(0).getMaxCellLength() << "\n";
      gsInfo << "      Dofs: "<< A.numDofs() << "\n";
