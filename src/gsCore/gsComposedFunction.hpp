@@ -18,6 +18,7 @@
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 #include <gsCore/gsFuncData.h>
+#include <gsCore/gsGeometry.h>
 
 namespace gismo
 {

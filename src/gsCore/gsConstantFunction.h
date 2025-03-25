@@ -13,11 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsGeometry.h>
-#include <gsUtils/gsCombinatorics.h>
-#include <gsIO/gsXml.h>
-#include <gsIO/gsXmlGenericUtils.hpp>
 
 namespace gismo
 {
@@ -54,11 +50,7 @@ public:
     gsConstantFunction() { }
 
     /// Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^{\text{dim(val)}} \f$
-    gsConstantFunction(const gsVector<T>& val, short_t domainDim)
-    :  m_domainDim(domainDim)
-    {
-        m_coefs = val.transpose();
-    }
+    gsConstantFunction(const gsVector<T>& val, short_t domainDim);
 
 
     ///  Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R \f$
@@ -70,77 +62,28 @@ public:
     }
 
     /// Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^2 \f$
-    gsConstantFunction(T x, T y, short_t domainDim)
-        : m_domainDim(domainDim)
-    {
-        m_coefs.resize(1,2);
-        m_coefs(0,0) = x;
-        m_coefs(0,1) = y;
-    }
+    gsConstantFunction(T x, T y, short_t domainDim);
 
     /// Constructs a constant Function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^3 \f$
-    gsConstantFunction(T x, T y, T z, short_t domainDim)
-        : m_domainDim(domainDim)
-    {
-        m_coefs.resize(1,3);
-        m_coefs(0,0) = x;
-        m_coefs(0,1) = y;
-        m_coefs(0,2) = z;
-    }
+    gsConstantFunction(T x, T y, T z, short_t domainDim);
 
     /// Constructs a constant Function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^4 \f$
-    gsConstantFunction(T x, T y, T z, T w,  short_t domainDim)
-        : m_domainDim(domainDim)
-    {
-        m_coefs.resize(1,4);
-        m_coefs(0,0) = x;
-        m_coefs(0,1) = y;
-        m_coefs(0,2) = z;
-        m_coefs(0,3) = w;
-    }
+    gsConstantFunction(T x, T y, T z, T w,  short_t domainDim);
 
     /// Compatibility constructor
-    gsConstantFunction(const gsConstantBasis<T> & cb, const gsMatrix<T> & coef)
-    : m_domainDim(1)
-    {
-        m_coefs = cb.value()*coef;
-    }
+    gsConstantFunction(const gsConstantBasis<T> & cb, const gsMatrix<T> & coef);
 
     /// Copy constructor
-    gsConstantFunction(const gsConstantFunction<T> & o)
-    : m_domainDim(o.m_domainDim)
-    {
-        m_coefs = o.m_coefs;
-    }
+    gsConstantFunction(const gsConstantFunction<T> & o);
 
     /// Move constructor
-    gsConstantFunction(gsConstantFunction<T> && o)
-    : m_domainDim(o.m_domainDim)
-    {
-        m_coefs.swap(o.m_coefs);
-    }
+    gsConstantFunction(gsConstantFunction<T> && o);
 
     /// Assignment operator
-    gsConstantFunction<T> & operator=(const gsConstantFunction<T> & o)
-    {
-        if (this != &o)
-        {
-            m_domainDim = o.m_domainDim;
-            m_coefs = o.m_coefs;
-        }
-        return *this;
-    }
+    gsConstantFunction<T> & operator=(const gsConstantFunction<T> & o);
 
     /// Move assignment operator
-    gsConstantFunction<T> & operator=(gsConstantFunction<T> && o)
-    {
-        if (this != &o)
-        {
-            m_domainDim = o.m_domainDim;
-            m_coefs.swap(o.m_coefs);
-        }
-        return *this;
-    }
+    gsConstantFunction<T> & operator=(gsConstantFunction<T> && o);
 
     /// Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^{\text{dim(val)}} \f$
     static uPtr make(const gsVector<T>& val, short_t domainDim)
@@ -188,44 +131,17 @@ public:
     { m_coefs = val.transpose(); m_domainDim = domainDim;}
 
     // Documentation in gsFunction class
-    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
-                                              << ", expected "<< m_domainDim);
-        result = m_coefs.transpose().rowwise().replicate( u.cols() );
-    }
+    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     // Documentation in gsFunction class
-    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
-                                              << ", expected "<< m_domainDim);
-        result = gsMatrix<T>::Zero( this->targetDim()*this->domainDim(), u.cols() );
-    }
+    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     // Documentation in gsFunction class
-    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
-                                              << ", expected "<< m_domainDim);
-        result = gsMatrix<T>::Zero(this->targetDim()*(this->domainDim()*(this->domainDim()+1))/2,
-                                   u.cols() );
-    }
+    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result,
-                          bool sameElement = false) const
-    {
-        GISMO_UNUSED(sameElement);
-        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
-                     << ", expected "<< m_domainDim);
-
-        result.resize(n+1,gsMatrix<T>());
-        eval_into(u,result.front());
-        for (int i = 1; i<=n; ++i)
-            result[i].resize( this->targetDim()*binomial(i+m_domainDim-1,m_domainDim-1)
-                           , u.cols() );
-    }
+                          bool sameElement = false) const;
 
     // Documentation in gsFunction class
     virtual std::ostream &print(std::ostream &os) const
@@ -249,83 +165,8 @@ private:
     short_t m_domainDim;
 };
 
-namespace internal
-{
-
-/// @brief Get a gsConstantFunction from XML data
-template<class T>
-class gsXml< gsConstantFunction<T> >
-{
-private:
-    gsXml() { }
-    typedef gsConstantFunction<T> Object;
-public:
-    GSXML_COMMON_FUNCTIONS(Object);
-    GSXML_GET_INTO(Object);
-    static std::string tag () { return "Function"; }
-    static std::string type () { return "ConstantFunction"; }
-
-    static Object * get (gsXmlNode * node)
-    {
-        GISMO_ASSERT( ( !strcmp( node->name(),"Function") )
-                    &&  ( !strcmp(node->first_attribute("type")->value(),
-                                internal::gsXml<Object>::type().c_str() ) ),
-                    "Reading gsConstantFunction XML: No Function found" );
-
-        GISMO_ASSERT( node->first_attribute("dim"), "Reading gsConstantFunction XML: No dim found" ) ;
-        const int d = atoi( node->first_attribute("dim")->value() );
-
-        gsVector<T> val;
-        gsXmlNode * child = node->first_node("c");
-        if (child != NULL )
-        {
-            val.resize(countByTag("c",node));
-            index_t idx = 0;
-            std::istringstream str;
-            str.str(child->value());
-            for (; child; child = child->next_sibling(), idx++ )
-                gsGetValue(str, val.at(idx));
-        }
-        else
-        {
-            val.resize(1);
-            std::istringstream str;
-            str.str(node->value());
-            gsGetValue(str, val.at(0));
-        }
-
-        return new Object(val, d);
-    }
-
-    static gsXmlNode * put (const Object & obj,
-                            gsXmlTree & data )
-    {
-        // Add a new node
-        gsXmlNode* node = internal::makeNode("Function" , data);
-        node->append_attribute( makeAttribute("type",
-                                            internal::gsXml< Object >::type().c_str(), data) );
-        node->append_attribute(makeAttribute("dim", obj.domainDim(), data));
-
-        const short_t tdim = obj.targetDim();
-
-        if ( tdim == 1)
-        {
-            node->value( makeValue(std::to_string(obj.value(0)), data) );
-        }
-        else
-        {
-            gsXmlNode * cnode;
-            for (short_t c = 0; c!=tdim; ++c)
-            {
-                cnode = makeNode("c", std::to_string(obj.value(c)), data);
-                node->append_node(cnode);
-            }
-        }
-
-        return node;
-    }
-};
-
-} // napmespace internal
-
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsConstantFunction.hpp)
+#endif
