@@ -34,9 +34,9 @@ class gsComposedBasis : public gsBasis<T>
     // /// Geometry Type
     typedef gsComposedGeometry<T> GeometryType;
 
-    GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedBasis)
+    GISMO_CLONE_FUNCTION(gsComposedBasis)
 
-    GISMO_OVERRIDE_MAKE_GEOMETRY_NEW
+    GISMO_MAKE_GEOMETRY_NEW
 
     typedef typename gsBasis<T>::domainIter domainIter;
 

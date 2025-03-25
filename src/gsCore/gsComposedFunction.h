@@ -34,7 +34,7 @@ public:
     typedef gsFunction<T>   CompositionT;
     typedef gsFunction<T>   FunctionT;
 
-    GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedFunction)
+    GISMO_CLONE_FUNCTION(gsComposedFunction)
 
 public:
 

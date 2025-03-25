@@ -2,15 +2,15 @@
 
     @brief Provides declaration of Function abstract interface.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
- 
+
 #pragma once
 
 #include <gsCore/gsFunctionSet.h>
@@ -31,20 +31,20 @@ namespace gismo
     as the default implementations, which use finite differences.
 
     \section func_eval_members Evaluation members
-    
+
     All evaluation functions take a matrix \em u as an argument which
     specifies where the function should be evaluated. This matrix
     should have \em d rows, and every column specifies one point of
     the domain at which the function should be evaluated.
-    
+
     Here is an overview over the different evaluation procedures available:
-    
+
     Name of procedure            | Evaluate what
     -----------------------------|-------------------------------
     \c eval(u)                   | value
     \c deriv(u)                  | first derivative(s)
     \c deriv2(u)                 | second derivative(s)
-    
+
     All evaluation functions also provide a version suffixed with \c _into
     which takes a matrix reference as an additional output parameter into which
     the result will be stored.
@@ -66,7 +66,7 @@ public:
 
     /// Unique pointer for gsFunction
     typedef memory::unique_ptr< gsFunction > uPtr;
-    
+
     using Base::support;
     using Base::domainDim;
     using Base::targetDim;
@@ -76,7 +76,7 @@ public:
     virtual const gsFunction & piece(const index_t k) const
     {
         GISMO_ENSURE(0==k, "Single function of type "<< typeid(*this).name() <<" is defined on single subdomain, received: "<<k<<". Is piece(k) implemented?" );
-        return *this; 
+        return *this;
     }
 
     /// Returns the scalar function giving the i-th coordinate of this function
@@ -84,7 +84,7 @@ public:
 
     void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const
     { result.setConstant(1,u.cols(),0); }
-    
+
     /**
         @name Evaluation functions
         @anchor Evaluation_functions
@@ -115,8 +115,8 @@ public:
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const = 0;
 
     /// Evaluate the function for component \a comp in the target dimension at points \a u into \a result.
-    virtual void eval_component_into(const gsMatrix<T>& u, 
-                                     const index_t comp, 
+    virtual void eval_component_into(const gsMatrix<T>& u,
+                                     const index_t comp,
                                      gsMatrix<T>& result) const;
 
     /** \brief Evaluate derivatives of the function
@@ -212,7 +212,7 @@ public:
     ///
     /// By default uses central finite differences with h=0.00001
     virtual gsMatrix<T> laplacian( const gsMatrix<T>& u ) const;
-  
+
     /// @}
 
     /// @brief Computes the L2-distance between this function and the
@@ -237,7 +237,7 @@ public:
     /// values will be undefined
     int newtonRaphson(const gsVector<T> & value,
                       gsVector<T> & arg,
-                      bool withSupport = true, 
+                      bool withSupport = true,
                       const T accuracy = 1e-6,
                       int max_loop = 100,
                       T damping_factor = 1) const;
@@ -259,7 +259,7 @@ public:
 
     /// Returns a "central" point inside inside the parameter domain
     virtual gsMatrix<T> parameterCenter() const
-    { 
+    {
         // default impl. assumes convex support
         gsMatrix<T> S = this->support();
         return ( S.col(0) + S.col(1) ) * (T)(0.5);
@@ -271,11 +271,11 @@ public:
     /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
     gsMatrix<T> parameterCenter( const boxSide& bs ) const;
 
-    
+
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
-        os << "gsFunction.\n"; return os; 
+        os << "gsFunction.\n"; return os;
     }
 
     /**
@@ -294,21 +294,6 @@ public:
 
     index_t size() const { return 1;}
 
-    /// Returns the controls of the function
-    virtual void        setControls(const gsVector<T> & controls)         { GISMO_NO_IMPLEMENTATION;}
-    virtual gsVector<T> getControls()                               const { GISMO_NO_IMPLEMENTATION;}
-    /// Returns the number of controls of the function
-    virtual size_t nControls() const { GISMO_NO_IMPLEMENTATION;}
-
-    /// Returns a reference to the ith control
-    // virtual const typename gsMatrix<T>::CoeffReturnType & control(index_t i) const { GISMO_NO_IMPLEMENTATION;}
-    virtual const T & control(index_t i) const { GISMO_NO_IMPLEMENTATION;}
-    virtual       T & control(index_t i)       { GISMO_NO_IMPLEMENTATION;}
-
-    /// Returns the control derivative
-    virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const { GISMO_NO_IMPLEMENTATION;}
-
-
 private:
 
     template<int mode, int _Dim=-1>
@@ -321,7 +306,7 @@ private:
     gsVector<T> _argMinOnGrid(index_t numpts = 20) const;
 
     gsVector<T> _argMinNormOnGrid(index_t numpts = 20) const;
-    
+
 }; // class gsFunction
 
 

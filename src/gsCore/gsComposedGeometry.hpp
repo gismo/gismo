@@ -125,6 +125,8 @@ void gsComposedGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out)
     out.values = tmp.values;
 }
 
+/* @hverhelst: I am not sure if this is needed. If so, we need to enable gsFunction::nControls and gsFunction::control_deriv_into
+
 template <class T>
 void gsComposedGeometry<T>::control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const
 {
@@ -152,7 +154,7 @@ void gsComposedGeometry<T>::control_deriv_into(const gsMatrix<T> & points, gsMat
         DG = dc.reshapeCol(k,nControls,dd) * dG.reshapeCol(k,dd,td);
     }
 }
-
+*/
 
 
 template <class T>
