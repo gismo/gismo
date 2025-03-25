@@ -1824,17 +1824,19 @@ void gsSurfMesh::cc_subdivide()
             //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
             continue;
         }
-
-        //Interior edge points finalized here
-        auto vit = vertices(v);
-        auto vcp = vit;
-        tmp.setZero();
-        if (vit) do
-                 {
-                     tmp += points[*vit];
-                 } while (++vit != vcp);
-        tmp /= 4 ; // =valence(v);
-        points[v] = tmp;
+        else
+        {
+            //Interior edge points finalized here
+            auto vit = vertices(v);
+            auto vcp = vit;
+            tmp.setZero();
+            if (vit) do
+                     {
+                         tmp += points[*vit];
+                     } while (++vit != vcp);
+            tmp /= 4 ; // =valence(v);
+            points[v] = tmp;
+        }
     }
 
 #   pragma omp parallel for default(shared) private(v)
@@ -1847,42 +1849,43 @@ void gsSurfMesh::cc_subdivide()
 
         if (do_sharp && has_flag(v,sharp))
         {
-                pt *= 2;
-                auto hh = halfedge(v);
-                while(!sharp[hh])
-                    hh = ccw_rotated_halfedge(hh);
-                pt += points[to_vertex(hh)]; // first flagged neighbor
+            pt *= 2;
+            auto hh = halfedge(v);
+            while(!sharp[hh])
                 hh = ccw_rotated_halfedge(hh);
-                while(!sharp[hh])
-                    hh = ccw_rotated_halfedge(hh);
-                pt += points[to_vertex(hh)]; // second flagged neighbor
-                pt /= 4;
-                continue;
+            pt += points[to_vertex(hh)]; // first flagged neighbor
+            hh = ccw_rotated_halfedge(hh);
+            while(!sharp[hh])
+                hh = ccw_rotated_halfedge(hh);
+            pt += points[to_vertex(hh)]; // second flagged neighbor
+            pt /= 4;
         }
         else if (is_boundary(v))
         {
-            if (n>2) // Corners stay still
-            {
-                auto vv = vertices(v);
-                pt *= 2;
-                pt += points[*vv]; // first boundary neighbor
-                pt += points[*(--vv.end())]; // last boundary neighbor
-                pt /= 4;
-            }
-            continue;
+            pt *= 2;
+            auto hh = halfedge(v);
+            while(!touches_boundary(hh))
+                hh = cw_rotated_halfedge(hh);
+            //GISMO_ASSERT(touches_boundary(hh), "Did not find a boundary halfedge.");
+            pt += points[to_vertex(hh)]; //  right boundary neighbor
+            hh = next_halfedge(opposite_halfedge(hh));
+            pt += points[to_vertex(hh)]; // left boundary neighbor
+            pt /= 4;
         }
-
-        auto vit = halfedges(v);
-        auto vcp = vit;
-        //formula: pt = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
-        pt *= n*(n-3);
-        if (vit)
-            do
-            { //pt += 4*E-F
-                pt += 4*points[ to_vertex(*vit) ]
-                    - points[ to_vertex(next_halfedge(*vit)) ];
-            } while (++vit != vcp);
-        pt /= n*n;
+        else
+        {
+            auto vit = halfedges(v);
+            auto vcp = vit;
+            //formula: pt = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
+            pt *= n*(n-3);
+            if (vit)
+                do
+                { //pt += 4*E-F
+                    pt += 4*points[ to_vertex(*vit) ]
+                        - points[ to_vertex(next_halfedge(*vit)) ];
+                } while (++vit != vcp);
+            pt /= n*n;
+        }
     }
 }
 

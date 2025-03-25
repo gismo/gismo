@@ -117,6 +117,8 @@ public:
 
 public:
 
+    using gsHTensorBasis<d,T>::tensorLevel;
+
     // Look at gsBasis.h for the documentation of this function
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
 
@@ -177,7 +179,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -242,7 +244,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -312,7 +314,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -373,7 +375,7 @@ public:
     unsigned numTruncated() const
     { return m_presentation.size(); }
 
-    bool isTruncated(unsigned i) const
+    inline bool isTruncated(unsigned i) const
     { return Trunc && (this->m_is_truncated[i] != -1); }
 
     /// @brief Returns an iterator to the representation of the first truncated basis function
@@ -398,15 +400,20 @@ public:
         }
     }
 
-
+    // Documentation in gsBasis::evalSingle_into
     void evalSingle_into(index_t i,
                          const gsMatrix<T>& u,
                          gsMatrix<T>& result) const;
 
-private:
-
-    index_t getPresLevelOfBasisFun(const index_t index) const
+    /// Retruns the represenation level of basis function \a index
+    index_t repLevel(const index_t index) const
     { return (isTruncated(index) ? m_is_truncated[index] : this->levelOf(index)); }
+
+    /// Returns the tensor-product basis where basis function \a index has representation in
+    const tensorBasis & repBasis(const index_t index) const
+    { return tensorLevel(repLevel(index)); }
+
+private:
 
     /// @brief Computes and saves representation of all basis functions.
     void representBasis(); // rename: precompute coeffs
@@ -613,7 +620,7 @@ private:
     void update_structure() 
     {
         gsHTensorBasis<d,T>::update_structure(); 
-        representBasis();
+        if (Trunc) representBasis();
     }
 
     /**
@@ -657,7 +664,6 @@ private:
 	return secondBox[0] < firstBox[0] && secondBox[1] < firstBox[1] &&
 	       firstBox[2] < secondBox[2] && firstBox[3] < secondBox[3];   
     }
-    
 
     /// @brief Checks if the boxes are the same
     ///
@@ -789,4 +795,3 @@ private:
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTHBSplineBasis.hpp)
 #endif
-

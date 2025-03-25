@@ -917,6 +917,15 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
         omp_init_lock(&l);
 #endif
 
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+    
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -958,6 +967,15 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
 
 #pragma omp parallel
 {
@@ -1021,6 +1039,16 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
 #pragma omp parallel
