@@ -30,14 +30,12 @@ int main(int argc, char *argv[])
     index_t maxIter       = 50;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
     double IntensityMAE   = 6.;
-    bool export_b64       = false;
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
-    index_t circleN       = 0;
     // Specify the file path
     std::string fn("pde/infinit_plate.xml");
 
@@ -227,13 +225,13 @@ int main(int argc, char *argv[])
     auto elwise = ev.elementwise();
     
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 1-2 : CoPsiutes the density function
+    ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, Psi, numElevate, maxIter, IntensityMAE);
     auto density = MAE.buildDensity(elwise,  numRefine, 0);
     // auto density = MAE.buildAnalyticDensity(f);
-    auto Psitp   = MAE.buildMultiPatch(density);
+    auto Psitp   = MAE.buildMultiPatch(density, false); // false means we work on the computational domain
     if (true){
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping

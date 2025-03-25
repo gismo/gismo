@@ -25,7 +25,7 @@ public:
     gsMultiPatch<> buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine, index_t circleN = 0) const;
 
     // Method to build a multipatch adaptive mapping
-    gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density) const;
+    gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density, bool composition=true) const;
 
 private:
     gsMultiBasis<double> m_basis;
@@ -33,6 +33,8 @@ private:
     gsMultiPatch<double> mp;
     index_t m_maxIter;
     double m_IntensityMAE;
+    gsBoundaryConditions<> bc_mae;
+public:
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson;
 };
 

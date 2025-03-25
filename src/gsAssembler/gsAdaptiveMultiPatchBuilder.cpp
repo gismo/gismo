@@ -13,16 +13,22 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<doub
     this->m_mapping      = mapping; 
     this->m_maxIter      = maxIter;
     this->m_IntensityMAE = IntensityMAE;
+
     // .... one single patch
-    mp             = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    mp                   = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    gsFunctionExpr<> sN("x","y",2);
+    if (basis.dim() == 3){
+        mp  = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
+        // Manufactured identity mapping
+         sN = gsFunctionExpr<>("x","y","z",3);
+    }
     //Get all interfaces and boundaries:
     mp.degreeElevate(numElevate);
     mp.computeTopology();
     //mp.addAutoBoundaries();
 
+    // ... Neumann boundary conditions
     gsBoundaryConditions<> bc_mae;
-    // Manufactured identity mapping
-    gsFunctionExpr<> sN("x","y",2);
     bc_mae.setGeoMap(mp);
     // For simplicity, set Neumann boundary conditions
     for ( gsMultiPatch<>::const_biterator
@@ -46,28 +52,21 @@ void gsAdaptiveMultiPatchBuilder::ProjectionNormalCPoints(gsMultiPatch<>& Psi, i
     // Projection normal of control points (exact geometry)
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
     {
-        // test if the boundary interface is not an inner interface between patches
-        auto lVal = 0.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(0) ).array()[0]);
-        auto hVal = 1.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(0) ).array()[0]);
-        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
-        {
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[0] = lVal;
-        }
-
-        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(2).size(); ++i_x)// x=1 control points be like (1,:) in this case
-        {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(2).at(i_x) ).array()[0] = hVal;
-        }
-
-        lVal = 0.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(0) ).array()[1]);
-        hVal = 1.; //int(1.1*Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(0) ).array()[1]);
-        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
-        {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = lVal;
-        }
-        for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
-        {
-        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(4).at(i_x) ).array()[1] = hVal;
+        index_t bndIter  = 1;
+        #pragma omp parallel for
+        for (index_t dim = 0; dim < Psi.dim(); ++dim){
+            auto lVal    = this->mp.patch(boxNumber).coef( this->mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x) // x=0 control points be like (0,:) in this case
+            {
+                Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(bndIter).at(i_x) ).array()[dim] = lVal;
+            }
+            bndIter ++;
+            auto hVal    = this->mp.patch(boxNumber).coef( this->mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x)// x=1 control points be like (1,:) in this case
+            {
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(bndIter).at(i_x) ).array()[dim] = hVal;
+            }
+            bndIter ++;
         }
     }
 }
@@ -196,7 +195,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
 }
 
 // Build and return a MultiPatch object
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density, bool composition) const 
 {
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -206,6 +205,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     gsBoundaryConditions<> bc_mae;
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
+    if (this->m_basis.dim() == 3){
+        sN = gsFunctionExpr<>("x","y","z",3);
+    }
+
     bc_mae.setGeoMap(this->mp);
     // For simplicity, set Neumann boundary conditions
     for ( gsMultiPatch<>::const_biterator
@@ -214,7 +217,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
             bc_mae.addCondition( *bit, condition_type::neumann, &sN );
     }
     
-        gsInfo<<"<> Picard iterations \n";
+    gsInfo<<"<> Picard iterations \n";
     double slv_time(0);
     gsStopwatch timer;
     timer.restart();
@@ -228,6 +231,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     // Elements used for numerical integration
     A.setIntegrationElements(this->m_basis);
     gsExprEvaluator<> ev(A);
+
     // Set the geometry map
     geometryMap G  = A.getMap(this->mp);
     // Set the discretization space
@@ -237,17 +241,14 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     auto IGdim     = G.domainDim();
 
     // Set dimension of target geometry
-    // auto ITdim     = mpLeft.geoDim();
+    auto ITdim     = this->m_mapping.geoDim();
 
     // Set factor for BFO method
-    auto gammaMAE = factorial(G.domainDim());
-
-    //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
-    //auto u_I = ev.getVariable(sN, G);
+    auto gammaMAE  = factorial(G.domainDim());
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
-    solution u_sol = A.getSolution(u, solVector);
+    solution u_sol   = A.getSolution(u, solVector);
 
     // ---- manipulation of density function ----
     auto rho         = A.getCoeff(density, G);
@@ -263,7 +264,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         int_uh_1  = (1.*ev.max(abs(rho.val()))-this->m_IntensityMAE*ev.min(abs(rho.val())))/empldensity;
         //gsInfo << "Density function is not constant in the domain\n";
     }
-    gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
+    gsInfo << "Density function: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
@@ -276,12 +277,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral((int_uh_0*abs(rho.val()) + int_uh_1))};
-    auto CoeffConductivity{Neumann_Int/ev.integral(pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim) )};
+    auto ExprMAE     = pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+    auto CoeffConductivity{Neumann_Int/ev.integral(ExprMAE)};
 
     A.assemble(
     u *u.tr() //matrix
     ,
-    u*  CoeffConductivity * (-1.)*pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE* CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim)  //rhs vector
+    u*  CoeffConductivity * (-1.)*ExprMAE  //rhs vector
     );
 
     // Compute the Neumann terms defined on physical space
@@ -292,11 +294,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     gsInfo<< "." <<std::flush;// Assemblying done
     solVector = A.rhs();
     solVector = this->Poisson.solve(A.rhs());
-
-    // solver.compute( A.matrix() );
-    // solVector = solver.solve(A.rhs());
-
     gsInfo<< "." <<std::flush; // Linear solving done
+
     //! [Solver loop]
     gsInfo<< A.numDofs() <<std::flush;
     // Picard loop
@@ -307,28 +306,25 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     {
         gsMultiPatch<> UU;
         u_sol.extract(UU);
-        auto u_s = A.getCoeff(UU);
-
-        space v = A.getSpace(m_basis);
+        auto u_s       = A.getCoeff(UU);
+        space v        = A.getSpace(m_basis);
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
-        A.initSystem(2);
+        A.initSystem(IGdim);
 
         // Obtain control points for the gradient of Psi
         A.assemble( v * v.tr() , v * grad(u_s) );
         vsolVector = this->Poisson.L2ProjectVec(A.rhs());
 
-        gsMultiPatch<> Psi, PsiLoc;
+        gsMultiPatch<> Psi;
         v_sol.extract(Psi);
-        v_sol.extract(PsiLoc);
-
         // ... correct boundary
         ProjectionNormalCPoints(Psi);
         Psi.addAutoBoundaries();
         Psi.computeTopology();
+        //.. geometry map
         geometryMap PP    = A.getMap(Psi);
-        //geometryMap PPrho = A.getMap(Psi);
-        // auto rho          = PPrho(density);
+        //... density in new optimized mesh
         auto rho = A.getCoeff(density, PP);
         // ... update residual
         sv0               = solVector;
@@ -386,39 +382,47 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     // omp_set_num_threads(1); // Use these threads for later parallel regions
     gsMultiPatch<> UU;
     u_sol.extract(UU);
-    //gsWrite(UU, "U_solution");
-    auto u_s = A.getCoeff(UU);
-
-    //gsMultiBasis<> gbasis(dbasis);
-    //gbasis.reduceContinuity(1);
-    space v = A.getSpace(m_basis);
+    //...
+    auto u_s       = A.getCoeff(UU);
+    //... 
+    space v        = A.getSpace(m_basis);
     gsMatrix<> vsolVector;
     solution v_sol = A.getSolution(v, vsolVector);
-    A.initSystem(2);
+    A.initSystem(IGdim);
     // Obtain control points for the gradient of Psi
-    A.assemble( v * v.tr() , v * igrad(u_s,G) );
-    // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-    vsolVector = Poisson.L2ProjectVec(A.rhs());
+    A.assemble( v * v.tr() , v * grad(u_s) );
+    // SOLVE ...
+    vsolVector     = Poisson.L2ProjectVec(A.rhs());
     gsMultiPatch<> Psi;
     v_sol.extract(Psi);
     //... correct the boundary
     ProjectionNormalCPoints(Psi);
-    //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-    // Psi.addAutoBoundaries();
-    geometryMap PP = A.getMap(Psi);
-    //PP(this->m_mapping);
-    auto comp = A.getCoeff(this->m_mapping, PP);
-    A.initSystem(2);
-    //Obtain control points for the gradient of mpLeft.comp(Psi)
-    A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-    // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-    vsolVector = this->Poisson.L2ProjectVec(A.rhs());
-    v_sol.extract(Psi);
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-    //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
-    slv_time += timer.stop();
-    timer.stop();
-    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
-    return Psi;
+    if (composition){
+        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        // Psi.addAutoBoundaries();
+        geometryMap PP = A.getMap(Psi);
+        //PP(this->m_mapping);
+        auto comp = A.getCoeff(this->m_mapping, PP);
+        A.initSystem(ITdim);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        vsolVector = this->Poisson.L2ProjectVec(A.rhs());
+        v_sol.extract(Psi);
+        Psi.addAutoBoundaries();
+        Psi.computeTopology();
+        //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
+        slv_time += timer.stop();
+        timer.stop();
+        gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+        return Psi;
+    }
+    else{
+        slv_time += timer.stop();
+        timer.stop();
+        gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+        return Psi;
+    }
 };
