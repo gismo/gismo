@@ -16,8 +16,8 @@
 #include <gsAssembler/gsAssembler.h>
 #include <gsPde/gsLaplacePde.h>
 
-#include <gsAssembler/gsExpressions.h>
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExpressions.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 
 namespace gismo

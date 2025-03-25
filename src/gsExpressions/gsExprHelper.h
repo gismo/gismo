@@ -13,7 +13,8 @@
 
 #pragma once
 
-#include <gsAssembler/gsExpressions.h>
+#include <gsExpressions/gsExpressions.h>
+#include <gsExpressions/gsFeElement.h>
 #include <gsUtils/gsThreaded.h>
 
 namespace gismo

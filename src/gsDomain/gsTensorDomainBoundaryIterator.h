@@ -153,6 +153,8 @@ public:
     void adjacent( const gsVector<bool> & orient,
                    gsDomainIterator<T>  & other ) override
     {
+        GISMO_UNUSED(orient);
+        GISMO_UNUSED(other);
         GISMO_NO_IMPLEMENTATION
         // // 2D only for now
 
