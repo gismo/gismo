@@ -339,7 +339,10 @@ public:
     void addLevel( const gsTensorBSplineBasis<d, T>& next_basis);
 
     /// \brief Inserts a domain into the basis
-    void only_insert_box(point const & k1, point const & k2, int lvl);
+    //void only_insert_box(point const & k1, point const & k2, int lvl);
+
+    /// Returns the number of functions before level \a l
+    index_t offset(size_t l) const { return m_xmatrix_offset[l]; }
 
 protected:
 
@@ -1126,15 +1129,18 @@ private:
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
     virtual gsSparseMatrix<T> coarsening(const std::vector<CMatrix>& old,
                                          const std::vector<CMatrix>& n,
-                                         const gsSparseMatrix<T,RowMajor> & transfer) const = 0;
+                                         const gsSparseMatrix<T,RowMajor> & transfer) const
+    {GISMO_NO_IMPLEMENTATION}
 
     virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<index_t> >& old,
                                                 const std::vector<gsSortedVector<index_t> >& n,
-                                                const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
+                                                const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
+    {GISMO_NO_IMPLEMENTATION}
 
     virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<index_t> >& old,
                                                  const std::vector<gsSortedVector<index_t> >& n,
-                                                 const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
+                                                 const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
+    {GISMO_NO_IMPLEMENTATION}
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
     /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).
