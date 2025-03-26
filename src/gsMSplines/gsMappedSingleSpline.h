@@ -31,10 +31,10 @@ template<short_t d,class T> class gsMappedSpline;
 
 */
 template<short_t d,class T>
-class gsMappedSingleSpline : public gsFunction<T>
+class gsMappedSingleSpline : public gsGeometry<T>
 {
 private:
-    typedef gsFunction<T> Base;
+    typedef gsGeometry<T> Base;
 
     typedef gsMappedSingleBasis<d,T> Basis;
 
@@ -130,7 +130,7 @@ public:
     {
         return m_spline->degree(m_index,i);
     }
-  
+
     /// The gsBasisFun points to the i-th spline function of m_spline
     /// after calling this setter.
     void setPiece( unsigned const & i )

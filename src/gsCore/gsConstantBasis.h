@@ -3,12 +3,12 @@
     @brief Provides declaration of a basis of constant functions,
     consisting of one constant function.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -16,12 +16,13 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsConstantFunction.h>
+#include <gsCore/gsBasis.h>
 
 namespace gismo
 {
 
 
-/** 
+/**
     @brief Class defining a dummy basis of constant functions. This is
     used for compatibility reasons.
 
@@ -59,7 +60,7 @@ public:
     GISMO_CLONE_FUNCTION(gsConstantBasis)
 
     static gsConstantBasis * New(std::vector<gsBasis<T>*> & bb )
-    { 
+    {
         return new gsConstantBasis(bb);
     }
 
@@ -92,11 +93,11 @@ public:
     {
         result.setZero(1,1);
     }
-    
+
     std::ostream &print(std::ostream &os) const
     {
-        os << m_val; 
-        return os; 
+        os << m_val;
+        return os;
     }
 
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const

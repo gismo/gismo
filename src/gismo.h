@@ -49,6 +49,7 @@ namespace internal
 #include <gsCore/gsFunctionSet.h>
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFunction.h>
+#include <gsCore/gsComposedFunction.h>
 #include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsBoundary.h>
 
@@ -80,6 +81,9 @@ namespace internal
 #include <gsCore/gsSysInfo.h>
 
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
+
+#include <gsCore/gsComposedBasis.h>
+#include <gsCore/gsComposedGeometry.h>
 
 // Tensors
 #include <gsDomain/gsTensorDomainIterator.h>
