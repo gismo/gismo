@@ -57,14 +57,13 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
-    //gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
+    // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
+    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
     // fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
-    gsInfo << "INFO IN PARAMETRIC DOMAIN "<< mpLeft.dim() << mpLeft.parDim() <<"\n";
 
     // Right-hand side function : Analytical density function rho_1
     // Load the file
@@ -107,7 +106,10 @@ int main(int argc, char *argv[])
         // mp.uniformRefine();
         // mpLeft.uniformRefine();
     }
-    timer.restart();
+    auto corners         = dbasis.basis(0).support();
+    gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() <<"\n";
+    gsInfo << "corners : (" << corners.at(0) << "," << corners.at(1) << "," << corners.at(2) <<"),("
+                            << corners.at(3) << ", " << corners.at(4) <<", " << corners.at(5) <<")\n";
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
@@ -144,7 +146,7 @@ int main(int argc, char *argv[])
         // vsolVector = MAE.Poisson.L2ProjectVec(A.rhs());
         // v_sol.extract(Psitp);
         // Psitp.addAutoBoundaries();
-        Psitp.computeTopology();
+        // Psitp.computeTopology();
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
         gsMultiPatch<> Psi;
         for(size_t i =0; i<Psitp.nPatches(); ++i)

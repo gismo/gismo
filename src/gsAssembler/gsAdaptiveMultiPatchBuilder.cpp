@@ -15,10 +15,11 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<doub
     this->m_IntensityMAE = IntensityMAE;
 
     // .... one single patch
-    mp                   = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    auto corners         = basis.basis(0).support();
+    mp                   = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
     gsFunctionExpr<> sN("x","y",2);
     if (basis.dim() == 3){
-        mp  = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
+        mp  = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,corners.at(3),corners.at(0)-0.5,corners.at(1)-0.5,corners.at(2)-0.5);
         // Manufactured identity mapping
          sN = gsFunctionExpr<>("x","y","z",3);
     }
@@ -135,21 +136,47 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     auto errorVector   = A_0.rhs();
     solution error_sol = A_0.getSolution(u_0, errorVector);
     //..
-    index_t n1   = basis_0.basis(0).component(0).numElements();
-    index_t n2   = basis_0.basis(0).component(1).numElements();
-    for (index_t i1 = 0; i1 < n1; i1++){
-        for (index_t j1 = 0; j1 < n2; j1++){
-            auto i = i1*n2 + j1;
-            double Elcontr = 0.;
-            index_t s = 0;
-            for (index_t i2 = std::max(0,i1-circleN); i2 <= std::min(n1,i1+circleN); i2++){
-                for (index_t j2 = std::max(0,j1-circleN); j2 <= std::min(n2,j1+circleN); j2++){
-                    auto j   = i2*n2 + j2;
-                    Elcontr += elwiseERROR[j];
-                    s       += 1;
+    if (this->m_basis.dim() == 2){
+        index_t n1   = basis_0.basis(0).component(0).numElements();
+        index_t n2   = basis_0.basis(0).component(1).numElements();
+        for (index_t i1 = 0; i1 < n1; i1++){
+            for (index_t j1 = 0; j1 < n2; j1++){
+                auto i = i1*n2 + j1;
+                double Elcontr = 0.;
+                index_t s = 0;
+                for (index_t i2 = std::max(0,i1-circleN); i2 <= std::min(n1,i1+circleN); i2++){
+                    for (index_t j2 = std::max(0,j1-circleN); j2 <= std::min(n2,j1+circleN); j2++){
+                        auto j   = i2*n2 + j2;
+                        Elcontr += elwiseERROR[j];
+                        s       += 1;
+                    }
                 }
+                errorVector(i) = Elcontr/s;
             }
-            errorVector(i) = Elcontr/s;
+        }
+    }
+    else{
+        index_t n1   = basis_0.basis(0).component(0).numElements();
+        index_t n2   = basis_0.basis(0).component(1).numElements();
+        index_t n3   = basis_0.basis(0).component(2).numElements();
+        for (index_t i1 = 0; i1 < n1; i1++){
+            for (index_t j1 = 0; j1 < n2; j1++){
+               for (index_t k1 = 0; k1 < n3; k1++){
+                    auto i         = i1*n2*n3 + j1*n3 + k1;
+                    double Elcontr = 0.;
+                    index_t s      = 0;
+                    for (index_t i2 = std::max(0,i1-circleN); i2 <= std::min(n1,i1+circleN); i2++){
+                        for (index_t j2 = std::max(0,j1-circleN); j2 <= std::min(n2,j1+circleN); j2++){
+                            for(index_t k2 = std::max(0,k1-circleN); k2 <= std::min(n3,k1+circleN); k2++){
+                                auto j   = i2*n2*n3 + j2*n3 + k2;
+                                Elcontr += elwiseERROR[j];
+                                s       += 1;
+                            }
+                        }
+                    }
+                    errorVector(i) = Elcontr/s;
+               }
+            }
         }
     }
     index_t n  = errorVector.rows();
@@ -300,14 +327,14 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     gsInfo<< A.numDofs() <<std::flush;
     // Picard loop
     gsVector<>  h1Res(m_maxIter+1), l2err(m_maxIter+1), Iter_mae(m_maxIter+1);
-    gsMatrix<> sv0; //
+    auto  sv0 = solVector; //
     solution u_lsol = A.getSolution(u, sv0);
     for(int ip{0}; ip<=m_maxIter; ++ip)
     {
         gsMultiPatch<> UU;
         u_sol.extract(UU);
         auto u_s       = A.getCoeff(UU);
-        space v        = A.getSpace(m_basis);
+        space v        = A.getSpace(this->m_basis);
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
         A.initSystem(IGdim);
@@ -327,7 +354,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         //... density in new optimized mesh
         auto rho = A.getCoeff(density, PP);
         // ... update residual
-        sv0               = solVector;
         solution u_sol    = A.getSolution(u, solVector);
 
         // ...  0  dirichlet for boundaries
@@ -363,7 +389,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
-        auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol) - grad(u_sol) ).sqNorm()  ));
+        sv0               = sv0 - solVector;
+        auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol)).sqNorm()  ));
         auto L2MAERes = math::sqrt(ev.integral( pow( CoeffDensity - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det(),2)  ));
         auto Ddet     = ev.min(jac(PP).det());
         Iter_mae[ip]  = ip;
@@ -385,7 +412,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     //...
     auto u_s       = A.getCoeff(UU);
     //... 
-    space v        = A.getSpace(m_basis);
+    space v        = A.getSpace(this->m_basis);
     gsMatrix<> vsolVector;
     solution v_sol = A.getSolution(v, vsolVector);
     A.initSystem(IGdim);
