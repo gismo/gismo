@@ -136,6 +136,7 @@ template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainBou
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;
 template <class T=real_t>                class gsFunction;
+template <class T=real_t>                class gsComposedFunction;
 template <class T=real_t>                class gsFuncCoordinate;
 template <class T=real_t>                class gsFuncData;
 template <class T=real_t>                class gsMapData;
@@ -151,6 +152,7 @@ template <class basis_t >                class gsRationalBasis;
 template <short_t d, class T=real_t>     class gsTensorBasis;
 template <short_t d, class T=real_t>     class gsHTensorBasis;
 template <short_t d, class T=real_t>     class gsMappedBasis;
+template <class T=real_t>                class gsComposedBasis;
 
 template <class T=real_t>                class gsKnotVector;
 //template <class T=real_t>              class gsCompactKnotVector;
@@ -167,9 +169,10 @@ template <class T=real_t>                class gsBernsteinBasis;
 template <short_t d, class T=real_t>     class gsTensorBernsteinBasis;
 
 //template <class T=real_t>              class gsHKnotVector;
-template <short_t d, class T=real_t>     class gsHBSplineBasis;
-template <short_t d, class T=real_t>     class gsTHBSplineBasis;
-template <short_t d, class T=real_t>     class gsTHBSpline;
+template <short_t d, class T=real_t, bool Trunc=true>     class gsTHBSplineBasis;
+template <short_t d, class T=real_t, bool Trunc=true>     class gsTHBSpline;
+template <short_t d, class T=real_t>     using gsHBSplineBasis = gsTHBSplineBasis<d,T,false>;
+template <short_t d, class T=real_t>     using gsHBSpline = gsTHBSpline<d,T,false>;
 template <short_t d, class T=real_t, class Z=index_t>     class gsHDomain;
 template <short_t d, class T=real_t>     class gsRationalTHBSplineBasis;
 template <short_t d, class T=real_t>     class gsRationalTHBSpline;
@@ -181,7 +184,6 @@ template <class T=real_t>                class gsBezier;
 template <short_t d, class T=real_t>     class gsTensorBSpline;
 template <short_t d, class T=real_t>     class gsTensorNurbs;
 template <short_t d, class T=real_t>     class gsTensorBezier;
-template <short_t d, class T=real_t>     class gsHBSpline;
 template <class T=real_t>                class gsTrimSurface;
 template <short_t d, class T=real_t>     class gsMappedSpline;
 template <class T=real_t>                class gsComposedGeometry;

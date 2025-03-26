@@ -33,20 +33,18 @@ template<class T, int D>
 class gsTensorDomainIterator : public gsDomainIterator<T>
 {
 private:
-    //typedef typename gsDomainIterator<T>::uPtr domainIter;
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
     typedef gsDomainIteratorWrapper<T> domainIterWrapper;
 
 public:
 
     explicit gsTensorDomainIterator(const gsTensorDomain<T,D> & domain)
-    : gsDomainIterator<T>(),
-      lower  ( gsVector<T, D>::Zero(D) ),
-      upper  ( gsVector<T, D>::Zero(D) )
+    : gsDomainIterator<T>()
     {
         // compute breaks and mesh size
-        meshStart.resize(D);
-        meshEnd.resize(D);
-        curElement.resize(D);
+        // meshStart.resize(D);
+        // meshEnd.resize(D);
+        // curElement.resize(D);
 
         for (int i=0; i < D; ++i)
         {
@@ -55,6 +53,9 @@ public:
             curElement[i] = give(domain.component(i)->beginAll());
         }
     }
+
+    gsTensorDomainIterator(const gsTensorDomainIterator & other) = default;
+    domainIter clone() const override { return domainIter(new gsTensorDomainIterator(*this)); }
 
     // Documentation in gsDomainIterator.h
     void next() override
@@ -90,6 +91,8 @@ public:
     {
         result.resize( D, 1 << D);
 
+        const gsVector<T> lower = lowerCorner();
+        const gsVector<T> upper = upperCorner();
         gsVector<T,D> v, l, u;
         l.setZero();
         u.setOnes();
@@ -104,7 +107,7 @@ public:
 
     gsVector<T> lowerCorner() const override
     {
-        gsVector<T,D> lower;
+        gsVector<T> lower(D);
         for (short_t i = 0; i < D ; ++i)
             lower[i]  = curElement[i].lowerCorner().value();
         return lower;
@@ -112,7 +115,7 @@ public:
 
     gsVector<T> upperCorner() const override
     {
-        gsVector<T,D> upper;
+        gsVector<T> upper(D);
         for (short_t i = 0; i < D ; ++i)
             upper[i]  = curElement[i].upperCorner().value();
         return upper;
@@ -136,14 +139,9 @@ public:
 
 // Data members
 private:
-    // Extent of the tensor grid
-    gsVector<domainIterWrapper, D> meshStart, meshEnd;
-
-    // Current element as pointers to it's supporting mesh-lines
-    gsVector<domainIterWrapper, D> curElement;
-
-    // parameter coordinates of current grid cell
-    gsVector<T> lower, upper;
+    // Extent of the tensor grid and current element as pointers to
+    // it's supporting mesh-lines
+    gsVector<domainIterWrapper, D> meshStart, meshEnd, curElement;
 
 public:
 #   define Eigen gsEigen

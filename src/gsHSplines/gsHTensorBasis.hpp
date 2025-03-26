@@ -306,7 +306,6 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
     refine(boxes);
     gsSparseMatrix<> transf;
     this->transfer(OX, transf);
-    gsDebug<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 

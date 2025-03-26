@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C. Hofreither
+    Author(s): C. Hofreither, H.M. Verhelst, A. Mantzaflaris
 */
 
 #pragma once
@@ -74,22 +74,39 @@ public:
     gsDomainIteratorWrapper(uPtr _iter) : m_domainIter(give(_iter))
     { }
 
+    gsDomainIteratorWrapper(const gsDomainIteratorWrapper & _other)
+    {
+        this->operator=(_other);
+    }
+
+#if EIGEN_HAS_RVALUE_REFERENCES
+    /// Move constructor
     gsDomainIteratorWrapper(gsDomainIteratorWrapper && _other)
     : m_domainIter(give(_other.m_domainIter))
     { }
 
-    /*
-    gsDomainIteratorWrapper(const gsDomainIteratorWrapper & _other)
+    /// Assignment operator
+    gsDomainIteratorWrapper& operator= ( const gsDomainIteratorWrapper& _other )
     {
-        m_domainIter = _other.clone();
+        m_domainIter = _other.m_domainIter->clone();
+        return *this;
     }
-    */
 
+    /// Move assignment operator
     gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other)
     {
         m_domainIter = give(_other.m_domainIter);
         return *this;
     }
+#else
+    /// Assignment operator (uses copy-and-swap idiom)
+    gsDomainIteratorWrapper& operator= ( gsDomainIteratorWrapper _other )
+    {
+        std::swap(m_domainIter, _other.m_domainIter);
+        return *this;
+    }
+#endif
+
     /// Equality operator to compare two iterators
     bool operator==(const gsDomainIteratorWrapper& other) const
     {
@@ -234,6 +251,8 @@ public:
 
     virtual ~gsDomainIterator() { }
 
+    virtual uPtr clone() const { GISMO_NO_IMPLEMENTATION }
+
     void setPatch(index_t k) { m_pside.patch = k; }
 
 private:
@@ -249,7 +268,7 @@ private:
 
     virtual void next() = 0;
 
-    virtual void prev() { GISMO_NO_IMPLEMENTATION };
+    virtual void prev() { GISMO_NO_IMPLEMENTATION }
 
     /// \brief Proceeds to the next element (skipping \p increment elements).
     virtual void next(index_t increment)
@@ -376,21 +395,23 @@ protected:
 
     patchSide m_pside; ///< The patch side, when applicable
 
-private:
+protected:
     // disable copying
-    gsDomainIterator( const gsDomainIterator& );
-    gsDomainIterator& operator= ( const gsDomainIterator& );
+    gsDomainIterator( const gsDomainIterator& ) = default;
+    gsDomainIterator& operator= ( const gsDomainIterator& ) = default;
+
 }; // class gsDomainIterator
 
 
 template <class T>
 class gsDomainIteratorEnd : public gsDomainIterator<T>
 {
+    typedef memory::unique_ptr< gsDomainIterator<T> > uPtr;
 public:
 
-    explicit gsDomainIteratorEnd(size_t id)
-    : gsDomainIterator<T>(id)
-    { }
+    explicit gsDomainIteratorEnd(size_t id) : gsDomainIterator<T>(id) { }
+
+    uPtr clone() const override { return uPtr(new gsDomainIteratorEnd(this->m_id)); }
 
     virtual void next() override
     { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }

@@ -220,7 +220,7 @@ public:
         GISMO_NO_IMPLEMENTATION;
     }
 
-    GISMO_OVERRIDE_CLONE_FUNCTION(gsMappedSingleBasis)
+    GISMO_CLONE_FUNCTION(gsMappedSingleBasis)
 
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const override
     {

@@ -13,7 +13,6 @@
 
 #include <iostream>
 #include <gismo.h>
-#include <gsDomain/gsPointDomain.h>
 
 using namespace gismo;
 
@@ -134,7 +133,7 @@ int main(int argc, char* argv[])
         gsInfo<<"Parallel iteration with "<<nt<<" threads over the point domain\nID\tthread\tcenter\n";
 
 #pragma omp for
-    for (auto it = pd.beginAll(); it != pd.endAll(); ++it)
+    for (auto it = pd.beginAll(); it < pd.endAll(); ++it)
 #pragma omp critical
         gsInfo<<it.id()<<"\t"<<tid<<"\t"<<it.centerPoint().transpose()<<"\n";
 }

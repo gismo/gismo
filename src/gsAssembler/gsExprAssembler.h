@@ -801,6 +801,7 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
+    opt.addSwitch("SameElement","Activates optimization if all quadrature points are located in the same element", true);
     return opt;
 
     /// dirichlet treatment? elimination ????
@@ -916,6 +917,15 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
         omp_init_lock(&l);
 #endif
 
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+    
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -957,6 +967,15 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
 
 #pragma omp parallel
 {
@@ -1020,6 +1039,16 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
 #pragma omp parallel
@@ -1052,8 +1081,8 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        typename gsBasis<T>::domainIter domIt = basis1.domain()->subdomain(iFace.first().patch)->beginBdr(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->subdomain(iFace.first().patch)->endBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
 
         // Start iteration over elements
         //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
@@ -1090,7 +1119,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 {
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     // check if the expression is a matrix, therefore being modified
@@ -1157,7 +1186,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 // #   endif
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
@@ -1272,7 +1301,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
 
     typename gsQuadRule<T>::uPtr QuRule;
 
@@ -1351,7 +1380,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 #pragma omp parallel
 {
     m_exprdata->parse(residual, u);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     m_modified = true;
@@ -1401,7 +1430,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
     // clearMatrix();
 
     m_exprdata->parse(residual, u);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule

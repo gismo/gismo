@@ -1,6 +1,10 @@
 /** @file gsComposedBasis.h
 
-    @brief
+    @brief Provides the implementation of a basis composed by a function
+
+    Given a parametric domain (xi,eta), a composition (u,v) = C(xi,eta),
+    every basis function B_i(xi,eta) is evaluated as B(C(xi,eta)).
+    The derivatives are defined with respect to xi, eta
 
     This file is part of the G+Smo library.
 
@@ -9,14 +13,16 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        H.M. Verhelst   (2019-..., TU Delft)
-        A. Mantzaflaris (2019-..., Inria)
+        H.M. Verhelst
+        S. Imperatore
 */
 
 #pragma once
 
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsComposedGeometry.h>
+#include <gsCore/gsFunction.h>
+
 
 namespace gismo
 {
@@ -25,159 +31,109 @@ template <class T>
 class gsComposedBasis : public gsBasis<T>
 {
 
-    typedef memory::shared_ptr< gsComposedBasis > Ptr;
-    typedef memory::unique_ptr< gsComposedBasis > uPtr;
-
     // /// Geometry Type
     typedef gsComposedGeometry<T> GeometryType;
 
     GISMO_CLONE_FUNCTION(gsComposedBasis)
-//
+
     GISMO_MAKE_GEOMETRY_NEW
 
-    typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
+    typedef typename gsBasis<T>::domainIter domainIter;
+
+    typedef T ScalarType;
 
 public:
+    typedef memory::shared_ptr< gsComposedBasis > Ptr;
+    typedef memory::unique_ptr< gsComposedBasis > uPtr;
+
     typedef gsBasis<T>      BasisT;
     typedef gsFunction<T>   CompositionT;
 
 public:
-    gsComposedBasis(const CompositionT & composition, const BasisT & basis)
-    :
-    m_composition(&composition),
-    m_basis(&basis)
-    {
-        GISMO_ENSURE(m_basis->domainDim()==m_composition->targetDim(),
-            "Domain dimension of the basis "<<
-            " should be equal to the target dimension of the composition "<<
-            ", but basis.domainDim() = "<<basis.domainDim()<<
-            " and composition.targetDim() = )"<<composition.targetDim());
-    }
 
-    short_t domainDim() const override { return m_composition->domainDim(); }
-    short_t targetDim() const override { return m_basis->targetDim(); }
+    /// @brief Empty constructor
+    gsComposedBasis();
 
-    short_t maxDegree() const override { return m_basis->maxDegree(); }
+    /**
+     * @brief Construct a composed basis from pointers
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
+    gsComposedBasis(const CompositionT * composition, const BasisT * basis);
 
-    gsMatrix<T> support() const override
-    {
-        gsMatrix<T> supp = m_basis->support();
-        // gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
-        // supp = pt.toMatrix();
-        // gsMatrix<T> result = supp;
+    /**
+     * @brief Construct a composed basis from references
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
+    gsComposedBasis(const CompositionT & composition, const BasisT & basis);
 
-        // m_composition->invertPoints(supp,result,1e-10,true);
+    /**
+     * @brief Construct a composed basis from unique pointers
+     *
+     * @param[in] composition   the composition
+     * @param[in] basis         the basis to be composed
+     */
+    gsComposedBasis(typename CompositionT::Ptr composition,
+                    typename BasisT::Ptr basis);
 
-        // supp.conservativeResize(this->domainDim(),2);
-        // for (short_t d=0; d!=this->domainDim(); d++)
-        //     supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
+    /**
+     *  @brief Copy constructor
+     *  @note  Clones the basis, but copies the pointer to the composition
+     */
+    gsComposedBasis(const gsComposedBasis<T> & other);
 
-        return supp;
-    } // This should be the inverse map
+    /**
+     *  @brief Assignment operator
+     *  @note  Clones the basis, but copies the pointer to the composition
+     */
+    gsComposedBasis<T> & operator=(const gsComposedBasis<T> & other);
 
-    gsMatrix<T> support(const index_t & i) const override
-    {
-        // gsMatrix<T> supp = m_basis->support(i);
-        // gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
-        // supp = pt.toMatrix();
-        // gsMatrix<T> result = supp;
+    /// See \ref gsBasis for documentation
+    short_t domainDim() const override;
+    /// See \ref gsBasis for documentation
+    short_t targetDim() const override;
 
-        // m_composition->invertPoints(supp,result,1e-10,true);
+    /// See \ref gsBasis for documentation
+    memory::shared_ptr<gsDomain<T> > domain() const override;
 
-        // supp.conservativeResize(this->domainDim(),2);
-        // for (size_t d=0; d!=this->domainDim(); d++)
-        //     supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
+    /// See \ref gsBasis for documentation
+    short_t maxDegree() const override;
 
-        // return supp;
-        return this->support();
-    } // This should be the inverse map
+    /// See \ref gsBasis for documentation
+    gsMatrix<T> support() const override;
 
-    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override
-    {
-        gsMatrix<T> coords = m_composition->eval(u);
-        this->_applyBounds(coords);
-        m_basis->active_into(coords,result);
-    }
+    /// See \ref gsBasis for documentation
+    gsMatrix<T> support(const index_t & i) const override;
 
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
-    {
-        gsMatrix<T> coords = m_composition->eval(u);
-        this->_applyBounds(coords);
-        m_basis->eval_into(coords,result);
+    /// See \ref gsBasis for documentation
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override;
 
-        // The reason for an opposite pattern of basis functions is due to
-        // a different numbering fashion is adopted in G+Smo. @Ye
-//      gsDebugVar(result);
-    }
+    // void evalAllDers_into(const gsMatrix<T> & u, int n,
+    //                         std::vector<gsMatrix<T> >& result,
+    //                         bool sameElement) const
+    // {
+    //     gsMatrix<T> coords = m_composition->eval(u);
+    //     this->_applyBounds(coords);
+    //     m_basis->evalAllDers_into(coords,n,result,sameElement);
+    // }
 
-    void evalSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override
-    {
-        gsMatrix<T> coords = m_composition->eval(u);
-        this->_applyBounds(coords);
-        m_basis->evalSingle_into(i,coords,result);
-    }
+    /// See \ref gsBasis for documentation
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
-    {
-        /*
-         * WARNING!: This function is not yet tested.
-         * It could be that it does not work, especially if the number of actives
-         * is different per point in u. PLEASE CHECK THIS!
-         */
+    /// See \ref gsBasis for documentation
+    void evalSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
-        const size_t DIM = m_basis->domainDim();
-        index_t domainDim, targetDim;
-        gsMatrix<T> coord, deriv, tmp, compderiv;
+    /// See \ref gsBasis for documentation
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
-        m_composition->deriv_into(u,compderiv);
-        domainDim = m_composition->domainDim();
-        targetDim = m_composition->targetDim();
+    /// See \ref gsBasis for documentation
+    void derivSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
-        m_composition->eval_into(u,coord);
-        this->_applyBounds(coord);
-        m_basis->deriv_into(coord,deriv);
-        const index_t numAct = deriv.rows() / DIM;
-
-        result.resize(numAct*domainDim*m_basis->targetDim(),u.cols());
-        for (index_t k = 0; k!=u.cols(); k++)
-        {
-            gsAsMatrix<T,Dynamic,Dynamic> resultMat = compderiv.reshapeCol(k,domainDim,targetDim);
-            // gsAsMatrix<T,Dynamic,Dynamic> derivMat = deriv.reshapeCol(k,m_basis->domainDim(),m_basis->targetDim());
-            for (index_t act = 0; act!=numAct; act++)
-            {
-                result.block(act*DIM,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim()) = resultMat*deriv.block(act*DIM,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim());
-            }
-        }
-    }
-
-    void derivSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override
-    {
-        index_t domainDim, targetDim;
-        gsMatrix<T> coord, deriv, tmp, tmpderiv;
-
-        m_composition->deriv_into(u,result);
-        domainDim = m_composition->domainDim();
-        targetDim = m_composition->targetDim();
-
-        m_composition->eval_into(u,coord);
-        this->_applyBounds(coord);
-        m_basis->derivSingle_into(i,coord,deriv);
-
-        tmp.resize(m_basis->targetDim()*domainDim,u.cols());
-        for (index_t k = 0; k!=u.cols(); k++)
-        {
-            gsAsMatrix<T,Dynamic,Dynamic> resultMat = result.reshapeCol(k,domainDim,targetDim);
-            gsAsMatrix<T,Dynamic,Dynamic> derivMat = deriv.reshapeCol(k,m_basis->domainDim(),m_basis->targetDim());
-            // The product has size:
-            // (domainDim x targetDim) x (m_basis->domainDim(),m_basis->targetDim())
-            //  =
-            // (domainDim x m_basis->targetDim())
-            gsAsMatrix<T,Dynamic,Dynamic> tmpMat = tmp.reshapeCol(k,domainDim,m_basis->targetDim());
-            tmpMat = resultMat*derivMat;
-
-        }
-        result = tmp;
-    }
+    /// See \ref gsBasis for documentation
+    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result)
     // {
@@ -214,94 +170,81 @@ public:
     ////// Pass throughs of basis
 
     /// See \ref gsBasis for documentation
-    short_t degree(short_t i) const override { return m_basis->degree(i); }
+    short_t degree(short_t i) const override;
 
     /// See \ref gsBasis for documentation
-    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override { return m_basis->boundaryOffset(s,offset); }
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override;
 
     /// See \ref gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const { return m_basis->matchWith(bi,other,bndThis,bndOther); }
+                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset = 0) const override;
 
     /// See \ref gsBasis for documentation
-//    domainIter makeDomainIterator() const override { return m_basis->makeDomainIterator(); }
-//    domainIter makeDomainIterator() const override { return gsDomainIteratorWrapper<double>(m_basis->makeDomainIterator()); }
+    domainIter makeDomainIterator() const override;
 
     /// See \ref gsBasis for documentation
-//    virtual domainIter makeDomainIterator(const boxSide & s) const { return m_basis->makeDomainIterator(s); }
+    virtual domainIter makeDomainIterator(const boxSide & s) const override;
 
     /// See \ref gsBasis for documentation
-    std::string detail() const override { return m_basis->detail(); };
+    std::string detail() const override;
 
     /// See \ref gsBasis for documentation
-    size_t numElements() const { return m_basis->numElements(); }
+    size_t numElements(boxSide const & s = 0) const override;
 
     /// See \ref gsBasis for documentation
-    size_t numElements(boxSide const & s) const override { return m_basis->numElements(s); }
+    index_t size() const override;
 
     /// See \ref gsBasis for documentation
-    index_t size() const override {return m_basis->size(); }
+    void anchors_into(gsMatrix<T> & result) const override;
 
     /// See \ref gsBasis for documentation
-    void anchors_into(gsMatrix<T> & result) const override { m_basis->anchors_into(result); }
-
-
-    /// See \ref gsBasis for documentation
-    void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const override { m_basis->connectivity(nodes,mesh); }
-
+    void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const override;
 
     /// See \ref gsBasis for documentation
-    memory::shared_ptr<gsDomain<T> > domain() const override { return m_basis->domain(); }
+    void uniformRefine(int numKnots = 1, int mul=1, int dir=-1) override;
 
     /// See \ref gsBasis for documentation
-    //
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir=-1) override;
 
-    //// NEEDS TO EVALUATE THE INVERSE MAP, NOT m_composition!!
-    void mapMesh(gsMesh<T> & mesh) const
-    {
-        const int pDim = this->domainDim();
+    /// See \ref gsBasis for documentation
+    void degreeElevate(short_t const & i = 1, short_t const dir = -1) override;
 
-        gsMatrix<T> tmp, point;
+    /// See \ref gsBasis for documentation
+    virtual short_t minDegree() const override {return m_basis->minDegree();}
 
-        for (size_t i = 0; i!= mesh.numVertices(); ++i)
-        {
-            point = tmp = mesh.vertex(i).topRows(pDim);
-            m_composition->invertPoints(point,tmp,1e-6,true);
-            mesh.vertex(i).topRows(pDim) = tmp.topRows(pDim);
-        }
-    }
+
+    /**
+     *  @brief Maps a \a mesh from the parametric domain to the composed domain
+     *
+     * @param[in,out] mesh The mesh to be mapped
+     */
+    void mapMesh(gsMesh<T> & mesh) const;
 
 
     /// Return the composition
-    const CompositionT * composition() const { return m_composition; }
-    /// Return the basis
-    const BasisT * basis() const { return m_basis; }
+    const CompositionT & composition() const;
+    /// Return the composition
+          CompositionT & composition()      ;
 
-    std::ostream &print(std::ostream &os) const
-    {
-        os <<"Composite basis:\n";
-        os << "* Compositoon "
-           << " ( R^" << m_composition->domainDim() << " --> R^" << m_composition->targetDim() << "):\n"
-           << m_composition<<"\n";
-        os << "* Basis "
-           << " ( R^" << m_basis->domainDim() << " --> R^" << m_basis->targetDim() << "):\n"
-           << m_basis<<"\n";
-        return os;
-    }
+    /// Return the basis
+    const BasisT & basis() const;
+
+    /// See \ref gsBasis for the documentation of this function
+    std::ostream &print(std::ostream &os) const override;
 
 private:
-    void _applyBounds(gsMatrix<T> & coords) const
-    {
-        for (index_t k=0; k!=coords.cols(); k++)
-        {
-            coords.col(k) = coords.col(k).cwiseMax(m_basis->support().col(0));
-            coords.col(k) = coords.col(k).cwiseMin(m_basis->support().col(1));
-        }
-    }
+    /// Applies the bounds to the coordinates
+    void _applyBounds(gsMatrix<T> & coords) const;
 
 protected:
-    const CompositionT * m_composition;
-    const BasisT * m_basis;
+    typename CompositionT::Ptr   m_composition;
+    typename BasisT::Ptr         m_basis;
 
-};
-}
+}; // class gsComposedBasis
+
+} // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsComposedBasis.hpp)
+#endif
+

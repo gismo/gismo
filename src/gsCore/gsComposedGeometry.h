@@ -1,6 +1,10 @@
 /** @file gsComposedGeometry.h
 
-    @brief
+    @brief Provides the implementation of a geometry composed by a function
+
+    Given a parametric domain (xi,eta), a composition (u,v) = C(xi,eta),
+    every basis function B_i(xi,eta) is evaluated as B(C(xi,eta)).
+    The derivatives are defined with respect to xi, eta
 
     This file is part of the G+Smo library.
 
@@ -9,14 +13,15 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        H.M. Verhelst   (2019-..., TU Delft)
-        A. Mantzaflaris (2019-..., Inria)
+        H.M. Verhelst
+        S. Imperatore
 */
 
 #pragma once
 
-//#include <gsCore/gsBasis.h>
+#include <gsCore/gsGeometry.h>
 #include <gsCore/gsComposedBasis.h>
+#include <gsCore/gsFuncData.h>
 
 namespace gismo
 {
@@ -27,151 +32,94 @@ class gsComposedGeometry : public gsGeometry<T>
 
     using Base = gsGeometry<T>;
 
-    typedef gsComposedBasis<T> Basis;
-    typedef typename gsComposedBasis<T>::CompositionT CompositionT;
+    GISMO_CLONE_FUNCTION(gsComposedGeometry)
+
+public:
 
     typedef memory::shared_ptr< gsComposedGeometry > Ptr;
     typedef memory::unique_ptr< gsComposedGeometry > uPtr;
 
-    GISMO_CLONE_FUNCTION(gsComposedGeometry)
+    typedef gsComposedBasis<T> Basis;
+    typedef gsComposedBasis<T> BasisT;
+    typedef typename BasisT::CompositionT CompositionT;
 
 public:
-    gsComposedGeometry()
-    :
-    m_geom(nullptr)
-    {
 
-    }
+    /// @brief Empty constructor
+    gsComposedGeometry();
 
     /**
-     * @brief      XXXX
+     * @brief      Constructs a composed geometry from a composed basis and a set of coefficients
      *
-     * @param[in]  basis  The basis
+     * @param[in]  basis  The composed basis
      * @param[in]  coefs  The coefs
      */
-    gsComposedGeometry(const gsComposedBasis<T> & basis, const gsMatrix<T> & coefs)
-    :
-    Base(basis, give(coefs) ),
-    m_composition(basis.composition()),
-    m_geom(give(basis.basis()->makeGeometry(coefs))),
-    m_domainDim(basis.domainDim())
-    { }
+    gsComposedGeometry( const gsComposedBasis<T> & basis,
+                        const gsMatrix<T> & coefs);
 
     /**
-     * @brief      XXXX
+     * @brief      Construct a composed geometry from a composition and a geometry
      *
      * @param[in]  composition  The composition
      * @param[in]  geom         The geometry
      */
-    gsComposedGeometry(const gsFunction<T> & composition, const gsGeometry<T> & geom)
-    :
-    Base(gsComposedBasis<T>(composition,geom.basis()), give(geom.coefs()) ),
-    m_composition(&composition),
-    m_geom(geom.clone()),
-    m_domainDim(geom.domainDim())
-    {
-        GISMO_ASSERT(geom.domainDim()==composition.targetDim(),"Domain dimension of the geometry does not correspond with the target dimension of the composition!");
-    }
-
-    /// Copy constructor (makes deep copy)
-    gsComposedGeometry(const gsComposedGeometry& other)
-    :
-    Base(other),
-    m_composition(other.m_composition),
-    m_geom(other.m_geom->clone()),
-    m_domainDim(other.m_domainDim)
-    { }
-
-    /// Move constructor
-    gsComposedGeometry( gsComposedGeometry&& other )
-    :
-    Base(give(other)),
-    m_composition(other.m_composition),
-    m_geom(give(other.m_geom)),
-    m_domainDim(other.m_domainDim)
-    { }
-
-    /// Assignment operator
-    gsComposedGeometry& operator= ( const gsComposedGeometry& other )
-    {
-        if (this != &other)
-        {
-            m_composition = other.m_composition;
-            m_geom = other.m_geom->clone();
-            m_domainDim = other.m_domainDim;
-            Base::operator=(other);
-        }
-        return *this;
-    }
-
-    /// Move assignment operator
-    gsComposedGeometry& operator= ( gsComposedGeometry&& other )
-    {
-        if (this != &other)
-        {
-            m_composition = other.m_composition;
-            m_geom = give(other.m_geom);
-            m_domainDim = other.m_domainDim;
-            Base::operator=(other);
-        }
-        return *this;
-    }
+    gsComposedGeometry( const gsFunction<T> & composition,
+                        const gsGeometry<T> & geom);
 
 
-    ~gsComposedGeometry()
-    {
-        // if (m_geom!=nullptr)
-        //     delete m_geom;
-    }
+    // /// Copy constructor (makes deep copy)
+    // gsComposedGeometry(const gsComposedGeometry& other);
 
-    short_t domainDim() const override { return m_domainDim; }
+    // /// Move constructor
+    // gsComposedGeometry( gsComposedGeometry&& other );
+
+    // /// Assignment operator
+    // gsComposedGeometry& operator= ( const gsComposedGeometry& other );
+
+    // /// Move assignment operator
+    // gsComposedGeometry& operator= ( gsComposedGeometry&& other );
+
+    /// See \ref gsGeometry::domainDim for more details
+    short_t domainDim() const override;
+
+    /// See \ref gsGeometry::targetDim for more details
+    using Base::targetDim;
+
+    /// See \ref gsGeometry::eval_into for more details
+    void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const override;
 
     /**
      * @brief      Gives the control point derivatives of \a *this. See gsFunction for more details
      *
      * @param[in]  points  The points in the parameter domain (of the composition)
-     * @param      result  The control point derivatives
+     * @param[out] result  The control point derivatives
      */
-    void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const
-    {
-        // The number of rows is the target dimension times the number of controls
-        // The number of cols is the number of points
-        result.resize(targetDim()*m_composition->nControls(),points.cols());
+    void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const;
 
-        // Pre-compute the coordinates of the composition, the derivatives of G and the derivatives of the composition
-        gsMatrix<T> c, dc, dG;
-        m_composition->eval_into(points,c);
-        m_composition->control_deriv_into(points,dc);   // This is dc/dpi (pi is a control of c)
-        m_geom->deriv_into(c,dG);                       // This is dG/dc evaluated on c
+    /// Evaluates the mesh
+    void evaluateMesh(gsMesh<T>& mesh) const override;
 
-        // Store some sizes
-        index_t nControls = m_composition->nControls();
-        index_t dd = m_geom->domainDim();
-        index_t td = m_geom->targetDim();
+    GISMO_BASIS_ACCESSORS;
 
-        // Loop over the points
-        for (index_t k=0; k!=points.cols(); k++)
-        {
-            // We need to compute dG/dpi = dG/dc * dc/dpi
-            gsAsMatrix<T> DG = result.reshapeCol(k,nControls,td);
-            DG = dc.reshapeCol(k,nControls,dd) * dG.reshapeCol(k,dd,td);
-        }
-    }
-
-    using Base::targetDim;
-
-//    GISMO_BASIS_ACCESSORS;
-    Basis & basis() override { return static_cast<Basis&>(*this->m_basis); } \
-    const Basis & basis() const override { return static_cast<const Basis&>(*this->m_basis); }
+    const CompositionT & composition() const;
+          CompositionT & composition()      ;
 
 protected:
     // Map from parametric domain to geometry
-    const CompositionT * m_composition;
+    typename CompositionT::Ptr m_composition;
     using Base::m_basis;
 
+    // for compute();
+    using Base::m_coefs;
+
     // Map from composition to geometry
-    typename gsGeometry<T>::uPtr m_geom;
+    typename gsGeometry<T>::Ptr m_geom;
 
     short_t m_domainDim;
 };
+
 }
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsComposedGeometry.hpp)
+#endif
