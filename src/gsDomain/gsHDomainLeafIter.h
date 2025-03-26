@@ -3,7 +3,7 @@
     @brief Provides declaration of HDomainLeafIter class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -13,15 +13,15 @@
 
 #pragma once
 
-#include <gsHSplines/gsKdNode.h>
+#include <gsDomain/gsKdNode.h>
 #include <gsCore/gsTemplateTools.h>
 
 namespace gismo
 {
 
-/** 
-    @brief Iterates over the leaves of an gsHDomain (tree).
-    
+/**
+    @brief Iterates over the leaves of an gsHTree (tree).
+
     \ingroup HSplines
 */
 
@@ -46,7 +46,7 @@ public:
 
     explicit gsHDomainLeafIter( node * const root_node, index_t index_level)
         : m_index_level(index_level)
-    { 
+    {
         m_stack.push(root_node);
 
         // Go to the first leaf
@@ -60,7 +60,7 @@ public:
         {
             curNode = m_stack.top();
             m_stack.pop();
-            
+
             if ( curNode->isLeaf() )
             {
                 return true;
@@ -90,7 +90,7 @@ public:
     int level() const { return curNode->level; }
 
     point lowerCorner() const
-    { 
+    {
         point result = curNode->box->first;
         const int lvl = curNode->level;
 
@@ -98,7 +98,7 @@ public:
         for ( index_t i = 0; i!= result.size(); ++i )
             result[i] = result[i] >> (m_index_level-lvl) ;
 
-        return result; 
+        return result;
     }
 
     point upperCorner() const
@@ -109,7 +109,7 @@ public:
         for ( index_t i = 0; i!=result.size(); ++i )
             result[i] = result[i] >> (m_index_level-lvl) ;
 
-        return result; 
+        return result;
     }
 
     index_t indexLevel() const {return m_index_level;}

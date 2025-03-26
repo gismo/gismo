@@ -322,12 +322,19 @@ public:
         return m_basis->getBase(m_index).component(i);
     }
 
+    virtual memory::shared_ptr<gsDomain<T> > domain() const override
+    {
+        return m_basis->getBase(m_index).domain();
+    }
+
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const override
     {
         // TODO Not always working: make it more general
         return m_basis->getBase(m_index).makeDomainIterator();
     }
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const override
     {
         // TODO Not always working: make it more general

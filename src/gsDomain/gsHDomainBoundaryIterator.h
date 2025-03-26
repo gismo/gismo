@@ -2,32 +2,33 @@
 
     @brief Provides declaration of iterator on boundary of hierarchical basis.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
 #pragma once
 
-#include <gsHSplines/gsHDomain.h>
-#include <gsHSplines/gsKdNode.h>
-#include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsDomain/gsHTree.h>
+#include <gsDomain/gsHDomain.h>
+#include <gsDomain/gsKdNode.h>
+#include <gsHSplines/gsHTensorBasis.h>
 
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {
 
 // Documentation in gsDomainIterator
 /**
-  * @brief 
+  * @brief
   * Re-implements gsDomainIterator for iteration over all boundary
   * elements of a <b>hierarchical</b> parameter domain.
-  * 
+  *
   * <em>See
   * gsDomainIterator for more detailed documentation and an example of
   * the typical use!!!</em>\n Used, e.g., for basis of classes
@@ -36,87 +37,114 @@ namespace gismo
   * \ingroup HSplines
   */
 
-template<typename T, unsigned d>
+template<typename T, short_t d, typename Z>
 class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdNode<d, index_t> node;
+    typedef gsKdNode<d,Z> node;
 
-    typedef typename node::point point; 
+    typedef typename node::point point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHDomain<d,index_t> hDomain;
+    typedef gsHTree<d,Z> hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 
 public:
 
-    gsHDomainBoundaryIterator(const gsHTensorBasis<d, T> & hbs, 
-                              const boxSide & s )
-        : gsDomainIterator<T>(hbs)
+    gsHDomainBoundaryIterator(const gsHTree<d,Z> & tree,
+                              const gsHTensorBasis<d,T> & basis,
+                              const boxSide & s)
+    :
+    gsDomainIterator<T>(),
+    m_tree(tree),
+    m_basis(basis)
+    {
+        init(m_tree,s);
+    }
+
+    gsHDomainBoundaryIterator(const gsHDomain<d,T,Z> & domain,
+                              const gsHTensorBasis<d,T> & basis,
+                              const boxSide & s)
+    :
+    gsHDomainBoundaryIterator(domain.tree(),basis,s)
+    {
+    }
+
+    void init(const gsHTree<d,Z> & tree, const boxSide & s)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
         m_meshEnd  .resize(d);
-
-        // Initialize cell data
         m_curElement.resize(d);
-        m_lower     .resize(d);
-        m_upper     .resize(d);
 
         // Allocate breaks
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
-
-        // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<index_t>::Ones(d) );
 
         // Get the side information
         par = s.parameter();
         dir = s.direction();
 
-        initLeaf(hbs.tree());
+        this->initLeaf(tree);
     }
 
     // ---> Documentation in gsDomainIterator.h
-    bool next()
+    void next() override
     {
-        this->m_isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+        bool isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
 
-        if (this->m_isGood) // new element in m_leaf
-            updateElement();
-        else // went through all elements in m_leaf
-            this->m_isGood = nextLeaf();
-
-        return this->m_isGood;
+        if (!isGood) // went through all elements in m_leaf
+            isGood = nextLeaf();
     }
 
     // ---> Documentation in gsDomainIterator.h
-    bool next(index_t increment)
+    void next(index_t increment) override
     {
+        bool isGood(true);
         for (index_t i = 0; i < increment; i++)
-            this->m_isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+            isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
 
-        if (this->m_isGood) // new element in m_leaf
-            updateElement();
-        else // went through all elements in m_leaf
-            this->m_isGood = nextLeaf();
-
-        return this->m_isGood;
+        if (isGood) // went through all elements in m_leaf
+            isGood = nextLeaf();
     }
-    
+
     /// Resets the iterator so that it can be used for another
     /// iteration through all boundary elements.
-    void reset()
+    void reset() override
     {
-        const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
-        initLeaf(hbs->tree());
+        initLeaf(m_tree);
     }
 
-    const gsVector<T>& lowerCorner() const { return m_lower; }
+    gsVector<T> lowerCorner() const override
+    {
+        gsVector<T> lower;
+        lower.resize(d);
+        for (short_t i = 0; i < dir ; ++i)
+            lower[i] = *m_curElement[i]; // in gsTensorDomainBoundaryIterator, we have: lower[i]  = m_curElement[i].lowerCorner().value();
+        lower[dir] = (par ? *(m_curElement[dir]+1) : *m_curElement[dir] ); // in gsTensorDomainBoundaryIterator, we have: lower[dir] = (par ? m_curElement[dir].upperCorner().value() : m_curElement[dir].lowerCorner().value() );
+        for (short_t i = dir+1; i < d; ++i)
+            lower[i] = *m_curElement[i]; // in gsTensorDomainBoundaryiterator, we have: lower[i]  = m_curElement[i].lowerCorner().value();
+        return lower;
+    }
 
-    const gsVector<T>& upperCorner() const { return m_upper; }
+    gsVector<T> upperCorner() const override
+    {
+        gsVector<T> upper;
+        upper.resize(d);
+        for (short_t i = 0; i < dir ; ++i)
+            upper[i] = *(m_curElement[i]+1); // in gsTensorDomainBoundaryiterator, we have: upper[i]  = m_curElement[i].upperCorner().value();
+        upper[dir] = (par ? *(m_curElement[dir]+1) : *m_curElement[dir] ); // in gsTensorDomainBoundaryIterator, we have: upper[dir] = (par ? m_curElement[dir].upperCorner().value() : m_curElement[dir].upperCorner().value() );
+        for (short_t i = dir+1; i < d; ++i)
+            upper[i] = *(m_curElement[i]+1); // in gsTensorDomainBoundaryiterator, we have: upper[i]  = m_curElement[i].upperCorner().value();
+        return upper;
+    }
+
+    const T getPerpendicularCellSize() const override
+    {
+        return *(m_curElement[dir]+1) - *m_curElement[dir];
+    }
 
     int getLevel() const
     {
@@ -168,8 +196,8 @@ private:
         {
             // AM: a little ugly for now, to be improved
             size_t diadicSize;
-            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(m_basis);
-            if (basis().manualLevels() )
+            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(&m_basis);
+            if (hbasis->manualLevels() )
             {
                 gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.level()).knots(dir);
                 index_t start = 0;
@@ -179,7 +207,7 @@ private:
                 diadicSize = end - start;
             }
             else
-                diadicSize = static_cast<const gsHTensorBasis<d,T>*>(m_basis)->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;
+                diadicSize = hbasis->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;
 
             return static_cast<size_t>(m_leaf.upperCorner().at(dir) ) == diadicSize;// todo: more efficient
         }
@@ -196,27 +224,28 @@ private:
     {
         const point & lower = m_leaf.lowerCorner();
         const point & upper = m_leaf.upperCorner();
-        // gsDebug<<"leaf "<<  lower.transpose() <<", " 
+        // gsDebug<<"leaf "<<  lower.transpose() <<", "
         //        << upper.transpose() <<"\n";
 
         const int level2 = m_leaf.level();
 
         // Update leaf box
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (short_t dim = 0; dim < d; ++dim)
         {
             index_t start = lower(dim);
             index_t end  = upper(dim) ;
 
-            if (basis().manualLevels() )
+            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(&m_basis);
+            if (hbasis->manualLevels() )
             {
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)->
                     _diadicIndexToKnotIndex(level2,dim,start);
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)->
                     _diadicIndexToKnotIndex(level2,dim,end);
             }
 
             const gsKnotVector<T> & kv =
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)
+                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)
                 ->tensorLevel(level2).component(dim).knots();
 
             m_breaks[dim].clear();
@@ -239,38 +268,12 @@ private:
                     m_breaks[dim].push_back( kv(index) );// unique index
             }
 
-            m_curElement(dim) = 
+            m_curElement(dim) =
             m_meshStart(dim)  = m_breaks[dim].begin();
 
 
             // for n breaks, we have n - 1 elements (spans)
             m_meshEnd(dim) =  m_breaks[dim].end() - 1;
-        }
-
-        // We are at a new element, so update cell data
-        updateElement();
-    }
-
-    /// Computes lower, upper and center point of the current element, maps the reference
-    /// quadrature nodes and weights to the current element, and computes the
-    /// active functions.
-    void updateElement()
-    {
-        // Update cell data
-        for (unsigned i = 0; i < dir ; ++i)
-        {
-            m_lower[i]  = *m_curElement[i];
-            m_upper[i]  = *(m_curElement[i]+1);
-            center[i] = (T)(0.5) * (m_lower[i] + m_upper[i]);
-        }
-        m_lower[dir] = 
-        m_upper[dir] =
-        center [dir] = (par ? *(m_curElement[dir]+1) : *m_curElement[dir] );
-        for (unsigned i = dir+1; i < d; ++i)
-        {
-            m_lower[i] = *m_curElement[i];
-            m_upper[i] = *(m_curElement[i]+1);
-            center [i] = (T)(0.5) * (m_lower[i] + m_upper[i]);
         }
     }
 
@@ -278,12 +281,11 @@ private:
 // members
 // =============================================================================
 
-    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
+public:
+    // GISMO_DEPRECATED
+    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(&m_basis); }
 
 public:
-
-    using gsDomainIterator<T>::center;
-    using gsDomainIterator<T>::m_basis;
 
 #   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -291,8 +293,11 @@ public:
 
 private:
 
+    const gsHTree<d,Z> & m_tree;
+    const gsHTensorBasis<d,T> & m_basis;
+
     // Boundary parameters
-    unsigned dir; // direction normal to the boundary
+    short_t dir; // direction normal to the boundary
     bool par;     // parameter value
 
     // The current leaf node of the tree
@@ -307,13 +312,6 @@ private:
 
     // Current element as pointers to it's supporting mesh-lines
     gsVector<uiter, d> m_curElement;
-
-    // parameter coordinates of current grid cell
-    gsVector<T> m_lower, m_upper;
-
-    // Quadrature rule
-    gsGaussRule<T> m_quadrature;
-
 };
 
 } // end namespace gismo

@@ -81,7 +81,7 @@ endif()
 
 option(GISMO_WITH_XDEBUG           "Extra debug features"      false  )
 if  (${GISMO_WITH_XDEBUG})
-message ("  GISMO_WITH_XDEBUG      ${GISMO_EXTRA_XDEBUG}")
+message ("  GISMO_WITH_XDEBUG      ${GISMO_WITH_XDEBUG}")
 endif()
 
 option(GISMO_WITH_ADIFF          "With auto-diff"            false  )

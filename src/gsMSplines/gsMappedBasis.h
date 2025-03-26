@@ -18,7 +18,7 @@
 
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsWeightMapper.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsBasisFun.h>
 
@@ -46,7 +46,7 @@ private:
     typedef typename std::vector<T>::const_iterator ConstWeightIter;
     typedef gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
 
-    typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
+    typedef typename gsBasis<T>::domainIter domainIter;
 
 public:
     /// Shared pointer for gsMappedBasis
@@ -210,7 +210,8 @@ public:
     //const gsFunctionSet & piece(const index_t k) const { return m_sb[k]; }
 
     /// gives back the domain iterator of the boundary side \a s of a given \a patch
-    domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
+    GISMO_DEPRECATED
+    typename gsBasis<T>::domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
     { return m_bases[patch]->makeDomainIterator(s); }
 
     /** exports the patch \a i of this geometry (with coefs) to a Geometry object

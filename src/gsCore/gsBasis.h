@@ -92,7 +92,7 @@ public:
 
     static const bool IsRational = false;
 
-    typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
+    typedef gsDomainIteratorWrapper<T> domainIter;
 
     virtual ~gsBasis();
 
@@ -719,11 +719,13 @@ public:
 
     /// @brief Create a domain iterator for the computational mesh of
     /// this basis, that points to the first element of the domain
+    GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginAll()
     virtual domainIter makeDomainIterator() const;
 
     /// @brief Create a boundary domain iterator for the computational
     /// mesh this basis, that points to the first element on the
     /// boundary of the domain
+    GISMO_DEPRECATED // @hverhelst: this function will be deprecated, since it will now always point to the first element of the domain, hence call this->domain()->beginBdr()
     virtual domainIter makeDomainIterator(const boxSide & s) const;
 
     /// Prints the object as a string.
@@ -906,8 +908,9 @@ public:
     virtual void reduceContinuity(int const & i = 1);
 
     /// Return the gsDomain which represents the parameter domain of
-    /// this basis. Currently unused.
-    virtual gsDomain<T> * domain() const;
+    /// this basis.
+    // SHOULD BE A MEMBER
+    virtual memory::shared_ptr<gsDomain<T> > domain() const;
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the maximum polynomial degree.

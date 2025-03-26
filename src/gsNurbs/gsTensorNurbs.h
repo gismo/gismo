@@ -303,7 +303,7 @@ public:
         tbsbasis.component(k).reverse();
     }
 
-    /// Constucts an isoparametric slice of this tensor Nurbs curve by fixing
+    /// Constructs an isoparametric slice of this tensor Nurbs curve by fixing
     /// \a par in direction \a dir_fixed. The resulting tensor Nurbs has
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed, T par, BoundaryGeometryType & result) const

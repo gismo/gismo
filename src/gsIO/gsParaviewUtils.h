@@ -16,7 +16,7 @@
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsMSplines/gsMappedBasis.h>   // Only to make linker happy
 #include <gsCore/gsDofMapper.h>         // Only to make linker happy
-#include <gsAssembler/gsExprHelper.h>  
+#include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 // #include <gsIO/gsIOUtils.h>
 
@@ -27,7 +27,7 @@
 namespace gismo
 {
     /// @brief  Evaluates gsFunctionSet over all pieces( patches ) and returns all <DataArray> xml tags as a vector of strings
-    /// @tparam T 
+    /// @tparam T
     /// @param funSet gsFunctionSet to be evaluated
     /// @param nPts   Number of evaluation points, per patch.
     /// @param precision Number of decimal points in xml output
@@ -85,14 +85,14 @@ namespace gismo
         std::vector<std::string> out;
 
         // if false, embed topology ?
-        const index_t n = evaltr->exprData()->multiBasis().nBases();
+        const index_t n = evaltr->exprData()->domain().nPieces();
 
         gsMatrix<real_t> evaluated_values, bounding_box_dimensions;
 
         for (index_t i = 0; i != n; ++i) {
             // Get bounding box and sample evaluation points on current patch
             bounding_box_dimensions =
-                evaltr->exprData()->multiBasis().piece(i).support();
+                evaltr->exprData()->domain().subdomain(i)->boundingBox();
             gsGridIterator<real_t, CUBE> grid_iterator(bounding_box_dimensions,
                                                     nPts);
             evaltr->eval(expr, grid_iterator, i);
@@ -107,7 +107,7 @@ namespace gismo
             if (evaluated_values.rows() == 2)
                 // Pad matrix with zeros
                 evaluated_values.conservativeResizeLike(gsEigen::MatrixXd::Zero(3,evaluated_values.cols()));
-            
+
             out.push_back(toDataArray(evaluated_values,{{"Name",label}}, precision,export_base64));
 
         }
@@ -118,10 +118,10 @@ namespace gismo
 
 
 
-    /// @brief ID transformation between G+Smo and vtk  control point IDs 
+    /// @brief ID transformation between G+Smo and vtk  control point IDs
     /// @param nU Number of control points in u parametric direction
     /// @param nV Number of control points in u parametric direction
-    /// @return 
+    /// @return
     GISMO_EXPORT gsMatrix<real_t> vtkIDTransform(index_t nU, index_t nV);
 
 
@@ -130,7 +130,7 @@ namespace gismo
     /// @param num The integer to be formatted
     /// @param attributes Optional, map of strings, with attribute name mapping to attribute value.
     /// @param ind Optional, indentation level for the resulting string.
-    /// @return 
+    /// @return
     GISMO_EXPORT std::string toDataArray(index_t num, std::map<std::string, std::string> attributes={{"",""}});
 
 

@@ -297,15 +297,15 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
         // is NOT along the element
-        gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
+        gsGaussRule<T> bdQuRule(basis, (T)1, 1, iter->side().direction());
 
         // Create the iterator along the given part boundary.
-        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
+        typename gsBasis<T>::domainIter bdrIter    = basis.domain()->beginBdr(iter->side());
+        typename gsBasis<T>::domainIter bdrIterEnd = basis.domain()->endBdr(iter->side());
 
-
-        for (; bdryIter->good(); bdryIter->next())
+        for (; bdrIter<bdrIterEnd; ++bdrIter)
         {
-            bdQuRule.mapTo(bdryIter->lowerCorner(), bdryIter->upperCorner(),
+            bdQuRule.mapTo(bdrIter.lowerCorner(), bdrIter.upperCorner(),
                            md.points, quWeights);
 
             patch.computeMap(md);
@@ -419,7 +419,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                     } // for i
                 } // for k
             }// for r
-        } // bdryIter
+        } // bdrIter
     } // boundaryConditions-Iterator
 
     gsSparseMatrix<T> globProjMat(mapper.boundarySize(), mapper.boundarySize());

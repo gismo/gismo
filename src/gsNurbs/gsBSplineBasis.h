@@ -18,8 +18,8 @@
 #include <gsCore/gsConstantBasis.h>
 
 #include <gsTensor/gsTensorBasis.h>
-#include <gsTensor/gsTensorDomainIterator.h>
-#include <gsTensor/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsTensorDomainIterator.h>
+#include <gsDomain/gsTensorDomainBoundaryIterator.h>
 
 #include <gsNurbs/gsKnotVector.h>
 
@@ -365,7 +365,7 @@ public:
     inline index_t numActive() const { return m_p + 1; }
 
     // Look at gsBasis class for a description
-    gsDomain<T> * domain() const { return const_cast<KnotVectorType *>(&m_knots); }
+    memory::shared_ptr<gsDomain<T> > domain() const { return memory::make_shared_not_owned(&m_knots); }
 
     /// @brief Returns the knot vector of the basis
     const KnotVectorType & knots (int i  = 0) const
@@ -583,17 +583,16 @@ public:
     /// of the corresponding knot at the end, returns zero.
     int borderKnotMult() const;
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
-        return typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,1>(*this));
+        return m_knots.beginAll();
     }
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
-        return ( s == boundary::none ?
-                 typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,1>(*this)) :
-                 typename gsBasis<T>::domainIter(new gsTensorDomainBoundaryIterator<T,1>(*this, s))
-                );
+        return m_knots.beginBdr(s);
     }
 
     /// @brief Moves the knot vectors to enforce periodicity.
