@@ -494,36 +494,35 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectVec(con
     // other = true : the surface is in 3D, set _rdim to 3.
     r_tilde = b;
     if(other){
-        // TODO :  mybe need kron after all
-        // This is for composing surface mapping in 3D that has 3 component and square mapping
         index_t n1 = ds[0].rows();
         index_t n2 = ds[1].rows();
-        index_t n3 = n2;
-
         // two components
-        r_tilde = r_tilde.reshape(n1*n2*n3,3);
+        r_tilde.reshape(n1*n2,3);
         //// ...step 1: reshape first component *****
-        #pragma omp parallel for
-        for (index_t i = 0; i<3; ++i){
-            s_tilde = r_tilde.col(i);
-            // step 2: first component            
-            s_tilde = s_tilde.reshape(n1,n2*n3);
-            s_tilde = s_tilde.transpose() * Us[0];
-            // matrix become (n2*n3, n1)
-            for (index_t i1 = 0; i1 < n1; ++i1) {
-                t_tilde         = s_tilde.col(i1);
-                t_tilde         = t_tilde.reshape(n2, n3);
-                t_tilde         = Us[1].transpose() * t_tilde * Us[2];
-                //...
-                t_tilde         = Us[1] * t_tilde * Us[2].transpose();
-                s_tilde.col(i1) = t_tilde.reshape(n2*n3,1);
-            }
-            s_tilde = Us[0] * s_tilde.transpose();
-            // step 4: reshape
-            r_tilde.col(i) = s_tilde.reshape(n1*n2*n3,1);
-        }
-        //... result
-        r_tilde.reshape(3*n1*n2*n3, 1);
+        s_tilde = r_tilde.col(0);
+        s_tilde = s_tilde.reshape(n1,n2);
+        // step 2: first component
+        s_tilde = Us[0].transpose()*s_tilde*Us[1];
+        s_tilde = Us[0]*s_tilde * Us[1].transpose();
+        // step 4: reshape
+        r_tilde.col(0) = s_tilde.reshape(n1*n2,1);
+        //// ...step 1: reshape second component *****
+        s_tilde = r_tilde.col(1);
+        s_tilde = s_tilde.reshape(n1,n2);
+        // step 2: first component            
+        s_tilde = Us[0].transpose()*s_tilde*Us[1];
+        s_tilde = Us[0]*s_tilde * Us[1].transpose();
+        // step 4: reshape
+        r_tilde.col(1) = s_tilde.reshape(n1*n2,1);
+        //// ...step 1: reshape third component *****
+        s_tilde = r_tilde.col(2);
+        s_tilde = s_tilde.reshape(n1,n2);
+        // step 2: first component            
+        s_tilde = Us[0].transpose()*s_tilde*Us[1];
+        s_tilde = Us[0]*s_tilde * Us[1].transpose();
+        // step 4: reshape
+        r_tilde.col(2) = s_tilde.reshape(n1*n2,1);
+        r_tilde.reshape(3*n1*n2,1);
     }
     else if (_rdim == 2) {
         // 2D

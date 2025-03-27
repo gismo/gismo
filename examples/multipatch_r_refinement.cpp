@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
     //gsFileData<> fd(fn);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     // .... one single patch
-   gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1, 0.0, 0.0);
+   gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,4,1, 0.0, 0.0);
    //... patch 1
    //mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 0.,1.0));
 //    //... patch 2 (L-shape)
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
     //gsFunctionExpr<> f("(1.+ 9./(1.+(10.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )",2);
     //gsFunctionExpr<> f("( 1.+ 5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))",2);
     //gsFunctionExpr<> f("(1. + 5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)",2);
-    gsFunctionExpr<> f("(1.+10.(1.+x*(abs(y-0.5)<0.3))/cosh( 10.*(y -0.5 ) )**2)",2);
+    gsFunctionExpr<> f("(1.+10.(1.+0.*x*(abs(y-0.5)<0.3))/cosh( 10.*(x -0.5 ) )**2)",2);
     gsInfo<<"Source function "<< f << "\n";
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
@@ -492,7 +492,6 @@ int main(int argc, char *argv[])
                 
                 gsMultiPatch<> Psi;
                 v_sol.extract(Psi);
-                gsWrite(Psi, "Psi_mapping");
 
                 // ... correct boundary
                 //if (PNormalCP)
@@ -733,6 +732,35 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
+
+        gsMultiPatch<> UU;
+        u_sol.extract(UU);
+        //...
+        auto u_s       = A.getCoeff(UU);
+        //... 
+        space v        = A.getSpace(dbasis);
+        gsMatrix<> vsolVector;
+        solution v_sol = A.getSolution(v, vsolVector);
+        A.initSystem(IGdim);
+        // Obtain control points for the gradient of Psi
+        A.assemble( v * v.tr() , v * grad(u_s) );
+        // SOLVE ...
+        solver.compute( A.matrix() );
+        vsolVector = solver.solve(A.rhs());
+        gsMultiPatch<> Psi;
+        v_sol.extract(Psi);
+        //... correct the boundary
+        ProjectionNormalCPoints(Psi, mp);
+        Psi.addAutoBoundaries();
+        Psi.computeTopology();
+        
+        //  Export the solution in ParaView format
+        std::string fn("pde/MongeAmpere2d_bvp.xml");
+
+        //! [Read input file]
+        gsFileData<> fd(fn);
+        gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+
         gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
@@ -756,6 +784,25 @@ int main(int argc, char *argv[])
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");
 
+        gsMultiPatch<> mp;
+        fd.getId(0, mp); // id=0: Multipatch domain
+        mp.computeTopology();
+
+        // Psi.addAutoBoundaries();
+        geometryMap PP = A.getMap(Psi);
+        //PP(this->m_mapping);
+        auto comp = A.getCoeff(mp, PP);
+        A.initSystem(2);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        solver.compute( A.matrix() );
+        vsolVector = solver.solve(A.rhs());
+        v_sol.extract(Psi);
+        Psi.addAutoBoundaries();
+        Psi.computeTopology();
+
+        gsWrite(Psi, "Psi_mapping");
         // gsFileManager::open("ParaviewOutput/solution.pvd");
         gsInfo << "Result written in Psi_mapping.xml \n";
     }

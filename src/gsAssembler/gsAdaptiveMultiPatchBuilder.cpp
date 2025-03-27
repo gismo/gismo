@@ -279,7 +279,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     solution u_sol   = A.getSolution(u, solVector);
 
     // ---- manipulation of density function ----
-    auto rho         = A.getCoeff(density, G);
+    auto rho         = A.getCoeff(density);
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
     double  int_uh_1 = 1.;
@@ -294,7 +294,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     }
     gsInfo << "Density function: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-    u.setup(bc_mae, dirichlet::l2Projection, 0);
+    //u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
 
     // Initialize the system :  identity mapping as initial guess
@@ -335,13 +335,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         gsMultiPatch<> UU;
         u_sol.extract(UU);
         auto u_s       = A.getCoeff(UU);
-        space v        = A.getSpace(this->m_basis);
+        //space v        = A.getSpace(this->m_basis);
         gsMatrix<> vsolVector;
-        solution v_sol = A.getSolution(v, vsolVector);
-        A.initSystem(IGdim);
+        solution v_sol = A.getSolution(u, vsolVector);
 
+        A.initSystem(IGdim);
         // Obtain control points for the gradient of Psi
-        A.assemble( v * v.tr() , v * grad(u_s) );
+        A.assemble( u * u.tr() , u * grad(u_s) );
         vsolVector = this->Poisson.L2ProjectVec(A.rhs());
 
         gsMultiPatch<> Psi;
@@ -358,7 +358,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         solution u_sol    = A.getSolution(u, solVector);
 
         // ...  0  dirichlet for boundaries
-        u.setup(bc_mae, dirichlet::l2Projection, 0);
+        //u.setup(bc_mae, dirichlet::l2Projection, 0);
         // Initialize the system
         A.initSystem();
 
@@ -429,6 +429,11 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     Psi.computeTopology();
     if (composition){
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        //... test if geometry is a surface in 3d
+        bool other = false;
+        if (IGdim < this->m_mapping.geoDim()){
+            other = true;
+        }
         // Psi.addAutoBoundaries();
         geometryMap PP = A.getMap(Psi);
         //PP(this->m_mapping);
@@ -437,7 +442,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         //Obtain control points for the gradient of mpLeft.comp(Psi)
         A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
         // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        vsolVector = this->Poisson.L2ProjectVec(A.rhs());
+        vsolVector = this->Poisson.L2ProjectVec(A.rhs(), other);
         v_sol.extract(Psi);
         Psi.addAutoBoundaries();
         Psi.computeTopology();

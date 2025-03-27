@@ -26,10 +26,10 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 4;
+    index_t numRefine  = 3;
     index_t numElevate = 0;
-    double eps{1e-5}; /// pinalization coefficient
-    index_t maxIter = 30;
+    double eps{1e-7}; /// pinalization coefficient
+    index_t maxIter = 100;
     double l2errRes{0.}, tolerancePicard{1e-8};
     bool last{false}, export_b64{false}, adaptiveMesh{true};
     std::string fn("pde/MongeAmpere2d_bvp.xml");

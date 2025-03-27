@@ -29,7 +29,6 @@ int main(int argc, char *argv[])
     index_t maxIter     = 30;
     double IntensityMAE = 12.;
     bool export_b64     = false;
-    bool errorsave      = false;
 
     // Specify the file path
     std::string fn("pde/example3D.xml");
@@ -53,7 +52,6 @@ int main(int argc, char *argv[])
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -99,9 +97,6 @@ int main(int argc, char *argv[])
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
 
-    // Set dimension of target geometry
-    auto ITdim     = mpLeft.geoDim();
-
     gsStopwatch timer;
     timer.restart();
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
@@ -112,7 +107,7 @@ int main(int argc, char *argv[])
     }
     //... some infos on the computational domain
     auto corners         = dbasis.basis(0).support();
-    gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() <<"\n";
+    gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() << dbasis.dim() << mpLeft.geoDim() <<"\n";
     gsInfo << "corners : (";
     for (index_t i = 0; i < dbasis.dim()-1; i++)
     {
@@ -124,35 +119,22 @@ int main(int argc, char *argv[])
       gsInfo << corners.at(dbasis.dim()+i)<< ",";            
     }
     gsInfo <<  corners.at(2*dbasis.dim()-1)<< ")\n";
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 1-2 : Computes the density function
-    ###         and the multipatch adaptive mapping
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###                                  Step 1-2 : Computes the density function
+    ###                                     and the multipatch adaptive mapping
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     auto density = MAE.buildAnalyticDensity(f);
-    auto Psitp   = MAE.buildMultiPatch(density, false);
+    auto rho = A.getCoeff(density);
+    gsInfo << ev.min(rho)<< ev.max(rho)<<"Density function computed\n";
+    auto Psitp   = MAE.buildMultiPatch(density, true);//if true : composition of geometry maps
+    gsInfo << "MultiPatch geometry computed\n";
 
     //! [Export visualization in ParaView]
     if (plot)
     {
-        space v        = A.getSpace(dbasis);
-        gsMatrix<> vsolVector;
-        solution v_sol = A.getSolution(v, vsolVector);
-
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        geometryMap PP = A.getMap(Psitp);
-        auto comp  = A.getCoeff(mpLeft, PP);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        vsolVector = MAE.Poisson.L2ProjectVec(A.rhs());
-        v_sol.extract(Psitp);
-        Psitp.addAutoBoundaries();
-        Psitp.computeTopology();
-
-        gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
         gsMultiPatch<> Psi;
-        if (ITdim == 3){
+        if (mpLeft.dim()== 3){
         for(size_t i =0; i<Psitp.nPatches(); ++i)
             Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(Psitp.patch(i)) ));
         }
