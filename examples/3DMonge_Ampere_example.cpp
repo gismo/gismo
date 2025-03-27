@@ -23,17 +23,23 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot           = false;
-    index_t numRefine   = 4;
-    index_t numLRefine  = 3;
+    index_t numRefine   = 3;
+    index_t numLRefine  = 1;
     index_t numElevate  = 0;
-    index_t numrRefine  = -1; // number of composition bewteen adaptive mappings ()
     index_t maxIter     = 30;
-    double IntensityMAE = 9.;
+    double IntensityMAE = 12.;
     bool export_b64     = false;
     bool errorsave      = false;
 
     // Specify the file path
     std::string fn("pde/example3D.xml");
+    // Specify the file path
+    //std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/mhd.xml");
+    //std::string fn("pde/infinit_plate.xml");
+    //std::string fn("pde/circle.xml");
+    //std::string fn("surfaces/egg.xml"); TODO
+    //std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -41,7 +47,6 @@ int main(int argc, char *argv[])
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-    cmd.addInt( "r", "numrRefine", "Number of local r-refinement compostion loops",  numrRefine);
 
     cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt("quRule",
@@ -58,8 +63,8 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
-    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
-    // fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft;// = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
+    fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -94,8 +99,8 @@ int main(int argc, char *argv[])
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
 
-    // Set pow for BFO method dim in parameteric domain
-    auto IGdim     = dbasis.dim();
+    // Set dimension of target geometry
+    auto ITdim     = mpLeft.geoDim();
 
     gsStopwatch timer;
     timer.restart();
@@ -103,13 +108,22 @@ int main(int argc, char *argv[])
     for (int r=0; r<=numRefine; ++r)
     {
         dbasis.uniformRefine();
-        // mp.uniformRefine();
         // mpLeft.uniformRefine();
     }
+    //... some infos on the computational domain
     auto corners         = dbasis.basis(0).support();
     gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() <<"\n";
-    gsInfo << "corners : (" << corners.at(0) << "," << corners.at(1) << "," << corners.at(2) <<"),("
-                            << corners.at(3) << ", " << corners.at(4) <<", " << corners.at(5) <<")\n";
+    gsInfo << "corners : (";
+    for (index_t i = 0; i < dbasis.dim()-1; i++)
+    {
+      gsInfo << corners.at(i)<< ",";
+    }
+    gsInfo << corners.at(dbasis.dim()-1)<<"),(";
+    for (index_t i = 0; i < dbasis.dim()-1; i++)
+    {
+      gsInfo << corners.at(dbasis.dim()+i)<< ",";            
+    }
+    gsInfo <<  corners.at(2*dbasis.dim()-1)<< ")\n";
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
@@ -125,32 +139,27 @@ int main(int argc, char *argv[])
         gsMatrix<> vsolVector;
         solution v_sol = A.getSolution(v, vsolVector);
 
-        for (index_t i = 0; i < numrRefine; i++){
-            /// compose adaptive mappings : not working after 2nd composition.(can be used for the blew-ip prblem)
-            geometryMap PP = A.getMap(Psitp);
-            auto  comp = PP(Psitp);
-            A.initSystem(IGdim);
-            //Obtain control points for the gradient of mpLeft.comp(Psi)
-            A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-            vsolVector = MAE.Poisson.L2ProjectVec(A.rhs());
-            v_sol.extract(Psitp);
-            Psitp.addAutoBoundaries();
-            Psitp.computeTopology();
-        }
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
         geometryMap PP = A.getMap(Psitp);
-        // auto comp  = A.getCoeff(mpLeft, PP);
-        // A.initSystem(IGdim);
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // vsolVector = MAE.Poisson.L2ProjectVec(A.rhs());
-        // v_sol.extract(Psitp);
-        // Psitp.addAutoBoundaries();
-        // Psitp.computeTopology();
+        auto comp  = A.getCoeff(mpLeft, PP);
+        A.initSystem(ITdim);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        vsolVector = MAE.Poisson.L2ProjectVec(A.rhs());
+        v_sol.extract(Psitp);
+        Psitp.addAutoBoundaries();
+        Psitp.computeTopology();
+
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
         gsMultiPatch<> Psi;
+        if (ITdim == 3){
         for(size_t i =0; i<Psitp.nPatches(); ++i)
             Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(Psitp.patch(i)) ));
+        }
+        else{
+        for(size_t i =0; i<Psitp.nPatches(); ++i)
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));            
+        }
         Psi.addAutoBoundaries();
         Psi.computeTopology();
 
@@ -158,7 +167,7 @@ int main(int argc, char *argv[])
         gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
         geometryMap PPF = A.getMap(Psi);
-        auto ff_TG      = A.getCoeff(density, PPF);
+        auto ff_TG      = A.getCoeff(f, PPF);
         // --------------- adaptive refinement ---------------
         // Specify cell-marking strategy...
         MarkingStrategy adaptRefCrit = PUCA;

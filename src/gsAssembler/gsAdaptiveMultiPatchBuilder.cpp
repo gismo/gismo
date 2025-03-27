@@ -229,6 +229,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
+    // Neumann Boundary conditions object to define and manage boundary conditions for the problem
     gsBoundaryConditions<> bc_mae;
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
