@@ -1,4 +1,4 @@
-/** @file gsMultiBasis.h
+/** @file gsMobiusDomain.h
 
     @brief Provides declaration of MultiBasis class.
 
@@ -31,59 +31,6 @@ class gsMobiusDomain : public gsFunction<T>
   gsMobiusDomain() { m_alpha.setOnes(2,DIM); }
 
   explicit gsMobiusDomain(const gsMatrix<T, 2, DIM> alpha) : m_alpha(alpha) {}
-
-//  gsMobiusDomain(index_t numElevation = 0, index_t numRefine = 0)
-//  {
-//    m_domain = *gsNurbsCreator<T>::BSplineSquare();
-//    m_domain.degreeElevate(numElevation);
-//    index_t numKts = pow(2, numRefine) - 1;
-//    m_domain.uniformRefine(numKts);
-//    // m_domain.uniformRefine(15);
-//    gsInfo << " m_domain bi-degree = (" << m_domain.degree(0) <<", " << m_domain.degree(1) << ")\n";
-//    gsInfo << " m_domain.coefsSize() = " << m_domain.coefsSize() << "\n";
-////      gsDebugVar(m_domain.coefsSize());
-//    // m_domain.uniformRefine();
-//    // m_domain.uniformRefine();
-//    // Mapper storing control points
-//    m_mapper = gsDofMapper(m_domain.basis(),m_domain.targetDim());
-//
-//    gsMatrix<index_t> boundary = m_domain.basis().allBoundary();
-//    for (index_t a = 0; a!=boundary.rows(); a++)
-//      for (index_t d = 0; d!=m_domain.targetDim(); d++)
-//        m_mapper.eliminateDof(boundary(a,0),0,d);
-//    m_mapper.finalize();
-//
-//    m_parameters.resize(m_mapper.freeSize());
-//    // std::vector<index_t> i(m_mapper.freeSize());
-//    // std::vector<index_t> j(m_mapper.freeSize());
-//    for (index_t k = 0; k!=m_domain.coefs().rows(); k++)
-//      for (index_t d = 0; d!=m_domain.targetDim(); d++)
-//        if (m_mapper.is_free(k,0,d))
-//        {
-//          m_parameters[m_mapper.index(k,0,d)] = m_domain.coefs()(k,d);
-//          // i[m_mapper.index(k,0,d)] = k; // i index of free entries
-//          // j[m_mapper.index(k,0,d)] = d; // j index of free entries
-//        }
-//
-//    // This is a way to cast only the free coefficients to a vector, and change an entry of that vector.
-//    // However, it cannot be used in ''gsVector<T> & controls() override { return m_parameters; };''
-//    //
-//    // gsDebugVar(m_domain.coefs()(i,j).diagonal()(0));
-//    // m_domain.coefs()(i,j).diagonal()(0) = 0.5;
-//    // gsDebugVar(m_domain.coefs()(i,j).diagonal()(0));
-//
-//  }
-
-//  const gsTensorBSpline<DIM,T> & domain() const
-//  {
-//    return m_domain;
-//  }
-//
-//  gsMatrix<T> support() const override
-//  {
-//    return m_domain.support();
-//  }
-//
 
   short_t domainDim() const override
   {

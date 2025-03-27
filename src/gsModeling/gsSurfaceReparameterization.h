@@ -28,21 +28,30 @@ namespace gismo {
 	using solution = typename gsExprAssembler<T>::solution;
 
    public:
-	explicit gsObjFuncSurface(const gsMultiPatch<T> &patches, const gsMobiusDomain<2,T> &mobiusDomain) : m_mp(patches), m_MobiusDomain(mobiusDomain) {
-	  defaultOptions();
+	  explicit
+	  gsObjFuncSurface(const gsMultiPatch<T> &patches,
+					   const gsMobiusDomain<2,T> &mobiusDomain)
+	  :
+	  m_mp(patches),
+	  m_MobiusDomain(mobiusDomain),
+	  m_lambda1(1.0),
+	  m_lambda2(1.0),
+	  m_area(1)
+	  {
+	  	defaultOptions();
 
-	  gsMatrix<T> bbox;
-	  m_mp.boundingBox(bbox);
-	  m_mp.patch(0).translate(-bbox.col(0));
-	  m_mp.patch(0).scale(1/(bbox.col(1)-bbox.col(0)).array());
+		gsMatrix<T> bbox;
+		m_mp.boundingBox(bbox);
+		m_mp.patch(0).translate(-bbox.col(0));
+		m_mp.patch(0).scale(1/(bbox.col(1)-bbox.col(0)).array());
 
-	  gsComposedGeometry<T> cgeom(m_MobiusDomain, m_mp.patch(0));
-	  gsMultiBasis<T> dbasis(cgeom.basis());
-	  m_evaluator.setIntegrationElements(dbasis);
+		gsComposedGeometry<T> cgeom(m_MobiusDomain, m_mp.patch(0));
+		gsMultiBasis<T> dbasis(cgeom.basis());
+		m_evaluator.setIntegrationElements(dbasis);
 
-	  // Set the geometry map
-	  geometryMap G = m_evaluator.getMap(cgeom);
-	  m_area = m_evaluator.integral(meas(G));
+		// Set the geometry map
+		geometryMap G = m_evaluator.getMap(cgeom);
+		m_area = m_evaluator.integral(meas(G));
 	}
 
 	T evalObj(const gsAsConstVector<T> &coefsM) const final;
@@ -67,10 +76,9 @@ namespace gismo {
 
 	gsOptionList m_options;
 
-	T m_lambda1 = 1.0, m_lambda2 = 1.0;
-	T m_area = 1;
-	gsComposedGeometry<T> m_cgeom;
 	mutable gsMobiusDomain<2,T> m_MobiusDomain;
+	T m_lambda1, m_lambda2, m_area;
+	gsComposedGeometry<T> m_cgeom;
   };
 
   template<short_t d, typename T>
@@ -151,7 +159,7 @@ namespace gismo {
 	  patch->eval_into(xieta, eval_geo);
 
 	  // Convert the patch's basis into a tensor B-spline basis
-	  auto& bbasis = static_cast<gsTensorBSplineBasis<2, T>&>(patch->basis());
+	  gsTensorBSplineBasis<2, T> & bbasis = static_cast<gsTensorBSplineBasis<2, T>&>(patch->basis());
 
 	  // Fit surface using gsFitting and adjust parameters
 	  gsFitting<T> fittingSurface(uv, eval_geo, bbasis);
@@ -166,7 +174,8 @@ namespace gismo {
   }
 
   template <typename T>
-  class SurfaceReparameterization {
+  class SurfaceReparameterization
+  {
    public:
 	// Constructor takes a multi-patch input and alpha matrix for the Mobius domain
 	explicit SurfaceReparameterization(const gsMultiPatch<T>& patches)

@@ -1,4 +1,4 @@
-/** @file bSplineCurve_example.cpp
+/** @file surfaceReparametrization_example.cpp
 
     @brief Tutorial on surfaceReparameterization class.
 

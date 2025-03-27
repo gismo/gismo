@@ -145,7 +145,6 @@ template <class T=real_t>                class gsPiecewiseFunction;
 template <class T=real_t>                class gsConstantFunction;
 template <class T=real_t>                class gsAffineFunction;
 template <class T=real_t>                class gsMultiPatch;
-template <class T=real_t>                class gsComposedBasis;
 
 // Bases
 template <class basis_t >                class gsRationalBasis;

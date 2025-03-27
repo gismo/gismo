@@ -538,15 +538,15 @@ template<class T>
 typename gsBasis<T>::uPtr gsBasis<T>::tensorize(const gsBasis &) const
 { GISMO_NO_IMPLEMENTATION }
 
-//template<class T>
-//typename gsBasis<T>::domainIter
-//gsBasis<T>::makeDomainIterator() const
-//{ return this->domain()->beginAll(); }
-//
-//template<class T>
-//typename gsBasis<T>::domainIter
-//gsBasis<T>::makeDomainIterator(const boxSide &s) const
-//{ return this->domain()->beginBdr(s); }
+template<class T>
+typename gsBasis<T>::domainIter
+gsBasis<T>::makeDomainIterator() const
+{ return this->domain()->beginAll(); }
+
+template<class T>
+typename gsBasis<T>::domainIter
+gsBasis<T>::makeDomainIterator(const boxSide &s) const
+{ return this->domain()->beginBdr(s); }
 
 template<class T>
 size_t gsBasis<T>::numElements(boxSide const &) const
