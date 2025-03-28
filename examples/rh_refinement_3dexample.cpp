@@ -164,8 +164,11 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, numRefine, circleN);
-    auto Psitp   = MAE.buildMultiPatch(density, false);
+    // auto density = MAE.buildDensity(elwise, numRefine, circleN);
+    gsFunctionExpr<> ff;
+    fd.getId(2003, ff);
+    auto density = MAE.buildAnalyticDensity(ff);
+    auto Psitp   = MAE.buildMultiPatch(density, true);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -274,7 +277,8 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+            //ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+            ev.integralElWise( igrad(ru_sol, PP).sqNorm() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]

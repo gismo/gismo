@@ -3,9 +3,9 @@
 <xml>
   <!--3D Manufactured density function : Right-hand side function of MAE :
   <Function type="FunctionExpr" id="2003" dim="3"> exp(-100*abs((x-0.5)**2+(y-0.5)**2+(z-0.5)**2-0.45**2))</Function> -->
-  <Function type="FunctionExpr" id="2003" dim="3">1./(2.+cos(4.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2+(z-0.5)**2)))</Function>
-  <Function type="FunctionExpr" id="2000" dim="3"> tanh(100.*( 0.25-(x)**2 - (y)**2 - (z)**2))</Function>
-  <Function type="FunctionExpr" id="2001" dim="3"> -20000.0*x**2*(1 - tanh(50.0*x**2 + 50.0*y**2 + 50.0*z**2 - 12.5)**2)*tanh(50.0*x**2 + 50.0*y**2 + 50.0*z**2 - 12.5) - 20000.0*y**2*(1 - tanh(50.0*x**2 + 50.0*y**2 + 50.0*z**2 - 12.5)**2)*tanh(50.0*x**2 + 50.0*y**2 + 50.0*z**2 - 12.5) - 20000.0*z**2*(1 - tanh(50.0*x**2 + 50.0*y**2 + 50.0*z**2 - 12.5)**2)*tanh(50.0*x**2 + 50.0*y**2 + 50.0*z**2 - 12.5) - 300.0*tanh(50.0*x**2 + 50.0*y**2 + 50.0*z**2 - 12.5)**2 + 300.0</Function>
+  <Function type="FunctionExpr" id="2003" dim="3">exp(-100*abs(x**2+y**2+z-0.1))</Function>
+  <Function type="FunctionExpr" id="2000" dim="3"> tanh(100.*( 0.1-x**2 - y**2 - z))</Function>
+  <Function type="FunctionExpr" id="2001" dim="3"> -80000.0*x**2*(1 - tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0)**2)*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0) - 80000.0*y**2*(1 - tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0)**2)*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0) - 100.0*(200.0 - 200.0*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0)**2)*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0) - 400.0*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0)**2 + 400.0</Function>
 
  <Geometry type="TensorBSpline3" id="0">
   <Basis type="TensorBSplineBasis3">

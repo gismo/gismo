@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     }
     //... some infos on the computational domain
     auto corners         = dbasis.basis(0).support();
-    gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() << dbasis.dim() << mpLeft.geoDim() <<"\n";
+    gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() <<"\n";
     gsInfo << "corners : (";
     for (index_t i = 0; i < dbasis.dim()-1; i++)
     {
@@ -125,8 +125,6 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     auto density = MAE.buildAnalyticDensity(f);
-    auto rho = A.getCoeff(density);
-    gsInfo << ev.min(rho)<< ev.max(rho)<<"Density function computed\n";
     auto Psitp   = MAE.buildMultiPatch(density, true);//if true : composition of geometry maps
     gsInfo << "MultiPatch geometry computed\n";
 
