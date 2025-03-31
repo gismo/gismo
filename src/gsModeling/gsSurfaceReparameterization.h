@@ -181,9 +181,7 @@ namespace gismo {
 	// Constructor takes a multi-patch input and alpha matrix for the Mobius domain
 	explicit SurfaceReparameterization(const gsMultiPatch<T>& patches)
 		: m_mp(patches) {
-	  gsMatrix<T, 2, 2> alpha;
-	  alpha.setConstant(0.5);
-	  m_mobiusDomain = gsMobiusDomain<2, T>(alpha);
+          m_mobiusDomain = gsMobiusDomain<2,T>(gsMatrix<T,2,2>::Constant(0.5));
 	}
 
 	// Run the optimization process and generate the reparameterized B-Spline surface
