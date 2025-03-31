@@ -137,7 +137,7 @@ namespace gismo {
   }
 
   template<class T = real_t>
-  gsMultiPatch<T> convertIntoBSpline(const gsMultiPatch<T>& mp, const gsMatrix<T>& coefsMobiusIn) {
+  gsMultiPatch<T> approximateWithBSpline(const gsMultiPatch<T>& mp, const gsMatrix<T>& coefsMobiusIn) {
 
     GISMO_ASSERT(mp.geoDim() == 3, "Only 3D geometry is supported.");
     GISMO_ASSERT(mp.dim() == 2, "This function only supports 2D parametric domains.");
@@ -203,7 +203,7 @@ namespace gismo {
 	  // Perform the optimization
 	  optimizer.solve(initialGuessVector);
 
-	  return convertIntoBSpline(m_mp, optimizer.currentDesign());
+	  return approximateWithBSpline(m_mp, optimizer.currentDesign());
 	}
 
    private:
