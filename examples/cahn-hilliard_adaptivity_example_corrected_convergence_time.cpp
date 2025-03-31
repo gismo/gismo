@@ -300,16 +300,9 @@ void solve( gsMultiPatch<T> & mp,
     // Source term
     auto     qq  = qold  + af * (qnew -  qold);
 
-    // Source (volume integral) function for manufactured solution cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*t)
-    // There is also the term dc/dt in the source term (now the manufactured solution depends on time as well)
-    // gsFunctionExpr<> sourceQold("(12*pi^4*cos(2*pi*t)*cos(2*pi*x)*cos(2*pi*y))/125 - 2*pi*cos(2*pi*x)*cos(2*pi*y)*sin(2*pi*t) + 16*pi^2*cos(2*pi*t)^3*cos(2*pi*x)^3*cos(2*pi*y)^3 + 8*pi^2*cos(2*pi*t)*cos(2*pi*x)*cos(2*pi*y)*(cos(2*pi*t)^2*cos(2*pi*x)^2*cos(2*pi*y)^2 - 1) - 24*pi^2*cos(2*pi*t)^3*cos(2*pi*x)*cos(2*pi*y)^3*sin(2*pi*x)^2 - 24*pi^2*cos(2*pi*t)^3*cos(2*pi*x)^3*cos(2*pi*y)*sin(2*pi*y)^2",2);
-    // gsFunctionExpr<> sourceQnew("(12*pi^4*cos(2*pi*t)*cos(2*pi*x)*cos(2*pi*y))/125 - 2*pi*cos(2*pi*x)*cos(2*pi*y)*sin(2*pi*t) + 16*pi^2*cos(2*pi*t)^3*cos(2*pi*x)^3*cos(2*pi*y)^3 + 8*pi^2*cos(2*pi*t)*cos(2*pi*x)*cos(2*pi*y)*(cos(2*pi*t)^2*cos(2*pi*x)^2*cos(2*pi*y)^2 - 1) - 24*pi^2*cos(2*pi*t)^3*cos(2*pi*x)*cos(2*pi*y)^3*sin(2*pi*x)^2 - 24*pi^2*cos(2*pi*t)^3*cos(2*pi*x)^3*cos(2*pi*y)*sin(2*pi*y)^2",2);
-    // gsFunctionExpr<> sourceQold("-cos(6*pi*x)*cos(6*pi*y)*((2*pi*sin((2*pi*t)/3))/3 + (2778046668940015*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 21374281192165191/4503599627370496))/281474976710656)",2);
-    // gsFunctionExpr<> sourceQnew("-cos(6*pi*x)*cos(6*pi*y)*((2*pi*sin((2*pi*t)/3))/3 + (2778046668940015*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 21374281192165191/4503599627370496))/281474976710656)",2);
-    // gsFunctionExpr<> sourceQold("-cos(6*pi*x)*cos(6*pi*y)*((2778046668940015*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 44371037339229267/8796093022208))/281474976710656 + (2*pi*sin((2*pi*t)/3))/3)",2);
-    // gsFunctionExpr<> sourceQnew("-cos(6*pi*x)*cos(6*pi*y)*((2778046668940015*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 44371037339229267/8796093022208))/281474976710656 + (2*pi*sin((2*pi*t)/3))/3)",2);
-    gsFunctionExpr<> sourceQold("-cos(6*pi*x)*cos(6*pi*y)*(3*cos((2*pi*t)/3)^2 + 66065576699781/70368744177664)*(3*cos((2*pi*t)/3) + (2*pi*sin((2*pi*t)/3))/3 - 1437361346509563761/281474976710656)",2);
-    gsFunctionExpr<> sourceQnew("-cos(6*pi*x)*cos(6*pi*y)*(3*cos((2*pi*t)/3)^2 + 66065576699781/70368744177664)*(3*cos((2*pi*t)/3) + (2*pi*sin((2*pi*t)/3))/3 - 1437361346509563761/281474976710656)",2);
+    // Source (volume integral) function for manufactured solution cos(6*pi*x) * cos(6*pi*y) * cos(2/3*pi*t)
+    gsFunctionExpr<> sourceQold("-9*pi*cos(6*pi*x)*cos(6*pi*y)*((2*sin((2*pi*t)/3))/27 - (4930115259914363*pi*cos((2*pi*t)/3))/8796093022208 + pi*cos((2*pi*t)/3)^3*(24*cos(6*pi*y)^2 - cos(6*pi*x)^2*(72*cos(6*pi*y)^2 - 24)))",2);
+    gsFunctionExpr<> sourceQnew("-9*pi*cos(6*pi*x)*cos(6*pi*y)*((2*sin((2*pi*t)/3))/27 - (4930115259914363*pi*cos((2*pi*t)/3))/8796093022208 + pi*cos((2*pi*t)/3)^3*(24*cos(6*pi*y)^2 - cos(6*pi*x)^2*(72*cos(6*pi*y)^2 - 24)))",2);
 
 
     gsVector<> pt2(2,1); pt2<<0.5, 0.5;
@@ -331,14 +324,10 @@ void solve( gsMultiPatch<T> & mp,
 
     //  =========== Terms for boundary integrals ===========
     // (1) Neumann boundary condition
-    // gsFunctionExpr<> bc1("pi*cos((2*pi*t)/3)*cos(pi*y)*sin(pi*x) - (3*pi^3*cos((2*pi*t)/3)*cos(pi*y)*sin(pi*x))/1000 - 3*pi*cos((2*pi*t)/3)^3*cos(pi*x)^2*cos(pi*y)^3*sin(pi*x)", "pi*cos((2*pi*t)/3)*cos(pi*x)*sin(pi*y) - (3*pi^3*cos((2*pi*t)/3)*cos(pi*x)*sin(pi*y))/1000 - 3*pi*cos((2*pi*t)/3)^3*cos(pi*x)^3*cos(pi*y)^2*sin(pi*y)", 2);
-    // gsFunctionExpr<> bc1("6*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x) - (81*pi^3*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x))/125 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^2*cos(6*pi*y)^3*sin(6*pi*x)", "6*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y) - (81*pi^3*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y))/125 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^3*cos(6*pi*y)^2*sin(6*pi*y)",2);
-    // gsFunctionExpr<> bc1("6*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x) - (216*pi^3*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x))/5 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^2*cos(6*pi*y)^3*sin(6*pi*x)", "6*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y) - (216*pi^3*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y))/5 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^3*cos(6*pi*y)^2*sin(6*pi*y)",2);
-    gsFunctionExpr<> bc1("6*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x) - (216*pi^3*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x))/5 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^2*cos(6*pi*y)^3*sin(6*pi*x)", "6*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y) - (216*pi^3*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y))/5 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^3*cos(6*pi*y)^2*sin(6*pi*y)",2);
-    // gsFunctionExpr<> bc1("-cos(6*pi*x)*cos(6*pi*y)*((5425872400273467*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 44371037339229267/8796093022208))/1099511627776 + (2*pi*sin((2*pi*t)/3))/3)",2);
+    gsFunctionExpr<> bc1("-18*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x)*(cos((2*pi*t)/3)^2*cos(6*pi*x)^2*cos(6*pi*y)^2 + 927703176743281/42221246506598400)","-18*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y)*(cos((2*pi*t)/3)^2*cos(6*pi*x)^2*cos(6*pi*y)^2 + 927703176743281/42221246506598400)",2);
 
     // (2) Laplace boundary condition
-    gsFunctionExpr<> bc2("-72*pi^2*cos((2*pi*t)/3)*cos(6*pi*x)*cos(6*pi*y)",2);
+    gsFunctionExpr<> bc2("-72*pi^2*cos((2*pi*t)/3)*cos(6*pi*x)*cos(6*pi*y)",2); // should be correct
     // =====================================================
 
     // ![Initialize the assembler]
@@ -440,7 +429,7 @@ void solve( gsMultiPatch<T> & mp,
         GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
-        gsFunctionExpr<> initial_cond("0.1*cos(6*pi*x)*cos(6*pi*y)",2);
+        gsFunctionExpr<> initial_cond("cos(6*pi*x)*cos(6*pi*y)",2);
         real_t error = gsL2Projection<real_t>::projectFunction(dbasis,initial_cond,mp,tmp);  // 3rd arg has to be multipatch
         if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
         mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
@@ -464,6 +453,7 @@ void solve( gsMultiPatch<T> & mp,
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
     collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
+    collection.options().setInt("precision", 10); // digits 10^-10
 
     // new collection for errors
     // gsParaviewCollection error_collection("ParaviewOutput/errors", &ev);
@@ -609,13 +599,8 @@ void solve( gsMultiPatch<T> & mp,
                     // ========================
 
                     // ====== Time integration of the source term ======
-                    if (step==0)
-                        told =  0;
-                    else 
-                        told =  (step-1)*dt;
-
-                    tnew = step*dt;
-
+                    told = time;
+                    tnew = time + dt;
                     real_t alpha_time = (1-tmp_alpha_f)*told + tmp_alpha_f*tnew;
                     sourceQold.set_t(told);
                     sourceQnew.set_t(tnew);
@@ -645,8 +630,7 @@ void solve( gsMultiPatch<T> & mp,
                         Q = A.rhs();
 
                         // ==== Assemble boundary terms (manufactured) ====
-                        // I should evaluate the boundary at the interpolated time ?????????????????????????!!!
-                        // real_t alpha_time = (1-tmp_alpha_f)*told + tmp_alpha_f*tnew;
+                        // Evaluate the boundary terms at alpha time 
                         bc1.set_t(alpha_time);
                         auto bc_Neumann = A.getCoeff(bc1,G); // Neumann BC
                         A.assembleBdr(bc.get("Neumann"), w * (bc_Neumann.tr() * nv(G)));  // assemble boundary term -- flux from manufactured solutions
@@ -662,8 +646,7 @@ void solve( gsMultiPatch<T> & mp,
                         // clock.restart();
                         // A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                         //             penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
-                        //             lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-             
+                        //             lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term            
 
                         // assemblyTime += clock.stop();
                         // K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
@@ -806,21 +789,17 @@ void solve( gsMultiPatch<T> & mp,
                 break; // break the refinement loop
         }// mesh adaptivity
 
-        // Update cold and dcold
-        // mp_cold.clear();
-        // mp_dcold.clear();
-        // mp_cold.addPatch(mp_cnew.patch(0));
-        // mp_dcold.addPatch(mp_dcnew.patch(0));
-
-        // gsInfo<< "Value at mid-point :" << ev.eval(cnew, pt) <<"\n";
-        // gsInfo<< "Value at mid-point :" << ev.eval(cnew_sol, pt) <<"\n";
-
         //! [Export visualization in ParaView]
         if (plot && step % plotmod==0)
         {
             // Export the mesh
             collection.newTimeStep(&mp);
             collection.addField(cnew,"numerical solution");
+            gsFunctionExpr<> source_time("cos(6*pi*x) * cos(6*pi*y) * cos(2/3*pi*t)",2);
+            source_time.set_t(tnew);
+            auto u_manufactured = ev.getVariable(source_time, G);
+            collection.addField(u_manufactured,"analytical solution");
+            collection.addField((u_manufactured - cnew_sol).sqNorm(), "L2 error");
             gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
             collection.saveTimeStep();
         }
@@ -890,36 +869,13 @@ void solve( gsMultiPatch<T> & mp,
             }// coarsen
         } // coarsening switch
 
-        // if (step==1)
-        // {
-        //     gsDebugVar(mp_cnew.patch(0).coefs().maxCoeff());
-        //     gsDebugVar(mp_cnew.patch(0).coefs().minCoeff());
-        //     gsDebugVar(mp_dcnew.patch(0).coefs().maxCoeff());
-        //     gsDebugVar(mp_dcnew.patch(0).coefs().minCoeff());
-        // }
-
-
-
         // Update time and old solutions
-        // gsDebugVar(mp_dcnew.patch(0).coefs().maxCoeff());
-        // gsDebugVar(mp_dcnew.patch(0).coefs().minCoeff());
-
         time += dt_old;
-        // mp_cold.swap(mp_cnew);
-        // mp_dcold.swap(mp_dcnew);
-
         mp_cold = mp_cnew;
         mp_dcold = mp_dcnew;
 
-        gsDebugVar(mp_cold.patch(0).coefs().maxCoeff());
-        gsDebugVar(mp_cold.patch(0).coefs().minCoeff());
-
-
-        // gsDebugVar(mp_dcnew.patch(0).coefs().maxCoeff());
-        // gsDebugVar(mp_dcnew.patch(0).coefs().minCoeff());
-
-
-
+        // gsDebugVar(mp_cold.patch(0).coefs().maxCoeff());
+        // gsDebugVar(mp_cold.patch(0).coefs().minCoeff());
     }
     if (plot)
         collection.save();
@@ -971,8 +927,8 @@ void solve( gsMultiPatch<T> & mp,
  
      // ========= Compute L2 error ========= 
      // === Solution with time ===
-     gsFunctionExpr<> source_time("cos(pi*x) * cos(pi*y) * cos(2/3*pi*t)",2);
-     source_time.set_t((maxSteps-1)*dt);
+     gsFunctionExpr<> source_time("cos(6*pi*x) * cos(6*pi*y) * cos(2/3*pi*t)",2);
+     source_time.set_t(time);
      auto u_manufactured = ev.getVariable(source_time, G);
     //  gsWriteParaview(source_time,out+"/manu_sol");
      // ==========================
