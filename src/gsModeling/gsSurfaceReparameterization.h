@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsNurbs/gsSquareDomain.h>
+//#include <gsNurbs/gsSquareDomain.h>
 #include <gsNurbs/gsMobiusDomain.h>
 
 #ifdef gsHLBFGS_ENABLED
@@ -138,7 +138,11 @@ namespace gismo {
 
   template<class T = real_t>
   gsMultiPatch<T> convertIntoBSpline(const gsMultiPatch<T>& mp, const gsMatrix<T>& coefsMobiusIn) {
-	gsMultiPatch<T> result;
+
+    GISMO_ASSERT(mp.geoDim() == 3, "Only 3D geometry is supported.");
+    GISMO_ASSERT(mp.dim() == 2, "This function only supports 2D parametric domains.");
+
+    gsMultiPatch<T> result;
 
 	// Precompute Mobius domain matrix (use structured bindings in C++17)
 	gsAsConstVector<T> coefsMobius(coefsMobiusIn.data(), 4);
