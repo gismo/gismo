@@ -13,7 +13,6 @@
 
 #pragma once
 
-//#include <gsNurbs/gsSquareDomain.h>
 #include <gsNurbs/gsMobiusDomain.h>
 
 #ifdef gsHLBFGS_ENABLED
