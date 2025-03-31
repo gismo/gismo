@@ -144,10 +144,7 @@ namespace gismo {
 
     gsMultiPatch<T> result;
 
-	// Precompute Mobius domain matrix (use structured bindings in C++17)
-	gsAsConstVector<T> coefsMobius(coefsMobiusIn.data(), 4);
-	gsMatrix<T, 2, 2> alpha;
-	alpha << coefsMobius(0), coefsMobius(2), coefsMobius(1), coefsMobius(3);
+        gsMatrix<T, 2, 2> alpha = coefsMobiusIn.reshape(2, 2);
 	gsMobiusDomain<2, T> mobiusDomain(alpha);
 
 	for (const auto& patch : mp.patches()) {
