@@ -14,14 +14,9 @@
 
 
     Tensor product (check flags in .xml file):
-    time./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000
-
-    THB (check flags in .xml file):
-    (For L2 projection in the coarsening)
-        time ./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000 -c 0
-    (For QI based on local interpolation in the coarsening)
-        time ./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000 -c 1
-
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 6 -t 0.3 -N 10 -c 0 -v 2 -s 0 -f pde/cahn_hilliard_bvp.xml 
+    with lambda = 0.1
+    and clamped BC for the essential flux boundary condition
     -----------------------------------------------------------------------
     TODO;
     - Change hmax to a gsExprAssembler<>::element el; el.diam();
@@ -264,7 +259,6 @@ void solve( gsMultiPatch<T> & mp,
     gsDebugVar(ibasis.basis(0));
 
     // Set the geometry map
-    // geometryMap G = A.getMap(surface);
     geometryMap G = A.getMap(mp);
 
     // Set the discretization space
@@ -284,12 +278,12 @@ void solve( gsMultiPatch<T> & mp,
     auto     dcold = A.getCoeff(mp_dcold);
     auto     cnew  = A.getCoeff(mp_cnew );
     auto     dcnew = A.getCoeff(mp_dcnew);
-    // auto     cnew  = A.getCoeff(mp_cold );
-    // auto     dcnew = A.getCoeff(mp_dcold);
+    // New solution variables for source term;
+    gsMultiPatch<> mp_qnew, mp_qold;
+    auto     qnew  = A.getCoeff(mp_qnew );
+    auto     qold  = A.getCoeff(mp_qold );
 
-    // solution cold = A.getSolution(w, Cold); // Cold
     solution cnew_sol = A.getSolution(w, Cnew); // Cnew
-    // solution dcold = A.getSolution(w, dCold); // \dot{Cold}
     solution dcnew_sol = A.getSolution(w, dCnew); // \dot{Cnew}
 
     // Solution variables for the intermediate solutions (during time integration)
@@ -303,9 +297,25 @@ void solve( gsMultiPatch<T> & mp,
     auto  gradc = igrad(cold,G) + af * (igrad(cnew_sol,G) - igrad(cold,G));
     auto  laplc = ilapl(cold,G) + af * (ilapl(cnew_sol,G) - ilapl(cold,G));
 
+    // Source term
+    auto     qq  = qold  + af * (qnew -  qold);
+
     // Source (volume integral) function for manufactured solution cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*t)
-    gsFunctionExpr<> sourceQ("(12*pi^4*cos(2*pi*x)*cos(2*pi*y))/125 + 16*pi^2*cos(2*pi*x)^3*cos(2*pi*y)^3 - 24*pi^2*cos(2*pi*x)*cos(2*pi*y)^3*sin(2*pi*x)^2 - 24*pi^2*cos(2*pi*x)^3*cos(2*pi*y)*sin(2*pi*y)^2 + 8*pi^2*cos(2*pi*x)*cos(2*pi*y)*(cos(2*pi*x)^2*cos(2*pi*y)^2 - 1)",2);
-    auto     qq = A.getCoeff(sourceQ,G);
+    // There is also the term dc/dt in the source term (now the manufactured solution depends on time as well)
+    // gsFunctionExpr<> sourceQold("(12*pi^4*cos(2*pi*t)*cos(2*pi*x)*cos(2*pi*y))/125 - 2*pi*cos(2*pi*x)*cos(2*pi*y)*sin(2*pi*t) + 16*pi^2*cos(2*pi*t)^3*cos(2*pi*x)^3*cos(2*pi*y)^3 + 8*pi^2*cos(2*pi*t)*cos(2*pi*x)*cos(2*pi*y)*(cos(2*pi*t)^2*cos(2*pi*x)^2*cos(2*pi*y)^2 - 1) - 24*pi^2*cos(2*pi*t)^3*cos(2*pi*x)*cos(2*pi*y)^3*sin(2*pi*x)^2 - 24*pi^2*cos(2*pi*t)^3*cos(2*pi*x)^3*cos(2*pi*y)*sin(2*pi*y)^2",2);
+    // gsFunctionExpr<> sourceQnew("(12*pi^4*cos(2*pi*t)*cos(2*pi*x)*cos(2*pi*y))/125 - 2*pi*cos(2*pi*x)*cos(2*pi*y)*sin(2*pi*t) + 16*pi^2*cos(2*pi*t)^3*cos(2*pi*x)^3*cos(2*pi*y)^3 + 8*pi^2*cos(2*pi*t)*cos(2*pi*x)*cos(2*pi*y)*(cos(2*pi*t)^2*cos(2*pi*x)^2*cos(2*pi*y)^2 - 1) - 24*pi^2*cos(2*pi*t)^3*cos(2*pi*x)*cos(2*pi*y)^3*sin(2*pi*x)^2 - 24*pi^2*cos(2*pi*t)^3*cos(2*pi*x)^3*cos(2*pi*y)*sin(2*pi*y)^2",2);
+    // gsFunctionExpr<> sourceQold("-cos(6*pi*x)*cos(6*pi*y)*((2*pi*sin((2*pi*t)/3))/3 + (2778046668940015*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 21374281192165191/4503599627370496))/281474976710656)",2);
+    // gsFunctionExpr<> sourceQnew("-cos(6*pi*x)*cos(6*pi*y)*((2*pi*sin((2*pi*t)/3))/3 + (2778046668940015*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 21374281192165191/4503599627370496))/281474976710656)",2);
+    // gsFunctionExpr<> sourceQold("-cos(6*pi*x)*cos(6*pi*y)*((2778046668940015*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 44371037339229267/8796093022208))/281474976710656 + (2*pi*sin((2*pi*t)/3))/3)",2);
+    // gsFunctionExpr<> sourceQnew("-cos(6*pi*x)*cos(6*pi*y)*((2778046668940015*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 44371037339229267/8796093022208))/281474976710656 + (2*pi*sin((2*pi*t)/3))/3)",2);
+    gsFunctionExpr<> sourceQold("-cos(6*pi*x)*cos(6*pi*y)*(3*cos((2*pi*t)/3)^2 + 66065576699781/70368744177664)*(3*cos((2*pi*t)/3) + (2*pi*sin((2*pi*t)/3))/3 - 1437361346509563761/281474976710656)",2);
+    gsFunctionExpr<> sourceQnew("-cos(6*pi*x)*cos(6*pi*y)*(3*cos((2*pi*t)/3)^2 + 66065576699781/70368744177664)*(3*cos((2*pi*t)/3) + (2*pi*sin((2*pi*t)/3))/3 - 1437361346509563761/281474976710656)",2);
+
+
+    gsVector<> pt2(2,1); pt2<<0.5, 0.5;
+    sourceQold.set_t(0);
+    auto Q_eval= ev.getVariable(sourceQold, G);
+    gsInfo<< "Value at of Q :" << ev.eval(Q_eval, pt2) <<"\n";
 
     // Derivatives of the polynomial double well potential (M. Kästner et al., 2016)
     auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
@@ -317,14 +327,19 @@ void solve( gsMultiPatch<T> & mp,
 
     auto residual = w*dc + // M
                 M_c.val() * igrad(w,G) * dmu_c * gradc.tr() + // F_bar
-                M_c.val() * ilapl(w,G) *lambda *laplc.val() - // K_laplacian
-                w * qq; // source term (manuf solution)
+                M_c.val() * ilapl(w,G) *lambda *laplc.val(); // K_laplacian
 
-    // Neumann BC term (boundary integral) for manufactured solution cos(2*pi*x) * cos(2*pi*y)
-    gsFunctionExpr<> expression("6*x^8*y^9 - (27*x^2*y)/1000 - (9*y^3)/1000 + 3*x^2*y^3*(x^6*y^6 - 1)","6*x^9*y^8 - (27*x*y^2)/1000 - (9*x^3)/1000 + 3*x^3*y^2*(x^6*y^6 - 1)",2);
-    auto g_Neumann = A.getCoeff(expression,G); // Neumann BC
+    //  =========== Terms for boundary integrals ===========
+    // (1) Neumann boundary condition
+    // gsFunctionExpr<> bc1("pi*cos((2*pi*t)/3)*cos(pi*y)*sin(pi*x) - (3*pi^3*cos((2*pi*t)/3)*cos(pi*y)*sin(pi*x))/1000 - 3*pi*cos((2*pi*t)/3)^3*cos(pi*x)^2*cos(pi*y)^3*sin(pi*x)", "pi*cos((2*pi*t)/3)*cos(pi*x)*sin(pi*y) - (3*pi^3*cos((2*pi*t)/3)*cos(pi*x)*sin(pi*y))/1000 - 3*pi*cos((2*pi*t)/3)^3*cos(pi*x)^3*cos(pi*y)^2*sin(pi*y)", 2);
+    // gsFunctionExpr<> bc1("6*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x) - (81*pi^3*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x))/125 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^2*cos(6*pi*y)^3*sin(6*pi*x)", "6*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y) - (81*pi^3*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y))/125 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^3*cos(6*pi*y)^2*sin(6*pi*y)",2);
+    // gsFunctionExpr<> bc1("6*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x) - (216*pi^3*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x))/5 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^2*cos(6*pi*y)^3*sin(6*pi*x)", "6*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y) - (216*pi^3*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y))/5 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^3*cos(6*pi*y)^2*sin(6*pi*y)",2);
+    gsFunctionExpr<> bc1("6*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x) - (216*pi^3*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x))/5 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^2*cos(6*pi*y)^3*sin(6*pi*x)", "6*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y) - (216*pi^3*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y))/5 - 18*pi*cos((2*pi*t)/3)^3*cos(6*pi*x)^3*cos(6*pi*y)^2*sin(6*pi*y)",2);
+    // gsFunctionExpr<> bc1("-cos(6*pi*x)*cos(6*pi*y)*((5425872400273467*cos((2*pi*t)/3)*(3888*cos((2*pi*t)/3)^2*cos(6*pi*x)*cos(6*pi*y)*(cos(6*pi*x)^2 - 2*sin(6*pi*x)^2)*(cos(6*pi*y)^2 - 2*sin(6*pi*y)^2) - 44371037339229267/8796093022208))/1099511627776 + (2*pi*sin((2*pi*t)/3))/3)",2);
 
-    //! [Problem setup]
+    // (2) Laplace boundary condition
+    gsFunctionExpr<> bc2("-72*pi^2*cos((2*pi*t)/3)*cos(6*pi*x)*cos(6*pi*y)",2);
+    // =====================================================
 
     // ![Initialize the assembler]
     w.setup(bc, dirichlet::l2Projection, 0);
@@ -425,15 +440,22 @@ void solve( gsMultiPatch<T> & mp,
         GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
-        real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
+        gsFunctionExpr<> initial_cond("0.1*cos(6*pi*x)*cos(6*pi*y)",2);
+        real_t error = gsL2Projection<real_t>::projectFunction(dbasis,initial_cond,mp,tmp);  // 3rd arg has to be multipatch
         if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
         mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
         tmp.setZero();
         mp_dcold.addPatch(dbasis.basis(0).makeGeometry(tmp));
     }
 
+    gsWriteParaview(mp,mp_cold,out+"/initial_condition",5000);
+
     mp_cnew = mp_cold;
     mp_dcnew = mp_dcold;
+
+    // Fill multipatch zeros!
+    mp_qnew = mp_dcold;
+    mp_qold = mp_dcold;
 
     real_t Q0norm = 1, Qnorm = 10;
     real_t tol = TIMEopt.askReal("tol",1e-4);
@@ -495,29 +517,48 @@ void solve( gsMultiPatch<T> & mp,
 
     gsVector<> pt(2,1); pt<<0.5, 0.5;
 
+    // auto u_manufactured = ev.getVariable(source_time, G);
+    // gsInfo<< "Value at mid-point :" << ev.eval(neumann_manuf, pt) <<"\n";
 
     // real_t mass2 = ev.integral(meas(G)*cold);
     // gsInfo<<mass2<<"\n";
+    real_t told, tnew;
+
+    gsDebugVar(mp_cold.patch(0).coefs().maxCoeff());
+    gsDebugVar(mp_cold.patch(0).coefs().minCoeff());
 
     for (index_t step = 0; step!=maxSteps; step++)
     {   
 
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
-            clock.restart();
-            if (projection_Crs == 0)
+            
+            if (MESHopt.askSwitch("Adaptive",true))
             {
-                error_crs_c = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
-                error_crs_dc = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
-                gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
-                gsDebug<<"Error in the L2 projection of the initial condition (dc): "<<error_crs_dc<<"\n";  
+                clock.restart();
+                if (projection_Crs == 0)
+                {
+                    error_crs_c = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
+                    error_crs_dc = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
+                    gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
+                    gsDebug<<"Error in the L2 projection of the initial condition (dc): "<<error_crs_dc<<"\n";  
+                }
+                else if (projection_Crs == 1)
+                {
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_cold.patch(0),CnewF);
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
+                }
+                projectionTime += clock.stop();
             }
-            else if (projection_Crs == 1)
+            else
             {
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_cold.patch(0),CnewF);
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
+                // Tensor product solution!
+                CnewF = mp_cold.patch(0).coefs();
+                dCnewF = mp_dcold.patch(0).coefs();
             }
-            projectionTime += clock.stop();
+
+            // sourceQ.set_t(step*dt); //update t in the source term
+            // auto     qq = A.getCoeff(sourceQ,G);
                       
             // Resize the data structure inside the mesher
             if (MESHopt.askSwitch("Adaptive",true))
@@ -530,6 +571,8 @@ void solve( gsMultiPatch<T> & mp,
             A.initSystem();
             //A.initVector();
 
+     
+
             for (index_t dt_it = 0; dt_it != lmax; dt_it++)
             {
                 if (verbose>0) gsInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
@@ -537,7 +580,8 @@ void solve( gsMultiPatch<T> & mp,
                 tmp_alpha_m_func.setValue(tmp_alpha_m,dim);
                 tmp_alpha_f_func.setValue(tmp_alpha_f,dim);
 
-                for (index_t k = 0; k!=2; k++)
+
+                for (index_t k = 0; k!=1; k++)
                 {
                     converged = false;
                     std::string method = (k==0) ? "Backward Euler " : "Generalized Alpha ";
@@ -564,6 +608,20 @@ void solve( gsMultiPatch<T> & mp,
                     dCold = dCnew;
                     // ========================
 
+                    // ====== Time integration of the source term ======
+                    if (step==0)
+                        told =  0;
+                    else 
+                        told =  (step-1)*dt;
+
+                    tnew = step*dt;
+
+                    real_t alpha_time = (1-tmp_alpha_f)*told + tmp_alpha_f*tnew;
+                    sourceQold.set_t(told);
+                    sourceQnew.set_t(tnew);
+                    auto     qalpha = (1-tmp_alpha_f)*A.getCoeff(sourceQold,G) + tmp_alpha_f*A.getCoeff(sourceQnew,G);
+                    // =================================================
+
                     for (index_t it = 0; it!= maxIt; it++)
                     {
                         A.initMatrix();
@@ -578,22 +636,37 @@ void solve( gsMultiPatch<T> & mp,
                         clock.restart();
                         // Assemble the RHS
                         A.assemble(residual * meas(G));
-                        assemblyTime += clock.stop();
+                        
+                        // ==== Assemble source term (manufactured) ====
+                        A.assemble(meas(G)* (- w) * qalpha);
+                        // =============================================
 
+                        assemblyTime += clock.stop();
                         Q = A.rhs();
 
-                        // Assemble the Nitsche BC on the sides with Neumann condition
-                        // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-                        A.initMatrix();
-                        clock.restart();
-                        A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                                    penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
-                                    lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-             
-                        A.assembleBdr(bc.get("Neumann"), w * (g_Neumann.tr() * nv(G)));  // assemble boundary term -- flux from manufactured solutions
+                        // ==== Assemble boundary terms (manufactured) ====
+                        // I should evaluate the boundary at the interpolated time ?????????????????????????!!!
+                        // real_t alpha_time = (1-tmp_alpha_f)*told + tmp_alpha_f*tnew;
+                        bc1.set_t(alpha_time);
+                        auto bc_Neumann = A.getCoeff(bc1,G); // Neumann BC
+                        A.assembleBdr(bc.get("Neumann"), w * (bc_Neumann.tr() * nv(G)));  // assemble boundary term -- flux from manufactured solutions
+                        
+                        bc2.set_t(alpha_time);
+                        auto bc_Laplace = A.getCoeff(bc2,G); // Neumann BC
+                        A.assembleBdr(bc.get("Laplace"), (igrad(w,G).tr() * nv(G))* lambda * bc_Laplace.tr());
+                        // ================================================
 
-                        assemblyTime += clock.stop();
-                        K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
+                        // // Assemble the Nitsche BC on the sides with Neumann condition
+                        // // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
+                        // A.initMatrix();
+                        // clock.restart();
+                        // A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                        //             penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
+                        //             lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+             
+
+                        // assemblyTime += clock.stop();
+                        // K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
                         if (bc.get("Neumann").size()!=0)
                             Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
@@ -620,7 +693,6 @@ void solve( gsMultiPatch<T> & mp,
                         A.initMatrix();
                         // Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
                         clock.restart();
-                        // A.assemble(meas(G)* qq); // Assemble the source term (manufactured)
                         A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
                                             (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
                                             ddmu_c * igrad(w,G) * gradc.tr() * w.tr() + // K_f2
@@ -629,8 +701,8 @@ void solve( gsMultiPatch<T> & mp,
                         assemblyTime += clock.stop();
 
                         K = A.giveMatrix();
-                        if (bc.get("Neumann").size()!=0)
-                            K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
+                        // if (bc.get("Neumann").size()!=0)
+                        //     K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
 
 
                         clock.restart();
@@ -641,6 +713,9 @@ void solve( gsMultiPatch<T> & mp,
     #else
                         solver.compute(K);
     #endif
+
+    // #ifdef GISMO_WITH_PARDISO
+    // gsSparseSolver<>::PardisoLU solverpLU;
 
                         dCupdate = solver.solve(-Q);
                         solverTime += clock.stop();
@@ -683,6 +758,8 @@ void solve( gsMultiPatch<T> & mp,
             // Update the old c and dc into splines
             cnew_sol.extract(mp_cnew);
             dcnew_sol.extract(mp_dcnew);
+
+            // mp_qnew = mp_qold;
 
             real_t mass = ev.integral(meas(G)*cnew);
             csvFile << step  << "," << refIt << "," << A.numDofs() <<"," << mass <<  "," << error_ref_cnew << ","<< error_ref_dcnew << ","<<error_crs_c<<","<<error_crs_dc<< "\n";
@@ -834,6 +911,10 @@ void solve( gsMultiPatch<T> & mp,
         mp_cold = mp_cnew;
         mp_dcold = mp_dcnew;
 
+        gsDebugVar(mp_cold.patch(0).coefs().maxCoeff());
+        gsDebugVar(mp_cold.patch(0).coefs().minCoeff());
+
+
         // gsDebugVar(mp_dcnew.patch(0).coefs().maxCoeff());
         // gsDebugVar(mp_dcnew.patch(0).coefs().minCoeff());
 
@@ -889,8 +970,13 @@ void solve( gsMultiPatch<T> & mp,
  
  
      // ========= Compute L2 error ========= 
+     // === Solution with time ===
+     gsFunctionExpr<> source_time("cos(pi*x) * cos(pi*y) * cos(2/3*pi*t)",2);
+     source_time.set_t((maxSteps-1)*dt);
+     auto u_manufactured = ev.getVariable(source_time, G);
+    //  gsWriteParaview(source_time,out+"/manu_sol");
+     // ==========================
      real_t l2err;
-     auto u_manufactured = ev.getVariable(source, G);
      l2err = math::sqrt( ev.integral( (u_manufactured - cnew_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
      gsInfo << " L2 error: " << l2err << "\n";
      gsInfo << " Mesh-size: "<< dbasis.basis(0).getMaxCellLength() << "\n";
