@@ -179,10 +179,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
             }
         }
     }
-    index_t n  = errorVector.rows();
-    auto Maxvalue  = errorVector.maxCoeff();
-    auto Minvalue  = errorVector.minCoeff();
-    auto meanvalue = 0.1*(Maxvalue + Minvalue);
+    index_t n       = errorVector.rows();
+    auto Maxvalue   = errorVector.maxCoeff();
+    auto Minvalue   = errorVector.minCoeff();
+    auto meanvalue  = 0.1*(Maxvalue + Minvalue);
     for (index_t i1 = 0; i1 < n; i1++){
         if (errorVector(i1) > Minvalue+meanvalue)
         errorVector(i1) = Minvalue+meanvalue;

@@ -168,6 +168,21 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> ff;
     fd.getId(2003, ff);
     auto density = MAE.buildAnalyticDensity(ff);
+    // gsMultiPatch<> mp; mp.addPatch(gsNurbsCreator<>::BSplineCube(1,0,0,0));
+    // auto u_density = A.getCoeff(density);
+    // gsInfo<<"Plotting in Paraview...\n";
+    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    // collection.options().setSwitch("plotElements", true);
+    // collection.options().setSwitch("base64", export_b64);
+    // collection.options().setInt("plotElements.resolution", 16);
+    // collection.options().setInt("numPoints", 10000);
+    // collection.newTimeStep(&mp);
+    // collection.addField(u_density,"numerical solution");
+    // collection.saveTimeStep();
+    // collection.save();
+    // gsFileManager::open("ParaviewOutput/solution.pvd");
+    // return 0;
+    
     auto Psitp   = MAE.buildMultiPatch(density, true);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
