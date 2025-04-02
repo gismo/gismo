@@ -125,7 +125,7 @@ public:
     { return ( m_fibers.size()>0 ? m_fibers.front()->size() : 0 ); }
 
     /** \returns the number of rows of the matrix */
-    inline index_t rows() const { return Major==RowMajor ? outerSize() : innerSize(); }
+    inline index_t rows() const { return IsRowMajor ? outerSize() : innerSize(); }
 
     /** \returns the number of columns of the matrix */
     inline index_t cols() const { return IsRowMajor ? innerSize() : outerSize(); }

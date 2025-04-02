@@ -116,7 +116,8 @@ public:
         this->data().squeeze();
     }
 
-    iterator begin() { return iterator(*this); }
+    iterator       begin()        { return iterator(*this); }
+    const iterator begin() const { return iterator(*this); }
 
     inline T   at (_Index i ) const { return this->coeff(i); }
     inline T & at (_Index i ) { return this->coeffRef(i); }

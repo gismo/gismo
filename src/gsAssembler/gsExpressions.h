@@ -3734,7 +3734,7 @@ public:
                      << _u <<" times \n" << _v );
 
         // Note: a * b * c --> (a*b).eval()*c
-        tmp = _u.eval(k) * _v.eval(k);
+        tmp /*.noalias()*/ = _u.eval(k) * _v.eval(k);
         return tmp; // assumes result is not scalarvalued
     }
 
