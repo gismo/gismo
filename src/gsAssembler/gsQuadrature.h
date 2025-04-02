@@ -275,8 +275,8 @@ struct gsQuadrature
     static gsMatrix<T> getAllNodes(const gsDomain<T> & domain,
                                    const gsOptionList & options)
     {
-        typename gsBasis<T>::domainIter domIt    = domain->beginAll();
-        typename gsBasis<    T>::    domainIter domItEnd = domain->endAll();
+        typename gsBasis<T>::domainIter domIt    = domain.beginAll();
+        typename gsBasis<    T>::    domainIter domItEnd = domain.endAll();
 
         index_t     quadSize = 0;
         typename gsQuadRule<T>::uPtr QuRule;
@@ -294,7 +294,7 @@ struct gsQuadrature
         gsMatrix<T> nodes;
         gsVector<T> weights;
 
-        domIt = domain->beginAll();
+        domIt = domain.beginAll();
         for (; domIt<domItEnd; ++domIt )
         {
             QuRule = gsQuadrature::getPtr(domain, options);
@@ -333,8 +333,9 @@ struct gsQuadrature
      * @return result   A matrix of quadrature nodes, where each column corresponds to a quadrature node.
      */
     template<class T>
-    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
-                             const gsOptionList & options, const patchSide side)
+    static gsMatrix<T> getAllNodes( const gsBasis<T> & basis,
+                                    const gsOptionList & options,
+                                    const patchSide side)
     {
         return getAllNodes(*basis.domain(),options,side);
     }
@@ -349,34 +350,34 @@ struct gsQuadrature
      * @return result   A matrix of quadrature nodes, where each column corresponds to a quadrature node.
      */
     template<class T>
-    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain,
-                             const gsOptionList & options, const patchSide side)
+    static gsMatrix<T> getAllNodes( const gsDomain<T> & domain,
+                                    const gsOptionList & options,
+                                    const patchSide side)
     {
-        typename gsBasis<T>::domainIter domIt    = domain.beginAll();
-        typename gsBasis<T>::domainIter domItEnd = domain.endAll();
+        typename gsBasis<T>::domainIter domIt    = domain.beginBdr(side.side());
+        typename gsBasis<T>::domainIter domItEnd = domain.endBdr(side.side());
 
         index_t quadSize = 0;
         typename gsQuadRule<T>::uPtr QuRule;
-        QuRule = getPtr(domain, options,side.side().direction());
+        QuRule = getPtr(domain, options, side.side().direction());
 
+        // First pass: count boundary elements
         for (; domIt<domItEnd; ++domIt )
-        {
-            QuRule = gsQuadrature::getPtr(domain, options, side.side().direction());
-            quadSize+=QuRule->numNodes();
-        }
+            quadSize += QuRule->numNodes();
 
-        gsMatrix<T> result(domain.dim(),quadSize);
+        gsMatrix<T> result(domain.dim(), quadSize);
 
+        // Second pass: collect boundary quadrature points
         index_t offset = 0;
         gsMatrix<T> nodes;
         gsVector<T> weights;
-        domIt = domain.beginAll();
+        domIt = domain.beginBdr(side.side());
         for (; domIt<domItEnd; ++domIt )
         {
             QuRule = gsQuadrature::getPtr(domain, options, side.side().direction());
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
-                           nodes, weights);
+                            nodes, weights);
             result.block(0,offset,domain.dim(),QuRule->numNodes()) = nodes;
             offset += QuRule->numNodes();
         }
@@ -384,31 +385,23 @@ struct gsQuadrature
     }
 
     /**
-     * @brief Get all quadrature nodes for a specified side of a domain and evaluates them using a geometry.
-     */
-    template<class T>
-    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain, const gsGeometry<T> & geom,
-                             const gsOptionList & options, const patchSide side)
-    {
-        gsMatrix<T> nodes = getAllNodes(domain,options,side);
-        return geom.eval(nodes);
-    }
-    /**
-     * @brief Get all quadrature nodes for a specified side of a basis and evaluates them using a geometry.
-     */
-    template<class T>
-    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geom,
-                             const gsOptionList & options, const patchSide side)
-    {
-        return getAllNodes(*basis.domain(),geom,options,side);
-    }
-
-    /**
      * @brief Retrieves all quadrature nodes for multiple sides of a given domain.
      */
     template<class T>
-    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain,
-                             const gsOptionList & options, const std::vector<patchSide> sides)
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
+                                   const gsOptionList & options,
+                                   const std::vector<patchSide> & sides)
+    {
+        return getAllNodes(*basis.domain(),options,sides);
+    }
+
+    /**
+     * @brief Collects all quadrature nodes for a multi-basis.
+     */
+    template<class T>
+    static gsMatrix<T> getAllNodes( const gsDomain<T> & domain,
+                                    const gsOptionList & options,
+                                    const std::vector<patchSide> & sides)
     {
         std::vector<gsMatrix<T>> nodes(sides.size());
         index_t cols = 0;
@@ -428,92 +421,7 @@ struct gsQuadrature
 
         return result;
     }
-    /**
-     * @brief Retrieves all quadrature nodes for multiple sides of a given domain.
-     */
-    template<class T>
-    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
-                             const gsOptionList & options, const std::vector<patchSide> sides)
-    {
-        return getAllNodes(*basis.domain(),options,sides);
-    }
 
-    /**
-     * @brief Collects and evaluates all quadrature nodes for multiple sides of a given domain.
-     */
-    template<class T>
-    static gsMatrix<T> getAllNodes(const gsDomain<T> & domain, const gsGeometry<T> & geom,
-                             const gsOptionList & options, const std::vector<patchSide> sides)
-    {
-        gsMatrix<T> nodes = getAllNodes(domain,options,sides);
-        return geom.eval(nodes);
-    }
-    /**
-     * @brief Retrieves all quadrature nodes for multiple sides of a given basis.
-     */
-    template<class T>
-    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geom,
-                             const gsOptionList & options, const std::vector<patchSide> sides)
-    {
-        return getAllNodes(*basis.domain(),geom,options,sides);
-    }
-
-    /**
-     * @brief Collects all quadrature nodes for a multi-basis.
-     */
-    template<class T>
-    static gsMatrix<T> getAllNodes(const gsMultiBasis<T> & bases,
-                             const gsOptionList & options)
-    {
-        return getAllNodes(bases,options);
-    }
-
-    /**
-     * @brief Collects all quadrature nodes for a multi-basis.
-     */
-    template<class T>
-    static std::vector<gsMatrix<T>> getAllNodes(const gsMultiBasis<T> & bases,
-                             const gsOptionList & options, const std::vector<patchSide> sides)
-    {
-        GISMO_ASSERT(bases.nBases()==sides.size(),"Number of bases must be equal to the number of fixed directions");
-        std::vector<gsMatrix<T>> nodes(bases.nBases());
-        for (size_t p = 0; p != bases.nBases(); p++)
-            nodes[p] = getAllNodes(bases.basis(p),options,sides[p]);
-
-        return nodes;
-    }
-
-
-    /**
-     * @brief Gets all quadrature nodes for several sides of a multi-basis for multi-patch geometry.
-     *
-     * @tparam T        Data type for computations.
-     * @param[in] bases     The multi-basis for which the quadrature nodes are to be collected.
-     * @param[in] options   Options specifying the quadrature rule and other settings.
-     * @param[in] sides     A vector of sides corresponding to the patches in the multi-basis.
-     * @param[in] mp        A multi-patch geometry.
-     * @return              A vector of matrices, where each matrix contains quadrature nodes for a specific patch.
-     */
-
-    template<class T>
-    static gsMatrix<T> getAllNodes(const gsMultiBasis<T> & bases, const gsMultiPatch<T> & mp,
-                             const gsOptionList & options, const std::vector<patchSide> sides)
-    {
-        std::vector<gsMatrix<T>> nodes = getAllNodes(bases,options,sides);
-        index_t cols = 0;
-        for (size_t p = 0; p != nodes.size(); p++)
-            cols += nodes[p].cols();
-
-        gsMatrix<T> result(mp.targetDim(),cols);
-        cols = 0;
-        for (size_t p = 0; p != nodes.size(); p++)
-        {
-            result.block(0,cols,mp.targetDim(),nodes[p].cols()) = mp.patch(p).eval(nodes[p]);
-            cols += nodes[p].cols();
-        }
-
-        return result;
-    }
 };
 
 
