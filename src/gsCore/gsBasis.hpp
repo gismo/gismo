@@ -14,7 +14,8 @@
 #pragma once
 
 #include <gsCore/gsBasisFun.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomain.h>
+#include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsGeometry.h>
 
@@ -540,12 +541,12 @@ typename gsBasis<T>::uPtr gsBasis<T>::tensorize(const gsBasis &) const
 template<class T>
 typename gsBasis<T>::domainIter
 gsBasis<T>::makeDomainIterator() const
-{ GISMO_NO_IMPLEMENTATION }
+{ return this->domain()->beginAll(); }
 
 template<class T>
 typename gsBasis<T>::domainIter
-gsBasis<T>::makeDomainIterator(const boxSide &) const
-{ GISMO_NO_IMPLEMENTATION }
+gsBasis<T>::makeDomainIterator(const boxSide &s) const
+{ return this->domain()->beginBdr(s); }
 
 template<class T>
 size_t gsBasis<T>::numElements(boxSide const &) const
@@ -680,7 +681,7 @@ void gsBasis<T>::reduceContinuity(int const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsDomain<T> * gsBasis<T>::domain() const
+memory::shared_ptr<gsDomain<T> > gsBasis<T>::domain() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -711,11 +712,10 @@ void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
 template<class T>
 T gsBasis<T>::getMinCellLength() const
 {
-    const domainIter it = this->makeDomainIterator();
     T h = 0;
-    for (; it->good(); it->next() )
+    for (domainIter it = this->domain()->beginAll(); it!=this->domain()->endAll(); ++it )
     {
-        const T sz = it->getMinCellLength();
+        const T sz = it.getMinCellLength();
         if ( sz < h || h == 0 ) h = sz;
     }
     return h;
@@ -724,11 +724,10 @@ T gsBasis<T>::getMinCellLength() const
 template<class T>
 T gsBasis<T>::getMaxCellLength() const
 {
-    const domainIter it = this->makeDomainIterator();
-    T h = 0;
-    for (; it->good(); it->next() )
+    T h(0);
+    for (domainIter it = this->domain()->beginAll(); it!=this->domain()->endAll(); ++it )
     {
-        const T sz = it->getMaxCellLength();
+        const T sz = it.getMaxCellLength();
         if ( sz > h ) h = sz;
     }
     return h;

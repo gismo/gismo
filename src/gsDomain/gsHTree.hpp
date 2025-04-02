@@ -13,9 +13,8 @@
 
 #include <gsHSplines/gsAAPolyline.h>
 #include <gsHSplines/gsVSegment.h>
-#include <gsHSplines/gsKdNode.h>
+#include <gsDomain/gsKdNode.h>
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsBoundary.h>
 
 #include <queue>
 
@@ -93,28 +92,28 @@ namespace gismo {
 
 
 template<short_t d, class Z>
-gsHDomain<d, Z> * gsHDomain<d, Z>::clone() const
+gsHTree<d, Z> * gsHTree<d, Z>::clone() const
 {
-    return new gsHDomain(*this);
+    return new gsHTree(*this);
 }
 
 
 template<short_t d, class Z>
-inline bool gsHDomain<d, Z>::haveOverlap(box const & box1, box const & box2)
+inline bool gsHTree<d, Z>::haveOverlap(box const & box1, box const & box2)
 {
     return !( (box1.second.array() <= box1.first .array()).any() ||
               (box2.first .array() >= box1.second.array()).any() );
 }
 
 template<short_t d, class Z>
-inline bool gsHDomain<d, Z>::isContained(box const & box1, box const & box2)
+inline bool gsHTree<d, Z>::isContained(box const & box1, box const & box2)
 {
     return !( (box1.first .array() < box2.first .array()).any() ||
               (box1.second.array() > box2.second.array()).any() ) ;
 }
 
 template<short_t d, class Z> void
-gsHDomain<d, Z>::setLevel(node *_node, int lvl)
+gsHTree<d, Z>::setLevel(node *_node, int lvl)
 {
     // to do: non-recc.
     if ( _node->isLeaf() )
@@ -133,14 +132,14 @@ gsHDomain<d, Z>::setLevel(node *_node, int lvl)
 }
 
 template<short_t d, class Z> inline bool
-gsHDomain<d, Z>::isDegenerate(box const & someBox)
+gsHTree<d, Z>::isDegenerate(box const & someBox)
 {
     return (someBox.first.array() >= someBox.second.array()).any() ;
 }
 
 //use "surface area heuristic" (SAH) ?
 template<short_t d, class Z> void
-gsHDomain<d, Z>::insertBox ( point const & k1, point const & k2,
+gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
                             node *_node, int lvl) // CONSTRAINT: lvl is "minimum level"
 {
     GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
@@ -222,7 +221,7 @@ gsHDomain<d, Z>::insertBox ( point const & k1, point const & k2,
 }
 
 template<short_t d, class Z> void
-gsHDomain<d, Z>::clearBox ( point const & k1, point const & k2,
+gsHTree<d, Z>::clearBox ( point const & k1, point const & k2,
                             int lvl) // CONSTRAINT: lvl is "minimum level"
 {
     GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
@@ -301,7 +300,7 @@ gsHDomain<d, Z>::clearBox ( point const & k1, point const & k2,
 }
 
 template<short_t d, class Z> void
-gsHDomain<d, Z>::sinkBox (point const & k1,
+gsHTree<d, Z>::sinkBox (point const & k1,
                           point const & k2, int lvl)
 {
     GISMO_ENSURE( m_maxInsLevel+1 <= m_indexLevel,
@@ -371,7 +370,7 @@ gsHDomain<d, Z>::sinkBox (point const & k1,
 }
 
 template<short_t d, class Z>
-void gsHDomain<d, Z>::makeCompressed()
+void gsHTree<d, Z>::makeCompressed()
 {
     std::stack<node*, std::vector<node*> > tstack;
     node * curNode;
@@ -417,64 +416,64 @@ void gsHDomain<d, Z>::makeCompressed()
 }
 
 template<short_t d, class Z>
-bool gsHDomain<d, Z>::query1(point const & lower, point const & upper,
+bool gsHTree<d, Z>::query1(point const & lower, point const & upper,
                              int level, node  *_node) const
 {
     return boxSearch< query1_visitor >(upper,lower,level,_node);
 }
 
 template<short_t d, class Z>
-bool gsHDomain<d, Z>::query1(point const & lower, point const & upper,
+bool gsHTree<d, Z>::query1(point const & lower, point const & upper,
                              int level) const
 {
     return boxSearch< query1_visitor >(upper,lower,level,m_root);
 }
 
 template<short_t d, class Z>
-bool gsHDomain<d, Z>::query2(point const & lower, point const & upper,
+bool gsHTree<d, Z>::query2(point const & lower, point const & upper,
                              int level, node  *_node) const
 {
     return boxSearch< query2_visitor >(lower,upper,level,_node);
 }
 
 template<short_t d, class Z>
-bool gsHDomain<d, Z>::query2 (point const & lower, point const & upper,
+bool gsHTree<d, Z>::query2 (point const & lower, point const & upper,
                               int level) const
 {
     return boxSearch< query2_visitor >(lower,upper,level,m_root);
 }
 
 template<short_t d, class Z>
-int gsHDomain<d, Z>::query3(point const & lower, point const & upper,
+int gsHTree<d, Z>::query3(point const & lower, point const & upper,
                             int level, node  *_node) const
 {
     return boxSearch< query3_visitor >(lower,upper,level,_node);
 }
 
 template<short_t d, class Z>
-int gsHDomain<d, Z>::query3(point const & lower, point const & upper,
+int gsHTree<d, Z>::query3(point const & lower, point const & upper,
                             int level) const
 {
     return boxSearch< query3_visitor >(lower,upper,level,m_root);
 }
 
 template<short_t d, class Z>
-int gsHDomain<d, Z>::query4(point const & lower, point const & upper,
+int gsHTree<d, Z>::query4(point const & lower, point const & upper,
                             int level, node  *_node) const
 {
     return boxSearch< query4_visitor >(lower,upper,level,_node);
 }
 
 template<short_t d, class Z>
-int gsHDomain<d, Z>::query4(point const & lower, point const & upper,
+int gsHTree<d, Z>::query4(point const & lower, point const & upper,
                             int level) const
 {
     return boxSearch< query4_visitor >(lower,upper,level,m_root);
 }
 
 template<short_t d, class Z>
-std::pair<typename gsHDomain<d, Z>::point, typename gsHDomain<d, Z>::point>
-gsHDomain<d, Z>::queryLevelCell(point const & lower, point const & upper,
+std::pair<typename gsHTree<d, Z>::point, typename gsHTree<d, Z>::point>
+gsHTree<d, Z>::queryLevelCell(point const & lower, point const & upper,
                                 int level) const
 {
     std::pair<point,point> tmp = boxSearch< get_cell_visitor >(lower,upper,level,m_root);
@@ -484,8 +483,8 @@ gsHDomain<d, Z>::queryLevelCell(point const & lower, point const & upper,
 }
 
 template<short_t d, class Z>
-std::pair<typename gsHDomain<d, Z>::point, typename gsHDomain<d, Z>::point>
-gsHDomain<d, Z>::select_part(point const & k1, point const & k2,
+std::pair<typename gsHTree<d, Z>::point, typename gsHTree<d, Z>::point>
+gsHTree<d, Z>::select_part(point const & k1, point const & k2,
                              point const & k3, point const & k4)
 {
     // intersect boxes
@@ -502,7 +501,7 @@ gsHDomain<d, Z>::select_part(point const & k1, point const & k2,
 }
 
 template<short_t d, class Z> void
-gsHDomain<d, Z>::bisectBox(box const & original, int k, Z coord,
+gsHTree<d, Z>::bisectBox(box const & original, int k, Z coord,
                            box & leftBox, box & rightBox )
 {
     GISMO_ASSERT( ! isDegenerate(original) , "Invalid box .");
@@ -515,7 +514,7 @@ gsHDomain<d, Z>::bisectBox(box const & original, int k, Z coord,
 template<short_t d, class Z>
 template<typename visitor>
 typename visitor::return_type
-gsHDomain<d, Z>::boxSearch(point const & k1, point const & k2,
+gsHTree<d, Z>::boxSearch(point const & k1, point const & k2,
                            int level, node  *_node ) const
 {
     // Make a box
@@ -568,8 +567,8 @@ gsHDomain<d, Z>::boxSearch(point const & k1, point const & k2,
 
 
 template<short_t d, class Z>
-typename gsHDomain<d, Z>::node *
-gsHDomain<d, Z>::pointSearch(const point & p, int level, node  *_node ) const
+typename gsHTree<d, Z>::node *
+gsHTree<d, Z>::pointSearch(const point & p, int level, node  *_node ) const
 {
     point pp;
     local2globalIndex(p, static_cast<unsigned>(level), pp);
@@ -607,7 +606,7 @@ gsHDomain<d, Z>::pointSearch(const point & p, int level, node  *_node ) const
 template<short_t d, class Z>
 template<typename visitor>
 typename visitor::return_type
-gsHDomain<d, Z>::nodeSearch() const
+gsHTree<d, Z>::nodeSearch() const
 {
     typename visitor::return_type i = visitor::init();
 
@@ -639,7 +638,7 @@ gsHDomain<d, Z>::nodeSearch() const
 template<short_t d, class Z>
 template<typename visitor>
 typename visitor::return_type
-gsHDomain<d, Z>::leafSearch() const
+gsHTree<d, Z>::leafSearch() const
 {
     typename visitor::return_type i = visitor::init();
 
@@ -672,7 +671,7 @@ gsHDomain<d, Z>::leafSearch() const
 
 template<short_t d, class Z>
 std::pair<int,int>
-gsHDomain<d, Z>::minMaxPath() const
+gsHTree<d, Z>::minMaxPath() const
 {
     node * curNode = m_root;
     int min = 1000000000, max = -1, cur = 0;
@@ -707,7 +706,7 @@ gsHDomain<d, Z>::minMaxPath() const
 }
 
 template<short_t d, class Z>
-void gsHDomain<d, Z>::getBoxes(gsMatrix<Z>& b1, gsMatrix<Z>& b2, gsVector<Z>& level) const
+void gsHTree<d, Z>::getBoxes(gsMatrix<Z>& b1, gsMatrix<Z>& b2, gsVector<Z>& level) const
 {
     std::vector<std::vector<Z> > boxes;
 
@@ -736,7 +735,7 @@ void gsHDomain<d, Z>::getBoxes(gsMatrix<Z>& b1, gsMatrix<Z>& b2, gsVector<Z>& le
 
 
 template<short_t d, class Z>
-void gsHDomain<d, Z>::getBoxesOnSide(boundary::side s, gsMatrix<Z>& b1, gsMatrix<Z>& b2, gsVector<Z>& level) const
+void gsHTree<d, Z>::getBoxesOnSide(boundary::side s, gsMatrix<Z>& b1, gsMatrix<Z>& b2, gsVector<Z>& level) const
 {
 
     getBoxes( b1, b2, level);
@@ -787,7 +786,7 @@ void gsHDomain<d, Z>::getBoxesOnSide(boundary::side s, gsMatrix<Z>& b1, gsMatrix
 }
 
 template<short_t d, class Z>
-void gsHDomain<d, Z>::getBoxesInLevelIndex(gsMatrix<Z>& b1,
+void gsHTree<d, Z>::getBoxesInLevelIndex(gsMatrix<Z>& b1,
                                            gsMatrix<Z>& b2,
                                            gsVector<index_t>& level) const
 {
@@ -834,7 +833,7 @@ void gsHDomain<d, Z>::getBoxesInLevelIndex(gsMatrix<Z>& b1,
 // Keeping the code for the moment, in order not to loose
 // the old code before the new one is properly tested.
 template<short_t d, class Z> void
-gsHDomain<d, Z>::connect_Boxes2d(std::vector<std::vector<Z>> &boxes) const
+gsHTree<d, Z>::connect_Boxes2d(std::vector<std::vector<Z>> &boxes) const
 {
     GISMO_ASSERT( d == 2, "This one only works for 2D");
     bool change = true;
@@ -895,7 +894,7 @@ gsHDomain<d, Z>::connect_Boxes2d(std::vector<std::vector<Z>> &boxes) const
 }
 
 template<short_t d, class Z> void
-gsHDomain<d, Z>::connect_Boxes(std::vector<std::vector<Z>> &boxes) const
+gsHTree<d, Z>::connect_Boxes(std::vector<std::vector<Z>> &boxes) const
 {
     bool change = true;
     while(change)
@@ -969,7 +968,7 @@ gsHDomain<d, Z>::connect_Boxes(std::vector<std::vector<Z>> &boxes) const
 
 
 template<short_t d, class Z>
-void gsHDomain<d, Z>::connect_Boxes_2(std::vector<std::vector<Z> > &boxes) const
+void gsHTree<d, Z>::connect_Boxes_2(std::vector<std::vector<Z> > &boxes) const
 {
     bool change = true;
     while(change)
@@ -1041,7 +1040,7 @@ void gsHDomain<d, Z>::connect_Boxes_2(std::vector<std::vector<Z> > &boxes) const
 
 
 template<short_t d, class Z> void
-gsHDomain<d, Z>::getBoxes_vec(std::vector<std::vector<Z> >& boxes) const
+gsHTree<d, Z>::getBoxes_vec(std::vector<std::vector<Z> >& boxes) const
 {
     boxes.clear();
 
@@ -1091,7 +1090,7 @@ gsHDomain<d, Z>::getBoxes_vec(std::vector<std::vector<Z> >& boxes) const
  */
 template<short_t d, class Z>
 std::vector<std::vector<std::vector< std::vector<Z> > > >
-gsHDomain<d, Z>::getPolylines() const
+gsHTree<d, Z>::getPolylines() const
 {
 /*
  1: Get boxes from the quadtree.
@@ -1133,7 +1132,7 @@ gsHDomain<d, Z>::getPolylines() const
 
 
 template<short_t d, class Z>
-std::vector<std::vector< std::vector<Z> > > gsHDomain<d, Z>::getPolylinesSingleLevel(std::vector<gsVSegment<Z> >& seg) const
+std::vector<std::vector< std::vector<Z> > > gsHTree<d, Z>::getPolylinesSingleLevel(std::vector<gsVSegment<Z> >& seg) const
 {
     // For didactic purposes the interior of the function has been refined into two procedures
     // (overal length of the older version was intimidating and people would not like to read it then =)).
@@ -1173,7 +1172,7 @@ std::vector<std::vector< std::vector<Z> > > gsHDomain<d, Z>::getPolylinesSingleL
 }
 
 template <short_t d, class Z>
-void gsHDomain<d, Z>::getRidOfOverlaps( std::list<std::list<gsVSegment<Z> > >& vert_seg_lists ) const
+void gsHTree<d, Z>::getRidOfOverlaps( std::list<std::list<gsVSegment<Z> > >& vert_seg_lists ) const
 {
     bool need_to_erase = false;
     for(auto it_x = vert_seg_lists.begin(); it_x != vert_seg_lists.end(); )
@@ -1213,7 +1212,7 @@ void gsHDomain<d, Z>::getRidOfOverlaps( std::list<std::list<gsVSegment<Z> > >& v
 }
 
 template <short_t d, class Z>
-void gsHDomain<d, Z>::sweeplineConnectAndMerge( std::vector< std::vector< std::vector<Z> > >& result,
+void gsHTree<d, Z>::sweeplineConnectAndMerge( std::vector< std::vector< std::vector<Z> > >& result,
                                                std::list< std::list< gsVSegment<Z> > >& vert_seg_lists ) const
 {
     /*========================
@@ -1316,7 +1315,7 @@ void gsHDomain<d, Z>::sweeplineConnectAndMerge( std::vector< std::vector< std::v
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::computeFinestIndex(gsVector<Z, d> const & index,
+inline void gsHTree<d, Z>::computeFinestIndex(gsVector<Z, d> const & index,
                                                 unsigned lvl,
                                                 gsVector<Z, d> & result) const
 {
@@ -1325,7 +1324,7 @@ inline void gsHDomain<d, Z>::computeFinestIndex(gsVector<Z, d> const & index,
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::computeLevelIndex(gsVector<Z, d> const & index,
+inline void gsHTree<d, Z>::computeLevelIndex(gsVector<Z, d> const & index,
                                                unsigned lvl,
                                                gsVector<Z, d> & result) const
 {
@@ -1334,7 +1333,7 @@ inline void gsHDomain<d, Z>::computeLevelIndex(gsVector<Z, d> const & index,
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::local2globalIndex(gsVector<Z, d> const & index,
+inline void gsHTree<d, Z>::local2globalIndex(gsVector<Z, d> const & index,
                                                unsigned lvl,
                                                gsVector<Z, d> & result) const
 {
@@ -1343,7 +1342,7 @@ inline void gsHDomain<d, Z>::local2globalIndex(gsVector<Z, d> const & index,
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::global2localIndex(gsVector<Z, d> const & index,
+inline void gsHTree<d, Z>::global2localIndex(gsVector<Z, d> const & index,
                                                unsigned lvl,
                                                gsVector<Z, d> & result) const
 {
@@ -1352,7 +1351,7 @@ inline void gsHDomain<d, Z>::global2localIndex(gsVector<Z, d> const & index,
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::incrementLevel()
+inline void gsHTree<d, Z>::incrementLevel()
 {
     m_maxInsLevel++;
 
@@ -1363,46 +1362,46 @@ inline void gsHDomain<d, Z>::incrementLevel()
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::multiplyByTwo()
+inline void gsHTree<d, Z>::multiplyByTwo()
 {
     m_upperIndex *= 2;
     nodeSearch< liftCoordsOneLevel_visitor >();
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::divideByTwo()
+inline void gsHTree<d, Z>::divideByTwo()
 {
     m_upperIndex /= 2;
     nodeSearch< reduceCoordsOneLevel_visitor >();
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::decrementLevel()
+inline void gsHTree<d, Z>::decrementLevel()
 {
     m_maxInsLevel--;
     leafSearch< levelDown_visitor >();
 }
 
 template<short_t d, class Z>
-inline int gsHDomain<d, Z>::size() const
+inline int gsHTree<d, Z>::size() const
 {
     return nodeSearch< numNodes_visitor >();
 }
 
 template<short_t d, class Z>
-inline int gsHDomain<d, Z>::leafSize() const
+inline int gsHTree<d, Z>::leafSize() const
 {
     return leafSearch< numLeaves_visitor >();
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::printLeaves() const
+inline void gsHTree<d, Z>::printLeaves() const
 {
     leafSearch< printLeaves_visitor >();
 }
 
 template<short_t d, class Z>
-void gsHDomain<d, Z>::computeMaxInsLevel()
+void gsHTree<d, Z>::computeMaxInsLevel()
 {
     m_maxInsLevel = leafSearch< maxLevel_visitor >();
 }

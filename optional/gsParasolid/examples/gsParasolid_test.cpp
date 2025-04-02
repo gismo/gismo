@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     std::string name = gsFileManager::getBasename (fn);
     std::string ext  = gsFileManager::getExtension(fn);
 
-    if ( ext == "xml" )
+    if ( ext != "xml_txt" )
     {
         // Write out in parasolid format
 

@@ -52,7 +52,7 @@ public:
         rhs_ptr = &pde_ptr->rhs()->piece(patchIndex);
 
         // Setup Quadrature
-        rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
+        rule = gsQuadrature::get(*basis.domain(), options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
@@ -86,7 +86,7 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & ,
+    inline void assemble(gsDomainIteratorWrapper<T>    & ,
                          gsVector<T> const      & quWeights)
     {
         gsMatrix<T> & bVals  = basisData[0];

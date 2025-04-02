@@ -1393,17 +1393,15 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
-        bool singleActives = (1 == _u.data().actives.cols());
-
-        res.setZero(_u.dim(), 1);
+        GISMO_ASSERT(check(), "Invalid state in gsFeSolution");
         const gsDofMapper & map = _u.mapper();
-        GISMO_ASSERT(_Sv->size()==map.freeSize(), "The solution vector has wrong dimensions: "<<_Sv->size()<<" != "<<map.freeSize());
-
+        auto & act = _u.data().actives.col(1 == _u.data().actives.cols() ? 0:k );
+        res.setZero(_u.dim(), 1);
         for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
             for (index_t i = 0; i!=_u.data().actives.rows(); ++i)
             {
-                const index_t ii = map.index(_u.data().actives(i, singleActives ? 0 : k), _u.data().patchId, c);
+                const index_t ii = map.index( act[i], _u.data().patchId, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 else
@@ -1414,6 +1412,24 @@ public:
         return res;
     }
 
+    // Performs validity checks for the solution object
+    bool check() const
+    {
+        if ( _Sv->size()!=_u.mapper().freeSize() )
+        {
+            gsWarn<< "The solution vector has wrong dimensions: "
+                  <<_Sv->size()<<" != "<<_u.mapper().freeSize() <<". ";
+            return false;
+        }
+        if((size_t)_u.source().size()*dim()!=_u.mapper().mapSize())
+        {
+            gsWarn<< "The solution space is inconsistent: "
+                  <<_u.source().size()*dim()<<" != "<<_u.mapper().mapSize()<<". ";
+            return false;
+        }
+        return true;
+    }
+    
     //template<class U>
     //linearComb(U & ie){ sum up ie[_u] times the _Sv  }
     // ie.eval(k), _u.data().actives(), fixedPart() - see lapl_expr
@@ -2805,15 +2821,15 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-
-        res.setZero(_u.dim(), _u.parDim());
+        GISMO_ASSERT(_u.check(), "Invalid state in gsFeSolution");
         const gsDofMapper & map = _u.mapper();
+        auto & act = _u.data().actives.col(1 == _u.data().actives.cols() ? 0:k );
+        res.setZero(_u.dim(), _u.parDim());
         for (index_t c = 0; c!= _u.dim(); c++)
         {
-            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+            for (index_t i = 0; i!=_u.data().actives.rows(); ++i)
             {
-                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                const index_t ii = map.index(act[i], _u.data().patchId, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
                     res.row(c) += _u.coefs().at(ii) *
@@ -3183,19 +3199,19 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(const index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-
-        res.setZero(_u.dim(), 1); //  scalar, but per component
+        GISMO_ASSERT(_u.check(), "Invalid state in gsFeSolution");
         const gsDofMapper & map = _u.mapper();
+        res.setZero(_u.dim(), 1); //  scalar, but per component
 
         index_t numActs = _u.data().values[0].rows();
         index_t numDers = _u.parDim() * (_u.parDim() + 1) / 2;
         gsMatrix<T> deriv2;
 
+        auto & act = _u.data().actives.col(1 == _u.data().actives.cols() ? 0:k );
         for (index_t c = 0; c!= _u.dim(); c++)
             for (index_t i = 0; i!=numActs; ++i)
             {
-                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                const index_t ii = map.index(act[i], _u.data().patchId, c);
                 deriv2 = _u.data().values[2].block(i*numDers,k,_u.parDim(),1); // this only takes d11, d22, d33 part. For all the derivatives [d11, d22, d33, d12, d13, d23]: col.block(i*numDers,k,numDers,1)
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res.at(c) += _u.coefs().at(ii) * deriv2.sum();
@@ -3523,17 +3539,15 @@ public:
 
     hess_expr(const gsFeSolution<T> & u) : _u(u) { }
 
-    mutable gsMatrix<T> res;
+    mutable gsMatrix<T> deriv2, res;
     const gsMatrix<T> & eval(const index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected. Actives: \n"<<_u.data().actives);
-
+        GISMO_ASSERT(_u.check(), "Invalid state in gsFeSolution");
         const gsDofMapper & map = _u.mapper();
-
         const index_t numActs = _u.data().values[0].rows();
         const index_t pdim = _u.parDim();
         index_t numDers = pdim*(pdim+1)/2;
-        gsMatrix<T> deriv2;
+        auto & act = _u.data().actives.col(1 == _u.data().actives.cols() ? 0:k );
 
         // In the scalar case, the hessian is returned as a pdim x pdim matrix
         if (1==_u.dim())
@@ -3541,7 +3555,7 @@ public:
             res.setZero(numDers,1);
             for (index_t i = 0; i!=numActs; ++i)
             {
-                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,0);
+                const index_t ii = map.index(act[i], _u.data().patchId, 0);
                 deriv2 = _u.data().values[2].block(i*numDers,k,numDers,1);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res += _u.coefs().at(ii) * deriv2;
@@ -3557,8 +3571,9 @@ public:
         {
             res.setZero(rows(), numDers);
             for (index_t c = 0; c != _u.dim(); c++)
-                for (index_t i = 0; i != numActs; ++i) {
-                    const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
+                for (index_t i = 0; i != numActs; ++i)
+                {
+                    const index_t ii = map.index(act[i], _u.data().patchId, c);
                     deriv2 = _u.space().data().values[2].block(i * numDers, k, numDers,
                                                                1).transpose(); // start row, start col, rows, cols
                     if (map.is_free_index(ii)) // DoF value is in the solVector
@@ -3886,6 +3901,64 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
+template <typename E1, typename E2, typename E3>
+class ternary_expr : public _expr<ternary_expr<E1, E2, E3> >
+{
+    typename E1::Nested_t _c;
+    typename E2::Nested_t _t;
+    typename E3::Nested_t _f;
+
+public:
+    enum {  ScalarValued = E2::ScalarValued,
+            ColBlocks = E2::ColBlocks,
+            Space = E2::Space };
+
+    typedef typename E1::Scalar Scalar;
+
+    ternary_expr(const E1 & c,
+                 const E2 & t,
+                 const E3 & f)
+    : _c(c), _t(t), _f(f)
+    {
+        GISMO_ASSERT(E1::ScalarValued, "Condition must be scalar valued");
+        GISMO_ASSERT((int) E2::ScalarValued == (int) E3::ScalarValued,"Both v and w must be scalar valued (or not).");
+        GISMO_ASSERT((int) E2::ColBlocks == (int) E3::ColBlocks,"Both v and w must be colblocks (or not).");
+        GISMO_ASSERT((int) E2::Space == (int) E3::Space,"Both v and w must be space (or not), but E2::Space = "
+                         << E2::Space << " and E3::Space = " << E3::Space);
+        GISMO_ASSERT(_t.rows() == _f.rows(),"Rows of v and w differ. _t.rows() = " << _t.rows()<< ", _f.rows() = "<< _f.rows());
+        GISMO_ASSERT(_t.cols() == _f.cols(),"Columns of v and w differ. _t.cols() = " << _t.cols()<< ", _f.cols() = "<< _f.cols());
+        GISMO_ASSERT(_t.rowVar() == _f.rowVar(), "rowVar of v and w differ.");
+        GISMO_ASSERT(_t.colVar() == _f.colVar(), "colVar of v and w differ.");
+    }
+
+
+    AutoReturn_t eval(const index_t k) const
+    {
+        return (_c.val().eval(k) > 0.0  ? _t.eval(k) : _f.eval(k));
+    }
+
+    index_t rows() const { return _t.rows(); }
+    index_t cols() const { return _t.cols(); }
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _c.parse(evList); _t.parse(evList); _f.parse(evList); }
+
+
+    index_t cardinality_impl() const
+    { return _t.cardinality(); }
+
+    const gsFeSpace<Scalar> & rowVar() const
+    { return _t.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    { return _t.colVar(); }
+
+    void print(std::ostream &os) const { os<<"( "; _c.print(os); os<<" > 0) ? "; _t.print(os); os<<" : "; _f.print(os); }
+};
+
+// Ternary expression, (c > 0) ? t : f
+template <typename E1, typename E2, typename E3> //EIGEN_STRONG_INLINE
+//collapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
+ternary_expr<E1,E2,E3> ternary( _expr<E1> const& c, _expr<E1> const& t, _expr<E3> const& f)
+{ return ternary_expr<E1, E2, E3>(c, t, f); }
 
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >

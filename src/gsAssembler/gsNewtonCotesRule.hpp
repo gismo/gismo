@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gsDomain/gsDomain.h>
 #include <gsCore/gsBasis.h>
 #include <gsIO/gsOptionList.h>
 
@@ -20,11 +21,11 @@ namespace gismo
 {
 
 template<class T> void
-gsNewtonCotesRule<T>::init(const gsBasis<T> & basis, const T quA,
+gsNewtonCotesRule<T>::init(const gsDomain<T> & domain, const T quA,
                            const index_t quB, short_t fixDir)
 //const unsigned digits)
 {
-    const short_t d  = basis.dim();
+    const short_t d  = domain.dim();
     GISMO_ASSERT( fixDir < d && fixDir>-2, "Invalid input fixDir = "<<fixDir);
 
     std::vector<gsVector<T> > nodes(d);
@@ -43,14 +44,14 @@ gsNewtonCotesRule<T>::init(const gsBasis<T> & basis, const T quA,
     for(i=0; i!=fixDir; ++i )
     {
         //note: +0.5 for rounding
-        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(basis.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
-        //const bool found = 
+        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(domain.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
+        //const bool found =
         computeReference(numNodes, nodes[i], weights[i]);
     }
     ++i;// skip fixed direction
     for(; i<d; ++i )
     {
-        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(basis.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
+        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(domain.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
         computeReference(numNodes, nodes[i], weights[i]);
     }
 
@@ -63,33 +64,49 @@ gsNewtonCotesRule<T>::init(const gsBasis<T> & basis, const T quA,
     //        computeReference(numNodes, nodes[i], weights[i], digits);
     //    }
     //}
-    
+
     this->computeTensorProductRule(nodes, weights);
 }
 
 template<class T>
-gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsBasis<T> & basis, 
+gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsDomain<T> & domain,
                             const T quA, const index_t quB,
                             const short_t fixDir)
-//const unsigned digits)
 {
-    init(basis, quA, quB, fixDir);
+    init(domain, quA, quB, fixDir);
 }
 
 template<class T>
-gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsBasis<T> & basis, 
+gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsDomain<T> & domain,
                             const gsOptionList & options,
                             const short_t fixDir)
-//const unsigned digits)
 {
     const T       quA = options.getReal("quA");
     const index_t quB = options.getInt ("quB");
-    init(basis, quA, quB, fixDir);
+    init(domain, quA, quB, fixDir);
+}
+
+template<class T>
+gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsBasis<T> & basis,
+                            const T quA, const index_t quB,
+                            const short_t fixDir)
+:
+gsNewtonCotesRule(*basis.domain(), quA, quB, fixDir)
+{
+}
+
+template<class T>
+gsNewtonCotesRule<T>::gsNewtonCotesRule(const gsBasis<T> & basis,
+                            const gsOptionList & options,
+                            const short_t fixDir)
+:
+gsNewtonCotesRule(*basis.domain(), options, fixDir)
+{
 }
 
 
 template<class T> void
-gsNewtonCotesRule<T>::setNodes( gsVector<index_t> const & numNodes, 
+gsNewtonCotesRule<T>::setNodes( gsVector<index_t> const & numNodes,
                           unsigned digits)
 {
     GISMO_UNUSED(digits);
@@ -115,7 +132,7 @@ gsNewtonCotesRule<T>::computeReference(index_t n,       // Number of points
 
     index_t i,j,k;
     x.resize(n);
-    
+
     if ( 1 == n )
     {
         x[0] = (T)(0);
