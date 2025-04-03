@@ -5,8 +5,9 @@
 ##
 ## Author: Angelos Mantzaflaris
 ######################################################################
+set (CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.1)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
