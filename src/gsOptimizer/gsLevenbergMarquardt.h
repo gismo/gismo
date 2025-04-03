@@ -74,6 +74,15 @@ class gsLevenbergMarquardt : public gsOptimizer<T>
     typedef typename lsq::LevenbergMarquardt<T, gsLevenbergMarquardtObjective<T>>::Result Result;
 
 public:
+
+    gsLevenbergMarquardt()
+    :
+    Base(),
+    m_solver()
+    {
+        this->defaultOptions();
+    }
+
     gsLevenbergMarquardt(gsOptProblem<T> * problem)
     :
     Base(problem),
@@ -87,6 +96,13 @@ public:
 
 public:
     // const gsMatrix<T> & lambda() const { return m_lambda; }
+
+    void setProblem(gsOptProblem<T> * problem) override
+    {
+        m_op=problem;
+        gsGradientDescentObjective<T> obj(m_op);
+        m_solver.setObjective(obj);
+    }
 
     void minimize(const gsMatrix<T> &initialGuess)
     {

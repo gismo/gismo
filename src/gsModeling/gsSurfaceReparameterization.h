@@ -1,71 +1,135 @@
 /** @file gsSurfaceReparameterization.h
 
-    @brief Provides declaration for SurfaceReparameterization.
+@brief Provides declaration for SurfaceReparameterization.
 
-    This file is part of the G+Smo library.
+This file is part of the G+Smo library.
 
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): Ye Ji
+Author(s): Ye Ji
 */
 
 #pragma once
 
-#include <gsNurbs/gsMobiusDomain.h>
+#include <gsNurbs/gsMobiusMap.h>
 
-#ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
 
-namespace gismo {
-  template<short_t d=2, typename T=real_t>
-  class gsObjFuncSurface : public gsOptProblem<T> {
-   private:
+namespace gismo
+{
+
+template<short_t d=2, typename T=real_t>
+class gsObjFuncSurface : public gsOptProblem<T>
+{
+private:
 	using geometryMap = typename gsExprAssembler<T>::geometryMap;
 	using space = typename gsExprAssembler<T>::space;
 	using solution = typename gsExprAssembler<T>::solution;
 
-   public:
-	  explicit
-	  gsObjFuncSurface(const gsMultiPatch<T> &patches,
-					   const gsMobiusDomain<2,T> &mobiusDomain)
-	  :
-	  m_mp(patches),
-	  m_MobiusDomain(mobiusDomain),
-	  m_lambda1(1.0),
-	  m_lambda2(1.0),
-	  m_area(1)
-	  {
-	  	defaultOptions();
+	using Base = gsOptProblem<T>;
+
+public:
+	explicit
+	gsObjFuncSurface(const gsMultiPatch<T> &patches,
+	const gsMobiusMap<2,T> &mobiusDomain)
+	:
+	m_mp(patches),
+	m_MobiusMap(mobiusDomain),
+	m_lambda1(1.0),
+	m_lambda2(1.0),
+	m_area(1)
+	{
+		defaultOptions();
 
 		gsMatrix<T> bbox;
 		m_mp.boundingBox(bbox);
 		m_mp.patch(0).translate(-bbox.col(0));
 		m_mp.patch(0).scale(1/(bbox.col(1)-bbox.col(0)).array());
 
-		gsComposedGeometry<T> cgeom(m_MobiusDomain, m_mp.patch(0));
+		gsComposedGeometry<T> cgeom(m_MobiusMap, m_mp.patch(0));
 		gsMultiBasis<T> dbasis(cgeom.basis());
 		m_evaluator.setIntegrationElements(dbasis);
 
 		// Set the geometry map
 		geometryMap G = m_evaluator.getMap(cgeom);
 		m_area = m_evaluator.integral(meas(G));
+
+		// Optimizer properties
+		m_numDesignVars = m_MobiusMap.nControls();
+		m_curDesign = m_MobiusMap.alpha();
 	}
 
-	T evalObj(const gsAsConstVector<T> &coefsM) const final;
+	/// @brief see \ref gsOptProblem.h for more details
+	T evalObj(const gsAsConstVector<T> &coefsM) const final
+	{
+		m_MobiusMap.updateGeom(coefsM);
 
-	void gradObj_into(const gsAsConstVector<T> &u, gsAsVector<T> &result) const override;
+		gsComposedGeometry<T> cgeom(m_MobiusMap, m_mp.patch(0));
+		gsMultiBasis<T> dbasis(cgeom.basis());
+		m_evaluator.setIntegrationElements(dbasis);
 
-	gsOptionList &options() { return m_options; }
+		geometryMap G = m_evaluator.getMap(cgeom);
+		auto FFF = jac(G).tr() * jac(G);
+		auto m_integration = (FFF.trace() / meas(G)).val() + pow(FFF.det().val(), 2) / pow(m_area, 2);
+		//        auto m_integration = (FFF.trace() / meas(G)).val();
 
-	void defaultOptions();
+		return m_evaluator.integral(m_integration);
+	}
 
-	void addOptions(const gsOptionList &options);
+	/// @brief see \ref gsOptProblem.h for more details
+	void gradObj_into(const gsAsConstVector<T> &u, gsAsVector<T> &result) const override
+	{
+		const index_t n = u.rows();
+		gsMatrix<T> uu = u;  // Create a copy
+		gsAsVector<T> tmp(uu.data(), n);
+		gsAsConstVector<T> ctmp(uu.data(), n);
 
-	void applyOptions(const gsOptionList &options);
+		const T h = static_cast<T>(1e-6);
 
-   protected:
+		// Central finite difference gradient
+		for (index_t i = 0; i < n; ++i)
+		{
+			tmp[i] += h;
+			const T e1 = this->evalObj(ctmp);
+			tmp[i] = u[i] - h;
+			const T e2 = this->evalObj(ctmp);
+			tmp[i] = u[i];
+			result[i] = (e1 - e2) / (2 * h);
+		}
+	}
+
+	/// @brief  Options accessor
+	gsOptionList &options()
+	{ return m_options; }
+
+	/// @brief Default options
+	void defaultOptions()
+	{
+		m_options.addReal("qi_lambda1", "Sets the lambda 1 value", 1.0);
+		m_options.addReal("qi_lambda2", "Sets the lambda 2 value", 1.0);
+	}
+
+	/// @brief Adds options to the list
+	void addOptions(const gsOptionList &options)
+	{
+		m_options.update(options, gsOptionList::addIfUnknown);
+	}
+
+	/// @brief Applies the options
+	void applyOptions(const gsOptionList &options)
+	{
+		m_options.update(options, gsOptionList::addIfUnknown);
+		m_lambda1 = m_options.getReal("qi_lambda1");
+		m_lambda2 = m_options.getReal("qi_lambda2");
+		m_evaluator.options().update(m_options, gsOptionList::addIfUnknown);
+	}
+
+protected:
+	using Base::m_numDesignVars;
+	using Base::m_curDesign;
+
 	const gsMultiPatch<T> m_mp;
 	const gsDofMapper m_mapper;
 	const gsMultiBasis<T> m_mb;
@@ -75,138 +139,101 @@ namespace gismo {
 
 	gsOptionList m_options;
 
-	mutable gsMobiusDomain<2,T> m_MobiusDomain;
+	mutable gsMobiusMap<2,T> m_MobiusMap;
 	T m_lambda1, m_lambda2, m_area;
 	gsComposedGeometry<T> m_cgeom;
-  };
+};
 
-  template<short_t d, typename T>
-  T gsObjFuncSurface<d, T>::evalObj(const gsAsConstVector<T>& coefsM) const {
-	m_MobiusDomain.updateGeom(coefsM);
+template<class T = real_t>
+gsMultiPatch<T> approximateWithBSpline(const gsMultiPatch<T>& mp, const gsMatrix<T>& coefsMobiusIn)
+{
 
-	gsComposedGeometry<T> cgeom(m_MobiusDomain, m_mp.patch(0));
-	gsMultiBasis<T> dbasis(cgeom.basis());
-	m_evaluator.setIntegrationElements(dbasis);
+	GISMO_ASSERT(mp.geoDim() == 3, "Only 3D geometry is supported.");
+	GISMO_ASSERT(mp.dim() == 2, "This function only supports 2D parametric domains.");
 
-	geometryMap G = m_evaluator.getMap(cgeom);
-	auto FFF = jac(G).tr() * jac(G);
-	auto m_integration = (FFF.trace() / meas(G)).val() + pow(FFF.det().val(), 2) / pow(m_area, 2);
-//        auto m_integration = (FFF.trace() / meas(G)).val();
+	gsMultiPatch<T> result;
 
-	return m_evaluator.integral(m_integration);
-  }
+	gsMatrix<T, 2, 2> alpha = coefsMobiusIn.reshape(2, 2);
+	gsMobiusMap<2, T> mobiusDomain(alpha);
 
-  template<short_t d, typename T>
-  void gsObjFuncSurface<d, T>::gradObj_into(const gsAsConstVector<T>& u, gsAsVector<T>& result) const {
-	const index_t n = u.rows();
-	gsMatrix<T> uu = u;  // Create a copy
-	gsAsVector<T> tmp(uu.data(), n);
-	gsAsConstVector<T> ctmp(uu.data(), n);
+	for (const auto& patch : mp.patches())
+	{
+		// Generate UV grid points for parameterization
+		gsMatrix<T> uv = gsPointGrid(mp.parameterRange(0), patch->basis().size() * 2);
 
-	const T h = static_cast<T>(1e-6);
+		// Evaluate the Mobius domain mapping
+		gsMatrix<T> xieta;
+		mobiusDomain.eval_into(uv, xieta);
 
-	// Central finite difference gradient
-	for (index_t i = 0; i < n; ++i) {
-	  tmp[i] += h;
-	  const T e1 = this->evalObj(ctmp);
-	  tmp[i] = u[i] - h;
-	  const T e2 = this->evalObj(ctmp);
-	  tmp[i] = u[i];
-	  result[i] = (e1 - e2) / (2 * h);
-	}
-  }
+		// Evaluate geometry
+		gsMatrix<T> eval_geo(3, uv.cols());
+		patch->eval_into(xieta, eval_geo);
 
-  template<short_t d, typename T>
-  void gsObjFuncSurface<d, T>::defaultOptions() {
-	m_options.addReal("qi_lambda1", "Sets the lambda 1 value", 1.0);
-	m_options.addReal("qi_lambda2", "Sets the lambda 2 value", 1.0);
-  }
+		// Convert the patch's basis into a tensor B-spline basis
+		gsTensorBSplineBasis<2, T> & bbasis = static_cast<gsTensorBSplineBasis<2, T>&>(patch->basis());
 
-  template<short_t d, typename T>
-  void gsObjFuncSurface<d, T>::addOptions(const gsOptionList &options) {
-	m_options.update(options, gsOptionList::addIfUnknown);
-  }
+		// Fit surface using gsFitting and adjust parameters
+		gsFitting<T> fittingSurface(uv, eval_geo, bbasis);
+		fittingSurface.compute();
+		fittingSurface.parameterCorrection();
 
-  template<short_t d, typename T>
-  void gsObjFuncSurface<d, T>::applyOptions(const gsOptionList &options) {
-	m_options.update(options, gsOptionList::addIfUnknown);
-	m_lambda1 = m_options.getReal("qi_lambda1");
-	m_lambda2 = m_options.getReal("qi_lambda2");
-	m_evaluator.options().update(m_options, gsOptionList::addIfUnknown);
-  }
-
-  template<class T = real_t>
-  gsMultiPatch<T> approximateWithBSpline(const gsMultiPatch<T>& mp, const gsMatrix<T>& coefsMobiusIn) {
-
-    GISMO_ASSERT(mp.geoDim() == 3, "Only 3D geometry is supported.");
-    GISMO_ASSERT(mp.dim() == 2, "This function only supports 2D parametric domains.");
-
-    gsMultiPatch<T> result;
-
-        gsMatrix<T, 2, 2> alpha = coefsMobiusIn.reshape(2, 2);
-	gsMobiusDomain<2, T> mobiusDomain(alpha);
-
-	for (const auto& patch : mp.patches()) {
-	  // Generate UV grid points for parameterization
-	  gsMatrix<T> uv = gsPointGrid(mp.parameterRange(0), patch->basis().size() * 2);
-
-	  // Evaluate the Mobius domain mapping
-	  gsMatrix<T> xieta;
-	  mobiusDomain.eval_into(uv, xieta);
-
-	  // Evaluate geometry
-	  gsMatrix<T> eval_geo(3, uv.cols());
-	  patch->eval_into(xieta, eval_geo);
-
-	  // Convert the patch's basis into a tensor B-spline basis
-	  gsTensorBSplineBasis<2, T> & bbasis = static_cast<gsTensorBSplineBasis<2, T>&>(patch->basis());
-
-	  // Fit surface using gsFitting and adjust parameters
-	  gsFitting<T> fittingSurface(uv, eval_geo, bbasis);
-	  fittingSurface.compute();
-	  fittingSurface.parameterCorrection();
-
-	  // Add the fitted patch to the result multipatch
-	  result.addPatch(*fittingSurface.result());
+		// Add the fitted patch to the result multipatch
+		result.addPatch(*fittingSurface.result());
 	}
 
 	return result;
-  }
+}
 
-  template <typename T>
-  class SurfaceReparameterization
-  {
-   public:
-	// Constructor takes a multi-patch input and alpha matrix for the Mobius domain
-	explicit SurfaceReparameterization(const gsMultiPatch<T>& patches)
-		: m_mp(patches) {
-          m_mobiusDomain = gsMobiusDomain<2,T>(gsMatrix<T,2,2>::Constant(0.5));
+/**
+ * @brief Class for surface reparameterization using Mobius mapping
+ *
+ * This class provides a method to reparameterize a surface using Mobius mapping.
+ * It takes a multi-patch geometry and an optimizer as input, and generates
+ * a reparameterized B-Spline surface.
+ *
+ * @tparam T The type of the input data (e.g., real_t)
+ */
+template <typename T>
+class SurfaceReparameterization
+{
+public:
+	/**
+	 * @brief Constructor for SurfaceReparameterization
+	 *
+	 * @param patches The input multi-patch geometry
+	 * @param optimizer The optimizer to be used
+	 */
+// Constructor takes a multi-patch input and alpha matrix for the Mobius domain
+	explicit SurfaceReparameterization(const gsMultiPatch<T>& patches,
+											 gsOptimizer<T> & optimizer)
+	:
+	m_mp(patches),
+	m_optimizer(optimizer)
+	{
+		m_mobiusDomain = gsMobiusMap<2,T>(gsMatrix<T,2,2>::Constant(0.5));
 	}
 
 	// Run the optimization process and generate the reparameterized B-Spline surface
-	gsMultiPatch<T> solve() {
-	  gsObjFuncSurface<2, T> objFuncSurface(m_mp, m_mobiusDomain);
+	gsMultiPatch<T> solve()
+	{
+		gsObjFuncSurface<2, T> objFuncSurface(m_mp, m_mobiusDomain);
 
-	  gsVector<T> initialGuessVector(4);
-	  initialGuessVector.setConstant(0.5); // Adjust this as necessary for better performance
+		gsVector<T> initialGuessVector(4);
+		initialGuessVector.setConstant(0.5); // Adjust this as necessary for better performance
 
-	  // Set up the optimizer
-	  gsHLBFGS<T> optimizer(&objFuncSurface);
-	  optimizer.options().setReal("MinGradLen", 1e-6);
-	  optimizer.options().setReal("MinStepLen", 1e-6);
-	  optimizer.options().setInt("MaxIterations", 200);
-	  optimizer.options().setInt("Verbose", 0);
+		// Assign the optimizatio problem
+		m_optimizer.setProblem(&objFuncSurface);
 
-	  // Perform the optimization
-	  optimizer.solve(initialGuessVector);
+		// Perform the optimization
+		m_optimizer.solve(initialGuessVector);
 
-	  return approximateWithBSpline(m_mp, optimizer.currentDesign());
+		return approximateWithBSpline(m_mp, m_optimizer.currentDesign());
 	}
 
-   private:
-	gsMultiPatch<T> m_mp;                  // Input multi-patch geometry
-	gsMobiusDomain<2, T> m_mobiusDomain;   // Mobius domain instance
-  };
+private:
+	gsMultiPatch<T>      m_mp;           // Input multi-patch geometry
+	gsMobiusMap<2, T> m_mobiusDomain; // Mobius domain instance
+	gsOptimizer<T>     & m_optimizer;    // Optimizer
+};
 
-  } // namespace gismo
-#endif
+} // namespace gismo
