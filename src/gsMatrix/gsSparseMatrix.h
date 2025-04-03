@@ -92,8 +92,43 @@ public:
             mat.innerIndexPtr() + oind + mat.innerNonZeroPtr()[outer];
     }
 
+    static gsSparseMatrixIter end(const SparseMatrix& mat, const _Index outer)
+    {
+        gsSparseMatrixIter o(mat,outer);
+        o.m_values += o.m_end - o.m_indices;
+        o.m_indices = o.m_end;
+        return o;
+    }
+
     inline gsSparseMatrixIter& operator++()
     { ++m_values; ++m_indices; return *this; }
+
+    inline gsSparseMatrixIter& operator+=(size_t a)
+    { m_values+=a; m_indices+=a; return *this; }
+
+    inline gsSparseMatrixIter& operator+(size_t a)
+    {
+        gsSparseMatrixIter tmp(*this);
+        return tmp+=a;
+    }
+
+    inline gsSparseMatrixIter& operator--()
+    { --m_values; --m_indices; return *this; }
+
+    inline gsSparseMatrixIter& operator-=(index_t a)
+    { m_values-=a; m_indices-=a; return *this; }
+
+    inline gsSparseMatrixIter& operator-(size_t a)
+    {
+        gsSparseMatrixIter tmp(*this);
+        return tmp-=a;
+    }
+
+    inline const T& operator[](size_t i) const
+    { return *(m_values+i); }
+
+    inline T& operator[](size_t i)
+    { return const_cast<T&>(*(m_values+i)); }
 
     inline const T& value() const { return *m_values; }
     inline T& valueRef() { return const_cast<T&>(*m_values); }
@@ -255,6 +290,10 @@ public:
     /// column \ a outer (or row \a outer if the matrix is RowMajor)
     inline iterator begin(const index_t outer) const { return iterator(*this,outer);}
 
+    /// \brief Returns an iterator to the  end position of
+    /// column \ a outer (or row \a outer if the matrix is RowMajor)
+    inline iterator end(const index_t outer) const { return iterator::end(*this,outer);}
+
     void clear()
     {
         this->resize(0,0);
@@ -363,7 +402,7 @@ public:
     {
         std::ostringstream os;
         os <<"Sparsity: "<< std::fixed << std::setprecision(2)
-           <<(double)100*this->nonZeros()/this->size() <<'%'<<", nnz: "<<this->size() <<"\n";
+           <<(double)100*this->nonZeros()/this->size() <<'%'<<", nnz: "<<this->nonZeros() <<"\n";
         for (index_t i = 0; i!=this->rows(); ++i)
         {
             for (index_t j = 0; j!=this->cols(); ++j)
