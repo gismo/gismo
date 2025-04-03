@@ -751,7 +751,7 @@ private:
                     const gsMatrix<T>&) const { GISMO_NO_IMPLEMENTATION }
 
     
-private:
+protected:
 
     // m_is_truncated(j)
     // if -1   : j-th basis function is not truncated,

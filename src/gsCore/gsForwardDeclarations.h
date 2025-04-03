@@ -136,6 +136,7 @@ template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainBou
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;
 template <class T=real_t>                class gsFunction;
+template <class T=real_t>                class gsComposedFunction;
 template <class T=real_t>                class gsFuncCoordinate;
 template <class T=real_t>                class gsFuncData;
 template <class T=real_t>                class gsMapData;
@@ -150,6 +151,7 @@ template <class basis_t >                class gsRationalBasis;
 template <short_t d, class T=real_t>     class gsTensorBasis;
 template <short_t d, class T=real_t>     class gsHTensorBasis;
 template <short_t d, class T=real_t>     class gsMappedBasis;
+template <class T=real_t>                class gsComposedBasis;
 
 template <class T=real_t>                class gsKnotVector;
 //template <class T=real_t>              class gsCompactKnotVector;
@@ -183,6 +185,7 @@ template <short_t d, class T=real_t>     class gsTensorNurbs;
 template <short_t d, class T=real_t>     class gsTensorBezier;
 template <class T=real_t>                class gsTrimSurface;
 template <short_t d, class T=real_t>     class gsMappedSpline;
+template <class T=real_t>                class gsComposedGeometry;
 
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;
