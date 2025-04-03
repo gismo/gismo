@@ -76,5 +76,22 @@ public:
     { os << "("; _u.print(os);os <<" + ";_v.print(os);os << ")"; }
 };
 
+/// Addition operator for expressions
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+add_expr<E1,E2> const operator+(_expr<E1> const& u, _expr<E2> const& v)
+{ return add_expr<E1, E2>(u, v); }
+
+/// Addition operator for expressions and numbers
+template <typename E> EIGEN_STRONG_INLINE
+add_expr< E, _expr<typename E::Scalar, true> >
+operator+(_expr<E> const& u, const typename E::Scalar v)
+{ return add_expr<E,_expr<typename E::Scalar>>(u, _expr<typename E::Scalar,true>(v)); }
+
+/// Addition operator for expressions and numbers
+template <typename E> EIGEN_STRONG_INLINE
+add_expr< E, _expr<typename E::Scalar, true> >
+operator+(const typename E::Scalar v, _expr<E> const& u)
+{ return add_expr<E,_expr<typename E::Scalar>>(u, _expr<typename E::Scalar,true>(v)); }
+
 }// namespace expr
 }// namespace gismo

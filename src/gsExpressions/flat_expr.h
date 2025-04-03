@@ -78,5 +78,10 @@ public:
     void print(std::ostream &os) const { os << "flat("; _u.print(os); os<<")"; }
 };
 
+/// Make a matrix 2x2 expression "flat"
+template <typename E> EIGEN_STRONG_INLINE
+flat_expr<E> const flat(E const & u)
+{ return flat_expr<E>(u); }
+
 }// namespace expr
 }// namespace gismo

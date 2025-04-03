@@ -148,5 +148,10 @@ public:
     { os << "("; _u.print(os); os<<" % "; _v.print(os); os<<")";}
 };
 
+/// Frobenious product (also known as double dot product) operator for expressions
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+frprod_expr<E1,E2> const  operator%(_expr<E1> const& u, _expr<E2> const& v)
+{ return frprod_expr<E1, E2>(u, v); }
+
 }// namespace expr
 }// namespace gismo

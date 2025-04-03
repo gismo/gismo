@@ -56,5 +56,10 @@ public:
     void print(std::ostream &os) const { os << "replicate("; _u.print(os); os<<","<<_n<<","<<_m<<")"; }
 };
 
+/// Replicate an expression
+template <typename E> EIGEN_STRONG_INLINE
+replicate_expr<E> const replicate(E const & u, index_t n, index_t m = 1)
+{ return replicate_expr<E>(u, n, m); }
+
 }// namespace expr
 }// namespace gismo

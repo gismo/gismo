@@ -64,5 +64,10 @@ public:
     void print(std::ostream &os) const { os << "diag("; _u.print(os); os<<")"; }
 };
 
+/// Get diagonal elements of matrix as a vector
+template <typename E> EIGEN_STRONG_INLINE
+diag_expr<E> const diagonal(E const & u)
+{ return diag_expr<E>(u); }
+
 }// namespace expr
 }// namespace gismo

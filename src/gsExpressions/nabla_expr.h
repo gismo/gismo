@@ -71,5 +71,9 @@ public:
     void print(std::ostream &os) const { os << "nabla("; u.print(os); os <<")"; }
 };
 
+/// The nabla (\f$\nabla\f$) of a finite element variable
+template<class T> EIGEN_STRONG_INLINE
+nabla_expr<T> nabla(const gsFeVariable<T> & u) { return nabla_expr<T>(u); }
+
 }// namespace expr
 }// namespace gismo

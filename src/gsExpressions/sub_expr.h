@@ -83,5 +83,18 @@ public:
     { os << "("; _u.print(os); os<<" - ";_v.print(os); os << ")";}
 };
 
+/// Subtraction operator for expressions
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+sub_expr<E1,E2> const operator-(_expr<E1> const& u, _expr<E2> const& v)
+{ return sub_expr<E1, E2>(u, v); }
+
+template <typename E2> EIGEN_STRONG_INLINE
+sub_expr<_expr<typename E2::Scalar>,E2> const
+operator-(typename E2::Scalar const& s, _expr<E2> const& v)
+{
+    // assert E2::ScalarValued
+    return sub_expr<_expr<typename E2::Scalar>, E2>(_expr<typename E2::Scalar>(s), v);
+}
+
 }// namespace expr
 }// namespace gismo

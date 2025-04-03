@@ -72,5 +72,9 @@ public:
     void print(std::ostream &os) const { os << "tv("; _G.print(os); os <<")"; }
 };
 
+/// The tangent boundary vector of a geometry map in 2D
+template<class T> EIGEN_STRONG_INLINE
+tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
+
 }// namespace expr
 }// namespace gismo

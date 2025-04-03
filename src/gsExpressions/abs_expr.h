@@ -56,5 +56,9 @@ private:
     eval_impl(const U & u, const index_t k) { return u.eval(k).cwiseAbs(); }
 };
 
+/// Absolute value
+template<class E> EIGEN_STRONG_INLINE
+abs_expr<E> abs(const E & u) { return abs_expr<E>(u); }
+
 }// namespace expr
 }// namespace gismo

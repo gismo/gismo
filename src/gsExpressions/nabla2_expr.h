@@ -65,5 +65,10 @@ public:
     {return gsNullExpr<T>::get();}
 };
 
+/// The nabla2 (\f$\nabla^2\f$) of a finite element variable
+template<class T>
+nabla2_expr<T> nabla2(const gsFeVariable<T> & u) { return nabla2_expr<T>(u); }
+// #define lapl(x) nabla2(x).sum() // assume tarDim==1
+
 }// namespace expr
 }// namespace gismo

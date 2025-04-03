@@ -50,5 +50,8 @@ public:
     void print(std::ostream &os) const { os << "id("<<_dim <<")";}
 };
 
+/// The identity matrix of dimension \a dim
+EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
+
 }// namespace expr
 }// namespace gismo

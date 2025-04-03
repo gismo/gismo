@@ -125,7 +125,6 @@ public:
         {
             res.resize(ur, vc*nb);
             GISMO_ASSERT(tmpA.cols()==uc*nb, "Dimension error.. "<< tmpA.cols()<<"!="<<uc*nb );
-            GISMO_ASSERT(1==_v.cardinality(), "Dimension error");
             //gsInfo<<"cols = "<<res.cols()<<"; rows = "<<res.rows()<<"\n";
             for (index_t i = 0; i!=nb; ++i)
                 res.middleCols(i*vc,vc).noalias()
@@ -220,6 +219,34 @@ public:
 
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
+
+/// Multiplication operator for expressions
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+mult_expr<E1,E2> const operator*(_expr<E1> const& u, _expr<E2> const& v)
+{ return mult_expr<E1, E2>(u, v); }
+
+template <typename E2> EIGEN_STRONG_INLINE
+mult_expr<typename E2::Scalar,E2,false> const
+operator*(typename E2::Scalar const& u, _expr<E2> const& v)
+{ return mult_expr<typename E2::Scalar, E2, false>(u, v); }
+
+template <typename E1> EIGEN_STRONG_INLINE
+mult_expr<typename E1::Scalar,E1,false> const
+operator*(_expr<E1> const& v, typename E1::Scalar const& u)
+{ return mult_expr<typename E1::Scalar,E1, false>(u, v); }
+
+template <typename E1> EIGEN_STRONG_INLINE
+mult_expr<typename E1::Scalar,E1,false> const
+operator-(_expr<E1> const& u)
+{ return mult_expr<typename E1::Scalar,E1, false>(-1, u); }
+
+template <typename E> mult_expr<constMat_expr, E> const
+operator*( gsMatrix<typename E::Scalar> const& u, _expr<E> const& v)
+{ return mult_expr<constMat_expr, E>(mat(u), v); }
+
+template <typename E> mult_expr<E, constMat_expr> const
+operator*(_expr<E> const& u, gsMatrix<typename E::Scalar> const& v)
+{ return mult_expr<E, constMat_expr>(u, mat(v) ); }
 
 }// namespace expr
 }// namespace gismo

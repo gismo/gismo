@@ -67,5 +67,9 @@ public:
     void print(std::ostream &os) const { os << "curl("; _u.print(os); os <<")"; }
 };
 
+/// The curl of a finite element variable
+template<class T> EIGEN_STRONG_INLINE
+curl_expr<T> curl(const gsFeVariable<T> & u) { return curl_expr<T>(u); }
+
 }// namespace expr
 }// namespace gismo

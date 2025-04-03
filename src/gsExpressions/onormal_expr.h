@@ -52,5 +52,9 @@ public:
     void print(std::ostream &os) const { os << "nv("; _G.print(os); os <<")"; }
 };
 
+/// The (outer pointing) boundary normal of a geometry map
+template<class T> EIGEN_STRONG_INLINE
+onormal_expr<T> nv(const gsGeometryMap<T> & u) { return onormal_expr<T>(u); }
+
 }// namespace expr
 }// namespace gismo

@@ -60,5 +60,11 @@ public:
     void print(std::ostream &os) const { os << "reshape("; _u.print(os); os<<","<<_n<<","<<_m<<")"; }
 };
 
+
+/// Reshape an expression
+template <class E> EIGEN_STRONG_INLINE
+reshape_expr<E> const reshape(E const & u, index_t n, index_t m)
+{ return reshape_expr<E>(u, n, m); }
+
 }// namespace expr
 }// namespace gismo

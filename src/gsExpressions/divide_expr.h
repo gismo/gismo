@@ -133,5 +133,20 @@ public:
     { os << "("<< _c <<"/";_u.print(os);os << ")";}
 };
 
+/// Scalar division operator for expressions
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+divide_expr<E1,E2> const operator/(_expr<E1> const& u, _expr<E2> const& v)
+{ return divide_expr<E1,E2>(u, v); }
+
+template <typename E> EIGEN_STRONG_INLINE
+divide_expr<E,typename E::Scalar> const
+operator/(_expr<E> const& u, const typename E::Scalar v)
+{ return divide_expr<E,typename E::Scalar>(u, v); }
+
+template <typename E> EIGEN_STRONG_INLINE
+divide_expr<typename E::Scalar,E> const
+operator/(const typename E::Scalar u, _expr<E> const& v)
+{ return divide_expr<typename E::Scalar,E>(u, v); }
+
 }// namespace expr
 }// namespace gismo

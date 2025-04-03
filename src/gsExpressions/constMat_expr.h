@@ -50,5 +50,15 @@ public:
     void print(std::ostream &os) const { os << "constMat";}
 };
 
+EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim)
+{
+    gsMatrix<real_t> ones(dim, dim);
+    ones.fill(1);
+    return constMat_expr(ones);
+}
+
+EIGEN_STRONG_INLINE constMat_expr mat(const gsMatrix<real_t> mat) { return constMat_expr(mat); }
+
+
 }// namespace expr
 }// namespace gismo

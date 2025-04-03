@@ -29,7 +29,7 @@ class grad_expr : public _expr<grad_expr<E> >
 {
     typename E::Nested_t _u;
 public:
-    enum {Space = E::Space, ScalarValued= 0, ColBlocks= 0};
+    enum {Space = E::Space, ScalarValued= 0, ColBlocks= 0}; // Order = E::Order+1
 
     typedef typename E::Scalar Scalar;
     mutable gsMatrix<Scalar> tmp;
@@ -90,7 +90,7 @@ protected:
 
 public:
     typedef T Scalar;
-    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0}; // ORDER IS DIFFICULT! Maybe make gsScalarSolution and gsVectorSolution?
 
     explicit grad_expr(const gsFeSolution<T> & u) : _u(u) { }
 
@@ -139,6 +139,10 @@ public:
 
     void print(std::ostream &os) const { os << "\u2207(s)"; }
 };
+
+/// The gradient of a variable
+template<class E> EIGEN_STRONG_INLINE
+grad_expr<E> grad(const E & u) { return grad_expr<E>(u); }
 
 }// namespace expr
 }// namespace gismo

@@ -114,6 +114,12 @@ public:
     void print(std::ostream &os) const { os << "\u2206(s)"; }
 };
 
+template<class E> EIGEN_STRONG_INLINE
+lapl_expr<E> lapl(const symbol_expr<E> & u) { return lapl_expr<E>(u); }
+
+template<class T> EIGEN_STRONG_INLINE
+lapl_expr<gsFeSolution<T> > lapl(const gsFeSolution<T> & u)
+{ return lapl_expr<gsFeSolution<T> >(u); }
 
 }// namespace expr
 }// namespace gismo

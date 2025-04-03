@@ -55,5 +55,8 @@ public:
     void print(std::ostream &os) const { os << "sn("; _G.print(os); os <<")"; }
 };
 
+template<class T> EIGEN_STRONG_INLINE
+normal_expr<T> sn(const gsGeometryMap<T> & u) { return normal_expr<T>(u); }
+
 }// namespace expr
 }// namespace gismo

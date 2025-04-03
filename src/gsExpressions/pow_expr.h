@@ -17,11 +17,18 @@
 namespace gismo
 {
 namespace expr
-{
-
 /**
-   Expression pow(a,b) returns the value of 'a' raised to the power of 'b'
-*/
+ * @class pow_expr
+ * @brief Represents an expression for computing the power of a base expression raised to a given exponent.
+ *
+ * @tparam E The type of the base expression.
+ *
+ * @see _expr
+ * @see math::pow
+ *
+ * @ingroup Expressions
+ */
+{
 template<class E>
 class pow_expr : public _expr<pow_expr<E> >
 {
@@ -54,6 +61,17 @@ public:
 
     void print(std::ostream &os) const { os<<"pow("; _u.print(os); os <<")"; }
 };
+
+/**
+ * @brief Creates a power expression by raising the given expression to the specified power.
+ *
+ * @tparam E The type of the expression being raised to a power.
+ * @param u The input expression to be raised to the power.
+ * @param q The exponent to which the expression is raised.
+ * @return A pow_expr object representing the result of raising the input expression to the power q.
+ */
+template<class E> pow_expr<E>
+pow(_expr<E> const& u, real_t q) { return pow_expr<E>(u,q); }
 
 }// namespace expr
 }// namespace gismo
