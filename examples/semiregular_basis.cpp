@@ -106,10 +106,24 @@ int main(int argc, char* argv[])
 
     gsFunctionExpr<real_t> ff("x", "x*(1-y)", "x*y^2", 2);
     gsMatrix<> fu = ff.eval(u);
+    gsKnotVector<> knot_v(0,1,0,4); //multiplicity at the end
+    gsTensorBSplineBasis<2> tp_bezier(knot_v,knot_v);
+    auto control_points = tp_bezier.interpolateAtAnchors(ff.eval(tp_bezier.anchors()));
+
+    gsInfo<<"Control points are = " <<control_points->coefs()<<"\n";
+
+
+    
     gsFitting<> fit(u, fu, BB);
     fit.compute();
     gsInfo << *fit.result() <<"\n";
 
+    auto res = fit.result()->eval(u);
+
+    auto error_L2 = ( fu - res ).norm();
+
+    gsInfo<<"Error is: "<<error_L2<< "\n";
+    
     if (plot)
     {
         gsWriteParaview(BB, "srbasis", 10000);
