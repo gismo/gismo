@@ -151,7 +151,7 @@ public:
 public:
     
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         os << "BSpline curve "<< "of degree "<< this->basis().degree()<< ", "<<  this->basis().knots() <<".\n";
         os << "with control points "<< this->m_coefs.row(0)<<" ... "<<this->m_coefs.bottomRows(1) << ".\n";
@@ -200,7 +200,7 @@ public:
 
 
     /// Merge other B-spline into this one.
-    void merge( gsGeometry<T> * otherG );
+    void merge( gsGeometry<T> * otherG ) override;
 
     /// Segment this BSpline curve between u0 and u1. Either of these values
     /// can be outside the parameter range of the curve, but u1 must be
@@ -241,7 +241,7 @@ public:
     void insertKnot( T knot, index_t i = 1);
 private:
     // Resolve hidden overload w.r.t. gsGeometry
-    virtual void insertKnot( T knot, index_t dir, index_t i = 1);
+    virtual void insertKnot( T knot, index_t dir, index_t i = 1) override;
 public:
 
     /// Insert the given new knots in the range \a [\em inBegin .. \em inEend )
@@ -305,7 +305,7 @@ public:
     }
 
     // Look at gsGeometry class for a description
-    void degreeElevate(short_t const i = 1, short_t const dir = -1);
+    void degreeElevate(short_t const i = 1, short_t const dir = -1) override;
 
     /// @brief Returns true iff the point p is contained (approximately) on
     /// the curve, with the given tolerance.
@@ -365,7 +365,7 @@ public:
 
     /// \brief Return true if point \a u is on the curve with
     /// tolerance \a tol
-    bool isOn(gsMatrix<T> const &u, T tol = 1e-3) const;
+    bool isOn(gsMatrix<T> const &u, T tol = 1e-3) const override;
 
     /// \brief Return true if point \a u is an endpoint (corner) of
     /// the curve with tolerance \a tol

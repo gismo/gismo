@@ -107,17 +107,17 @@ public:
 
     GISMO_CLONE_FUNCTION(gsConstantFunction)
 
-    const gsConstantFunction<T> & piece(const index_t) const
+    const gsConstantFunction<T> & piece(const index_t) const override
     {
         // same on all pieces
         return *this;
     }
 
     // Documentation in gsFunction class
-    virtual short_t domainDim() const   { return m_domainDim ; }
+    virtual short_t domainDim() const override { return m_domainDim ; }
 
     // Documentation in gsFunction class
-    virtual short_t targetDim() const
+    virtual short_t targetDim() const override
     { return static_cast<short_t>(m_coefs.cols()); }
 
     const gsVector<T> value() const { return m_coefs.transpose();}
@@ -131,29 +131,29 @@ public:
     { m_coefs = val.transpose(); m_domainDim = domainDim;}
 
     // Documentation in gsFunction class
-    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // Documentation in gsFunction class
-    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // Documentation in gsFunction class
-    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result,
-                          bool sameElement = false) const;
+                          bool sameElement = false) const override;
 
     // Documentation in gsFunction class
-    virtual std::ostream &print(std::ostream &os) const
+    virtual std::ostream &print(std::ostream &os) const override
     {
         os << m_coefs.transpose();
         return os;
     }
 
-    virtual const gsBasis<T> & basis() const {GISMO_NO_IMPLEMENTATION}
-    virtual gsBasis<T> & basis() {GISMO_NO_IMPLEMENTATION}
+    virtual const gsBasis<T> & basis() const override {GISMO_NO_IMPLEMENTATION}
+    virtual gsBasis<T> & basis() override {GISMO_NO_IMPLEMENTATION}
 
-    void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
+    void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const override
     { gsFunction<T>::compute(in, out); }
 
 private:

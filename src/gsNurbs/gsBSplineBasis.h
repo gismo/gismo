@@ -811,12 +811,12 @@ public:
     GISMO_CLONE_FUNCTION(gsBSplineBasis)
 
     // Look at gsBasis class for a description
-    Self_t & component(short_t i);
+    Self_t & component(short_t i) override;
 
     // Look at gsBasis class for a description
-    const Self_t & component(short_t i) const;
+    const Self_t & component(short_t i) const override;
 
-    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const;
+    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const override;
 
 private:
 

@@ -202,7 +202,7 @@ public:
     GISMO_CLONE_FUNCTION(gsTensorNurbs)
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     { os << "Tensor-NURBS geometry "<< "R^"<< this->parDim() << 
             " --> R^"<< this->geoDim()<< ", #control pnts= "<< this->coefsSize() <<": "
          << this->coef(0) <<" ... "<< this->coef(this->coefsSize()-1); 
@@ -224,7 +224,7 @@ public:
     { return this->basis().source().knots(i); } 
 
     /// Inserts knot \a knot at direction \a dir, \a i times
-    void insertKnot( T knot, int dir, int i = 1)
+    void insertKnot( T knot, int dir, int i = 1) override
     {
         GISMO_ASSERT( i>0, "multiplicity must be at least 1");
         GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
@@ -376,7 +376,7 @@ public:
     /// Splits the geometry either two parts in direction \a dir, or if \a dir = -1
     /// in 2^d parts, by calling splitAt() for each direction.
     /// The function automatically searches for the midpoint the corresponding knot vector.
-    std::vector<gsGeometry<T>*> uniformSplit(index_t dir = -1) const
+    std::vector<gsGeometry<T>*> uniformSplit(index_t dir = -1) const override
     {
         // We use the simple fact that a NURBS function in R^d is the central probjection
         // of a spline function in R^{d+1} into R^d.
