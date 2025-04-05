@@ -6,9 +6,11 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-set (CMAKE_POLICY_VERSION_MINIMUM 3.0 CACHE)
-
-cmake_minimum_required(VERSION 3.1)
+if(CMAKE_VERSION VERSION_LESS "4")
+  cmake_minimum_required(VERSION 3.1)
+else()
+  cmake_minimum_required(VERSION 3.1 ... 3.10)
+endif()
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
