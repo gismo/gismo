@@ -196,11 +196,6 @@ executable is created in build-folder/bin.
 
   If enabled the plugin for Axel modeler is compiled (requires Axel).
 
-* GISMO_WITH_PSOLID       *OFF*
-
-  If enabled the extensions using functionalities of Parasolid geometric
-kernel are compiled (requires Parasolid).
-
 * gsOpennurbs
 
   Extension for reading and writing of Rhinoceros' 3DM.

@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBasis.h>
+#include <gsAssembler/gsGaussRule.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsIO/gsOptionList.h>
 
@@ -21,22 +22,27 @@ namespace gismo
 {
 
 template<class T>
-gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
+// gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
+gsPatchRule<T>::gsPatchRule(const gsDomain<T> & domain,
                             const index_t degree,
                             const index_t regularity,
                             const bool overintegrate,
                             const short_t fixDir
                             )
                             :
-                            m_basis(&basis),
+                            // m_domain(domain),
                             m_deg(degree),
                             m_reg(regularity),
                             m_over(overintegrate),
                             m_fixDir(fixDir)
 {
     GISMO_ENSURE(m_reg<m_deg,"regularity cannot be greater or equal to the order!");
+
+    GISMO_ASSERT((dynamic_cast<const gsTensorDomain<T,2> *>(&domain)), "gsPatchRule only supports tensor domains");
+    m_domain = static_cast<const gsTensorDomain<T,2> *>(&domain);
+
     // Initialize some stuff
-    m_dim = m_basis->dim();
+    m_dim = m_domain->dim();
 
     GISMO_ASSERT( m_fixDir < short_t(m_dim) && m_fixDir>-2, "Invalid input fixDir = "<<m_fixDir);
 
@@ -47,12 +53,12 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
     gsKnotVector<T> knots;
     gsMatrix<T> greville;
     gsVector<T> integral;
-    gsBSplineBasis<T> * Bbasis;
+    const gsKnotVector<T> * Bbasis;
 
     // Loop over dimensions of the basis and store the nodes and weights for each dimension
+    m_end = m_domain->boundingBox().col(1);
     for (size_t d = 0; d != m_dim; d++)
     {
-        m_end = m_basis->support().col(1);
         if (short_t(d)==m_fixDir && m_fixDir!=-1)
         {
             m_nodes[d].resize(2);
@@ -63,7 +69,9 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
         else
         {
             // Construct temporary basis (must be B-spline because we use knots!)
-            Bbasis = const_cast<gsBSplineBasis<T> *>(static_cast<const gsBSplineBasis<T> * >(&m_basis->component(d)));
+            // Bbasis = const_cast<gsBSplineBasis<T> *>(static_cast<const gsBSplineBasis<T> * >(&m_basis->component(d)));
+            // Bbasis = const_cast<gsKnotVector<T> *>(static_cast<const gsKnotVector<T> * >(&m_domain->component(d)));
+            Bbasis = static_cast<const gsKnotVector<T> * >(m_domain->component(d).get());
 
             // Find the knots
             knots = this->_init(Bbasis);
@@ -207,11 +215,11 @@ gsPatchRule<T>::mapTo( T startVal, T endVal,
 }
 
 template<class T>
-gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
+gsKnotVector<T> gsPatchRule<T>::_init(const gsKnotVector<T> * Bbasis) const
 {
     // get the knot vector and the size of the basis
-    gsKnotVector<T> knots = Bbasis->knots();
-    index_t size = Bbasis->size();
+    gsKnotVector<T> knots = *Bbasis;
+    index_t size = Bbasis->size() - Bbasis->degree() - 1;
 
     // check the difference in the current order and the desired order
     index_t pdiff = m_deg - knots.degree();
@@ -230,9 +238,7 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
     else if (rdiff>0)
         knots.reduceMultiplicity(-rdiff);
 
-    gsBSplineBasis<T> basis = gsBSplineBasis<T>(knots);
-    size = basis.size();
-
+    size = knots.size() - knots.degree() - 1;
     // If basis should be over-integrated, then add extra knots in the boundary elements
     if (m_over)
     {
@@ -307,10 +313,11 @@ std::pair<gsMatrix<T>,gsVector<T> > gsPatchRule<T>::_integrate(const gsKnotVecto
     gsVector<T> weights;
 
     // obtain the exact integrals of the functions
-    typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
-    for (; domIt->good(); domIt->next() )
+    typename gsBasis<T>::domainIter domIt    = basis.domain()->beginAll();
+    typename gsBasis<T>::domainIter domItEnd = basis.domain()->endAll();
+    for (; domIt<domItEnd; ++domIt )
     {
-        quRule.mapTo(domIt->lowerCorner(),domIt->upperCorner(),nodes,weights);
+        quRule.mapTo(domIt.lowerCorner(),domIt.upperCorner(),nodes,weights);
         basis.active_into(nodes,actives);
         basis.eval_into(nodes,tmp);
         tmp *= weights;

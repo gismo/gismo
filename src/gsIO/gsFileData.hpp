@@ -32,7 +32,7 @@
 #include <gsOpenCascade/gsReadOcct.h>
 #endif
 
-#ifdef GISMO_WITH_PSOLID               // Extension files
+#ifdef gsParasolid_ENABLED // Extension files
 #include <gsParasolid/gsReadParasolid.h>
 #endif
 
@@ -196,7 +196,7 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
     //else if (ext== "step")
     //    return readStepFile(m_lastPath);
 #endif
-#ifdef GISMO_WITH_PSOLID
+#ifdef gsParasolid_ENABLED
     else if (ext== "xmt_txt")
         return readParasolidFile(m_lastPath);
     else if (ext== "x_t")
@@ -1301,7 +1301,6 @@ bool gsFileData<T>::readOffFile( String const & fn )
 
     g->append_attribute( internal::makeAttribute("vertices", nverts, *data) );
     g->append_attribute( internal::makeAttribute("faces"   , nfaces, *data) );
-    g->append_attribute( internal::makeAttribute("edges"   , nedges, *data) );
 
     for (int i = 0; i < nverts; i++)
         if ( getline(file, line) )
@@ -1315,6 +1314,14 @@ bool gsFileData<T>::readOffFile( String const & fn )
         else
             return false;
 
+    int i = 0;
+    for (; i < nedges; i++)
+        if ( getline(file, line) )
+            tmp << line.substr(0,line.size()) << std::endl;
+        else
+            break;//edges are optional
+
+    g->append_attribute( internal::makeAttribute("edges", i, *data) );
     g->value( internal::makeValue( tmp.str(), *data) );
     tmp.clear();
 
@@ -2541,7 +2548,7 @@ bool gsFileData<T>::readParasolidFile( String const & fn )
     // Remove extension and pass to parasolid
     //int lastindex = fn.find_last_of(".");
     //return extensions::gsReadParasolid( fn.substr(0, lastindex).c_str(), *data);
-#ifdef GISMO_WITH_PSOLID
+#ifdef gsParasolid_ENABLED
     return extensions::gsReadParasolid( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);

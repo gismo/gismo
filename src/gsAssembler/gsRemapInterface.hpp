@@ -67,7 +67,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     }
 
     constructBreaks();
-
+    
 }
 
 namespace {
@@ -326,29 +326,33 @@ void gsRemapInterface<T>::constructBreaks()
 {
     m_breakpoints.resize(domainDim());
 
-    const typename gsBasis<T>::domainIter domIt1 = m_b1->makeDomainIterator(m_bi.first());
+    typename gsBasis<T>::domainIter domIt1    = m_b1->domain()->beginBdr(m_bi.first());
+    typename gsBasis<T>::domainIter domIt1End = m_b1->domain()->endBdr(m_bi.first());
+
     addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(0), m_equalityTolerance);
-    for (; domIt1->good(); domIt1->next())
-        addBreaks(m_breakpoints, m_parameterBounds1, domIt1->upperCorner(), m_equalityTolerance);
+    for (; domIt1<domIt1End; ++domIt1)
+        addBreaks(m_breakpoints, m_parameterBounds1, domIt1.upperCorner(), m_equalityTolerance);
     addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(1), m_equalityTolerance);
 
-    const typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(m_bi.second());
+    typename gsBasis<T>::domainIter domIt2    = m_b2->domain()->beginBdr(m_bi.second());
+    typename gsBasis<T>::domainIter domIt2End = m_b2->domain()->endBdr(m_bi.second());
+
     if (m_isAffine)
     {
         gsAffineFunction<T> intfMap_inverse(m_bi.dirMap(m_bi.second()), m_bi.dirOrientation(m_bi.second()),
             m_parameterBounds2, m_parameterBounds1);
 
-        for (; domIt2->good(); domIt2->next())
-            addBreaks(m_breakpoints, m_parameterBounds1, intfMap_inverse.eval(domIt2->upperCorner()), m_equalityTolerance);
+        for (; domIt2<domIt2End; ++domIt2)
+            addBreaks(m_breakpoints, m_parameterBounds1, intfMap_inverse.eval(domIt2.upperCorner()), m_equalityTolerance);
     }
     else
     {
         gsVector<T> breakpoint_transferred = m_parameterBounds1.col(0); // initial guess
-        for (; domIt2->good(); domIt2->next())
+        for (; domIt2<domIt2End; ++domIt2)
         {
-            if (inRange(m_parameterBounds2, domIt2->upperCorner()))
+            if (inRange(m_parameterBounds2, domIt2.upperCorner()))
             {
-                gsMatrix<T> breakpoint_phys = m_g2->eval(domIt2->upperCorner());
+                gsMatrix<T> breakpoint_phys = m_g2->eval(domIt2.upperCorner());
 
                 m_g1->newtonRaphson( breakpoint_phys, breakpoint_transferred, true, m_newtonTolerance, 100 );
                 GISMO_ASSERT ( (breakpoint_phys-m_g1->eval(breakpoint_transferred)).norm() <= m_equalityTolerance,
@@ -429,9 +433,8 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result)
     }
 }
 
-
 template <class T>
-typename gsDomainIterator<T>::uPtr gsRemapInterface<T>::makeDomainIterator() const
+gsDomainIteratorWrapper<T> gsRemapInterface<T>::beginAll() const
 {
     gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (*m_b1, m_bi.first());
     for (index_t i=0; i<domainDim(); ++i)
@@ -439,9 +442,24 @@ typename gsDomainIterator<T>::uPtr gsRemapInterface<T>::makeDomainIterator() con
         if (i!=m_bi.first().direction())
             tdi->setBreaks(m_breakpoints[i],i);
     }
-    return typename gsDomainIterator<T>::uPtr(tdi);
+    return gsDomainIteratorWrapper<T>(tdi);
 }
 
+template <class T>
+gsDomainIteratorWrapper<T> gsRemapInterface<T>::endAll() const
+{
+    return domainIterWrapper(new gsDomainIteratorEnd<T>(this->numElements()));
+}
+
+template <class T>
+size_t gsRemapInterface<T>::numElements() const
+{
+    size_t nElements = 1;
+    for (index_t i=0; i<domainDim(); ++i)
+        if (i!=m_bi.first().direction())
+            nElements *= m_breakpoints[i].size() - 1;
+    return nElements;
+}
 
 template <class T>
 std::ostream& gsRemapInterface<T>::print(std::ostream & os) const

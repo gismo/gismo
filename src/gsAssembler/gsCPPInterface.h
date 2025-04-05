@@ -23,7 +23,7 @@
 namespace gismo {
 
 /** @brief Provides a mapping between the corresponding sides of two patches sharing an interface,
-  * by means of a closest point projection.  
+  * by means of a closest point projection.
   *
   *
   * @ingroup Assembler
@@ -51,27 +51,27 @@ public:
     ///  | CheckAffine             | The number of interior points (per direction) in point grid used to
     ///  |                         | default: 1e-10
     gsCPPInterface(const gsMultiPatch<T>   & mp,
-                     const gsMultiBasis<T>   & mb,
+                    //  const gsMultiBasis<T>   & mb,
                      const boundaryInterface & bi,
                      const gsOptionList      & opt = defaultOptions() );
 
     static uPtr make (const gsMultiPatch<T>   & mp,
-                     const gsMultiBasis<T>   & mb,
+                    //  const gsMultiBasis<T>   & mb,
                      const boundaryInterface & bi,
                      const gsOptionList      & opt = defaultOptions() )
-    { return uPtr(new gsCPPInterface(mp,mb,bi,opt)); }
-    
+    { return uPtr(new gsCPPInterface(mp,bi,opt)); }
+
 private:
-    const gsGeometry<T>* m_slaveGeom, *m_masterGeom; ///< Geometry of first (Slave) patch and second patch (master) 
+    const gsGeometry<T>* m_slaveGeom, *m_masterGeom; ///< Geometry of first (Slave) patch and second patch (master)
     typename gsGeometry<T>::Ptr m_masterBdr;  ///< The boundary geometry of second patch -- Master
 
-    const gsBasis<T> * m_slaveBasis ;        ///< Basis on first patch
-    const gsBasis<T> * m_masterBasis;        ///< Basis on second patch
+    // const gsBasis<T> * m_slaveBasis ;        ///< Basis on first patch
+    // const gsBasis<T> * m_masterBasis;        ///< Basis on second patch
 
     boundaryInterface m_boundaryInterface;   ///< Corresponding boundary interface
 
     T m_Tolerance;                            ///< Tolerance for closest point algorithm
-    
+
     std::vector<index_t> m_freeDirs;
     index_t m_fixedParam;
     index_t m_fixedDir;
@@ -103,15 +103,9 @@ public:
     /// Returns parameter dimension of the domains
     virtual short_t domainDim() const { return m_slaveGeom->domainDim(); }
 
-    /// @brief Returns a domain iterator
-    ///
-    /// The domain iterator lives on \f$ \widehat \Gamma_1 \f$. Its break points are the union of
-    /// the brakpoints of the basis on \f$ \widehat \Omega_1 \f$ and the breakpoints of the basis
-    /// on \f$ \widehat \Omega_2 \f$, mapped to \f$ \widehat \Omega_1 \f$.
-    typename gsDomainIterator<T>::uPtr makeDomainIterator() const;
 
 
-    /// Returns the break points used in \ref makeDomainIterator
+    /// Returns the break points used in domain iteration
     const std::vector< std::vector<T> > & breakPoints() const { return m_breakpoints; }
 
     /// Prints the state of the object

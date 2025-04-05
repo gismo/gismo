@@ -29189,7 +29189,7 @@ namespace exprtk
               (vector_size <= T(0)) ||
               std::not_equal_to<T>()
               (T(0),vector_size - details::numeric::trunc(vector_size)) ||
-              (static_cast<std::size_t>(vector_size) > max_vector_size)
+              (details::numeric::to_uint64(vector_size) > max_vector_size)
             )
          {
             set_error(make_error(

@@ -447,6 +447,10 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            const bool isParam,
                            std::string const & fn, unsigned npts);
 
+template<class T>
+void writeSingleBasisMesh(const gsBasis<T> & basis,
+                          std::string const & fn);
+
 /// Export a computational mesh
 template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,

@@ -22,8 +22,6 @@
 #include <gsHLBFGS/gsHLBFGS.h>
 #endif
 
-using namespace gismo;
-
 namespace gismo
 {
 /**
