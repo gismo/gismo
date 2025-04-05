@@ -61,7 +61,7 @@ public:
     typedef typename gsBSplineTraits<d,T>::RatGeometry GeometryType;
 
     /// @brief Associated Boundary basis type
-    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::RatBasis BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
 
     /// @brief Shared pointer for gsTensorNurbsBasis
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;
@@ -197,7 +197,7 @@ public:
     }
 
     /// @brief Gives back the boundary basis at boxSide s
-    memory::unique_ptr<BoundaryBasisType> boundaryBasis(boxSide const & s);
+    gsBasis<T> * boundaryBasis_impl(boxSide const & s) const;
 
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
