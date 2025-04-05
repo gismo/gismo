@@ -110,6 +110,7 @@ class CMakeBuild(build_ext):
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
             # option flags for gismo
+            f"-DCMAKE_BUILD_TYPE=Release",
             f"-DGISMO_WITH_PYBIND11=ON",
             f"-DGISMO_BUILD_EXAMPLES=OFF",
             f"-DNOSNIPPETS=ON",
@@ -236,7 +237,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/gismo/gismo",
     install_requires=[
-        "numpy",
+        "numpy<2",
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",

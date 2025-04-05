@@ -120,10 +120,14 @@ public:
     // Documentation in gsDomainIterator.h
     void reset()
     {
+        m_id = 0;
         curElement = meshStart;
         m_isGood = ( meshEnd.array() != meshStart.array() ).all() ;
         if (m_isGood)
+        {
             update();
+            m_id = 0;
+        }
     }
 
     /// return the tensor index of the current element

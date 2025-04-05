@@ -30,7 +30,11 @@
 #include <gsUtils/gsUtils.h>
 
 #ifdef gsMpfr_ENABLED
+#undef real_t
+#define real_t real_t_mpreal
 #include <mpreal.h>
+#undef real_t
+#define real_t GISMO_COEFF_TYPE
 #endif
 
 #ifdef gsGmp_ENABLED
@@ -159,6 +163,8 @@ template <short_t d, class T=real_t>     class gsTensorBernsteinBasis;
 template <short_t d, class T=real_t>     class gsHBSplineBasis;
 template <short_t d, class T=real_t>     class gsTHBSplineBasis;
 template <short_t d, class T=real_t>     class gsTHBSpline;
+template <short_t d, class T=real_t>     class gsRationalTHBSplineBasis;
+template <short_t d, class T=real_t>     class gsRationalTHBSpline;
 
 // Geometries
 template <class T=real_t>                class gsBSpline;

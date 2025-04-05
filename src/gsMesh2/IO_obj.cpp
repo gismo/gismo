@@ -187,7 +187,7 @@ bool write_obj(const gsSurfMesh& mesh, const std::string& filename)
     for (gsSurfMesh::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
     {
         const Point& p = points[*vit];
-        fprintf(out, "v %.10f %.10f %.10f\n", (double)p[0], (double)p[1], (double)p[2]);
+        fprintf(out, "v %.10f %.10f %.10f\n", cast<real_t,double>(p[0]), cast<real_t,double>(p[1]), cast<real_t,double>(p[2]) );
     }
 
     //normals
@@ -197,7 +197,7 @@ bool write_obj(const gsSurfMesh& mesh, const std::string& filename)
         for (gsSurfMesh::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
         {
             const Point& p = normals[*vit];
-            fprintf(out, "vn %.10f %.10f %.10f\n", (double)p[0], (double)p[1], (double)p[2]);
+            fprintf(out, "vn %.10f %.10f %.10f\n", cast<real_t,double>(p[0]), cast<real_t,double>(p[1]), cast<real_t,double>(p[2]) );
         }
     }
 
@@ -223,7 +223,7 @@ bool write_obj(const gsSurfMesh& mesh, const std::string& filename)
         for (gsSurfMesh::Halfedge_iterator hit=mesh.halfedges_begin(); hit!=mesh.halfedges_end(); ++hit)
         {
             const Texture_coordinate& pt = tex_coord[*hit];
-            fprintf(out, "vt %.10f %.10f %.10f\n", (double)pt[0], (double)pt[1], (double)pt[2]);
+            fprintf(out, "vt %.10f %.10f %.10f\n", cast<real_t,double>(pt[0]), cast<real_t,double>(pt[1]), cast<real_t,double>(pt[2]) );
         }
     }
 

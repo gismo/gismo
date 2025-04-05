@@ -54,6 +54,8 @@ In the gismo/examples sub-directory we find:
 
 - \subpage multiGrid_example
 
+- \subpage paraview_example
+
 - \subpage pMultiGrid_example
 
 <!--
@@ -65,6 +67,8 @@ In the gismo/examples sub-directory we find:
 - \subpage poissonTHB_example
 
 - \subpage sparseSolvers_example
+
+- \subpage stokes_ieti_example
 
 - \subpage thbRefinement_example
 

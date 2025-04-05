@@ -2,12 +2,12 @@
 
     @brief Provides declaration of TensorBSplineBasis abstract interface.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -21,7 +21,7 @@
 namespace gismo
 {
 
-/** 
+/**
     @brief A tensor product B-spline basis.
 
     \tparam T coefficient type
@@ -31,16 +31,16 @@ namespace gismo
     \ingroup basis
     \ingroup Nurbs
 */
-  
+
 template<short_t d, class T>
 class gsTensorBSplineBasis : public gsTensorBasis<d,T>
 {
-public: 
+public:
     typedef gsKnotVector<T> KnotVectorType;
 
     /// Base type
     typedef gsTensorBasis<d,T> Base;
-    
+
     /// Family type
     typedef gsBSplineBasis<T>  Family_t;
 
@@ -82,16 +82,23 @@ public:
         this->Base::swap(static_cast<Base&>(other));
         std::swap(m_isPeriodic, other.m_isPeriodic);
     }
-    
+
 #if !EIGEN_HAS_RVALUE_REFERENCES
     gsTensorBSplineBasis & operator=(gsTensorBSplineBasis other)
     { gsTensorBSplineBasis::swap(other); return *this;}
+// #else // defined implicitly
+//     gsTensorBSplineBasis(gsTensorBSplineBasis && other) : Base(give(other)) { }
+//     gsTensorBSplineBasis(const gsTensorBSplineBasis &  other) : Base(other) { }
+//     gsTensorBSplineBasis & operator=(gsTensorBSplineBasis&& other)
+//     { return (gsTensorBSplineBasis &)Base::operator=(give(other)); }
+//     gsTensorBSplineBasis & operator=(const gsTensorBSplineBasis& other)
+//     { return (gsTensorBSplineBasis &)Base::operator=(other); }
 #endif
-    
+
     /**
        \brief Constructs a 2D tensor product B-spline basis. Assumes
        that the tamplate parameter \a d is equal to 2.
-       
+
        \param KV1 knot-vector with respect to the first parameter dimension
        \param KV2 knot-vector with respect to the second parameter dimension
      */
@@ -104,19 +111,19 @@ public:
     /**
        \brief Constructs a 3D tensor product B-spline basis. Assumes
        that the tamplate parameter \a d is equal to 3.
-       
+
        \param KV1 knot-vector with respect to the first dimension
        \param KV2 knot-vector with respect to the second dimension
        \param KV3 knot-vector with respect to the third dimension
      */
-    gsTensorBSplineBasis( KnotVectorType KV1, 
-                          KnotVectorType KV2, 
+    gsTensorBSplineBasis( KnotVectorType KV1,
+                          KnotVectorType KV2,
                           KnotVectorType KV3 )
     : Base( new Basis_t(give(KV1)), new Basis_t(give(KV2)), new Basis_t(give(KV3)) )
     { m_isPeriodic = -1; }
 
-    gsTensorBSplineBasis( KnotVectorType KV1, 
-                          KnotVectorType KV2, 
+    gsTensorBSplineBasis( KnotVectorType KV1,
+                          KnotVectorType KV2,
                           KnotVectorType KV3,
                           KnotVectorType KV4)
     : Base( new Basis_t(give(KV1)), new Basis_t(give(KV2)),
@@ -124,47 +131,35 @@ public:
     { m_isPeriodic = -1; }
 
     explicit gsTensorBSplineBasis(std::vector<KnotVectorType> KV)
-    { 
+    {
         GISMO_ENSURE(d == KV.size(), "Invalid number of knot-vectors given." );
         for(short_t i = 0; i!=d; ++i)
             this->m_bases[i] = new Basis_t( give(KV[i]) );
-        m_isPeriodic = -1; 
+        m_isPeriodic = -1;
     }
 
-    gsTensorBSplineBasis( Basis_t* x,  Basis_t*  y) : Base(x,y) 
-    { 
+    gsTensorBSplineBasis( Basis_t* x,  Basis_t*  y) : Base(x,y)
+    {
         GISMO_ENSURE(d==2,"Invalid constructor." );
         setIsPeriodic();
     }
-    
-    gsTensorBSplineBasis( Basis_t* x,  Basis_t* y, Basis_t* z ) : Base(x,y,z) 
-    { 
+
+    gsTensorBSplineBasis( Basis_t* x,  Basis_t* y, Basis_t* z ) : Base(x,y,z)
+    {
         GISMO_ENSURE(d==3,"Invalid constructor." );
         setIsPeriodic();
-        
+
     }
-    
-    gsTensorBSplineBasis( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w ) : Base(x,y,z,w) 
-    { 
+
+    gsTensorBSplineBasis( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w ) : Base(x,y,z,w)
+    {
         GISMO_ENSURE(d==4,"Invalid constructor." );
         setIsPeriodic();
     }
-    
-    gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb ) : Base(bb.data())
-    {
-        GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
-        GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
-        bb.clear();
-        setIsPeriodic();
-    }
-    
-    explicit gsTensorBSplineBasis(std::vector< Basis_t*> & bb ) 
-    : Base( castVectorPtr<gsBasis<T> >(bb).data() )
-    {
-        GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
-        bb.clear();
-        setIsPeriodic();
-    }
+
+    explicit gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb );
+
+    explicit gsTensorBSplineBasis(std::vector< Basis_t*> & bb );
 
 #ifdef __DOXYGEN__
     /// \brief Returns the boundary basis for side s.
@@ -178,7 +173,7 @@ public:
     }
 
     GISMO_CLONE_FUNCTION(gsTensorBSplineBasis)
-    
+
     static Self_t * New(std::vector<gsBasis<T>*> & bb )
     { return new Self_t(bb); }
 
@@ -190,17 +185,17 @@ public:
 
     static uPtr make(std::vector<Basis_t*> & bb )
     { return uPtr( new Self_t(bb) ); }
-    
+
 public:
 
     KnotVectorType & knots (int i)
     { return Self_t::component(i).knots(); }
 
-    const KnotVectorType & knots (int i) const 
+    const KnotVectorType & knots (int i) const
     { return Self_t::component(i).knots(); }
 
     // knot \a k of direction \a i
-    T knot(int i, int k) const 
+    T knot(int i, int k) const
     { return Self_t::component(i).knots()[k]; }
 
 
@@ -244,7 +239,7 @@ public:
     ///
     /// \copydetails gsBSplineBasis::refine_k
     void k_refine(Self_t & other, int const & i = 1)
-    { 
+    {
         for (short_t j = 0; j < d; ++j)
             Self_t::component(j).refine_k(other.component(j), i);
     }
@@ -256,7 +251,7 @@ public:
         for (short_t j = 0; j < d; ++j)
             Self_t::component(j).refine_p(i);
     }
-    
+
     /// \brief Uniform h-refinement (placing \a i new knots inside
     /// each knot-span, for all directions
     void refine_h(int const & i = 1)
@@ -267,7 +262,7 @@ public:
 
     /**
      * \brief Takes a vector of coordinate wise knot values and
-     * inserts these values to the basis.  
+     * inserts these values to the basis.
      *
      * Also constructs and returns
      * the transfer matrix that transfers coefficients to the new
@@ -277,7 +272,10 @@ public:
      * \param[in] refineKnots Coordinate-wise knot values to be inserted
      */
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector< std::vector<T> >& refineKnots);
-
+    void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, gsMatrix<T> const & boxes)
+    {
+        this->refine_withTransfer(transfer,this->_boxToKnots(boxes));
+    }
 
     /**
      * \brief Takes a vector of coordinate wise knot values and
@@ -291,6 +289,10 @@ public:
      * \todo rename to insertKnots_withCoefs
      */
     void refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots);
+    void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
+    {
+        this->refine_withCoefs(coefs,this->_boxToKnots(boxes));
+    }
 
     /// Inserts the knot \em knot with multiplicity \em mult in the knot
     /// vector of direction \a dir.
@@ -359,8 +361,8 @@ public:
 
     /// \brief Reduces spline continuity (in all directions) at
     /// interior knots by \a i
-    void reduceContinuity(int const & i = 1) 
-    { 
+    void reduceContinuity(int const & i = 1)
+    {
         for (short_t j = 0; j < d; ++j)
             Self_t::component(j).reduceContinuity(i);
     }
@@ -400,7 +402,7 @@ public:
     {
         GISMO_ASSERT( box.rows() == static_cast<index_t>(d), "Invalid input box");
         gsMatrix<index_t,d,2> tmp;
-        
+
         gsVector<index_t,d> str;
         this->stride_cwise(str);
 
@@ -414,7 +416,7 @@ public:
 
         result = gsVector<index_t>::LinSpaced(sz[0], tmp(0,0), tmp(0,1));
         for (short_t dm = 1; dm != d; ++dm)
-            result = result.replicate(1,sz[dm]) + 
+            result = result.replicate(1,sz[dm]) +
                 gsVector<index_t>::Constant(result.rows(), str[dm] )
                 * gsVector<index_t>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1))
                 .transpose();
@@ -433,7 +435,7 @@ public:
         }
         return rvo;
     }
-    
+
     /// Tells, whether there is a coordinate direction in which the basis is periodic.
     inline bool isPeriodic() const { return m_isPeriodic != -1; }
 
@@ -482,6 +484,11 @@ public:
     }
 
 private:
+
+    /// For each knot span, check if its midpoint is
+    /// contained in any of the refinement boxes and returns
+    /// The mid-point of that span
+    std::vector<std::vector<T>> _boxToKnots(gsMatrix<T> const & boxes);
 
     /// Repeated code from the constructors is held here.
     /// Sets m_isPeriodic to either -1 (if none of the underlying bases is periodic) or the index of the one basis that is periodic.

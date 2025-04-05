@@ -7,6 +7,11 @@
 
 project( gsMex )
 
+#Test architecture is none
+if(NOT "x${TARGET_ARCHITECTURE}" STREQUAL "xnone")
+  message(WARNING "Target architecture is ${TARGET_ARCHITECTURE}, use TARGET_ARCHITECTURE=none for Matlab plugin to work.")
+endif()
+
 #For El Capitan
 #see https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
 #set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)

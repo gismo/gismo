@@ -141,7 +141,7 @@ public:
     ///
     /// @param jumpMatrix    The jump matrix
     /// @param dofs          The corresponding degrees of freedom (usually skeleton dofs)
-    static JumpMatrix restrictJumpMatrix( const JumpMatrix& jumpMatrix, const std::vector<index_t> dofs );
+    static JumpMatrix restrictJumpMatrix( const JumpMatrix& jumpMatrix, const std::vector<index_t>& dofs );
 
     /// Data type that contains four sparse matrices that make
     /// up the blocks, stored in the members A00, A01, A10 and A11.
@@ -154,7 +154,7 @@ public:
     ///
     /// If 0 corresponds to the list of dofs and 1 remains to the
     /// others, this function returns the blocks A00, A10, A01, A11 of A
-    static Blocks matrixBlocks( const SparseMatrix& localMatrix, const std::vector<index_t> dofs );
+    static Blocks matrixBlocks( const SparseMatrix& localMatrix, const std::vector<index_t>& dofs );
 
     /// @brief Computes the Schur complement with respect to the block A11 of matrixBlocks
     ///
@@ -173,7 +173,7 @@ public:
     ///    auto blocks = gsScaledDirichletPrec<T>::matrixBlocks(mat, dofs);
     ///    return gsScaledDirichletPrec<T>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) );
     /// @endcode
-    static OpPtr schurComplement( const SparseMatrix& localMatrix, const std::vector<index_t> dofs )
+    static OpPtr schurComplement( const SparseMatrix& localMatrix, const std::vector<index_t>& dofs )
     {
         Blocks blocks = matrixBlocks(localMatrix, dofs);
         return schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) );

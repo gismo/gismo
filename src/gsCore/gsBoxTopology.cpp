@@ -31,6 +31,14 @@ namespace gismo
       .def(py::init<>())
       .def("boundaries", static_cast<std::vector< patchSide >& (Class::*)()> (&Class::boundaries))
       .def("interfaces", static_cast<std::vector< boundaryInterface >& (Class::*)()> (&Class::interfaces))
+      .def("__str__",
+         [] (Class & self)
+        {
+            std::ostringstream os;
+            self.print(os);
+            return os.str();
+        },
+        "Returns a string with information about the object.")
 
       ;
   }
@@ -95,7 +103,7 @@ gsBoxTopology::ifContainer gsBoxTopology::selectInterfaces(interaction::type ifc
 {
     ifContainer result;
     for ( size_t i = 0; i < m_interfaces.size(); ++i )
-        if ( m_interfaces[i].type() == interaction::contact)
+        if ( m_interfaces[i].type() == ifc_type)
             result.push_back(m_interfaces[i]);
     return result;
 }

@@ -168,24 +168,24 @@ bool write_vtk(const gsSurfMesh& mesh, const std::string& filename)
     for (gsSurfMesh::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
     {
         const Point& p = points[*vit];
-        fprintf(out, "%.10f %.10f %.10f", (double)p[0], (double)p[1], (double)p[2]);
+        fprintf(out, "%.10f %.10f %.10f", cast<real_t,double>(p[0]), cast<real_t,double>(p[1]), cast<real_t,double>(p[2]));
 
         if (has_normals)
         {
             const Normal& n = normals[*vit];
-            fprintf(out, " %.10f %.10f %.10f", (double)n[0], (double)n[1], (double)n[2]);
+            fprintf(out, " %.10f %.10f %.10f", cast<real_t,double>(n[0]), cast<real_t,double>(n[1]), cast<real_t,double>(n[2]));
         }
 
         if (has_colors)
         {
             const Color& c = colors[*vit];
-            fprintf(out, " %.10f %.10f %.10f", (double)c[0], (double)c[1], (double)c[2]);
+            fprintf(out, " %.10f %.10f %.10f", cast<real_t,double>(c[0]), cast<real_t,double>(c[1]), cast<real_t,double>(c[2]));
         }
 
         if (has_texcoords)
         {
             const Texture_coordinate& t = texcoords[*vit];
-            fprintf(out, " %.10f %.10f", (double)t[0], (double)t[1]);
+            fprintf(out, " %.10f %.10f", cast<real_t,double>(t[0]), cast<real_t,double>(t[1]));
         }
 
         fprintf(out, "\n");

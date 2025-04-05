@@ -20,33 +20,39 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     bool plot = false; // If set to true, paraview file is generated and launched on exit
-    bool trim = false; // If set to true, paraview file is generated and launched on exit
+    bool trim = false; // If set to true, trim/merge operations are displayed
+    bool intersect = false; // If set to true, intersection example is displayed
 
     gsCmdLine cmd("Tutorial 01 shows the use of BSpline curves.");
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
     cmd.addSwitch("trim", "Basic trim/merge operations", trim);
+    cmd.addSwitch("intersect", "Intersection operations", intersect);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-
+    //! [make curve]
     // Make a BSpline curve
-    gsKnotVector<> kv(0, 1, 1, 3);//start,end,interior knots, start/end multiplicites of knots1
+    gsKnotVector<> kv(0, 1, 1, 3);//start,end,interior knots, start/end multiplicites of knots
     gsMatrix<> coefs(4, 3);
     coefs << 0, 0, 0,
              1, 2, 3,
              2, 1, 4,
              4, 4, 4;
 
-    gsBSpline<> curve( kv, give(coefs));
+    gsBSpline<> curve(kv, coefs);
+    //! [make curve]
 
     // Print the Bspline curve
     gsInfo << "I am a " << curve << "\n";
 
     if (plot)
-    {
+    {   
         // Output a paraview file
-        gsWriteParaview( curve, "bsplinecurve", 100);
-        gsFileManager::open("bsplinecurve.pvd");
+        coefs.transposeInPlace();
+        gsWriteParaview( curve, "bsplinecurve0", 100);
+        gsWriteParaview( curve, "bsplinecurve", 100, true, true);
+        gsWriteParaviewPoints( coefs, "coefficients");
+        gsFileManager::open("bsplinecurve0.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
@@ -78,9 +84,42 @@ int main(int argc, char *argv[])
       mergedCurve.merge(&segmentRight);
       gsInfo << "The merged curve: " << mergedCurve << "\n";
       gsWriteParaview( mergedCurve, "mergedCurve", 100);
+
+      // convert it into bezier segments
+      gsMultiPatch<> bezSegments = mergedCurve.toBezier();
+      gsWriteParaview(bezSegments, "bezierContainer", 100);
     }
     else
       gsInfo << "Done. Re-run with --trim to learn basic trim/merge operations\n";
+
+    // Basic intersection operations between two BSpline curves - @Ye
+    if (intersect)
+    {
+      gsMatrix<real_t> ctrPts1(4, 2);
+      ctrPts1 << 0,0, 1,1, 2,1, 3,1;
+      gsBSpline<real_t> bsp1(0, 1, 0, 3, ctrPts1);
+      gsMatrix<real_t> ctrPts2(4, 2);
+      ctrPts2 << 0,0, 1,2, 2,2, 3,0;
+      gsBSpline<real_t> bsp2(0, 1, 0, 3, ctrPts2);
+
+      auto intersectPts = bsp1.intersect(bsp2, 1e-5);
+
+      gsInfo << intersectPts.size() << " intersections are found!" << "\n";
+      gsMatrix<> iPts(bsp1.geoDim(), intersectPts.size());
+      for (size_t j = 0; j < intersectPts.size(); ++j)
+      {
+        iPts.col(j) = intersectPts[j].getPoint();
+      }
+      if (!intersectPts.empty())
+      {
+        gsWriteParaviewPoints(iPts, "intersect");
+      }
+
+      gsWriteParaview(bsp1, "bsp1", 2000);
+      gsWriteParaview(bsp2, "bsp2", 2000);
+    }
+    else
+      gsInfo << "Done. Re-run with --intersect to learn intersection operations\n";
 
     return 0;
 }

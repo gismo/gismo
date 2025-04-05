@@ -276,10 +276,26 @@ macro(OFA_AutodetectX86)
         set(TARGET_ARCHITECTURE "core")
 
       elseif(_cpu_model LESS 14)
-        message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the generic CPU settings with SSE2.")
+        message(WARNING
+          " Your CPU is not known.\n"
+          " Auto-detection of optimization flags failed and will use the generic CPU settings with SSE2.\n"
+          " Please send an email to gismo@inria.fr with the following content so that we can update the OFA script:\n"
+          " Vendor id:    ${_vendor_id}\n"
+          " CPU family:   ${_cpu_family}\n"
+          " CPU mode:     ${_cpu_model}\n"
+          " CPU stepping: ${_cpu_stepping}\n"
+          " CPU flags:    ${_cpu_flags}")
         set(TARGET_ARCHITECTURE "generic")
       else()
-        message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the 65nm Core 2 CPU settings.")
+        message(WARNING
+          " Your CPU is not known.\n"
+          " Auto-detection of optimization flags failed and will use the 65nm Core 2 CPU settings.\n"
+          " Please send an email to gismo@inria.fr with the following content so that we can update the OFA script:\n"
+          " Vendor id:    ${_vendor_id}\n"
+          " CPU family:   ${_cpu_family}\n"
+          " CPU mode:     ${_cpu_model}\n"
+          " CPU stepping: ${_cpu_stepping}\n"
+          " CPU flags:    ${_cpu_flags}")
         set(TARGET_ARCHITECTURE "merom")
       endif()
 

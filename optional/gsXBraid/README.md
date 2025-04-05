@@ -2,7 +2,7 @@
 
 G+Smo extension for the [XBraid - Parallel-in-time Solver Package](https://github.com/XBraid/xbraid).
 
-|CMake flags|```-DGISMO_WITH_XBRAID=ON``` (default ```OFF```)|
+|CMake flags|```-DGISMO_OPTIONAL="gsXBraid"```|
 |--:|---|
 |Required additional CMake flags|```-DGISMO_WITH_MPI=ON``` (recommended)<br>```-DGISMO_WITH_OPENMP=ON``` (optionally)|
 |License|[MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/)|
@@ -58,7 +58,7 @@ The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of th
     ```bash
     mkdir build
     cd build
-    cmake .. -DGISMO_WITH_XBRAID=ON -DGISMO_WITH_MPI=ON
+    cmake .. -DGISMO_OPTIONAL="gsXBraid" -DGISMO_WITH_MPI=ON
     make xbraid_heatEquation_example -j4
     ```
     
@@ -93,7 +93,7 @@ The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of th
     ```bash
     mkdir build
     cd build
-    cmake .. -DGISMO_WITH_XBRAID=ON -DGISMO_WITH_MPI=ON -DGISMO_WITH_OPENMP=ON
+    cmake .. -DGISMO_OPTIONAL="gsXBraid" -DGISMO_WITH_MPI=ON -DGISMO_WITH_OPENMP=ON
     make xbraid_heatEquation_example -j4
     ```
     

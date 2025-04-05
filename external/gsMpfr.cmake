@@ -6,7 +6,7 @@
 ######################################################################
 
 # Look for pre-installed MPFR library
-#find_package(MPFR) #QUIET
+find_package(MPFR) #QUIET
 
 if (NOT MPFR_FOUND)
   # Set MPFR version

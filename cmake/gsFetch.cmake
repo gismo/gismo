@@ -102,7 +102,7 @@ function(gismo_fetch_module SUBMODULE)
   if(EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/CMakeLists.txt")
     #Update to current HEAD
     if(GISMO_SUBMODULES_HEAD AND EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/.git")
-      message("Git fetch ${SUBMODULE}")
+      message("Git fetch submodule ${SUBMODULE}")
       execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth" "1"
 	ERROR_QUIET
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
@@ -110,6 +110,8 @@ function(gismo_fetch_module SUBMODULE)
 	ERROR_QUIET
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
       execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "rebase"
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
     endif()
 
@@ -137,6 +139,9 @@ function(gismo_fetch_module SUBMODULE)
       endif()
       message("Hash is now ${${SUBMODULE}_HASH}")
     endif()
+
+    # HERE:
+    # add target unshallow_${SUBMODULE}
 
     gismo_add_extension(${SUBMODULE})
     return()
@@ -180,7 +185,7 @@ function(gismo_fetch_module SUBMODULE)
 	#ERROR_VARIABLE gitclone_err
 	RESULT_VARIABLE gitclone_res)
       if(gitclone_res AND NOT gitclone_res EQUAL 0)
-	message(FATAL_ERROR "Unable to clone module ${SUBMODULE} (${${SUBMODULE}_url})")
+	message(FATAL_ERROR "Unable to clone module ${SUBMODULE} (${${SUBMODULE}_url}), set ${SUBMODULE}_url")
       endif()
 
       if(NOT GISMO_SUBMODULES_HEAD AND ${SUBMODULE}_HASH)# hash in submodules.txt

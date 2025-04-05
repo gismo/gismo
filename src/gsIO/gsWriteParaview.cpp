@@ -177,6 +177,16 @@ void gsWriteParaview(gsSurfMesh const & sm,
             continue;
         }
 
+        auto vi = sm.get_vertex_property<index_t>(pr);
+        if (vi)
+        {
+            file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";
+            for (auto v : sm.vertices() )
+                file << vi[v] <<" ";
+            file << "\n";
+            continue;
+        }
+
         gsWarn<< "gsWriteParaview: Property "<< pr << " ignored.\n";
     }
 

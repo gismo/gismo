@@ -289,8 +289,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
         const int unk = iter->unknown();
         if(unk != u.id()) continue;
 
-        const index_t com = iter->unkComponent();// == -1 ? 0 : iter->unkComponent(); // TODO should loop
-
+        const index_t com = iter->unkComponent();
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = u.source().basis(patchIdx);
         const gsFunction<T> & patch = gmap.function(patchIdx);
@@ -340,7 +339,6 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
 
                 mapper.localToGlobal(globBasisAct, patchIdx, globIdxAct,r);
 
-
                 // Out of the active functions/DOFs on this element, collect all those
                 // which correspond to a boundary DOF.
                 // This is checked by calling mapper.is_boundary_index( global Index )
@@ -361,18 +359,33 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                 // to rhsVals. Here, "rhs" refers to the right-hand-side
                 // of the L2-projection, not of the PDE.
 
-                // If the condition is homogeneous then fill with zeros
-                if ( iter->isHomogeneous() )
+                // if the component is not specified and the function evaluates
+                // for all target dimensions simultaneous, rhsValues does not
+                // need to be updated
+                if ((com != -1) || (r == 0))
                 {
-                    rhsVals.setZero(1,md.points.size());
-                }
-                else
-                {
-                    if ( iter->parametric() )
-                        rhsVals = iter->function()->piece(patchIdx).eval(md.points);
+                  // If the condition is homogeneous then fill with zeros
+                  if (iter->isHomogeneous())
+                  {
+                    rhsVals.setZero((com==-1) ? u.dim() : 1, md.points.size());
+                  }
+                  else
+                  {
+                    if (iter->parametric())
+                      rhsVals =
+                          iter->function()->piece(patchIdx).eval(md.points);
                     else
-                        rhsVals = iter->function()->piece(patchIdx).eval(gmap.piece(patchIdx).eval(md.points));
+                      rhsVals = iter->function()->piece(patchIdx).eval(
+                          gmap.piece(patchIdx).eval(md.points));
+                  }
                 }
+
+                GISMO_ASSERT((com!=-1) || rhsVals.rows() == u.dim(),
+                    "If no component is specified for Dirichlet boundary, "
+                    "target dimension must match field dimension.");
+                GISMO_ASSERT((com==-1) || rhsVals.rows() == 1,
+                    "If the component is specified for Dirichlet boundary, "
+                    "then a scalar function is expected.");
 
                 // Do the actual assembly:
                 for (index_t k = 0; k < md.points.cols(); k++)
@@ -400,7 +413,8 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                             projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
                         } // for j
 
-                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals.at(k);
+                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals( (-1==com?r:0) ,k);
+                        //globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(r ,k);
 
                     } // for i
                 } // for k
