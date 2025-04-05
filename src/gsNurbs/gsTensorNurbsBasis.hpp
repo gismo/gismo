@@ -25,15 +25,13 @@ gsTensorNurbsBasis<d,T>::makeGeometry( gsMatrix<T> coefs ) const
 
 template<short_t d, class T>
 gsBasis<T> *
-gsTensorNurbsBasis<d,T>::boundaryBasis_impl(boxSide const & s) const
+gsTensorNurbsBasis<d,T>::boundaryBasis_impl(const boxSide & s) const
 {
     typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(s);
-    gsMatrix<index_t> ind = m_src->boundary(s);
-    
+    const gsMatrix<index_t> ind = m_src->boundary(s);
     gsMatrix<T> ww( ind.size(),1);
     for ( index_t i=0; i<ind.size(); ++i)
         ww(i,0) = m_weights( (ind)(i,0), 0);
-    
     return new BoundaryBasisType(bb.release(), give(ww));
 }
 
