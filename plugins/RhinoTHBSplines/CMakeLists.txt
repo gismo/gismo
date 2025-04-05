@@ -5,7 +5,11 @@
 ## Authors: Menno Deij-van Rijswijk and Angelos Mantzaflaris 
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.12)
+if(CMAKE_VERSION VERSION_LESS "3.19")
+  cmake_minimum_required(VERSION 2.8.12)
+else()
+  cmake_minimum_required(VERSION 3.1...3.10)
+endif()
 
 if(NOT "x${CMAKE_GENERATOR}" STREQUAL "xVisual Studio 14 2015 Win64")
   message(FATAL_ERROR "Rhino plugin: Generator is NOT Visual Studio 14 2015 Win64. Plugin must be disabled.")
