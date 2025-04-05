@@ -674,8 +674,6 @@ namespace gismo
 #   endif
 
 #endif
-
-    return "Unknown-CPU";
   }
 
   std::string gsSysInfo::getMemoryInfo()
@@ -718,10 +716,9 @@ namespace gismo
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     return (uint64_t)(pages * page_size);
-
-#endif
-
+#else
     return 0;
+#endif
   }
 
 } // namespace gismo
