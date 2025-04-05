@@ -13,10 +13,10 @@
 
 #pragma once
 
-#include <gsNurbs/gsNurbsBasis.h>
 #include <gsCore/gsRationalBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsTensor/gsTensorTools.h>
+#include <gsNurbs/gsNurbsBasis.h>
 
 namespace gismo
 {
@@ -196,22 +196,8 @@ public:
         }
     }
 
-#ifdef __DOXYGEN__
     /// @brief Gives back the boundary basis at boxSide s
-    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
-#endif
-
-    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
-    {
-        typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(n1);
-        gsMatrix<index_t> ind = m_src->boundary(n1);
-        
-        gsMatrix<T> ww( ind.size(),1);
-        for ( index_t i=0; i<ind.size(); ++i)
-            ww(i,0) = m_weights( (ind)(i,0), 0);
-        
-        return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
-    }
+    memory::unique_ptr<BoundaryBasisType> boundaryBasis(boxSide const & s);
 
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
@@ -237,7 +223,6 @@ protected:
     using Base::m_weights;
 
 };
-
 
 } // namespace gismo
 

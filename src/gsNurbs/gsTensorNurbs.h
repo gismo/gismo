@@ -15,6 +15,7 @@
 
 #include <gsCore/gsGeometry.h>
 #include <gsNurbs/gsTensorNurbsBasis.h>
+#include <gsNurbs/gsBoehm.h>
 
 #include <gsTensor/gsTensorTools.h> // todo: move to hpp
 
