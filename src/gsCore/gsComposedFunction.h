@@ -17,6 +17,8 @@
         S. Imperatore
 */
 
+#pragma once
+
 //! [Include namespace]
 #include <gsCore/gsFunction.h>
 

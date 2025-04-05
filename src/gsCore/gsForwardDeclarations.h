@@ -339,6 +339,13 @@ class gsSurfMesh;
 
 // gsIO
 
+namespace internal
+{
+
+template<class Object> class gsXml;
+
+}
+
 template<class T>
 void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
                            gsMatrix<T> const& data,

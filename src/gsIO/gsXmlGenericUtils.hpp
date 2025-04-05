@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsCore/gsConstantFunction.h>
-
 namespace gismo {
 
 namespace internal {

@@ -13,7 +13,7 @@
 
 #include <sstream>
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsIOUtils.h>
+#include <gsIO/gsBase64.h>
 
 namespace gismo {
 
