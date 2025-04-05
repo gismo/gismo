@@ -87,6 +87,7 @@ public:
         m_fibers.resize(other.outerSize());
         for (size_t i = 0; i < m_fibers.size(); ++i)
             m_fibers[i] = new Fiber( *other.m_fibers[i] );
+        return *this;
     }
 
     /// Move assignment operator
