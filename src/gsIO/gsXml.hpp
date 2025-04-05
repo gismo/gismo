@@ -76,7 +76,7 @@ void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
     base_type_flag_.reserve(base_type_flag.size());
     std::transform(base_type_flag.cbegin(), base_type_flag.cend(),
                    std::back_inserter(base_type_flag_),
-                   [](unsigned char c) { return std::tolower(c); });
+                   [](unsigned char c) { return ::tolower(c); });
     if (base_type_flag_ == "ascii") {
         std::istringstream str;
         str.str(node->value());
