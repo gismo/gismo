@@ -1222,24 +1222,24 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T>
-gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i)
+gsTensorBSplineBasis<1,T> & gsBSplineBasis<T>::component(short_t i)
 {
     GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
-    return const_cast<gsBSplineBasis&>(*this);
+    return const_cast<gsTensorBSplineBasis&>(*this);
 }
 
 template <class T>
-const gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i) const
+const gsTensorBSplineBasis<1,T> & gsBSplineBasis<T>::component(short_t i) const
 {
     GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
-    return const_cast<gsBSplineBasis&>(*this);
+    return const_cast<gsTensorBSplineBasis&>(*this);
 }
 
 template <class T>
 typename gsBasis<T>::uPtr
-gsBSplineBasis<T>::create(std::vector<KnotVectorType> cKV)
+gsTensorBSplineBasis<1,T>::create(std::vector<KnotVectorType> cKV)
 {
     typedef typename gsBasis<T>::uPtr basisPtr;
 
