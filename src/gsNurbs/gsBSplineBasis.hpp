@@ -854,7 +854,7 @@ gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const
 }
 
 template <class T>
-memory::unique_ptr<gsGeometry<T> > gsBSplineBasis<T>::makeGeometry( gsMatrix<T> coefs ) const
+memory::unique_ptr<gsGeometry<T> > gsTensorBSplineBasis<1,T>::makeGeometry( gsMatrix<T> coefs ) const
 {
     return typename gsGeometry<T>::uPtr(new GeometryType(*this, give(coefs)));
 }
@@ -1222,7 +1222,7 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T>
-gsTensorBSplineBasis<1,T> & gsBSplineBasis<T>::component(short_t i)
+gsTensorBSplineBasis<1,T> & gsTensorBSplineBasis<1,T>::component(short_t i)
 {
     GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
@@ -1230,7 +1230,7 @@ gsTensorBSplineBasis<1,T> & gsBSplineBasis<T>::component(short_t i)
 }
 
 template <class T>
-const gsTensorBSplineBasis<1,T> & gsBSplineBasis<T>::component(short_t i) const
+const gsTensorBSplineBasis<1,T> & gsTensorBSplineBasis<1,T>::component(short_t i) const
 {
     GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
