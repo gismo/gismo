@@ -3,6 +3,15 @@
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
+##
+## -Tip on configuration and compilation:
+##  cmake -DGISMO_BUILD_MEX=ON -DTARGET_ARCHITECTURE=none -DMatlab_ROOT=C:\Program Files\MATLAB\R2023a -DMATLAB_FIND_DEBUG=ON -G"Visual Studio 15 2017 Win64" ../
+##  cmake --build . --config Release --target gsMex
+##
+## -Run matlab:
+##  set PATH=C:\Users\amantzaf\gismo\build\bin\Release;%PATH%
+##  matlab
+##
 ######################################################################
 
 project( gsMex )
@@ -46,7 +55,7 @@ foreach(f ${CXX_SRCS})
       COMMAND ${Matlab_MEX_COMPILER} ${INCLUDE_COMPILER_STRING} -v -R2018a
       -cxx
       #-I${gsMex_SOURCE_DIR}/include does not exist
-      -L${CMAKE_BINARY_DIR}/lib -lgismo # problem on windows: DLL not at the right place
+      -L${CMAKE_BINARY_DIR}/lib/$<CONFIGURATION> -lgismo # problem on windows: DLL not at the right place
       -output ${fout} ${f}
       #&& install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
       DEPENDS ${f} src/mex_common.h
