@@ -24,7 +24,7 @@ gsTensorNurbsBasis<d,T>::makeGeometry( gsMatrix<T> coefs ) const
 { return gsGeoPtr(new GeometryType(*this, give(coefs))); }
 
 template<short_t d, class T>
-gsBasis<T> *
+gsBasis<real_t> *
 gsTensorNurbsBasis<d,T>::boundaryBasis_impl(const boxSide & s) const
 {
     typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(s);

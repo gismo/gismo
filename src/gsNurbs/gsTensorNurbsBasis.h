@@ -197,7 +197,7 @@ public:
     }
 
     /// @brief Gives back the boundary basis at boxSide s
-    gsBasis<T> * boundaryBasis_impl(const boxSide & s) const;
+    gsBasis<real_t> * boundaryBasis_impl(const boxSide & s) const;
 
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
