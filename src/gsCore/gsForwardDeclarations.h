@@ -154,11 +154,10 @@ template <short_t d, class T=real_t>     class gsMappedBasis;
 template <class T=real_t>                class gsComposedBasis;
 
 template <class T=real_t>                class gsKnotVector;
-//template <class T=real_t>              class gsCompactKnotVector;
-template <class T=real_t>                class gsBSplineBasis;
-template <class T=real_t>                class gsNurbsBasis;
 template <short_t d, class T=real_t>     class gsTensorBSplineBasis;
+template <class T=real_t>                using gsBSplineBasis = gsTensorBSplineBasis<1,T>;
 template <short_t d, class T=real_t>     class gsTensorNurbsBasis;
+template <class T=real_t>                using gsNurbsBasis = gsTensorNurbsBasis<1,T>;
 template <short_t d, class T=real_t>     struct gsBSplineTraits;
 
 template <short_t d, class T=real_t>     class gsCompositeIncrSmoothnessBasis;
@@ -167,7 +166,6 @@ template <short_t d, class T=real_t>     class gsCompositeGeom;
 template <class T=real_t>                class gsBernsteinBasis;
 template <short_t d, class T=real_t>     class gsTensorBernsteinBasis;
 
-//template <class T=real_t>              class gsHKnotVector;
 template <short_t d, class T=real_t, bool Trunc=true>     class gsTHBSplineBasis;
 template <short_t d, class T=real_t, bool Trunc=true>     class gsTHBSpline;
 template <short_t d, class T=real_t>     using gsHBSplineBasis = gsTHBSplineBasis<d,T,false>;
@@ -338,6 +336,13 @@ class gsParaviewDataSet;
 class gsSurfMesh;
 
 // gsIO
+
+namespace internal
+{
+
+template<class Object> class gsXml;
+
+}
 
 template<class T>
 void gsWriteParaviewTPgrid(gsMatrix<T> const& points,

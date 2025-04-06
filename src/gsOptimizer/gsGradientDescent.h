@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsOptionList.h>
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
 #define Eigen gsEigen

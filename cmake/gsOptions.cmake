@@ -81,7 +81,7 @@ endif()
 
 option(GISMO_WITH_XDEBUG           "Extra debug features"      false  )
 if  (${GISMO_WITH_XDEBUG})
-message ("  GISMO_WITH_XDEBUG      ${GISMO_WITH_XDEBUG}")
+message ("  GISMO_WITH_XDEBUG       ${GISMO_WITH_XDEBUG}")
 endif()
 
 option(GISMO_WITH_ADIFF          "With auto-diff"            false  )
@@ -157,7 +157,7 @@ endif()
 
 option(GISMO_WITH_WARNINGS            "Enable G+Smo related warnings" false  )
 if (GISMO_WITH_WARNINGS)
-message ("  GISMO_WITH_WARNINGS          ${GISMO_WITH_WARNINGS}")
+message ("  GISMO_WITH_WARNINGS     ${GISMO_WITH_WARNINGS}")
 endif()
 
 option(GISMO_WITH_VTK            "With VTK"                      false  )
