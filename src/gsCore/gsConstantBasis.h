@@ -68,7 +68,7 @@ public:
 
     short_t domainDim() const override { return m_domainDim; }
 
-    index_t size() const override { return 1; }
+    index_t size() const override  { return 1; }
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override
     {

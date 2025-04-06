@@ -57,7 +57,7 @@ public:
     typedef typename gsBSplineTraits<d,T>::Geometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
 
     typedef typename Base::iterator        iterator;
     typedef typename Base::const_iterator  const_iterator;
