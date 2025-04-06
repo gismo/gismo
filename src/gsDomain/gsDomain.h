@@ -154,7 +154,7 @@ public: // Domain element iterators
     /// Returns an iterator over the boundary.
     /// special value \a all: iterate over all boundaries
     virtual iterator beginBdr (const boxSide bs = boundary::all) const
-    {GISMO_NO_IMPLEMENTATION}
+    {GISMO_UNUSED(bs); GISMO_NO_IMPLEMENTATION}
 
     /// Returns an iterator to the end of the boundary elements
     /// special value \a all: iterate over all boundaries
@@ -165,9 +165,9 @@ public: // Domain element iterators
 
     // for multipatch
     virtual iterator beginIfc(const boundaryInterface bi) const
-    {GISMO_NO_IMPLEMENTATION}
+    {GISMO_UNUSED(bi); GISMO_NO_IMPLEMENTATION}
     virtual iterator endIfc  (const boundaryInterface bi) const
-    {GISMO_NO_IMPLEMENTATION}
+    {GISMO_UNUSED(bi); GISMO_NO_IMPLEMENTATION}
 
     /** @brief Number of elements in the domain
     */
@@ -176,7 +176,7 @@ public: // Domain element iterators
     /** @brief Number of elements in the domain
      */
     virtual size_t numElementsBdr(boxSide const & s = boundary::all) const
-    {GISMO_NO_IMPLEMENTATION}
+    {GISMO_UNUSED(s); GISMO_NO_IMPLEMENTATION}
 
     // NOTE: for immersed
     //virtual size_t numBackgroundElements() const;
@@ -184,7 +184,7 @@ public: // Domain element iterators
     /** @brief Degree of the domain
     */
     virtual short_t degree(short_t i = 0) const
-    {GISMO_NO_IMPLEMENTATION}
+    {GISMO_UNUSED(i); GISMO_NO_IMPLEMENTATION}
 
     /** @brief Dimension of the domain
     */

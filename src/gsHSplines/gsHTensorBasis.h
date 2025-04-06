@@ -1127,19 +1127,19 @@ private:
     void addConnectivity(int level, gsMesh<T> & mesh) const;
 
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
-    virtual gsSparseMatrix<T> coarsening(const std::vector<CMatrix>& old,
-                                         const std::vector<CMatrix>& n,
-                                         const gsSparseMatrix<T,RowMajor> & transfer) const
+    virtual gsSparseMatrix<T> coarsening(const std::vector<CMatrix>& /* old */,
+                                         const std::vector<CMatrix>& /* n */,
+                                         const gsSparseMatrix<T,RowMajor> & /* transfer */) const
     {GISMO_NO_IMPLEMENTATION}
 
-    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<index_t> >& old,
-                                                const std::vector<gsSortedVector<index_t> >& n,
-                                                const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
+    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<index_t> >& /* old */,
+                                                const std::vector<gsSortedVector<index_t> >& /* n */,
+                                                const std::vector<gsSparseMatrix<T,RowMajor> >& /* transfer */) const
     {GISMO_NO_IMPLEMENTATION}
 
-    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<index_t> >& old,
-                                                 const std::vector<gsSortedVector<index_t> >& n,
-                                                 const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
+    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<index_t> >& /* old */,
+                                                 const std::vector<gsSortedVector<index_t> >& /* n */,
+                                                 const std::vector<gsSparseMatrix<T,RowMajor> >& /* transfer */) const
     {GISMO_NO_IMPLEMENTATION}
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
