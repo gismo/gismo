@@ -2846,6 +2846,8 @@ public:
     {
         return putHTensorBasisToXml< gsTHBSplineBasis<d,T,Trunc> > (obj, data);
     }
+
+    GSXML_GET_INTO(gsTHBSplineBasis<TMPLA2(d,T)>)
 };
 
 

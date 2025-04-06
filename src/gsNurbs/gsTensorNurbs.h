@@ -15,6 +15,7 @@
 
 #include <gsCore/gsGeometry.h>
 #include <gsNurbs/gsTensorNurbsBasis.h>
+#include <gsNurbs/gsBoehm.h>
 
 #include <gsTensor/gsTensorTools.h> // todo: move to hpp
 
@@ -336,7 +337,7 @@ public:
                 const index_t index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
                 gsVector<index_t,d> sizes;
                 this->basis().size_cwise(sizes);
-                constructCoefsForSlice<d, T>(dir_fixed, index, this->coefs(), sizes, coefs);
+                this->template constructCoefsForSlice<d, T>(dir_fixed, index, this->coefs(), sizes, coefs);
             }
             else
             {
@@ -354,7 +355,7 @@ public:
                 const index_t index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
                 gsVector<index_t,d> sizes;
                 clone->basis().size_cwise(sizes);
-                constructCoefsForSlice<d, T>(dir_fixed, index, clone->coefs(), sizes, coefs);
+                this->template constructCoefsForSlice<d, T>(dir_fixed, index, clone->coefs(), sizes, coefs);
                 delete clone;
             }
 

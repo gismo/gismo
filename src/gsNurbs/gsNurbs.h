@@ -47,7 +47,6 @@ public:
     /// Coefficient type
     typedef T Scalar_t;
 
-    typedef gsRationalBasis<gsBSplineBasis<T> > RBasis;
     typedef gsNurbsBasis<T> Basis;
 
     /// Shared pointer for gsNurbs
