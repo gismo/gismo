@@ -33,7 +33,7 @@ private:
 public:
 	explicit
 	gsObjFuncSurface(const gsMultiPatch<T> &patches,
-	const gsMobiusMap<2,T> &mobiusDomain)
+	const gsMobiusMap<T> &mobiusDomain)
 	:
 	m_mp(patches),
 	m_MobiusMap(mobiusDomain),
@@ -139,7 +139,7 @@ protected:
 
 	gsOptionList m_options;
 
-	mutable gsMobiusMap<2,T> m_MobiusMap;
+	mutable gsMobiusMap<T> m_MobiusMap;
 	T m_lambda1, m_lambda2, m_area;
 	gsComposedGeometry<T> m_cgeom;
 };
@@ -154,7 +154,7 @@ gsMultiPatch<T> approximateWithBSpline(const gsMultiPatch<T>& mp, const gsMatrix
 	gsMultiPatch<T> result;
 
 	gsMatrix<T, 2, 2> alpha = coefsMobiusIn.reshape(2, 2);
-	gsMobiusMap<2, T> mobiusDomain(alpha);
+	gsMobiusMap<T> mobiusDomain(alpha);
 
 	for (const auto& patch : mp.patches())
 	{
@@ -210,7 +210,7 @@ public:
 	m_mp(patches),
 	m_optimizer(optimizer)
 	{
-		m_mobiusDomain = gsMobiusMap<2,T>(gsMatrix<T,2,2>::Constant(0.5));
+		m_mobiusDomain = gsMobiusMap<T>(gsMatrix<T,2,2>::Constant(0.5));
 	}
 
 	// Run the optimization process and generate the reparameterized B-Spline surface
@@ -232,7 +232,7 @@ public:
 
 private:
 	gsMultiPatch<T>      m_mp;           // Input multi-patch geometry
-	gsMobiusMap<2, T> m_mobiusDomain; // Mobius domain instance
+	gsMobiusMap<T> 		 m_mobiusDomain; // Mobius domain instance
 	gsOptimizer<T>     & m_optimizer;    // Optimizer
 };
 

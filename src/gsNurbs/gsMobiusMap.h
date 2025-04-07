@@ -21,26 +21,20 @@
 namespace gismo
 {
 
-template <short_t DIM, class T>
+template <class T>
 class gsMobiusMap : public gsFunction<T>
 {
   using Base = gsFunction<T> ;
 
  public:
   // default constructor
-  gsMobiusMap() { m_alpha.setOnes(2,DIM); }
+  gsMobiusMap() { m_alpha.setOnes(2,2); }
 
-  explicit gsMobiusMap(const gsMatrix<T, 2, DIM> alpha) : m_alpha(alpha) {}
+  explicit gsMobiusMap(const gsMatrix<T, 2, 2> alpha) : m_alpha(alpha) {}
 
-  short_t domainDim() const override
-  {
-    return m_domain.domainDim();
-  }
+  short_t domainDim() const override { return 2; }
 
-  short_t targetDim() const override
-  {
-    return m_domain.domainDim();
-  }
+  short_t targetDim() const override { return 2; }
 
   void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
   {
@@ -125,7 +119,6 @@ class gsMobiusMap : public gsFunction<T>
  protected:
 //  T m_alpha1, m_alpha2, m_beta1, m_beta2;
   gsMatrix<T> m_alpha;
-  gsTensorBSpline<DIM,T> m_domain;
 };
 
 } // namespace gismo
