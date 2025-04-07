@@ -89,7 +89,7 @@ public:
 // ***********************************************
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     { os << "NURBS curve "<< "of degree "<< this->basis().degree()
          << " over knots "<< this->basis().knots() <<",\n";
         os << "weights: ["<< this->weights().transpose()<< " ]\n ";
@@ -133,7 +133,7 @@ public:
         // compatible curves: same degree, same first/last p+1 knots
     };
 
-    void merge( gsGeometry<T> * otherG )
+    void merge( gsGeometry<T> * otherG ) override
     {
         // See also gsBSpline::merge().
         // check geometric dimension

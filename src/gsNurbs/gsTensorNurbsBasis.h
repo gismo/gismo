@@ -90,12 +90,12 @@ public:
 
     GISMO_CLONE_FUNCTION(gsTensorNurbsBasis)
 
-    gsGeoPtr makeGeometry( gsMatrix<T> coefs ) const;
+    gsGeoPtr makeGeometry( gsMatrix<T> coefs ) const override;
 
 public:
 
     /// @brief Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         os << "TensorNurbsBasis: dim=" << this->dim()<< ", size="<< this->size() << ".";
         for ( unsigned i = 0; i!=d; ++i )
@@ -140,7 +140,7 @@ public:
         m_src->swapDirections(i, j);
     }
 
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1)
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1) override
     {
         GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                       "Invalid dimensions" );
@@ -197,7 +197,7 @@ public:
     }
 
     /// @brief Gives back the boundary basis at boxSide s
-    gsBasis<real_t> * boundaryBasis_impl(const boxSide & s) const;
+    gsBasis<real_t> * boundaryBasis_impl(const boxSide & s) const override;
 
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
@@ -207,7 +207,7 @@ public:
 
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const override
     {
         if ( const gsTensorNurbsBasis<d,T> * _other = dynamic_cast<const gsTensorNurbsBasis<d,T> *>(&other) )
             m_src->matchWith(bi,_other->source(),bndThis,bndOther,offset);

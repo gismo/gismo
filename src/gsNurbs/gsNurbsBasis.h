@@ -110,13 +110,13 @@ public:
     /// Clone function. Used to make a copy of a derived basis
     GISMO_CLONE_FUNCTION(gsTensorNurbsBasis)
 
-    gsGeoPtr makeGeometry( gsMatrix<T>coefs ) const;
+    gsGeoPtr makeGeometry( gsMatrix<T>coefs ) const override;
 
     static gsBasisPtr create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights);
     using Base::create;
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         os << "NURBS Basis: deg=" << this->degree()
            << ", size=" << this->size() << ", knot vector:\n";
@@ -170,7 +170,7 @@ public:
     }
   
     /// Refine the basis uniformly by inserting \a numKnots new knots per knot span.
-    void uniformRefine(int numKnots = 1, int mul=1, int dir = -1)
+    void uniformRefine(int numKnots = 1, int mul=1, int dir = -1) override
     { 
         GISMO_UNUSED(dir);
         // TO DO ; replace this with global refinemnt by

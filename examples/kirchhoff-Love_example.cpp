@@ -724,11 +724,11 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMaterialMatrix)
 
-    short_t domainDim() const {return 2;}
+    short_t domainDim() const override {return 2;}
 
-    short_t targetDim() const {return 9;}
+    short_t targetDim() const override {return 9;}
 
-    const gsFunction<T> & piece(const index_t k) const
+    const gsFunction<T> & piece(const index_t k) const override
     {
 #       pragma omp critical
         if (m_pieces.empty())
@@ -743,7 +743,7 @@ public:
     }
 
     // Input is parametric coordinates of the surface \a mp
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         #pragma omp critical
         {

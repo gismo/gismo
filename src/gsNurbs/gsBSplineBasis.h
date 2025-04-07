@@ -278,21 +278,21 @@ public:
     }
 
     // Look at gsBasis class for a description
-    const TensorSelf_t & component(short_t i) const;
+    const TensorSelf_t & component(short_t i) const override;
 
     // Look at gsBasis class for a description
-    TensorSelf_t & component(short_t i);
+    TensorSelf_t & component(short_t i) override;
 
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const;
     
     /// @brief Returns the anchors (greville points) of the basis
-    void anchors_into(gsMatrix<T> & result) const
+    void anchors_into(gsMatrix<T> & result) const override
     {
         m_knots.greville_into(result);
     }
 
     /// @brief Returns the anchors (greville points) of the basis
-    void anchor_into(index_t i, gsMatrix<T> & result) const
+    void anchor_into(index_t i, gsMatrix<T> & result) const override
     {
         result.resize(1,1);
         result(0,0) = m_knots.greville(i);
@@ -300,10 +300,10 @@ public:
 
     // Look at gsBasis class for a description
     void connectivity(const gsMatrix<T> & nodes,
-                      gsMesh<T> & mesh) const;
+                      gsMesh<T> & mesh) const override;
 
     // Look at gsBasis class for a description
-    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override;
 
     // Look at gsBasis class for a description
     bool isActive(const index_t i, const gsVector<T> & u) const;
@@ -312,7 +312,7 @@ public:
     gsMatrix<index_t> allBoundary( ) const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<index_t> boundaryOffset(boxSide const & s,index_t offset) const;
+    gsMatrix<index_t> boundaryOffset(boxSide const & s,index_t offset) const override;
 
 #ifdef __DOXYGEN__
     /// @brief Gives back the boundary basis at boxSide s
