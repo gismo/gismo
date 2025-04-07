@@ -133,7 +133,7 @@ int omp_get_place_num_procs(int /* place_num */)
     return 0;
 }
 
-void  omp_get_place_proc_ids(int /* place_num */, int */* ids */)
+void  omp_get_place_proc_ids(int /* place_num */, int * /* ids */)
 {}
 
 int omp_get_place_num(void)
@@ -146,7 +146,7 @@ int omp_get_partition_num_places(void)
     return 0;
 }
 
-void omp_get_partition_place_nums(int */* place_nums */)
+void omp_get_partition_place_nums(int * /* place_nums */)
 {}
 
 void omp_set_default_device(int /* device_num */)
@@ -348,7 +348,7 @@ void omp_target_free(void *device_ptr, int /* device_num */)
     free(device_ptr);
 }
 
-int omp_target_is_present(void */* ptr */, int /* device_num */)
+int omp_target_is_present(void * /* ptr */, int /* device_num */)
 {
     return 1;
 }
@@ -424,7 +424,7 @@ done:
     return ret;
 }
 
-int omp_target_associate_ptr(void */* host_ptr */, void */* device_ptr */,
+int omp_target_associate_ptr(void * /* host_ptr */, void * /* device_ptr */,
                              size_t /* size */, size_t /* device_offset */,
                              int /* device_num */)
 {
@@ -433,7 +433,7 @@ int omp_target_associate_ptr(void */* host_ptr */, void */* device_ptr */,
     return EINVAL;
 }
 
-int omp_target_disassociate_ptr(void */* ptr */, int /* device_num */)
+int omp_target_disassociate_ptr(void * /* ptr */, int /* device_num */)
 {
     return EINVAL;
 }

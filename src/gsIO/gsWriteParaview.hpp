@@ -15,7 +15,6 @@
 #pragma once
 
 #include <gsIO/gsParaviewCollection.h>
-#include <gsIO/gsIOUtils.h>
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>

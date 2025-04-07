@@ -41,7 +41,7 @@ private:
     gsOptionList m_options;
 
     mutable gsSparseMatrix<T> m_matrix;
-    typedef gsFiberMatrix<T,false> FiberMatrix;
+    typedef gsFiberMatrix<T,ColMajor> FiberMatrix;
     FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
@@ -134,7 +134,7 @@ public:
     /// Call this function to fill the sparsematrix with all the assemblies so far
     const gsSparseMatrix<T> & makeMatrix() const
     {
-        m_fmatrix.toSparseMatrix(m_matrix);
+        m_fmatrix.toSparseMatrix_into(m_matrix);
         m_modified = false;
         return m_matrix;
     }
@@ -151,6 +151,11 @@ public:
         matrix();
         m_modified = true;
         return give(m_matrix);
+    }
+
+    EIGEN_STRONG_INLINE FiberMatrix giveFiberMatrix()
+    {
+        return give(m_fmatrix);
     }
 
     /// @brief Returns the right-hand side vector(s)
@@ -880,13 +885,13 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
-        if (!m_vcol.front()->valid()) m_vcol.front()->init();
+        if (!m_vcol[i]->valid()) m_vcol[i]->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
                                    m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
 
-        if ( m_vcol[i] != m_vrow[i] )
+        if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
-            if (!m_vrow.front()->valid()) m_vrow.front()->init();
+            if (!m_vrow[i]->valid()) m_vrow[i]->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
                                        m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
         }
@@ -917,6 +922,15 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
         omp_init_lock(&l);
 #endif
 
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+    
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -958,6 +972,15 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
 
 #pragma omp parallel
 {
@@ -1021,6 +1044,16 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
 #pragma omp parallel

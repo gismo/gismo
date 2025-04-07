@@ -18,8 +18,8 @@
 
 
 #define GISMO_BASIS_ACCESSORS \
-    Basis & basis() { return static_cast<Basis&>(*this->m_basis); } \
-    const Basis & basis() const { return static_cast<const Basis&>(*this->m_basis); }
+    Basis & basis() override { return static_cast<Basis&>(*this->m_basis); } \
+    const Basis & basis() const override { return static_cast<const Basis&>(*this->m_basis); }
     // bool isProjective() const{ return Basis::IsRational; }
 
 namespace gismo
@@ -101,6 +101,8 @@ public:
 
     typedef T Scalar_t;
 
+    typedef gsBasis<T> Basis;
+
 public:
 
     /// @name Constructors
@@ -130,7 +132,7 @@ public:
     /// @}
 
     gsGeometry& operator=( const gsGeometry & o);
-    
+
     virtual ~gsGeometry();
 
 
@@ -569,7 +571,7 @@ public:
     ///
     /// { geom(v) | v vertex of input mesh }
     ///
-    void evaluateMesh(gsMesh<T>& mesh) const;
+    virtual void evaluateMesh(gsMesh<T>& mesh) const;
 
 
     /// Splits the geometry 2^d parts, where each direction is divided into two parts in

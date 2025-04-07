@@ -93,7 +93,7 @@ public: // more members
 
     gsMatrix<T> boundingBox() const override
     {
-        gsMatrix<T> result(2,D);
+        gsMatrix<T> result(D, 2);
         for (short_t i = 0; i < D; ++i)
             result.row(i) = m_knotVectors[i]->boundingBox();
         return result;

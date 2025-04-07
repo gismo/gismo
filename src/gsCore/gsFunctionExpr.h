@@ -154,16 +154,16 @@ public:
 
     // Function expression can be used as a global function defined
     // for any real value, on any subdomain
-    virtual const gsFunctionExpr & piece(const index_t) const
+    virtual const gsFunctionExpr & piece(const index_t) const override
     {
         return *this;
     }
 
     // Documented in gsFunction class
-    short_t domainDim() const;
+    short_t domainDim() const override;
 
     // Documented in gsFunction class
-    short_t targetDim() const;
+    short_t targetDim() const override;
 
     // returns the string expression for component \a i
     const std::string & expression(int i = 0) const;
@@ -184,32 +184,32 @@ public:
     void set_t (T const & t) const;
 
     // see gsFunction for documentation
-    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // see gsFunction for documentation
     virtual void eval_component_into(const gsMatrix<T>& u,
                                      const index_t comp,
-                                     gsMatrix<T>& result) const;
+                                     gsMatrix<T>& result) const override;
 
     // see gsFunction for documentation
     virtual void deriv_into(const gsMatrix<T>& u,
-                            gsMatrix<T>& result) const;
+                            gsMatrix<T>& result) const override;
 
     // see gsFunction for documentation
     virtual void deriv2_into(const gsMatrix<T>& u,
-                             gsMatrix<T>& result) const;
+                             gsMatrix<T>& result) const override;
 
     // see gsFunction for documentation
     gsMatrix<T> hess(const gsMatrix<T>& u, unsigned coord = 0) const;
 
     // see gsFunction for documentation
-    gsMatrix<T> laplacian(const gsMatrix<T>& u) const;
+    gsMatrix<T> laplacian(const gsMatrix<T>& u) const override;
 
     ///Mixed derivative wrt variables k and j
     gsMatrix<T> * mderiv(const gsMatrix<T>& u, const index_t k, const index_t j) const;
 
     // see gsFunction for documentation
-    std::ostream &print(std::ostream &os) const;
+    std::ostream &print(std::ostream &os) const override;
 
     void swap(gsFunctionExpr& other)
     { std::swap(this->my, other.my); }
