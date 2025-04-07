@@ -124,6 +124,9 @@ int main(int argc, char *argv[])
 
   lookFor< gsHBoxContainer<2,real_t> > (data);
 
+  lookFor<gsOptionList> (data);
+
+  lookFor<gsNurbsBasis<> > (data);
     
 #if defined(gsOpennurbs_ENABLED) || defined(gsOpenCascade_ENABLED)
   if ( data.has< gsPlanarDomain<> >() )

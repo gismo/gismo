@@ -416,18 +416,15 @@ public:
     virtual void next() override
     { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
 
-    virtual void next(index_t increment) override
-    {
-        GISMO_UNUSED(increment);
-        GISMO_ERROR("Cannot proceed to next element. End iterator reached.");
-    }
+    virtual void next(index_t /* increment */) override
+    { GISMO_ERROR("Cannot proceed to next element. End iterator reached."); }
 
     virtual void prev() override
     {
         GISMO_NO_IMPLEMENTATION
     }
 
-    virtual void prev(index_t decrement) override
+    virtual void prev(index_t /* decrement */) override
     {
         GISMO_UNUSED(decrement);
         GISMO_NO_IMPLEMENTATION

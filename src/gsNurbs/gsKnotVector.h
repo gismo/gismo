@@ -165,7 +165,7 @@ public: // iterator ends
         return new gsKnotDomainIterator<T>(*this);
     }
 
-    domainIter beginBdr(const boxSide /* bs */) const override
+    domainIter beginBdr(const boxSide   /* bs */) const override
     {
         return new gsKnotDomainIterator<T>(*this);
     }
@@ -175,7 +175,7 @@ public: // iterator ends
         return new gsKnotDomainIterator<T>(*this,false);
     }
 
-    domainIter endBdr(const boxSide /* bs */) const override
+    domainIter endBdr(const boxSide   /* bs */) const override
     {
         return new gsKnotDomainIterator<T>(*this,false);
     }

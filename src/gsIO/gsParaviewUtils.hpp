@@ -19,7 +19,6 @@
 #include <gsCore/gsLinearAlgebra.h>         // Only to make linker happy
 #include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
-#include <gsIO/gsIOUtils.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsBase64.h>
 
