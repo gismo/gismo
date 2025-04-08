@@ -1429,7 +1429,7 @@ public:
         }
         return true;
     }
-    
+
     //template<class U>
     //linearComb(U & ie){ sum up ie[_u] times the _Sv  }
     // ie.eval(k), _u.data().actives(), fixedPart() - see lapl_expr
@@ -2718,7 +2718,7 @@ public:
 public:
     enum {Space= 0, ScalarValued= 1, ColBlocks= 0};
 
-    Scalar eval(const index_t k) const { return abs_expr::eval_impl     (_u,k).norm(); }
+    AutoReturn_t eval(const index_t k) const { return abs_expr::eval_impl     (_u,k); }
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
