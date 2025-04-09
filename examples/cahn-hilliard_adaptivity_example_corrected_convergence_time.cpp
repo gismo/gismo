@@ -13,9 +13,15 @@
                L. Venta Viñuela (UniPv)
 
 
-    Tensor product (check flags in .xml file):
-    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 6 -t 0.3 -N 10 -c 0 -v 2 -s 0 -f pde/cahn_hilliard_bvp.xml 
-    with lambda = 0.1
+    Tensor product (check flags in .xml file): with lambda = 0.1
+
+    //  =========== CUBIC BASIS (Kaestner et al. 2017) ===========
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 7 -t 0.5     -N 1 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 7 -t 0.25    -N 2 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 7 -t 0.125   -N 4 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 7 -t 0.0625  -N 8 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 7 -t 0.03125 -N 16 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
+    
     and clamped BC for the essential flux boundary condition
     -----------------------------------------------------------------------
     TODO;
@@ -122,14 +128,12 @@ void solve( gsMultiPatch<T> & mp,
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     dbasis_tmp.setDegree( dbasis_tmp.maxCwiseDegree() + numElevate);
-    gsInfo<<"HOLA\n";
 
     if (MESHopt.askSwitch("Adaptive",true))
         MESHopt.setSwitch("THB",true);
 
     if (MESHopt.askSwitch("THB",true))
     {
-        gsInfo<<"HOLA\n";
         // Cast every basis of dbasis to a gsTHBSplineBasis
         for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
         {
@@ -241,7 +245,6 @@ void solve( gsMultiPatch<T> & mp,
     // gsDebugVar(dbasis_lin.basis(0).maxDegree());
     
     // =====================================================================
-    gsInfo<<"HOLA\n";
 
     gsMultiBasis<> ibasis;
     // Cast every basis of dbasis to a gsTHBSplineBasis
@@ -300,9 +303,12 @@ void solve( gsMultiPatch<T> & mp,
     // Source term
     auto     qq  = qold  + af * (qnew -  qold);
 
-    // Source (volume integral) function for manufactured solution cos(6*pi*x) * cos(6*pi*y) * cos(2/3*pi*t)
-    gsFunctionExpr<> sourceQold("-9*pi*cos(6*pi*x)*cos(6*pi*y)*((2*sin((2*pi*t)/3))/27 - (4930115259914363*pi*cos((2*pi*t)/3))/8796093022208 + pi*cos((2*pi*t)/3)^3*(24*cos(6*pi*y)^2 - cos(6*pi*x)^2*(72*cos(6*pi*y)^2 - 24)))",2);
-    gsFunctionExpr<> sourceQnew("-9*pi*cos(6*pi*x)*cos(6*pi*y)*((2*sin((2*pi*t)/3))/27 - (4930115259914363*pi*cos((2*pi*t)/3))/8796093022208 + pi*cos((2*pi*t)/3)^3*(24*cos(6*pi*y)^2 - cos(6*pi*x)^2*(72*cos(6*pi*y)^2 - 24)))",2);
+    // Source (volume integral) function for manufactured solution cos(pi*x) * cos(pi*y) * cos(2/3*pi*t)
+    // gsFunctionExpr<> sourceQold("-cos(pi*x)*cos(pi*y)*(3*cos((2*pi*t)/3)^2 + 7340619633309/281474976710656)*(3*cos((2*pi*t)/3) + (2*pi*sin((2*pi*t)/3))/3 + 1666828001364009/281474976710656)",2);
+    // gsFunctionExpr<> sourceQnew("-cos(pi*x)*cos(pi*y)*(3*cos((2*pi*t)/3)^2 + 7340619633309/281474976710656)*(3*cos((2*pi*t)/3) + (2*pi*sin((2*pi*t)/3))/3 + 1666828001364009/281474976710656)",2);
+    gsFunctionExpr<> sourceQold("-9*pi*cos(pi*x)*cos(pi*y)*((2*sin((2*pi*t)/3))/27 - (274134357077347*pi*cos((2*pi*t)/3))/1266637395197952 + pi*cos((2*pi*t)/3)^3*((2*cos(pi*y)^2)/3 - cos(pi*x)^2*(2*cos(pi*y)^2 - 2/3)))",2);
+    gsFunctionExpr<> sourceQnew("-9*pi*cos(pi*x)*cos(pi*y)*((2*sin((2*pi*t)/3))/27 - (274134357077347*pi*cos((2*pi*t)/3))/1266637395197952 + pi*cos((2*pi*t)/3)^3*((2*cos(pi*y)^2)/3 - cos(pi*x)^2*(2*cos(pi*y)^2 - 2/3)))",2);
+
 
 
     gsVector<> pt2(2,1); pt2<<0.5, 0.5;
@@ -324,10 +330,10 @@ void solve( gsMultiPatch<T> & mp,
 
     //  =========== Terms for boundary integrals ===========
     // (1) Neumann boundary condition
-    gsFunctionExpr<> bc1("-18*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x)*(cos((2*pi*t)/3)^2*cos(6*pi*x)^2*cos(6*pi*y)^2 + 927703176743281/42221246506598400)","-18*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y)*(cos((2*pi*t)/3)^2*cos(6*pi*x)^2*cos(6*pi*y)^2 + 927703176743281/42221246506598400)",2);
+    gsFunctionExpr<> bc1("-3*pi*cos((2*pi*t)/3)*cos(pi*y)*sin(pi*x)*(cos((2*pi*t)/3)^2*cos(pi*x)^2*cos(pi*y)^2 + 274134357077347/844424930131968)", "-3*pi*cos((2*pi*t)/3)*cos(pi*x)*sin(pi*y)*(cos((2*pi*t)/3)^2*cos(pi*x)^2*cos(pi*y)^2 + 274134357077347/844424930131968)",2);
 
     // (2) Laplace boundary condition
-    gsFunctionExpr<> bc2("-72*pi^2*cos((2*pi*t)/3)*cos(6*pi*x)*cos(6*pi*y)",2); // should be correct
+    gsFunctionExpr<> bc2("-2*pi^2*cos((2*pi*t)/3)*cos(pi*x)*cos(pi*y)",2); // should be correct
     // =====================================================
 
     // ![Initialize the assembler]
@@ -429,7 +435,7 @@ void solve( gsMultiPatch<T> & mp,
         GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
-        gsFunctionExpr<> initial_cond("cos(6*pi*x)*cos(6*pi*y)",2);
+        gsFunctionExpr<> initial_cond("cos(pi*x)*cos(pi*y)",2);
         real_t error = gsL2Projection<real_t>::projectFunction(dbasis,initial_cond,mp,tmp);  // 3rd arg has to be multipatch
         if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
         mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
@@ -640,16 +646,16 @@ void solve( gsMultiPatch<T> & mp,
                         A.assembleBdr(bc.get("Laplace"), (igrad(w,G).tr() * nv(G))* lambda * bc_Laplace.tr());
                         // ================================================
 
-                        // // Assemble the Nitsche BC on the sides with Neumann condition
-                        // // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-                        // A.initMatrix();
-                        // clock.restart();
-                        // A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                        //             penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
-                        //             lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term            
+                        // Assemble the Nitsche BC on the sides with Neumann condition
+                        // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
+                        A.initMatrix();
+                        clock.restart();
+                        A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                                    penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
+                                    lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term            
 
-                        // assemblyTime += clock.stop();
-                        // K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
+                        assemblyTime += clock.stop();
+                        K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
                         if (bc.get("Neumann").size()!=0)
                             Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
@@ -684,8 +690,8 @@ void solve( gsMultiPatch<T> & mp,
                         assemblyTime += clock.stop();
 
                         K = A.giveMatrix();
-                        // if (bc.get("Neumann").size()!=0)
-                        //     K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
+                        if (bc.get("Neumann").size()!=0)
+                            K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
 
 
                         clock.restart();
@@ -699,6 +705,9 @@ void solve( gsMultiPatch<T> & mp,
 
     // #ifdef GISMO_WITH_PARDISO
     // gsSparseSolver<>::PardisoLU solverpLU;
+
+                        // gsDebugVar(K.toDense().maxCoeff());
+                        // gsDebugVar(K.toDense().minCoeff());
 
                         dCupdate = solver.solve(-Q);
                         solverTime += clock.stop();
@@ -795,7 +804,7 @@ void solve( gsMultiPatch<T> & mp,
             // Export the mesh
             collection.newTimeStep(&mp);
             collection.addField(cnew,"numerical solution");
-            gsFunctionExpr<> source_time("cos(6*pi*x) * cos(6*pi*y) * cos(2/3*pi*t)",2);
+            gsFunctionExpr<> source_time("cos(pi*x) * cos(pi*y) * cos(2/3*pi*t)",2);
             source_time.set_t(tnew);
             auto u_manufactured = ev.getVariable(source_time, G);
             collection.addField(u_manufactured,"analytical solution");
@@ -898,10 +907,6 @@ void solve( gsMultiPatch<T> & mp,
     gsInfo<<"[CLOCK] --- Time for projection: "<<projectionTime<<" [s]\n";
     gsInfo<<"[CLOCK] --- Number of solves: "<<nSolves<<"\n";
 
-    csvFile.close();
-    std::cout << "Data saved to " + out + ".csv"<< std::endl;
-
-
      // ========= Calculate values =========
      gsMatrix<> pts_eval(2, 40);  // 2 rows (x, y) and 40 columns (points)
      for (int i = 0; i < 40; ++i) {
@@ -927,7 +932,7 @@ void solve( gsMultiPatch<T> & mp,
  
      // ========= Compute L2 error ========= 
      // === Solution with time ===
-     gsFunctionExpr<> source_time("cos(6*pi*x) * cos(6*pi*y) * cos(2/3*pi*t)",2);
+     gsFunctionExpr<> source_time("cos(pi*x) * cos(pi*y) * cos(2/3*pi*t)",2);
      source_time.set_t(time);
      auto u_manufactured = ev.getVariable(source_time, G);
     //  gsWriteParaview(source_time,out+"/manu_sol");
@@ -938,6 +943,12 @@ void solve( gsMultiPatch<T> & mp,
      gsInfo << " Mesh-size: "<< dbasis.basis(0).getMaxCellLength() << "\n";
      gsInfo << "      Dofs: "<< A.numDofs() << "\n";
      // =====================================
+     csvFile << "TOTAL COMPUTATIONAL TIMES, Value\n";
+     csvFile << "L2 error : " << l2err << "\n";
+     csvFile << "Mesh size: " << dbasis.basis(0).getMaxCellLength() << "\n";
+     csvFile << "     Dofs: " << A.numDofs() << "\n";
+     csvFile.close();
+     std::cout << "Data saved to " + out + ".csv"<< std::endl; 
  
 }
 

@@ -15,13 +15,13 @@
 
     Tensor product (check flags in .xml file): with lambda = 0.1
     //  =========== QUADRATIC BASIS ===========
-    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 6 -t 0.3 -N 10 -c 0 -v 2 -s 0 -f pde/cahn_hilliard_bvp.xml 
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_space --plot -r 6 -t 0.3 -N 10 -c 0 -v 2 -s 0 -f pde/cahn_hilliard_bvp.xml 
 
     //  =========== CUBIC BASIS ===========
-    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 6 -t 0.3 -N 10 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_space --plot -r 6 -t 0.3 -N 10 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
     
     //  =========== QUARTIC BASIS ===========
-    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_time --plot -r 6 -t 0.3 -N 10 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
+    ./bin/cahn-hilliard_adaptivity_example_corrected_convergence_space --plot -r 6 -t 0.3 -N 10 -c 0 -v 2 -s 0 -e 2 -f pde/cahn_hilliard_bvp.xml 
     
     and clamped BC for the essential flux boundary condition
     -----------------------------------------------------------------------
@@ -655,8 +655,8 @@ void solve( gsMultiPatch<T> & mp,
                         // assemblyTime += clock.stop();
                         // K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
-                        if (bc.get("Neumann").size()!=0)
-                            Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
+                        // if (bc.get("Neumann").size()!=0)
+                        //     Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
 
                         // Check the convergence conditions
                         if (it == 0) Q0norm = Q.norm();
