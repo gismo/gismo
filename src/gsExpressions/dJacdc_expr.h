@@ -19,12 +19,12 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the derivative of the jacobian of a spline geometry map,
-  with respect to the coordinate c.
-
-  It returns a matrix with the gradient of u in row d.
-*/
+/**
+ * @brief Expression for the derivative of the jacobian of a geometry map
+ *        with respect to a coordinate c. It returns a matrix with the gradient of u in row d.
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class dJacdc_expr : public _expr<dJacdc_expr<E> >
 {
@@ -70,7 +70,11 @@ public:
     void print(std::ostream &os) const { os << "dJacdc("; _u.print(os); os <<")"; }
 };
 
-/// The derivative of the jacobian of a geometry map with respect to a coordinate.
+/**
+ * @brief Returns the derivative of the jacobian of a geometry map with respect to a coordinate
+ * @param u The expression
+ * @param c The coordinate
+ */
 template<class E> EIGEN_STRONG_INLINE
 dJacdc_expr<E> dJacdc(const E & u, index_t c) { return dJacdc_expr<E>(u,c); }
 

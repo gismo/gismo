@@ -20,12 +20,15 @@ namespace expr
 {
 
 /**
-   Transforms a matrix expression into a vector expression by computing the vector
-   [ a b c+d]^T
-   for each matrix block
-   [ a d ]
-   [ c b ]
-*/
+ * @brief Expression for the Voigt notation of a matrix expression
+ *        Evaluates
+ *       \f[
+ *          \text{voigt}(u) = [ u_{11} u_{22} u_{12}+u_{21} ]^T
+ *       \f]
+ * @todo finish
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class voigt_expr  : public _expr<voigt_expr<E> >
 {

@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression to make an expression colblocks
-*/
+/**
+ * @brief Expression to make an expression colblocks
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class colBlocks_expr : public _expr<colBlocks_expr<E> >
 {

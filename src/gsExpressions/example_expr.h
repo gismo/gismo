@@ -20,7 +20,9 @@ namespace expr
 {
 
 /**
- * @brief
+ * @brief An example expression, for illustration purposes
+ * @ingroup Expressions
+ * @tparam E The expression type
  */
 template<class E>
 class example_expr : public _expr<example_expr<E> >
@@ -36,45 +38,51 @@ public:
 
 public:
 
+    /// @brief Expression properties
     enum
     {
-        ColBlocks = 1,
-        ScalarValued=E::ScalarValued,
-        Space = E::Space
+        ColBlocks = 1, /// @brief The expression is stored block-wise in columns
+        ScalarValued=E::ScalarValued, /// @brief The expression is scalar valued
+        Space = E::Space /// @brief The expression is a space (1: trail, 2: test, 3: combination)
     };
 
+    /**
+     * @brief Evaluates the expression at pre-computed point \a k
+     */
     AutoReturn_t & eval(const index_t k) const
     {
         return 0.0;
     }
 
     /**
-     * @brief
+     * @brief Returns the number of rows of the expression
      */
     index_t rows() const { return _u.rows(); }
 
     /**
-     * @brief
+     * @brief Returns the number of columns of the expression
      */
     index_t cols() const { return _u.cols(); }
 
     /**
-     * @brief
+     * @brief Sets the flag for the expression
      */
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     /**
-     * @brief
+     * @brief Returns the row variable of the expression
+     * @todo  Elaborate more
      */
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     /**
-     * @brief
+     * @brief Returns the column variable of the expression
+     * @todo  Elaborate more
      */
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
     /**
-     * @brief
+     * @brief Returns the cardinality of the expression, i.e. the number of basis functions at the point
      */
     index_t cardinality_impl() const
     {

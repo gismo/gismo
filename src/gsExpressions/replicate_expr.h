@@ -19,6 +19,11 @@ namespace gismo
 namespace expr
 {
 
+/**
+ * @brief Expression for the replicate the evaluation of an expression \f$n\times m\f$ times
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class replicate_expr  : public _expr<replicate_expr<E> >
 {
@@ -56,7 +61,13 @@ public:
     void print(std::ostream &os) const { os << "replicate("; _u.print(os); os<<","<<_n<<","<<_m<<")"; }
 };
 
-/// Replicate an expression
+/**
+ * @brief Creates a replicate expression by replicating the given expression
+ *        \f[ \text{replicate}(u) = u \otimes I_{n \times m} \f]
+ * @ingroup Expressions
+ * @tparam E The type of the expression being replicated
+ * @param u The input expression to be replicated.
+ */
 template <typename E> EIGEN_STRONG_INLINE
 replicate_expr<E> const replicate(E const & u, index_t n, index_t m = 1)
 { return replicate_expr<E>(u, n, m); }

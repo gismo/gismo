@@ -19,6 +19,11 @@ namespace gismo
 namespace expr
 {
 
+/**
+ * @brief Expression for reshaping an expression
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class reshape_expr  : public _expr<reshape_expr<E> >
 {
@@ -61,7 +66,14 @@ public:
 };
 
 
-/// Reshape an expression
+/**
+ * @brief Reshape an expression
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ * @param u The expression to reshape
+ * @param n The number of rows in the reshaped expression
+ * @param m The number of columns in the reshaped expression
+ */
 template <class E> EIGEN_STRONG_INLINE
 reshape_expr<E> const reshape(E const & u, index_t n, index_t m)
 { return reshape_expr<E>(u, n, m); }

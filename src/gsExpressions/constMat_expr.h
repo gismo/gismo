@@ -20,8 +20,10 @@ namespace expr
 {
 
 /**
-   Wrapper expression for constant matrices
-*/
+ * @brief Expression for a constant matrix
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 class constMat_expr : public _expr<constMat_expr >
 {
 public:
@@ -50,6 +52,12 @@ public:
     void print(std::ostream &os) const { os << "constMat";}
 };
 
+/**
+ * @brief Expression for a constant matrix of ones
+ * @ingroup Expressions
+ * @param dim The dimension of the matrix
+ * @return A constant matrix of ones
+ */
 EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim)
 {
     gsMatrix<real_t> ones(dim, dim);
@@ -57,6 +65,12 @@ EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim)
     return constMat_expr(ones);
 }
 
+/**
+ * @brief Expression that turns a matrix into an expression
+ * @ingroup Expressions
+ * @param mat The matrix
+ * @return A constant matrix of zeros
+ */
 EIGEN_STRONG_INLINE constMat_expr mat(const gsMatrix<real_t> mat) { return constMat_expr(mat); }
 
 

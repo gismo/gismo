@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Adaptor for scalar-valued expression
-*/
+/**
+ * @brief Expression adaptor for a scalar-valued expression
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class value_expr  : public _expr<value_expr<E> >
 {

@@ -19,9 +19,12 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the curl
-*/
+/**
+ * @brief Expression for the curl of a vector field
+ * @ingroup Expressions
+ * @tparam T The scalar type
+ * @todo finish this expression
+ */
 template<class T>
 class curl_expr : public _expr<curl_expr<T> >
 {

@@ -19,7 +19,11 @@ namespace gismo
 namespace expr
 {
 
-// Takes the max of a vector
+/**
+ * @brief Expression for the max of a vector
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class max_expr  : public _expr<max_expr<E> >
 {

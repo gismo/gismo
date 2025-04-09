@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the nabla (\f$\nabla\f$) of a finite element variable,
-*/
+/**
+ * @brief Expression for the nabla (\f$\nabla\f$) of a finite element variable
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T>
 class nabla_expr : public _expr<nabla_expr<T> >
 {
@@ -71,7 +73,11 @@ public:
     void print(std::ostream &os) const { os << "nabla("; u.print(os); os <<")"; }
 };
 
-/// The nabla (\f$\nabla\f$) of a finite element variable
+/**
+ * @brief nabla operator for finite element variables
+ * @ingroup Expressions
+ * @param u The finite element variable
+ */
 template<class T> EIGEN_STRONG_INLINE
 nabla_expr<T> nabla(const gsFeVariable<T> & u) { return nabla_expr<T>(u); }
 

@@ -19,16 +19,16 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for cross-product operation (first version)
-
-  First argument E1 has ColBlocks = false
-
-  Partial specialization for (right) blockwise cross-product
-
-  B x [A1 A2 A3] = [BxA1  BxA2  BxA3]
-
-*/
+/**
+ * @brief Expression for the cross product of two expressions
+ * @ingroup Expressions
+ * @tparam E1 The first expression type
+ * @tparam E2 The second expression type
+ *
+ * This class is a partial specialization for the case where the first
+ * expression is not a column block.
+ * B x [A1 A2 A3] = [BxA1  BxA2  BxA3]
+ */
 template <typename E1, typename E2>
 class cross_expr<E1,E2,false> : public _expr<cross_expr<E1, E2, false> >
 {
@@ -90,6 +90,25 @@ public:
                                                 [A2xB1 ..           ]
                                                 [                   ]
 */
+
+/**
+ * @brief Expression for the cross product of two expressions
+ * @ingroup Expressions
+ * @tparam E1 The first expression type
+ * @tparam E2 The second expression type
+ *
+ * This class is a partial specialization for the case where the first
+ * expression is a column block.
+ *
+ * Partial specialization for (right) blockwise cross-product
+ * [A1 A2 A3] x B = [A1xB  A2xB  A3xB]
+ *
+ * as well as
+ *
+ * both are ColBlocks: [A1 A2 A3] x [B1 B2 B3] = [A1xB1  A2xB2  A3xB3]
+ *                                               [A2xB1 ..           ]
+ *                                               [                   ]
+ */
 template <typename E1, typename E2>
 class cross_expr<E1, E2, true> : public _expr<cross_expr<E1, E2, true> >
 {

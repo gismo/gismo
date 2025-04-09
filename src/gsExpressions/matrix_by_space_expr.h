@@ -20,10 +20,12 @@ namespace expr
 {
 
 /**
-   computes outer products of a matrix by a space of dimension > 1
-   [Jg Jg Jg] * Jb ..
-   (d x d^2)  * (d^2 x N*d)  --> (d x N*d)
-*/
+ * @brief Expression for computing the outer products of a matrix by a space of dimension > 1
+ * @ingroup Expressions
+ * @tparam E1 The first expression type
+ * @tparam E2 The second expression type
+ * @note needed?
+ */
 template <typename E1, typename E2>
 class matrix_by_space_expr  : public _expr<matrix_by_space_expr<E1,E2> >
 {
@@ -75,8 +77,15 @@ public:
     void print(std::ostream &os) const { os << "matrix_by_space("; _u.print(os); os<<")"; }
 };
 
-/// Matrix by space TODO: find better name and/or description? And is this the best place?
-/// [Jg Jg Jg] * Jb ..
+/**
+ * @brief Matrix by space expression
+ * @todo  Matrix by space TODO: find better name and/or description? And is this the best place?
+ * @ingroup Expressions
+ * @tparam E1 The first expression type
+ * @tparam E2 The second expression type
+ * @param u The first expression
+ * @param v The second expression
+ */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 matrix_by_space_expr<E1,E2> const matrix_by_space(E1 const & u, E2 const& v)
 { return matrix_by_space_expr<E1,E2>(u, v); }

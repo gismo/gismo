@@ -19,6 +19,12 @@ namespace gismo
 namespace expr
 {
 
+/**
+ * @brief base expression
+ * @todo Documentation
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class symbol_expr : public _expr<E>
 {

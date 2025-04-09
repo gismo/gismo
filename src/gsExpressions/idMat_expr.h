@@ -20,8 +20,10 @@ namespace expr
 {
 
 /**
-   Expression for the identity matrix
-*/
+ * @brief Expression for the identity matrix
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 class idMat_expr : public _expr<idMat_expr >
 {
 public:
@@ -50,7 +52,11 @@ public:
     void print(std::ostream &os) const { os << "id("<<_dim <<")";}
 };
 
-/// The identity matrix of dimension \a dim
+/**
+ * @brief Function to create an identity matrix expression
+ * @ingroup Expressions
+ * @param dim The dimension of the identity matrix
+ */
 EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
 
 }// namespace expr

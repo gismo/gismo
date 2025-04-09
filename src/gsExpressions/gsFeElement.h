@@ -21,9 +21,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  An element object collecting relevant expressions
-*/
+/**
+ * @brief Expression for a finite element, collecting relevant expressions
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class gsFeElement
 {

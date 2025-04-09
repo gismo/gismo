@@ -21,13 +21,15 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression representing a function given by a vector of
-  coefficients in a gsFeSpace.
-
-  Typically it used for accessing the solution of a boundary-value
-  problem.
-*/
+/**
+ * @brief Expression for a finite element solution, representing a function given by a vector of
+ *        coefficients in a gsFeSpace.
+ *
+ *        Typically it used for accessing the solution of a boundary-value
+ *        problem.
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class gsFeSolution : public _expr<gsFeSolution<T> >
 {

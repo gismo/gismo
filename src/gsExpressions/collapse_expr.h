@@ -19,6 +19,13 @@ namespace gismo
 namespace expr
 {
 
+/**
+ * @brief
+ * @todo document
+ * @ingroup Expressions
+ * @tparam E1 The first expression type
+ * @tparam E2 The second expression type
+ */
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >
 {

@@ -19,12 +19,13 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the nabla2 (\f$\nabla^2\f$ or Del2) of a finite element variable,
-  see also https://en.wikipedia.org/wiki/Del
-
-  Transposed pure second derivatives are returned as a matrix
-*/
+/**
+ * @brief Expression for the nabla2 (\f$\nabla^2\f$) of a finite element variable
+ *        see also https://en.wikipedia.org/wiki/Del
+ * @note  Transposed pure second derivatives are returned as a matrix
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T>
 class nabla2_expr : public _expr<nabla2_expr<T> >
 {
@@ -65,7 +66,11 @@ public:
     {return gsNullExpr<T>::get();}
 };
 
-/// The nabla2 (\f$\nabla^2\f$) of a finite element variable
+/**
+ * @brief Expression for the nabla2 (\f$\nabla^2\f$) of a finite element variable
+ * @ingroup Expressions
+ * @param u The expression
+ */
 template<class T>
 nabla2_expr<T> nabla2(const gsFeVariable<T> & u) { return nabla2_expr<T>(u); }
 // #define lapl(x) nabla2(x).sum() // assume tarDim==1

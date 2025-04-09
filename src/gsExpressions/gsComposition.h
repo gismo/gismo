@@ -19,6 +19,11 @@ namespace gismo
 namespace expr
 {
 
+/**
+ * @brief Expression for the composition of a variable and a geometry map
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class gsComposition : public symbol_expr< gsComposition<T> >
 { //comp(f,G)

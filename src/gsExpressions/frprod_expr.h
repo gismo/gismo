@@ -29,6 +29,17 @@ namespace expr
   [ A2.B1  A2.B2  A2.B3 ]
   [ A3.B1  A3.B2  A3.B3 ]
 */
+
+/**
+ * @brief Expression for the Frobenius product of two expressions (first version)
+ *
+ *        This expression works block-wise
+ *          [A1 A2 A3] . [B1 B2 B3]
+ *          =
+ *          [ A1.B1  A1.B2  A1.B3 ]
+ *          [ A2.B1  A2.B2  A2.B3 ]
+ *          [ A3.B1  A3.B2  A3.B3 ]
+ */
 template <typename E1, typename E2, bool = E2::ColBlocks>
 class frprod_expr : public _expr<frprod_expr<E1, E2> >
 {
@@ -88,13 +99,14 @@ public:
     { os << "("; _u.print(os); os<<" % "; _v.print(os); os<<")";}
 };
 
-/*
-
-  Expression for the Frobenius matrix (or double dot) product (second
-  version), When left hand only side is block-wise
-
-  [A1 A2 A3] : B = [A1:B  A2:B  A3:B]
-*/
+/**
+ * @brief Expression for the Frobenius product of two expressions (second version)
+ *        When left hand only side is block-wise
+ *        [A1 A2 A3] : B = [A1:B  A2:B  A3:B]
+ * @ingroup Expressions
+ * @tparam E1 The first expression type
+ * @tparam E2 The second expression type
+ */
 template <typename E1, typename E2>
 class frprod_expr<E1,E2,false> : public _expr<frprod_expr<E1, E2,false> >
 {
@@ -148,7 +160,12 @@ public:
     { os << "("; _u.print(os); os<<" % "; _v.print(os); os<<")";}
 };
 
-/// Frobenious product (also known as double dot product) operator for expressions
+/**
+ * @brief Returns the Frobenius product of two expressions
+ * @param u The first expression
+ * @param v The second expression
+ * @ingroup Expressions
+ */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 frprod_expr<E1,E2> const  operator%(_expr<E1> const& u, _expr<E2> const& v)
 { return frprod_expr<E1, E2>(u, v); }

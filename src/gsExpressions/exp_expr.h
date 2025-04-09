@@ -20,8 +20,10 @@ namespace expr
 {
 
 /**
-   Expression for the exponentiation of a given expression.
-*/
+ * @brief Expression for the exponentiation of a given expression
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class exp_expr : public _expr<exp_expr<E> >
 {

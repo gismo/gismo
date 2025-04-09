@@ -20,7 +20,9 @@ namespace expr
 {
 
 /**
-   \brief Base class for all expressions
+    \brief Base class for all expressions
+    \tparam E The expression type
+    \ingroup Expressions
 */
 template <typename E>
 class _expr<E, false>
@@ -233,7 +235,9 @@ std::ostream &operator<<(std::ostream &os, const _expr<E> & b)
 {b.print(os); return os; }
 
 /*
-  Expression for a constant value
+    \brief Expression for a constant value
+    \ingroup Expressions
+    \tparam T The type of the constant value
 */
 template<class T>
 class _expr<T, true> : public _expr<_expr<T> >

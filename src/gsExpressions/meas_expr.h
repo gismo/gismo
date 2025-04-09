@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the measure of a geometry map
-*/
+/**
+ * @brief Expression for the measure of a geometry map
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class meas_expr : public _expr<meas_expr<T> >
 {
@@ -53,7 +55,11 @@ public:
     void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
 };
 
-/// The measure of a geometry map
+/**
+ * @brief Function to create a measure expression
+ * @ingroup Expressions
+ * @param G The geometry map
+ */
 template<class T> EIGEN_STRONG_INLINE
 meas_expr<T> meas(const gsGeometryMap<T> & G) { return meas_expr<T>(G); }
 

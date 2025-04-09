@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the diagonal(s) of a (matrix) expression
-*/
+/**
+  * @brief Expression for the diagonal of a matrix expression
+  * @ingroup Expressions
+  * @tparam E The expression type
+  */
 template<class E>
 class diag_expr  : public _expr<diag_expr<E> >
 {
@@ -64,7 +66,12 @@ public:
     void print(std::ostream &os) const { os << "diag("; _u.print(os); os<<")"; }
 };
 
-/// Get diagonal elements of matrix as a vector
+/**
+ * @brief Returns the diagonal of a matrix expression
+ * @param u The expression
+ * @ingroup Expressions
+ * @return A diagonal matrix expression
+ */
 template <typename E> EIGEN_STRONG_INLINE
 diag_expr<E> const diagonal(E const & u)
 { return diag_expr<E>(u); }

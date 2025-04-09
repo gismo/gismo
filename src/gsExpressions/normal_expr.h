@@ -20,9 +20,10 @@ namespace expr
 {
 
 /**
-   Expression for the out of plane surface normal of a geometry map.
-   The expression is valid for a surface or hypersurface.
-*/
+ * @brief Expression for the out of plane surface normal of a geometry map
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T>
 class normal_expr : public _expr<normal_expr<T> >
 {
@@ -55,6 +56,11 @@ public:
     void print(std::ostream &os) const { os << "sn("; _G.print(os); os <<")"; }
 };
 
+/**
+ * @brief Expression for the out of plane surface normal of a geometry map
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T> EIGEN_STRONG_INLINE
 normal_expr<T> sn(const gsGeometryMap<T> & u) { return normal_expr<T>(u); }
 

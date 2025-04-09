@@ -20,9 +20,11 @@ namespace expr
 {
 
 /**
-   Expression for finite element variables or PDE coefficient functionals.
-   This can be e.g. a diffusion coefficient, or an isogeometric function.
-*/
+ * @brief Expression for a finite element variables or PDE coefficient functionals.
+ *        This can be e.g. a diffusion coefficient, or an isogeometric function.
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class gsFeVariable  : public symbol_expr< gsFeVariable<T> >
 {

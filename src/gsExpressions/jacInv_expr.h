@@ -19,10 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the (precomputed) inverse of the Jacobian matrix of
-  a geometry map
-*/
+/**
+ * @brief Expression for the inverse of the Jacobian matrix
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class jacInv_expr  : public _expr<jacInv_expr<T> >
 {

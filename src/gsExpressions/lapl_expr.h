@@ -20,8 +20,10 @@ namespace expr
 {
 
 /**
-   Expression for the Laplacian of a finite element variable
-*/
+ * @brief Expression for the Laplacian of a finite element variable
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class lapl_expr : public _expr<lapl_expr<E> >
 {
@@ -59,9 +61,11 @@ public:
     void print(std::ostream &os) const { os << "\u2206("; _u.print(os); os <<")"; } //or \u0394
 };
 
-/*
-  Expression for the Laplacian of a finite element solution
-*/
+/**
+ * @brief Expression for the Laplacian of a finite element solution
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class lapl_expr<gsFeSolution<T> > : public _expr<lapl_expr<gsFeSolution<T> > >
 {
@@ -114,9 +118,25 @@ public:
     void print(std::ostream &os) const { os << "\u2206(s)"; }
 };
 
+/**
+ * @brief Returns the Laplacian of an addition
+ * @ingroup Expressions
+ */
+
+
+/**
+ * @brief Returns the Laplacian of an expression
+ * @ingroup Expressions
+ * @param u The expression
+ */
 template<class E> EIGEN_STRONG_INLINE
 lapl_expr<E> lapl(const symbol_expr<E> & u) { return lapl_expr<E>(u); }
 
+/**
+ * @brief Returns the Laplacian of a geometry map
+ * @ingroup Expressions
+ * @param G The geometry map
+ */
 template<class T> EIGEN_STRONG_INLINE
 lapl_expr<gsFeSolution<T> > lapl(const gsFeSolution<T> & u)
 { return lapl_expr<gsFeSolution<T> >(u); }

@@ -18,14 +18,8 @@ namespace gismo
 {
 namespace expr
 /**
- * @class pow_expr
  * @brief Represents an expression for computing the power of a base expression raised to a given exponent.
- *
  * @tparam E The type of the base expression.
- *
- * @see _expr
- * @see math::pow
- *
  * @ingroup Expressions
  */
 {

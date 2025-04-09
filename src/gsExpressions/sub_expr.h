@@ -63,6 +63,9 @@ public:
         return res;
     }
 
+    typename E1::Nested_t const & first() const { return _u; }
+    typename E2::Nested_t const & second() const { return _v; }
+
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
 
@@ -88,13 +91,15 @@ template <typename E1, typename E2> EIGEN_STRONG_INLINE
 sub_expr<E1,E2> const operator-(_expr<E1> const& u, _expr<E2> const& v)
 { return sub_expr<E1, E2>(u, v); }
 
-template <typename E2> EIGEN_STRONG_INLINE
-sub_expr<_expr<typename E2::Scalar>,E2> const
-operator-(typename E2::Scalar const& s, _expr<E2> const& v)
-{
-    // assert E2::ScalarValued
-    return sub_expr<_expr<typename E2::Scalar>, E2>(_expr<typename E2::Scalar>(s), v);
-}
+template <typename E> EIGEN_STRONG_INLINE
+sub_expr<_expr<typename E::Scalar>,E> const
+operator-(typename E::Scalar const& s, _expr<E> const& v)
+{ return sub_expr<_expr<typename E::Scalar>, E>(_expr<typename E::Scalar>(s), v); }
+
+template <typename E> EIGEN_STRONG_INLINE
+sub_expr<E, _expr<typename E::Scalar>> const
+operator-(_expr<E> const& u, typename E::Scalar const& s)
+{ return sub_expr<E, _expr<typename E::Scalar>>(u, _expr<typename E::Scalar>(s)); }
 
 }// namespace expr
 }// namespace gismo

@@ -22,8 +22,10 @@ namespace expr
 {
 
 /**
-   An expression of the element diameter
-*/
+ * @brief Expression for the element diameter
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class integral_expr : public _expr<integral_expr<E> >
 {

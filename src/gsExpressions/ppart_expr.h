@@ -20,8 +20,14 @@ namespace expr
 {
 
 /**
-   Expression for the component-wise positive part
-*/
+ * @brief Expression for the component-wise positive part
+ *        Evaluates
+ *       \f[
+ *          \text{ppart}(u) = \max(u, 0)
+ *       \f]
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class ppart_expr : public _expr<ppart_expr<E> >
 {

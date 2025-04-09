@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Geometry map expression
-*/
+/**
+ * @brief Expression for a geometry map
+ * @ingroup Expressions
+ * @tparam T The scalar type
+ */
 template<class T>
 class gsGeometryMap : public _expr<gsGeometryMap<T> >
 {

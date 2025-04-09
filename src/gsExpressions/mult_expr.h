@@ -19,16 +19,15 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for multiplication operation (first version)
-
-  First argument E1 has ColBlocks = false
-
-  Partial specialization for (right) blockwise multiplication
-
-  B * [A1 A2 A3] = [B*A1  B*A2  B*A3]
-
-*/
+/**
+ * @brief Expression for the multiplication operation (first version)
+ *        First argument E1 has ColBlocks = false
+ *        Partial specialization for (right) blockwise multiplication:
+ *        B * [A1 A2 A3] = [B*A1  B*A2  B*A3]
+ * @ingroup Expressions
+ * @tparam E1 the type of the first expression
+ * @tparam E2 the type of the second expression
+ */
 template <typename E1, typename E2>
 class mult_expr<E1,E2,false> : public _expr<mult_expr<E1, E2, false> >
 {
@@ -58,6 +57,9 @@ public:
         return tmp; // assumes result is not scalarvalued
     }
 
+    typename E1::Nested_t const & first() const { return _u; }
+    typename E2::Nested_t const & second() const { return _v; }
+
     index_t rows() const { return E1::ScalarValued ? _v.rows()  : _u.rows(); }
     index_t cols() const { return E2::ScalarValued ? _u.cols()  : _v.cols(); }
     void parse(gsExprHelper<Scalar> & evList) const
@@ -75,20 +77,19 @@ public:
     void print(std::ostream &os) const { _u.print(os); os<<"*"; _v.print(os); }
 };
 
-/*
-  Expression for multiplication operation (second version)
-
-  First argument E1 has ColBlocks = true
-
-  Partial specialization for (right) blockwise multiplication
-  [A1 A2 A3] * B = [A1*B  A2*B  A3*B]
-
-  as well as
-
-  both are ColBlocks: [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
-                                                [A2*B1 ..           ]
-                                                [                   ]
-*/
+/**
+ * @brief Expression for the multiplication operation (second version)
+ *        First argument E1 has ColBlocks = true
+ *        Partial specialization for (right) blockwise multiplication:
+ *        [A1 A2 A3] * B = [A1*B  A2*B  A3*B]
+ *        As well as for when both are ColBlocks:
+ *        [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
+ *                                   [A2*B1  ...        ]
+ *                                   [                  ]
+ * @ingroup Expressions
+ * @tparam E1 the type of the first expression
+ * @tparam E2 the type of the second expression
+ */
 template <typename E1, typename E2>
 class mult_expr<E1, E2, true> : public _expr<mult_expr<E1, E2, true> >
 {
@@ -149,6 +150,9 @@ public:
         return res;
     }
 
+    typename E1::Nested_t const & first() const { return _u; }
+    typename E2::Nested_t const & second() const { return _v; }
+
     index_t rows() const {
         return _u.rows();
     }
@@ -175,11 +179,12 @@ public:
     { os << "("; _u.print(os);os <<"*";_v.print(os);os << ")"; }
 };
 
-/*
-  Expression for multiplication operation (third version)
-
-  Scalar multiplication
-*/
+/**
+ * @brief Expression for multiplication operation (third version)
+ *        Scalar version
+ * @ingroup Expressions
+ * @tparam E2 the type of the expression
+ */
 template <typename E2>
 class mult_expr<typename E2::Scalar, E2, false>
     : public _expr<mult_expr<typename E2::Scalar, E2, false> >
@@ -205,6 +210,9 @@ public:
 
     }
 
+    Scalar                const & first()  const { return _c; }
+    typename E2::Nested_t const & second() const { return _v; }
+
     index_t rows() const { return _v.rows(); }
     index_t cols() const { return _v.cols(); }
 
@@ -221,29 +229,66 @@ public:
 };
 
 /// Multiplication operator for expressions
+
+/**
+ * @brief Multiplication operator for expressions
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param v The second expression
+ */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 mult_expr<E1,E2> const operator*(_expr<E1> const& u, _expr<E2> const& v)
 { return mult_expr<E1, E2>(u, v); }
 
+/**
+ * @brief Multiplication operator for expressions
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param v The second expression
+ */
 template <typename E2> EIGEN_STRONG_INLINE
 mult_expr<typename E2::Scalar,E2,false> const
 operator*(typename E2::Scalar const& u, _expr<E2> const& v)
 { return mult_expr<typename E2::Scalar, E2, false>(u, v); }
 
+/**
+ * @brief Multiplication operator for expressions
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param v The second expression
+ */
 template <typename E1> EIGEN_STRONG_INLINE
 mult_expr<typename E1::Scalar,E1,false> const
 operator*(_expr<E1> const& v, typename E1::Scalar const& u)
 { return mult_expr<typename E1::Scalar,E1, false>(u, v); }
 
+/**
+ * @brief Multiplication operator for expressions
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param v The second expression
+ */
 template <typename E1> EIGEN_STRONG_INLINE
 mult_expr<typename E1::Scalar,E1,false> const
 operator-(_expr<E1> const& u)
 { return mult_expr<typename E1::Scalar,E1, false>(-1, u); }
 
+/**
+ * @brief Multiplication operator for expressions
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param v The second expression
+ */
 template <typename E> mult_expr<constMat_expr, E> const
 operator*( gsMatrix<typename E::Scalar> const& u, _expr<E> const& v)
 { return mult_expr<constMat_expr, E>(mat(u), v); }
 
+/**
+ * @brief Multiplication operator for expressions
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param v The second expression
+ */
 template <typename E> mult_expr<E, constMat_expr> const
 operator*(_expr<E> const& u, gsMatrix<typename E::Scalar> const& v)
 { return mult_expr<E, constMat_expr>(u, mat(v) ); }

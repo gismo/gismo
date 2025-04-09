@@ -19,9 +19,12 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the transpose of an expression
-*/
+/**
+ * @brief Expression for the transpose of an expression
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ * @tparam cw The direction of the transpose (column-wise or row-wise)
+ */
 template<class E, bool cw>
 class transpose_expr : public _expr<transpose_expr<E,cw> >
 {

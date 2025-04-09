@@ -22,6 +22,13 @@ namespace expr
 /*
   Expression for the (precomputed) second fundamental form of a surface
 */
+
+/**
+ * @brief Expression for the second fundamental form of a geometry map,
+ *        which is pre-computed by the \ref gsFuncData
+ * @ingroup Expressions
+ * @tparam T The scalar type
+ */
 template<class T>
 class fform2nd_expr  : public _expr<fform2nd_expr<T> >
 {
@@ -52,7 +59,11 @@ public:
     void print(std::ostream &os) const { os << "fform2nd("; _G.print(os); os <<")"; }
 };
 
-/// The second fundamental form of \a G
+/**
+ * @brief Returns the second fundamental form of a geometry map
+ * @ingroup Expressions
+ * @param G The geometry map
+ */
 template<class T> EIGEN_STRONG_INLINE fform2nd_expr<T> fform2nd(const gsGeometryMap<T> & G)
 { return fform2nd_expr<T>(G); }
 

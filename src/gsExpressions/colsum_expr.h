@@ -19,6 +19,11 @@ namespace gismo
 namespace expr
 {
 
+/**
+ * @brief Expression for the column summation of a matrix
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class colsum_expr  : public _expr<colsum_expr<E> >
 {

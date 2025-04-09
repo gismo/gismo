@@ -21,8 +21,8 @@ namespace expr
 
 /**
     @brief Null expression is a compatibility expression invalid at runtime
-
     @ingroup Expressions
+    @tparam T The scalar type
 */
 template<class T>
 class gsNullExpr : public _expr<gsNullExpr<T> >

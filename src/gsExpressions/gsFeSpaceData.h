@@ -19,7 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/// Struct containing information for matrix assembly
+/**
+ * @brief Struct containing information for matrix assembly
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 struct gsFeSpaceData
 {

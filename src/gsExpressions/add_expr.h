@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for addition operation
-*/
+/**
+ *  \brief Expression for the addition of two expressions
+ *  \ingroup Expressions
+ *  \tparam E1 The first expression type
+ */
 template <typename E1, typename E2>
 class add_expr : public _expr<add_expr<E1, E2> >
 {
@@ -60,6 +62,9 @@ public:
         return res;
     }
 
+    typename E1::Nested_t const & first() const { return _u; }
+    typename E2::Nested_t const & second() const { return _v; }
+
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
 
@@ -76,18 +81,33 @@ public:
     { os << "("; _u.print(os);os <<" + ";_v.print(os);os << ")"; }
 };
 
-/// Addition operator for expressions
+/**
+ *  @brief Returns the sum of two expressions
+ * @param u The first expression
+ * @param v The second expression
+ * @ingroup Expressions
+ */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 add_expr<E1,E2> const operator+(_expr<E1> const& u, _expr<E2> const& v)
 { return add_expr<E1, E2>(u, v); }
 
-/// Addition operator for expressions and numbers
+/**
+ *  @brief Returns the sum of an expression and a scalar
+ * @param u The expression
+ * @param v The scalar
+ * @ingroup Expressions
+ */
 template <typename E> EIGEN_STRONG_INLINE
 add_expr< E, _expr<typename E::Scalar, true> >
 operator+(_expr<E> const& u, const typename E::Scalar v)
 { return add_expr<E,_expr<typename E::Scalar>>(u, _expr<typename E::Scalar,true>(v)); }
 
-/// Addition operator for expressions and numbers
+/**
+ *  @brief Returns the sum of a scalar and an expression
+ * @param v The scalar
+ * @param u The expression
+ * @ingroup Expressions
+ */
 template <typename E> EIGEN_STRONG_INLINE
 add_expr< E, _expr<typename E::Scalar, true> >
 operator+(const typename E::Scalar v, _expr<E> const& u)

@@ -19,6 +19,15 @@ namespace gismo
 namespace expr
 {
 
+/**
+ * @brief Expression for the symmetrization operation
+ *       Evaluates
+ *      \f[
+ *         \text{symm}(u) = (u + u^T)
+ *     \f]
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template <typename E>
 class symmetrize_expr : public _expr<symmetrize_expr<E> >
 {

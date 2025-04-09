@@ -57,6 +57,11 @@ void secDerToHessian(const gsEigen::DenseBase<Derived> &  secDers,
     }
 }
 
+/**
+ * @brief Expression for the Hessian of a function
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class hess_expr : public _expr<hess_expr<E> >
 {
@@ -115,6 +120,11 @@ public:
     { os << "\u210D(U)"; }
 };
 
+/**
+ * @brief Expression for the Hessian of a FE solution
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class hess_expr<gsFeSolution<T> > : public _expr<hess_expr<gsFeSolution<T> > >
 {
@@ -202,14 +212,27 @@ public:
     void print(std::ostream &os) const { os << "\u210D(s)"; }
 };
 
+/**
+ * @brief Returns the Hessian of an expression
+ * @ingroup Expressions
+ * @param u The expression
+ */
 template<class E> EIGEN_STRONG_INLINE
 hess_expr<E> hess(const symbol_expr<E> & u) { return hess_expr<E>(u); }
 
-/// The hessian of a geometry map
+/**
+ * @brief Returns the Hessian of a geometry map
+ * @ingroup Expressions
+ * @param u The geometry map
+ */
 template<class T> EIGEN_STRONG_INLINE
 hess_expr<gsGeometryMap<T> > hess(const gsGeometryMap<T> & u) { return hess_expr<gsGeometryMap<T> >(u); }
 
-/// The hessian of a solution variable
+/**
+ * @brief Returns the Hessian of a \ref gsFeSolution
+ * @ingroup Expressions
+ * @param u The \ref gsFeSolution
+ */
 template<class T> EIGEN_STRONG_INLINE
 hess_expr<gsFeSolution<T> > hess(const gsFeSolution<T> & u) { return hess_expr<gsFeSolution<T> >(u); }
 

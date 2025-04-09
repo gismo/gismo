@@ -19,19 +19,17 @@ namespace gismo
 namespace expr
 {
 
-/*
-  lincom_expr (lc) ?
-  Expression for (square) matrix summation operation
-
-  M [r x r*k] is a list of matrices
-  Summation is done over k,
-  [M1 M2 .. Mk]
-
-  u [s x k] is a list of vectors
-
-  Computed quantity is of size [r x r*s] and contains
-  [ ... sum_k(Mk * u(s,k) ) ... ]_s
-*/
+/**
+ * @brief Expression for the summation operation
+ *        M [r x r*k] is a list of matrices
+ *        Summation is done over k,
+ *        [M1 M2 .. Mk]
+ *        u [s x k] is a list of vectors
+ *        Computed quantity is of size [r x r*s] and contains
+ *        [ ... sum_k(Mk * u(s,k) ) ... ]_s
+ * @ingroup Expressions
+ * @tparam E1 the type of the first expression
+ */
 template <typename E1, typename E2>
 class summ_expr : public _expr<summ_expr<E1,E2> >
 {
@@ -82,7 +80,13 @@ private:
     mutable gsMatrix<Scalar> res;
 };
 
-/// Matrix-summation operator for expressions
+/**
+ * @brief
+ * @todo this expression is not clear
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param M The second expression
+ */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 summ_expr<E1,E2> const summ(E1 const & u, E2 const& M)
 { return summ_expr<E1,E2>(u, M); }

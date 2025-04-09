@@ -20,12 +20,22 @@ namespace expr
 {
 
 /**
-   Transforms a matrix expression into a vector expression by computing the vector
-   [ a b c+d]^T
-   for each matrix block
-   [ a d ]
-   [ c b ]
+
 */
+
+/**
+ * @brief Expression that transforms a matrix expression into a vector expression (Voigt-like)
+ *
+ *          Transforms a matrix expression into a vector expression by computing the vector
+ *          [ a b c+d]^T
+ *          for each matrix block
+ *          [ a d ]
+ *          [ c b ]
+ *
+ * @ingroup Expressions
+ * @tparam E The expression type
+ * @todo   Rename this to voigt_expr
+ */
 template<class E>
 class flat_expr  : public _expr<flat_expr<E> >
 {
@@ -78,7 +88,11 @@ public:
     void print(std::ostream &os) const { os << "flat("; _u.print(os); os<<")"; }
 };
 
-/// Make a matrix 2x2 expression "flat"
+/**
+ * @brief Returns the flat expression of a matrix expression
+ * @param u The expression
+ * @ingroup Expressions
+ */
 template <typename E> EIGEN_STRONG_INLINE
 flat_expr<E> const flat(E const & u)
 { return flat_expr<E>(u); }

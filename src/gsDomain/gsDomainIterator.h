@@ -426,7 +426,6 @@ public:
 
     virtual void prev(index_t /* decrement */) override
     {
-        GISMO_UNUSED(decrement);
         GISMO_NO_IMPLEMENTATION
     }
 

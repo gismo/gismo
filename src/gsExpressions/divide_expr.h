@@ -22,6 +22,13 @@ namespace expr
 /*
   Expression for scalar division operation (first version)
 */
+
+/**
+ * @brief Expression for the division of two expressions (first version)
+ * @ingroup Expressions
+ * @tparam E1 The first expression type
+ * @tparam E2 The second expression type
+ */
 template <typename E1, typename E2>
 class divide_expr : public _expr<divide_expr<E1,E2> >
 {
@@ -44,6 +51,9 @@ public:
     AutoReturn_t eval(const index_t k) const
     { return ( _u.eval(k) / _v.eval(k) ); }
 
+    typename E1::Nested_t const & first() const { return _u; }
+    typename E2::Nested_t const & second() const { return _v; }
+
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
 
@@ -58,9 +68,15 @@ public:
     { os << "("; _u.print(os);os <<" / ";_v.print(os);os << ")"; }
 };
 
-/*
-  Division specialization (second version) for constant value denominator
-*/
+/**
+ * @brief Expression for the division of an expression by a constant (second version)
+ * @ingroup Expressions
+ * @tparam E1 The first expression type
+ * @tparam E2 The second expression type
+ *
+ * This class is a partial specialization for the case where the second
+ * expression is a constant value.
+ */
 template <typename E1>
 class divide_expr<E1,typename E1::Scalar>
     : public _expr<divide_expr<E1,typename E1::Scalar> >
@@ -81,6 +97,10 @@ public:
     AutoReturn_t eval(const index_t k) const
     { return ( _u.eval(k) / _c ); }
 
+
+    typename E1::Nested_t const & first() const { return _u; }
+                  Scalar const & second() const { return _c; }
+
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
 
@@ -95,10 +115,14 @@ public:
     { os << "("; _u.print(os);os <<"/"<< _c << ")"; }
 };
 
-/*
-  Division specialization (third version) for constant value
-  numerator
-*/
+/**
+ * @brief Expression for the division of a constant by an expression (third version)
+ * @ingroup Expressions
+ * @tparam E2 The second expression type
+ *
+ * This class is a partial specialization for the case where the first
+ * expression is a constant value.
+ */
 template <typename E2>
 class divide_expr<typename E2::Scalar,E2>
     : public _expr<divide_expr<typename E2::Scalar,E2> >
@@ -119,6 +143,9 @@ public:
     Scalar eval(const index_t k) const
     { return ( _c / _u.val().eval(k) ); }
 
+                    Scalar const & first() const { return _c; }
+    typename E2::Nested_t const & second() const { return _u; }
+
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
 
@@ -133,16 +160,33 @@ public:
     { os << "("<< _c <<"/";_u.print(os);os << ")";}
 };
 
-/// Scalar division operator for expressions
+/**
+ * @brief Returns the division of two expressions
+ * @param u The first expression
+ * @param v The second expression
+ * @ingroup Expressions
+ */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 divide_expr<E1,E2> const operator/(_expr<E1> const& u, _expr<E2> const& v)
 { return divide_expr<E1,E2>(u, v); }
 
+/**
+ * @brief Returns the division of an expression by a constant
+ * @param u The expression
+ * @param v The constant
+ * @ingroup Expressions
+ */
 template <typename E> EIGEN_STRONG_INLINE
 divide_expr<E,typename E::Scalar> const
 operator/(_expr<E> const& u, const typename E::Scalar v)
 { return divide_expr<E,typename E::Scalar>(u, v); }
 
+/**
+ * @brief Returns the division of a constant by an expression
+ * @param u The constant
+ * @param v The expression
+ * @ingroup Expressions
+ */
 template <typename E> EIGEN_STRONG_INLINE
 divide_expr<typename E::Scalar,E> const
 operator/(const typename E::Scalar u, _expr<E> const& v)

@@ -20,8 +20,10 @@ namespace expr
 {
 
 /**
-   Expression for the sign of another expression
-*/
+ * @brief Expression for the sign of a finite element variable
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class sign_expr : public _expr<sign_expr<E> >
 {

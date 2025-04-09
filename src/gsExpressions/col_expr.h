@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Column expression
-*/
+/**
+ * @brief Expression for the column of a matrix
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class col_expr : public _expr<col_expr<E> >
 {

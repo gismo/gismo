@@ -20,9 +20,11 @@ namespace expr
 {
 
 /**
-   Expression for the tangent vector of a geometry map. This
-   expression is valid only at the boundaries of a geometric patch
-*/
+ * @brief Expression for the tangent vector of a geometry map
+ *        This expression is valid only at the boundaries of a geometric patch
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T>
 class tangent_expr : public _expr<tangent_expr<T> >
 {
@@ -72,7 +74,11 @@ public:
     void print(std::ostream &os) const { os << "tv("; _G.print(os); os <<")"; }
 };
 
-/// The tangent boundary vector of a geometry map in 2D
+/**
+ * @brief Expression for the tangent vector of a geometry map
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T> EIGEN_STRONG_INLINE
 tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
 

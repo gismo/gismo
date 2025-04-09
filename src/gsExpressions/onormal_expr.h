@@ -20,9 +20,11 @@ namespace expr
 {
 
 /**
-   Expression for the outer pointing normal of a geometry map. This
-   expression is valid only at the boundaries of a geometric patch
-*/
+ * @brief Expression for the outer pointing normal of a geometry map. This
+ *        expression is valid only at the boundaries of a geometric patch
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T>
 class onormal_expr : public _expr<onormal_expr<T> >
 {
@@ -52,7 +54,12 @@ public:
     void print(std::ostream &os) const { os << "nv("; _G.print(os); os <<")"; }
 };
 
-/// The (outer pointing) boundary normal of a geometry map
+/**
+ * @brief Expression for the outer pointing normal of a geometry map. This
+ *        expression is valid only at the boundaries of a geometric patch
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T> EIGEN_STRONG_INLINE
 onormal_expr<T> nv(const gsGeometryMap<T> & u) { return onormal_expr<T>(u); }
 

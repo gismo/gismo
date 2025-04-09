@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the adjugate of a (matrix) expression
-*/
+/**
+ * @brief Expression for the adjugate of a matrix
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class adjugate_expr  : public _expr<adjugate_expr<E> >
 {

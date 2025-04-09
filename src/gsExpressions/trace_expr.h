@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the trace of a (matrix) expression
-*/
+/**
+ * @brief Expression for the trace of a (matrix) expression
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class trace_expr  : public _expr<trace_expr<E> >
 {

@@ -20,8 +20,10 @@ namespace expr
 {
 
 /**
-   Expression for turning a vector into a diagonal matrix
-*/
+ * @brief   Expression for turning a vector into a diagonal matrix
+ * @ingroup Expressions
+ * @tparam E The expression type
+ */
 template<class E>
 class asdiag_expr : public _expr<asdiag_expr<E> >
 {

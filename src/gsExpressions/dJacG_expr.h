@@ -19,10 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for the partial derivative (matrices) of the Jacobian
-  matrix of the geometry map
-*/
+/**
+ * @brief Expression for the partial derivative of the Jacobian of a geometry map
+ * @ingroup Expressions
+ * @tparam T The expression type
+ */
 template<class T>
 class dJacG_expr : public _expr<dJacG_expr<T> >
 {
@@ -54,7 +55,12 @@ public:
     }
 };
 
-/// The partial derivatives of the Jacobian matrix of a geometry map
+/**
+ * @brief Expression for the partial derivative of the Jacobian of a geometry map
+ * @ingroup Expressions
+ * @tparam T The expression type
+ * @param G The geometry map
+ */
 template<class T> EIGEN_STRONG_INLINE
 dJacG_expr<T> dJac(const gsGeometryMap<T> & G) { return dJacG_expr<T>(G); }
 

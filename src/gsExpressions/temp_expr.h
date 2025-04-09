@@ -19,9 +19,11 @@ namespace gismo
 namespace expr
 {
 
-/*
-  Expression for an evaluation of the (sub-)expression in temporary memory
-*/
+/**
+ * @brief Expression for an evaluation of the (sub-)expression in temporary memory
+ * @ingroup Expressions
+ * @tparam E The type of the expression
+ */
 template<class E>
 class temp_expr : public _expr<temp_expr<E> >
 {
