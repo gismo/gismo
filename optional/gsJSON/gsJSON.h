@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <JSON/include/nlohmann/json.hpp>
+#include <JSON/single_include/nlohmann/json.hpp>
 using json = nlohmann::json;
 
 namespace gismo
@@ -73,10 +73,10 @@ void from_json(const json& j, gsMatrix<T>& mat)
         GISMO_ASSERT(j["rows"].is_number_integer(),"rows is not an integer");
         GISMO_ASSERT(j["cols"].is_number_integer(),"cols is not an integer");
         GISMO_ASSERT(j["data"].is_array(),"data is not an array");
-        mat.resize(j["rows"], j["cols"]);
+        mat.resize(static_cast<index_t>(j["rows"]), static_cast<index_t>(j["cols"]));
         for (index_t I = 0; I < mat.rows(); I++)
-            for (index_t J = 0; J < mat.cols(); J++)
-                mat(I,J) = J["data"][I*mat.cols() + J];
+            for (index_t J = 0; I < mat.cols(); J++)
+                mat(I,J) = j["data"][I*mat.cols() + J];
     }
 }
 
@@ -419,6 +419,12 @@ class gsJSON
             std::ofstream file(filename);
             file << m_data.dump(4);
             file.close();
+        }
+
+        /// Get the raw nlohmann::json object
+        const json& getRaw() const 
+        {
+            return m_data;
         }
 
     protected:
