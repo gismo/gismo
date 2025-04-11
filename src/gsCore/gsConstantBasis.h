@@ -66,41 +66,41 @@ public:
 
 public:
 
-    short_t domainDim() const   { return m_domainDim; }
+    short_t domainDim() const override { return m_domainDim; }
 
-    index_t size() const   { return 1; }
+    index_t size() const override  { return 1; }
 
-    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override
     {
         result.setZero(1,u.cols());
     }
 
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
         result.setConstant(1, u.cols(), m_val);
     }
 
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
         result = gsMatrix<T>::Zero(m_domainDim, u.cols() );
     }
 
-    virtual void anchors_into(gsMatrix<T>& result) const
+    virtual void anchors_into(gsMatrix<T>& result) const override
     {
         result.setZero(1,1);
     }
 
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         os << m_val;
         return os;
     }
 
-    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
+    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const override
     {
         coefs *= m_val;
         return memory::unique_ptr<gsGeometry<T> >(new gsConstantFunction<T>(coefs.transpose(), m_domainDim));

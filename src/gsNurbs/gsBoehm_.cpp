@@ -69,10 +69,10 @@ void gsBoehmRefine<gsKnotVector<T>,
 
 TEMPLATE_INST
 void gsBoehmRefine<gsKnotVector<T>,
-                   gsFiberMatrix<T>,
+                   gsFiberMatrix<T,RowMajor>,
                    std::vector<T>::const_iterator>(
     gsKnotVector<T> & knots,
-    gsFiberMatrix<T> & coefs,
+    gsFiberMatrix<T,RowMajor> & coefs,
     int p,
     std::vector<T>::const_iterator valBegin,
     std::vector<T>::const_iterator valEnd,

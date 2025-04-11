@@ -1429,7 +1429,7 @@ public:
         }
         return true;
     }
-    
+
     //template<class U>
     //linearComb(U & ie){ sum up ie[_u] times the _Sv  }
     // ie.eval(k), _u.data().actives(), fixedPart() - see lapl_expr
@@ -2718,7 +2718,7 @@ public:
 public:
     enum {Space= 0, ScalarValued= 1, ColBlocks= 0};
 
-    Scalar eval(const index_t k) const { return abs_expr::eval_impl(_u,k); }
+    AutoReturn_t eval(const index_t k) const { return abs_expr::eval_impl     (_u,k); }
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
@@ -3734,7 +3734,7 @@ public:
                      << _u <<" times \n" << _v );
 
         // Note: a * b * c --> (a*b).eval()*c
-        tmp = _u.eval(k) * _v.eval(k);
+        tmp /*.noalias()*/ = _u.eval(k) * _v.eval(k);
         return tmp; // assumes result is not scalarvalued
     }
 
