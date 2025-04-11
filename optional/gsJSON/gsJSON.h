@@ -278,7 +278,21 @@ class gsJSON
 
         gsJSON(const std::string & filename)
         {
-            m_data = json::parse(filename,
+            // Open the file
+            std::ifstream file(filename);
+            // if (!file.is_open()) {
+            //     throw std::runtime_error("Could not open file: " + filename);
+            // }
+
+            GISMO_ENSURE(file.is_open(), "Could not open file: " + filename);
+            
+            // Read the entire file content
+            std::string content((std::istreambuf_iterator<char>(file)), 
+                                 std::istreambuf_iterator<char>());
+            file.close();
+            
+            // Parse the file content
+            m_data = json::parse(content,
                                 /* callback */ nullptr,
                                 /* allow exceptions */ true,
                                 /* ignore_comments */ true);
