@@ -78,7 +78,7 @@ void gsBSpline<T>::merge( gsGeometry<T> * otherG )
     this->m_coefs.conservativeResize( n + other->coefsSize() -skip, gsEigen::NoChange ) ;
 
     this->m_coefs.block( n,0,other->coefsSize()-skip,other->geoDim() ) =
-        other->m_coefs.block( 1,0,other->coefsSize()-skip,other->geoDim() ) ;
+        other->m_coefs.block( skip,0,other->coefsSize()-skip,other->geoDim() ) ;
 
     delete other;
 }
