@@ -29,8 +29,6 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/JSON/include/ CACHE INTERNAL "")
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${JSON_INCLUDE_DIR}
     CACHE INTERNAL "Gismo include directories" FORCE)
-message("JSON_INCLUDE_DIR: ${JSON_INCLUDE_DIR}")
-message("GISMO_INCLUDE_DIRS: ${GISMO_INCLUDE_DIRS}")
 
 include_directories(${GISMO_INCLUDE_DIRS})
 

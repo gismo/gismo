@@ -73,10 +73,8 @@ void from_json(const json& j, gsMatrix<T>& mat)
         GISMO_ASSERT(j["rows"].is_number_integer(),"rows is not an integer");
         GISMO_ASSERT(j["cols"].is_number_integer(),"cols is not an integer");
         GISMO_ASSERT(j["data"].is_array(),"data is not an array");
-        mat.resize(static_cast<index_t>(j["rows"]), static_cast<index_t>(j["cols"]));
-        for (index_t I = 0; I < mat.rows(); I++)
-            for (index_t J = 0; I < mat.cols(); J++)
-                mat(I,J) = j["data"][I*mat.cols() + J];
+        std::vector<T> data = j["data"].get<std::vector<T> >();
+        mat = gsAsMatrix<T>(data,j["rows"], j["cols"]);
     }
 }
 
@@ -195,7 +193,8 @@ void to_json(json &j, const gsKnotVector<T> & kv)
 template<class T>
 void from_json(const json &j, gsKnotVector<T> & kv)
 {
-    kv = gsKnotVector<T>(j["degree"], j["knots"]);
+    std::vector<T> knots = j["knots"].get<std::vector<T> >();
+    kv = gsKnotVector<T>(j["degree"], knots.begin(), knots.end());
 }
 
 template<class T>
@@ -209,40 +208,49 @@ void to_json(json &j, const gsBSplineBasis<T> & basis)
 template<class T>
 void from_json(const json &j, gsBSplineBasis<T> & basis)
 {
-    gsKnotVector<T> kv;
-    j.get_to(kv);
+    GISMO_ASSERT(j["type"]=="BSplineBasis","Type of basis is not BSplineBasis");
+    gsKnotVector<T> kv = j["knots"].get<gsKnotVector<T> >();
     basis = gsBSplineBasis<T>(kv);
 }
 
 template<short_t d, class T>
-void to_json(json &j, const gsTensorBasis<d,T> & basis)
+void to_json(json &j, const gsTensorBSplineBasis<d,T> & basis)
 {
-    j["type"] = "TensorBasis";
+    j["type"] = "TensorBSplineBasis"+util::to_string(d);
     for (unsigned D=0; D!=d; D++)
-        j[util::to_string(D)] = basis.component(D);
+        j["component"+util::to_string(D)] = basis.component(D);
+}
+
+template<short_t d, class T>
+void from_json(const json &j, gsTensorBSplineBasis<d,T> & basis)
+{
+    GISMO_ASSERT(j["type"]=="TensorBSplineBasis"+util::to_string(d),"Type of basis is not TensorBSplineBasis"+util::to_string(d));
+
+    std::vector<gsKnotVector<T> > KVs(d);
+    gsBSplineBasis<T> componentBasis;
+    for (unsigned D=0; D!=d; D++)
+    {
+        from_json(j["component"+util::to_string(D)], componentBasis);
+        KVs[D] = componentBasis.knots();
+    }
+
+    basis = gsTensorBSplineBasis<d,T>(KVs);
 }
 
 template<class T>
 void to_json(json &j, const gsBasis<T> & basis)
 {
     if      ( const gsBSplineBasis<T> * b = dynamic_cast<const gsBSplineBasis<T> *>( &basis ) )
-        j = json(*b);
+        to_json(j, *b);
     else if ( const gsTensorBSplineBasis<2,T> * b = dynamic_cast<const gsTensorBSplineBasis<2,T> *>( &basis ) )
-        j = json(*b);
+        to_json(j, *b);
     else if ( const gsTensorBSplineBasis<3,T> * b = dynamic_cast<const gsTensorBSplineBasis<3,T> *>( &basis ) )
-        j = json(*b);
+        to_json(j, *b);
     else if ( const gsTensorBSplineBasis<4,T> * b = dynamic_cast<const gsTensorBSplineBasis<4,T> *>( &basis ) )
-        j = json(*b);
+        to_json(j, *b);
     else
         GISMO_ERROR("No known basis type");
 }
-
-template<class T>
-void from_json(const json &j, gsBasis<T> & basis)
-{
-    GISMO_ERROR("HOW TO DO THIS?");
-}
-
 template<class T>
 void to_json(json &j, const gsGeometry<T> & geo)
 {
@@ -251,9 +259,19 @@ void to_json(json &j, const gsGeometry<T> & geo)
 }
 
 template<class T>
-void from_json(const json &j, gsGeometry<T> & geo)
+void from_json(const json &j, gsBSpline<T> & geo)
 {
-    GISMO_ERROR("HOW TO DO THIS?");
+    gsBSplineBasis<T> basis = j["basis"].get<gsBSplineBasis<T> >();
+    gsMatrix<T> coefs = j["coefs"].get<gsMatrix<T> >();
+    geo = gsBSpline<T>(basis, coefs);
+}
+
+template<short_t d, class T>
+void from_json(const json &j, gsTensorBSpline<d,T> & geo)
+{
+    gsTensorBSplineBasis<d,T> basis = j["basis"].get<gsTensorBSplineBasis<d,T> >();
+    gsMatrix<T> coefs = j["coefs"].get<gsMatrix<T> >();
+    geo = gsTensorBSpline<d,T>(basis, coefs);
 }
 
 class gsJSON
@@ -285,12 +303,12 @@ class gsJSON
             // }
 
             GISMO_ENSURE(file.is_open(), "Could not open file: " + filename);
-            
+
             // Read the entire file content
-            std::string content((std::istreambuf_iterator<char>(file)), 
+            std::string content((std::istreambuf_iterator<char>(file)),
                                  std::istreambuf_iterator<char>());
             file.close();
-            
+
             // Parse the file content
             m_data = json::parse(content,
                                 /* callback */ nullptr,
@@ -422,10 +440,23 @@ class gsJSON
         }
 
         /// Get the raw nlohmann::json object
-        const json& getRaw() const 
+        const json& getRaw() const
         {
             return m_data;
         }
+
+        // template<class Object>
+        // Object * getObject(const std::string & key)
+        // {
+        //     if (m_data[key].is_null())
+        //         return nullptr;
+        //     else
+        //     {
+        //         Object * obj = new Object();
+        //         m_data[key].get_to(*obj);
+        //         return obj;
+        //     }
+        // }
 
     protected:
         json m_data;
