@@ -186,14 +186,14 @@ public:
  * @tparam E2 the type of the expression
  */
 template <typename E2>
-class mult_expr<typename E2::Scalar, E2, false>
-    : public _expr<mult_expr<typename E2::Scalar, E2, false> >
+class mult_expr<_expr<typename E2::Scalar,true>, E2, false>
+    : public _expr<mult_expr<_expr<typename E2::Scalar,true>, E2, false> >
 // template <typename E> class scmult_expr : public _expr<scmult_expr<E> >
 {
 public:
     typedef typename E2::Scalar Scalar;
 private:
-    Scalar const _c;
+    _expr<Scalar,true>    _c;
     typename E2::Nested_t _v;
 
     //mult_expr(const mult_expr&);
@@ -204,13 +204,15 @@ public:
     mult_expr(Scalar const & c, _expr<E2> const& v)
     : _c(c), _v(v) { }
 
+    mult_expr(_expr<Scalar,true> const & c, _expr<E2> const& v)
+    : _c(c), _v(v) { }
+
     EIGEN_STRONG_INLINE AutoReturn_t eval(const index_t k) const
     {
-        return ( _c * _v.eval(k) );
-
+        return ( _c.eval(0) * _v.eval(k) );
     }
 
-    Scalar                const & first()  const { return _c; }
+    _expr<Scalar,true>    const & first()  const { return _c; }
     typename E2::Nested_t const & second() const { return _v; }
 
     index_t rows() const { return _v.rows(); }
@@ -247,9 +249,20 @@ mult_expr<E1,E2> const operator*(_expr<E1> const& u, _expr<E2> const& v)
  * @param v The second expression
  */
 template <typename E2> EIGEN_STRONG_INLINE
-mult_expr<typename E2::Scalar,E2,false> const
+mult_expr<_expr<typename E2::Scalar,true>,E2,false> const
 operator*(typename E2::Scalar const& u, _expr<E2> const& v)
-{ return mult_expr<typename E2::Scalar, E2, false>(u, v); }
+{ return mult_expr<_expr<typename E2::Scalar,true>, E2, false>(u, v); }
+
+/**
+ * @brief Multiplication operator for expressions
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param v The second expression
+ */
+template <typename E2> EIGEN_STRONG_INLINE
+mult_expr<_expr<typename E2::Scalar,true>,E2,false> const
+operator*(_expr<typename E2::Scalar,true> const& u, _expr<E2> const& v)
+{ return mult_expr<_expr<typename E2::Scalar,true>, E2, false>(u, v); }
 
 /**
  * @brief Multiplication operator for expressions
@@ -258,9 +271,9 @@ operator*(typename E2::Scalar const& u, _expr<E2> const& v)
  * @param v The second expression
  */
 template <typename E1> EIGEN_STRONG_INLINE
-mult_expr<typename E1::Scalar,E1,false> const
+mult_expr<_expr<typename E1::Scalar,true>,E1,false> const
 operator*(_expr<E1> const& v, typename E1::Scalar const& u)
-{ return mult_expr<typename E1::Scalar,E1, false>(u, v); }
+{ return mult_expr<_expr<typename E1::Scalar,true>,E1, false>(u, v); }
 
 /**
  * @brief Multiplication operator for expressions
@@ -269,9 +282,20 @@ operator*(_expr<E1> const& v, typename E1::Scalar const& u)
  * @param v The second expression
  */
 template <typename E1> EIGEN_STRONG_INLINE
-mult_expr<typename E1::Scalar,E1,false> const
+mult_expr<_expr<typename E1::Scalar,true>,E1,false> const
+operator*(_expr<E1> const& v, _expr<typename E1::Scalar,true> const& u)
+{ return mult_expr<_expr<typename E1::Scalar,true>,E1, false>(u, v); }
+
+/**
+ * @brief Multiplication operator for expressions
+ * @ingroup Expressions
+ * @param u The first expression
+ * @param v The second expression
+ */
+template <typename E1> EIGEN_STRONG_INLINE
+mult_expr<_expr<typename E1::Scalar,true>,E1,false> const
 operator-(_expr<E1> const& u)
-{ return mult_expr<typename E1::Scalar,E1, false>(-1, u); }
+{ return mult_expr<_expr<typename E1::Scalar,true>,E1, false>(-1, u); }
 
 /**
  * @brief Multiplication operator for expressions
