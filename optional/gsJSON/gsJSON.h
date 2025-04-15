@@ -21,6 +21,11 @@ using json = nlohmann::json;
 namespace gismo
 {
 
+/**
+ * @brief Writes a gsVector to JSON
+ * @param j JSON object
+ * @param vec gsVector to be written
+ */
 template<class T>
 void to_json(json& j, const gsVector<T> & vec)
 {
@@ -34,6 +39,11 @@ void to_json(json& j, const gsVector<T> & vec)
     }
 }
 
+/**
+ * @brief Reads a gsVector from JSON
+ * @param j JSON object
+ * @param vec gsVector to be read
+ */
 template<class T>
 void from_json(const json& j, gsVector<T>& vec)
 {
@@ -49,6 +59,11 @@ void from_json(const json& j, gsVector<T>& vec)
     }
 }
 
+/**
+ * @brief Writes a gsMatrix to JSON
+ * @param j JSON object
+ * @param mat gsMatrix to be written
+ */
 template<class T>
 void to_json(json& j, const gsMatrix<T> & mat)
 {
@@ -63,6 +78,11 @@ void to_json(json& j, const gsMatrix<T> & mat)
     }
 }
 
+/**
+ * @brief Reads a gsMatrix from JSON
+ * @param j JSON object
+ * @param mat gsMatrix to be read
+ */
 template<class T>
 void from_json(const json& j, gsMatrix<T>& mat)
 {
@@ -78,6 +98,11 @@ void from_json(const json& j, gsMatrix<T>& mat)
     }
 }
 
+/**
+ * @brief Writes a gsSparseMatrix to JSON
+ * @param j JSON object
+ * @param mat gsSparseMatrix to be written
+ */
 template<class T>
 void to_json(json &j, const gsSparseMatrix<T> & mat)
 {
@@ -98,6 +123,11 @@ void to_json(json &j, const gsSparseMatrix<T> & mat)
     }
 }
 
+/**
+ * @brief Reads a gsSparseMatrix from JSON
+ * @param j JSON object
+ * @param mat gsSparseMatrix to be read
+ */
 template<class T>
 void from_json(const json &j, gsSparseMatrix<T> & mat)
 {
@@ -116,6 +146,11 @@ void from_json(const json &j, gsSparseMatrix<T> & mat)
     }
 }
 
+/**
+ * @brief Writes a gsOptionList to JSON
+ * @param j JSON object
+ * @param opt gsOptionList to be written
+ */
 void to_json(json &j, const gsOptionList & opt)
 {
     typedef gsOptionList::OptionListEntry Entry;
@@ -135,6 +170,11 @@ void to_json(json &j, const gsOptionList & opt)
     }
 }
 
+/**
+ * @brief Reads a gsOptionList from JSON
+ * @param j JSON object
+ * @param opt gsOptionList to be read
+ */
 void from_json(const json &j, gsOptionList & opt)
 {
     if      (j.is_null())
@@ -182,6 +222,11 @@ void from_json(const json &j, gsOptionList & opt)
     }
 }
 
+/**
+ * @brief Writes a gsKnotVector to JSON
+ * @param j JSON object
+ * @param kv gsKnotVector to be written
+ */
 template<class T>
 void to_json(json &j, const gsKnotVector<T> & kv)
 {
@@ -190,6 +235,11 @@ void to_json(json &j, const gsKnotVector<T> & kv)
     j["knots"] = data;
 }
 
+/**
+ * @brief Reads a gsKnotVector from JSON
+ * @param j JSON object
+ * @param kv gsKnotVector to be read
+ */
 template<class T>
 void from_json(const json &j, gsKnotVector<T> & kv)
 {
@@ -197,6 +247,11 @@ void from_json(const json &j, gsKnotVector<T> & kv)
     kv = gsKnotVector<T>(j["degree"], knots.begin(), knots.end());
 }
 
+/**
+ * @brief Writes a gsBSplineBasis to JSON
+ * @param j JSON object
+ * @param basis gsBSplineBasis to be written
+ */
 template<class T>
 void to_json(json &j, const gsBSplineBasis<T> & basis)
 {
@@ -205,6 +260,11 @@ void to_json(json &j, const gsBSplineBasis<T> & basis)
     j["knots"] = basis.knots();
 }
 
+/**
+ * @brief Reads a gsBSplineBasis from JSON
+ * @param j JSON object
+ * @param basis gsBSplineBasis to be read
+ */
 template<class T>
 void from_json(const json &j, gsBSplineBasis<T> & basis)
 {
@@ -213,6 +273,11 @@ void from_json(const json &j, gsBSplineBasis<T> & basis)
     basis = gsBSplineBasis<T>(kv);
 }
 
+/**
+ * @brief Writes a gsTensorBSplineBasis to JSON
+ * @param j JSON object
+ * @param basis gsTensorBSplineBasis to be written
+ */
 template<short_t d, class T>
 void to_json(json &j, const gsTensorBSplineBasis<d,T> & basis)
 {
@@ -221,6 +286,11 @@ void to_json(json &j, const gsTensorBSplineBasis<d,T> & basis)
         j["component"+util::to_string(D)] = basis.component(D);
 }
 
+/**
+ * @brief Reads a gsTensorBSplineBasis from JSON
+ * @param j JSON object
+ * @param basis gsTensorBSplineBasis to be read
+ */
 template<short_t d, class T>
 void from_json(const json &j, gsTensorBSplineBasis<d,T> & basis)
 {
@@ -237,6 +307,11 @@ void from_json(const json &j, gsTensorBSplineBasis<d,T> & basis)
     basis = gsTensorBSplineBasis<d,T>(KVs);
 }
 
+/**
+ * @brief Writes a gsTensorBSpline to JSON
+ * @param j JSON object
+ * @param geo gsTensorBSpline to be written
+ */
 template<class T>
 void to_json(json &j, const gsBasis<T> & basis)
 {
@@ -251,6 +326,12 @@ void to_json(json &j, const gsBasis<T> & basis)
     else
         GISMO_ERROR("No known basis type");
 }
+
+/**
+ * @brief Reads a gsTensorBSpline from JSON
+ * @param j JSON object
+ * @param geo gsTensorBSpline to be read
+ */
 template<class T>
 void to_json(json &j, const gsGeometry<T> & geo)
 {
@@ -258,6 +339,11 @@ void to_json(json &j, const gsGeometry<T> & geo)
     j["coefs"] = geo.coefs();
 }
 
+/**
+ * @brief Reads a gsTensorBSpline from JSON
+ * @param j JSON object
+ * @param geo gsTensorBSpline to be read
+ */
 template<class T>
 void from_json(const json &j, gsBSpline<T> & geo)
 {
@@ -266,6 +352,11 @@ void from_json(const json &j, gsBSpline<T> & geo)
     geo = gsBSpline<T>(basis, coefs);
 }
 
+/**
+ * @brief Reads a gsTensorBSpline from JSON
+ * @param j JSON object
+ * @param geo gsTensorBSpline to be read
+ */
 template<short_t d, class T>
 void from_json(const json &j, gsTensorBSpline<d,T> & geo)
 {
@@ -274,192 +365,207 @@ void from_json(const json &j, gsTensorBSpline<d,T> & geo)
     geo = gsTensorBSpline<d,T>(basis, coefs);
 }
 
+/**
+ * @brief JSON class
+ */
 class gsJSON
 {
-    public:
-        typedef json::iterator iterator;
-        typedef json::const_iterator const_iterator;
+public:
+    typedef json::iterator iterator;
+    typedef json::const_iterator const_iterator;
 
 
-    public:
+public:
 
-        gsJSON()
-        {
-            m_data = json::object();
-        }
+    /**
+     * @brief Default constructor
+     * @param opt Options
+     */
+    gsJSON()
+    {
+        m_data = json::object();
+    }
 
-        gsJSON(const gsOptionList & opt)
-        :
-        m_data(opt)
-        {
-        }
+    /**
+     * @brief Constructor from a \ref gsOptionList
+     * @param opt Options
+     */
+    gsJSON(const gsOptionList & opt)
+    :
+    m_data(opt)
+    {
+    }
 
-        gsJSON(const std::string & filename)
-        {
-            // Open the file
-            std::ifstream file(filename);
-            // if (!file.is_open()) {
-            //     throw std::runtime_error("Could not open file: " + filename);
-            // }
-
-            GISMO_ENSURE(file.is_open(), "Could not open file: " + filename);
-
-            // Read the entire file content
-            std::string content((std::istreambuf_iterator<char>(file)),
-                                 std::istreambuf_iterator<char>());
-            file.close();
-
-            // Parse the file content
-            m_data = json::parse(content,
-                                /* callback */ nullptr,
-                                /* allow exceptions */ true,
-                                /* ignore_comments */ true);
-        }
-
-        /// add an object
-        json::reference operator[](const std::string & key)
-        {
-            return m_data[key];
-        }
-
-        /// add objects from an initializer list
-
-
-        /// get an object
-        json::const_reference operator[](const std::string & key) const
-        {
-            return m_data[key];
-        }
-
-        /// add an object
-        template <class U>
-        void add(const std::string & key, const U & value)
-        {
-            m_data[key] = value;
-        }
-
-        /// get an object
-        template <class U>
-        U get(const std::string & key) const
-        {
-            return m_data[key];
-        }
-
-        /// get an object
-        template <class U>
-        U get() const
-        {
-            return m_data.get<U>();
-        }
-
-        /// get an object
-        template <class U>
-        void get_to(U & obj) const
-        {
-            m_data.get_to(obj);
-        }
-
-        /// get the size
-        size_t size() const
-        {
-            return m_data.size();
-        }
-
-        /// check if the data is empty
-        bool empty() const
-        {
-            return m_data.empty();
-        }
-
-        /// clear the data
-        void clear()
-        {
-            m_data.clear();
-        }
-
-        /// check if the data contains
-        bool contains(const std::string & key) const
-        {
-            return m_data.contains(key);
-        }
-
-        /// find an item
-        iterator find(const std::string & key)
-        {
-            return m_data.find(key);
-        }
-
-        /// count the number of items
-        size_t count(const std::string & key)
-        {
-            return m_data.count(key);
-        }
-
-        /// erase an item
-        void erase(const std::string & key)
-        {
-            m_data.erase(key);
-        }
-
-        std::ostream& print( std::ostream& os ) const
-        {
-            os<<m_data.dump(4);
-            return os;
-        }
-
-        // ITERATORS
-        /// begin iterator
-        iterator begin()
-        {
-            return m_data.begin();
-        }
-
-        /// end iterator
-        iterator end()
-        {
-            return m_data.end();
-        }
-
-        /// const begin iterator
-        const_iterator begin() const
-        {
-            return m_data.begin();
-        }
-
-        /// const end iterator
-        const_iterator end() const
-        {
-            return m_data.end();
-        }
-
-        void save(const std::string & filename) const
-        {
-            std::ofstream file(filename);
-            file << m_data.dump(4);
-            file.close();
-        }
-
-        /// Get the raw nlohmann::json object
-        const json& getRaw() const
-        {
-            return m_data;
-        }
-
-        // template<class Object>
-        // Object * getObject(const std::string & key)
-        // {
-        //     if (m_data[key].is_null())
-        //         return nullptr;
-        //     else
-        //     {
-        //         Object * obj = new Object();
-        //         m_data[key].get_to(*obj);
-        //         return obj;
-        //     }
+    /**
+     * @brief Constructor from a file
+     * @param filename File name
+     */
+    gsJSON(const std::string & filename)
+    {
+        // Open the file
+        std::ifstream file(filename);
+        // if (!file.is_open()) {
+        //     throw std::runtime_error("Could not open file: " + filename);
         // }
 
-    protected:
-        json m_data;
+        GISMO_ENSURE(file.is_open(), "Could not open file: " + filename);
+
+        // Read the entire file content
+        std::string content((std::istreambuf_iterator<char>(file)),
+                                std::istreambuf_iterator<char>());
+        file.close();
+
+        // Parse the file content
+        m_data = json::parse(content,
+                            /* callback */ nullptr,
+                            /* allow exceptions */ true,
+                            /* ignore_comments */ true);
+    }
+
+    /// add an object
+    json::reference operator[](const std::string & key)
+    {
+        return m_data[key];
+    }
+
+    /// add objects from an initializer list
+
+
+    /// get an object
+    json::const_reference operator[](const std::string & key) const
+    {
+        return m_data[key];
+    }
+
+    /// add an object
+    template <class U>
+    void add(const std::string & key, const U & value)
+    {
+        m_data[key] = value;
+    }
+
+    /// get an object
+    template <class U>
+    U get(const std::string & key) const
+    {
+        return m_data[key];
+    }
+
+    /// get an object
+    template <class U>
+    U get() const
+    {
+        return m_data.get<U>();
+    }
+
+    /// get an object
+    template <class U>
+    void get_to(U & obj) const
+    {
+        m_data.get_to(obj);
+    }
+
+    /// get the size
+    size_t size() const
+    {
+        return m_data.size();
+    }
+
+    /// check if the data is empty
+    bool empty() const
+    {
+        return m_data.empty();
+    }
+
+    /// clear the data
+    void clear()
+    {
+        m_data.clear();
+    }
+
+    /// check if the data contains
+    bool contains(const std::string & key) const
+    {
+        return m_data.contains(key);
+    }
+
+    /// find an item
+    iterator find(const std::string & key)
+    {
+        return m_data.find(key);
+    }
+
+    /// count the number of items
+    size_t count(const std::string & key)
+    {
+        return m_data.count(key);
+    }
+
+    /// erase an item
+    void erase(const std::string & key)
+    {
+        m_data.erase(key);
+    }
+
+    std::ostream& print( std::ostream& os ) const
+    {
+        os<<m_data.dump(4);
+        return os;
+    }
+
+    // ITERATORS
+    /// begin iterator
+    iterator begin()
+    {
+        return m_data.begin();
+    }
+
+    /// end iterator
+    iterator end()
+    {
+        return m_data.end();
+    }
+
+    /// const begin iterator
+    const_iterator begin() const
+    {
+        return m_data.begin();
+    }
+
+    /// const end iterator
+    const_iterator end() const
+    {
+        return m_data.end();
+    }
+
+    void save(const std::string & filename) const
+    {
+        std::ofstream file(filename);
+        file << m_data.dump(4);
+        file.close();
+    }
+
+    /// Get the raw nlohmann::json object
+    const json& getRaw() const
+    {
+        return m_data;
+    }
+
+    // template<class Object>
+    // Object * getObject(const std::string & key)
+    // {
+    //     if (m_data[key].is_null())
+    //         return nullptr;
+    //     else
+    //     {
+    //         Object * obj = new Object();
+    //         m_data[key].get_to(*obj);
+    //         return obj;
+    //     }
+    // }
+
+protected:
+    json m_data;
 
 };
 
