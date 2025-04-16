@@ -34,9 +34,6 @@ authors:
 - family-names: "Limkilde"
   given-names: "Asger"
   orcid: "https://orcid.org/0000-0002-0795-7505"
-- family-names: "Lee"
-  given-names: "Jaewook"
-  orcid: "https://orcid.org/0000-0002-9321-4176"
 - family-names: "Scholz"
   given-names: "Felix"
   orcid: "https://orcid.org/0000-0003-3339-0079"
@@ -52,6 +49,18 @@ authors:
 - family-names: "Vollebregt"
   given-names: "Edwin"
   orcid: "https://orcid.org/0000-0003-2752-1589"
+- family-names: "Tielen"
+  given-names: "Roel"
+- family-names: "Bressan"
+  given-names: "Andrea"
+  orcid: "https://orcid.org/0000-0003-3730-668X"
+- family-names: "Farahat"
+  given-names: "Andrea"
+  orcid: "https://orcid.org/0000-0001-6835-4313"
+contributors:
+- family-names: "Lee"
+  given-names: "Jaewook"
+  orcid: "https://orcid.org/0000-0002-9321-4176"
 - family-names: "Partow"
   given-names: "Arash"
 - family-names: "Schneckenleitner"
@@ -62,20 +71,36 @@ authors:
 - family-names: "Zwar"
   given-names: "Jacques"
   orcid: "https://orcid.org/0009-0000-1285-2364"
-- family-names: "Tielen"
-  given-names: "Roel"
-- family-names: "Bressan"
-  given-names: "Andrea"
-  orcid: "https://orcid.org/0000-0003-3730-668X"
 - family-names: "Caldas"
   given-names: "Andre"
 - family-names: "Weiner"
   given-names: "Harald"
-- family-names: "Farahat"
-  given-names: "Andrea"
-  orcid: "https://orcid.org/0000-0001-6835-4313"
-title: "gismo"
+title: "Geometry + Simulation Modules (G+Smo)"
 version: 25.01.0
 doi: 10.5281/zenodo.1249361
 date-released: 2025-01-09
 url: "https://github.com/gismo/gismo"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Jüttler"
+    given-names: "Bert"
+    orcid: "https://orcid.org/0000-0002-5518-7795"
+  - family-names: "Langer"
+    given-names: "Ulrich"
+    orcid: "https://orcid.org/0000-0003-3797-7475"
+  - family-names: "Mantzaflaris"
+    given-names: "Angelos"
+    orcid: "https://orcid.org/0000-0001-7135-1084"
+  - family-names: "Moore"
+    given-names: "Stephen E"
+  - family-names: "Zulehner"
+    given-names: "Walter"
+  doi: "10.0000/00000"
+  journal: "Proceedings in Applied Mathematics and Mechanics"
+  start: 961 # First page number
+  end: 962 # Last page number
+  title: "Geometry + Simulation modules: Implementing isogeometric analysis"
+  issue: 1
+  volume: 14
+  year: 2014
