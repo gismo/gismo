@@ -516,7 +516,7 @@ public:
   /// @brief Prints the object as a string.
   std::ostream &print(std::ostream &os) const override
   {
-      os << "Truncated ";
+      os << (Trunc?"Truncated ": "Hierachical ");
       gsHTensorBasis<d,T>::printBasic(os);
       //this->printCharMatrix(os);
       return os;
