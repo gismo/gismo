@@ -232,7 +232,7 @@ public:
     }
 
     /// Returns true if an Object with such label exists in the filedata
-    inline bool hasLabel(std::string label) const {
+    inline bool hasLabel(const std::string & label) const {
       gsXmlNode* root = getXmlRoot();
       // const gsXmlAttribute * id_at;
       gsXmlNode* nd = internal::searchLabel(label, root, NULL, false);
@@ -599,9 +599,9 @@ std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
    * @brief Initializes the Python wrapper for the class: gsFileData
    */
   void pybind11_init_gsFileData(pybind11::module &m);
-  
+
 #endif // GISMO_WITH_PYBIND11
-  
+
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

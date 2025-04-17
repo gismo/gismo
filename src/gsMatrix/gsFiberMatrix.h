@@ -26,16 +26,22 @@ namespace gismo
  *  This allows efficient row resizing and insertion
  *  operations, particularly for knot insertion algorithms.
  */
-template <class T, bool IsRowMajor = true>
+template <class T, int Major = ColMajor> // RowMajor==0, ColMajor==1
 class gsFiberMatrix
 {
+    static constexpr bool IsRowMajor = (Major==RowMajor);
 public:
     typedef gsEigen::SparseVector<T> Fiber;
 
-    class InnerIterator : Fiber::InnerIterator
+    class iterator : public Fiber::InnerIterator
     {
+    public:
         typedef typename Fiber::InnerIterator Base;
-        InnerIterator(gsFiberMatrix fm, index_t j) : Base() { }
+        iterator() = default;
+        iterator(const gsFiberMatrix & fm, index_t j) : Base(fm.fiber(j)) { }
+
+        inline T& operator[](size_t i)
+        { return const_cast<T&>(*(this->m_values+i)); }
     };
 
     struct RowBlockXpr;
@@ -44,16 +50,16 @@ public:
     { }
 
     gsFiberMatrix(index_t rows, index_t cols)
-    : m_fibers(rows)
+    : m_fibers(IsRowMajor?rows:cols)
     {
-        for (index_t i = 0; i < rows; ++i)
+        for (size_t i = 0; i < m_fibers.size(); ++i)
             m_fibers[i] = new Fiber(cols);
     }
 
     gsFiberMatrix(const gsFiberMatrix& other)
-    : m_fibers(other.rows())
+    : m_fibers(other.outerSize())
     {
-        for (int i = 0; i < rows(); ++i)
+        for (size_t i = 0; i < m_fibers.size(); ++i)
             m_fibers[i] = new Fiber( *other.m_fibers[i] );
     }
 
@@ -69,11 +75,35 @@ public:
         clear();
     }
 
+    iterator begin(index_t j) const { return iterator(*this, j); }
+
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsFiberMatrix(gsFiberMatrix&& other) : m_fibers(give(other.m_fibers)) {}
+
+    /// Assignment operator
+    gsFiberMatrix& operator= ( const gsFiberMatrix& other )
+    {
+        clear();
+        m_fibers.resize(other.outerSize());
+        for (size_t i = 0; i < m_fibers.size(); ++i)
+            m_fibers[i] = new Fiber( *other.m_fibers[i] );
+        return *this;
+    }
+
+    /// Move assignment operator
+    gsFiberMatrix& operator= ( gsFiberMatrix&& other )
+    {
+        clear();
+        m_fibers = give(other.m_fibers);
+        return *this;
+    }
+#else
     gsFiberMatrix& operator= (gsFiberMatrix other)
     {
         this->swap( other );
         return *this;
     }
+#endif
 
     gsFiberMatrix& operator= (const RowBlockXpr& rowxpr)
     {
@@ -209,6 +239,14 @@ public:
             m_fibers[i]->reserve(nz);
     }
 
+    template<typename Cont>
+    void reserve(const Cont &nz)
+    {
+        GISMO_ASSERT(m_fibers.size()==nz.size(), "Wrong size in nonzero vector.");
+        for (index_t i = 0; i < fibers(); ++i)
+            m_fibers[i]->reserve(nz[i]);
+    }
+
     void conservativeResize(index_t newRows, index_t newCols)
     {
         if (!IsRowMajor) std::swap(newRows,newCols);
@@ -266,8 +304,15 @@ public:
         return nnz;
     }
 
+    gsSparseMatrix<T> toSparseMatrix() const
+    {
+        gsSparseMatrix<T> rvo;
+        toSparseMatrix_into(rvo);
+        return rvo;
+    }
+
     template <class Derived>
-    void toSparseMatrix(gsEigen::SparseMatrixBase<Derived>& m) const
+    void toSparseMatrix_into(gsEigen::SparseMatrixBase<Derived>& m) const
     {
         m.derived().resize( rows(), cols() );
         m.derived().reserve( nonZeros() );

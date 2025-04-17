@@ -140,7 +140,7 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMySinus)
 
-    void eval_into(const gsMatrix<T> &u, gsMatrix<T> &result) const
+    void eval_into(const gsMatrix<T> &u, gsMatrix<T> &result) const override
     {
         result.resize(1,u.size());
         for(int i=0; i<u.size(); i++)
@@ -151,7 +151,7 @@ public:
     }
 
 
-    void evalAllDers_into(const gsMatrix<T> &u, int n, std::vector<gsMatrix<T> > &result, bool sameElement = false) const
+    void evalAllDers_into(const gsMatrix<T> &u, int n, std::vector<gsMatrix<T> > &result, bool sameElement = false) const override
     {
         GISMO_UNUSED(sameElement);
         gsMatrix<T> sin(1,u.size());
@@ -179,10 +179,10 @@ public:
 
     }
 
-    short_t domainDim() const {return 1;}
+    short_t domainDim() const override {return 1;}
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override 
     { os << "MySinus(x) = sin(x)"; return os; }
 };
 
@@ -199,7 +199,7 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMyCircle)
 
-    void eval_into(const gsMatrix<T> &u, gsMatrix<T> &result) const
+    void eval_into(const gsMatrix<T> &u, gsMatrix<T> &result) const override
     {
         result.resize(2,u.size());
         for(int i=0; i<u.size(); i++)
@@ -211,7 +211,7 @@ public:
         }
     }
 
-    void evalAllDers_into(const gsMatrix<T> &u, int n, std::vector<gsMatrix<T> > &result, bool sameElement = false) const
+    void evalAllDers_into(const gsMatrix<T> &u, int n, std::vector<gsMatrix<T> > &result, bool sameElement = false) const override
     {
         GISMO_UNUSED(sameElement);
         gsMatrix<T> sincos(2,u.size());
@@ -239,9 +239,9 @@ public:
         }
     }
 
-    short_t domainDim() const {return 1;}
+    short_t domainDim() const override {return 1;}
 
-    short_t targetDim() const {return 2;}
+    short_t targetDim() const override {return 2;}
 
 };
 

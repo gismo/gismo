@@ -52,7 +52,7 @@ public:
     /// \brief Gives back the domain dimension of this slice
     /// Note that this is one less than the domain dimension of the
     /// underlying geometry.
-    short_t domainDim() const
+    short_t domainDim() const override
     {
         return m_geo->domainDim()-1;
     }
@@ -60,7 +60,7 @@ public:
     /// \brief Gives back the target dimension of this slice
     /// Note that this is the same as the target dimension of the
     /// underlying geometry.
-    short_t targetDim() const
+    short_t targetDim() const override
     {
         return m_geo->targetDim();
     }
@@ -68,7 +68,7 @@ public:
     GISMO_CLONE_FUNCTION(gsGeometrySlice)
 
     /// \brief Gives back the values of this slice at points \a u in \a result
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         gsMatrix<T> fullU;
         getFullParMatrix(u,fullU);
@@ -76,7 +76,7 @@ public:
     }
 
     /// \brief Gives back the derivative of this slice at points \a u in \a result
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         gsMatrix<T> fullU;
         getFullParMatrix(u,fullU);
@@ -84,7 +84,7 @@ public:
     }
 
     /// \brief Gives back the parameterRange of this slice in a Matrix
-    gsMatrix<T> support() const
+    gsMatrix<T> support() const override
     {
         const gsMatrix<T> fullRange = m_geo->support();
         const index_t rows = fullRange.rows()-1;

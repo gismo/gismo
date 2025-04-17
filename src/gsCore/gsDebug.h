@@ -254,7 +254,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wconstant-logical-operand"
   #pragma clang diagnostic ignored "-Wbind-to-temporary-copy"
-//  #pragma clang diagnostic ignored "-Winconsistent-missing-override"
+#pragma clang diagnostic ignored "-Winconsistent-missing-override" //todo: fix warnings and disable
 
 #elif defined __GNUC__ // major version >=4
 // typedef locally defined but not used [-Wunused-local-typedefs]

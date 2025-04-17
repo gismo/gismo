@@ -22,22 +22,22 @@ namespace gismo
 {
 
 template <class T>
-gsNurbsBasis<T>::~gsNurbsBasis() { }
+gsTensorNurbsBasis<1,T>::~gsTensorNurbsBasis() { }
 
 template <class T>
-typename gsNurbsBasis<T>::gsGeoPtr
-gsNurbsBasis<T>::makeGeometry( gsMatrix<T> coefs ) const
+typename gsTensorNurbsBasis<1,T>::gsGeoPtr
+gsTensorNurbsBasis<1,T>::makeGeometry( gsMatrix<T> coefs ) const
 { return gsGeoPtr(new GeometryType(*this, give(coefs))); }
 
 template <class T>
-typename gsNurbsBasis<T>::gsBasisPtr
-gsNurbsBasis<T>::create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights)
+typename gsTensorNurbsBasis<1,T>::gsBasisPtr
+gsTensorNurbsBasis<1,T>::create(std::vector<KnotVectorType> cKV, gsMatrix<T> weights)
 {
     const index_t dd = cKV.size();
     switch (dd)
     {
     case 1:
-        return gsBasisPtr(new gsNurbsBasis<T>(give(cKV.front()), give(weights)));
+        return gsBasisPtr(new gsTensorNurbsBasis<1,T>(give(cKV.front()), give(weights)));
         break;
     case 2:
         return gsBasisPtr(new gsTensorNurbsBasis<2,T>(give(cKV), give(weights)));
