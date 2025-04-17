@@ -12,7 +12,7 @@
 =====                   https://github.com/gismo                 =====
 ======================================================================
 ```
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15167814.svg)](https://doi.org/10.5281/zenodo.15167814)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1249361.svg)](https://doi.org/10.5281/zenodo.1249361)
 [![GitHub License](https://img.shields.io/github/license/gismo/gismo?color=008A00)](https://github.com/gismo/gismo?tab=MPL-2.0-1-ov-file#readme)
 [![Static Badge](https://img.shields.io/badge/Documentation-008A00)](https://gismo.github.io/)
 
