@@ -2834,7 +2834,7 @@ private:
 public:
     GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<TMPLA3(d,T,Trunc)>);
     static std::string tag () { return "Basis"; }
-    static std::string type () { return "THBSplineBasis"+ (d>1 ? to_string(d):""); }
+    static std::string type () { return std::string(Trunc?"T":"") + "HBSplineBasis"+ (d>1 ? to_string(d):""); }
 
     static gsTHBSplineBasis<d,T,Trunc> * get (gsXmlNode * node)
     {
@@ -2847,7 +2847,7 @@ public:
         return putHTensorBasisToXml< gsTHBSplineBasis<d,T,Trunc> > (obj, data);
     }
 
-    GSXML_GET_INTO(gsTHBSplineBasis<TMPLA2(d,T)>)
+    GSXML_GET_INTO(gsTHBSplineBasis<TMPLA3(d,T,Trunc)>)
 };
 
 

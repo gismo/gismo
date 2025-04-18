@@ -31,18 +31,8 @@ class gsFiberMatrix
 {
     static constexpr bool IsRowMajor = (Major==RowMajor);
 public:
-    typedef gsEigen::SparseVector<T> Fiber;
-
-    class iterator : public Fiber::InnerIterator
-    {
-    public:
-        typedef typename Fiber::InnerIterator Base;
-        iterator() = default;
-        iterator(const gsFiberMatrix & fm, index_t j) : Base(fm.fiber(j)) { }
-
-        inline T& operator[](size_t i)
-        { return const_cast<T&>(*(this->m_values+i)); }
-    };
+    typedef gsSparseVector<T> Fiber;
+    typedef typename Fiber::iterator iterator;
 
     struct RowBlockXpr;
 
@@ -75,7 +65,7 @@ public:
         clear();
     }
 
-    iterator begin(index_t j) const { return iterator(*this, j); }
+    iterator begin(index_t j) const { return iterator(*m_fibers[j]); }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsFiberMatrix(gsFiberMatrix&& other) : m_fibers(give(other.m_fibers)) {}
@@ -304,6 +294,14 @@ public:
         return nnz;
     }
 
+    gsVector<index_t> nonZerosPerFiber() const
+    {
+        gsVector<index_t> result(fibers());
+        for (size_t i = 0; i != m_fibers.size(); ++i)
+            result[i] = m_fibers[i]->nonZeros();
+        return result;
+    }
+
     gsSparseMatrix<T> toSparseMatrix() const
     {
         gsSparseMatrix<T> rvo;
@@ -315,7 +313,7 @@ public:
     void toSparseMatrix_into(gsEigen::SparseMatrixBase<Derived>& m) const
     {
         m.derived().resize( rows(), cols() );
-        m.derived().reserve( nonZeros() );
+        m.derived().reserve( nonZerosPerFiber() );
         for (index_t i = 0; i < fibers(); ++i)
         {
             for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it)
