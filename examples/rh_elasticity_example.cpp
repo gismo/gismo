@@ -52,7 +52,7 @@ void CorrecNormalCPoints(const gsMultiPatch<>& mpLeft, gsMultiPatch<>& Psi, inde
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool plot             = true;
+    bool plot             = false;
     index_t numRefine     = 3;
     index_t numLRefine    = 0;
     index_t numElevate    = 0;
@@ -66,11 +66,7 @@ int main(int argc, char *argv[])
     // Specify the file path
     std::string fn("pde/infinit_plate.xml");
     // --------------- adaptive refinement ---------------
-    // Specify cell-marking strategy... 
-    MarkingStrategy adaptRefCrit = PUCA;
-    //MarkingStrategy adaptRefCrit = GARU;
-    //MarkingStrategy adaptRefCrit = errorFraction;
-    // Elements used for numerical integration
+    index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -88,6 +84,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
+    cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -109,54 +106,6 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> rhs;
     fd.getId(2001, rhs);
     gsInfo<<"Density function "<< f << "\n";
-
-    //! [Refinement]
-    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
-    
-    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
-#ifdef _OPENMP
-    gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
-#endif
-    //! [Refinement]
-    
-    gsInfo<< "(dot1=assembled, dot2=solved)\n"
-        "\nDoFs: ";
-    // double setup_time(0), ma_time(0), slv_time(0);    
-    // gsStopwatch timer;
-    // timer.restart();
-    //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
-    for (int r=0; r<=numRefine; ++r)
-    {
-        dbasis.uniformRefine();
-        mpLeft.uniformRefine();
-    }
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 1-2 : Computes the density function
-    ###         and the multipatch adaptove mapping
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildAnalyticDensity( f);
-    auto geometrytp   = MAE.buildMultiPatch(density);
-    CorrecNormalCPoints(mpLeft, geometrytp);
-    gsWrite(geometrytp, "geometrytp");
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 4: Define hierarchical adaptive mapping
-     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsMultiPatch<> geometry;	
-    for(size_t i =0; i<geometrytp.nPatches(); ++i)
-        geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(geometrytp.patch(i)) ));
-    geometry.addAutoBoundaries();
-    geometry.computeTopology();
-    gsWrite(geometry, "geometry_mapping");
-    //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
-
-    //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
-    if (true){
-    // creating basis
-    gsMultiBasis<> basis(geometry);
-    gsVector<>   l2err(numLRefine+1);//h1err(numLRefine+1),
-    gsVector<int>  DoFPDE(numLRefine+1);
-    gsInfo<< "(dot1=assembled, dot2=solved)\n";
 
     //=============================================//
         // Setting loads and boundary conditions //
@@ -182,6 +131,130 @@ int main(int argc, char *argv[])
 
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
+
+    //! [Refinement]
+    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    
+    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+#ifdef _OPENMP
+    gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
+#endif
+    //! [Refinement]
+    
+    gsInfo<< "(dot1=assembled, dot2=solved)\n"
+        "\nDoFs: ";
+    // double setup_time(0), ma_time(0), slv_time(0);    
+    // gsStopwatch timer;
+    // timer.restart();
+    //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
+    for (int r=0; r<=numRefine; ++r)
+    {
+        dbasis.uniformRefine();
+        mpLeft.uniformRefine();
+    }
+
+    //=================================================//
+         // Assembling & solving for the initial guess//
+    //=================================================//
+
+    // creating assembler
+    gsElasticityAssembler<real_t> assembler(mpLeft,dbasis,bcInfo,g);
+    assembler.options().setReal("YoungsModulus",youngsModulus);
+    assembler.options().setReal("PoissonsRatio",poissonsRatio);
+    gsInfo<<"Assembling...\n";
+    gsStopwatch clock;
+    clock.restart();
+    assembler.assemble();
+    gsInfo << "Assembled a system (matrix and load vector) with "
+           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
+
+    gsInfo << "Solving...\n";
+    clock.restart();
+
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLLT solver(assembler.matrix());
+    gsVector<> solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
+#else
+    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+    gsVector<> solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
+#endif
+
+    //=============================================//
+                      // Output //
+    //=============================================//
+
+    // constructing displacement as an IGA function
+    gsMultiPatch<> solution;
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
+    // constructing stress tensor
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(solution,stresses,stress_components::all_2D_vector);
+
+    // constructing an IGA field (geometry + solution) for displacement
+    gsField<> solutionField(assembler.patches(),solution);
+    // constructing an IGA field (geometry + solution) for stresses
+    gsField<> stressField(assembler.patches(),stresses,true);
+
+    gsExprEvaluator<> ev;
+    ev.setIntegrationElements(assembler.multiBasis());
+    //... error computation
+    auto istress = ev.getVariable(stressField.fields());
+    ev.integralElWise( istress.sqNorm() );
+    //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
+    auto elwise = ev.elementwise();
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 1-2 : Computes the density function
+    ###         and the multipatch adaptove mapping
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
+    auto density      = MAE.buildDensity( elwise, numLRefine);
+    //... 
+    auto corners         = dbasis.basis(0).support();
+    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
+    auto PP = ev.getMap(mp);
+    auto  fdensity = ev.getVariable(density, PP);
+    gsInfo<<"Making in Paraview...\n";
+    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    collection.options().setSwitch("plotElements", true);
+    collection.options().setSwitch("base64", false);
+    collection.options().setInt("plotElements.resolution", 16);
+    collection.options().setInt("numPoints", 10000);
+    collection.newTimeStep(&mp);
+    collection.addField(fdensity,"numerical stress");
+    // collection.addField(jac(PP).det(), "Jacobian function");
+    // collection.addField(sigm_ex, "exact stress");
+    // collection.addField(ff_Ggeometry,"Density function");
+    collection.saveTimeStep();
+    collection.save();
+    //------------------------------------
+    gsInfo<<"Plotting in Paraview...\n";
+    // Run paraview
+    gsFileManager::open("ParaviewOutput/solution.pvd");
+    return 0;
+    // auto density = MAE.buildAnalyticDensity( f);
+    auto geometrytp   = MAE.buildMultiPatch(density);
+    CorrecNormalCPoints(mpLeft, geometrytp);
+    gsWrite(geometrytp, "geometrytp");
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 4: Define hierarchical adaptive mapping
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    gsMultiPatch<> geometry;	
+    for(size_t i =0; i<geometrytp.nPatches(); ++i)
+        geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(geometrytp.patch(i)) ));
+    geometry.addAutoBoundaries();
+    geometry.computeTopology();
+    //gsWrite(geometry, "geometry_mapping");
+    //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
+
+    //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
+    if (true){
+    // creating basis
+    gsMultiBasis<> basis(geometry);
+    gsVector<>   l2err(numLRefine+1);//h1err(numLRefine+1),
+    gsVector<int>  DoFPDE(numLRefine+1);
+    gsInfo<< "(dot1=assembled, dot2=solved)\n";
 
     //=============================================//
               // Assembling & solving //
@@ -270,7 +343,8 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
-            ev.integralElWise( ff );
+            //ev.integralElWise( ff );
+            ev.integralElWise( (istress).sqNorm() * meas(PP) );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -362,7 +436,6 @@ int main(int argc, char *argv[])
     }
     //! [Solver loop]    
 
-
     // timer.stop();
     // gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time <<"\n";
     // gsInfo<<"     Setup: "<< setup_time <<"\n";
@@ -413,45 +486,46 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        // constructing an IGA field (geometry + solution) for displacement
-        gsField<> solutionField(assembler.patches(),solution);
-        // constructing an IGA field (geometry + solution) for stresses
-        gsField<> stressField(assembler.patches(),stresses,true);
-        // analytical stresses
-        gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
-        //... density function
-        gsField<> densityField(assembler.patches(),f,false);
+        // // constructing an IGA field (geometry + solution) for displacement
+        // gsField<> solutionField(geometry,solution);
+        // // constructing an IGA field (geometry + solution) for stresses
+        // gsField<> stressField(geometry,stresses,true);
+        // // analytical stresses
+        // gsField<> analyticalStressField(geometry,analyticalStresses,false);
+        // //... density function
+        // gsField<> densityField(geometry,f,false);
 
-        // creating a container to plot all fields to one Paraview file
-        std::map<std::string,const gsField<> *> fields;
-        fields["Deformation"] = &solutionField;
-        fields["Stress"] = &stressField;
-        fields["StressAnalytical"] = &analyticalStressField;
-        fields["DensityAnalytical"] = &densityField;
-        gsWriteParaviewMultiPhysics(fields,"infinit_plate",10000,plot);
-        gsInfo << "Open \"infinit_plate.pvd\" in Paraview for visualization. Stress wiggles on the left side are caused by "
-                  "a singularity in the parametrization.\n";
-        gsFileManager::open("infinit_plate.pvd");
+        // // creating a container to plot all fields to one Paraview file
+        // std::map<std::string,const gsField<> *> fields;
+        // fields["Deformation"] = &solutionField;
+        // fields["Stress"] = &stressField;
+        // fields["StressAnalytical"] = &analyticalStressField;
+        // fields["DensityAnalytical"] = &densityField;
+        // gsWriteParaviewMultiPhysics(fields,"infinit_plate",10000,plot);
+        // gsInfo << "Open \"infinit_plate.pvd\" in Paraview for visualization. Stress wiggles on the left side are caused by "
+        //           "a singularity in the parametrization.\n";
+        // gsFileManager::open("infinit_plate.pvd");
 
-        // gsInfo<<"Storing paraview...\n";
-        // // Write the computed solution to paraview files
-        // gsInfo<<"Making in Paraview...\n";
-        // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        // collection.options().setSwitch("plotElements", true);
-        // collection.options().setSwitch("base64", false);
-        // collection.options().setInt("plotElements.resolution", 16);
-        // collection.options().setInt("numPoints", 10000);
-        // collection.newTimeStep(&geometry);
-        // // collection.addField(istress,"numerical stress");
-        // // collection.addField(jac(PP).det(), "Jacobian function");
-        // // collection.addField(sigm_ex, "exact stress");
-        // // collection.addField(ff_Ggeometry,"Density function");
-        // collection.saveTimeStep();
-        // collection.save();
-        // //------------------------------------
-        // gsInfo<<"Plotting in Paraview...\n";
-        // // Run paraview
-        // gsFileManager::open("ParaviewOutput/solution.pvd");
+        gsInfo<<"Storing paraview...\n";
+        // Write the computed solution to paraview files
+        gsInfo<<"Making in Paraview...\n";
+        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        collection.options().setSwitch("plotElements", true);
+        collection.options().setSwitch("base64", false);
+        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("numPoints", 10000);
+        collection.newTimeStep(&geometry);
+        collection.addField(istress,"numerical stress");
+        collection.addField(istress.sqNorm(),"norm stress");
+        // collection.addField(jac(PP).det(), "Jacobian function");
+        // collection.addField(sigm_ex, "exact stress");
+        // collection.addField(ff_Ggeometry,"Density function");
+        collection.saveTimeStep();
+        collection.save();
+        //------------------------------------
+        gsInfo<<"Plotting in Paraview...\n";
+        // Run paraview
+        gsFileManager::open("ParaviewOutput/solution.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
