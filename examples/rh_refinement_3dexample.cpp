@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    // auto density = MAE.buildDensity(elwise, numRefine, circleN);
+    // auto density = MAE.buildDensity(elwise, numRefine, 0.1, circleN);
     gsFunctionExpr<> ff;
     fd.getId(2003, ff);
     auto density = MAE.buildAnalyticDensity(ff);

@@ -113,7 +113,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine, index_t circleN) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine, const double eps, index_t circleN) const 
 {
     gsInfo<<"<>density function";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -180,13 +180,18 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
         }
     }
     index_t n       = errorVector.rows();
-    auto Maxvalue   = errorVector.maxCoeff();
-    auto Minvalue   = errorVector.minCoeff();
-    auto meanvalue  = 0.1*(Maxvalue + Minvalue);
+    const double Maxvalue   = errorVector.maxCoeff();
+    const double Minvalue   = errorVector.minCoeff();
+    const double meanvalue  = eps*(Maxvalue + Minvalue);
+    gsInfo << "Density function: min "<< Minvalue <<"/ max " << Maxvalue << "\n";
     for (index_t i1 = 0; i1 < n; i1++){
         if (errorVector(i1) > Minvalue+meanvalue)
         errorVector(i1) = Minvalue+meanvalue;
+        else
+        errorVector(i1) = Minvalue;
     }
+    gsInfo << "Density function: min "<< Minvalue <<"/ max " << Maxvalue << "\n";
+
     //...............End error as a function
 
     //! [Problem setup]
