@@ -115,10 +115,10 @@ int main(int argc, char *argv[])
                                         "-1/(x^2+y^2)*(1/2*cos(2*atan2(y,x)) - cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))",
                                         "-1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))",2);
     // boundary load neumann BC
-    gsFunctionExpr<> traction("(-1+1/(x^2+y^2)*(3/2*cos(2*atan2(y,x)) + cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))) * (-x/8.) +"
-                              "(-1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))) * (y/8.)",
-                              "(1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))) * (-x/8.) +"
-                              "(-1/(x^2+y^2)*(1/2*cos(2*atan2(y,x)) - cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))) * (y/8.)",2);
+    gsFunctionExpr<> traction("(1-1/(x^2+y^2)*(3/2*cos(2*atan2(y,x)) + cos(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))) * (x/sqrt(x^2+y^2)) +"
+                              "(-1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))) * (y/sqrt(x^2+y^2))",
+                              "(-1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))) * (x/sqrt(x^2+y^2)) +"
+                              "(-1/(x^2+y^2)*(1/2*cos(2*atan2(y,x)) - cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))) * (y/sqrt(x^2+y^2))",2);
     // material parameters
     real_t youngsModulus = 1.0e3;
     real_t poissonsRatio = 0.3;
@@ -227,16 +227,27 @@ int main(int argc, char *argv[])
     // // Run paraview
     // gsFileManager::open("ParaviewOutput/solution.pvd");
     // return 0;
-    auto density = MAE.buildAnalyticDensity( f);
-    auto geometrytp   = MAE.buildMultiPatch(density);
+    if (IntensityMAE>0){
+    auto density    = MAE.buildAnalyticDensity( f);
+    auto geometrytp = MAE.buildMultiPatch(density);
     CorrecNormalCPoints(mpLeft, geometrytp);
-    gsWrite(geometrytp, "geometrytp");
+    for( index_t i=0; i<geometrytp.nPatches(); ++i)
+    {
+    for ( index_t j=0; j<geometrytp.patch(i).coefsSize(); ++j)
+    {
+        mpLeft.patch(i).coef(j) = geometrytp.patch(i).coef(j);
+    }
+    }
+    }
+    // mpLeft.coefs().swap(geometrytp.coefs());
+    // gsInfo<<"Making geometry"<< (mpLeft.coefs()-geometrytp.coefs())<< "\n";
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsMultiPatch<> geometry;	
-    for(size_t i =0; i<geometrytp.nPatches(); ++i)
-        geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(geometrytp.patch(i)) ));
+    for(size_t i =0; i<mpLeft.nPatches(); ++i)
+        geometry.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
+        //geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(geometrytp.patch(i)) ));
     geometry.addAutoBoundaries();
     geometry.computeTopology();
     //gsWrite(geometry, "geometry_mapping");
