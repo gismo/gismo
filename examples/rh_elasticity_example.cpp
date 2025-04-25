@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
             //ev.integralElWise( ff );
-            ev.integralElWise( idiv(istress, PP) * meas(PP));
+            ev.integralElWise( idiv(istress, PP));
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
