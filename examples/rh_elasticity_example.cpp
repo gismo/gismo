@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     // auto density      = MAE.buildDensity( elwise, numLRefine, 0.1);
-    //... 
+    //...  test density function construction in the square
     // auto corners         = dbasis.basis(0).support();
     // gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
     // auto PPg = ev.getMap(mp);
