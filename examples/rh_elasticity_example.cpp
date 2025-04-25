@@ -139,13 +139,6 @@ int main(int argc, char *argv[])
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
-    //! [Refinement]
-    
-    gsInfo<< "(dot1=assembled, dot2=solved)\n"
-        "\nDoFs: ";
-    // double setup_time(0), ma_time(0), slv_time(0);    
-    // gsStopwatch timer;
-    // timer.restart();
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     for (int r=0; r<=numRefine; ++r)
     {
@@ -253,9 +246,8 @@ int main(int argc, char *argv[])
     if (true){
     // creating basis
     gsMultiBasis<> basis(geometry);
-    gsVector<>   l2err(numLRefine+1);//h1err(numLRefine+1),
+    gsVector<>     l2err(numLRefine+1), h1err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
-    gsInfo<< "(dot1=assembled, dot2=solved)\n";
 
     //=============================================//
               // Assembling & solving //
@@ -326,15 +318,16 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev;
     ev.setIntegrationElements(assembler.multiBasis());
     gsExprEvaluator<>::geometryMap PP = ev.getMap(geometry);
-    auto sigm_ex   = ev.getVariable(analyticalStresses, PP);
-    auto ff   = ev.getVariable(f, PP);
+    auto sigm_ex    = ev.getVariable(analyticalStresses, PP);
+    auto ff         = ev.getVariable(f, PP);
     // eval stress at the top of the circular cut
 
     //... error computation
-    auto istress = ev.getVariable(stressField.fields());
+    auto istress    = ev.getVariable(stressField.fields());
     // omp_set_num_threads(1); // Use these threads for later parallel regions
-    DoFPDE[0] = assembler.numDofs();
-    l2err[0]  = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
+    DoFPDE[0]       = assembler.numDofs();
+    l2err[0]        = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
+    h1err[0]        = math::sqrt(ev.integral( idiv( sigm_ex, PP) * meas(PP) ));
     gsInfo << " min Jacobian function and maximum " << ev.min(jac(PP).det())<< " " << ev.max(jac(PP).det())<<"\n";
     for (int r=1; r<=numLRefine; ++r)
     {
@@ -422,7 +415,7 @@ int main(int argc, char *argv[])
             // omp_set_num_threads(1); // Use these threads for later parallel regions
         DoFPDE[r]         = assembler.numDofs();
         l2err[r]          = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
-        //h1err[0]        = math::sqrt(ev.max( (sigm_ex - istress).sqNorm()));
+        h1err[r]          = math::sqrt(ev.integral( idiv( sigm_ex, PP) * meas(PP) ));
         // eval stress at the top of the circular cut
         gsMatrix<> A(2,1);
         A << 1.,0.; // parametric coordinates for the isogeometric solution
@@ -447,7 +440,7 @@ int main(int argc, char *argv[])
     //! [Error and convergence rates]
     gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
     gsInfo<< "L2_error_x = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    //gsInfo<< "L2_error_y= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
+    gsInfo<< "L2_error_y= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
 
     if (errorsave)
     {
@@ -457,7 +450,7 @@ int main(int argc, char *argv[])
     {
         outFile << "#DoF_PDE: " << adaptRefParam <<" "<< NumArMarEl <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
-        //outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
     }
@@ -479,9 +472,9 @@ int main(int argc, char *argv[])
                    l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
                    <<"\n";
 
-        //gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
-        //     <<( h1err.head(numRefine).array() /
-        //          h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
+             <<( h1err.head(numRefine).array() /
+                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     //! [Error and convergence rates]
     //! [Export visualization in ParaView]
