@@ -39,6 +39,7 @@ void CorrecNormalCPoints(const gsMultiPatch<>& mpLeft, gsMultiPatch<>& Psi, inde
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(3).size(); ++i_x) // y=0 control points be like (:,0) in this case
         {
         Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1] = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[1];
+        Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[0] = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(3).at(i_x) ).array()[0];
         }
         // x= 4 y = -4
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(4).size(); ++i_x)// y=1 control points be like (:,1) in this case
@@ -348,8 +349,8 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
-            //ev.integralElWise( ff );
-            ev.integralElWise( idiv(istress, PP));
+            ev.integralElWise( ff );
+            //ev.integralElWise( idiv(istress, PP));
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
