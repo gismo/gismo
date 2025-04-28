@@ -493,9 +493,10 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
+    std::string geometry("domain2d/quarter_annulus.xml");
     index_t rhsType = 2;
-    index_t nPatchesX = 4;
-    index_t nPatchesY = 4;
+    index_t sPatchesX = 1;
+    index_t sPatchesY = 1;
     index_t degree = 2;
     index_t refinements = 2;
     real_t robin = 0;
@@ -511,9 +512,10 @@ int main(int argc, char *argv[])
     bool plot = false;
 
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
+    
     cmd.addInt   ("t", "RhsType",               "Chosen right-hand side", rhsType);
-    cmd.addInt   ("x", "PatchesX",              "Number of patches (coordinate direction x)", nPatchesX);
-    cmd.addInt   ("y", "PatchesY",              "Number of patches (coordinate direction y)", nPatchesY);
+    cmd.addInt   ("x", "PatchesX",              "Number of splits (coordinate direction x)", sPatchesX);
+    cmd.addInt   ("y", "PatchesY",              "Number of splits (coordinate direction y)", sPatchesY);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addReal  ("o", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
@@ -558,14 +560,25 @@ int main(int argc, char *argv[])
     /******************* Define geometry ********************/
 
     gsInfo << "Define geometry... " << std::flush;
-    gsMultiPatch<> mp;
-    for (index_t i=0; i<nPatchesX; ++i)
-        for (index_t j=0; j<nPatchesY; ++j)
-            mp.addPatch(gsNurbsCreator<>::BSplineRectangle(i,j,i+1,j+1));
-    mp.computeTopology();
+    gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
+    if (!mpPtr)
+    {
+        gsInfo << "No geometry found in file " << geometry << ".\n";
+        return EXIT_FAILURE;
+    }
+    gsMultiPatch<>& mp = *mpPtr;
+    if (mp.nPatches()!=1)
+    {
+        gsInfo << "Only sigle-patch geometries allowed!\n";
+        return EXIT_FAILURE;
+    }
+    for (index_t i=0; i<sPatchesX; ++i)
+        mp = mp.uniformSplit(0);
+    for (index_t j=0; j<sPatchesY; ++j)
+        mp = mp.uniformSplit(1);
 
-    gsInfo << "done.\n";
     const index_t nPatches = mp.nPatches();
+    gsInfo << "done: "<<nPatches<<" patches.\n";
 
     /************ Setup bases and adjust degree *************/
 
@@ -975,9 +988,11 @@ int main(int argc, char *argv[])
         fd.add(pc);
 
         fd.addComment(std::string("biharmonic_ieti_example   Timestamp:")+std::ctime(&time));
-        fd.save(out);*/
+        fd.save(out);
+        gsInfo << "Write solution to file " << out << "\n";*/
         std::ofstream outfile (out, std::ios_base::app);
-        outfile << "biharmonic_ieti_example\t"
+        outfile << "biharmonic2_ieti_example\t"
+                << geometry << "\t"
                 << degree << "\t"
                 << refinements << "\t"
                 << conditionNumber << "\t"
