@@ -65,12 +65,13 @@ public:
     using Base = gsOptimizer<T>;
 
 public:
-    // gsHLBFGS(gsOptProblem<T> * problem)
-    // :
-    // Base(problem)
-    // {
-    //     this->defaultOptions();
-    // }
+
+    gsHLBFGS()
+    :
+    Base()
+    {
+        this->defaultOptions();
+    }
 
     gsHLBFGS(gsOptProblem<T> * problem)
     :
@@ -174,7 +175,7 @@ protected:
         for (int i = 0; i!=13; ++i)
             m_hlbfgs_info[i] = m_options.askInt("INFO"+util::to_string(i), m_hlbfgs_info[i]);
     }
-    
+
 protected:
 
     static void static_func_grad(int N, T* x, T* prev_x, T* f, T* g)
