@@ -412,8 +412,10 @@ int main(int argc, char *argv[])
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
     if (calcEigenvalues)
+    {
         gsInfo << "Estimated condition number: " << PCG.getConditionNumber() << "\n";
-
+        gsMatrix<> eigs; PCG.getEigenvalues(eigs); gsInfo << "Eigenvalues: " << eigs.transpose() << "\n";
+    }
     if (!out.empty())
     {
         gsFileData<> fd;
