@@ -68,7 +68,7 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
 std::vector<std::vector<std::vector<index_t>>>
 setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, int bdyCond)
 {
-    GISMO_ENSURE ( bdyCond==0, "This function is not bounary-aware."); // TODO: It should use the dof mapper instead!
+    GISMO_ENSURE ( bdyCond==0, "This function is not bounary-aware.");
     std::vector<std::vector<std::vector<index_t>>> result(mp.nPatches());
     for (size_t k=0; k<mp.nPatches(); ++k)
         result[k].resize(2);
@@ -339,7 +339,7 @@ public:
             edgeCount += neighbors.size();
         }
         gsInfo << "[deluxe-pc: " << edgeCount << "edges]" << std::flush;
-        //*
+        /*
         for (size_t l=0; l<edges.size(); ++l)
         {
             gsInfo << "Edge " << l << ": ";
@@ -503,6 +503,7 @@ int main(int argc, char *argv[])
     int bdyConds = 2;
     std::string primals("x");
     std::string dualPreconder("d");
+    real_t extremelyDeluxeParameter = 1;
     std::string solverType("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 1000;
@@ -517,9 +518,10 @@ int main(int argc, char *argv[])
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addReal  ("o", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
     cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
-    cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (0) \u0394u, dn\u0394u; (1) u, \u0394u; (2) u, dnu", bdyConds);
-    cmd.addString("c", "Primals",               "Chosen primal dofs", primals);
-    cmd.addString("d", "DualPreconder",         "Use preconder: (s) stanard Dirichlet, (c) componentwise Dirichlet, (d) deluxe, (b) bruteforce", dualPreconder);
+    cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (0) \u0394u, \u2202n\u0394u; (1) u, \u0394u; (2) u, \u2202nu", bdyConds);
+    cmd.addString("c", "Primals",               "Chosen primal dofs: (0) no, (c) classical corners, (x) eXtended cornerdofs", primals);
+    cmd.addString("d", "DualPreconder",         "Use preconder: (s) stanard Dirichlet, (c) componentwise Dirichlet, (d) deluxe, (e) extremely deluxe, (b) bruteforce", dualPreconder);
+    cmd.addReal  ("",  "ExtremelyDeluxeParameter", "", extremelyDeluxeParameter);
     cmd.addString("",  "Solver",                "Which solver to use: \"cg\" or \"gmres\".", solverType);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
@@ -578,10 +580,10 @@ int main(int argc, char *argv[])
 
     /******************* Setup dofMapper ********************/
     gsInfo << "Setup dofMapper... " << std::flush;
-    gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, bdyConds);
+    gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, robin==0.?bdyConds:0);
     std::vector<std::vector<std::vector<index_t>>> skeletonDofs;
     if (dualPreconder=="c")
-        skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb, bdyConds);
+        skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb, robin==0.?bdyConds:0);
     gsInfo << "done:\n" << dm << "\n";
 
     /****************** Setup ietimapper ********************/
@@ -590,6 +592,9 @@ int main(int argc, char *argv[])
     fixedPart.setZero(dm.boundarySize(),1);
     gsIetiMapper<> ietiMapper(mb,dm,fixedPart);
     ietiMapper.computeJumpMatrices(/*fullyRedundant=*/false,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/true);
+    gsIetiMapper<> ietiMapper2(mb,dm,fixedPart);
+    ietiMapper2.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/false);
+    
     if (primals == "c")
     {
         ietiMapper.cornersAsPrimals();
@@ -597,16 +602,15 @@ int main(int argc, char *argv[])
     }
     else if (primals == "x")
     {
-        gsIetiMapper<> ietiMapper2(mb,dm,fixedPart);
-        ietiMapper2.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/false);
+        
         std::vector<gsSparseMatrix<real_t,RowMajor>> jm;
         jm.reserve(nPatches);
         for (index_t k=0; k<nPatches; ++k)
             jm.push_back(ietiMapper2.jumpMatrix(k));
-        gsInfo << "im2-jumps[0]:" << jm[0].rows() << "x" << jm[0].cols() << "\n";
+        //gsInfo << "im2-jumps[0]:" << jm[0].rows() << "x" << jm[0].cols() << "\n";
         std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> data = cornersFromJumpMatrices(jm);
 
-        if ( true )
+        if (! true )
         {
             gsInfo << "[";
             for (size_t i=0; i<data.size(); ++i)
@@ -732,12 +736,14 @@ int main(int argc, char *argv[])
                     )
                 );
         }
-        else if (dualPreconder=="d" || dualPreconder=="b")
+        else if (dualPreconder=="d" || dualPreconder=="e" || dualPreconder=="b")
         {
+#ifndef NDEBUG
             gsInfo << "Skeleton=[";
             for (size_t i=0; i<ietiMapper.skeletonDofs(k).size(); ++i)
                 gsInfo  << ietiMapper.skeletonDofs(k)[i] << " ";
             gsInfo << "]";
+#endif
             deluxe.addSubdomain(localMatrix, jumpMatrix, ietiMapper.skeletonDofs(k));
         }
         else
@@ -772,15 +778,14 @@ int main(int argc, char *argv[])
 
     // Add the primal problem if there are primal constraints
     //! [Primal to system]
-    if (ietiMapper.nPrimalDofs()>0)
+    if (ietiMapper.nPrimalDofs()>0) 
     {
         gsInfo << "[P] " << std::flush;
-        gsLinearOperator<>::Ptr localSolver
-            = makeSparseLUSolver(primal.localMatrix());
+        gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(primal.localMatrix());
 
         ieti.addSubdomain(
-            primal.jumpMatrix().moveToPtr(),
-            makeMatrixOp(primal.localMatrix().moveToPtr()),
+            gsSparseMatrix<real_t,RowMajor>(primal.jumpMatrix()).moveToPtr(),
+            makeMatrixOp(gsSparseMatrix<>(primal.localMatrix()).moveToPtr()),
             give(primal.localRhs()),
             localSolver
         );
@@ -792,17 +797,64 @@ int main(int argc, char *argv[])
 
     /**************** Setup solver and solve ****************/
 
-    gsInfo << "Setup solver and solve... \n"
-        "    Setup scaling... " << std::flush;
+    gsInfo << "Setup solver and solve... \n";
 
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
+    gsLinearOperator<>::Ptr preconder;
     if (dualPreconder=="d")
+    {
+        gsInfo << "    Setup deluxe preconder... " << std::flush;
         deluxe.setupPreconditioner();
-    if (dualPreconder=="b")
-        ;
-    else
+        preconder = deluxe.preconditioner();
+    }
+    else if (dualPreconder=="e")
+    {
+        gsInfo << "    Setup extremely deluxe preconder... " << std::flush;
+        deluxe.setupPreconditioner();
+        preconder = gsLowRankCorrectedOp<>::make( deluxe.preconditioner(), extremelyDeluxeParameter*primal.localMatrix(), primal.jumpMatrix(), primal.jumpMatrix() );
+    }
+    else if (dualPreconder=="b")
+    {
+        gsInfo << "    Setup bruteforce preconder... " << std::flush;
+        gsSparseMatrix<> sm;
+        {
+            gsMatrix<> m;
+            ieti.schurComplement()->toMatrix(m);
+            sm = m.sparseView(m(0,0),1e-8);
+        }
+        gsSparseMatrix<> sm2(sm.rows(), sm.cols());
+        std::vector<deluxePreconder::edge> edges = deluxe.identifyEdges();
+        std::vector<bool> taken(sm.rows());
+        for (size_t k=0; k<edges.size(); ++k)
+        {
+            gsSparseEntries<> se;
+            se.reserve(edges[k].lagrangeIndices.size());
+            for (size_t i=0; i<edges[k].lagrangeIndices.size(); ++i)
+            {
+                GISMO_ENSURE ( !taken[edges[k].lagrangeIndices[i]], "");
+                taken[edges[k].lagrangeIndices[i]] = true;
+                se.add(edges[k].lagrangeIndices[i],edges[k].lagrangeIndices[i],1.);
+            }
+            gsSparseMatrix<> trans(sm.rows(), sm.cols());
+            trans.setFrom(se);
+            sm2 += trans * sm * trans;
+        }
+        for (size_t i=0; i<taken.size(); ++i)
+        {
+            GISMO_ENSURE (taken[i],"i="<<i);
+        }
+        //preconder = makeSparseLUSolver(sm2);
+        preconder = makeSparseCholeskySolver(sm2);
+    }
+    else if (dualPreconder=="c" || dualPreconder=="s")
+    {
+        gsInfo << "    Setup sclaled Dirichlet preconder... " << std::flush;
         prec.setupMultiplicityScaling();
+        preconder = prec.preconditioner();
+    }
+    else
+        GISMO_ENSURE (0, "Unknown dualPreconder.");
     //! [Setup scaling]
 
     gsInfo << "done.\n    Setup rhs... " << std::flush;
@@ -822,46 +874,21 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
-    gsLinearOperator<>::Ptr preconder;
-    if (dualPreconder=="d")
-        preconder = deluxe.preconditioner();
-    else if (dualPreconder=="b")
-    {
-        gsSparseMatrix<> sm;
-        {
-            gsMatrix<> m;
-            ieti.schurComplement()->toMatrix(m);
-            sm = m.sparseView(m(0,0),1e-8);
-        }
-        gsSparseMatrix<> sm2(sm.rows(), sm.cols());
-        std::vector<deluxePreconder::edge> edges = deluxe.identifyEdges();
-        for (index_t k=0; k<nPatches; ++k)
-        {
-            gsSparseEntries<> se;
-            se.reserve(edges[k].lagrangeIndices.size());
-            for (size_t i=0; i<edges[k].lagrangeIndices.size(); ++i)
-                se.add(edges[k].lagrangeIndices[i],edges[k].lagrangeIndices[i],1.);
-            gsSparseMatrix<> trans(sm.rows(), sm.cols());
-            trans.setFrom(se);
-            sm2 += trans * sm * trans;
-        }
-        preconder = makeSparseLUSolver(sm2);
-    }
-    else
-        preconder = prec.preconditioner();
         
-    {
-        gsMatrix<> m;
-        preconder->toMatrix(m);
-        m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
-        gsInfo << "\n\nPreconder M:\n" << std::setprecision (3) <<  m << "\n\n";
-    }    
+#ifndef NDEBUG
     {
         gsMatrix<> m;
         ieti.schurComplement()->toMatrix(m);
         m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
-        gsInfo << "\n\nProblem F:\n" << std::setprecision (3) <<  m << "\n\n";
+        gsInfo << "\n\nProblem F:\n" << std::setprecision(3) <<  m << "\n\n";
+    }     
+    {
+        gsMatrix<> m;
+        preconder->toMatrix(m);
+        m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
+        gsInfo << "\n\nPreconder M:\n" << std::setprecision(3) <<  m << "\n\n";
     }    
+#endif
         
     real_t conditionNumber = -1;
     gsMatrix<real_t> eigenvalues;
