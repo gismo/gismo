@@ -13,8 +13,7 @@
 
 #pragma once
 
-#include <gsDomain/gsKdNode.h>
-#include <gsDomain/gsHDomainLeafIter.h>
+#include <gsDomain/gsKdTree.h>
 #include <gsCore/gsBoundary.h>
 
 namespace gismo

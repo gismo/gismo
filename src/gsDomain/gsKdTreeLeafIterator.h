@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsDomain/gsKdNode.h>
+#include <gsDomain/gsKdTree.h>
 #include <gsCore/gsTemplateTools.h>
 
 namespace gismo

@@ -14,8 +14,14 @@
 #include <iostream>
 #include <gismo.h>
 
+
+#include <gsHSplines/gsKdTree.h> // A binary partition tree for representing hierarchical domains.
+
+#include <gsHSplines/gsKdTree.h> // A general purpose Kd-tree with absrtracted data
+
+
 // why needed ?
-#include <gsHSplines/gsHDomain.hpp>
+//#include <gsHSplines/gsHDomain.hpp>
 
 namespace gismo {
 
@@ -122,7 +128,7 @@ public:
         gsLobattoRule<real_t> qurule(numNodes);
 
         //First pass:
-        // mark element position (-1,0,1)
+        // mark element position (-1,0,1) -- (inactive, cut-cell, interior)
         // create dofmapper (mark active basis functions)
 
         //Second pass:

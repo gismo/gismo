@@ -13,7 +13,7 @@
 
 # pragma once
 
-#include <gsHSplines/gsAABB.h>
+#include <gsDomain/gsKdTreeLeafIterator.h>
 
 namespace gismo {
 
@@ -35,7 +35,7 @@ struct gsKdNode2  //TODO: rename as gsKdTree
 {
     // Defines the type of the box
     typedef typename leafData::point point_t;
-    typedef typename leafData        data_t;
+    typedef leafData        data_t;
 
     // Tree iterators
     typedef gsKdTreeLeafIter<leafData,false> literator;
