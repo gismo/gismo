@@ -17,33 +17,28 @@
 namespace gismo
 {
 
+namespace {
+template<typename T>
+gsMatrix<T> operator*( const typename gsLinearOperator<T>::Ptr& a, const gsMatrix<T>& b )
+{
+    gsMatrix<T> tmp( a->rows(), b.cols() );
+    a->apply(b, tmp);
+    return tmp;
+}
+}
+    
 template<typename T>
 gsLowRankCorrectedOp<T>::gsLowRankCorrectedOp(const BasePtr& Ainv, const gsSparseMatrix<T> & Q, const gsSparseMatrix<T> & U, const gsSparseMatrix<T> & V)
-    : m_U( U ), m_V( V )
+    : m_U(U), m_V(V), m_Ainv(Ainv)
 {
-    GISMO_ASSERT
-    (
-        Ainv->cols() == Ainv->rows()
-        && Ainv->rows() == U.rows()
-        && U.cols() == Q.cols()
-        && Q.cols() == Q.rows()
-        && Q.rows() == V.cols()
-        && V.rows() == Ainv->cols(),
-        "Dimensions do not fit."
-    );
-
-    m_Ainv = Ainv;
-    
-    // Here, we implement the following:
-    // W = Q - V.transpose() * inv(A) * U
-    // tmp = inv(A) * U
-    gsMatrix<T> tmp( Ainv->rows(), m_U.cols() );
-    m_Ainv->apply( m_U, tmp );
-    
-    // W = Q - V.transpose() * tmp
-    gsMatrix<T> W( Q );
-    W.noalias() -= m_V.transpose() * tmp;
-
+    GISMO_ASSERT( Ainv->cols() == Ainv->rows(), "Not quadratic.");
+    GISMO_ASSERT( Q.cols() == Q.rows(), "Not quadratic.");
+    GISMO_ASSERT( Ainv->rows() == U.rows(), "Dimensions do not fit: "<<Ainv->rows()<<"=="<<U.rows());
+    GISMO_ASSERT( U.cols() == Q.cols(), "Dimensions do not fit: "<<U.cols()<<"=="<<Q.cols());
+    GISMO_ASSERT( Q.rows() == V.cols(), "Dimensions do not fit: "<<Q.rows()<<"=="<<V.cols());
+    GISMO_ASSERT( V.rows() == Ainv->cols(), "Dimensions do not fit: "<<V.rows()<<"=="<<Ainv->cols());
+   
+    gsMatrix<T> W = Q + m_V.transpose() * (m_Ainv * gsMatrix<T>(m_U));
     m_Winv = makePartialPivLUSolver( W ); 
 
 }
@@ -51,23 +46,15 @@ gsLowRankCorrectedOp<T>::gsLowRankCorrectedOp(const BasePtr& Ainv, const gsSpars
 template<typename T>
 void gsLowRankCorrectedOp<T>::apply(const gsMatrix<T>& x, gsMatrix<T>& result) const
 {
-    // Here, we could make permanently allocated vectors
-    gsMatrix<T> tmp1;
-    gsMatrix<T> tmp2;
-    gsMatrix<T> tmp3;
-    
-    // compute    Ainv * ( I + U * Winv * V.transpose() * Ainv ) * x
+   
+    // compute    ( I - Ainv * U * Winv * V.transpose() ) * Ainv * x
  
     m_Ainv->apply( x, result );
 
     if( m_U.cols() == 0 )
         return;
 
-    tmp1.noalias() = m_V.transpose() * result;
-    m_Winv->apply( tmp1, tmp2 );
-    tmp3.noalias() = m_U * tmp2;
-    tmp3 += x;
-    m_Ainv->apply( tmp3, result );
+    result -= m_Ainv * gsMatrix<T>( m_U * (m_Winv * gsMatrix<T>(m_V.transpose() * result)) );
 
 }
 
