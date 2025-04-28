@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     bool export_b64       = false;
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
-    // Specify cell-marking strategy... 
+    // Specify cell-marking strategy...
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
@@ -136,13 +136,13 @@ int main(int argc, char *argv[])
     gsMatrix<> rsolVector;
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 0: Computes the initial solution of the PDEs 
+    ###   Step 0: Computes the initial solution of the PDEs
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     ru.setup(bc, dirichlet::l2Projection, 0);
     // Initialize the system
     A.initSystem();
     gsInfo<< "Solving PDEs " <<std::flush;
-    gsInfo<< A.numDofs() <<std::flush;    
+    gsInfo<< A.numDofs() <<std::flush;
     //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
     timer.restart();
     A.assemble(
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    // auto density = MAE.buildDensity(elwise, numRefine, 0.1, circleN);
+    // auto density = MAE.buildDensity(elwise, 0.001, circleN);
     gsFunctionExpr<> ff;
     fd.getId(2003, ff);
     auto density = MAE.buildAnalyticDensity(ff);
@@ -177,12 +177,12 @@ int main(int argc, char *argv[])
     // collection.options().setInt("plotElements.resolution", 16);
     // collection.options().setInt("numPoints", 10000);
     // collection.newTimeStep(&mp);
-    // collection.addField(u_density,"numerical solution");
+    // collection.addField(u_density,"density");
     // collection.saveTimeStep();
     // collection.save();
     // gsFileManager::open("ParaviewOutput/solution.pvd");
     // return 0;
-    
+
     auto Psitp   = MAE.buildMultiPatch(density, true);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -215,11 +215,11 @@ int main(int argc, char *argv[])
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
     geometryMap PP = A.getMap(Psi);
-    
+
     gsStopwatch timer;
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
-    
+
     // Set the discretization space // different boundary condition !
     space ru = A.getSpace(dbasis);
 
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 
         gsInfo<< "Solving PDEs " <<std::flush;
         gsInfo<< A.numDofs() <<std::flush;
-        
+
         //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
 
         timer.restart();
@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
             //}
             }
     }
-    //! [Solver loop]    
+    //! [Solver loop]
 
 
     timer.stop();
@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
     gsInfo<<"     Norms: "<< err_time   <<"\n";
-    
+
 
     //! [Error and convergence rates]
     gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";

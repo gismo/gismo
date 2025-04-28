@@ -113,7 +113,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR,const index_t &m_numRefine, const double eps, index_t circleN) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR, const double eps, index_t circleN) const 
 {
     gsInfo<<"<>density function";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -123,9 +123,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     //...............error as a piecewise constant function
     gsMultiBasis<double> basis_0(m_mapping, true);
     basis_0.setDegree(0);
-    for (int r=0; r<=m_numRefine; ++r)
+    //... refine uniformly until the number of elements is equal to the number of elwiseERROR
+    int refnumb = basis_0.basis(0).size();
+    int elwnumb = elwiseERROR.size();
+    while ( refnumb< elwnumb)
     {
         basis_0.uniformRefine();
+        refnumb = basis_0.basis(0).size();
     }
     gsExprAssembler<> A_0(1,1);
     // Elements used for numerical integration
@@ -139,6 +143,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     if (this->m_basis.dim() == 2){
         index_t n1   = basis_0.basis(0).component(0).numElements();
         index_t n2   = basis_0.basis(0).component(1).numElements();
+
         for (index_t i1 = 0; i1 < n1; i1++){
             for (index_t j1 = 0; j1 < n2; j1++){
                 auto i = i1*n2 + j1;
@@ -179,21 +184,18 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
             }
         }
     }
-    index_t n       = errorVector.rows();
+    //... normalize the error vector
     const double Maxvalue   = errorVector.maxCoeff();
     const double Minvalue   = errorVector.minCoeff();
+    // gsInfo << "Density function: min "<< errorVector.minCoeff() <<"/ max " << errorVector.maxCoeff() << "\n";    
     const double meanvalue  = eps*(Maxvalue + Minvalue);
-    gsInfo << "Density function: min "<< Minvalue <<"/ max " << Maxvalue << "\n";
-    for (index_t i1 = 0; i1 < n; i1++){
+    for (index_t i1 = 0; i1 < elwnumb; i1++){
         if (errorVector(i1) > Minvalue+meanvalue)
-        errorVector(i1) = Minvalue+meanvalue;
-        else
-        errorVector(i1) = Minvalue;
+            errorVector(i1)  = Maxvalue;
+        // else errorVector(i1) = Minvalue;
     }
-    gsInfo << "Density function: min "<< Minvalue <<"/ max " << Maxvalue << "\n";
 
     //...............End error as a function
-
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     // Elements used for numerical integration

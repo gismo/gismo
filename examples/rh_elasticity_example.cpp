@@ -196,20 +196,22 @@ int main(int argc, char *argv[])
     gsExprEvaluator<>::geometryMap PP = ev.getMap(mpLeft);
     //... error computation
     auto istress = ev.getVariable(stressField.fields());
-    ev.integralElWise( idiv(istress, PP) * meas(PP) );
-    //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
+    // ev.integralElWise( idiv(istress, PP) * meas(PP) )
+    gsInfo << "Stress: min "<< istress.ppart() << "\n";
+    ev.integralElWise( (istress).sqNorm() );
+    // ev.integralBdrBc(bcInfo.get("nuemann"),(istress* nv(PP)).sqNorm());
     auto elwise = ev.elementwise();
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    // auto density      = MAE.buildDensity( elwise, numLRefine, 0.1);
-    //...  test density function construction in the square
-    // auto corners         = dbasis.basis(0).support();
+    // auto density      = MAE.buildDensity( elwise, 0.001);
+    // //...  test density function construction in the square
+    // auto corners      = dbasis.basis(0).support();
     // gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
-    // auto PPg = ev.getMap(mp);
-    // auto  fdensity = ev.getVariable(density, PPg);
+    // auto PPg          = ev.getMap(mp);
+    // auto  fdensity    = ev.getVariable(density, PPg);
     // gsInfo<<"Making in Paraview...\n";
     // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
     // collection.options().setSwitch("plotElements", true);
@@ -230,11 +232,13 @@ int main(int argc, char *argv[])
     // return 0;
     if (IntensityMAE>0){
     auto density    = MAE.buildAnalyticDensity( f);
-    auto geometrytp = MAE.buildMultiPatch(density);
+    auto geometrytp   = MAE.buildMultiPatch(density);
     CorrecNormalCPoints(mpLeft, geometrytp);
-    for( index_t i=0; i<geometrytp.nPatches(); ++i)
+    index_t numPaches = geometrytp.nPatches();
+    for( index_t i=0; i<numPaches; ++i)
     {
-    for ( index_t j=0; j<geometrytp.patch(i).coefsSize(); ++j)
+    index_t coefsNum  = geometrytp.patch(i).coefsSize();
+    for ( index_t j=0; j<coefsNum; ++j)
     {
         mpLeft.patch(i).coef(j) = geometrytp.patch(i).coef(j);
     }
@@ -350,7 +354,7 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
             ev.integralElWise( ff );
-            //ev.integralElWise( idiv(istress, PP));
+            // ev.integralElWise( (istress).sqNorm() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -366,8 +370,8 @@ int main(int argc, char *argv[])
             gsRefineMarkedElements( basis, elMarked, NumArMarEl);
             gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
             gsInfo << "assemble refined\n";
-            assembler.multiBasis().repairInterfaces( geometry.interfaces() );
-            gsRefineMarkedElements( geometry, elMarked, NumArMarEl);
+            // assembler.multiBasis().repairInterfaces( geometry.interfaces() );
+            // gsRefineMarkedElements( geometry, elMarked, NumArMarEl);
             
             if (r%2==0)
             NumArMarEl = NumArMarEl + FactRefPar;
@@ -523,9 +527,9 @@ int main(int argc, char *argv[])
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&geometry);
         collection.addField(istress,"numerical stress");
-        collection.addField( idiv(istress, PP) * meas(PP),"norm stress");
+        collection.addField( (istress).sqNorm(),"norm stress");
         // collection.addField(jac(PP).det(), "Jacobian function");
-        // collection.addField(sigm_ex, "exact stress");
+        collection.addField(sigm_ex, "exact stress");
         // collection.addField(ff_Ggeometry,"Density function");
         collection.saveTimeStep();
         collection.save();

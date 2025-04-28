@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, Psi, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise,  numRefine, 0);
+    auto density = MAE.buildDensity(elwise, 0.005, 0);
     // auto density = MAE.buildAnalyticDensity(f);
     auto Psitp   = MAE.buildMultiPatch(density, false); // false means we work on the computational domain
     if (true){

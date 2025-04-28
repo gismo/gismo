@@ -23,9 +23,9 @@ int main(int argc, char *argv[])
     index_t numRefine     = 4;
     index_t numLRefine    = 3;
     index_t numElevate    = 0;
-    index_t maxIter       = 50;
+    index_t maxIter       = 30;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
-    double IntensityMAE   = 6.;
+    double IntensityMAE   = 12.;
     bool export_b64       = false;
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
@@ -153,8 +153,8 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
     solution u_sol = A.getSolution(ru, rsolVector);
-    ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
-    //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
+    //ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
+    ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise = ev.elementwise();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, numRefine, 0.1, circleN);
+    auto density = MAE.buildDensity(elwise, 0.1, circleN);
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
