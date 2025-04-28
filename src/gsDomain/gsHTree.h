@@ -69,8 +69,11 @@ Template parameters
 */
 
 
+
+
+
 template<short_t d, class Z = index_t>
-class gsHTree // rename to gsHTree
+class gsHTree // TODO: merge with gsHDomain
 {
 public:
     typedef gsKdNode<d, Z> node;
@@ -85,8 +88,6 @@ public:
 
 private:
 
-    struct numLeaves_visitor;
-    struct numNodes_visitor;
     struct levelUp_visitor;
 
 private:
@@ -735,29 +736,6 @@ private:
         }
     };
 
-    /// Counts number of nodes in the tree
-    struct numLeaves_visitor
-    {
-        typedef int return_type;
-        static return_type init() {return 0;}
-
-        static void visitLeaf(gsKdNode<d, Z> * , return_type & i)
-        {
-            i++;
-        }
-    };
-
-    /// Counts number of nodes in the tree
-    struct numNodes_visitor
-    {
-        typedef int return_type;
-        static return_type init() {return 0;}
-
-        static void visitNode(gsKdNode<d, Z> * , return_type & i)
-        {
-            i++;
-        }
-    };
 
     /// Multiplies everything by 2
     struct liftCoordsOneLevel_visitor
@@ -780,18 +758,6 @@ private:
         static void visitNode(gsKdNode<d, Z> * leafNode, return_type &)
         {
             leafNode->divideByTwo();
-        }
-    };
-
-    /// Counts number of nodes in the tree
-    struct printLeaves_visitor
-    {
-        typedef int return_type;
-        static return_type init() {return 0;}
-
-        static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
-        {
-            gsInfo << *leafNode;
         }
     };
 

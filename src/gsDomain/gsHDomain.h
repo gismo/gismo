@@ -76,7 +76,7 @@ Template parameters
 
 
 template<short_t d, class T, class Z>
-class gsHDomain : public gsDomain<T> // is template correct?
+class gsHDomain : public gsDomain<T>
 {
 public:
 

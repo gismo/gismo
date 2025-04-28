@@ -1,4 +1,4 @@
-/** @file gsHDomain.hpp
+/** @file gsHTree.hpp
 
     @brief Provides implementation of the HDomain class.
 
@@ -15,6 +15,8 @@
 #include <gsHSplines/gsVSegment.h>
 #include <gsDomain/gsKdNode.h>
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsFunction.h>
+#include <gsTensor/gsGridIterator.h>
 
 #include <queue>
 
@@ -146,6 +148,7 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
 
     // Make a box
     box iBox(k1,k2);
+    const unsigned h = m_indexLevel - lvl;
     if( isDegenerate(iBox) )
         return;
 
@@ -183,7 +186,7 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
 
             // Split the leaf (if possible)
             //node * newLeaf = curNode->adaptiveSplit(iBox);
-            node * newLeaf = curNode->adaptiveAlignedSplit(iBox, m_indexLevel);
+            node * newLeaf = curNode->adaptiveAlignedSplit(iBox, h);
 
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
@@ -221,7 +224,7 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
 }
 
 template<short_t d, class Z>
-gsMatrix<real_t> gsHDomain<d,Z>::coordinates(node * _node)
+gsMatrix<real_t> gsHTree<d,Z>::coordinates(node * _node)
 {
     // Computes the corner point and the center of the current node
 
@@ -244,7 +247,7 @@ gsMatrix<real_t> gsHDomain<d,Z>::coordinates(node * _node)
 
 //
 template<short_t d, class Z> void
-gsHDomain<d, Z>::construct( const gsFunction<real_t> & inOut) // TODO: add max level or tolerance
+gsHTree<d, Z>::construct( const gsFunction<real_t> & inOut) // TODO: add max level or tolerance
 {
     //
     // Initialize stack
