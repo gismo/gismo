@@ -54,12 +54,12 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot             = false;
-    index_t numRefine     = 3;
+    index_t numRefine     = 2;
     index_t numLRefine    = 0;
     index_t numElevate    = 0;
     index_t maxIter       = 30;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
-    double IntensityMAE   = 9.;
+    double IntensityMAE   = 12.;
     //bool export_b64     = false;
     bool errorsave        = false;
     real_t adaptRefParam  = 0.;     // ... adapt parameter.
@@ -196,67 +196,69 @@ int main(int argc, char *argv[])
     gsExprEvaluator<>::geometryMap PP = ev.getMap(mpLeft);
     //... error computation
     auto istress = ev.getVariable(stressField.fields());
-    auto isolution  = ev.getVariable(solutionField.fields().piece(0));
 
     // ev.integralElWise( idiv(istress, PP) * meas(PP) )
     gsInfo << "Stress: min "<< istress.ppart() << "\n";
-    ev.integralElWise( igrad(isolution,PP).sqNorm());
+    ev.integralElWise( idiv(istress,PP).sqNorm());
     // ev.integralBdrBc(bcInfo.get("nuemann"),(istress* nv(PP)).sqNorm());
     auto elwise = ev.elementwise();
-
-    if (true){
-        gsInfo<<"Storing paraview...\n";
-        // Write the computed solution to paraview files
-        gsInfo<<"Making in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", false);
-        collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(&mpLeft);
-        collection.addField(istress,"numerical stress");
-        collection.addField((istress.trace() ).sqNorm(),"norm stress");
-        collection.addField((isolution.trace() ).sqNorm(),"norm solution");
-        // collection.addField(jac(PP).det(), "Jacobian function");
-        collection.saveTimeStep();
-        collection.save();
-        //------------------------------------
-        gsInfo<<"Plotting in Paraview...\n";
-        // Run paraview
-        gsFileManager::open("ParaviewOutput/solution.pvd");
-    }
-    return 0;
+    // for (index_t i=0; i<elwise.size(); ++i)
+    // {
+    //     gsInfo << "Stress: elwise "<< i << " : "<< elwise.at(i) << "\n";
+    // }
+    // if (true){
+    //     gsInfo<<"Storing paraview...\n";
+    //     // Write the computed solution to paraview files
+    //     gsInfo<<"Making in Paraview...\n";
+    //     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    //     collection.options().setSwitch("plotElements", true);
+    //     collection.options().setSwitch("base64", false);
+    //     collection.options().setInt("plotElements.resolution", 16);
+    //     collection.options().setInt("numPoints", 10000);
+    //     collection.newTimeStep(&mpLeft);
+    //     collection.addField(istress,"numerical stress");
+    //     collection.addField((istress.trace() ).sqNorm(),"norm stress");
+    //     collection.addField((isolution.trace() ).sqNorm(),"norm solution");
+    //     // collection.addField(jac(PP).det(), "Jacobian function");
+    //     collection.saveTimeStep();
+    //     collection.save();
+    //     //------------------------------------
+    //     gsInfo<<"Plotting in Paraview...\n";
+    //     // Run paraview
+    //     gsFileManager::open("ParaviewOutput/solution.pvd");
+    // }
+    // return 0;
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density      = MAE.buildDensity( elwise, 0.1,3);
-    //...  test density function construction in the square
-    auto corners      = dbasis.basis(0).support();
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
-    auto PPg          = ev.getMap(mp);
-    auto  fdensity    = ev.getVariable(density, PPg);
-    gsInfo<<"Making in Paraview...\n";
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setSwitch("base64", false);
-    collection.options().setInt("plotElements.resolution", 16);
-    collection.options().setInt("numPoints", 10000);
-    collection.newTimeStep(&mp);
-    collection.addField(fdensity,"numerical stress");
-    // collection.addField(jac(PP).det(), "Jacobian function");
-    // collection.addField(sigm_ex, "exact stress");
-    // collection.addField(ff_Ggeometry,"Density function");
-    collection.saveTimeStep();
-    collection.save();
-    //------------------------------------
-    gsInfo<<"Plotting in Paraview...\n";
-    // Run paraview
-    gsFileManager::open("ParaviewOutput/solution.pvd");
-    return 0;
+    auto density      = MAE.buildDensity( elwise, 0.2,0);
+    // //...  test density function construction in the square
+    // auto corners      = dbasis.basis(0).support();
+    // gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
+    // auto PPg          = ev.getMap(mp);
+    // auto  fdensity    = ev.getVariable(density, PPg);
+    // gsInfo<<"Making in Paraview...\n";
+    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    // collection.options().setSwitch("plotElements", true);
+    // collection.options().setSwitch("base64", false);
+    // collection.options().setInt("plotElements.resolution", 16);
+    // collection.options().setInt("numPoints", 10000);
+    // collection.newTimeStep(&mp);
+    // collection.addField(fdensity,"numerical stress");
+    // // collection.addField(jac(PP).det(), "Jacobian function");
+    // // collection.addField(sigm_ex, "exact stress");
+    // // collection.addField(ff_Ggeometry,"Density function");
+    // collection.saveTimeStep();
+    // collection.save();
+    // //------------------------------------
+    // gsInfo<<"Plotting in Paraview...\n";
+    // // Run paraview
+    // gsFileManager::open("ParaviewOutput/solution.pvd");
+    // return 0;
     if (IntensityMAE>0){
-    auto density    = MAE.buildAnalyticDensity( f);
+    // auto density    = MAE.buildAnalyticDensity( f);
     auto geometrytp   = MAE.buildMultiPatch(density);
     CorrecNormalCPoints(mpLeft, geometrytp);
     index_t numPaches = geometrytp.nPatches();
@@ -286,7 +288,7 @@ int main(int argc, char *argv[])
     //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
     if (true){
     // creating basis
-    gsMultiBasis<> basis(geometry);
+    gsMultiBasis<> basis(geometry, true);//true: poly-splines (not NURBS)
     gsVector<>     l2err(numLRefine+1), h1err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
 
@@ -362,7 +364,6 @@ int main(int argc, char *argv[])
 
     //... error computation
     auto istress    = ev.getVariable(stressField.fields());
-    auto isolution  = ev.getVariable(solutionField.fields().piece(0));
 
     // omp_set_num_threads(1); // Use these threads for later parallel regions
     DoFPDE[0]       = assembler.numDofs();
@@ -378,7 +379,7 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
             //ev.integralElWise( ff );
-            ev.integralElWise( (istress).sqNorm() );
+            ev.integralElWise( idiv(istress,PP).sqNorm() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -394,10 +395,7 @@ int main(int argc, char *argv[])
             gsRefineMarkedElements( basis, elMarked, NumArMarEl);
             gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
             gsInfo << "assemble refined\n";
-            // assembler.multiBasis().repairInterfaces( geometry.interfaces() );
-            // gsRefineMarkedElements( geometry, elMarked, NumArMarEl);
             
-            if (r%2==0)
             NumArMarEl = NumArMarEl + FactRefPar;
             assembler.refresh();
             // }
@@ -453,9 +451,6 @@ int main(int argc, char *argv[])
         //... error computation
         auto istress      = ev.getVariable(stressField.fields().piece(0));
 
-            // omp_set_num_threads(1); // Use these threads for later parallel regions
-
-
         // eval stress at the top of the circular cut
         gsMatrix<> A(2,1);
         A << 1.,0.; // parametric coordinates for the isogeometric solution
@@ -473,13 +468,6 @@ int main(int argc, char *argv[])
         gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
     }
     //! [Solver loop]    
-
-    // timer.stop();
-    // gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time <<"\n";
-    // gsInfo<<"     Setup: "<< setup_time <<"\n";
-    // gsInfo<<"  Assembly: "<< ma_time    <<"\n";
-    // gsInfo<<"   Solving: "<< slv_time   <<"\n";
-    
 
     //! [Error and convergence rates]
     gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
@@ -554,7 +542,6 @@ int main(int argc, char *argv[])
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&geometry);
         collection.addField(istress,"numerical stress");
-        collection.addField(igrad(isolution,PP).sqNorm(),"norm stress");
         // collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(sigm_ex, "exact stress");
         // collection.addField(ff_Ggeometry,"Density function");
