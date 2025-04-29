@@ -127,52 +127,51 @@ void solve( gsMultiPatch<T> & mp,
     // where p is the highest degree in the bases
     dbasis_tmp.setDegree( dbasis_tmp.maxCwiseDegree() + numElevate);
 
-    // gsFileData<> fd1;
-    // fd1.read("new_basis_r_"+std::to_string(numRefine)+".xml");
-    // fd1.getId(0,dbasis);
-    // gsInfo << "Loaded "<<  "new_basis_r_"+std::to_string(numRefine)+".xml" <<"\n";
+    gsFileData<> fd1;
+    fd1.read("basis_corner_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
+    fd1.getId(0,dbasis);
+    gsInfo << "Loaded "<< "basis_corner_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
 
+    // if (MESHopt.askSwitch("Adaptive",true))         // Load the basis from file
+    // {     
+    //     gsFileData<> fd1;
+    //     fd1.read("basis_circle_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
+    //     fd1.getId(0,dbasis);
+    //     gsInfo << "Loaded "<<  "basis_circle_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
+    //     MESHopt.setSwitch("THB",true);
 
-    if (MESHopt.askSwitch("Adaptive",true))         // Load the basis from file
-    {     
-        gsFileData<> fd1;
-        fd1.read("basis_circle_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
-        fd1.getId(0,dbasis);
-        gsInfo << "Loaded "<<  "basis_circle_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
-        MESHopt.setSwitch("THB",true);
-
-    }
-    else // Tensor product basis
-    {
-        if (MESHopt.askSwitch("THB",true))
-        {
-            // Cast every basis of dbasis to a gsTHBSplineBasis
-            for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
-            {
-                // TODO: Make dimension-independent over the template
-                if (gsTensorBSplineBasis<dim,real_t> * b = dynamic_cast<gsTensorBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
-                    dbasis.addBasis(new gsTHBSplineBasis<dim,real_t>(*b));
-                else if (gsTHBSplineBasis<dim,real_t> * b = dynamic_cast<gsTHBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
-                    dbasis.addBasis(b->clone());
-                else
-                    GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
+    // }
+    // else // Tensor product basis
+    // {
+    //     if (MESHopt.askSwitch("THB",true))
+    //     {
+    //         // Cast every basis of dbasis to a gsTHBSplineBasis
+    //         for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
+    //         {
+    //             // TODO: Make dimension-independent over the template
+    //             if (gsTensorBSplineBasis<dim,real_t> * b = dynamic_cast<gsTensorBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
+    //                 dbasis.addBasis(new gsTHBSplineBasis<dim,real_t>(*b));
+    //             else if (gsTHBSplineBasis<dim,real_t> * b = dynamic_cast<gsTHBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
+    //                 dbasis.addBasis(b->clone());
+    //             else
+    //                 GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
     
-                // Refine the basis for `numRefine` levels
-                gsMatrix<> box = dbasis.basis(p).support();
-                for (index_t r = 0; r!=numRefine; r++)
-                    dbasis.basis(p).refine(box);
-            }
-        }
-        else
-        {
-            for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
-            {
-                dbasis.addBasis(dbasis_tmp.basis(p).clone());
-                for (index_t r = 0; r!=numRefine; r++)
-                    dbasis.basis(p).uniformRefine();
-            }
-        }    
-    }
+    //             // Refine the basis for `numRefine` levels
+    //             gsMatrix<> box = dbasis.basis(p).support();
+    //             for (index_t r = 0; r!=numRefine; r++)
+    //                 dbasis.basis(p).refine(box);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
+    //         {
+    //             dbasis.addBasis(dbasis_tmp.basis(p).clone());
+    //             for (index_t r = 0; r!=numRefine; r++)
+    //                 dbasis.basis(p).uniformRefine();
+    //         }
+    //     }    
+    // }
 
     
 
@@ -474,6 +473,11 @@ void solve( gsMultiPatch<T> & mp,
     collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
     collection.options().setInt("precision", 10); // digits 10^-10
 
+    gsParaviewCollection collection_mesh(out+"/collect", &ev);
+    collection_mesh.options().setSwitch("plotElements", true);
+    collection_mesh.options().setInt("plotElements.resolution", 4);
+    collection_mesh.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
+    collection_mesh.options().setInt("precision", 10); // digits 10^-10
     // new collection for errors
     // gsParaviewCollection error_collection("ParaviewOutput/errors", &ev);
     // error_collection.options().setSwitch("plotElements", true);
@@ -530,7 +534,9 @@ void solve( gsMultiPatch<T> & mp,
             << std::setw(12) << "NumDOFs"         << " , "
             << std::setw(14) << "Mass"            << " , "
             << std::setw(16) << "nSolvesStep"     << " , "
-            << std::setw(20) << "l2err"           << " , "
+            << std::setw(20) << "l2err - conv"    << " , "
+            << std::setw(15) << "proj_err c"      << " , "
+            << std::setw(15) << "proj_err dc"     << " , "
             << std::setw(12) << "AT"              << " , "
             << std::setw(12) << "ST"              << " , "
             << "PT\n";
@@ -571,10 +577,16 @@ void solve( gsMultiPatch<T> & mp,
                 clock.restart();
                 if (projection_Crs == 0)
                 {
+                    error_crs_c = 0;
+                    error_crs_dc = 0;
                     error_crs_c = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
+                    gsDebugVar(dbasis.basis(0).size());
+                    gsDebugVar(mp_cold.patch(0).coefs().size());
                     error_crs_dc = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
                     gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
                     gsDebug<<"Error in the L2 projection of the initial condition (dc): "<<error_crs_dc<<"\n";  
+                    // gsWriteParaview(mp,mp_cold, out+"/step_"+std::to_string(step)+"_refit_"+std::to_string(refIt), 5000);
+                    // gsWriteParaview(mp_cold.,dbasis,5000);
                 }
                 else if (projection_Crs == 1)
                 {
@@ -806,7 +818,8 @@ void solve( gsMultiPatch<T> & mp,
             // ==========================
             real_t l2err2;
             l2err2 = math::sqrt( ev.integral( (u_manufactured - cnew_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
-       
+            // l2err2 = math::sqrt( ev.integral( (u_manufactured - mp_cnew).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
+
             // csvFile << step  <<","<< refIt << "," << A.numDofs() <<"," << mass << "," << nSolvesStep << "," << l2err2 << "," << assemblyTimeRefIt <<  "," << solverTimeRefIt << "," << projTimeRefIt << "\n";
             // Write data
             csvFile << std::left
@@ -816,6 +829,8 @@ void solve( gsMultiPatch<T> & mp,
                     << std::setw(14) << mass              << " , "
                     << std::setw(16) << nSolvesStep       << " , "
                     << std::setw(20) << l2err2            << " , "
+                    << std::setw(15) << error_crs_c       << " , "
+                    << std::setw(15) << error_crs_dc      << " , "
                     << std::setw(12) << assemblyTimeRefIt  << " , "
                     << std::setw(12) << solverTimeRefIt    << " , "
                     << projTimeRefIt << "\n";
@@ -828,6 +843,16 @@ void solve( gsMultiPatch<T> & mp,
             gsInfo << "Time step " << step << " took pro " <<  projTimeRefIt << " seconds.\n";
             gsInfo << "Time step " << step << " took ass " <<  assemblyTimeRefIt << " seconds.\n";
             gsInfo << "Time step " << step << " took sol " <<  solverTimeRefIt << " seconds.\n"; 
+
+            // Plot the mesh and solution at each refinement iteration
+            if (plot)
+            {
+                // Export the mesh
+                collection_mesh.newTimeStep(&mp);
+                auto multipatch_projected = ev.getVariable(mp_cnew, G);
+                collection_mesh.addField(multipatch_projected,"solu");
+                collection_mesh.saveTimeStep();
+            }
 
 
             if (MESHopt.askSwitch("Adaptive",true))
@@ -874,11 +899,10 @@ void solve( gsMultiPatch<T> & mp,
             source_time.set_t(tnew);
             gsDebugVar(tnew);
             auto u_manufactured = ev.getVariable(source_time, G);
-            // auto cnew_sol_var = ev.getVariable(cnew, G);
-            // auto cnew_sol_var = ev.getVariable(cnew_sol, G);
             collection.addField(u_manufactured,"analytical solution");
-            // collection.addField((u_manufactured - cnew_sol).sqNorm(), "L2 error");
             collection.addField((u_manufactured - cnew).sqNorm(), "L2 error");
+            // auto uuuuu = ev.getVariable(mp_cnew, G);
+            // collection.addField(uuuuu,"hi");
             gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
             collection.saveTimeStep();
         }
@@ -962,7 +986,10 @@ void solve( gsMultiPatch<T> & mp,
         // gsDebugVar(mp_cold.patch(0).coefs().minCoeff());
     }
     if (plot)
+    {
         collection.save();
+        collection_mesh.save();
+    }
     // else if (plot_error)
     //     error_collection.save();
     else
@@ -981,26 +1008,6 @@ void solve( gsMultiPatch<T> & mp,
     gsInfo<<"[CLOCK] --- Time for solver  : "<<solverTime<<" [s]\n";
     gsInfo<<"[CLOCK] --- Time for projection: "<<projectionTime<<" [s]\n";
     gsInfo<<"[CLOCK] --- Number of solves: "<<nSolves<<"\n";
-
-     // ========= Calculate values =========
-     gsMatrix<> pts_eval(2, 40);  // 2 rows (x, y) and 40 columns (points)
-     for (int i = 0; i < 40; ++i) {
-         double t = i / 39.0;  // t ranges from 0 to 1
-         pts_eval(0, i) = t;    // X values range from 0 to 1
-         pts_eval(1, i) = 0.5;  // Y value
-     }
-
-     std::ofstream csvFile2;
-     csvFile2.open(out+"/numsolution.csv");
-     csvFile2 << "x coord, y coord, num sol\n";
- 
-     for (int i = 0; i < pts_eval.cols(); ++i) 
-     {
-         gsVector<> point = pts_eval.col(i);  // Extract the point as a vector
-         csvFile2 << point.row(0) << ","<< point.row(1) << "," << ev.eval(cnew_sol, point) << "\n";  // Write to csv file
-     }  
-     csvFile2.close();
-     // =====================================
   
      real_t mass = ev.integral(meas(G)*cnew);
  
@@ -1012,8 +1019,8 @@ void solve( gsMultiPatch<T> & mp,
      auto u_manufactured = ev.getVariable(source_time, G);
      auto mp_var = ev.getVariable(mp_cnew, G);
      // ==========================
-     real_t l2err, l2err_newversion;
-     l2err              = math::sqrt( ev.integral( (u_manufactured - cnew_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
+     real_t l2err, l2err_newversion;     
+     l2err              = math::sqrt( ev.integral( (u_manufactured - cnew_sol).sqNorm() * meas(G) ) ); // changed space with same coefficients (from the previous space!)
      l2err_newversion   = math::sqrt( ev.integral( (u_manufactured - mp_var).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
      gsInfo << " L2 error (wrong?): " << l2err << "\n";
      gsInfo << " L2 error (right?): " << l2err_newversion << "\n";
