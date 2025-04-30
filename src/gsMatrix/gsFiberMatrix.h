@@ -115,6 +115,12 @@ public:
     //    { return ( m_fibers.empty() ? 0 : m_fibers.front()->size() ); }
     { return ( m_fibers.size()>0 ? m_fibers.front()->size() : 0 ); }
 
+    void setZero()
+    {
+        for( auto & f : m_fibers)
+            f->setZero();
+    }
+
     /** \returns the number of rows of the matrix */
     inline index_t rows() const { return IsRowMajor ? outerSize() : innerSize(); }
 
@@ -232,7 +238,7 @@ public:
     template<typename Cont>
     void reserve(const Cont &nz)
     {
-        GISMO_ASSERT(m_fibers.size()==nz.size(), "Wrong size in nonzero vector.");
+        GISMO_ASSERT(m_fibers.size()==(size_t)nz.size(), "Wrong size in nonzero vector.");
         for (index_t i = 0; i < fibers(); ++i)
             m_fibers[i]->reserve(nz[i]);
     }
