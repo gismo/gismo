@@ -86,6 +86,8 @@ int main(int argc, char *argv[])
     for (size_t i = 1; i != kv_u.numElements(); ++i) //loop over internal u-knots regardless of multiplicity
     {
         crossing_u.segment((i-1)*guess.rows(), guess.rows()) = findKnot(curve, kv_u, guess, i, 0);
+
+        // curve.closestPointTo(gsMatrix<real_t>::Ones(1,1) * kv_u(i), guess);
     }
 
     index_t lv = guess.rows() * (kv_v.numElements() - 1);
@@ -159,7 +161,7 @@ int main(int argc, char *argv[])
     //![Get integration points along embedded curve]
 
     gsDebugVar(gamma);
-    gsDebugVar(w);
+    gsDebugVar(w.transpose());
 
     return EXIT_SUCCESS;
 }
