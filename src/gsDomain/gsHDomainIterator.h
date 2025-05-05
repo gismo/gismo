@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsDomain/gsKdTree.h>
+#include <gsHSplines/gsHTreeData.h>
 #include <gsDomain/gsHDomain.h>
 #include <gsDomain/gsDomainIterator.h>
 
@@ -37,20 +38,21 @@ class gsHDomainIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdNode<d,Z> node;
+    typedef gsKdTree<d,Z,gsHTreeData<d,Z> > gsHTree;
+    typedef gsHTree node;
 
-    typedef typename node::point point;
+    typedef typename node::point_t point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHTree<d,Z> hDomain;
+    typedef gsHTree hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 
     typedef typename gsDomainIterator<T>::uPtr domainIter;
 public:
 
-    gsHDomainIterator(const gsHTree<d,Z> & tree,
+    gsHDomainIterator(const gsHTree & tree,
                       const gsHTensorBasis<d,T> & basis)
     :
     gsDomainIterator<T>(),
@@ -73,7 +75,7 @@ public:
     gsHDomainIterator(const gsHDomainIterator & other) = default;
     domainIter clone() const override { return domainIter(new gsHDomainIterator(*this)); }
 
-    leafIterator init(const gsHTree<d,Z> & tree)
+    leafIterator init(const gsHTree & tree)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
@@ -251,7 +253,7 @@ public:
 
 private:
 
-    const gsHTree<d,Z> & m_tree;
+    const gsHTree & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
     // The current leaf node of the tree

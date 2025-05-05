@@ -26,6 +26,8 @@
 
 #include <gsUtils/gsSortedVector.h>
 
+#include <gsHSplines/gsHTreeData.h>
+
 namespace gismo
 {
 
@@ -84,11 +86,14 @@ public:
 
     typedef T Scalar_t;
 
-    typedef gsHTree<d, index_t> hdomain_type;
+    typedef gsKdTree<d,index_t,gsHTreeData<d,index_t> > gsHTree;
 
-    typedef typename hdomain_type::point point;
+    typedef gsHTree hdomain_type;
 
-    typedef typename hdomain_type::box   box;
+    typedef typename hdomain_type::point_t point;
+
+    typedef typename hdomain_type::data_t  data;
+    typedef typename data::kdBox box;
 
     typedef std::vector< box > boxHistory;
 
@@ -607,10 +612,10 @@ public:
     }
 
     /// Returns a reference to m_tree
-    const gsHTree<d,index_t> & tree() const { return m_tree; }
+    const gsHTree & tree() const { return m_tree; }
 
     /// Returns a reference to m_tree
-    gsHTree<d,index_t> &       tree()       { return m_tree; }
+    gsHTree &       tree()       { return m_tree; }
 
     /// Cleans the basis, removing any inactive levels
     void makeCompressed();

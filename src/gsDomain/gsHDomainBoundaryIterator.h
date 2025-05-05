@@ -41,19 +41,20 @@ class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdNode<d,Z> node;
+    typedef gsKdTree<d,Z,gsHTreeData<d,Z> > node;
+    typedef gsKdTree<d,Z,gsHTreeData<d,Z> > gsHTree;
 
-    typedef typename node::point point;
+    typedef typename node::point_t point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHTree<d,Z> hDomain;
+    typedef gsHTree hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 
 public:
 
-    gsHDomainBoundaryIterator(const gsHTree<d,Z> & tree,
+    gsHDomainBoundaryIterator(const gsHTree & tree,
                               const gsHTensorBasis<d,T> & basis,
                               const boxSide & s)
     :
@@ -72,7 +73,7 @@ public:
     {
     }
 
-    void init(const gsHTree<d,Z> & tree, const boxSide & s)
+    void init(const gsHTree & tree, const boxSide & s)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
@@ -292,7 +293,7 @@ public:
 
 private:
 
-    const gsHTree<d,Z> & m_tree;
+    const gsHTree & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
     // Boundary parameters

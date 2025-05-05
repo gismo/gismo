@@ -30,16 +30,17 @@ namespace gismo {
     
     \ingroup HSplines
 */
-template<short_t d, class Z, class leafData>
-struct gsKdNode2  //TODO: rename as gsKdTree
+template<short_t d, class Z, class leafData> // TODO: use template template params to avoid duplivation
+struct gsKdTree
 {
     // Defines the type of the box
     typedef typename leafData::point point_t;
     typedef leafData        data_t;
+    typedef gsKdTree       node_t;
 
     // Tree iterators
-    typedef gsKdTreeLeafIter<leafData,false> literator;
-    typedef gsKdTreeLeafIter<leafData,true > const_literator;
+    typedef gsKdTreeLeafIter<node_t,false> literator;
+    typedef gsKdTreeLeafIter<node_t,true > const_literator;
     //typedef gsHDomainLeafIter<node,false> literator;
     ///typedef gsHDomainLeafIter<node,true> const_literator;
     
@@ -51,13 +52,13 @@ struct gsKdNode2  //TODO: rename as gsKdTree
     Z pos;
 
     /// Pointer to the parent node
-    gsKdNode2 * parent;
+    gsKdTree * parent;
 
     /// Pointer to the left child of this split node (if it is one)
-    gsKdNode2 * left;
+    gsKdTree * left;
 
     /// Pointer to the right child of this split node (if it is one)
-    gsKdNode2 * right;
+    gsKdTree * right;
 
     /// The data held in this leaf node (if leaf)
     /// box->first is the lower left corner of the box
@@ -65,17 +66,17 @@ struct gsKdNode2  //TODO: rename as gsKdTree
     leafData * data;
 
     /// Constructor (empty node)
-    gsKdNode2() : axis(-2), parent(0), left(0), right(0), data(nullptr)
+    gsKdTree() : axis(-2), parent(0), left(0), right(0), data(nullptr)
     { }
 
     /// Constructor (root node)
-    gsKdNode2(const leafData & leaf) : axis(-1), parent(0), left(0) , right(0),
+    gsKdTree(const leafData & leaf) : axis(-1), parent(0), left(0) , right(0),
                                        data(new leafData(leaf))
     { }
     
     /// Recursively copies the whole subtree under \a o, and sets it's
     /// parent to \a parentNode
-    gsKdNode2(const gsKdNode2 & o, gsKdNode2 * parentNode = NULL) : axis(o.axis)
+    gsKdTree(const gsKdTree & o, gsKdTree * parentNode = NULL) : axis(o.axis)
     {
         parent = parentNode;
         if ( axis == -1 )
@@ -90,14 +91,14 @@ struct gsKdNode2  //TODO: rename as gsKdTree
             GISMO_ASSERT( o.data == nullptr, 
                           "Problem: split node with box." );
             pos   = o.pos;
-            left  = new gsKdNode2(*o.left , this);
-            right = new gsKdNode2(*o.right, this);
+            left  = new gsKdTree(*o.left , this);
+            right = new gsKdTree(*o.right, this);
             data  = nullptr;
         }
     }
 
     /// Recursively deletes the whole subtree under this node
-    ~gsKdNode2()
+    ~gsKdTree()
     {
         // TODO: non-recursive
         if ( isLeaf() ) 
@@ -118,8 +119,8 @@ public: // Member functions related to the tree starting at \a this node
     /// type at every leaf node
     template<typename visitor>
     typename visitor::return_type
-    boxSearch(point const & k1, point const & k2, // TODO: rename as RANGE SEARCH
-              int level, node  *_node) const;
+    boxSearch(point_t const & k1, point_t const & k2, // TODO: rename as RANGE SEARCH
+              int level, node_t  *_node) const;
 
         /// Iterates on the leafs of the tree and applies \ visitor.  The
     /// visitor controls the operation to be performed
@@ -133,13 +134,13 @@ public: // Member functions related to the tree starting at \a this node
     typename visitor::return_type
     nodeSearch() const;
 
-    gsKdNode2 * pointSearch(const point & p) const;
+    gsKdTree * pointSearch(const point_t & p) const;
     
     literator beginLeafIterator()
-    { return literator(*this); }
+    { return literator(this); }
 
     const_literator beginLeafIterator() const
-    { return const_literator(*this); }
+    { return const_literator(this); }
 
     void makeCompressed();
 
@@ -160,7 +161,7 @@ private: // Structs related to tree operations
         typedef int return_type;
         static return_type init() {return 0;}
 
-        static void visitLeaf(gsKdNode<d, Z> * , return_type & i)
+        static void visitLeaf(node_t * , return_type & i)
         {
             i++;
         }
@@ -172,7 +173,7 @@ private: // Structs related to tree operations
         typedef int return_type;
         static return_type init() {return 0;}
 
-        static void visitNode(gsKdNode<d, Z> * , return_type & i)
+        static void visitNode(node_t * , return_type & i)
         {
             i++;
         }
@@ -184,7 +185,7 @@ private: // Structs related to tree operations
         typedef int return_type;
         static return_type init() {return 0;}
 
-        static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
+        static void visitLeaf(node_t * leafNode, return_type &)
         {
             gsInfo << *leafNode;
         }
@@ -214,7 +215,7 @@ public: // Member functions related to \a this node
     //bool isDegenerate() const
     //{ return (box->first.array() >= box->second.array()).any(); }
 
-    gsKdNode2 * sibling() const
+    gsKdTree * sibling() const
     { 
         GISMO_ASSERT( parent != 0, "Root does not have a sibling.");
         return (parent->left == this ? parent->right : parent->left ); 
@@ -252,8 +253,8 @@ public: // Member functions related to \a this node
         GISMO_ASSERT( axis > -1, "Split axis not prescribed.");
 
         // Make new left and right children
-        left          = new gsKdNode2;
-        right         = new gsKdNode2;
+        left          = new gsKdTree;
+        right         = new gsKdTree;
         // Set axis to -1 (since they are leaves)
         left ->axis   =
         right->axis   = -1;
@@ -334,7 +335,7 @@ public: // Member functions related to \a this node
     /// then this is a no-op.
     /// Splitting is done on a coordinate of the current \a level (aligned)
     /// returns the child that intersects \a insBox or NULL (if no split)
-    gsKdNode2 * adaptiveAlignedSplit(const leafData & insData, unsigned h)
+    gsKdTree * adaptiveAlignedSplit(const leafData & insData, unsigned h)
     {
         int doSplit;
         leafData::adaptiveAlignedSplit(insData, h, *this, doSplit);
@@ -350,7 +351,7 @@ public: // Member functions related to \a this node
     /// according to \a insBox. If non-degenerate split is impossible,
     /// then this is a no-op
     // TODO: remove
-    gsKdNode2 * adaptiveSplit(const leafData & insData)
+    gsKdTree * adaptiveSplit(const leafData & insData)
     {
         // assumption: insBox intersects box
         int doSplit;        
@@ -363,7 +364,7 @@ public: // Member functions related to \a this node
         return NULL;
     }
 
-    friend std::ostream & operator<<(std::ostream & os, const gsKdNode2 & n)
+    friend std::ostream & operator<<(std::ostream & os, const gsKdTree & n)
     {
         if ( n.isLeaf() ) 
             os << "Leaf node "<< *n.data <<"\n";

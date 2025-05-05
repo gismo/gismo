@@ -78,9 +78,10 @@ template<short_t d, class T, class Z>
 class gsHDomain : public gsDomain<T>
 {
 public:
-
+    typedef gsKdTree<d,Z,gsHTreeData<d,Z> > gsHTree;
+    
     typedef gsDomainIteratorWrapper<T> domainIter;
-    typedef typename gsHTree<d,Z>::const_literator leafIterator;
+    typedef typename gsHTree::const_literator leafIterator;
 
     template <class _T, short_t _d, class _Z>
     friend class gsHDomainIterator;
@@ -89,7 +90,7 @@ public:
 
 public:
 
-    explicit gsHDomain(const gsHTree<d,Z>& tree,
+    explicit gsHDomain(const gsHTree & tree,
                        const gsHTensorBasis<d,T>& basis)
     :
     m_tree(tree),
@@ -119,16 +120,16 @@ public:
                 size_t nel_local = 1;
                 for (short_t i = 0; i < d; ++i)
                 {
-                    ll = it.lowerCorner()[i];
-                    uu = it.upperCorner()[i];
-                    m_basis._diadicIndexToKnotIndex(it.level(),i,ll);
-                    m_basis._diadicIndexToKnotIndex(it.level(),i,uu);
+                    ll = it.data().lowerCorner()[i];
+                    uu = it.data().upperCorner()[i];
+                    m_basis._diadicIndexToKnotIndex(it.data().level(),i,ll);
+                    m_basis._diadicIndexToKnotIndex(it.data().level(),i,uu);
                     nel_local *= uu - ll;
                 }
                 nel += nel_local;
             }
             else
-                nel += ( it.upperCorner() - it.lowerCorner() ).prod();
+                nel += ( it.data().upperCorner() - it.data().lowerCorner() ).prod();
             it.next();
         }
         return nel;
@@ -150,14 +151,14 @@ public:
                     {
                         if (m_basis.manualLevels() )
                         {
-                            index_t ll = it.lowerCorner()[i];
-                            index_t uu = it.upperCorner()[i];
-                            m_basis._diadicIndexToKnotIndex(it.level(),s.direction(),ll);
-                            m_basis._diadicIndexToKnotIndex(it.level(),s.direction(),uu);
+                            index_t ll = it.data().lowerCorner()[i];
+                            index_t uu = it.data().upperCorner()[i];
+                            m_basis._diadicIndexToKnotIndex(it.data().level(),s.direction(),ll);
+                            m_basis._diadicIndexToKnotIndex(it.data().level(),s.direction(),uu);
                             nel_local *= uu - ll;
                         }
                         else
-                            nel_local *= it.upperCorner()[i] - it.lowerCorner()[i];
+                            nel_local *= it.data().upperCorner()[i] - it.data().lowerCorner()[i];
                     }
                 nel +=  nel_local;
             }
@@ -178,7 +179,7 @@ public:
         return m_basis.support();
     }
 
-    const gsHTree<d,Z> & tree() const { return m_tree; }
+    const gsHTree & tree() const { return m_tree; }
 
 private:
 
@@ -191,23 +192,23 @@ private:
             size_t diadicSize;
             if (m_basis.manualLevels() )
             {
-                const gsKnotVector<T> & kv = m_basis.tensorLevel(leaf.level()).knots(s.direction());
+                const gsKnotVector<T> & kv = m_basis.tensorLevel(leaf.data().level()).knots(s.direction());
                 index_t start = 0;
                 index_t end  = kv.uSize()-1;
-                m_basis._knotIndexToDiadicIndex(leaf.level(),s.direction(),start);
-                m_basis._knotIndexToDiadicIndex(leaf.level(),s.direction(),end);
+                m_basis._knotIndexToDiadicIndex(leaf.data().level(),s.direction(),start);
+                m_basis._knotIndexToDiadicIndex(leaf.data().level(),s.direction(),end);
                 diadicSize = end - start;
             }
             else
-                diadicSize = m_basis.tensorLevel(leaf.level()).knots(s.direction()).uSize() - 1;
-            return static_cast<size_t>(leaf.upperCorner().at(s.direction()) ) == diadicSize;// todo: more efficient
+                diadicSize = m_basis.tensorLevel(leaf.data().level()).knots(s.direction()).uSize() - 1;
+            return static_cast<size_t>(leaf.data().upperCorner().at(s.direction()) ) == diadicSize;// todo: more efficient
         }
         else
-            return leaf.lowerCorner().at(s.direction()) == 0;
+            return leaf.data().lowerCorner().at(s.direction()) == 0;
     }
 
 protected:
-    const gsHTree<d,Z> & m_tree;
+    const gsKdTree<d,Z,gsHTreeData<d,Z> > & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
 };

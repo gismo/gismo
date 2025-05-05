@@ -1,4 +1,4 @@
-/** @file gsHDomainLeafIter.h
+/** @file gsKdTreeLeafIter.h
 
     @brief Provides declaration of HDomainLeafIter class.
 
@@ -26,15 +26,15 @@ namespace gismo
 */
 
 template<typename node, bool isconst = false>
-class gsHDomainLeafIter
+class gsKdTreeLeafIter
 {
 public:
     //typedef kdnode<d, index_t> node;
     typedef typename util::conditional<isconst, const node&, node&>::type reference;
     typedef typename util::conditional<isconst, const node*, node*>::type pointer;
-
-    typedef typename node::data  data_t;
-    typedef typename node::point point_t;
+    
+    typedef typename node::data_t data_t;
+    typedef typename node::point_t point_t;
 
 public:
     reference operator*() const { return *curNode; }
@@ -42,10 +42,10 @@ public:
 
 public:
 
-    gsHDomainLeafIter() : curNode(0)
+    gsKdTreeLeafIter() : curNode(0)
     { }
 
-    explicit gsHDomainLeafIter( node * const root_node)
+    explicit gsKdTreeLeafIter( const node * root_node)
     {
         m_stack.push(root_node);
 
