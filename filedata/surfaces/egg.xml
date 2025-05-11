@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xml>
-  <Function type="FunctionExpr" id="2003" dim="3">1./(2.+cos(2.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2+(z-0.5)**2)))</Function>
+  <Function type="FunctionExpr" id="2003" dim="3">1./(2.+cos(.5*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2+(z-0.5)**2)))</Function>
 
  <Geometry type="TensorNurbs2" id="0">
   <Basis type="TensorNurbsBasis2">

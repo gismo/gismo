@@ -31,13 +31,13 @@ int main(int argc, char *argv[])
     bool export_b64     = false;
 
     // Specify the file path
-    std::string fn("pde/example3D.xml");
+    // std::string fn("pde/example3D.xml");
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/mhd.xml");
     //std::string fn("pde/infinit_plate.xml");
     //std::string fn("pde/circle.xml");
-    //std::string fn("surfaces/egg.xml"); TODO
+    std::string fn("surfaces/simple.xml"); 
     //std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -79,6 +79,7 @@ int main(int argc, char *argv[])
     // TODO : build Hdiv solver
     //gsMultiBasis<double> Hdivbasis(mpLeft, true);//true: poly-splines (not NURBS)
     //Hdivbasis.degreeElevate(1);
+    dbasis.setDegree(2);
 
 
     //! [Problem setup]
@@ -125,6 +126,29 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     auto density = MAE.buildAnalyticDensity(f);
+    // //...  test density function construction in the square
+    // gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
+    // auto PPg          = ev.getMap(mp);
+    // auto  fdensity    = ev.getVariable(density, PPg);
+    // gsInfo<<"Making in Paraview...\n";
+    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    // collection.options().setSwitch("plotElements", true);
+    // collection.options().setSwitch("base64", false);
+    // collection.options().setInt("plotElements.resolution", 16);
+    // collection.options().setInt("numPoints", 10000);
+    // collection.newTimeStep(&mp);
+    // collection.addField(fdensity,"numerical stress");
+    // // collection.addField(jac(PP).det(), "Jacobian function");
+    // // collection.addField(sigm_ex, "exact stress");
+    // // collection.addField(ff_Ggeometry,"Density function");
+    // collection.saveTimeStep();
+    // collection.save();
+    // //------------------------------------
+    // gsInfo<<"Plotting in Paraview...\n";
+    // // Run paraview
+    // gsFileManager::open("ParaviewOutput/solution.pvd");
+    // return 0;
+    // //------------------------------------
     auto Psitp   = MAE.buildMultiPatch(density, true);//if true : composition of geometry maps
     gsInfo << "MultiPatch geometry computed\n";
 
