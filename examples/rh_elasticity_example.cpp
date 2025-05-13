@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density      = MAE.buildDensity( elwise, 0.2,0);
+    auto density      = MAE.buildDensity( elwise, 0.175);
     // //...  test density function construction in the square
     // auto corners      = dbasis.basis(0).support();
     // gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
             //ev.integralElWise( ff );
-            ev.integralElWise( idiv(istress,PP).sqNorm() );
+            ev.integralElWise( idiv(istress,PP).sqNorm()+ff.sqNorm() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -459,6 +459,8 @@ int main(int argc, char *argv[])
         A << 0., 1.; // spatial coordinates for the analytical solution
         gsMatrix<> analytical;
         analyticalStresses.eval_into(A,analytical);
+        gsInfo << "err: " << math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) )) << " (errc), " << math::sqrt(pow(res.at(0)-analytical.at(0),2)) << " \n";
+
         DoFPDE[r]         = assembler.numDofs();
         l2err[r]          = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
         h1err[r]          = math::sqrt(pow(res.at(0)-analytical.at(0),2));

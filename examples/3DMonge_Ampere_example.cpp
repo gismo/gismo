@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     //std::string fn("pde/infinit_plate.xml");
     //std::string fn("pde/circle.xml");
     std::string fn("surfaces/simple.xml"); 
-    //std::string fn("domain2d/lake.xml");
+    //std::string fn("surfaces/egg.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -61,6 +61,8 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
+    //gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::NurbsSphere(1.,0.,0.,0.));
+    // ...
     gsMultiPatch<> mpLeft;// = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
@@ -79,7 +81,7 @@ int main(int argc, char *argv[])
     // TODO : build Hdiv solver
     //gsMultiBasis<double> Hdivbasis(mpLeft, true);//true: poly-splines (not NURBS)
     //Hdivbasis.degreeElevate(1);
-    dbasis.setDegree(2);
+    //dbasis.setDegree(2);
 
 
     //! [Problem setup]
@@ -106,6 +108,12 @@ int main(int argc, char *argv[])
         dbasis.uniformRefine();
         // mpLeft.uniformRefine();
     }
+    //... condition for the convergence 
+    while (dbasis.basis(0).numElements()<1e3)
+    {
+        dbasis.uniformRefine();
+        numRefine++;
+    }    
     //... some infos on the computational domain
     auto corners         = dbasis.basis(0).support();
     gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() <<"\n";
@@ -174,8 +182,8 @@ int main(int argc, char *argv[])
         auto ff_TG      = A.getCoeff(f, PPF);
         // --------------- adaptive refinement ---------------
         // Specify cell-marking strategy...
-        MarkingStrategy adaptRefCrit = PUCA;
-        //MarkingStrategy adaptRefCrit = GARU;
+        //MarkingStrategy adaptRefCrit = PUCA;
+        MarkingStrategy adaptRefCrit = GARU;
         //MarkingStrategy adaptRefCrit = errorFraction;
         real_t adaptRefParam = 0.75;
         // Elements used for numerical integration
