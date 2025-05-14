@@ -504,20 +504,29 @@ void solve( gsMultiPatch<T> & mp,
 
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
-            clock.restart();
-            if (projection_Crs == 0)
+            if (MESHopt.askSwitch("Adaptive",true))
             {
-                error_crs_c = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
-                error_crs_dc = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
-                gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
-                gsDebug<<"Error in the L2 projection of the initial condition (dc): "<<error_crs_dc<<"\n";  
+                clock.restart();
+                if (projection_Crs == 0)
+                {
+                    error_crs_c = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
+                    error_crs_dc = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
+                    gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
+                    gsDebug<<"Error in the L2 projection of the initial condition (dc): "<<error_crs_dc<<"\n";  
+                }
+                else if (projection_Crs == 1)
+                {
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_cold.patch(0),CnewF);
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
+                }
+                projectionTime += clock.stop();
             }
-            else if (projection_Crs == 1)
+            else
             {
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_cold.patch(0),CnewF);
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
+                // Tensor product solution!
+                CnewF = mp_cold.patch(0).coefs();
+                dCnewF = mp_dcold.patch(0).coefs();
             }
-            projectionTime += clock.stop();
                       
             // Resize the data structure inside the mesher
             if (MESHopt.askSwitch("Adaptive",true))
@@ -589,8 +598,10 @@ void solve( gsMultiPatch<T> & mp,
                         A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                                     penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                                     lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-             
+                        
+                        // This should be RHS
                         A.assembleBdr(bc.get("Neumann"), w * (g_Neumann.tr() * nv(G)));  // assemble boundary term -- flux from manufactured solutions
+
 
                         assemblyTime += clock.stop();
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)

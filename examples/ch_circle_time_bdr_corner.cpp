@@ -580,8 +580,9 @@ void solve( gsMultiPatch<T> & mp,
                     error_crs_c = 0;
                     error_crs_dc = 0;
                     error_crs_c = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
-                    gsDebugVar(dbasis.basis(0).size());
-                    gsDebugVar(mp_cold.patch(0).coefs().size());
+                    gsDebugVar(dbasis.basis(0));
+                    // gsDebugVar(mp_cold.patch(0).coefs().size());
+                    gsDebugVar(mp_cold.patch(0).basis());
                     error_crs_dc = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
                     gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
                     gsDebug<<"Error in the L2 projection of the initial condition (dc): "<<error_crs_dc<<"\n";  
@@ -643,15 +644,15 @@ void solve( gsMultiPatch<T> & mp,
                         }
                     }
 
-                     ////// ===========
-                     source_time.set_t(tnew);
-                     auto u_manufactured = ev.getVariable(source_time, G);
-                     real_t l2err3;
-                     l2err3 = math::sqrt( ev.integral( (u_manufactured - cnew_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
-                     gsInfo << "L2 error after refinement: " << l2err3 << "\n";
-                     // ==========================
+                    //  ////// ===========
+                    //  source_time.set_t(tnew);
+                    //  auto u_manufactured = ev.getVariable(source_time, G);
+                    //  real_t l2err3;
+                    //  l2err3 = math::sqrt( ev.integral( (u_manufactured - cnew_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
+                    //  gsInfo << "L2 error after refinement: " << l2err3 << "\n";
+                    //  // ==========================
  
-
+                    
                     Q0norm = 1;
                     Qnorm = 10;
 
@@ -818,6 +819,7 @@ void solve( gsMultiPatch<T> & mp,
             // ==========================
             real_t l2err2;
             l2err2 = math::sqrt( ev.integral( (u_manufactured - cnew_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
+            // should be the same
             // l2err2 = math::sqrt( ev.integral( (u_manufactured - mp_cnew).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
 
             // csvFile << step  <<","<< refIt << "," << A.numDofs() <<"," << mass << "," << nSolvesStep << "," << l2err2 << "," << assemblyTimeRefIt <<  "," << solverTimeRefIt << "," << projTimeRefIt << "\n";
@@ -845,6 +847,7 @@ void solve( gsMultiPatch<T> & mp,
             gsInfo << "Time step " << step << " took sol " <<  solverTimeRefIt << " seconds.\n"; 
 
             // Plot the mesh and solution at each refinement iteration
+            // I am plotting the new solution on the mesh for a refIt!
             if (plot)
             {
                 // Export the mesh
@@ -901,8 +904,6 @@ void solve( gsMultiPatch<T> & mp,
             auto u_manufactured = ev.getVariable(source_time, G);
             collection.addField(u_manufactured,"analytical solution");
             collection.addField((u_manufactured - cnew).sqNorm(), "L2 error");
-            // auto uuuuu = ev.getVariable(mp_cnew, G);
-            // collection.addField(uuuuu,"hi");
             gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
             collection.saveTimeStep();
         }

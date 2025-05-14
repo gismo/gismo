@@ -269,31 +269,73 @@ void solve( gsMultiPatch<T> & mp,
     {
         // // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         // gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
+        // //gsMatrix<> tmp = gsMatrix<>::Random(dbasis.size(),1);
         // Cold = tmp.array()*CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
         // Cold.array() += CHopt.askReal("mean",0.0); // 0.45
+        
+        // // // gsMatrix<> ColdFull;
+        // // // cold.extractFull(ColdFull);
+        // gsMultiPatch<> MP;
+        // cold.extract(MP);
+
+        // gsFileData<> fd2;
+        // fd2.add(MP,0); // mp
+        // fd2.save("multipatch.xml");
+        // gsInfo << "Exported to multipatch.xml \n";
+
+        // Set the solution cnew to random coefficients
+        // Extract the multipatch into mp_cold
+        
+        // const gsDofMapper & mapper = w.mapper();
+        // Cold.resize(mapper.freeSize(),1);
+
+        // gsDebugVar(Cold.size());
+
+        
+
+        // gsGeometry<>::uPtr geom = dbasis.basis(0).makeGeometry(Cold);
+        // mp_cold.addPatch(*geom);
+        
+        // fd2.add(mp_cold, 0); // multipatch
+        // fd2.save("mp_cold.xml");
+        // gsInfo << "The multipatch is exported to mp_cold.xml\n";
+
+
 
         // // %%%%%%%%%%%%%%%%%%%%%%%% XML initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsFileData<> fd1;
         std::string file_name;
         if (pattern==0) // nucleation
-            file_name = "/Users/lucasventavinuela/gismo/build/new.xml";
+            file_name = "/Users/lucasventavinuela/gismo/build/multipatch.xml";
         else
             file_name = "/Users/lucasventavinuela/gismo/build/new_spin.xml";
         
         gsMultiBasis<> dbasis_IC;
         gsMatrix<> Coefs;
+        gsMultiPatch<> MP;
 
         fd1.read(file_name);
-        fd1.getId(0,dbasis_IC);
-        fd1.getId(1,Coefs);
-     
-        gsGeometry<>::uPtr IC_function = dbasis_IC.basis(0).makeGeometry(give(Coefs));
-        gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*IC_function,Cold);
+        // fd1.getId(0,dbasis_IC);
+        // fd1.getId(1,Coefs);
+        fd1.getId(0,MP);
+        // // gsGeometry<>::uPtr IC_function = dbasis_IC.basis(0).makeGeometry(give(Coefs));
+        // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*IC_function,Cold);
+        // // //gsInfo<<Cold<<"\n";
 
-        // New: to update the values of the free DoFs
+        // // New: to update the values of the free DoFs
         const gsDofMapper & mapper = w.mapper();
-        gsGeometry<>::uPtr geom  = dbasis.basis(0).makeGeometry(give(Cold));
+
+        // gsInfo<<"COLD0"<<Cold<<"\n";
+        gsGeometry<>::uPtr geom  = dbasis.basis(0).makeGeometry(MP.patch(0).coefs());
+
+        
         Cold.resize(mapper.freeSize(),1);
+
+        // // gsInfo<<"COLD1"<<Cold<<"\n";
+
+        // Cold = geom->coefs().topRows(mapper.freeSize());
+
+
 
         for (index_t c = 0; c!=geom->coefs().cols(); c++) // for all components
         {
@@ -304,6 +346,32 @@ void solve( gsMultiPatch<T> & mp,
                     Cold.at(ii) = geom->coefs()(i, c);
             }
         }
+
+        //gsInfo<<"COLD1"<<Cold<<"\n";
+
+        // gsInfo<<Cold<<"\n";
+
+        // gsWriteParaview(mp, cold, out+"/initial_condition", 1000);
+        // gsMultiPatch<> hola_patch;
+        // gsGeometry<>::uPtr geom2 = dbasis.basis(0).makeGeometry(Cold);
+        // hola_patch.addPatch(*geom2);
+        // gsWriteParaview(mp, hola_patch, out+"/initial_condition", 1000);
+
+        // gsMatrix<>Coldddd;
+        // cold.extractFull(Coldddd);
+        // gsInfo<<Coldddd.maxCoeff()<<"\n";
+        // gsInfo<<Coldddd.minCoeff()<<"\n";
+
+        // gsParaviewCollection collection2(out+"/solution2", &ev);
+        // collection2.options().setSwitch("plotElements", true);
+        // collection2.options().setInt("plotElements.resolution", 4);
+        // collection2.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
+        // collection2.newTimeStep(&mp);
+        // collection2.addField(cold,"numerical solution");
+        // collection2.saveTimeStep();
+        // collection2.save();
+
+        
     }
     else
     {
@@ -390,7 +458,7 @@ void solve( gsMultiPatch<T> & mp,
     csvFile << "TimeStep, NumDOFs, Mass, ErrorRefCnew, ErrorRefdCnew, ErrorRefCold, ErrorRefdCold, ErrorCrsCnew, ErrorCrsdCnew\n";
 
     for (index_t step = 0; step!=maxSteps; step++)
-    {
+    {   
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
             // Resize the data structure inside the mesher
@@ -438,9 +506,13 @@ void solve( gsMultiPatch<T> & mp,
                         // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
                         A.initMatrix();
                         clock.restart();
+                        auto boundary_value = -1.0 + 0.0*c.val();
                         A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                                     penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                                     lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+                        // A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                        //             penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
+                        //             lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
                         assemblyTime += clock.stop();
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
@@ -502,7 +574,7 @@ void solve( gsMultiPatch<T> & mp,
                     tmp_alpha_m = alpha_m;
                     tmp_alpha_f = alpha_f;
                     tmp_gamma = gamma;
-
+    
                     // %% For time step adaptivity %%
                     // Csols[k] = Cnew; // k=0: BE, k=1: alpha
                 }// Backward Euler/Generalized Alpha
@@ -523,6 +595,7 @@ void solve( gsMultiPatch<T> & mp,
                 //     // dt *= t_rho;
                 // }
             }// time step adaptivity
+
 
             if (MESHopt.askSwitch("Adaptive",true))
             {
@@ -673,6 +746,7 @@ void solve( gsMultiPatch<T> & mp,
                 // }
                 error_crs_c  = interpolate_crs(fine_basis, dbasis, Cnew_, CnewF, mp, projection_Crs);
                 error_crs_dc = interpolate_crs(fine_basis, dbasis, dCnew_, dCnewF, mp, projection_Crs); 
+                
                 // ================================================================
 
                 // new
@@ -698,6 +772,14 @@ void solve( gsMultiPatch<T> & mp,
         } // coarsening switch
 
 
+        if (step==1)
+        {
+            gsDebugVar(Cnew.maxCoeff());
+            gsDebugVar(Cnew.minCoeff());
+            gsDebugVar(dCnew.maxCoeff());
+            gsDebugVar(dCnew.minCoeff());
+            gsDebugVar(Cnew.size());
+        }
         // Update time and old solutions
         time += dt_old;
         Cold = Cnew;

@@ -511,8 +511,8 @@ void solve( gsMultiPatch<T> & mp,
     // =================== Save the coarsened basis !!! ===================
     gsFileData<> fdbas;
     fdbas.add(dbasis,0);
-    fdbas.save("basis_sigmoid_r_"+std::to_string(numRefine)+".xml");
-    gsInfo << "Exported to "<<  "basis_sigmoid_r_"+std::to_string(numRefine)+".xml" <<"\n";
+    fdbas.save("basis_sigmoid_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
+    gsInfo << "Exported to "<<  "basis_sigmoid_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
     A.initSystem();
     gsInfo << "System size: "<< A.numDofs() <<"\n";
     gsInfo << "Basis size: "<< dbasis.size() <<"\n";

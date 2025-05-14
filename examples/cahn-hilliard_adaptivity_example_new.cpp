@@ -209,7 +209,11 @@ void solve( gsMultiPatch<T> & mp,
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
+    //A.setIntegrationElements(dbasis);
+    // gsMultiBasis<> dbasis_initial;
+    // dbasis_initial = dbasis;
     A.setIntegrationElements(dbasis);
+
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
@@ -298,18 +302,20 @@ void solve( gsMultiPatch<T> & mp,
     {
         // // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         // gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-        gsMatrix<> tmp = gsMatrix<>::Random(dbasis.size(),1);
-        tmp.array() *= CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
-        tmp.array() += CHopt.askReal("mean",0.0); // 0.45
-        mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
-        tmp.setZero();
-        mp_dcold.addPatch(dbasis.basis(0).makeGeometry(tmp));
+        // // gsMatrix<> tmp = gsMatrix<>::Random(dbasis.size(),1);
+        // tmp.array() *= CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
+        // tmp.array() += CHopt.askReal("mean",0.0); // 0.45
+        // mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
+        // tmp.setZero();
+        // mp_dcold.addPatch(dbasis.basis(0).makeGeometry(tmp));
+        // gsInfo<<mp_cold.patch(0).coefs().size()<<"\n";
+        // gsInfo<<mp_dcold.patch(0).coefs().size()<<"\n";
 
         // // %%%%%%%%%%%%%%%%%%%%%%%% XML initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         // gsFileData<> fd1;
         // std::string file_name;
         // if (pattern==0) // nucleation
-        //     file_name = "/Users/lucasventavinuela/gismo/build/new_nuc.xml";
+        //     file_name = "/Users/lucasventavinuela/gismo/build/nucleation_cl1024.xml";
         // else
         //     file_name = "/Users/lucasventavinuela/gismo/build/new_spin.xml";
 
@@ -323,20 +329,41 @@ void solve( gsMultiPatch<T> & mp,
         // gsGeometry<>::uPtr IC_function = dbasis_IC.basis(0).makeGeometry(give(Coefs));
         // gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),*IC_function,Cold);
 
-        // // New: to update the values of the free DoFs
-        // const gsDofMapper & mapper = w.mapper();
-        // gsGeometry<>::uPtr geom  = dbasis.basis(0).makeGeometry(give(Cold));
-        // Cold.resize(mapper.freeSize(),1);
+        // // // New: to update the values of the free DoFs
+        // // const gsDofMapper & mapper = w.mapper();
+        // // gsGeometry<>::uPtr geom  = dbasis.basis(0).makeGeometry(give(Cold));
+        // // Cold.resize(mapper.freeSize(),1);
 
-        // for (index_t c = 0; c!=geom->coefs().cols(); c++) // for all components
-        // {
-        //     for (index_t i = 0; i != geom->coefs().rows(); ++i)
-        //     {
-        //         const index_t ii = mapper.index(i, c);
-        //         if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
-        //             Cold.at(ii) = geom->coefs()(i, c);
-        //     }
-        // }
+        // // for (index_t c = 0; c!=geom->coefs().cols(); c++) // for all components
+        // // {
+        // //     for (index_t i = 0; i != geom->coefs().rows(); ++i)
+        // //     {
+        // //         const index_t ii = mapper.index(i, c);
+        // //         if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
+        // //             Cold.at(ii) = geom->coefs()(i, c);
+        // //     }
+        // // }
+
+        // gsInfo<<"COLD0"<<Cold<<"\n";
+        gsFileData<> fd1;
+        std::string file_name;
+        if (pattern==0) // nucleation
+            file_name = "/Users/lucasventavinuela/gismo/build/multipatch.xml";
+        else
+            file_name = "/Users/lucasventavinuela/gismo/build/new_spin.xml";
+        
+       gsMultiPatch<> MP;
+
+        fd1.read(file_name);
+        fd1.getId(0,MP);
+        gsInfo<<"Imported multipatch\n";
+
+        mp_cold.addPatch(MP.patch(0));
+        Cold.setZero(dbasis.size(),1);
+        mp_dcold.addPatch(dbasis.basis(0).makeGeometry(Cold));
+
+        // gsWriteParaview(mp,mp_cold, out+"/initial_condition", 5000);    
+
     }
     else
     {
@@ -410,9 +437,17 @@ void solve( gsMultiPatch<T> & mp,
     csvFile << "TimeStep, NumDOFs, Mass, ErrorRefCnew, ErrorRefdCnew, ErrorRefCold, ErrorRefdCold, ErrorCrsCnew, ErrorCrsdCnew\n";
 
     gsVector<> pt(2,1); pt<<0.5, 0.5;
-    
+
     for (index_t step = 0; step!=maxSteps; step++)
     {
+        // error_crs_c  = interpolate_crs(gsMultiBasis<>(mp_cold),  dbasis, mp_cold.patch(0), CnewF, mp, projection_Crs);
+        // error_crs_dc = interpolate_crs(gsMultiBasis<>(mp_dcold), dbasis, mp_dcold.patch(0), dCnewF, mp, projection_Crs);
+        if (step>=191)
+        {
+            real_t mass = ev.integral(meas(G)*cnew);
+            gsDebugVar(mass);
+        }
+
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
             // Resize the data structure inside the mesher
@@ -440,18 +475,32 @@ void solve( gsMultiPatch<T> & mp,
                     // ==================================================================================
                     // Initialize the new time step by projecting the solution from the old time step (on the old mesh)
                     // onto the new mesh
-                    real_t error_cnew, error_dcnew;
-                    gsMultiBasis<> dbasis_f_cold(mp_cold);
-                    gsMultiBasis<> dbasis_f_dcold(mp_dcold);
-                    gsMultiBasis<> dbasis_fine_cold = dbasis_f_cold.basis(0);
-                    gsMultiBasis<> dbasis_fine_dcold = dbasis_f_dcold.basis(0);
-                    error_cnew  = interpolate_crs(dbasis_fine_cold,  dbasis, mp_cold.patch(0), CnewF, mp, projection_Crs);
-                    error_dcnew = interpolate_crs(dbasis_fine_dcold, dbasis, mp_dcold.patch(0), dCnewF, mp, projection_Crs);
+                    // gsMultiBasis<> dbasis_f_cold(mp_cold);
+                    // gsMultiBasis<> dbasis_f_dcold(mp_dcold);
+                    // gsMultiBasis<> dbasis_fine_cold = dbasis_f_cold.basis(0);
+                    // gsMultiBasis<> dbasis_fine_dcold = dbasis_f_dcold.basis(0);
+                    // error_crs_c  = interpolate_crs(dbasis_fine_cold,  dbasis, mp_cold.patch(0), CnewF, mp, projection_Crs);
+                    // error_crs_dc = interpolate_crs(dbasis_fine_dcold, dbasis, mp_dcold.patch(0), dCnewF, mp, projection_Crs);
                     // error_cnew  = interpolate_crs(gsMultiBasis<>(mp_cold),  dbasis, mp_cold.patch(0), CnewF, mp, projection_Crs);
                     // error_dcnew = interpolate_crs(gsMultiBasis<>(mp_dcold), dbasis, mp_dcold.patch(0), dCnewF, mp, projection_Crs);
 
-                    gsDebugVar(error_cnew);
-                    gsDebugVar(error_dcnew);
+                    error_crs_c  = interpolate_crs(gsMultiBasis<>(mp_cold),  dbasis, mp_cold.patch(0), CnewF, mp, projection_Crs);
+                    error_crs_dc = interpolate_crs(gsMultiBasis<>(mp_dcold), dbasis, mp_dcold.patch(0), dCnewF, mp, projection_Crs);
+
+                    if (step>=191)
+                    {
+                        gsDebugVar(error_crs_c);
+                        gsDebugVar(error_crs_dc);
+                        gsDebugVar(mp_cold.patch(0).coefs().maxCoeff());
+                        gsDebugVar(mp_cold.patch(0).coefs().minCoeff());
+                        gsDebugVar(mp_dcold.patch(0).coefs().maxCoeff());
+                        gsDebugVar(mp_dcold.patch(0).coefs().minCoeff());
+                        gsDebugVar(CnewF.maxCoeff());
+                        gsDebugVar(CnewF.minCoeff());
+                        gsDebugVar(dCnewF.maxCoeff());
+                        gsDebugVar(dCnewF.minCoeff());
+                    }
+                    
                     Cnew.setZero(A.numDofs(),1);
                     dCnew.setZero(A.numDofs(),1);
                     for (index_t i = 0; i < dbasis.basis(0).size(); i++)
@@ -464,8 +513,15 @@ void solve( gsMultiPatch<T> & mp,
                     Q0norm = 1;
                     Qnorm = 10;
 
+
                     for (index_t it = 0; it!= maxIt; it++)
                     {
+                        if (step>=191)
+                        {
+                            real_t mass = ev.integral(meas(G)*cnew);
+                            gsDebugVar(mass);
+                        }
+
                         A.initMatrix();
                         A.initVector();
                         // A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
@@ -493,6 +549,12 @@ void solve( gsMultiPatch<T> & mp,
                         // Check the convergence conditions
                         if (it == 0) Q0norm = Q.norm();
                         else         Qnorm = Q.norm();
+
+                        if (step>=191)
+                        {
+                            real_t mass = ev.integral(meas(G)*cnew);
+                            gsDebugVar(mass);
+                        }
 
                         if (verbose==2) gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
 
@@ -539,6 +601,13 @@ void solve( gsMultiPatch<T> & mp,
 
                         dCnew += dCupdate;
                         Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
+
+                        if (step>=191)
+                        {
+                            real_t mass = ev.integral(meas(G)*cnew);
+                            gsDebugVar(mass);
+                        }
+    
                     }
                     if (!converged)
                         break;
@@ -550,11 +619,22 @@ void solve( gsMultiPatch<T> & mp,
                     tmp_alpha_f_func.setValue(tmp_alpha_f,dim);
                     tmp_gamma = gamma;
 
+
+                    if (step>=191)
+                    {
+                        real_t mass = ev.integral(meas(G)*cnew);
+                        gsDebugVar(mass);
+                    }
+
                     // %% For time step adaptivity %%
                     // Csols[k] = Cnew; // k=0: BE, k=1: alpha
                 }// Backward Euler/Generalized Alpha
 
-
+                if (step>=191)
+                {
+                    real_t mass = ev.integral(meas(G)*cnew);
+                    gsDebugVar(mass);
+                }
                 // %%%%%%%%%% For time step adaptivity %%%%%%%%%%
                 // if (converged)
                 // {
@@ -574,6 +654,11 @@ void solve( gsMultiPatch<T> & mp,
             // Update the old c and dc into splines
             cnew.extract(mp_cnew);
             dcnew.extract(mp_dcnew);
+            if (step>=191)
+            {
+                real_t mass = ev.integral(meas(G)*cnew);
+                gsDebugVar(mass);
+            }
 
             gsInfo<< "Value at mid-point :" << ev.eval(cnew, pt) <<"\n";
             //! [Export visualization in ParaView]
@@ -635,6 +720,7 @@ void solve( gsMultiPatch<T> & mp,
         // mp_dcold.addPatch(mp_dcnew.patch(0));
 
 
+
         if (MESHopt.askSwitch("Adaptive",true))
         {
             // The mesh changed due to refinement, so w changed.
@@ -689,11 +775,22 @@ void solve( gsMultiPatch<T> & mp,
             }// coarsen
         } // coarsening switch
 
+
+        if (step>=191)
+        {
+            real_t mass = ev.integral(meas(G)*cnew);
+            gsDebugVar(mass);
+        }
         // Update time and old solutions
         time += dt_old;
         mp_cold.swap(mp_cnew);
         mp_dcold.swap(mp_dcnew);
 
+        if (step>=191)
+        {
+            real_t mass = ev.integral(meas(G)*cnew);
+            gsDebugVar(mass);
+        }
     }
     if (plot)
         collection.save();

@@ -498,13 +498,13 @@ void solve( gsMultiPatch<T> & mp,
     // =================== Save the coarsened basis !!! ===================
     gsFileData<> fdbas;
     fdbas.add(dbasis,0);
-    fdbas.save("basis_heart_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
-    gsInfo << "Exported to "<<  "basis_heart_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
+    fdbas.save("basis_heart_cubic"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
+    gsInfo << "Exported to "<<  "basis_heart_cubic"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
     A.initSystem();
-    gsInfo << "System size: "<< A.numDofs() <<"\n";
-    gsInfo << "Basis size: "<< dbasis.size() <<"\n";
+    csvFile << "System size: "<< A.numDofs() <<"\n";
+    csvFile << "Basis size: "<< dbasis.size() <<"\n";
+    csvFile.close();
     // ====================================================================
-
 }
 
 

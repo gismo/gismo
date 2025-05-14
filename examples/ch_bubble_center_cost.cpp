@@ -127,51 +127,50 @@ void solve( gsMultiPatch<T> & mp,
     // where p is the highest degree in the bases
     dbasis_tmp.setDegree( dbasis_tmp.maxCwiseDegree() + numElevate);
 
-    gsFileData<> fd1;
-    fd1.read("basis_cir_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
-    fd1.getId(0,dbasis);
-    gsInfo << "Loaded "<< "basis_cir_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
+    // gsFileData<> fd1;
+    // fd1.read("basis_cir_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
+    // fd1.getId(0,dbasis);
+    // gsInfo << "Loaded "<< "basis_cir_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
 
-    // if (MESHopt.askSwitch("Adaptive",true))         // Load the basis from file
-    // {     
-    //     gsFileData<> fd1;
-    //     fd1.read("basis_circle_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
-    //     fd1.getId(0,dbasis);
-    //     gsInfo << "Loaded "<<  "basis_circle_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
-    //     MESHopt.setSwitch("THB",true);
-
-    // }
-    // else // Tensor product basis
-    // {
-    //     if (MESHopt.askSwitch("THB",true))
-    //     {
-    //         // Cast every basis of dbasis to a gsTHBSplineBasis
-    //         for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
-    //         {
-    //             // TODO: Make dimension-independent over the template
-    //             if (gsTensorBSplineBasis<dim,real_t> * b = dynamic_cast<gsTensorBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
-    //                 dbasis.addBasis(new gsTHBSplineBasis<dim,real_t>(*b));
-    //             else if (gsTHBSplineBasis<dim,real_t> * b = dynamic_cast<gsTHBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
-    //                 dbasis.addBasis(b->clone());
-    //             else
-    //                 GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
+    if (MESHopt.askSwitch("Adaptive",true))         // Load the basis from file
+    {     
+        gsFileData<> fd1;
+        fd1.read("basis_circle_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
+        fd1.getId(0,dbasis);
+        gsInfo << "Loaded "<<  "basis_circle_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
+        MESHopt.setSwitch("THB",true);
+    }
+    else // Tensor product basis
+    {
+        if (MESHopt.askSwitch("THB",true))
+        {
+            // Cast every basis of dbasis to a gsTHBSplineBasis
+            for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
+            {
+                // TODO: Make dimension-independent over the template
+                if (gsTensorBSplineBasis<dim,real_t> * b = dynamic_cast<gsTensorBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
+                    dbasis.addBasis(new gsTHBSplineBasis<dim,real_t>(*b));
+                else if (gsTHBSplineBasis<dim,real_t> * b = dynamic_cast<gsTHBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
+                    dbasis.addBasis(b->clone());
+                else
+                    GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
     
-    //             // Refine the basis for `numRefine` levels
-    //             gsMatrix<> box = dbasis.basis(p).support();
-    //             for (index_t r = 0; r!=numRefine; r++)
-    //                 dbasis.basis(p).refine(box);
-    //         }
-    //     }
-    //     else
-    //     {
-    //         for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
-    //         {
-    //             dbasis.addBasis(dbasis_tmp.basis(p).clone());
-    //             for (index_t r = 0; r!=numRefine; r++)
-    //                 dbasis.basis(p).uniformRefine();
-    //         }
-    //     }    
-    // }
+                // Refine the basis for `numRefine` levels
+                gsMatrix<> box = dbasis.basis(p).support();
+                for (index_t r = 0; r!=numRefine; r++)
+                    dbasis.basis(p).refine(box);
+            }
+        }
+        else
+        {
+            for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
+            {
+                dbasis.addBasis(dbasis_tmp.basis(p).clone());
+                for (index_t r = 0; r!=numRefine; r++)
+                    dbasis.basis(p).uniformRefine();
+            }
+        }    
+    }
 
     
 
@@ -724,25 +723,6 @@ void solve( gsMultiPatch<T> & mp,
                         // if (bc.get("Neumann").size()!=0)
                         //     Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
 
-                        // Check the convergence conditions
-                        if (it == 0) Q0norm = Q.norm();
-                        else         Qnorm = Q.norm();
-
-                        if (verbose==2) gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
-
-                        if (it>0 && Qnorm/Q0norm < tol)
-                        {
-                            if (verbose>0) gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
-                                converged = true;
-                            break;
-                        }
-                        else if (it==maxIt-1)
-                        {
-                            if (verbose>0) gsInfo<<"\t\t"<<method<<"did not converge!\n";
-                                converged = false;
-                            break;
-                        }
-
                         A.initMatrix();
                         // Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
                         clock.restart();
@@ -778,6 +758,29 @@ void solve( gsMultiPatch<T> & mp,
                         dCnew += dCupdate;
                         Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
 
+                        // ====================== CHECK THE CONVERGENCE CONDITIONS ======================
+                        if (it == 0) Q0norm = Q.norm();
+                        else         Qnorm = Q.norm();
+
+                        real_t dCnorm = dCupdate.norm();
+                        real_t Cnewnorm = Cnew.norm();
+                    
+                        if (verbose==2) gsInfo<<"\t\tNR iter   "<<it<<": res  = "<<Qnorm/Q0norm<<"\n";
+                        if (verbose==2) gsInfo<<"\t\t          "<<it<<": dc/c = "<<dCnorm/Cnewnorm<<"\n";
+
+                        if (it>0 && Qnorm/Q0norm < tol && dCnorm/Cnewnorm < tol)
+                        {
+                            if (verbose>0) gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
+                                converged = true;
+                            break;
+                        }
+                        else if (it==maxIt-1)
+                        {
+                            if (verbose>0) gsInfo<<"\t\t"<<method<<"did not converge!\n";
+                                converged = false;
+                            break;
+                        }
+                        // ===============================================================
                     }
                     if (!converged)
                         break;

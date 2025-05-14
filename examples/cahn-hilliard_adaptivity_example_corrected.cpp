@@ -22,6 +22,9 @@
     (For QI based on local interpolation in the coarsening)
         time ./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000 -c 1
 
+    With lambda 1e-3
+    ./bin/cahn-hilliard_adaptivity_example_corrected --plot -r 5 -t 1.5e-3 --random  -N 1000 -c 0 -v 2 -s 0 -f pde/cahn_hilliard_bvp.xml -o "test"
+
     -----------------------------------------------------------------------
     TODO;
     - Change hmax to a gsExprAssembler<>::element el; el.diam();
@@ -210,41 +213,7 @@ void solve( gsMultiPatch<T> & mp,
 
     // Elements used for numerical integration
     // A.setIntegrationElements(dbasis);
-
-    // ========= NEW ADD LINEAR BASIS FOR L2 PROJECTION OF dc =========
-    gsMultiBasis<> dbasis_tmp_2(mp,true);
-    dbasis_tmp_2.setDegree(3);
-    gsMultiBasis<> dbasis_lin;
-    if (MESHopt.askSwitch("THB",true))
-    {
-        // Cast every basis of dbasis to a gsTHBSplineBasis
-        for (size_t p=0; p!=dbasis_tmp_2.nBases(); p++)
-        {
-            // TODO: Make dimension-independent over the template
-            if (gsTensorBSplineBasis<dim,real_t> * b = dynamic_cast<gsTensorBSplineBasis<dim,real_t>*>(&dbasis_tmp_2.basis(p)))
-                dbasis_lin.addBasis(new gsTHBSplineBasis<dim,real_t>(*b));
-            else if (gsTHBSplineBasis<dim,real_t> * b = dynamic_cast<gsTHBSplineBasis<dim,real_t>*>(&dbasis_tmp_2.basis(p)))
-                dbasis_lin.addBasis(b->clone());
-            else
-                GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
-
-            // Refine the basis for `numRefine` levels
-            gsMatrix<> box = dbasis_lin.basis(p).support();
-            for (index_t r = 0; r!=numRefine; r++)
-                dbasis_lin.basis(p).refine(box);
-        }
-    }
-
-    // Refine the basis for `numRefine` levels
-    gsMatrix<> box = dbasis_lin.basis(0).support();
-    for (index_t r = 0; r!=1; r++)
-        dbasis_lin.basis(0).refine(box);
-
-    gsDebugVar(dbasis_lin.basis(0));
-    gsDebugVar(dbasis_lin.basis(0).maxDegree());
-    
     // =====================================================================
-
 
     gsMultiBasis<> ibasis;
     // Cast every basis of dbasis to a gsTHBSplineBasis
@@ -351,14 +320,23 @@ void solve( gsMultiPatch<T> & mp,
     {
         // // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         // gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-        // // gsMatrix<> tmp = gsMatrix<>::Random(dbasis.size(),1);
+        // gsMatrix<> tmp = gsMatrix<>::Random(dbasis.size(),1);
         // tmp.array() *= CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
         // tmp.array() += CHopt.askReal("mean",0.0); // 0.45
+        // gsDebugVar(tmp);
         // mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
         // tmp.setZero();
         // mp_dcold.addPatch(dbasis.basis(0).makeGeometry(tmp));
         // gsInfo<<mp_cold.patch(0).coefs().size()<<"\n";
         // gsInfo<<mp_dcold.patch(0).coefs().size()<<"\n";
+
+
+
+        // gsFileData<> fd2;
+        // fd2.add(mp_cold,0); // mp
+        // fd2.save("multipatch_3d.xml");
+        // gsInfo << "Exported to multipatch_3d.xml \n";
+        
 
         // // %%%%%%%%%%%%%%%%%%%%%%%% XML initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         // gsFileData<> fd1;
@@ -486,32 +464,50 @@ void solve( gsMultiPatch<T> & mp,
 
     std::ofstream csvFile;
     csvFile.open(out+"/dofs.csv");
-    csvFile << "TimeStep, RefIt, NumDOFs, Mass, ErrorRefCnew, ErrorRefdCnew, ErrorCrsCnew, ErrorCrsdCnew\n";
+    csvFile << "TimeStep, RefIt, NumDOFs, Mass, AT, ST, PT, ErrorRefCnew, ErrorRefdCnew, ErrorCrsCnew, ErrorCrsdCnew\n";
 
     gsVector<> pt(2,1); pt<<0.5, 0.5;
 
 
-    real_t mass2 = ev.integral(meas(G)*cold);
-    gsInfo<<mass2<<"\n";
+    // real_t mass2 = ev.integral(meas(G)*cold);
+    // gsInfo<<mass2<<"\n";
+    real_t assemblyTimestep, solverTimestep, projTimestep;
 
     for (index_t step = 0; step!=maxSteps; step++)
     {
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
-            clock.restart();
-            if (projection_Crs == 0)
+            
+            // reset computational times
+            assemblyTimestep = 0;
+            solverTimestep   = 0;
+            projTimestep     = 0;
+
+            if (MESHopt.askSwitch("Adaptive",true))
             {
+                clock.restart();
+                if (projection_Crs == 0)
+                {
+                    error_crs_c = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
+                    error_crs_dc = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
+                    gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
+                    gsDebug<<"Error in the L2 projection of the initial condition (dc): "<<error_crs_dc<<"\n";  
+                }
+                else if (projection_Crs == 1)
+                {
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_cold.patch(0),CnewF);
+                    gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
+                }
+                projTimestep += clock.stop();
+                projectionTime += projTimestep;
+
+            }
+            else
+            {
+                // Tensor product solution (to be able to have finer meshes than the one from the xml file)
                 error_crs_c = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
                 error_crs_dc = gsL2Projection<real_t>::projectFunction(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
-                gsDebug<<"Error in the L2 projection of the initial condition: "<<error_crs_c<<"\n";
-                gsDebug<<"Error in the L2 projection of the initial condition: "<<error_crs_dc<<"\n";  
             }
-            else if (projection_Crs == 1)
-            {
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_cold.patch(0),CnewF);
-                gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
-            }
-            projectionTime += clock.stop();
                       
             // Resize the data structure inside the mesher
             if (MESHopt.askSwitch("Adaptive",true))
@@ -551,17 +547,28 @@ void solve( gsMultiPatch<T> & mp,
                     Q0norm = 1;
                     Qnorm = 10;
 
+                    // ==== For Nitsche BC ====
+                    Cold.setZero(A.numDofs(),1);
+                    dCold.setZero(A.numDofs(),1);
+                    Cold = Cnew;
+                    dCold = dCnew;
+                    // ========================
 
                     for (index_t it = 0; it!= maxIt; it++)
                     {
                         A.initMatrix();
                         A.initVector();
                         // A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
+                        A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
+                        // ==== For Nitsche BC ====
+                        Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
+                        dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
+                        // ========================
 
                         clock.restart();
                         // Assemble the RHS
                         A.assemble(residual * meas(G));
-                        assemblyTime += clock.stop();
+                        assemblyTimestep += clock.stop();
 
                         Q = A.rhs();
 
@@ -572,7 +579,8 @@ void solve( gsMultiPatch<T> & mp,
                         A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                                     penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                                     lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-                        assemblyTime += clock.stop();
+                        assemblyTimestep += clock.stop();
+
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
                         if (bc.get("Neumann").size()!=0)
@@ -605,7 +613,8 @@ void solve( gsMultiPatch<T> & mp,
                                             ddmu_c * igrad(w,G) * gradc.tr() * w.tr() + // K_f2
                                             lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
                                             // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-                        assemblyTime += clock.stop();
+                        assemblyTimestep += clock.stop();
+                        assemblyTime += assemblyTimestep;
 
                         K = A.giveMatrix();
                         if (bc.get("Neumann").size()!=0)
@@ -622,7 +631,8 @@ void solve( gsMultiPatch<T> & mp,
     #endif
 
                         dCupdate = solver.solve(-Q);
-                        solverTime += clock.stop();
+                        solverTimestep += clock.stop();
+                        solverTime     += solverTimestep;
                         nSolves++;
 
                         dCnew += dCupdate;
@@ -664,7 +674,9 @@ void solve( gsMultiPatch<T> & mp,
             dcnew_sol.extract(mp_dcnew);
 
             real_t mass = ev.integral(meas(G)*cnew);
-            csvFile << step  << "," << refIt << "," << A.numDofs() <<"," << mass <<  "," << error_ref_cnew << ","<< error_ref_dcnew << ","<<error_crs_c<<","<<error_crs_dc<< "\n";
+            csvFile << step  << "," << refIt << "," << A.numDofs() <<"," << mass << "," << assemblyTimestep <<  "," << solverTimestep << "," << projTimestep << "," << error_ref_cnew << ","<< error_ref_dcnew << ","<<error_crs_c<<","<<error_crs_dc<< "\n";
+            csvFile.flush();  // Forces the file to write immediately
+
             // Reset the errors after the loop
             error_ref_cnew  = 0;
             error_ref_cold  = 0;

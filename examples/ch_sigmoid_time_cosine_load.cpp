@@ -132,9 +132,9 @@ void solve( gsMultiPatch<T> & mp,
     dbasis_tmp.setDegree( dbasis_tmp.maxCwiseDegree() + numElevate);
 
     gsFileData<> fd1;
-    fd1.read("basis_sigmoid_r_"+std::to_string(numRefine)+".xml");
+    fd1.read("basis_sigmoid_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml");
     fd1.getId(0,dbasis);
-    gsInfo << "Loaded "<<  "basis_sigmoid_r_"+std::to_string(numRefine)+".xml" <<"\n";
+    gsInfo << "Loaded "<<  "basis_sigmoid_mark_"+std::to_string(MESHopt.getReal("CoarsenParam"))+"_r_"+std::to_string(numRefine)+".xml" <<"\n";
 
 
     if (MESHopt.askSwitch("Adaptive",true))
