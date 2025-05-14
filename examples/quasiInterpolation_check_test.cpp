@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
     gsGeometry<>::uPtr Cfine_geom_L2 = dbasis_fine.basis(0).makeGeometry(give(C_fine_coefs_L2));
     gsGeometry<>::uPtr Cfine_geom_L2_local = dbasis_fine.basis(0).makeGeometry(give(C_fine_coefs_L2_local));
 
-    A.setIntegrationElements(dbasis_fine);
+    A.setIntegrationElements(dbasis_coarse);
     
     auto c_fine = ev.getVariable(*Cfine_geom,G);
     auto c_fine_L2 = ev.getVariable(*Cfine_geom_L2,G);

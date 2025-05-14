@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
 
 
     gsMatrix<> refBoxes1(2,2);
-    refBoxes1.col(0) << 0,0;
-    refBoxes1.col(1) << 0.5,0.5;
+    refBoxes1.col(0) << 0.5,0;
+    refBoxes1.col(1) << 1.0,0.5;
     thb.refine( refBoxes1 );
 
 
@@ -97,29 +97,33 @@ int main(int argc, char *argv[])
     gsWriteParaview(thb_fine_basis_L2,"Surface L2 initial"); // interpolated function mySinus
     gsWriteParaview(thb_fine_basis_L2_local,"Surface L2 local initial"); // interpolated function mySinus
 
+    // gsWriteParaview(thb,"basisthb");
+
     gsInfo<< "================ FIND  ================\n";
 
-    gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_QI, C_coarse); 
-    gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0), dbasis_coarse, *fine_L2,mp,C_coarse_l2);
-    gsQuasiInterpolate<real_t>::localL2(dbasis_coarse.basis(0), *fine_L2_local,C_coarse_l2_local);
+    // gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0), *fine_QI, C_coarse); 
+    // gsL2Projection<real_t>::projectFunction(dbasis_fine.basis(0), dbasis_coarse, *fine_L2,mp,C_coarse_l2);
+    // gsQuasiInterpolate<real_t>::localL2(dbasis_coarse.basis(0), *fine_L2_local,C_coarse_l2_local);
     
     // gsDebugVar(dbasis_coarse.basis(0));
     // gsDebugVar(C_coarse_l2_local-C_coarse);
     // gsDebugVar(C_coarse_l2_local-C_coarse_l2);
 
-    thb.unrefine(refBoxes1,0); // coarse mesh!
-    gsTHBSpline<2,real_t> thb_coarse_plot(thb,C_coarse); 
-    gsTHBSpline<2,real_t> thb_coarse_plot_l2(thb,C_coarse_l2); 
-    gsTHBSpline<2,real_t> thb_coarse_plot_l2_local(thb,C_coarse_l2_local); 
+    //thb.unrefine(refBoxes1,0); // coarse mesh!
+    gsWriteParaview(thb,"basisthb");
 
-    gsWriteParaview(thb_coarse_plot,"Surface_QI"); // interpolated function mySinus
-    gsWriteParaview(thb_coarse_plot_l2,"Surface_L2"); // interpolated function mySinus
-    gsWriteParaview(thb_coarse_plot_l2_local,"Surface_L2_local"); // interpolated function mySinus
+    // gsTHBSpline<2,real_t> thb_coarse_plot(thb,C_coarse); 
+    // gsTHBSpline<2,real_t> thb_coarse_plot_l2(thb,C_coarse_l2); 
+    // gsTHBSpline<2,real_t> thb_coarse_plot_l2_local(thb,C_coarse_l2_local); 
+
+    // gsWriteParaview(thb_coarse_plot,"Surface_QI"); // interpolated function mySinus
+    // gsWriteParaview(thb_coarse_plot_l2,"Surface_L2"); // interpolated function mySinus
+    // gsWriteParaview(thb_coarse_plot_l2_local,"Surface_L2_local"); // interpolated function mySinus
 
     // ====== Plotting error from QI ======
-    gsGeometry<>::uPtr sol_coarse = dbasis_coarse.basis(0).makeGeometry(give(C_coarse));
-    gsGeometry<>::uPtr sol_coarse_L2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2));
-    gsGeometry<>::uPtr sol_coarse_L2_local = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2_local));
+    // gsGeometry<>::uPtr sol_coarse = dbasis_coarse.basis(0).makeGeometry(give(C_coarse));
+    // gsGeometry<>::uPtr sol_coarse_L2 = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2));
+    // gsGeometry<>::uPtr sol_coarse_L2_local = dbasis_coarse.basis(0).makeGeometry(give(C_coarse_l2_local));
 
     gsExprAssembler<> A(1,1);
     A.setIntegrationElements(dbasis_coarse);
@@ -131,9 +135,9 @@ int main(int argc, char *argv[])
     auto c_sinus_L2_local_fine = ev.getVariable(*fine_L2_local,G); // pointer to the L2 local
 
     auto cfunction = ev.getVariable(mySinus,G);
-    auto c_sinus_qi = ev.getVariable(*sol_coarse,G); // pointer to the QI
-    auto c_sinus_L2 = ev.getVariable(*sol_coarse_L2,G); // pointer to the L2 proj
-    auto c_sinus_L2_local = ev.getVariable(*sol_coarse_L2_local,G); // pointer to the LOCAL L2 proj
+    // auto c_sinus_qi = ev.getVariable(*sol_coarse,G); // pointer to the QI
+    // auto c_sinus_L2 = ev.getVariable(*sol_coarse_L2,G); // pointer to the L2 proj
+    // auto c_sinus_L2_local = ev.getVariable(*sol_coarse_L2_local,G); // pointer to the LOCAL L2 proj
 
 
     gsParaviewCollection error_col("Error_Simple", &ev);
@@ -143,17 +147,17 @@ int main(int argc, char *argv[])
     error_col.options().setInt("precision", 40); // 1e-18
 
     error_col.newTimeStep(&mp);
-    error_col.addField((c_sinus_qi_fine-c_sinus_qi).sqNorm(),"error coarsening QI");
-    error_col.addField((c_sinus_L2_fine-c_sinus_L2).sqNorm(),"error coarsening L2");
-    error_col.addField((c_sinus_L2_local_fine-c_sinus_L2_local).sqNorm(),"error coarsening L2 local");
+    // error_col.addField((c_sinus_qi_fine-c_sinus_qi).sqNorm(),"error coarsening QI");
+    // error_col.addField((c_sinus_L2_fine-c_sinus_L2).sqNorm(),"error coarsening L2");
+    // error_col.addField((c_sinus_L2_local_fine-c_sinus_L2_local).sqNorm(),"error coarsening L2 local");
 
     error_col.addField((c_sinus_qi_fine-cfunction).sqNorm(),"error function projection QI");
     error_col.addField((c_sinus_L2_fine-cfunction).sqNorm(),"error function projection L2");
     error_col.addField((c_sinus_L2_local_fine-cfunction).sqNorm(),"error function projection L2 local");
 
-    error_col.addField(c_sinus_L2_local_fine-c_sinus_qi_fine,"diff fine local and QI");
-    error_col.addField(c_sinus_L2_local-c_sinus_qi,"diff coarse local and QI");
-    error_col.addField(c_sinus_L2-c_sinus_qi,"diff coarse L2 and QI");
+    // error_col.addField(c_sinus_L2_local_fine-c_sinus_qi_fine,"diff fine local and QI");
+    // error_col.addField(c_sinus_L2_local-c_sinus_qi,"diff coarse local and QI");
+    // error_col.addField(c_sinus_L2-c_sinus_qi,"diff coarse L2 and QI");
 
     error_col.saveTimeStep();
     error_col.save();

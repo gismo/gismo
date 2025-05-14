@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     }
 
     mesher.getOptions();
-    gsHBoxContainer<2,real_t> refine,coarsen;
+    gsHBoxContainer<2,real_t> markedRef,markedCrs;
     // mesher.markRef_into(errors,refine);
 
     gsVector<index_t,2> low,upp;
@@ -163,22 +163,27 @@ int main(int argc, char *argv[])
     lvl = 1;
     gsHBox<2>cell(low,upp,lvl,basis);
     
-    gsVector<index_t,2> low1,upp1;
-    index_t lvl1;
-    low1 <<3,3;
-    upp1 <<4,4;
-    lvl1 = 0;
-    gsHBox<2>cell2(low1,upp1,lvl1,basis);
+    // gsVector<index_t,2> low1,upp1;
+    // index_t lvl1;
+    // low1 <<3,3;
+    // upp1 <<4,4;
+    // lvl1 = 0;
+    // gsHBox<2>cell2(low1,upp1,lvl1,basis);
 
     gsDebugVar(basis);
 
     // mesher.markRef_into(errors,refine);
-    refine.add(cell);
-    refine.add(cell2);
+    markedRef.add(cell);
+    //markedRef.add(cell2);
 
-    gsWriteParaview(refine,"marked4ref2");
+    gsWriteParaview(markedRef,"marked4ref2");
 
-    mesher.refine(refine);
+    index_t m_admissibility = 2;
+    markedRef.markAdmissible(m_admissibility);
+    gsWriteParaview(markedRef,"refCell_Admissible");
+    gsInfo<<"Admissibility region of the refined cell plotted in refCell_Admissible.pvd\n";
+
+    mesher.refine(markedRef);
     gsWriteParaview(mp,"end_mp",1,true);
 
 }// end main
