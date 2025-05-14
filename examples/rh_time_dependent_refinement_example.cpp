@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     double dt             = 1e-5;  
-    double epsilon        = 0.007; // 0.007389228264793657
+    double epsilon        = 0.007389228264793657;// constant in Allen-Cahn equation (determin thekness of the interface)
 
     // Specify the file path
     std::string fn("pde/quart_annulus.xml");
@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
     cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
     cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
+    cmd.addReal( "t", "dt", "time step dt",  dt);
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
@@ -114,7 +115,9 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     //! [Solver loop]
+    
     gsSparseSolver<>::CGDiagonal solver;
+
 
     for (int r=0; r<=numRefine; ++r)
     {
@@ -171,13 +174,13 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, 0.1,circleN);
-    auto Psi     = MAE.buildMultiPatch(density, false);
+    auto density       = MAE.buildDensity(elwise, 0.1,circleN);
+    gsMultiPatch<> Psi = MAE.buildMultiPatch(density, false);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsMultiPatch<> Psilast;
+    gsMultiPatch<> Psilast = Psi;
     // gsMultiPatch<> Psi;
     // for(size_t i =0; i<Psitp.nPatches(); ++i)
     //     Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
@@ -236,7 +239,6 @@ int main(int argc, char *argv[])
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 0: Computes the initial solution of the PDEs in adapted mesh 
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    ru.setup(bc, dirichlet::l2Projection, 0);
     // Initialize the system
     A.initSystem();
     gsInfo<< "Solving PDEs " <<std::flush;
@@ -253,8 +255,8 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
 
-    gsInfo<<"Plotting in Paraview...\n";
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    // gsInfo<<"Plotting in Paraview...\n";
+    gsParaviewCollection collection("ParaviewOutput/TDsolution", &ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setSwitch("base64", export_b64);
     collection.options().setInt("plotElements.resolution", 16);
@@ -262,7 +264,7 @@ int main(int argc, char *argv[])
     if (plot)
     {    
         collection.newTimeStep(&Psi);
-        collection.addField(ru_sol, "Temperature");
+        collection.addField(ru_sol, "solution");
         collection.saveTimeStep();
     }
     gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
@@ -272,8 +274,7 @@ int main(int argc, char *argv[])
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     for (int r=0; r<=numLRefine; ++r)
     {
-        // ... update the mapping
-        Psilast = Psi;
+        // ... update the mapping   
         index_t numPaches = Psi.nPatches();
         for( index_t i=0; i<numPaches; ++i)
         {
@@ -289,12 +290,12 @@ int main(int argc, char *argv[])
         ###   Step in time : Computes the density function
         ###         and the multipatch adaptove mapping
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        ev.integralElWise( igrad(ru_sol, GLeft).sqNorm() );
-        auto elwise   = ev.elementwise();
-        auto density = MAE.buildDensity(elwise, 0.1, circleN);
-        auto Psi     = MAE.buildMultiPatch(density, false);
+        ev.integralElWise( igrad(ru_sol, PP).sqNorm() );
+        auto elwise         = ev.elementwise();
+        auto density        = MAE.buildDensity(elwise, 0.5, circleN);
+        gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psi, false, 0);
         Psi.addAutoBoundaries();
-        Psi.computeTopology();    
+        Psi.computeTopology();
         // //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
         // ru.setup(bc, dirichlet::l2Projection, 0);
 
@@ -330,14 +331,18 @@ int main(int argc, char *argv[])
         // solver.compute( A.matrix() );
         // rsolVector = solver.solve(A.rhs());
         if(true){// Non linear solver for Allen-Cahn equation
-            solution u_sol = A.getSolution(ru, rsolVector); // for nonlinear unkown
+            gsMatrix<> lsolVector;
+            solution u_sol = A.getSolution(ru, lsolVector); // for nonlinear unkown
+            lsolVector     = rsolVector;
+            // Initialize the system
+            A.initSystem();
             //! Newton method
-            A.options().setInt("DirichletStrategy", 0);// swich off elimination
+            //A.options().setInt("DirichletStrategy", 0);// swich off elimination
             auto residual =  ru * (u_sol -ru_sol).tr() * meas(PP)
-                +igrad(ru,PP) * igrad(u_sol, PP).tr() *dt * meas(PP) 
-                + ((u_sol*u_sol*u_sol-u_sol).val()) * ru /(epsilon*epsilon) * dt * meas(PP)
-                + ru * (PPlst * igrad(u_sol, PP).tr()) * meas(PP) //matrix
-                - ru * (PP    * igrad(u_sol, PP).tr()) * meas(PP) //matrix
+                +igrad(ru,PP) * igrad(u_sol, PP).tr() * dt * meas(PP)
+                + ru * ((u_sol*u_sol*u_sol-u_sol).val()) /(epsilon*epsilon) * dt * meas(PP)
+                - ru * ((PP-PPlst)* igrad(u_sol, PP).tr()) * meas(PP) //matrix
+                // - ru * (PP    * igrad(u_sol, PP).tr()) * meas(PP) //matrix
                 ;
 
             for (index_t l = 0; l<50; ++l)
@@ -349,10 +354,10 @@ int main(int argc, char *argv[])
                 A.assemble(
                     ru * ru.tr() * meas(PP)
                     + igrad(ru,PP) * igrad(ru, PP).tr() *dt * meas(PP) 
-                    + ru * ru.tr() * 2.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
-                    + ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
-                    + ru * (PPlst * igrad(ru, PP).tr()) * meas(PP) //matrix
-                    - ru * (PP    * igrad(ru, PP).tr()) * meas(PP) //matrix
+                    + ru * ru.tr() * 3.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
+                    - ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
+                    - ru * ((PP-PPlst) * igrad(ru, PP).tr()) * meas(PP) //matrix
+                    // - ru * (PP    * igrad(ru, PP).tr()) * meas(PP) //matrix
                     ,
                     residual );
                 // Compute the Neumann terms defined on physical space
@@ -364,12 +369,13 @@ int main(int argc, char *argv[])
 
                 timer.restart();                
                 solver.compute( A.matrix() );
-                auto du = solver.solve(A.rhs());
-                rsolVector -= du;
-                slv_time += timer.stop();
+                auto du     = solver.solve(-1.*A.rhs());
+                lsolVector += du;
+                slv_time   += timer.stop();
                 gsInfo<<'.'<<du.norm()<< "." <<std::flush; // Non-linear iteration done
                 if ( du.norm() < 1e-5 ) break;
             }
+            rsolVector     = lsolVector;
         }
 
         slv_time += timer.stop();
@@ -378,7 +384,7 @@ int main(int argc, char *argv[])
         if (plot)
         {    
             collection.newTimeStep(&Psi);
-            collection.addField(ru_sol, "Temperature");
+            collection.addField(ru_sol, "solution");
             collection.saveTimeStep();
         }
         //ru.setup(bc, dirichlet::l2Projection, -1);
@@ -444,7 +450,7 @@ int main(int argc, char *argv[])
               <<( h1err.head(numRefine).array() /
                   h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
-    //! [Error and convergence rates]
+    //! [Error and convergence rates] 
     //! [Export visualization in ParaView]
     if (plot)
     {
@@ -462,7 +468,7 @@ int main(int argc, char *argv[])
         // collection.addField(u_ex, "exact solution");
         // collection.saveTimeStep();
         collection.save();
-        gsFileManager::open("ParaviewOutput/solution.pvd");
+        gsFileManager::open("ParaviewOutput/TDsolution.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "

@@ -202,61 +202,14 @@ int main(int argc, char *argv[])
     ev.integralElWise( idiv(istress,PP).sqNorm());
     // ev.integralBdrBc(bcInfo.get("nuemann"),(istress* nv(PP)).sqNorm());
     auto elwise = ev.elementwise();
-    // for (index_t i=0; i<elwise.size(); ++i)
-    // {
-    //     gsInfo << "Stress: elwise "<< i << " : "<< elwise.at(i) << "\n";
-    // }
-    // if (true){
-    //     gsInfo<<"Storing paraview...\n";
-    //     // Write the computed solution to paraview files
-    //     gsInfo<<"Making in Paraview...\n";
-    //     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    //     collection.options().setSwitch("plotElements", true);
-    //     collection.options().setSwitch("base64", false);
-    //     collection.options().setInt("plotElements.resolution", 16);
-    //     collection.options().setInt("numPoints", 10000);
-    //     collection.newTimeStep(&mpLeft);
-    //     collection.addField(istress,"numerical stress");
-    //     collection.addField((istress.trace() ).sqNorm(),"norm stress");
-    //     collection.addField((isolution.trace() ).sqNorm(),"norm solution");
-    //     // collection.addField(jac(PP).det(), "Jacobian function");
-    //     collection.saveTimeStep();
-    //     collection.save();
-    //     //------------------------------------
-    //     gsInfo<<"Plotting in Paraview...\n";
-    //     // Run paraview
-    //     gsFileManager::open("ParaviewOutput/solution.pvd");
-    // }
-    // return 0;
+
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     auto density      = MAE.buildDensity( elwise, 0.175);
-    // //...  test density function construction in the square
-    // auto corners      = dbasis.basis(0).support();
-    // gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
-    // auto PPg          = ev.getMap(mp);
-    // auto  fdensity    = ev.getVariable(density, PPg);
-    // gsInfo<<"Making in Paraview...\n";
-    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    // collection.options().setSwitch("plotElements", true);
-    // collection.options().setSwitch("base64", false);
-    // collection.options().setInt("plotElements.resolution", 16);
-    // collection.options().setInt("numPoints", 10000);
-    // collection.newTimeStep(&mp);
-    // collection.addField(fdensity,"numerical stress");
-    // // collection.addField(jac(PP).det(), "Jacobian function");
-    // // collection.addField(sigm_ex, "exact stress");
-    // // collection.addField(ff_Ggeometry,"Density function");
-    // collection.saveTimeStep();
-    // collection.save();
-    // //------------------------------------
-    // gsInfo<<"Plotting in Paraview...\n";
-    // // Run paraview
-    // gsFileManager::open("ParaviewOutput/solution.pvd");
-    // return 0;
+
     if (IntensityMAE>0){
     // auto density    = MAE.buildAnalyticDensity( f);
     auto geometrytp   = MAE.buildMultiPatch(density);
@@ -379,7 +332,7 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
             //ev.integralElWise( ff );
-            ev.integralElWise( idiv(istress,PP).sqNorm()+ff.sqNorm() );
+            ev.integralElWise( idiv(istress,PP).sqNorm());
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -446,11 +399,10 @@ int main(int argc, char *argv[])
         gsExprEvaluator<> ev;
         ev.setIntegrationElements(assembler.multiBasis());
         gsExprEvaluator<>::geometryMap PP = ev.getMap(geometry);
-        auto sigm_ex      = ev.getVariable(analyticalStresses, PP);
+        auto sigm_ex      = ev.getVariable(analyticalStresses.piece(0), PP);
         auto ff_Ggeometry = ev.getVariable(f, PP);
         //... error computation
         auto istress      = ev.getVariable(stressField.fields().piece(0));
-
         // eval stress at the top of the circular cut
         gsMatrix<> A(2,1);
         A << 1.,0.; // parametric coordinates for the isogeometric solution
@@ -459,12 +411,12 @@ int main(int argc, char *argv[])
         A << 0., 1.; // spatial coordinates for the analytical solution
         gsMatrix<> analytical;
         analyticalStresses.eval_into(A,analytical);
-        gsInfo << "err: " << math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) )) << " (errc), " << math::sqrt(pow(res.at(0)-analytical.at(0),2)) << " \n";
-
+        //...
         DoFPDE[r]         = assembler.numDofs();
         l2err[r]          = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
         h1err[r]          = math::sqrt(pow(res.at(0)-analytical.at(0),2));
         //
+        gsInfo << "err: " << math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) )) << " (errc), " << math::sqrt(pow(res.at(0)-analytical.at(0),2)) << " \n";
         gsInfo << "XX-stress at the top of the circle: " << res.at(0) << " (computed), " << analytical.at(0) << " (analytical)\n";
         gsInfo << "YY-stress at the top of the circle: " << res.at(1) << " (computed), " << analytical.at(1) << " (analytical)\n";
         gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
@@ -514,26 +466,6 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        // // constructing an IGA field (geometry + solution) for displacement
-        // gsField<> solutionField(geometry,solution);
-        // // constructing an IGA field (geometry + solution) for stresses
-        // gsField<> stressField(geometry,stresses,true);
-        // // analytical stresses
-        // gsField<> analyticalStressField(geometry,analyticalStresses,false);
-        // //... density function
-        // gsField<> densityField(geometry,f,false);
-
-        // // creating a container to plot all fields to one Paraview file
-        // std::map<std::string,const gsField<> *> fields;
-        // fields["Deformation"] = &solutionField;
-        // fields["Stress"] = &stressField;
-        // fields["StressAnalytical"] = &analyticalStressField;
-        // fields["DensityAnalytical"] = &densityField;
-        // gsWriteParaviewMultiPhysics(fields,"infinit_plate",10000,plot);
-        // gsInfo << "Open \"infinit_plate.pvd\" in Paraview for visualization. Stress wiggles on the left side are caused by "
-        //           "a singularity in the parametrization.\n";
-        // gsFileManager::open("infinit_plate.pvd");
-
         gsInfo<<"Storing paraview...\n";
         // Write the computed solution to paraview files
         gsInfo<<"Making in Paraview...\n";

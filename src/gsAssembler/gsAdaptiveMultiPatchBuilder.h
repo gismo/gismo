@@ -27,6 +27,8 @@ public:
     // Method to build a multipatch adaptive mapping
     gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density, bool composition=true) const;
 
+    // Method to build a multipatch adaptive mapping
+    gsMultiPatch<> buildMovingMultiPatch(const gsMultiPatch<> &density, gsMultiPatch<> lsPsi, bool composition=true, int Niter = 0) const;
 private:
     gsMultiBasis<double> m_basis;
     gsMultiPatch<double> m_mapping;
