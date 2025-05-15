@@ -49,13 +49,13 @@ public:
 
 GISMO_CLONE_FUNCTION(gsSingleBasis)
 
-    short_t domainDim() const {return 2;}
+    short_t domainDim() const override {return 2;}
 
-    short_t targetDim() const {return 1;}
+    short_t targetDim() const override {return 1;}
 
     mutable gsSingleBasis<T> * _basis_piece; // why do we need this?
 
-    const gsFunction<T> & piece(const index_t k) const
+    const gsFunction<T> & piece(const index_t k) const override
     {
         //delete _basis_piece;
         _basis_piece = new gsSingleBasis(_basis, m_bfID);
@@ -63,7 +63,7 @@ GISMO_CLONE_FUNCTION(gsSingleBasis)
     }
 
     // Input is parametric coordinates of 1-D \a mp
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         result.resize( targetDim() , u.cols() );
         result = _basis.evalSingle(m_bfID, u);

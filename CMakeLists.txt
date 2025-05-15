@@ -6,7 +6,11 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.12)
+if(CMAKE_VERSION VERSION_LESS "3.19")
+  cmake_minimum_required(VERSION 2.8.12)
+else()
+  cmake_minimum_required(VERSION 3.1...3.10)
+endif()
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -46,13 +50,13 @@ if(NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
-   # Set default build type to RelWithDebInfo
-   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+   # Set default build type to Release
+   set(CMAKE_BUILD_TYPE Release CACHE STRING
    "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
-   if(NOT CMAKE_CONFIGURATION_TYPES)
+endif()
+if(NOT CMAKE_CONFIGURATION_TYPES)
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
      "RelWithDebInfo" "MinSizeRel")
-   endif()
 endif()
 
 set(gismo_VERSION_MAJOR 25) #year

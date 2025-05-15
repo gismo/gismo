@@ -1510,7 +1510,7 @@ public:
         }
         return true;
     }
-    
+
     //template<class U>
     //linearComb(U & ie){ sum up ie[_u] times the _Sv  }
     // ie.eval(k), _u.data().actives(), fixedPart() - see lapl_expr
@@ -2800,7 +2800,7 @@ public:
 public:
     enum {Space= 0, ScalarValued= 1, ColBlocks= 0};
 
-    Scalar eval(const index_t k) const { return abs_expr::eval_impl(_u,k); }
+    AutoReturn_t eval(const index_t k) const { return abs_expr::eval_impl     (_u,k); }
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
@@ -3816,7 +3816,7 @@ public:
                      << _u <<" times \n" << _v );
 
         // Note: a * b * c --> (a*b).eval()*c
-        tmp = _u.eval(k) * _v.eval(k);
+        tmp /*.noalias()*/ = _u.eval(k) * _v.eval(k);
         return tmp; // assumes result is not scalarvalued
     }
 
@@ -3983,6 +3983,64 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
+template <typename E1, typename E2, typename E3>
+class ternary_expr : public _expr<ternary_expr<E1, E2, E3> >
+{
+    typename E1::Nested_t _c;
+    typename E2::Nested_t _t;
+    typename E3::Nested_t _f;
+
+public:
+    enum {  ScalarValued = E2::ScalarValued,
+            ColBlocks = E2::ColBlocks,
+            Space = E2::Space };
+
+    typedef typename E1::Scalar Scalar;
+
+    ternary_expr(const E1 & c,
+                 const E2 & t,
+                 const E3 & f)
+    : _c(c), _t(t), _f(f)
+    {
+        GISMO_ASSERT(E1::ScalarValued, "Condition must be scalar valued");
+        GISMO_ASSERT((int) E2::ScalarValued == (int) E3::ScalarValued,"Both v and w must be scalar valued (or not).");
+        GISMO_ASSERT((int) E2::ColBlocks == (int) E3::ColBlocks,"Both v and w must be colblocks (or not).");
+        GISMO_ASSERT((int) E2::Space == (int) E3::Space,"Both v and w must be space (or not), but E2::Space = "
+                         << E2::Space << " and E3::Space = " << E3::Space);
+        GISMO_ASSERT(_t.rows() == _f.rows(),"Rows of v and w differ. _t.rows() = " << _t.rows()<< ", _f.rows() = "<< _f.rows());
+        GISMO_ASSERT(_t.cols() == _f.cols(),"Columns of v and w differ. _t.cols() = " << _t.cols()<< ", _f.cols() = "<< _f.cols());
+        GISMO_ASSERT(_t.rowVar() == _f.rowVar(), "rowVar of v and w differ.");
+        GISMO_ASSERT(_t.colVar() == _f.colVar(), "colVar of v and w differ.");
+    }
+
+
+    AutoReturn_t eval(const index_t k) const
+    {
+        return (_c.val().eval(k) > 0.0  ? _t.eval(k) : _f.eval(k));
+    }
+
+    index_t rows() const { return _t.rows(); }
+    index_t cols() const { return _t.cols(); }
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _c.parse(evList); _t.parse(evList); _f.parse(evList); }
+
+
+    index_t cardinality_impl() const
+    { return _t.cardinality(); }
+
+    const gsFeSpace<Scalar> & rowVar() const
+    { return _t.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    { return _t.colVar(); }
+
+    void print(std::ostream &os) const { os<<"( "; _c.print(os); os<<" > 0) ? "; _t.print(os); os<<" : "; _f.print(os); }
+};
+
+// Ternary expression, (c > 0) ? t : f
+template <typename E1, typename E2, typename E3> //EIGEN_STRONG_INLINE
+//collapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
+ternary_expr<E1,E2,E3> ternary( _expr<E1> const& c, _expr<E1> const& t, _expr<E3> const& f)
+{ return ternary_expr<E1, E2, E3>(c, t, f); }
 
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >

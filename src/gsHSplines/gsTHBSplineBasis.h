@@ -110,7 +110,7 @@ public:
     /// @brief Gives back the boundary basis at boxSide s
     typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
 #endif
-    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
+    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &) override
     {
         return basisSlice(n1.direction(),n1.parameter());
     }
@@ -120,13 +120,13 @@ public:
     using gsHTensorBasis<d,T>::tensorLevel;
 
     // Look at gsBasis.h for the documentation of this function
-    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const override;
 
     /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
     // Look at gsBasis class for documentation
-    void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const;
+    void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const override;
 
     index_t numActiveMax(const gsMatrix<T> & u, gsMatrix<index_t> & offset) const;
 
@@ -136,24 +136,24 @@ public:
                             std::vector<index_t> & result) const;
 
     // Look at gsBasis class for documentation
-    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const;
+    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // Look at gsBasis class for documentatation
     void deriv2Single_into(index_t i,
                            const gsMatrix<T>& u,
-                           gsMatrix<T>& result) const;
+                           gsMatrix<T>& result) const override;
 
     // Look at gsBasis class for documentation
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
  
     // Look at gsBasis class for documentation
     void derivSingle_into(index_t i,
                              const gsMatrix<T> & u,
-                          gsMatrix<T>& result) const;
+                          gsMatrix<T>& result) const override;
 
     void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result,
-                          bool sameElement = false) const;
+                          bool sameElement = false) const override;
 
     // look at eval_into
     void fastEval_into(const gsMatrix<T>& u,
@@ -360,7 +360,7 @@ public:
     }
 
     // Look at gsBasis class for documentation
-    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     // Because of overriding one of the "eval_into" functions, all
     // functions in the base class with this name are hidden from the
@@ -403,7 +403,7 @@ public:
     // Documentation in gsBasis::evalSingle_into
     void evalSingle_into(index_t i,
                          const gsMatrix<T>& u,
-                         gsMatrix<T>& result) const;
+                         gsMatrix<T>& result) const override;
 
     /// Retruns the represenation level of basis function \a index
     index_t repLevel(const index_t index) const
@@ -509,14 +509,14 @@ private:
 public:
 
   /// @brief Returns the dimension of the parameter space
-  short_t domainDim() const { return d; }
+  short_t domainDim() const override { return d; }
 
     GISMO_CLONE_FUNCTION(gsTHBSplineBasis)
 
   /// @brief Prints the object as a string.
-  std::ostream &print(std::ostream &os) const
+  std::ostream &print(std::ostream &os) const override
   {
-      os << "Truncated ";
+      os << (Trunc?"Truncated ": "Hierachical ");
       gsHTensorBasis<d,T>::printBasic(os);
       //this->printCharMatrix(os);
       return os;
@@ -617,7 +617,7 @@ private:
      * @brief Initialize the characteristic and coefficient
      * matrices and the internal bspline representations.
     **/
-    void update_structure() 
+    void update_structure() override
     {
         gsHTensorBasis<d,T>::update_structure(); 
         if (Trunc) representBasis();
@@ -640,15 +640,15 @@ private:
 
     gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<index_t> >& old,
                            const std::vector<gsSortedVector<index_t> >& n,
-                           const gsSparseMatrix<T,RowMajor> & transfer) const;
+                           const gsSparseMatrix<T,RowMajor> & transfer) const override;
 
     gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
                                    const std::vector<gsSortedVector<index_t> >& n, 
-                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
+                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const override;
 
     gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
                                    const std::vector<gsSortedVector<index_t> >& n,
-                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
+                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const override;
     
 
     // ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -751,7 +751,7 @@ private:
                     const gsMatrix<T>&) const { GISMO_NO_IMPLEMENTATION }
 
     
-private:
+protected:
 
     // m_is_truncated(j)
     // if -1   : j-th basis function is not truncated,

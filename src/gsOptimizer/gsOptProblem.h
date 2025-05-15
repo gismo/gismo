@@ -116,7 +116,7 @@ public:
 
 public:
 
-    int numDesignVars () const { return m_curDesign.size(); }
+    int numDesignVars () const { return m_numDesignVars; }
 
     int numConstraints() const { return m_numConstraints; }
 

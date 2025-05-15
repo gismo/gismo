@@ -16,7 +16,6 @@
 
 #include <gsCore/gsMultiPatch.h>
 #include <gsUtils/gsSortedVector.h>
-#include <gsNurbs/gsTensorNurbsBasis.h>
 #include <gsModeling/gsCurveFitting.h>
 
 namespace gismo {

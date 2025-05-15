@@ -148,7 +148,13 @@ public:
 public:
 
     /// Empty constructor
-    gsOptim() {};
+    gsOptim()
+    :
+    Base(),
+    m_success(false)
+    {
+        this->defaultOptions();
+    }
 
 
     /**

@@ -41,7 +41,7 @@ private:
     gsOptionList m_options;
 
     mutable gsSparseMatrix<T> m_matrix;
-    typedef gsFiberMatrix<T,false> FiberMatrix;
+    typedef gsFiberMatrix<T,ColMajor> FiberMatrix;
     FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
@@ -138,7 +138,7 @@ public:
     /// Call this function to fill the sparsematrix with all the assemblies so far
     const gsSparseMatrix<T> & makeMatrix() const
     {
-        m_fmatrix.toSparseMatrix(m_matrix);
+        m_fmatrix.toSparseMatrix_into(m_matrix);
         m_modified = false;
         return m_matrix;
     }
@@ -155,6 +155,11 @@ public:
         matrix();
         m_modified = true;
         return give(m_matrix);
+    }
+
+    EIGEN_STRONG_INLINE FiberMatrix giveFiberMatrix()
+    {
+        return give(m_fmatrix);
     }
 
     /// @brief Returns the right-hand side vector(s)
@@ -889,13 +894,13 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
-        if (!m_vcol.front()->valid()) m_vcol.front()->init();
+        if (!m_vcol[i]->valid()) m_vcol[i]->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
                                    m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
 
-        if ( m_vcol[i] != m_vrow[i] )
+        if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
-            if (!m_vrow.front()->valid()) m_vrow.front()->init();
+            if (!m_vrow[i]->valid()) m_vrow[i]->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
                                        m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
         }

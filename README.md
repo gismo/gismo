@@ -12,8 +12,9 @@
 =====                   https://github.com/gismo                 =====
 ======================================================================
 ```
-
-![GitHub License](https://img.shields.io/github/license/gismo/gismo?color=008A00)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1249361.svg)](https://doi.org/10.5281/zenodo.1249361)
+[![GitHub License](https://img.shields.io/github/license/gismo/gismo?color=008A00)](https://github.com/gismo/gismo?tab=MPL-2.0-1-ov-file#readme)
+[![Static Badge](https://img.shields.io/badge/Documentation-008A00)](https://gismo.github.io/)
 
 ![Static Badge](https://img.shields.io/badge/C%2B%2B-008A00)
 ![GitHub Release](https://img.shields.io/github/v/release/gismo/gismo?label=Latest%20release&color=008A00)
@@ -35,17 +36,17 @@
 ---
 
 # Continuous Integration status
-| **System** | **Status** | **More information** |
-|------------|------------|----------------------|
-| [CDash](https://cdash-ci.irisa.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=008A00&up_message=up&url=https%3A%2F%2Fcdash-ci.irisa.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.irisa.fr/index.php?project=Gismo) | Report results from all builds |
-| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![CircleCI](https://img.shields.io/circleci/build/github/gismo/gismo)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[circleci]) | MacOS XCode 14.3 (x86_64/arm64) |
-| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/gismo-ci%2Fgismo?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
-| [GitHub Actions](https://github.com/gismo/gismo/actions) | [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/gismo/gismo/gismo.yml?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[github]) | Latest Linux/MacOS/Windows |
-| [GitLab-Inria]() | [![Build Status](https://gitlab.inria.fr/gismo/gismo/badges/stable/pipeline.svg)](https://gitlab.inria.fr/gismo/gismo/-/pipelines) | CI at Inria |
-| [OpenSUSE](https://build.opensuse.org/package/show/science) | [![build result](https://build.opensuse.org/projects/science/packages/gismo/badge.svg?type=default)](https://build.opensuse.org/package/show/science/gismo)| Latest OpenSUSE build as part of the *science* repository|
-| GCC Farm | [Status](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
-| [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
-| [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
+| **System**                                                         | **Status**                                                                                                                                                                                                                                          | **More information**                                      |
+|--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| [CDash](https://cdash-ci.irisa.fr/index.php?project=Gismo)         | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=008A00&up_message=up&url=https%3A%2F%2Fcdash-ci.irisa.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.irisa.fr/index.php?project=Gismo) | Report results from all builds                            |
+| [Circle CI](https://circleci.com/gh/gismo/gismo)                   | [![CircleCI](https://img.shields.io/circleci/build/github/gismo/gismo)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[circleci])                                                                  | MacOS XCode 14.3 (x86_64/arm64)                           |
+| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)            | [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/gismo-ci%2Fgismo?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci])                               | Linux non-default configurations                          |
+| [GitHub Actions](https://github.com/gismo/gismo/actions)           | [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/gismo/gismo/gismo.yml?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[github])             | Latest Linux/MacOS/Windows                                |
+| [GitLab-Inria]()                                                   | [![Build Status](https://gitlab.inria.fr/gismo/gismo/badges/stable/pipeline.svg)](https://gitlab.inria.fr/gismo/gismo/-/pipelines)                                                                                                                  | CI at Inria                                               |
+| [OpenSUSE](https://build.opensuse.org/project/show/science)        | [![build result](https://build.opensuse.org/projects/science/packages/gismo/badge.svg?type=default)](https://build.opensuse.org/package/show/science/gismo)                                                                                         | Latest OpenSUSE build as part of the *science* repository |
+| GCC Farm                                                           | [Status](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm])                                                                                                                                  | Builders from the GCC Farm                                |
+| [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [![build result](https://build.opensuse.org/projects/home:filiatra/packages/gismo/badge.svg?type=default)](https://build.opensuse.org/package/show/home:filiatra/gismo)                                        | Upstream [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo) for Linux distributions      |
+| [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) | [binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)                                                                                                                                                                         | Upstream package builds for Ubuntu distributions          |
 
 
 This README file contains brief information. More details are found ina

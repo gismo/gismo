@@ -248,7 +248,6 @@ void gsFunction<T>::invertPointGrid(gsGridIterator<T,0> & git,
                                     gsMatrix<T> & result, const T accuracy,
                                     const bool useInitialPoint) const
 {
-    GISMO_UNUSED(useInitialPoint);
     result.resize(this->domainDim(), git.numPoints() );
     gsVector<T> arg;
     auto cw = git.numPointsCwise();
@@ -258,8 +257,10 @@ void gsFunction<T>::invertPointGrid(gsGridIterator<T,0> & git,
     gsInfo << "Iterations: ";
     for(;git; ++git)
     {
-        if (-1==iter)
+        if (-1==iter && !useInitialPoint)
             arg = this->parameterCenter();
+        else if (-1==iter && useInitialPoint)
+            arg = result.col(0);
         else
             arg = (i%cw[0]==0 ? result.col(i-cw[0]) : result.col(i-1) );
 
@@ -298,7 +299,7 @@ int gsFunction<T>::newtonRaphson_impl(
     gsMatrix<T,_Dim,(_Dim==-1?-1:1)> delta , residual;
     gsMatrix<T,_Dim,_Dim> jac;
 
-    if (withSupport)
+    if (withSupport && support().cols()==2)
     {
         supp = support();
         GISMO_ASSERT( (arg.array()>=supp.col(0).array()).all() &&
@@ -365,7 +366,7 @@ int gsFunction<T>::newtonRaphson_impl(
         // update arg
         arg += damping_factor * delta;
 
-        if ( withSupport )
+        if ( withSupport  && support().cols()==2)
         {
             // First bound the solution to the support
             arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );

@@ -70,7 +70,7 @@ public:
         std::string format_flag = format ? format->value() : "ascii";
         std::transform(format_flag.cbegin(), format_flag.cend(),
                        format_flag.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+                       [](unsigned char c) { return ::tolower(c); });
 
         if (format_flag == "ascii") {
             // Case: mode: none/default
