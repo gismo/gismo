@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
-    ###         and the multipatch adaptove mapping
+    ###        and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     auto density      = MAE.buildDensity( elwise, 0.175);
@@ -311,12 +311,12 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev;
     ev.setIntegrationElements(assembler.multiBasis());
     gsExprEvaluator<>::geometryMap PP = ev.getMap(geometry);
-    auto sigm_ex    = ev.getVariable(analyticalStresses, PP);
+    auto sigm_ex    = ev.getVariable(analyticalStresses.piece(0), PP);
     auto ff         = ev.getVariable(f, PP);
     // eval stress at the top of the circular cut
 
     //... error computation
-    auto istress    = ev.getVariable(stressField.fields());
+    auto istress    = ev.getVariable(stressField.fields().piece(0));
 
     // omp_set_num_threads(1); // Use these threads for later parallel regions
     DoFPDE[0]       = assembler.numDofs();
