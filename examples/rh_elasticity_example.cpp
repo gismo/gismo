@@ -195,11 +195,11 @@ int main(int argc, char *argv[])
     ev.setIntegrationElements(assembler.multiBasis());
     gsExprEvaluator<>::geometryMap PP = ev.getMap(mpLeft);
     //... error computation
-    auto istress = ev.getVariable(stressField.fields());
+    auto istress = ev.getVariable(stressField.fields(), PP);
 
     // ev.integralElWise( idiv(istress, PP) * meas(PP) )
     gsInfo << "Stress: min "<< istress.ppart() << "\n";
-    ev.integralElWise( div(istress).sqNorm());
+    ev.integralElWise( idiv(istress, PP).sqNorm());
     // ev.integralBdrBc(bcInfo.get("nuemann"),(istress* nv(PP)).sqNorm());
     auto elwise = ev.elementwise();
 
