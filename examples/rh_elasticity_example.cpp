@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
     ev.setIntegrationElements(assembler.multiBasis());
     gsExprEvaluator<>::geometryMap PP = ev.getMap(mpLeft);
     //... error computation
-    auto istress = ev.getVariable(stressField.fields(), PP);
+    auto istress = ev.getVariable(stressField.fields());
 
     // ev.integralElWise( idiv(istress, PP) * meas(PP) )
     gsInfo << "Stress: min "<< istress.ppart() << "\n";
@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
             //ev.integralElWise( ff );
-            ev.integralElWise( div(istress).sqNorm());
+            ev.integralElWise( idiv(istress,PP).sqNorm());
             //ev.integralBdrBc(bcInfo.get("neumann"),(istress* nv(PP)).sqNorm());
 
             const std::vector<real_t> eltErrs  = ev.elementwise();

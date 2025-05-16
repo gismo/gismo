@@ -125,10 +125,16 @@ int main(int argc, char *argv[])
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mpLeft);
     // For simplicity, set Dirichlet boundary conditions
+    // for ( gsMultiPatch<>::const_biterator
+    //         bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
+    // {
+    //    bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
+    // }
+    // For simplicity, set Neumann boundary conditions
     for ( gsMultiPatch<>::const_biterator
             bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
     {
-       bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
+       bc.addCondition( *bit, condition_type::neumann, &NmHomogen,0, false);
     }
     geometryMap GLeft = A.getMap(mpLeft);
     gsStopwatch timer;
@@ -326,33 +332,30 @@ int main(int argc, char *argv[])
         gsMultiPatch<> xi;
         gsMatrix<> xiVector = rsolVector*0.;
         solution xi_sol     = A.getSolution(ru, xiVector);
+        auto xi_ex          = A.getCoeff(xi, PP);
         #pragma omp parallel for
         for ( index_t j=0; j<coefsNum; ++j)
         {
-            xiVector(j-1)       = 0.;
-            xiVector(j)         = 1.;
+            if(j>0)
+                xiVector(j-1)  = 0.;
+            xiVector(j)        = 1.;
             xi_sol.extract(xi);
-            auto xi_ex = A.getCoeff(xi, PP);
+
             //... Assemble one element in rhs ...
             // Initialize the system
             A.initSystem();
-            A.assemble(
-            ru * ru.tr() * meas(PP) //matrix
-            ,
-            ru * xi_ex * meas(PP) //rhs vector
-            );
+            A.assemble(ru * xi_ex * meas(PP));
             // gsInfo<<" - "<<A.rhs()(j-1) <<" - " << A.rhs()(j) << ".";// Assemblying done
             // for ( index_t jj=std::max(0,j-4); jj<std::min(coefsNum,j+4); ++jj)
             // {
             // rhsVector(j) =  rhsVector(j)+ rsolVector(jj)*A.rhs()(jj) ;        
             // }
-            rhsVector(j) =  rhsVector(j)+ (A.rhs()*rsolVector).sum();
+            rhsVector(j) = (rsolVector.transpose()*A.rhs()).value();
             // gsInfo<< " -  "<<A.rhs()(j+1) << "\n";// Assemblying done
-            xi_Vector(j) = ev.integral( xi_ex * ru_sol * meas(PP) );
+            // xi_Vector(j) = ev.integral( xi_ex * ru_sol * meas(PP) );
             // gsInfo<< " -  "<< rhsVector(j) - ev.integral( xi_ex * ru_sol * meas(PP) ) << "\n";// Assemblying done
-
         }
-        //xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
+        xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
         gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
@@ -361,6 +364,7 @@ int main(int argc, char *argv[])
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&mpLeft);
         collection.addField(xi_pr,"numerical solution");
+        collection.addField(u_sol,"unnumerical solution");
         collection.saveTimeStep();
         collection.save();
         gsFileManager::open("ParaviewOutput/solution.pvd");        
