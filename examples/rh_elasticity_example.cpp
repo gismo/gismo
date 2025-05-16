@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 
     // ev.integralElWise( idiv(istress, PP) * meas(PP) )
     gsInfo << "Stress: min "<< istress.ppart() << "\n";
-    ev.integralElWise( idiv(istress,PP).sqNorm());
+    ev.integralElWise( div(istress).sqNorm());
     // ev.integralBdrBc(bcInfo.get("nuemann"),(istress* nv(PP)).sqNorm());
     auto elwise = ev.elementwise();
 
@@ -332,7 +332,8 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Compute the error indicators
             //ev.integralElWise( ff );
-            ev.integralElWise( idiv(istress,PP).sqNorm());
+            ev.integralElWise( div(istress).sqNorm());
+            //ev.integralBdrBc(bcInfo.get("neumann"),(istress* nv(PP)).sqNorm());
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]

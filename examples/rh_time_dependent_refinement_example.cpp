@@ -254,11 +254,11 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
 
-    // //----------------------------------------------------------------------------------------------------
+
     // auto kv1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(0);
     // auto kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
     // gsTensorBSplineBasis<2> tbasis(kv1,kv2);
-    // gsGeometry<>::uPtr composition = tbasis.makeGeometry(Psi.patch(0).coefs());
+    // gsGeometry<>::uPtr composition = 0tbasis.makeGeometry(Psi.patch(0).coefs());
     // gsInfo<<"The control points of the map are:\n"<<composition->coefs()<<"\n";
     // gsComposedBasis<> cbasis(*composition,tbasis);
 
@@ -280,18 +280,18 @@ int main(int argc, char *argv[])
     // gsInfo<< ".==." << comp <<std::flush;// Assemblying done
     //----------------------------------------------------------------------------------------------------
 
-    gsInfo<<"Plotting in Paraview...\n";
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setSwitch("base64", export_b64);
-    collection.options().setInt("plotElements.resolution", 16);
-    collection.options().setInt("numPoints", 10000);
-    if (plot)
-    {    
-        collection.newTimeStep(&Psi);
-        collection.addField(ru_sol, "Temperature");
-        collection.saveTimeStep();
-    }
+    // gsInfo<<"Plotting in Paraview...\n";
+    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    // collection.options().setSwitch("plotElements", true);
+    // collection.options().setSwitch("base64", export_b64);
+    // collection.options().setInt("plotElements.resolution", 16);
+    // collection.options().setInt("numPoints", 10000);
+    // if (plot)
+    // {    
+    //     collection.newTimeStep(&Psi);
+    //     collection.addField(ru_sol, "Temperature");
+    //     collection.saveTimeStep();
+    // }
     gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
     //adapt_parameter << 0,0,0,0,0;
@@ -316,7 +316,56 @@ int main(int argc, char *argv[])
         ###   Step in time : Computes the density function
         ###         and the multipatch adaptove mapping
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        ev.integralElWise( igrad(ru_sol, GLeft).sqNorm() );
+        // //----------------------------------------------------------------------------------------------------
+        gsMatrix<> xi_Vector= rsolVector*0.;
+        solution xi_pr       = A.getSolution(ru, xi_Vector);
+        index_t coefsNum     = rsolVector.size();
+        gsMatrix<> rhsVector = rsolVector*0.;
+        // ojectif is to assemble the rhs vector component by component
+        // xi will contain one Bspline to be computed as composition with Psi 
+        gsMultiPatch<> xi;
+        gsMatrix<> xiVector = rsolVector*0.;
+        solution xi_sol     = A.getSolution(ru, xiVector);
+        #pragma omp parallel for
+        for ( index_t j=0; j<coefsNum; ++j)
+        {
+            xiVector(j-1)       = 0.;
+            xiVector(j)         = 1.;
+            xi_sol.extract(xi);
+            auto xi_ex = A.getCoeff(xi, PP);
+            //... Assemble one element in rhs ...
+            // Initialize the system
+            A.initSystem();
+            A.assemble(
+            ru * ru.tr() * meas(PP) //matrix
+            ,
+            ru * xi_ex * meas(PP) //rhs vector
+            );
+            // gsInfo<<" - "<<A.rhs()(j-1) <<" - " << A.rhs()(j) << ".";// Assemblying done
+            // for ( index_t jj=std::max(0,j-4); jj<std::min(coefsNum,j+4); ++jj)
+            // {
+            // rhsVector(j) =  rhsVector(j)+ rsolVector(jj)*A.rhs()(jj) ;        
+            // }
+            rhsVector(j) =  rhsVector(j)+ (A.rhs()*rsolVector).sum();
+            // gsInfo<< " -  "<<A.rhs()(j+1) << "\n";// Assemblying done
+            xi_Vector(j) = ev.integral( xi_ex * ru_sol * meas(PP) );
+            // gsInfo<< " -  "<< rhsVector(j) - ev.integral( xi_ex * ru_sol * meas(PP) ) << "\n";// Assemblying done
+
+        }
+        //xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
+        gsInfo<<"Plotting in Paraview...\n";
+        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        collection.options().setSwitch("plotElements", true);
+        collection.options().setSwitch("base64", export_b64);
+        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("numPoints", 10000);
+        collection.newTimeStep(&mpLeft);
+        collection.addField(xi_pr,"numerical solution");
+        collection.saveTimeStep();
+        collection.save();
+        gsFileManager::open("ParaviewOutput/solution.pvd");        
+
+        ev.integralElWise( igrad(xi_pr, GLeft).sqNorm() );
         auto elwise   = ev.elementwise();
         auto density = MAE.buildDensity(elwise, 0.1, circleN);
         auto Psi     = MAE.buildMultiPatch(density, false);
@@ -402,12 +451,12 @@ int main(int argc, char *argv[])
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done
-        if (plot)
-        {    
-            collection.newTimeStep(&Psi);
-            collection.addField(ru_sol, "Temperature");
-            collection.saveTimeStep();
-        }
+        // if (plot)
+        // {    
+        //     collection.newTimeStep(&Psi);
+        //     collection.addField(ru_sol, "Temperature");
+        //     collection.saveTimeStep();
+        // }
         //ru.setup(bc, dirichlet::l2Projection, -1);
         // ev.integralElWise( (igrad(ru_sol, PP)+ SFunc ).sqNorm() );
         // auto elwise = ev.elementwise();
@@ -488,8 +537,8 @@ int main(int argc, char *argv[])
         // collection.addField(jac(PP).det(), "Jacobian function");
         // collection.addField(u_ex, "exact solution");
         // collection.saveTimeStep();
-        collection.save();
-        gsFileManager::open("ParaviewOutput/solution.pvd");
+        // collection.save();
+        // gsFileManager::open("ParaviewOutput/solution.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "

@@ -451,12 +451,12 @@ int main(int argc, char *argv[])
         // gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Strange behavior they are the same
 
         //auto comp  = PP(mpLeft);
-        // auto comp  = A.getCoeff(mpLeft, PP);
-        // A.initSystem(ITdim);
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
-        // v_sol.extract(Psitp);
+        auto comp  = A.getCoeff(mpLeft, PP);
+        A.initSystem(ITdim);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        vsolVector = Poisson.L2ProjectVec(A.rhs());
+        v_sol.extract(Psitp);
         Psitp.addAutoBoundaries();
         Psitp.computeTopology();
         gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";

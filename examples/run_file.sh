@@ -3,7 +3,7 @@
 #Make It Executable : chmod +x ../examples/run_file.sh
  
 # Delete existing error analysis file if it exists
-rm -r ../build/error_analysis.txt
+#rm -r ../build/error_analysis.txt
 
 # Build r_refinement_square before running
 #make rh_refinement_example -j 15
@@ -38,15 +38,15 @@ TAGS=(
     #"-r 2 -u 4  -f  12. -l 3 -a 0.7 -c 2 -p 0 -e 0"
     #"-r 2 -u 4  -f   0. -l 3 -a 0.7 -c 1 -p 0 -e 0"
     # .. Elasticity 2D ...
-    #"-r 2 -u 2 -f  0.  -l 6 -a 0.0 -c 0 -p 0 -e 0"
-    "-r 2 -u 2 -f  0.  -l 6 -a 0.5 -c 5 -p 3 -e 0"
-    #"-r 2 -u 2 -f  15. -l 6 -a 0.0 -c 0 -p 0 -e 0"
-    "-r 2 -u 2 -f  15. -l 6 -a 0.5 -c 5 -p 3 -e 0"
+    "-r 2 -u 2 -f  0.  -l 6 -a 0.0 -c 0 -p 0 -e 0"
+    #"-r 2 -u 2 -f  0.  -l 6 -a 0.7 -c 3 -p 2 -e 0"
+    "-r 2 -u 2 -f  15. -l 6 -a 0.0 -c 0 -p 0 -e 0"
+    #"-r 2 -u 2 -f  15. -l 6 -a 0.7 -c 3 -p 2 -e 0"
 )
 
 # Run the executable with each set of parameters
 for TAG in "${TAGS[@]}"; do
     echo "Running $EXECUTABLE with parameters: $TAG"
-    $EXECUTABLE --errorsave $TAG
+    $EXECUTABLE --errorsave --plot $TAG
     echo "-------------------------------------------------"
 done
