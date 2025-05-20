@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, 0.1,circleN);
+    auto density = MAE.buildDensity(elwise, 0.5,circleN);
     auto Psi     = MAE.buildMultiPatch(density, false);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -260,44 +260,37 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
 
-
+    // gsFileManager::open("ParaviewOutput/solution.pvd");  
     // auto kv1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(0);
     // auto kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
-    // gsTensorBSplineBasis<2> tbasis(kv1,kv2);
-    // gsGeometry<>::uPtr composition = 0tbasis.makeGeometry(Psi.patch(0).coefs());
-    // gsInfo<<"The control points of the map are:\n"<<composition->coefs()<<"\n";
-    // gsComposedBasis<> cbasis(*composition,tbasis);
-
-    // gsExprAssembler<> B(1,1);
-    // // Elements used for numerical integration
-    // B.setIntegrationElements(cbasis);     /// Doesn't work : to be integrated
-    // // Set the discretization space // different boundary condition !
-    // space cu          = A.getSpace(cbasis);
-    // // Initialize the system
-    // B.initSystem();
-    // gsInfo<< B.numDofs() <<std::flush;    
-    // //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
-    // timer.restart();
-    // B.assemble(
-    // ru * ru.tr() * meas(PP) //matrix
-    // ,
-    // ru * u_ex * meas(PP) //rhs vector
-    // );
-    // gsInfo<< ".==." << comp <<std::flush;// Assemblying done
     //----------------------------------------------------------------------------------------------------
 
-    // gsInfo<<"Plotting in Paraview...\n";
-    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    // collection.options().setSwitch("plotElements", true);
-    // collection.options().setSwitch("base64", export_b64);
-    // collection.options().setInt("plotElements.resolution", 16);
-    // collection.options().setInt("numPoints", 10000);
-    // if (plot)
-    // {    
-    //     collection.newTimeStep(&Psi);
-    //     collection.addField(ru_sol, "Temperature");
-    //     collection.saveTimeStep();
-    // }
+    gsInfo<<"Plotting in Paraview...\n";
+    gsParaviewCollection collection("ParaviewOutput/time_solution", &ev);
+    collection.options().setSwitch("plotElements", true);
+    collection.options().setSwitch("base64", export_b64);
+    collection.options().setInt("plotElements.resolution", 16);
+    collection.options().setInt("numPoints", 10000);
+    if (plot)
+    {    
+        collection.newTimeStep(&Psi);
+        collection.addField(ru_sol, "solution");
+        collection.saveTimeStep();
+    }
+
+    //..............................................................................................
+    // collection for projecting a solution into B-spline space for computing a new adaptive mapping
+    gsMatrix<> xi_Vector= rsolVector*0.;
+    solution xi_pr       = A.getSolution(ru, xi_Vector);
+    index_t coefsNum     = rsolVector.size();
+    gsMatrix<> rhsVector = rsolVector;
+    gsMultiPatch<> xi;
+    gsMatrix<> xiVector = rsolVector*0.;
+    solution xi_sol     = A.getSolution(ru, xiVector);
+    auto xi_ex          = A.getCoeff(xi, PP);
+    //.................................
+
+
     gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
     //adapt_parameter << 0,0,0,0,0;
@@ -322,17 +315,10 @@ int main(int argc, char *argv[])
         ###   Step in time : Computes the density function
         ###         and the multipatch adaptove mapping
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+        A.options().setSwitch("SameElement",false);
         // //----------------------------------------------------------------------------------------------------
-        gsMatrix<> xi_Vector= rsolVector*0.;
-        solution xi_pr       = A.getSolution(ru, xi_Vector);
-        index_t coefsNum     = rsolVector.size();
-        gsMatrix<> rhsVector = rsolVector*0.;
-        // ojectif is to assemble the rhs vector component by component
+        // The objectif is to assemble the rhs vector component by component
         // xi will contain one Bspline to be computed as composition with Psi 
-        gsMultiPatch<> xi;
-        gsMatrix<> xiVector = rsolVector*0.;
-        solution xi_sol     = A.getSolution(ru, xiVector);
-        auto xi_ex          = A.getCoeff(xi, PP);
         #pragma omp parallel for
         for ( index_t j=0; j<coefsNum; ++j)
         {
@@ -340,39 +326,32 @@ int main(int argc, char *argv[])
                 xiVector(j-1)  = 0.;
             xiVector(j)        = 1.;
             xi_sol.extract(xi);
-
-            //... Assemble one element in rhs ...
             // Initialize the system
-            A.initSystem();
-            A.assemble(ru * xi_ex * meas(PP));
-            // gsInfo<<" - "<<A.rhs()(j-1) <<" - " << A.rhs()(j) << ".";// Assemblying done
-            // for ( index_t jj=std::max(0,j-4); jj<std::min(coefsNum,j+4); ++jj)
-            // {
-            // rhsVector(j) =  rhsVector(j)+ rsolVector(jj)*A.rhs()(jj) ;        
-            // }
-            rhsVector(j) = (rsolVector.transpose()*A.rhs()).value();
-            // gsInfo<< " -  "<<A.rhs()(j+1) << "\n";// Assemblying done
-            // xi_Vector(j) = ev.integral( xi_ex * ru_sol * meas(PP) );
-            // gsInfo<< " -  "<< rhsVector(j) - ev.integral( xi_ex * ru_sol * meas(PP) ) << "\n";// Assemblying done
+            A.clearRhs();
+            A.assemble(ru * ru_sol * xi_ex.val() * meas(PP) );
+            //... Assemble one element in rhs
+            rhsVector(j) = A.rhs().sum();
         }
-        xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
-        gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(&mpLeft);
-        collection.addField(xi_pr,"numerical solution");
-        collection.addField(u_sol,"unnumerical solution");
-        collection.saveTimeStep();
-        collection.save();
-        gsFileManager::open("ParaviewOutput/solution.pvd");        
+        A.options().setSwitch("SameElement",true);
+        // xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
+        // gsInfo<<"Plotting in Paraview...\n";
+        // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        // collection.options().setSwitch("plotElements", true);
+        // collection.options().setSwitch("base64", export_b64);
+        // collection.options().setInt("plotElements.resolution", 16);
+        // collection.options().setInt("numPoints", 10000);
+        // collection.newTimeStep(&mpLeft);
+        // collection.addField(xi_pr,"numerical solution");
+        // collection.saveTimeStep();
+        // collection.save();
+        // gsFileManager::open("ParaviewOutput/solution.pvd");        
 
+        //------------------------------------------------------------------
+        // Update the density function and the multipatch adaptive mapping        
         ev.integralElWise( igrad(xi_pr, GLeft).sqNorm() );
         auto elwise   = ev.elementwise();
-        auto density = MAE.buildDensity(elwise, 0.1, circleN);
-        auto Psi     = MAE.buildMultiPatch(density, false);
+        auto density  = MAE.buildDensity(elwise, 0.1, circleN);
+        auto Psi      = MAE.buildMultiPatch(density, false);
         Psi.addAutoBoundaries();
         Psi.computeTopology();    
         // //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
@@ -415,7 +394,7 @@ int main(int argc, char *argv[])
             A.options().setInt("DirichletStrategy", 0);// swich off elimination
             auto residual =  ru * (u_sol -ru_sol).tr() * meas(PP)
                 +igrad(ru,PP) * igrad(u_sol, PP).tr() *dt * meas(PP) 
-                + ((u_sol*u_sol*u_sol-u_sol).val()) * ru /(epsilon*epsilon) * dt * meas(PP)
+                + ru * ((u_sol*u_sol*u_sol-u_sol).val()) /(epsilon*epsilon) * dt * meas(PP)
                 + ru * (PPlst * igrad(u_sol, PP).tr()) * meas(PP) //matrix
                 - ru * (PP    * igrad(u_sol, PP).tr()) * meas(PP) //matrix
                 ;
@@ -429,8 +408,8 @@ int main(int argc, char *argv[])
                 A.assemble(
                     ru * ru.tr() * meas(PP)
                     + igrad(ru,PP) * igrad(ru, PP).tr() *dt * meas(PP) 
-                    + ru * ru.tr() * 2.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
-                    + ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
+                    + ru * ru.tr() * 3.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
+                    - ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
                     + ru * (PPlst * igrad(ru, PP).tr()) * meas(PP) //matrix
                     - ru * (PP    * igrad(ru, PP).tr()) * meas(PP) //matrix
                     ,
@@ -444,9 +423,9 @@ int main(int argc, char *argv[])
 
                 timer.restart();                
                 solver.compute( A.matrix() );
-                auto du = solver.solve(A.rhs());
+                auto du     = solver.solve(A.rhs());
                 rsolVector -= du;
-                slv_time += timer.stop();
+                slv_time   += timer.stop();
                 gsInfo<<'.'<<du.norm()<< "." <<std::flush; // Non-linear iteration done
                 if ( du.norm() < 1e-5 ) break;
             }
@@ -455,15 +434,12 @@ int main(int argc, char *argv[])
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done
-        // if (plot)
-        // {    
-        //     collection.newTimeStep(&Psi);
-        //     collection.addField(ru_sol, "Temperature");
-        //     collection.saveTimeStep();
-        // }
-        //ru.setup(bc, dirichlet::l2Projection, -1);
-        // ev.integralElWise( (igrad(ru_sol, PP)+ SFunc ).sqNorm() );
-        // auto elwise = ev.elementwise();
+        if (plot)
+        {    
+            collection.newTimeStep(&Psi);
+            collection.addField(ru_sol, "solution");
+            collection.saveTimeStep();
+        }
 
         // Compute the global error indicators.
         DoFPDE[r] = A.numDofs();
@@ -528,25 +504,12 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        // gsInfo<<"Plotting in Paraview...\n";
-        // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        // collection.options().setSwitch("plotElements", true);
-        // collection.options().setSwitch("base64", export_b64);
-        // collection.options().setInt("plotElements.resolution", 16);
-        // collection.options().setInt("numPoints", 10000);
-        // collection.newTimeStep(&Psi);
-        // collection.addField(ru_sol,"numerical solution");
-        // collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
-        // collection.addField((  ilapl(ru_sol, PP)+ SFunc ).sqNorm(),"indecator");
-        // collection.addField(jac(PP).det(), "Jacobian function");
-        // collection.addField(u_ex, "exact solution");
-        // collection.saveTimeStep();
-        // collection.save();
-        // gsFileManager::open("ParaviewOutput/solution.pvd");
+        collection.save();
+        gsFileManager::open("ParaviewOutput/time_solution.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
+                  "file containing the time_solution.\n";
     //! [Export visualization in ParaView]
     }
 

@@ -191,17 +191,17 @@ int main(int argc, char *argv[])
     // constructing an IGA field (geometry + solution) for stresses
     gsField<> stressField(assembler.patches(),stresses,true);
 
-    gsExprEvaluator<> ev;
-    ev.setIntegrationElements(assembler.multiBasis());
-    gsExprEvaluator<>::geometryMap PP = ev.getMap(mpLeft);
+    gsExprEvaluator<> evi;
+    evi.setIntegrationElements(assembler.multiBasis());
+    gsExprEvaluator<>::geometryMap PPi = evi.getMap(mpLeft);
     //... error computation
-    auto istress = ev.getVariable(stressField.fields());
+    auto istress = evi.getVariable(stressField.fields());
 
     // ev.integralElWise( idiv(istress, PP) * meas(PP) )
     gsInfo << "Stress: min "<< istress.ppart() << "\n";
-    ev.integralElWise( idiv(istress, PP).sqNorm());
+    evi.integralElWise( idiv(istress, PPi).sqNorm());
     // ev.integralBdrBc(bcInfo.get("nuemann"),(istress* nv(PP)).sqNorm());
-    auto elwise = ev.elementwise();
+    auto elwise = evi.elementwise();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
@@ -253,106 +253,10 @@ int main(int argc, char *argv[])
     gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    gsInfo<<"Assembling...\n";
-    gsStopwatch clock;
-    clock.restart();
-    assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with "
-           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
-
-    gsInfo << "Solving...\n";
-    clock.restart();
-
-#ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLLT solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
-#else
-    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
-#endif
-
-    //=============================================//
-                      // Output //
-    //=============================================//
-
-    // constructing displacement as an IGA function
-    gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
-    // constructing stress tensor
-    gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_components::all_2D_vector);
-
-    // constructing an IGA field (geometry + solution) for displacement
-    gsField<> solutionField(assembler.patches(),solution);
-    // constructing an IGA field (geometry + solution) for stresses
-    gsField<> stressField(assembler.patches(),stresses,true);
-    // analytical stresses
-    gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
-    // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Deformation"]      = &solutionField;
-    fields["Stress"]           = &stressField;
-    fields["StressAnalytical"] = &analyticalStressField;
-
-    // eval stress at the top of the circular cut
-    gsMatrix<> A(2,1);
-    A << 1.,0.; // parametric coordinates for the isogeometric solution
-    gsMatrix<> res;
-    stresses.piece(0).eval_into(A,res);
-    A << 0., 1.; // spatial coordinates for the analytical solution
-    gsMatrix<> analytical;
-    analyticalStresses.eval_into(A,analytical);
-    gsInfo << "XX-stress at the top of the circle: " << res.at(0) << " (computed), " << analytical.at(0) << " (analytical)\n";
-    gsInfo << "YY-stress at the top of the circle: " << res.at(1) << " (computed), " << analytical.at(1) << " (analytical)\n";
-    gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
-
-    gsExprEvaluator<> ev;
-    ev.setIntegrationElements(assembler.multiBasis());
-    gsExprEvaluator<>::geometryMap PP = ev.getMap(geometry);
-    auto sigm_ex    = ev.getVariable(analyticalStresses.piece(0), PP);
-    auto ff         = ev.getVariable(f, PP);
-    // eval stress at the top of the circular cut
-
-    //... error computation
-    auto istress    = ev.getVariable(stressField.fields().piece(0));
-
-    // omp_set_num_threads(1); // Use these threads for later parallel regions
-    DoFPDE[0]       = assembler.numDofs();
-    l2err[0]        = math::sqrt( ev.integral( ( sigm_ex - istress).sqNorm() * meas(PP) ));
-    h1err[0]        = math::sqrt(pow(res.at(0)-analytical.at(0),2));
-    gsInfo << " min Jacobian function and maximum " << ev.min(jac(PP).det())<< " " << ev.max(jac(PP).det())<<"\n";
-    for (int r=1; r<=numLRefine; ++r)
+    
+    for (int r=0; r<=numLRefine; ++r)
     {
-        // if(r < numLRefine){
-        //! [beginRefLoop]
-            gsInfo << "====== Loop " << r << " of "
-                    <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
-            // --------------- error estimation/computation ---------------
-            // Compute the error indicators
-            //ev.integralElWise( ff );
-            ev.integralElWise( idiv(istress,PP).sqNorm());
-            //ev.integralBdrBc(bcInfo.get("neumann"),(istress* nv(PP)).sqNorm());
 
-            const std::vector<real_t> eltErrs  = ev.elementwise();
-            //! [errorComputation]
-
-            //! [adaptRefinementPart]
-            // Mark elements for refinement, based on the computed local errors and
-            // the refinement-criterion and -parameter.
-            std::vector<bool> elMarked( eltErrs.size() );
-            gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-            gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
-
-            // Refine the marked elements with a 1-ring of cells around marked elements
-            gsRefineMarkedElements( basis, elMarked, NumArMarEl);
-            gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
-            gsInfo << "assemble refined\n";
-            
-            NumArMarEl = NumArMarEl + FactRefPar;
-            assembler.refresh();
-            // }
         //=============================================//
                 // Assembling & solving //
         //=============================================//
@@ -421,6 +325,53 @@ int main(int argc, char *argv[])
         gsInfo << "XX-stress at the top of the circle: " << res.at(0) << " (computed), " << analytical.at(0) << " (analytical)\n";
         gsInfo << "YY-stress at the top of the circle: " << res.at(1) << " (computed), " << analytical.at(1) << " (analytical)\n";
         gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
+        if(r < numLRefine){
+        //! [beginRefLoop]
+            gsInfo << "====== Loop " << r << " of "
+                    <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
+            // --------------- error estimation/computation ---------------
+            // Compute the error indicators
+            //ev.integralElWise( ff );
+            ev.integralElWise( idiv(istress,PP).sqNorm());
+            //ev.integralBdrBc(bcInfo.get("neumann"),(istress* nv(PP)).sqNorm());
+
+            std::vector<real_t> eltErrs  = ev.elementwise();
+            //! [errorComputation]
+
+            //! [adaptRefinementPart]
+            // Mark elements for refinement, based on the computed local errors and
+            // the refinement-criterion and -parameter.
+            std::vector<bool> elMarked( eltErrs.size() );
+            gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+            gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
+
+            // Refine the marked elements with a 1-ring of cells around marked elements
+            gsRefineMarkedElements( basis, elMarked, NumArMarEl);
+            gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
+            gsRefineMarkedElements( geometry, elMarked, NumArMarEl);
+            gsInfo << "assemble refined\n";
+            if (r%2==0)            
+                NumArMarEl = NumArMarEl + FactRefPar;
+            assembler.refresh();
+            }
+    //! [Export visualization in ParaView]
+    if (plot and r ==numLRefine)
+    {
+        // Write the computed solution to paraview files
+        gsInfo<<"Making in Paraview...\n";
+        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+        collection.options().setSwitch("plotElements", true);
+        collection.options().setSwitch("base64", false);
+        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("numPoints", 10000);
+        collection.newTimeStep(&geometry);
+        collection.addField(istress,"numerical stress");
+        // collection.addField(jac(PP).det(), "Jacobian function");
+        collection.addField(sigm_ex, "exact stress");
+        // collection.addField(ff_Ggeometry,"Density function");
+        collection.saveTimeStep();
+        collection.save();
+    }
     }
     //! [Solver loop]    
 
@@ -467,21 +418,6 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        gsInfo<<"Storing paraview...\n";
-        // Write the computed solution to paraview files
-        gsInfo<<"Making in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", false);
-        collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(&geometry);
-        collection.addField(istress,"numerical stress");
-        // collection.addField(jac(PP).det(), "Jacobian function");
-        collection.addField(sigm_ex, "exact stress");
-        // collection.addField(ff_Ggeometry,"Density function");
-        collection.saveTimeStep();
-        collection.save();
         //------------------------------------
         gsInfo<<"Plotting in Paraview...\n";
         // Run paraview

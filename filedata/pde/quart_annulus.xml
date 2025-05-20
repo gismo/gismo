@@ -3,8 +3,10 @@
 <xml>
   <!-- Manufactured density function : Right-hand side function of MAE : exp(-100 * ( x**2 + y**2-0.75)**2) -->
 
-  <Function type="FunctionExpr" id="2003" dim="2"> exp(-100*abs((x-0.5)**2+(y-0.5)**2-0.4**2))</Function>
+  <Function type="FunctionExpr" id="2003" dim="2">(1./(1.+(9.*sqrt((x-0.7-0.25*0.)**2+(y-0.5)**2)*cos(atan2(y-0.5,x-0.7-0.25*0.) -20.*((x-0.7-0.25*0.)**2+(y-0.5)**2)))**2) )</Function>
+
     <!--
+  <Function type="FunctionExpr" id="2003" dim="2"> exp(-100*abs((x-0.5)**2+(y-0.5)**2-0.4**2))</Function>
   <Function type="FunctionExpr" id="2003" dim="2"> 1./cosh( 20.*( -x+y -0.2 ) )**2 </Function>
 
   <Function type="FunctionExpr" id="2003" dim="2"> ( 1/(1.+exp((y -x  - 0.25)/0.01)) - 1/(1.+exp((y - x  - 0.15)/0.01)) )</Function>

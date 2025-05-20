@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
-    ###         and the multipatch adaptove mapping
+    ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     // auto density = MAE.buildDensity(elwise, 0.001, circleN);
@@ -270,7 +270,6 @@ int main(int argc, char *argv[])
         timer.restart();
         solver.compute( A.matrix() );
         rsolVector = solver.solve(A.rhs());
-
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done

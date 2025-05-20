@@ -6,10 +6,10 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<doub
                             const gsMultiPatch<> mapping,
                             const index_t   numElevate,
                             index_t maxIter,
-                            double IntensityMAE )
+                            double IntensityMAE,
+                            bool split_basis )
 {
     gsInfo<<"\n <>r-refinement";
-    this->m_basis        = basis;
     this->m_mapping      = mapping; 
     this->m_maxIter      = maxIter;
     this->m_IntensityMAE = IntensityMAE;
@@ -26,7 +26,25 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<doub
     //Get all interfaces and boundaries:
     mp.degreeElevate(numElevate);
     mp.computeTopology();
-    //mp.addAutoBoundaries();
+    //.....................................................................................
+    // For instance, we assume the basis functions on the square are equal in all directions. 
+    // This is not mandatory, but will be addressed in a future version. TODO
+    //......................................................................................
+    if (split_basis){
+    gsMultiBasis<double> dbasis(mp, true);//true: poly-splines (not NURBS)
+    int refnumb = dbasis.basis(0).size();
+    int elwnumb = basis.basis(0).size();
+    while ( refnumb< elwnumb)
+    {
+        dbasis.uniformRefine();
+        refnumb = dbasis.basis(0).size();
+    }
+    this->m_basis        = dbasis;
+    }
+    else{
+    this->m_basis        = basis;
+    }
+
 
     // ... Neumann boundary conditions
     gsBoundaryConditions<> bc_mae;
@@ -41,7 +59,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<doub
     gsExprAssembler<> A(1,1);
 
     //::::::::::::::::::::      Poisson fast diagonalization solver         :::::::::::::::::::::::::
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(basis.basis(0), bc_mae, A.options(), 1e-6);  
+    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(this->m_basis.basis(0), bc_mae, A.options(), 1e-6);  
     this->Poisson   = Poisson;
     this->mp        = mp;
     gsInfo<<"<> \n";

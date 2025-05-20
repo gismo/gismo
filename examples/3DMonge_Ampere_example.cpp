@@ -29,9 +29,11 @@ int main(int argc, char *argv[])
     index_t maxIter     = 30;
     double IntensityMAE = 12.;
     bool export_b64     = false;
+    bool split_basis    = true;
 
     // Specify the file path
-    // std::string fn("pde/example3D.xml");
+    //std::string fn("pde/example3D.xml");
+    //std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/mhd.xml");
@@ -62,11 +64,15 @@ int main(int argc, char *argv[])
     // Create a gsMultipatch and add the loaded geometry
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
     //gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::NurbsSphere(1.,0.,0.,0.));
+    // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
     // ...
-    gsMultiPatch<> mpLeft;// = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,0.,0.,0.);
+    gsMultiPatch<> mpLeft;
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
+    // auto kv1 =  static_cast<gsTensorNurbs<2> &>( mpLeft.patch(0)).knots(0);
+    // auto kv2 =  static_cast<gsTensorNurbs<2> &>( mpLeft.patch(0)).knots(1);
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
 
@@ -128,11 +134,12 @@ int main(int argc, char *argv[])
       gsInfo << corners.at(dbasis.dim()+i)<< ",";            
     }
     gsInfo <<  corners.at(2*dbasis.dim()-1)<< ")\n";
+
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###                                  Step 1-2 : Computes the density function
     ###                                     and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE, split_basis);
     auto density = MAE.buildAnalyticDensity(f);
     // //...  test density function construction in the square
     // gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
@@ -182,10 +189,10 @@ int main(int argc, char *argv[])
         auto ff_TG      = A.getCoeff(f, PPF);
         // --------------- adaptive refinement ---------------
         // Specify cell-marking strategy...
-        //MarkingStrategy adaptRefCrit = PUCA;
-        MarkingStrategy adaptRefCrit = GARU;
+        MarkingStrategy adaptRefCrit = PUCA;
+        //MarkingStrategy adaptRefCrit = GARU;
         //MarkingStrategy adaptRefCrit = errorFraction;
-        real_t adaptRefParam = 0.75;
+        real_t adaptRefParam = 0.7;
         // Elements used for numerical integration
         A.setIntegrationElements(dbasis);
         gsExprEvaluator<> ev(A);
