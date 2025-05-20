@@ -178,8 +178,8 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, 0.5,circleN);
-    auto Psi     = MAE.buildMultiPatch(density, false);
+    auto density                    = MAE.buildDensity(elwise, 0.5,circleN);
+    gsMultiPatch<> Psi              = MAE.buildMultiPatch(density, false);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -333,7 +333,7 @@ int main(int argc, char *argv[])
             rhsVector(j) = A.rhs().sum();
         }
         A.options().setSwitch("SameElement",true);
-        // xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
+        xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
         // gsInfo<<"Plotting in Paraview...\n";
         // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         // collection.options().setSwitch("plotElements", true);
@@ -349,11 +349,12 @@ int main(int argc, char *argv[])
         //------------------------------------------------------------------
         // Update the density function and the multipatch adaptive mapping        
         ev.integralElWise( igrad(xi_pr, GLeft).sqNorm() );
-        auto elwise   = ev.elementwise();
-        auto density  = MAE.buildDensity(elwise, 0.1, circleN);
-        auto Psi      = MAE.buildMultiPatch(density, false);
+        auto elwise         = ev.elementwise();
+        auto density        = MAE.buildDensity(elwise, 0.1, circleN);
+        gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 10);
         Psi.addAutoBoundaries();
         Psi.computeTopology();    
+
         // //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
         // ru.setup(bc, dirichlet::l2Projection, 0);
 
@@ -395,8 +396,8 @@ int main(int argc, char *argv[])
             auto residual =  ru * (u_sol -ru_sol).tr() * meas(PP)
                 +igrad(ru,PP) * igrad(u_sol, PP).tr() *dt * meas(PP) 
                 + ru * ((u_sol*u_sol*u_sol-u_sol).val()) /(epsilon*epsilon) * dt * meas(PP)
-                + ru * (PPlst * igrad(u_sol, PP).tr()) * meas(PP) //matrix
-                - ru * (PP    * igrad(u_sol, PP).tr()) * meas(PP) //matrix
+                + ru * (igrad(u_sol, PP) * PPlst ).tr() * meas(PP) //matrix
+                - ru * (igrad(u_sol, PP) * PP    ).tr() * meas(PP) //matrix
                 ;
 
             for (index_t l = 0; l<50; ++l)
@@ -410,8 +411,8 @@ int main(int argc, char *argv[])
                     + igrad(ru,PP) * igrad(ru, PP).tr() *dt * meas(PP) 
                     + ru * ru.tr() * 3.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
                     - ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
-                    + ru * (PPlst * igrad(ru, PP).tr()) * meas(PP) //matrix
-                    - ru * (PP    * igrad(ru, PP).tr()) * meas(PP) //matrix
+                    + ru * (igrad(ru, PP) * PPlst ).tr() * meas(PP) //matrix
+                    - ru * (igrad(ru, PP) * PP    ).tr() * meas(PP) //matrix
                     ,
                     residual );
                 // Compute the Neumann terms defined on physical space

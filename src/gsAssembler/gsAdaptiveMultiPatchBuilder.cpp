@@ -542,9 +542,11 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
-    solution u_sol   = A.getSolution(u, solVector);
+    solution u_sol  = A.getSolution(u, solVector);
 
     // ---- manipulation of density function ----
+    //.. geometry map
+    geometryMap PP   = A.getMap(lsPsi);
     auto rho         = A.getCoeff(density);
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
@@ -560,9 +562,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     }
     gsInfo << "Density function: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
     // ......... End initialization for density.........
-    //u.setup(bc_mae, dirichlet::l2Projection, 0);
+    // u.setup(bc_mae, dirichlet::l2Projection, 0);
     // Compute the system matrix and right-hand side
-
+    auto crho = A.getCoeff(density, PP);
     // Initialize the system :  identity mapping as initial guess
     A.initSystem();
     // Initialize the system : start Computing the conductivity coeffeicient ...
@@ -571,27 +573,29 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
     //... nromalisation of density function
     auto CoeffDensity{ev.integral((int_uh_0*abs(rho.val()) + int_uh_1))};
-    auto ExprMAE     = pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
-    auto CoeffConductivity{Neumann_Int/ev.integral(ExprMAE)};
 
+    // ...  0  dirichlet for boundaries
+    // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
+    // .. update Coeffeicient of conductivity
+    auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(crho.val()) + int_uh_1), 1./IGdim);
+    // if (dbasis.minCwiseDegree() > 2)
+    // auto  ExprMAE     = pow( abs(pow(lapl(u_sol).val(),IGdim) - gammaMAE*hess(u_sol).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+    auto IntegDensity = ev.integral(ExprMAE);
+    auto CoeffConductivity = Neumann_Int/IntegDensity;
+    // MAE system
     A.assemble(
-    u *u.tr() //matrix
+    u * u.tr()//matrix
     ,
-    u*  CoeffConductivity * (-1.)*ExprMAE  //rhs vector
+    u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
     );
-
+    //gsInfo << "End Assemnles \n";
     // Compute the Neumann terms defined on physical space
     A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
-    //A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
-    //A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
 
-    gsInfo<< "." <<std::flush;// Assemblying done
-    solVector = A.rhs();
+    gsInfo<< " ." <<std::flush;// Assemblying done
     solVector = this->Poisson.solve(A.rhs());
     gsInfo<< "." <<std::flush; // Linear solving done
 
-    //! [Solver loop]
-    gsInfo<< A.numDofs() <<std::flush;
     // Picard loop
     gsVector<>  h1Res(Niter+1), l2err(Niter+1), Iter_mae(Niter+1);
     auto  sv0 = solVector; //
@@ -609,20 +613,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
         // Obtain control points for the gradient of Psi
         A.assemble( u * u.tr() , u * grad(u_s) );
         vsolVector = this->Poisson.L2ProjectVec(A.rhs());
-
-        gsMultiPatch<> Psi;
+        gsMultiPatch<>    Psi;
         v_sol.extract(Psi);
-        if (ip==0){
-        index_t numPaches = lsPsi.nPatches();
-        for( index_t i=0; i<numPaches; ++i)
-        {
-        index_t coefsNum  = lsPsi.patch(i).coefsSize();
-        for ( index_t j=0; j<coefsNum; ++j)
-        {
-            Psi.patch(i).coef(j) = lsPsi.patch(i).coef(j);
-        }
-        }
-        }
         // ... correct boundary
         ProjectionNormalCPoints(Psi);
         Psi.addAutoBoundaries();
@@ -630,7 +622,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
         //.. geometry map
         geometryMap PP    = A.getMap(Psi);
         //... density in new optimized mesh
-        auto rho = A.getCoeff(density, PP);
+        auto rho          = A.getCoeff(density, PP);
         // ... update residual
         solution u_sol    = A.getSolution(u, solVector);
 
@@ -698,7 +690,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     A.assemble( v * v.tr() , v * grad(u_s) );
     // SOLVE ...
     vsolVector     = Poisson.L2ProjectVec(A.rhs());
-    gsMultiPatch<> Psi;
+    gsMultiPatch<>    Psi;
     v_sol.extract(Psi);
     //... correct the boundary
     ProjectionNormalCPoints(Psi);
