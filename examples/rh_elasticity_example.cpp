@@ -305,7 +305,6 @@ int main(int argc, char *argv[])
         ev.setIntegrationElements(assembler.multiBasis());
         gsExprEvaluator<>::geometryMap PP = ev.getMap(geometry);
         auto sigm_ex      = ev.getVariable(analyticalStresses.piece(0), PP);
-        auto ff_Ggeometry = ev.getVariable(f, PP);
         //... error computation
         auto istress      = ev.getVariable(stressField.fields().piece(0));
         // eval stress at the top of the circular cut
@@ -350,8 +349,8 @@ int main(int argc, char *argv[])
             gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
             gsRefineMarkedElements( geometry, elMarked, NumArMarEl);
             gsInfo << "assemble refined\n";
-            if (r%2==0)            
-                NumArMarEl = NumArMarEl + FactRefPar;
+            
+            NumArMarEl = NumArMarEl + FactRefPar;
             assembler.refresh();
             }
     //! [Export visualization in ParaView]
