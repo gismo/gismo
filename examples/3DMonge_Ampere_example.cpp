@@ -29,7 +29,6 @@ int main(int argc, char *argv[])
     index_t maxIter     = 30;
     double IntensityMAE = 12.;
     bool export_b64     = false;
-    bool split_basis    = false;
 
     // Specify the file path
     //std::string fn("pde/example3D.xml");
@@ -139,30 +138,8 @@ int main(int argc, char *argv[])
     ###                                  Step 1-2 : Computes the density function
     ###                                     and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE, split_basis);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     auto density = MAE.buildAnalyticDensity(f);
-    //...  test density function construction in the square
-    gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
-    auto PPg          = ev.getMap(mp);
-    auto  fdensity    = ev.getVariable(density, PPg);
-    gsInfo<<"Making in Paraview...\n";
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setSwitch("base64", false);
-    collection.options().setInt("plotElements.resolution", 16);
-    collection.options().setInt("numPoints", 10000);
-    collection.newTimeStep(&mp);
-    collection.addField(fdensity,"numerical stress");
-    // collection.addField(jac(PP).det(), "Jacobian function");
-    // collection.addField(sigm_ex, "exact stress");
-    // collection.addField(ff_Ggeometry,"Density function");
-    collection.saveTimeStep();
-    collection.save();
-    //------------------------------------
-    gsInfo<<"Plotting in Paraview...\n";
-    // Run paraview
-    gsFileManager::open("ParaviewOutput/solution.pvd");
-    return 0;
     // //------------------------------------
     auto Psitp   = MAE.buildMultiPatch(density, true);//if true : composition of geometry maps
     gsInfo << "MultiPatch geometry computed\n";

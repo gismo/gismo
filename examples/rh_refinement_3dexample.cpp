@@ -87,9 +87,6 @@ int main(int argc, char *argv[])
     gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
 
     gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
-    auto corners         = dbasis.basis(0).support();
-    gsInfo << "corners : (" << corners.at(0) << "," << corners.at(1) << "," << corners.at(2) <<"),("
-                            << corners.at(3) << ", " << corners.at(4) <<", " << corners.at(5) <<")\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
@@ -164,7 +161,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    // auto density = MAE.buildDensity(elwise, 0.001, circleN);
+    // auto density = MAE.buildDensity(elwise, 0.1, circleN);
     gsFunctionExpr<> ff;
     fd.getId(2003, ff);
     auto density = MAE.buildAnalyticDensity(ff);

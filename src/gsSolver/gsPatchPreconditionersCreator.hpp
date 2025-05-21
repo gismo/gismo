@@ -379,7 +379,7 @@ gsPatchPreconditionersCreator<T>::Poisson_FastDiag::Poisson_FastDiag(const gsBas
     typedef typename gsMatrix<T>::GenSelfAdjEigenSolver EVSolver;
     EVSolver es;
 
-    for (size_t i = 0; i < Ms.size(); ++i) {
+    for (index_t i = 0; i < rdim; ++i) {
         /*
         We first consider the generalized eigendecompositions problems
         𝐾1 𝑈1 = 𝑀1𝑈1d1, 𝐾2𝑈2 = 𝑀2𝑈2d2, 𝐾3𝑈3 = 𝑀3𝑈3d3,
@@ -387,7 +387,7 @@ gsPatchPreconditionersCreator<T>::Poisson_FastDiag::Poisson_FastDiag(const gsBas
         𝑈^𝑇𝑀_1𝑈_1 = 𝐼1, 𝑈^𝑇𝑀_2𝑈_2 = 𝐼_2, 𝑈^𝑇𝑀_3𝑈_3 = 𝐼_3
         */
         //gsEigen::GeneralizedSelfAdjointEigenSolver<gsSparseMatrix<T>> es(Ks[i], Ms[i]);
-        es.compute(Ks[i], Ms[i], gsEigen::ComputeEigenvectors);
+        es.compute(Ks[rdim-1-i], Ms[rdim-i-1], gsEigen::ComputeEigenvectors);
 
         ds.push_back(es.eigenvalues());
         Us.push_back(es.eigenvectors());
@@ -455,7 +455,6 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectScalar(
     if(_rdim == 2){
         index_t n1 = ds[0].rows();
         index_t n2 = ds[1].rows();
-        gsInfo << ".n1."<< n1 << ".n2." << n2 << "\n";
 
         s_tilde = b.reshape(n1,n2);
         s_tilde = Us[0].transpose()*s_tilde*Us[1];
@@ -582,7 +581,8 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectVec(con
     }
     return r_tilde;
 }
-//----------------------@ M. BAHARI
+
+//----------------------@ M. BAHARI : The end
 
 namespace {
 

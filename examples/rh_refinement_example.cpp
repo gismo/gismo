@@ -35,8 +35,9 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/circle.xml");
+    // std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/circle.xml");
+    // std::string fn("surfaces/egg.xml"); 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -125,10 +126,10 @@ int main(int argc, char *argv[])
     gsStopwatch timer;
 
     // Set the discretization space // different boundary condition !
-    space ru = A.getSpace(dbasis);
+    space ru   = A.getSpace(dbasis);
 
     // Set the source term for Poisson equation
-    auto SFunc      = A.getCoeff(rhs, GLeft);
+    auto SFunc = A.getCoeff(rhs, GLeft);
 
     // Solution vector and solution variable
     gsMatrix<> rsolVector;
