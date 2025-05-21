@@ -116,11 +116,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 
     //u.setup(bc_mae, dirichlet::l2Projection, 0);
     A.initSystem();
-    A.assemble(
-    u *u.tr() //matrix
-    ,
-    u* ff.val()  //rhs vector
-    );
+    A.assemble(u* ff.val()); //rhs vector
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
     //...
     solution density_sol = A.getSolution(u, densityVector);
@@ -233,11 +229,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     //...
     //u.setup(bc_mae, dirichlet::l2Projection, 0);
     A.initSystem();
-    A.assemble(
-    u *u.tr() //matrix
-    ,
-    u * error_sol  //rhs vector
-    );
+    A.assemble(u * error_sol); //rhs vector
+
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
     //...
     gsMultiPatch<> density;
@@ -333,11 +326,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     auto ExprMAE     = pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
     auto CoeffConductivity{Neumann_Int/ev.integral(ExprMAE)};
 
-    A.assemble(
-    u *u.tr() //matrix
-    ,
-    u*  CoeffConductivity * (-1.)*ExprMAE  //rhs vector
-    );
+    A.assemble(u*  CoeffConductivity * (-1.)*ExprMAE); //rhs vector
 
     // Compute the Neumann terms defined on physical space
     A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
@@ -366,7 +355,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
 
         A.initSystem(IGdim);
         // Obtain control points for the gradient of Psi
-        A.assemble( u * u.tr() , u * grad(u_s) );
+        A.assemble(u * grad(u_s) );//rhs vector
         vsolVector = this->Poisson.L2ProjectVec(A.rhs());
 
         gsMultiPatch<> Psi;
@@ -395,11 +384,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffConductivity = Neumann_Int/IntegDensity;
         // MAE system
-        A.assemble(
-        u * u.tr()//matrix
-        ,
-        u * CoeffConductivity * (-1.) * ExprMAE  //rhs vector
-        );
+        A.assemble(u * CoeffConductivity * (-1.) * ExprMAE);//rhs vector
         //gsInfo << "End Assemnles \n";
 
         // Compute the Neumann terms defined on physical space
@@ -443,7 +428,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     solution v_sol = A.getSolution(v, vsolVector);
     A.initSystem(IGdim);
     // Obtain control points for the gradient of Psi
-    A.assemble( v * v.tr() , v * grad(u_s) );
+    A.assemble(v * grad(u_s) );
     // SOLVE ...
     vsolVector     = Poisson.L2ProjectVec(A.rhs());
     gsMultiPatch<> Psi;
@@ -465,7 +450,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         auto comp = A.getCoeff(this->m_mapping, PP);
         A.initSystem(ITdim);
         //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
+        A.assemble(v * comp.tr() );// blocked by this one
         // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
         vsolVector = this->Poisson.L2ProjectVec(A.rhs(), other);
         v_sol.extract(Psi);

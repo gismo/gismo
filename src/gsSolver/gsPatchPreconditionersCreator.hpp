@@ -455,6 +455,7 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectScalar(
     if(_rdim == 2){
         index_t n1 = ds[0].rows();
         index_t n2 = ds[1].rows();
+        gsInfo << ".n1."<< n1 << ".n2." << n2 << "\n";
 
         s_tilde = b.reshape(n1,n2);
         s_tilde = Us[0].transpose()*s_tilde*Us[1];
