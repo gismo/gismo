@@ -35,8 +35,8 @@ public:
 
     // Method to compute the basis functions and their derivatives
     void basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
-                     std::vector<double>& d0,
-                     std::vector<double>& d1) const;
+                     gsVector<double>& d0,
+                     gsVector<double>& d1) const;
 
     // Method to compute the right-hand side vector for the adaptive multi-patch assembly
     void assemble_rhsvector_ad(const index_t& p1, const index_t& p2,

@@ -266,6 +266,9 @@ int main(int argc, char *argv[])
     const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
     const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(0);
     const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(1);
+    gsInfo << "\n degree1 = " << degree1 << " degree2 = " << degree2 << "\n";
+    gsInfo << "kv1 = " << kv1 << "\n kv2 = " << kv1 << "\n";
+    
     //----------------------------------------------------------------------------------------------------
     // index_t nb1 = kv1.size()- degree1-1;
     // index_t nb2 = kv2.size()- degree2-1;
