@@ -21,6 +21,9 @@ private:
 
 public:
 
+    bool check() const
+    { return (box.first.array() >= box.second.array()).any(); }
+    
     static void split(const gsKdTree<d,Z,gsHTreeData> & node)
     {
         node.left->box->second[node.axis] = 
@@ -133,6 +136,7 @@ public:
     }
 
     int level() const {return m_level;}
+    int & level() {return m_level;}
 
     const point & lowerCorner() const { return box.first; }
           point & lowerCorner()       { return box.first; }

@@ -114,20 +114,6 @@ struct gsKdTree
 
 public: // Member functions related to the tree starting at \a this node
 
-    /// Iterates on the leafs of the tree and applies \ visitor.  The
-    /// visitor controls the return type and the update of the result
-    /// type at every leaf node
-    template<typename visitor>
-    typename visitor::return_type
-    boxSearch(point_t const & k1, point_t const & k2, // TODO: rename as RANGE SEARCH
-              int level, node_t  *_node) const;
-
-        /// Iterates on the leafs of the tree and applies \ visitor.  The
-    /// visitor controls the operation to be performed
-    template<typename visitor>
-    typename visitor::return_type
-    leafSearch() const;
-
     /// Iterates on all the nodes of the tree and applies \ visitor.
     /// The visitor controls the operation to be performed
     template<typename visitor>
@@ -195,12 +181,14 @@ private: // Structs related to tree operations
 public: // Member functions related to \a this node
     
     // Data Accessors
-    const leafData & nodeData() const 
+    leafData & nodeData()
     { 
         GISMO_ASSERT(data, "Asked for lowCorner at node without box data.");
         return *data; 
     }
 
+    const leafData & nodeData() const { return const_cast<gsKdTree*>(this)->nodeData(); }
+    
     bool isLeaf() const { return axis == -1; }
 
     bool isRoot() const { return parent == NULL; }
@@ -212,8 +200,8 @@ public: // Member functions related to \a this node
 
     bool isRightChild() const { return parent!=NULL && this==parent->right; }
 
-    //bool isDegenerate() const
-    //{ return (box->first.array() >= box->second.array()).any(); }
+    static bool isDegenerate(point_t const & k1, point_t const & k2)
+    { return (k1.array() >= k2.array()).any(); }
 
     gsKdTree * sibling() const
     { 
@@ -372,6 +360,117 @@ public: // Member functions related to \a this node
             os << "Split node, axis= "<< n.axis <<", pos="<< n.pos <<"\n";
         return os;
     }
+
+    template<typename visitor>
+    typename visitor::return_type
+    rangeSearch(point_t const & k1, point_t const & k2, //change k1,k2 to a gsTreeData ??
+                int level, size_t maxPath = 16) const
+    {
+        GISMO_ASSERT( !isDegenerate(k1,k2),
+                      "rangeSearch: Wrong order of points defining the box (or empty box): "
+                      << k1.transpose() <<", "<< k2.transpose() <<".\n" );
+
+        typename visitor::return_type res = visitor::init();
+
+        std::vector<const node_t*> stack;
+        stack.reserve( 2 * maxPath );
+        stack.push_back(this);
+
+        const node_t * curNode;
+        while ( ! stack.empty() )
+        {
+            curNode = stack.back(); //top();
+            stack.pop_back();       //pop();
+
+            if ( curNode->isLeaf() )
+            {
+                // Visit the leaf
+                GISMO_ASSERT( curNode->nodeData().check(), "Encountered an invalid leaf");
+                visitor::visitLeaf(curNode, level, res );
+            }
+            else // this is a split-node
+            {
+                if ( k2[curNode->axis] <= curNode->pos)
+                    // qBox overlaps only left child of this split-node
+                    stack.push_back(curNode->left); //push(curNode->left);
+                else if  ( k1[curNode->axis] >= curNode->pos)
+                    // qBox overlaps only right child of this split-node
+                    stack.push_back(curNode->right); //push(curNode->right);
+                else
+                {
+                    // qBox overlaps both children of this split-node
+                    stack.push_back(curNode->left ); //push(curNode->left );
+                    stack.push_back(curNode->right); //push(curNode->right);
+                }
+            }
+        }
+
+        return res;
+    }
+
+    node_t * pointSearch(const point_t & p, int level, size_t maxPath = 16) const
+    {
+        std::vector<const node_t*> stack;
+        stack.reserve( 2 * maxPath );
+        stack.push_back(this);
+
+        const node_t * curNode;
+        while ( ! stack.empty() )
+        {
+            curNode = stack.back(); //top();
+            stack.pop_back();       //pop();
+
+            if ( curNode->isLeaf() )
+            {
+                // Point found at current node
+                return curNode;
+            }
+            else // this is a split-node
+            {
+                if ( p[curNode->axis] < curNode->pos)
+                    stack.push_back(curNode->left);
+                else
+                    stack.push_back(curNode->right);
+            }
+        }
+        GISMO_ERROR("pointSearch: Error ("<< p.transpose()<<").\n" );
+    }
+
+
+/// Iterates on the leafs of the tree and applies \ visitor.  The
+/// visitor controls the operation to be performed
+template<typename visitor>
+typename visitor::return_type
+leafSearch()
+{
+    typename visitor::return_type i = visitor::init();
+
+    node_t * curNode = this;
+
+    while(true)
+    {
+        if ( !curNode->isLeaf() )
+        {   //property: tree has no singles (only childs)
+            curNode = curNode->left;
+        }
+        else
+        {
+            // Visit the leaf
+            visitor::visitLeaf(curNode, i);
+
+            while (curNode->parent != NULL &&
+                   curNode != curNode->parent->left)
+                curNode = curNode->parent;
+
+            if ( curNode->isRoot() )
+                break;
+            else
+                curNode = curNode->parent->right;
+        }
+    }
+    return i;
+}
+
 
 };
 

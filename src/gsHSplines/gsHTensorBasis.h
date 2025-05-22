@@ -26,7 +26,7 @@
 
 #include <gsUtils/gsSortedVector.h>
 
-#include <gsHSplines/gsHTreeData.h>
+#include <gsHSplines/gsHTree.h>
 
 namespace gismo
 {
@@ -86,9 +86,9 @@ public:
 
     typedef T Scalar_t;
 
-    typedef gsKdTree<d,index_t,gsHTreeData<d,index_t> > gsHTree;
+    typedef gsHTree<d,index_t> tree_t;
 
-    typedef gsHTree hdomain_type;
+    typedef tree_t hdomain_type;
 
     typedef typename hdomain_type::point_t point;
 
@@ -166,7 +166,7 @@ public:
             for ( index_t i = 0; i!=d; ++i )
                 upp[i] = m_bases[0]->knots(i).numElements();
 
-            m_tree.data().upperCorner() = upp; // REPLACES: m_tree.init(upp);
+            m_tree.nodeData().upperCorner() = upp; // REPLACES: m_tree.init(upp);
         }
         update_structure();
     }
@@ -228,7 +228,9 @@ public:
                 k1[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i)).uIndex();
                 k2[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
             }
-            int level = m_tree.query3(k1,k2,m_bases.size()-1);
+
+            int level = m_tree.query3(k1, k2, m_bases.size()-1);
+
             for(short_t j = 0; j < d; j++)
             {
                 k1[j] = this->m_bases[level+1]->knots(j).uFind(boxes(j,2*i)).uIndex();
@@ -612,10 +614,10 @@ public:
     }
 
     /// Returns a reference to m_tree
-    const gsHTree & tree() const { return m_tree; }
+    const tree_t & tree() const { return m_tree; }
 
     /// Returns a reference to m_tree
-    gsHTree &       tree()       { return m_tree; }
+    tree_t &       tree()       { return m_tree; }
 
     /// Cleans the basis, removing any inactive levels
     void makeCompressed();

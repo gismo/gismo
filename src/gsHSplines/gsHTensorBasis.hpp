@@ -397,9 +397,9 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
         //        gsDebug <<" lower : "<< it.lowerCorner() <<"\n";
         //        gsDebug <<" upper : "<< it.upperCorner() <<"\n";
 
-        lvl = it.level() + 1;
-        const point & l = it.lowerCorner();
-        const point & u = it.upperCorner();
+        lvl = it.data().level() + 1;
+        const point & l = it.data().lowerCorner();
+        const point & u = it.data().upperCorner();
 
         boxes.push_back(lvl);
         for( short_t i = 0; i < d; i++)
@@ -422,11 +422,11 @@ void gsHTensorBasis<d,T>::uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKn
     index_t lvl;
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
     {
-        if (it.level() == 0)
+        if (it.data().level() == 0)
             continue;
-        lvl = it.level() - 1;
-        const point & l = it.lowerCorner();
-        const point & u = it.upperCorner();
+        lvl = it.data().level() - 1;
+        const point & l = it.data().lowerCorner();
+        const point & u = it.data().upperCorner();
 
         boxes.push_back(lvl);
         for( short_t i = 0; i < d; i++)
@@ -882,7 +882,7 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
     }
 
     // reconstruct the whole tree to fix alignment
-    gsHTree newtree( m_tree.upperCornerIndex() );
+    tree_t newtree( m_tree.upperCornerIndex() );
     auto leafIt = m_tree.beginLeafIterator();
     for (; leafIt.good(); leafIt.next())
     {
