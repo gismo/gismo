@@ -148,7 +148,7 @@ public:
 
     int getLevel() const
     {
-        return m_leaf.level();
+        return m_leaf.data().level();
     }
 
 private:
@@ -199,21 +199,21 @@ private:
             const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(&m_basis);
             if (hbasis->manualLevels() )
             {
-                gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.level()).knots(dir);
+                gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.data().level()).knots(dir);
                 index_t start = 0;
                 index_t end  = kv.uSize()-1;
-                hbasis->_knotIndexToDiadicIndex(m_leaf.level(),dir,start);
-                hbasis->_knotIndexToDiadicIndex(m_leaf.level(),dir,end);
+                hbasis->_knotIndexToDiadicIndex(m_leaf.data().level(),dir,start);
+                hbasis->_knotIndexToDiadicIndex(m_leaf.data().level(),dir,end);
                 diadicSize = end - start;
             }
             else
-                diadicSize = hbasis->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;
+                diadicSize = hbasis->tensorLevel(m_leaf.data().level()).knots(dir).uSize() - 1;
 
-            return static_cast<size_t>(m_leaf.upperCorner().at(dir) ) == diadicSize;// todo: more efficient
+            return static_cast<size_t>(m_leaf.data().upperCorner().at(dir) ) == diadicSize;// todo: more efficient
         }
         else
         {
-            return m_leaf.lowerCorner().at(dir) == 0;
+            return m_leaf.data().lowerCorner().at(dir) == 0;
         }
     }
 
@@ -222,12 +222,12 @@ private:
     /// active functions.
     void updateLeaf()
     {
-        const point & lower = m_leaf.lowerCorner();
-        const point & upper = m_leaf.upperCorner();
+        const point & lower = m_leaf.data().lowerCorner();
+        const point & upper = m_leaf.data().upperCorner();
         // gsDebug<<"leaf "<<  lower.transpose() <<", "
         //        << upper.transpose() <<"\n";
 
-        const int level2 = m_leaf.level();
+        const int level2 = m_leaf.data().level();
 
         // Update leaf box
         for (short_t dim = 0; dim < d; ++dim)

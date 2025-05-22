@@ -28,9 +28,9 @@ namespace gismo
 template<short_t d, class T, bool Trunc>
 void gsTHBSpline<d,T,Trunc>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
-    typedef typename gsHTree<d,index_t>::point point;
+    typedef typename gsHTree::point point;
 
-    const gsHTree<d,index_t>& tree = this->basis().tree();
+    const gsHTree& tree = this->basis().tree();
 
     // Construct a box covering the whole parameter domain.
     const point & uCornerGlob = tree.upperCorner();

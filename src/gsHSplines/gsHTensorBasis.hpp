@@ -882,13 +882,13 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
     }
 
     // reconstruct the whole tree to fix alignment
-    gsHTree<d,index_t> newtree( m_tree.upperCornerIndex() );
+    gsHTree newtree( m_tree.upperCornerIndex() );
     auto leafIt = m_tree.beginLeafIterator();
     for (; leafIt.good(); leafIt.next())
     {
-        if ( leafIt.level()>0 )
-            newtree.insertBox(leafIt.lowerCorner(),
-                              leafIt.upperCorner(), leafIt.level() );
+        if ( leafIt.data().level()>0 )
+            newtree.insertBox(leafIt.data().lowerCorner(),
+                              leafIt.data().upperCorner(), leafIt.data().level() );
     }
     m_tree = newtree;
 
@@ -1112,11 +1112,11 @@ void gsHTensorBasis<d,T>::setActive()
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator();
           it.good(); it.next() )
     {
-        const int lvl = it.level();
+        const int lvl = it.data().level();
         CMatrix & cmat = m_xmatrix[lvl];
 
         // Get candidate functions
-        functionOverlap(it.lowerCorner(), it.upperCorner(), lvl, curr, actUpp);
+        functionOverlap(it.data().lowerCorner(), it.data().upperCorner(), lvl, curr, actUpp);
 
         do
         {
@@ -1125,8 +1125,8 @@ void gsHTensorBasis<d,T>::setActive()
             // Get element support
             m_bases[lvl]->elementSupport_into(gi, elSupp);
 
-            if ( (elSupp.col(0).array() >= it.lowerCorner().array()).all() &&
-                 (elSupp.col(1).array() <= it.upperCorner().array()).all() )
+            if ( (elSupp.col(0).array() >= it.data().lowerCorner().array()).all() &&
+                 (elSupp.col(1).array() <= it.data().upperCorner().array()).all() )
             {
                 // to do: all-at-once
                 cmat.push_unsorted( gi );

@@ -45,9 +45,9 @@ public:
     gsKdTreeLeafIter() : curNode(0)
     { }
 
-    explicit gsKdTreeLeafIter( const node * root_node)
+    explicit gsKdTreeLeafIter( const node * root_node) // const node *: treat node as const. node * const: treat pointer const
     {
-        m_stack.push(root_node);
+        m_stack.push(const_cast<node*>(root_node));
 
         // Go to the first leaf
         next();

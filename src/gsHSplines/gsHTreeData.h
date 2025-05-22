@@ -134,33 +134,20 @@ public:
 
     int level() const {return m_level;}
 
-    point & lowerCorner() const
-    {
-        return box->first;
-        //const int lvl = level;
+    const point & lowerCorner() const { return box.first; }
+          point & lowerCorner()       { return box.first; }
 
-        //result = result.array() / (1>> (m_index_level-lvl)) ;
-        //for ( index_t i = 0; i!= result.size(); ++i )
-        //    result[i] = result[i] >> (m_index_level-lvl) ;
-    }
-
-    point & upperCorner() const
-    {
-        return box->second;
-        //const int lvl = level;
-
-        //for ( index_t i = 0; i!=result.size(); ++i )
-        //    result[i] = result[i] >> (m_index_level-lvl) ;
-    }
+    const point & upperCorner() const { return box.second; }
+          point & upperCorner()       { return box.second; }
 
     bool isAligned(unsigned index_level) const
     {
         const unsigned h = 1 << (index_level - m_level);
         
-        for ( index_t i = 0; i!=box->first.size(); ++i )
+        for ( index_t i = 0; i!=box.first.size(); ++i )
         {
-            if (box->second[i] % h != 0 ||
-                box->first[i]  % h != 0 )
+            if (box.second[i] % h != 0 ||
+                box.first[i]  % h != 0 )
                 return false;
         }
         return true;

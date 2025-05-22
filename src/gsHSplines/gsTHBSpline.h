@@ -39,6 +39,8 @@ class gsTHBSpline : public gsGeoTraits<d,T>::GeometryBase
 public:
     typedef gsTHBSplineBasis<d,T,Trunc> Basis;
 
+    typedef gsKdTree<d,index_t,gsHTreeData<d,index_t> > gsHTree;
+
     typedef typename Basis::tensorBasis tensorBasis;
 
     typedef typename gsGeoTraits<d,T>::GeometryBase Base;

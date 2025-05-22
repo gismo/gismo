@@ -471,6 +471,8 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
         std::vector<index_t> & refEltsFirst,
         std::vector<index_t> & refEltsSecond )
 {
+    GISMO_NO_IMPLEMENTATION;
+/*
     GISMO_ASSERT( d == 2 || d == 3, "Dimension must be 2 or 3.");
 
     refEltsFirst.clear();
@@ -693,11 +695,14 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
     }
 
     return ( ( refEltsFirst.size() > 0 ) || ( refEltsSecond.size() > 0 ) );
+    */
 }
 
 template<class T>
 bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
 {
+    GISMO_NO_IMPLEMENTATION;
+/*
     // get direction and orientation maps
     const gsVector<bool> dirOrient = bi.dirOrientation();
 
@@ -931,7 +936,7 @@ bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
         m_bases[ bi.second().patch ]->refineElements( refElts1 );
 
     return ( ( refElts0.size() > 0 ) || ( refElts1.size() > 0 ) );
-
+*/
 }
 
 } // namespace gismo

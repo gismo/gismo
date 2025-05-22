@@ -155,7 +155,7 @@ public:
 
     int getLevel() const
     {
-        return m_leaf.level();
+        return m_leaf.data().level();
     }
 
     // Returns the element multi-index at the current level
@@ -190,12 +190,12 @@ private:
     /// active functions.
     void updateLeaf()
     {
-        const point & lower = m_leaf.lowerCorner();
-        const point & upper = m_leaf.upperCorner();
+        const point & lower = m_leaf.data().lowerCorner();
+        const point & upper = m_leaf.data().upperCorner();
         // gsDebug<<"leaf "<<  lower.transpose() <<", "
         //        << upper.transpose() <<"\n";
 
-        const int level2 = m_leaf.level();
+        const int level2 = m_leaf.data().level();
 
         // Update leaf box
         for (size_t dim = 0; dim < d; ++dim)
