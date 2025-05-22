@@ -34,11 +34,11 @@ int main(int argc, char *argv[])
     //std::string fn("pde/example3D.xml");
     //std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
-    //std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/mhd.xml");
     //std::string fn("pde/infinit_plate.xml");
     //std::string fn("pde/circle.xml");
-    std::string fn("surfaces/simple.xml"); 
+    //std::string fn("surfaces/simple.xml"); 
     //std::string fn("surfaces/egg.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -68,13 +68,12 @@ int main(int argc, char *argv[])
     // ...
     gsMultiPatch<> mpLeft;
     fd.getId(1,mpLeft);
+    auto coefsMap  = mpLeft.patch(0).coefs();
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    // auto kv1 =  static_cast<gsTensorNurbs<2> &>( mpLeft.patch(0)).knots(0);
-    // auto kv2 =  static_cast<gsTensorNurbs<2> &>( mpLeft.patch(0)).knots(1);
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
-
+    
     // Right-hand side function : Analytical density function rho_1
     // Load the file
     gsFunctionExpr<> f;
@@ -108,7 +107,7 @@ int main(int argc, char *argv[])
     gsStopwatch timer;
     timer.restart();
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
-    for (int r=0; r<=numRefine; ++r)
+    for (int r=0; r< numRefine; ++r)
     {
         dbasis.uniformRefine();
         // mpLeft.uniformRefine();

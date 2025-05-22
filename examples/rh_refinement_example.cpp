@@ -291,7 +291,6 @@ int main(int argc, char *argv[])
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
             NumArMarEl = NumArMarEl + FactRefPar;
-            // if (r%2==0){
             FactRefPar = 2*FactRefPar;
             //}
             }

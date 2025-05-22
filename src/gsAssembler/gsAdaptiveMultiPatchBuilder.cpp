@@ -694,3 +694,237 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
         return Psi;
     }
 };
+
+
+//.......................................................
+//........... useful functions for time moving meshes
+//.......................................................
+
+
+// find the knot span index for a given x value
+index_t gsAdaptiveMultiPatchBuilder::find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x)  const 
+{
+    index_t low = degree;
+    index_t high = knots.size() - 1 - degree;
+    //  Check if point is exactly on left/right boundary, or outside domain
+    if (x <= knots[low]) return low;
+    if (x >= knots[high]) return high - 1;
+    // Binary search for the knot span index
+    index_t mid = (low + high) / 2;
+    while (x < knots[mid] || x >= knots[mid + 1]) {
+        if (x < knots[mid]) high = mid;
+        else low = mid;
+        mid = (low + high) / 2;
+    }
+    return mid;
+};
+
+// compute the basis functions for a given knot span and degree and x value
+void gsAdaptiveMultiPatchBuilder::basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
+                     std::vector<double>& dbasis0,
+                     std::vector<double>& dbasis1)  const 
+{
+
+    dbasis0.assign(degree + 1, 0.0);
+    dbasis1.assign(degree + 1, 0.0);
+    //dbasis2.assign(degree + 1, 0.0); // second derivative not used
+
+    index_t minm = std::min(degree,2);// if degree == 1, then all second derivatives are 0
+
+    std::vector<double> left(degree), right(degree);
+    std::vector<std::vector<double>> ndu(degree + 1, std::vector<double>(degree + 1));
+    std::vector<std::vector<double>> a(2, std::vector<double>(degree + 1));
+
+    span     = gsAdaptiveMultiPatchBuilder::find_span(knots, degree, x);
+
+    ndu[0][0]        = 1.0;
+    #pragma omp parallel for
+    for (index_t j = 0; j < degree; ++j) {
+        left[j]      = x - knots[span - j];
+        right[j]     = knots[span + j + 1] - x;
+        double saved = 0.0;
+        for (index_t r = 0; r <= j; ++r) {
+            // compute inverse of knot differences and save them into lower triangular part of ndu
+            ndu[j + 1][r] = 1./(right[r] + left[j - r]);
+            //compute basis functions and save them into upper triangular part of ndu
+            double temp   = ndu[r][j] * ndu[j + 1][r];
+            ndu[r][j + 1] = saved + right[r] * temp;
+            saved         = left[j - r] * temp;
+        }
+        ndu[j + 1][j + 1] = saved;
+    }
+    // compute the derivatives of the basis functions
+    std::vector<std::vector<double>> ders(3, std::vector<double>(degree + 1, 0.0));
+    for (index_t r = 0; r <= degree; ++r) {
+        ders[0][r] = ndu[r][degree];
+        index_t s1 = 0, s2 = 1;
+        a[0][0]    = 1.0;
+        for (index_t k = 1; k <= minm; ++k) {
+            double d   = 0.0;
+            index_t rk = r - k;
+            index_t pk = degree - k;
+            if (r >= k) {
+                a[s2][0] = a[s1][0] * ndu[pk + 1][rk];
+                d        = a[s2][0] * ndu[rk][pk];
+            }
+            index_t j1 = (rk > -1) ? 1 : -rk;
+            index_t j2 = (r - 1 <= pk) ? k - 1 : degree - r;
+            for (index_t j = j1; j <= j2; ++j) {
+                a[s2][j] = (a[s1][j] - a[s1][j - 1]) * ndu[pk + 1][rk + j];
+                d += a[s2][j] * ndu[rk + j][pk];
+            }
+            if (r <= pk) {
+                a[s2][k] = -a[s1][k - 1] * ndu[pk + 1][r];
+                d += a[s2][k] * ndu[r][pk];
+            }
+            ders[k][r] = d;
+            std::swap(s1, s2);
+        }
+    }
+    for (index_t j = 0; j <= degree; ++j) {
+        dbasis0[j] = ndu[0][j];
+        dbasis1[j] = ders[1][j] * degree;
+        //dbasis2[j] = ders[2][j] * degree * (degree - 1);
+    }
+};
+
+// compute the right-hand side vector for the adaptive multi-patch assembly : one patch
+// This function computes the right-hand side vector for a given knot span and degree
+// vector_u : vector of control points for the first component of the adaptive mapping
+// vector_w : vector of control points for the second component of the adaptive mapping
+// vector_un : vector of control points for the solution in adaptive multi-patch mapping
+void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_ad(const index_t& p1, const index_t& p2,
+                           const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
+                           const gsMatrix<double>& vector_u, const gsMatrix<double>& vector_un,
+                           gsMatrix<double>& rhs) const {
+
+    const double pi = 3.141592653589793;
+    index_t m       = p1 + p2 + 1;
+    index_t nRoots  = (m + 1) / 2;
+
+    std::vector<double> w(m);
+    std::vector<double> u(m);
+
+    #pragma omp parallel for
+    for (index_t i = 0; i < nRoots; ++i) {
+        double t = std::cos(pi * (i + 0.75) / (m + 0.5));
+        for (index_t j = 0; j < 30; ++j) {
+            double p_0   = 1.0;
+            double p_1   = t;
+            for (index_t k = 1; k < m; ++k) {
+                double pn = ((2.0 * k + 1.0) * t * p_1 - k * p_0) / (1.0 + k);
+                p_0       = p_1;
+                p_1       = pn;
+            }
+            double dp = m * (p_0 - t * p_1) / (1.0 - t * t);
+            double dt = -p_1 / dp;
+            t += dt;
+            if (std::abs(dt) < 1e-14) {
+                u[i] = t;
+                u[m - i - 1] = -t;
+                w[i] = 2.0 / ((1.0 - t * t) * dp * dp);
+                w[m - i - 1] = w[i];
+                break;
+            }
+        }
+    }
+    // Compute the number of basis functions in each direction
+    index_t nb1 = knots_1.size() - p1 - 1;
+    index_t nb2 = knots_2.size() - p2 - 1;
+    // Compute the number of elements in each direction
+    index_t ne1 = nb1 - p1;
+    index_t ne2 = nb2 - p2;
+
+    #pragma omp parallel for
+    for (index_t ie1 = 0; ie1 < ne1; ++ie1) {
+
+        // coefs of the element for quadrature points
+        double a1   = knots_1[ie1 + p1];
+        double b1   = knots_1[ie1 + p1 + 1];
+        double c0_1 = 0.5 * (a1 + b1);
+        double c1_1 = 0.5 * (b1 - a1);
+
+        for (index_t ie2 = 0; ie2 < ne2; ++ie2) {
+
+            double a2   = knots_2[ie2 + p2];
+            double b2   = knots_2[ie2 + p2 + 1];
+            double c0_2 = 0.5 * (a2 + b2);
+            double c1_2 = 0.5 * (b2 - a2);
+
+            for (index_t g1 = 0; g1 < m; ++g1) {
+                // map the quadrature points to the element
+                double x1 = c1_1 * u[g1] + c0_1;
+                double w1 = c1_1 * w[g1];
+                // Compute the basis functions in the first direction
+                index_t span1;
+                std::vector<double> xbasis_0;
+                std::vector<double> xbasis_1;
+                basis_functions(knots_1, p1, x1, span1, xbasis_0, xbasis_1);
+
+                for (index_t g2 = 0; g2 < m; ++g2) {
+                    // map the quadrature points to the element
+                    double x2 = c1_2 * u[g2] + c0_2;
+                    double w2 = c1_2 * w[g2];
+                    // Compute the basis functions in the second direction
+                    index_t span2;
+                    std::vector<double> ybasis_0;
+                    std::vector<double> ybasis_1;
+                    basis_functions(knots_2, p2, x2, span2, ybasis_0, ybasis_1);
+
+                    // Assembles solution in uniform mesh
+                    double val_un = 0.0;
+                    double ad_x   = 0.0;
+                    double ad_xx  = 0.0;
+                    double ad_xy  = 0.0;
+                    double ad_y   = 0.0;
+                    double ad_yx  = 0.0;
+                    double ad_yy  = 0.0;
+                    for (index_t i = 0; i <= p1; ++i) {
+                        for (index_t j = 0; j <= p2; ++j) {
+                            index_t gi  = (span1 - p1+i) + nb1*(span2 - p2+j);
+
+                            double bi_0 = xbasis_0[i] * ybasis_0[j];
+
+                            double bi_x = xbasis_1[i] * ybasis_0[j];
+                            double bj_y = xbasis_0[i] * ybasis_1[j];
+
+                            ad_x       += vector_u[gi] * bi_0;
+                            ad_y       += vector_u[nb1*nb2+gi] * bi_0;
+
+                            ad_xx      += vector_u[gi] * bi_x;
+                            ad_xy      += vector_u[gi] * bj_y;
+                            ad_yx      += vector_u[nb1*nb2+gi] * bi_x;
+                            ad_yy      += vector_u[nb1*nb2+gi] * bj_y;
+
+                            val_un     += vector_un[gi] * bi_0;
+                        }
+                    }
+                    gsInfo << "x diff: " <<  ad_x  - x1 <<  ad_y  - x2 << "\n";
+                    ad_x = x1;
+                    ad_y = x2;
+                    // Compute the Jacobian determinant and 
+                    // basis functions in the image of quadrature points by Adaptive mapping
+                    index_t ad_span1;
+                    std::vector<double> ad_xbasis_0;
+                    std::vector<double> ad_xbasis_1;
+                    basis_functions(knots_1, p1, ad_x, ad_span1, ad_xbasis_0, ad_xbasis_1);
+                    index_t ad_span2;
+                    std::vector<double> ad_ybasis_0;
+                    std::vector<double> ad_ybasis_1;
+                    basis_functions(knots_2, p2, ad_y, ad_span2, ad_ybasis_0, ad_ybasis_1);
+
+                    double weight = w1 * w2 * (ad_xx * ad_yy - ad_xy * ad_yx);
+                    for (index_t i = 0; i <= p1; ++i) {
+                        for (index_t j = 0; j <= p2; ++j) {
+                            index_t gi   = nb2*(ad_span1 - p1+i )+ (ad_span2 - p2+j);
+                            double bi_0  = ad_xbasis_0[i] * ad_ybasis_0[j];
+
+                            rhs[gi] += val_un * bi_0 * weight;
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+// End of the function

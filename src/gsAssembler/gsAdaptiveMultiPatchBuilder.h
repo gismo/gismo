@@ -29,6 +29,21 @@ public:
 
     // Method to build a multipatch adaptive mapping TODO: CAN BE OPTIMIZED @BAHARI
     gsMultiPatch<> buildMovingMultiPatch(const gsMultiPatch<> &density, gsMultiPatch<> lsPsi, bool composition=true, int Niter = 0) const;
+
+    // Method to find the span of a knot vector
+    index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;
+
+    // Method to compute the basis functions and their derivatives
+    void basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
+                     std::vector<double>& d0,
+                     std::vector<double>& d1) const;
+
+    // Method to compute the right-hand side vector for the adaptive multi-patch assembly
+    void assemble_rhsvector_ad(const index_t& p1, const index_t& p2,
+                           const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
+                           const gsMatrix<double>& vector_u, const gsMatrix<double>& vector_un,
+                           gsMatrix<double>& rhs) const;
+
 private:
     gsMultiBasis<double> m_basis;
     gsMultiPatch<double> m_mapping;
