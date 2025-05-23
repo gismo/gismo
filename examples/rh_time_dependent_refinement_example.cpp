@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     double dt             = 1e-5;
-    double epsilon        = 0.007; // 0.007389228264793657
+    double epsilon        = 0.007389228264793657;
 
     // Specify the file path
     std::string fn("pde/quart_annulus.xml");
@@ -179,8 +179,8 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density                    = MAE.buildDensity(elwise, 0.5,circleN);
-    gsMultiPatch<> Psi              = mpLeft;//MAE.buildMultiPatch(density, false);
+    auto density                    = MAE.buildDensity(elwise, 0.1,circleN);
+    gsMultiPatch<> Psi              = MAE.buildMultiPatch(density, false);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -266,27 +266,6 @@ int main(int argc, char *argv[])
     const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
     const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(0);
     const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(1);
-    gsInfo << "\n degree1 = " << degree1 << " degree2 = " << degree2 << "\n";
-    gsInfo << "kv1 = " << kv1 << "\n kv2 = " << kv1 << "\n";
-    
-    //----------------------------------------------------------------------------------------------------
-    // index_t nb1 = kv1.size()- degree1-1;
-    // index_t nb2 = kv2.size()- degree2-1;
-    // gsInfo << "degree1 = " << degree1 << " degree2 = " << degree2 << "\n";
-    // gsInfo << "nb1 = " << nb1 << " nb2 = " << nb2 << "\n";
-    // gsInfo << "coefsMap.size() = " << rsolVector.size() << "- "<<nb1*nb2 << "\n";
-    // gsInfo << "coefsMap = " << rsolVector(0) << rsolVector(1) << "\n";
-    // for (index_t i = 0; i < nb1; i++)
-    // {
-    //     for (index_t j = 0; j < nb2; j++)
-    //     {
-    //     index_t gi= i*nb2+j;
-    //     gsInfo << "coefsMap1[" << gi << "] = " << rsolVector[gi] << "\n";
-
-    //         /* code */
-    //     }
-    //             /* code */
-    // }
 
     gsInfo<<"Plotting in Paraview...\n";
     gsParaviewCollection collection("ParaviewOutput/time_solution", &ev);
@@ -303,15 +282,11 @@ int main(int argc, char *argv[])
 
     //..............................................................................................
     // collection for projecting a solution into B-spline space for computing a new adaptive mapping
-    gsMatrix<> xi_Vector= rsolVector*0.;
+    gsMatrix<> xi_Vector = rsolVector*0.;
     solution xi_pr       = A.getSolution(ru, xi_Vector);
     // index_t coefsNum     = rsolVector.size();
     gsMatrix<> rhsVector = rsolVector;
-    // gsMultiPatch<> xi;
-    // gsMatrix<> xiVector = rsolVector*0.;
-    // solution xi_sol     = A.getSolution(ru, xiVector);
-    // auto xi_ex          = A.getCoeff(xi, PP);
-    //.................................
+    rhsVector.setZero();
 
 
     gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
@@ -338,45 +313,14 @@ int main(int argc, char *argv[])
         ###   Step in time : Computes the density function
         ###         and the multipatch adaptove mapping
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        // A.options().setSwitch("SameElement",false);
-        // //----------------------------------------------------------------------------------------------------
-        // The objectif is to assemble the rhs vector component by component
-        // xi will contain one Bspline to be computed as composition with Psi
-        // #pragma omp parallel for
-        // for ( index_t j=0; j<coefsNum; ++j)
-        // {
-        //     if(j>0)
-        //         xiVector(j-1)  = 0.;
-        //     xiVector(j)        = 1.;
-        //     xi_sol.extract(xi);
-        //     // Initialize the system
-        //     A.clearRhs();
-        //     A.assemble(ru * ru_sol * xi_ex.val() * meas(PP) );
-        //     //... Assemble one element in rhs
-        //     rhsVector(j) = A.rhs().sum();
-        // }
-        // A.options().setSwitch("SameElement",true);
-        gsInfo<< "checks DoFs "<< rsolVector.size() << "  "<< Psi.patch(0).coefs().size() <<std::flush;
         MAE.assemble_rhsvector_ad(degree1, degree2, kv1, kv2, Psi.patch(0).coefs(), rsolVector, rhsVector);
         xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
-        gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
-        collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(&mpLeft);
-        collection.addField(xi_pr,"numerical solution");
-        collection.saveTimeStep();
-        collection.save();
-        gsFileManager::open("ParaviewOutput/solution.pvd");
-        return 0.;
         //------------------------------------------------------------------
         // Update the density function and the multipatch adaptive mapping
         ev.integralElWise( igrad(xi_pr, GLeft).sqNorm() );
         auto elwise         = ev.elementwise();
         auto density        = MAE.buildDensity(elwise, 0.1, circleN);
-        gsMultiPatch<> Psi  = mpLeft;//MAE.buildMovingMultiPatch(density, Psilast, false, 10);
+        gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 3);
         Psi.addAutoBoundaries();
         Psi.computeTopology();
 
@@ -414,48 +358,54 @@ int main(int argc, char *argv[])
         // timer.restart();
         // solver.compute( A.matrix() );
         // rsolVector = solver.solve(A.rhs());
-        if(true){// Non linear solver for Allen-Cahn equation
-            solution u_sol = A.getSolution(ru, rsolVector); // for nonlinear unkown
-            //! Newton method
-            A.options().setInt("DirichletStrategy", 0);// swich off elimination
-            auto residual =  ru * (u_sol -ru_sol).tr() * meas(PP)
-                +igrad(ru,PP) * igrad(u_sol, PP).tr() *dt * meas(PP)
-                + ru * ((u_sol*u_sol*u_sol-u_sol).val()) /(epsilon*epsilon) * dt * meas(PP)
-                + ru * (igrad(u_sol, PP) * PPlst ).tr() * meas(PP) //matrix
-                - ru * (igrad(u_sol, PP) * PP    ).tr() * meas(PP) //matrix
-                ;
+        
+        //...............................................................
+        // Non linear solver for Allen-Cahn equation
+        //...............................................................
+        // Initialize the system
+        gsMatrix<> nsolVector = rsolVector;
+        solution u_sol        = A.getSolution(ru, nsolVector); // for nonlinear unkown
+        //! Newton method
+        A.options().setInt("DirichletStrategy", 0);// swich off elimination
+        auto residual =  ru * (u_sol -ru_sol).tr() * meas(PP)
+            +igrad(ru,PP) * igrad(u_sol, PP).tr() *dt * meas(PP)
+            + ru * ((u_sol*u_sol*u_sol-u_sol).val()) /(epsilon*epsilon) * dt * meas(PP)
+            - ru * (igrad(u_sol, PP) * (PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
+            // - ru * (igrad(u_sol, PP) * PP    ).tr() * meas(PP) //matrix
+            ;
 
-            for (index_t l = 0; l<50; ++l)
-            {
-                timer.restart();
-                // Precomputed Jacobian
-                A.clearMatrix();
-                A.clearRhs();
-                A.assemble(
-                    ru * ru.tr() * meas(PP)
-                    + igrad(ru,PP) * igrad(ru, PP).tr() *dt * meas(PP)
-                    + ru * ru.tr() * 3.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
-                    - ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
-                    + ru * (igrad(ru, PP) * PPlst ).tr() * meas(PP) //matrix
-                    - ru * (igrad(ru, PP) * PP    ).tr() * meas(PP) //matrix
-                    ,
-                    residual );
-                // Compute the Neumann terms defined on physical space
-                auto g_N = A.getBdrFunction(PP);
-                A.assembleBdr(bc.get("Neumann"), ru * g_N.tr() * nv(PP) );
+        for (index_t l = 0; l<100; ++l)
+        {
+            timer.restart();
+            // Precomputed Jacobian
+            A.clearMatrix();
+            A.clearRhs();
+            A.assemble(
+                ru * ru.tr() * meas(PP)
+                + igrad(ru,PP) * igrad(ru, PP).tr() *dt * meas(PP)
+                + ru * ru.tr() * 3.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
+                - ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
+                - ru * (igrad(ru, PP) *(PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
+                // - ru * (igrad(ru, PP) * PP    ).tr() * meas(PP) //matrix
+                ,
+                residual );
+            // Compute the Neumann terms defined on physical space
+            auto g_N = A.getBdrFunction(PP);
+            A.assembleBdr(bc.get("Neumann"), ru * g_N.tr() * nv(PP) );
 
-                //else // TODO:  Jacobian using automatic differentiation
-                ma_time += timer.stop();
+            //else // TODO:  Jacobian using automatic differentiation
+            ma_time += timer.stop();
 
-                timer.restart();
-                solver.compute( A.matrix() );
-                auto du     = solver.solve(A.rhs());
-                rsolVector -= du;
-                slv_time   += timer.stop();
-                gsInfo<<'.'<<du.norm()<< "." <<std::flush; // Non-linear iteration done
-                if ( du.norm() < 1e-5 ) break;
-            }
+            timer.restart();
+            solver.compute( A.matrix() );
+            auto du     = solver.solve(A.rhs());
+            nsolVector -= du;
+            slv_time   += timer.stop();
+            gsInfo<<'.'<<du.norm()<< "." <<std::flush; // Non-linear iteration done
+            if ( du.norm() < 1e-5 ) break;
         }
+        rsolVector = nsolVector;
+        //... End of Non linear solver for Allen-Cahn equation
 
         slv_time += timer.stop();
 

@@ -1,3 +1,16 @@
+/** @file gsAdaptiveMultiPatchBuilder.cpp
+
+    @brief Provides generic routines for adaptive refinement.
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): M. BAHARI
+*/
+
 #include <gismo.h>  // Include necessary GISMO headers
 #include "gsAdaptiveMultiPatchBuilder.h"
 
@@ -802,7 +815,8 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_ad(const index_t& p1, const
                            const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
                            const gsMatrix<double>& vector_u, const gsMatrix<double>& vector_un,
                            gsMatrix<double>& rhs) const {
-
+    
+    rhs.setZero();
     const double pi = 3.141592653589793;
     index_t m       = p1 + p2 + 1;
     index_t nRoots  = (m + 1) / 2;
@@ -836,6 +850,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_ad(const index_t& p1, const
     // Compute the number of basis functions in each direction
     index_t nb1 = knots_1.size() - p1 - 1;
     index_t nb2 = knots_2.size() - p2 - 1;
+    index_t nb12 = nb1 * nb2;
     // Compute the number of elements in each direction
     index_t ne1 = nb1 - p1;
     index_t ne2 = nb2 - p2;
@@ -877,6 +892,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_ad(const index_t& p1, const
                     basis_functions(knots_2, p2, x2, span2, ybasis_0, ybasis_1);
 
                     // Assembles solution in uniform mesh
+                    double val_un = 0.0;
                     double ad_x   = 0.0;
                     double ad_xx  = 0.0;
                     double ad_xy  = 0.0;
@@ -893,20 +909,16 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_ad(const index_t& p1, const
                             double bj_y = xbasis_0(i) * ybasis_1(j);
 
                             ad_x       += vector_u(gi) * bi_0;
-                            ad_y       += vector_u(nb1*nb2+gi) * bi_0;
+                            ad_y       += vector_u(nb12+gi) * bi_0;
 
                             ad_xx      += vector_u(gi) * bi_x;
                             ad_xy      += vector_u(gi) * bj_y;
-                            ad_yx      += vector_u(nb1*nb2+gi) * bi_x;
-                            ad_yy      += vector_u(nb1*nb2+gi) * bj_y;
+                            ad_yx      += vector_u(nb12+gi) * bi_x;
+                            ad_yy      += vector_u(nb12+gi) * bj_y;
 
-                            //val_un     += vector_un(gi) * bi_0;
+                            val_un     += vector_un(gi) * bi_0;
                         }
                     }
-                    gsInfo << "x diff: " <<  ad_x  - x1 <<  ad_y  - x2 << "\n";
-
-                    double val_un = std::tanh( 0.4 - pow(pow(x1-0.5,2)+ pow(x2-0.5,2),0.5)/(pow(2,0.5)*0.007389228264793657));
-                    // Compute the Jacobian determinant and 
                     // basis functions in the image of quadrature points by Adaptive mapping
                     index_t ad_span1;
                     gsVector<double> ad_xbasis_0(p1 + 1);
@@ -917,11 +929,11 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_ad(const index_t& p1, const
                     gsVector<double> ad_ybasis_1(p2 + 1);
                     basis_functions(knots_2, p2, ad_y, ad_span2, ad_ybasis_0, ad_ybasis_1);
 
-                    double weight = w1 * w2 ; //* std::abs(ad_xx * ad_yy - ad_xy * ad_yx);
+                    double weight = w1 * w2 * std::abs(ad_xx * ad_yy - ad_xy * ad_yx);
                     for (index_t i = 0; i <= p1; ++i) {
                         for (index_t j = 0; j <= p2; ++j) {
-                            index_t gi   = (span1 - p1+i )+ nb1*(span2 - p2+j);
-                            double bi_0  = xbasis_0(i) * ybasis_0(j);
+                            index_t gi   = (ad_span1 - p1+i )+ nb1*(ad_span2 - p2+j);
+                            double bi_0  = ad_xbasis_0(i) * ad_ybasis_0(j);
 
                             rhs(gi) += val_un * bi_0 * weight;
                         }
