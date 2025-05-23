@@ -54,8 +54,8 @@ public:
     // Method to compute the right-hand side vector for the adaptive multi-patch assembly
     void assemble_rhsvector_ad(const index_t& p1, const index_t& p2,
                            const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
-                           const gsMatrix<double>& vector_u, const gsMatrix<double>& vector_un,
-                           gsMatrix<double>& rhs) const;
+                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_cp,
+                           const gsMatrix<double>& vector_un, gsMatrix<double>& rhs) const;
 
 private:
     gsMultiBasis<double> m_basis;

@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     double dt             = 1e-5;
+    index_t plotNum       = 1e-4/dt; // plot every 1e-4/dt iterations 10 iterations 
+    gsInfo << "plotNun = " << plotNum << " " << 5%plotNum<< " " << 10%plotNum << "\n";
     double epsilon        = 0.007389228264793657;
 
     // Specify the file path
@@ -118,14 +120,14 @@ int main(int argc, char *argv[])
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
-    for (int r=0; r<=numRefine; ++r)
+    for (int r=0; r< numRefine; ++r)
     {
         dbasis.uniformRefine();
         mpLeft.uniformRefine();// mondatory to have the same number of elements in order to assemble rhs in adaptive mesh to be solved after
     }
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mpLeft);
-    // For simplicity, set Dirichlet boundary conditions
+    // For simplicity, set Dirichlet boundary conditions ?? not tested yet
     // for ( gsMultiPatch<>::const_biterator
     //         bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
     // {
@@ -180,7 +182,8 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     auto density                    = MAE.buildDensity(elwise, 0.1,circleN);
-    gsMultiPatch<> Psi              = MAE.buildMultiPatch(density, false);
+    gsMultiPatch<> Psi              = MAE.buildMultiPatch(density, false);// true for composition
+    //gsMultiPatch<> mpPsi = MAE.buildMovingMultiPatch(density, Psi, true, 3);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -284,7 +287,6 @@ int main(int argc, char *argv[])
     // collection for projecting a solution into B-spline space for computing a new adaptive mapping
     gsMatrix<> xi_Vector = rsolVector*0.;
     solution xi_pr       = A.getSolution(ru, xi_Vector);
-    // index_t coefsNum     = rsolVector.size();
     gsMatrix<> rhsVector = rsolVector;
     rhsVector.setZero();
 
@@ -298,22 +300,13 @@ int main(int argc, char *argv[])
     {
         // ... update the mapping
         Psilast = Psi;
-        index_t numPaches = Psi.nPatches();
-        for( index_t i=0; i<numPaches; ++i)
-        {
-        index_t coefsNum  = Psi.patch(i).coefsSize();
-        for ( index_t j=0; j<coefsNum; ++j)
-        {
-            Psilast.patch(i).coef(j) = Psi.patch(i).coef(j);
-        }
-        }
         Psilast.addAutoBoundaries();
         Psilast.computeTopology();
         /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         ###   Step in time : Computes the density function
         ###         and the multipatch adaptove mapping
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        MAE.assemble_rhsvector_ad(degree1, degree2, kv1, kv2, Psi.patch(0).coefs(), rsolVector, rhsVector);
+        MAE.assemble_rhsvector_ad(degree1, degree2, kv1, kv2, Psi.patch(0).coefs(), Psi.patch(0).coefs(), rsolVector, rhsVector);
         xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
         //------------------------------------------------------------------
         // Update the density function and the multipatch adaptive mapping
@@ -321,43 +314,9 @@ int main(int argc, char *argv[])
         auto elwise         = ev.elementwise();
         auto density        = MAE.buildDensity(elwise, 0.1, circleN);
         gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 3);
+        //gsMultiPatch<> mpPsi = MAE.buildMovingMultiPatch(density, Psilast, false, 3);
         Psi.addAutoBoundaries();
         Psi.computeTopology();
-
-        // //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
-        // ru.setup(bc, dirichlet::l2Projection, 0);
-
-        // // Compute the system matrix and right-hand side
-        // // Initialize the system
-        // A.initSystem();
-        // setup_time += timer.stop();
-
-        // gsInfo<< "Solving PDEs " <<std::flush;
-        // gsInfo<< A.numDofs() <<std::flush;
-
-        // //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
-
-        // timer.restart();
-        // A.assemble(
-        // ru * ru.tr() * meas(PP) //matrix
-        // +1e-3* igrad(ru, PP) * igrad(ru, PP).tr()* dt * meas(PP) //matrix
-        // + ru * (coeff_convPP * igrad(ru, PP).tr()) * dt * meas(PP) //matrix
-        // + ru * (PPlst * igrad(ru, PP).tr()) * meas(PP) //matrix
-        // - ru * (PP    * igrad(ru, PP).tr()) * meas(PP) //matrix
-        // ,
-        // ru * ru_sol.tr() * meas(PP) //matrix
-        // );
-
-        // ma_time += timer.stop();
-
-        // // gsDebugVar(A.matrix().toDense());
-        // // gsDebugVar(A.rhs().transpose()   );
-
-        // gsInfo<< "." <<std::flush;// Assemblying done
-
-        // timer.restart();
-        // solver.compute( A.matrix() );
-        // rsolVector = solver.solve(A.rhs());
         
         //...............................................................
         // Non linear solver for Allen-Cahn equation
@@ -371,7 +330,6 @@ int main(int argc, char *argv[])
             +igrad(ru,PP) * igrad(u_sol, PP).tr() *dt * meas(PP)
             + ru * ((u_sol*u_sol*u_sol-u_sol).val()) /(epsilon*epsilon) * dt * meas(PP)
             - ru * (igrad(u_sol, PP) * (PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
-            // - ru * (igrad(u_sol, PP) * PP    ).tr() * meas(PP) //matrix
             ;
 
         for (index_t l = 0; l<100; ++l)
@@ -386,7 +344,6 @@ int main(int argc, char *argv[])
                 + ru * ru.tr() * 3.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
                 - ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
                 - ru * (igrad(ru, PP) *(PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
-                // - ru * (igrad(ru, PP) * PP    ).tr() * meas(PP) //matrix
                 ,
                 residual );
             // Compute the Neumann terms defined on physical space
@@ -410,7 +367,7 @@ int main(int argc, char *argv[])
         slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done
-        if (plot)
+        if (plot && r%plotNum == 0)
         {
             collection.newTimeStep(&Psi);
             collection.addField(ru_sol, "solution");

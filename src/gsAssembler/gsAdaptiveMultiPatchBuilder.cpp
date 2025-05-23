@@ -499,7 +499,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     // It could be beneficial for the composition of the two mappings
     //A.options().setReal("quA", 2.0);
     //A.options().setInt("quB", 2);
-    A.options().setSwitch("SameElement",false);
+    A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
 
     // Elements used for numerical integration
     A.setIntegrationElements(this->m_basis);
@@ -523,6 +523,36 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     gsMatrix<> solVector;
     solution u_sol  = A.getSolution(u, solVector);
 
+    if (composition){
+        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        //... test if geometry is a surface in 3d
+        bool other = false;
+        if (IGdim < this->m_mapping.geoDim()){
+            other = true;
+        }
+        //... 
+        gsMultiPatch<>    Psi;
+        space v        = A.getSpace(this->m_basis);
+        gsMatrix<> vsolVector;
+        solution v_sol = A.getSolution(v, vsolVector);
+        // Psi.addAutoBoundaries();
+        geometryMap PP = A.getMap(lsPsi);
+        //PP(this->m_mapping);
+        auto comp = A.getCoeff(this->m_mapping, PP);
+        A.initSystem(ITdim);
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble( v * comp.tr() );// blocked by this one
+        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+        vsolVector = this->Poisson.L2ProjectVec(A.rhs(), other);
+        v_sol.extract(Psi);
+        Psi.addAutoBoundaries();
+        Psi.computeTopology();
+        //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
+        slv_time += timer.stop();
+        timer.stop();
+        gsInfo<<" Compose two mappings. CPU-time : "<< slv_time   <<"<>\n";
+        return Psi;
+    }
     // ---- manipulation of density function ----
     //.. geometry map
     geometryMap PP   = A.getMap(lsPsi);
@@ -675,37 +705,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     ProjectionNormalCPoints(Psi);
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-    if (composition){
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        //... test if geometry is a surface in 3d
-        bool other = false;
-        if (IGdim < this->m_mapping.geoDim()){
-            other = true;
-        }
-        // Psi.addAutoBoundaries();
-        geometryMap PP = A.getMap(Psi);
-        //PP(this->m_mapping);
-        auto comp = A.getCoeff(this->m_mapping, PP);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        vsolVector = this->Poisson.L2ProjectVec(A.rhs(), other);
-        v_sol.extract(Psi);
-        Psi.addAutoBoundaries();
-        Psi.computeTopology();
-        //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
-        slv_time += timer.stop();
-        timer.stop();
-        gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
-        return Psi;
-    }
-    else{
-        slv_time += timer.stop();
-        timer.stop();
-        gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
-        return Psi;
-    }
+    slv_time += timer.stop();
+    timer.stop();
+    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    return Psi; /// return the new MAE mapping in unit square
 };
 
 
@@ -808,13 +811,13 @@ void gsAdaptiveMultiPatchBuilder::basis_functions(const gsKnotVector<double>& kn
 
 // compute the right-hand side vector for the adaptive multi-patch assembly : one patch
 // This function computes the right-hand side vector for a given knot span and degree
-// vector_u : vector of control points for the first component of the adaptive mapping
-// vector_w : vector of control points for the second component of the adaptive mapping
-// vector_un : vector of control points for the solution in adaptive multi-patch mapping
+// vector_un : vector of control points for the solution
+// vector_mp : vector of control points for the MAE adaptive mapping : unit square
+// vector_cp : vector of control points for the adaptive multi-patch composition mapping
 void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_ad(const index_t& p1, const index_t& p2,
                            const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
-                           const gsMatrix<double>& vector_u, const gsMatrix<double>& vector_un,
-                           gsMatrix<double>& rhs) const {
+                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_cp,
+                           const gsMatrix<double>& vector_un, gsMatrix<double>& rhs) const {
     
     rhs.setZero();
     const double pi = 3.141592653589793;
@@ -908,13 +911,13 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_ad(const index_t& p1, const
                             double bi_x = xbasis_1(i) * ybasis_0(j);
                             double bj_y = xbasis_0(i) * ybasis_1(j);
 
-                            ad_x       += vector_u(gi) * bi_0;
-                            ad_y       += vector_u(nb12+gi) * bi_0;
+                            ad_x       += vector_mp(gi) * bi_0;
+                            ad_y       += vector_mp(nb12+gi) * bi_0;
 
-                            ad_xx      += vector_u(gi) * bi_x;
-                            ad_xy      += vector_u(gi) * bj_y;
-                            ad_yx      += vector_u(nb12+gi) * bi_x;
-                            ad_yy      += vector_u(nb12+gi) * bj_y;
+                            ad_xx      += vector_cp(gi) * bi_x;
+                            ad_xy      += vector_cp(gi) * bj_y;
+                            ad_yx      += vector_cp(nb12+gi) * bi_x;
+                            ad_yy      += vector_cp(nb12+gi) * bj_y;
 
                             val_un     += vector_un(gi) * bi_0;
                         }
