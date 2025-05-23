@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris & M. BAHARI
+    Author(s): M. BAHARI
 */
 
 //! [Include namespace]
@@ -90,12 +90,10 @@ int main(int argc, char *argv[])
     //double coeff_reac = 0.;
 
     // source term: and manufactured solution
-    // gsFunctionExpr<> s;
-    // fd.getId(2000, s);
+    gsFunctionExpr<> s;
+    fd.getId(1995, s);
     gsFunctionExpr<> rhs;
     fd.getId(2001, rhs);
-
-    gsFunctionExpr<> s("-1.+ tanh( ( 0.4 - sqrt((x-0.5)**2+ (y-0.5)**2))/(sqrt(2)*0.007389228264793657)) - tanh( ( 0.3 - sqrt((x-0.5)**2+ (y-0.5)**2))/(sqrt(2)*0.007389228264793657))",2);
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
@@ -275,7 +273,7 @@ int main(int argc, char *argv[])
     collection.options().setSwitch("plotElements", true);
     collection.options().setSwitch("base64", export_b64);
     collection.options().setInt("plotElements.resolution", 16);
-    collection.options().setInt("numPoints", 10000);
+    collection.options().setInt("numPoints", 100000);
     if (plot)
     {
         collection.newTimeStep(&Psi);

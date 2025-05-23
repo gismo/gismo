@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, 0.05, circleN);
+    auto density = MAE.buildDensity(elwise, 0.075, circleN);
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
         DoFPDE[r] = A.numDofs();
         timer.restart();
         l2err[r]= math::sqrt( ev.integral( (u_ex - ru_sol).sqNorm() * meas(PP) ) );
-        h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex) - igrad(ru_sol,PP) ).sqNorm() * meas(PP) ));
+        h1err[r]= math::sqrt(ev.integral( ( grad(u_ex) - igrad(ru_sol,PP) ).sqNorm() * meas(PP) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
         if(r < numLRefine){
