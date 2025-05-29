@@ -457,6 +457,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 #endif
         auto _arg = expr.val();
         m_exprdata->parse(_arg);
+
         if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
 
         // Computed value on element
@@ -504,6 +505,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 }//omp parallel
     return m_value;
 }
+
 
 template<class T>
 template<class E, class _op>

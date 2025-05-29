@@ -332,6 +332,24 @@ public:
                                 const gsFunctionSet<T>  & source,
                                 const gsMultiPatch<T>   & geometry,
                                 gsMatrix<T> & result);
+    
+    /**
+     * @brief      Projects a function on a basis
+     *
+     * @param[in]  intbasis  The basis used for quadrature
+     * @param[in]  basis     The basis to project on
+     * @param[in]  source    The source function
+     * @param[in]  geometry  The geometry to evaluate the function on
+     * @param      result    The function as a multipatch
+     *
+     * @return     The L2 error of the projection
+     */
+    GISMO_DEPRECATED
+    static T projectFunction(   const gsMultiBasis<T>   & intbasis,
+                                const gsMultiBasis<T> & basis,
+                                const gsFunctionSet<T>  & source,
+                                const gsMultiPatch<T>   & geometry,
+                                gsMatrix<T> & result);                           
 
     /**
      * @brief      Projects a \a source geometry onto \a basis and returns it in
