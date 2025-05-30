@@ -339,65 +339,96 @@ int main(int argc, char *argv[])
 //              /*
               // Computing n + 3 functions attached to the EV (1+2+n)
               real_t a = 2 * math::cos(2*EIGEN_PI/n);// rename as a0
+
               // Basis function attached to the vertex value
               for ( auto ff : msh.faces(v) ) //for all faces, set vertex value
               {
                   pi = ff.idx();
-                  os = mapper.offset(pi);
                   cmapper.indexOnPatch( v.idx(), pi, ci);
                   os = mapper.offset(pi);
                   M.insert(os+cpIndex(ci, 0, 0), c1dim) = (real_t)1.0;
               }
 
               gsMatrix<> C = circulant(n);
+              C.transposeInPlace(); // Making column-circulant..
               gsInfo << "C:\n " << C <<"\n";
               gsMatrix<> A(n+2,n), b(n+2,1);
               b.topRows(n).setConstant(2 - a);
               b.bottomRows(2).setZero();
 
-              gsMatrix<> C2 = C;
-              C2.diagonal().array() += 1;
+              index_t sz = n + (n%2==0);
+              gsMatrix<> C2(sz,n);
+              C2.topRows(n) = C;
+              C2 /*.topRows(n)*/ .diagonal().array() += 1;
+              gsInfo << "C2:\n " << C2 <<"\n";
               gsMatrix<> Cpow = C;
               for(index_t i = 2; i<n;++i)
                   Cpow *= C;
               auto C1 = A.topRows(n); //ref
               C1.noalias() = C + Cpow;
               C1.diagonal().array() -= a;
+              gsInfo << "C1:\n " << C1 <<"\n";
 
-              //typename gsMatrix<>::JacobiSVD svd = A.jacobiSvd(gsEigen::ComputeFullV);
-              //gsMatrix<> K = svd.matrixV().rightCols(2);
+              gsInfo << "A:\n " << A <<"\n";
+              typename gsMatrix<>::JacobiSVD svd = C1.jacobiSvd(gsEigen::ComputeFullV | gsEigen::ComputeFullU );
+              gsInfo << "U:\n " << svd.matrixU() <<"\n";
+              gsInfo << "V:\n " << svd.matrixV() <<"\n";
+              gsInfo << "S:\n " << svd.singularValues().transpose() <<"\n";
+              gsMatrix<> K = svd.matrixV().rightCols(2);
               // Get nullspace from Julia for n=3:
-              gsMatrix<> K(3,2);
-              K<<-0.499814, -0.645641,
-                 -0.309234,  0.755672,
-                  0.809049, -0.110032;
+              //gsMatrix<> K(3,2);
+              //K<<-0.499814, -0.645641,
+              //   -0.309234,  0.755672,
+              //    0.809049, -0.110032;
 
               //
               //gsInfo << "svalues: " << svd.singularValues().transpose() <<"\n";
-              gsInfo << "K:\n " << K / K(0,0) <<"\n";
+              gsInfo << "K:\n " << K <<"\n";
+              gsInfo << "K0-->:\n " << K.col(0).norm() <<"\n";
+              gsInfo << "K1-->:\n " << K.col(1).norm() <<"\n";
+              
               A.bottomRows(2) = K.transpose();
               gsInfo << "A:\n " << A <<"\n";
 
               gsMatrix<> sol_odd, sol = A.fullPivLu().solve(b);
               gsInfo << "sol: " << sol.transpose() <<"\n";
 
-              if(n%2==1) // odd vertex ?
-              {              
-                  b.setZero(n,1);
-                  b.array() = -a;
-                  b += -5*(a-2)*sol + 4 * a * (0.5*sol - 0.1*gsMatrix<>::Ones(n,1)) ;
-                  b *= 0.2;
+              b.resize(sz, 1);// reusing memory for b
+              // b.array() = -a;
+              // b +=-5*(a-2)*sol + 4 * a * (0.5*sol - 0.1*gsMatrix<>::Ones(n,1)) ;
+              // b *= 0.2;
+              for(index_t q=0;q!=n;++q)
+                  b.at(q) = 0.2 * ( a-5*(a-2)*sol.at(q) + 4*a*(0.5*sol.at(q)-0.1));
+
+              if (sz==n) //odd vertex
+              {
                   sol_odd = C2.fullPivLu().solve(b);
-                  gsInfo << "sol_odd: " << sol_odd.transpose() <<"\n"; // Should be [x,x,x] when n==3
+                  gsInfo << "sol_odd: " << sol_odd.transpose() <<"\n";
               }
+              else //even vertex
+              {
+                  //add to C2 one last row: (1,N): [-1 1 -1 1 -1 1 ...]
+                  // C2 has now size: (N+1)xN
+                  auto RR = A.row(n);
+                  index_t tmp(1);
+                  for(index_t q = 0; q!=sz; ++q)
+                  {
+                      tmp *= -1;
+                      RR[q]= tmp;
+                  }
+                  b.at(n) = 0;
+                  // solve using C2 plus one additional row
+                  // NOTE: solve OVERDETERMINED system (LS?)
+                  sol_odd = A.topRows(sz).fullPivLu().solve(b);
+                  gsInfo << "sol_even: " << sol_odd.transpose() <<"\n";
+              }
+              //gsInfo << "b:\n " << b.transpose() <<"\n";
 
               // (continues) Basis function attached to the vertex value
               index_t k = 0;
               for ( auto he : msh.halfedges(v) ) //for all halfedges he in msh
               {
                   real_t R1 = 0.1 * ( -a + 5*a*sol.at(k) - 10*(a-2)*(0.5*sol.at(k)-0.1));
-                  //real_t R2 = 0.1 * ( a - 5*a*b10 + 10*a*(0.5*b20));
-
                   pi = msh.face(he).idx();
                   os = mapper.offset(pi);
                   cmapper.indexOnPatch(v.idx(), pi, ci);
@@ -405,55 +436,79 @@ int main(int argc, char *argv[])
                   //
                   M.insert(os+cpIndex(ci, 1, 0), c1dim) = sol.at(k);
                   M.insert(os+cpIndex(ci, 2, 0), c1dim) = 0.5*sol.at(k) - 0.1;
-                  M.insert(os+cpIndex(ci, 2, 1), c1dim) = 0.5*R1;//0.5*(-0.2  + sol.at(k));//??
-                  //M.insert(os+cpIndex(ci, 3, 1), c1dim) = -0.5*R1;//-0.5*(-0.2  + sol.at(k));//?? ZERO
+                  M.insert(os+cpIndex(ci, 2, 1), c1dim) = 0.5*R1;
                   pi = msh.face(msh.opposite_halfedge(he)).idx();
                   cmapper.indexOnPatch(v.idx(), pi, ci);
                   os = mapper.offset(pi);
                   M.insert(os+cpIndex(ci, 0, 1), c1dim) = sol.at(k);
                   M.insert(os+cpIndex(ci, 0, 2), c1dim) = 0.5*sol.at(k) - 0.1;
-                  M.insert(os+cpIndex(ci, 1, 2), c1dim) = 0.5*R1;//0.5*(-0.2  + sol.at(k));//??
-                  //M.insert(os+cpIndex(ci, 1, 3), c1dim) = -0.5*R1;//-0.5*(-0.2  + sol.at(k));//??
+                  M.insert(os+cpIndex(ci, 1, 2), c1dim) = 0.5*R1;
                   ++k;
               }
+              gsInfo <<"Function "<< c1dim <<" :\n";
+              gsInfo << M.col(c1dim).toDense().transpose() <<"\n";
               ++c1dim;
 
+
+
               //Start: basis functions attached to the partial derivatives at the vertex
-              if(n%2==1) // odd vertex  ?
+              b.setZero(sz,2); // reusing memory for b
+              //b += -5*(a-2)*K + 4 * a * (K * 0.5) ;
+              //b *= 0.2;
+              for(index_t q=0;q!=n;++q)
               {
-                  K.col(0).normalize();
-                  K.col(1).normalize();
-                  gsDebugVar(K);
-                  b.setZero(n,2);
-                  b += -5*(a-2)*K + 4 * a * (K * 0.5) ;
-                  b *= 0.2;
+                  b(q,0) = 0.2 * (-5*(a-2)*K(q,0) + 4*a*(0.5*K(q,0)));
+                  b(q,1) = 0.2 * (-5*(a-2)*K(q,1) + 4*a*(0.5*K(q,1)));
+              }
+
+              if (sz==n) // odd vertex
+              {
                   sol_odd = C2.fullPivLu().solve(b);
-                  gsInfo << "sol_odd: " << sol_odd.transpose() <<"\n";
+                  gsInfo << "b_odd:\n" << b.transpose() <<"\n";
+                  gsInfo << "sol_odd:\n" << sol_odd.transpose() <<"\n";
+              }
+              else //even vertex
+              {
+                  //add to C2 one last row: (1,N): [-1 1 -1 1 -1 1 ...]
+                  // C2 has now size: (N+1)xN
+                  auto RR = A.row(n);
+                  index_t tmp(1);
+                  for(index_t q = 0; q!=sz; ++q)
+                  {
+                      tmp *= -1;
+                      RR[q]= tmp;
+                  }
+                  b.at(n) = 0;
+                  // solve using C2 plus one additional row
+                  // NOTE: solve OVERDETERMINED system (LS?)
+                  sol_odd = A.topRows(sz).fullPivLu().solve(b);
+                  gsInfo << "sol_even: " << sol_odd.transpose() <<"\n";
               }
 
               //Basis functions attached to the two partial derivatives at the vertex.
               k = 0;
               for ( auto he : msh.halfedges(v) ) //for all halfedges he in msh
               {
-                  //real_t R1 = 0.1 * ( -a + 5*a*sol.at(k) - 10*(a-2)*(0.5*sol.at(k)-0.1)); //b21
-                  //real_t R3 = 0.1 * ( a - 5*a*b10 + 10*a*(0.5*b20));//b31
-                  //R1 b
-                  //R4
-                  
+                  real_t R1 = 0.1 * ( 5*a*K(k,0) - 10*(a-2)*(0.5*K(k,0)));
+                  real_t R3 = 0.1 * (-5*a*K(k,0) + 10*a*(0.5*K(k,0)));
+                  //
+                  real_t R2 = 0.1 * ( 5*a*K(k,1) - 10*(a-2)*(0.5*K(k,1)));
+                  real_t R4 = 0.1 * (-5*a*K(k,1) + 10*a*(0.5*K(k,1)));
+
                   pi = msh.face(he).idx();
                   os = mapper.offset(pi);
                   cmapper.indexOnPatch(v.idx(), pi, ci);
                   //first
                   M.insert(os+cpIndex(ci, 1, 0), c1dim) = K(k,0);
                   M.insert(os+cpIndex(ci, 2, 0), c1dim) = K(k,0) * 0.5;
-                  M.insert(os+cpIndex(ci, 2, 1), c1dim) = 0.5 * K(k,0);//..
-                  M.insert(os+cpIndex(ci, 3, 1), c1dim) = -0.5 * K(k,0);
+                  M.insert(os+cpIndex(ci, 2, 1), c1dim) = 0.5 * R1;
+                  M.insert(os+cpIndex(ci, 3, 1), c1dim) = 0.5 * R3;//
                   M.insert(os+cpIndex(ci, 1, 1), c1dim) = sol_odd(k,0);
                   //second
                   M.insert(os+cpIndex(ci, 1, 0), 1+c1dim) = K(k,1);
                   M.insert(os+cpIndex(ci, 2, 0), 1+c1dim) = K(k,1) * 0.5;
-                  M.insert(os+cpIndex(ci, 2, 1), 1+c1dim) = 0.5 * K(k,1);//..
-                  M.insert(os+cpIndex(ci, 3, 1), 1+c1dim) = -0.5 * K(k,1);//..
+                  M.insert(os+cpIndex(ci, 2, 1), 1+c1dim) = 0.5 * R2;//..
+                  M.insert(os+cpIndex(ci, 3, 1), 1+c1dim) = 0.5 * R4;//..
                   M.insert(os+cpIndex(ci, 1, 1), 1+c1dim) = sol_odd(k,1);
                   pi = msh.face(msh.opposite_halfedge(he)).idx();
                   cmapper.indexOnPatch(v.idx(), pi, ci);
@@ -461,63 +516,65 @@ int main(int argc, char *argv[])
                   //first
                   M.insert(os+cpIndex(ci, 0, 1), c1dim) = K(k,0);
                   M.insert(os+cpIndex(ci, 0, 2), c1dim) = K(k,0) * 0.5;
-                  M.insert(os+cpIndex(ci, 1, 2), c1dim) = 0.5 * K(k,0);//..
-                  M.insert(os+cpIndex(ci, 1, 3), c1dim) = -0.5 * K(k,0);//..
+                  M.insert(os+cpIndex(ci, 1, 2), c1dim) = 0.5 * R1;
+                  M.insert(os+cpIndex(ci, 1, 3), c1dim) = 0.5 * R3;//..
                   //second
                   M.insert(os+cpIndex(ci, 0, 1), 1+c1dim) = K(k,1);
                   M.insert(os+cpIndex(ci, 0, 2), 1+c1dim) = K(k,1) * 0.5;
-                  M.insert(os+cpIndex(ci, 1, 2), 1+c1dim) = 0.5 * K(k,1);//..
-                  M.insert(os+cpIndex(ci, 1, 3), 1+c1dim) = -0.5 * K(k,1);//..
+                  M.insert(os+cpIndex(ci, 1, 2), 1+c1dim) = 0.5 * R2;//..
+                  M.insert(os+cpIndex(ci, 1, 3), 1+c1dim) = 0.5 * R4;//..
                   ++k;
               }
+              gsInfo <<"Function "<< c1dim <<" :\n";
+              gsInfo << M.col(c1dim).toDense().transpose() <<"\n";
+
               c1dim+=2;
 
               // Basis attached to the cross derivatives at the vertex
               k = 0;
               for ( auto he : msh.halfedges(v) ) //for all halfedges he in msh
               {
+                  real_t R1 = -(a-2)*(5.0/(4*a)) + (3.0/5.0)*a*(5.0/(4*a));
+                  real_t R2 =      a*(5.0/(4*a)) - (a-2)*(5.0/(4*a));
+
                   pi = msh.face(he).idx();
                   os = mapper.offset(pi);
                   cmapper.indexOnPatch(v.idx(), pi, ci); //current face F
                   M.insert(os+cpIndex(ci, 1, 1), c1dim) = 1;
-                  M.insert(os+cpIndex(ci, 2, 0), c1dim) = -5.0/(4*a);
-                  M.insert(os+cpIndex(ci, 0, 2), c1dim) = -5.0/(4*a);
-                  M.insert(os+cpIndex(ci, 3, 0), c1dim) = -5.0/(4*a);
-                  M.insert(os+cpIndex(ci, 0, 3), c1dim) = -5.0/(4*a);
+                  M.insert(os+cpIndex(ci, 2, 0), c1dim) =  5.0/(4*a);
+                  M.insert(os+cpIndex(ci, 0, 2), c1dim) =  5.0/(4*a);
+                  M.insert(os+cpIndex(ci, 3, 0), c1dim) =  5.0/(4*a);
+                  M.insert(os+cpIndex(ci, 0, 3), c1dim) =  5.0/(4*a);
 
-                  M.insert(os+cpIndex(ci, 1, 2), c1dim) = -0.25*( 5/a - 1);
-                  M.insert(os+cpIndex(ci, 2, 1), c1dim) = -0.25*( 5/a - 1);
-                  M.insert(os+cpIndex(ci, 1, 3), c1dim) = -2.5/(2*a);
-                  M.insert(os+cpIndex(ci, 3, 1), c1dim) = -2.5/(2*a);
+                  M.insert(os+cpIndex(ci, 1, 2), c1dim) =  0.5*R1;
+                  M.insert(os+cpIndex(ci, 2, 1), c1dim) =  0.5*R1;
+                  M.insert(os+cpIndex(ci, 1, 3), c1dim) =  0.5*R2;
+                  M.insert(os+cpIndex(ci, 3, 1), c1dim) =  0.5*R2;
                   //
                   pi = msh.face(msh.opposite_halfedge(he)).idx();
                   cmapper.indexOnPatch(v.idx(), pi, ci); // previous face F-1
                   os = mapper.offset(pi);
-                  M.insert(os+cpIndex(ci, 0, 2), c1dim) = -5.0/(4*a);
-                  M.insert(os+cpIndex(ci, 0, 3), c1dim) = -5.0/(4*a);
+                  M.insert(os+cpIndex(ci, 0, 2), c1dim) =  5.0/(4*a);
+                  M.insert(os+cpIndex(ci, 0, 3), c1dim) =  5.0/(4*a);
 
-                  M.insert(os+cpIndex(ci, 1, 2), c1dim) = -0.25*( 5/a - 1);
-                  M.insert(os+cpIndex(ci, 1, 3), c1dim) = -2.5/(2*a);
+                  M.insert(os+cpIndex(ci, 1, 2), c1dim) =  0.5*R1;
+                  M.insert(os+cpIndex(ci, 1, 3), c1dim) =  0.5*R2;
                   //
                   pi = msh.face(msh.ccw_rotated_halfedge(he)).idx();
                   cmapper.indexOnPatch(v.idx(), pi, ci); // next face F+1
                   os = mapper.offset(pi);
-                  M.insert(os+cpIndex(ci, 2, 0), c1dim) = -5.0/(4*a);
-                  M.insert(os+cpIndex(ci, 3, 0), c1dim) = -5.0/(4*a);
+                  M.insert(os+cpIndex(ci, 2, 0), c1dim) =  5.0/(4*a);
+                  M.insert(os+cpIndex(ci, 3, 0), c1dim) =  5.0/(4*a);
 
-                  M.insert(os+cpIndex(ci, 2, 1), c1dim) = -0.25*( 5/a - 1);
-                  M.insert(os+cpIndex(ci, 3, 1), c1dim) = -2.5/(2*a);
+                  M.insert(os+cpIndex(ci, 2, 1), c1dim) = 0.5*R1;
+                  M.insert(os+cpIndex(ci, 3, 1), c1dim) = 0.5*R2;
+
+                  if (3==n)
+                      M.col(c1dim) *= -1;
+                      
                   ++k;
                   ++c1dim;
               }
-
-              continue;
-              //evennnnnnn
-              index_t sz = n + (n%2==0);
-              A.setZero(sz,n), b.setZero(sz);
-              sol = A.fullPivLu().solve(b);
-              // for each patch around the vertex
-              M.insert(os+cpIndex(ci, 1, 1), c1dim) = b.at(k);
           }
 
           //if (n>3 && msh.is_boundary(v)) // boundary EV
