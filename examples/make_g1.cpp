@@ -113,6 +113,37 @@ inline index_t cpIndex(index_t HEcorner, index_t xstep, index_t ystep)
     }
 }
 
+index_t g1Dimension(gsSurfMesh & msh)
+{
+    index_t n, c1dim(0);
+    for (auto v : msh.vertices())
+    {
+        n = msh.valence(v);
+        if (n<=3 && msh.is_boundary(v) ) // boundary regular (T-junction) or corner
+            c1dim += 4;
+        if (n==4 && !msh.is_boundary(v)) // inner regular
+            c1dim += 4;
+        if (n!=4 && !msh.is_boundary(v)) // inner EV
+            c1dim += n + 3;
+        if (n>3 && msh.is_boundary(v))   // boundary EV
+            c1dim += 2;
+    }
+    gsInfo << "Dimension V  "<< c1dim <<"\n";
+
+    for ( auto ee : msh.edges() ) //for all edges he in msh
+    {
+        bool bdr = msh.is_boundary(ee);
+        // Note for Extraordinary edge on boundary we still count 4)
+        bool eed = (4!=msh.valence(msh.vertex(ee,0)) || 4!=msh.valence(msh.vertex(ee,1)) );
+        c1dim += (!bdr && eed ? 2 : 4);
+    }
+    gsInfo << "Dimension V+E: "<< c1dim <<"\n";
+    
+    c1dim += 4 * msh.n_faces();
+    gsInfo << "Dimension is (final): "<< c1dim <<"\n";
+    return c1dim;
+}
+
 int main(int argc, char *argv[])
 {
     std::string pname("gsview"), fn("/home/amantzaf/gitlab/catmull-clark/Gismo/Basis/triangle_planar.xml");
@@ -163,57 +194,8 @@ int main(int argc, char *argv[])
     gsInfo << "\nEdges: "<< msh.n_edges();
     gsInfo << "\nFaces: "<< msh.n_faces();
     gsInfo << "\nHalfedges: "<< msh.n_halfedges() <<"\n";
-    int n, c1dim = 0;
 
-    for (auto v : msh.vertices())
-    {
-        n = msh.valence(v);
-        if (n!=4 && !msh.is_boundary(v)) //inner EV ~ 
-            c1dim += n + 3;
-        if (n==4 && !msh.is_boundary(v) ) // inner regular ~ OK
-            c1dim += 4;
-        if (n>3 && msh.is_boundary(v)) // boundary EV ~ 
-            c1dim += 2;
-        if (n<=3 && msh.is_boundary(v)) // boundary regular (T-junction) or corner ~ OK
-            c1dim += 4;
-    }
-
-    gsInfo << "Dimension V  "<< c1dim <<"\n";
-
-    for ( auto ee : msh.edges() ) //for all edges he in msh
-    {
-        bool bdr = msh.is_boundary(ee);
-        // Note for Extraordinary edge on boundary we still count 4)
-        bool eed = (4!=msh.valence(msh.vertex(ee,0)) || 4!=msh.valence(msh.vertex(ee,1)) );
-        c1dim += (!bdr && eed ? 2 : 4);
-    }
-
-    if (false) // above: iteration on full edges instead
-    for ( auto he : msh.halfedges() ) //for all halfedges he in msh
-    {
-        // Edge on boundary ?
-        bool bdr = ( msh.is_boundary(he) || msh.touches_boundary(he) );
-        // Extraordinary edge? (!) what about boundary
-        bool ee = (4!=msh.valence(msh.from_vertex(he)) || 4!=msh.valence(msh.from_vertex(he)) );
-
-        c1dim += (!bdr && ee ? 1 : 2);
-        /*            
-        if (!bdr && ee) // inner EHE
-            c1dim += 1;
-        if (!bdr && !ee) // inner regular HE
-            c1dim += 2;
-        if (bdr && ee) // boundary EHE
-            c1dim += 2;
-        if (bdr && !ee) // boundary regular HE
-            c1dim += 2;
-        */
-    }
-
-    gsInfo << "Dimension V+E: "<< c1dim <<"\n";
-    
-    c1dim += 4 * msh.n_faces();
-
-    gsInfo << "Dimension is (final): "<< c1dim <<"\n";
+    int n, c1dim = g1Dimension(msh);
 
     //Create transfer matrix
     gsSparseMatrix<> M(mapper.mapSize(), c1dim);
@@ -335,7 +317,7 @@ int main(int argc, char *argv[])
 
           if (n!=4 && !msh.is_boundary(v)) //inner EV (n+3 functions)
           {
-              gsInfo << "FUNCTION NUMBER " << c1dim <<"\n";
+              gsInfo << "EV: " << c1dim <<"\n";
 //              /*
               // Computing n + 3 functions attached to the EV (1+2+n)
               real_t a = 2 * math::cos(2*EIGEN_PI/n);// rename as a0
@@ -350,7 +332,7 @@ int main(int argc, char *argv[])
               }
 
               gsMatrix<> C = circulant(n);
-              C.transposeInPlace(); // Making column-circulant..
+              C.transposeInPlace(); // Making column-circulant !!
               gsInfo << "C:\n " << C <<"\n";
               gsMatrix<> A(n+2,n), b(n+2,1);
               b.topRows(n).setConstant(2 - a);
@@ -360,7 +342,6 @@ int main(int argc, char *argv[])
               gsMatrix<> C2(sz,n);
               C2.topRows(n) = C;
               C2 /*.topRows(n)*/ .diagonal().array() += 1;
-              gsInfo << "C2:\n " << C2 <<"\n";
               gsMatrix<> Cpow = C;
               for(index_t i = 2; i<n;++i)
                   Cpow *= C;
@@ -369,9 +350,8 @@ int main(int argc, char *argv[])
               C1.diagonal().array() -= a;
               gsInfo << "C1:\n " << C1 <<"\n";
 
-              gsInfo << "A:\n " << A <<"\n";
-              typename gsMatrix<>::JacobiSVD svd = C1.jacobiSvd(gsEigen::ComputeFullV | gsEigen::ComputeFullU );
-              gsInfo << "U:\n " << svd.matrixU() <<"\n";
+              typename gsMatrix<>::JacobiSVD svd = C1.jacobiSvd(gsEigen::ComputeFullV /*| gsEigen::ComputeFullU*/ );
+              //gsInfo << "U:\n " << svd.matrixU() <<"\n";
               gsInfo << "V:\n " << svd.matrixV() <<"\n";
               gsInfo << "S:\n " << svd.singularValues().transpose() <<"\n";
               gsMatrix<> K = svd.matrixV().rightCols(2);
@@ -409,9 +389,9 @@ int main(int argc, char *argv[])
               {
                   //add to C2 one last row: (1,N): [-1 1 -1 1 -1 1 ...]
                   // C2 has now size: (N+1)xN
-                  auto RR = A.row(n);
+                  auto RR = C2.row(n);
                   index_t tmp(1);
-                  for(index_t q = 0; q!=sz; ++q)
+                  for(index_t q = 0; q!=n; ++q)
                   {
                       tmp *= -1;
                       RR[q]= tmp;
@@ -419,9 +399,10 @@ int main(int argc, char *argv[])
                   b.at(n) = 0;
                   // solve using C2 plus one additional row
                   // NOTE: solve OVERDETERMINED system (LS?)
-                  sol_odd = A.topRows(sz).fullPivLu().solve(b);
+                  sol_odd = C2.fullPivLu().solve(b);
                   gsInfo << "sol_even: " << sol_odd.transpose() <<"\n";
               }
+              gsInfo << "C2:\n " << C2 <<"\n";
               //gsInfo << "b:\n " << b.transpose() <<"\n";
 
               // (continues) Basis function attached to the vertex value
@@ -445,11 +426,8 @@ int main(int argc, char *argv[])
                   M.insert(os+cpIndex(ci, 1, 2), c1dim) = 0.5*R1;
                   ++k;
               }
-              gsInfo <<"Function "<< c1dim <<" :\n";
-              gsInfo << M.col(c1dim).toDense().transpose() <<"\n";
+              //gsInfo <<"Function "<< c1dim <<" :\n" << M.col(c1dim).toDense().transpose() <<"\n";
               ++c1dim;
-
-
 
               //Start: basis functions attached to the partial derivatives at the vertex
               b.setZero(sz,2); // reusing memory for b
@@ -471,9 +449,9 @@ int main(int argc, char *argv[])
               {
                   //add to C2 one last row: (1,N): [-1 1 -1 1 -1 1 ...]
                   // C2 has now size: (N+1)xN
-                  auto RR = A.row(n);
+                  auto RR = C2.row(n);
                   index_t tmp(1);
-                  for(index_t q = 0; q!=sz; ++q)
+                  for(index_t q = 0; q!=n; ++q)
                   {
                       tmp *= -1;
                       RR[q]= tmp;
@@ -481,7 +459,7 @@ int main(int argc, char *argv[])
                   b.at(n) = 0;
                   // solve using C2 plus one additional row
                   // NOTE: solve OVERDETERMINED system (LS?)
-                  sol_odd = A.topRows(sz).fullPivLu().solve(b);
+                  sol_odd = C2.fullPivLu().solve(b);
                   gsInfo << "sol_even: " << sol_odd.transpose() <<"\n";
               }
 
@@ -577,8 +555,10 @@ int main(int argc, char *argv[])
               }
           }
 
-          //if (n>3 && msh.is_boundary(v)) // boundary EV
-          //    c1dim += n+2;
+          if (n>3 && msh.is_boundary(v)) // boundary EV
+          {
+              GISMO_ERROR("Boundary EV problem.");
+          }
 
     }//end for vertices
 
