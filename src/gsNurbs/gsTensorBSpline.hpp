@@ -660,6 +660,7 @@ public:
     {
         return putGeometryToXml(obj,data);
     }
+    GSXML_GET_INTO(gsTensorBSpline<TMPLA2(d,T)>);
 };
 
 

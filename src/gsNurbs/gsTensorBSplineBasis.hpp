@@ -258,6 +258,7 @@ public:
     {
         return putTensorBasisToXml<Object >(obj,data);
     }
+    GSXML_GET_INTO(Object);
 };
 
 } // internal

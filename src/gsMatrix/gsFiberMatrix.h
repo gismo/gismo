@@ -31,18 +31,8 @@ class gsFiberMatrix
 {
     static constexpr bool IsRowMajor = (Major==RowMajor);
 public:
-    typedef gsEigen::SparseVector<T> Fiber;
-
-    class iterator : public Fiber::InnerIterator
-    {
-    public:
-        typedef typename Fiber::InnerIterator Base;
-        iterator() = default;
-        iterator(const gsFiberMatrix & fm, index_t j) : Base(fm.fiber(j)) { }
-
-        inline T& operator[](size_t i)
-        { return const_cast<T&>(*(this->m_values+i)); }
-    };
+    typedef gsSparseVector<T> Fiber;
+    typedef typename Fiber::iterator iterator;
 
     struct RowBlockXpr;
 
@@ -75,7 +65,7 @@ public:
         clear();
     }
 
-    iterator begin(index_t j) const { return iterator(*this, j); }
+    iterator begin(index_t j) const { return iterator(*m_fibers[j]); }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsFiberMatrix(gsFiberMatrix&& other) : m_fibers(give(other.m_fibers)) {}
@@ -124,6 +114,12 @@ public:
     inline index_t innerSize() const
     //    { return ( m_fibers.empty() ? 0 : m_fibers.front()->size() ); }
     { return ( m_fibers.size()>0 ? m_fibers.front()->size() : 0 ); }
+
+    void setZero()
+    {
+        for( auto & f : m_fibers)
+            f->setZero();
+    }
 
     /** \returns the number of rows of the matrix */
     inline index_t rows() const { return IsRowMajor ? outerSize() : innerSize(); }
@@ -242,7 +238,7 @@ public:
     template<typename Cont>
     void reserve(const Cont &nz)
     {
-        GISMO_ASSERT(m_fibers.size()==nz.size(), "Wrong size in nonzero vector.");
+        GISMO_ASSERT(m_fibers.size()==(size_t)nz.size(), "Wrong size in nonzero vector.");
         for (index_t i = 0; i < fibers(); ++i)
             m_fibers[i]->reserve(nz[i]);
     }
@@ -304,6 +300,14 @@ public:
         return nnz;
     }
 
+    gsVector<index_t> nonZerosPerFiber() const
+    {
+        gsVector<index_t> result(fibers());
+        for (size_t i = 0; i != m_fibers.size(); ++i)
+            result[i] = m_fibers[i]->nonZeros();
+        return result;
+    }
+
     gsSparseMatrix<T> toSparseMatrix() const
     {
         gsSparseMatrix<T> rvo;
@@ -315,7 +319,7 @@ public:
     void toSparseMatrix_into(gsEigen::SparseMatrixBase<Derived>& m) const
     {
         m.derived().resize( rows(), cols() );
-        m.derived().reserve( nonZeros() );
+        m.derived().reserve( nonZerosPerFiber() );
         for (index_t i = 0; i < fibers(); ++i)
         {
             for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it)

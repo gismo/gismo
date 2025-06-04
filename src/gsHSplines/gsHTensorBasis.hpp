@@ -2121,6 +2121,7 @@ public:
         gsWarn<<"gsXmlUtils put: getBasis: No known basis \""<<obj<<"\". Error.\n";
         return NULL;
     }
+    GSXML_GET_INTO(gsHTensorBasis<TMPLA2(d,T)>);
 };
 
 } // namespace internal

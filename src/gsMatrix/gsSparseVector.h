@@ -37,8 +37,18 @@ public:
 
     typedef gsEigen::SparseVector<T,_Options,_Index> Base;
 
-    typedef typename gsEigen::SparseVector<T,_Options,_Index>::InnerIterator iterator;
+    typedef typename gsEigen::SparseVector<T,_Options,_Index>::InnerIterator InnerIterator;
     
+    class iterator : public InnerIterator
+    {
+    public:
+        iterator() = default;
+        iterator(const gsSparseVector & sv) : InnerIterator(sv) { }
+
+        inline T& operator[](size_t i)
+        { return const_cast<T&>(*(this->m_values+i)); }
+    };
+
     // Type pointing to a block of the sparse vector
     typedef typename gsEigen::Block<Base> Block;
     
@@ -116,8 +126,7 @@ public:
         this->data().squeeze();
     }
 
-    iterator       begin()        { return iterator(*this); }
-    const iterator begin() const { return iterator(*this); }
+    iterator begin() const { return iterator(*this); }
 
     inline T   at (_Index i ) const { return this->coeff(i); }
     inline T & at (_Index i ) { return this->coeffRef(i); }
