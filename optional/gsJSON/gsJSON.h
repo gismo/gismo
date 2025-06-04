@@ -14,10 +14,12 @@
 #pragma once
 
 #include <JSON/single_include/nlohmann/json.hpp>
-using json = nlohmann::json;
 
 namespace gismo
 {
+
+// Add the nlohmann::json namespace to the gismo namespace
+using json = nlohmann::json;
 
 /**
  * @brief Writes a gsVector to JSON
