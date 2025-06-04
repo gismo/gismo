@@ -1,5 +1,5 @@
 ### CMakeLists.txt --- JSON library
-## Author: Angelos Mantzaflaris
+## Author: H.M. Verhelst
 #
 # The library is header-only, the extra code is downloaded in place of
 # the source folder of G+Smo
@@ -11,15 +11,13 @@ project(gsJSONExtension)
 
 # Collect file names
 aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HEADERS)
-#aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_SOURCES)
-#aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 
 # Apply same configuration as G+Smo
 include(gsConfig)
 
 include(gsFetch)
 gismo_fetch_directory(JSON
-  URL https://github.com/nlohmann/json/releases/download/v3.11.3/include.zip
+  URL https://github.com/nlohmann/json/releases/download/v3.12.0/include.zip
   DESTINATION external
 )
 
