@@ -93,7 +93,7 @@ public:
     }
 
     /// Move assignment operator
-    gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other)
+    gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other) EIGEN_NOEXCEPT
     {
         m_domainIter = give(_other.m_domainIter);
         return *this;
@@ -131,6 +131,14 @@ public:
         m_domainIter->next();
         m_domainIter->nextId();
         return *this;
+    }
+
+    /// Post-increment operator to proceed to the next element
+    size_t operator++(int)
+    {
+        size_t oid = id();
+        ++(*this);
+        return oid;
     }
 
     /// Decrement operator to proceed to the next element

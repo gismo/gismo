@@ -157,8 +157,8 @@ private:
     gsXml() { }
     typedef gsComposedFunction<T> Object;
 public:
-    GSXML_COMMON_FUNCTIONS(Object);
-    GSXML_GET_INTO(Object);
+    //GSXML_COMMON_FUNCTIONS(Object);
+    //GSXML_GET_INTO(Object);
     static std::string tag () { return "Function"; }
     static std::string type () { return "ComposedFunction"; }
 
@@ -180,8 +180,8 @@ public:
         CompositionType * composition;
         if      (gsXmlNode* compData = compNode->first_node("Geometry"))
             composition = gsXml< gsGeometry<T> >::get (compData) ;
-        else if (gsXmlNode* compData = compNode->first_node("Function"))
-            composition = gsXml< gsFunction<T> >::get (compData) ;
+        else if (gsXmlNode* compData2 = compNode->first_node("Function"))
+            composition = gsXml< gsFunction<T> >::get (compData2) ;
         else
             GISMO_ERROR("gsXmlUtils: get ComposedFunction: No composition found.");
 
