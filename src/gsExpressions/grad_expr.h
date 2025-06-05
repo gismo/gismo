@@ -195,13 +195,18 @@ grad_expr<_expr<T,true>> grad(const _expr<T,true> & u) { return grad_expr<_expr<
  * @ingroup Expressions
  */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
-auto grad(const add_expr<E1,E2> & e)
+add_expr<grad_expr<E1>, grad_expr<E2>>
+grad(const add_expr<E1,E2> & e)
 { return grad(e.first()) + grad(e.second()); }
+
 template <typename E1> EIGEN_STRONG_INLINE
-auto grad(const add_expr<E1,_expr<typename E1::Scalar,true>> & e)
+grad_expr<E1>
+grad(const add_expr<E1,_expr<typename E1::Scalar,true>> & e)
 { return grad(e.first()); }
+
 template <typename E2> EIGEN_STRONG_INLINE
-auto grad(const add_expr<_expr<typename E2::Scalar,true>,E2> & e)
+grad_expr<E2>
+grad(const add_expr<_expr<typename E2::Scalar,true>,E2> & e)
 { return grad(e.second()); }
 
 /**
@@ -209,13 +214,18 @@ auto grad(const add_expr<_expr<typename E2::Scalar,true>,E2> & e)
  * @ingroup Expressions
  */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
-auto grad(const sub_expr<E1,E2> & e)
+sub_expr<grad_expr<E1>, grad_expr<E2>>
+grad(const sub_expr<E1,E2> & e)
 { return grad(e.first()) - grad(e.second()); }
+
 template <typename E1> EIGEN_STRONG_INLINE
-auto grad(const sub_expr<E1,_expr<typename E1::Scalar,true>> & e)
+grad_expr<E1>
+grad(const sub_expr<E1,_expr<typename E1::Scalar,true>> & e)
 { return grad(e.first()); }
+
 template <typename E2> EIGEN_STRONG_INLINE
-auto grad(const sub_expr<_expr<typename E2::Scalar,true>,E2> & e)
+sub_expr<_expr<typename E2::Scalar,true>,grad_expr<E2>>
+grad(const sub_expr<_expr<typename E2::Scalar,true>,E2> & e)
 { return -grad(e.second()); }
 
 /**
@@ -223,13 +233,13 @@ auto grad(const sub_expr<_expr<typename E2::Scalar,true>,E2> & e)
  * @ingroup Expressions
  */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
-auto grad(const mult_expr<E1,E2> & e)
+add_expr<mult_expr<E2,grad_expr<E1>>,mult_expr<E1,grad_expr<E2>>>
+grad(const mult_expr<E1,E2> & e)
 { return e.second() * grad(e.first()) + e.first() * grad(e.second()); }
+
 template <typename E1> EIGEN_STRONG_INLINE
-auto grad(const mult_expr<E1,_expr<typename E1::Scalar,true>> & e)
-{ return grad(e.first()) * e.second(); }
-template <typename E2> EIGEN_STRONG_INLINE
-auto grad(const mult_expr<_expr<typename E2::Scalar,true>,E2> & e)
+mult_expr<_expr<typename E1::Scalar,true>,grad_expr<E1>,false>
+grad(const mult_expr<_expr<typename E1::Scalar,true>,E1,false> & e)
 { return e.first() * grad(e.second()); }
 
 /**
@@ -239,15 +249,20 @@ auto grad(const mult_expr<_expr<typename E2::Scalar,true>,E2> & e)
  * @param u The expression
  */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
-auto grad(const divide_expr<E1,E2> & e)
+divide_expr<sub_expr<mult_expr<grad_expr<E1>,E2>,mult_expr<E1,grad_expr<E2>>>,mult_expr<E2,E2>>
+grad(const divide_expr<E1,E2> & e)
 { return (grad(e.first()) * e.second() - e.first() * grad(e.second())) / (e.second()*e.second()); }
+
 template <typename E1> EIGEN_STRONG_INLINE
-auto grad(const divide_expr<E1,_expr<typename E1::Scalar,true>> & e)
+divide_expr<mult_expr<_expr<typename E1::Scalar,true>,grad_expr<E1>>,_expr<typename E1::Scalar,true>>
+grad(const divide_expr<E1,_expr<typename E1::Scalar,true>> & e)
 // THIS DOES NOT WORK, BECAUSE WE DON'T HAVE mult_expr<_expr<T,true>,_expr<T,true>>
 // { return (grad(e.first()) * e.second()) / (e.second()*e.second()); }
 { return (grad(e.first()) * e.second()) / (e.second().eval(0)*e.second().eval(0)); }
+
 template <typename E2> EIGEN_STRONG_INLINE
-auto grad(const divide_expr<_expr<typename E2::Scalar,true>,E2> & e)
+divide_expr<sub_expr<_expr<typename E2::Scalar,true>,mult_expr<_expr<typename E2::Scalar,true>,grad_expr<E2>>>,mult_expr<E2,E2>>
+grad(const divide_expr<_expr<typename E2::Scalar,true>,E2> & e)
 // THIS DOES NOT WORK, BECAUSE OF THE operator- WHICH DOES NOT EXIST FOR _expr<T,true>
 // { return ( -e.first() * grad(e.second())) / (e.second()*e.second()); }
 { return -( e.first() * grad(e.second())) / (e.second()*e.second()); }
