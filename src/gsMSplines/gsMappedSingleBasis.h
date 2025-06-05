@@ -341,7 +341,6 @@ public:
         return m_basis->getBase(m_index).makeDomainIterator(s);
     }
 
-
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override
     {
         std::vector<index_t> temp, rtemp;
