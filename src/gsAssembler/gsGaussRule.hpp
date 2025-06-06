@@ -383,266 +383,51 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
 
     switch (n)
     {
-    case 1 :
-    {
-        x = gNodes1;
-        w = gWeight1;
-        return true;
+    case 1 : { x = gNodes1; w = gWeight1; return true; }
+    case 2 : { x = gNodes2; w = gWeight2; return true; }
+    case 3 : { x = gNodes3; w = gWeight3; return true; }
+    case 4 : { x = gNodes4; w = gWeight4; return true; }
+    case 5 : { x = gNodes5; w = gWeight5; return true; }
+    case 6 : { x = gNodes6; w = gWeight6; return true; }
+    case 7 : { x = gNodes7; w = gWeight7; return true; }
+    case 8 : { x = gNodes8; w = gWeight8; return true; }
     }
-    case 2 :
-    {
-        x = gNodes2;
-        w = gWeight2;
-        return true;
-
-    }
-    case 3 :
-    {
-        x = gNodes3;
-        w = gWeight3;        
-        return true;
-    }
-    case 4 :
-    {
-        x = gNodes4;
-        w = gWeight4;
-        return true;
-    }
-    case 5 :
-    {
-        x = gNodes5;
-        w = gWeight5;
-        return true;
-    }
-    case 6 :
-    {
-        x = gNodes6;
-        w = gWeight6;
-        return true;
-    }
-    case 7 :
-    {
-        x = gNodes7;
-        w = gWeight7;
-        return true;
-    }
-    case 8 :
-    {
-        x = gNodes8;
-        w = gWeight8;
-        return true;
-    }
-
-    }
-
     switch (n)
     {
-    case 9 :
-    {
-        x = gNodes9;
-        w = gWeight9;
-        return true;
-    }
-    case 10 :
-    {
-        x = gNodes10;
-        w = gWeight10;
-        return true;
-    }
-    case 11 :
-    {
-        x = gNodes11;
-        w = gWeight11;
-        return true;
-    }
-    case 12 :
-    {
-        x = gNodes12;
-        w = gWeight12;
-        return true;
-    }
-    case 13 :
-    {
-        x = gNodes13;
-        w = gWeight13;
-        return true;
-    }
-    case 14 :
-    {
-        x = gNodes14;
-        w = gWeight14;
-        return true;
-    }
-    case 15 :
-    {
-        x = gNodes15;
-        w = gWeight15;
-        return true;
-    }
-    case 16 :
-    {
-        x = gNodes16;
-        w = gWeight16;
-        return true;
-    }
-    case 17 :
-    {
-        x = gNodes17;
-        w = gWeight17;
-        return true;
-    }
-    case 18 :
-    {
-        x = gNodes18;
-        w = gWeight18;
-        return true;
-    }
-    case 19 :
-    {
-        x = gNodes19;
-        w = gWeight10;
-        return true;
-    }
-    case 20 :
-    {
-        x = gNodes20;
-        w = gWeight20;
-        return true;
-    }
-    case 21 :
-    {
-        x = gNodes21;
-        w = gWeight21;
-        return true;
-    }
-//#ifndef _MSC_VER
-    case 22 :
-    {
-        x = gNodes22;
-        w = gWeight22;
-        return true;
-    }
-    case 23 :
-    {
-        x = gNodes23;
-        w = gWeight23;
-        return true;
-    }
-    case 24 :
-    {
-        x = gNodes24;
-        w = gWeight24;
-        return true;
-    }
-    case 25 :
-    {
-        x = gNodes25;
-        w = gWeight25;
-        return true;
-    }
-    case 26 :
-    {
-        x = gNodes26;
-        w = gWeight26;
-        return true;
-    }
-    case 27 :
-    {
-        x = gNodes27;
-        w = gWeight27;
-        return true;
-    }
-    case 28 :
-    {
-        x = gNodes28;
-        w = gWeight28;
-        return true;
-    }
-    case 29 :
-    {
-        x = gNodes29;
-        w = gWeight29;
-        return true;
-    }
-    case 30 :
-    {
-        x = gNodes30;
-        w = gWeight30;
-        return true;
-    }
-    case 31 :
-    {
-        x = gNodes31;
-        w = gWeight31;
-        return true;
-    }
-    case 32 :
-    {
-        x = gNodes32;
-        w = gWeight32;
-        return true;
-    }
-    case 33 :
-    {
-        x = gNodes33;
-        w = gWeight33;
-        return true;
-    }
-    case 63 :
-    {
-        x = gNodes63;
-        w = gWeight63;
-        return true;
-    }
-    case 64 :
-    {
-        x = gNodes64;
-        w = gWeight64;
-        return true;
-    }
-    case 65 :
-    {
-        x = gNodes65;
-        w = gWeight65;
-        return true;
-    }
-    case 127 :
-    {
-        x = gNodes127;
-        w = gWeight127;
-        return true;
-    }
-    case 128 :
-    {
-        x = gNodes128;
-        w = gWeight128;
-        return true;
-    }
-    case 129 :
-    {
-        x = gNodes129;
-        w = gWeight129;
-        return true;
-    }
-    case 255 :
-    {
-        x = gNodes255;
-        w = gWeight255;
-        return true;
-    }
-    case 256 :
-    {
-        x = gNodes256;
-        w = gWeight256;
-        return true;
-    }
-    case 257 :
-    {
-        x = gNodes257;
-        w = gWeight257;
-        return true;
-    }
-//#endif
+    case 9  : { x = gNodes9 ; w = gWeight9 ; return true; }
+    case 10 : { x = gNodes10; w = gWeight10; return true; }
+    case 11 : { x = gNodes11; w = gWeight11; return true; }
+    case 12 : { x = gNodes12; w = gWeight12; return true; }
+    case 13 : { x = gNodes13; w = gWeight13; return true; }
+    case 14 : { x = gNodes14; w = gWeight14; return true; }
+    case 15 : { x = gNodes15; w = gWeight15; return true; }
+    case 16 : { x = gNodes16; w = gWeight16; return true; }
+    case 17 : { x = gNodes17; w = gWeight17; return true; }
+    case 18 : { x = gNodes18; w = gWeight18; return true; }
+    case 19 : { x = gNodes19; w = gWeight19; return true; }
+    case 20 : { x = gNodes20; w = gWeight20; return true; }
+    case 21 : { x = gNodes21; w = gWeight21; return true; }
+    case 22 : { x = gNodes22; w = gWeight22; return true; }
+    case 23 : { x = gNodes23; w = gWeight23; return true; }
+    case 24 : { x = gNodes24; w = gWeight24; return true; }
+    case 25 : { x = gNodes25; w = gWeight25; return true; }
+    case 26 : { x = gNodes26; w = gWeight26; return true; }
+    case 27 : { x = gNodes27; w = gWeight27; return true; }
+    case 28 : { x = gNodes28; w = gWeight28; return true; }
+    case 29 : { x = gNodes29; w = gWeight29; return true; }
+    case 30 : { x = gNodes30; w = gWeight30; return true; }
+    case 31 : { x = gNodes31; w = gWeight31; return true; }
+    case 32 : { x = gNodes32; w = gWeight32; return true; }
+    case 33 : { x = gNodes33; w = gWeight33; return true; }
+    case 63 : { x = gNodes63; w = gWeight63; return true; }
+    case 64 : { x = gNodes64; w = gWeight64; return true; }
+    case 65 : { x = gNodes65; w = gWeight65; return true; }
+    case 127: { x= gNodes127; w= gWeight127; return true; }
+    case 128: { x= gNodes128; w= gWeight128; return true; }
+    case 129: { x= gNodes129; w= gWeight129; return true; }
+    case 255: { x= gNodes255; w= gWeight255; return true; }
+    case 256: { x= gNodes256; w= gWeight256; return true; }
+    case 257: { x= gNodes257; w= gWeight257; return true; }
     default:
     {
         //gsWarn << "  Illegal value of N = " << n << "\n";
