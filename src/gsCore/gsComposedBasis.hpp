@@ -471,8 +471,8 @@ private:
     gsXml() { }
     typedef gsComposedBasis<T> Object;
 public:
-    //GSXML_COMMON_FUNCTIONS(Object);
-    //GSXML_GET_INTO(Object);
+    GSXML_COMMON_FUNCTIONS(Object);
+    GSXML_GET_INTO(Object);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "ComposedBasis"; }
 
