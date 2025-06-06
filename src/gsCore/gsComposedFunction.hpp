@@ -157,8 +157,8 @@ private:
     gsXml() { }
     typedef gsComposedFunction<T> Object;
 public:
-    //GSXML_COMMON_FUNCTIONS(Object);
-    //GSXML_GET_INTO(Object);
+    GSXML_COMMON_FUNCTIONS(Object);
+    GSXML_GET_INTO(Object);
     static std::string tag () { return "Function"; }
     static std::string type () { return "ComposedFunction"; }
 
