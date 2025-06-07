@@ -49,8 +49,7 @@ public:
 		m_mp.patch(0).scale(1/(bbox.col(1)-bbox.col(0)).array());
 
 		gsComposedGeometry<T> cgeom(m_MobiusMap, m_mp.patch(0));
-		gsMultiBasis<T> dbasis(cgeom.basis());
-		m_evaluator.setIntegrationElements(dbasis);
+		m_evaluator.setIntegrationDomain(cgeom.basis().domain());
 
 		// Set the geometry map
 		geometryMap G = m_evaluator.getMap(cgeom);
@@ -67,8 +66,7 @@ public:
 		m_MobiusMap.updateGeom(coefsM);
 
 		gsComposedGeometry<T> cgeom(m_MobiusMap, m_mp.patch(0));
-		gsMultiBasis<T> dbasis(cgeom.basis());
-		m_evaluator.setIntegrationElements(dbasis);
+		m_evaluator.setIntegrationDomain(cgeom.basis().domain());
 
 		geometryMap G = m_evaluator.getMap(cgeom);
 		auto FFF = jac(G).tr() * jac(G);
