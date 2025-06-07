@@ -95,7 +95,7 @@ public:
     void next() override
     {
         bool isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
-        if (isGood) // went through all elements in m_leaf
+        if (!isGood) // went through all elements in m_leaf
             isGood = nextLeaf();
     }
 

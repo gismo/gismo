@@ -930,7 +930,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     auto arg_tpl0 = std::make_tuple(args...);
     op_tuple(CM, arg_tpl0);
     if (!isMatrix) return;
-    
+
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
