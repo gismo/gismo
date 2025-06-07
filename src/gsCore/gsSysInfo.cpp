@@ -628,12 +628,15 @@ namespace gismo
 
     // Supply an oversized buffer, and avoid an extra call to sysctlbyname.
     CPUBrandString.resize(size);
-    if (sysctlbyname("machdep.cpu.brand_string", &CPUBrandString[0], &size, NULL, 0) == 0 && size > 0) {
-      if (CPUBrandString[size-1] == '\0')
-        size--;
-      CPUBrandString.resize(size);
-      return CPUBrandString;
+    if (sysctlbyname("machdep.cpu.brand_string", &CPUBrandString[0], &size, NULL, 0) == 0 && size > 0)
+    {
+        if (CPUBrandString[size-1] == '\0')
+            size--;
+        CPUBrandString.resize(size);
+        return CPUBrandString;
     }
+    else
+        return 0;
 
 #elif __linux__ || __unix__
 #   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
@@ -707,9 +710,10 @@ namespace gismo
     int64_t memsize;
     std::size_t size = sizeof(memsize);
 
-    if (sysctlbyname("hw.memsize", &memsize, &size, NULL, 0) == 0) {
-      return (uint64_t)memsize;
-    }
+    if (sysctlbyname("hw.memsize", &memsize, &size, NULL, 0) == 0)
+        return (uint64_t)memsize;
+    else
+        return 0;
 
 #elif __linux__ || __unix__
 

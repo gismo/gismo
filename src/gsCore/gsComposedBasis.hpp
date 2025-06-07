@@ -257,12 +257,11 @@ void gsComposedBasis<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) 
     //            = d2B/dudu * du/dx2 * du/dx1 + d2B/dudv * du/dx2 * dv/dx1 + d2B/dvdu * du/dx1 * dv/dx2 + d2B/dvdv * dv/dx2 * du/dx1
 
     // Get the domain and target dimensions
-    index_t domainDim, targetDim, bDomainDim, bTargetDim;
+    index_t domainDim, targetDim, bDomainDim;
     domainDim = m_composition->domainDim();
     targetDim = m_composition->targetDim();
     bDomainDim = m_basis->domainDim();
-    bTargetDim = m_basis->targetDim();
-    GISMO_ASSERT(bTargetDim==1,"The basis should be scalar-valued"); // HMV: I think
+    GISMO_ASSERT(1==m_basis->targetDim(),"The basis should be scalar-valued"); // HMV: I think
 
     // Compute the composition and its derivatives
     gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
@@ -472,8 +471,8 @@ private:
     gsXml() { }
     typedef gsComposedBasis<T> Object;
 public:
-    //GSXML_COMMON_FUNCTIONS(Object);
-    //GSXML_GET_INTO(Object);
+    GSXML_COMMON_FUNCTIONS(Object);
+    GSXML_GET_INTO(Object);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "ComposedBasis"; }
 

@@ -1338,6 +1338,7 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 {
     GISMO_ENSURE(!m_manualLevels || (size_t)(maxLevel)<m_uIndices.size(),"Maximum manual level reached, maxLevel = "<<maxLevel<<", m_uIndices.size() = "<<m_uIndices.size());
     // +1 for the initial basis in m_bases
+    m_bases.reserve(maxLevel+1);
     const int extraLevels = maxLevel + 1 - m_bases.size();
     for ( int i = 0; i < extraLevels; ++i )
     {
