@@ -158,7 +158,7 @@ public:
 
     const domainContainer & subdomains() const { return m_domains;}
 
-    iterator beginAll() const  override { return new gsCompositeDomainIterator<T>(m_domains); }
+    iterator beginAll() const  override { return iterator(new gsCompositeDomainIterator<T>(m_domains)); }
 
     /// See \ref gsDomain.h for documentation.
     size_t numElements() const override
