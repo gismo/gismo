@@ -449,7 +449,6 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     // Optimization for the case when the quadrature rule is the same for all patches
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
-    typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 #pragma omp parallel
 {
 #ifdef _OPENMP
@@ -464,19 +463,18 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
         typename gsQuadRule<T>::uPtr QuRule;
         index_t QuPatch = -1;
-#pragma omp for
-        for (auto domIt = m_exprdata->domain().beginAll();
-            domIt<domItEnd; ++domIt)
+
+        for ( auto & elem : m_exprdata->domain().allElements() )
         {
-            if (changeQuadrature || QuPatch!=domIt.patch())
+            if (changeQuadrature || QuPatch!=elem.patch())
             {
-                QuPatch = domIt.patch();
+                QuPatch = elem.patch();
                 // get Degree of the domain
                 QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
             }
 
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+            QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                         m_exprdata->points(), m_exprdata->weights());
 
 
@@ -495,7 +493,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 #endif
             if ( storeElWise )
             {
-                m_elWise[domIt.id()] = elVal;
+                m_elWise[elem.id()] = elVal;
             }
         }
 #ifdef _OPENMP
