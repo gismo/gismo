@@ -477,8 +477,6 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                         m_exprdata->points(), m_exprdata->weights());
 
-
-
             m_exprdata->precompute(QuPatch);
 
             // Compute on element
@@ -529,7 +527,6 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         // Quadrature rule
         QuRule = gsQuadrature::get(*m_exprdata->domain().subdomain(bit->patch), m_options,bit->direction());
 
-        // Initialize domain element iterator
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
             m_exprdata->domain().subdomain(bit->patch)->beginBdr(bit->side());
@@ -548,7 +545,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quadrature nodes
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // for all quadrature nodes
                 _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
 
             _op::acc(elVal, 1, m_value);
@@ -573,7 +570,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
     if ( BCs.empty() ) return 0;
     m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
 
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
@@ -614,14 +611,13 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quadrature nodes
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // for all quadrature nodes
                 _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
 
             _op::acc(elVal, 1, m_value);
             //if ( storeElWise ) m_elWise.push_back( elVal );
         }
     }
-
     return m_value;
 }
 
