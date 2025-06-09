@@ -1537,15 +1537,13 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
-    bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+    //bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 //#pragma omp parallel
 {
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     cPoints.resize( m_exprdata->domain().nPieces() );
     cWeights.resize( m_exprdata->domain().nPieces() );
 
-     // Note: omp thread will loop over all patches and will work on Ep/nt
-    // elements, where Ep is the elements on the patch.
     index_t count = 0;
     for (unsigned patchInd = 0; patchInd < m_exprdata->domain().nPieces(); ++patchInd)
     {
@@ -1559,15 +1557,11 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
         cPoints[patchInd].resize(bb.domainDim(), sz );
         cWeights[patchInd].resize( sz );
 
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt = bb.domain()->beginAll();
-        typename gsBasis<T>::domainIter domItEnd = bb.domain()->endAll();
-
         // Start iteration over elements of patchInd
-        for (; domIt<domItEnd; ++domIt ) //todo: parallelize
+        for ( auto & elem : bb.domain()->allElements() ) //todo: parallelize
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+            QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
 
             cWeights[patchInd].segment(count, numNodes) = m_exprdata->weights();
