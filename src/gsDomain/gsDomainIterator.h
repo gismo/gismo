@@ -68,10 +68,10 @@ class gsDomainIteratorWrapper
     uPtr m_domainIter;//change as Ptr
 
 public:
-    gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr = nullptr) : m_domainIter(_itptr)
+    explicit gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr = nullptr) : m_domainIter(_itptr)
     { }
 
-    gsDomainIteratorWrapper(uPtr _iter) : m_domainIter(give(_iter))
+    explicit gsDomainIteratorWrapper(uPtr _iter) : m_domainIter(give(_iter))
     { }
 
     gsDomainIteratorWrapper(const gsDomainIteratorWrapper & _other)
@@ -158,12 +158,12 @@ public:
     }
 
     /// Increment by a number of steps
-    // gsDomainIteratorWrapper operator+(index_t k) const
-    // {
-    //     gsDomainIteratorWrapper result(m_domainIter->clone());
-    //     result += k;
-    //     return result;
-    // }
+    gsDomainIteratorWrapper operator+(index_t k) const
+    {
+        gsDomainIteratorWrapper result(m_domainIter->clone());
+        result += k;
+        return result;
+    }
 
     /// Decrement operator to proceed to the next element
     gsDomainIteratorWrapper& operator-=(index_t k)
@@ -192,6 +192,8 @@ public:
     }
 
     gsDomainIterator<T> * get() { return m_domainIter.get(); }
+
+    gsDomainIterator<T> & operator*() { return *m_domainIter; }
 
 public:
 
