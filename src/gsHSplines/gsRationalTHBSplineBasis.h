@@ -16,6 +16,7 @@
 #include <gsCore/gsRationalBasis.h>
 #include <gsHSplines/gsRationalTHBSpline.h>
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
 
 
 namespace gismo
@@ -241,3 +242,7 @@ protected:
 
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsRationalTHBSplineBasis.hpp)
+#endif
