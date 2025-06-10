@@ -116,6 +116,11 @@ public:
         coefs.array().colwise() /= m_weights.col(0).array();
     }
 
+    std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt) const
+    {
+        return m_src->asElements(boxes, refExt);
+    }
+
     /// The number of basis functions in the direction of the k-th parameter component
     // void size_cwise(gsVector<index_t,d> & result) const
     // {
