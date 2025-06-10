@@ -58,13 +58,19 @@ public:
         return rate(0);
     }
 
-    /// \brief Finds the spectral condition number of a small matrix.
+    /// \brief Finds the spectral condition number of a small symmetric matrix.
     ///
-    /// Find the condition number of a matrix by fist finding the eigenvalues
+    /// Find the condition number of a symmetric matrix by fist finding the eigenvalues
     /// of the matrix and then dividing the highest (absolute) eigenvalue by the
     /// lowest (absolute) eigenvalue. This method is computationally expensive
     /// and will only work on small matrices. The method assumes that the
-    /// eigenvalues are reel.
+    /// eigenvalues are real and the matrix is symmetric.
+    /// 
+    /// For a non-symmetric matrix the condition number is given by 
+    /// \code{.cpp}
+    /// math::sqrt( conditionNumber(matrix.transpose() * matrix) );
+    /// \endcode
+    ///
     /// \param[in] matrix is a square matrix hows eigenvalues are found.
     /// \param[in] removeSingularity is true: ONE eigenvalue is removed to avoid inf condition number.
     static T conditionNumber(const gsMatrix<T> & matrix, bool removeSingularity = false)
