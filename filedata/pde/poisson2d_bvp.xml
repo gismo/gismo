@@ -102,4 +102,50 @@
     </coefs>
  </Geometry>
 
+<!--  <!-- Spline data -->
+  <Geometry type="TensorNurbs2" id="500">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2" parDim="2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.707106781186548 1 0.707106781186548 0.707106781186548 0.707106781186548 1 0.707106781186548 1  </weights>
+  </Basis>
+  <coefs geoDim="2">
+    0 -1  
+    1 -1
+    1 0
+    -1 -1
+    0 0
+    1 1
+    -1 0
+    -1 1
+    0 1
+    </coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2" id="501">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2" parDim="2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+  <weights>1 1 0.707106781186548 0.707106781186548 1 1 </weights>
+  </Basis>
+  <coefs geoDim="2">
+    1 0
+    2 1
+    1 1
+    1.5 1.5
+    0 1
+    1 2
+    </coefs>
+ </Geometry>-->
 </xml>
