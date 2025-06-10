@@ -121,14 +121,14 @@ void gsFitting<T>::compute(T lambda)
   //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
   A_mat.makeCompressed();
 
-  typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
+  typename gsSparseSolver<T>::LU solver( A_mat ); //BiCGSTABILUT
 
-  if ( solver.preconditioner().info() != gsEigen::Success )
+  /*if ( solver.preconditioner().info() != gsEigen::Success )
   {
       gsWarn<<  "The preconditioner failed. Aborting.\n";
 
       return;
-  }
+  }*/
   //Solves for many right hand side  columns
   gsMatrix<T> x;
 

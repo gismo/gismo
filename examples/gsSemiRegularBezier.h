@@ -1,6 +1,6 @@
-/** @file gsSemiRegularBasis.h
+/** @file gsSemiRegularBezier.h
 
-    @brief A semiregular B-spline basis
+    @brief A semiregular Bezier basis
 
     This file is part of the G+Smo library.
 
@@ -17,11 +17,11 @@ namespace gismo
 {
 
 template<short_t d, class T = real_t>
-class gsSemiRegularBasis
+class gsSemiRegularBezier
 { };
 
 template<class T>
-class gsSemiRegularBasis<2,T> : public gsBasis<T>
+class gsSemiRegularBezier<2,T> : public gsBasis<T>
 {
     typedef gsBSplineBasis<T> bsbasis;
     
@@ -30,18 +30,18 @@ class gsSemiRegularBasis<2,T> : public gsBasis<T>
     std::vector<index_t> m_offset;
 
 public:
-    typedef memory::shared_ptr< gsSemiRegularBasis > Ptr;
-    typedef memory::unique_ptr< gsSemiRegularBasis > uPtr;
+    typedef memory::shared_ptr< gsSemiRegularBezier > Ptr;
+    typedef memory::unique_ptr< gsSemiRegularBezier > uPtr;
     typedef T Scalar_t;
     static const bool IsRational = false;
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
 
-    gsSemiRegularBasis(int deg = 1, int numLayers = 1);
+    gsSemiRegularBezier(int deg = 1);
 
 public:
     // these are virtual functions that we must implement
-    gsSemiRegularBasis * clone_impl() const
-    { return new gsSemiRegularBasis(*this); }
+    gsSemiRegularBezier * clone_impl() const
+    { return new gsSemiRegularBezier(*this); }
 
     std::ostream &print(std::ostream &os) const;
     short_t domainDim() const { return 2; }
@@ -89,8 +89,8 @@ public:
                                     gsMatrix<T> & u, int n,
                                     gsMatrix<T>& result) const;
     virtual typename gsBasis<T>::uPtr create() const;
-    virtual const gsSemiRegularBasis & source () const { return *this; }
-    virtual gsSemiRegularBasis & source () { return *this; }
+    virtual const gsSemiRegularBezier & source () const { return *this; }
+    virtual gsSemiRegularBezier & source () { return *this; }
 
     virtual size_t numElements(boxSide const & s = 0) const;
     virtual size_t elementIndex(const gsVector<T> & u ) const;
@@ -127,63 +127,47 @@ public:
     memory::unique_ptr<gsGeometry<T> > interpolateData(gsMatrix<T> const& vals,
                                     gsMatrix<T> const& pts ) const;
     virtual void reverse();
-    virtual void matchWith(const boundaryInterface & bi, const gsSemiRegularBasis<2,T> & other,
+    virtual void matchWith(const boundaryInterface & bi, const gsSemiRegularBezier<2,T> & other,
                            gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset = 0) const;
 protected:
 };
 
 template<class T>
-gsSemiRegularBasis<2,T>::gsSemiRegularBasis(int deg, int numLayers)
+gsSemiRegularBezier<2,T>::gsSemiRegularBezier(int deg)
 {
-    gsKnotVector<T> kv;
-    const int numV = std::pow(2, numLayers) + deg; // Total vertical basis functions
+    const int numV = deg + 1; // number of rows
+
     m_v.reserve(numV);
     m_offset.resize(numV + 1);
     m_offset[0] = 0;
 
-    // the shared U-direction basis
-    std::vector<T> knotsU;
-    int numInteriorU = (1 << numLayers) - 1; // 2^l - 1
-    for (int j = 0; j < deg + 1; ++j)
-        knotsU.push_back(0.0);
-    for (int j = 1; j <= numInteriorU; ++j)
-        knotsU.push_back(static_cast<T>(j) / (1 << numLayers));
-    for (int j = 0; j < deg + 1; ++j)
-        knotsU.push_back(1.0);
-    m_u = bsbasis(gsKnotVector<T>(knotsU, deg)); //alias for gsBSplineBasis<T>
+    // Fixed U-direction Bézier basis: degree deg, one segment
+    gsKnotVector<T> knotU(0.0, 1.0, 0.0, deg + 1);
+    m_u = bsbasis(knotU);
 
-    // Build V-direction basis functions per row
+    // Build V-direction Bézier bases per row: degrees 0 to deg
     for (int i = 0; i < numV; ++i)
     {
-        unsigned q = static_cast<unsigned>(std::floor(std::log2(i + 1)));
-        //other choices for q are possible for different knot-level distributions
-        // q = static_cast<unsigned>(std::floor(std::log2(i + 1)));
-        // q = std::min(1 + static_cast<int>(std::floor(std::log2(i + 1))),static_cast<int>(std::floor(std::log2((1 << numLayers) + deg))));
-        // q = static_cast<int>(std::floor(1 + 4 * std::pow(i / static_cast<double>((1 << numLayers) + deg - 1), 0.7)));
-
+        int vDeg = i; // degree of the ith row in V-direction
 
         std::vector<T> knotsV;
-        int numInteriorV = (1 << q) - 1;
-        
-        for (int j = 0; j < deg + 1; ++j)
+        // start and end multiplicities = degree + 1 ⇒ Bézier
+        for (int j = 0; j < vDeg + 1; ++j)
             knotsV.push_back(0.0);
-        for (int j = 1; j <= numInteriorV; ++j)
-            knotsV.push_back(static_cast<T>(j) / (1 << q));
-        for (int j = 0; j < deg + 1; ++j)
+        for (int j = 0; j < vDeg + 1; ++j)
             knotsV.push_back(1.0);
 
-        gsKnotVector<T> kv(knotsV, deg);
+        gsKnotVector<T> kv(knotsV, vDeg);
         m_v.push_back(bsbasis(kv));
-        m_offset[i + 1] = m_offset[i] + m_v.back().size();
+
+        m_offset[i + 1] = m_offset[i] + m_v.back().size(); // cumulative basis function count
     }
-
-
-
 }
 
 
+
 template<class T>
-index_t gsSemiRegularBasis<2,T>::size() const
+index_t gsSemiRegularBezier<2,T>::size() const
 {
     index_t sz = 0;
     for(auto & bs : m_v)
@@ -192,7 +176,7 @@ index_t gsSemiRegularBasis<2,T>::size() const
 }
 
 template<class T>
-std::ostream & gsSemiRegularBasis<2,T>::print(std::ostream &os) const
+std::ostream & gsSemiRegularBezier<2,T>::print(std::ostream &os) const
 {
     gsInfo<<"Semi-regular basis  with "<<size()<<" functions.\n";
     for(size_t i = 0; i!=m_v.size(); ++i)
@@ -201,19 +185,19 @@ std::ostream & gsSemiRegularBasis<2,T>::print(std::ostream &os) const
 }
 
 template<class T> inline
-void gsSemiRegularBasis<2,T>::anchors_into(gsMatrix<T>&) const
+void gsSemiRegularBezier<2,T>::anchors_into(gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T> inline
-void gsSemiRegularBasis<2,T>::anchor_into(index_t, gsMatrix<T>&) const
+void gsSemiRegularBezier<2,T>::anchor_into(index_t, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::connectivity(const gsMatrix<T> &, gsMesh<T> &) const
+void gsSemiRegularBezier<2,T>::connectivity(const gsMatrix<T> &, gsMesh<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
+void gsSemiRegularBezier<2,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
 {
     const index_t nact = (m_u.degree()+1);
     result.resize( nact*nact, u.cols() );
@@ -235,35 +219,35 @@ void gsSemiRegularBasis<2,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_
 
 
 template <class T>
-bool gsSemiRegularBasis<2,T>::isActive(const index_t, const gsVector<T> &) const
+bool gsSemiRegularBezier<2,T>::isActive(const index_t, const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::numActive_into(const gsMatrix<T> &, gsVector<index_t>&) const
+void gsSemiRegularBezier<2,T>::numActive_into(const gsMatrix<T> &, gsVector<index_t>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::activeCoefs_into(const gsVector<T> &, const gsMatrix<T> &,
+void gsSemiRegularBezier<2,T>::activeCoefs_into(const gsVector<T> &, const gsMatrix<T> &,
                                   gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 gsMatrix<index_t>
-gsSemiRegularBasis<2,T>::allBoundary() const
+gsSemiRegularBezier<2,T>::allBoundary() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 gsMatrix<index_t>
-gsSemiRegularBasis<2,T>::boundaryOffset(boxSide const &,index_t) const
+gsSemiRegularBezier<2,T>::boundaryOffset(boxSide const &,index_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 index_t
-gsSemiRegularBasis<2,T>::functionAtCorner(boxCorner const &) const
+gsSemiRegularBezier<2,T>::functionAtCorner(boxCorner const &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<T> gsSemiRegularBasis<2,T>::support() const
+gsMatrix<T> gsSemiRegularBezier<2,T>::support() const
 {
     gsMatrix<T> box(2,2);
     box.row(0) = m_u.support();
@@ -272,7 +256,7 @@ gsMatrix<T> gsSemiRegularBasis<2,T>::support() const
 }
 
 template<class T>
-gsMatrix<T> gsSemiRegularBasis<2,T>::support(const index_t & i) const
+gsMatrix<T> gsSemiRegularBezier<2,T>::support(const index_t & i) const
 {
     index_t a = std::upper_bound(m_offset.begin(), m_offset.end(),i) - m_offset.begin() - 1;
     gsMatrix<T> box(2,2);
@@ -282,11 +266,11 @@ gsMatrix<T> gsSemiRegularBasis<2,T>::support(const index_t & i) const
 }
 
 template<class T>
-gsMatrix<T> gsSemiRegularBasis<2,T>::supportInterval(index_t dir) const
+gsMatrix<T> gsSemiRegularBezier<2,T>::supportInterval(index_t dir) const
 { return support().row(dir); }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsSemiRegularBezier<2,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     const index_t nact = (m_u.degree()+1);
     result.resize( nact*nact, u.cols() );
@@ -306,7 +290,7 @@ void gsSemiRegularBasis<2,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& resu
 }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsSemiRegularBezier<2,T>::evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     index_t a = std::upper_bound(m_offset.begin(), m_offset.end(),i) - m_offset.begin() - 1;
     result = m_u.evalSingle(a,u.row(0)).array() * 
@@ -314,7 +298,7 @@ void gsSemiRegularBasis<2,T>::evalSingle_into(index_t i, const gsMatrix<T> & u, 
 }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsSemiRegularBezier<2,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     const index_t nact = (m_u.degree()+1);
     const index_t nder = 2;
@@ -339,13 +323,13 @@ void gsSemiRegularBasis<2,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& res
 }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::derivSingle_into(index_t,
+void gsSemiRegularBezier<2,T>::derivSingle_into(index_t,
                                   const gsMatrix<T> &,
                                   gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsSemiRegularBezier<2,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     const index_t nact = (m_u.degree()+1);
     const index_t nder = 3;
@@ -371,13 +355,13 @@ void gsSemiRegularBasis<2,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& re
 }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::deriv2Single_into(index_t,
+void gsSemiRegularBezier<2,T>::deriv2Single_into(index_t,
                                    const gsMatrix<T> &,
                                    gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template <typename T> //__attribute__ ((fallthrough)) // todo
-void gsSemiRegularBasis<2,T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
+void gsSemiRegularBezier<2,T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
                                   std::vector<gsMatrix<T> > & result,
                                   bool sameElement) const
 {
@@ -406,137 +390,137 @@ void gsSemiRegularBasis<2,T>::evalAllDers_into(const gsMatrix<T> & u, const int 
 }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::evalAllDersSingle_into(index_t, const gsMatrix<T> &,
+void gsSemiRegularBezier<2,T>::evalAllDersSingle_into(index_t, const gsMatrix<T> &,
                                         int, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::evalDerSingle_into(index_t, const
+void gsSemiRegularBezier<2,T>::evalDerSingle_into(index_t, const
                                     gsMatrix<T> &, int,
                                     gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 
 template<class T>
-typename gsBasis<T>::uPtr gsSemiRegularBasis<2,T>::create() const
+typename gsBasis<T>::uPtr gsSemiRegularBezier<2,T>::create() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-size_t gsSemiRegularBasis<2,T>::numElements(boxSide const &) const
+size_t gsSemiRegularBezier<2,T>::numElements(boxSide const &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-size_t gsSemiRegularBasis<2,T>::elementIndex(const gsVector<T> &) const
+size_t gsSemiRegularBezier<2,T>::elementIndex(const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<T> gsSemiRegularBasis<2,T>::elementInSupportOf(index_t) const
+gsMatrix<T> gsSemiRegularBezier<2,T>::elementInSupportOf(index_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-std::vector<index_t> gsSemiRegularBasis<2,T>::asElements(gsMatrix<T> const &, int) const
+std::vector<index_t> gsSemiRegularBezier<2,T>::asElements(gsMatrix<T> const &, int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-std::vector<index_t> gsSemiRegularBasis<2,T>::asElementsUnrefine(gsMatrix<T> const &, int) const
+std::vector<index_t> gsSemiRegularBezier<2,T>::asElementsUnrefine(gsMatrix<T> const &, int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::refine(gsMatrix<T> const &, int)
+void gsSemiRegularBezier<2,T>::refine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::unrefine(gsMatrix<T> const &, int)
+void gsSemiRegularBezier<2,T>::unrefine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::refineElements(std::vector<index_t> const &)
+void gsSemiRegularBezier<2,T>::refineElements(std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::unrefineElements(std::vector<index_t> const &)
+void gsSemiRegularBezier<2,T>::unrefineElements(std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::refineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
+void gsSemiRegularBezier<2,T>::refineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
+void gsSemiRegularBezier<2,T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::uniformRefine(int, int, short_t)
+void gsSemiRegularBezier<2,T>::uniformRefine(int, int, short_t)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int , short_t const )
+void gsSemiRegularBezier<2,T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int , short_t const )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> &,
+void gsSemiRegularBezier<2,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> &,
                                             int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::uniformCoarsen(int)
+void gsSemiRegularBezier<2,T>::uniformCoarsen(int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::uniformCoarsen_withCoefs(gsMatrix<T>& , int )
+void gsSemiRegularBezier<2,T>::uniformCoarsen_withCoefs(gsMatrix<T>& , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> &,
+void gsSemiRegularBezier<2,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> &,
                                             int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::degreeElevate(short_t const &, short_t const)
+void gsSemiRegularBezier<2,T>::degreeElevate(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::degreeReduce(short_t const &, short_t const)
+void gsSemiRegularBezier<2,T>::degreeReduce(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::degreeIncrease(short_t const &, short_t const)
+void gsSemiRegularBezier<2,T>::degreeIncrease(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::degreeDecrease(short_t const &, short_t const)
+void gsSemiRegularBezier<2,T>::degreeDecrease(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::elevateContinuity(int const &)
+void gsSemiRegularBezier<2,T>::elevateContinuity(int const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::reduceContinuity(int const &)
+void gsSemiRegularBezier<2,T>::reduceContinuity(int const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-short_t gsSemiRegularBasis<2,T>::maxDegree() const
+short_t gsSemiRegularBezier<2,T>::maxDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-short_t gsSemiRegularBasis<2,T>::minDegree() const
+short_t gsSemiRegularBezier<2,T>::minDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-short_t gsSemiRegularBasis<2,T>::totalDegree() const
+short_t gsSemiRegularBezier<2,T>::totalDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-short_t gsSemiRegularBasis<2,T>::degree(short_t k) const
+short_t gsSemiRegularBezier<2,T>::degree(short_t k) const
 { return 0==k ? m_u.degree() : m_v.front().degree(); }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::reverse()
+void gsSemiRegularBezier<2,T>::reverse()
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsSemiRegularBasis<2,T>::matchWith(const boundaryInterface &, const gsSemiRegularBasis<2,T> &,
+void gsSemiRegularBezier<2,T>::matchWith(const boundaryInterface &, const gsSemiRegularBezier<2,T> &,
                gsMatrix<index_t> &, gsMatrix<index_t> &, index_t) const
 { GISMO_NO_IMPLEMENTATION }
 
