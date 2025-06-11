@@ -21,5 +21,6 @@ namespace gismo
     CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<1,real_t> >;
     CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<2,real_t> >;
     CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<3,real_t> >;
+    CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<4,real_t> >;
 
 } // namespace gismo
