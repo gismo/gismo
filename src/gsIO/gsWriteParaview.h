@@ -240,16 +240,10 @@ void gsWriteParaview(gsBasis<T> const& basis,
 ///
 /// \param box an element represented by a bounding box
 /// \param fn filename where paraview file is written
-/// \param value to write
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value = 0.0);
-
-/// \brief Export an element \a box to paraview files
-///
-/// \param box an element represented by a bounding box
-/// \param fn filename where paraview file is written
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const std::vector<T> & values = {});
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & box, const gsVector<T> & values, std::string const & fn);
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const gsVector<T> & values);
 
 /// \brief Export gsHBox to paraview files
 ///

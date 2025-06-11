@@ -517,32 +517,6 @@ void gsBasis<T>::evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n,
 }
 
 template<class T>
-void gsBasis<T>::evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n,
-                                        std::vector<gsMatrix<T> >& result) const
-{
-    result.resize(n+1);
-
-    switch(n)
-    {
-    case 0:
-        evalSingle_into(i,u, result[0]);
-        break;
-    case 1:
-        evalSingle_into (i,u, result[0]);
-        derivSingle_into(i,u, result[1]);
-        break;
-    case 2:
-        evalSingle_into  (i,u, result[0]);
-        derivSingle_into (i,u, result[1]);
-        deriv2Single_into(i,u, result[2]);
-        break;
-    default:
-        GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n<< " for "<<*this);
-        break;
-    }
-}
-
-template<class T>
 void gsBasis<T>::evalAllDersSingle_into(index_t, const gsMatrix<T> &,
                                         int, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
