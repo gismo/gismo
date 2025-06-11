@@ -49,14 +49,16 @@ if(NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY)
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 endif()
 
+set(CMAKE_BUILD_TYPE_INIT Release)
+if(NOT CMAKE_CONFIGURATION_TYPES)
+   set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel" CACHE STRING "" FORCE)
+endif()
 if(NOT CMAKE_BUILD_TYPE)
    # Set default build type to Release
-   set(CMAKE_BUILD_TYPE Release CACHE STRING
-   "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
-endif()
-if(NOT CMAKE_CONFIGURATION_TYPES)
-   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-     "RelWithDebInfo" "MinSizeRel")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+    "RelWithDebInfo" "MinSizeRel")
 endif()
 
 set(gismo_VERSION_MAJOR 25) #year
@@ -99,7 +101,7 @@ endif()
 ## #################################################################
 
 #Fix for Eigen directory
-if (NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
+if (NOT WIN32 AND NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
   execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
 endif()
 

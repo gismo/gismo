@@ -94,14 +94,12 @@ T gsBarrierCore<d, T>::computeArea(const gsMultiPatch<T> &mp) {
 /// Compute the area of a multi-patch representing computational domain
 template<short_t d, typename T>
 T gsBarrierCore<d, T>::computeAreaInterior(const gsMultiPatch<T> &multiPatch) {
-  // Creating a multi-basis from the provided multi-patch
-  gsMultiBasis<T> multiBasis(multiPatch);
 
   // Initializing an expression evaluator
   gsExprEvaluator<T> evaluator;
 
   // Setting integration elements
-  evaluator.setIntegrationElements(multiBasis);
+  evaluator.setIntegrationDomain(multiPatch.domain());
 
   // Getting the geometry map
   geometryMap geometry = evaluator.getMap(multiPatch);
@@ -388,7 +386,7 @@ gsObjFoldoverFree<d, T>::gsObjFoldoverFree(const gsMultiPatch<T> &patches,
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
   defaultOptions();
-  m_assembler.setIntegrationElements(m_mb);
+  m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
 
@@ -453,7 +451,7 @@ gsObjQualityImprovePt<d, T>::gsObjQualityImprovePt(
     m_mp(patches),
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
-  m_assembler.setIntegrationElements(m_mb);
+    m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 //  defaultOptions();
 }
@@ -594,7 +592,7 @@ gsObjVHPt<d, T>::gsObjVHPt(const gsMultiPatch<T> &patches,
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
   defaultOptions();
-  m_assembler.setIntegrationElements(m_mb);
+  m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
 
@@ -683,7 +681,7 @@ gsObjPenaltyPt<d, T>::gsObjPenaltyPt(const gsMultiPatch<T> &patches,
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
   defaultOptions();
-  m_assembler.setIntegrationElements(m_mb);
+  m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
 
@@ -841,7 +839,7 @@ gsObjPenaltyPt2<d, T>::gsObjPenaltyPt2(const gsMultiPatch<T> &patches,
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
   defaultOptions();
-  m_assembler.setIntegrationElements(m_mb);
+  m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
 
@@ -1070,7 +1068,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   gsExprAssembler<T> assembler;
 
   gsMultiBasis<T> mb(mp);
-  assembler.setIntegrationElements(mb);
+  assembler.setIntegrationDomain(mb.domain());
 
   gsBoundaryConditions<> bc;
   bc.setGeoMap(mp);
