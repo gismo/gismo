@@ -39,7 +39,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: artifact-macos_wheel
+        name: artifact-macos_wheel_${{ CIBW_ARCHS }}
         path: ./wheelhouse/*.whl
         overwrite: true
 
@@ -61,7 +61,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: artifact-linux_wheel
+        name: artifact-linux_wheel_${{ CIBW_ARCHS }}
         path: ./wheelhouse/*.whl
         overwrite: true
 
@@ -97,7 +97,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: artifact-linux_wheel_qemu
+        name: artifact-linux_wheel_qemu_${{ CIBW_ARCHS }}
         path: ./wheelhouse/*.whl
         overwrite: true
 
