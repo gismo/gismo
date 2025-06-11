@@ -112,7 +112,7 @@ public:
 
         // Elements used for numerical integration
         gsExprAssembler<T> A(1,1);
-        A.setIntegrationElements(m_bases.front());
+        A.setIntegrationDomain(m_bases.front().domain());
         geometryMap G = A.getMap(m_pde_ptr->patches());
         space u = A.getSpace(m_bases.front());
 

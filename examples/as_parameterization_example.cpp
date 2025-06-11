@@ -67,7 +67,7 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
 
   gsExprEvaluator<T> ev;
   gsMultiBasis<T> mb(mp);
-  ev.setIntegrationElements(mb);
+  ev.setIntegrationDomain(mb.domain());
   gsExprAssembler<>::geometryMap G = ev.getMap(mp);
 
   auto mdim = mp.parDim();

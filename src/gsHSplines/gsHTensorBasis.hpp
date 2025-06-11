@@ -2095,10 +2095,10 @@ public:
             return NULL;
         }
         std::string s = btype->value() ;
-        if ( s.compare(0, 9, "HBSplineB" , 9 ) == 0 ) // needs correct d as well
-            return gsXml< gsHBSplineBasis<d,T> >::get(node);
         if ( s.compare(0, 10,"THBSplineB", 10) == 0 )
             return gsXml< gsTHBSplineBasis<d,T> >::get(node);
+        if ( s.compare(0, 9, "HBSplineB" , 9 ) == 0 ) // needs correct d as well
+            return gsXml< gsHBSplineBasis<d,T> >::get(node);
 
         gsWarn<<"gsXmlUtils: gsHTensorBasis: No known basis \""<<s<<"\". Error.\n";
         return NULL;

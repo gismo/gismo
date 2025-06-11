@@ -449,7 +449,6 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     // Optimization for the case when the quadrature rule is the same for all patches
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
-    typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 #pragma omp parallel
 {
 #ifdef _OPENMP
@@ -464,22 +463,19 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
         typename gsQuadRule<T>::uPtr QuRule;
         index_t QuPatch = -1;
-#pragma omp for
-        for (auto domIt = m_exprdata->domain().beginAll();
-            domIt<domItEnd; ++domIt)
+
+        for ( auto & elem : m_exprdata->domain().allElements() )
         {
-            if (changeQuadrature || QuPatch!=domIt.patch())
+            if (changeQuadrature || QuPatch!=elem.patch())
             {
-                QuPatch = domIt.patch();
+                QuPatch = elem.patch();
                 // get Degree of the domain
                 QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
             }
 
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+            QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                         m_exprdata->points(), m_exprdata->weights());
-
-
 
             m_exprdata->precompute(QuPatch);
 
@@ -495,7 +491,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 #endif
             if ( storeElWise )
             {
-                m_elWise[domIt.id()] = elVal;
+                m_elWise[elem.id()] = elVal;
             }
         }
 #ifdef _OPENMP
@@ -531,7 +527,6 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         // Quadrature rule
         QuRule = gsQuadrature::get(*m_exprdata->domain().subdomain(bit->patch), m_options,bit->direction());
 
-        // Initialize domain element iterator
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
             m_exprdata->domain().subdomain(bit->patch)->beginBdr(bit->side());
@@ -550,7 +545,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quadrature nodes
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // for all quadrature nodes
                 _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
 
             _op::acc(elVal, 1, m_value);
@@ -575,7 +570,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
     if ( BCs.empty() ) return 0;
     m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
 
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
@@ -616,14 +611,13 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over quadrature nodes
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // for all quadrature nodes
                 _op::acc(_arg.eval(k), m_exprdata->weights()[k], elVal);
 
             _op::acc(elVal, 1, m_value);
             //if ( storeElWise ) m_elWise.push_back( elVal );
         }
     }
-
     return m_value;
 }
 

@@ -943,7 +943,6 @@ public:
              dynamic_cast<const gsTensorNurbsBasis<4, T> *>( ptr ) )
             return gsXml< gsTensorNurbsBasis<4, T> >::put(*g,data);
 
-
         // Tensor-Hier. B-splines
         if ( const gsHTensorBasis<1,T>  * g =
              dynamic_cast<const gsHTensorBasis<1,T> *>( ptr ) )
@@ -960,10 +959,6 @@ public:
         if ( const gsHTensorBasis<4,T>  * g =
              dynamic_cast<const gsHTensorBasis<4,T> *>( ptr ) )
             return gsXml< gsHTensorBasis<4,T> >::put(*g,data);
-
-        if ( const gsTHBSplineBasis<3,T>  * g =
-             dynamic_cast<const gsTHBSplineBasis<3,T> *>( ptr ) )
-            return gsXml< gsTHBSplineBasis<3,T> >::put(*g,data);
 
         //if ( const gsTriangularBezierBasis<2,T>  * g =
         //     dynamic_cast<const gsTriangularBezierBasis<2,T> *>( ptr ) )
