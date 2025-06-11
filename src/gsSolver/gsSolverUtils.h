@@ -60,7 +60,7 @@ public:
 
     /// \brief Finds the spectral condition number of a small symmetric matrix.
     ///
-    /// Find the condition number of a symmetric matrix by fist finding the eigenvalues
+    /// Find the condition number of a dense symmetric matrix by fist finding the eigenvalues
     /// of the matrix and then dividing the highest (absolute) eigenvalue by the
     /// lowest (absolute) eigenvalue. This method is computationally expensive
     /// and will only work on small matrices. The method assumes that the
