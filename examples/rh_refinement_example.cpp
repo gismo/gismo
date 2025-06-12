@@ -152,18 +152,18 @@ int main(int argc, char *argv[])
     gsInfo<< "." <<std::flush;// Assemblying done
     timer.restart();
     solver.compute( A.matrix() );
-    rsolVector = solver.solve(A.rhs());
+    rsolVector     = solver.solve(A.rhs());
     solution u_sol = A.getSolution(ru, rsolVector);
-    //ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
-    ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
-    auto elwise = ev.elementwise();
+    ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
+    //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
+    auto elwise    = ev.elementwise();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, 0.075, circleN);
+    auto density = MAE.buildDensity(elwise, 0.01, circleN);
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -195,14 +195,14 @@ int main(int argc, char *argv[])
     dbasis.clear();
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
-    geometryMap PP = A.getMap(Psi);
+    geometryMap PP  = A.getMap(Psi);
     
     gsStopwatch timer;
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     
     // Set the discretization space // different boundary condition !
-    space ru = A.getSpace(dbasis);
+    space ru        = A.getSpace(dbasis);
 
     // Set the source term for Poisson equation
     auto SFunc      = A.getCoeff(rhs, PP);
@@ -273,12 +273,18 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+            //ev.integralElWise( (  igrad(ru_sol, PP) ).sqNorm() );
+            ev.integralElWise( (  ilapl(ru_sol, PP) + SFunc ).sqNorm() );
 
-            const std::vector<real_t> eltErrs  = ev.elementwise();
+            std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
             // Compute the global error indicators.
-
+            const double Maxvalue   = *std::max_element(eltErrs.begin(), eltErrs.end());
+            const double Minvalue   = *std::min_element(eltErrs.begin(), eltErrs.end());
+            for(size_t i=0; i<eltErrs.size(); ++i)
+            {
+                eltErrs[i] = (eltErrs[i]-Minvalue)/(Maxvalue-Minvalue); // Avoid division by zero
+            }
             //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
@@ -290,8 +296,9 @@ int main(int argc, char *argv[])
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
+            if (NumArMarEl%2==0)
             NumArMarEl = NumArMarEl + FactRefPar;
-            FactRefPar = 2*FactRefPar;
+            //FactRefPar = 2*FactRefPar;
             //}
             }
     }

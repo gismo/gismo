@@ -311,7 +311,7 @@ int main(int argc, char *argv[])
         ev.integralElWise( igrad(xi_pr, GLeft).sqNorm() );
         auto elwise         = ev.elementwise();
         auto density        = MAE.buildDensity(elwise, 0.1, circleN, false);
-        gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 3);
+        gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 15);
         //gsMultiPatch<> mpPsi = MAE.buildMovingMultiPatch(density, Psilast, false, 3);
         Psi.addAutoBoundaries();
         Psi.computeTopology();
@@ -379,6 +379,7 @@ int main(int argc, char *argv[])
         h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex) - igrad(ru_sol,PP) ).sqNorm() * meas(PP) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
+        gsInfo<< "-->time : (" << (r+1)*dt <<"s)"<<std::flush; // Error computations done
 
     }
     //! [Solver loop]
@@ -393,9 +394,9 @@ int main(int argc, char *argv[])
 
 
     //! [Error and convergence rates]
-    gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
-    gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
+    // gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
+    // gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    // gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
 
     if (errorsave)
     {
