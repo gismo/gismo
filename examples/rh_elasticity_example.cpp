@@ -208,19 +208,19 @@ int main(int argc, char *argv[])
     ###        and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density      = MAE.buildDensity( elwise, 0.175);
+    auto density                    = MAE.buildDensity( elwise, 0.175);
 
     if (IntensityMAE>0){
-    // auto density    = MAE.buildAnalyticDensity( f);
-    auto geometrytp   = MAE.buildMultiPatch(density);
+    // auto density                 = MAE.buildAnalyticDensity( f);
+    auto geometrytp                 = MAE.buildMultiPatch(density);
     CorrecNormalCPoints(mpLeft, geometrytp);
-    index_t numPaches = geometrytp.nPatches();
+    index_t numPaches               = geometrytp.nPatches();
     for( index_t i=0; i<numPaches; ++i)
     {
-    index_t coefsNum  = geometrytp.patch(i).coefsSize();
+    index_t coefsNum                = geometrytp.patch(i).coefsSize();
     for ( index_t j=0; j<coefsNum; ++j)
     {
-        mpLeft.patch(i).coef(j) = geometrytp.patch(i).coef(j);
+        mpLeft.patch(i).coef(j)     = geometrytp.patch(i).coef(j);
     }
     }
     }

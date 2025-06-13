@@ -200,8 +200,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
         const double meanvalue  = eps*(Maxvalue + Minvalue);
         for (index_t i1 = 0; i1 < elwnumb; i1++){
             if (errorVector(i1) > Minvalue+meanvalue)
-                errorVector(i1)  = Maxvalue;
-            else errorVector(i1) = Minvalue;
+                errorVector(i1)  = Minvalue+meanvalue;
+            //else errorVector(i1) = Minvalue;
         }
     }
 

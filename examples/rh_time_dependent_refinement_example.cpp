@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
-    index_t circleN       = 0;
+    index_t circleN       = 1;
     double dt             = 1e-5;
     index_t plotNum       = 1e-4/dt; // plot every 1e-4/dt iterations 10 iterations 
     gsInfo << "plotNun = " << plotNum << " " << 5%plotNum<< " " << 10%plotNum << "\n";
@@ -305,13 +305,14 @@ int main(int argc, char *argv[])
         ###         and the multipatch adaptove mapping
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
         MAE.assemble_rhsvector_ad(degree1, degree2, kv1, kv2, Psi.patch(0).coefs(), Psi.patch(0).coefs(), rsolVector, rhsVector);
-        xi_Vector = MAE.Poisson.L2ProjectScalar(rhsVector);
+        xi_Vector           = MAE.Poisson.L2ProjectScalar(rhsVector);
         //------------------------------------------------------------------
         // Update the density function and the multipatch adaptive mapping
         ev.integralElWise( igrad(xi_pr, GLeft).sqNorm() );
         auto elwise         = ev.elementwise();
         auto density        = MAE.buildDensity(elwise, 0.1, circleN, false);
-        gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 15);
+        gsMultiPatch<> Psi  = MAE.buildMultiPatch(density, false);// true for composition
+        // gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 15);
         //gsMultiPatch<> mpPsi = MAE.buildMovingMultiPatch(density, Psilast, false, 3);
         Psi.addAutoBoundaries();
         Psi.computeTopology();

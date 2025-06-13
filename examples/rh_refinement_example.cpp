@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
+    std::vector<index_t> adapt_parameter{1,1,2,12,24};
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
     std::string fn("pde/circle.xml");
@@ -163,7 +164,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, 0.01, circleN);
+    auto density = MAE.buildDensity(elwise, 0.1, circleN);
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -216,7 +217,7 @@ int main(int argc, char *argv[])
 
     gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
-    //adapt_parameter << 0,0,0,0,0;
+
     gsInfo<< "(dot1=assembled, dot2=solved)\n";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     for (int r=0; r<=numLRefine; ++r)
@@ -273,17 +274,18 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            //ev.integralElWise( (  igrad(ru_sol, PP) ).sqNorm() );
-            ev.integralElWise( (  ilapl(ru_sol, PP) + SFunc ).sqNorm() );
+            ev.integralElWise( (  igrad(ru_sol, PP)*meas(PP) ).sqNorm() );
+            //ev.integralElWise( ( igrad(ru_sol, PP) ).sqNorm() + (  ilapl(ru_sol, PP) + SFunc ).sqNorm() );
 
             std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
             // Compute the global error indicators.
-            const double Maxvalue   = *std::max_element(eltErrs.begin(), eltErrs.end());
-            const double Minvalue   = *std::min_element(eltErrs.begin(), eltErrs.end());
+            double Maxvalue   = *std::max_element(eltErrs.begin(), eltErrs.end());
+            double Minvalue   = *std::min_element(eltErrs.begin(), eltErrs.end());
             for(size_t i=0; i<eltErrs.size(); ++i)
             {
-                eltErrs[i] = (eltErrs[i]-Minvalue)/(Maxvalue-Minvalue); // Avoid division by zero
+                if (eltErrs[i] > 0.001*(Maxvalue+Minvalue)) // Avoid numerical issues
+                    eltErrs[i] = 0.001*(Maxvalue+Minvalue); // Avoid negative errors
             }
             //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
@@ -293,13 +295,12 @@ int main(int argc, char *argv[])
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
             // Refine the marked elements with a 1-ring of cells around marked elements
+            NumArMarEl = adapt_parameter[r];
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
-            if (NumArMarEl%2==0)
-            NumArMarEl = NumArMarEl + FactRefPar;
-            //FactRefPar = 2*FactRefPar;
-            //}
+            NumArMarEl  = NumArMarEl + FactRefPar;
+            //
             }
     }
     //! [Solver loop]    
@@ -365,7 +366,7 @@ int main(int argc, char *argv[])
         collection.newTimeStep(&Psi);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
-        collection.addField((  ilapl(ru_sol, PP)+ SFunc ).sqNorm(),"indecator");
+        collection.addField((  ilapl(ru_sol, PP)+ SFunc ).sqNorm()*meas(PP),"indecator");
         collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();
