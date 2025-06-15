@@ -134,8 +134,12 @@ public: //------------------------------------------------------ topology types
         explicit Face(int _idx=-1) : Base_handle(_idx) {}
     };
 
-
-
+    /// Image Vertex if assigned (Doo-Sabin subdivision)
+    struct ImageVertexDS : public Vertex {
+         /// Constructor (assigning the original vertex)   
+        Vertex origVertex;
+        ImageVertexDS(Vertex original_vertex) : origVertex(original_vertex){};
+    };
 
 public: //-------------------------------------------------- connectivity types
 
@@ -145,6 +149,9 @@ public: //-------------------------------------------------- connectivity types
     {
         /// an outgoing halfedge per vertex (it will be a bounday halfedge for boundary vertices)
         Halfedge  halfedge_;
+
+        /// image vertices vector during doo-sabin subdivision
+        std::vector<Vertex> imVertDS_{};
     };
 
 
@@ -169,6 +176,9 @@ public: //-------------------------------------------------- connectivity types
     {
         /// a halfedge that is part of the face
         Halfedge  halfedge_;
+
+        /// F-Face for Doo-Sabin subdivision
+        Face fface_;
     };
 
 
@@ -1202,10 +1212,34 @@ public: //---------------------------------------------- low-level connectivity
         hconn_[h].vertex_ = v;
     }
 
+    /// sets the image vertex \c imv to \c v 
+    void add_image_vertex_to_vertex(Vertex v, Vertex imv)
+    {
+        vconn_[v].imVertDS_.push_back(imv);
+    }
+
+    /// returns the image vertex of adjacent faces to \c v
+    std::vector<Vertex> image_vertices(Vertex v) const
+    {
+        return vconn_[v].imVertDS_;
+    }
+
     /// returns the face incident to halfedge \c h
     Face face(Halfedge h) const
     {
         return hconn_[h].face_;
+    }
+
+    /// returns the f-face incident to \c f
+    Face fface(Face f) const {
+        return fconn_[f].fface_;
+    }
+    /// returns renumbered face
+    void gsSurfMesh::renumber_vertex_in_face(std::vector<std::vector<Vertex>> ds_Verts, int offset_v);
+    
+    /// sets the incident F-Face for Doo-Sabin subdivision to\c f
+    void set_fface(Face f, Face ff) {
+        fconn_[f].fface_ = ff;
     }
 
     /// sets the incident face to halfedge \c h to \c f
@@ -1915,8 +1949,19 @@ public: // Catmull-Clark functions
     /// Generate linear tensor-product patches (possibly merging faces)
     gsMultiPatch<real_t> linear_patches() const;
 
-    // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
-    inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
+public: // Doo-Sabin functions
+
+    /// Doo-Sabin subdivision
+    void ds_subdivide();
+
+    /// Image vertex per face for Doo-Sabin subdivision scheme
+    gsMatrix<real_t> get_image_vertex_coeffs(unsigned int face_valence);
+
+    /// returns vector from edge
+    gsVector<real_t> edge_vector(Edge e);
+
+    /// Maximum velence in the mesh vertices
+    unsigned int maximum_mesh_valence(Vertex_container verts);
 
 private: //--------------------------------------------------- helper functions
 
