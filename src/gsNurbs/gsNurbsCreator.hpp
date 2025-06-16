@@ -182,6 +182,34 @@ void gsNurbsCreator<T>::scale2D(gsMultiPatch<T> & mp,  T factor)
 }
 
 template <class T>
+void gsNurbsCreator<T>::rotate3D(gsGeometry<T> & geo, const T phi_z, const T phi_y, const T phi_x)
+{
+    GISMO_ASSERT(geo.geoDim() >= 3,"Geometry must be 3D or higher");
+
+    // Construct rotation matrices for each axis
+    gsMatrix<T> Rz(3, 3), Ry(3, 3), Rx(3, 3), R(3,3);
+    Rz << math::cos(phi_z), -math::sin(phi_z), 0,
+          math::sin(phi_z),  math::cos(phi_z), 0,
+          0,                 0,                1;
+    Ry << math::cos(phi_y),  0, math::sin(phi_y),
+          0,                1, 0,
+         -math::sin(phi_y),  0, math::cos(phi_y);
+    Rx << 1, 0,                 0,
+          0, math::cos(phi_x), -math::sin(phi_x),
+          0, math::sin(phi_x),  math::cos(phi_x);
+
+    R = Rz * Ry * Rx;
+    gsMatrix<T>& coefs = geo.coefs();
+    gsVector<T> point, rotatedPoint;
+    for (index_t i = 0; i < coefs.rows(); ++i)
+    {
+        point = coefs.row(i).transpose();
+        rotatedPoint = R * point;
+        coefs.row(i) = rotatedPoint.transpose();
+    }
+}
+
+template <class T>
 void gsNurbsCreator<T>::scale2D(gsMultiPatch<T> & mp, std::vector<T> factors)
 {
     for (size_t p = 0; p!=mp.nPatches(); p++)

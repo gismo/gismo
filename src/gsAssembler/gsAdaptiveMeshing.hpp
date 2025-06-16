@@ -913,6 +913,7 @@ gsAdaptiveMeshing<_dim,T>::_markThreshold_impl( const boxMapType & elements, con
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
     if (m_verbose) gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+    delete thres_predicate;
 }
 
 template<short_t _dim, class T>
@@ -947,6 +948,7 @@ gsAdaptiveMeshing<_dim,T>::_markThreshold_impl( const boxMapType & elements, con
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
     if (m_verbose) gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+    delete thres_predicate;
 }
 
 template<short_t _dim, class T>
@@ -989,6 +991,7 @@ gsAdaptiveMeshing<_dim,T>::_markThreshold_impl( const boxMapType & elements, con
     std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
     if (m_verbose) gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+    delete thres_predicate;
 }
 
 template<short_t _dim, class T>
@@ -1023,6 +1026,7 @@ gsAdaptiveMeshing<_dim,T>::_markThreshold_impl( const boxMapType & elements, con
     std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
     if (m_verbose) gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+    delete thres_predicate;
 }
 
 template<short_t _dim, class T>
