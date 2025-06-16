@@ -19,6 +19,8 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSpline.h>
 
+#include <gsIO/gsXml.h>
+
 
 namespace gismo {
 
@@ -1844,23 +1846,54 @@ void gsSurfMesh::cc_subdivide()
     {
         v = gsSurfMesh::Vertex(i); // original vertices
         auto n = valence(v);
+        if (0==n) continue;
+
         //original vertex positions are computed using new edge/face points only
         auto & pt = points[v];
 
         if (do_sharp && has_flag(v,sharp))
         {
-            pt *= 2;
-            auto hh = halfedge(v);
-            while(!sharp[hh])
-                hh = ccw_rotated_halfedge(hh);
-            pt += points[to_vertex(hh)]; // first flagged neighbor
-            hh = ccw_rotated_halfedge(hh);
-            while(!sharp[hh])
-                hh = ccw_rotated_halfedge(hh);
-            pt += points[to_vertex(hh)]; // second flagged neighbor
-            pt /= 4;
+            //gsInfo <<" Sharp("<<v.idx() <<") valence "<< valence(v) <<".\n";
+
+            //pt *= 2;
+            auto h1 = halfedge(v);
+            while(!sharp[h1])
+                h1 = cw_rotated_halfedge(h1);
+            Halfedge h2 = h1;
+            h1 = ccw_rotated_halfedge(halfedge(v));
+            while(!sharp[h1])
+                h1 = ccw_rotated_halfedge(h1);
+
+            if (h1==h2)// special case: vanishing sharp edge
+            {
+                /*
+                gsInfo <<" Vanishing, valence "<< valence(from_vertex(h1)) <<".\n";
+                gsInfo <<"          s =  "<< h1 <<", "<<h2<<"\n";
+
+                auto vit = halfedges(v);
+                auto vcp = vit;
+                pt *= n*(n-3);
+                if (vit)
+                    do
+                    {
+                        pt += 4*points[ to_vertex(*vit) ]
+                            - points[ to_vertex(next_halfedge(*vit)) ];
+                    } while (++vit != vcp);
+                pt /= n*n;
+                */
+            }
+            else //assume sharp degree==2
+            {
+                //gsInfo <<"s =  "<< h1 <<", "<<h2<<"\n";
+                pt *= 2;
+                pt += points[to_vertex(h2)]; // first flagged neighbor
+                pt += points[to_vertex(h1)]; // second flagged neighbor
+                pt /= 4;
+                continue;
+            }
         }
-        else if (is_boundary(v))
+
+        if (is_boundary(v))
         {
             pt *= 2;
             auto hh = halfedge(v);
