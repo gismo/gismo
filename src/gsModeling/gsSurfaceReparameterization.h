@@ -17,7 +17,8 @@ Author(s): Ye Ji
 
 #include <gsHLBFGS/gsHLBFGS.h>
 
-namespace gismo {
+namespace gismo
+{
 
 template <short_t d = 2, typename T = real_t>
 class gsObjFuncSurface : public gsOptProblem<T> {
@@ -32,7 +33,8 @@ public:
   explicit gsObjFuncSurface(const gsMultiPatch<T> &patches,
                             const gsMobiusMap<T> &mobiusDomain)
       : m_mp(patches), m_MobiusMap(mobiusDomain), m_lambda1(1.0),
-        m_lambda2(1.0), m_area(1) {
+        m_lambda2(1.0), m_area(1)
+  {
     defaultOptions();
 
     gsMatrix<T> bbox;
@@ -55,7 +57,8 @@ public:
   gsOptionList & options() { return m_options; }
 
   /// @brief see \ref gsOptProblem.h for more details
-  T evalObj(const gsAsConstVector<T> &coefsM) const final {
+  T evalObj(const gsAsConstVector<T> &coefsM) const final
+  {
     m_MobiusMap.updateGeom(coefsM);
 
     gsComposedGeometry<T> cgeom(m_MobiusMap, m_mp.patch(0));
@@ -71,7 +74,8 @@ public:
 
   /// @brief see \ref gsOptProblem.h for more details
   void gradObj_into(const gsAsConstVector<T> &u,
-                    gsAsVector<T> &result) const override {
+                    gsAsVector<T> &result) const override
+  {
     const index_t n = u.rows();
     gsMatrix<T> uu = u; // Create a copy
     gsAsVector<T> tmp(uu.data(), n);
@@ -91,17 +95,20 @@ public:
   }
 
   /// @brief Default options
-  void defaultOptions() {
+  void defaultOptions()
+  {
     m_options.addReal("qi_lambda1", "Sets the lambda 1 value", 1.0);
     m_options.addReal("qi_lambda2", "Sets the lambda 2 value", 1.0);
   }
 
   /// @brief Adds options to the list
-  void addOptions(const gsOptionList &options) {
+  void addOptions(const gsOptionList &options)
+  {
     m_options.update(options, gsOptionList::addIfUnknown);
   }
 
-  void setLambda1(T lambda1) {
+  void setLambda1(T lambda1)
+  {
     if (lambda1 < 0.0 || lambda1 > 1.0) {
       gsWarn << "Lambda1 must be between 0 and 1. Setting to default value 1.0.\n";
       lambda1 = 1.0; // Default value if out of bounds
@@ -110,7 +117,8 @@ public:
     m_options.setReal("qi_lambda1", lambda1);
   }
 
-  void setLambda2(T lambda2) {
+  void setLambda2(T lambda2)
+  {
     if (lambda2 < 0.0 || lambda2 > 1.0) {
       gsWarn << "Lambda2 must be between 0 and 1. Setting to default value 1.0.\n";
       lambda2 = 1.0; // Default value if out of bounds
@@ -119,12 +127,14 @@ public:
     m_options.setReal("qi_lambda2", lambda2);
   }
 
-  void setLambda(T lambda1, T lambda2) {
+  void setLambda(T lambda1, T lambda2)
+  {
     setLambda1(lambda1);
     setLambda2(lambda2);
   }
 
-  void setLambdaRatio(T ratio) {
+  void setLambdaRatio(T ratio)
+  {
     if (ratio < 0.0 || ratio > 1.0) {
       gsWarn << "Ratio must be between 0 and 1. Setting to default value 0.5.\n";
       ratio = 0.5; // Default value if out of bounds
@@ -136,7 +146,8 @@ public:
   }
 
   /// @brief Applies the options
-  void applyOptions(const gsOptionList &options) {
+  void applyOptions(const gsOptionList &options)
+  {
     m_options.update(options, gsOptionList::addIfUnknown);
     m_lambda1 = m_options.getReal("qi_lambda1");
     m_lambda2 = m_options.getReal("qi_lambda2");
@@ -163,7 +174,8 @@ protected:
 
 template <class T = real_t>
 gsMultiPatch<T> approximateWithBSpline(const gsMultiPatch<T> &mp,
-                                       const gsMatrix<T> &coefsMobiusIn) {
+                                       const gsMatrix<T> &coefsMobiusIn)
+{
 
   GISMO_ASSERT(mp.geoDim() == 3, "Only 3D geometry is supported.");
   GISMO_ASSERT(mp.dim() == 2,
@@ -213,7 +225,8 @@ gsMultiPatch<T> approximateWithBSpline(const gsMultiPatch<T> &mp,
  *
  * @tparam T The type of the input data (e.g., real_t)
  */
-template <typename T> class SurfaceReparameterization {
+template <typename T> class SurfaceReparameterization
+{
 public:
   /**
    * @brief Constructor for SurfaceReparameterization
@@ -225,13 +238,15 @@ public:
   // domain
   explicit SurfaceReparameterization(const gsMultiPatch<T> &patches,
                                      gsOptimizer<T> &optimizer)
-      : m_mp(patches), m_optimizer(optimizer) {
+      : m_mp(patches), m_optimizer(optimizer)
+  {
     m_mobiusDomain = gsMobiusMap<T>(gsMatrix<T, 2, 2>::Constant(0.5));
   }
 
   // Run the optimization process and generate the reparameterized B-Spline
   // surface
-  gsMultiPatch<T> solve(T lambda1 = 1.0, T lambda2 = 1.0) {
+  gsMultiPatch<T> solve(T lambda1 = 1.0, T lambda2 = 1.0)
+  {
     gsObjFuncSurface<2, T> objFuncSurface(m_mp, m_mobiusDomain);
     objFuncSurface.setLambda1(lambda1);
     objFuncSurface.setLambda2(lambda2);
