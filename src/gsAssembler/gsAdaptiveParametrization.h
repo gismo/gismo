@@ -44,8 +44,7 @@ public:
 
     gsOptMesh(        gsFunction<T> & composition,
                 const gsGeometry<T> & geometry,
-                const gsBasis<T>    * integrationBasis,
-                const bool            parametric);
+                const gsBasis<T>    * integrationBasis);
 
     gsOptMesh(        gsFunction<T> & composition,
                 const gsGeometry<T> & geometry,
@@ -59,6 +58,9 @@ public:
 
     /// Evaluates the objective function at the given point u.
     T evalObj(const gsAsConstVector<T> &u) const;
+
+    /// Gradient evaluation of the objective function at the given point u.
+    void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const override;
 
 protected:
 

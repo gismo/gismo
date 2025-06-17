@@ -103,6 +103,175 @@ namespace expr
 //   return ternary_expr<E0, E1, E2>(u, v, w);
 // }
 
+/*
+template<class T>
+class dmeas_expr : public _expr<dmeas_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
+
+    typedef T Scalar;
+
+    mutable gsMatrix<Scalar> grad, hess; // temporary storage for evaluation
+    mutable gsMatrix<Scalar> cross;
+    mutable gsMatrix<Scalar> res;
+
+    dmeas_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        res.resize(1,2); // [dMeasure/dxi, dMeasure/deta]
+        grad = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+
+        // hess = [dG_x/dxidxi, dG_x/dxideta, dG_x/detadxi, dG_x/detadeta;
+        //         dG_y/dxidxi, dG_y/dxideta, dG_y/detadxi, dG_y/detadeta;
+        //         dG_z/dxidxi, dG_z/dxideta, dG_z/detadxi, dG_z/detadeta;
+
+        // hess = [dG_x/dxidxi, dG_x/detadeta, dG_x/detadxi
+        //         dG_y/dxidxi, dG_y/detadeta, dG_y/detadxi
+        //         dG_z/dxidxi, dG_z/detadeta, dG_z/detadxi
+        hess.resize(3,3);
+        hess.row(0) = _G.data().values[2].col(k).segment(0,3).transpose();
+        hess.row(1) = _G.data().values[2].col(k).segment(3,3).transpose();
+        hess.row(2) = _G.data().values[2].col(k).segment(6,3).transpose();
+        cross = grad.col(0).cross(grad.col(1));
+
+        res(0,0) = ( cross / cross.norm() ).dot( hess.col(0).cross(grad.col(1)) + grad.col(0).cross(hess.col(2)) ); // cross/||cross|| . ( dG/dxixi   x dG/deta + dG/dxi x dG/dxideta  )
+        res(0,1) = ( cross / cross.norm() ).dot( hess.col(2).cross(grad.col(0)) + grad.col(1).cross(hess.col(1)) ); // cross/||cross|| . ( dG/detadxi x dG/deta + dG/dxi x dG/detadeta )
+
+        return res;
+    }
+
+    index_t cols() const { return _G.source().domainDim(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_GRAD | NEED_DERIV2;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os << "????("; _G.print(os); os <<")"; }
+private:
+
+    template<class U> static inline
+    typename util::enable_if<util::is_same<U,gsComposition<Scalar> >::value,
+                             const gsMatrix<Scalar> &>::type
+    eval_impl(const U & u, const index_t k)
+    {
+        return u.eval(k);
+    }
+};
+
+/// TODO
+template<class E> EIGEN_STRONG_INLINE
+dmeasure_expr<E> dmeas(const E & u) { return dmeasure_expr<E>(u); }
+*/
+
+template<class T>
+class dEdSigma_expr : public _expr<dEdSigma_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
+
+    typedef T Scalar;
+
+    mutable gsMatrix<Scalar> grad, hess; // temporary storage for evaluation
+    mutable gsMatrix<Scalar> dJdxi, dJdeta;
+    mutable gsMatrix<Scalar> dmeasdxi, dmeasdeta;
+    mutable gsMatrix<Scalar> cross;
+    mutable Scalar E;
+    mutable Scalar meas;
+
+    dEdSigma_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+
+    Scalar eval(const index_t k) const
+    {
+        // res.resize(1,2); // [dMeasure/dxi, dMeasure/deta]
+        // res.setZero();
+        grad = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+
+        // grad = [dG_x/dxi, dG_x/deta
+        //         dG_y/dxi, dG_y/deta
+        //         dG_z/dxi, dG_z/deta];
+
+        // hess = [dG_x/dxidxi, dG_x/detadeta, dG_x/detadxi
+        //         dG_y/dxidxi, dG_y/detadeta, dG_y/detadxi
+        //         dG_z/dxidxi, dG_z/detadeta, dG_z/detadxi
+
+        // dJdxi = [dG_x/dxidxi, dG_x/detadxi
+        //          dG_y/dxidxi, dG_y/detadxi
+        //          dG_z/dxidxi, dG_z/detadxi];
+
+        // dJdeta= [dG_x/dxideta, dG_x/detadeta
+        //          dG_y/dxideta, dG_y/detadeta
+        //          dG_z/dxideta, dG_z/detadeta];
+        hess.resize(3,3);
+        hess.row(0) = _G.data().values[2].col(k).segment(0,3).transpose();
+        hess.row(1) = _G.data().values[2].col(k).segment(3,3).transpose();
+        hess.row(2) = _G.data().values[2].col(k).segment(6,3).transpose();
+
+        dJdxi.resize(3,2);
+        dJdxi.col(0) = hess.col(0);
+        dJdxi.col(1) = hess.col(2);
+
+        dJdeta.resize(3,2);
+        dJdeta.col(0) = hess.col(2);
+        dJdeta.col(1) = hess.col(1);
+
+        dmeasdxi  = ( cross / meas ).dot( hess.col(0).cross(grad.col(1)) + grad.col(0).cross(hess.col(2)) ); // cross/||cross|| . ( dG/dxixi   x dG/deta + dG/dxi x dG/dxideta  )
+        dmeasdeta = ( cross / meas ).dot( hess.col(2).cross(grad.col(0)) + grad.col(1).cross(hess.col(1)) ); // cross/||cross|| . ( dG/detadxi x dG/deta + dG/dxi x dG/detadeta )
+
+        // dG/dxi x dG/deta
+        cross = grad.col(0).cross(grad.col(1));
+        meas  = cross.norm();
+
+        E = (grad.transpose()*grad).trace() / math::pow(meas, 2);
+
+        return    ( 2 * (grad.transpose()*dJdxi).trace() )  / cross - E*dmeasdxi
+                + ( 2 * (grad.transpose()*dJdeta).trace() ) / cross - E*dmeasdeta;
+    }
+
+    index_t rows() const { return 0; }
+
+    index_t cols() const { return 0; }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_G);
+        _G.data().flags |= NEED_GRAD | NEED_DERIV2;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os << "????("; _G.print(os); os <<")"; }
+private:
+
+    template<class U> static inline
+    typename util::enable_if<util::is_same<U,gsComposition<Scalar> >::value,
+                             const gsMatrix<Scalar> &>::type
+    eval_impl(const U & u, const index_t k)
+    {
+        return u.eval(k);
+    }
+};
+
+/// TODO
+template<class T> EIGEN_STRONG_INLINE
+dEdSigma_expr<T> dEdSigma(const gsGeometryMap<T> & G) { return dEdSigma_expr<T>(G); }
+
+
 template<enum MonitorMode MODE, class E>
 class monitor_expr : public _expr<monitor_expr<MODE,E> >
 {
@@ -248,10 +417,9 @@ gsOptMesh<T,MODE>::gsOptMesh()
 template<class T, enum MonitorMode MODE>
 gsOptMesh<T,MODE>::gsOptMesh(         gsFunction<T> & composition,
                                 const gsGeometry<T> & geometry,
-                                const gsBasis<T>    * integrationBasis,
-                                const bool            parametric)
+                                const gsBasis<T>    * integrationBasis)
 :
-gsOptMesh(composition,geometry,nullptr,integrationBasis,parametric)
+gsOptMesh(composition,geometry,nullptr,integrationBasis,false)
 {}
 
 template<class T, enum MonitorMode MODE>
@@ -293,6 +461,102 @@ gsOptionList & gsOptMesh<T,MODE>::options()
     return m_options;
 }
 
+
+// // ORIGINAL
+// template<class T, enum MonitorMode MODE>
+// T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
+// {
+//     typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
+//     gsExprEvaluator<T> evaluator;
+
+//     evaluator.setIntegrationElements(m_mb); // does not work when in constructor
+//     m_comp->setControls(u);
+
+//     // Penalty constant
+//     gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
+//     geometryMap G = evaluator.getMap(m_mp);
+//     auto eps = evaluator.getVariable(pen);
+
+//     // auto chi = 0.5 * (jac(G).det() + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
+//     // auto invJacMat = jac(G).adj()/chi;
+//     // auto eta = evaluator.getVariable(m_fun);
+//     // return evaluator.integral( (monitor(eta,G).asDiag()*invJacMat).sqNorm()*meas(G));
+
+//     // gsComposedFunction<T> fun(*m_comp,m_fun.function(0));
+//     // gsComposedFunction<T> fun(mpG.patch(0),m_fun.function(0));
+
+
+//     // gsVector<unsigned> np(m_fun.domainDim());
+//     // np.setConstant(m_options.getInt("nSamplingPoints"));
+//     // gsMatrix<T> grid = gsPointGrid<T>(m_cgeom.support().col(0),m_cgeom.support().col(1),np);
+//     if (m_cgeom.domainDim()==m_cgeom.targetDim())
+//     {
+//         auto detG = jac(G).det();
+//         auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
+//         auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
+
+//         if (m_fun==nullptr)
+//         {
+//             auto M = 1/detG;
+//             return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+//         }
+//         else
+//         {
+//             // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
+//             m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
+//             auto eta = evaluator.getVariable(m_cfun);
+//             auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
+//             return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+//         }
+//     }
+//     else if (m_cgeom.domainDim()<m_cgeom.targetDim())
+//     {
+//         auto fform = jac(G).tr()*jac(G);
+//         // SQUARE ROOT:
+//         auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
+//         // SQUARED:
+//         // auto detG = fform.det().val(); //jacobian determinant for a surface, i.e. the measure
+
+//         // OPTION 1
+//         // Compute the chi part
+//         // auto chiPPart = eps * ((detG.val() - eps.val()).exp());
+//         // Ternary operation to compute chi and chip
+//         // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
+//         // OPTION 2
+//         // auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
+//         // OPTION 3
+//         auto chi = detG;
+//         // auto chiPPart = -(-2.0 + pow(eps.val(),2) + eps.val())*pow(detG,3)/pow(eps.val(),4) + (- 3.0 + 2.0*pow(eps.val(),2) + 2.0*eps.val())*pow(detG,2)/pow(eps.val(),3) - detG/eps.val() + 1.0/eps.val();
+//         // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
+//         // SQUARED
+//         //
+//         // auto chi = 0.5 * (pow(detG,0.5) + pow(pow(eps.val(),2.0) + detG, 0.5));
+
+//         // SQUARE ROOT:
+//         auto invJacMat = fform.sqrt().adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
+//         // SQUARED:
+//         // auto invJacMat = fform.adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
+
+//         if (m_fun==nullptr)
+//         {
+//             auto M = 1/detG;
+//             return evaluator.integral( M*(invJacMat).sqNorm()*meas(G));
+//         }
+//         else
+//         {
+//             // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
+//             m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
+//             auto eta = evaluator.getVariable(m_cfun);
+//             auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
+//             return evaluator.integral( M*(invJacMat).sqNorm()*meas(G));
+//         }
+//     }
+//     else
+//         GISMO_ERROR("Domain dimension must be smaller than or equal to the target dimension, but domainDim = "<<m_cgeom.domainDim()<<" and targetDim = "<<m_cgeom.targetDim());
+// }
+
+
+// NEW CODE
 template<class T, enum MonitorMode MODE>
 T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 {
@@ -306,19 +570,6 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
     gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
     geometryMap G = evaluator.getMap(m_mp);
     auto eps = evaluator.getVariable(pen);
-
-    // auto chi = 0.5 * (jac(G).det() + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
-    // auto invJacMat = jac(G).adj()/chi;
-    // auto eta = evaluator.getVariable(m_fun);
-    // return evaluator.integral( (monitor(eta,G).asDiag()*invJacMat).sqNorm()*meas(G));
-
-    // gsComposedFunction<T> fun(*m_comp,m_fun.function(0));
-    // gsComposedFunction<T> fun(mpG.patch(0),m_fun.function(0));
-
-
-    // gsVector<unsigned> np(m_fun.domainDim());
-    // np.setConstant(m_options.getInt("nSamplingPoints"));
-    // gsMatrix<T> grid = gsPointGrid<T>(m_cgeom.support().col(0),m_cgeom.support().col(1),np);
     if (m_cgeom.domainDim()==m_cgeom.targetDim())
     {
         auto detG = jac(G).det();
@@ -342,35 +593,11 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
     else if (m_cgeom.domainDim()<m_cgeom.targetDim())
     {
         auto fform = jac(G).tr()*jac(G);
-        // SQUARE ROOT:
         auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
-        // SQUARED:
-        // auto detG = fform.det().val(); //jacobian determinant for a surface, i.e. the measure
-
-        // OPTION 1
-        // Compute the chi part
-        // auto chiPPart = eps * ((detG.val() - eps.val()).exp());
-        // Ternary operation to compute chi and chip
-        // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
-        // OPTION 2
-        // auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
-        // OPTION 3
-        auto chi = detG;
-        // auto chiPPart = -(-2.0 + pow(eps.val(),2) + eps.val())*pow(detG,3)/pow(eps.val(),4) + (- 3.0 + 2.0*pow(eps.val(),2) + 2.0*eps.val())*pow(detG,2)/pow(eps.val(),3) - detG/eps.val() + 1.0/eps.val();
-        // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
-        // SQUARED
-        //
-        // auto chi = 0.5 * (pow(detG,0.5) + pow(pow(eps.val(),2.0) + detG, 0.5));
-
-        // SQUARE ROOT:
-        auto invJacMat = fform.sqrt().adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
-        // SQUARED:
-        // auto invJacMat = fform.adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
-
         if (m_fun==nullptr)
         {
             auto M = 1/detG;
-            return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+            return evaluator.integral( M*fform.trace()/pow(meas(G),2)*meas(G));
         }
         else
         {
@@ -378,11 +605,117 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
             m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
             auto eta = evaluator.getVariable(m_cfun);
             auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
-            return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+            return evaluator.integral( M*fform.trace()/meas(G)*meas(G));
         }
     }
     else
         GISMO_ERROR("Domain dimension must be smaller than or equal to the target dimension, but domainDim = "<<m_cgeom.domainDim()<<" and targetDim = "<<m_cgeom.targetDim());
+}
+
+
+// NEW CODE
+template<class T, enum MonitorMode MODE>
+void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
+{
+    typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
+    gsExprEvaluator<T> evaluator;
+
+    evaluator.setIntegrationElements(m_mb); // does not work when in constructor
+    m_comp->setControls(u);
+
+    // Penalty constant
+    gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
+    geometryMap G = evaluator.getMap(m_mp);
+    auto fform = jac(G).tr()*jac(G);
+    auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
+    auto dJdxi  = hess(G)[0];
+    auto dJdeta = hess(G)[1];
+    auto M = 1/detG;
+
+    gsMatrix<T> rhs(m_comp->nControls(),1);
+
+    typename gsBasis<T>::domainIter domIt;
+    gsQuadRule<T> QuRule;  // Quadrature rule
+    gsMatrix<T> tmpPoints;
+    gsVector<T> tmpWeights;
+    // Derivative of sigma w.r.t. alpha
+    gsMatrix<T> dSigmadAlpha;
+    //
+    for (unsigned patchInd=0; patchInd < m_mb.nBases(); ++patchInd)
+    {
+        // Quadrature rule
+        QuRule =  gsQuadrature::get(m_mb.basis(patchInd), evaluator.options());
+
+        // Initialize domain element iterator
+        domIt = m_mb.piece(patchInd).makeDomainIterator();
+        for (; domIt->good(); domIt->next() )
+        {
+            // Map the Quadrature rule to the element
+            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            tmpPoints, tmpWeights);
+
+            for (index_t p = 0; p!=tmpPoints.cols(); p++)
+            {
+                // Compute dSigmadAlpha
+                m_comp->control_deriv_into(tmpPoints.col(p), dSigmadAlpha);
+
+                // // Compute dEdSigma
+                // evaluator.eval(2*fform.trace() / meas(G))
+
+
+
+
+                // m_exprdata->points() = tmpPoints.col(p);
+                // m_exprdata->weights() = tmpWeights.row(p);
+
+                // // Perform required pre-computations on the quadrature nodes
+                // m_exprdata->precompute(patchInd);
+            }
+        }
+    }
+
+    // if (m_cgeom.domainDim()==m_cgeom.targetDim())
+    // {
+    //     GISMO_NO_IMPLEMENTATION;
+    //     // auto detG = jac(G).det();
+    //     // auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
+    //     // auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
+
+    //     // if (m_fun==nullptr)
+    //     // {
+    //     //     auto M = 1/detG;
+    //     //     return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+    //     // }
+    //     // else
+    //     // {
+    //     //     // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
+    //     //     m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
+    //     //     auto eta = evaluator.getVariable(m_cfun);
+    //     //     auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
+    //     //     return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
+    //     // }
+    // }
+    // else if (m_cgeom.domainDim()<m_cgeom.targetDim())
+    // {
+    //     auto fform = jac(G).tr()*jac(G);
+    //     auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
+    //     if (m_fun==nullptr)
+    //     {
+    //         auto M = 1/detG;
+    //         assembler.assemble()
+    //         return evaluator.integral( M*fform.trace()/pow(meas(G),2)*meas(G));
+    //     }
+    //     else
+    //     {
+    //         // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
+    //         m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
+    //         auto eta = evaluator.getVariable(m_cfun);
+    //         auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
+    //         return evaluator.integral( M*fform.trace()/meas(G)*meas(G));
+    //     }
+    // }
+    // else
+    //     GISMO_ERROR("Domain dimension must be smaller than or equal to the target dimension, but domainDim = "<<m_cgeom.domainDim()<<" and targetDim = "<<m_cgeom.targetDim());
 }
 
 /*
