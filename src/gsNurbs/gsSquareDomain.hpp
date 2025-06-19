@@ -210,6 +210,7 @@ void gsSquareDomain<T>::control_deriv_into(const gsMatrix<T> & points, gsMatrix<
             for (index_t d = 0; d!=m_domain->targetDim(); d++)
                 if (m_mapper.is_free(k,0,d))
                 {
+                    // @hverhelst: Why don't we use eval_into and put the actives in the right place?
                     m_domain->basis().evalSingle_into(k,points.col(p),tmp); // evaluate basis function k
                     res(m_mapper.index(k,0,d),d) = tmp(0,0); // tmp is a single value (1 point, 1 basis function)
                 }

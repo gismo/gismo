@@ -184,21 +184,32 @@ public:
 
     typedef T Scalar;
 
-    mutable gsMatrix<Scalar> grad, hess; // temporary storage for evaluation
-    mutable gsMatrix<Scalar> dJdxi, dJdeta;
-    mutable gsMatrix<Scalar> dmeasdxi, dmeasdeta;
-    mutable gsMatrix<Scalar> cross;
+    mutable gsMatrix<Scalar,3,2> grad;
+    mutable gsMatrix<Scalar,3,3> hess; // temporary storage for evaluation
+    mutable gsMatrix<Scalar,3,2> dJdxi, dJdeta;
+    mutable gsVector<Scalar,3> cross;
     mutable Scalar E;
     mutable Scalar meas;
+    mutable Scalar dmeasdxi, dmeasdeta;
+    mutable gsMatrix<Scalar> res;
 
-    dEdSigma_expr(const gsGeometryMap<T> & G) : _G(G) { }
-
-
-    Scalar eval(const index_t k) const
+    dEdSigma_expr(const gsGeometryMap<T> & G)
+    :
+    _G(G)
     {
-        // res.resize(1,2); // [dMeasure/dxi, dMeasure/deta]
-        // res.setZero();
+        GISMO_ASSERT( _G.source().domainDim()==2 && _G.source().targetDim()==3,"dEdSigma_expr: The geometry must be a surface");
+    }
+
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+         res.resize(2,1); // [dMeasure/dxi, dMeasure/deta]
+
         grad = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+
+        // dG/dxi x dG/deta
+        cross = grad.col(0).cross(grad.col(1));
+        meas  = cross.norm();
 
         // grad = [dG_x/dxi, dG_x/deta
         //         dG_y/dxi, dG_y/deta
@@ -215,35 +226,29 @@ public:
         // dJdeta= [dG_x/dxideta, dG_x/detadeta
         //          dG_y/dxideta, dG_y/detadeta
         //          dG_z/dxideta, dG_z/detadeta];
-        hess.resize(3,3);
         hess.row(0) = _G.data().values[2].col(k).segment(0,3).transpose();
         hess.row(1) = _G.data().values[2].col(k).segment(3,3).transpose();
         hess.row(2) = _G.data().values[2].col(k).segment(6,3).transpose();
 
-        dJdxi.resize(3,2);
         dJdxi.col(0) = hess.col(0);
         dJdxi.col(1) = hess.col(2);
 
-        dJdeta.resize(3,2);
         dJdeta.col(0) = hess.col(2);
         dJdeta.col(1) = hess.col(1);
 
         dmeasdxi  = ( cross / meas ).dot( hess.col(0).cross(grad.col(1)) + grad.col(0).cross(hess.col(2)) ); // cross/||cross|| . ( dG/dxixi   x dG/deta + dG/dxi x dG/dxideta  )
-        dmeasdeta = ( cross / meas ).dot( hess.col(2).cross(grad.col(0)) + grad.col(1).cross(hess.col(1)) ); // cross/||cross|| . ( dG/detadxi x dG/deta + dG/dxi x dG/detadeta )
+        dmeasdeta = ( cross / meas ).dot( hess.col(2).cross(grad.col(1)) + grad.col(0).cross(hess.col(1)) ); // cross/||cross|| . ( dG/detadxi x dG/deta + dG/dxi x dG/detadeta )
 
-        // dG/dxi x dG/deta
-        cross = grad.col(0).cross(grad.col(1));
-        meas  = cross.norm();
+        E = (grad.transpose()*grad).trace() / meas;
 
-        E = (grad.transpose()*grad).trace() / math::pow(meas, 2);
-
-        return    ( 2 * (grad.transpose()*dJdxi).trace() )  / cross - E*dmeasdxi
-                + ( 2 * (grad.transpose()*dJdeta).trace() ) / cross - E*dmeasdeta;
+        res(0,0) = ( 2 * (grad.transpose()*dJdxi).trace() )  / meas - E*dmeasdxi /meas;
+        res(1,0) = ( 2 * (grad.transpose()*dJdeta).trace() ) / meas - E*dmeasdeta/meas;
+        return res;
     }
 
-    index_t rows() const { return 0; }
+    index_t rows() const { return 2; }
 
-    index_t cols() const { return 0; }
+    index_t cols() const { return 1; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -255,16 +260,7 @@ public:
 
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
-    void print(std::ostream &os) const { os << "????("; _G.print(os); os <<")"; }
-private:
-
-    template<class U> static inline
-    typename util::enable_if<util::is_same<U,gsComposition<Scalar> >::value,
-                             const gsMatrix<Scalar> &>::type
-    eval_impl(const U & u, const index_t k)
-    {
-        return u.eval(k);
-    }
+    void print(std::ostream &os) const { os << "dEdσ("; _G.print(os); os <<")"; }
 };
 
 /// TODO
@@ -617,6 +613,9 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 template<class T, enum MonitorMode MODE>
 void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
 {
+    result.resize(m_comp->nControls());
+    result.setZero();
+
     typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
     gsExprEvaluator<T> evaluator;
 
@@ -636,10 +635,13 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
 
     typename gsBasis<T>::domainIter domIt;
     gsQuadRule<T> QuRule;  // Quadrature rule
-    gsMatrix<T> tmpPoints;
+    gsMatrix<T> uvPoints; // Quadrature points in (u,v) space
+    gsMatrix<T> xietaPoints; // Quadrature points in (xi,eta) space
     gsVector<T> tmpWeights;
     // Derivative of sigma w.r.t. alpha
     gsMatrix<T> dSigmadAlpha;
+    gsMatrix<T> dEdSigma_val;
+    gsMatrix<T> dEdAlpha;
     //
     for (unsigned patchInd=0; patchInd < m_mb.nBases(); ++patchInd)
     {
@@ -652,24 +654,24 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-            tmpPoints, tmpWeights);
+            uvPoints, tmpWeights);
 
-            for (index_t p = 0; p!=tmpPoints.cols(); p++)
+            // Evaluate the geometry map at the quadrature points
+            m_comp->eval_into(uvPoints, xietaPoints);
+            for (index_t p = 0; p!=uvPoints.cols(); p++)
             {
                 // Compute dSigmadAlpha
-                m_comp->control_deriv_into(tmpPoints.col(p), dSigmadAlpha);
+                m_comp->control_deriv_into(uvPoints.col(p), dSigmadAlpha);
+                dSigmadAlpha.conservativeResize(m_comp->nControls(),2);
 
-                // // Compute dEdSigma
-                // evaluator.eval(2*fform.trace() / meas(G))
+                // Compute dEdSigma
+                dEdSigma_val = evaluator.eval(dEdSigma(G),xietaPoints.col(p));
 
+                // Compute dEdAlpha
+                dEdAlpha = dSigmadAlpha * dEdSigma_val;
 
-
-
-                // m_exprdata->points() = tmpPoints.col(p);
-                // m_exprdata->weights() = tmpWeights.row(p);
-
-                // // Perform required pre-computations on the quadrature nodes
-                // m_exprdata->precompute(patchInd);
+                // Add to the result
+                result += tmpWeights[p] * dEdAlpha;
             }
         }
     }
