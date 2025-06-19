@@ -166,6 +166,11 @@ void solve( gsMultiPatch<T> & mp,
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     A.options().setSwitch("SameElement",Aopt.askSwitch("SameElement",true));
+#ifdef GISMO_WITH_PARDISO
+    A.options().addString("LinearSolver", "Name of the linear solver to be used", "PardisoLU");
+#   else
+    A.options().addString("LinearSolver", "Name of the linear solver to be used", "SimplicialLDLT");
+#endif
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -268,10 +273,12 @@ void solve( gsMultiPatch<T> & mp,
     // ![Initialize the assembler]
 
     // Define linear solver (install SuperLUMT-devel)
-#ifdef GISMO_WITH_SUPERLU
-    gsSparseSolver<>::SuperLU solver;
+gsSparseSolver<>::uPtr solver;
+
+#ifdef GISMO_WITH_PARDISO
+    solver = gsSparseSolver<>::get("PardisoLU");
 #   else
-    gsSparseSolver<>::LU solver;
+    solver = gsSparseSolver<>::get("LU");
 #endif
 
     gsMatrix<> Q;
@@ -298,7 +305,6 @@ void solve( gsMultiPatch<T> & mp,
         GISMO_ASSERT(mp.geoDim()==ms.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<ms.domainDim()<<"!="<<mp.geoDim());
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
-        // gsFunctionExpr<> initial_cond("tanh(cos((pi*t)/3) - 40*((x - 1/2)^2 + (y - 1/2)^2 + 1/10000)^(1/2) + 12)",2);
         ms.set_t(0); // set time to zero in manufactured solution (initial condition)
         real_t error = gsL2Projection<real_t>::project(dbasis,mp,ms,tmp,A.options());  // 3rd arg has to be multipatch
         if (verbose>0) gsInfo << "L2 projections error "<<error<<"\n";
@@ -572,15 +578,13 @@ void solve( gsMultiPatch<T> & mp,
 
 
                         clock.restart();
-    #ifdef GISMO_WITH_SUPERLU
-                        if (0==k)
-                            solver.analyzePattern(K);
-                        solver.factorize(K);
-    #else
-                        solver.compute(K);
-    #endif
+
+                        solver->compute(K); // K + K_linear ?? 
+                        GISMO_ENSURE(solver->info()==gsEigen::Success,"Solver failed to compute the matrix K, info = "<<solver->info());
+                        gsDebugVar(solver->info());
+
+                        dCupdate = solver->solve(-Q);
     
-                        dCupdate = solver.solve(-Q);
                         solverTimeRefIt += clock.stop();
                         nSolves++;
                         nSolvesStep++;

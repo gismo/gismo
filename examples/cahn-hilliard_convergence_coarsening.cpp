@@ -125,41 +125,19 @@ void solve( gsMultiPatch<T> & mp,
         gsInfo<<"Maximum degree of the basis: "<<dbasis.basis(p).maxDegree()<<"\n";
     }
 
-    if (random)
-        if(pattern==0)
-            out = out + "_random_nuc_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive")) + "_refIt_" + std::to_string(MESHopt.askInt("RefIt"));
-        else
-            out = out + "_random_spin_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive"))+ "_refIt_" + std::to_string(MESHopt.askInt("RefIt"));
-    else
-        out = out + "_analytical_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive")) + "_refIt_" + std::to_string(MESHopt.askInt("RefIt"));
+    out = out + "_analytical_N_" + std::to_string(maxSteps) + "_dt_" + std::to_string(dt) + "_lambda_" + std::to_string(lambda) + "_r_" + std::to_string(numRefine) + "_degree_" + std::to_string(dbasis.basis(0).maxDegree()) + "_prjCrs_" + std::to_string(projection_Crs) + "_THB_" + std::to_string(MESHopt.askSwitch("THB")) + "_Adaptive_" + std::to_string(MESHopt.askSwitch("Adaptive")) + "_refIt_" + std::to_string(MESHopt.askInt("RefIt"));
 
     //! [Prepare the basis]
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    // Reals for time integration
-
-    // Generalized-alpha method parameters
-    real_t rho_inf = TIMEopt.askReal("rho_inf",0.5);
-    real_t alpha_m = 0.5*(3-rho_inf) / (1+rho_inf);
-    real_t alpha_f = 1 / (1+rho_inf);
-    real_t gamma   = 0.5 + alpha_m - alpha_f;
-    real_t dt_old = dt;
-    real_t t_rho = TIMEopt.askReal("t_rho",0.9);
-    real_t t_err = 1;
-    index_t lmax = 1;
-
-    real_t tmp_alpha_m = 1;
-    real_t tmp_alpha_f = 1;
-    real_t tmp_gamma   = 1;
-    // time stepping options
-    index_t maxIt = 50;
-
-
-
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     A.options().setSwitch("SameElement",Aopt.askSwitch("SameElement",true));
+#ifdef GISMO_WITH_PARDISO
+    A.options().addString("LinearSolver", "Name of the linear solver to be used", "PardisoLU");
+#   else
+    A.options().addString("LinearSolver", "Name of the linear solver to be used", "SimplicialLDLT");
+#endif
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -190,67 +168,6 @@ void solve( gsMultiPatch<T> & mp,
 
     // basis.init(dbasis, cf);
 
-    // Solution vector and solution variable
-    gsMatrix<> Cnew, Calpha, Cold, Cold1;
-    gsMatrix<> dCnew,dCalpha,dCold, dCupdate;
-    // Solution vectors with eliminated and free DoFs
-    gsMatrix<> CnewF, dCnewF;
-
-    // Solution variables for the previous and next solutions (before and after time step)
-    gsMultiPatch<> mp_cold, mp_dcold, mp_cnew, mp_dcnew;
-    auto     cold  = A.getCoeff(mp_cold );
-    auto     dcold = A.getCoeff(mp_dcold);
-    auto     cnew  = A.getCoeff(mp_cnew );
-    auto     dcnew = A.getCoeff(mp_dcnew);
-    // New solution variables for source term;
-    gsMultiPatch<> mp_qnew, mp_qold;
-    auto     qnew  = A.getCoeff(mp_qnew );
-    auto     qold  = A.getCoeff(mp_qold );
-
-    solution cnew_sol = A.getSolution(w, Cnew); // Cnew
-    solution dcnew_sol = A.getSolution(w, dCnew); // \dot{Cnew}
-
-    // Solution variables for the intermediate solutions (during time integration)
-    gsConstantFunction<> tmp_alpha_f_func(tmp_alpha_f,dim);
-    gsConstantFunction<> tmp_alpha_m_func(tmp_alpha_m,dim);
-    auto     af = A.getCoeff(tmp_alpha_f_func);
-    auto     am = A.getCoeff(tmp_alpha_m_func);
-
-    auto     c  = cold  + af * ( cnew_sol -  cold);
-    auto     dc = dcold + am * (dcnew_sol - dcold);
-    auto  gradc = igrad(cold,G) + af * (igrad(cnew_sol,G) - igrad(cold,G));
-    auto  laplc = ilapl(cold,G) + af * (ilapl(cnew_sol,G) - ilapl(cold,G));
-
-    // Source term
-    auto     qq  = qold  + af * (qnew -  qold);
-
-    // Derivatives of the polynomial double well potential (M. Kästner et al., 2016)
-    auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
-    auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
-
-    // Mobility
-    auto M_c  = 1.0 + 0.0*c.val(); // replace with const_expr(1.0) instead of using 0*c
-    auto dM_c = 0.0 * gradc; // replace with const_expr(1.0) instead of using 0*c!!
-
-    auto residual = w*dc + // M
-                M_c.val() * igrad(w,G) * dmu_c * gradc.tr() + // F_bar
-                M_c.val() * ilapl(w,G) *lambda *laplc.val(); // K_laplacian
-
-    //  =========== Terms for boundary integrals ===========
-    // (1) Neumann boundary condition
-    // gsFunctionExpr<> bc1("-18*pi*cos((2*pi*t)/3)*cos(6*pi*y)*sin(6*pi*x)*(cos((2*pi*t)/3)^2*cos(6*pi*x)^2*cos(6*pi*y)^2 + 927703176743281/42221246506598400)","-18*pi*cos((2*pi*t)/3)*cos(6*pi*x)*sin(6*pi*y)*(cos((2*pi*t)/3)^2*cos(6*pi*x)^2*cos(6*pi*y)^2 + 927703176743281/42221246506598400)",2);
-    
-    // For manufactured solution cos(pi*x) * cos(pi*y) * cos(2/3*pi*t)
-    gsFunctionExpr<> bc1("-3*pi*cos((2*pi*t)/3)*cos(pi*y)*sin(pi*x)*(cos((2*pi*t)/3)^2*cos(pi*x)^2*cos(pi*y)^2 + 274134357077347/844424930131968)", "-3*pi*cos((2*pi*t)/3)*cos(pi*x)*sin(pi*y)*(cos((2*pi*t)/3)^2*cos(pi*x)^2*cos(pi*y)^2 + 274134357077347/844424930131968)",2);
-
-    // (2) Laplace boundary condition
-    // gsFunctionExpr<> bc2("-72*pi^2*cos((2*pi*t)/3)*cos(6*pi*x)*cos(6*pi*y)",2); // should be correct
-    
-    // For manufactured solution cos(pi*x) * cos(pi*y) * cos(2/3*pi*t)
-    gsFunctionExpr<> bc2("-3*pi*cos((2*pi*t)/3)*cos(pi*y)*sin(pi*x)*(cos((2*pi*t)/3)^2*cos(pi*x)^2*cos(pi*y)^2 + 274134357077347/844424930131968)", "-3*pi*cos((2*pi*t)/3)*cos(pi*x)*sin(pi*y)*(cos((2*pi*t)/3)^2*cos(pi*x)^2*cos(pi*y)^2 + 274134357077347/844424930131968)",2);
-
-    // =====================================================
-
     // ![Initialize the assembler]
     w.setup(bc, dirichlet::l2Projection, 0);
     A.initSystem();
@@ -277,47 +194,18 @@ void solve( gsMultiPatch<T> & mp,
 
     gsInfo<<"Initial condition.."<<"\n";
 
-    if (random)
-    {
-        gsFileData<> fd1;
-        std::string file_name;
-        if (pattern==0) // nucleation
-            file_name = "multipatch.xml";
-        else
-            file_name = "/Users/lucasventavinuela/gismo/build/new_spin.xml";
-
-       gsMultiPatch<> MP;
-
-        fd1.read(file_name);
-        fd1.getId(0,MP);
-        gsInfo<<"Imported multipatch\n";
-
-        mp_cold.addPatch(MP.patch(0));
-        Cold.setZero(dbasis.size(),1);
-        mp_dcold.addPatch(dbasis.basis(0).makeGeometry(Cold));
-    }
-    else
-    {
-        // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
-        GISMO_ASSERT(mp.geoDim()==ms.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<ms.domainDim()<<"!="<<mp.geoDim());
-        gsMatrix<> tmp;
-        Cold.setZero(A.numDofs(),1);
-        gsInfo << ms << "\n";
-        ms.set_t(0); // set time to zero in manufactured solution (initial condition)
-        real_t error = gsL2Projection<real_t>::project(dbasis,mp,ms,tmp,A.options());  // 3rd arg has to be multipatch
-        if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
-        mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
-        tmp.setZero();
-        mp_dcold.addPatch(dbasis.basis(0).makeGeometry(tmp));
-    }
-
-    // gsWriteParaview(mp,mp_cold,out+"/initial_condition",5000);
+    gsMultiPatch<> mp_cold, mp_cnew;
+    auto     cold  = A.getCoeff(mp_cold );
+    auto     cnew  = A.getCoeff(mp_cnew );
+    // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
+    GISMO_ASSERT(mp.geoDim()==ms.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<ms.domainDim()<<"!="<<mp.geoDim());
+    gsMatrix<> tmp;
+    gsInfo << ms << "\n";
+    ms.set_t(0); // set time to zero in manufactured solution (initial condition)
+    real_t error = gsL2Projection<real_t>::project(dbasis,mp,ms,tmp,A.options());  // 3rd arg has to be multipatch
+    if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
+    mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
     mp_cnew = mp_cold;
-    mp_dcnew = mp_dcold;
-
-    // Fill multipatch zeros!
-    mp_qnew = mp_dcold;
-    mp_qold = mp_dcold;
 
     real_t Q0norm = 1, Qnorm = 10;
     real_t tol = TIMEopt.askReal("tol",1e-4);
@@ -350,12 +238,7 @@ void solve( gsMultiPatch<T> & mp,
     }
     // ! [Load mesher options]
 
-    std::ofstream csvFile;
-    csvFile.open(out+"/dofs.csv");
-    csvFile << "TimeStep, NumDOFs, Mass, ErrorRefCnew, ErrorRefdCnew, ErrorCrsCnew, ErrorCrsdCnew\n";
 
-    gsVector<> pt(2,1); pt<<0.5, 0.5;
-    
     // =============================================================================================
     // Do the coarsening based on the analytical solution!! (initial condition)
     
