@@ -34,12 +34,10 @@ int main(int argc, char *argv[])
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
-    std::vector<index_t> adapt_parameter{1,1,2,12,24};
     // Specify the file path
-    // std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/circle.xml");
-    // std::string fn("surfaces/egg.xml"); 
-
+    std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/circle.xml");
+    
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
     cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
@@ -274,20 +272,22 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            ev.integralElWise( (  igrad(ru_sol, PP)*meas(PP) ).sqNorm() );
-            //ev.integralElWise( ( igrad(ru_sol, PP) ).sqNorm() + (  ilapl(ru_sol, PP) + SFunc ).sqNorm() );
+            // ev.integralElWise( (  igrad(ru_sol, PP)*meas(PP) ).sqNorm() );
+            ev.integralElWise( (  ilapl(ru_sol, PP) + SFunc ).sqNorm() );
 
             std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
             // Compute the global error indicators.
-            double Maxvalue   = *std::max_element(eltErrs.begin(), eltErrs.end());
-            double Minvalue   = *std::min_element(eltErrs.begin(), eltErrs.end());
+            if (IntensityMAE >1.){
+            double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
+            double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
             for(size_t i=0; i<eltErrs.size(); ++i)
             {
-                if (eltErrs[i] > 0.001*(Maxvalue+Minvalue)) // Avoid numerical issues
-                    eltErrs[i] = 0.001*(Maxvalue+Minvalue); // Avoid negative errors
+                if (eltErrs[i] > 1.*(Maxvalue+Minvalue)) // Avoid numerical issues
+                    eltErrs[i] = 1.*(Maxvalue+Minvalue); // Avoid negative errors
             }
-            //! [adaptRefinementPart]
+            }
+            // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
             std::vector<bool> elMarked( eltErrs.size() );
@@ -295,7 +295,6 @@ int main(int argc, char *argv[])
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
             // Refine the marked elements with a 1-ring of cells around marked elements
-            NumArMarEl = adapt_parameter[r];
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 

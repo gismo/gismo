@@ -35,7 +35,8 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     // Specify the file path
-    std::string fn("pde/example3D.xml");
+    //std::string fn("pde/example3D.xml");
+    std::string fn("surfaces/cylinder.xml"); 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -152,8 +153,8 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
     solution u_sol = A.getSolution(ru, rsolVector);
-    //ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
-    ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
+    ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
+    //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise = ev.elementwise();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -185,12 +186,22 @@ int main(int argc, char *argv[])
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    // gsMultiPatch<> Psi;
+    // for(size_t i =0; i<Psitp.nPatches(); ++i)
+    //     Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(Psitp.patch(i)) ));
+    // Psi.addAutoBoundaries();
+    // Psi.computeTopology();
     gsMultiPatch<> Psi;
+    if (mpLeft.dim()== 3){
     for(size_t i =0; i<Psitp.nPatches(); ++i)
         Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(Psitp.patch(i)) ));
+    }
+    else{
+    for(size_t i =0; i<Psitp.nPatches(); ++i)
+        Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));            
+    }
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Start hierarchical refinement
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
