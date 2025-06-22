@@ -25,14 +25,28 @@ void markEdge(gsSurfMesh & mesh, gsSurfMesh::Halfedge_property<bool> & sharp,
     he = mesh.opposite_halfedge(he);
     sharp[he] = true;
 }
-
+//class readOffClass : public gsFileData<> {
+//
+//    public:
+//        void readOFF(std::string filename)
+//        {
+//
+//            readOffFile(filename);
+//        }
+//};
 int main(int argc, char** argv)
 {
     // Create mesh
+    
     gsSurfMesh mesh;
+    
     typedef gsEigen::Vector<real_t,3> Point;
     typedef gsSurfMesh::Vertex Vertex;
 
+    //readOffClass obj1;
+    //obj1.readOFF("C:/Users/jimt1/Documents/Git_Repos/gismo/build/bin/Debug/initial_cube.off");
+    //                                                  
+    //gsSurfMesh:: mesh = obj1.getFirst(gsSurfMesh());
     mesh.add_vertex(Point(-1,-1,-1)); // Vertices
     mesh.add_vertex(Point( 1,-1,-1));
     mesh.add_vertex(Point(-1, 1,-1));
@@ -52,7 +66,8 @@ int main(int argc, char** argv)
     //markEdge(mesh, sharp, 2, 3);
     //markEdge(mesh, sharp, 0, 2);
     //markEdge(mesh, sharp, 1, 3);
-    mesh.write("initial_cube.off");
+    /*mesh.write("initial_cube.off");*/
+    mesh.write("out_ds_0.off");
     // One step of Catmull-Clark subdivisions
     mesh.ds_subdivide();
 
@@ -66,7 +81,18 @@ int main(int argc, char** argv)
 
     // Export as an XML file, that can be used with gsView to visualize on ParaView
 
-    mesh.write("out_ds.off");
+    mesh.write("out_ds_1.off");
+    mesh.ds_subdivide();
+    mesh.write("out_ds_2.off");
+    mesh.ds_subdivide();
+    mesh.write("out_ds_3.off");
+    mesh.ds_subdivide();
+    mesh.write("out_ds_4.off");
+    mesh.ds_subdivide();
+    mesh.write("out_ds_5.off");
+    mesh.ds_subdivide();
+    mesh.write("out_ds_6.off");
+
     //gsWrite(mesh, "out_acc5");
 
     // Export as ParaSolid file

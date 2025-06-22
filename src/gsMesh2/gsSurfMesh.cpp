@@ -2458,6 +2458,7 @@ void gsSurfMesh::ds_subdivide() {
     index_t fnf = n_faces(); // Number if faces in the current mesh
     unsigned int max_valence{gsSurfMesh::maximum_mesh_valence(vertices())};
     std::vector<std::vector<int>> ds_vertex_connectity{};
+    std::vector<Point> im_vertex_points{};
 
     /*
     Calculate all images of vertex in each face and then create the F-Faces
@@ -2480,7 +2481,6 @@ void gsSurfMesh::ds_subdivide() {
           subdivision initial scheme.
         */ 
         gsMatrix<real_t> imageVCoeffs = gsSurfMesh::get_image_vertex_coeffs(fval);
-        
         // Compute original vertex positions in each face
         gsVector<real_t> orVertsVectorCoords(3*fval);
         orVertsVectorCoords.setZero();
@@ -2507,52 +2507,71 @@ void gsSurfMesh::ds_subdivide() {
 
         // Adding image vertex to mesh
         std::vector<int>  imVertsVector{};
+        std::vector<Vertex>  imVertsVectorDummy{};
         imVertsVector.reserve(fval); 
         for (unsigned int i = 0; i < fval; i++) {
             tmp[0] = imVertsVectorCoords(i * 3 + 0);
             tmp[1] = imVertsVectorCoords(i * 3 + 1);
             tmp[2] = imVertsVectorCoords(i * 3 + 2);
-            v=add_vertex(tmp);
-            add_image_vertex_to_vertex(orVerts[i], v);
-            imVertsVector.push_back(v.idx()-fnv);
-        }
+            im_vertex_points.push_back(tmp);
+            v = add_vertex(tmp);
+            add_image_vertex_to_vertex(orVerts[i], v, fit);
+            imVertsVector.push_back(v.idx()-fnv);        }
         
         ds_vertex_connectity.push_back(imVertsVector);
 
         //// Create the F-face from the image vertices
         //gsSurfMesh::Face fface;
-        //fface = add_face(imVertsVector);
+        //fface = mesh.add_face(imVertsVectorDummy);
         //set_fface(fit,fface);
 
     }
 
-
-
+    std::vector<int>  imVertsIDVector{};
     // loop over all vertices and their image vertices
 #   pragma omp parallel for default(shared)
 
     for (int i = 0; i < fnv; i++) {
         v = gsSurfMesh::Vertex(i);
 
-        // Create the V-Faces
-        std::vector<int>  imVertsVector{};
-        for (auto orv : image_vertices(v)) {
-            imVertsVector.push_back(orv.idx() - fnv);
+        // Create the V-Faces               
+        imVertsIDVector.clear();
+        
+        for (auto fit : faces(v)) {
+            for (auto pair : image_vertices(v)) {
+                if (fit == pair.second) {
+                    imVertsIDVector.push_back(pair.first.idx() - fnv);
+                    break;
+                }
+                
+            }
         }
-        ds_vertex_connectity.push_back(imVertsVector);
+ 
+        ds_vertex_connectity.push_back(imVertsIDVector);
 
-        // Delete the original vertex and renumber the new ones
-        delete_vertex(v);
+
     }
 
+
+   // Remove old and  renumber original vertices
+    unsigned int max_num_verts{ n_vertices() };
+    for (int i = 0; i < max_num_verts; i++) {
+        v = gsSurfMesh::Vertex(i);
+        // Delete the original vertex
+        delete_vertex(v);
+    }
     for (auto fit : faces()) {
         delete_face(fit);
     }
     for (auto eit : edges()) {
         delete_edge(eit);
     }
-    //garbage_collection(); 
-    //unsigned int max_verts_id{ n_vertices() - 1 };
+    garbage_collection();
+
+    //gsDebugVar(position(Vertex(0)));
+    for (int i = 0; i < im_vertex_points.size();i++) {
+        add_vertex(im_vertex_points[i]);
+    }
     //unsigned int max_face_id{n_faces()+fnf-1};
     std::vector<Vertex> imVertsVector{};
 #   pragma omp parallel for default(shared)
@@ -2564,88 +2583,49 @@ void gsSurfMesh::ds_subdivide() {
         imVertsVector.clear();
     }
 
-    //for (int i = fnf; i < max_face_id+ 1;i++) {
-    //    delete_face(gsSurfMesh::Face(i));
-    //}
-
-    //for (auto f : faces()) {
-    //    for (auto vit : vertices(f)) {
-    //        if (vit.idx() > n_vertices() - 1) {
-    //            delete_face(f);
-    //        }
-    //    }
-
-    //}
         // loop over all edges
-////    gsVector<> zeroVec(3);
-//    std::vector<std::vector<Vertex>>  eVertsVector;
-//    std::vector<Vertex>  eFaceVertsVector{};
+    std::vector<std::vector<Vertex>>  eVertsVector;
+    std::vector<Vertex>  eFaceVertsVector{};
 //
-////    std::vector<Vertex>  e1ImageVerts;
-////    std::vector<Vertex>  e2ImageVerts;
-////    std::vector<Vertex> fFaceVertsVector;
-//    Halfedge start_he;
-//    Halfedge next_he;
-//    Edge current_edge;
-//    Face start_face;
-//    Face current_face;
-//    Vertex next_v;
+    Halfedge start_he;
+    Halfedge next_he;
+    Edge current_edge;
+    Face start_face;
+    Face current_face;
+    Vertex next_v;
 //
 //
 //
-//#   pragma omp parallel for default(shared)
-//
-//    for (auto vit : vertices())
-//    {
-//        if (is_boundary(vit)) {
-//            eFaceVertsVector.push_back(vit);
-//            // Initial vertex;
-//            v = vit;
-//            // Initial half-edge
-//            start_he = halfedge(vit);
-//            // Initial incident face
-//            start_face = face(start_he);
-//            
-//            while (eFaceVertsVector.size() != 4) {
-//                if (is_boundary(start_he)) {
-//
-//
-//                    next_v = to_vertex(start_he);
-//                    eFaceVertsVector.push_back(next_v);
-//                    start_he = next_halfedge(start_he);
-//                    
-//                    
-//
-//                    //he = opposite_halfedge(halfedge(next_v));
-//                    v = next_v;
-//                    //start_he = next_halfedge(he);
-//                    int x = 1;
-//
-//                }
-//                /*else {
-//                    for (auto hit : halfedges(v)) {
-//                        if (is_boundary(hit)) {
-//                            start_he = hit;
-//                            break;
-//                        }
-//                    }
-//                }*/
-//      
-//                                
-//                    //if (current_face!=start_face) {
-//
-//
-//                    //    std::cout << current_face.idx() << std::endl;
-//                    //    Halfedge next_he{ next_halfedge(start_he) };
-//                    //    break;
-//                    //
-//                    //}
-//                }
-//            }
-//        add_face(eFaceVertsVector);
-//        eFaceVertsVector.clear();
-//        //eVertsVector.push_back(eFaceVertsVector);
-//        }
+#   pragma omp parallel for default(shared)
+
+    for (auto vit : vertices())
+    {
+        if (is_boundary(vit)) {
+            // Initial vertex;
+            v = vit;
+            // Initial half-edge
+            for (auto start_he : halfedges(vit)) {
+              
+                he = start_he;
+                do {
+                    eFaceVertsVector.push_back(v);
+                    he = opposite_halfedge(he);
+                    he = cw_rotated_halfedge(he);
+                    v = from_vertex(he);
+                    
+                } while (v != vit);
+                break;
+            }
+            add_face(eFaceVertsVector);
+            eFaceVertsVector.clear();
+
+            
+
+            
+            
+        }
+
+    }
     
 //        // Create the E-Face from image vectors
 //        gsSurfMesh::Face eface{ nm.add_face(eFaceVertsVector) };
@@ -2674,21 +2654,23 @@ gsMatrix<real_t> gsSurfMesh::get_image_vertex_coeffs(unsigned int face_valence) 
     // Initializing matrix coefficient for face
     gsSparseMatrix<real_t> M(3*face_valence, 3*face_valence);
     M.setZero();
-
+    real_t val{ 0 };
     // Creating the mask (image vertice coefficients) by looping to the number
     // of vertices
-    for (unsigned int icount = 0; icount < face_valence; icount++) {
-        for (unsigned int jcount = 0; jcount < face_valence; jcount++) {
+    for (int icount = 0; icount < face_valence; icount++) {
+        for (int jcount = 0; jcount < face_valence; jcount++) {
             if (icount == jcount) {
-                M.insert(3 * icount, 3 * jcount) = (real_t)(face_valence + 5) / (4 * face_valence);
-                M.insert(3 * icount +1, 3 * jcount + 1) = (real_t) (face_valence + 5) / (4 * face_valence);
-                M.insert(3 * icount + 2, 3 * jcount + 2) = (real_t)(face_valence + 5) / (4 * face_valence);
+                val = (real_t)(face_valence + 5) / (4 * face_valence);
+                M.insert(3 * icount, 3 * jcount) = val;
+                M.insert(3 * icount +1, 3 * jcount + 1) = val;
+                M.insert(3 * icount + 2, 3 * jcount + 2) = val;
 
             }
             else {
-                M.insert(3*icount, 3*jcount) = (3 + 2 * math::cos(2 * EIGEN_PI * (icount - jcount) / face_valence)) / (4 * face_valence);
-                M.insert(3 * icount + 1, 3 * jcount + 1) = (3 + 2 * math::cos(2 * EIGEN_PI * (icount - jcount) / face_valence)) / (4 * face_valence);
-                M.insert(3 * icount + 2, 3 * jcount + 2) = (3 + 2 * math::cos(2 * EIGEN_PI * (icount - jcount) / face_valence)) / (4 * face_valence);
+                val = (3 + 2 * cos(2.0 * EIGEN_PI * (icount - jcount) / face_valence)) / (4 * face_valence);
+                M.insert(3*icount, 3*jcount) = val;
+                M.insert(3 * icount + 1, 3 * jcount + 1) = val;
+                M.insert(3 * icount + 2, 3 * jcount + 2) = val;
 
             }
 

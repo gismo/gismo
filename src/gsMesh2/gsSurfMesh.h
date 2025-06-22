@@ -151,7 +151,8 @@ public: //-------------------------------------------------- connectivity types
         Halfedge  halfedge_;
 
         /// image vertices vector during doo-sabin subdivision
-        std::vector<Vertex> imVertDS_{};
+        
+        std::vector<std::pair<Vertex,Face>> imVertDS_{};
     };
 
 
@@ -1213,13 +1214,13 @@ public: //---------------------------------------------- low-level connectivity
     }
 
     /// sets the image vertex \c imv to \c v 
-    void add_image_vertex_to_vertex(Vertex v, Vertex imv)
+    void add_image_vertex_to_vertex(Vertex v, Vertex imv, Face f)
     {
-        vconn_[v].imVertDS_.push_back(imv);
+        vconn_[v].imVertDS_.push_back(std::make_pair(imv, f));
     }
 
     /// returns the image vertex of adjacent faces to \c v
-    std::vector<Vertex> image_vertices(Vertex v) const
+    std::vector<std::pair<Vertex,Face>> image_vertices(Vertex v) const
     {
         return vconn_[v].imVertDS_;
     }
