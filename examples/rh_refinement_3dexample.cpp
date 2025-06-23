@@ -36,7 +36,9 @@ int main(int argc, char *argv[])
     index_t circleN       = 0;
     // Specify the file path
     //std::string fn("pde/example3D.xml");
-    std::string fn("surfaces/cylinder.xml"); 
+    // std::string fn("surfaces/cylinder.xml");
+    std::string fn("surfaces/quarter_sphere.xml"); 
+
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -157,16 +159,29 @@ int main(int argc, char *argv[])
     //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise = ev.elementwise();
 
+    // if (IntensityMAE >1.){
+    // double Maxvalue   = *std::max(elwise.begin(), elwise.end());
+    // double Minvalue   = *std::min(elwise.begin(), elwise.end());
+    // for(size_t i=0; i<elwise.size(); ++i)
+    // {
+    //     if (elwise[i] > 0.5*(rsolVector.maxCoeff()+rsolVector.minCoeff())) // Avoid numerical issues
+    //         elwise[i] = 0.5*(rsolVector.maxCoeff()+rsolVector.minCoeff()); // Avoid negative errors
+    // }
+    // }
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    // auto density = MAE.buildDensity(elwise, 0.1, circleN);
-    gsFunctionExpr<> ff;
-    fd.getId(2003, ff);
-    auto density = MAE.buildAnalyticDensity(ff);
-    // gsMultiPatch<> mp; mp.addPatch(gsNurbsCreator<>::BSplineCube(1,0,0,0));
+    auto density = MAE.buildDensity(elwise, 0.002, circleN);
+    // gsFunctionExpr<> ff;
+    // fd.getId(2003, ff);
+    // auto density = MAE.buildAnalyticDensity(ff);
+    // gsMultiPatch<> mp; 
+    // if (dbasis.dim()==2)
+    //     mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,0,0));
+    // else
+    //     mp.addPatch(gsNurbsCreator<>::BSplineCube(1,0,0,0));
     // auto u_density = A.getCoeff(density);
     // gsInfo<<"Plotting in Paraview...\n";
     // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
@@ -387,7 +402,7 @@ int main(int argc, char *argv[])
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
         collection.addField((  ilapl(ru_sol, PP)+ SFunc ).sqNorm(),"indecator");
-        collection.addField(jac(PP).det(), "Jacobian function");
+        // collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();
         collection.save();
