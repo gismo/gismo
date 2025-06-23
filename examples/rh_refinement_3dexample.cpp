@@ -35,9 +35,9 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     // Specify the file path
-    //std::string fn("pde/example3D.xml");
-    // std::string fn("surfaces/cylinder.xml");
-    std::string fn("surfaces/quarter_sphere.xml"); 
+    std::string fn("pde/example3D.xml");
+    //std::string fn("surfaces/cylinder.xml");
+    //std::string fn("surfaces/quarter_sphere.xml"); 
 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -155,13 +155,11 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
     solution u_sol = A.getSolution(ru, rsolVector);
-    ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
-    //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
+    // ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
+    ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise = ev.elementwise();
 
     // if (IntensityMAE >1.){
-    // double Maxvalue   = *std::max(elwise.begin(), elwise.end());
-    // double Minvalue   = *std::min(elwise.begin(), elwise.end());
     // for(size_t i=0; i<elwise.size(); ++i)
     // {
     //     if (elwise[i] > 0.5*(rsolVector.maxCoeff()+rsolVector.minCoeff())) // Avoid numerical issues
@@ -173,7 +171,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, 0.002, circleN);
+    auto density = MAE.buildStrategyDensity(elwise, 0.75);
     // gsFunctionExpr<> ff;
     // fd.getId(2003, ff);
     // auto density = MAE.buildAnalyticDensity(ff);
@@ -314,8 +312,8 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            //ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
-            ev.integralElWise( igrad(ru_sol, PP).sqNorm() );
+            ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
+            //ev.integralElWise( igrad(ru_sol, PP).sqNorm() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]

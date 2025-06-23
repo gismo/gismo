@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/circle.xml");
+    //std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/circle.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -162,7 +162,9 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildDensity(elwise, 0.1, circleN);
+    // auto density = MAE.buildDensity(elwise, 0.1, circleN);
+    auto density = MAE.buildStrategyDensity(elwise, 0.8);
+
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -278,15 +280,15 @@ int main(int argc, char *argv[])
             std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
             // Compute the global error indicators.
-            if (IntensityMAE >1.){
-            double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
-            double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
-            for(size_t i=0; i<eltErrs.size(); ++i)
-            {
-                if (eltErrs[i] > 1.*(Maxvalue+Minvalue)) // Avoid numerical issues
-                    eltErrs[i] = 1.*(Maxvalue+Minvalue); // Avoid negative errors
-            }
-            }
+            // if (IntensityMAE >1.){
+            // double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
+            // double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
+            // for(size_t i=0; i<eltErrs.size(); ++i)
+            // {
+            //     if (eltErrs[i] > 1.*(Maxvalue+Minvalue)) // Avoid numerical issues
+            //         eltErrs[i] = 1.*(Maxvalue+Minvalue); // Avoid negative errors
+            // }
+            // }
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.

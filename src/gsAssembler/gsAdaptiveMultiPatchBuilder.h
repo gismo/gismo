@@ -37,6 +37,9 @@ public:
     // Method to build a density function from a given solution vector
     gsMultiPatch<> buildDensity(const std::vector<double> &elwiseERROR, const double eps = 0.1, index_t circleN = 0, bool maxminVar = true) const;
 
+    // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
+    gsMultiPatch<> buildStrategyDensity(const std::vector<double> &elwiseERROR, const double MarkPercentage = 0.9) const;
+
     // Method to build a multipatch adaptive mapping
     gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density, bool composition=true) const;
 

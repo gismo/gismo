@@ -6,14 +6,14 @@
 rm -r ../build/error_analysis.txt
 
 # Build r_refinement_square before running
-#make rh_refinement_example -j 15
-make rh_refinement_3dexample -j 15
+make rh_refinement_example -j 15
+#make rh_refinement_3dexample -j 15
 #make rh_adaptiveAdvectiondiffusion -j 15
 #make rh_elasticity_example -j 15
 
 # Path to the executable
-#EXECUTABLE="./bin/rh_refinement_example"
-EXECUTABLE="./bin/rh_refinement_3dexample"
+EXECUTABLE="./bin/rh_refinement_example"
+#EXECUTABLE="./bin/rh_refinement_3dexample"
 #EXECUTABLE="./bin/rh_adaptiveAdvectiondiffusion"
 #EXECUTABLE="./bin/rh_elasticity_example"
 
@@ -24,9 +24,9 @@ TAGS=(
     # "-r 2 -u 4 -f  0.  -l 5 -a 0.0 -c 0 -p 0 -e 0"
     # "-r 2 -u 4 -f  0.  -l 5 -a 0.5 -c 1 -p 0 -e 0"
     # "-r 2 -u 4 -f  0.  -l 5 -a 0.7 -c 1 -p 0 -e 0"
-    "-r 2 -u 4 -f  12. -l 0 -a 0.0 -c 0 -p 0 -e 0"
-    #"-r 2 -u 4 -f  12. -l 5 -a 0.5 -c 1 -p 0 -e 0"
-    #"-r 2 -u 4 -f  12. -l 5 -a 0.7 -c 1 -p 0 -e 0"
+    #"-r 2 -u 3 -f  15. -l 5 -a 0.0 -c 0 -p 0 -e 0"
+    #"-r 2 -u 3 -f  15. -l 5 -a 0.5 -c 1 -p 0 -e 0"
+    "-r 2 -u 3 -f  15. -l 3 -a 0.7 -c 1 -p 1 -e 0"
     # 3 dimensions case
     #"-r 2 -u 1 -f  0.  -l 2 -a 0.0 -c 0 -p 0 -e 0 -i 1"
     #"-r 2 -u 1 -f  0.  -l 2 -a 0.5 -c 0 -p 3 -e 0 -i 1"

@@ -151,12 +151,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     if (this->m_basis.dim() == 2){
         index_t n1   = basis_0.basis(0).component(0).numElements();
         index_t n2   = basis_0.basis(0).component(1).numElements();
-
+        //... compute the error as a piecewise constant function
+        #pragma omp parallel for
         for (index_t i1 = 0; i1 < n1; i1++){
             for (index_t j1 = 0; j1 < n2; j1++){
-                auto i = i1*n2 + j1;
+                auto i         = i1*n2 + j1;
                 double Elcontr = 0.;
-                index_t s = 0;
+                index_t s      = 0;
                 for (index_t i2 = std::max(0,i1-circleN); i2 <= std::min(n1,i1+circleN); i2++){
                     for (index_t j2 = std::max(0,j1-circleN); j2 <= std::min(n2,j1+circleN); j2++){
                         auto j   = i2*n2 + j2;
@@ -172,6 +173,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
         index_t n1   = basis_0.basis(0).component(0).numElements();
         index_t n2   = basis_0.basis(0).component(1).numElements();
         index_t n3   = basis_0.basis(0).component(2).numElements();
+        //... compute the error as a piecewise constant function
+        #pragma omp parallel for
         for (index_t i1 = 0; i1 < n1; i1++){
             for (index_t j1 = 0; j1 < n2; j1++){
                for (index_t k1 = 0; k1 < n3; k1++){
@@ -204,6 +207,109 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
             //else errorVector(i1) = Minvalue;
         }
     }
+
+    //...............End error as a function
+    //! [Problem setup]
+    gsExprAssembler<> A(1,1);
+    // Elements used for numerical integration
+    A.setIntegrationElements(this->m_basis);
+    gsExprEvaluator<> ev(A);
+
+    // Set the discretization space
+    space u             = A.getSpace(this->m_basis);
+    // Set the Target geometry map
+    geometryMap GLeft   = A.getMap(this->m_mapping);
+    // Set the source term with respect to target geometry
+    //auto            ff  = A.getCoeff(Multipatchsol, GLeft);
+    // Solution vector and solution variable
+    gsMatrix<> densityVector;
+    //...
+    solution density_sol = A.getSolution(u, densityVector);
+    //...
+    //u.setup(bc_mae, dirichlet::l2Projection, 0);
+    A.initSystem();
+    A.assemble(u * error_sol); //rhs vector
+
+    densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
+    //...
+    gsMultiPatch<> density;
+    density_sol.extract(density);
+    gsInfo<<"<>\n";
+    return  density;
+}
+
+// Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildStrategyDensity(const std::vector<double> &elwiseERROR, const double MarkPercentage) const 
+{
+    gsInfo<<"<>density function";
+    typedef gsExprAssembler<>::geometryMap geometryMap;
+    typedef gsExprAssembler<>::variable    variable;
+    typedef gsExprAssembler<>::space       space;
+    typedef gsExprAssembler<>::solution    solution;
+    //...............error as a piecewise constant function
+    gsMultiBasis<double> basis_0(m_mapping, true);
+    basis_0.setDegree(0);
+    //... refine uniformly until the number of elements is equal to the number of elwiseERROR
+    int refnumb = basis_0.basis(0).size();
+    int elwnumb = elwiseERROR.size();
+    while ( refnumb< elwnumb)
+    {
+        basis_0.uniformRefine();
+        refnumb = basis_0.basis(0).size();
+    }
+    gsExprAssembler<> A_0(1,1);
+    // Elements used for numerical integration
+    A_0.setIntegrationElements(basis_0);    
+    // Set the discretization space
+    space u_0          = A_0.getSpace(basis_0);
+    A_0.initSystem();
+    auto errorVector   = A_0.rhs();
+    solution error_sol = A_0.getSolution(u_0, errorVector);
+    //..
+    // The vector of local errors will need to be sorted,
+    // which will be done on a copy:
+    std::vector<double> elErrCopy = elwiseERROR;
+
+    // Compute the index from which the refinement should start,
+    // once the vector is sorted.
+    size_t idxRefineStart = cast<double,size_t>( math::floor( MarkPercentage * (double)(elwnumb) ) );
+    // ...and just to be sure we are in range:
+    if( idxRefineStart == elErrCopy.size() )
+    {
+        GISMO_ASSERT(idxRefineStart >= 1, "idxRefineStart can't get negative");
+        idxRefineStart -= 1;
+    }
+    // Sort the list using bubblesort.
+    // After each loop, the largest elements are at the end
+    // of the list. Since we are only interested in the largest elements,
+    // it is enough to run the sorting until enough "largest" elements
+    // have been found, i.e., until we have reached indexRefineStart
+    size_t lastSwapDone = elErrCopy.size() - 1;
+    size_t lastCheckIdx = lastSwapDone;
+
+    bool didSwap;
+    double tmp;
+    do{
+        didSwap = false;
+        lastCheckIdx = lastSwapDone;
+        for( size_t i=0; i < lastCheckIdx; i++)
+            if( elErrCopy[i] > elErrCopy[i+1] )
+            {
+                tmp = elErrCopy[i];
+                elErrCopy[i] = elErrCopy[i+1];
+                elErrCopy[i+1] = tmp;
+
+                didSwap = true;
+                lastSwapDone = i;
+            }
+    }while( didSwap && (lastSwapDone+1 >= idxRefineStart ) );
+
+    // Compute the threshold:
+    auto Thr = elErrCopy[ idxRefineStart ];
+    // Now just check for each element, whether the local error
+    // is above the computed threshold or not, and mark accordingly.
+    for( size_t i=0; i < elwiseERROR.size(); i++)
+        ( elwiseERROR[i] >= Thr ? errorVector(i) = Thr : errorVector(i) = elwiseERROR[i] );
 
     //...............End error as a function
     //! [Problem setup]
