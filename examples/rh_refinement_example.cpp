@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     index_t numRefine     = 4;
     index_t numLRefine    = 3;
     index_t numElevate    = 0;
-    index_t maxIter       = 30;
+    index_t maxIter       = 50;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
     double IntensityMAE   = 12.;
     bool export_b64       = false;
@@ -162,9 +162,8 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    // auto density = MAE.buildDensity(elwise, 0.1, circleN);
-    auto density = MAE.buildStrategyDensity(elwise, 0.8);
-
+    // auto density = MAE.buildDensity(elwise, 0.05, circleN);
+    auto density = MAE.buildStrategyDensity(elwise, 0.95);
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -280,15 +279,17 @@ int main(int argc, char *argv[])
             std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
             // Compute the global error indicators.
-            // if (IntensityMAE >1.){
-            // double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
-            // double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
-            // for(size_t i=0; i<eltErrs.size(); ++i)
-            // {
-            //     if (eltErrs[i] > 1.*(Maxvalue+Minvalue)) // Avoid numerical issues
-            //         eltErrs[i] = 1.*(Maxvalue+Minvalue); // Avoid negative errors
-            // }
-            // }
+            //! [errorComputation]
+            // Compute the global error indicators.
+            if (IntensityMAE >1.){
+            double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
+            double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
+            for(size_t i=0; i<eltErrs.size(); ++i)
+            {
+                if (eltErrs[i] > 0.8*(Maxvalue+Minvalue)) // Avoid numerical issues
+                    eltErrs[i] = 0.8*(Maxvalue+Minvalue); // Avoid negative errors
+            }
+            }
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
