@@ -29,13 +29,13 @@ SUITE(gsCahnHilliardAssembler_test)
 
         // Initial condition
         gsFunctionExpr<> source("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
-
+        gsFunctionExpr<> zero("0",2);
         // Boundary conditions
         gsBoundaryConditions<> bc;
-        bc.addCondition(boundary::west,condition_type::weak_clamped,0);
-        bc.addCondition(boundary::east,condition_type::weak_clamped,0);
-        bc.addCondition(boundary::south,condition_type::weak_clamped,0);
-        bc.addCondition(boundary::north,condition_type::weak_clamped,0);
+        bc.addCondition(boundary::west,condition_type::weak_clamped,&zero);
+        bc.addCondition(boundary::east,condition_type::weak_clamped,&zero);
+        bc.addCondition(boundary::south,condition_type::weak_clamped,&zero);
+        bc.addCondition(boundary::north,condition_type::weak_clamped,&zero);
         bc.setGeoMap(mp);
 
         // Parameters for CH
@@ -126,7 +126,7 @@ SUITE(gsCahnHilliardAssembler_test)
                 gsTestInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
                 tmp_alpha_m = tmp_alpha_f = tmp_gamma = 1;
 
-                for (index_t k = 0; k!=1; k++)
+                for (index_t k = 0; k!=2; k++)
                 {
                     converged = false;
                     std::string method = (k==0) ? "Backward Euler " : "Generalized Alpha ";
@@ -157,6 +157,8 @@ SUITE(gsCahnHilliardAssembler_test)
 
                         if (it == 0) Q0norm = Q.norm();
                         else         Qnorm = Q.norm();
+
+                        gsTestInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
 
                         if (it>0 && Qnorm/Q0norm < tol)
                         {
