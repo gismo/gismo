@@ -31,10 +31,10 @@ template<short_t d,class T> class gsMappedSpline;
 
 */
 template<short_t d,class T>
-class gsMappedSingleSpline : public gsFunction<T>
+class gsMappedSingleSpline : public gsGeometry<T>
 {
 private:
-    typedef gsFunction<T> Base;
+    typedef gsGeometry<T> Base;
 
     typedef gsMappedSingleBasis<d,T> Basis;
 
@@ -73,29 +73,29 @@ public:
 
 public:
 
-    short_t domainDim() const
+    short_t domainDim() const override
     {
         return d;
     }
 
-    short_t targetDim() const
+    short_t targetDim() const override
     { return m_spline->m_global.cols(); }
 
     /// Evaluates the non-zero spline functions at value u.
-    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override
     {
         // m_spline->evalGlobal_into(m_index,u,result);
         m_spline->eval_into(m_index,u,result);
     }
 
     /// Evaluates the (partial) derivatives of non-zero spline functions at (the columns of) u.
-    void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override
     {
         m_spline->deriv_into(m_index,u,result);
     }
 
     /// Evaluates the (partial) derivatives of the nonzero spline functions at points \a u into \a result.
-    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override
     {
         m_spline->deriv2_into(m_index,u,result);
     }
@@ -103,19 +103,19 @@ public:
     /// @brief Evaluate the nonzero spline functions and their derivatives up
     /// to order \a n at points \a u into \a result.
     void evalAllDers_into(const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result,
-                          bool sameElement = false) const
+                          bool sameElement = false) const override
     {
         m_spline->evalAllDers_into(m_index,u,n,result,sameElement);
     }
 
     // support (domain of definition)
-    gsMatrix<T> support() const
+    gsMatrix<T> support() const override
     { return m_spline->supportOf(m_index); }
 
 
     GISMO_CLONE_FUNCTION(gsMappedSingleSpline)
 
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         GISMO_UNUSED(os);
         GISMO_NO_IMPLEMENTATION;
@@ -130,7 +130,7 @@ public:
     {
         return m_spline->degree(m_index,i);
     }
-  
+
     /// The gsBasisFun points to the i-th spline function of m_spline
     /// after calling this setter.
     void setPiece( unsigned const & i )

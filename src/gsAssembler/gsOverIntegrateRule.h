@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsAssembler/gsQuadRule.h>
-#include <gsCore/gsBasis.h>
+#include <gsDomain/gsDomain.h>
 
 namespace gismo
 {
@@ -36,7 +36,6 @@ public:
     /// Default empty constructor
     gsOverIntegrateRule()
     :
-    m_basis(nullptr),
     m_interior(),
     m_boundary()
     {}
@@ -54,14 +53,43 @@ public:
                         const  std::vector<gsQuadRule<T> > & quadInterior,
                         const  std::vector<gsQuadRule<T> > & quadBoundary)
     :
-    m_basis(&basis),
+    gsOverIntegrateRule(basis.domain(),quadInterior,quadBoundary)
+    {}
+
+    /**
+     * @brief      Constructor
+     *
+     * @param[in]  domain         The domain
+     * @param[in]  quadInterior  vector with the univariate INTERIOR quadrature rules for each dimension of the domain.
+     * @param[in]  quadBoundary  vector with the univariate BOUNDARY quadrature rules for each dimension of the domain.
+     *
+     * @note: Only works for QuadRules that do not re-implement mapTo (slicing occurs)
+     */
+    gsOverIntegrateRule(const  gsDomain<T> & domain,
+                        const  std::vector<gsQuadRule<T> > & quadInterior,
+                        const  std::vector<gsQuadRule<T> > & quadBoundary)
+    :
     m_interior(quadInterior),
-    m_boundary(quadBoundary)
+    m_boundary(quadBoundary),
+    m_dim(domain.dim()),
+    m_start(domain.boundingBox().col(0)),
+    m_end(domain.boundingBox().col(1))
     {
-        std::vector< gsVector<T> > nodes(m_basis->dim());
-        m_start = m_basis->support().col(0);
-        m_end = m_basis->support().col(1);
     };
+
+    /**
+     * @brief      Construct a smart-pointer to the rule
+     *
+     * @param[in]  domain         The domain
+     * @param[in]  quadInterior  The rule used for the interior
+     * @param[in]  quadBoundary  The rule used for the boundary
+     *
+     * @note: Only works for QuadRules that do not re-implement mapTo (slicing occurs)
+     */
+    static uPtr make(   const  gsDomain<T> & domain,
+                        const  std::vector<gsQuadRule<T> > & quadInterior,
+                        const  std::vector<gsQuadRule<T> > & quadBoundary )
+    { return uPtr( new gsOverIntegrateRule(domain,quadInterior,quadBoundary) ); }
 
     /**
      * @brief      Construct a smart-pointer to the rule
@@ -75,7 +103,8 @@ public:
     static uPtr make(   const  gsBasis<T> & basis,
                         const  std::vector<gsQuadRule<T> > & quadInterior,
                         const  std::vector<gsQuadRule<T> > & quadBoundary )
-    { return uPtr( new gsOverIntegrateRule(basis,quadInterior,quadBoundary) ); }
+    { return uPtr( new gsOverIntegrateRule(basis.domain(),quadInterior,quadBoundary) ); }
+
 
     //const unsigned digits = std::numeric_limits<T>::digits10 );
 
@@ -83,7 +112,7 @@ public:
 
 public:
     /// \brief Dimension of the rule
-    index_t dim() const { return m_basis->dim(); }
+    index_t dim() const { return m_dim; }
 
     /**
      * @brief      Maps the points in the d-dimensional cube with points lower and upper
@@ -100,8 +129,8 @@ public:
 
         gsVector<T> bot = lower-m_start;
         gsVector<T> top = upper-m_end;
-        std::vector<gsVector<T> > elNodes(m_basis->dim());
-        std::vector<gsVector<T> > elWeights(m_basis->dim());
+        std::vector<gsVector<T> > elNodes(m_dim);
+        std::vector<gsVector<T> > elWeights(m_dim);
         gsMatrix<T> tmp;
         for (index_t d = 0; d!=dim(); d++)
         {
@@ -122,9 +151,10 @@ public:
     }
 
 private:
-    const gsBasis<T> * m_basis;
     std::vector<gsQuadRule<T> > m_interior, m_boundary;
-    gsVector<T> m_start,m_end;
+    const short_t m_dim;
+    const gsVector<T> m_start;
+    const gsVector<T> m_end;
 
 }; // class gsOverIntegrateRule
 

@@ -162,6 +162,8 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMultiPatch)
 
+    memory::shared_ptr<gsDomain<T> > domain() const;
+
 public:
 
     /// Get a const-iterator to the patches
@@ -186,13 +188,28 @@ public:
 
 public:
 
-    const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
+    /// Utility function to resize container to hold \a N patches (caution: empty pointers)
+    void resize(size_t N)
+    {
+        clear();
+        m_patches.resize(N, nullptr);
+        setBoxes(N);
+    }
+
+    void setPatch(index_t pid, typename gsGeometry<T>::uPtr ptr)
+    {
+        ptr->setId(pid);
+        delete m_patches[pid];
+        m_patches[pid] = ptr.release();
+    }
+
+    const gsGeometry<T> & piece(const index_t i) const override { return patch(i); }
 
     gsMultiPatch<T> coord(const index_t c) const;
 
-    index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
+    index_t nPieces() const override { return static_cast<index_t>(m_patches.size()); }
 
-    index_t size() const { return 1; }
+    index_t size() const override { return 1; }
 
     /// Return the number of coefficients (control points)
     index_t coefsSize() const
@@ -240,7 +257,7 @@ public:
     }
 
     /// \brief Prints the object as a string
-    std::ostream& print( std::ostream& os ) const;
+    std::ostream& print( std::ostream& os ) const override;
 
     /// \brief Prints the object as a string with extended details
     std::string detail() const;
@@ -251,11 +268,11 @@ public:
         //GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
         return m_dim;
     }
-    short_t domainDim () const {return parDim();}
+    short_t domainDim () const override {return parDim();}
 
     /// \brief Dimension of the geometry (must match for all patches).
     short_t geoDim() const;
-    short_t targetDim () const {return geoDim();}
+    short_t targetDim () const override {return geoDim();}
 
     /// \brief Co-dimension of the geometry (must match for all patches).
     short_t coDim() const;

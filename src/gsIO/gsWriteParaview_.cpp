@@ -160,6 +160,9 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
+void writeSingleBasisMesh(const gsBasis<T> & basis, std::string const & fn);
+
+TEMPLATE_INST
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          std::string const & fn, unsigned resolution);
 

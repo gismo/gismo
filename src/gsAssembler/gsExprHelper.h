@@ -28,13 +28,13 @@ class gsExprHelper
 private:
     gsExprHelper(const gsExprHelper &);
 
-    gsExprHelper() : m_mirror(nullptr), mesh_ptr(nullptr),
+    gsExprHelper() : m_mirror(nullptr), m_domain(nullptr),
                      mutSrc(nullptr), mutMap(nullptr), m_element(*this)
     { }
 
     explicit gsExprHelper(gsExprHelper * m)
     : m_mirror(memory::make_shared_not_owned(m)),
-      mesh_ptr(m->mesh_ptr), mutSrc(nullptr), mutMap(nullptr), m_element(*this)
+      m_domain(m->m_domain), mutSrc(nullptr), mutMap(nullptr), m_element(*this)
     { }
 
 private:
@@ -57,7 +57,7 @@ private:
 
     memory::shared_ptr<gsExprHelper> m_mirror;
 
-    const gsMultiBasis<T> * mesh_ptr;
+    typename gsDomain<T>::Ptr m_domain;
 
     // mutable pair of variable and data,
     // ie. not uniquely assigned to a gsFunctionSet
@@ -124,15 +124,11 @@ public:
         }//implicit barrier
     }
 
-    void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
+    void setDomain(typename gsDomain<T>::Ptr domain) { m_domain = give(domain); }
 
-    bool multiBasisSet() { return NULL!=mesh_ptr;}
+    bool domainSet() { return NULL!=m_domain;}
 
-    const gsMultiBasis<T> & multiBasis()
-    {
-        GISMO_ASSERT(multiBasisSet(), "Integration elements not set.");
-        return *mesh_ptr;
-    }
+    const gsDomain<T> & domain() const { return *m_domain; }
 
     const gsMultiPatch<T> & multiPatch() const
     {

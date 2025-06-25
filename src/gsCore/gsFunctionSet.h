@@ -127,15 +127,8 @@
 // Declaration, definition and implementation of clone function
 // 1st: return type
 #define GISMO_CLONE_FUNCTION(type) \
-        __DEC0(type, clone, void) { return new type(*this); } \
-        __DEF0(type, clone, void)
-
-// Declaration, definition and implementation of clone function which overrides
-// 1st: return type
-#define GISMO_OVERRIDE_CLONE_FUNCTION(type) \
         __DEC0(type, clone, void) override { return new type(*this); } \
         __DEF0(type, clone, void)
-
 
 namespace gismo {
 
@@ -156,7 +149,7 @@ namespace gismo {
    <!--
    \c div    (points)           | divergence
    \c curl   (points)           | curl / rotor
-   \c laplacian (points)        | laplacian 
+   \c laplacian (points)        | laplacian
     -->
 
    There are two classes of functions for evaluation that differ in the arguments and in
@@ -250,7 +243,7 @@ public:
 
     /*
      @brief Returns (a bounding box for) the support of the function(s).
-    
+
      Returns either a zero-sized matrix or a dx2 matrix, containing
      the two diagonally extreme corners of a hypercube.
 
@@ -262,7 +255,7 @@ public:
 
     /**
       @brief Indices of active (non-zero) function(s) for each point.
-     
+
       The columns are sorted in increasing order, if on a point there
       are less active then the number of rows in the result matrix
       (some other point has more actives) then the rest of the column
@@ -272,7 +265,7 @@ public:
       @param result
      */
     virtual void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const;
-    
+
 public:
     /**
        @brief Evaluates the function(s).
@@ -313,7 +306,7 @@ public:
        @brief First derivatives.
 
        For scalar valued functions \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}\f$ format is:
-       
+
        \f[
        \left[
        \begin{array}{ccccc}
@@ -331,18 +324,18 @@ public:
        \f]
 
        For vector valued functions function \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}^{m}\f$ the format is:
-       
+
        \f[
        \left[
        \begin{array}{ccccc}
        \partial_{1}f_1^{(1)}(\mathbf{u}_1) & \partial_{1}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}f_1^{(1)}(\mathbf{u}_N)\\
        \vdots                              & \vdots                              &        &               \vdots               \\
        \partial_{n}f_1^{(1)}(\mathbf{u}_1) & \partial_{n}f_1^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n}f_1^{(1)}(\mathbf{u}_N)\\
-       
+
        \partial_{1}f_1^{(2)}(\mathbf{u}_1) & \partial_{1}f_1^{(2)}(\mathbf{u}_2) & \ldots & \partial_{1}f_1^{(2)}(\mathbf{u}_N)\\
        \vdots                              & \vdots                              &        &               \vdots               \\
        \partial_{n}f_1^{(2)}(\mathbf{u}_1) & \partial_{n}f_1^{(2)}(\mathbf{u}_2) & \ldots & \partial_{n}f_1^{(2)}(\mathbf{u}_N)\\
-       
+
        \partial_{1}f_1^{(m)}(\mathbf{u}_1) & \partial_{1}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}f_1^{(m)}(\mathbf{u}_N)\\
        \vdots                              & \vdots                              &        &               \vdots               \\
        \partial_{n}f_1^{(m)}(\mathbf{u}_1) & \partial_{n}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n}f_1^{(m)}(\mathbf{u}_N)\\
@@ -352,11 +345,11 @@ public:
        \partial_{1}f_S^{(1)}(\mathbf{u}_S) & \partial_{1}f_S^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}f_S^{(1)}(\mathbf{u}_N)\\
        \vdots                              & \vdots                              &        &               \vdots               \\
        \partial_{n}f_S^{(1)}(\mathbf{u}_S) & \partial_{n}f_S^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n}f_S^{(1)}(\mathbf{u}_N)\\
-       
+
        \partial_{1}f_S^{(2)}(\mathbf{u}_S) & \partial_{1}f_S^{(2)}(\mathbf{u}_2) & \ldots & \partial_{1}f_S^{(2)}(\mathbf{u}_N)\\
        \vdots                              & \vdots                              &        &               \vdots               \\
        \partial_{n}f_S^{(2)}(\mathbf{u}_S) & \partial_{n}f_S^{(2)}(\mathbf{u}_2) & \ldots & \partial_{n}f_S^{(2)}(\mathbf{u}_N)\\
-       
+
        \partial_{1}f_S^{(m)}(\mathbf{u}_S) & \partial_{1}f_S^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}f_S^{(m)}(\mathbf{u}_N)\\
        \vdots                              & \vdots                              &        &               \vdots               \\
        \partial_{n}f_S^{(m)}(\mathbf{u}_S) & \partial_{n}f_S^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n}f_S^{(m)}(\mathbf{u}_N)\\
@@ -418,7 +411,7 @@ public:
      \vdots                                    & \vdots                                    &        &           \vdots                          \\
      \partial_{1}\partial_{1}f_1^{(m)}(\mathbf{u}_1) & \partial_{1}\partial_{1}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f_1^{(m)}(\mathbf{u}_N)\\
      \vdots                                    & \vdots                                    &        &           \vdots                          \\
-     \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_N)\\   
+     \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f_1^{(m)}(\mathbf{u}_N)\\
      \vdots                                    & \vdots                                    &        &           \vdots                          \\
      \partial_{1}\partial_{1}f_S^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{1}f_S^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f_S^{(1)}(\mathbf{u}_N)\\
      \vdots                                    & \vdots                                    &        &           \vdots                          \\
@@ -469,12 +462,12 @@ public:
     gsMatrix<T> deriv(const gsMatrix<T>& u) const;
 
     /** \brief Evaluates the second derivatives of active (i.e., non-zero) functions at points \a u.
-     
+
         See documentation for deriv2_into()
         (the one without input parameter \em coefs) for details.
-        
+
         \see deriv2_into()
-        
+
         \param[in] u     Evaluation points in columns.
         \return  For every column of \a u, a column containing the second derivatives.
         See documentation for deriv2_into() (the one without input parameter \em coefs) for details.
@@ -571,11 +564,11 @@ public:
        the points \a in and writes them in the corresponding fields of \a out.
        Which field to write (and what to compute) is controlled
        by the \a out.flags (see also gsFuncData).
-     
+
        The input points \a in are expected to be compatible with the
        implementation/representation of the function, i.e. they should
        be points inside the domain of definitition of the function
-       
+
        @param[in] in
        @param[out] out
      */
@@ -599,16 +592,16 @@ public:
       @return the pair of integers domainDim() and targetDim()
     */
     std::pair<short_t, short_t> dimensions() const {return std::make_pair(domainDim(),targetDim());}
-    
+
     /**
       @brief size
-     
+
       \warning gsFunction and gsGeometry have size() == 1. This should
       not be confused with the size eg. of gsGeometry::basis(), which
       is the number of basis functions in the basis
-     
+
       @return the size of the function set: the total number of functions
-     
+
      */
     virtual index_t size() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
@@ -622,7 +615,7 @@ public:
     virtual std::ostream &print(std::ostream &os) const// = 0;
     {
         os << "gsFunctionSet\n";
-        return os; 
+        return os;
     }
 
 };

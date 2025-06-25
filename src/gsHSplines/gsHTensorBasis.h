@@ -15,9 +15,9 @@
 
 #include <gsCore/gsBasis.h>
 
-#include <gsHSplines/gsHDomain.h>
-#include <gsHSplines/gsHDomainIterator.h>
-#include <gsHSplines/gsHDomainBoundaryIterator.h>
+#include <gsDomain/gsHDomain.h>
+#include <gsDomain/gsHDomainIterator.h>
+#include <gsDomain/gsHDomainBoundaryIterator.h>
 
 #include <gsCore/gsBoundary.h>
 
@@ -84,7 +84,7 @@ public:
 
     typedef T Scalar_t;
 
-    typedef gsHDomain<d> hdomain_type;
+    typedef gsHTree<d, index_t> hdomain_type;
 
     typedef typename hdomain_type::point point;
 
@@ -105,6 +105,7 @@ public:
     /// Dimension of the parameter domain
     static const short_t Dim = d;
 
+    friend class gsHDomain<d,T,index_t>;
     friend class gsHDomainIterator<T,d>;
     friend class gsHDomainBoundaryIterator<T,d>;
 public:
@@ -122,7 +123,7 @@ public:
     :
     m_manualLevels(manualLevels)
     {
-        if (!m_manualLevels) 
+        if (!m_manualLevels)
         {
             initialize_class(tbasis);
             // Build the characteristic matrices
@@ -292,7 +293,7 @@ public:
             m_deg            = o.m_deg;
             m_tree           = o.m_tree;
             m_xmatrix        = o.m_xmatrix;
-            m_manualLevels   = o.m_manualLevels; 
+            m_manualLevels   = o.m_manualLevels;
             m_uIndices       = o.m_uIndices;
 
             freeAll( m_bases );
@@ -332,13 +333,16 @@ public:
     bool manualLevels() const { return m_manualLevels; }
 
     /// Returns the number of levels
-    index_t numLevels() const { return m_bases.size(); }
+    index_t numLevels() const { return m_xmatrix.size(); }
 
     /// Adds a level, only if manual levels are activated.
     void addLevel( const gsTensorBSplineBasis<d, T>& next_basis);
-    
+
     /// \brief Inserts a domain into the basis
-    void only_insert_box(point const & k1, point const & k2, int lvl);
+    //void only_insert_box(point const & k1, point const & k2, int lvl);
+
+    /// Returns the number of functions before level \a l
+    index_t offset(size_t l) const { return m_xmatrix_offset[l]; }
 
 protected:
 
@@ -592,16 +596,21 @@ public:
     virtual index_t functionAtCorner(boxCorner const & c) const;
     virtual index_t functionAtCorner(boxCorner const & c, index_t level) const;//..
 
-
     // Look at gsBasis.h for the documentation of this function
     //void evalAllDers_into(const gsMatrix<T> & u, int n,
     //                      std::vector<gsMatrix<T> >& result, bool sameElement) const;
 
-    /// Returns a reference to m_tree
-    const gsHDomain<d> & tree() const { return m_tree; }
+    /// Returns the domain (same as the tree)
+    virtual memory::shared_ptr<gsDomain<T> > domain() const
+    {
+        return memory::make_shared(new gsHDomain<d,T,index_t>(m_tree,*this));
+    }
 
     /// Returns a reference to m_tree
-    gsHDomain<d> &       tree()       { return m_tree; }
+    const gsHTree<d,index_t> & tree() const { return m_tree; }
+
+    /// Returns a reference to m_tree
+    gsHTree<d,index_t> &       tree()       { return m_tree; }
 
     /// Cleans the basis, removing any inactive levels
     void makeCompressed();
@@ -807,10 +816,11 @@ public:
                                     gsVector<index_t> & lvl,
                                     gsMatrix<index_t> & loIdx ) const;
 
-    /// Returns the level in which the indices are stored internally
+    /// Returns the maximum level of spline basis present in the hierarchy
     unsigned maxLevel() const
     {
         return m_tree.getMaxInsLevel();
+            //m_xmatrix.size() - 1; //?
     }
 
     /// Returns the level of the function indexed \a i (in continued indices)
@@ -820,6 +830,35 @@ public:
                                 m_xmatrix_offset.end(), i)
             - m_xmatrix_offset.begin() - 1;
     }
+
+    /// @brief Returns the grading parameter,
+    /// i.e. the maximum level difference between any two interacting basis functions
+    index_t gradingParameter() const;
+
+    /// @brief Returns the number of active basis functions over an element in the underlying tensor product basis
+    index_t normalLoading() const { return std::pow(degree(0) + 1, dim()); }
+
+    /// @brief Returns the max number of active basis functions over an element
+    index_t maxLoading() const;
+
+    /// @brief Returns the min number of active basis functions over an element
+    index_t minLoading() const;
+
+    /// @brief Returns the average number of active basis functions over an element
+    real_t averageLoading() const;
+
+    /// @brief Returns the number of overloaded elements,
+    /// i.e. the number of elements that have more active basis functions than normal loading
+    index_t overloadedElements() const;
+
+    /// @brief Returns the percentage of overloaded elements
+    real_t overloadedElementsPercentage() const
+    {
+        return overloadedElements()/static_cast<real_t>(numElements()) * 100.0;
+    }
+
+    /// @brief Returns the average of active basis functions over the overloaded elements
+    real_t averageOverloading() const;
 
 /*
   const boxHistory & get_inserted_boxes() const
@@ -907,16 +946,19 @@ public:
     // Look at gsBasis.h for the documentation of this function
     //virtual void uniformRefine(int numKnots = 1);
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
-        return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this));
+        return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree(),*this));
     }
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return ( s == boundary::none ?
-                 typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
-                 typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(*this,s) )
+
+                 typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(this->tree(),*this)) :
+                 typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(this->tree(),*this,s) )
             );
     }
 
@@ -971,18 +1013,10 @@ public:
     // TO DO: use gsHDomainLeafIterator for a better implementation
     size_t numElements(boxSide const & s = 0) const
     {
-        typename gsBasis<T>::domainIter domIter =
-            s == boundary::none ?
-            typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
-            typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(*this,s) );
-
-        size_t numEl = 0;
-        for (; domIter->good(); domIter->next())
-        {
-            numEl++;
-        }
-
-        return numEl;
+        if (0==s)
+            return gsHDomain<d,T,index_t>(m_tree,*this).numElements();
+        else
+            return gsHDomain<d,T,index_t>(m_tree,*this).numElementsBdr(s);
     }
 
     /// @brief transformes a sortedVector \a indexes of flat tensor index
@@ -1093,17 +1127,20 @@ private:
     void addConnectivity(int level, gsMesh<T> & mesh) const;
 
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
-    virtual gsSparseMatrix<T> coarsening(const std::vector<CMatrix>& old,
-                                         const std::vector<CMatrix>& n,
-                                         const gsSparseMatrix<T,RowMajor> & transfer) const = 0;
+    virtual gsSparseMatrix<T> coarsening(const std::vector<CMatrix>& /* old */,
+                                         const std::vector<CMatrix>& /* n */,
+                                         const gsSparseMatrix<T,RowMajor> & /* transfer */) const
+    {GISMO_NO_IMPLEMENTATION}
 
-    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<index_t> >& old,
-                                                const std::vector<gsSortedVector<index_t> >& n,
-                                                const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
+    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<index_t> >& /* old */,
+                                                const std::vector<gsSortedVector<index_t> >& /* n */,
+                                                const std::vector<gsSparseMatrix<T,RowMajor> >& /* transfer */) const
+    {GISMO_NO_IMPLEMENTATION}
 
-    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<index_t> >& old,
-                                                 const std::vector<gsSortedVector<index_t> >& n,
-                                                 const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
+    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<index_t> >& /* old */,
+                                                 const std::vector<gsSortedVector<index_t> >& /* n */,
+                                                 const std::vector<gsSparseMatrix<T,RowMajor> >& /* transfer */) const
+    {GISMO_NO_IMPLEMENTATION}
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
     /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).

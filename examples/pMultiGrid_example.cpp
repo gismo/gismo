@@ -819,7 +819,7 @@ gsMatrix<> assembleLumpedMass(
     {
         w_n.setup(bcInfo, dirichlet::interpolation, 0);
     }
-    ex.setIntegrationElements(basis);
+    ex.setIntegrationDomain(basis.domain());
     ex.initSystem();
     ex.assemble(w_n * meas(G));
     return ex.rhs();
@@ -844,7 +844,7 @@ gsSparseMatrix<> assembleMass(
     {
         w_n.setup(bcInfo, dirichlet::interpolation, 0);
     }
-    ex.setIntegrationElements(basis);
+    ex.setIntegrationDomain(basis.domain());
     ex.initSystem();
     ex.assemble(w_n * meas(G) * w_n.tr());
     return ex.matrix();
@@ -873,7 +873,7 @@ gsSparseMatrix<> assembleMixedMass(
         v_n.setup(bcInfo, dirichlet::interpolation, 0);
         u_n.setup(bcInfo, dirichlet::interpolation, 0);
     }
-    ex.setIntegrationElements(basisU);
+    ex.setIntegrationDomain(basisU.domain());
     ex.initSystem();
     ex.assemble(u_n * meas(G) * v_n.tr());
     return ex.matrix().transpose();

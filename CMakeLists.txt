@@ -6,7 +6,11 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.12)
+if(CMAKE_VERSION VERSION_LESS "3.19")
+  cmake_minimum_required(VERSION 2.8.12)
+else()
+  cmake_minimum_required(VERSION 3.1...3.10)
+endif()
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -45,14 +49,16 @@ if(NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY)
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 endif()
 
+set(CMAKE_BUILD_TYPE_INIT Release)
+if(NOT CMAKE_CONFIGURATION_TYPES)
+   set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel" CACHE STRING "" FORCE)
+endif()
 if(NOT CMAKE_BUILD_TYPE)
-   # Set default build type to RelWithDebInfo
-   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
-   "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
-   if(NOT CMAKE_CONFIGURATION_TYPES)
-   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-     "RelWithDebInfo" "MinSizeRel")
-   endif()
+   # Set default build type to Release
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+    "RelWithDebInfo" "MinSizeRel")
 endif()
 
 set(gismo_VERSION_MAJOR 25) #year
@@ -95,7 +101,7 @@ endif()
 ## #################################################################
 
 #Fix for Eigen directory
-if (NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
+if (NOT WIN32 AND NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
   execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
 endif()
 
@@ -298,7 +304,12 @@ foreach(gssm ${GISMO_OPTIONAL})
   #message("Fetch ${SUBMODULE}")
   gismo_fetch_module(${SUBMODULE})
   # Prevent special characters to be used in the variable name
-  string(REGEX REPLACE ["\.\,\!\@\#\$\%\^\&\*\+\-\="] "_" SUBMODULE_NAME ${SUBMODULE})
+  string(REPLACE "-" "_" SUBMODULE_NAME ${SUBMODULE})
+  string(REPLACE "+" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "=" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "." "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "!" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
+  string(REPLACE "*" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
   set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE_NAME}_ENABLED\n")
 endforeach()
 

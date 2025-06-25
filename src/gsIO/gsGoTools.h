@@ -19,7 +19,7 @@
 #include <gsUtils/gsCombinatorics.h>
 
 #include <gsHSplines/gsHTensorBasis.h>
-#include <gsHSplines/gsHDomainIterator.h>
+#include <gsDomain/gsHDomainIterator.h>
 
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileManager.h>

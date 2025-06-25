@@ -94,6 +94,8 @@ public:
     /// Copy constructor (makes deep copy)
     gsMultiBasis( const gsMultiBasis& other );
 
+    memory::shared_ptr<gsDomain<T> > domain() const;
+    
 #if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsMultiBasis(gsMultiBasis&& other) : m_bases(give(other.m_bases)), m_topology(give(other.m_topology)) {}
@@ -189,9 +191,9 @@ public:
 
 public:
 
-    short_t domainDim () const {return m_bases.empty() ? 0 : m_bases.front()->domainDim();}
+    short_t domainDim () const override {return m_bases.empty() ? 0 : m_bases.front()->domainDim();}
 
-    short_t targetDim () const {return m_bases.empty() ? 0 : m_bases.front()->targetDim();}
+    short_t targetDim () const override {return m_bases.empty() ? 0 : m_bases.front()->targetDim();}
 
     /// Swap with another gsMultiBasis.
     void swap(gsMultiBasis& other)
@@ -202,7 +204,7 @@ public:
     }
 
     /// Prints the object as a string.
-    std::ostream& print( std::ostream& os ) const;
+    std::ostream& print( std::ostream& os ) const override;
 
     /// Dimension of the parameter domain (must match for all bases).
     short_t dim() const { return m_bases[0]->dim();}
@@ -236,7 +238,7 @@ public:
         return m_bases[i]->size();
     }
 
-    index_t size() const
+    index_t size() const override
     {
         //GISMO_ERROR("call gsMultiBasis::nBases() instead.");
         return totalSize();
@@ -271,7 +273,7 @@ public:
         return *m_bases[i];
     }
 
-    const gsBasis<T> & piece(const index_t i) const
+    const gsBasis<T> & piece(const index_t i) const override
     {
         GISMO_ASSERT( static_cast<size_t>(i) < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
@@ -279,7 +281,7 @@ public:
     }
 
     /// @brief Number of patch-wise bases
-    index_t nPieces() const { return static_cast<index_t>(m_bases.size()); }
+    index_t nPieces() const override { return static_cast<index_t>(m_bases.size()); }
 
     /// Return the \a i-th basis block.
     gsBasis<T> & basis(const size_t i )
