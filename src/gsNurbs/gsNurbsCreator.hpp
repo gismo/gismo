@@ -1726,7 +1726,7 @@ gsNurbsCreator<T>::MultiPatchCylinder(T const & R, T const & H)
 }
 
 
-// Multi-patch (4 patch) annulua with inner radius Ri and outer radius Ro
+// Multi-patch (4 patch) annulus with inner radius Ri and outer radius Ro
 template<class T> gsMultiPatch<T>
 gsNurbsCreator<T>::MultiPatchAnnulus(T const & Ri, T const & Ro)
 {
