@@ -328,9 +328,9 @@ void to_json(json &j, const gsBasis<T> & basis)
 }
 
 /**
- * @brief Reads a gsTensorBSpline from JSON
+ * @brief Writes a gsGeometry to JSON
  * @param j JSON object
- * @param geo gsTensorBSpline to be read
+ * @param geo gsGeometry to be written
  */
 template<class T>
 void to_json(json &j, const gsGeometry<T> & geo)
@@ -363,6 +363,477 @@ void from_json(const json &j, gsTensorBSpline<d,T> & geo)
     gsTensorBSplineBasis<d,T> basis = j["basis"].get<gsTensorBSplineBasis<d,T> >();
     gsMatrix<T> coefs = j["coefs"].get<gsMatrix<T> >();
     geo = gsTensorBSpline<d,T>(basis, coefs);
+}
+
+
+/**
+ * @brief Serializes a gsMultiPatch object to a JSON representation.
+ *
+ * This function converts a gsMultiPatch object into a JSON structure with the following components:
+ * - "patches": An array containing all patches of the multipatch
+ * - "boundaries": An array of boundary objects, each containing patch index and side information
+ * - "interfaces": An array of interface objects, each containing patch indices, sides, direction mappings,
+ *   and orientation information for the connection between two patches
+ *
+ * @tparam T The numeric type used in the gsMultiPatch (e.g., real_t, double)
+ * @param[out] j The JSON object to store the serialized multipatch data
+ * @param[in] mp The gsMultiPatch object to serialize
+ */
+template<class T>
+void to_json(json &j, const gsMultiPatch<T> & mp)
+{
+    j["patches"] = json::array();
+    for (size_t p = 0; p!= mp.nPatches(); ++p)
+        j["patches"] = mp.patch(p);
+
+    j["boundaries"] = json::array();
+    for (typename gsMultiPatch<T>::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
+    {
+        json b;
+        b["patch"] = it->patch();
+        b["side"] = it->side();
+        j["boundaries"].push_back(b);
+    }
+    j["interfaces"] = json::array();
+    for (typename gsMultiPatch<T>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        json b;
+        b["patch1"] = it->first().patch;
+        b["patch2"] = it->second().patch;
+        b["side1"] = it->first().side;
+        b["side2"] = it->second().side;
+        b["directionMap"] = it->dirMap().transpose();
+        b["directionOrientation"] = it->dirOrientation().transpose();
+        j["interfaces"].push_back(b);
+    }
+}
+
+template<class T>
+void from_json(const json &j, gsMultiPatch<T> & mp)
+{
+    mp.clear();
+    if (j.contains("patches"))
+    {
+        GISMO_ASSERT(j["patches"].is_array(), "Patches is not an array");
+        for (const auto & patch : j["patches"])
+        {
+            gsGeometry<T> * geo = new gsGeometry<T>();
+            from_json(patch, *geo);
+            mp.addPatch(geo);
+        }
+    }
+    else if (j.contains("path"))
+    {
+        std::string path = j["path"].get<std::string>();
+        GISMO_ASSERT(gsFileManager::fileExists(path),"File does not exist: " + path);
+        GISMO_ASSERT(gsFileManager::getExtension(path) == "xml","File extension is not .xml: " + path);
+        gsReadFile<T>(path, mp);
+    }
+    else if (j.contains("create"))
+    {
+        GISMO_ASSERT(j["create"].contains("type"),"A creator string must contain a type");
+        if (j["create"]["type"] == "BSplineSquare")
+        {
+            T L = (j["create"].contains("length") ? j["create"]["length"].get<T>() : 1.0);
+            T x = (j["create"].contains("x") ? j["create"]["x"].get<T>() : 0.0);
+            T y = (j["create"].contains("y") ? j["create"]["y"].get<T>() : 0.0);
+            mp.addPatch(gsNurbsCreator<T>::BSplineSquare(L, x, y));
+            return;
+        }
+        if (j["create"]["type"] == "BSplineCube")
+        {
+            T L = (j["create"].contains("length") ? j["create"]["length"].get<T>() : 1.0);
+            T x = (j["create"].contains("x") ? j["create"]["x"].get<T>() : 0.0);
+            T y = (j["create"].contains("y") ? j["create"]["y"].get<T>() : 0.0);
+            T z = (j["create"].contains("z") ? j["create"]["z"].get<T>() : 0.0);
+            mp.addPatch(gsNurbsCreator<T>::BSplineCube(L, x, y, z));
+            return;
+        }
+        if (j["create"]["type"] == "BSplineRectangle")
+        {
+            T xlow = (j["create"].contains("xlow") ? j["create"]["xlow"].get<T>() : 0.0);
+            T ylow = (j["create"].contains("ylow") ? j["create"]["ylow"].get<T>() : 0.0);
+            T xhigh= (j["create"].contains("xhigh") ? j["create"]["xhigh"].get<T>() : 1.0);
+            T yhigh= (j["create"].contains("yhigh") ? j["create"]["yhigh"].get<T>() : 1.0);
+            mp.addPatch(gsNurbsCreator<T>::BSplineRectangle(xlow,ylow,xhigh,yhigh));
+            return;
+        }
+    }
+    else
+    {
+        GISMO_ERROR("To read a gsMultiPatch from JSON, it must either contain a 'patches' array, a 'path' to an XML file, or a 'type' with parameters for a specific patch type.");
+    }
+}
+/**
+ * @brief Writes a gsConstantFunction to JSON
+ * @param j JSON object
+ * @param bc function to be written
+ */
+template<class T>
+void to_json(json &j, const gsConstantFunction<T> & fun)
+{
+    j["type"] = "ConstantFunction";
+    j["dim"]  = fun.domainDim();
+
+    const short_t tdim = fun.targetDim();
+
+    if (tdim==1)
+        j["value"] = fun.value(0);
+    else
+    {
+        j["value"] = json::array();
+        for (short_t i=0; i<tdim; ++i)
+            j["value"].push_back(fun.value(i));
+    }
+}
+
+/**
+ * @brief Reads a gsConstantFunction from JSON
+ * @param j JSON object
+ * @param bc gsConstantFunction to be read
+ */
+template<class T>
+void from_json(const json &j, gsConstantFunction<T> & fun)
+{
+    GISMO_ASSERT(j["type"]=="ConstantFunction","Type of function is not ConstantFunction");
+    GISMO_ASSERT(j["dim"].is_number_integer(),"dim is not an integer");
+
+    short_t dim = j["dim"].get<short_t>();
+    gsVector<T> value;
+
+    if (j["value"].is_array())
+    {
+        value.resize(j["value"].size());
+        for (size_t i=0; i<j["value"].size(); ++i)
+            value[i] = j["value"][i].get<T>();
+    }
+    else
+        value.resize(1, j["value"].get<T>());
+
+    fun = gsConstantFunction<T>(value, dim);
+}
+
+/**
+ * @brief Writes a gsFunctionExpr to JSON
+ * @param j JSON object
+ * @param bc function to be written
+ */
+template<class T>
+void to_json(json &j, const gsFunctionExpr<T> & fun)
+{
+    j["type"] = "FunctionExpr";
+    j["dim"]  = fun.domainDim();
+
+    const short_t tdim = fun.targetDim();
+
+    if (tdim==1)
+        j["value"] = fun.expression();
+    else
+    {
+        // Make array of strings
+        j["value"] = json::array();
+        for (short_t c=0; c<tdim; ++c)
+            j["value"].push_back(fun.expression(c));
+    }
+
+}
+
+
+/**
+ * @brief Reads a gsFunctionExpr from JSON
+ * @param j JSON object
+ * @param bc gsFunctionExpr to be read
+ */
+template<class T>
+void from_json(const json &j, gsFunctionExpr<T> & fun)
+{
+    GISMO_ASSERT(j["type"]=="FunctionExpr","Type of function is not FunctionExpr");
+    GISMO_ASSERT(j["dim"].is_number_integer(),"dim is not an integer");
+
+    short_t dim = j["dim"].get<short_t>();
+    std::vector<std::string> expressions;
+
+    if (j["value"].is_array())
+    {
+        expressions.resize(j["value"].size());
+        for (index_t i=0; i<j["value"].size(); ++i)
+            expressions[i] = j["value"][i].get<std::string>();
+    }
+    else
+        expressions.push_back(j["value"].get<std::string>());
+
+    fun = gsFunctionExpr<T>(expressions, dim);
+}
+
+/**
+ * @brief Writes a gsFunction to JSON
+ * @param j JSON object
+ * @param bc function to be written
+ */
+template<class T>
+void to_json(json &j, const gsFunctionSet<T> & fun)
+{
+    const gsFunctionSet<T> * ptr = & fun;
+
+    if      (const gsConstantFunction<T> * f =
+             dynamic_cast<const gsConstantFunction<T> *>(ptr))
+        to_json(j, *f);
+
+    else if (const gsFunctionExpr<T> * f =
+             dynamic_cast<const gsFunctionExpr<T> *>(ptr))
+        to_json(j, *f);
+    else
+        GISMO_ERROR("No known function type");
+}
+
+/**
+ * @brief Reads a gsFunction from JSON
+ * @param j JSON object
+ * @param bc gsFunction to be read
+ */
+template<class T>
+void from_json(const json &j, gsFunctionSet<T> & fun)
+{
+    GISMO_ASSERT(j["type"].is_string(),"Type of function is not a string");
+
+    if      (j["type"] == "ConstantFunction")
+        from_json(j, static_cast<gsConstantFunction<T> &>(fun));
+    else if (j["type"] == "FunctionExpr")
+        from_json(j, static_cast<gsFunctionExpr<T> &>(fun));
+    else
+        GISMO_ERROR("No known function type");
+}
+
+/**
+ * @brief Writes gsBoundaryConditions to JSON
+ * @param j JSON object
+ * @param bc boundary conditions to be written
+ */
+template<class T>
+void to_json(json &j, const gsBoundaryConditions<T> & bc)
+{
+    // Add a multi-patch index place holder
+    j["multipatch"] = 0;
+
+    // inventory of functions
+    typedef typename gsBoundaryConditions<T>::const_bciterator bctype_it;
+
+    std::vector<typename gsFunctionSet<T>::Ptr> fun;
+    typedef typename std::vector<const boundary_condition<T>*> bctype_vec;
+    typedef typename std::map<int, bctype_vec> bctype_map;
+    std::map<std::string, bctype_map> fi;
+
+    for (bctype_it it = bc.beginAll(); it != bc.endAll(); ++it)
+    {
+        std::string label = it->first;
+        bctype_map map;
+        for (typename gsBoundaryConditions<T>::const_iterator bc = it->second.begin(); bc != it->second.end(); ++bc)
+        {
+            typename gsFunctionSet<T>::Ptr ptr = bc->function();
+            bool contains = std::find(fun.begin(), fun.end(), ptr)
+                    != fun.end();
+            if (!contains)
+            {
+                fun.push_back(ptr);
+            }
+
+            int index = std::find(fun.begin(), fun.end(), ptr)
+                    - fun.begin();
+//                fun.push_sorted_unique(ptr);
+//                int index = fun.getIndex(ptr);
+            std::vector<const boundary_condition<T>*> vec = map[index];
+            const boundary_condition<T>* b = &(*bc);
+            vec.push_back(b);
+            map[index] = vec;
+        }
+        std::pair<std::string, bctype_map> pair(label, map);
+        fi.insert(pair);
+    }
+
+    // Create a function array
+    j["functions"] = json::array();
+    // Add the functions
+    int count = 0;
+    typedef typename std::vector<typename gsFunctionSet<T>::Ptr>::const_iterator fun_it;
+    for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
+    {
+        GISMO_ASSERT((dynamic_cast<gsFunctionSet<T> *>(fit->get())),"Function is not of type gsFunction<T>");
+        to_json(j["functions"][count], *(fit->get()));
+        ++count;
+    }
+
+    // for all bcs, append bc, cv
+    typedef typename std::map<std::string, bctype_map>::const_iterator bctype_map_it;
+    typedef typename std::map<int, bctype_vec>::const_iterator bctype_iv_it;
+    typedef typename bctype_vec::const_iterator bctype_vec_it;
+
+    // Create a BCs array
+    j["sides"] = json::array();
+    // Add the boundary conditions
+    count = 0;
+    for (bctype_map_it it = fi.begin(); it != fi.end(); ++it)
+    {
+        std::string label = it->first;
+        //gsDebug << "Label='" << label << "'\n";
+        bctype_map map = it->second;
+
+        for (bctype_iv_it bcV = map.begin(); bcV != map.end(); ++bcV)
+        {
+            int index = bcV->first;
+            bctype_vec vec = bcV->second;
+            //gsDebug << "index='" << index << "'\n";
+            //gsDebug << "vec='" << vec.size() << "'\n";
+
+            j["sides"][count]["type"] = label;
+            j["sides"][count]["function"] = index;
+            bool first = true;
+            std::ostringstream oss;
+            for (bctype_vec_it bc = vec.begin(); bc != vec.end(); ++bc)
+            {
+                const boundary_condition<T> b = (**bc);
+                //gsDebug << "iterate over boundary condition with '"
+                //        << b.m_label << "'\n";
+                if (first)
+                {
+                    j["sides"][count]["unknown"] = b.m_unknown;
+                    j["sides"][count]["component"] = b.unkComponent();
+                    j["sides"][count]["sides"] = json::array();
+                    first = false;
+                }
+                j["sides"][count]["sides"].push_back(std::make_pair(b.ps.patch, b.ps.m_index));
+            }
+            ++count;
+        }
+    }
+    // Create a BCs array
+    j["corners"] = json::array();
+    // Add the boundary conditions
+    count = 0;
+    for (typename gsBoundaryConditions<T>::const_citerator ci = bc.cornerValues().begin(); ci != bc.cornerValues().end(); ci++)
+    {
+        corner_value<T> c = *ci;
+        j["corners"][count]["unknown"] = c.unknown;
+        j["corners"][count]["component"] = c.component;
+        j["corners"][count]["patch"] = c.patch;
+        j["corners"][count]["corner"] = c.corner.m_index;
+        j["corners"][count]["value"] = c.value;
+        count++;
+    }
+}
+
+/**
+ * @brief Reads gsBoundaryConditions from JSON
+ * @param j JSON object
+ * @param bc gsBoundaryConditions to be read
+ */
+template<class T>
+void from_json(const json &j, gsBoundaryConditions<T> & bc)
+{
+    std::istringstream str;
+    std::map<int, int> ids;
+
+    // Check if any of the BCs is defined on a boundary set name
+    // const int mp_index = j["multipatch"].get<int>();
+    // gsXmlNode* toplevel = node->parent();
+    std::vector< patchSide > allboundaries;
+    for (json::const_iterator it = j["sides"].begin(); it != j["sides"].end(); ++it)
+    {
+        if (it->contains("name"))
+            GISMO_ERROR("Boundary condition with name not supported in JSON format. "
+                        "Please use the multipatch index instead.");
+    }
+
+    // Read function inventory using a map, in case indices are not
+    // consecutive
+    index_t index;
+    std::map<int, typename gsFunctionExpr<T>::Ptr> function_map{};
+    for (json::const_iterator it = j["functions"].begin();
+         it != j["functions"].end(); ++it)
+    {
+        GISMO_ASSERT(it->contains("type"), "Function type not specified");
+        std::string type = it->at("type").get<std::string>();
+        index = std::distance(j["functions"].begin(), it);
+        if (type == "ConstantFunction")
+        {
+            gsConstantFunction<T> fun;
+            from_json(*it, fun);
+            // Make a gsFunctionExpr
+            std::vector<std::string> expressions;
+            for (short_t i = 0; i < fun.targetDim(); ++i)
+                expressions.push_back(util::to_string(fun.value(i)));
+
+            gsFunctionExpr<T> funExpr(expressions, fun.domainDim());
+            function_map[index] = memory::make_shared(funExpr.clone().release());
+        }
+        else if (type == "FunctionExpr")
+        {
+            gsFunctionExpr<T> fun;
+            from_json(*it, fun);
+            function_map[index] = memory::make_shared(fun.clone().release());
+        }
+        else
+        {
+            GISMO_ERROR("Unknown function type: " << type);
+        }
+    }
+
+    // Read boundary conditions
+    std::vector<patchSide> boundaries;
+    for (json::const_iterator it = j["sides"].begin(); it != j["sides"].end(); ++it)
+    {
+        const int uIndex = it->at("unknown").get<int>();
+        const int fIndex = it->at("function").get<int>();
+        int cIndex = -1;
+        if (it->contains("component"))  cIndex = it->at("component").get<int>();
+
+        bool ispar = false;
+        if (it->contains("parametric")) ispar = it->at("parametric").get<bool>();
+
+        if (it->contains("name"))
+            gsWarn<<"Boundary condition with name not supported in JSON format. "
+                  "Please use the multipatch index instead.";
+
+        // Get the boundary sides
+        GISMO_ASSERT(it->contains("sides"), "No sides specified for boundary condition");
+        for (const auto &side : it->at("sides"))
+            boundaries.push_back(patchSide(
+                side[0].get<int>(), // patch index
+                side[1].get<int>() // side index
+            ));
+
+        if (boundaries.size() == 0)
+        {
+            gsWarn << "Boundary condition without boundary to apply to. The"
+                      " following bc will be unused\n"
+                   << *it << std::endl;
+        }
+
+        GISMO_ASSERT(it->contains("type"), "No type provided for boundary condition");
+        const std::string bctype = it->at("type").get<std::string>();
+        // Add the boundary conditions
+        for (std::vector<patchSide>::const_iterator itb = boundaries.begin(); itb != boundaries.end(); ++itb)
+            bc.add(itb->patch, itb->side(), bctype, function_map[fIndex], uIndex, cIndex, ispar);
+    }
+
+    // Read corner values
+    for (json::const_iterator it = j["corners"].begin(); it != j["corners"].end(); ++it)
+    {
+        GISMO_ASSERT(it->contains("corner"), "No corner specified for corner value");
+        GISMO_ASSERT(it->contains("patch"), "No patch specified for corner value");
+        const int cornIndex = it->at("corner").get<int>();
+        const int pIndex = it->at("patch").get<int>();
+
+        int uIndex = 0;
+        if (it->contains("unknown"))    uIndex = it->at("unknown").get<int>();
+
+        int cIndex = -1;
+        if (it->contains("component"))  cIndex = it->at("component").get<int>();
+
+        T value = 0.0;
+        if (it->contains("value"))      value = it->at("value").get<T>();
+
+        bc.addCornerValue(cornIndex, value, pIndex, uIndex, cIndex);
+    }
 }
 
 /**

@@ -57,6 +57,9 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo
         FILES_MATCHING PATTERN "gsJSON/*.h")
 
+# add filedata folder
+add_definitions(-D${PROJECT_NAME}_DATA="${CMAKE_CURRENT_SOURCE_DIR}/filedata/")
+
 
 # add example files
 #include_directories(${SPECTRA_INCLUDE_DIR})

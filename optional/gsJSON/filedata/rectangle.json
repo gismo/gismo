@@ -1,0 +1,10 @@
+{
+    "create":
+    {
+        "type":"BSplineRectangle",
+        "xlow":0.0,
+        "ylow":0.0,
+        "xhigh":1.0,
+        "yhigh":1.0
+    }
+}
