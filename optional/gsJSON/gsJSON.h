@@ -408,6 +408,21 @@ void to_json(json &j, const gsMultiPatch<T> & mp)
     }
 }
 
+/**
+ * @brief Reads a gsMultiPatch from JSON
+ * @param j JSON object
+ * @param mp gsMultiPatch to be read
+ * 
+ * Supports three input formats:
+ * 1. "patches" array - basis types:
+ *    - "BSplineBasis" == gsBSpline<T>
+ *    - "TensorBSplineBasis2" == gsTensorBSpline<2,T>  
+ *    - "TensorBSplineBasis3" == gsTensorBSpline<3,T>
+ *    - "TensorBSplineBasis4" == gsTensorBSpline<4,T>
+ * 2. "path" - XML file path, can read a gsMultiPatch from an XML file
+ * 3. "create" - supports nurbs creator with (BSplineSquare, BSplineCube, BSplineRectangle)
+ */
+
 template<class T>
 void from_json(const json &j, gsMultiPatch<T> & mp)
 {
@@ -417,9 +432,48 @@ void from_json(const json &j, gsMultiPatch<T> & mp)
         GISMO_ASSERT(j["patches"].is_array(), "Patches is not an array");
         for (const auto & patch : j["patches"])
         {
-            gsGeometry<T> * geo = new gsGeometry<T>();
-            from_json(patch, *geo);
-            mp.addPatch(geo);
+            typename gsGeometry<T>::uPtr geo;
+            
+            // Determine geometry type from JSON and create appropriate concrete object
+            if (patch.contains("basis"))
+            {
+                std::string basisType = patch["basis"]["type"];
+                if (basisType == "BSplineBasis")
+                {
+                    auto bspline = std::make_unique<gsBSpline<T>>();
+                    from_json(patch, *bspline);
+                    geo = std::move(bspline);
+                }
+                else if (basisType == "TensorBSplineBasis2")
+                {
+                    auto tensorBspline = std::make_unique<gsTensorBSpline<2,T>>();
+                    from_json(patch, *tensorBspline);
+                    geo = std::move(tensorBspline);
+                }
+                else if (basisType == "TensorBSplineBasis3")
+                {
+                    auto tensorBspline = std::make_unique<gsTensorBSpline<3,T>>();
+                    from_json(patch, *tensorBspline);
+                    geo = std::move(tensorBspline);
+                }
+                else if (basisType == "TensorBSplineBasis4")
+                {
+                    auto tensorBspline = std::make_unique<gsTensorBSpline<4,T>>();
+                    from_json(patch, *tensorBspline);
+                    geo = std::move(tensorBspline);
+                }
+                else
+                {
+                    GISMO_ERROR("Unsupported basis type: " + basisType);
+                }
+            }
+            else
+            {
+                GISMO_ERROR("Patch JSON must contain 'basis' field");
+            }
+            
+            if (geo)
+                mp.addPatch(std::move(geo));
         }
     }
     else if (j.contains("path"))
