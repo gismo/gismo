@@ -254,18 +254,15 @@ grad(const divide_expr<_expr<E1,false>,_expr<E2,false>> & e)
 { return (grad(e.first()) * e.second() - e.first() * grad(e.second())) / (e.second()*e.second()); }
 
 template <typename E1> EIGEN_STRONG_INLINE
-divide_expr<mult_expr<_expr<typename E1::Scalar,true>,grad_expr<E1>>,_expr<typename E1::Scalar,true>>
+mult_expr<_expr<typename E1::Scalar,true>,grad_expr<E1> >
 grad(const divide_expr<E1,_expr<typename E1::Scalar,true>> & e)
-// THIS DOES NOT WORK, BECAUSE WE DON'T HAVE mult_expr<_expr<T,true>,_expr<T,true>>
-// { return (grad(e.first()) * e.second()) / (e.second()*e.second()); }
-{ return (grad(e.first()) * e.second()) / (e.second().val()*e.second().val()); }
+{ return (1/e.second().val()) * grad(e.first()); }
 
 template <typename E2> EIGEN_STRONG_INLINE
-divide_expr<sub_expr<_expr<typename E2::Scalar,true>,mult_expr<_expr<typename E2::Scalar,true>,grad_expr<E2>>>,mult_expr<E2,E2>>
+mult_expr<_expr<typename E2::Scalar,true>,
+          divide_expr<grad_expr<E2>,mult_expr<E2,E2> > >
 grad(const divide_expr<_expr<typename E2::Scalar,true>,E2> & e)
-// THIS DOES NOT WORK, BECAUSE OF THE operator- WHICH DOES NOT EXIST FOR _expr<T,true>
-// { return ( -e.first() * grad(e.second())) / (e.second()*e.second()); }
-{ return -( e.first() * grad(e.second())) / (e.second()*e.second()); }
+ { return ( (-e.first().val()) * grad(e.second())) / (e.second()*e.second()); }
 
 // /**
 //  * @brief Gradient of an expression
