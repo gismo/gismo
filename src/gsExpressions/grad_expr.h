@@ -250,7 +250,7 @@ grad(const mult_expr<_expr<typename E1::Scalar,true>,E1,false> & e)
  */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 divide_expr<sub_expr<mult_expr<grad_expr<E1>,E2>,mult_expr<E1,grad_expr<E2>>>,mult_expr<E2,E2>>
-grad(const divide_expr<_expr<E1,false>,E2> & e)
+grad(const divide_expr<_expr<E1,false>,_expr<E2,false>> & e)
 { return (grad(e.first()) * e.second() - e.first() * grad(e.second())) / (e.second()*e.second()); }
 
 template <typename E1> EIGEN_STRONG_INLINE
@@ -258,7 +258,7 @@ divide_expr<mult_expr<_expr<typename E1::Scalar,true>,grad_expr<E1>>,_expr<typen
 grad(const divide_expr<E1,_expr<typename E1::Scalar,true>> & e)
 // THIS DOES NOT WORK, BECAUSE WE DON'T HAVE mult_expr<_expr<T,true>,_expr<T,true>>
 // { return (grad(e.first()) * e.second()) / (e.second()*e.second()); }
-{ return (grad(e.first()) * e.second()) / (e.second().eval(0)*e.second().eval(0)); }
+{ return (grad(e.first()) * e.second()) / (e.second().val()*e.second().val()); }
 
 template <typename E2> EIGEN_STRONG_INLINE
 divide_expr<sub_expr<_expr<typename E2::Scalar,true>,mult_expr<_expr<typename E2::Scalar,true>,grad_expr<E2>>>,mult_expr<E2,E2>>

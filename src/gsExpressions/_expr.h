@@ -254,7 +254,7 @@ public:
 
     inline Scalar eval(const index_t ) const { return _c; }
 
-    inline _expr val() const { return *this; }
+    inline Scalar val() const { return _c; }
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
     void parse(gsExprHelper<Scalar> &) const { }
