@@ -233,7 +233,9 @@ grad(const sub_expr<_expr<typename E2::Scalar,true>,E2> & e)
  * @ingroup Expressions
  */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
+typename util::enable_if<!util::is_arithmetic<E1>::value,
 add_expr<mult_expr<E2,grad_expr<E1>>,mult_expr<E1,grad_expr<E2>>>
+>::type
 grad(const mult_expr<E1,E2> & e)
 { return e.second() * grad(e.first()) + e.first() * grad(e.second()); }
 

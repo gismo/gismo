@@ -30,10 +30,7 @@ template<class T> class gsExprHelper;
 */
 namespace expr
 {
-
-template <class E> struct is_arithmetic{enum{value=0};};
-template <> struct is_arithmetic<real_t>{enum{value=1};};
-template <typename E, bool = is_arithmetic<E>::value >
+template <typename E, bool = util::is_arithmetic<E>::value >
 class _expr {using E::GISMO_ERROR_expr;};
 
 template<class E> class symbol_expr;
