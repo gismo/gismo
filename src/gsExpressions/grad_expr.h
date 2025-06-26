@@ -250,7 +250,7 @@ grad(const mult_expr<_expr<typename E1::Scalar,true>,E1,false> & e)
  */
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 divide_expr<sub_expr<mult_expr<grad_expr<E1>,E2>,mult_expr<E1,grad_expr<E2>>>,mult_expr<E2,E2>>
-grad(const divide_expr<E1,E2> & e)
+grad(const divide_expr<_expr<E1,false>,E2> & e)
 { return (grad(e.first()) * e.second() - e.first() * grad(e.second())) / (e.second()*e.second()); }
 
 template <typename E1> EIGEN_STRONG_INLINE
