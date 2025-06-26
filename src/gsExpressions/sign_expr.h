@@ -40,7 +40,7 @@ public:
     Scalar eval(const index_t k) const
     {
         const Scalar v = _u.val().eval(k);
-        return ( v>_tol ? 1 : ( v<-_tol ? -1 : 0 ) );
+        return ( v>_tol ? Scalar(1) : ( v<-_tol ? Scalar(-1) : Scalar(0) ) );
     }
 
     static index_t rows() { return 0; }
