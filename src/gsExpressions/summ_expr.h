@@ -68,7 +68,7 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     index_t cardinality_impl() const
-    { GISMO_ERROR("Something went terribly wrong"); }
+    { return _u.cardinality(); }
 
     void print(std::ostream &os) const
     { os << "sum("; _M.print(os); os<<","; _u.print(os); os<<")"; }
