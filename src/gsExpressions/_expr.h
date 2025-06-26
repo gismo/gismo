@@ -252,9 +252,9 @@ public:
 public:
     enum {Space = 0, ScalarValued = 1, ColBlocks= 0};
 
-    inline Scalar eval(const index_t ) const { return _c; }
+    inline Scalar eval(const index_t = 0) const { return _c; }
 
-    inline Scalar val() const { return _c; }
+    inline const _expr<T, true> & val() const { return *this; }
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
     void parse(gsExprHelper<Scalar> &) const { }

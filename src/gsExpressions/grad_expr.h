@@ -256,13 +256,13 @@ grad(const divide_expr<_expr<E1,false>,_expr<E2,false>> & e)
 template <typename E1> EIGEN_STRONG_INLINE
 mult_expr<_expr<typename E1::Scalar,true>,grad_expr<E1> >
 grad(const divide_expr<E1,_expr<typename E1::Scalar,true>> & e)
-{ return (1/e.second().val()) * grad(e.first()); }
+{ return ((typename E1::Scalar)1/e.second().val().eval()) * grad(e.first()); }
 
 template <typename E2> EIGEN_STRONG_INLINE
 mult_expr<_expr<typename E2::Scalar,true>,
           divide_expr<grad_expr<E2>,mult_expr<E2,E2> > >
-grad(const divide_expr<_expr<typename E2::Scalar,true>,E2> & e)
- { return ( (-e.first().val()) * grad(e.second())) / (e.second()*e.second()); }
+grad(const divide_expr<_expr<typename E2::Scalar,true>,_expr<E2,false> > & e)
+{ return (-e.first().val()) * ( grad(e.second()) / (e.second()*e.second()) ); }
 
 // /**
 //  * @brief Gradient of an expression
