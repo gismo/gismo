@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
     //std::string fn("pde/mhd.xml");
     //std::string fn("pde/infinit_plate.xml");
     //std::string fn("pde/circle.xml");
-    std::string fn("surfaces/cylinder.xml"); 
-    //std::string fn("surfaces/egg.xml");
+    //std::string fn("surfaces/cylinder.xml"); 
+    std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);

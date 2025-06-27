@@ -36,7 +36,9 @@ int main(int argc, char *argv[])
     index_t circleN       = 0;
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/circle.xml");
+    // std::string fn("pde/circle.xml");
+    std::string fn("domain2d/lake.xml");
+
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -163,12 +165,26 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     // auto density = MAE.buildDensity(elwise, 0.05, circleN);
-    auto density = MAE.buildStrategyDensity(elwise, 0.95);
+    auto density = MAE.buildStrategyDensity(elwise, 0.75);
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    if (IntensityMAE <= 1.)
+    {
+        gsInfo << "IntensityMAE < 1, so the density function is not used.\n";
+        // Use the original multipatch
+        index_t numPaches               = Psitp.nPatches();
+        for( index_t i=0; i<numPaches; ++i)
+        {
+        index_t coefsNum                = Psitp.patch(i).coefsSize();
+        for ( index_t j=0; j<coefsNum; ++j)
+        {
+        Psitp.patch(i).coef(j) = mpLeft.patch(i).coef(j) ;
+        }
+    }
+    }    
     gsMultiPatch<> Psi;
     for(size_t i =0; i<Psitp.nPatches(); ++i)
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
@@ -286,8 +302,8 @@ int main(int argc, char *argv[])
             double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
             for(size_t i=0; i<eltErrs.size(); ++i)
             {
-                if (eltErrs[i] > 0.8*(Maxvalue+Minvalue)) // Avoid numerical issues
-                    eltErrs[i] = 0.8*(Maxvalue+Minvalue); // Avoid negative errors
+                if (eltErrs[i] > 0.9*(Maxvalue+Minvalue)) // Avoid numerical issues
+                    eltErrs[i] = 0.9*(Maxvalue+Minvalue); // Avoid negative errors
             }
             }
             // //! [adaptRefinementPart]

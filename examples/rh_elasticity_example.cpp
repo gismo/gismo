@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
     ###        and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density                    = MAE.buildDensity( elwise, 0.175);
+    auto density                    = MAE.buildStrategyDensity( elwise, 0.8);
 
     if (IntensityMAE>0){
     // auto density                 = MAE.buildAnalyticDensity( f);
@@ -336,7 +336,15 @@ int main(int argc, char *argv[])
 
             std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
-
+            if (IntensityMAE >1.){
+            double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
+            double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
+            for(size_t i=0; i<eltErrs.size(); ++i)
+            {
+                if (eltErrs[i] > 0.9*(Maxvalue+Minvalue)) // Avoid numerical issues
+                    eltErrs[i] = 0.9*(Maxvalue+Minvalue); // Avoid negative errors
+            }
+            }
             //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.

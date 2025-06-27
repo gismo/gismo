@@ -35,10 +35,9 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     // Specify the file path
-    std::string fn("pde/example3D.xml");
+    //std::string fn("pde/example3D.xml");
     //std::string fn("surfaces/cylinder.xml");
-    //std::string fn("surfaces/quarter_sphere.xml"); 
-
+    std::string fn("surfaces/quarter_sphere.xml"); 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -171,10 +170,10 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildStrategyDensity(elwise, 0.75);
-    // gsFunctionExpr<> ff;
-    // fd.getId(2003, ff);
-    // auto density = MAE.buildAnalyticDensity(ff);
+    // auto density = MAE.buildStrategyDensity(elwise, 0.75);
+    gsFunctionExpr<> ff;
+    fd.getId(2003, ff);
+    auto density = MAE.buildAnalyticDensity(ff);
     // gsMultiPatch<> mp; 
     // if (dbasis.dim()==2)
     //     mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,0,0));
@@ -315,10 +314,18 @@ int main(int argc, char *argv[])
             ev.integralElWise( (  ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
             //ev.integralElWise( igrad(ru_sol, PP).sqNorm() );
 
-            const std::vector<real_t> eltErrs  = ev.elementwise();
+            std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
             // Compute the global error indicators.
-
+            if (IntensityMAE >1.){
+            double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
+            double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
+            for(size_t i=0; i<eltErrs.size(); ++i)
+            {
+                if (eltErrs[i] > 0.8*(Maxvalue+Minvalue)) // Avoid numerical issues
+                    eltErrs[i] = 0.8*(Maxvalue+Minvalue); // Avoid negative errors
+            }
+            }
             //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
