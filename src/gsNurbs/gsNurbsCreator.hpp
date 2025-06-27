@@ -853,7 +853,7 @@ gsNurbsCreator<T>::NurbsAnnulus( T const & r0, T const & r1)
     gsKnotVector<T> KVx (0,1,3,3,2) ;
     gsKnotVector<T> KVy (0,1,0,2) ;
     gsMatrix<T> C(18,2) ;
-    
+
     C <<    r0, 0,
             r0, r0,
             0, r0,
@@ -1670,6 +1670,111 @@ gsNurbsCreator<T>::BSplineStar( index_t const & N,
         bspline = *(rotate2D(bspline,theta*360/(2*pi)));
     }
     return result;
+}
+
+// Multi-patch (4 patch) cylinder with radius R and height H
+template<class T> gsMultiPatch<T>
+gsNurbsCreator<T>::MultiPatchCylinder(T const & R, T const & H)
+{
+    gsKnotVector<T> KV({0,0,0,1,1,1},2);
+    gsVector<T> W(9);
+    W << 1, math::sqrt(2)/2, 1, 1, math::sqrt(2)/2, 1, 1, math::sqrt(2)/2, 1;
+
+    gsMatrix<T> C1(9,3);
+    C1.col(0) << R, R, 0, R, R, 0, R, R, 0;
+    C1.col(1) << 0, R, R, 0, R, R, 0, R, R;
+    C1.col(2) << 0, 0, 0, H/2, H/2, H/2, H, H, H;
+
+    gsMatrix<T> C2(9,3);
+    C2.col(0) << 0, -R, -R, 0, -R, -R, 0, -R, -R;
+    C2.col(1) << R,  R, 0,  R,  R,  0, R,  R,  0;
+    C2.col(2) << 0,  0, 0, H/2, H/2, H/2, H, H, H;
+
+    gsMatrix<T> C3(9,3);
+    C3.col(0) << -R, -R, 0, -R, -R, 0, -R, -R, 0;
+    C3.col(1) << 0, -R, -R, 0, -R, -R, 0, -R, -R;
+    C3.col(2) << 0, 0, 0, H/2, H/2, H/2, H, H, H;
+
+    gsMatrix<T> C4(9,3);
+    C4.col(0) << 0, R, R, 0, R, R, 0, R, R;
+    C4.col(1) << -R, -R, 0, -R, -R, 0, -R, -R, 0;
+    C4.col(2) << 0, 0, 0, H/2, H/2, H/2, H, H, H;
+
+    gsTensorNurbs<2,T> nurbs1(KV,KV,C1,W);
+    gsTensorNurbs<2,T> nurbs2(KV,KV,C2,W);
+    gsTensorNurbs<2,T> nurbs3(KV,KV,C3,W);
+    gsTensorNurbs<2,T> nurbs4(KV,KV,C4,W);
+
+    gsMultiPatch<T> mp;
+    mp.addPatch(nurbs1);
+    mp.addPatch(nurbs2);
+    mp.addPatch(nurbs3);
+    mp.addPatch(nurbs4);
+
+    mp.addInterface(0,1,3,2);
+    mp.addInterface(0,2,1,1);
+    mp.addInterface(1,2,2,1);
+    mp.addInterface(2,2,3,1);
+
+    for (size_t i = 0; i < 4; i++)
+    {
+        mp.addBoundary(i,3);
+        mp.addBoundary(i,4);
+    }
+
+    return mp;
+}
+
+
+// Multi-patch (4 patch) annulus with inner radius Ri and outer radius Ro
+template<class T> gsMultiPatch<T>
+gsNurbsCreator<T>::MultiPatchAnnulus(T const & Ri, T const & Ro)
+{
+    gsKnotVector<T> KV({0,0,0,1,1,1},2);
+    gsVector<T> W(9);
+    W << 1, math::sqrt(2)/2, 1, 1, math::sqrt(2)/2, 1, 1, math::sqrt(2)/2, 1;
+
+    T Rm = (Ri + Ro) / 2;
+
+    gsMatrix<T> C1(9,2);
+    C1.col(0) << Ro, Ro, 0, Rm, Rm, 0, Ri, Ri, 0;
+    C1.col(1) << 0, Ro, Ro, 0, Rm, Rm, 0, Ri, Ri;
+
+    gsMatrix<T> C2(9,3);
+    C2.col(0) << 0, -Ro, -Ro, 0, -Rm, -Rm, 0, -Ri, -Ri;
+    C2.col(1) << Ro, Ro, 0, Rm, Rm, 0, Ri, Ri, 0;
+
+    gsMatrix<T> C3(9,3);
+    C3.col(0) << -Ro, -Ro, 0, -Rm, -Rm, 0, -Ri, -Ri, 0;
+    C3.col(1) << 0, -Ro, -Ro, 0, -Rm, -Rm, 0, -Ri, -Ri;
+
+    gsMatrix<T> C4(9,3);
+    C4.col(0) << 0, Ro, Ro, 0, Rm, Rm, 0, Ri, Ri;
+    C4.col(1) << -Ro, -Ro, 0, -Rm, -Rm, 0, -Ri, -Ri, 0;
+
+    gsTensorNurbs<2,T> nurbs1(KV,KV,C1,W);
+    gsTensorNurbs<2,T> nurbs2(KV,KV,C2,W);
+    gsTensorNurbs<2,T> nurbs3(KV,KV,C3,W);
+    gsTensorNurbs<2,T> nurbs4(KV,KV,C4,W);
+
+    gsMultiPatch<T> mp;
+    mp.addPatch(nurbs1);
+    mp.addPatch(nurbs2);
+    mp.addPatch(nurbs3);
+    mp.addPatch(nurbs4);
+
+    mp.addInterface(0,1,3,2);
+    mp.addInterface(0,2,1,1);
+    mp.addInterface(1,2,2,1);
+    mp.addInterface(2,2,3,1);
+
+    for (size_t i = 0; i < 4; i++)
+    {
+        mp.addBoundary(i,3);
+        mp.addBoundary(i,4);
+    }
+
+    return mp;
 }
 
 } // namespace gismo
