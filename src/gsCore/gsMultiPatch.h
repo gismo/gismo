@@ -191,9 +191,12 @@ public:
     /// Utility function to resize container to hold \a N patches (caution: empty pointers)
     void resize(size_t N)
     {
-        clear();
-        m_patches.resize(N, nullptr);
-        setBoxes(N);
+        if ( N!=m_patches.size() )
+        {
+            clear();
+            m_patches.resize(N, nullptr);
+            setBoxes(N);
+        }
     }
 
     void setPatch(index_t pid, typename gsGeometry<T>::uPtr ptr)
@@ -316,7 +319,9 @@ public:
     void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
-    gsBasis<T> & basis( const size_t i ) const;
+    const gsBasis<T> & basis( const size_t i ) const;
+    inline gsBasis<T> & basis( const size_t i )
+    { return const_cast<gsBasis<T>&>(basis(i)); }
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     index_t addPatch(typename gsGeometry<T>::uPtr g);

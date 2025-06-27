@@ -175,7 +175,7 @@ gsMultiPatch<T>::parameterRange(int i) const
 }
 
 template<class T>
-gsBasis<T> &
+const gsBasis<T> &
 gsMultiPatch<T>::basis( size_t i ) const
 {
     GISMO_ASSERT( i < m_patches.size(), "Invalid patch index requested from gsMultiPatch" );
