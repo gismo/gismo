@@ -15,7 +15,8 @@
 
 #include <gsUtils/gsPointGrid.h>
 #include <gsAssembler/gsQuadrature.h>
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
+#include <gsExpressions/gsFeSpaceData.h>
 #include <gsDomain/gsDomain.h>
 
 #include <gsAssembler/gsCPPInterface.h>
@@ -45,9 +46,9 @@ private:
     FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
-    std::list<gsFeSpaceData<T> > m_sdata;
-    std::vector<gsFeSpaceData<T>*> m_vrow;
-    std::vector<gsFeSpaceData<T>*> m_vcol;
+    std::list<gismo::expr::gsFeSpaceData<T> > m_sdata;
+    std::vector<gismo::expr::gsFeSpaceData<T>*> m_vrow;
+    std::vector<gismo::expr::gsFeSpaceData<T>*> m_vcol;
 
     int m_sparsity;//0:unknown, 1:volume, 2:boundary, 4:interface pre-allocated
     mutable bool m_modified;

@@ -18,7 +18,12 @@ namespace gismo
 namespace expr
 {
 
-//template<class E>
+/**
+ * @brief Precomputes a givene expression on the Gauss points
+ * @note  Does this work??
+ * @ingroup Expressions
+ * @tparam T The type of the expression
+ */
 template<class T>
 class precomputed_expr : public _expr<precomputed_expr<T> >
 {
@@ -33,7 +38,7 @@ protected:
     const gsFeSpace<Scalar> m_rowvar, m_colvar;
     std::vector<gsMatrix<T> > m_data; // per element
     size_t m_curId;
-    
+
 public:
 
     // used by FeSpace, FeVariable, ..
@@ -64,7 +69,7 @@ public:
     {
         return m_data[id];
     }
-    
+
     MatExprType eval(const index_t k) const
     { return m_data[m_curId]; }
 
