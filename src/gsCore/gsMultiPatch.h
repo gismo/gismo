@@ -319,9 +319,9 @@ public:
     void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
-    const gsBasis<T> & basis( const size_t i ) const;
-    inline gsBasis<T> & basis( const size_t i )
-    { return const_cast<gsBasis<T>&>(basis(i)); }
+    gsBasis<T> & basis( const size_t i);
+    inline const gsBasis<T> & basis( const size_t i ) const
+    { return const_cast<gsMultiPatch<T>&>(*this).basis(i); }
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     index_t addPatch(typename gsGeometry<T>::uPtr g);
