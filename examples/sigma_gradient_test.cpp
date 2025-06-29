@@ -295,7 +295,31 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Gradient of the objective function for controls: "<<controls.transpose()<<"\n";
     gsInfo<<asgrad.transpose()<<"\n";
+    gsDebugVar(asgrad);
 
+    // numerical gradient test
+    const real_t epsilon = 1e-6;
+    gsVector<real_t> grad_fd(controls.size());
+
+    for (index_t i = 0; i < controls.size(); ++i)
+    {
+      gsVector<real_t> controls_plus = controls;
+      gsVector<real_t> controls_minus = controls;
+
+      controls_plus(i) += epsilon;
+      controls_minus(i) -= epsilon;
+
+      real_t f = opt.evalObj(gsAsConstVector<real_t>(controls.data(), controls.size()));
+      real_t f_plus = opt.evalObj(gsAsConstVector<real_t>(controls_plus.data(), controls_plus.size()));
+      real_t f_minus = opt.evalObj(gsAsConstVector<real_t>(controls_minus.data(), controls_minus.size()));
+
+      grad_fd(i) = (f_plus - f_minus) / (2 * epsilon);
+//      grad_fd(i) = (f_plus - f) / (epsilon);
+    }
+
+    gsInfo << "Analytical gradient:\n" << grad.transpose() << "\n";
+    gsInfo << "Finite difference gradient:\n" << grad_fd.transpose() << "\n";
+    gsInfo << "Difference:\n" << (grad - grad_fd).transpose() << "\n";
 
     // // Get the control derivative
     // gsVector<> pt(2);
