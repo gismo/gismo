@@ -589,11 +589,12 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
     else if (m_cgeom.domainDim()<m_cgeom.targetDim())
     {
         auto fform = jac(G).tr()*jac(G);
-        auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
         if (m_fun==nullptr)
         {
-            auto M = 1/detG;
-            return evaluator.integral( M*fform.trace()/pow(meas(G),2)*meas(G));
+//          auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
+//            auto M = 1/detG;
+//            return evaluator.integral( M*fform.trace()/pow(meas(G),2)*meas(G) );
+            return evaluator.integral( fform.trace() / meas(G) );
         }
         else
         {
