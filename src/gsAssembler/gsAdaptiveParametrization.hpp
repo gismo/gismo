@@ -591,10 +591,10 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
         auto fform = jac(G).tr()*jac(G);
         if (m_fun==nullptr)
         {
-//          auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
-//            auto M = 1/detG;
-//            return evaluator.integral( M*fform.trace()/pow(meas(G),2)*meas(G) );
-            return evaluator.integral( fform.trace() / meas(G) );
+          auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
+          auto M = 1/detG;
+          return evaluator.integral( M*fform.trace()/pow(meas(G),2)*meas(G) );
+//            return evaluator.integral( fform.trace() / meas(G));
         }
         else
         {
@@ -626,11 +626,11 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
     // Penalty constant
     gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
     geometryMap G = evaluator.getMap(m_mp);
-    auto fform = jac(G).tr()*jac(G);
-    auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
+//    auto fform = jac(G).tr()*jac(G);
+//    auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
     auto dJdxi  = hess(G)[0];
     auto dJdeta = hess(G)[1];
-    auto M = 1/detG;
+//    auto M = 1/detG;
 
     gsMatrix<T> rhs(m_comp->nControls(),1);
 
@@ -644,6 +644,14 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
     gsMatrix<T> dEdSigma_val;
     gsMatrix<T> dEdAlpha;
     //
+
+    // for test purposes
+    gsExprEvaluator<T> evaluator_geom;
+    gsMultiBasis<T> mmbasis(*m_geom);
+    evaluator_geom.setIntegrationElements(mmbasis);
+    geometryMap G_geom = evaluator_geom.getMap(*m_geom);
+    auto fform = jac(G_geom).tr()*jac(G_geom);
+    auto detG = pow(fform.det().val(), 0.5).val(); //jacobian determinant for a surface, i.e. the measure
     for (unsigned patchInd=0; patchInd < m_mb.nBases(); ++patchInd)
     {
         // Quadrature rule
@@ -659,21 +667,72 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
 
             // Evaluate the geometry map at the quadrature points
             m_comp->eval_into(uvPoints, xietaPoints);
-            for (index_t p = 0; p!=uvPoints.cols(); p++)
+            for (index_t p = 0; p!=uvPoints.cols(); ++p)
             {
                 // Compute dSigmadAlpha
                 m_comp->control_deriv_into(uvPoints.col(p), dSigmadAlpha);
                 gsEigen::Map<gsEigen::Matrix<real_t, gsEigen::Dynamic, gsEigen::Dynamic> >
                     dSigmadAlphaMatrix(dSigmadAlpha.data(), m_comp->nControls(), 2);
+                gsMatrix<> jacobianSigma = m_comp->deriv( uvPoints.col(p) );
+                T measSigma = jacobianSigma(0) * jacobianSigma(3) - jacobianSigma(1) * jacobianSigma(2); // determinant of the Jacobian of sigma
+                gsDebugVar(uvPoints.col(p));
+                gsDebugVar(measSigma);
 
                 // Compute dEdSigma
-                dEdSigma_val = evaluator.eval(dEdSigma(G),xietaPoints.col(p));
+//                dEdSigma_val = evaluator.eval(dEdSigma(G), xietaPoints.col(p));
+                dEdSigma_val = evaluator.eval(dEdSigma(G_geom), xietaPoints.col(p));
+                gsMatrix<T> measG = evaluator.eval(meas(G), uvPoints.col(p));
+
+                gsDebugVar( xietaPoints.col(p) );
+                gsDebugVar( dEdSigma_val );
+
+                // Debugging: Check the evaluation of dEdSigma
+                gsVector<> testPt{xietaPoints.col(p)};
+                gsMatrix<> testObj = evaluator.eval(fform.trace() / meas(G_geom), testPt);
+                gsVector<> testPt1{xietaPoints.col(p)}; testPt1(0) += 1e-6;
+                gsMatrix<> testObjPlus = evaluator.eval(fform.trace() / meas(G_geom), testPt1);
+                testPt1(0) -= 2e-6; // reset the perturbation
+                gsMatrix<> testObjMinus = evaluator.eval(fform.trace() / meas(G_geom), testPt1);
+                T testObjDiff = (testObjPlus(0) - testObjMinus(0)) / 2e-6;
+//                testPt(0) -= 1e-6; // reset the perturbation
+                testPt(1) += 1e-6; // perturb the second coordinate
+                testObjPlus = evaluator.eval(fform.trace() / meas(G_geom), testPt);
+                T testObjDiff2 = (testObjPlus(0) - testObj(0)) / 1e-6;
+                gsDebugVar(testObjDiff2);
+
+                // Debugging: Check the evaluation of dsigmadAlpha
+//                testPt = xietaPoints.col(p); // reset the perturbation
+//                gsMatrix<T> testxxObj = m_comp->eval(testPt);
+//                gsMatrix<T> testcontrols = m_controls;
+//                gsDebugVar(m_controls);
+//                testcontrols(0) += 1e-6; // perturb the first control
+//                m_comp->setControls(testcontrols);
+//                gsMatrix<T> testxxPlus = m_comp->eval(testPt);
+//                gsMatrix<T> dSigmadAlpha_num2 = (testxxPlus - testxxObj) / 1e-6;
+//                gsDebugVar( dSigmadAlpha_num2 );
+////                testPt(0) += 1e-6; // reset the perturbation
+//                testcontrols(0) -= 1e-6; // reset the perturbation
+//                testcontrols(1) += 1e-6; // perturb the second control
+//                m_comp->setControls(testcontrols);
+//                testxxPlus = m_comp->eval(testPt);
+//                gsMatrix<T> dSigmadAlpha_num1 = (testxxPlus - testxxObj) / 1e-6;
+//                gsDebugVar( dSigmadAlpha_num1 );
+//
+//                gsDebugVar(dSigmadAlphaMatrix);
+////                T dEdalpha1 = dSigmadAlpha_num1(0) * testObjDiff + dSigmadAlpha_num1(1) * testObjDiff2;
+                T dEdalpha1 = dSigmadAlphaMatrix(0,0) * testObjDiff + dSigmadAlphaMatrix(0,1) * testObjDiff2;
+//                gsDebugVar(dEdalpha1);
+////                T dEdalpha2 = dSigmadAlpha_num2(0) * testObjDiff + dSigmadAlpha_num2(1) * testObjDiff2;
+                T dEdalpha2 = dSigmadAlphaMatrix(1,0) * testObjDiff + dSigmadAlphaMatrix(1,1) * testObjDiff2;
+//                gsDebugVar(dEdalpha2);
+                //////////////////////////////////////////////////////////////
 
                 // Compute dEdAlpha
                 dEdAlpha = dSigmadAlphaMatrix * dEdSigma_val;
 
                 // Add to the result
                 result += tmpWeights[p] * dEdAlpha;
+                // TODO consider measG and its gradient contribution
             }
         }
     }
