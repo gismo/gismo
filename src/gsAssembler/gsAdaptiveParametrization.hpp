@@ -663,13 +663,14 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
             {
                 // Compute dSigmadAlpha
                 m_comp->control_deriv_into(uvPoints.col(p), dSigmadAlpha);
-                dSigmadAlpha.conservativeResize(m_comp->nControls(),2);
+                gsEigen::Map<gsEigen::Matrix<real_t, gsEigen::Dynamic, gsEigen::Dynamic> >
+                    dSigmadAlphaMatrix(dSigmadAlpha.data(), m_comp->nControls(), 2);
 
                 // Compute dEdSigma
                 dEdSigma_val = evaluator.eval(dEdSigma(G),xietaPoints.col(p));
 
                 // Compute dEdAlpha
-                dEdAlpha = dSigmadAlpha * dEdSigma_val;
+                dEdAlpha = dSigmadAlphaMatrix * dEdSigma_val;
 
                 // Add to the result
                 result += tmpWeights[p] * dEdAlpha;
