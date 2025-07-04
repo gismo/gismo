@@ -34,6 +34,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <iomanip> // for std::setw, std::setfill, std::setprecision
 
 using namespace gismo;
 //! [Include namespace]
@@ -115,6 +116,7 @@ void solve( gsMultiPatch<T> & mp,
     real_t solverTime = 0;
     real_t projectionTime = 0;
     index_t nSolves = 0;
+    index_t nSolvesStep = 0;
 
     gsStopwatch clock;
 
@@ -205,6 +207,15 @@ void solve( gsMultiPatch<T> & mp,
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
+    A.options().setSwitch("SameElement",Aopt.askSwitch("SameElement",true));
+#ifdef GISMO_WITH_PARDISO
+    A.options().addString("LinearSolver", "Name of the linear solver to be used", "PardisoLU");
+#   else
+    A.options().addString("LinearSolver", "Name of the linear solver to be used", "SimplicialLDLT");
+#endif
+    A.options().setReal("quA", Aopt.askReal("quA",1));
+    A.options().setInt("quB", Aopt.askInt("quB",1));
+
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -225,6 +236,8 @@ void solve( gsMultiPatch<T> & mp,
     }
     A.setIntegrationElements(ibasis); // USE FINEST TENSOR BASIS FOR INTEGRATION
     gsExprEvaluator<> ev(A);
+    ev.options().update(A.options(),gsOptionList::addIfUnknown); //?? do I have to do this?
+    A.options().update(ev.options(),gsOptionList::addIfUnknown); 
     ev.setIntegrationElements(dbasis);
 
     gsDebugVar(dbasis.basis(0).maxDegree());
@@ -294,12 +307,11 @@ void solve( gsMultiPatch<T> & mp,
     w.setup(bc, dirichlet::l2Projection, 0);
     A.initSystem();
     // ![Initialize the assembler]
-
-    // Define linear solver (install SuperLUMT-devel)
-#ifdef GISMO_WITH_SUPERLU
-    gsSparseSolver<>::SuperLU solver;
+gsSparseSolver<>::uPtr solver;
+#ifdef GISMO_WITH_PARDISO
+    solver = gsSparseSolver<>::get("PardisoLU");
 #   else
-    gsSparseSolver<>::LU solver;
+    solver = gsSparseSolver<>::get("LU");
 #endif
 
     gsMatrix<> Q;
@@ -370,14 +382,23 @@ void solve( gsMultiPatch<T> & mp,
         // //             Cold.at(ii) = geom->coefs()(i, c);
         // //     }
         // // }
-
-        // gsInfo<<"COLD0"<<Cold<<"\n";
+    
         gsFileData<> fd1;
         std::string file_name;
         if (pattern==0) // nucleation
-            file_name = "multipatch.xml";
-        else
-            file_name = "/Users/lucasventavinuela/gismo/build/new_spin.xml";
+        {
+            if (dim==2)
+                file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_nucleation.xml";
+            else if (dim==3)
+                file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_nucleation_3d.xml";
+        }
+        else if (pattern==1) // spinoidal
+        {
+            if (dim==2)
+                file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_spinoidal.xml";
+            else if (dim==3)
+                file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_spinoidal_3d.xml";
+        }
 
        gsMultiPatch<> MP;
 
@@ -388,9 +409,6 @@ void solve( gsMultiPatch<T> & mp,
         mp_cold.addPatch(MP.patch(0));
         Cold.setZero(dbasis.size(),1);
         mp_dcold.addPatch(dbasis.basis(0).makeGeometry(Cold));
-
-        // gsWriteParaview(mp,mp_cold, out+"/initial_condition", 5000);
-
     }
     else
     {
@@ -407,6 +425,11 @@ void solve( gsMultiPatch<T> & mp,
 
     mp_cnew = mp_cold;
     mp_dcnew = mp_dcold;
+
+    gsInfo<< mp_cold.patch(0).coefs().maxCoeff() << "\n";
+    gsInfo<< mp_cold.patch(0).coefs().minCoeff() << "\n";
+    gsInfo<< mp_dcold.patch(0).coefs().maxCoeff()  << "\n";
+    gsInfo<< mp_dcold.patch(0).coefs().minCoeff()  << "\n";
 
     real_t Q0norm = 1, Qnorm = 10;
     real_t tol = TIMEopt.askReal("tol",1e-4);
@@ -463,33 +486,55 @@ void solve( gsMultiPatch<T> & mp,
     // ! [Load mesher options]
 
     std::ofstream csvFile;
-    csvFile.open(out+"/dofs.csv");
-    csvFile << "TimeStep, RefIt, NumDOFs, Mass, AT, ST, PT, ErrorRefCnew, ErrorRefdCnew, ErrorCrsCnew, ErrorCrsdCnew\n";
+    csvFile.open(out+"/output_data.csv");
+    csvFile << std::left
+            << std::setw(12) << "TimeStep"        << " , "
+            << std::setw(10) << "RefIt"           << " , "
+            << std::setw(12) << "NumDOFs"         << " , "
+            << std::setw(16) << "nSolvesStep"     << " , "
+            << std::setw(14) << "Mass"            << " , "
+            << std::setw(14) << "Bulk_energy"     << " , "
+            << std::setw(14) << "Int_energy"      << " , "
+            << std::setw(14) << "Total_energy"    << " , "
+            << std::setw(15) << "proj_err c"      << " , "
+            << std::setw(15) << "proj_err dc"     << " , "
+            << std::setw(12) << "AT"              << " , "
+            << std::setw(12) << "ST"              << " , "
+            << "PT\n";
 
     gsVector<> pt(2,1); pt<<0.5, 0.5;
 
-
-    // real_t mass2 = ev.integral(meas(G)*cold);
-    // gsInfo<<mass2<<"\n";
     real_t assemblyTimestep, solverTimestep, projTimestep;
+    real_t assemblyTimeRefIt, solverTimeRefIt, projTimeRefIt;
+
+    if (MESHopt.askSwitch("Adaptive",true)==0)
+    {
+        // Tensor product solution (to be able to have finer meshes than the one from the xml file)
+        gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
+        gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());
+    }
 
     for (index_t step = 0; step!=maxSteps; step++)
     {
+        assemblyTimestep = 0;
+        solverTimestep   = 0;
+        projTimestep     = 0;
+
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
             
-            // reset computational times
-            assemblyTimestep = 0;
-            solverTimestep   = 0;
-            projTimestep     = 0;
+            nSolvesStep = 0;
+            assemblyTimeRefIt = 0;
+            solverTimeRefIt   = 0;
+            projTimeRefIt = 0;
 
             if (MESHopt.askSwitch("Adaptive",true))
             {
                 clock.restart();
                 if (projection_Crs == 0)
                 {
-                    error_crs_c = gsL2Projection<real_t>::project(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
-                    error_crs_dc = gsL2Projection<real_t>::project(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
+                    error_crs_c = gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
+                    error_crs_dc = gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());    
                     gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
                     gsDebug<<"Error in the L2 projection of the initial condition (dc): "<<error_crs_dc<<"\n";  
                 }
@@ -498,15 +543,18 @@ void solve( gsMultiPatch<T> & mp,
                     gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_cold.patch(0),CnewF);
                     gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
                 }
-                projTimestep += clock.stop();
-                projectionTime += projTimestep;
-
+                else if (projection_Crs == 2)
+                {
+                    gsQuasiInterpolate<real_t>::Schoenberg(dbasis.basis(0),mp_cold.patch(0),CnewF);
+                    gsQuasiInterpolate<real_t>::Schoenberg(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
+                }
+                projTimeRefIt += clock.stop();
             }
             else
             {
-                // Tensor product solution (to be able to have finer meshes than the one from the xml file)
-                error_crs_c = gsL2Projection<real_t>::project(ibasis, dbasis,mp_cold.patch(0),mp,CnewF);
-                error_crs_dc = gsL2Projection<real_t>::project(ibasis, dbasis,mp_dcold.patch(0),mp,dCnewF);    
+                // Tensor product solution!
+                CnewF = mp_cold.patch(0).coefs();
+                dCnewF = mp_dcold.patch(0).coefs();
             }
                       
             // Resize the data structure inside the mesher
@@ -568,7 +616,7 @@ void solve( gsMultiPatch<T> & mp,
                         clock.restart();
                         // Assemble the RHS
                         A.assemble(residual * meas(G));
-                        assemblyTimestep += clock.stop();
+                        assemblyTimeRefIt += clock.stop();
 
                         Q = A.rhs();
 
@@ -579,7 +627,7 @@ void solve( gsMultiPatch<T> & mp,
                         A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                                     penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                                     lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-                        assemblyTimestep += clock.stop();
+                        assemblyTimeRefIt += clock.stop();
 
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
@@ -613,8 +661,7 @@ void solve( gsMultiPatch<T> & mp,
                                             ddmu_c * igrad(w,G) * gradc.tr() * w.tr() + // K_f2
                                             lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
                                             // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-                        assemblyTimestep += clock.stop();
-                        assemblyTime += assemblyTimestep;
+                        assemblyTimeRefIt += clock.stop();
 
                         K = A.giveMatrix();
                         if (bc.get("Neumann").size()!=0)
@@ -622,18 +669,13 @@ void solve( gsMultiPatch<T> & mp,
 
 
                         clock.restart();
-    #ifdef GISMO_WITH_SUPERLU
-                        if (0==k)
-                            solver.analyzePattern(K);
-                        solver.factorize(K);
-    #else
-                        solver.compute(K);
-    #endif
+                       
+                        solver->compute(K); // K + K_linear ?? 
 
-                        dCupdate = solver.solve(-Q);
-                        solverTimestep += clock.stop();
-                        solverTime     += solverTimestep;
+                        dCupdate = solver->solve(-Q);
+                        solverTimeRefIt += clock.stop();
                         nSolves++;
+                        nSolvesStep++;
 
                         dCnew += dCupdate;
                         Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
@@ -672,10 +714,38 @@ void solve( gsMultiPatch<T> & mp,
             // Update the old c and dc into splines
             cnew_sol.extract(mp_cnew);
             dcnew_sol.extract(mp_dcnew);
+            
+            // Compute the energy (interface and bulk)
+            // Note: the energy is computed in the current mesh, not in the refined mesh
+            auto bulk_term      = 0.25 * (1-(cnew_sol*cnew_sol).val())*(1-(cnew_sol*cnew_sol).val()); // 0.25 * (1-|c|^2)^2 double well potential
+            auto grad_c         = igrad(cnew_sol, G);
+            auto interface_term = 0.5  * lambda * (grad_c * grad_c.tr()).val(); // 0.5 * lambda * |grad(c)|^2
 
-            real_t mass = ev.integral(meas(G)*cnew);
-            csvFile << step  << "," << refIt << "," << A.numDofs() <<"," << mass << "," << assemblyTimestep <<  "," << solverTimestep << "," << projTimestep << "," << error_ref_cnew << ","<< error_ref_dcnew << ","<<error_crs_c<<","<<error_crs_dc<< "\n";
+            real_t bulk_energy       = ev.integral(meas(G) * bulk_term);
+            real_t interface_energy  = ev.integral(meas(G) * interface_term);
+            real_t total_energy      = bulk_energy + interface_energy;
+            real_t mass              = ev.integral(meas(G)*cnew_sol);
+
+            csvFile << std::left
+                    << std::setw(12) << step               << " , "
+                    << std::setw(10) << refIt              << " , "
+                    << std::setw(12) << A.numDofs()        << " , "
+                    << std::setw(16) << nSolvesStep        << " , "
+                    << std::setw(14) << mass               << " , "
+                    << std::setw(14) << bulk_energy        << " , "
+                    << std::setw(14) << interface_energy   << " , "
+                    << std::setw(14) << total_energy       << " , "
+                    << std::setw(15) << error_crs_c        << " , "
+                    << std::setw(15) << error_crs_dc       << " , "
+                    << std::setw(12) << assemblyTimeRefIt  << " , "
+                    << std::setw(12) << solverTimeRefIt    << " , "
+                    << projTimeRefIt << "\n";
+            
             csvFile.flush();  // Forces the file to write immediately
+            
+            solverTimestep     += solverTimeRefIt;
+            assemblyTimestep   += assemblyTimeRefIt;
+            projTimestep       += projTimeRefIt;
 
             // Reset the errors after the loop
             error_ref_cnew  = 0;
@@ -804,32 +874,16 @@ void solve( gsMultiPatch<T> & mp,
             }// coarsen
         } // coarsening switch
 
-        // if (step==1)
-        // {
-        //     gsDebugVar(mp_cnew.patch(0).coefs().maxCoeff());
-        //     gsDebugVar(mp_cnew.patch(0).coefs().minCoeff());
-        //     gsDebugVar(mp_dcnew.patch(0).coefs().maxCoeff());
-        //     gsDebugVar(mp_dcnew.patch(0).coefs().minCoeff());
-        // }
-
-
-
         // Update time and old solutions
-        // gsDebugVar(mp_dcnew.patch(0).coefs().maxCoeff());
-        // gsDebugVar(mp_dcnew.patch(0).coefs().minCoeff());
+        solverTime     += solverTimestep;
+        assemblyTime   += assemblyTimestep;
+        projectionTime += projTimestep;
 
         time += dt_old;
         // mp_cold.swap(mp_cnew);
         // mp_dcold.swap(mp_dcnew);
-
         mp_cold = mp_cnew;
         mp_dcold = mp_dcnew;
-
-        // gsDebugVar(mp_dcnew.patch(0).coefs().maxCoeff());
-        // gsDebugVar(mp_dcnew.patch(0).coefs().minCoeff());
-
-
-
     }
     if (plot)
         collection.save();
