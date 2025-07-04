@@ -34,12 +34,12 @@ int main(int argc, char *argv[])
     // std::string fn("pde/example3D.xml");
     //std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
-    //std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/mhd.xml");
     //std::string fn("pde/infinit_plate.xml");
     //std::string fn("pde/circle.xml");
     //std::string fn("surfaces/cylinder.xml"); 
-    std::string fn("domain2d/lake.xml");
+    //std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -63,11 +63,11 @@ int main(int argc, char *argv[])
     // Create a gsMultipatch and add the loaded geometry
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
     //gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::NurbsSphere(1.,0.,0.,0.));
-    // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
     // ...
-    gsMultiPatch<> mpLeft;
-    fd.getId(1,mpLeft);
+    // gsMultiPatch<> mpLeft;
+    // fd.getId(1,mpLeft);
     auto coefsMap  = mpLeft.patch(0).coefs();
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases

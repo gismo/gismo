@@ -504,7 +504,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
 
         sv0               = sv0 - solVector;
         auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol)).sqNorm()  ));
-        auto L2MAERes = math::sqrt(ev.integral( pow( CoeffDensity - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det(),2)  ));
+        auto L2MAERes = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
         auto Ddet     = ev.min(jac(PP).det());
         Iter_mae[ip]  = ip;
         h1Res[ip]     = l2errRes;// Compute the H1 residual

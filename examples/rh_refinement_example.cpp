@@ -33,12 +33,10 @@ int main(int argc, char *argv[])
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
-    index_t circleN       = 0;
     // Specify the file path
-    //std::string fn("pde/quart_annulus.xml");
+    // std::string fn("pde/quart_annulus.xml");
     // std::string fn("pde/circle.xml");
     std::string fn("domain2d/lake.xml");
-
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -293,26 +291,43 @@ int main(int argc, char *argv[])
             ev.integralElWise( (  ilapl(ru_sol, PP) + SFunc ).sqNorm() );
 
             std::vector<real_t> eltErrs  = ev.elementwise();
+            std::vector<bool> elMarked( eltErrs.size() );
             //! [errorComputation]
             // Compute the global error indicators.
-            //! [errorComputation]
-            // Compute the global error indicators.
-            if (IntensityMAE >1.){
-            double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
-            double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
-            for(size_t i=0; i<eltErrs.size(); ++i)
-            {
-                if (eltErrs[i] > 0.9*(Maxvalue+Minvalue)) // Avoid numerical issues
-                    eltErrs[i] = 0.9*(Maxvalue+Minvalue); // Avoid negative errors
+            if (IntensityMAE >1. and r>0){
+                double Maxvalue   = *std::max_element(eltErrs.begin(), eltErrs.end());
+                // double Minvalue   = *std::min_element(eltErrs.begin(), eltErrs.end());
+                int elhigh        = eltErrs.size(); //((elhigh>=2.5*ellow) or (elhigh<=0.5*ellow)) and
+                double Coef_perc  = 1e-12;
+                while ( (elhigh > adaptRefParam*eltErrs.size()) and (Coef_perc < 1.) )
+                {            
+                    Coef_perc = 1.5*Coef_perc;
+                    elhigh     = 0;
+                    for(size_t i=0; i<eltErrs.size(); ++i)
+                    {
+                        if (eltErrs[i] >= Coef_perc*(Maxvalue)) // Avoid numerical issues
+                        {
+                            elhigh++;
+                            elMarked[i] = true;//0.5*(Maxvalue+Minvalue); // Avoid negative errors
+                        }
+                        else
+                        {
+                            elMarked[i] = false;
+                        }
+                    }
+                }
+                gsInfo << "\n coef percentage === " << Coef_perc << " . " << eltErrs.size() <<  " . " << elhigh << "\n";
             }
-            }
+            else{
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
-            std::vector<bool> elMarked( eltErrs.size() );
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+            // double numMarked  = std::count_if(elMarked.begin(), elMarked.end(), GS_BIND2ND(std::equal_to<bool>(), true) );
+            // adaptRefParam     = 1.-numMarked/eltErrs.size();
+            // gsInfo << "computes adapt Ref para with first strategy......."<< numMarked << " "<< eltErrs.size()<< " " << adaptRefParam << "\n";
+            }
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
-
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
