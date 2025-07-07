@@ -244,12 +244,14 @@ int main(int argc, char *argv[])
 
     // Plot the composition
     gsWriteParaview(*composition,"composition");
-
+//    composition->coef(4,0) = 0.1;
+//    composition->coef(4,1) = 0.1;
     gsDebugVar(composition->coefs());
     // Construct a basis
 //    gsKnotVector<> kv1({0,0,0,1./3.,2./3.,1,1,1},2);
 //    gsKnotVector<> kv2({0,0,0,0.25,0.50,0.75,1,1,1},2);
     gsKnotVector<> kv1({0,0,0,1,1,1}, 2);
+//    gsKnotVector<> kv2({0,0,0,1,1,1}, 2);
     gsKnotVector<> kv2({0,0,0,0.50,1,1,1}, 2);
     gsTensorBSplineBasis<2> tbasis(kv1, kv2);
 
@@ -273,25 +275,28 @@ int main(int argc, char *argv[])
 //    coefs.col(2).setRandom();
     // coefs.col(2).setZero();
     gsDebugVar(coefs);
+    gsDebugVar(tbasis);
 
     // Make the geometries (composed and non-composed)
     gsGeometry<>::uPtr geom = tbasis.makeGeometry(coefs);
     gsGeometry<>::uPtr cgeom= cbasis.makeGeometry(coefs);
 
     // Plot the geometries (composed and non-composed)
-    gsWriteParaview(*geom,"geom",1000,true);
-    gsWriteParaview(*cgeom,"cgeom",1000,true);
-
+    gsWriteParaview( *geom,  "geom", 1000, true);
+    gsWriteParaview(*cgeom, "cgeom", 1000, true);
 
     gsOptMesh<real_t,MonitorMode::ValueBased> opt(domain,*geom,&tbasis);
-    gsVector<real_t> controls = gsVector<real_t>::LinSpaced(domain.nControls(),0.,1.);
+//    gsVector<real_t> controls = gsVector<real_t>::LinSpaced(domain.nControls(),0.,1.);
+    gsVector<real_t> controls(domain.nControls());
+//    controls << 0.5, 0.5;
+    controls << 0.95, 0.95;
 
     gsInfo<<"Objective function for controls: "<<controls.transpose()<<"\n";
     gsInfo<<opt.evalObj(gsAsConstVector<real_t>(controls.data(), controls.size()))<<"\n";
 
     gsVector<real_t> grad(controls.size());
-    gsAsVector<real_t> asgrad(grad.data(),grad.rows());
-    opt.gradObj_into(gsAsConstVector<real_t>(controls.data(), controls.size()),asgrad);
+    gsAsVector<real_t> asgrad(grad.data(), grad.rows());
+    opt.gradObj_into(gsAsConstVector<real_t>(controls.data(), controls.size()), asgrad);
 
     gsInfo << "Gradient of the objective function for controls: "
            << controls.transpose() << "\n";
@@ -299,29 +304,29 @@ int main(int argc, char *argv[])
     gsDebugVar(controls);
     gsDebugVar(asgrad);
 
-//    // numerical gradient test
-//    const real_t epsilon = 1e-6;
-//    gsVector<real_t> grad_fd(controls.size());
-//
-//    for (index_t i = 0; i < controls.size(); ++i)
-//    {
-//      gsVector<real_t> controls_plus = controls;
-//      gsVector<real_t> controls_minus = controls;
-//
-//      controls_plus(i) += epsilon;
-//      controls_minus(i) -= epsilon;
-//
-//      real_t f = opt.evalObj(gsAsConstVector<real_t>(controls.data(), controls.size()));
-//      real_t f_plus = opt.evalObj(gsAsConstVector<real_t>(controls_plus.data(), controls_plus.size()));
-//      real_t f_minus = opt.evalObj(gsAsConstVector<real_t>(controls_minus.data(), controls_minus.size()));
-//
-//      grad_fd(i) = (f_plus - f_minus) / (2 * epsilon);
-////      grad_fd(i) = (f_plus - f) / (epsilon);
-//    }
-//
-//    gsInfo << "Analytical gradient:\n" << grad.transpose() << "\n";
-//    gsInfo << "Finite difference gradient:\n" << grad_fd.transpose() << "\n";
-//    gsInfo << "Difference:\n" << (grad - grad_fd).transpose() << "\n";
+    // numerical gradient test
+    const real_t epsilon = 1e-6;
+    gsVector<real_t> grad_fd(controls.size());
+
+    for (index_t i = 0; i < controls.size(); ++i)
+    {
+      gsVector<real_t> controls_plus = controls;
+      gsVector<real_t> controls_minus = controls;
+
+      controls_plus(i) += epsilon;
+      controls_minus(i) -= epsilon;
+
+      real_t f = opt.evalObj(gsAsConstVector<real_t>(controls.data(), controls.size()));
+      real_t f_plus = opt.evalObj(gsAsConstVector<real_t>(controls_plus.data(), controls_plus.size()));
+      real_t f_minus = opt.evalObj(gsAsConstVector<real_t>(controls_minus.data(), controls_minus.size()));
+
+      grad_fd(i) = (f_plus - f_minus) / (2 * epsilon);
+//      grad_fd(i) = (f_plus - f) / (epsilon);
+    }
+
+    gsInfo << "Analytical gradient:\n" << grad.transpose() << "\n";
+    gsInfo << "Finite difference gradient:\n" << grad_fd.transpose() << "\n";
+    gsInfo << "Difference:\n" << (grad - grad_fd).transpose() << "\n";
 
     // // Get the control derivative
     // gsVector<> pt(2);
