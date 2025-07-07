@@ -474,6 +474,68 @@ void from_json(const json &j, gsGeometry<T> & geo)
 {
     geo = *get_Geometry<T>(j);
 }
+/**
+ * @brief Convert boundary string to boundary::side enum
+ * @param str String representation of boundary
+ * @return boundary::side enum value
+ */
+inline boundary::side getBoundaryFromString(const std::string& str) {
+    static const std::unordered_map<std::string, boundary::side> boundaryMap = {
+        {"north", boundary::north},
+        {"south", boundary::south},
+        {"east", boundary::east},
+        {"west", boundary::west},
+        {"front", boundary::front},
+        {"back", boundary::back},
+        {"left", boundary::west},
+        {"right", boundary::east},
+        {"top", boundary::north},
+        {"bottom", boundary::south}
+    };
+    
+    auto it = boundaryMap.find(str);
+    if (it != boundaryMap.end()) {
+        return it->second;
+    }
+    
+    gsWarn << "Unknown boundary: " << str << ", defaulting to south\n";
+    return boundary::south;
+}
+
+/**
+ * @brief Convert boundary::side enum to string
+ * @param side boundary::side enum value
+ * @return String representation of boundary
+ */
+inline std::string getBoundaryString(boundary::side side) {
+    switch (side) {
+        case boundary::north: return "north";
+        case boundary::south: return "south";
+        case boundary::east: return "east";
+        case boundary::west: return "west";
+        case boundary::front: return "front";
+        case boundary::back: return "back";
+        default: return "unknown";
+    }
+}
+
+/**
+ * @brief JSON serialization for boundary::side
+ * @param j JSON object
+ * @param side boundary::side to be written
+ */
+inline void to_json(json& j, const boundary::side& side) {
+    j = getBoundaryString(side);
+}
+
+/**
+ * @brief JSON deserialization for boundary::side
+ * @param j JSON object
+ * @param side boundary::side to be read
+ */
+inline void from_json(const json& j, boundary::side& side) {
+    side = getBoundaryFromString(j.get<std::string>());
+}
 
 /**
  * @brief Serializes a gsMultiPatch object to a JSON representation.
@@ -895,10 +957,28 @@ void from_json(const json &j, gsBoundaryConditions<T> & bc)
         // Get the boundary sides
         GISMO_ASSERT(it->contains("sides"), "No sides specified for boundary condition");
         for (const auto &side : it->at("sides"))
-            boundaries.push_back(patchSide(
-                side[0].get<int>(), // patch index
-                side[1].get<int>() // side index
-            ));
+        {
+            index_t patchIndex = side[0].get<index_t>();
+            index_t sideIndex;
+            
+            // Handle both numeric and string boundary specifications
+            if (side[1].is_number())
+            {
+                sideIndex = side[1].get<index_t>();
+            }
+            else if (side[1].is_string())
+            {
+                // Convert string boundary name to index
+                boundary::side s = getBoundaryFromString(side[1].get<std::string>());
+                sideIndex = static_cast<index_t>(s);
+            }
+            else
+            {
+                GISMO_ERROR("Boundary side must be either a number or a string");
+            }
+            
+            boundaries.push_back(patchSide(patchIndex, sideIndex));
+        }
 
         if (boundaries.size() == 0)
         {
@@ -908,7 +988,16 @@ void from_json(const json &j, gsBoundaryConditions<T> & bc)
         }
 
         GISMO_ASSERT(it->contains("type"), "No type provided for boundary condition");
-        const std::string bctype = it->at("type").get<std::string>();
+        std::string bctype = it->at("type").get<std::string>();
+        
+        // Make BC type case-insensitive by capitalizing first letter
+        if (!bctype.empty())
+        {
+            bctype[0] = std::toupper(bctype[0]);
+            for (size_t i = 1; i < bctype.length(); ++i)
+                bctype[i] = std::tolower(bctype[i]);
+        }
+        
         // Add the boundary conditions
         for (std::vector<patchSide>::const_iterator itb = boundaries.begin(); itb != boundaries.end(); ++itb)
             bc.add(itb->patch, itb->side(), bctype, function_map[fIndex], uIndex, cIndex, ispar);
