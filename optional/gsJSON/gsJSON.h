@@ -14,6 +14,7 @@
 #pragma once
 
 #include <JSON/single_include/nlohmann/json.hpp>
+#include <gsCore/gsGeometry.h>
 
 namespace gismo
 {
@@ -51,6 +52,8 @@ void from_json(const json& j, gsVector<T>& vec)
         vec = gsVector<T>();
     else
     {
+        GISMO_ASSERT(j.contains("rows"), "JSON object does not contain 'rows' field");
+        GISMO_ASSERT(j.contains("data"), "JSON object does not contain 'data' field");
         GISMO_ASSERT(j["rows"].is_number_integer(),"rows is not an integer");
         GISMO_ASSERT(j["data"].is_array(),"data is not an array");
         vec.resize(j["rows"]);
@@ -90,6 +93,9 @@ void from_json(const json& j, gsMatrix<T>& mat)
         mat = gsMatrix<T>();
     else
     {
+        GISMO_ASSERT(j.contains("rows"), "JSON object does not contain 'rows' field");
+        GISMO_ASSERT(j.contains("cols"), "JSON object does not contain 'cols' field");
+        GISMO_ASSERT(j.contains("data"), "JSON object does not contain 'data' field");
         GISMO_ASSERT(j["rows"].is_number_integer(),"rows is not an integer");
         GISMO_ASSERT(j["cols"].is_number_integer(),"cols is not an integer");
         GISMO_ASSERT(j["data"].is_array(),"data is not an array");
@@ -135,6 +141,9 @@ void from_json(const json &j, gsSparseMatrix<T> & mat)
         mat = gsSparseMatrix<T>();
     else
     {
+        GISMO_ASSERT(j.contains("rowIndices"), "JSON object does not contain 'rowIndices' field");
+        GISMO_ASSERT(j.contains("colIndices"), "JSON object does not contain 'colIndices' field");
+        GISMO_ASSERT(j.contains("values"), "JSON object does not contain 'values' field");
         GISMO_ASSERT(j["rowIndices"].is_array(),"rowIndices is not an array");
         GISMO_ASSERT(j["colIndices"].is_array(),"colIndices is not an array");
         GISMO_ASSERT(j["values"].is_array(),"values is not an array");
@@ -177,6 +186,8 @@ void to_json(json &j, const gsOptionList & opt)
  */
 void from_json(const json &j, gsOptionList & opt)
 {
+    GISMO_ASSERT(j.is_object(), "JSON object is not an object");
+    // If the JSON object is null, create an empty gsOptionList
     if      (j.is_null())
         opt = gsOptionList();
     else
@@ -231,6 +242,7 @@ template<class T>
 void to_json(json &j, const gsKnotVector<T> & kv)
 {
     j["degree"] = kv.degree();
+
     std::vector<T> data(kv.data(), kv.data() + kv.size());
     j["knots"] = data;
 }
@@ -243,6 +255,10 @@ void to_json(json &j, const gsKnotVector<T> & kv)
 template<class T>
 void from_json(const json &j, gsKnotVector<T> & kv)
 {
+    GISMO_ASSERT(j.contains("knots"), "JSON object does not contain 'knots' field");
+    GISMO_ASSERT(j.contains("degree"), "JSON object does not contain 'degree' field");
+    GISMO_ASSERT(j["knots"].is_array(), "Field 'knots' is not an array");
+    GISMO_ASSERT(j["degree"].is_number_integer(), "Field 'degree' is not an integer");
     std::vector<T> knots = j["knots"].get<std::vector<T> >();
     kv = gsKnotVector<T>(j["degree"], knots.begin(), knots.end());
 }
@@ -256,7 +272,6 @@ template<class T>
 void to_json(json &j, const gsBSplineBasis<T> & basis)
 {
     j["type"] = "BSplineBasis";
-    j["degree"] = basis.degree();
     j["knots"] = basis.knots();
 }
 
@@ -268,6 +283,9 @@ void to_json(json &j, const gsBSplineBasis<T> & basis)
 template<class T>
 void from_json(const json &j, gsBSplineBasis<T> & basis)
 {
+    GISMO_ASSERT(j.contains("type"), "JSON object does not contain 'type' field");
+    GISMO_ASSERT(j.contains("knots"), "JSON object does not contain 'knots' field");
+    GISMO_ASSERT(j["type"].is_string(), "Field 'type' is not a string");
     GISMO_ASSERT(j["type"]=="BSplineBasis","Type of basis is not BSplineBasis");
     gsKnotVector<T> kv = j["knots"].get<gsKnotVector<T> >();
     basis = gsBSplineBasis<T>(kv);
@@ -294,12 +312,19 @@ void to_json(json &j, const gsTensorBSplineBasis<d,T> & basis)
 template<short_t d, class T>
 void from_json(const json &j, gsTensorBSplineBasis<d,T> & basis)
 {
+    GISMO_ASSERT(j.contains("type"), "JSON object does not contain 'type' field");
+    GISMO_ASSERT(j.contains("component0"), "JSON object does not contain 'component0' field");
+    GISMO_ASSERT(j["type"].is_string(), "Field 'type' is not a string");
     GISMO_ASSERT(j["type"]=="TensorBSplineBasis"+util::to_string(d),"Type of basis is not TensorBSplineBasis"+util::to_string(d));
 
     std::vector<gsKnotVector<T> > KVs(d);
     gsBSplineBasis<T> componentBasis;
     for (unsigned D=0; D!=d; D++)
     {
+        GISMO_ASSERT(j.contains("component"+util::to_string(D)), "JSON object does not contain 'component"+util::to_string(D)+"' field");
+        GISMO_ASSERT(j["component"+util::to_string(D)].is_object(), "Field 'component"+util::to_string(D)+"' is not an object");
+        GISMO_ASSERT(j["component"+util::to_string(D)+""]["type"].is_string(), "Field 'component"+util::to_string(D)+"' does not contain 'type' string");
+        GISMO_ASSERT(j["component"+util::to_string(D)+""]["type"]=="BSplineBasis","Type of component "+util::to_string(D)+" is not BSplineBasis");
         from_json(j["component"+util::to_string(D)], componentBasis);
         KVs[D] = componentBasis.knots();
     }
@@ -347,6 +372,9 @@ void to_json(json &j, const gsGeometry<T> & geo)
 template<class T>
 void from_json(const json &j, gsBSpline<T> & geo)
 {
+    GISMO_ASSERT(j.contains("basis"), "JSON object does not contain 'basis' field\nj="<<j);
+    GISMO_ASSERT(j.contains("coefs"), "JSON object does not contain 'coefs' field\nj="<<j);
+    GISMO_ASSERT(j["basis"].is_object(), "Field 'basis' is not an object.\nj="<<j);
     gsBSplineBasis<T> basis = j["basis"].get<gsBSplineBasis<T> >();
     gsMatrix<T> coefs = j["coefs"].get<gsMatrix<T> >();
     geo = gsBSpline<T>(basis, coefs);
@@ -365,6 +393,87 @@ void from_json(const json &j, gsTensorBSpline<d,T> & geo)
     geo = gsTensorBSpline<d,T>(basis, coefs);
 }
 
+template <class T>
+typename gsGeometry<T>::uPtr get_Geometry(const json &j)
+{
+    if (j.contains("basis"))
+    {
+        if (j["basis"]["type"] == "BSplineBasis")
+        {
+            gsBSpline<T> bspline;
+            from_json(j, bspline);
+            return bspline.clone();
+        }
+        else if (j["basis"]["type"] == "TensorBSplineBasis2")
+        {
+            gsTensorBSpline<2,T> tensorBspline;
+            from_json(j, tensorBspline);
+            return tensorBspline.clone();
+        }
+        else if (j["basis"]["type"] == "TensorBSplineBasis3")
+        {
+            gsTensorBSpline<3,T> tensorBspline;
+            from_json(j, tensorBspline);
+            return tensorBspline.clone();
+        }
+        else if (j["basis"]["type"] == "TensorBSplineBasis4")
+        {
+            gsTensorBSpline<4,T> tensorBspline;
+            from_json(j, tensorBspline);
+            return tensorBspline.clone();
+        }
+        else
+        {
+            GISMO_ERROR("Unsupported basis type: " + j["basis"]["type"].get<std::string>());
+        }
+    }
+    else if (j.contains("path"))
+    {
+        GISMO_ERROR("Path not implemented for geometry via JSON.");
+        // std::string path = j["path"].get<std::string>();
+        // GISMO_ASSERT(gsFileManager::fileExists(path),"File does not exist: " + path);
+        // GISMO_ASSERT(gsFileManager::getExtension(path) == "xml","File extension is not .xml: " + path);
+        // gsReadFile<T>(path, geo);
+    }
+    else if (j.contains("create"))
+    {
+        GISMO_ASSERT(j["create"].contains("type"), "Create JSON must contain 'type' field");
+        if (j["create"]["type"] == "BSplineCube")
+        {
+            T L = (j["create"].contains("length") ? j["create"]["length"].get<T>() : 1.0);
+            T x = (j["create"].contains("x") ? j["create"]["x"].get<T>() : 0.0);
+            T y = (j["create"].contains("y") ? j["create"]["y"].get<T>() : 0.0);
+            return gsNurbsCreator<T>::BSplineSquare(L, x, y);
+        }
+        if (j["create"]["type"] == "BSplineCube")
+        {
+            T L = (j["create"].contains("length") ? j["create"]["length"].get<T>() : 1.0);
+            T x = (j["create"].contains("x") ? j["create"]["x"].get<T>() : 0.0);
+            T y = (j["create"].contains("y") ? j["create"]["y"].get<T>() : 0.0);
+            T z = (j["create"].contains("z") ? j["create"]["z"].get<T>() : 0.0);
+            return gsNurbsCreator<T>::BSplineCube(L, x, y, z);
+        }
+        if (j["create"]["type"] == "BSplineRectangle")
+        {
+            T xlow = (j["create"].contains("xlow") ? j["create"]["xlow"].get<T>() : 0.0);
+            T ylow = (j["create"].contains("ylow") ? j["create"]["ylow"].get<T>() : 0.0);
+            T xhigh= (j["create"].contains("xhigh") ? j["create"]["xhigh"].get<T>() : 1.0);
+            T yhigh= (j["create"].contains("yhigh") ? j["create"]["yhigh"].get<T>() : 1.0);
+            return gsNurbsCreator<T>::BSplineRectangle(xlow,ylow,xhigh,yhigh);
+        }
+    }
+    else
+    {
+        GISMO_ERROR("JSON object must contain 'basis' or 'path' field");
+    }
+    return nullptr; // This should never be reached, but added to avoid compiler warnings
+}
+
+template <class T>
+void from_json(const json &j, gsGeometry<T> & geo)
+{
+    geo = *get_Geometry<T>(j);
+}
 
 /**
  * @brief Serializes a gsMultiPatch object to a JSON representation.
@@ -412,11 +521,11 @@ void to_json(json &j, const gsMultiPatch<T> & mp)
  * @brief Reads a gsMultiPatch from JSON
  * @param j JSON object
  * @param mp gsMultiPatch to be read
- * 
+ *
  * Supports three input formats:
  * 1. "patches" array - basis types:
  *    - "BSplineBasis" == gsBSpline<T>
- *    - "TensorBSplineBasis2" == gsTensorBSpline<2,T>  
+ *    - "TensorBSplineBasis2" == gsTensorBSpline<2,T>
  *    - "TensorBSplineBasis3" == gsTensorBSpline<3,T>
  *    - "TensorBSplineBasis4" == gsTensorBSpline<4,T>
  * 2. "path" - XML file path, can read a gsMultiPatch from an XML file
@@ -429,52 +538,8 @@ void from_json(const json &j, gsMultiPatch<T> & mp)
     mp.clear();
     if (j.contains("patches"))
     {
-        GISMO_ASSERT(j["patches"].is_array(), "Patches is not an array");
         for (const auto & patch : j["patches"])
-        {
-            typename gsGeometry<T>::uPtr geo;
-            
-            // Determine geometry type from JSON and create appropriate concrete object
-            if (patch.contains("basis"))
-            {
-                std::string basisType = patch["basis"]["type"];
-                if (basisType == "BSplineBasis")
-                {
-                    auto bspline = std::make_unique<gsBSpline<T>>();
-                    from_json(patch, *bspline);
-                    geo = std::move(bspline);
-                }
-                else if (basisType == "TensorBSplineBasis2")
-                {
-                    auto tensorBspline = std::make_unique<gsTensorBSpline<2,T>>();
-                    from_json(patch, *tensorBspline);
-                    geo = std::move(tensorBspline);
-                }
-                else if (basisType == "TensorBSplineBasis3")
-                {
-                    auto tensorBspline = std::make_unique<gsTensorBSpline<3,T>>();
-                    from_json(patch, *tensorBspline);
-                    geo = std::move(tensorBspline);
-                }
-                else if (basisType == "TensorBSplineBasis4")
-                {
-                    auto tensorBspline = std::make_unique<gsTensorBSpline<4,T>>();
-                    from_json(patch, *tensorBspline);
-                    geo = std::move(tensorBspline);
-                }
-                else
-                {
-                    GISMO_ERROR("Unsupported basis type: " + basisType);
-                }
-            }
-            else
-            {
-                GISMO_ERROR("Patch JSON must contain 'basis' field");
-            }
-            
-            if (geo)
-                mp.addPatch(std::move(geo));
-        }
+            mp.addPatch(get_Geometry<T>(patch));
     }
     else if (j.contains("path"))
     {
@@ -486,30 +551,12 @@ void from_json(const json &j, gsMultiPatch<T> & mp)
     else if (j.contains("create"))
     {
         GISMO_ASSERT(j["create"].contains("type"),"A creator string must contain a type");
-        if (j["create"]["type"] == "BSplineSquare")
+        if (j["create"]["type"] == "BSplineStar")
         {
-            T L = (j["create"].contains("length") ? j["create"]["length"].get<T>() : 1.0);
-            T x = (j["create"].contains("x") ? j["create"]["x"].get<T>() : 0.0);
-            T y = (j["create"].contains("y") ? j["create"]["y"].get<T>() : 0.0);
-            mp.addPatch(gsNurbsCreator<T>::BSplineSquare(L, x, y));
-            return;
-        }
-        if (j["create"]["type"] == "BSplineCube")
-        {
-            T L = (j["create"].contains("length") ? j["create"]["length"].get<T>() : 1.0);
-            T x = (j["create"].contains("x") ? j["create"]["x"].get<T>() : 0.0);
-            T y = (j["create"].contains("y") ? j["create"]["y"].get<T>() : 0.0);
-            T z = (j["create"].contains("z") ? j["create"]["z"].get<T>() : 0.0);
-            mp.addPatch(gsNurbsCreator<T>::BSplineCube(L, x, y, z));
-            return;
-        }
-        if (j["create"]["type"] == "BSplineRectangle")
-        {
-            T xlow = (j["create"].contains("xlow") ? j["create"]["xlow"].get<T>() : 0.0);
-            T ylow = (j["create"].contains("ylow") ? j["create"]["ylow"].get<T>() : 0.0);
-            T xhigh= (j["create"].contains("xhigh") ? j["create"]["xhigh"].get<T>() : 1.0);
-            T yhigh= (j["create"].contains("yhigh") ? j["create"]["yhigh"].get<T>() : 1.0);
-            mp.addPatch(gsNurbsCreator<T>::BSplineRectangle(xlow,ylow,xhigh,yhigh));
+            T N  = (j["create"].contains("N") ? j["create"]["N"].get<T>() : 1.0);
+            T R0 = (j["create"].contains("R0") ? j["create"]["R0"].get<T>() : 0.0);
+            T R1 = (j["create"].contains("R1") ? j["create"]["R1"].get<T>() : 0.0);
+            mp = gsNurbsCreator<>::BSplineStar(N, R0, R1);
             return;
         }
     }
@@ -562,7 +609,10 @@ void from_json(const json &j, gsConstantFunction<T> & fun)
             value[i] = j["value"][i].get<T>();
     }
     else
-        value.resize(1, j["value"].get<T>());
+    {
+        value.resize(1);
+        value[0] = j["value"].get<T>();
+    }
 
     fun = gsConstantFunction<T>(value, dim);
 }
@@ -728,15 +778,12 @@ void to_json(json &j, const gsBoundaryConditions<T> & bc)
     for (bctype_map_it it = fi.begin(); it != fi.end(); ++it)
     {
         std::string label = it->first;
-        //gsDebug << "Label='" << label << "'\n";
         bctype_map map = it->second;
 
         for (bctype_iv_it bcV = map.begin(); bcV != map.end(); ++bcV)
         {
             int index = bcV->first;
             bctype_vec vec = bcV->second;
-            //gsDebug << "index='" << index << "'\n";
-            //gsDebug << "vec='" << vec.size() << "'\n";
 
             j["sides"][count]["type"] = label;
             j["sides"][count]["function"] = index;
@@ -745,8 +792,6 @@ void to_json(json &j, const gsBoundaryConditions<T> & bc)
             for (bctype_vec_it bc = vec.begin(); bc != vec.end(); ++bc)
             {
                 const boundary_condition<T> b = (**bc);
-                //gsDebug << "iterate over boundary condition with '"
-                //        << b.m_label << "'\n";
                 if (first)
                 {
                     j["sides"][count]["unknown"] = b.m_unknown;
