@@ -507,13 +507,6 @@ gsSparseSolver<>::uPtr solver;
     real_t assemblyTimestep, solverTimestep, projTimestep;
     real_t assemblyTimeRefIt, solverTimeRefIt, projTimeRefIt;
 
-    if (MESHopt.askSwitch("Adaptive",true)==0)
-    {
-        // Tensor product solution (to be able to have finer meshes than the one from the xml file)
-        gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
-        gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());
-    }
-
     for (index_t step = 0; step!=maxSteps; step++)
     {
         assemblyTimestep = 0;
@@ -528,9 +521,9 @@ gsSparseSolver<>::uPtr solver;
             solverTimeRefIt   = 0;
             projTimeRefIt = 0;
 
+            clock.restart();
             if (MESHopt.askSwitch("Adaptive",true))
             {
-                clock.restart();
                 if (projection_Crs == 0)
                 {
                     error_crs_c = gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
@@ -548,14 +541,14 @@ gsSparseSolver<>::uPtr solver;
                     gsQuasiInterpolate<real_t>::Schoenberg(dbasis.basis(0),mp_cold.patch(0),CnewF);
                     gsQuasiInterpolate<real_t>::Schoenberg(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
                 }
-                projTimeRefIt += clock.stop();
             }
             else
             {
-                // Tensor product solution!
-                CnewF = mp_cold.patch(0).coefs();
-                dCnewF = mp_dcold.patch(0).coefs();
+                // Tensor product solution (to be able to have finer meshes than the one from the xml file)
+                gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
+                gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());
             }
+            projTimeRefIt += clock.stop();
                       
             // Resize the data structure inside the mesher
             if (MESHopt.askSwitch("Adaptive",true))
