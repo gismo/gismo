@@ -269,7 +269,7 @@ v25.07.0 (https://github.com/gismo/gismo/releases/tag/v25.07.0)
     - JSON file support -- https://github.com/gismo/gismo/pull/816
     - Introducing the expressions module -- https://github.com/gismo/gismo/pull/807
     - Add `derivSingle_into` for rational splines; enrich `gsNurbsCreator` with multi-patch annulus and cylinder -- https://github.com/gismo/gismo/pull/823
-
+    - **ORGANIZATIONAL CHANGE**: The next releases will come from the `main` branch. The `stable` branch will not change name, but serves as a pre-release development branch. All PRs go into `stable` and for every release we make a PR into `main`.
 * IMPROVED:
     - Documentation updates -- https://github.com/gismo/gismo/pull/772
     - Add __str__ methods to pybind11 classes -- https://github.com/gismo/gismo/pull/774
