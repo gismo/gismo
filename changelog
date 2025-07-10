@@ -259,3 +259,15 @@ In meson, for example, in order to compile and link to an installed G+Smo packag
   - gsOptProblem::numConstraints() returned the number of lower bounds (which are box constraints). Now it returns the member m_numConstraints which is a user-defined flag. This keeps it functional for non-linear constraints, but the user has to set it explicitly. -- https://github.com/gismo/gismo/pull/721
   - Replace `gsL2Projection::projectFunction` and `gsL2Projection::projectGeometry` with `gsL2Projection::project` -- https://github.com/gismo/gismo/pull/723
   - Make `gsBasis<T>::evalAllDersSingle_into` with argument `gsMatrix<T> &` deprecated, and add `gsBasis<T>::evalAllDersSingle_into` with argument `std::vector<gsMatrix<T>>` in line with `evalAllDers_into`. Only `gsBSplineBasis::evalAllDersSingle_into` overloads, but throws a warning for a bug anyways. -- https://github.com/gismo/gismo/pull/712
+
+v25.0870 (https://github.com/gismo/gismo/releases/tag/v25.07.0)
+------
+* NEW
+  -  
+  - 
+* IMPROVED
+  -
+* FIXED
+  -
+* API
+  -
