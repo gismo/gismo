@@ -35,9 +35,8 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     index_t circleN       = 0;
     // Specify the file path
-    //std::string fn("pde/example3D.xml");
-    //std::string fn("surfaces/cylinder.xml");
-    std::string fn("surfaces/quarter_sphere.xml"); 
+    std::string fn("pde/example3D.xml");
+    //std::string fn("surfaces/quarter_sphere.xml"); 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -246,6 +245,8 @@ int main(int argc, char *argv[])
     // Set the source term for Poisson equation
     auto SFunc      = A.getCoeff(rhs, PP);
 
+    auto DFunc      = A.getCoeff(ff, PP);
+
     // Recover manufactured solution for Poisson equation
     auto u_ex       = ev.getVariable(s, PP);
 
@@ -317,20 +318,28 @@ int main(int argc, char *argv[])
             std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
             // Compute the global error indicators.
-            if (IntensityMAE >1.){
-            double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
-            double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
-            for(size_t i=0; i<eltErrs.size(); ++i)
-            {
-                if (eltErrs[i] > 0.8*(Maxvalue+Minvalue)) // Avoid numerical issues
-                    eltErrs[i] = 0.8*(Maxvalue+Minvalue); // Avoid negative errors
-            }
-            }
             //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
             std::vector<bool> elMarked( eltErrs.size() );
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+            if (IntensityMAE >1.){
+                double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+                for(size_t i=0; i<eltErrs.size(); ++i)
+                {
+                    if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
+                    {
+                        Minvalue = eltErrs[i];
+                    }
+                }
+                for(size_t i=0; i<eltErrs.size(); ++i)
+                {
+                    if (Minvalue/pow(DoFPDE[r],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
+                    {
+                        elMarked[i] = true;
+                    }
+                }
+            }
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
             // Refine the marked elements with a 1-ring of cells around marked elements
@@ -407,7 +416,7 @@ int main(int argc, char *argv[])
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
         collection.addField((  ilapl(ru_sol, PP)+ SFunc ).sqNorm(),"indecator");
-        // collection.addField(jac(PP).det(), "Jacobian function");
+        collection.addField(DFunc, "Density function");
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();
         collection.save();

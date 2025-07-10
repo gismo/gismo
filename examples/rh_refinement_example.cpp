@@ -294,38 +294,55 @@ int main(int argc, char *argv[])
             std::vector<bool> elMarked( eltErrs.size() );
             //! [errorComputation]
             // Compute the global error indicators.
-            if (IntensityMAE >1. and r>0){
-                double Maxvalue   = *std::max_element(eltErrs.begin(), eltErrs.end());
-                // double Minvalue   = *std::min_element(eltErrs.begin(), eltErrs.end());
-                int elhigh        = eltErrs.size(); //((elhigh>=2.5*ellow) or (elhigh<=0.5*ellow)) and
-                double Coef_perc  = 1e-12;
-                while ( (elhigh > adaptRefParam*eltErrs.size()) and (Coef_perc < 1.) )
-                {            
-                    Coef_perc = 1.5*Coef_perc;
-                    elhigh     = 0;
-                    for(size_t i=0; i<eltErrs.size(); ++i)
-                    {
-                        if (eltErrs[i] >= Coef_perc*(Maxvalue)) // Avoid numerical issues
-                        {
-                            elhigh++;
-                            elMarked[i] = true;//0.5*(Maxvalue+Minvalue); // Avoid negative errors
-                        }
-                        else
-                        {
-                            elMarked[i] = false;
-                        }
-                    }
-                }
-                gsInfo << "\n coef percentage === " << Coef_perc << " . " << eltErrs.size() <<  " . " << elhigh << "\n";
-            }
-            else{
+            // if (IntensityMAE >1.){
+            //     double Maxvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());
+            //     //double Minvalue   = *std::min_element(eltErrs.begin(), eltErrs.end());
+            //     int elhigh        = eltErrs.size(); //((elhigh>=2.5*ellow) or (elhigh<=0.5*ellow)) and
+            //     double Coef_perc  = 1e-15;
+            //     double Coef_ref   = 0.;
+            //     while ( (elhigh >= 0.25*eltErrs.size()) and (Coef_perc < 1.) )
+            //     {            
+            //         Coef_perc  = 2.*Coef_perc;
+            //         Coef_ref   = Maxvalue;
+            //         for(size_t i=0; i<eltErrs.size(); ++i)
+            //         {
+            //             if (eltErrs[i] >= Coef_perc*(Maxvalue)) // Avoid numerical issues
+            //             {
+            //                 if (eltErrs[i]<Coef_ref)
+            //                     Coef_ref = eltErrs[i];
+            //             }
+
+            //         }
+            //     }
+            //     for(size_t i=0; i<eltErrs.size(); ++i)
+            //     {
+            //         if (eltErrs[i] >= Coef_ref) // Avoid numerical issues
+            //         {
+            //             eltErrs[i] = Coef_ref;
+            //         }
+            //     }
+            // }
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-            // double numMarked  = std::count_if(elMarked.begin(), elMarked.end(), GS_BIND2ND(std::equal_to<bool>(), true) );
-            // adaptRefParam     = 1.-numMarked/eltErrs.size();
-            // gsInfo << "computes adapt Ref para with first strategy......."<< numMarked << " "<< eltErrs.size()<< " " << adaptRefParam << "\n";
+            gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
+            if (IntensityMAE >1.){
+                double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+                for(size_t i=0; i<eltErrs.size(); ++i)
+                {
+                    if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
+                    {
+                        Minvalue = eltErrs[i];
+                    }
+                }
+                for(size_t i=0; i<eltErrs.size(); ++i)
+                {
+                    if (Minvalue/pow(DoFPDE[r],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
+                    {
+                        elMarked[i] = true;
+                    }
+                }
             }
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             // Refine the marked elements with a 1-ring of cells around marked elements

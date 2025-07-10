@@ -335,21 +335,28 @@ int main(int argc, char *argv[])
             //ev.integralBdrBc(bcInfo.get("neumann"),(istress* nv(PP)).sqNorm());
 
             std::vector<real_t> eltErrs  = ev.elementwise();
-            //! [errorComputation]
-            if (IntensityMAE >1.){
-            double Maxvalue   = *std::max(eltErrs.begin(), eltErrs.end());
-            double Minvalue   = *std::min(eltErrs.begin(), eltErrs.end());
-            for(size_t i=0; i<eltErrs.size(); ++i)
-            {
-                if (eltErrs[i] > 0.9*(Maxvalue+Minvalue)) // Avoid numerical issues
-                    eltErrs[i] = 0.9*(Maxvalue+Minvalue); // Avoid negative errors
-            }
-            }
             //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
             std::vector<bool> elMarked( eltErrs.size() );
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+            if (IntensityMAE >1.){
+                double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+                for(size_t i=0; i<eltErrs.size(); ++i)
+                {
+                    if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
+                    {
+                        Minvalue = eltErrs[i];
+                    }
+                }
+                for(size_t i=0; i<eltErrs.size(); ++i)
+                {
+                    if (Minvalue/pow(DoFPDE[r],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
+                    {
+                        elMarked[i] = true;
+                    }
+                }
+            }
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
             // Refine the marked elements with a 1-ring of cells around marked elements

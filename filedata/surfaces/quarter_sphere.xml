@@ -88,5 +88,52 @@
     0 0 10
   </coefs>
  </Geometry>
-</xml> -->
+</xml> 
+
+<xml>
+  <Function type="FunctionExpr" id="2003" dim="3"> exp( -10.*(-x -y +z-4.*sin(2.*pi*y))**2)</Function>
+  <Function type="FunctionExpr" id="2000" dim="3"> 1./(1.+exp( -10.*(-x -y +z-4.*sin(2.*pi*y)) ))</Function>
+  <Function type="FunctionExpr" id="2001" dim="3"> 1.0*(6400.0*(pi*cos(2*pi*y) + 0.125)**2)*exp(10.0*x + 10.0*y - 10.0*z + 40.0*sin(2*pi*y))/(exp(10.0*x + 10.0*y - 10.0*z + 40.0*sin(2*pi*y)) + 1.0)**2 - 2.0*6400.0*(pi*cos(2*pi*y) + 0.125)**2*exp(20.0*x + 20.0*y - 20.0*z + 80.0*sin(2*pi*y))/(exp(10.0*x + 10.0*y - 10.0*z + 40.0*sin(2*pi*y)) + 1.0)**3 - 160.0*pi**2*exp(10.0*x + 10.0*y - 10.0*z + 40.0*sin(2*pi*y))*sin(2*pi*y)/(exp(10.0*x + 10.0*y - 10.0*z + 40.0*sin(2*pi*y)) + 1.0)**2 + 200.0*exp(10.0*x + 10.0*y - 10.0*z + 40.0*sin(2*pi*y))/(exp(10.0*x + 10.0*y - 10.0*z + 40.0*sin(2*pi*y)) + 1.0)**2 - 400.0*exp(20.0*x + 20.0*y - 20.0*z + 80.0*sin(2*pi*y))/(exp(10.0*x + 10.0*y - 10.0*z + 40.0*sin(2*pi*y)) + 1.0)**3 </Function>
+
+	<Geometry type="TensorBSpline2" id="0">
+		<Basis type="TensorBSplineBasis2">
+			<Basis type="BSplineBasis" index="0">
+				<KnotVector degree="3">
+					0 0 0 0  1 1 1 1
+				</KnotVector>
+			</Basis>
+			<Basis type="BSplineBasis" index="1">
+				<KnotVector degree="3">
+					0 0 0 0  1 1 1 1
+				</KnotVector>
+			</Basis>
+		</Basis>
+		<coefs geoDim="3">
+			-3.0 0.0 1.8
+			-3.0 0.3 1.8
+			-2.7 0.3 1.8
+			-2.7 0.0 1.8
+			-3.0 0.0 1.35
+			-3.0 0.3 1.35
+			-2.7 0.3 1.575
+			-2.7 0.0 1.575
+			-2.65 0.0 0.9375
+			-2.65 0.3 0.9375
+			-2.5 0.3 1.125
+			-2.5 0.0 1.125
+			-1.9 0.0 0.6
+			-1.9 0.3 0.6
+			-2.0 0.3 0.9
+			-2.0 0.0 0.9
+		</coefs>
+	</Geometry>
+ <MultiPatch parDim="2" id="1">
+  <patches type="id_range">0 0</patches>
+  <boundary>0 1
+   0 2
+   0 3
+   0 4
+  </boundary>
+ </MultiPatch>
+</xml>-->
 
