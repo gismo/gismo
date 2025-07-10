@@ -295,6 +295,9 @@ public:
     /// Return the test space of a pre-existing trial space \a u
     space testSpace(space u) const { return testSpace(u.id()); }
 
+    size_t nTrialSpaces() const { return m_vcol.size(); }
+    size_t nTestSpaces() const { return m_vrow.size(); }
+
     /// Registers \a func as a variable and returns a handle to it
     ///
     variable getCoeff(const gsFunctionSet<T> & func)
