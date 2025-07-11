@@ -443,7 +443,7 @@ typename gsGeometry<T>::uPtr get_Geometry(const json &j)
     else if (j.contains("create"))
     {
         GISMO_ASSERT(j["create"].contains("type"), "Create JSON must contain 'type' field");
-        if (j["create"]["type"] == "BSplineCube")
+        if (j["create"]["type"] == "BSplineSquare")
         {
             T L = (j["create"].contains("length") ? j["create"]["length"].get<T>() : 1.0);
             T x = (j["create"].contains("x") ? j["create"]["x"].get<T>() : 0.0);
