@@ -393,6 +393,11 @@ void from_json(const json &j, gsTensorBSpline<d,T> & geo)
     geo = gsTensorBSpline<d,T>(basis, coefs);
 }
 
+/**
+ * @brief Reads a gsGeometry from JSON
+ * @param j JSON object
+ * @return Unique pointer to gsGeometry
+ */
 template <class T>
 typename gsGeometry<T>::uPtr get_Geometry(const json &j)
 {
@@ -469,6 +474,11 @@ typename gsGeometry<T>::uPtr get_Geometry(const json &j)
     return nullptr; // This should never be reached, but added to avoid compiler warnings
 }
 
+/**
+ * @brief Reads a gsGeometry from JSON
+ * @param j JSON object
+ * @param geo gsGeometry to be read
+ */
 template <class T>
 void from_json(const json &j, gsGeometry<T> & geo)
 {
@@ -492,12 +502,12 @@ inline boundary::side getBoundaryFromString(const std::string& str) {
         {"top", boundary::north},
         {"bottom", boundary::south}
     };
-    
+
     auto it = boundaryMap.find(str);
     if (it != boundaryMap.end()) {
         return it->second;
     }
-    
+
     gsWarn << "Unknown boundary: " << str << ", defaulting to south\n";
     return boundary::south;
 }
@@ -538,7 +548,7 @@ inline void from_json(const json& j, boundary::side& side) {
 }
 
 /**
- * @brief Serializes a gsMultiPatch object to a JSON representation.
+ * @brief Puts a gsMultiPatch into JSON
  *
  * This function converts a gsMultiPatch object into a JSON structure with the following components:
  * - "patches": An array containing all patches of the multipatch
@@ -960,7 +970,7 @@ void from_json(const json &j, gsBoundaryConditions<T> & bc)
         {
             index_t patchIndex = side[0].get<index_t>();
             index_t sideIndex;
-            
+
             // Handle both numeric and string boundary specifications
             if (side[1].is_number())
             {
@@ -976,7 +986,7 @@ void from_json(const json &j, gsBoundaryConditions<T> & bc)
             {
                 GISMO_ERROR("Boundary side must be either a number or a string");
             }
-            
+
             boundaries.push_back(patchSide(patchIndex, sideIndex));
         }
 
@@ -989,7 +999,7 @@ void from_json(const json &j, gsBoundaryConditions<T> & bc)
 
         GISMO_ASSERT(it->contains("type"), "No type provided for boundary condition");
         std::string bctype = it->at("type").get<std::string>();
-        
+
         // Make BC type case-insensitive by capitalizing first letter
         if (!bctype.empty())
         {
@@ -997,7 +1007,7 @@ void from_json(const json &j, gsBoundaryConditions<T> & bc)
             for (size_t i = 1; i < bctype.length(); ++i)
                 bctype[i] = std::tolower(bctype[i]);
         }
-        
+
         // Add the boundary conditions
         for (std::vector<patchSide>::const_iterator itb = boundaries.begin(); itb != boundaries.end(); ++itb)
             bc.add(itb->patch, itb->side(), bctype, function_map[fIndex], uIndex, cIndex, ispar);
