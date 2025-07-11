@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    // std::string fn("pde/circle.xml");
-    std::string fn("domain2d/lake.xml");
+    std::string fn("pde/circle.xml");
+    // std::string fn("domain2d/lake.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
     // auto density = MAE.buildDensity(elwise, 0.05, circleN);
-    auto density = MAE.buildStrategyDensity(elwise, 0.75);
+    auto density = MAE.buildStrategyDensity(elwise, 0.9);
     auto Psitp   = MAE.buildMultiPatch(density);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -293,40 +293,10 @@ int main(int argc, char *argv[])
             std::vector<real_t> eltErrs  = ev.elementwise();
             std::vector<bool> elMarked( eltErrs.size() );
             //! [errorComputation]
-            // Compute the global error indicators.
-            // if (IntensityMAE >1.){
-            //     double Maxvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());
-            //     //double Minvalue   = *std::min_element(eltErrs.begin(), eltErrs.end());
-            //     int elhigh        = eltErrs.size(); //((elhigh>=2.5*ellow) or (elhigh<=0.5*ellow)) and
-            //     double Coef_perc  = 1e-15;
-            //     double Coef_ref   = 0.;
-            //     while ( (elhigh >= 0.25*eltErrs.size()) and (Coef_perc < 1.) )
-            //     {            
-            //         Coef_perc  = 2.*Coef_perc;
-            //         Coef_ref   = Maxvalue;
-            //         for(size_t i=0; i<eltErrs.size(); ++i)
-            //         {
-            //             if (eltErrs[i] >= Coef_perc*(Maxvalue)) // Avoid numerical issues
-            //             {
-            //                 if (eltErrs[i]<Coef_ref)
-            //                     Coef_ref = eltErrs[i];
-            //             }
-
-            //         }
-            //     }
-            //     for(size_t i=0; i<eltErrs.size(); ++i)
-            //     {
-            //         if (eltErrs[i] >= Coef_ref) // Avoid numerical issues
-            //         {
-            //             eltErrs[i] = Coef_ref;
-            //         }
-            //     }
-            // }
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-            gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             if (IntensityMAE >1.){
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)
