@@ -540,6 +540,18 @@ valence(Vertex v) const
     return count;
 }
 
+unsigned int
+gsSurfMesh::
+hcount(Vertex v, const Halfedge_property<bool>  & prop) const
+{
+    unsigned int count(0);
+    for (auto h : halfedges(v))
+    {
+        if ( prop[h] || touches_boundary(h) || is_boundary(h) )
+            ++count;
+    }
+    return count;
+}
 
 unsigned int
 gsSurfMesh::
@@ -1820,7 +1832,7 @@ void gsSurfMesh::cc_subdivide()
         v = gsSurfMesh::Vertex(i); //edge points
 
         if (do_sharp && has_flag(v,sharp))
-            continue;
+            continue; //remain midpoints
         else if (is_boundary(v))
         {
             //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
@@ -1848,49 +1860,33 @@ void gsSurfMesh::cc_subdivide()
         auto n = valence(v);
         if (0==n) continue;
 
+        // Rigid corner ?
+        if (2==n) continue;
+
         //original vertex positions are computed using new edge/face points only
         auto & pt = points[v];
 
         if (do_sharp && has_flag(v,sharp))
         {
-            //gsInfo <<" Sharp("<<v.idx() <<") valence "<< valence(v) <<".\n";
-
-            //pt *= 2;
-            auto h1 = halfedge(v);
-            while(!sharp[h1])
-                h1 = cw_rotated_halfedge(h1);
-            Halfedge h2 = h1;
-            h1 = ccw_rotated_halfedge(halfedge(v));
-            while(!sharp[h1])
-                h1 = ccw_rotated_halfedge(h1);
-
-            if (h1==h2)// special case: vanishing sharp edge
+            unsigned int sd = hcount(v,sharp);
+            if (2==sd)
             {
-                /*
-                gsInfo <<" Vanishing, valence "<< valence(from_vertex(h1)) <<".\n";
-                gsInfo <<"          s =  "<< h1 <<", "<<h2<<"\n";
+                auto h1 = halfedge(v);
+                while(!sharp[h1] || touches_boundary(h1))
+                    h1 = cw_rotated_halfedge(h1);
+                Halfedge h2 = h1;
+                h1 = ccw_rotated_halfedge(halfedge(v));
+                while(!sharp[h1] || is_boundary(h1))
+                    h1 = ccw_rotated_halfedge(h1);
 
-                auto vit = halfedges(v);
-                auto vcp = vit;
-                pt *= n*(n-3);
-                if (vit)
-                    do
-                    {
-                        pt += 4*points[ to_vertex(*vit) ]
-                            - points[ to_vertex(next_halfedge(*vit)) ];
-                    } while (++vit != vcp);
-                pt /= n*n;
-                */
-            }
-            else //assume sharp degree==2
-            {
-                //gsInfo <<"s =  "<< h1 <<", "<<h2<<"\n";
-                pt *= 2;
+                pt *= 2; //2~6
                 pt += points[to_vertex(h2)]; // first flagged neighbor
                 pt += points[to_vertex(h1)]; // second flagged neighbor
-                pt /= 4;
-                continue;
+                pt /= 4; // /4~8
             }
+
+            if (sd!=1) // dart: use smooth rule, else  no relocation
+                continue;
         }
 
         if (is_boundary(v))

@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsDomain/gsDomainIterator.h>
 

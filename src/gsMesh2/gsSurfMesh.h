@@ -1789,10 +1789,11 @@ public: //--------------------------------------------- higher-level operations
      */
     void flip(Edge e);
 
-
     /** returns the valence (number of incident edges or neighboring vertices)
      of vertex \c v. */
     unsigned int valence(Vertex v) const;
+
+    unsigned int hcount(Vertex v, const Halfedge_property<bool>  & prop) const;
 
     /// returns the valence of face \c f (its number of vertices)
     unsigned int valence(Face f) const;

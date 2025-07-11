@@ -167,7 +167,7 @@ public:
         else
         {
             GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
-                          "Invalid basis component "<< dir <<" requested for degree elevation" );
+                          "Invalid basis component "<< dir <<" requested for uniform refinement." );
 
             gsVector<index_t,d> sz;
             m_src->size_cwise(sz);
