@@ -565,7 +565,7 @@ void to_json(json &j, const gsMultiPatch<T> & mp)
 {
     j["patches"] = json::array();
     for (size_t p = 0; p!= mp.nPatches(); ++p)
-        j["patches"] = mp.patch(p);
+        j["patches"].push_back(mp.patch(p));
 
     j["boundaries"] = json::array();
     for (typename gsMultiPatch<T>::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
