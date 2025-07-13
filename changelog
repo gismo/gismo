@@ -262,7 +262,6 @@ In meson, for example, in order to compile and link to an installed G+Smo packag
 
 v25.07.0 (https://github.com/gismo/gismo/releases/tag/v25.07.0)
 ------
-
 * NEW:
     - Introducing: Composite maps -- https://github.com/gismo/gismo/pull/746
     - Add Zenodo DOI -- https://github.com/gismo/gismo/pull/817
