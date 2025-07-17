@@ -109,6 +109,7 @@ void solve( gsMultiPatch<T> & mp,
             bool & random,
             index_t & projection_Crs,
             index_t & pattern,
+            index_t & timemethod,
             std::string out)
 {
 
@@ -315,7 +316,7 @@ gsSparseSolver<>::uPtr solver;
 #endif
 
     gsMatrix<> Q;
-    gsSparseMatrix<> K;
+    gsSparseMatrix<> K, K_const;
 
     // Legend:
     // C_old   = C_n
@@ -502,10 +503,53 @@ gsSparseSolver<>::uPtr solver;
             << std::setw(12) << "ST"              << " , "
             << "PT\n";
 
+    std::ofstream csvFile2;
+    csvFile2.open(out+"/elements.csv");
+    csvFile2 << std::left
+            << "TimeStep,"          // sin std::setw: un CSV no necesita espacios
+            << "RefIt,"             
+            << "NumDOFs,"           
+            << "nSolvesStep";
+
+    std::vector<size_t> nElements(numRefine+1,0); // size equal to the number of lebels    
+
+    for (index_t i = 0; i < nElements.size(); ++i) {
+        csvFile2 << ",Elements (lvl " << i << ")";
+    }
+    csvFile2 << '\n';   
+
     gsVector<> pt(2,1); pt<<0.5, 0.5;
 
     real_t assemblyTimestep, solverTimestep, projTimestep;
     real_t assemblyTimeRefIt, solverTimeRefIt, projTimeRefIt;
+
+    std::string method;
+
+    // Set parameters for time integration method
+    if (timemethod == 0)
+    {
+        tmp_alpha_m = tmp_alpha_f = tmp_gamma = 1;
+        tmp_alpha_m_func.setValue(tmp_alpha_m,dim);
+        tmp_alpha_f_func.setValue(tmp_alpha_f,dim);
+        method = "Backward Euler ";
+    }
+    else if (timemethod == 1) // Generalized-alpha method
+    {
+        tmp_alpha_m = alpha_m;
+        tmp_alpha_f = alpha_f;
+        tmp_gamma   = gamma;
+        tmp_alpha_m_func.setValue(tmp_alpha_m,dim);
+        tmp_alpha_f_func.setValue(tmp_alpha_f,dim);
+        method = "Generalized Alpha ";
+    }
+
+    // We do this once to be able to get the coefficients of the initial condition from the xml file
+    if (MESHopt.askSwitch("Adaptive",true)==0)
+    {
+        // Tensor product solution (to be able to have finer meshes than the one from the xml file)
+        gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
+        gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());
+    }
 
     for (index_t step = 0; step!=maxSteps; step++)
     {
@@ -521,11 +565,38 @@ gsSparseSolver<>::uPtr solver;
             solverTimeRefIt   = 0;
             projTimeRefIt = 0;
 
+            // ===== Compute % elements in each level of the hierarchy =====
+            GISMO_ASSERT(dbasis.nBases()==1, "Implemented for only one basis");
+            // Assigns errors to the elements, based on their level: e = 10^{l-1}
+            typename gsBasis<>::domainIter domIt = dbasis.basis(0).domain()->beginAll();
+            typename gsBasis<>::domainIter domItEnd = dbasis.basis(0).domain()->endAll();
+            gsHDomainIterator<real_t,dim> * domHIt = dynamic_cast<gsHDomainIterator<real_t,dim> *>(domIt.get());
+            std::vector<size_t> nElements(numRefine+1,0); // size equal to the number of lebels    
+            std::vector<real_t> elAreas(numRefine+1,0); // size equal to the number of lebels
+            for (; domIt<domItEnd; ++domIt)
+            {
+                nElements[domHIt->getLevel()]++; 
+                // elAreas[domHIt->getLevel()] += (domHIt->upperCorner()-domHIt->lowerCorner()).prod();
+                elAreas[domHIt->getLevel()] += domHIt->volume();
+            }
+            GISMO_ENSURE(math::abs(gsAsVector<real_t>(elAreas).sum()-1.0) < 1e-12, "Element area should be close to 1.0, but is " << gsAsVector<real_t>(elAreas).sum());
+
+            csvFile2 << step         << ','  
+                    << refIt         << ','   
+                    << A.numDofs()   << ','   
+                    << nSolvesStep;         
+            for (index_t i = 0; i < elAreas.size(); ++i)
+                csvFile2 << ',' << elAreas[i];
+            csvFile2 << '\n';                
+            csvFile2.flush();                
+            // ================================================================================
+
             clock.restart();
             if (MESHopt.askSwitch("Adaptive",true))
             {
                 if (projection_Crs == 0)
                 {
+                    // Add if for mp_cnew!!!
                     error_crs_c = gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
                     error_crs_dc = gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());    
                     gsDebug<<"Error in the L2 projection of the initial condition (c) : "<<error_crs_c<<"\n";
@@ -542,11 +613,14 @@ gsSparseSolver<>::uPtr solver;
                     gsQuasiInterpolate<real_t>::Schoenberg(dbasis.basis(0),mp_dcold.patch(0),dCnewF);    
                 }
             }
-            else
+            else if (step > 0)
             {
                 // Tensor product solution (to be able to have finer meshes than the one from the xml file)
-                gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
-                gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());
+                // gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_cold.patch(0),CnewF,A.options());
+                // gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());
+                // Tensor product (mesh stays the same -- no projection needed)
+                CnewF = mp_cold.patch(0).coefs();
+                dCnewF = mp_dcold.patch(0).coefs();
             }
             projTimeRefIt += clock.stop();
                       
@@ -559,23 +633,23 @@ gsSparseSolver<>::uPtr solver;
 
             // Reset the assembler
             A.initSystem();
-            //A.initVector();
+            //  Assemble all the terms that are independent of the solution !!!! Mass matrix and bilaplacian
+            clock.restart();
+            A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
+                                (tmp_alpha_f * tmp_gamma * dt)* (lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
+            K_const = A.giveMatrix();
+            assemblyTimeRefIt += clock.stop();
 
             for (index_t dt_it = 0; dt_it != lmax; dt_it++)
             {
                 if (verbose>0) gsInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
-                tmp_alpha_m = tmp_alpha_f = tmp_gamma = 1;
-                tmp_alpha_m_func.setValue(tmp_alpha_m,dim);
-                tmp_alpha_f_func.setValue(tmp_alpha_f,dim);
+                converged = false;
 
-                for (index_t k = 0; k!=2; k++)
-                {
-                    converged = false;
-                    std::string method = (k==0) ? "Backward Euler " : "Generalized Alpha ";
+                Cnew.setZero(A.numDofs(),1);
+                dCnew.setZero(A.numDofs(),1);
 
-                    Cnew.setZero(A.numDofs(),1);
-                    dCnew.setZero(A.numDofs(),1);
-
+                // if (refIt == 0)
+                // {
                     for (index_t i = 0; i < dbasis.basis(0).size(); i++)
                     {
                         if (w.mapper().is_free(i))
@@ -584,109 +658,115 @@ gsSparseSolver<>::uPtr solver;
                             dCnew(w.mapper().index(i),0) = (tmp_gamma-1)/tmp_gamma * dCnewF(i,0);
                         }
                     }
+                // }
+                // else 
+                // {
+                //     for (index_t i = 0; i < dbasis.basis(0).size(); i++)
+                //     {
+                //         if (w.mapper().is_free(i))
+                //         {
+                //             Cnew(w.mapper().index(i),0) = CnewF(i,0);
+                //             dCnew(w.mapper().index(i),0) = dCnewF(i,0);
+                //         }
+                //     }
+                // }
 
-                    Q0norm = 1;
-                    Qnorm = 10;
 
+                Q0norm = 1;
+                Qnorm = 10;
+
+                // ==== For Nitsche BC ====
+                Cold.setZero(A.numDofs(),1);
+                dCold.setZero(A.numDofs(),1);
+                Cold = Cnew;
+                dCold = dCnew;
+                // ========================
+
+                for (index_t it = 0; it!= maxIt; it++)
+                {
+                    A.initMatrix();
+                    A.initVector();
+                    // A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
+                    A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
                     // ==== For Nitsche BC ====
-                    Cold.setZero(A.numDofs(),1);
-                    dCold.setZero(A.numDofs(),1);
-                    Cold = Cnew;
-                    dCold = dCnew;
+                    Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
+                    dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
                     // ========================
 
-                    for (index_t it = 0; it!= maxIt; it++)
+                    clock.restart();
+                    // Assemble the RHS
+                    A.assemble(residual * meas(G));
+                    assemblyTimeRefIt += clock.stop();
+
+                    Q = A.rhs();
+
+                    // Assemble the Nitsche BC on the sides with Neumann condition
+                    // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
+                    A.initMatrix();
+                    clock.restart();
+                    A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                                penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
+                                lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+                    assemblyTimeRefIt += clock.stop();
+
+                    K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
+
+                    if (bc.get("Neumann").size()!=0)
+                        Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
+
+                    // Check the convergence conditions
+                    if (it == 0) Q0norm = Q.norm();
+                    else         Qnorm = Q.norm();
+
+                    if (verbose==2) gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
+
+                    if (it>0 && Qnorm/Q0norm < tol)
                     {
-                        A.initMatrix();
-                        A.initVector();
-                        // A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
-                        A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
-                        // ==== For Nitsche BC ====
-                        Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
-                        dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
-                        // ========================
-
-                        clock.restart();
-                        // Assemble the RHS
-                        A.assemble(residual * meas(G));
-                        assemblyTimeRefIt += clock.stop();
-
-                        Q = A.rhs();
-
-                        // Assemble the Nitsche BC on the sides with Neumann condition
-                        // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-                        A.initMatrix();
-                        clock.restart();
-                        A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                                    penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
-                                    lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-                        assemblyTimeRefIt += clock.stop();
-
-                        K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
-
-                        if (bc.get("Neumann").size()!=0)
-                            Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
-
-                        // Check the convergence conditions
-                        if (it == 0) Q0norm = Q.norm();
-                        else         Qnorm = Q.norm();
-
-                        if (verbose==2) gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
-
-                        if (it>0 && Qnorm/Q0norm < tol)
-                        {
-                            if (verbose>0) gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
-                                converged = true;
-                            break;
-                        }
-                        else if (it==maxIt-1)
-                        {
-                            if (verbose>0) gsInfo<<"\t\t"<<method<<"did not converge!\n";
-                                converged = false;
-                            break;
-                        }
-
-                        A.initMatrix();
-                        // Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
-                        clock.restart();
-                        A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
-                                            (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
-                                            ddmu_c * igrad(w,G) * gradc.tr() * w.tr() + // K_f2
-                                            lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
-                                            // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-                        assemblyTimeRefIt += clock.stop();
-
-                        K = A.giveMatrix();
-                        if (bc.get("Neumann").size()!=0)
-                            K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
-
-
-                        clock.restart();
-                       
-                        solver->compute(K); // K + K_linear ?? 
-
-                        dCupdate = solver->solve(-Q);
-                        solverTimeRefIt += clock.stop();
-                        nSolves++;
-                        nSolvesStep++;
-
-                        dCnew += dCupdate;
-                        Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
-
-                    }
-                    if (!converged)
+                        if (verbose>0) gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
+                            converged = true;
                         break;
+                    }
+                    else if (it==maxIt-1)
+                    {
+                        if (verbose>0) gsInfo<<"\t\t"<<method<<"did not converge!\n";
+                            converged = false;
+                        break;
+                    }
 
-                    // %% Switch to generalized-alpha parameters (k=1)
-                    tmp_alpha_m = alpha_m;
-                    tmp_alpha_f = alpha_f;
-                    tmp_alpha_m_func.setValue(tmp_alpha_m,dim);
-                    tmp_alpha_f_func.setValue(tmp_alpha_f,dim);
-                    tmp_gamma = gamma;
+                    A.initMatrix();
+                    // Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
+                    clock.restart();
+                    // A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
+                    //                     (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
+                    //                     ddmu_c * igrad(w,G) * gradc.tr() * w.tr() + // K_f2
+                    //                     lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
+                    //                     // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
+                    A.assemble(meas(G) * (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
+                                        ddmu_c * igrad(w,G) * gradc.tr() * w.tr())); // K_laplacian
+                    assemblyTimeRefIt += clock.stop();
 
-                    // %% For time step adaptivity %%
-                    // Csols[k] = Cnew; // k=0: BE, k=1: alpha
-                }// Backward Euler/Generalized Alpha
+                    K = A.giveMatrix();
+                    K += K_const; // add the constant part of the stiffness matrix (K_m and K_laplacian)
+
+                    if (bc.get("Neumann").size()!=0)
+                        K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
+
+
+                    clock.restart();
+                    
+                    solver->compute(K); // K + K_linear ?? 
+
+                    dCupdate = solver->solve(-Q);
+                    solverTimeRefIt += clock.stop();
+                    nSolves++;
+                    nSolvesStep++;
+
+                    dCnew += dCupdate;
+                    Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
+
+                }
+                if (!converged)
+                    break;
 
                 // %%%%%%%%%% For time step adaptivity %%%%%%%%%%
                 // if (converged)
@@ -735,7 +815,7 @@ gsSparseSolver<>::uPtr solver;
                     << projTimeRefIt << "\n";
             
             csvFile.flush();  // Forces the file to write immediately
-            
+
             solverTimestep     += solverTimeRefIt;
             assemblyTimestep   += assemblyTimeRefIt;
             projTimestep       += projTimeRefIt;
@@ -768,8 +848,10 @@ gsSparseSolver<>::uPtr solver;
                 gsHBoxContainer<dim,real_t> refine;//, coarsen; // llamar markedRef???????? en vez de refine
                 mesher.markRef_into(cInt,refine);
 
+                size_t nElements0 = dbasis.basis(0).numElements();
+                size_t nRefined = refine.totalSize();
                 // If elements are marked for refinement
-                if (refine.totalSize()!=0)
+                if (nRefined!=0)
                 {
                     // Refine dbasis
                     if (verbose>1) gsInfo<<"Basis before refinement:\n "<<dbasis.basis(0)<<"\n";
@@ -778,6 +860,15 @@ gsSparseSolver<>::uPtr solver;
                 }// refine
                 else
                     break;
+
+                // NOTE: every element weights the same, eventhough elements with larger areas can have more impact on the solution in the next refinment iteration.
+                // An alternative approach would be to weight the elements by their area.
+                // if (static_cast<double>(nRefined)/nElements0 < 0.02) //5%
+                // {
+                //     if (verbose>0) gsInfo<<"Few marked elements for refinement, stop refIt loop.\n";
+                //     break; // break the refinement loop
+                // }
+
             } // refinement switch
             else
                 break; // break the refinement loop
@@ -900,6 +991,8 @@ gsSparseSolver<>::uPtr solver;
     gsInfo<<"[CLOCK] --- Number of solves: "<<nSolves<<"\n";
 
     csvFile.close();
+    csvFile2.close();
+
     std::cout << "Data saved to " + out + ".csv"<< std::endl;
 }
 
@@ -919,6 +1012,7 @@ int main(int argc, char *argv[])
     bool random = false;
     index_t projection_Crs = 0;
     index_t pattern = 0; // 0 for nucleation 1 for spinoidal decomposition
+    index_t timemethod = 1; // 0 for Backward Euler, 1 for Generalized Alpha
     std::string out("output");
     std::string fn("pde/cahn_hilliard_bvp.xml");
 
@@ -937,7 +1031,7 @@ int main(int argc, char *argv[])
     cmd.addInt("c", "projcoars", "Projection method for coarsening", projection_Crs);
     cmd.addInt("s", "pattern", "Phase separation pattern", pattern);
     cmd.addString( "o", "output", "Output directory", out);
-
+    cmd.addInt("m", "timeint", "Time integration method", timemethod);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -977,9 +1071,9 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     if (mp.geoDim()==2)
-        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs, pattern, out);
+        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs, pattern, timemethod, out);
     else if (mp.geoDim()==3)
-        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs, pattern, out);
+        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs, pattern, timemethod, out);
     else
         GISMO_ERROR("Only 2D and 3D problems are supported.");
 
