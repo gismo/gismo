@@ -332,6 +332,12 @@ template <short_t d, class T=real_t>     struct gsHBoxEqual;
 template <short_t d, class T=real_t>     class gsHBox;
 template <short_t d, class T=real_t>     class gsHBoxContainer;
 
+template <short_t d, class T=real_t>     class gsElement;
+template <short_t d, class T=real_t>     class gsElementHelper;
+template <short_t d, class T=real_t>     class gsHElement;
+template <short_t d, class T=real_t>     class gsHElementHelper;
+
+
 class gsParaviewDataSet;
 class gsSurfMesh;
 
