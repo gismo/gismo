@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsHSplines/gsRationalTHBSplineBasis.h>
 
 namespace gismo {
 
