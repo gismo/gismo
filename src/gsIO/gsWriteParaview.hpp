@@ -983,7 +983,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
 /// Export a multipatch Geometry without scalar information using Bezier elements
 template <class T>
 void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool ctrlNet)
-{    
+{
     std::string fnBase;
 
     // Write file contents to the respective file
@@ -992,7 +992,7 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
     file.close();
 
     if ( ctrlNet ) // Output the control net
-    {   
+    {
         gsParaviewCollection collection(filename);
         collection.addPart(gsFileManager::getFilename(filename) + ".vtu");
         for (size_t patch=0; patch<mPatch.nPatches();++patch)
@@ -1293,14 +1293,15 @@ void gsWriteParaview(const gsMatrix<T> & boxes, const gsVector<T> & values, std:
 }
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
-template<class T>
-void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn)
+template<short_t d, class T>
+void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn)
 {
-    gsMatrix<T> points, values(3,4),corners(2,2);
-    gsVector<index_t> np(2);
-    np<<2,2;
     box.computeCoordinates();
-    points = gsPointGrid<T>(box.getCoordinates(),4);
+    gsVector<index_t,d> np;
+    np.setConstant(2);
+    gsGridIterator<T,CUBE,d> grid(box.getCoordinates(),np);
+    gsMatrix<T> points = grid.toMatrix();
+    gsMatrix<T> values(3,points.cols());
     values.row(0).setConstant(box.level());
     values.row(1).setConstant(box.error());
     values.row(2).setConstant(box.projectedErrorRef());
@@ -1308,8 +1309,8 @@ void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn)
 }
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
-template<class T>
-void gsWriteParaview(const gsHBox<2,T> & box, std::string const & fn)
+template<short_t d, class T>
+void gsWriteParaview(const gsHBox<d,T> & box, std::string const & fn)
 {
     gsParaviewCollection collection(fn);
 
@@ -1321,24 +1322,32 @@ void gsWriteParaview(const gsHBox<2,T> & box, std::string const & fn)
 }
 
 /// Writes a container of \ref gsHBox , i.e. a \gsHBoxContainer \a boxes, to a file with name \a fn
-template<class T>
-void gsWriteParaview(const gsHBoxContainer<2,T> & boxes, std::string const & fn)
+template<short_t d, class T>
+void gsWriteParaview(const gsHBoxContainer<d,T> & boxes, std::string const & fn)
 {
-    gsParaviewCollection collection(fn);
+    // gsParaviewCollection collection(fn);
+
+    gsMatrix<T> boxMat(d,2*boxes.totalSize());
+    gsVector<T> lvlVec(boxes.totalSize());
 
     index_t i=0;
     std::string fileName;
-    for (typename gsHBoxContainer<2,T>::cHIterator Hit = boxes.cbegin(); Hit!=boxes.cend(); Hit++)
-        for (typename gsHBoxContainer<2,T>::cIterator Cit = Hit->cbegin(); Cit!=Hit->cend(); Cit++, i++)
+    for (typename gsHBoxContainer<d,T>::cHIterator Hit = boxes.cbegin(); Hit!=boxes.cend(); Hit++)
+        for (typename gsHBoxContainer<d,T>::cIterator Cit = Hit->cbegin(); Cit!=Hit->cend(); Cit++, i++)
         {
-            fileName = fn + util::to_string(i);
-            writeSingleHBox<T>(*Cit,fileName);
-            fileName = gsFileManager::getFilename(fileName);
-            collection.addPart(fileName + ".vts",-1,"",i);
+            Cit->computeCoordinates();
+            boxMat.middleCols(i*2,2) = Cit->getCoordinates();
+            lvlVec[i] = (T)Cit->level();
+            // fileName = fn + util::to_string(i);
+            // writeSingleHBox<d,T>(*Cit,fileName);
+            // fileName = gsFileManager::getFilename(fileName);
+            // collection.addPart(fileName + ".vts",-1,"",i);
         }
 
+    gsWriteParaview(boxMat,lvlVec,fn);
+
     // Write out the collection file
-    collection.save();
+    // collection.save();
 }
 
 /// Export basis functions
