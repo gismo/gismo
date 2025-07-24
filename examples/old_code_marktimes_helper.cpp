@@ -56,9 +56,9 @@ T computeNorm(const gsMultiBasis<T>  & integrationBasis,
     // Set the integration elements
     A.setIntegrationElements(integrationBasis);
 
-    auto u = A.getSpace(currentBasis);
-    u.setup();
-    auto sol= A.getSolution(u,coefs);
+    // auto u = A.getSpace(currentBasis);
+    // u.setup();
+    // auto sol= A.getSolution(u,coefs);
 
     A.initSystem();
 
@@ -69,10 +69,10 @@ T computeNorm(const gsMultiBasis<T>  & integrationBasis,
     // ev.options().update(A.options(),gsOptionList::addIfUnknown);
             
     auto sol_before = ev.getVariable(sourceFunction1); // solution before projection      
-    // gsGeometry<>::uPtr sol_after_ptr  = currentBasis.basis(0).makeGeometry(coefs);
-    // auto sol_after = ev.getVariable(*sol_after_ptr,G);
+    gsGeometry<>::uPtr sol_after_ptr  = currentBasis.basis(0).makeGeometry(coefs);
+    auto sol_after = ev.getVariable(*sol_after_ptr,G);
 
-    return ev.integral((sol_before-sol).sqNorm() * meas(G));
+    return ev.integral((sol_before-sol_after).sqNorm() * meas(G));
 
 }
 
