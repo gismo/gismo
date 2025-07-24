@@ -54,7 +54,7 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
             GISMO_ASSERT( s.rows() == so.rows(), "");
             for (index_t i=0;i<s.rows();++i)
             {
-                dm.eliminateDof(s[i],k); 
+                dm.eliminateDof(s[i],k);
                 if (bdyConds == 2)
                     dm.eliminateDof(so[i],k);
             }
@@ -64,6 +64,66 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
     dm.finalize();
     return dm;
 }
+
+std::pair< gsMatrix<>, gsMatrix<> >
+sampleBoundary(const gsGeometry<>& geo, boxSide s, bool inverted, index_t numberSamples)
+{
+    const short_t dim = 2;
+
+    GISMO_ASSERT( s.index()>0 && s.index()<=4, "Invalid boxSide." );
+    const short_t dir = (s.index()-1)/2;
+    const short_t prm = (s.index()-1)%2;
+    const gsMatrix<>& parameterRange = geo.parameterRange();
+
+    gsMatrix<> sample(dim,numberSamples);
+    for (index_t i=0; i<numberSamples; ++i)
+    {
+        index_t j = inverted ? (numberSamples-1-i) : i;
+        sample(  dir, j) = parameterRange(  dir,0) + prm                     * (parameterRange(  dir,1)-parameterRange(  dir,0));
+        sample(1-dir, j) = parameterRange(1-dir,0) + i/(numberSamples - 1.0) * (parameterRange(1-dir,1)-parameterRange(1-dir,0));
+    }
+
+    gsMatrix<> selector(2,4);
+    selector.setZero();
+    selector(0,dir)   = prm?1.0:-1.0;
+    selector(1,dir+2) = prm?1.0:-1.0;
+
+    return std::pair< gsMatrix<>, gsMatrix<> >( geo.eval(sample), selector*geo.deriv(sample) );
+}
+
+
+bool
+checkC1(const gsMultiPatch<>& mp)
+{
+    bool isC1 = true;
+    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const index_t k1 = it->first().patch;
+        const index_t k2 = it->second().patch;
+
+        gsVector<index_t> cm;
+        it->cornerMap(cm);
+        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
+        const bool inverted = cm[0];
+
+        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
+        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
+
+        if ((data1.first-data2.first).cwiseAbs().maxCoeff()>1e-6)
+        {
+            gsDebug << "Interface between patches " << k1 << " and " << k2 << " is not C0.\n";
+            isC1 = false;
+        }
+        if ((data1.second+data2.second).cwiseAbs().maxCoeff()>1e-6)
+        {
+            gsDebug << "Interface between patches " << k1 << " and " << k2 << " is not C1.\n";
+            isC1 = false;
+        }
+
+    }
+    return isC1;
+}
+
 
 std::vector<std::vector<std::vector<index_t>>>
 setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, int bdyCond)
@@ -117,7 +177,7 @@ struct corner_t {
     void push_back(std::pair<index_t,index_t> p) { data.push_back(p); }
     bool operator==(const corner_t& other) const
     {
-        if (data.size()!=other.data.size()) 
+        if (data.size()!=other.data.size())
             return false;
         for (size_t i=0;i<data.size();++i)
         {
@@ -139,7 +199,7 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
 {
     // This function guesses the corners from the jump matrices; each dof belonging
     // to more than 2 patches is a corner.
-    
+
     // lmultsof[k][i] ... which L-multipliers act on dof i of patch k?
     std::vector<std::vector<std::vector<index_t>>> lmultsof(sms.size());
     // dofsof[l][0 and 1] ... a pair (patch, index) of dofs connected by L-multiplier l
@@ -177,8 +237,8 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
         gsInfo << "]\n";
     }
     //*/
-    
-    
+
+
     std::vector<corner_t> result;
     for (size_t k=0; k<lmultsof.size(); ++k)
         for (size_t i=0; i<lmultsof[k].size(); ++i)
@@ -202,7 +262,7 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
                 if (find(result.begin(), result.end(), corner) == result.end())
                     result.push_back(corner);
             }
-    
+
     std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> finalResult;
     for (size_t i=0; i<result.size(); ++i)
     {
@@ -211,16 +271,16 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
         {
             gsSparseVector<> sv(sms[result[i].data[j].first].cols());
             sv.setZero();
-            //gsInfo << i << "%%" << j << "%%" << 
+            //gsInfo << i << "%%" << j << "%%" <<
             //    result[i].data[j].first << "%%" << result[i].data[j].second << "%%"
             //    << sms[result[i].data[j].first].cols() << "%%" << result[i].data[j].second << std::endl;
             sv[result[i].data[j].second] = 1;
             corner.push_back(std::pair<index_t,gsSparseVector<>>(result[i].data[j].first,sv));
-        }  
+        }
         finalResult.push_back(corner);
-    }    
+    }
     return finalResult;
-    
+
 }
 
 
@@ -364,7 +424,7 @@ public:
         const index_t secondSize = m_localSystems[secondPatch].rows();
         const index_t lagrangeSize = e.lagrangeIndices.size();
         const index_t localDirichletSize = m_localSkeletonDofs[e.first].size() + m_localSkeletonDofs[e.second].size() - 2*lagrangeSize;
-        
+
         const index_t size = firstSize+secondSize+lagrangeSize+localDirichletSize;
 
         gsSparseEntries<> se;
@@ -392,32 +452,32 @@ public:
         std::vector<index_t> outerSkeletonFirst;
         std::copy_if(m_localSkeletonDofs[e.first].begin(), m_localSkeletonDofs[e.first].end(), std::back_inserter(outerSkeletonFirst),
             [&](index_t arg)
-            { return (std::find(e.firstIndices.begin(), e.firstIndices.end(), arg) == e.firstIndices.end());});        
-        
+            { return (std::find(e.firstIndices.begin(), e.firstIndices.end(), arg) == e.firstIndices.end());});
+
         std::vector<index_t> outerSkeletonSecond;
         std::copy_if(m_localSkeletonDofs[e.second].begin(), m_localSkeletonDofs[e.second].end(), std::back_inserter(outerSkeletonSecond),
             [&](index_t arg)
-            { return (std::find(e.secondIndices.begin(), e.secondIndices.end(), arg) == e.secondIndices.end());});   
-            
+            { return (std::find(e.secondIndices.begin(), e.secondIndices.end(), arg) == e.secondIndices.end());});
+
         GISMO_ASSERT( outerSkeletonFirst.size()+outerSkeletonSecond.size() == localDirichletSize, "Internal error.");
         for (size_t i=0; i<outerSkeletonFirst.size(); ++i)
         {
-            se.add( firstSize+secondSize+lagrangeSize+i, outerSkeletonFirst[i], 1 );     
-            se.add( outerSkeletonFirst[i], firstSize+secondSize+lagrangeSize+i, 1 );     
+            se.add( firstSize+secondSize+lagrangeSize+i, outerSkeletonFirst[i], 1 );
+            se.add( outerSkeletonFirst[i], firstSize+secondSize+lagrangeSize+i, 1 );
         }
         for (size_t i=0; i<outerSkeletonSecond.size(); ++i)
         {
-            se.add( firstSize+secondSize+lagrangeSize+outerSkeletonFirst.size()+i, firstSize+outerSkeletonSecond[i], 1 );     
-            se.add( firstSize+outerSkeletonSecond[i], firstSize+secondSize+lagrangeSize+outerSkeletonFirst.size()+i, 1 );     
+            se.add( firstSize+secondSize+lagrangeSize+outerSkeletonFirst.size()+i, firstSize+outerSkeletonSecond[i], 1 );
+            se.add( firstSize+outerSkeletonSecond[i], firstSize+secondSize+lagrangeSize+outerSkeletonFirst.size()+i, 1 );
         }
-        
+
         // setup matrix
         gsSparseMatrix<> result(size,size);
         result.setFrom(se);
         result *= -1; // Schur complement has form C - B^t A^{-1} B, so must be negative!
-        
+
         //gsInfo << "***** local edge system *****\n\n" << result << "\n*****\n";
-        
+
         return result;
     }
 
@@ -494,9 +554,12 @@ int main(int argc, char *argv[])
     /************** Define command line options *************/
 
     index_t rhsType = 2;
+    real_t sigma = .5;
     index_t nPatchesX = 4;
     index_t nPatchesY = 4;
+    index_t geoExample = 0;
     index_t degree = 2;
+    index_t multiplicity = 1;
     index_t refinements = 2;
     real_t robin = 0;
     real_t alpha = 1;
@@ -512,9 +575,12 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
     cmd.addInt   ("t", "RhsType",               "Chosen right-hand side", rhsType);
+    cmd.addReal  ("s", "Sigma",                 "Poisson ratio", sigma);
     cmd.addInt   ("x", "PatchesX",              "Number of patches (coordinate direction x)", nPatchesX);
     cmd.addInt   ("y", "PatchesY",              "Number of patches (coordinate direction y)", nPatchesY);
+    cmd.addInt   ("",  "GeoExample",            "How to represent the first patch?", geoExample);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addInt   ("m", "Multiplicity",          "Multiplicity of knots for B-spline discretization space", multiplicity);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addReal  ("o", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
     cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
@@ -559,13 +625,33 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define geometry... " << std::flush;
     gsMultiPatch<> mp;
+    /// cases
+    if (geoExample==0)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(0,0,1,1));
+    else if (geoExample==1)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(0,-1,1,0,90));
+    else if (geoExample==2)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(-1,-1,0,0,180));
+    else if (geoExample==3)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(-1,0,0,1,270));
+    else if (geoExample==4)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(1,0,0,1));
+    else if (geoExample==5)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(1,1,0,0));
+    else
+    {
+        GISMO_ENSURE(false, "Invalid geoExample");
+    }
+
+    /// end
     for (index_t i=0; i<nPatchesX; ++i)
         for (index_t j=0; j<nPatchesY; ++j)
-            mp.addPatch(gsNurbsCreator<>::BSplineRectangle(i,j,i+1,j+1));
+            if (i+j)
+                mp.addPatch(gsNurbsCreator<>::BSplineRectangle(i,j,i+1,j+1));
     mp.computeTopology();
 
-    gsInfo << "done.\n";
     const index_t nPatches = mp.nPatches();
+    gsInfo << "done: " << nPatches << " patches, " << mp.interfaces().size() << " interfaces.\n";
 
     /************ Setup bases and adjust degree *************/
 
@@ -576,9 +662,27 @@ int main(int argc, char *argv[])
 
     for ( index_t i = 0; i < refinements; ++i )
         mb.uniformRefine();
+
+    for ( size_t i = 0; i < mb.nBases(); ++ i )
+    {
+        if (multiplicity>1 && multiplicity<degree)
+            mb[i].reduceContinuity(multiplicity-1);
+        else if (multiplicity!=1)
+        {
+            gsInfo << "Multiplicity must be at least 1 and at most degree-1\n";
+            return -1;
+        }
+    }
+
     gsInfo << "done.\n";
 
     /******************* Setup dofMapper ********************/
+    if (!checkC1(mp))
+    {
+        gsInfo << "This is not a C1 geometry.\n";
+        return -1;
+    }
+
     gsInfo << "Setup dofMapper... " << std::flush;
     gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, robin==0.?bdyConds:0);
     std::vector<std::vector<std::vector<index_t>>> skeletonDofs;
@@ -594,7 +698,7 @@ int main(int argc, char *argv[])
     ietiMapper.computeJumpMatrices(/*fullyRedundant=*/false,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/true);
     gsIetiMapper<> ietiMapper2(mb,dm,fixedPart);
     ietiMapper2.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/false);
-    
+
     if (primals == "c")
     {
         ietiMapper.cornersAsPrimals();
@@ -602,7 +706,7 @@ int main(int argc, char *argv[])
     }
     else if (primals == "x")
     {
-        
+
         std::vector<gsSparseMatrix<real_t,RowMajor>> jm;
         jm.reserve(nPatches);
         for (index_t k=0; k<nPatches; ++k)
@@ -679,8 +783,10 @@ int main(int argc, char *argv[])
         ietiMapper.initFeSpace(u,k);
 
         A.initSystem();
-        A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
+        A.assemble(sigma *ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
+        A.assemble((1-sigma) * ihess(u, G) * ihess(u, G).tr() * meas(G));
         A.assemble(alpha*u*u.tr()*meas(G));
+
 
         gsSparseMatrix<> transformer = applyDofMapperTwoSided(makeTransformer(mb[k]),ietiMapper.dofMapperLocal(k));
 
@@ -778,7 +884,7 @@ int main(int argc, char *argv[])
 
     // Add the primal problem if there are primal constraints
     //! [Primal to system]
-    if (ietiMapper.nPrimalDofs()>0) 
+    if (ietiMapper.nPrimalDofs()>0)
     {
         gsInfo << "[P] " << std::flush;
         gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(primal.localMatrix());
@@ -874,22 +980,22 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
-        
+
 #ifndef NDEBUG
     {
         gsMatrix<> m;
         ieti.schurComplement()->toMatrix(m);
         m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
         gsInfo << "\n\nProblem F:\n" << std::setprecision(3) <<  m << "\n\n";
-    }     
+    }
     {
         gsMatrix<> m;
         preconder->toMatrix(m);
         m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
         gsInfo << "\n\nPreconder M:\n" << std::setprecision(3) <<  m << "\n\n";
-    }    
+    }
 #endif
-        
+
     real_t conditionNumber = -1;
     gsMatrix<real_t> eigenvalues;
     if (solverType == "cg")
@@ -993,7 +1099,7 @@ int main(int argc, char *argv[])
                 << dualPreconder << "\t"
                 << extremelyDeluxeParameter << "\t"
                 << solverType << "\n";
-        
+
         gsInfo << "Write solution to file " << out << "\n";
     }
 
