@@ -28,7 +28,7 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
 std::vector<std::vector<std::vector<index_t>>>
 setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, int bdyCond)
 {
-    GISMO_ENSURE ( bdyCond==0, "This function is not bounary-aware.");
+    GISMO_ENSURE (bdyCond==0, "This function is not bounary-aware.");
     std::vector<std::vector<std::vector<index_t>>> result(mp.nPatches());
     for (size_t k=0; k<mp.nPatches(); ++k)
         result[k].resize(2);
@@ -125,14 +125,14 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
                 for (size_t l=0; l<lmultsof[k][i].size(); ++l)
                 {
                     index_t multiplier = lmultsof[k][i][l];
-                    GISMO_ENSURE(dofsof[multiplier].size()==2,"what is this?");
+                    GISMO_ENSURE (dofsof[multiplier].size()==2,"what is this?");
                     if (dofsof[multiplier][0].first != (index_t)k)
                         corner.push_back(dofsof[multiplier][0]);
                     else if (dofsof[multiplier][1].first != (index_t)k)
                         corner.push_back(dofsof[multiplier][1]);
                     else
                     {
-                        GISMO_ENSURE(0, "");
+                        GISMO_ENSURE (0, "what is this?");
                     }
                 }
                 if (find(result.begin(), result.end(), corner) == result.end())
@@ -359,21 +359,6 @@ int main(int argc, char *argv[])
         //gsInfo << "im2-jumps[0]:" << jm[0].rows() << "x" << jm[0].cols() << "\n";
         std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> data = cornersFromJumpMatrices(jm);
 
-        if (! true )
-        {
-            gsInfo << "[";
-            for (size_t i=0; i<data.size(); ++i)
-            {
-                gsInfo << "[";
-                for (size_t j=0; j<data[i].size(); ++j)
-                {
-                    gsInfo << " {" << data[i][j].first << "," << gsSparseVector<>::InnerIterator(data[i][j].second,0).row() << "}";
-                }
-                gsInfo << " ]\n";
-            }
-            gsInfo << "]\n\n";
-        }
-
         for (size_t i=0; i<data.size(); ++i)
             ietiMapper.customPrimalConstraints(data[i]);
         gsInfo << "[" << data.size() << " eXtended cornerdofs added as primals]";
@@ -400,9 +385,6 @@ int main(int argc, char *argv[])
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
 
     std::vector<gsSparseMatrix<>> localBasisTransforms; localBasisTransforms.reserve(nPatches);
-    std::vector<gsSparseMatrix<>> localStiffnessMatrices; localStiffnessMatrices.reserve(nPatches);
-    std::vector<gsMatrix<>> localRhsVectors; localRhsVectors.reserve(nPatches);
-    std::vector<gsLinearOperator<>::Ptr> localSchurs; localSchurs.reserve(nPatches);
 
     for (index_t k=0; k<nPatches; ++k)
     {
@@ -458,10 +440,7 @@ int main(int argc, char *argv[])
         }
 
         // Store
-        localStiffnessMatrices.push_back(localMatrix);
-        localRhsVectors.push_back(localRhs);
         localBasisTransforms.push_back(transformer);
-        localSchurs.push_back(gsScaledDirichletPrec<>::schurComplement(localMatrix,ietiMapper.skeletonDofs(k)));
 
         for (index_t j=0; j<2; ++j)
             prec.addSubdomain(
