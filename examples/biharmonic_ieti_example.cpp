@@ -567,22 +567,6 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
-
-#ifndef NDEBUG
-    {
-        gsMatrix<> m;
-        ieti.schurComplement()->toMatrix(m);
-        m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
-        gsInfo << "\n\nProblem F:\n" << std::setprecision(3) <<  m << "\n\n";
-    }
-    {
-        gsMatrix<> m;
-        preconder->toMatrix(m);
-        m=m.unaryExpr([](double x){return (abs(x)<1e-4)?0.:x;});
-        gsInfo << "\n\nPreconder M:\n" << std::setprecision(3) <<  m << "\n\n";
-    }
-#endif
-
     real_t conditionNumber = -1;
     gsMatrix<real_t> eigenvalues;
     if (solverType == "cg")
@@ -640,44 +624,32 @@ int main(int argc, char *argv[])
     /********************** Output **************************/
     if (!out.empty())
     {
-        /*gsFileData<> fd;
-        std::time_t time = std::time(NULL);
-        fd.add(cmd);
-        for (index_t k=0; k<nPatches; ++k)
-            fd.add(gsMatrix<>(localBasisTransforms[k].transpose() * localSol[k]));
-
-        for (index_t k=0; k<nPatches; ++k)
-            fd.add(gsSparseMatrix<>(ietiMapper.jumpMatrix(k)));
-
-        for (index_t k=0; k<nPatches; ++k)
-            fd.add(localStiffnessMatrices[k]);
-
-        for (index_t k=0; k<nPatches; ++k)
+        const bool exists = gsFileManager::fileExists(out);
+        std::ofstream outfile(out, std::ios_base::app);
+        if (!exists)
         {
-            gsMatrix<> tmp;
-            localSchurs[k]->toMatrix(tmp);
-            fd.add(tmp);
+            outfile << "biharmonic_ieti_example\t"
+                    << "geometry" << "\t"
+                    << "degree" << "\t"
+                    << "refinements" << "\t"
+                    << "conditionNumber" << "\t"
+                    << "iter" << "\t"
+                    << "sPatchesX" << "\t"
+                    << "sPatchesY" << "\t"
+                    << "rhsType" << "\t"
+                    << "robin" << "\t"
+                    << "alpha" << "\t"
+                    << "bdyConds" << "\t"
+                    << "primals" << "\t"
+                    << "dualPreconder" << "\t"
+                    << "solverType" << "\n";
         }
-
-        gsMatrix<> sc;
-        ieti.schurComplement()->toMatrix(sc);
-        fd.add(sc);
-
-        gsMatrix<> pc;
-        prec.preconditioner()->toMatrix(pc);
-        fd.add(pc);
-
-        fd.addComment(std::string("biharmonic_ieti_example   Timestamp:")+std::ctime(&time));
-        fd.save(out);
-        gsInfo << "Write solution to file " << out << "\n";*/
-        std::ofstream outfile (out, std::ios_base::app);
-        outfile << "biharmonic_ieti_example2\t"
+        outfile << "biharmonic_ieti_example\t"
                 << geometry << "\t"
                 << degree << "\t"
                 << refinements << "\t"
                 << conditionNumber << "\t"
                 << iter << "\t"
-                << "***" << "\t"
                 << sPatchesX << "\t"
                 << sPatchesY << "\t"
                 << rhsType << "\t"
