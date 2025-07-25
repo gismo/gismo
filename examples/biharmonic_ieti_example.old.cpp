@@ -549,73 +549,23 @@ private:
 };
 
 
-gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s)
-{
-    index_t nPatchesX=0, nPatchesY=0, geoExample=0;
-
-    if (*(s++)!='r'||*(s++)!='_') return nullptr;
-    for (char c; c=*s, '0'<=c && c<='9'; ++s)
-        nPatchesX = 10*nPatchesX+(c-'0');
-
-    if (*s!='_') return nullptr;
-    ++s;
-
-    for (char c; c=*s, '0'<=c && c<='9'; ++s)
-        nPatchesY = 10*nPatchesY+(c-'0');
-
-    if (*s=='_')
-    {
-        ++s;
-        for (char c; c=*s, '0'<=c && c<='9'; ++s)
-            geoExample = 10*geoExample+(c-'0');
-    }
-    if (*s!='\0') return nullptr;
-    if (nPatchesX == 0 || nPatchesY == 0) return nullptr;
-
-    gsMultiPatch<>::uPtr mp = memory::make_unique(new gsMultiPatch<>());
-
-    if (geoExample==0)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(0,0,1,1));
-    else if (geoExample==1)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(0,-1,1,0,90));
-    else if (geoExample==2)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(-1,-1,0,0,180));
-    else if (geoExample==3)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(-1,0,0,1,270));
-    else if (geoExample==4)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(1,0,0,1));
-    else if (geoExample==5)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(1,1,0,0));
-    else
-        return nullptr;
-
-    /// end
-    for (index_t i=0; i<nPatchesX; ++i)
-        for (index_t j=0; j<nPatchesY; ++j)
-            if (i+j)
-                mp->addPatch(gsNurbsCreator<>::BSplineRectangle(i,j,i+1,j+1));
-    mp->computeTopology();
-    gsInfo << "Initial geometry is grid of " << nPatchesX << "x" << nPatchesY << " unit squares.\n";
-    return mp;
-}
-
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    std::string geometry("domain2d/quarter_annulus.xml");
     index_t rhsType = 2;
     real_t sigma = .5;
-    index_t sPatchesX = 1;
-    index_t sPatchesY = 1;
+    index_t nPatchesX = 4;
+    index_t nPatchesY = 4;
+    index_t geoExample = 0;
     index_t degree = 2;
     index_t multiplicity = 1;
     index_t refinements = 2;
     real_t robin = 0;
     real_t alpha = 1;
-    int bdyConds = 0;
+    int bdyConds = 2;
     std::string primals("x");
-    std::string dualPreconder("c");
+    std::string dualPreconder("d");
     real_t extremelyDeluxeParameter = 1;
     std::string solverType("cg");
     real_t tolerance = 1.e-8;
@@ -624,12 +574,11 @@ int main(int argc, char *argv[])
     bool plot = false;
 
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
-
     cmd.addInt   ("t", "RhsType",               "Chosen right-hand side", rhsType);
     cmd.addReal  ("s", "Sigma",                 "Poisson ratio", sigma);
-    cmd.addString("g", "Geometry",              "Chosen geometry file", geometry);    
-    cmd.addInt   ("x", "PatchesX",              "Number of splits (coordinate direction x)", sPatchesX);
-    cmd.addInt   ("y", "PatchesY",              "Number of splits (coordinate direction y)", sPatchesY);
+    cmd.addInt   ("x", "PatchesX",              "Number of patches (coordinate direction x)", nPatchesX);
+    cmd.addInt   ("y", "PatchesY",              "Number of patches (coordinate direction y)", nPatchesY);
+    cmd.addInt   ("",  "GeoExample",            "How to represent the first patch?", geoExample);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("m", "Multiplicity",          "Multiplicity of knots for B-spline discretization space", multiplicity);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
@@ -661,12 +610,12 @@ int main(int argc, char *argv[])
     if (rhsType < 0 || (size_t)rhsType >= util::size(rhsTypes))
     {
         gsInfo << "Invalid choice for --RhsType (-t).\n";
-        return EXIT_FAILURE;
+        return -1;
     }
     if (bdyConds < 0 || bdyConds > 2)
     {
         gsInfo << "Invalid choice for --BdyCond (-b).\n";
-        return EXIT_FAILURE;
+        return -1;
     }
 
     gsInfo << "Rhs function is " << rhsTypes[rhsType] << "\n";
@@ -675,21 +624,31 @@ int main(int argc, char *argv[])
     /******************* Define geometry ********************/
 
     gsInfo << "Define geometry... " << std::flush;
-    gsMultiPatch<>::uPtr mpPtr;
-    if (!mpPtr)
-        mpPtr = tryGetRectangularGeometry(geometry.c_str());
-    if (!mpPtr)
-        mpPtr = gsReadFile<>(geometry);
-    if (!mpPtr)
+    gsMultiPatch<> mp;
+    /// cases
+    if (geoExample==0)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(0,0,1,1));
+    else if (geoExample==1)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(0,-1,1,0,90));
+    else if (geoExample==2)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(-1,-1,0,0,180));
+    else if (geoExample==3)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(-1,0,0,1,270));
+    else if (geoExample==4)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(1,0,0,1));
+    else if (geoExample==5)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(1,1,0,0));
+    else
     {
-        gsInfo << "No geometry found in file " << geometry << ".\n";
-        return EXIT_FAILURE;
+        GISMO_ENSURE(false, "Invalid geoExample");
     }
-    gsMultiPatch<>& mp = *mpPtr;
-    for (index_t i=0; i<sPatchesX; ++i)
-        mp = mp.uniformSplit(0);
-    for (index_t j=0; j<sPatchesY; ++j)
-        mp = mp.uniformSplit(1);
+
+    /// end
+    for (index_t i=0; i<nPatchesX; ++i)
+        for (index_t j=0; j<nPatchesY; ++j)
+            if (i+j)
+                mp.addPatch(gsNurbsCreator<>::BSplineRectangle(i,j,i+1,j+1));
+    mp.computeTopology();
 
     const index_t nPatches = mp.nPatches();
     gsInfo << "done: " << nPatches << " patches, " << mp.interfaces().size() << " interfaces.\n";
@@ -711,7 +670,7 @@ int main(int argc, char *argv[])
         else if (multiplicity!=1)
         {
             gsInfo << "Multiplicity must be at least 1 and at most degree-1\n";
-            return EXIT_FAILURE;
+            return -1;
         }
     }
 
@@ -721,7 +680,7 @@ int main(int argc, char *argv[])
     if (!checkC1(mp))
     {
         gsInfo << "This is not a C1 geometry.\n";
-        return EXIT_FAILURE;
+        return -1;
     }
 
     gsInfo << "Setup dofMapper... " << std::flush;
@@ -779,7 +738,7 @@ int main(int argc, char *argv[])
     else
     {
         gsInfo << "Invalid choice for --Primals.\n";
-        return EXIT_FAILURE;
+        return -1;
     }
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
@@ -827,6 +786,7 @@ int main(int argc, char *argv[])
         A.assemble(sigma *ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble((1-sigma) * ihess(u, G) * ihess(u, G).tr() * meas(G));
         A.assemble(alpha*u*u.tr()*meas(G));
+
 
         gsSparseMatrix<> transformer = applyDofMapperTwoSided(makeTransformer(mb[k]),ietiMapper.dofMapperLocal(k));
 
@@ -895,7 +855,7 @@ int main(int argc, char *argv[])
         else
         {
             gsInfo << "\nUnknown dual preconder.\n";
-            return EXIT_FAILURE;
+            return -1;
         }
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
@@ -1056,7 +1016,7 @@ int main(int argc, char *argv[])
     else
     {
         gsInfo << "Unknown --solver.\n";
-        return EXIT_FAILURE;
+        return -1;
     }
     //! [Solve]
 
@@ -1121,18 +1081,16 @@ int main(int argc, char *argv[])
         fd.add(pc);
 
         fd.addComment(std::string("biharmonic_ieti_example   Timestamp:")+std::ctime(&time));
-        fd.save(out);
-        gsInfo << "Write solution to file " << out << "\n";*/
+        fd.save(out);*/
         std::ofstream outfile (out, std::ios_base::app);
-        outfile << "biharmonic_ieti_example2\t"
-                << geometry << "\t"
+        outfile << "biharmonic_ieti_example\t"
                 << degree << "\t"
                 << refinements << "\t"
                 << conditionNumber << "\t"
                 << iter << "\t"
                 << "***" << "\t"
-                << sPatchesX << "\t"
-                << sPatchesY << "\t"
+                << nPatchesX << "\t"
+                << nPatchesY << "\t"
                 << rhsType << "\t"
                 << robin << "\t"
                 << alpha << "\t"
@@ -1159,5 +1117,5 @@ int main(int argc, char *argv[])
                   "file containing the solution or --out to write solution to xml file.\n";
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
