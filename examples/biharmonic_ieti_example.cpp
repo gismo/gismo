@@ -340,9 +340,7 @@ int main(int argc, char *argv[])
     gsMatrix<> fixedPart;
     fixedPart.setZero(dm.boundarySize(),1);
     gsIetiMapper<> ietiMapper(mb,dm,fixedPart);
-    ietiMapper.computeJumpMatrices(/*fullyRedundant=*/false,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/true);
-    gsIetiMapper<> ietiMapper2(mb,dm,fixedPart);
-    ietiMapper2.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/false);
+    ietiMapper.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/false);
 
     if (primals == "c")
     {
@@ -355,7 +353,7 @@ int main(int argc, char *argv[])
         std::vector<gsSparseMatrix<real_t,RowMajor>> jm;
         jm.reserve(nPatches);
         for (index_t k=0; k<nPatches; ++k)
-            jm.push_back(ietiMapper2.jumpMatrix(k));
+            jm.push_back(ietiMapper.jumpMatrix(k));
         //gsInfo << "im2-jumps[0]:" << jm[0].rows() << "x" << jm[0].cols() << "\n";
         std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> data = cornersFromJumpMatrices(jm);
 
@@ -424,6 +422,7 @@ int main(int argc, char *argv[])
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
 
         // Penalize (Dirichlet) boundary
+        // TODO: How does this interact with --BdyConds
         if (robin)
         {
             gsInfo << "[robin]";
