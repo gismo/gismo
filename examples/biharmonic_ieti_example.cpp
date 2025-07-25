@@ -209,224 +209,6 @@ applyDofMapperTwoSided(const gsSparseMatrix<>&sm, const gsDofMapper& dm)
     return result;
 }
 
-class deluxePreconder {
-
-    static size_t idx_of(std::vector<size_t>& vec, size_t what)
-    {
-        for (size_t i=0; i<vec.size(); ++i)
-            if (vec[i]==what)
-                return i;
-        vec.push_back(what);
-        return vec.size()-1;
-    }
-
-public:
-    struct edge {
-        size_t first;
-        size_t second;
-        std::vector<size_t> firstIndices;
-        std::vector<size_t> secondIndices;
-        std::vector<size_t> lagrangeIndices;
-        edge(size_t _first, size_t _second) : first(_first), second(_second) {}
-    };
-
-    std::vector<edge> identifyEdges() const
-    {
-        // TODO: handle corner dofs!
-        const size_t nPatches = m_localJumpMatrices.size();
-        gsMatrix<index_t> dofslist;
-        dofslist.setZero(m_localJumpMatrices[0].rows(), 2);
-        index_t edgeCount = 0;
-
-        std::vector<edge> edges;
-
-        for (size_t k=0; k<nPatches; ++k)
-        {
-            std::vector<size_t> neighbors;
-
-            for (index_t i=0; i<m_localJumpMatrices[k].outerSize(); ++i)
-            {
-                for (gsSparseMatrix<real_t,RowMajor>::InnerIterator it(m_localJumpMatrices[k],i); it; ++it)
-                {
-                    if (dofslist( it.row(), 0 )==0)
-                    {
-                        dofslist( it.row(), 0 ) = k+1;
-                        dofslist( it.row(), 1 ) = it.col();
-                        GISMO_ASSERT( (it.value()>.99 && it.value()<1.01) || (-it.value()>.99 && -it.value()<1.01), it.value());
-                    }
-                    else if (dofslist( it.row(), 0 )>0)
-                    {
-                        GISMO_ASSERT( (it.value()>.99 && it.value()<1.01) || (-it.value()>.99 && -it.value()<1.01), it.value());
-                        size_t l = dofslist(it.row(),0)-1;
-                        size_t e = idx_of(neighbors,l);
-                        e+=edgeCount;
-                        if (e==edges.size())
-                            edges.emplace_back(l,k);
-                        GISMO_ASSERT (e<edges.size(), "Internal error.");
-                        edges[e].firstIndices.push_back(dofslist(it.row(),1));
-                        edges[e].secondIndices.push_back(it.col());
-                        edges[e].lagrangeIndices.push_back(it.row());
-                        dofslist(it.row(),0) = -1; // mark as "done"
-                    }
-                    else
-                        GISMO_ENSURE(0, "No L-multiplier should connect to 3 patches!");
-                }
-            }
-            edgeCount += neighbors.size();
-        }
-        gsInfo << "[deluxe-pc: " << edgeCount << "edges]" << std::flush;
-        /*
-        for (size_t l=0; l<edges.size(); ++l)
-        {
-            gsInfo << "Edge " << l << ": ";
-            gsInfo << "(" << edges[l].first << "," << edges[l].second << ") [ ";
-            GISMO_ASSERT(edges[l].firstIndices.size()==edges[l].secondIndices.size(), "Internal error.");
-            for (size_t i=0; i<edges[l].firstIndices.size(); ++i)
-                gsInfo << "(" << edges[l].firstIndices[i] << "," << edges[l].secondIndices[i] << "," << edges[l].lagrangeIndices[i] << ") ";
-            gsInfo << "]\n";
-        }
-        //*/
-
-
-        return edges;
-
-    }
-
-    gsSparseMatrix<> setupLocalProblem(const edge& e) const
-    {
-        const size_t firstPatch = e.first;
-        const size_t secondPatch = e.second;
-        const index_t firstSize = m_localSystems[firstPatch].rows();
-        const index_t secondSize = m_localSystems[secondPatch].rows();
-        const index_t lagrangeSize = e.lagrangeIndices.size();
-        const index_t localDirichletSize = m_localSkeletonDofs[e.first].size() + m_localSkeletonDofs[e.second].size() - 2*lagrangeSize;
-
-        const index_t size = firstSize+secondSize+lagrangeSize+localDirichletSize;
-
-        gsSparseEntries<> se;
-        // first matrix
-        for (index_t i=0; i<m_localSystems[firstPatch].outerSize(); ++i)
-            for (gsSparseMatrix<real_t>::InnerIterator it(m_localSystems[firstPatch],i); it; ++it)
-                se.add(it.row(), it.col(), it.value());
-        // second matrix
-        for (index_t i=0; i<m_localSystems[secondPatch].outerSize(); ++i)
-            for (gsSparseMatrix<real_t>::InnerIterator it(m_localSystems[secondPatch],i); it; ++it)
-                se.add(firstSize+it.row(), firstSize+it.col(), it.value());
-        // jump blocks
-        for (index_t i=0; i<lagrangeSize; ++i)
-        {
-            real_t value1 = m_localJumpMatrices[firstPatch ](e.lagrangeIndices[i], e.firstIndices [i]);
-            real_t value2 = m_localJumpMatrices[secondPatch](e.lagrangeIndices[i], e.secondIndices[i]);
-            GISMO_ASSERT( (value1>.99 && value1<1.01) || (-value1>.99 && -value1<1.01), "");
-            GISMO_ASSERT( (value2>.99 && value2<1.01) || (-value2>.99 && -value2<1.01), "");
-            se.add(firstSize+secondSize+i,             e.firstIndices[i] , value1 );
-            se.add(firstSize+secondSize+i, firstSize + e.secondIndices[i], value2 );
-            se.add(            e.firstIndices[i] , firstSize+secondSize+i, value1 );
-            se.add(firstSize + e.secondIndices[i], firstSize+secondSize+i, value2 );
-        }
-
-        std::vector<index_t> outerSkeletonFirst;
-        std::copy_if(m_localSkeletonDofs[e.first].begin(), m_localSkeletonDofs[e.first].end(), std::back_inserter(outerSkeletonFirst),
-            [&](index_t arg)
-            { return (std::find(e.firstIndices.begin(), e.firstIndices.end(), arg) == e.firstIndices.end());});
-
-        std::vector<index_t> outerSkeletonSecond;
-        std::copy_if(m_localSkeletonDofs[e.second].begin(), m_localSkeletonDofs[e.second].end(), std::back_inserter(outerSkeletonSecond),
-            [&](index_t arg)
-            { return (std::find(e.secondIndices.begin(), e.secondIndices.end(), arg) == e.secondIndices.end());});
-
-        GISMO_ASSERT( outerSkeletonFirst.size()+outerSkeletonSecond.size() == localDirichletSize, "Internal error.");
-        for (size_t i=0; i<outerSkeletonFirst.size(); ++i)
-        {
-            se.add( firstSize+secondSize+lagrangeSize+i, outerSkeletonFirst[i], 1 );
-            se.add( outerSkeletonFirst[i], firstSize+secondSize+lagrangeSize+i, 1 );
-        }
-        for (size_t i=0; i<outerSkeletonSecond.size(); ++i)
-        {
-            se.add( firstSize+secondSize+lagrangeSize+outerSkeletonFirst.size()+i, firstSize+outerSkeletonSecond[i], 1 );
-            se.add( firstSize+outerSkeletonSecond[i], firstSize+secondSize+lagrangeSize+outerSkeletonFirst.size()+i, 1 );
-        }
-
-        // setup matrix
-        gsSparseMatrix<> result(size,size);
-        result.setFrom(se);
-        result *= -1; // Schur complement has form C - B^t A^{-1} B, so must be negative!
-
-        //gsInfo << "***** local edge system *****\n\n" << result << "\n*****\n";
-
-        return result;
-    }
-
-    gsSparseMatrix<> getLocalEmbedding(const edge& e)
-    {
-        const size_t firstPatch = e.first;
-        const size_t secondPatch = e.second;
-        const index_t firstSize = m_localSystems[firstPatch].rows();
-        const index_t secondSize = m_localSystems[secondPatch].rows();
-        const index_t lagrangeSize = e.lagrangeIndices.size();
-        const index_t localDirichletSize = m_localSkeletonDofs[e.first].size() + m_localSkeletonDofs[e.second].size() - 2*lagrangeSize;
-        const index_t localSize = firstSize+secondSize+lagrangeSize+localDirichletSize;
-        const index_t globalLagrangeSize = m_localJumpMatrices[0].rows();
-
-        gsSparseEntries<> se;
-        se.reserve(lagrangeSize);
-
-        for (index_t i=0; i<lagrangeSize; ++i)
-            se.add( e.lagrangeIndices[i], firstSize+secondSize+i, 1 );
-
-        // setup matrix
-        gsSparseMatrix<> result(globalLagrangeSize,localSize);
-        result.setFrom(se);
-        return result;
-    }
-
-
-public:
-
-    void addSubdomain(
-            gsSparseMatrix<> localSystem,
-            gsSparseMatrix<real_t,RowMajor> localJumpMatrix,
-            std::vector<index_t> localSkeletonDofs
-    )
-    {
-        m_localSystems.push_back(give(localSystem));
-        m_localJumpMatrices.push_back(give(localJumpMatrix));
-        m_localSkeletonDofs.push_back(give(localSkeletonDofs));
-    }
-
-
-    void setupPreconditioner()
-    {
-        m_preconditioner = gsSumOp<>::make();
-        std::vector<edge> edges = identifyEdges();
-        for (size_t e=0; e<edges.size(); ++e)
-        {
-            gsLinearOperator<>::Ptr solver = makeSparseLUSolver(setupLocalProblem(edges[e]));
-            memory::shared_ptr<gsSparseMatrix<>> embedding = getLocalEmbedding(edges[e]).moveToPtr();
-            gsLinearOperator<>::Ptr prolong = makeMatrixOp(embedding.get()->transpose());
-            gsLinearOperator<>::Ptr restrict = makeMatrixOp(embedding);
-            m_preconditioner->addOperator( gsProductOp<>::make(prolong, solver, restrict) );
-        }
-    }
-
-    gsLinearOperator<>::Ptr preconditioner()
-    {
-        return m_preconditioner;
-    }
-
-
-private:
-    std::vector<gsSparseMatrix<>> m_localSystems;
-    std::vector<gsSparseMatrix<real_t,RowMajor>> m_localJumpMatrices;
-    std::vector<std::vector<index_t>> m_localSkeletonDofs;
-    gsSumOp<>::Ptr m_preconditioner;
-
-
-};
-
-
-
-
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
@@ -444,7 +226,6 @@ int main(int argc, char *argv[])
     int bdyConds = 0;
     std::string primals("x");
     std::string dualPreconder("c");
-    real_t extremelyDeluxeParameter = 1;
     std::string solverType("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 1000;
@@ -465,8 +246,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
     cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (0) \u0394u, \u2202n\u0394u; (1) u, \u0394u; (2) u, \u2202nu", bdyConds);
     cmd.addString("c", "Primals",               "Chosen primal dofs: (0) no, (c) classical corners, (x) eXtended cornerdofs", primals);
-    cmd.addString("d", "DualPreconder",         "Use preconder: (s) stanard Dirichlet, (c) componentwise Dirichlet, (d) deluxe, (e) extremely deluxe, (b) bruteforce", dualPreconder);
-    cmd.addReal  ("",  "ExtremelyDeluxeParameter", "", extremelyDeluxeParameter);
+    cmd.addString("d", "DualPreconder",         "Use preconder: (s) stanard Dirichlet, (c) componentwise Dirichlet", dualPreconder);
     cmd.addString("",  "Solver",                "Which solver to use: \"cg\" or \"gmres\".", solverType);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
@@ -628,8 +408,6 @@ int main(int argc, char *argv[])
     std::vector<gsMatrix<>> localRhsVectors; localRhsVectors.reserve(nPatches);
     std::vector<gsLinearOperator<>::Ptr> localSchurs; localSchurs.reserve(nPatches);
 
-    deluxePreconder deluxe;
-
     for (index_t k=0; k<nPatches; ++k)
     {
         gsInfo << "[" << k << "] " << std::flush;
@@ -710,16 +488,6 @@ int main(int argc, char *argv[])
                     )
                 );
         }
-        else if (dualPreconder=="d" || dualPreconder=="e" || dualPreconder=="b")
-        {
-#ifndef NDEBUG
-            gsInfo << "Skeleton=[";
-            for (size_t i=0; i<ietiMapper.skeletonDofs(k).size(); ++i)
-                gsInfo  << ietiMapper.skeletonDofs(k)[i] << " ";
-            gsInfo << "]";
-#endif
-            deluxe.addSubdomain(localMatrix, jumpMatrix, ietiMapper.skeletonDofs(k));
-        }
         else
         {
             gsInfo << "\nUnknown dual preconder.\n";
@@ -776,59 +544,10 @@ int main(int argc, char *argv[])
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
     gsLinearOperator<>::Ptr preconder;
-    if (dualPreconder=="d")
-    {
-        gsInfo << "    Setup deluxe preconder... " << std::flush;
-        deluxe.setupPreconditioner();
-        preconder = deluxe.preconditioner();
-    }
-    else if (dualPreconder=="e")
-    {
-        gsInfo << "    Setup extremely deluxe preconder... " << std::flush;
-        deluxe.setupPreconditioner();
-        preconder = gsLowRankCorrectedOp<>::make( deluxe.preconditioner(), extremelyDeluxeParameter*primal.localMatrix(), primal.jumpMatrix(), primal.jumpMatrix() );
-    }
-    else if (dualPreconder=="b")
-    {
-        gsInfo << "    Setup bruteforce preconder... " << std::flush;
-        gsSparseMatrix<> sm;
-        {
-            gsMatrix<> m;
-            ieti.schurComplement()->toMatrix(m);
-            sm = m.sparseView(m(0,0),1e-8);
-        }
-        gsSparseMatrix<> sm2(sm.rows(), sm.cols());
-        std::vector<deluxePreconder::edge> edges = deluxe.identifyEdges();
-        std::vector<bool> taken(sm.rows());
-        for (size_t k=0; k<edges.size(); ++k)
-        {
-            gsSparseEntries<> se;
-            se.reserve(edges[k].lagrangeIndices.size());
-            for (size_t i=0; i<edges[k].lagrangeIndices.size(); ++i)
-            {
-                GISMO_ENSURE ( !taken[edges[k].lagrangeIndices[i]], "");
-                taken[edges[k].lagrangeIndices[i]] = true;
-                se.add(edges[k].lagrangeIndices[i],edges[k].lagrangeIndices[i],1.);
-            }
-            gsSparseMatrix<> trans(sm.rows(), sm.cols());
-            trans.setFrom(se);
-            sm2 += trans * sm * trans;
-        }
-        for (size_t i=0; i<taken.size(); ++i)
-        {
-            GISMO_ENSURE (taken[i],"i="<<i);
-        }
-        //preconder = makeSparseLUSolver(sm2);
-        preconder = makeSparseCholeskySolver(sm2);
-    }
-    else if (dualPreconder=="c" || dualPreconder=="s")
-    {
-        gsInfo << "    Setup sclaled Dirichlet preconder... " << std::flush;
-        prec.setupMultiplicityScaling();
-        preconder = prec.preconditioner();
-    }
-    else
-        GISMO_ENSURE (0, "Unknown dualPreconder.");
+    gsInfo << "    Setup sclaled Dirichlet preconder... " << std::flush;
+    prec.setupMultiplicityScaling();
+    preconder = prec.preconditioner();
+
     //! [Setup scaling]
 
     gsInfo << "done.\n    Setup rhs... " << std::flush;
@@ -967,7 +686,6 @@ int main(int argc, char *argv[])
                 << bdyConds << "\t"
                 << primals << "\t"
                 << dualPreconder << "\t"
-                << extremelyDeluxeParameter << "\t"
                 << solverType << "\n";
 
         gsInfo << "Write solution to file " << out << "\n";
