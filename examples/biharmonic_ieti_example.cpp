@@ -52,53 +52,6 @@ constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
     return result;
 }
 
-// Old code
-std::vector<std::vector<std::vector<index_t>>>
-setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, int bdyCond)
-{
-    GISMO_ENSURE (bdyCond==0, "This function is not bounary-aware.");
-    std::vector<std::vector<std::vector<index_t>>> result(mp.nPatches());
-    for (size_t k=0; k<mp.nPatches(); ++k)
-        result[k].resize(2);
-
-    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-    {
-        const index_t k1 = it->first().patch;
-        const index_t k2 = it->second().patch;
-        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side()),
-                          s2 = mb.basis(k2).boundary(it->second().side()),
-                          s1o = mb.basis(k1).boundaryOffset(it->first().side(),1),
-                          s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
-
-        // We assume for now that the orientation matches!
-        GISMO_ASSERT( s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "");
-        for (index_t i=0;i<s1.rows();++i)
-        {
-            result[k1][0].push_back(s1 [i]);
-            result[k1][1].push_back(s1o[i]);
-            result[k2][0].push_back(s2 [i]);
-            result[k2][1].push_back(s2o[i]);
-        }
-    }
-
-    for (size_t k=0; k<mp.nPatches(); ++k)
-    {
-        for (size_t j=0; j<2; ++j)
-        {
-            std::sort(result[k][j].begin(),result[k][j].end());
-            result[k][j].erase( std::unique(result[k][j].begin(),result[k][j].end()), result[k][j].end() );
-        }
-        /*
-        std::vector<index_t> tmp;
-        std::set_difference(result[k][1].begin(),result[k][1].end(),
-                            result[k][0].begin(),result[k][0].end(),
-                            std::inserter(tmp, tmp.begin()));
-        tmp.swap(result[k][1]);
-        //*/
-    }
-
-    return result;
-}
 
 struct corner_t {
     std::vector<std::pair<index_t,index_t>> data;
@@ -360,11 +313,6 @@ int main(int argc, char *argv[])
 
     gsInfo << "Setup dofMapper... " << std::flush;
     gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, robin==0.?bdyConds:0);
-    std::vector<std::vector<std::vector<index_t>>> skeletonDofs;
-    if (robin>0 || bdyConds==0)
-    {
-        skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb, robin==0.?bdyConds:0);
-    }
     gsInfo << "done:\n" << dm << "\n";
 
     /****************** Setup ietimapper ********************/
@@ -473,24 +421,15 @@ int main(int argc, char *argv[])
         // Store
         localBasisTransforms.push_back(transformer);
 
-        std::array<std::vector<index_t>,3> skeletonDofsNew = constructSkeletonDofs(mb_local[0], ietiMapper.dofMapperLocal(k));
+        std::array<std::vector<index_t>,3> skeletonDofs = constructSkeletonDofs(mb_local[0], ietiMapper.dofMapperLocal(k));
 
-        gsInfo << "\nk=" << k << "\ndof mapper="<<ietiMapper.dofMapperLocal(k);
         for (index_t j=0; j<2; ++j)
         {
-            gsInfo << "\nj=" << j << "\nskeletonDofsOld=[ ";
-            if (!skeletonDofs.empty())
-                for (size_t idx = 0; idx<skeletonDofs[k][j].size(); ++idx) gsInfo << skeletonDofs[k][j][idx] << " ";
-            gsInfo << "]\nskeletonDofsNew=[ ";
-            for (size_t idx = 0; idx<skeletonDofsNew[j].size(); ++idx) gsInfo << skeletonDofsNew[j][idx] << " ";
-            gsInfo << "]\n";
-
             prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
                     jumpMatrix,
                     localMatrix,
-                    //skeletonDofs[k][j]
-                    skeletonDofsNew[j]
+                    skeletonDofs[j]
                 )
             );
         }
