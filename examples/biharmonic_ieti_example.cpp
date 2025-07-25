@@ -59,7 +59,6 @@ constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
         if (count[i]>1 && dm.is_free(i, 0))
             result[2].push_back(dm.index(i, 0));
 
-    gsInfo << "Super duper." << std::endl;
     return result;
 }
 
@@ -118,15 +117,12 @@ int main(int argc, char *argv[])
 
     std::string geometry("domain2d/quarter_annulus.xml");
     index_t rhsType = 2;
-    real_t sigma = .5;
     index_t sPatchesX = 1;
     index_t sPatchesY = 1;
     index_t degree = 2;
     index_t multiplicity = 1;
     index_t refinements = 2;
-    real_t alpha = 1;
-    int bdyConds = 0;
-    std::string primals("x");
+    int bdyConds = 2;
     std::string solverType("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 1000;
@@ -136,16 +132,13 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
 
     cmd.addInt   ("t", "RhsType",               "Chosen right-hand side", rhsType);
-    cmd.addReal  ("s", "Sigma",                 "Poisson ratio", sigma);
     cmd.addString("g", "Geometry",              "Chosen geometry file", geometry);
     cmd.addInt   ("x", "PatchesX",              "Number of splits (coordinate direction x)", sPatchesX);
     cmd.addInt   ("y", "PatchesY",              "Number of splits (coordinate direction y)", sPatchesY);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("m", "Multiplicity",          "Multiplicity of knots for B-spline discretization space", multiplicity);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
-    cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
-    cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (0) \u0394u, \u2202n\u0394u; (1) u, \u0394u; (2) u, \u2202nu", bdyConds);
-    cmd.addString("c", "Primals",               "Chosen primal dofs: (0) no, (c) classical corners, (x) eXtended cornerdofs", primals);
+    cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (1) second biharmonic (u, \u0394u); (2) first biharmonic (u, \u2202nu)", bdyConds);
     cmd.addString("",  "Solver",                "Which solver to use: \"cg\" or \"gmres\".", solverType);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
@@ -170,7 +163,7 @@ int main(int argc, char *argv[])
         gsInfo << "Invalid choice for --RhsType (-t).\n";
         return EXIT_FAILURE;
     }
-    if (bdyConds < 0 || bdyConds > 2)
+    if (bdyConds < 1 || bdyConds > 2)
     {
         gsInfo << "Invalid choice for --BdyCond (-b).\n";
         return EXIT_FAILURE;
@@ -242,32 +235,13 @@ int main(int argc, char *argv[])
     gsIetiMapper<> ietiMapper(mb,dm,fixedPart);
     ietiMapper.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/false);
 
-    if (primals == "c")
+    for (index_t k=0; k<nPatches; ++k)
     {
-        ietiMapper.cornersAsPrimals();
-        gsInfo << "[" << ietiMapper.nPrimalDofs() << " classical cornerdofs added as primals]";
+        std::array<std::vector<index_t>,3> skeletonDofs = constructSkeletonDofs(mb[k], ietiMapper.dofMapperLocal(k));
+        for (size_t i=0; i<skeletonDofs[2].size(); ++i)
+            ietiMapper.declareDofAsPrimal(k, skeletonDofs[2][i], true);
     }
-    else if (primals == "x")
-    {
 
-        for (index_t k=0; k<nPatches; ++k)
-        {
-            std::array<std::vector<index_t>,3> skeletonDofs = constructSkeletonDofs(mb[k], ietiMapper.dofMapperLocal(k));
-            for (size_t i=0; i<skeletonDofs[2].size(); ++i)
-            {
-                ietiMapper.declareDofAsPrimal(k, skeletonDofs[2][i], true);
-            }
-
-        }
-        gsInfo << "[" << ietiMapper.nPrimalDofs() << " eXtended cornerdofs added as primals]";
-    }
-    else if (primals == "0")
-        gsInfo << "[no primaldofs added]";
-    else
-    {
-        gsInfo << "Invalid choice for --Primals.\n";
-        return EXIT_FAILURE;
-    }
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
 
@@ -276,7 +250,7 @@ int main(int argc, char *argv[])
 
     gsPrimalSystem<> primal(ietiMapper.nPrimalDofs());
 
-    gsInfo << "done.\n";
+    gsInfo << "done: " << ietiMapper.nPrimalDofs() << " primals.\n";
 
     /********* Setup assembler and assemble matrix **********/
 
@@ -306,9 +280,8 @@ int main(int argc, char *argv[])
         ietiMapper.initFeSpace(u,k);
 
         A.initSystem();
-        A.assemble(sigma *ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
-        //A.assemble((1-sigma) * ihess(u, G) * ihess(u, G).tr() * meas(G)); //TODO
-        A.assemble(alpha*u*u.tr()*meas(G));
+        //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
+        A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
         gsSparseMatrix<> transformer = applyDofMapperTwoSided(makeTransformer(mb[k]),ietiMapper.dofMapperLocal(k));
 
@@ -481,9 +454,7 @@ int main(int argc, char *argv[])
                     << "sPatchesX" << "\t"
                     << "sPatchesY" << "\t"
                     << "rhsType" << "\t"
-                    << "alpha" << "\t"
                     << "bdyConds" << "\t"
-                    << "primals" << "\t"
                     << "solverType" << "\n";
         }
         outfile << "biharmonic_ieti_example\t"
@@ -495,9 +466,7 @@ int main(int argc, char *argv[])
                 << sPatchesX << "\t"
                 << sPatchesY << "\t"
                 << rhsType << "\t"
-                << alpha << "\t"
                 << bdyConds << "\t"
-                << primals << "\t"
                 << solverType << "\n";
 
         gsInfo << "Write solution to file " << out << "\n";
