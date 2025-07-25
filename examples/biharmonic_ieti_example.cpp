@@ -18,111 +18,11 @@
 
 using namespace gismo;
 
-gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds)
-{
-    gsVector<index_t> patchDofSizes(mp.nPatches());
-    for (size_t k=0; k<mp.nPatches(); ++k)
-        patchDofSizes[k] = mb[k].size();
+// Helper functions, defined at the end of the file
+gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
+bool verifyC1Continuity(const gsMultiPatch<>& mp);
+gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds);
 
-    gsDofMapper dm(patchDofSizes);
-    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-    {
-        const index_t k1 = it->first().patch;
-        const index_t k2 = it->second().patch;
-        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side()),
-                          s2 = mb.basis(k2).boundary(it->second().side()),
-                          s1o = mb.basis(k1).boundaryOffset(it->first().side(),1),
-                          s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
-
-        // TODO: We assume for now that the orientation matches!
-        GISMO_ASSERT( s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "");
-        for (index_t i=0;i<s1.rows();++i)
-        {
-            dm.matchDof(k1,s1[i],k2,s2[i]);
-            dm.matchDof(k1,s1o[i],k2,s2o[i]);
-        }
-    }
-
-    if (bdyConds)  // Eliminate boundary layer if bdyConds == 1 or == 2
-    {
-        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
-        {
-            const index_t k = it->patchIndex();
-            gsVector<index_t> s = mb.basis(k).boundary(it->side()),
-                              so = mb.basis(k).boundaryOffset(it->side(),1);
-
-            GISMO_ASSERT( s.rows() == so.rows(), "");
-            for (index_t i=0;i<s.rows();++i)
-            {
-                dm.eliminateDof(s[i],k);
-                if (bdyConds == 2)
-                    dm.eliminateDof(so[i],k);
-            }
-        }
-    }
-
-    dm.finalize();
-    return dm;
-}
-
-std::pair< gsMatrix<>, gsMatrix<> >
-sampleBoundary(const gsGeometry<>& geo, boxSide s, bool inverted, index_t numberSamples)
-{
-    const short_t dim = 2;
-
-    GISMO_ASSERT( s.index()>0 && s.index()<=4, "Invalid boxSide." );
-    const short_t dir = (s.index()-1)/2;
-    const short_t prm = (s.index()-1)%2;
-    const gsMatrix<>& parameterRange = geo.parameterRange();
-
-    gsMatrix<> sample(dim,numberSamples);
-    for (index_t i=0; i<numberSamples; ++i)
-    {
-        index_t j = inverted ? (numberSamples-1-i) : i;
-        sample(  dir, j) = parameterRange(  dir,0) + prm                     * (parameterRange(  dir,1)-parameterRange(  dir,0));
-        sample(1-dir, j) = parameterRange(1-dir,0) + i/(numberSamples - 1.0) * (parameterRange(1-dir,1)-parameterRange(1-dir,0));
-    }
-
-    gsMatrix<> selector(2,4);
-    selector.setZero();
-    selector(0,dir)   = prm?1.0:-1.0;
-    selector(1,dir+2) = prm?1.0:-1.0;
-
-    return std::pair< gsMatrix<>, gsMatrix<> >( geo.eval(sample), selector*geo.deriv(sample) );
-}
-
-
-bool
-checkC1(const gsMultiPatch<>& mp)
-{
-    bool isC1 = true;
-    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-    {
-        const index_t k1 = it->first().patch;
-        const index_t k2 = it->second().patch;
-
-        gsVector<index_t> cm;
-        it->cornerMap(cm);
-        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
-        const bool inverted = cm[0];
-
-        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
-        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
-
-        if ((data1.first-data2.first).cwiseAbs().maxCoeff()>1e-6)
-        {
-            gsDebug << "Interface between patches " << k1 << " and " << k2 << " is not C0.\n";
-            isC1 = false;
-        }
-        if ((data1.second+data2.second).cwiseAbs().maxCoeff()>1e-6)
-        {
-            gsDebug << "Interface between patches " << k1 << " and " << k2 << " is not C1.\n";
-            isC1 = false;
-        }
-
-    }
-    return isC1;
-}
 
 
 std::vector<std::vector<std::vector<index_t>>>
@@ -214,30 +114,6 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
                 dofsof[it.row()].push_back(std::pair<index_t,index_t>(k, it.col()));
             }
     }
-    /*gsInfo << "lmultsof: \n";
-    for (size_t k=0;k<lmultsof.size(); ++k)
-    {
-        gsInfo << "[" << k << ":";
-        for (size_t i=0;i<lmultsof[k].size(); ++i)
-            if (lmultsof[k][i].size()>0)
-            {
-                gsInfo << "{" << i << ":";
-                for (size_t j=0;j<lmultsof[k][i].size(); ++j)
-                    gsInfo << " " << lmultsof[k][i][j];
-                gsInfo << "}";
-            }
-        gsInfo << "]\n";
-    }
-    gsInfo << "dofsof: \n";
-    for (size_t k=0;k<dofsof.size(); ++k)
-    {
-        gsInfo << "[" << k << ":";
-        for (size_t i=0;i<dofsof[k].size(); ++i)
-            gsInfo << " " << dofsof[k][i].first << "/" << dofsof[k][i].second;
-        gsInfo << "]\n";
-    }
-    //*/
-
 
     std::vector<corner_t> result;
     for (size_t k=0; k<lmultsof.size(); ++k)
@@ -249,7 +125,7 @@ cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms
                 for (size_t l=0; l<lmultsof[k][i].size(); ++l)
                 {
                     index_t multiplier = lmultsof[k][i][l];
-                    GISMO_ENSURE(dofsof[multiplier].size()==2,"");
+                    GISMO_ENSURE(dofsof[multiplier].size()==2,"what is this?");
                     if (dofsof[multiplier][0].first != (index_t)k)
                         corner.push_back(dofsof[multiplier][0]);
                     else if (dofsof[multiplier][1].first != (index_t)k)
@@ -549,55 +425,7 @@ private:
 };
 
 
-gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s)
-{
-    index_t nPatchesX=0, nPatchesY=0, geoExample=0;
 
-    if (*(s++)!='r'||*(s++)!='_') return nullptr;
-    for (char c; c=*s, '0'<=c && c<='9'; ++s)
-        nPatchesX = 10*nPatchesX+(c-'0');
-
-    if (*s!='_') return nullptr;
-    ++s;
-
-    for (char c; c=*s, '0'<=c && c<='9'; ++s)
-        nPatchesY = 10*nPatchesY+(c-'0');
-
-    if (*s=='_')
-    {
-        ++s;
-        for (char c; c=*s, '0'<=c && c<='9'; ++s)
-            geoExample = 10*geoExample+(c-'0');
-    }
-    if (*s!='\0') return nullptr;
-    if (nPatchesX == 0 || nPatchesY == 0) return nullptr;
-
-    gsMultiPatch<>::uPtr mp = memory::make_unique(new gsMultiPatch<>());
-
-    if (geoExample==0)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(0,0,1,1));
-    else if (geoExample==1)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(0,-1,1,0,90));
-    else if (geoExample==2)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(-1,-1,0,0,180));
-    else if (geoExample==3)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(-1,0,0,1,270));
-    else if (geoExample==4)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(1,0,0,1));
-    else if (geoExample==5)
-        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(1,1,0,0));
-    else
-        return nullptr;
-
-    /// end
-    for (index_t i=0; i<nPatchesX; ++i)
-        for (index_t j=0; j<nPatchesY; ++j)
-            if (i+j)
-                mp->addPatch(gsNurbsCreator<>::BSplineRectangle(i,j,i+1,j+1));
-    mp->computeTopology();
-    gsInfo << "Initial geometry is grid of " << nPatchesX << "x" << nPatchesY << " unit squares.\n";
-    return mp;
-}
 
 int main(int argc, char *argv[])
 {
@@ -718,7 +546,7 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n";
 
     /******************* Setup dofMapper ********************/
-    if (!checkC1(mp))
+    if (!verifyC1Continuity(mp))
     {
         gsInfo << "This is not a C1 geometry.\n";
         return EXIT_FAILURE;
@@ -1160,4 +988,172 @@ int main(int argc, char *argv[])
     }
 
     return EXIT_SUCCESS;
+}
+
+
+
+/// Helper functions
+
+gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s)
+{
+    index_t nPatchesX=0, nPatchesY=0, geoExample=0;
+
+    if (*(s++)!='r'||*(s++)!='_') return nullptr;
+    for (char c; c=*s, '0'<=c && c<='9'; ++s)
+        nPatchesX = 10*nPatchesX+(c-'0');
+
+    if (*s!='_') return nullptr;
+    ++s;
+
+    for (char c; c=*s, '0'<=c && c<='9'; ++s)
+        nPatchesY = 10*nPatchesY+(c-'0');
+
+    if (*s=='_')
+    {
+        ++s;
+        for (char c; c=*s, '0'<=c && c<='9'; ++s)
+            geoExample = 10*geoExample+(c-'0');
+    }
+    if (*s!='\0') return nullptr;
+    if (nPatchesX == 0 || nPatchesY == 0) return nullptr;
+
+    gsMultiPatch<>::uPtr mp = memory::make_unique(new gsMultiPatch<>());
+
+    if (geoExample==0)
+        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(0,0,1,1));
+    else if (geoExample==1)
+        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(0,-1,1,0,90));
+    else if (geoExample==2)
+        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(-1,-1,0,0,180));
+    else if (geoExample==3)
+        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(-1,0,0,1,270));
+    else if (geoExample==4)
+        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(1,0,0,1));
+    else if (geoExample==5)
+        mp->addPatch(gsNurbsCreator<>::BSplineRectangle(1,1,0,0));
+    else
+        return nullptr;
+
+    /// end
+    for (index_t i=0; i<nPatchesX; ++i)
+        for (index_t j=0; j<nPatchesY; ++j)
+            if (i+j)
+                mp->addPatch(gsNurbsCreator<>::BSplineRectangle(i,j,i+1,j+1));
+    mp->computeTopology();
+    gsInfo << "Initial geometry is grid of " << nPatchesX << "x" << nPatchesY << " unit squares.\n";
+    return mp;
+}
+
+std::pair< gsMatrix<>, gsMatrix<> >
+sampleBoundary(const gsGeometry<>& geo, boxSide s, bool inverted, index_t numberSamples)
+{
+    const short_t dim = 2;
+
+    GISMO_ASSERT( s.index()>0 && s.index()<=4, "Invalid boxSide." );
+    const short_t dir = (s.index()-1)/2;
+    const short_t prm = (s.index()-1)%2;
+    const gsMatrix<>& parameterRange = geo.parameterRange();
+
+    gsMatrix<> sample(dim,numberSamples);
+    for (index_t i=0; i<numberSamples; ++i)
+    {
+        index_t j = inverted ? (numberSamples-1-i) : i;
+        sample(  dir, j) = parameterRange(  dir,0) + prm                     * (parameterRange(  dir,1)-parameterRange(  dir,0));
+        sample(1-dir, j) = parameterRange(1-dir,0) + i/(numberSamples - 1.0) * (parameterRange(1-dir,1)-parameterRange(1-dir,0));
+    }
+
+    gsMatrix<> selector(2,4);
+    selector.setZero();
+    selector(0,dir)   = prm?1.0:-1.0;
+    selector(1,dir+2) = prm?1.0:-1.0;
+
+    return std::pair< gsMatrix<>, gsMatrix<> >( geo.eval(sample), selector*geo.deriv(sample) );
+}
+
+
+bool
+verifyC1Continuity(const gsMultiPatch<>& mp)
+{
+    bool result = true;
+    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const index_t k1 = it->first().patch;
+        const index_t k2 = it->second().patch;
+
+        gsVector<index_t> cm;
+        it->cornerMap(cm);
+        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
+        const bool inverted = cm[0];
+
+        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
+        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
+
+        if ((data1.first-data2.first).cwiseAbs().maxCoeff()>1e-6)
+        {
+            gsDebug << "Interface between patches " << k1 << " and " << k2 << " is not C0.\n";
+            result = false;
+        }
+        if ((data1.second+data2.second).cwiseAbs().maxCoeff()>1e-6)
+        {
+            gsDebug << "Interface between patches " << k1 << " and " << k2 << " is not C1.\n";
+            result = false;
+        }
+
+    }
+    return result;
+}
+
+
+gsDofMapper
+setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds)
+{
+    gsVector<index_t> patchDofSizes(mp.nPatches());
+    for (size_t k=0; k<mp.nPatches(); ++k)
+        patchDofSizes[k] = mb[k].size();
+
+    gsDofMapper dm(patchDofSizes);
+    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const index_t k1 = it->first().patch;
+        const index_t k2 = it->second().patch;
+        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side()),
+                          s2 = mb.basis(k2).boundary(it->second().side()),
+                          s1o = mb.basis(k1).boundaryOffset(it->first().side(),1),
+                          s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
+
+        GISMO_ASSERT( s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "Bases do not agree.");
+        
+        gsVector<index_t> cm;
+        it->cornerMap(cm);
+        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
+        const bool inverted = cm[0];
+
+        for (index_t i=0;i<s1.rows();++i)
+        {
+            const index_t j = inverted?(s1.rows()-1-i):i;
+            dm.matchDof(k1,s1[i],k2,s2[j]);
+            dm.matchDof(k1,s1o[i],k2,s2o[j]);
+        }
+    }
+
+    if (bdyConds)  // Eliminate boundary layer if bdyConds == 1 or == 2
+    {
+        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
+        {
+            const index_t k = it->patchIndex();
+            gsVector<index_t> s = mb.basis(k).boundary(it->side()),
+                              so = mb.basis(k).boundaryOffset(it->side(),1);
+
+            GISMO_ASSERT( s.rows() == so.rows(), "");
+            for (index_t i=0;i<s.rows();++i)
+            {
+                dm.eliminateDof(s[i],k);
+                if (bdyConds == 2)
+                    dm.eliminateDof(so[i],k);
+            }
+        }
+    }
+
+    dm.finalize();
+    return dm;
 }
