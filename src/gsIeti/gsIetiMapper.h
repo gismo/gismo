@@ -106,6 +106,17 @@ public:
     /// index and the vector representing the primal constraint.
     void customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data );
 
+    /// @brief With this function, the caller can register individual dofs as primal
+    ///
+    /// Here, the dof has to be specified for one patch and is automatrically
+    /// propagated to all neighbors.
+    ///
+    /// @param patch        Index of the patch
+    /// @param index        Local index of the dof
+    /// @param checkUnique  If true, the command is ignored if the dof is already
+    ///                     primal
+    void declareDofAsPrimal( index_t patch, index_t index, bool checkUnique = true );
+
     /// @brief This function computes the jump matrices
     ///
     /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;

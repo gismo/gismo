@@ -27,18 +27,27 @@ gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<
 std::array<std::vector<index_t>,3>
 constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
 {
-    // For each dof, 0=interior, 1=values, 2=derivatvies, 3=corners (2x2)
+    // For each dof, 0=interior, 1=values, 2=derivatvies
     gsVector<index_t> qualifier;
     qualifier.setZero(basis.size());
+    // Corners are found by counting
+    gsVector<index_t> count;
+    count.setZero(basis.size());
+
     for (boxSide s=boxSide::getFirst(2); s<boxSide::getEnd(2); ++s)
     {
         gsVector<index_t> layer0 = basis.boundary(s);
         for (index_t i=0; i<layer0.rows(); ++i)
+        {
             qualifier[layer0[i]] = 1;
-
+            count[layer0[i]]++;
+        }
         gsVector<index_t> layer1 = basis.boundaryOffset(s,1);
         for (index_t i=0; i<layer1.rows(); ++i)
+        {
             qualifier[layer1[i]] = qualifier[layer1[i]] == 1 ? 1 : 2;
+            count[layer1[i]]++;
+        }
     }
 
     std::array<std::vector<index_t>,3> result;
@@ -46,97 +55,13 @@ constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
         if (qualifier[i] && dm.is_free(i, 0))
             result[qualifier[i]-1].push_back(dm.index(i, 0));
 
+    for (index_t i=0; i<count.rows(); ++i)
+        if (count[i]>1 && dm.is_free(i, 0))
+            result[2].push_back(dm.index(i, 0));
+
+    gsInfo << "Super duper." << std::endl;
     return result;
 }
-
-
-struct corner_t {
-    std::vector<std::pair<index_t,index_t>> data;
-    void push_back(std::pair<index_t,index_t> p) { data.push_back(p); }
-    bool operator==(const corner_t& other) const
-    {
-        if (data.size()!=other.data.size())
-            return false;
-        for (size_t i=0;i<data.size();++i)
-        {
-            int found = 0;
-            for (size_t j=0;j<other.data.size();++j)
-                if (data[i].first == other.data[j].first && data[i].second == other.data[j].second)
-                    found += 1;
-            if (found!=1)
-                return false;
-        }
-        return true;
-    }
-
-};
-
-
-std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>>
-cornersFromJumpMatrices( const std::vector<gsSparseMatrix<real_t,RowMajor>>& sms )
-{
-    // This function guesses the corners from the jump matrices; each dof belonging
-    // to more than 2 patches is a corner.
-
-    // lmultsof[k][i] ... which L-multipliers act on dof i of patch k?
-    std::vector<std::vector<std::vector<index_t>>> lmultsof(sms.size());
-    // dofsof[l][0 and 1] ... a pair (patch, index) of dofs connected by L-multiplier l
-    std::vector<std::vector<std::pair<index_t,index_t>>> dofsof(sms[0].rows());
-    for (size_t k=0; k<sms.size(); ++k)
-    {
-        lmultsof[k].resize(sms[k].cols());
-        for (index_t i=0; i<sms[k].outerSize(); ++i)
-            for (gsSparseMatrix<real_t,RowMajor>::InnerIterator it(sms[k],i); it; ++it)
-            {
-                lmultsof[k][it.col()].push_back(it.row());
-                dofsof[it.row()].push_back(std::pair<index_t,index_t>(k, it.col()));
-            }
-    }
-
-    std::vector<corner_t> result;
-    for (size_t k=0; k<lmultsof.size(); ++k)
-        for (size_t i=0; i<lmultsof[k].size(); ++i)
-            if (lmultsof[k][i].size()>1)
-            {
-                corner_t corner;
-                corner.push_back(std::pair<index_t,index_t>(k,i));
-                for (size_t l=0; l<lmultsof[k][i].size(); ++l)
-                {
-                    index_t multiplier = lmultsof[k][i][l];
-                    GISMO_ENSURE (dofsof[multiplier].size()==2,"what is this?");
-                    if (dofsof[multiplier][0].first != (index_t)k)
-                        corner.push_back(dofsof[multiplier][0]);
-                    else if (dofsof[multiplier][1].first != (index_t)k)
-                        corner.push_back(dofsof[multiplier][1]);
-                    else
-                    {
-                        GISMO_ENSURE (0, "what is this?");
-                    }
-                }
-                if (find(result.begin(), result.end(), corner) == result.end())
-                    result.push_back(corner);
-            }
-
-    std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> finalResult;
-    for (size_t i=0; i<result.size(); ++i)
-    {
-        std::vector<std::pair<index_t,gsSparseVector<>>> corner;
-        for (size_t j=0; j<result[i].data.size(); ++j)
-        {
-            gsSparseVector<> sv(sms[result[i].data[j].first].cols());
-            sv.setZero();
-            //gsInfo << i << "%%" << j << "%%" <<
-            //    result[i].data[j].first << "%%" << result[i].data[j].second << "%%"
-            //    << sms[result[i].data[j].first].cols() << "%%" << result[i].data[j].second << std::endl;
-            sv[result[i].data[j].second] = 1;
-            corner.push_back(std::pair<index_t,gsSparseVector<>>(result[i].data[j].first,sv));
-        }
-        finalResult.push_back(corner);
-    }
-    return finalResult;
-
-}
-
 
 gsSparseMatrix<> makeTransformer(const gsBasis<>& basis)
 {
@@ -325,16 +250,16 @@ int main(int argc, char *argv[])
     else if (primals == "x")
     {
 
-        std::vector<gsSparseMatrix<real_t,RowMajor>> jm;
-        jm.reserve(nPatches);
         for (index_t k=0; k<nPatches; ++k)
-            jm.push_back(ietiMapper.jumpMatrix(k));
-        //gsInfo << "im2-jumps[0]:" << jm[0].rows() << "x" << jm[0].cols() << "\n";
-        std::vector<std::vector<std::pair<index_t,gsSparseVector<>>>> data = cornersFromJumpMatrices(jm);
+        {
+            std::array<std::vector<index_t>,3> skeletonDofs = constructSkeletonDofs(mb[k], ietiMapper.dofMapperLocal(k));
+            for (size_t i=0; i<skeletonDofs[2].size(); ++i)
+            {
+                ietiMapper.declareDofAsPrimal(k, skeletonDofs[2][i], true);
+            }
 
-        for (size_t i=0; i<data.size(); ++i)
-            ietiMapper.customPrimalConstraints(data[i]);
-        gsInfo << "[" << data.size() << " eXtended cornerdofs added as primals]";
+        }
+        gsInfo << "[" << ietiMapper.nPrimalDofs() << " eXtended cornerdofs added as primals]";
     }
     else if (primals == "0")
         gsInfo << "[no primaldofs added]";
@@ -382,7 +307,7 @@ int main(int argc, char *argv[])
 
         A.initSystem();
         A.assemble(sigma *ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
-        A.assemble((1-sigma) * ihess(u, G) * ihess(u, G).tr() * meas(G));
+        //A.assemble((1-sigma) * ihess(u, G) * ihess(u, G).tr() * meas(G)); //TODO
         A.assemble(alpha*u*u.tr()*meas(G));
 
         gsSparseMatrix<> transformer = applyDofMapperTwoSided(makeTransformer(mb[k]),ietiMapper.dofMapperLocal(k));
