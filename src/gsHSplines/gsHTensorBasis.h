@@ -580,10 +580,6 @@ public:
     }
 
     // Look at gsBasis.h for the documentation of this function
-    virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
-
-
-    // Look at gsBasis.h for the documentation of this function
     gsMatrix<index_t> allBoundary( ) const;
 
     // Look at gsBasis.h for the documentation of this function
