@@ -62,7 +62,9 @@ public:
 
 private:
 
-    virtual size_t localId() const { return m_cur.id(); }
+    size_t localId() const override { return m_cur.id(); }
+
+    gsDomainIterator<T> & local() override { return *m_cur; }
 
     void next() override
     {

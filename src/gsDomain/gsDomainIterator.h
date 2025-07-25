@@ -191,9 +191,11 @@ public:
         m_domainIter->resetId();
     }
 
-    gsDomainIterator<T> * get() { return m_domainIter.get(); }
+    gsDomainIterator<T> * get() const { return &m_domainIter->local(); }
 
     gsDomainIterator<T> & operator*() { return *m_domainIter; }
+
+    const gsDomainIterator<T> & operator*() const { return *m_domainIter; }
 
 public:
 
@@ -314,6 +316,12 @@ public:
 
     /// Returns the local element id -- e.g. the id inside the patch
     virtual size_t localId() const { return m_id; }
+
+    /// Returns the patch-local domain iterator
+    virtual gsDomainIterator<T> & local() { return *this; }
+
+    const gsDomainIterator<T> & local() const
+    { const_cast<const gsDomainIterator<T> &>(*this).local(); }
 
     /// Return dimension of the elements
     short_t dim() const   { return centerPoint().size(); }
