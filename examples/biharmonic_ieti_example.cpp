@@ -23,8 +23,36 @@ gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
 bool verifyC1Continuity(const gsMultiPatch<>& mp);
 gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds);
 
+// Returns indices of edges, edges with 1 offset, corner dofs (4 per corner)
+std::array<std::vector<index_t>,3>
+constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
+{
+    // For each dof, 0=interior, 1=values, 2=derivatvies, 3=corners (2x2)
+    gsVector<index_t> qualifier;
+    qualifier.setZero(basis.size());
+    for (boxSide s=boxSide::getFirst(2); s<boxSide::getEnd(2); ++s)
+    {
+        gsVector<index_t> layer0 = basis.boundary(s);
+        for (index_t i=0; i<layer0.rows(); ++i)
+            qualifier[layer0[i]] = 1;
 
+        gsVector<index_t> layer1 = basis.boundaryOffset(s,1);
+        for (index_t i=0; i<layer1.rows(); ++i)
+            qualifier[layer1[i]] = qualifier[layer1[i]] == 1 ? 1 : 2;
+    }
 
+    std::array<std::vector<index_t>,3> result;
+    for (index_t i=0; i<qualifier.rows(); ++i)
+        if (qualifier[i] && dm.is_free(i, 0))
+            result[qualifier[i]-1].push_back(dm.index(i, 0));
+    //for (index_t i=0; i<qualifier.rows(); ++i)
+    //    if (qualifier[i])
+    //        result[qualifier[i]-1].push_back(i);
+
+    return result;
+}
+
+// Old code
 std::vector<std::vector<std::vector<index_t>>>
 setupTwoLayerSkeletonDofs(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, int bdyCond)
 {
@@ -235,7 +263,7 @@ int main(int argc, char *argv[])
 
     cmd.addInt   ("t", "RhsType",               "Chosen right-hand side", rhsType);
     cmd.addReal  ("s", "Sigma",                 "Poisson ratio", sigma);
-    cmd.addString("g", "Geometry",              "Chosen geometry file", geometry);    
+    cmd.addString("g", "Geometry",              "Chosen geometry file", geometry);
     cmd.addInt   ("x", "PatchesX",              "Number of splits (coordinate direction x)", sPatchesX);
     cmd.addInt   ("y", "PatchesY",              "Number of splits (coordinate direction y)", sPatchesY);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
@@ -332,7 +360,11 @@ int main(int argc, char *argv[])
 
     gsInfo << "Setup dofMapper... " << std::flush;
     gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, robin==0.?bdyConds:0);
-    std::vector<std::vector<std::vector<index_t>>> skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb, robin==0.?bdyConds:0);
+    std::vector<std::vector<std::vector<index_t>>> skeletonDofs;
+    if (robin>0 || bdyConds==0)
+    {
+        skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb, robin==0.?bdyConds:0);
+    }
     gsInfo << "done:\n" << dm << "\n";
 
     /****************** Setup ietimapper ********************/
@@ -441,14 +473,27 @@ int main(int argc, char *argv[])
         // Store
         localBasisTransforms.push_back(transformer);
 
+        std::array<std::vector<index_t>,3> skeletonDofsNew = constructSkeletonDofs(mb_local[0], ietiMapper.dofMapperLocal(k));
+
+        gsInfo << "\nk=" << k << "\ndof mapper="<<ietiMapper.dofMapperLocal(k);
         for (index_t j=0; j<2; ++j)
+        {
+            gsInfo << "\nj=" << j << "\nskeletonDofsOld=[ ";
+            if (!skeletonDofs.empty())
+                for (size_t idx = 0; idx<skeletonDofs[k][j].size(); ++idx) gsInfo << skeletonDofs[k][j][idx] << " ";
+            gsInfo << "]\nskeletonDofsNew=[ ";
+            for (size_t idx = 0; idx<skeletonDofsNew[j].size(); ++idx) gsInfo << skeletonDofsNew[j][idx] << " ";
+            gsInfo << "]\n";
+
             prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
                     jumpMatrix,
                     localMatrix,
-                    skeletonDofs[k][j]
+                    //skeletonDofs[k][j]
+                    skeletonDofsNew[j]
                 )
             );
+        }
 
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
@@ -767,7 +812,7 @@ setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsig
                           s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
 
         GISMO_ASSERT( s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "Bases do not agree.");
-        
+
         gsVector<index_t> cm;
         it->cornerMap(cm);
         GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
