@@ -45,9 +45,6 @@ constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
     for (index_t i=0; i<qualifier.rows(); ++i)
         if (qualifier[i] && dm.is_free(i, 0))
             result[qualifier[i]-1].push_back(dm.index(i, 0));
-    //for (index_t i=0; i<qualifier.rows(); ++i)
-    //    if (qualifier[i])
-    //        result[qualifier[i]-1].push_back(i);
 
     return result;
 }
@@ -202,7 +199,6 @@ int main(int argc, char *argv[])
     index_t degree = 2;
     index_t multiplicity = 1;
     index_t refinements = 2;
-    real_t robin = 0;
     real_t alpha = 1;
     int bdyConds = 0;
     std::string primals("x");
@@ -222,7 +218,6 @@ int main(int argc, char *argv[])
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("m", "Multiplicity",          "Multiplicity of knots for B-spline discretization space", multiplicity);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
-    cmd.addReal  ("o", "Robin",                 "Penalty parameter for Robin boundary conditions", robin);
     cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
     cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (0) \u0394u, \u2202n\u0394u; (1) u, \u0394u; (2) u, \u2202nu", bdyConds);
     cmd.addString("c", "Primals",               "Chosen primal dofs: (0) no, (c) classical corners, (x) eXtended cornerdofs", primals);
@@ -312,7 +307,7 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "Setup dofMapper... " << std::flush;
-    gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, robin==0.?bdyConds:0);
+    gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, bdyConds);
     gsInfo << "done:\n" << dm << "\n";
 
     /****************** Setup ietimapper ********************/
@@ -400,23 +395,6 @@ int main(int argc, char *argv[])
         //gsInfo << "\nlocalMatrix:"<<localMatrix.rows()<<"x"<<localMatrix.cols()<<";jumpMatrix:"<<jumpMatrix.rows()<<"x"<<jumpMatrix.cols();
 
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
-
-        // Penalize (Dirichlet) boundary
-        // TODO: How does this interact with --BdyConds
-        if (robin)
-        {
-            gsInfo << "[robin]";
-            for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
-            {
-                if (it->patchIndex()==k)
-                {
-                    // gsInfo << "Found biterator: " << *it << "\n";
-                    gsVector<index_t> s1 = mb_local.basis(0).boundary(it->side());
-                    for (index_t i=0; i<s1.rows(); ++i)
-                        localMatrix(s1[i],s1[i]) += robin;
-                }
-            }
-        }
 
         // Store
         localBasisTransforms.push_back(transformer);
@@ -578,7 +556,6 @@ int main(int argc, char *argv[])
                     << "sPatchesX" << "\t"
                     << "sPatchesY" << "\t"
                     << "rhsType" << "\t"
-                    << "robin" << "\t"
                     << "alpha" << "\t"
                     << "bdyConds" << "\t"
                     << "primals" << "\t"
@@ -593,7 +570,6 @@ int main(int argc, char *argv[])
                 << sPatchesX << "\t"
                 << sPatchesY << "\t"
                 << rhsType << "\t"
-                << robin << "\t"
                 << alpha << "\t"
                 << bdyConds << "\t"
                 << primals << "\t"
