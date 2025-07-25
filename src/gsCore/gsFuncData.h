@@ -124,6 +124,8 @@ class gsFuncData
 {
     friend class gsFunctionSet<T>;
 
+    const gsDomainIteratorWrapper<T> * _element;
+
 public:
     typedef typename gsMatrix<T>::constColumn constColumn;
     // Types for returning quick access to data in matrix format
@@ -137,7 +139,7 @@ public:
     gsMatrix<index_t> actives;
 
     /// Stores values and derivatives
-    /// values[0] for base
+    /// values[0] for basis values
     /// values[n] for n-th derivative
     std::vector<gsMatrix<T> > values;
 
@@ -157,7 +159,7 @@ public:
      * @param patch in case of multipatch structures, on which patch to compute
      */
     explicit gsFuncData(unsigned flags = 0, int patch = 0)
-    : flags(flags), patchId(patch)
+    : _element(nullptr), flags(flags), patchId(patch)
     { }
 
 public:
@@ -170,6 +172,17 @@ public:
     void addFlags (unsigned newFlags)
     { flags = flags|newFlags; }
 
+
+    void setElement(const gsDomainIteratorWrapper<T> & _elem)
+    { _element = &_elem; }
+
+    const gsDomainIteratorWrapper<T> & element() const
+    {
+        GISMO_ASSERT(onElement(), "Element not set.");
+        return *_element;
+    }
+
+    bool onElement() const { return nullptr!=_element; }
 
     int maxDeriv() const
     {
