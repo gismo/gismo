@@ -215,7 +215,8 @@ public:
     /// \param low lower left corner of the box
     /// \param upp upper right corner of the box
     void active_cwise(const gsMatrix<T> & u, gsVector<index_t,d>& low,
-                      gsVector<index_t,d>& upp ) const;
+                      gsVector<index_t,d>& upp ) const
+    {GISMO_NO_IMPLEMENTATION}
 
     // Look at gsBasis class for documentation
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const override;

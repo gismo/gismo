@@ -772,16 +772,13 @@ template<typename T>
 typename gsKnotVector<T>::iterator
 gsKnotVector<T>::iFind( const T u ) const
 {
-    // GISMO_ASSERT done in uFind().
-    return begin() + uFind(u).lastAppearance();
-
-    // equivalent
-    /*GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
-      iterator dend = domainEnd();
-      if ( u == *dend )
-      return --dend;
-      else
-      return std::upper_bound( domainBegin(), dend, u) - 1; */
+    //return begin() + uFind(u).lastAppearance(); //less efficient
+    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+    iterator dend = domainEnd();
+    if ( u == *dend )
+        return --dend;
+    else
+        return std::upper_bound( domainBegin(), dend, u) - 1;
 }
 
 template<typename T>

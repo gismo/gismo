@@ -51,14 +51,16 @@ active_cwise(const gsMatrix<T> & u,
              gsVector<index_t,d>& low,
              gsVector<index_t,d>& upp ) const
 {
-    for (index_t j = 0; j < u.cols(); ++j)
-    {
-        for (short_t i = 0; i < d; ++i)
+    GISMO_ASSERT( 1==u.cols(), "Expecting single point." );
+//    for (index_t j = 0; j < u.cols(); ++j) //somehow assumes single point
+//    {
+        for (short_t i = 0; i != d; ++i)
         {
-            low[i] = component(i).firstActive( u(i,j) );
-            upp[i] = low[i] + component(i).degree();
+            low[i] = 
+            upp[i] = component(i).firstActive( u(i,0) );
+            upp[i]+= component(i).degree();
         }
-    }
+//    }
 }
 
 template<short_t d, class T>

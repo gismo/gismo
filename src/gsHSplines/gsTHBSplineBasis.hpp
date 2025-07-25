@@ -1327,15 +1327,17 @@ template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d,T,Trunc>::activeAtLevel_into(index_t lvl, const gsMatrix<T>& u,
                                                std::vector<index_t> & result) const
 {
-    gsMatrix<index_t> ind;
     GISMO_ASSERT(1==u.cols(), "Expecting single point");
+    typename CMatrix::const_iterator it = m_xmatrix[lvl].begin();
+    typename CMatrix::const_iterator end = m_xmatrix[lvl].end();
+    if (it==end) return;
+    gsMatrix<index_t> ind;
     point low, upp, cur, mstr, str, ll, uu, cc;
     m_bases[lvl]->active_cwise(u, low, upp);//my be improved: start from finest lvl
     index_t ii;
     this->m_bases[lvl]->stride_cwise(mstr);
     cur = low;
-    typename CMatrix::const_iterator it = m_xmatrix[lvl].begin();
-    typename CMatrix::const_iterator end = m_xmatrix[lvl].end();
+
     while ( findNextMatch(it, end, cur, low, upp, mstr) )
     {
         const index_t act = this->m_xmatrix_offset[lvl] + (it - m_xmatrix[lvl].begin());
