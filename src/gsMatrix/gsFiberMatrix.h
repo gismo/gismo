@@ -161,22 +161,22 @@ public:
     T & coef(index_t i, index_t j)
     {
         GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
-        if (!IsRowMajor) std::swap(i,j);
-        return m_fibers[i]->coeff(j);
+        if (IsRowMajor) std::swap(i,j);
+        return m_fibers[j]->coeff(i);
     }
 
     T & coeffRef(index_t i, index_t j)
     {
         GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
-        if (!IsRowMajor) std::swap(i,j);
-        return m_fibers[i]->coeffRef(j);
+        if (IsRowMajor) std::swap(i,j);
+        return m_fibers[j]->coeffRef(i);
     }
 
     void insertExplicitZero(index_t i, index_t j)
     {
         GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
-        if (!IsRowMajor) std::swap(i,j);
-        m_fibers[i]->data().atWithInsertion(j);
+        if (IsRowMajor) std::swap(i,j);
+        m_fibers[j]->data().atWithInsertion(i);
     }
 
     bool isExplicitZero(index_t i, index_t j) const
