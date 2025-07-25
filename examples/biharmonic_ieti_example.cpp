@@ -225,7 +225,6 @@ int main(int argc, char *argv[])
     real_t alpha = 1;
     int bdyConds = 0;
     std::string primals("x");
-    std::string dualPreconder("c");
     std::string solverType("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 1000;
@@ -246,7 +245,6 @@ int main(int argc, char *argv[])
     cmd.addReal  ("a", "Alpha",                 "Scaling parameter for reaction term", alpha);
     cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (0) \u0394u, \u2202n\u0394u; (1) u, \u0394u; (2) u, \u2202nu", bdyConds);
     cmd.addString("c", "Primals",               "Chosen primal dofs: (0) no, (c) classical corners, (x) eXtended cornerdofs", primals);
-    cmd.addString("d", "DualPreconder",         "Use preconder: (s) stanard Dirichlet, (c) componentwise Dirichlet", dualPreconder);
     cmd.addString("",  "Solver",                "Which solver to use: \"cg\" or \"gmres\".", solverType);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
@@ -334,9 +332,7 @@ int main(int argc, char *argv[])
 
     gsInfo << "Setup dofMapper... " << std::flush;
     gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, robin==0.?bdyConds:0);
-    std::vector<std::vector<std::vector<index_t>>> skeletonDofs;
-    if (dualPreconder=="c")
-        skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb, robin==0.?bdyConds:0);
+    std::vector<std::vector<std::vector<index_t>>> skeletonDofs = setupTwoLayerSkeletonDofs(mp, mb, robin==0.?bdyConds:0);
     gsInfo << "done:\n" << dm << "\n";
 
     /****************** Setup ietimapper ********************/
@@ -467,32 +463,15 @@ int main(int argc, char *argv[])
         localBasisTransforms.push_back(transformer);
         localSchurs.push_back(gsScaledDirichletPrec<>::schurComplement(localMatrix,ietiMapper.skeletonDofs(k)));
 
-        if (dualPreconder=="s")
-        {
+        for (index_t j=0; j<2; ++j)
             prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
                     jumpMatrix,
                     localMatrix,
-                    ietiMapper.skeletonDofs(k)
+                    skeletonDofs[k][j]
                 )
             );
-        }
-        else if (dualPreconder=="c")
-        {
-            for (index_t j=0; j<2; ++j)
-                prec.addSubdomain(
-                    gsScaledDirichletPrec<>::restrictToSkeleton(
-                        jumpMatrix,
-                        localMatrix,
-                        skeletonDofs[k][j]
-                    )
-                );
-        }
-        else
-        {
-            gsInfo << "\nUnknown dual preconder.\n";
-            return EXIT_FAILURE;
-        }
+
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubdomain().
@@ -641,7 +620,6 @@ int main(int argc, char *argv[])
                     << "alpha" << "\t"
                     << "bdyConds" << "\t"
                     << "primals" << "\t"
-                    << "dualPreconder" << "\t"
                     << "solverType" << "\n";
         }
         outfile << "biharmonic_ieti_example\t"
@@ -657,7 +635,6 @@ int main(int argc, char *argv[])
                 << alpha << "\t"
                 << bdyConds << "\t"
                 << primals << "\t"
-                << dualPreconder << "\t"
                 << solverType << "\n";
 
         gsInfo << "Write solution to file " << out << "\n";
