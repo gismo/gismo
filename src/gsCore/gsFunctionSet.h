@@ -266,6 +266,8 @@ public:
      */
     virtual void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const;
 
+    virtual void active_into (gsFuncData<T> & out) const;
+
 public:
     /**
        @brief Evaluates the function(s).
@@ -451,6 +453,8 @@ public:
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> > & result,
                                   bool sameElement = false) const;
+
+    virtual void evalAllDers_into(const gsMatrix<T> & u, gsFuncData<T> & out) const;
 
     /// Evaluate all derivatives upto order \a n, \see evalAllDers_into
     std::vector<gsMatrix<T> > evalAllDers(const gsMatrix<T> & u, int n, bool sameElement = false) const;

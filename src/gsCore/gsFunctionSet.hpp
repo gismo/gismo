@@ -8,12 +8,13 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Bressan
+    Author(s): A. Bressan, A. Mantzaflaris
 **/
 
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsBasis.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {
@@ -53,11 +54,17 @@ gsMatrix<T> gsFunctionSet<T>::supportOf(const index_t &) const
 // actives
 
 template <typename T>
-void gsFunctionSet<T>::active_into (const gsMatrix<T> &, gsMatrix<index_t> &) const
+void gsFunctionSet<T>::active_into(const gsMatrix<T> &, gsMatrix<index_t> &) const
 {
     GISMO_NO_IMPLEMENTATION
     // Single function 0 globally active:
     // result.setConstant(1,u.cols(),0);
+}
+
+template <typename T>
+void gsFunctionSet<T>::active_into(gsFuncData<T> & out) const
+{
+    active_into(out.element().centerPoint(), out.actives);
 }
 
 // evaluation
@@ -104,6 +111,15 @@ void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
         GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n ); //<< " for "<<*this);
         break;
     }
+}
+
+template <typename T> //__attribute__ ((fallthrough)) // todo
+void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u,
+                                        gsFuncData<T> & out) const
+{
+    const int n = out.maxDeriv();
+    if (-1 == n) return;
+    evalAllDers_into(u,n,out.values,out.flags & SAME_ELEMENT);
 }
 
 template <class T>
@@ -179,17 +195,25 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
 
     out.dim = this->dimensions();
 
-    const int md = out.maxDeriv();
-    if (md != -1)
-        evalAllDers_into(in, md, out.values, flags & SAME_ELEMENT);
-
-    if (flags & NEED_ACTIVE && flags & SAME_ELEMENT)
+    if (out.onElement())
     {
-        GISMO_ASSERT(0!=in.cols(), "The points are empty.");
-        active_into(in.col(0), out.actives);
+        active_into(out);
+        evalAllDers_into(in, out);
     }
-    else if (flags & NEED_ACTIVE)
-        active_into(in, out.actives);
+    else
+    {
+        if (flags & NEED_ACTIVE && flags & SAME_ELEMENT)
+        {
+            GISMO_ASSERT(0!=in.cols(), "The points are empty.");
+            active_into(in.col(0), out.actives);
+        }
+        else if (flags & NEED_ACTIVE)
+            active_into(in, out.actives);
+        
+        const int md = out.maxDeriv();
+        if (md != -1)
+            evalAllDers_into(in, md, out.values, flags & SAME_ELEMENT);
+    }
 
     // if ( flags & NEED_DIV )
     //     convertValue<T>::derivToDiv(out.values[1], out.divs, info());
