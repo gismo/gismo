@@ -932,6 +932,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     op_tuple(CM, arg_tpl0);
     if (!isMatrix) return;
 
+    auto allElements = m_exprdata->domain().allElementsDynamic();
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -943,7 +944,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
 #endif
           );
 
-    for ( auto & elem : m_exprdata->domain().allElements() )
+    for ( auto & elem : allElements )
     {
         m_exprdata->points() = elem.centerPoint();
         patchInd = elem.patch();
@@ -1112,6 +1113,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     // Optimization for the case when the quadrature rule is the same for all patches
     // bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
+    auto allElements = m_exprdata->domain().allElementsDynamic();
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -1131,7 +1133,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     typename gsQuadRule<T>::uPtr QuRule;
     index_t QuPatch = -1;
 
-    for ( auto & elem : m_exprdata->domain().allElements() )
+    for ( auto & elem : allElements )
     {
         if (/*changeQuadrature && */QuPatch!=elem.patch())
         {
@@ -1367,6 +1369,8 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
+    auto allElements = m_exprdata->domain().allElementsDynamic();
+
 #pragma omp parallel
 {
     m_exprdata->parse(residual, u);
@@ -1379,7 +1383,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     typename gsQuadRule<T>::uPtr QuRule;
     index_t QuPatch = -1;
 
-    for ( auto & elem : m_exprdata->domain().allElements() )
+    for ( auto & elem : allElements )
     {
         if (changeQuadrature && QuPatch!=elem.patch())
         {
@@ -1559,7 +1563,7 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
         cWeights[patchInd].resize( sz );
 
         // Start iteration over elements of patchInd
-        for ( auto & elem : bb.domain()->allElements() ) //todo: parallelize
+        for ( auto & elem : bb.domain()->allElementsDynamic() ) //todo: parallelize
         {
             // Map the Quadrature rule to the element
             QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),

@@ -449,6 +449,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     // Optimization for the case when the quadrature rule is the same for all patches
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
+    auto allElements = m_exprdata->domain().allElementsDynamic();
 #pragma omp parallel
 {
 #ifdef _OPENMP
@@ -464,7 +465,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         typename gsQuadRule<T>::uPtr QuRule;
         index_t QuPatch = -1;
 
-        for ( auto & elem : m_exprdata->domain().allElements() )
+        for ( auto & elem : allElements )
         {
             if (changeQuadrature || QuPatch!=elem.patch())
             {

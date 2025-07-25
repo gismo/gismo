@@ -106,6 +106,57 @@ public:
         iterator & end()   { return end_;   }
     };
 
+    // Iterator that returns next available element using atomic counter
+    class DynamicDomainIterator
+    {
+        iterator curEl;
+        int & counter;
+        int numEl;
+    public:
+        DynamicDomainIterator(iterator _curEl, int & _end) //dummy end
+        : curEl(give(_curEl)), counter(_end), numEl(_end) { }
+
+        DynamicDomainIterator(iterator _curEl, int & _counter, int _end)
+        : curEl(give(_curEl)), counter(_counter), numEl(_end)
+        { this->operator++(); }
+
+        // Prefix increment: fetch next available index
+        DynamicDomainIterator& operator++()
+        {
+            int cc_prev;
+#           pragma omp atomic capture
+            cc_prev  = counter++;
+            curEl += cc_prev - curEl.id();
+            return *this;
+        }
+
+        const iterator & operator*() const { return curEl; }
+
+        bool operator!=(const DynamicDomainIterator&) const
+        { return curEl.id() < (unsigned)numEl; }
+    };
+
+    // Range wrapper: creates a shared counter and provides ranges
+    class DynamicRange
+    {
+        iterator domIt;
+        int numEl;
+        int counter;
+    public:
+        DynamicRange(iterator _begin, int _end)
+        : domIt(give(_begin)), numEl(_end), counter(0)
+        { }
+
+        DynamicRange(DynamicRange&& other)
+        : domIt(give(other.domIt)), numEl(other.numEl), counter(give(other.counter)) { }
+
+        DynamicDomainIterator begin()
+        { return DynamicDomainIterator(domIt, counter, numEl); }
+
+        DynamicDomainIterator end() //dummy
+        { return DynamicDomainIterator(domIt,numEl); }
+    };
+
 public:
 
 
@@ -183,6 +234,7 @@ public: // Domain element iterators
     inline ElementRange allElements() const
     {
 #ifdef _OPENMP
+        //GISMO_ASSERT( !omp_in_parallel(), "allDynamicElements must be created outside openMP parallel region"); TODO
         const int num_threads = omp_get_num_threads();
         const int num_elem    = numElements();
         const int chunk_size  = (num_elem + num_threads - 1) / num_threads;
@@ -205,6 +257,19 @@ public: // Domain element iterators
         return ElementRange( beginAll(), endAll() );
 #endif
     }
+
+#ifdef _OPENMP
+    inline DynamicRange allElementsDynamic() const
+    {
+
+        GISMO_ASSERT( !omp_in_parallel(), "allDynamicElements must be created outside openMP parallel region");
+        const int num_elem = numElements();
+        return DynamicRange( beginAll(), num_elem );
+    }
+#else
+    inline ElementRange allElementsDynamic() const
+    {return ElementRange( beginAll(), endAll() ); }
+#endif
 
     // TO DO:
     //GISMO_ELEMENT_RANGE_LOOP(allElements, numElements, beginAll, endAll)
