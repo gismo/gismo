@@ -478,6 +478,45 @@ public:
         }
     }
 
+    void precompute(const gsDomainIteratorWrapper<T> & element)
+    {
+        const index_t patchIndex = element.patch();
+        boundary::side bs = element.side();
+
+        //First compute the maps
+        for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
+        {
+            it->second.mine().points.swap(m_points.mine());//swap
+            it->second.mine().side    = bs;
+            it->second.mine().patchId = patchIndex;
+            it->first->function(patchIndex).computeMap(it->second.mine());
+            it->second.mine().points.swap(m_points.mine());
+        }
+
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+        {
+            it->second.mine().setElement(element);
+            it->second.mine().patchId = patchIndex;
+            it->first->piece(patchIndex)
+                .compute(m_points, it->second.mine());
+        }
+
+        for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
+        {
+            it->first.first->piece(patchIndex)
+                .compute(it->first.second->mine().values[0], it->second.mine());
+            it->second.mine().patchId = patchIndex;
+        }
+
+        // Mutable variable to treat BCs
+        if (nullptr!=mutSrc && 0!=mutData.mine().flags)
+        {
+            mutSrc->piece(patchIndex)
+                .compute( mutMap ? m_mdata[mutMap].mine().values[0]
+                          : m_points, mutData.mine() );
+        }
+    }
+
     void precompute(const boundaryInterface & iFace)
     {
         this->precompute( iFace.first ().patch, iFace.first().side() );

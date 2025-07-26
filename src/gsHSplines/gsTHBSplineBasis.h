@@ -125,8 +125,9 @@ public:
     /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
-    // Look at gsBasis class for documentation
-    void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const override;
+    // Look at gsBasis.h for the documentation of this function
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
+    void active_into (gsFuncData<T> & out) const;
 
     index_t numActiveMax(const gsMatrix<T> & u, gsMatrix<index_t> & offset) const;
 
@@ -154,6 +155,8 @@ public:
     void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result,
                           bool sameElement = false) const override;
+
+    void evalAllDers_into(const gsMatrix<T> & u, gsFuncData<T> & out) const;
 
     // look at eval_into
     void fastEval_into(const gsMatrix<T>& u,
@@ -396,7 +399,7 @@ public:
         }
         else
         {
-            return this->m_presentation.find(i)->second;
+            return this->m_presentation.lower_bound(i)->second;
         }
     }
 

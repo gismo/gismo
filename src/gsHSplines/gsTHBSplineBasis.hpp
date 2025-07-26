@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsMultiPatch.h>
+#include <gsCore/gsFuncData.h>
 
 #include <gsNurbs/gsBoehm.h>
 #include <gsNurbs/gsDeboor.hpp>
@@ -1333,7 +1334,7 @@ void gsTHBSplineBasis<d,T,Trunc>::activeAtLevel_into(index_t lvl, const gsMatrix
     if (it==end) return;
     gsMatrix<index_t> ind;
     point low, upp, cur, mstr, str, ll, uu, cc;
-    m_bases[lvl]->active_cwise(u, low, upp);//my be improved: start from finest lvl
+    m_bases[lvl]->active_cwise(u, low, upp);//may be improved: start from finest lvl
     index_t ii;
     this->m_bases[lvl]->stride_cwise(mstr);
     cur = low;
@@ -1458,6 +1459,31 @@ void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsMatrix<T>& u, gsMatrix<ind
         std::copy(temp_output[i].begin(), temp_output[i].end(), result.col(i).data() );
         result.col(i).bottomRows(sz-temp_output[i].size()).setZero();
     }
+}
+
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::active_into(gsFuncData<T> & out) const
+{
+    //gsTHBSplineBasis<d,T,Trunc>::active_into(out.element().centerPoint(), out.actives);
+    typedef gsHDomainIterator<T,d> HdomIt;
+    GISMO_ASSERT( (bool)dynamic_cast<HdomIt*>(out.element().get()), "Casting the domainIt failed" );
+    HdomIt & elem = static_cast<HdomIt&>(*out.element().get());
+
+    gsMatrix<T> currPoint = elem.centerPoint();
+    //std::vector<index_t> > lvl_offset;
+    std::vector<index_t> temp_output;//collects the outputs
+    size_t ov = 1;
+    for(short_t i = 0; i != d; ++i)
+        ov *= this->m_bases.front()->component(i).degree() + 1;
+
+    temp_output.reserve(ov+2);
+
+    const int lvl = elem.getLevel();
+    //elem: uIndices of knots at level lvl
+    //active_cwise(elem,low,upp);
+    for(int i = 0; i <= lvl; i++)
+        activeAtLevel_into(i,currPoint,temp_output);
+    out.actives = gsAsVector<index_t>(temp_output);
 }
 
 template<short_t d, class T, bool Trunc>
@@ -1686,7 +1712,8 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
     std::vector<gsMatrix<T> > temp(n+1), cwa(d);
     point low(d), ki(d), kil, til, tlow, tupp, tstr, tcur;
 
-    gsMatrix<index_t> tact, act;
+    gsMatrix<index_t> act;
+    //gsMatrix<index_t> tact;
     if (sameElement)
         active_into(u.col(0), act);
     else
@@ -1940,6 +1967,124 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
     }
  //*/
 
+}
+
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u,
+                                                   gsFuncData<T> & out) const
+{
+    if (0==u.cols()) return;
+    const bool sameElement = out.flags & SAME_ELEMENT;
+    const gsHDomainIterator<T,d> & elem = 
+        static_cast<const gsHDomainIterator<T,d>&>(*out.element().get());
+    const int n = out.maxDeriv();
+    auto & result = out.values;
+    gsMatrix<index_t> & act = out.actives;//already computed
+    result.resize(n+1);
+
+    const int maxLevel = this->maxLevel();
+    // stores [rlvl]->[act,m]
+    std::vector<std::vector<std::pair<index_t,index_t> > > tfunction(maxLevel+1);
+
+    gsMatrix<T> tmp(1,1);
+    std::vector<std::vector<gsMatrix<T> > > cw(d);
+    std::vector<gsMatrix<T> > temp(n+1), cwa(d);
+    point low(d), ki(d), kil, til, tlow, tupp, tstr, tcur;
+
+    gsVector<index_t> str(n+1);
+    for (int l = 0; l <= n; l++)
+    {
+        str[l] = numCompositions(l,d);
+        result[l].setZero(act.rows() * str[l], u.cols());//zeros in case of sameElement=false
+        temp[l].resize(str[l], 1);
+    }
+
+    index_t m, index(0);
+
+    std::vector<std::vector<index_t> >thbact; // TODO: REMOVE
+
+    int lvl(0);
+    for (index_t i = 0; i != u.cols(); i++) // for all points
+    {
+        if (!sameElement || 0==i)
+        {
+            // Identify the level of the point
+            lvl = elem.getLevel();
+        }
+
+        // Enumerates active functions inside \a act vector
+        m = 0; // (!) problem with !sameElement -> numbering in result: counting relies on thbact.size()
+        //thbact.resize(lvl+1);
+
+        for(int level = 0; level <= maxLevel; level++) // for all relevant levels(..how about act_offset)
+        {            
+            if ( (level>lvl ||
+                 (act.at(m) >= this->offset(level+1))) && tfunction[level].empty() ) //nothing to do here
+                continue;
+
+            for(short_t k = 0; k!=d; ++k)
+            {
+                *tmp.data() = u(k,i);
+                this->m_bases[level]->component(k).evalAllDers_into(tmp, n, cw[k], sameElement);
+                kil[k] = this->m_bases[level]->component(k).firstActive( u(k,i) ); // get it differently?
+            }
+
+            if (level<=lvl)
+                //for (size_t j = 0; j!=thbact[level].size(); ++j, ++m) // for all actives
+                for (size_t j = 0;
+                     m<act.size() &&
+                         act.at(m) < this->offset(level+1); ++j, ++m) // for all actives
+                {
+                    index = act.at(m);//thbact[level][j];
+                    if ( !isTruncated(index) ) // basis function not truncated
+                    {
+                        til = this->m_bases[level]->tensorIndex(flatTensorIndexOf(index, level));
+                        til -= kil; //numbering in element-local position
+                        eval_tp(cw,til,n,str,m,i,result);
+                    }
+                    else if (!sameElement || 0==i)// function is truncated
+                    {
+                        //during active search we also know tfunction.
+                        //If remembered we can evan evaluate here instead.
+
+                        //Record truncated functions with their representation level
+                        const int rlvl = repLevel(index);
+                        tfunction[rlvl].push_back( std::make_pair(index,m) );
+                    }
+                }
+
+            // Evaluate any truncated functions
+            if ( !tfunction[level].empty() )
+            {
+                for(short_t k = 0; k!=d; ++k) til[k] = kil[k] + this->m_bases[level]->degree(k);
+                this->m_bases[level]->stride_cwise(tstr);//todo: active cwise - we already have kil (=lower)
+                index_t ii;
+                //-------
+                for ( std::pair<index_t,index_t> & q : tfunction[level] )
+                {
+                    const gsSparseVector<T>& coefs = getCoefs(q.first);
+
+                    ii = 0;
+                    tcur = kil;
+                    while ( findNextMatch(coefs, ii, tcur, kil, til, tstr) )
+                    {
+                        low = tcur-kil;
+                        eval_tp(cw,low,n,str,0,0,temp);
+                        for ( index_t l = 0; l <= n; ++l)
+                        {
+                            auto acc = result[l].col(i).segment(q.second*str[l],str[l]);
+                            acc += coefs.data().value(ii) * temp[l];
+                        }
+
+                        ++ii;//advance both
+                        nextCubePoint(tcur,kil,til);
+                    }
+                }
+                if(!sameElement)
+                    tfunction[level].clear();
+            }
+        }//end level
+    }//end point i
 }
 
 template<short_t d, class T, bool Trunc>
