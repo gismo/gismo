@@ -1462,12 +1462,13 @@ void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsMatrix<T>& u, gsMatrix<ind
 }
 
 template<short_t d, class T, bool Trunc>
-void gsTHBSplineBasis<d,T,Trunc>::active_into(gsFuncData<T> & out) const
+void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsDomainIteratorWrapper<T> & element,
+                                              gsMatrix<index_t>& result) const
 {
-    //gsTHBSplineBasis<d,T,Trunc>::active_into(out.element().centerPoint(), out.actives);
+    //gsTHBSplineBasis<d,T,Trunc>::active_into(elem.centerPoint(), out.actives);
     typedef gsHDomainIterator<T,d> HdomIt;
-    GISMO_ASSERT( (bool)dynamic_cast<HdomIt*>(out.element().get()), "Casting the domainIt failed" );
-    HdomIt & elem = static_cast<HdomIt&>(*out.element().get());
+    GISMO_ASSERT( (bool)dynamic_cast<HdomIt*>(element.get()), "Casting the domainIt failed" );
+    HdomIt & elem = static_cast<HdomIt&>(*element.get());
 
     gsMatrix<T> currPoint = elem.centerPoint();
     //std::vector<index_t> > lvl_offset;
