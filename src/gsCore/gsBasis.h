@@ -474,7 +474,7 @@ public:
     /// @name Evaluation functions
     /// @{
 
-    /** \brief Returns the indices of active basis functions at points
+    /* \brief Returns the indices of active basis functions at points
      * <em>u</em>, as a list of indices, in <em>result</em>. A
      * function is said to be <em>active</em> in a point if this point
      * lies in the closure of the function's support.
@@ -482,8 +482,9 @@ public:
      * \param[in] u  gsMatrix containing evaluation points. Each column represents one evaluation point.
      * \param[out]  result For every column \a i of \a u, a column containing the indices of the
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>).
+     --> in gsFunctionSet
      */
-    virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
+    //virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     /// \brief Returns the number of active (nonzero) basis functions at points \a u in \a result.
     virtual void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const;

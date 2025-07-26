@@ -265,8 +265,8 @@ public:
       @param result
      */
     virtual void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const;
-
-    virtual void active_into (gsFuncData<T> & out) const;
+    virtual void active_into(const gsDomainIteratorWrapper<T> & element,
+                                gsMatrix<index_t>& result) const;
 
 public:
     /**

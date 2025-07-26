@@ -127,7 +127,8 @@ public:
 
     // Look at gsBasis.h for the documentation of this function
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
-    void active_into (gsFuncData<T> & out) const;
+    void active_into(const gsDomainIteratorWrapper<T> & elem,
+                     gsMatrix<index_t>& result) const;
 
     index_t numActiveMax(const gsMatrix<T> & u, gsMatrix<index_t> & offset) const;
 

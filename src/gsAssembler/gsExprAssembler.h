@@ -768,17 +768,11 @@ private:
             const gsDofMapper  & rowMap = v.mapper();
             const gsDofMapper  & colMap = u.mapper();
 
-            const_cast<gsFuncData<T>&>(u.data()).patchId = patchid;
-            const_cast<gsFuncData<T>&>(u.data()).setElement(*_element);
-            u.source().piece(patchid).active_into( const_cast<gsFuncData<T>&>(u.data()) );
+            gsMatrix<index_t> & colInd0 = const_cast<gsMatrix<index_t>&>(u.data().actives);
+            gsMatrix<index_t> & rowInd0 = const_cast<gsMatrix<index_t>&>(v.data().actives);
+            u.source().piece(patchid).active_into(*_element, colInd0);
             if ( &u.data() != &v.data() )
-            {
-                const_cast<gsFuncData<T>&>(v.data()).patchId = patchid;
-                const_cast<gsFuncData<T>&>(v.data()).setElement(*_element);
-                v.source().piece(patchid).active_into( const_cast<gsFuncData<T>&>(v.data()) );
-            }
-            const gsMatrix<index_t> & colInd0 = u.data().actives;
-            const gsMatrix<index_t> & rowInd0 = v.data().actives;
+                v.source().piece(patchid).active_into(*_element, rowInd0);
 
             for (index_t c = 0; c != cd; ++c)
                 for (index_t j = 0; j != colInd0.rows(); ++j)

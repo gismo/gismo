@@ -62,10 +62,19 @@ void gsFunctionSet<T>::active_into(const gsMatrix<T> &, gsMatrix<index_t> &) con
 }
 
 template <typename T>
-void gsFunctionSet<T>::active_into(gsFuncData<T> & out) const
+void gsFunctionSet<T>::active_into(const gsDomainIteratorWrapper<T> & element,
+                                   gsMatrix<index_t>& result) const
 {
-    active_into(out.element().centerPoint(), out.actives);
+    active_into(element.centerPoint(), result);
 }
+
+/*
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::active_into(gsFuncData<T> & out) const
+{
+    active_into(out.element(), out.actives);
+}
+*/
 
 // evaluation
 
@@ -197,7 +206,7 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
 
     if (out.onElement())
     {
-        active_into(out);
+        active_into(out.element(), out.actives);
         evalAllDers_into(in, out);
     }
     else
