@@ -221,12 +221,12 @@ public:
     void resize(index_t rows, index_t cols)
     {
         GISMO_ASSERT( rows >= 0 && cols >= 0, "Invalid row/col in resize.");
-        if (!IsRowMajor) std::swap(rows,cols);
+        if (IsRowMajor) std::swap(rows,cols);
 
         clear();
-        m_fibers.resize(rows);
-        for (index_t i = 0; i < rows; ++i)
-            m_fibers[i] = new Fiber(cols);
+        m_fibers.resize(cols);
+        for (index_t j = 0; j != cols; ++j)
+            m_fibers[j] = new Fiber(rows);
     }
 
     void reservePerColumn(index_t nz)
