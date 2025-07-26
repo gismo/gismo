@@ -104,6 +104,8 @@ public:
         : begin_(give(_begin)), end_(give(_end)) { }
         iterator & begin() { return begin_; }
         iterator & end()   { return end_;   }
+
+        //int size() const {return numEl;}
     };
 
     // Iterator that returns next available element using atomic counter
@@ -155,6 +157,8 @@ public:
 
         DynamicDomainIterator end() //dummy
         { return DynamicDomainIterator(domIt,numEl); }
+
+        int size() const {return numEl;}
     };
 
 public:

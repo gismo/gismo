@@ -23,6 +23,19 @@ namespace gismo
 {
 
 template<class T>
+void gsBasis<T>::makeLookupTable() const
+{
+    auto allElements = this->domain()->allElementsDynamic();
+    std::vector<gsMatrix<index_t> > lut; // makes hasLookupTable() false
+    this->activeLUT.swap(lut);
+    lut.resize(allElements.size());
+#   pragma omp parallel
+    for ( auto & elem : allElements )
+        this->active_into(elem, lut[elem.id()]);
+    this->activeLUT.swap(lut);
+}
+
+template<class T>
 gsBasis<T>::~gsBasis()
 { }
 
@@ -201,7 +214,7 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 #   pragma omp parallel for default(shared) private(tmp) //firstprivate(nact)
     for (index_t k=0; k<u.cols(); k++)
     {
-        active_into(u.col(k), tmp);
+        this->active_into(u.col(k), tmp);
         for (index_t t = 0; t<tmp.size(); t++)
         {
 //#       pragma omp critical (collocation_nact)
@@ -221,7 +234,7 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
     for (index_t k=0; k<u.cols(); k++)
     {
         eval_into  (u.col(k), ev );
-        active_into(u.col(k), act);
+        this->active_into(u.col(k), act);
         std::vector<gsEigen::Triplet<T,index_t>>tripletList(act.rows());
         for (index_t i=0; i!=act.rows(); ++i)
             tripletList[i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev.at(i));
@@ -311,10 +324,6 @@ void gsBasis<T>::connectivityAtAnchors(gsMesh<T> & mesh) const
 
 template<class T>
 void gsBasis<T>::connectivity(const gsMatrix<T> &, gsMesh<T> &) const
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
-void gsBasis<T>::active_into(const gsMatrix<T> &, gsMatrix<index_t>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template <class T>

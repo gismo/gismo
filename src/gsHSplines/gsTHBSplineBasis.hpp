@@ -1465,6 +1465,9 @@ template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsDomainIteratorWrapper<T> & element,
                                               gsMatrix<index_t>& result) const
 {
+    if (this->hasLookupTable())
+    { result = this->lookupActives(element.localId()); return; }
+
     //gsTHBSplineBasis<d,T,Trunc>::active_into(elem.centerPoint(), out.actives);
     typedef gsHDomainIterator<T,d> HdomIt;
     GISMO_ASSERT( (bool)dynamic_cast<HdomIt*>(element.get()), "Casting the domainIt failed" );
@@ -1484,7 +1487,7 @@ void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsDomainIteratorWrapper<T> &
     //active_cwise(elem,low,upp);
     for(int i = 0; i <= lvl; i++)
         activeAtLevel_into(i,currPoint,temp_output);
-    out.actives = gsAsVector<index_t>(temp_output);
+    result = gsAsVector<index_t>(temp_output);
 }
 
 template<short_t d, class T, bool Trunc>

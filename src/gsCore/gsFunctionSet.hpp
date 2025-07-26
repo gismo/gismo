@@ -19,6 +19,10 @@
 namespace gismo
 {
 
+template<class T>
+void gsFunctionSet<T>::makeLookupTable() const
+{ GISMO_NO_IMPLEMENTATION }
+
 template <class T>
 gsFunctionSet<T>::~gsFunctionSet () {}
 
@@ -65,7 +69,10 @@ template <typename T>
 void gsFunctionSet<T>::active_into(const gsDomainIteratorWrapper<T> & element,
                                    gsMatrix<index_t>& result) const
 {
-    active_into(element.centerPoint(), result);
+    if (hasLookupTable())
+        result = lookupActives(element.localId());
+    else
+        active_into(element.centerPoint(), result);
 }
 
 /*
@@ -198,13 +205,13 @@ void gsFunctionSet<T>::laplacian_into (const gsMatrix<T> & u, gsMatrix<T> &resul
 // domain depending on the representation of the object
 template <typename T>
 void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
-                               gsFuncData<T> & out   ) const
+                               gsFuncData<T> & out) const
 {
     const unsigned flags = out.flags;
 
     out.dim = this->dimensions();
 
-    if (out.onElement())
+    if (out.onElement()) //todo: rename as hasElement()
     {
         active_into(out.element(), out.actives);
         evalAllDers_into(in, out);

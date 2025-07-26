@@ -266,7 +266,7 @@ public:
      */
     virtual void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const;
     virtual void active_into(const gsDomainIteratorWrapper<T> & element,
-                                gsMatrix<index_t>& result) const;
+                             gsMatrix<index_t>& result) const;
 
 public:
     /**
@@ -622,6 +622,14 @@ public:
         return os;
     }
 
+protected: // ---- Lookup table
+    mutable std::vector<gsMatrix<index_t> > activeLUT;
+public:
+    virtual void makeLookupTable() const;
+    void clearLookupTable() const { activeLUT.clear(); }
+    EIGEN_STRONG_INLINE bool hasLookupTable() const { return !activeLUT.empty(); }
+    EIGEN_STRONG_INLINE const gsMatrix<index_t> & lookupActives(size_t i) const
+    {return activeLUT[i];}
 };
 
 /// Print (as string) operator to be used by all derived classes

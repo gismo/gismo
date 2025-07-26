@@ -77,7 +77,6 @@ namespace gismo
 template<class T>
 class gsBasis : public gsFunctionSet<T>
 {
-
 public:
 
     typedef gsFunctionSet<T> Base;
@@ -982,6 +981,9 @@ protected:
     // const gsMatrix<index_t>  & indices,
     // gsMatrix<T>&                result );
 
+    // ---- Lookup table
+public:
+    void makeLookupTable() const override;
 }; // class gsBasis
 
 #ifdef GISMO_WITH_PYBIND11
