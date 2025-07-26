@@ -730,7 +730,7 @@ private:
         FiberMatrix & m_fmatrix;
         const gsMatrix<T> & m_point;
         unsigned & patchid;
-        gsMatrix<index_t> rowInd0, colInd0;
+        const gsDomainIteratorWrapper<T> * _element;
 #ifdef _OPENMP
         std::vector<omp_lock_t> & m_lock;
 #endif
@@ -745,6 +745,9 @@ private:
 	  , m_lock(_lock)
 #endif
         { }
+
+        void setElement(const gsDomainIteratorWrapper<T> & element)
+        { _element = &element; }
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
@@ -764,8 +767,19 @@ private:
             const index_t cd            = u.dim();//col
             const gsDofMapper  & rowMap = v.mapper();
             const gsDofMapper  & colMap = u.mapper();
-            rowInd0 = v.source().piece(patchid).active(m_point); //.. pattern ifc ?
-            colInd0 = u.source().piece(patchid).active(m_point);
+
+            const_cast<gsFuncData<T>&>(u.data()).patchId = patchid;
+            const_cast<gsFuncData<T>&>(u.data()).setElement(*_element);
+            u.source().piece(patchid).active_into( const_cast<gsFuncData<T>&>(u.data()) );
+            if ( &u.data() != &v.data() )
+            {
+                const_cast<gsFuncData<T>&>(v.data()).patchId = patchid;
+                const_cast<gsFuncData<T>&>(v.data()).setElement(*_element);
+                v.source().piece(patchid).active_into( const_cast<gsFuncData<T>&>(v.data()) );
+            }
+            const gsMatrix<index_t> & colInd0 = u.data().actives;
+            const gsMatrix<index_t> & rowInd0 = v.data().actives;
+
             for (index_t c = 0; c != cd; ++c)
                 for (index_t j = 0; j != colInd0.rows(); ++j)
                 {
@@ -946,8 +960,9 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
 
     for ( auto & elem : allElements )
     {
-        m_exprdata->points() = elem.centerPoint();
-        patchInd = elem.patch();
+        pp.setElement(elem);
+        //m_exprdata->points() = elem.centerPoint();
+        patchInd = elem.patch(); // to remove
         op_tuple(pp, arg_tpl);
     }
 
@@ -1149,8 +1164,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         if (m_exprdata->points().cols()==0)
             continue;// is this useful?
 
-        m_exprdata->precompute( QuPatch );
-        //m_exprdata->precompute( elem ); //todo
+        m_exprdata->precompute( elem );
 
         // Assemble contributions of the element
         op_tuple(ee, arg_tpl);
