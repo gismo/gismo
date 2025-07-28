@@ -495,6 +495,15 @@ public:
     /// vector of pairs (patch,dof) that contains all the pairs which
     /// map to \a gl
     void preImage(index_t gl, std::vector<std::pair<index_t,index_t> > & result) const;
+    
+    std::pair<index_t,index_t> anyPreImage(index_t gl) const
+    {
+        std::vector<std::pair<index_t,index_t> > result;
+        preImage(gl, result);
+        if (result.size())
+            return result[0];
+        GISMO_ERROR("Wow.");
+    }
 
     /// \brief Produces the inverse of the mapping on patch \a k
     /// assuming that the map is invertible on that patch

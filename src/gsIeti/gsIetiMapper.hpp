@@ -223,51 +223,28 @@ template <class T>
 void gsIetiMapper<T>::declareDofAsPrimal( index_t patch, index_t index, bool checkUnique )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
-    GISMO_ASSERT( m_status&2, "gsIetiMapper::declareDofAsPrimal: Need to initialize jump matrices beforehand." );
-
-    // TODO: This can be done with the dofmapper alone as well...
 
     if (checkUnique)
     {
         for (size_t i=0; i<m_primalConstraints[patch].size(); ++i)
             if (findUnitVectorRow(m_primalConstraints[patch][i], index, true).size()>0)
-            {
-                //gsInfo << "Primal " << index << " for patch " << patch << " has been set. Exit.\n";
                 return;
-            }
     }
 
-    const std::vector<index_t> lMultiplier = findUnitVectorRow(m_jumpMatrices[patch],index);
-    if (lMultiplier.empty())
-    {
-        //gsInfo << "Primal " << index << " for patch " << patch << " cannot be propagated. Only set it here.\n";
-        m_primalConstraints[patch].push_back(makeUnitVector<T>(m_dofMapperLocal[patch].freeSize(),index));
-        m_primalDofIndices[patch].push_back(m_nPrimalDofs);
-    }
-    else
-    {
-        std::vector<index_t> handeled_patches;
+    GISMO_ASSERT( m_dofMapperLocal[patch].is_free(index, 0), "Expect that the primal dof index refers to free index.");
+    std::pair<index_t, index_t> tmp = m_dofMapperLocal[patch].anyPreImage(index);
+    GISMO_ASSERT( tmp.first == 0, "Unexpected patch index, expected 0, got " << tmp.first);
+    const index_t indexInLocalBasis = tmp.second;
+    const index_t globalIndex = m_dofMapperGlobal.index(indexInLocalBasis, patch);
 
-        //gsInfo << "Primal " << index << " for patch " << patch << " is ";
-        for (size_t l = 0; l<lMultiplier.size(); ++l)
-        {
-            //gsInfo << " l-mult " << lMultiplier[l] << " and thus set for patches";
-            for (size_t k=0; k<m_jumpMatrices.size(); ++k)
-            {
-                const std::vector<index_t> localIndex = findRowEntries(m_jumpMatrices[k],lMultiplier[l]);
-                for (size_t m = 0; m<localIndex.size(); ++m)
-                {
-                    if (std::find(handeled_patches.begin(), handeled_patches.end(), k) == handeled_patches.end())
-                    {
-                        //gsInfo << " " << k << " (index " << localIndex[m] << ")";
-                        m_primalConstraints[k].push_back(makeUnitVector<T>(m_dofMapperLocal[k].freeSize(),localIndex[m]));
-                        m_primalDofIndices[k].push_back(m_nPrimalDofs);
-                        handeled_patches.push_back(k);
-                    }
-                }
-            }
-        }
-        //gsInfo << ".\n";
+    std::vector<std::pair<index_t, index_t>> localIndices;
+    m_dofMapperGlobal.preImage(globalIndex,localIndices);
+    for (size_t i=0; i<localIndices.size(); ++i)
+    {
+        const index_t k=localIndices[i].first;
+        const index_t idx=m_dofMapperLocal[k].index(localIndices[i].second,0);
+        m_primalConstraints[k].push_back(makeUnitVector<T>(m_dofMapperLocal[k].freeSize(),idx));
+        m_primalDofIndices[k].push_back(m_nPrimalDofs);
     }
     ++m_nPrimalDofs;
 }

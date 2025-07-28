@@ -197,7 +197,6 @@ int main(int argc, char *argv[])
             );
         }
 
-
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubdomain().
         //! [Patch to primals]
@@ -351,7 +350,7 @@ int main(int argc, char *argv[])
             makeSparseLUSolver(localBasisTransforms[k])->apply(localSol[k], localSolutionStdBasis);
             mpsol.addPatch( mb[k].makeGeometry(localSolutionStdBasis) );
         }
-        gsWriteParaview<>( gsField<>( mp, mpsol ), "ieti_result", 1000);
+        gsWriteParaview<>(gsField<>( mp, mpsol ), "ieti_result", 1000);
     }
     if (!plot&&out.empty())
     {
