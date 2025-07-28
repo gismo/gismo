@@ -204,4 +204,36 @@ SUITE(gsExpressions_test)
 
     }
 
+    // Test for the positive part of an expression ( Macaulay bracket )
+    TEST(ppart_expr)
+    {
+
+        gsMatrix<real_t> zero1D = gsMatrix<real_t>::Zero(1,1);
+        CHECK_EQUAL( ev.eval(f2D.ppart(), zero) , zero);
+        CHECK_EQUAL( ev.eval(f1D.ppart(), zero) , zero1D);
+
+        CHECK_EQUAL( ev.eval((-f2D).ppart(), zero) , zero);
+        CHECK_EQUAL( ev.eval((-f1D).ppart(), zero) , zero1D);
+
+        // Test positive part with positive values
+        gsMatrix<real_t> pos_result2D = ev_func2D.cwiseMax(0.0);
+        gsMatrix<real_t> pos_result1D = gsMatrix<real_t>::Constant(1,1,std::max(ev_func1D.value(),0.0));
+        CHECK_EQUAL((ev.eval(f2D.ppart(), pt) - pos_result2D).norm(), 0.0);
+        CHECK_EQUAL((ev.eval(f1D.ppart(), pt) - pos_result1D).norm(), 0.0);
+
+        // Test for the negative part of an expression
+        CHECK_EQUAL( ev.eval(f2D.npart(), zero) , zero);
+        CHECK_EQUAL( ev.eval(f1D.npart(), zero) , zero1D);
+
+        CHECK_EQUAL( ev.eval((-f2D).npart(), pt) , -ev_func2D);
+        CHECK_EQUAL( ev.eval((-f1D).npart(), pt) , -ev_func1D);
+
+        // Test negative part with positive values (should be zero)
+        gsMatrix<real_t> neg_result2D = (-ev_func2D).cwiseMax(0.0);
+        gsMatrix<real_t> neg_result1D = gsMatrix<real_t>::Constant(1,1,std::max(-ev_func1D.value(),0.0));
+        CHECK_EQUAL((ev.eval(f2D.npart(), pt) - neg_result2D).norm(), 0.0);
+        CHECK_EQUAL((ev.eval(f1D.npart(), pt) - neg_result1D).norm(), 0.0);
+
+    }
+
 }
