@@ -17,11 +17,8 @@ using namespace gismo;
 
 // Helper functions, defined at the end of the file
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
-
-std::pair<gsDofMapper, std::vector<gsSparseMatrix<>>>
-setupC1Discretization(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds);
-
-std::array<std::vector<index_t>,3> constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm);
+gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds);
+std::vector<index_t> constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
 gsSparseMatrix<> makeTransformer(const gsBasis<>& basis, const gsDofMapper& dm);
 
 int main(int argc, char *argv[])
@@ -29,7 +26,7 @@ int main(int argc, char *argv[])
     /************** Define command line options *************/
 
     std::string geometry("domain2d/fat_quarter_annulus.xml");
-    index_t rhsType = 2;
+    std::string rhs("1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)");
     index_t sPatchesX = 1;
     index_t sPatchesY = 1;
     index_t degree = 2;
@@ -44,7 +41,7 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
 
-    cmd.addInt   ("t", "RhsType",               "Chosen right-hand side", rhsType);
+    cmd.addString("f", "RhsFunction",           "Chosen right-hand function", rhs);
     cmd.addString("g", "Geometry",              "Chosen geometry file", geometry);
     cmd.addInt   ("x", "PatchesX",              "Number of splits (coordinate direction x)", sPatchesX);
     cmd.addInt   ("y", "PatchesY",              "Number of splits (coordinate direction y)", sPatchesY);
@@ -62,29 +59,6 @@ int main(int argc, char *argv[])
 
     gsInfo << "Run biharmonic_ieti_example with options:\n" << cmd << "\n";
 
-    /********************** Define rhs **********************/
-    const index_t dim = 2;
-    const char *rhsTypes[] =
-        {
-            "32*pi^4*sin(2*pi*x)*sin(2*pi*y)",
-            "2*pi^4*sin(pi*x)*sin(pi*y)",
-            "1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)",
-            "2/100*pi^4*sin(pi*x/10)*sin(pi*y/10)"
-        };
-    if (rhsType < 0 || (size_t)rhsType >= util::size(rhsTypes))
-    {
-        gsInfo << "Invalid choice for --RhsType (-t).\n";
-        return EXIT_FAILURE;
-    }
-    if (bdyConds < 1 || bdyConds > 2)
-    {
-        gsInfo << "Invalid choice for --BdyCond (-b).\n";
-        return EXIT_FAILURE;
-    }
-
-    gsInfo << "Rhs function is " << rhsTypes[rhsType] << "\n";
-    gsFunctionExpr<> f(rhsTypes[rhsType],dim);
-
     /******************* Define geometry ********************/
 
     gsInfo << "Define geometry... " << std::flush;
@@ -99,6 +73,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     gsMultiPatch<>& mp = *mpPtr;
+
     for (index_t i=0; i<sPatchesX; ++i)
         mp = mp.uniformSplit(0);
     for (index_t j=0; j<sPatchesY; ++j)
@@ -107,10 +82,9 @@ int main(int argc, char *argv[])
     const index_t nPatches = mp.nPatches();
     gsInfo << "done: " << nPatches << " patches, " << mp.interfaces().size() << " interfaces.\n";
 
-    /************ Setup bases and adjust degree *************/
-
+    /* Setup bases and adjust grid size, degree and smoothness */
+    gsInfo << "Setup bases and adjust grid size, degree and smoothness... " << std::flush;
     gsMultiBasis<> mb(mp);
-    gsInfo << "Setup bases and adjust degree... " << std::flush;
     for ( size_t i = 0; i < mb.nBases(); ++ i )
         mb[i].setDegreePreservingMultiplicity(degree);
 
@@ -127,16 +101,27 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
     }
-
     gsInfo << "done.\n";
 
-    /******************* Setup dofMapper ********************/
+    /*** Setup dofMapper and local basis transformations ****/
+
+    if (bdyConds < 1 || bdyConds > 2)
+    {
+        gsInfo << "Invalid choice for --BdyCond (-b).\n";
+        return EXIT_FAILURE;
+    }
+
     gsInfo << "Setup dofMapper and local basis transformations... " << std::flush;
-    std::pair<gsDofMapper, std::vector<gsSparseMatrix<>>> c1Discretization = setupC1Discretization(mp, mb, bdyConds);
-    const gsDofMapper &dm = c1Discretization.first;
+    gsDofMapper dm = setupC1DofMapper(mp, mb, bdyConds);
     gsInfo << "done:\n" << dm << "\n";
 
+    /********************** Define rhs **********************/
+
+    gsInfo << "Rhs function is " << rhs << "\n";
+    gsFunctionExpr<> f(rhs,mp.geoDim());
+
     /****************** Setup ietimapper ********************/
+
     gsInfo << "Setup ietimapper... " << std::flush;
     gsMatrix<> fixedPart;
     fixedPart.setZero(dm.boundarySize(),1);
@@ -145,9 +130,9 @@ int main(int argc, char *argv[])
 
     for (index_t k=0; k<nPatches; ++k)
     {
-        std::array<std::vector<index_t>,3> skeletonDofs = constructSkeletonDofs(mb[k], ietiMapper.dofMapperLocal(k));
-        for (size_t i=0; i<skeletonDofs[2].size(); ++i)
-            ietiMapper.declareDofAsPrimal(k, skeletonDofs[2][i], true);
+        std::vector<index_t> cornerDofs = constructSkeletonDofs(mb[k], ietiMapper.dofMapperLocal(k),2);
+        for (size_t i=0; i<cornerDofs.size(); ++i)
+            ietiMapper.declareDofAsPrimal(k, cornerDofs[i], true);
     }
 
     gsIetiSystem<> ieti;
@@ -198,14 +183,10 @@ int main(int argc, char *argv[])
         gsSparseMatrix<>                 localMatrix = transformer*A.matrix()*transformer.transpose();
         gsMatrix<>                       localRhs    = transformer*A.rhs();
 
-        //gsInfo << "\nlocalMatrix:"<<localMatrix.rows()<<"x"<<localMatrix.cols()<<";jumpMatrix:"<<jumpMatrix.rows()<<"x"<<jumpMatrix.cols();
-
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
 
         // Store
         localBasisTransforms.push_back(transformer);
-
-        std::array<std::vector<index_t>,3> skeletonDofs = constructSkeletonDofs(mb_local[0], ietiMapper.dofMapperLocal(k));
 
         for (index_t j=0; j<2; ++j)
         {
@@ -213,7 +194,7 @@ int main(int argc, char *argv[])
                 gsScaledDirichletPrec<>::restrictToSkeleton(
                     jumpMatrix,
                     localMatrix,
-                    skeletonDofs[j]
+                    constructSkeletonDofs(mb_local[0], ietiMapper.dofMapperLocal(k), j)
                 )
             );
         }
@@ -361,7 +342,7 @@ int main(int argc, char *argv[])
                     << "iter" << "\t"
                     << "sPatchesX" << "\t"
                     << "sPatchesY" << "\t"
-                    << "rhsType" << "\t"
+                    << "rhs" << "\t"
                     << "bdyConds" << "\t"
                     << "solverType" << "\n";
         }
@@ -373,7 +354,7 @@ int main(int argc, char *argv[])
                 << iter << "\t"
                 << sPatchesX << "\t"
                 << sPatchesY << "\t"
-                << rhsType << "\t"
+                << rhs << "\t"
                 << bdyConds << "\t"
                 << solverType << "\n";
 
@@ -385,7 +366,11 @@ int main(int argc, char *argv[])
         gsInfo << "Write Paraview data to file ieti_result.pvd\n";
         gsMultiPatch<> mpsol;
         for (index_t k=0; k<nPatches; ++k)
-            mpsol.addPatch( mb[k].makeGeometry( localBasisTransforms[k].transpose() * localSol[k] ) );
+        {
+            gsMatrix<> localSolutionStdBasis;
+            makeSparseLUSolver(localBasisTransforms[k])->apply(localSol[k], localSolutionStdBasis);
+            mpsol.addPatch( mb[k].makeGeometry(localSolutionStdBasis) );
+        }
         gsWriteParaview<>( gsField<>( mp, mpsol ), "ieti_result", 1000);
     }
     if (!plot&&out.empty())
@@ -477,122 +462,47 @@ sampleBoundary(const gsGeometry<>& geo, boxSide s, bool inverted, index_t number
     return std::pair< gsMatrix<>, gsMatrix<> >( geo.eval(sample), selector*geo.deriv(sample) );
 }
 
-std::pair<gsDofMapper, std::vector<gsSparseMatrix<>>>
-setupC1Discretization(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds)
-{
-    std::pair<gsDofMapper, std::vector<gsSparseMatrix<>>> result;
-    gsDofMapper& dm = result.first;
-    
-    // Construct the object
-    gsVector<index_t> patchDofSizes(mp.nPatches());
-    for (size_t k=0; k<mp.nPatches(); ++k)
-        patchDofSizes[k] = mb[k].size();
-    dm = gsDofMapper(patchDofSizes);
-
-    // Iterate over all interfaces
-    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-    {
-        const index_t k1 = it->first().patch;
-        const index_t k2 = it->second().patch;
-
-        // If we do not have tensor product B-splines, we do not know how to construct the transformation
-        GISMO_ASSERT ( (dynamic_cast<const gsTensorBSplineBasis<2,real_t>*>(&mb.basis(k1))), "This is not a gsTensorBSplineBasis.");
-        GISMO_ASSERT ( (dynamic_cast<const gsTensorBSplineBasis<2,real_t>*>(&mb.basis(k2))), "This is not a gsTensorBSplineBasis.");
-        
-        // Is the edge parameterized with the same direction (increasing/decreasing) for both patches?
-        gsVector<index_t> cm;
-        it->cornerMap(cm);
-        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
-        const bool inverted = cm[0];
-
-        // Check if the geometry is really C0 and C1
-        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
-        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
-        GISMO_ENSURE ((data1.first-data2.first).cwiseAbs().maxCoeff()<1e-6, "No C0 geometry between patches " << k1 << " and " << k2);
-        GISMO_ENSURE ((data1.second+data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);       
-        
-        // Construct the dofmapper
-        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side());
-        gsVector<index_t> s2 = mb.basis(k2).boundary(it->second().side());
-        gsVector<index_t> s1o = mb.basis(k1).boundaryOffset(it->first().side(),1);
-        gsVector<index_t> s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
-
-        GISMO_ASSERT (s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "Bases dimensions not agree.");
-
-        for (index_t i=0;i<s1.rows();++i)
-        {
-            const index_t j = inverted?(s1.rows()-1-i):i;
-            dm.matchDof(k1,s1[i],k2,s2[j]);
-            dm.matchDof(k1,s1o[i],k2,s2o[j]);
-        }
-    }
-
-    // Set boundary conditions:
-    // bdyConds == 0: no essential boundary conditions
-    // bdyConds == 1: second biharmonic problem: essential boundary conditions only for the function values (one layer)
-    // bdyConds == 2: first biharmonic problem: essential boundary conditions for the function values and normals (two layers)
-    
-    if (bdyConds)
-    {
-        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
-        {
-            const index_t k = it->patchIndex();
-            gsVector<index_t> s = mb.basis(k).boundary(it->side()),
-                              so = mb.basis(k).boundaryOffset(it->side(),1);
-
-            GISMO_ASSERT( s.rows() == so.rows(), "");
-            for (index_t i=0;i<s.rows();++i)
-            {
-                dm.eliminateDof(s[i],k);
-                if (bdyConds == 2)
-                    dm.eliminateDof(so[i],k);
-            }
-        }
-    }
-
-    dm.finalize();
-    
-    return result;
-}
-
-
 // Returns indices of edges, edges with 1 offset, corner dofs (4 per corner)
-std::array<std::vector<index_t>,3>
-constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
+std::vector<index_t>
+constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm, index_t type)
 {
-    // For each dof, 0=interior, 1=values, 2=derivatvies
+    GISMO_ASSERT (type>=0 && type<3, "Unknown type");
     gsVector<index_t> qualifier;
     qualifier.setZero(basis.size());
-    // Corners are found by counting
-    gsVector<index_t> count;
-    count.setZero(basis.size());
-
     for (boxSide s=boxSide::getFirst(2); s<boxSide::getEnd(2); ++s)
     {
         gsVector<index_t> layer0 = basis.boundary(s);
         for (index_t i=0; i<layer0.rows(); ++i)
-        {
-            qualifier[layer0[i]] = 1;
-            count[layer0[i]]++;
-        }
+            qualifier[layer0[i]] += 1;
         gsVector<index_t> layer1 = basis.boundaryOffset(s,1);
         for (index_t i=0; i<layer1.rows(); ++i)
-        {
-            qualifier[layer1[i]] = qualifier[layer1[i]] == 1 ? 1 : 2;
-            count[layer1[i]]++;
-        }
+            qualifier[layer1[i]] += 4;
     }
 
-    std::array<std::vector<index_t>,3> result;
+    std::vector<index_t> result;
     for (index_t i=0; i<qualifier.rows(); ++i)
         if (qualifier[i] && dm.is_free(i, 0))
-            result[qualifier[i]-1].push_back(dm.index(i, 0));
-
-    for (index_t i=0; i<count.rows(); ++i)
-        if (count[i]>1 && dm.is_free(i, 0))
-            result[2].push_back(dm.index(i, 0));
+        {
+            if (type==0 && (qualifier[i]==1 || qualifier[i]==2))
+                result.push_back(dm.index(i, 0));
+            if (type==1 && !(qualifier[i]==1 || qualifier[i]==2) && (qualifier[i]==4 || qualifier[i]==8))
+                result.push_back(dm.index(i, 0));
+            if (type==2 && qualifier[i]!=1 && qualifier[i]!=4)
+                result.push_back(dm.index(i, 0));
+        }
 
     return result;
+}
+
+real_t
+getKnotSpan(const gsKnotVector<>& kv, index_t side, index_t p)
+{
+    GISMO_ASSERT (side==0||side==1, "Unknown side given");
+    GISMO_ASSERT (kv.isOpen(), "Not a p-open knot vector");
+    if (side==0)
+        return kv[p+1]-kv[0];
+    else
+        return kv[kv.size()-1]-kv[kv.size()-p-2];
 }
 
 gsSparseMatrix<>
@@ -606,7 +516,12 @@ makeTransformer(const gsBasis<>& basis, const gsDofMapper& dm)
     gsSparseMatrix<> sm;
     for (index_t i=0; i<d; ++i)
     {
-        const index_t ndofs1D = basis.component(d-1-i).size();
+        const gsBSplineBasis<>* bsp = dynamic_cast<const gsBSplineBasis<>*>(&basis.component(d-1-i));
+        GISMO_ENSURE (bsp, "Not a gsBSplineBasis given.");
+
+
+        const short_t p = bsp->degree(0);
+        const index_t ndofs1D = bsp->size();
         GISMO_ASSERT( ndofs1D>3, "" );
 
         gsSparseMatrix<> transformer1D(ndofs1D,ndofs1D);
@@ -615,9 +530,9 @@ makeTransformer(const gsBasis<>& basis, const gsDofMapper& dm)
         transformer1D(0,0)=1;
         transformer1D(0,1)=1;
 
-        transformer1D(1,1)=1;
+        transformer1D(1,1)=-getKnotSpan(bsp->knots(0),0,p) / p;
 
-        transformer1D(ndofs1D-2,ndofs1D-2)=-1;
+        transformer1D(ndofs1D-2,ndofs1D-2)=getKnotSpan(bsp->knots(0),1,p) / p;
 
         transformer1D(ndofs1D-1,ndofs1D-2)=1;
         transformer1D(ndofs1D-1,ndofs1D-1)=1;
@@ -638,4 +553,80 @@ makeTransformer(const gsBasis<>& basis, const gsDofMapper& dm)
     gsSparseMatrix<> result(dm.freeSize(), dm.freeSize());
     result.setFrom(se);
     return result;
+}
+
+
+gsDofMapper
+setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds)
+{
+    // Construct the object
+    gsVector<index_t> patchDofSizes(mp.nPatches());
+    for (size_t k=0; k<mp.nPatches(); ++k)
+        patchDofSizes[k] = mb[k].size();
+    gsDofMapper dm(patchDofSizes);
+
+    // Iterate over all interfaces
+    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const index_t k1 = it->first().patch;
+        const index_t k2 = it->second().patch;
+
+        // If we do not have tensor product B-splines, we do not know how to construct the transformation
+        GISMO_ASSERT ( (dynamic_cast<const gsTensorBSplineBasis<2,real_t>*>(&mb.basis(k1))), "This is not a gsTensorBSplineBasis.");
+        GISMO_ASSERT ( (dynamic_cast<const gsTensorBSplineBasis<2,real_t>*>(&mb.basis(k2))), "This is not a gsTensorBSplineBasis.");
+
+        // Is the edge parameterized with the same direction (increasing/decreasing) for both patches?
+        gsVector<index_t> cm;
+        it->cornerMap(cm);
+        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
+        const bool inverted = cm[0];
+
+        // Check if the geometry is really C0 and C1
+        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
+        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
+        GISMO_ENSURE ((data1.first-data2.first).cwiseAbs().maxCoeff()<1e-6, "No C0 geometry between patches " << k1 << " and " << k2);
+        GISMO_ENSURE ((data1.second+data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);
+
+        // Construct the dofmapper
+        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side());
+        gsVector<index_t> s2 = mb.basis(k2).boundary(it->second().side());
+        gsVector<index_t> s1o = mb.basis(k1).boundaryOffset(it->first().side(),1);
+        gsVector<index_t> s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
+
+        GISMO_ASSERT (s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "Bases dimensions not agree.");
+
+        for (index_t i=0;i<s1.rows();++i)
+        {
+            const index_t j = inverted?(s1.rows()-1-i):i;
+            dm.matchDof(k1,s1[i],k2,s2[j]);
+            dm.matchDof(k1,s1o[i],k2,s2o[j]);
+        }
+    }
+
+    // Set boundary conditions:
+    // bdyConds == 0: no essential boundary conditions
+    // bdyConds == 1: second biharmonic problem: essential boundary conditions only for the function values (one layer)
+    // bdyConds == 2: first biharmonic problem: essential boundary conditions for the function values and normals (two layers)
+
+    if (bdyConds)
+    {
+        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
+        {
+            const index_t k = it->patchIndex();
+            gsVector<index_t> s = mb.basis(k).boundary(it->side()),
+                              so = mb.basis(k).boundaryOffset(it->side(),1);
+
+            GISMO_ASSERT( s.rows() == so.rows(), "");
+            for (index_t i=0;i<s.rows();++i)
+            {
+                dm.eliminateDof(s[i],k);
+                if (bdyConds == 2)
+                    dm.eliminateDof(so[i],k);
+            }
+        }
+    }
+
+    dm.finalize();
+
+    return dm;
 }
