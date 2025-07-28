@@ -112,6 +112,7 @@ gsIetiMapper<T>::constructGlobalSolutionFromLocalSolutions( const std::vector<Ma
 }
 
 namespace {
+
 struct dof_helper {
     index_t globalIndex;
     index_t patch;
@@ -149,20 +150,7 @@ std::vector<index_t> findUnitVectorRow(const SparseMatrixOrVector& v, index_t in
     return result;
 }
 
-template<class SparseMatrixOrVector>
-std::vector<index_t> findRowEntries(const SparseMatrixOrVector& v, index_t index)
-{
-    std::vector<index_t> result;
-    for (index_t i=0; i<v.outerSize(); ++i)
-    {
-        for (typename SparseMatrixOrVector::InnerIterator it(v, i); it; ++it)
-            if (it.value() != 0 && it.row() == index)
-                result.push_back(it.col());
-    }
-    return result;
-}
-
-}
+} // namespace
 
 template <class T>
 void gsIetiMapper<T>::cornersAsPrimals()
@@ -218,7 +206,6 @@ void gsIetiMapper<T>::cornersAsPrimals()
 
 }
 
-
 template <class T>
 void gsIetiMapper<T>::declareDofAsPrimal( index_t patch, index_t index, bool checkUnique )
 {
@@ -248,7 +235,6 @@ void gsIetiMapper<T>::declareDofAsPrimal( index_t patch, index_t index, bool che
     }
     ++m_nPrimalDofs;
 }
-
 
 template <class T>
 gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
@@ -365,13 +351,12 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 }
 
 template <class T>
-void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners, bool excludeDofsForSeveralPatches )
+void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+
     GISMO_ASSERT( !(m_status&2), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
     m_status |= 2;
-
-    GISMO_ASSERT( !(fullyRedundant&&excludeDofsForSeveralPatches), "gsIetiMapper::computeJumpMatrices: options are exclusive!");
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     const index_t coupledSize = m_dofMapperGlobal.coupledSize();
@@ -425,8 +410,6 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
             "Found a coupled dof that is not coupled to any other dof." );
         if (fullyRedundant)
             numLagrangeMult += (n * (n-1))/2;
-        else if (excludeDofsForSeveralPatches)
-            numLagrangeMult += (n==2);
         else
             numLagrangeMult += n-1;
     }
@@ -443,11 +426,7 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
     for (index_t i=0; i<coupledSize; ++i)
     {
         const index_t n = coupling[i].size();
-        index_t maxIndex = 1;
-        if (fullyRedundant)
-            maxIndex = n-1;
-        else if (excludeDofsForSeveralPatches)
-            maxIndex = (n==2);
+        const index_t maxIndex = fullyRedundant ? (n-1) : 1;
         for (index_t j1=0; j1<maxIndex; ++j1)
         {
             const index_t patch1 = coupling[i][j1].first;
