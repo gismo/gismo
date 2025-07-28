@@ -51,14 +51,15 @@ T computeNorm(const gsMultiBasis<T>  & integrationBasis,
     // Create an assembler
     gsExprAssembler<T> A(1,1);
     A.options().update(options,gsOptionList::addIfUnknown); 
-    gsInfo<< "Assembler options: " << A.options() << "\n";
+    // gsInfo<< "Assembler options: " << A.options() << "\n";
 
     // Set the integration elements
     A.setIntegrationElements(integrationBasis);
 
-    // auto u = A.getSpace(currentBasis);
-    // u.setup();
-    // auto sol= A.getSolution(u,coefs);
+    auto u = A.getSpace(currentBasis);
+    u.setup();
+    // gsMatrix<T> tmp = coefs; // coefs is const
+    // auto sol= A.getSolution(u,tmp);
 
     A.initSystem();
 
@@ -67,10 +68,12 @@ T computeNorm(const gsMultiBasis<T>  & integrationBasis,
 
     gsExprEvaluator<T> ev(A);
     // ev.options().update(A.options(),gsOptionList::addIfUnknown);
-            
-    auto sol_before = ev.getVariable(sourceFunction1); // solution before projection      
+
+    auto sol_before = ev.getVariable(sourceFunction1,G); // solution before projection      
     gsGeometry<>::uPtr sol_after_ptr  = currentBasis.basis(0).makeGeometry(coefs);
     auto sol_after = ev.getVariable(*sol_after_ptr,G);
+
+    gsInfo<<currentBasis.basis(0)<<"\n";
 
     return ev.integral((sol_before-sol_after).sqNorm() * meas(G));
 
@@ -215,7 +218,7 @@ void solve( gsMultiPatch<T> & mp,
     real_t tmp_gamma   = 1;
     // time stepping options
     index_t maxIt = 50;
-
+    index_t maxRefIt;
 
 
     //! [Problem setup]
@@ -595,6 +598,11 @@ gsSparseSolver<>::uPtr solver;
         refTimeStep     = 0;
         markCrsTimeStep = 0;
         crsTimeStep     = 0;
+ 
+        if ((step >= 80 && step <= 200) || (step >= 320 && step <= 460) || (step >= 700 && step <= 800))
+            maxRefIt = MESHopt.askInt("RefIt",5);
+        else
+            maxRefIt = 1;
 
         for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
         {
@@ -730,8 +738,20 @@ gsSparseSolver<>::uPtr solver;
 
     
             // // =========== Compute error of the projection of both variables ===========
-            real_t error_proj_c  = computeNorm(ibasis, dbasis, mp, mp_cold.patch(0), CnewF, A.options());
-            real_t error_proj_dc = computeNorm(ibasis, dbasis, mp, mp_dcold.patch(0), dCnewF, A.options());
+            if (step == 106)
+            { 
+                real_t error_proj_c  = computeNorm(ibasis, dbasis, mp, mp_cold.patch(0), CnewF, A.options());
+                real_t error_proj_dc = computeNorm(ibasis, dbasis, mp, mp_dcold.patch(0), dCnewF, A.options());
+                gsInfo << "=====================================================================\n";
+                gsInfo << "Step: " << step << ", RefIt: " << refIt << "\n";
+                gsInfo << "Projection error of c: " << error_proj_c << "\n";
+                gsInfo << "Projection error of dc: " << error_proj_dc << "\n";
+                gsInfo << "Basis mp_cold size: " << mp_cold.basis(0).size() << "\n";
+                gsInfo << "Basis dbasis size: " << dbasis.basis(0).size() << "\n";
+                gsInfo << "Basis mp_cold: "<< mp_cold.basis(0) << "\n";
+                gsInfo << "Basis dbasis: "<< dbasis.basis(0) << "\n";
+                gsInfo << "=====================================================================\n";
+            }
             // // ==========================================================================
             
             // =========================Assemble constant terms===============================
@@ -1007,18 +1027,18 @@ gsSparseSolver<>::uPtr solver;
                     if (verbose>1) gsInfo<<"Basis after refinement:\n "<<dbasis.basis(0)<<"\n";
                     refTimeStep       += refTimeRefIt;
 
-                    // // If there is a rule to break the refinement iteration
-                    // if (nRefined <= 10)
-                    // {
-                    //     csvFile << refTimeRefIt << ",";
-                    //     csvFile.flush();  // Forces the file to write immediately
-                    //     break;  // stop refinement iteration loop if few elements are marked for refinement
-                    // }
-                    // else // next refinement iteration
-                    // {
+                     // If there is a rule to break the refinement iteration
+                    if (refIt == maxRefIt-1)
+                    {
+                        csvFile << refTimeRefIt << ",";
+                        csvFile.flush();  // Forces the file to write immediately
+                        break;  // stop refinement iteration loop if few elements are marked for refinement
+                    }
+                    else // next refinement iteration
+                    {
                         csvFile << refTimeRefIt << "\n";
                         csvFile.flush();  // Forces the file to write immediately
-                    // }
+                    }
                 }// refine
                 else
                 {
