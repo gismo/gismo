@@ -11,111 +11,24 @@
     Author(s): S. Takacs
 */
 
-#include <ctime>
 #include <gismo.h>
-#include <gsSolver/gsLowRankCorrectedOp.h>
-
 
 using namespace gismo;
 
 // Helper functions, defined at the end of the file
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
-bool verifyC1Continuity(const gsMultiPatch<>& mp);
-gsDofMapper setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds);
 
-// Returns indices of edges, edges with 1 offset, corner dofs (4 per corner)
-std::array<std::vector<index_t>,3>
-constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
-{
-    // For each dof, 0=interior, 1=values, 2=derivatvies
-    gsVector<index_t> qualifier;
-    qualifier.setZero(basis.size());
-    // Corners are found by counting
-    gsVector<index_t> count;
-    count.setZero(basis.size());
+std::pair<gsDofMapper, std::vector<gsSparseMatrix<>>>
+setupC1Discretization(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds);
 
-    for (boxSide s=boxSide::getFirst(2); s<boxSide::getEnd(2); ++s)
-    {
-        gsVector<index_t> layer0 = basis.boundary(s);
-        for (index_t i=0; i<layer0.rows(); ++i)
-        {
-            qualifier[layer0[i]] = 1;
-            count[layer0[i]]++;
-        }
-        gsVector<index_t> layer1 = basis.boundaryOffset(s,1);
-        for (index_t i=0; i<layer1.rows(); ++i)
-        {
-            qualifier[layer1[i]] = qualifier[layer1[i]] == 1 ? 1 : 2;
-            count[layer1[i]]++;
-        }
-    }
-
-    std::array<std::vector<index_t>,3> result;
-    for (index_t i=0; i<qualifier.rows(); ++i)
-        if (qualifier[i] && dm.is_free(i, 0))
-            result[qualifier[i]-1].push_back(dm.index(i, 0));
-
-    for (index_t i=0; i<count.rows(); ++i)
-        if (count[i]>1 && dm.is_free(i, 0))
-            result[2].push_back(dm.index(i, 0));
-
-    return result;
-}
-
-gsSparseMatrix<> makeTransformer(const gsBasis<>& basis)
-{
-    // This function creates a sparse matix that changes the sign of the
-    // the n-1 st row and column (1D). This is tensorized. This function's
-    // result is put into applyDofMapperTwoSided to respect the boundary
-    // conditions.
-    const index_t d = basis.dim();
-    gsSparseMatrix<> result;
-    for (index_t i=0; i<d; ++i)
-    {
-        const index_t ndofs1D = basis.component(d-1-i).size();
-        GISMO_ASSERT( ndofs1D>3, "" );
-
-        gsSparseMatrix<> transformer1D(ndofs1D,ndofs1D);
-        transformer1D.setIdentity();
-
-        transformer1D(0,0)=1;
-        transformer1D(0,1)=1;
-
-        transformer1D(1,1)=1;
-
-        transformer1D(ndofs1D-2,ndofs1D-2)=-1;
-
-        transformer1D(ndofs1D-1,ndofs1D-2)=1;
-        transformer1D(ndofs1D-1,ndofs1D-1)=1;
-
-        if (i==0)
-            result = give(transformer1D);
-        else
-            result = result.kron(transformer1D);
-    }
-    return result;
-}
-
-gsSparseMatrix<>
-applyDofMapperTwoSided(const gsSparseMatrix<>&sm, const gsDofMapper& dm)
-{
-    gsSparseEntries<> se;
-    se.reserve(sm.nonZeros());
-    for ( index_t i=0; i<sm.outerSize(); ++i )
-        for ( gsSparseMatrix<>::InnerIterator it(sm,i); it; ++it )
-            if (dm.is_free(it.row(), 0) && dm.is_free(it.col(), 0))
-                se.add( dm.index(it.row(), 0), dm.index(it.col(), 0), it.value() );
-
-    gsSparseMatrix<> result(dm.freeSize(), dm.freeSize());
-    result.setFrom(se);
-    return result;
-}
+std::array<std::vector<index_t>,3> constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm);
+gsSparseMatrix<> makeTransformer(const gsBasis<>& basis, const gsDofMapper& dm);
 
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    std::string geometry("domain2d/quarter_annulus.xml");
+    std::string geometry("domain2d/fat_quarter_annulus.xml");
     index_t rhsType = 2;
     index_t sPatchesX = 1;
     index_t sPatchesY = 1;
@@ -218,14 +131,9 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n";
 
     /******************* Setup dofMapper ********************/
-    if (!verifyC1Continuity(mp))
-    {
-        gsInfo << "This is not a C1 geometry.\n";
-        return EXIT_FAILURE;
-    }
-
-    gsInfo << "Setup dofMapper... " << std::flush;
-    gsDofMapper dm = setupTwoLayerDofMapper(mp, mb, bdyConds);
+    gsInfo << "Setup dofMapper and local basis transformations... " << std::flush;
+    std::pair<gsDofMapper, std::vector<gsSparseMatrix<>>> c1Discretization = setupC1Discretization(mp, mb, bdyConds);
+    const gsDofMapper &dm = c1Discretization.first;
     gsInfo << "done:\n" << dm << "\n";
 
     /****************** Setup ietimapper ********************/
@@ -283,7 +191,7 @@ int main(int argc, char *argv[])
         //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
-        gsSparseMatrix<> transformer = applyDofMapperTwoSided(makeTransformer(mb[k]),ietiMapper.dofMapperLocal(k));
+        gsSparseMatrix<> transformer = makeTransformer(mb[k],ietiMapper.dofMapperLocal(k));
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
@@ -569,63 +477,47 @@ sampleBoundary(const gsGeometry<>& geo, boxSide s, bool inverted, index_t number
     return std::pair< gsMatrix<>, gsMatrix<> >( geo.eval(sample), selector*geo.deriv(sample) );
 }
 
-
-bool
-verifyC1Continuity(const gsMultiPatch<>& mp)
+std::pair<gsDofMapper, std::vector<gsSparseMatrix<>>>
+setupC1Discretization(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds)
 {
-    bool result = true;
-    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-    {
-        const index_t k1 = it->first().patch;
-        const index_t k2 = it->second().patch;
-
-        gsVector<index_t> cm;
-        it->cornerMap(cm);
-        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
-        const bool inverted = cm[0];
-
-        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
-        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
-
-        if ((data1.first-data2.first).cwiseAbs().maxCoeff()>1e-6)
-        {
-            gsDebug << "Interface between patches " << k1 << " and " << k2 << " is not C0.\n";
-            result = false;
-        }
-        if ((data1.second+data2.second).cwiseAbs().maxCoeff()>1e-6)
-        {
-            gsDebug << "Interface between patches " << k1 << " and " << k2 << " is not C1.\n";
-            result = false;
-        }
-
-    }
-    return result;
-}
-
-
-gsDofMapper
-setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds)
-{
+    std::pair<gsDofMapper, std::vector<gsSparseMatrix<>>> result;
+    gsDofMapper& dm = result.first;
+    
+    // Construct the object
     gsVector<index_t> patchDofSizes(mp.nPatches());
     for (size_t k=0; k<mp.nPatches(); ++k)
         patchDofSizes[k] = mb[k].size();
+    dm = gsDofMapper(patchDofSizes);
 
-    gsDofMapper dm(patchDofSizes);
+    // Iterate over all interfaces
     for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
     {
         const index_t k1 = it->first().patch;
         const index_t k2 = it->second().patch;
-        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side()),
-                          s2 = mb.basis(k2).boundary(it->second().side()),
-                          s1o = mb.basis(k1).boundaryOffset(it->first().side(),1),
-                          s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
 
-        GISMO_ASSERT( s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "Bases do not agree.");
-
+        // If we do not have tensor product B-splines, we do not know how to construct the transformation
+        GISMO_ASSERT ( (dynamic_cast<const gsTensorBSplineBasis<2,real_t>*>(&mb.basis(k1))), "This is not a gsTensorBSplineBasis.");
+        GISMO_ASSERT ( (dynamic_cast<const gsTensorBSplineBasis<2,real_t>*>(&mb.basis(k2))), "This is not a gsTensorBSplineBasis.");
+        
+        // Is the edge parameterized with the same direction (increasing/decreasing) for both patches?
         gsVector<index_t> cm;
         it->cornerMap(cm);
         GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
         const bool inverted = cm[0];
+
+        // Check if the geometry is really C0 and C1
+        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
+        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
+        GISMO_ENSURE ((data1.first-data2.first).cwiseAbs().maxCoeff()<1e-6, "No C0 geometry between patches " << k1 << " and " << k2);
+        GISMO_ENSURE ((data1.second+data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);       
+        
+        // Construct the dofmapper
+        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side());
+        gsVector<index_t> s2 = mb.basis(k2).boundary(it->second().side());
+        gsVector<index_t> s1o = mb.basis(k1).boundaryOffset(it->first().side(),1);
+        gsVector<index_t> s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
+
+        GISMO_ASSERT (s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "Bases dimensions not agree.");
 
         for (index_t i=0;i<s1.rows();++i)
         {
@@ -635,7 +527,12 @@ setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsig
         }
     }
 
-    if (bdyConds)  // Eliminate boundary layer if bdyConds == 1 or == 2
+    // Set boundary conditions:
+    // bdyConds == 0: no essential boundary conditions
+    // bdyConds == 1: second biharmonic problem: essential boundary conditions only for the function values (one layer)
+    // bdyConds == 2: first biharmonic problem: essential boundary conditions for the function values and normals (two layers)
+    
+    if (bdyConds)
     {
         for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
         {
@@ -654,5 +551,91 @@ setupTwoLayerDofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsig
     }
 
     dm.finalize();
-    return dm;
+    
+    return result;
+}
+
+
+// Returns indices of edges, edges with 1 offset, corner dofs (4 per corner)
+std::array<std::vector<index_t>,3>
+constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm)
+{
+    // For each dof, 0=interior, 1=values, 2=derivatvies
+    gsVector<index_t> qualifier;
+    qualifier.setZero(basis.size());
+    // Corners are found by counting
+    gsVector<index_t> count;
+    count.setZero(basis.size());
+
+    for (boxSide s=boxSide::getFirst(2); s<boxSide::getEnd(2); ++s)
+    {
+        gsVector<index_t> layer0 = basis.boundary(s);
+        for (index_t i=0; i<layer0.rows(); ++i)
+        {
+            qualifier[layer0[i]] = 1;
+            count[layer0[i]]++;
+        }
+        gsVector<index_t> layer1 = basis.boundaryOffset(s,1);
+        for (index_t i=0; i<layer1.rows(); ++i)
+        {
+            qualifier[layer1[i]] = qualifier[layer1[i]] == 1 ? 1 : 2;
+            count[layer1[i]]++;
+        }
+    }
+
+    std::array<std::vector<index_t>,3> result;
+    for (index_t i=0; i<qualifier.rows(); ++i)
+        if (qualifier[i] && dm.is_free(i, 0))
+            result[qualifier[i]-1].push_back(dm.index(i, 0));
+
+    for (index_t i=0; i<count.rows(); ++i)
+        if (count[i]>1 && dm.is_free(i, 0))
+            result[2].push_back(dm.index(i, 0));
+
+    return result;
+}
+
+gsSparseMatrix<>
+makeTransformer(const gsBasis<>& basis, const gsDofMapper& dm)
+{
+    // This function creates a sparse matix that changes the sign of the
+    // the n-1 st row and column (1D). This is tensorized. This function's
+    // result is put into applyDofMapperTwoSided to respect the boundary
+    // conditions.
+    const index_t d = basis.dim();
+    gsSparseMatrix<> sm;
+    for (index_t i=0; i<d; ++i)
+    {
+        const index_t ndofs1D = basis.component(d-1-i).size();
+        GISMO_ASSERT( ndofs1D>3, "" );
+
+        gsSparseMatrix<> transformer1D(ndofs1D,ndofs1D);
+        transformer1D.setIdentity();
+
+        transformer1D(0,0)=1;
+        transformer1D(0,1)=1;
+
+        transformer1D(1,1)=1;
+
+        transformer1D(ndofs1D-2,ndofs1D-2)=-1;
+
+        transformer1D(ndofs1D-1,ndofs1D-2)=1;
+        transformer1D(ndofs1D-1,ndofs1D-1)=1;
+
+        if (i==0)
+            sm = give(transformer1D);
+        else
+            sm = sm.kron(transformer1D);
+    }
+
+    gsSparseEntries<> se;
+    se.reserve(sm.nonZeros());
+    for ( index_t i=0; i<sm.outerSize(); ++i )
+        for ( gsSparseMatrix<>::InnerIterator it(sm,i); it; ++it )
+            if (dm.is_free(it.row(), 0) && dm.is_free(it.col(), 0))
+                se.add( dm.index(it.row(), 0), dm.index(it.col(), 0), it.value() );
+
+    gsSparseMatrix<> result(dm.freeSize(), dm.freeSize());
+    result.setFrom(se);
+    return result;
 }
