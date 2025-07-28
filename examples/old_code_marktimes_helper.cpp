@@ -417,15 +417,14 @@ gsSparseSolver<>::uPtr solver;
                 file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_spinoidal_3d.xml";
         }
 
-       gsMultiPatch<> MP;
-
+        gsMultiPatch<> MP;
         fd1.read(file_name);
         fd1.getId(0,MP);
-        gsInfo<<"Imported multipatch\n";
 
         mp_cold.addPatch(MP.patch(0));
         Cold.setZero(dbasis.size(),1);
         mp_dcold.addPatch(dbasis.basis(0).makeGeometry(Cold));
+        gsInfo<<"Imported multipatch\n";
     }
     else
     {
@@ -452,7 +451,7 @@ gsSparseSolver<>::uPtr solver;
     real_t tol = TIMEopt.askReal("tol",1e-4);
 
     gsParaviewCollection collection(out+"/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
+    collection.options().setSwitch("plotElements", false);
     collection.options().setInt("plotElements.resolution", 4);
     collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
 
@@ -604,7 +603,7 @@ gsSparseSolver<>::uPtr solver;
         else
             maxRefIt = 1;
 
-        for (index_t refIt = 0; refIt!=MESHopt.askInt("RefIt",5); refIt++)
+        for (index_t refIt = 0; refIt!=maxRefIt; refIt++)
         {
             
             nSolvesStep       = 0;
@@ -637,8 +636,11 @@ gsSparseSolver<>::uPtr solver;
                     << nSolvesStep;         
             for (index_t i = 0; i < elAreas.size(); ++i)
                 csvFile2 << ',' << elAreas[i];
-            // csvFile2 << '\n';                
-            // csvFile2.flush();                
+            if (MESHopt.askSwitch("Adaptive",true)==0)
+            {
+              csvFile2 << '\n';                
+              csvFile2.flush();     
+            }
             // ================================================================================
 
             // =========================Assemble the mass matrix ===============================
@@ -673,15 +675,15 @@ gsSparseSolver<>::uPtr solver;
             // }
             // // // ================================================================================
 
-            if (step==106)
-            {
-                gsFileData<> fdbas;
-                fdbas.add(dbasis,0);
-                fdbas.add(Cnew,1);
+            // if (step==106)
+            // {
+            //     gsFileData<> fdbas;
+            //     fdbas.add(dbasis,0);
+            //     fdbas.add(Cnew,1);
 
-                fdbas.save("basis_step_" + std::to_string(step) + "_refit_" + std::to_string(refIt) + "_prjcrs_" + std::to_string(projection_Crs) + ".xml");
-                gsInfo << "Exported to "<<  "basis_step_" + std::to_string(step) + "_refit_" + std::to_string(refIt) + "_prjcrs_" + std::to_string(projection_Crs) + ".xml" <<"\n";
-            }
+            //     fdbas.save("basis_step_" + std::to_string(step) + "_refit_" + std::to_string(refIt) + "_prjcrs_" + std::to_string(projection_Crs) + ".xml");
+            //     gsInfo << "Exported to "<<  "basis_step_" + std::to_string(step) + "_refit_" + std::to_string(refIt) + "_prjcrs_" + std::to_string(projection_Crs) + ".xml" <<"\n";
+            // }
             
             clock.restart();
             if (MESHopt.askSwitch("Adaptive",true))
@@ -955,17 +957,6 @@ gsSparseSolver<>::uPtr solver;
             error_ref_dcnew = 0;
             error_ref_dcold = 0;
 
-            if (plot && step % plotmod==0)
-            {
-                // Export the mesh
-                collection.newTimeStep(&mp);
-                collection.addField(cnew,"numerical solution");
-                gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
-                collection.saveTimeStep();
-            }
-    
-
-
             if (MESHopt.askSwitch("Adaptive",true))
             {
                 // -------------REFINEMENT-------------------
@@ -1071,14 +1062,14 @@ gsSparseSolver<>::uPtr solver;
         // gsInfo<< "Value at mid-point :" << ev.eval(cnew_sol, pt) <<"\n";
 
         // //! [Export visualization in ParaView]
-        // if (plot && step % plotmod==0)
-        // {
-        //     // Export the mesh
-        //     collection.newTimeStep(&mp);
-        //     collection.addField(cnew,"numerical solution");
-        //     gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
-        //     collection.saveTimeStep();
-        // }
+        if (plot && step % plotmod==0)
+        {
+            // Export the mesh
+            collection.newTimeStep(&mp);
+            collection.addField(cnew,"numerical solution");
+            gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
+            collection.saveTimeStep();
+        }
 
         // real_t mass = ev.integral(meas(G)*cnew);
         // csvFile << step << "," << A.numDofs() <<"," << mass <<  "," << error_ref_cnew << ","<< error_ref_dcnew << ","<<error_proj_c<<","<<error_proj_dc<< "\n";
