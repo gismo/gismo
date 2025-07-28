@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     gsMatrix<> fixedPart;
     fixedPart.setZero(dm.boundarySize(),1);
     gsIetiMapper<> ietiMapper(mb,dm,fixedPart);
-    ietiMapper.computeJumpMatrices(/*fullyRedundant=*/true,/*excludeCorners=*/false,/*excludeDofsForSeveralPatches=*/false);
+    ietiMapper.computeJumpMatrices(false, false);
 
     for (index_t k=0; k<nPatches; ++k)
     {
