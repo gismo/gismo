@@ -18,8 +18,8 @@ using namespace gismo;
 // Helper functions, defined at the end of the file
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
 gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds);
-std::vector<index_t> constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
-gsSparseMatrix<> makeTransformer(const gsBasis<>& basis, const gsDofMapper& dm);
+std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
+gsSparseMatrix<> setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm);
 
 int main(int argc, char *argv[])
 {
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 
     for (index_t k=0; k<nPatches; ++k)
     {
-        std::vector<index_t> cornerDofs = constructSkeletonDofs(mb[k], ietiMapper.dofMapperLocal(k),2);
+        std::vector<index_t> cornerDofs = setupC1interfaceDofsVector(mb[k], ietiMapper.dofMapperLocal(k),2);
         for (size_t i=0; i<cornerDofs.size(); ++i)
             ietiMapper.declareDofAsPrimal(k, cornerDofs[i], true);
     }
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
         //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
-        gsSparseMatrix<> transformer = makeTransformer(mb[k],ietiMapper.dofMapperLocal(k));
+        gsSparseMatrix<> transformer = setupC1basisTransformation(mb[k],ietiMapper.dofMapperLocal(k));
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
                 gsScaledDirichletPrec<>::restrictToSkeleton(
                     jumpMatrix,
                     localMatrix,
-                    constructSkeletonDofs(mb_local[0], ietiMapper.dofMapperLocal(k), j)
+                    setupC1interfaceDofsVector(mb_local[0], ietiMapper.dofMapperLocal(k), j)
                 )
             );
         }
@@ -419,14 +419,13 @@ gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s)
 std::pair< gsMatrix<>, gsMatrix<> >
 sampleBoundary(const gsGeometry<>& geo, boxSide s, bool inverted, index_t numberSamples)
 {
-    const short_t dim = 2;
-
-    GISMO_ASSERT( s.index()>0 && s.index()<=4, "Invalid boxSide." );
+    const short_t dim = geo.geoDim();
+    GISMO_ASSERT (dim==2, "Only available for two dimensions.");
     const short_t dir = (s.index()-1)/2;
     const short_t prm = (s.index()-1)%2;
     const gsMatrix<>& parameterRange = geo.parameterRange();
+    gsMatrix<> sample(dim,math::ipow(numberSamples,dim-1));
 
-    gsMatrix<> sample(dim,numberSamples);
     for (index_t i=0; i<numberSamples; ++i)
     {
         index_t j = inverted ? (numberSamples-1-i) : i;
@@ -444,30 +443,28 @@ sampleBoundary(const gsGeometry<>& geo, boxSide s, bool inverted, index_t number
 
 // Returns indices of edges, edges with 1 offset, corner dofs (4 per corner)
 std::vector<index_t>
-constructSkeletonDofs(const gsBasis<>& basis, const gsDofMapper& dm, index_t type)
+setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type)
 {
     GISMO_ASSERT (type>=0 && type<3, "Unknown type");
-    gsVector<index_t> qualifier;
-    qualifier.setZero(basis.size());
-    for (boxSide s=boxSide::getFirst(2); s<boxSide::getEnd(2); ++s)
-    {
-        gsVector<index_t> layer0 = basis.boundary(s);
-        for (index_t i=0; i<layer0.rows(); ++i)
-            qualifier[layer0[i]] += 1;
-        gsVector<index_t> layer1 = basis.boundaryOffset(s,1);
-        for (index_t i=0; i<layer1.rows(); ++i)
-            qualifier[layer1[i]] += 4;
-    }
+    gsMatrix<index_t> count;
+    count.setZero(basis.size(),2);
+    for (boxSide s=boxSide::getFirst(basis.dim()); s<boxSide::getEnd(basis.dim()); ++s)
+        for (index_t offset = 0; offset < 2; ++offset)
+        {
+            gsVector<index_t> bdyDofs = basis.boundaryOffset(s,offset);
+            for (index_t i=0; i<bdyDofs.rows(); ++i)
+                count(bdyDofs[i],offset) += 1;
+        }
 
     std::vector<index_t> result;
-    for (index_t i=0; i<qualifier.rows(); ++i)
-        if (qualifier[i] && dm.is_free(i, 0))
+    for (index_t i=0; i<count.rows(); ++i)
+        if (dm.is_free(i, 0))
         {
-            if (type==0 && (qualifier[i]==1 || qualifier[i]==2))
+            if (type==0 && count(i,0)>0)
                 result.push_back(dm.index(i, 0));
-            if (type==1 && !(qualifier[i]==1 || qualifier[i]==2) && (qualifier[i]==4 || qualifier[i]==8))
+            if (type==1 && count(i,0)==0 && count(i,1)>0)
                 result.push_back(dm.index(i, 0));
-            if (type==2 && qualifier[i]!=1 && qualifier[i]!=4)
+            if (type==2 && count(i,0)+count(i,1)>1)
                 result.push_back(dm.index(i, 0));
         }
 
@@ -486,7 +483,7 @@ getKnotSpan(const gsKnotVector<>& kv, index_t side, index_t p)
 }
 
 gsSparseMatrix<>
-makeTransformer(const gsBasis<>& basis, const gsDofMapper& dm)
+setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm)
 {
     // This function creates a sparse matix that changes the sign of the
     // the n-1 st row and column (1D). This is tensorized. This function's
@@ -550,10 +547,6 @@ setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bd
     {
         const index_t k1 = it->first().patch;
         const index_t k2 = it->second().patch;
-
-        // If we do not have tensor product B-splines, we do not know how to construct the transformation
-        GISMO_ASSERT ( (dynamic_cast<const gsTensorBSplineBasis<2,real_t>*>(&mb.basis(k1))), "This is not a gsTensorBSplineBasis.");
-        GISMO_ASSERT ( (dynamic_cast<const gsTensorBSplineBasis<2,real_t>*>(&mb.basis(k2))), "This is not a gsTensorBSplineBasis.");
 
         // Is the edge parameterized with the same direction (increasing/decreasing) for both patches?
         gsVector<index_t> cm;
