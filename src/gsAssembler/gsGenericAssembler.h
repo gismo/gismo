@@ -16,8 +16,8 @@
 #include <gsAssembler/gsAssembler.h>
 #include <gsPde/gsLaplacePde.h>
 
-#include <gsAssembler/gsExpressions.h>
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExpressions.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 
 namespace gismo
@@ -112,7 +112,7 @@ public:
 
         // Elements used for numerical integration
         gsExprAssembler<T> A(1,1);
-        A.setIntegrationElements(m_bases.front());
+        A.setIntegrationDomain(m_bases.front().domain());
         geometryMap G = A.getMap(m_pde_ptr->patches());
         space u = A.getSpace(m_bases.front());
 

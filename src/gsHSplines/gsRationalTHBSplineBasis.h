@@ -16,6 +16,7 @@
 #include <gsCore/gsRationalBasis.h>
 #include <gsHSplines/gsRationalTHBSpline.h>
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
 
 
 namespace gismo
@@ -113,6 +114,11 @@ public:
         tmp->refine_withCoefs(coefs, boxes);
         m_src->refine_withCoefs(m_weights, boxes);
         coefs.array().colwise() /= m_weights.col(0).array();
+    }
+
+    std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt) const
+    {
+        return m_src->asElements(boxes, refExt);
     }
 
     /// The number of basis functions in the direction of the k-th parameter component
@@ -241,3 +247,7 @@ protected:
 
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsRationalTHBSplineBasis.hpp)
+#endif

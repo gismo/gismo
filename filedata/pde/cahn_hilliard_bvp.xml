@@ -29,7 +29,7 @@
   <!-- Cahn Hilliard options -->
  <OptionList id="3">
   <real label="theta" desc="theta parameter" value="1.5"/>
-  <real label="lambda" desc="lambda parameter" value="0.05"/>
+  <real label="lambda" desc="lambda parameter" value="1.5e-3"/>
   <real label="M0" desc="M0 parameter" value="0.005"/>
   <real label="penalty" desc="penalty factor, penalty=penalty_factor*lambda" value="1.5e-3*1e4"/>
   <real label="mean" desc="mean of random initialization" value="0.4"/>
@@ -40,7 +40,7 @@
  <OptionList id="4">
   <real label="rho_inf" desc="rho_inf parameter" value="0.5"/>
   <real label="t_rho" desc="t_rho parameter" value="0.9"/>
-  <real label="tol" desc="Relative residual tolerance" value="1e-6"/>
+  <real label="tol" desc="Relative residual tolerance" value="1e-8"/>
  </OptionList>
 
   <!-- Assembler options -->
