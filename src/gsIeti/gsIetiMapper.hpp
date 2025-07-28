@@ -218,7 +218,7 @@ void gsIetiMapper<T>::declareDofAsPrimal( index_t patch, index_t index, bool che
                 return;
     }
 
-    GISMO_ASSERT( m_dofMapperLocal[patch].is_free(index, 0), "Expect that the primal dof index refers to free index.");
+    //if (!m_dofMapperLocal[patch].is_free(index, 0)) return;
     std::pair<index_t, index_t> tmp = m_dofMapperLocal[patch].anyPreImage(index);
     GISMO_ASSERT( tmp.first == 0, "Unexpected patch index, expected 0, got " << tmp.first);
     const index_t indexInLocalBasis = tmp.second;

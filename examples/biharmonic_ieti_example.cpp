@@ -1,6 +1,6 @@
 /** @file biharmonic_ieti_example.cpp
 
-    @brief Biharmonic example for an extremely simple multipatch domain
+    @brief Biharmonic example for C1 smooth multipatch domains
 
     This file is part of the G+Smo library.
 
@@ -17,7 +17,7 @@ using namespace gismo;
 
 // Helper functions, defined at the end of the file
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
-gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds);
+gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType);
 std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
 gsSparseMatrix<> setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm);
 
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     index_t patchSplitsX = 1;
     index_t patchSplitsY = 1;
     std::string rhs("1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)");
-    int bdyConds = 2;
+    index_t problemType = 1;
     index_t degree = 2;
     index_t multiplicity = 1;
     index_t refinements = 2;
@@ -38,13 +38,13 @@ int main(int argc, char *argv[])
     std::string out;
     bool plot = false;
 
-    gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
+    gsCmdLine cmd("Biharmonic example for C1 smooth multipatch domains.");
 
     cmd.addString("g", "Geometry",              "Chosen geometry file", geometry);
     cmd.addInt   ("x", "PatchSplitsX",          "Number of splits (coordinate direction x)", patchSplitsX);
     cmd.addInt   ("y", "PatchSplitsY",          "Number of splits (coordinate direction y)", patchSplitsY);
-    cmd.addString("f", "RhsFunction",           "Chosen right-hand function", rhs);
-    cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (1) second biharmonic (u, \u0394u); (2) first biharmonic (u, \u2202nu)", bdyConds);
+    cmd.addString("f", "Rhs",                   "Chosen right-hand function", rhs);
+    cmd.addInt   ("t", "ProblemType",           "Boundary conds: (1) first (u, \u2202nu) or (2) second (u, \u0394u) biharmonic problem", problemType);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("m", "Multiplicity",          "Multiplicity of knots for B-spline discretization space", multiplicity);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
@@ -103,14 +103,14 @@ int main(int argc, char *argv[])
 
     /*** Setup dofMapper and local basis transformations ****/
 
-    if (bdyConds < 1 || bdyConds > 2)
+    if (problemType < 1 || problemType > 2)
     {
-        gsInfo << "Invalid choice for --BdyCond (-b).\n";
+        gsInfo << "Invalid choice for --Type (-t).\n";
         return EXIT_FAILURE;
     }
 
     gsInfo << "Setup dofMapper and local basis transformations... " << std::flush;
-    gsDofMapper dm = setupC1DofMapper(mp, mb, bdyConds);
+    gsDofMapper dm = setupC1DofMapper(mp, mb, problemType);
     gsInfo << "done:\n" << dm << "\n";
 
     /********************** Define rhs **********************/
@@ -140,8 +140,7 @@ int main(int argc, char *argv[])
     prec.reserve(nPatches);
 
     gsPrimalSystem<> primal(ietiMapper.nPrimalDofs());
-
-    gsInfo << "done: " << ietiMapper.nPrimalDofs() << " primals.\n";
+    gsInfo << "done.\n";
 
     /********* Setup assembler and assemble matrix **********/
 
@@ -174,17 +173,17 @@ int main(int argc, char *argv[])
         //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
-        gsSparseMatrix<> transformer = setupC1basisTransformation(mb[k],ietiMapper.dofMapperLocal(k));
+        gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb[k],ietiMapper.dofMapperLocal(k));
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
-        gsSparseMatrix<>                 localMatrix = transformer*A.matrix()*transformer.transpose();
-        gsMatrix<>                       localRhs    = transformer*A.rhs();
+        gsSparseMatrix<>                 localMatrix = localBasisTransform*A.matrix()*localBasisTransform.transpose();
+        gsMatrix<>                       localRhs    = localBasisTransform*A.rhs();
 
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
 
         // Store
-        localBasisTransforms.push_back(transformer);
+        localBasisTransforms.push_back(localBasisTransform);
 
         for (index_t j=0; j<2; ++j)
         {
@@ -285,6 +284,11 @@ int main(int argc, char *argv[])
     std::vector<gsMatrix<>> localSol = primal.distributePrimalSolution(
             ieti.constructSolutionFromLagrangeMultipliers(lambda)
         );
+
+    // transform solution back to standard basis
+    for (index_t k=0; k<nPatches; ++k)
+        localSol[k] = localBasisTransforms[k].transpose() * localSol[k];
+
     gsMatrix<> globalSol = ietiMapper.constructGlobalSolutionFromLocalSolutions(localSol);
     //! [Recover]
     gsInfo << "done.\n\n";
@@ -314,23 +318,23 @@ int main(int argc, char *argv[])
         if (!exists)
         {
             outfile << "biharmonic_ieti_example\t"
-                    << "geometry" << "\t"
-                    << "patchSplitsX" << "\t"
-                    << "patchSplitsY" << "\t"
-                    << "rhs" << "\t"
-                    << "bdyConds" << "\t"
-                    << "degree" << "\t"
-                    << "mutiplicity" << "\t"
-                    << "refinements" << "\t"
-                    << "conditionNumber" << "\t"
-                    << "iter" << "\n";
+                    << "Geometry" << "\t"
+                    << "PatchSplitsX" << "\t"
+                    << "PatchSplitsY" << "\t"
+                    << "Rhs" << "\t"
+                    << "ProblemType" << "\t"
+                    << "Degree" << "\t"
+                    << "Mutiplicity" << "\t"
+                    << "Refinements" << "\t"
+                    << "ConditionNumber" << "\t"
+                    << "Iter" << "\n";
          }
         outfile << "biharmonic_ieti_example\t"
                 << geometry << "\t"
                 << patchSplitsX << "\t"
                 << patchSplitsY << "\t"
                 << rhs << "\t"
-                << bdyConds << "\t"
+                << problemType << "\t"
                 << degree << "\t"
                 << multiplicity << "\t"
                 << refinements << "\t"
@@ -345,17 +349,13 @@ int main(int argc, char *argv[])
         gsInfo << "Write Paraview data to file ieti_result.pvd\n";
         gsMultiPatch<> mpsol;
         for (index_t k=0; k<nPatches; ++k)
-        {
-            gsMatrix<> localSolutionStdBasis;
-            makeSparseLUSolver(localBasisTransforms[k])->apply(localSol[k], localSolutionStdBasis);
-            mpsol.addPatch( mb[k].makeGeometry(localSolutionStdBasis) );
-        }
-        gsWriteParaview<>(gsField<>( mp, mpsol ), "ieti_result", 1000);
+            mpsol.addPatch(mb[k].makeGeometry(ietiMapper.incorporateFixedPart(k,localSol[k])));
+        gsWriteParaview<>(gsField<>(mp, mpsol), "ieti_result", 1000);
     }
     if (!plot&&out.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution or --out to write solution to xml file.\n";
+                  "file containing the solution or --out to write solution data to xml file.\n";
     }
 
     return EXIT_SUCCESS;
@@ -470,17 +470,6 @@ setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_
     return result;
 }
 
-real_t
-getKnotSpan(const gsKnotVector<>& kv, index_t side, index_t p)
-{
-    GISMO_ASSERT (side==0||side==1, "Unknown side given");
-    GISMO_ASSERT (kv.isOpen(), "Not a p-open knot vector");
-    if (side==0)
-        return kv[p+1]-kv[0];
-    else
-        return kv[kv.size()-1]-kv[kv.size()-p-2];
-}
-
 gsSparseMatrix<>
 setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm)
 {
@@ -489,40 +478,42 @@ setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm)
     // result is put into applyDofMapperTwoSided to respect the boundary
     // conditions.
     const index_t d = basis.dim();
-    gsSparseMatrix<> sm;
+    gsSparseMatrix<> transformation;
     for (index_t i=0; i<d; ++i)
     {
         const gsBSplineBasis<>* bsp = dynamic_cast<const gsBSplineBasis<>*>(&basis.component(d-1-i));
         GISMO_ENSURE (bsp, "Not a gsBSplineBasis given.");
 
-
         const short_t p = bsp->degree(0);
         const index_t ndofs1D = bsp->size();
-        GISMO_ASSERT( ndofs1D>3, "" );
+        const gsKnotVector<>& kv = bsp->knots(0);
+        const real_t h0 = kv[p+1]-kv[0], hN = kv[kv.size()-1]-kv[kv.size()-p-2];
 
-        gsSparseMatrix<> transformer1D(ndofs1D,ndofs1D);
-        transformer1D.setIdentity();
+        GISMO_ENSURE( ndofs1D>3, "Not enough knots to perform basis transformation" );
+        GISMO_ENSURE( kv.isOpen(), "Not a p-open knot vector" );
 
-        transformer1D(0,0)=1;
-        transformer1D(0,1)=1;
 
-        transformer1D(1,1)=-getKnotSpan(bsp->knots(0),0,p) / p;
+        gsSparseMatrix<> transformation1D(ndofs1D,ndofs1D);
+        transformation1D.setIdentity();
 
-        transformer1D(ndofs1D-2,ndofs1D-2)=getKnotSpan(bsp->knots(0),1,p) / p;
+        transformation1D(0,0) = 1;
+        transformation1D(0,1) = 1;
+        transformation1D(1,1) = -h0 / p;
 
-        transformer1D(ndofs1D-1,ndofs1D-2)=1;
-        transformer1D(ndofs1D-1,ndofs1D-1)=1;
+        transformation1D(ndofs1D-2,ndofs1D-2) = hN / p;
+        transformation1D(ndofs1D-1,ndofs1D-2) = 1;
+        transformation1D(ndofs1D-1,ndofs1D-1) = 1;
 
         if (i==0)
-            sm = give(transformer1D);
+            transformation = give(transformation1D);
         else
-            sm = sm.kron(transformer1D);
+            transformation = transformation.kron(transformation1D);
     }
 
     gsSparseEntries<> se;
-    se.reserve(sm.nonZeros());
-    for ( index_t i=0; i<sm.outerSize(); ++i )
-        for ( gsSparseMatrix<>::InnerIterator it(sm,i); it; ++it )
+    se.reserve(transformation.nonZeros());
+    for ( index_t i=0; i<transformation.outerSize(); ++i )
+        for ( gsSparseMatrix<>::InnerIterator it(transformation,i); it; ++it )
             if (dm.is_free(it.row(), 0) && dm.is_free(it.col(), 0))
                 se.add( dm.index(it.row(), 0), dm.index(it.col(), 0), it.value() );
 
@@ -533,7 +524,7 @@ setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm)
 
 
 gsDofMapper
-setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bdyConds)
+setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType)
 {
     // Construct the object
     gsVector<index_t> patchDofSizes(mp.nPatches());
@@ -575,26 +566,19 @@ setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, unsigned bd
         }
     }
 
-    // Set boundary conditions:
-    // bdyConds == 0: no essential boundary conditions
-    // bdyConds == 1: second biharmonic problem: essential boundary conditions only for the function values (one layer)
-    // bdyConds == 2: first biharmonic problem: essential boundary conditions for the function values and normals (two layers)
-
-    if (bdyConds)
+    // Set boundary conditions
+    for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
     {
-        for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
-        {
-            const index_t k = it->patchIndex();
-            gsVector<index_t> s = mb.basis(k).boundary(it->side()),
-                              so = mb.basis(k).boundaryOffset(it->side(),1);
+        const index_t k = it->patchIndex();
+        gsVector<index_t> s = mb.basis(k).boundary(it->side()),
+                            so = mb.basis(k).boundaryOffset(it->side(),1);
 
-            GISMO_ASSERT( s.rows() == so.rows(), "");
-            for (index_t i=0;i<s.rows();++i)
-            {
-                dm.eliminateDof(s[i],k);
-                if (bdyConds == 2)
-                    dm.eliminateDof(so[i],k);
-            }
+        GISMO_ASSERT( s.rows() == so.rows(), "");
+        for (index_t i=0;i<s.rows();++i)
+        {
+            dm.eliminateDof(s[i],k);
+            if (problemType == 1)
+                dm.eliminateDof(so[i],k);
         }
     }
 
