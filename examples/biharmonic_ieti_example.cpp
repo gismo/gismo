@@ -26,14 +26,13 @@ int main(int argc, char *argv[])
     /************** Define command line options *************/
 
     std::string geometry("domain2d/fat_quarter_annulus.xml");
+    index_t patchSplitsX = 1;
+    index_t patchSplitsY = 1;
     std::string rhs("1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)");
-    index_t sPatchesX = 1;
-    index_t sPatchesY = 1;
+    int bdyConds = 2;
     index_t degree = 2;
     index_t multiplicity = 1;
     index_t refinements = 2;
-    int bdyConds = 2;
-    std::string solverType("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 1000;
     std::string out;
@@ -41,15 +40,14 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Biharmonic IETI example for an extremely simple multipatch domain.");
 
-    cmd.addString("f", "RhsFunction",           "Chosen right-hand function", rhs);
     cmd.addString("g", "Geometry",              "Chosen geometry file", geometry);
-    cmd.addInt   ("x", "PatchesX",              "Number of splits (coordinate direction x)", sPatchesX);
-    cmd.addInt   ("y", "PatchesY",              "Number of splits (coordinate direction y)", sPatchesY);
+    cmd.addInt   ("x", "PatchSplitsX",          "Number of splits (coordinate direction x)", patchSplitsX);
+    cmd.addInt   ("y", "PatchSplitsY",          "Number of splits (coordinate direction y)", patchSplitsY);
+    cmd.addString("f", "RhsFunction",           "Chosen right-hand function", rhs);
+    cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (1) second biharmonic (u, \u0394u); (2) first biharmonic (u, \u2202nu)", bdyConds);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("m", "Multiplicity",          "Multiplicity of knots for B-spline discretization space", multiplicity);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
-    cmd.addInt   ("b", "BdyConds",              "Bounday conditions: (1) second biharmonic (u, \u0394u); (2) first biharmonic (u, \u2202nu)", bdyConds);
-    cmd.addString("",  "Solver",                "Which solver to use: \"cg\" or \"gmres\".", solverType);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
@@ -74,9 +72,9 @@ int main(int argc, char *argv[])
     }
     gsMultiPatch<>& mp = *mpPtr;
 
-    for (index_t i=0; i<sPatchesX; ++i)
+    for (index_t i=0; i<patchSplitsX; ++i)
         mp = mp.uniformSplit(0);
-    for (index_t j=0; j<sPatchesY; ++j)
+    for (index_t j=0; j<patchSplitsY; ++j)
         mp = mp.uniformSplit(1);
 
     const index_t nPatches = mp.nPatches();
@@ -273,28 +271,13 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
-    real_t conditionNumber = -1;
+    gsConjugateGradient<> solver( ieti.schurComplement(), preconder );
+    solver.setOptions( cmd.getGroup("Solver") );
+    solver.setCalcEigenvalues(true);
+    solver.solveDetailed( rhsForSchur, lambda, errorHistory );
+    real_t conditionNumber = solver.getConditionNumber();
     gsMatrix<real_t> eigenvalues;
-    if (solverType == "cg")
-    {
-        gsConjugateGradient<> solver( ieti.schurComplement(), preconder );
-        solver.setOptions( cmd.getGroup("Solver") );
-        solver.setCalcEigenvalues(true);
-        solver.solveDetailed( rhsForSchur, lambda, errorHistory );
-        conditionNumber = solver.getConditionNumber();
-        solver.getEigenvalues(eigenvalues);
-    }
-    else if (solverType == "gmres")
-    {
-        gsGMRes<> solver( ieti.schurComplement(), preconder );
-        solver.setOptions( cmd.getGroup("Solver") );
-        solver.solveDetailed( rhsForSchur, lambda, errorHistory );
-    }
-    else
-    {
-        gsInfo << "Unknown --solver.\n";
-        return EXIT_FAILURE;
-    }
+    solver.getEigenvalues(eigenvalues);
     //! [Solve]
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
@@ -321,11 +304,8 @@ int main(int argc, char *argv[])
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-    if (solverType == "cg")
-    {
-        gsInfo << "Estimated condition number: " << conditionNumber << "\n";
-        gsInfo << "Eigenvalues: " << eigenvalues.transpose() << "\n";
-    }
+    gsInfo << "Estimated condition number: " << conditionNumber << "\n";
+    gsInfo << "Eigenvalues: " << eigenvalues.transpose() << "\n";
 
     /********************** Output **************************/
     if (!out.empty())
@@ -336,29 +316,29 @@ int main(int argc, char *argv[])
         {
             outfile << "biharmonic_ieti_example\t"
                     << "geometry" << "\t"
-                    << "degree" << "\t"
-                    << "refinements" << "\t"
-                    << "conditionNumber" << "\t"
-                    << "iter" << "\t"
-                    << "sPatchesX" << "\t"
-                    << "sPatchesY" << "\t"
+                    << "patchSplitsX" << "\t"
+                    << "patchSplitsY" << "\t"
                     << "rhs" << "\t"
                     << "bdyConds" << "\t"
-                    << "solverType" << "\n";
-        }
+                    << "degree" << "\t"
+                    << "mutiplicity" << "\t"
+                    << "refinements" << "\t"
+                    << "conditionNumber" << "\t"
+                    << "iter" << "\n";
+         }
         outfile << "biharmonic_ieti_example\t"
                 << geometry << "\t"
-                << degree << "\t"
-                << refinements << "\t"
-                << conditionNumber << "\t"
-                << iter << "\t"
-                << sPatchesX << "\t"
-                << sPatchesY << "\t"
+                << patchSplitsX << "\t"
+                << patchSplitsY << "\t"
                 << rhs << "\t"
                 << bdyConds << "\t"
-                << solverType << "\n";
+                << degree << "\t"
+                << multiplicity << "\t"
+                << refinements << "\t"
+                << conditionNumber << "\t"
+                << iter << "\n";
 
-        gsInfo << "Write solution to file " << out << "\n";
+        gsInfo << "Write solution data to file " << out << "\n";
     }
 
     if (plot)
@@ -388,17 +368,17 @@ int main(int argc, char *argv[])
 
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s)
 {
-    index_t nPatchesX=0, nPatchesY=0, geoExample=0;
+    index_t nSplitsX=0, nSplitsY=0, geoExample=0;
 
     if (*(s++)!='r'||*(s++)!='_') return nullptr;
     for (char c; c=*s, '0'<=c && c<='9'; ++s)
-        nPatchesX = 10*nPatchesX+(c-'0');
+        nSplitsX = 10*nSplitsX+(c-'0');
 
     if (*s!='_') return nullptr;
     ++s;
 
     for (char c; c=*s, '0'<=c && c<='9'; ++s)
-        nPatchesY = 10*nPatchesY+(c-'0');
+        nSplitsY = 10*nSplitsY+(c-'0');
 
     if (*s=='_')
     {
@@ -407,7 +387,7 @@ gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s)
             geoExample = 10*geoExample+(c-'0');
     }
     if (*s!='\0') return nullptr;
-    if (nPatchesX == 0 || nPatchesY == 0) return nullptr;
+    if (nSplitsX == 0 || nSplitsY == 0) return nullptr;
 
     gsMultiPatch<>::uPtr mp = memory::make_unique(new gsMultiPatch<>());
 
@@ -427,12 +407,12 @@ gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s)
         return nullptr;
 
     /// end
-    for (index_t i=0; i<nPatchesX; ++i)
-        for (index_t j=0; j<nPatchesY; ++j)
+    for (index_t i=0; i<nSplitsX; ++i)
+        for (index_t j=0; j<nSplitsY; ++j)
             if (i+j)
                 mp->addPatch(gsNurbsCreator<>::BSplineRectangle(i,j,i+1,j+1));
     mp->computeTopology();
-    gsInfo << "Initial geometry is grid of " << nPatchesX << "x" << nPatchesY << " unit squares.\n";
+    gsInfo << "Initial geometry is grid of " << nSplitsX << "x" << nSplitsY << " unit squares.\n";
     return mp;
 }
 
