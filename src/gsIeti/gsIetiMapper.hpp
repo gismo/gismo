@@ -351,7 +351,7 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 }
 
 template <class T>
-void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners )
+void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners, const std::vector<index_t>& exclude )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
@@ -391,8 +391,7 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
             for (boxCorner it = boxCorner::getFirst(dim); it!=boxCorner::getEnd(dim); ++it)
             {
                 const index_t idx = (*m_multiBasis)[k].functionAtCorner(it);
-                const index_t globalIndex = m_dofMapperGlobal.index(idx,k);
-                if ( m_dofMapperGlobal.is_coupled_index(globalIndex) )
+                if ( m_dofMapperGlobal.is_coupled(idx, k) )
                 {
                     const index_t coupledIndex = m_dofMapperGlobal.cindex(idx,k);
                     coupling[coupledIndex].clear();
@@ -401,13 +400,26 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
         }
     }
 
+    for (std::size_t i=0; i<exclude.size(); ++i)
+    {
+        const std::pair<index_t, index_t> tmp = m_dofMapperGlobal.anyPreImage(exclude[i]);
+        const index_t patch = tmp.first;
+        const index_t idx = tmp.second;
+        if ( m_dofMapperGlobal.is_coupled(idx, patch) )
+        {
+            const index_t coupledIndex = m_dofMapperGlobal.cindex(idx, patch);
+            coupling[coupledIndex].clear();
+        }
+    }
+
     // Compute the number of Lagrange multipliers
     index_t numLagrangeMult = 0;
     for (index_t i=0; i<coupledSize; ++i)
     {
         const index_t n = coupling[i].size();
-        GISMO_ASSERT( n>1 || excludeCorners, "gsIetiMapper::computeJumpMatrices:"
-            "Found a coupled dof that is not coupled to any other dof." );
+        if (n==0)
+            continue;
+        GISMO_ASSERT( n!=1, "Coupled dof that is only coupled to itself.");
         if (fullyRedundant)
             numLagrangeMult += (n * (n-1))/2;
         else
@@ -426,6 +438,8 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
     for (index_t i=0; i<coupledSize; ++i)
     {
         const index_t n = coupling[i].size();
+        if (n==0)
+            continue;
         const index_t maxIndex = fullyRedundant ? (n-1) : 1;
         for (index_t j1=0; j1<maxIndex; ++j1)
         {

@@ -123,7 +123,12 @@ public:
     ///                        if false, then no redundancy
     /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
     ///                        if the corners are chosen as primal dofs
-    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners );
+    /// @param exclude         Exclude dofs with given global indices
+    void computeJumpMatrices(
+        bool fullyRedundant,
+        bool excludeCorners,
+        const std::vector<index_t>& exclude = std::vector<index_t>()
+    );
 
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///

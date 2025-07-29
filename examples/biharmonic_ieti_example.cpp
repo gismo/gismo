@@ -125,14 +125,20 @@ int main(int argc, char *argv[])
     gsMatrix<> fixedPart;
     fixedPart.setZero(dm.boundarySize(),1);
     gsIetiMapper<> ietiMapper(mb,dm,fixedPart);
-    ietiMapper.computeJumpMatrices(false, false);
 
+    std::vector<index_t> cornerDofsGlobal;
+    cornerDofsGlobal.reserve(nPatches*16);
     for (index_t k=0; k<nPatches; ++k)
     {
-        std::vector<index_t> cornerDofs = setupC1interfaceDofsVector(mb[k], ietiMapper.dofMapperLocal(k),2);
+        std::vector<index_t> cornerDofs = setupC1interfaceDofsVector(mb[k], ietiMapper.dofMapperLocal(k), 2);
         for (size_t i=0; i<cornerDofs.size(); ++i)
+        {
+            cornerDofsGlobal.push_back(dm.index(cornerDofs[i],k));
             ietiMapper.declareDofAsPrimal(k, cornerDofs[i], true);
+        }
     }
+
+    ietiMapper.computeJumpMatrices(/*fullyRedundant*/false, /*excludeCorners*/false, /*exlude*/cornerDofsGlobal);
 
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
@@ -175,6 +181,7 @@ int main(int argc, char *argv[])
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
         gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb[k],ietiMapper.dofMapperLocal(k),scaling,k);
+        localBasisTransforms.push_back(localBasisTransform);
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
@@ -183,8 +190,6 @@ int main(int argc, char *argv[])
 
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
 
-        // Store
-        localBasisTransforms.push_back(localBasisTransform);
 
         for (index_t j=0; j<2; ++j)
         {
@@ -266,14 +271,15 @@ int main(int argc, char *argv[])
     lambda.setRandom( ieti.nLagrangeMultipliers(), 1 );
     //! [Define initial guess]
 
-    gsMatrix<> errorHistory;
-
     // This is the main cg iteration
     //! [Solve]
     gsConjugateGradient<> solver( ieti.schurComplement(), preconder );
     solver.setOptions( cmd.getGroup("Solver") );
     solver.setCalcEigenvalues(true);
+
+    gsMatrix<> errorHistory;
     solver.solveDetailed( rhsForSchur, lambda, errorHistory );
+
     real_t conditionNumber = solver.getConditionNumber();
     gsMatrix<real_t> eigenvalues;
     solver.getEigenvalues(eigenvalues);
@@ -460,9 +466,9 @@ setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_
     for (index_t i=0; i<count.rows(); ++i)
         if (dm.is_free(i, 0))
         {
-            if (type==0 && count(i,0)>0)
+            if (type==0 && (count(i,0)==1 || count(i,0)+count(i,1)>1))
                 result.push_back(dm.index(i, 0));
-            if (type==1 && count(i,0)==0 && count(i,1)>0)
+            if (type==1 && (count(i,1)==1 || count(i,0)+count(i,1)>1))
                 result.push_back(dm.index(i, 0));
             if (type==2 && count(i,0)+count(i,1)>1)
                 result.push_back(dm.index(i, 0));
