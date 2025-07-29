@@ -113,7 +113,8 @@ int main(int argc, char *argv[])
 
     // real_t N2   = L0*L0/lambda;
     real_t N2   = 41.7313;
-    auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
+    // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
+    auto mu_c = 1.0 / (2.0*theta) * gismo::expr::log(c / (1.0-c).val()) + 1 - 2*c;
     auto dmu_c= 1.0 / (2.0*theta) * igrad(c,G) / (c - c*c).val() - 2.0 * igrad(c,G);
 
     auto M_c  = M0 * c * (1.0-c.val());

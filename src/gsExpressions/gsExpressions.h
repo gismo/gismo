@@ -63,6 +63,7 @@ template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
 template<class E> class ppart_expr;
+template<class E> class log_expr;
 template<class E> class exp_expr;
 template<class E> class ppartval_expr;
 template<class T> class cdiam_expr;
@@ -152,6 +153,7 @@ public:
 // K
 // L
 #include <gsExpressions/lapl_expr.h>
+#include <gsExpressions/log_expr.h>
 // M
 #include <gsExpressions/matrix_by_space_expr.h>
 #include <gsExpressions/matrix_by_space_tr_expr.h>
