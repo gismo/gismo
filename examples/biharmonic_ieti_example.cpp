@@ -17,24 +17,24 @@ using namespace gismo;
 
 // Helper functions, defined at the end of the file
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
-gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType);
+gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType, gsMatrix<>& scaling);
 std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
-gsSparseMatrix<> setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm);
+gsSparseMatrix<> setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const gsMatrix<>& scaling, index_t k);
 
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    std::string geometry("domain2d/fat_quarter_annulus.xml");
-    index_t patchSplitsX = 1;
-    index_t patchSplitsY = 1;
+    std::string geometry("domain2d/c1_spline_lamella.xml");
+    index_t patchSplitsX = 2;
+    index_t patchSplitsY = 2;
     std::string rhs("1/8*pi^4*sin(pi*x/2)*sin(pi*y/2)");
     index_t problemType = 1;
     index_t degree = 2;
     index_t multiplicity = 1;
     index_t refinements = 2;
-    real_t tolerance = 1.e-8;
-    index_t maxIterations = 1000;
+    real_t tolerance = 1.e-6;
+    index_t maxIterations = 100;
     std::string out;
     bool plot = false;
 
@@ -110,7 +110,8 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "Setup dofMapper and local basis transformations... " << std::flush;
-    gsDofMapper dm = setupC1DofMapper(mp, mb, problemType);
+    gsMatrix<> scaling;
+    gsDofMapper dm = setupC1DofMapper(mp, mb, problemType, scaling);
     gsInfo << "done:\n" << dm << "\n";
 
     /********************** Define rhs **********************/
@@ -173,7 +174,7 @@ int main(int argc, char *argv[])
         //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
-        gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb[k],ietiMapper.dofMapperLocal(k));
+        gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb[k],ietiMapper.dofMapperLocal(k),scaling,k);
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
@@ -471,7 +472,7 @@ setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_
 }
 
 gsSparseMatrix<>
-setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm)
+setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const gsMatrix<>& scaling, index_t k)
 {
     // This function creates a sparse matix that changes the sign of the
     // the n-1 st row and column (1D). This is tensorized. This function's
@@ -498,9 +499,9 @@ setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm)
 
         transformation1D(0,0) = 1;
         transformation1D(0,1) = 1;
-        transformation1D(1,1) = -h0 / p;
+        transformation1D(1,1) = -h0 / p * scaling(k,2*i);
 
-        transformation1D(ndofs1D-2,ndofs1D-2) = hN / p;
+        transformation1D(ndofs1D-2,ndofs1D-2) = hN / p * scaling(k,2*i+1);
         transformation1D(ndofs1D-1,ndofs1D-2) = 1;
         transformation1D(ndofs1D-1,ndofs1D-1) = 1;
 
@@ -524,13 +525,15 @@ setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm)
 
 
 gsDofMapper
-setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType)
+setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType, gsMatrix<>& scaling)
 {
     // Construct the object
     gsVector<index_t> patchDofSizes(mp.nPatches());
     for (size_t k=0; k<mp.nPatches(); ++k)
         patchDofSizes[k] = mb[k].size();
     gsDofMapper dm(patchDofSizes);
+
+    scaling.setOnes(mp.nPatches(), math::ipow(2,mp.geoDim()));
 
     // Iterate over all interfaces
     for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
@@ -547,8 +550,10 @@ setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t pro
         // Check if the geometry is really C0 and C1
         std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
         std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
+        real_t scalingFactor = data1.second.cwiseAbs().maxCoeff() / data2.second.cwiseAbs().maxCoeff();
+        scaling(k2, it->second().index()-1) = scalingFactor;
         GISMO_ENSURE ((data1.first-data2.first).cwiseAbs().maxCoeff()<1e-6, "No C0 geometry between patches " << k1 << " and " << k2);
-        GISMO_ENSURE ((data1.second+data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);
+        GISMO_ENSURE ((data1.second+scalingFactor*data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);
 
         // Construct the dofmapper
         gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side());
