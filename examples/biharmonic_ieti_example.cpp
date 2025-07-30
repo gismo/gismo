@@ -21,6 +21,8 @@ gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb,
 std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
 gsSparseMatrix<> setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const gsMatrix<>& scaling, index_t k);
 
+gsMatrix<> evalField(const gsField<>& field, const gsMatrix<>& coordinates);
+
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
@@ -36,6 +38,7 @@ int main(int argc, char *argv[])
     real_t tolerance = 1.e-6;
     index_t maxIterations = 100;
     std::string out;
+    std::string log;
     bool plot = false;
 
     gsCmdLine cmd("Biharmonic example for C1 smooth multipatch domains.");
@@ -50,7 +53,8 @@ int main(int argc, char *argv[])
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
-    cmd.addString("",  "out",                   "Write solution and used options to file", out);
+    cmd.addString("",  "out",                   "Write solution to file", out);
+    cmd.addString("",  "log",                   "Write solution data to log file", log);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -318,10 +322,10 @@ int main(int argc, char *argv[])
     gsInfo << "Eigenvalues: " << eigenvalues.transpose() << "\n";
 
     /********************** Output **************************/
-    if (!out.empty())
+    if (!log.empty())
     {
-        const bool exists = gsFileManager::fileExists(out);
-        std::ofstream outfile(out, std::ios_base::app);
+        const bool exists = gsFileManager::fileExists(log);
+        std::ofstream outfile(log, std::ios_base::app);
         if (!exists)
         {
             outfile << "biharmonic_ieti_example\t"
@@ -348,7 +352,7 @@ int main(int argc, char *argv[])
                 << conditionNumber << "\t"
                 << iter << "\n";
 
-        gsInfo << "Write solution data to file " << out << "\n";
+        gsInfo << "Write solution data to file " << log << "\n";
     }
 
     if (plot)
@@ -358,8 +362,34 @@ int main(int argc, char *argv[])
         for (index_t k=0; k<nPatches; ++k)
             mpsol.addPatch(mb[k].makeGeometry(ietiMapper.incorporateFixedPart(k,localSol[k])));
         gsWriteParaview<>(gsField<>(mp, mpsol), "ieti_result", 1000);
+
     }
-    if (!plot&&out.empty())
+
+    if (!out.empty())
+    {
+        gsInfo << "Write solution to file " << out << "\n";
+        gsMatrix<> coordinates;
+        coordinates.setZero(2,2);
+        coordinates(0,1)=1;
+        coordinates(1,1)=1;
+        gsMultiPatch<> mpsol;
+        for (index_t k=0; k<nPatches; ++k)
+            mpsol.addPatch(mb[k].makeGeometry(ietiMapper.incorporateFixedPart(k,localSol[k])));
+        gsMatrix<> result = evalField(gsField<>(mp, mpsol), coordinates);
+        std::ofstream outfile(out, std::ios_base::app);
+        //outfile << result << "\n\n";
+        outfile << "(* created with G+smo *)\ndata = {\n";
+        for (index_t i=0; i<result.rows(); ++i)
+        {
+            outfile << "{";
+            for (index_t j=0; j<result.cols(); ++j)
+                outfile << std::fixed << std::showpoint << std::setprecision(10) << result(i,j) << ((j<result.cols()-1) ? ", " : "");
+            outfile << ((i<result.rows()-1) ? "},\n" : "}");
+        }
+        outfile << "};\n\n";
+    }
+
+    if (!plot&&out.empty()&&log.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution or --out to write solution data to xml file.\n";
@@ -505,9 +535,9 @@ setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const 
 
         transformation1D(0,0) = 1;
         transformation1D(0,1) = 1;
-        transformation1D(1,1) = -h0 / p * scaling(k,2*i);
+        transformation1D(1,1) = -h0 / p / scaling(k,2*i);
 
-        transformation1D(ndofs1D-2,ndofs1D-2) = hN / p * scaling(k,2*i+1);
+        transformation1D(ndofs1D-2,ndofs1D-2) = hN / p / scaling(k,2*i+1);
         transformation1D(ndofs1D-1,ndofs1D-2) = 1;
         transformation1D(ndofs1D-1,ndofs1D-1) = 1;
 
@@ -557,7 +587,8 @@ setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t pro
         std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
         std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
         real_t scalingFactor = data1.second.cwiseAbs().maxCoeff() / data2.second.cwiseAbs().maxCoeff();
-        scaling(k2, it->second().index()-1) = scalingFactor;
+        scaling(k2, it->second().index()-1) = math::sqrt(scalingFactor);
+        scaling(k1, it->first().index()-1) = 1/math::sqrt(scalingFactor);
         GISMO_ENSURE ((data1.first-data2.first).cwiseAbs().maxCoeff()<1e-6, "No C0 geometry between patches " << k1 << " and " << k2);
         GISMO_ENSURE ((data1.second+scalingFactor*data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);
 
@@ -596,4 +627,52 @@ setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t pro
     dm.finalize();
 
     return dm;
+}
+
+gsMatrix<>
+evalField(const gsField<>& field, const gsMatrix<>& coordinates)
+{
+    GISMO_ASSERT (coordinates.cols() == 2, "Assume minima and maxima");
+    GISMO_ASSERT (coordinates.rows() == 2, "Only 2d");
+    const index_t n = 100;
+    gsMatrix<> result; result.setZero(n,n);
+    gsMatrix<> mask; mask.setZero(n,n);
+
+    gsMatrix<> par_point(2,1), ph_point(2,1), value(1,1);
+    for (index_t k=0; k<field.nPieces(); ++k)
+    {
+        for (index_t i=0; i<n; ++i)
+            for (index_t j=0; j<n; ++j)
+            {
+                par_point(0,0) = (real_t)i / (n-1);
+                par_point(1,0) = (real_t)j / (n-1);
+                ph_point = field.point(par_point,k);
+                const real_t a = n * (ph_point(0,0) - coordinates(0,0)) / (coordinates(0,1)-coordinates(0,0));
+                const real_t b = n * (ph_point(1,0) - coordinates(1,0)) / (coordinates(1,1)-coordinates(1,0));
+
+                const index_t aa = a;
+                const index_t bb = b;
+
+                const real_t value = field.value(par_point,k)(0,0);
+
+                for (index_t o1 = -1; o1<3; ++o1)
+                    for (index_t o2 = -1; o2<3; ++o2)
+                    {
+                        const index_t a0 = aa + o1;
+                        const index_t b0 = bb + o2;
+                        if (a0>0 && a0<n && b0>0 && b0<n)
+                        {
+                            const real_t distance = (a-a0)*(a-a0) + (b-b0)*(b-b0);
+                            if (mask(a0,b0)==0 || mask(a0,b0)>distance)
+                            {
+                                mask(a0,b0) = distance;
+                                result(a0,b0) = value;
+                            }
+                        }
+                    }
+
+            }
+    }
+
+    return result;
 }
