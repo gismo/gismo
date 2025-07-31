@@ -146,7 +146,7 @@ boxCorner boxComponent::asCorner() const
     {
         result += ( idx%3 - 1 ) * factor;
         idx /= 3;
-        factor *= 3;
+        factor *= 2;
     }
     return boxCorner(1+result);
 }

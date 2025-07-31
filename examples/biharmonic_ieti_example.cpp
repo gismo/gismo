@@ -11,6 +11,8 @@
     Author(s): S. Takacs
 */
 
+// TODO: This requires the fix in boxComponent
+
 #include <gismo.h>
 
 using namespace gismo;
@@ -19,7 +21,8 @@ using namespace gismo;
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
 gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType, gsMatrix<>& scaling);
 std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
-gsSparseMatrix<> setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const gsMatrix<>& scaling, index_t k);
+gsSparseMatrix<> setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const gsMatrix<>& scaling, const gsMatrix<index_t>& cornerRanks, index_t k);
+gsMatrix<index_t> cornerRanker(const gsMultiPatch<>& mp);
 
 gsMatrix<> evalField(const gsField<>& field, const gsMatrix<>& coordinates);
 
@@ -38,6 +41,7 @@ int main(int argc, char *argv[])
     real_t tolerance = 1.e-6;
     index_t maxIterations = 100;
     std::string out;
+    std::string mat;
     std::string log;
     bool plot = false;
 
@@ -54,6 +58,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("",  "out",                   "Write solution to file", out);
+    cmd.addString("",  "mat",                   "Write matrix to file", mat);
     cmd.addString("",  "log",                   "Write solution data to log file", log);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -151,6 +156,10 @@ int main(int argc, char *argv[])
     prec.reserve(nPatches);
 
     gsPrimalSystem<> primal(ietiMapper.nPrimalDofs());
+    primal.setEliminatePointwiseConstraints(true);
+    
+    gsMatrix<index_t> cornerRanks = cornerRanker(mp);
+    
     gsInfo << "done.\n";
 
     /********* Setup assembler and assemble matrix **********/
@@ -184,7 +193,7 @@ int main(int argc, char *argv[])
         //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
-        gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb[k],ietiMapper.dofMapperLocal(k),scaling,k);
+        gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb[k],ietiMapper.dofMapperLocal(k),scaling,cornerRanks,k);
         localBasisTransforms.push_back(localBasisTransform);
 
         // Fetch data
@@ -388,8 +397,28 @@ int main(int argc, char *argv[])
         }
         outfile << "};\n\n";
     }
+    
+    if (!mat.empty())
+    {
+        gsInfo << "Write mat to file " << mat << "\n";
 
-    if (!plot&&out.empty()&&log.empty())
+        gsMatrix<> matrix;
+        ieti.saddlePointProblem()->toMatrix(matrix);
+        
+        std::ofstream outfile(mat, std::ios_base::app);
+        //outfile << matrix << "\n\n";
+        outfile << "(* created with G+smo *)\nmat = {\n";
+        for (index_t i=0; i<matrix.rows(); ++i)
+        {
+            outfile << "{";
+            for (index_t j=0; j<matrix.cols(); ++j)
+                outfile << std::fixed << std::showpoint << std::setprecision(10) << matrix(i,j) << ((j<matrix.cols()-1) ? ", " : "");
+            outfile << ((i<matrix.rows()-1) ? "},\n" : "}");
+        }
+        outfile << "};\n\n";
+    }
+
+    if (!plot&&out.empty()&&mat.empty()&&log.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution or --out to write solution data to xml file.\n";
@@ -508,7 +537,7 @@ setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_
 }
 
 gsSparseMatrix<>
-setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const gsMatrix<>& scaling, index_t k)
+setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const gsMatrix<>& scaling, const gsMatrix<index_t>& cornerRanks, index_t k)
 {
     // This function creates a sparse matix that changes the sign of the
     // the n-1 st row and column (1D). This is tensorized. This function's
@@ -516,6 +545,8 @@ setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const 
     // conditions.
     const index_t d = basis.dim();
     gsSparseMatrix<> transformation;
+    gsVector<index_t> ndofsOf1dbases(d);
+    
     for (index_t i=0; i<d; ++i)
     {
         const gsBSplineBasis<>* bsp = dynamic_cast<const gsBSplineBasis<>*>(&basis.component(d-1-i));
@@ -523,19 +554,22 @@ setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const 
 
         const short_t p = bsp->degree(0);
         const index_t ndofs1D = bsp->size();
+        ndofsOf1dbases[i] = ndofs1D;
         const gsKnotVector<>& kv = bsp->knots(0);
         const real_t h0 = kv[p+1]-kv[0], hN = kv[kv.size()-1]-kv[kv.size()-p-2];
 
         GISMO_ENSURE( ndofs1D>3, "Not enough knots to perform basis transformation" );
         GISMO_ENSURE( kv.isOpen(), "Not a p-open knot vector" );
 
-
         gsSparseMatrix<> transformation1D(ndofs1D,ndofs1D);
         transformation1D.setIdentity();
 
+        //if (scaling(k,2*i)<0.999 || scaling(k,2*i)>1.001) gsInfo << "scaling("<<k<<","<<2*i<<") = " << scaling(k,2*i) << "\n";
+        //if (scaling(k,2*i+1)<0.999 || scaling(k,2*i+1)>1.001) gsInfo << "scaling("<<k<<","<<2*i+1<<") = " << scaling(k,2*i+1) << "\n";
+        
         transformation1D(0,0) = 1;
         transformation1D(0,1) = 1;
-        transformation1D(1,1) = -h0 / p / scaling(k,2*i);
+        transformation1D(1,1) = h0 / p / scaling(k,2*i);
 
         transformation1D(ndofs1D-2,ndofs1D-2) = hN / p / scaling(k,2*i+1);
         transformation1D(ndofs1D-1,ndofs1D-2) = 1;
@@ -546,7 +580,33 @@ setupC1basisTransformation(const gsBasis<>& basis, const gsDofMapper& dm, const 
         else
             transformation = transformation.kron(transformation1D);
     }
+    
+    // Handle corners
+    // To undo all signs present there so far, just use absolute value of current scaling
+    GISMO_ASSERT(d==2, "");
+    for (index_t i=0; i<4; ++i)
+    {
+        const index_t x = i%2;
+        const index_t y = i/2;
+        // TODO: check _this_ kroneckerization
+        //const index_t idx_00 =     x*(ndofsOf1dbases[0]-1)   +       y*(ndofsOf1dbases[1]-1)  *ndofsOf1dbases[0];
+        const index_t idx_10 = ( 1 + x*(ndofsOf1dbases[0]-3) ) +       y*(ndofsOf1dbases[1]-1)  *ndofsOf1dbases[0];
+        const index_t idx_01 =       x*(ndofsOf1dbases[0]-1)   + ( 1 + y*(ndofsOf1dbases[1]-3) )*ndofsOf1dbases[0];
+        const index_t idx_11 = ( 1 + x*(ndofsOf1dbases[0]-3) ) + ( 1 + y*(ndofsOf1dbases[1]-3) )*ndofsOf1dbases[0];
+        
+        const index_t sign_x = cornerRanks(k,i)%2 ? -1.0 : 1.0;
+        const index_t sign_y = cornerRanks(k,i)/2 ? -1.0 : 1.0;
+        
+        //transformation(idx_00,idx_00) = transformation(idx_00,idx_00); // unchanged in any case
+        transformation(idx_10,idx_10) = math::abs(transformation(idx_10,idx_10)) * sign_x;
+        transformation(idx_01,idx_01) = math::abs(transformation(idx_01,idx_01)) * sign_y;
+        transformation(idx_11,idx_11) = math::abs(transformation(idx_11,idx_11)) * sign_x * sign_y;
 
+    }
+    
+    gsInfo << "transformation = \n\n" << transformation.toDense() << "\n\n";
+
+    // Apply effects of dof mapper
     gsSparseEntries<> se;
     se.reserve(transformation.nonZeros());
     for ( index_t i=0; i<transformation.outerSize(); ++i )
@@ -588,7 +648,7 @@ setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t pro
         std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
         real_t scalingFactor = data1.second.cwiseAbs().maxCoeff() / data2.second.cwiseAbs().maxCoeff();
         scaling(k2, it->second().index()-1) = math::sqrt(scalingFactor);
-        scaling(k1, it->first().index()-1) = 1/math::sqrt(scalingFactor);
+        scaling(k1, it->first().index()-1) = -1/math::sqrt(scalingFactor);
         GISMO_ENSURE ((data1.first-data2.first).cwiseAbs().maxCoeff()<1e-6, "No C0 geometry between patches " << k1 << " and " << k2);
         GISMO_ENSURE ((data1.second+scalingFactor*data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);
 
@@ -628,6 +688,63 @@ setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t pro
 
     return dm;
 }
+
+gsMatrix<index_t>
+cornerRanker(const gsMultiPatch<>& mp)
+{
+    gsMatrix<index_t> assignedPatchPerCorner;
+    assignedPatchPerCorner.setZero(mp.nPatches(), 4);
+    
+    std::vector<std::vector<patchComponent>> comps = mp.allComponents();
+    for (size_t i=0; i<comps.size(); ++i)
+    {
+        GISMO_ENSURE(!comps[i].empty(), "Did not expect that.");
+        // We are only interested in corners
+        if (comps[i][0].dim()!=0)
+            continue;
+        GISMO_ENSURE(comps[i].size() <= 4, "No extraordinary vertices allowed.");
+        const index_t k0 = comps[i][0].patch();
+        for (size_t j=0; j<comps[i].size(); ++j)
+        {
+            GISMO_ASSERT(comps[i][j].totalDim() == 2, "??");
+            const index_t k = comps[i][j].patch();
+            const index_t idx = comps[i][j].asCorner().m_index-1;
+            assignedPatchPerCorner(k,idx) = k0;
+        }
+    }
+    
+    gsMatrix<index_t> result;
+    result.setZero(mp.nPatches(), 4);
+    for (size_t i=0; i<comps.size(); ++i)
+    {
+        if (comps[i].size()!=2)
+            continue;
+        // We are only interested in edges now
+        if (comps[i][0].dim()!=1)
+            continue;
+        
+        for (index_t r=0; r<2; ++r)
+        {
+            GISMO_ASSERT(comps[i][r].totalDim() == 2, "??");
+            const index_t k0 = comps[i][r].patch();
+            const index_t k1 = comps[i][1-r].patch();            
+            for (index_t j=0; j<4; ++j)
+            {
+                GISMO_ASSERT( (comps[i][r].locationForDirection(0) == boxComponent::interior) xor (comps[i][r].locationForDirection(1) == boxComponent::interior), "zzz");
+                if (assignedPatchPerCorner(k0,j)==k0)
+                    result(k0,j) = 3;
+                else if (assignedPatchPerCorner(k0,j)==k1)
+                    result(k0,j) = comps[i][r].locationForDirection(0) == boxComponent::interior ? 2 : 1; // TODO: checkme
+            }
+        }
+        
+    }
+    gsInfo << "CornerRanker=\n" <<result << "\n\n";
+    return result;
+}
+
+
+
 
 gsMatrix<>
 evalField(const gsField<>& field, const gsMatrix<>& coordinates)
