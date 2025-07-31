@@ -21,7 +21,7 @@ using namespace gismo;
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
 gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType, gsMatrix<>& scaling);
 std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
-gsSparseMatrix<> setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t> cornerRanks, const gsMatrix<>& scaling, index_t k);
+std::vector<gsSparseMatrix<>> setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t>& cornerRanks, const gsMatrix<>& scaling);
 gsMatrix<index_t> cornerRanker(const gsMultiPatch<>& mp);
 gsSparseMatrix<> restrictToFreeDofs(const gsSparseMatrix<>& sm, const gsDofMapper& dm);
 
@@ -123,6 +123,9 @@ int main(int argc, char *argv[])
     gsMatrix<> scaling;
     gsDofMapper dm = setupC1DofMapper(mp, mb, problemType, scaling);
     gsMatrix<index_t> cornerRanks = cornerRanker(mp);
+    std::vector<gsSparseMatrix<>> localBasisTransformsFullBasis = setupC1basisTransformation(mb, mp, cornerRanks, scaling);
+    std::vector<gsSparseMatrix<>> localBasisTransforms;
+    localBasisTransforms.reserve(nPatches);
     gsInfo << "done:\n" << dm << "\n";
 
     /********************** Define rhs **********************/
@@ -165,9 +168,6 @@ int main(int argc, char *argv[])
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
-
-    std::vector<gsSparseMatrix<>> localBasisTransforms; localBasisTransforms.reserve(nPatches);
-
     for (index_t k=0; k<nPatches; ++k)
     {
         gsInfo << "[" << k << "] " << std::flush;
@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
         //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
-        gsSparseMatrix<> localBasisTransform = restrictToFreeDofs(setupC1basisTransformation(mb, mp, cornerRanks, scaling, k), ietiMapper.dofMapperLocal(k));
+        gsSparseMatrix<> localBasisTransform = restrictToFreeDofs(localBasisTransformsFullBasis[k], ietiMapper.dofMapperLocal(k));
         localBasisTransforms.push_back(localBasisTransform);
 
         // Fetch data
@@ -548,18 +548,15 @@ getCorner(boxSide s, bool which)
     return val_x + 2*val_y + 1;
 }
 
-
 gsSparseMatrix<>
-setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t> cornerRanks, const gsMatrix<>& scaling, index_t k)
+setupC1localBasisTransformation(const gsBasis<>& basis, const gsMatrix<>& scaling)
 {
     // This function creates a sparse matix that changes the sign of the
     // the n-1 st row and column (1D). This is tensorized. This function's
     // result is put into applyDofMapperTwoSided to respect the boundary
     // conditions.
-    const gsBasis<>& basis = mb[k];
     const index_t d = basis.dim();
     gsSparseMatrix<> transformation;
-    gsVector<index_t> ndofsOf1dbases(d);
 
     for (index_t i=0; i<d; ++i)
     {
@@ -568,7 +565,6 @@ setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, c
 
         const short_t p = bsp->degree(0);
         const index_t ndofs1D = bsp->size();
-        ndofsOf1dbases[i] = ndofs1D;
         const gsKnotVector<>& kv = bsp->knots(0);
         const real_t h0 = kv[p+1]-kv[0], hN = kv[kv.size()-1]-kv[kv.size()-p-2];
 
@@ -578,30 +574,38 @@ setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, c
         gsSparseMatrix<> transformation1D(ndofs1D,ndofs1D);
         transformation1D.setIdentity();
 
-        //if (scaling(k,2*i)<0.999 || scaling(k,2*i)>1.001) gsInfo << "scaling("<<k<<","<<2*i<<") = " << scaling(k,2*i) << "\n";
-        //if (scaling(k,2*i+1)<0.999 || scaling(k,2*i+1)>1.001) gsInfo << "scaling("<<k<<","<<2*i+1<<") = " << scaling(k,2*i+1) << "\n";
-
-        transformation1D(0,0) = 1;
+        //transformation1D(0,0) = 1;
         transformation1D(0,1) = 1;
-        transformation1D(1,1) = h0 / p / scaling(k,2*i);
+        transformation1D(1,1) = h0 / p / scaling(0,2*i);
 
-        transformation1D(ndofs1D-2,ndofs1D-2) = hN / p / scaling(k,2*i+1);
+        transformation1D(ndofs1D-2,ndofs1D-2) = hN / p / scaling(0,2*i+1);
         transformation1D(ndofs1D-1,ndofs1D-2) = 1;
-        transformation1D(ndofs1D-1,ndofs1D-1) = 1;
+        //transformation1D(ndofs1D-1,ndofs1D-1) = 1;
 
         if (i==0)
             transformation = give(transformation1D);
         else
             transformation = transformation.kron(transformation1D);
     }
+    return transformation;
+}
+
+
+std::vector<gsSparseMatrix<>>
+setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t>& cornerRanks, const gsMatrix<>& scaling)
+{
+
+    std::vector<gsSparseMatrix<>> transformations;
+    transformations.reserve(mp.nPatches());
+
+    for (size_t k=0; k<mp.nPatches(); ++k)
+        transformations.push_back(setupC1localBasisTransformation(mb[k], scaling.row(k)));
 
     // Next fix the signs
     for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
     {
         const index_t k1 = it->first().patch;
         const index_t k2 = it->second().patch;
-        if (k1!=k && k2!=k)
-            continue;
         gsVector<index_t> s1o = mb.basis(k1).boundaryOffset(it->first().side(),1);
         gsVector<index_t> s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
 
@@ -613,61 +617,55 @@ setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, c
         GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
         const bool inverted = cm[0];
 
-        if (k==k1)
+        for (index_t i=0; i<s1o.rows(); ++i)
         {
-            for (index_t i=0; i<s1o.rows(); ++i)
+            index_t kk1 = k1, kk2 = k2;
+
+            if (i<2)
             {
-                index_t kk1 = k1, kk2 = k2;
-
-                if (i<2)
-                {
-                    kk1 = cornerRanks(k1,getCorner(it->first().side(),0)-1);
-                    kk2 = cornerRanks(k2,getCorner(it->second().side(),inverted)-1);
-                }
-                if (i>=s1o.rows()-2)
-                {
-                    kk1 = cornerRanks(k1,getCorner(it->first().side(),1)-1);
-                    kk2 = cornerRanks(k2,getCorner(it->second().side(),!inverted)-1);
-                }
-                if (kk1==-1 && kk2==-1)
-                {
-                    kk1 = k1;
-                    kk2 = k2;
-                }
-
-                if (kk1>kk2)
-                    transformation.row(s1o[i]) *= -1;
+                kk1 = cornerRanks(k1,getCorner(it->first().side(),0)-1);
+                kk2 = cornerRanks(k2,getCorner(it->second().side(),inverted)-1);
             }
+            if (i>=s1o.rows()-2)
+            {
+                kk1 = cornerRanks(k1,getCorner(it->first().side(),1)-1);
+                kk2 = cornerRanks(k2,getCorner(it->second().side(),!inverted)-1);
+            }
+            if (kk1==-1 && kk2==-1)
+            {
+                kk1 = k1;
+                kk2 = k2;
+            }
+
+            if (kk1>kk2)
+                transformations[k1].row(s1o[i]) *= -1;
         }
-        if (k==k2)
+        for (index_t i=0; i<s2o.rows(); ++i)
         {
-            for (index_t i=0; i<s2o.rows(); ++i)
+            index_t kk1 = k1, kk2 = k2;
+
+            if (i<2)
             {
-                index_t kk1 = k1, kk2 = k2;
-
-                if (i<2)
-                {
-                    kk2 = cornerRanks(k2,getCorner(it->second().side(),0)-1);
-                    kk1 = cornerRanks(k1,getCorner(it->first().side(),inverted)-1);
-                }
-                if (i>=s2o.rows()-2)
-                {
-                    kk2 = cornerRanks(k2,getCorner(it->second().side(),1)-1);
-                    kk1 = cornerRanks(k1,getCorner(it->first().side(),!inverted)-1);
-                }
-                if (kk1==-1 && kk2==-1)
-                {
-                    kk1 = k1;
-                    kk2 = k2;
-                }
-
-                if (kk2>kk1)
-                    transformation.row(s2o[i]) *= -1;
+                kk2 = cornerRanks(k2,getCorner(it->second().side(),0)-1);
+                kk1 = cornerRanks(k1,getCorner(it->first().side(),inverted)-1);
             }
+            if (i>=s2o.rows()-2)
+            {
+                kk2 = cornerRanks(k2,getCorner(it->second().side(),1)-1);
+                kk1 = cornerRanks(k1,getCorner(it->first().side(),!inverted)-1);
+            }
+            if (kk1==-1 && kk2==-1)
+            {
+                kk1 = k1;
+                kk2 = k2;
+            }
+
+            if (kk2>kk1)
+                transformations[k2].row(s2o[i]) *= -1;
         }
 
     }
-    return transformation;
+    return transformations;
 }
 
 gsSparseMatrix<>
