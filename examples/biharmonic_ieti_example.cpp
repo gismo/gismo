@@ -21,8 +21,9 @@ using namespace gismo;
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
 gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType, gsMatrix<>& scaling);
 std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
-gsSparseMatrix<> setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t> cornerRanks, index_t k, const gsDofMapper& dm_local, const gsMatrix<>& scaling);
+gsSparseMatrix<> setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t> cornerRanks, const gsMatrix<>& scaling, index_t k);
 gsMatrix<index_t> cornerRanker(const gsMultiPatch<>& mp);
+gsSparseMatrix<> restrictToFreeDofs(const gsSparseMatrix<>& sm, const gsDofMapper& dm);
 
 gsMatrix<> evalField(const gsField<>& field, const gsMatrix<>& coordinates);
 
@@ -192,7 +193,7 @@ int main(int argc, char *argv[])
         //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
-        gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb, mp, cornerRanks, k, ietiMapper.dofMapperLocal(k), scaling);
+        gsSparseMatrix<> localBasisTransform = restrictToFreeDofs(setupC1basisTransformation(mb, mp, cornerRanks, scaling, k), ietiMapper.dofMapperLocal(k));
         localBasisTransforms.push_back(localBasisTransform);
 
         // Fetch data
@@ -549,7 +550,7 @@ getCorner(boxSide s, bool which)
 
 
 gsSparseMatrix<>
-setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t> cornerRanks, index_t k, const gsDofMapper& dm_local, const gsMatrix<>& scaling)
+setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t> cornerRanks, const gsMatrix<>& scaling, index_t k)
 {
     // This function creates a sparse matix that changes the sign of the
     // the n-1 st row and column (1D). This is tensorized. This function's
@@ -666,20 +667,23 @@ setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, c
         }
 
     }
+    return transformation;
+}
 
-
+gsSparseMatrix<>
+restrictToFreeDofs(const gsSparseMatrix<>& sm, const gsDofMapper& dm)
+{
 
     // Apply effects of dof mapper
     gsSparseEntries<> se;
-    se.reserve(transformation.nonZeros());
-    for ( index_t i=0; i<transformation.outerSize(); ++i )
-        for ( gsSparseMatrix<>::InnerIterator it(transformation,i); it; ++it )
-            if (dm_local.is_free(it.row(), 0) && dm_local.is_free(it.col(), 0))
-                se.add( dm_local.index(it.row(), 0), dm_local.index(it.col(), 0), it.value() );
+    se.reserve(sm.nonZeros());
+    for ( index_t i=0; i<sm.outerSize(); ++i )
+        for ( gsSparseMatrix<>::InnerIterator it(sm,i); it; ++it )
+            if (dm.is_free(it.row(), 0) && dm.is_free(it.col(), 0))
+                se.add( dm.index(it.row(), 0), dm.index(it.col(), 0), it.value() );
 
-    gsSparseMatrix<> result(dm_local.freeSize(), dm_local.freeSize());
+    gsSparseMatrix<> result(dm.freeSize(), dm.freeSize());
     result.setFrom(se);
-
     return result;
 }
 
