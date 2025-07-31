@@ -634,8 +634,6 @@ setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, c
                     kk2 = k2;
                 }
 
-                gsInfo << "[" << kk1 << "/" << kk2 << "]";
-
                 if (kk1>kk2)
                     transformation.row(s1o[i]) *= -1;
             }
@@ -662,8 +660,6 @@ setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, c
                     kk2 = k2;
                 }
 
-                gsInfo << "[" << kk1 << "/" << kk2 << "]";
-
                 if (kk2>kk1)
                     transformation.row(s2o[i]) *= -1;
             }
@@ -683,8 +679,6 @@ setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, c
 
     gsSparseMatrix<> result(dm_local.freeSize(), dm_local.freeSize());
     result.setFrom(se);
-
-    gsInfo << "Transformator:\n"<<result<<"\n\n";
 
     return result;
 }
@@ -814,7 +808,6 @@ cornerRanker(const gsMultiPatch<>& mp)
         }
 
     }
-    gsInfo << "cornerRanks=\n" <<cornerRanks << "\n\n";
     return cornerRanks;
 }
 
