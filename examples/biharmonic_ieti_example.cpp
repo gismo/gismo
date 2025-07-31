@@ -19,10 +19,9 @@ using namespace gismo;
 
 // Helper functions, defined at the end of the file
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
-gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType, gsMatrix<>& scaling);
+gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType);
 std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
-std::vector<gsSparseMatrix<>> setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t>& cornerRanks, const gsMatrix<>& scaling);
-gsMatrix<index_t> cornerRanker(const gsMultiPatch<>& mp);
+std::vector<gsSparseMatrix<>> setupC1basisTransformation(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb);
 gsSparseMatrix<> restrictToFreeDofs(const gsSparseMatrix<>& sm, const gsDofMapper& dm);
 
 gsMatrix<> evalField(const gsField<>& field, const gsMatrix<>& coordinates);
@@ -120,10 +119,8 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "Setup dofMapper and local basis transformations... " << std::flush;
-    gsMatrix<> scaling;
-    gsDofMapper dm = setupC1DofMapper(mp, mb, problemType, scaling);
-    gsMatrix<index_t> cornerRanks = cornerRanker(mp);
-    std::vector<gsSparseMatrix<>> localBasisTransformsFullBasis = setupC1basisTransformation(mb, mp, cornerRanks, scaling);
+    gsDofMapper dm = setupC1DofMapper(mp, mb, problemType);
+    std::vector<gsSparseMatrix<>> localBasisTransformsFullBasis = setupC1basisTransformation(mp, mb);
     std::vector<gsSparseMatrix<>> localBasisTransforms;
     localBasisTransforms.reserve(nPatches);
     gsInfo << "done:\n" << dm << "\n";
@@ -536,17 +533,6 @@ setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_
     return result;
 }
 
-index_t
-getCorner(boxSide s, bool which)
-{
-    // which == 0  left
-    // which == 1  right
-    const index_t dir = (s.m_index-1)/2;
-    const index_t val = (s.m_index-1)%2;
-    const index_t val_x = dir==0?val:which;
-    const index_t val_y = dir==1?val:which;
-    return val_x + 2*val_y + 1;
-}
 
 gsSparseMatrix<>
 setupC1localBasisTransformation(const gsBasis<>& basis, const gsMatrix<>& scaling)
@@ -590,170 +576,62 @@ setupC1localBasisTransformation(const gsBasis<>& basis, const gsMatrix<>& scalin
     return transformation;
 }
 
-
-std::vector<gsSparseMatrix<>>
-setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t>& cornerRanks, const gsMatrix<>& scaling)
+index_t
+getCorner(boxSide s, bool which)
 {
+    // which == 0  left
+    // which == 1  right
+    const index_t dir = (s.m_index-1)/2;
+    const index_t val = (s.m_index-1)%2;
+    const index_t val_x = dir==0?val:which;
+    const index_t val_y = dir==1?val:which;
+    return val_x + 2*val_y + 1;
+}
 
-    std::vector<gsSparseMatrix<>> transformations;
-    transformations.reserve(mp.nPatches());
 
-    for (size_t k=0; k<mp.nPatches(); ++k)
-        transformations.push_back(setupC1localBasisTransformation(mb[k], scaling.row(k)));
-
-    // Next fix the signs
+void
+updateBasisTransformationSigns(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, const gsMatrix<index_t>& cornerRanks, std::vector<gsSparseMatrix<>>& transformations)
+{
     for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
     {
         const index_t k1 = it->first().patch;
         const index_t k2 = it->second().patch;
-        gsVector<index_t> s1o = mb.basis(k1).boundaryOffset(it->first().side(),1);
-        gsVector<index_t> s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
 
-        GISMO_ENSURE(s1o[0]<s1o[s1o.size()-1], "Expect orderd");
-        GISMO_ENSURE(s2o[0]<s2o[s2o.size()-1], "Expect orderd");
+        gsVector<index_t> s1 = mb.basis(k1).boundaryOffset(it->first().side(),1);
+        gsVector<index_t> s2 = mb.basis(k2).boundaryOffset(it->second().side(),1);
+        GISMO_ASSERT(s1.rows()==s2.rows(), "Bases do not match.");
 
         gsVector<index_t> cm;
         it->cornerMap(cm);
         GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
         const bool inverted = cm[0];
 
-        for (index_t i=0; i<s1o.rows(); ++i)
+        const index_t sz = s1.rows();
+        for (index_t i=0; i<sz; ++i)
         {
-            index_t kk1 = k1, kk2 = k2;
+            index_t diff = k1 - k2;
 
             if (i<2)
-            {
-                kk1 = cornerRanks(k1,getCorner(it->first().side(),0)-1);
-                kk2 = cornerRanks(k2,getCorner(it->second().side(),inverted)-1);
-            }
-            if (i>=s1o.rows()-2)
-            {
-                kk1 = cornerRanks(k1,getCorner(it->first().side(),1)-1);
-                kk2 = cornerRanks(k2,getCorner(it->second().side(),!inverted)-1);
-            }
-            if (kk1==-1 && kk2==-1)
-            {
-                kk1 = k1;
-                kk2 = k2;
-            }
+                diff = cornerRanks(k1,getCorner(it->first().side(),0)-1)
+                     - cornerRanks(k2,getCorner(it->second().side(),inverted)-1);
+            if (i>=sz-2)
+                diff = cornerRanks(k1,getCorner(it->first().side(),1)-1)
+                     - cornerRanks(k2,getCorner(it->second().side(),!inverted)-1);
+            if (diff==0)
+                diff = k1 - k2;
 
-            if (kk1>kk2)
-                transformations[k1].row(s1o[i]) *= -1;
-        }
-        for (index_t i=0; i<s2o.rows(); ++i)
-        {
-            index_t kk1 = k1, kk2 = k2;
+            const index_t j = inverted ? sz-1-i : i;
 
-            if (i<2)
-            {
-                kk2 = cornerRanks(k2,getCorner(it->second().side(),0)-1);
-                kk1 = cornerRanks(k1,getCorner(it->first().side(),inverted)-1);
-            }
-            if (i>=s2o.rows()-2)
-            {
-                kk2 = cornerRanks(k2,getCorner(it->second().side(),1)-1);
-                kk1 = cornerRanks(k1,getCorner(it->first().side(),!inverted)-1);
-            }
-            if (kk1==-1 && kk2==-1)
-            {
-                kk1 = k1;
-                kk2 = k2;
-            }
-
-            if (kk2>kk1)
-                transformations[k2].row(s2o[i]) *= -1;
+            if (diff>0)
+                transformations[k1].row(s1[i]) *= -1;
+            else
+                transformations[k2].row(s2[j]) *= -1;
         }
 
     }
-    return transformations;
+
 }
 
-gsSparseMatrix<>
-restrictToFreeDofs(const gsSparseMatrix<>& sm, const gsDofMapper& dm)
-{
-
-    // Apply effects of dof mapper
-    gsSparseEntries<> se;
-    se.reserve(sm.nonZeros());
-    for ( index_t i=0; i<sm.outerSize(); ++i )
-        for ( gsSparseMatrix<>::InnerIterator it(sm,i); it; ++it )
-            if (dm.is_free(it.row(), 0) && dm.is_free(it.col(), 0))
-                se.add( dm.index(it.row(), 0), dm.index(it.col(), 0), it.value() );
-
-    gsSparseMatrix<> result(dm.freeSize(), dm.freeSize());
-    result.setFrom(se);
-    return result;
-}
-
-
-gsDofMapper
-setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType, gsMatrix<>& scaling)
-{
-    // Construct the object
-    gsVector<index_t> patchDofSizes(mp.nPatches());
-    for (size_t k=0; k<mp.nPatches(); ++k)
-        patchDofSizes[k] = mb[k].size();
-    gsDofMapper dm(patchDofSizes);
-
-    scaling.setOnes(mp.nPatches(), math::ipow(2,mp.geoDim()));
-
-    // Iterate over all interfaces
-    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
-    {
-        const index_t k1 = it->first().patch;
-        const index_t k2 = it->second().patch;
-
-        // Is the edge parameterized with the same direction (increasing/decreasing) for both patches?
-        gsVector<index_t> cm;
-        it->cornerMap(cm);
-        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
-        const bool inverted = cm[0];
-
-        // Check if the geometry is really C0 and C1
-        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
-        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
-        real_t scalingFactor = data1.second.cwiseAbs().maxCoeff() / data2.second.cwiseAbs().maxCoeff();
-        scaling(k2, it->second().index()-1) = math::sqrt(scalingFactor);
-        scaling(k1, it->first().index()-1) = 1/math::sqrt(scalingFactor);
-        GISMO_ENSURE ((data1.first-data2.first).cwiseAbs().maxCoeff()<1e-6, "No C0 geometry between patches " << k1 << " and " << k2);
-        GISMO_ENSURE ((data1.second+scalingFactor*data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);
-
-        // Construct the dofmapper
-        gsVector<index_t> s1 = mb.basis(k1).boundary(it->first().side());
-        gsVector<index_t> s2 = mb.basis(k2).boundary(it->second().side());
-        gsVector<index_t> s1o = mb.basis(k1).boundaryOffset(it->first().side(),1);
-        gsVector<index_t> s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
-
-        GISMO_ASSERT (s1.rows() == s2.rows() && s1.rows() == s1o.rows() && s2.rows() == s2o.rows(), "Bases dimensions not agree.");
-
-        for (index_t i=0;i<s1.rows();++i)
-        {
-            const index_t j = inverted?(s1.rows()-1-i):i;
-            dm.matchDof(k1,s1[i],k2,s2[j]);
-            dm.matchDof(k1,s1o[i],k2,s2o[j]);
-        }
-    }
-
-    // Set boundary conditions
-    for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
-    {
-        const index_t k = it->patchIndex();
-        gsVector<index_t> s = mb.basis(k).boundary(it->side()),
-                          so = mb.basis(k).boundaryOffset(it->side(),1);
-
-        GISMO_ASSERT( s.rows() == so.rows(), "");
-        for (index_t i=0;i<s.rows();++i)
-        {
-            dm.eliminateDof(s[i],k);
-            if (problemType == 1)
-                dm.eliminateDof(so[i],k);
-        }
-    }
-
-    dm.finalize();
-
-    return dm;
-}
 
 gsMatrix<index_t>
 cornerRanker(const gsMultiPatch<>& mp)
@@ -813,6 +691,127 @@ cornerRanker(const gsMultiPatch<>& mp)
     return cornerRanks;
 }
 
+gsMatrix<>
+getScaling(const gsMultiPatch<>& mp)
+{
+    gsMatrix<> scaling;
+    scaling.setOnes(mp.nPatches(), math::ipow(2,mp.geoDim()));
+    // Iterate over all interfaces
+    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const index_t k1 = it->first().patch;
+        const index_t k2 = it->second().patch;
+
+        // Is the edge parameterized with the same direction (increasing/decreasing) for both patches?
+        gsVector<index_t> cm;
+        it->cornerMap(cm);
+        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
+        const bool inverted = cm[0];
+
+        // Check if the geometry is really C0 and C1
+        std::pair< gsMatrix<>, gsMatrix<> > data1 = sampleBoundary(mp[k1], it->first(),  inverted, 11);
+        std::pair< gsMatrix<>, gsMatrix<> > data2 = sampleBoundary(mp[k2], it->second(), false,    11);
+        real_t scalingFactor = data1.second.cwiseAbs().maxCoeff() / data2.second.cwiseAbs().maxCoeff();
+        scaling(k2, it->second().index()-1) = math::sqrt(scalingFactor);
+        scaling(k1, it->first().index()-1) = 1/math::sqrt(scalingFactor);
+        GISMO_ENSURE ((data1.first-data2.first).cwiseAbs().maxCoeff()<1e-6, "No C0 geometry between patches " << k1 << " and " << k2);
+        GISMO_ENSURE ((data1.second+scalingFactor*data2.second).cwiseAbs().maxCoeff()<1e-6, "No C1 geometry between patches " << k1 << " and " << k2);
+
+    }
+
+    return scaling;
+}
+
+
+std::vector<gsSparseMatrix<>>
+setupC1basisTransformation(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb)
+{
+
+    std::vector<gsSparseMatrix<>> transformations;
+    transformations.reserve(mp.nPatches());
+
+    gsMatrix<> scaling = getScaling(mp);
+
+    for (size_t k=0; k<mp.nPatches(); ++k)
+        transformations.push_back(setupC1localBasisTransformation(mb[k], scaling.row(k)));
+
+    updateBasisTransformationSigns(mp, mb, cornerRanker(mp), transformations);
+
+    return transformations;
+}
+
+
+gsSparseMatrix<>
+restrictToFreeDofs(const gsSparseMatrix<>& sm, const gsDofMapper& dm)
+{
+    gsSparseEntries<> se;
+    se.reserve(sm.nonZeros());
+    for ( index_t i=0; i<sm.outerSize(); ++i )
+        for ( gsSparseMatrix<>::InnerIterator it(sm,i); it; ++it )
+            if (dm.is_free(it.row(), 0) && dm.is_free(it.col(), 0))
+                se.add( dm.index(it.row(), 0), dm.index(it.col(), 0), it.value() );
+
+    gsSparseMatrix<> result(dm.freeSize(), dm.freeSize());
+    result.setFrom(se);
+    return result;
+}
+
+
+gsDofMapper
+setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType)
+{
+    // Construct the object
+    gsVector<index_t> patchDofSizes(mp.nPatches());
+    for (size_t k=0; k<mp.nPatches(); ++k)
+        patchDofSizes[k] = mb[k].size();
+    gsDofMapper dm(patchDofSizes);
+
+    // Set interface conditions
+    for (gsBoxTopology::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const index_t k1 = it->first().patch;
+        const index_t k2 = it->second().patch;
+
+        // Is the edge parameterized with the same direction (increasing/decreasing) for both patches?
+        gsVector<index_t> cm;
+        it->cornerMap(cm);
+        GISMO_ASSERT(cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map.");
+        const bool inverted = cm[0];
+
+        // Register conditions
+        for (index_t offset=0; offset<2; ++offset)
+        {
+            gsVector<index_t> s1 = mb.basis(k1).boundaryOffset(it->first().side(), offset);
+            gsVector<index_t> s2 = mb.basis(k2).boundaryOffset(it->second().side(), offset);
+
+            GISMO_ASSERT(s1.rows() == s2.rows(), "Bases dimensions not agree.");
+
+            for (index_t i=0;i<s1.rows();++i)
+            {
+                const index_t j = inverted?(s1.rows()-1-i):i;
+                dm.matchDof(k1,s1[i],k2,s2[j]);
+            }
+        }
+    }
+
+    // Set boundary conditions
+    for (gsBoxTopology::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
+    {
+        const index_t k = it->patchIndex();
+        // For first biharmonic (problemType==1), set two layers for boundary conditons
+        // For first biharmonic (problemType==2), set only layer for boundary conditons
+        for (index_t offset=0; offset<(problemType==1?2:1); ++offset)
+        {
+            gsVector<index_t> s = mb.basis(k).boundaryOffset(it->side(), offset);
+            for (index_t i=0;i<s.rows();++i)
+                dm.eliminateDof(s[i],k);
+        }
+    }
+
+    dm.finalize();
+
+    return dm;
+}
 
 
 
