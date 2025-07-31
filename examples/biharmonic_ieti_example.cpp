@@ -577,15 +577,13 @@ setupC1localBasisTransformation(const gsBasis<>& basis, const gsMatrix<>& scalin
 }
 
 index_t
-getCorner(boxSide s, bool which)
+getCorner(boxSide s, bool parameter)
 {
-    // which == 0  left
-    // which == 1  right
-    const index_t dir = (s.m_index-1)/2;
-    const index_t val = (s.m_index-1)%2;
-    const index_t val_x = dir==0?val:which;
-    const index_t val_y = dir==1?val:which;
-    return val_x + 2*val_y + 1;
+    // parameter == 0  begin
+    // parameter == 1  end
+    const index_t par_x = (s.direction()==0) ? s.parameter() : parameter;
+    const index_t par_y = (s.direction()==1) ? s.parameter() : parameter;
+    return par_x + 2*par_y + 1;
 }
 
 
@@ -597,8 +595,8 @@ updateBasisTransformationSigns(const gsMultiPatch<>& mp, const gsMultiBasis<>& m
         const index_t k1 = it->first().patch;
         const index_t k2 = it->second().patch;
 
-        gsVector<index_t> s1 = mb.basis(k1).boundaryOffset(it->first().side(),1);
-        gsVector<index_t> s2 = mb.basis(k2).boundaryOffset(it->second().side(),1);
+        const gsVector<index_t> s1 = mb.basis(k1).boundaryOffset(it->first().side(),1);
+        const gsVector<index_t> s2 = mb.basis(k2).boundaryOffset(it->second().side(),1);
         GISMO_ASSERT(s1.rows()==s2.rows(), "Bases do not match.");
 
         gsVector<index_t> cm;
@@ -643,18 +641,15 @@ cornerRanker(const gsMultiPatch<>& mp)
 
     for (size_t i=0; i<comps.size(); ++i)
     {
-        GISMO_ENSURE(!comps[i].empty(), "Did not expect that.");
-        if (comps[i].size()!=4)
-            continue;
-        // We are only interested in corners
-        if (comps[i][0].dim()!=0)
+        // We are only interested in corners in the interior
+        if (comps[i].size()!=4||comps[i][0].dim()!=0)
             continue;
         index_t kmin = comps[i][0].patch();
         for (size_t j=0; j<comps[i].size(); ++j)
-            if (comps[i][j].patch()<kmin) kmin = comps[i][j].patch();
+            if (comps[i][j].patch()<kmin)
+                kmin = comps[i][j].patch();
         for (size_t j=0; j<comps[i].size(); ++j)
         {
-            GISMO_ASSERT(comps[i][j].totalDim() == 2, "??");
             const index_t k = comps[i][j].patch();
             const index_t idx = comps[i][j].asCorner().m_index-1;
             assignedPatchPerCorner(k,idx) = kmin;
@@ -666,20 +661,16 @@ cornerRanker(const gsMultiPatch<>& mp)
     cornerRanks.setConstant(mp.nPatches(), 4, -1);
     for (size_t i=0; i<comps.size(); ++i)
     {
-        if (comps[i].size()!=2)
-            continue;
-        // We are only interested in edges now
-        if (comps[i][0].dim()!=1)
+        // We are only interested in edges between two patches
+        if (comps[i].size()!=2||comps[i][0].dim()!=1)
             continue;
 
         for (index_t r=0; r<2; ++r)
         {
-            GISMO_ASSERT(comps[i][r].totalDim() == 2, "??");
             const index_t k0 = comps[i][r].patch();
             const index_t k1 = comps[i][1-r].patch();
             for (index_t j=0; j<4; ++j)
             {
-                GISMO_ASSERT( (comps[i][r].locationForDirection(0) == boxComponent::interior) xor (comps[i][r].locationForDirection(1) == boxComponent::interior), "zzz");
                 if (assignedPatchPerCorner(k0,j)==k0)
                     cornerRanks(k0,j) = -3;
                 else if (assignedPatchPerCorner(k0,j)==k1)
