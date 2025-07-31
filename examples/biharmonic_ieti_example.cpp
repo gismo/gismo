@@ -21,8 +21,8 @@ using namespace gismo;
 gsMultiPatch<>::uPtr tryGetRectangularGeometry(const char *s);
 gsDofMapper setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t problemType, gsMatrix<>& scaling);
 std::vector<index_t> setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_t type);
-gsSparseMatrix<> setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, index_t k, const gsDofMapper& dm_local, const gsMatrix<>& scaling);
-void cornerChecker(const gsMultiPatch<>& mp);
+gsSparseMatrix<> setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t> cornerRanks, index_t k, const gsDofMapper& dm_local, const gsMatrix<>& scaling);
+gsMatrix<index_t> cornerRanker(const gsMultiPatch<>& mp);
 
 gsMatrix<> evalField(const gsField<>& field, const gsMatrix<>& coordinates);
 
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     gsInfo << "Setup dofMapper and local basis transformations... " << std::flush;
     gsMatrix<> scaling;
     gsDofMapper dm = setupC1DofMapper(mp, mb, problemType, scaling);
-    cornerChecker(mp);
+    gsMatrix<index_t> cornerRanks = cornerRanker(mp);
     gsInfo << "done:\n" << dm << "\n";
 
     /********************** Define rhs **********************/
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
         //A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G), u * ff * meas(G));
         A.assemble(ihess(u, G) % ihess(u, G).tr() * meas(G), u * ff * meas(G));
 
-        gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb, mp, k, ietiMapper.dofMapperLocal(k), scaling);
+        gsSparseMatrix<> localBasisTransform = setupC1basisTransformation(mb, mp, cornerRanks, k, ietiMapper.dofMapperLocal(k), scaling);
         localBasisTransforms.push_back(localBasisTransform);
 
         // Fetch data
@@ -535,8 +535,21 @@ setupC1interfaceDofsVector(const gsBasis<>& basis, const gsDofMapper& dm, index_
     return result;
 }
 
+index_t
+getCorner(boxSide s, bool which)
+{
+    // which == 0  left
+    // which == 1  right
+    const index_t dir = (s.m_index-1)/2;
+    const index_t val = (s.m_index-1)%2;
+    const index_t val_x = dir==0?val:which;
+    const index_t val_y = dir==1?val:which;
+    return val_x + 2*val_y + 1;
+}
+
+
 gsSparseMatrix<>
-setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, index_t k, const gsDofMapper& dm_local, const gsMatrix<>& scaling)
+setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, const gsMatrix<index_t> cornerRanks, index_t k, const gsDofMapper& dm_local, const gsMatrix<>& scaling)
 {
     // This function creates a sparse matix that changes the sign of the
     // the n-1 st row and column (1D). This is tensorized. This function's
@@ -586,19 +599,76 @@ setupC1basisTransformation(const gsMultiBasis<>& mb, const gsMultiPatch<>& mp, i
     {
         const index_t k1 = it->first().patch;
         const index_t k2 = it->second().patch;
+        if (k1!=k && k2!=k)
+            continue;
         gsVector<index_t> s1o = mb.basis(k1).boundaryOffset(it->first().side(),1);
         gsVector<index_t> s2o = mb.basis(k2).boundaryOffset(it->second().side(),1);
-        if (k>k2&&k==k1)
+
+        GISMO_ENSURE(s1o[0]<s1o[s1o.size()-1], "Expect orderd");
+        GISMO_ENSURE(s2o[0]<s2o[s2o.size()-1], "Expect orderd");
+
+        gsVector<index_t> cm;
+        it->cornerMap(cm);
+        GISMO_ASSERT (cm.size()==2 && cm[1] == 1-cm[0] && (cm[0] == 0 || cm[0] == 1), "Unexcpected corner map:\n"<<cm);
+        const bool inverted = cm[0];
+
+        if (k==k1)
         {
             for (index_t i=0; i<s1o.rows(); ++i)
-                transformation.row(s1o[i]) *= -1;
+            {
+                index_t kk1 = k1, kk2 = k2;
+
+                if (i<2)
+                {
+                    kk1 = cornerRanks(k1,getCorner(it->first().side(),0)-1);
+                    kk2 = cornerRanks(k2,getCorner(it->second().side(),inverted)-1);
+                }
+                if (i>=s1o.rows()-2)
+                {
+                    kk1 = cornerRanks(k1,getCorner(it->first().side(),1)-1);
+                    kk2 = cornerRanks(k2,getCorner(it->second().side(),!inverted)-1);
+                }
+                if (kk1==-1 && kk2==-1)
+                {
+                    kk1 = k1;
+                    kk2 = k2;
+                }
+
+                gsInfo << "[" << kk1 << "/" << kk2 << "]";
+
+                if (kk1>kk2)
+                    transformation.row(s1o[i]) *= -1;
+            }
         }
-        if (k>k1&&k==k2)
+        if (k==k2)
         {
             for (index_t i=0; i<s2o.rows(); ++i)
-                transformation.row(s2o[i]) *= -1;
+            {
+                index_t kk1 = k1, kk2 = k2;
+
+                if (i<2)
+                {
+                    kk2 = cornerRanks(k2,getCorner(it->second().side(),0)-1);
+                    kk1 = cornerRanks(k1,getCorner(it->first().side(),inverted)-1);
+                }
+                if (i>=s2o.rows()-2)
+                {
+                    kk2 = cornerRanks(k2,getCorner(it->second().side(),1)-1);
+                    kk1 = cornerRanks(k1,getCorner(it->first().side(),!inverted)-1);
+                }
+                if (kk1==-1 && kk2==-1)
+                {
+                    kk1 = k1;
+                    kk2 = k2;
+                }
+
+                gsInfo << "[" << kk1 << "/" << kk2 << "]";
+
+                if (kk2>kk1)
+                    transformation.row(s2o[i]) *= -1;
+            }
         }
-        // TODO: handle corners
+
     }
 
 
@@ -689,68 +759,63 @@ setupC1DofMapper(const gsMultiPatch<>& mp, const gsMultiBasis<>& mb, index_t pro
     return dm;
 }
 
-void
-cornerChecker(const gsMultiPatch<>& mp)
+gsMatrix<index_t>
+cornerRanker(const gsMultiPatch<>& mp)
 {
-    // Check that the patches around each corner are numbered in a consistent way
-    // This means: the patch with the smallest index is opposite of the patch with
-    // largest index
-    //
-    // This has no effect on the boundary
-    //
-    // We assume there to be no extraordinary vertices. This implies that there is
-    // a corner is in the interior iff it has valency 4 and that boundary vertices
-    // only have two neighboring patches.
-    //
     std::vector<std::vector<patchComponent>> comps = mp.allComponents();
-    gsMatrix<index_t> neighbors; // sharing edge
-    neighbors.setConstant(mp.nPatches(), 4, -1);
+
+    gsMatrix<index_t> assignedPatchPerCorner;
+    assignedPatchPerCorner.setZero(mp.nPatches(), 4);
+
+    for (size_t i=0; i<comps.size(); ++i)
+    {
+        GISMO_ENSURE(!comps[i].empty(), "Did not expect that.");
+        if (comps[i].size()!=4)
+            continue;
+        // We are only interested in corners
+        if (comps[i][0].dim()!=0)
+            continue;
+        index_t kmin = comps[i][0].patch();
+        for (size_t j=0; j<comps[i].size(); ++j)
+            if (comps[i][j].patch()<kmin) kmin = comps[i][j].patch();
+        for (size_t j=0; j<comps[i].size(); ++j)
+        {
+            GISMO_ASSERT(comps[i][j].totalDim() == 2, "??");
+            const index_t k = comps[i][j].patch();
+            const index_t idx = comps[i][j].asCorner().m_index-1;
+            assignedPatchPerCorner(k,idx) = kmin;
+        }
+
+    }
+
+    gsMatrix<index_t> cornerRanks;
+    cornerRanks.setConstant(mp.nPatches(), 4, -1);
     for (size_t i=0; i<comps.size(); ++i)
     {
         if (comps[i].size()!=2)
             continue;
+        // We are only interested in edges now
         if (comps[i][0].dim()!=1)
             continue;
-        const index_t k0 = comps[i][0].patch();
-        const index_t k1 = comps[i][1].patch();
 
+        for (index_t r=0; r<2; ++r)
         {
-            index_t r=0;
-            while(neighbors(k0,r)>=0) ++r;
-                neighbors(k0,r) = k1;
-        }
-        {
-            index_t r=0;
-            while(neighbors(k1,r)>=0) ++r;
-                neighbors(k1,r) = k0;
-        }
-
-    }
-    bool error = false;
-    for (size_t i=0; i<comps.size(); ++i)
-    {
-        GISMO_ENSURE(!comps[i].empty(), "Did not expect that.");
-        // We are only interested in corners
-        if (comps[i][0].dim()!=0)
-            continue;
-        if (comps[i].size()!=4)
-            continue;
-        index_t kmin = comps[i][0].patch();
-        index_t kmax = comps[i][0].patch();
-        for (size_t j=0; j<comps[i].size(); ++j)
-        {
-            if (comps[i][j].patch()<kmin) kmin = comps[i][j].patch();
-            if (comps[i][j].patch()>kmax) kmax = comps[i][j].patch();
-        }
-        for (index_t r=0; r<4; ++r)
-            if (neighbors(kmin,r)==kmax)
+            GISMO_ASSERT(comps[i][r].totalDim() == 2, "??");
+            const index_t k0 = comps[i][r].patch();
+            const index_t k1 = comps[i][1-r].patch();
+            for (index_t j=0; j<4; ++j)
             {
-                gsInfo << "Corner " << i << " is inconsistenly numbered.";
-                error = true;
+                GISMO_ASSERT( (comps[i][r].locationForDirection(0) == boxComponent::interior) xor (comps[i][r].locationForDirection(1) == boxComponent::interior), "zzz");
+                if (assignedPatchPerCorner(k0,j)==k0)
+                    cornerRanks(k0,j) = -3;
+                else if (assignedPatchPerCorner(k0,j)==k1)
+                    cornerRanks(k0,j) = -2;
             }
+        }
 
     }
-    GISMO_ENSURE (!error, "Corners inconsistenly numberd.");
+    gsInfo << "cornerRanks=\n" <<cornerRanks << "\n\n";
+    return cornerRanks;
 }
 
 
