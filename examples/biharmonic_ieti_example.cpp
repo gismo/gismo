@@ -13,7 +13,10 @@
 
 // TODO: This requires the fix in boxComponent
 
+#include <algorithm> // std::sort
+
 #include <gismo.h>
+
 
 using namespace gismo;
 
@@ -38,6 +41,7 @@ int main(int argc, char *argv[])
     index_t degree = 2;
     index_t multiplicity = 1;
     index_t refinements = 2;
+    bool standardDirichletPreconder = false;
     real_t tolerance = 1.e-6;
     index_t maxIterations = 100;
     std::string out;
@@ -55,6 +59,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("m", "Multiplicity",          "Multiplicity of knots for B-spline discretization space", multiplicity);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
+    cmd.addSwitch(     "StandardDirichletPreconder", "Do not use component wise Dirichlet preconder", standardDirichletPreconder);
     cmd.addReal  ("",  "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("",  "out",                   "Write solution to file", out);
@@ -200,16 +205,36 @@ int main(int argc, char *argv[])
 
         GISMO_ASSERT(jumpMatrix.cols() == localMatrix.rows(), "");
 
-
-        for (index_t j=0; j<2; ++j)
+        if (standardDirichletPreconder)
         {
+            gsSparseMatrix<> localBasisTransform2 = localBasisTransform.cwiseAbs();
+            gsSparseMatrix<> localMatrix2 = localBasisTransform2*A.matrix()*localBasisTransform2.transpose();
+            std::vector<index_t> vec0 = setupC1interfaceDofsVector(mb_local[0], ietiMapper.dofMapperLocal(k), 0);
+            std::vector<index_t> vec1 = setupC1interfaceDofsVector(mb_local[0], ietiMapper.dofMapperLocal(k), 1);
+            vec0.reserve(vec0.size()+vec1.size());
+            vec0.insert(vec0.end(), vec1.begin(), vec1.end());
+            std::sort(vec0.begin(), vec0.end());
+            vec0.erase(std::unique(vec0.begin(), vec0.end()), vec0.end());
             prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
                     jumpMatrix,
-                    localMatrix,
-                    setupC1interfaceDofsVector(mb_local[0], ietiMapper.dofMapperLocal(k), j)
+                    localMatrix2,
+                    vec0
                 )
             );
+        }
+        else
+        {
+            for (index_t j=0; j<2; ++j)
+            {
+                prec.addSubdomain(
+                    gsScaledDirichletPrec<>::restrictToSkeleton(
+                        jumpMatrix,
+                        localMatrix,
+                        setupC1interfaceDofsVector(mb_local[0], ietiMapper.dofMapperLocal(k), j)
+                    )
+                );
+            }
         }
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
