@@ -92,6 +92,12 @@ public:
         return *this;
     }
 
+    bool isDegenerate() const
+    { return (first.array() >= second.array()).any(); }
+
+    static bool isDegenerate(point const & k1, point const & k2)
+    { return (k1.array() >= k2.array()).any(); }
+
 public:
 
     point first;

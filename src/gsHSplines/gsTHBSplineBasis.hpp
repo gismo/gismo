@@ -517,6 +517,7 @@ gsTHBSplineBasis<d,T, Trunc>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
                          m_bases[level]->knots(1).begin() + j1 + m_deg[1] + 2);
 }
 
+/*
 // returns the list of B-spline patches to represent a THB-spline geometry
 template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
@@ -573,7 +574,9 @@ void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches(const gsMatrix<T>& geom_coef
         nvertices(i,1) = ckv.size()-ckv.degree()-1;
     }
 }
+*/
 
+/*
 // returns the list of B-spline patches to represent a THB-spline geometry
 template<short_t d, class T, bool Trunc>
 gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const
@@ -602,7 +605,9 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch(const
 
     return result;
 }
+*/
 
+/*
 template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d,T,Trunc>::getConnectedComponents(
     std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const
@@ -711,7 +716,9 @@ void gsTHBSplineBasis<d,T,Trunc>::getConnectedComponents(
 
 
 }
+*/
 
+/*
 //return data for trimming in parasolid
 template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches_trimming(
@@ -805,9 +812,9 @@ void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches_trimming(
         {
             gsMatrix<T> bigger;
             int cprows = cp.rows();
-            /*cp.conservativeResize( cp.rows() + temp_cp.rows(), gsEigen::NoChange );
-              for( int j=cprows; j < cp.rows(); j++ )
-              cp.row(j) = temp2.row(j-cprows);*/
+            //cp.conservativeResize( cp.rows() + temp_cp.rows(), gsEigen::NoChange );
+            //  for( int j=cprows; j < cp.rows(); j++ )
+            //  cp.row(j) = temp2.row(j-cprows);
             bigger.resize(cp.rows()+new_cp.rows(), cp.cols());
             for(int j=0; j< bigger.rows(); j++)
             {
@@ -880,8 +887,9 @@ void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches_trimming(
         }
     }
 }
+*/
 
-
+/*
 //return data for trimming in parasolid
 template<short_t d, class T, bool Trunc>
 gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch_trimming(
@@ -1026,6 +1034,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch_trimm
     }
     return result;
 }
+*/
 
 
 /*
@@ -1940,6 +1949,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
 
 }
 
+/*
 template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d, T, Trunc>::decomposeDomain(
     typename gsTHBSplineBasis<d, T, Trunc>::AxisAlignedBoundingBox& boundaryAABB,
@@ -2016,8 +2026,9 @@ void gsTHBSplineBasis<d, T, Trunc>::decomposeDomain(
         }
     }
 }
+*/
 
-
+/*
 template<short_t d, class T, bool Trunc>
 template<short_t dd>
 typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
@@ -2073,7 +2084,9 @@ gsTHBSplineBasis<d,T,Trunc>::getBSplinePatch_impl(const std::vector<index_t>& bo
 
     return gsTensorBSpline<d, T> (basis, newCoefs);
 }
+*/
 
+/*
 template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d, T, Trunc>::getBsplinePatchGlobal(gsVector<index_t> b1,
                           gsVector<index_t> b2,
@@ -2088,7 +2101,6 @@ gsTensorBSpline<d,T> gsTHBSplineBasis<d, T, Trunc>::getBSplinePatch(const std::v
                                          const unsigned level,
                                          const gsMatrix<T>& geomCoefs) const
 { return getBSplinePatch_impl<d>(boundingBox, level, geomCoefs); }
-
 
 template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d, T, Trunc>::breakCycles(
@@ -2293,7 +2305,7 @@ void gsTHBSplineBasis<d, T, Trunc>::findNewAABB(const std::vector< std::vector<T
         }
     }
 }
-
+*/
 
 
 // --------------------------------------------------------------------------------

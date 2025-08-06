@@ -1007,7 +1007,7 @@ public:
     /// and where x1, y1, x2 and y2 are parameters (knots).
     /// @return bounding boxes of the polylines in the form
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
-    std::vector< std::vector< std::vector<index_t > > > domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const;
+//    std::vector< std::vector< std::vector<index_t > > > domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const;
 
     /// @brief Gives polylines on the boundaries between different levels of the mesh.
     /// @param result variable where to write the polylines in the form
@@ -1016,7 +1016,7 @@ public:
     /// and where x1, y1, x2 and y2 are indices of the knots with respect to m_maxInsLevel.
     /// @return bounding boxes of the polylines in the form
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
-    std::vector< std::vector< std::vector<index_t > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result) const;
+//    std::vector< std::vector< std::vector<index_t > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result) const;
     // TO DO: use gsHDomainLeafIterator for a better implementation
     size_t numElements(boxSide const & s = 0) const
     {
@@ -1151,9 +1151,7 @@ private:
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
     /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).
-    std::vector< std::vector< std::vector<index_t > > > domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector<index_t > > > >& indices,
-                                                                                      std::vector< std::vector< std::vector< std::vector< T > > > >& params,
-                                                                                      bool indicesFlag ) const;
+    //std::vector< std::vector< std::vector<index_t > > > domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector<index_t > > > >& indices, std::vector< std::vector< std::vector< std::vector< T > > > >& params, bool indicesFlag ) const;
 
 public:
     /// \brief Returns transfer matrix between the hirarchical spline given

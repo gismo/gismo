@@ -19,9 +19,9 @@ namespace
         static return_type init() {return true;}
 
         template<short_t d, class Z>
-        static void visitLeaf(const typename gismo::gsHTree<d, Z>::node * leafNode , int level, return_type & res)
+        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int level, return_type & res)
         {
-            if ( leafNode->level != level )
+            if ( leafNode.level() != level )
                 res = false;
         }
     };
@@ -35,9 +35,9 @@ namespace
         static return_type init() {return true;}
 
         template<short_t d, class Z>
-        static void visitLeaf(const typename gismo::gsHTree<d, Z>::node * leafNode , int level, return_type & res)
+        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int level, return_type & res)
         {
-            if ( leafNode->level <= level )
+            if ( leafNode.level() <= level )
                 res = false;
         }
     };
@@ -52,10 +52,10 @@ namespace
         static return_type init() {return 1000000;}
 
         template<short_t d, class Z>
-        static void visitLeaf(const typename gismo::gsHTree<d, Z>::node * leafNode , int , return_type & res)
+        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int , return_type & res)
         {
-            if ( leafNode->level < res )
-                res = leafNode->level;
+            if ( leafNode.level() < res )
+                res = leafNode.level();
         }
     };
 
@@ -69,10 +69,10 @@ namespace
         static return_type init() {return -1;}
 
         template<short_t d, class Z>
-        static void visitLeaf(const typename gismo::gsHTree<d, Z>::node * leafNode , int , return_type & res)
+        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int , return_type & res)
         {
-            if ( leafNode->level > res )
-                res = leafNode->level;
+            if ( leafNode.level() > res )
+                res = leafNode.level();
         }
     };
 
@@ -83,9 +83,9 @@ namespace
         static return_type init() {return 0;}
 
         template<short_t d, class Z>
-        static void visitLeaf(typename gismo::gsHTree<d, Z>::node * leafNode, return_type &)
+        static void visitLeaf(gismo::gsHTreeData<d,Z> & leafNode, return_type &)
         {
-            leafNode->nodeData().level()--;
+            leafNode.level()--;
         }
     };
 
@@ -95,9 +95,9 @@ namespace
         static return_type init() {return 0;}
 
         template<short_t d, class Z>
-        static void visitLeaf(typename gismo::gsHTree<d, Z>::node * leafNode, return_type &i)
+        static void visitLeaf(gismo::gsHTreeData<d,Z> & leafNode, return_type &i)
         {
-            if (leafNode->level>i) i=leafNode->level;
+            if (leafNode.level()>i) i=leafNode.level();
         }
     };
 
@@ -257,11 +257,42 @@ public:
         return m_maxInsLevel;
     }
 
+
+    void computeMaxInsLevel()
+    {
+        m_maxInsLevel = this->template leafSearch< maxLevel_visitor >();
+    }
+
     inline void decrementLevel()
     {
         m_maxInsLevel--;
         this->template leafSearch< levelDown_visitor >();
     }
+
+        /// Returns a list of boxes defined by left-bottom (b1) and
+    /// right-top (b2) corners for the splitting in B-spline patches
+    /// together with the corresponding levelOf
+    /// b1 and b2 are indexing in the corresponding level indices
+    /// \param b1 left bottom corners of boxes
+    /// \param b2 right upper corners of boxs
+    /// \param level corresponding levels
+    // getBoxes-functions might get removed at some point of time.
+    // Use iterators instead whenever possible.
+    void getBoxesInLevelIndex(gsMatrix<Z>& b1,
+                              gsMatrix<Z>& b2,
+                              gsVector<index_t>& level) const;
+
+    /// \brief connect the boxes returned from quadtree getBoxes_vec()
+    ///
+    /// If two neighbouring boxes could be represented by a single
+    /// box (i.e., if the union of two axis-aligned boxes is again
+    /// an axis-aligned box), then these two are merged into a single box.
+    ///
+    /// \param[in,out] boxes Format as of getBoxes_vec(), i.e., each box
+    /// is represented as vector of size <em>2*d + 1</em> containing
+    /// [ [lower corner],[upper corner], Level ], where the corners
+    /// are defined by the knot indices on level gsHTree::m_maxInsLevel.
+    void connect_Boxes(std::vector<std::vector<Z> > &boxes) const;
 
     /// Returns the level of the point \a p
     int levelOf(point const & p, int level) const
@@ -281,19 +312,21 @@ public:
     GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
 
     // Make a box
-    box iBox(k1,k2);
+    data_t iData;
+    iData.aabb() = box(k1,k2);
+    iData.level() = lvl;
     const unsigned h = m_indexLevel - lvl;
-    if( isDegenerate(iBox) )
+    if( iData.aabb().isDegenerate() )
         return;
 
     // Represent box in the index level
     // iBox.first .unaryExpr(toGlobalIndex(lvl, m_index_level) );
     // iBox.second.unaryExpr(toGlobalIndex(lvl, m_index_level) );
-    local2globalIndex( iBox.first , static_cast<unsigned>(lvl), iBox.first );
-    local2globalIndex( iBox.second, static_cast<unsigned>(lvl), iBox.second);
+    local2globalIndex( iData.lowerCorner(), static_cast<unsigned>(lvl), iData.lowerCorner() );
+    local2globalIndex( iData.upperCorner(), static_cast<unsigned>(lvl), iData.upperCorner());
 
     // Ensure that the box is within the valid limits
-    if ( ( iBox.first.array() >= m_upperIndex.array() ).any() )
+    if ( ( iData.lowerCorner().array() >= m_upperIndex.array() ).any() )
     {
         gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
         return;
@@ -315,19 +348,19 @@ public:
             // Since we reached a leaf, it should overlap with iBox
 
             // If this leaf is already in level lvl, then we have nothing to do
-            if ( lvl <= curNode->level )
+            if ( lvl <= curNode->nodeData().level() )
                 continue;
 
             // Split the leaf (if possible)
             //node * newLeaf = curNode->adaptiveSplit(iBox);
-            node * newLeaf = curNode->adaptiveAlignedSplit(iBox, h);
+            node * newLeaf = curNode->adaptiveAlignedSplit(iData, h);
 
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
             {
                 // Increase level and recurse
-                if ( ++curNode->level != lvl)
+                if ( ++curNode->nodeData().level() != lvl)
                     stack.push_back(curNode);
             }
             else // treat new child
@@ -337,10 +370,10 @@ public:
         }
         else // roll down the tree
         {
-            if ( iBox.second[curNode->axis] <= curNode->pos)
+            if ( iData.upperCorner()[curNode->axis] <= curNode->pos)
                 // iBox overlaps only left child of this split-node
                 stack.push_back(curNode->left);
-            else if  ( iBox.first[curNode->axis] >= curNode->pos)
+            else if  ( iData.lowerCorner()[curNode->axis] >= curNode->pos)
                 // iBox overlaps only right child of this split-node
                 stack.push_back(curNode->right);
             else
@@ -364,16 +397,18 @@ void sinkBox (point const & k1,
                   "Max index level might be reached..");
 
     // Make a box
-    box iBox(k1,k2);
-    if( isDegenerate(iBox) )
+    data_t iData;
+    iData.aabb() = box(k1,k2);
+    iData.level() = lvl;
+    if( iData.aabb().isDegenerate() )
         return;
 
     // Represent box in the index level
-    local2globalIndex( iBox.first , static_cast<unsigned>(lvl), iBox.first );
-    local2globalIndex( iBox.second, static_cast<unsigned>(lvl), iBox.second);
+    local2globalIndex( iData.lowerCorner() , static_cast<unsigned>(lvl), iData.lowerCorner() );
+    local2globalIndex( iData.upperCorner(), static_cast<unsigned>(lvl), iData.upperCorner());
 
     // Ensure that the box is within the valid limits
-    if ( ( iBox.first.array() >= m_upperIndex.array() ).any() )
+    if ( ( iData.lowerCorner().array() >= m_upperIndex.array() ).any() )
     {
         //gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
         return;
@@ -393,15 +428,15 @@ void sinkBox (point const & k1,
         {
             // Since we reached a leaf, it should overlap with iBox.
             // Split the leaf (if possible)
-            node * newLeaf = curNode->adaptiveAlignedSplit(iBox, m_indexLevel);
+            node * newLeaf = curNode->adaptiveAlignedSplit(iData, m_indexLevel);
 
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  implies curNode was a leaf
             {
                 // Increase level
-                if ( ++curNode->level > static_cast<int>(m_maxInsLevel) )
-                    m_maxInsLevel = curNode->level;
+                if ( ++curNode->nodeData().level() > static_cast<int>(m_maxInsLevel) )
+                    m_maxInsLevel = curNode->nodeData().level();
             }
             else // treat new child
             {
@@ -410,10 +445,10 @@ void sinkBox (point const & k1,
         }
         else // walk down the tree
         {
-            if ( iBox.second[curNode->axis] <= curNode->pos)
+            if ( iData.upperCorner()[curNode->axis] <= curNode->pos)
                 // iBox overlaps only left child of this split-node
                 stack.push(curNode->left);
-            else if  ( iBox.first[curNode->axis] >= curNode->pos)
+            else if  ( iData.lowerCorner()[curNode->axis] >= curNode->pos)
                 // iBox overlaps only right child of this split-node
                 stack.push(curNode->right);
             else
@@ -432,18 +467,20 @@ void clearBox ( point const & k1, point const & k2,
     GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
 
     // Make a box
-    box iBox(k1,k2);
-    if( isDegenerate(iBox) )
+    data_t iData;
+    iData.aabb() = box(k1,k2);
+    iData.level() = lvl;
+    if( iData.aabb().isDegenerate() )
         return;
 
     // Represent box in the index level
     // iBox.first .unaryExpr(toGlobalIndex(lvl, m_index_level) );
-    // iBox.second.unaryExpr(toGlobalIndex(lvl, m_index_level) );
-    local2globalIndex( iBox.first , static_cast<unsigned>(lvl), iBox.first );
-    local2globalIndex( iBox.second, static_cast<unsigned>(lvl), iBox.second);
+    // iData.upperCorner().unaryExpr(toGlobalIndex(lvl, m_index_level) );
+    local2globalIndex( iData.lowerCorner() , static_cast<unsigned>(lvl), iData.lowerCorner() );
+    local2globalIndex( iData.upperCorner(), static_cast<unsigned>(lvl), iData.upperCorner());
 
     // Ensure that the box is within the valid limits
-    if ( ( iBox.first.array() >= m_upperIndex.array() ).any() )
+    if ( ( iData.lowerCorner().array() >= m_upperIndex.array() ).any() )
     {
         gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
         return;
@@ -465,18 +502,18 @@ void clearBox ( point const & k1, point const & k2,
             // Since we reached a leaf, it should overlap with iBox
 
             // If this leaf is already in level lvl, then we have nothing to do
-            if ( curNode->level <= lvl )
+            if ( curNode->nodeData().level() <= lvl )
                 continue;
 
             // Split the leaf (if possible)
-            node * newLeaf = curNode->adaptiveAlignedSplit(iBox, m_indexLevel);
+            node * newLeaf = curNode->adaptiveAlignedSplit(iData, m_indexLevel);
 
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
             {
                 // Decrease level and reccurse
-                if ( --curNode->level != lvl)
+                if ( --curNode->nodeData().level() != lvl)
                     stack.push_back(curNode);
             }
             else // treat new child
@@ -486,10 +523,10 @@ void clearBox ( point const & k1, point const & k2,
         }
         else // roll down the tree
         {
-            if ( iBox.second[curNode->axis] <= curNode->pos)
+            if ( iData.upperCorner()[curNode->axis] <= curNode->pos)
                 // iBox overlaps only left child of this split-node
                 stack.push_back(curNode->left);
-            else if  ( iBox.first[curNode->axis] >= curNode->pos)
+            else if  ( iData.lowerCorner()[curNode->axis] >= curNode->pos)
                 // iBox overlaps only right child of this split-node
                 stack.push_back(curNode->right);
             else
@@ -520,14 +557,14 @@ void clearBox ( point const & k1, point const & k2,
         return this->template rangeSearch< visitor>(k1,k2,level, m_maxPath);
     }
 
-    node * knotSearch(const point & p, int level) const
+    const node * knotSearch(const point & p, int level) const
     {
         point pp;
         local2globalIndex(p, static_cast<unsigned>(level), pp);
         
         GISMO_ASSERT( ( pp.array() <= m_upperIndex.array() ).all(),
                       "pointSearch: Wrong input: "<< p.transpose()<<", level "<<level<<".\n" );
-        return node::pointSeach(pp,level,m_maxPath);
+        return node::pointSearch(pp,level,m_maxPath);
     }
 
     int query1(point const & k1, point const & k2,
@@ -567,12 +604,12 @@ void clearBox ( point const & k1, point const & k2,
             //return return_type();//!does not properly initialize the points
         }
 
-        static void visitLeaf(const node * leafNode , int level, return_type & res)
+        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int level, return_type & res)
         {
-            if ( leafNode->nodeData().level() == level )
+            if ( leafNode.level() == level )
             {
-                res.first  = leafNode->nodeData().lowerCorner();
-                res.second = leafNode->nodeData().upperCorner();
+                res.first  = leafNode.lowerCorner();
+                res.second = leafNode.upperCorner();
             }
         }
     };
@@ -603,7 +640,214 @@ void clearBox ( point const & k1, point const & k2,
             result[i] = index[i] >> (this->m_indexLevel-lvl) ;
     }
 
-    
+    void computeFinestIndex(gsVector<Z, d> const & index,
+                            unsigned lvl,
+                            gsVector<Z, d> & result) const
+    {
+        for(short_t i = 0; i!=d; ++i)
+            result[i] = index[i] << (m_maxInsLevel-lvl) ;
+    }
+
+    void computeLevelIndex(gsVector<Z, d> const & index,
+                           unsigned lvl,
+                           gsVector<Z, d> & result) const
+    {
+        for(short_t i = 0; i!=d; ++i)
+            result[i] = index[i] >> (m_maxInsLevel-lvl) ;
+    }
+
+    void getBoxes_vec(std::vector<std::vector<Z>>& boxes) const;    
 };
+
+template<short_t d, class Z>
+void gsHTree<d, Z>::getBoxesInLevelIndex(gsMatrix<Z>& b1,
+                                           gsMatrix<Z>& b2,
+                                           gsVector<index_t>& level) const
+{
+    std::vector<std::vector<Z> > boxes;
+    getBoxes_vec(boxes);
+    GISMO_ASSERT(d==2 || d==3, "Wrong dimension, should be 2 or 3.");
+    //is this test really necessary? florian b.
+    for(size_t i = 0; i < boxes.size(); i++)
+    {
+        if ((boxes[i][0]==boxes[i][d+0]) || (boxes[i][1]==boxes[i][1+d]))
+        {
+            boxes.erase(boxes.begin()+i);
+            i--;
+        }
+        else if((d == 3) && (boxes[i][2]==boxes[i][d+2]))
+        {
+            boxes.erase(boxes.begin()+i);
+            i--;
+        }
+    }
+    gsVector<Z, d> lowerCorner;
+    gsVector<Z, d> upperCorner;
+    connect_Boxes(boxes);
+    b1.resize(boxes.size(), d);
+    b2.resize(boxes.size(), d);
+    level.resize(boxes.size());
+    for(size_t i = 0; i < boxes.size(); i++)
+    {
+        for(short_t j = 0; j < d; j++)
+        {
+            lowerCorner[j] = boxes[i][j];
+            upperCorner[j] = boxes[i][j+d];
+        }
+        level[i] = boxes[i][2*d];
+        computeLevelIndex(lowerCorner, level[i], lowerCorner);
+        computeLevelIndex(upperCorner, level[i], upperCorner);
+        b1.row(i) = lowerCorner;
+        b2.row(i) = upperCorner;
+    }
+}
+
+template<short_t d, class Z> void
+gsHTree<d, Z>::getBoxes_vec(std::vector<std::vector<Z> >& boxes) const
+{
+    boxes.clear();
+
+    std::stack<const node*, std::vector<const node*> > stack;
+    //stack.reserve( 2 * m_maxPath );
+    stack.push(this);
+    const node * curNode;
+    point lower, upper;
+    while ( ! stack.empty() )
+    {
+        curNode = stack.top();
+        stack.pop();
+
+        if ( curNode->isLeaf() )
+        {
+            // We need to convert the indices to those of m_maxInsLevel
+            // to be able to reconstruct the earlier results.
+            const point & lowerGlob = curNode->nodeData().lowerCorner();
+            const point & upperGlob = curNode->nodeData().upperCorner();
+            unsigned int level = this->m_maxInsLevel;
+
+            global2localIndex(lowerGlob,level,lower);
+            global2localIndex(upperGlob,level,upper);
+
+            boxes.push_back(std::vector<Z>());
+            for(short_t i = 0; i < d; i++)
+            {
+                boxes.back().push_back(lower[i]);
+            }
+            for(short_t i = 0; i < d; i++)
+            {
+                boxes.back().push_back(upper[i]);
+            }
+            boxes.back().push_back( curNode->nodeData().level() );
+        }
+        else
+        {
+            stack.push(curNode->left) ;
+            stack.push(curNode->right);
+        }
+    }
+}
+
+template<short_t d, class Z> void
+gsHTree<d, Z>::connect_Boxes(std::vector<std::vector<Z>> &boxes) const
+{
+    bool change = true;
+    while(change)
+    {
+        change =  false;
+        size_t s = boxes.size();
+        for(size_t i = 0; i < s; i++)
+        {
+            for(size_t j = i+1; j < s; j++)
+            {
+                if(boxes[i][2*d]==boxes[j][2*d]) // if( the levels are the same )
+                {
+                    unsigned nmCoordLo = 0;
+                    unsigned nmCoordUp = 0;
+                    unsigned nmCountUp = 0;
+                    unsigned nmCountLo = 0; //...the "nm" is for non-matching
+
+                    // Compare the lower and upper corners of the boxes
+                    // coordinate-wise, and check if there are differences.
+                    // If there are differences, count and store the coordinate
+                    for(short_t k=0; k < d; k++)
+                    {
+                        if( boxes[i][k] != boxes[j][k] )
+                        {
+                            nmCountLo++;
+                            nmCoordLo = k;
+                        }
+
+                        if( boxes[i][d+k] != boxes[j][d+k] )
+                        {
+                            nmCountUp++;
+                            nmCoordUp = k;
+                        }
+                    }
+
+                    // The boxes can only be merged if
+                    // the lower and upper corners are the same,
+                    // except in one coordinate direction.
+                    if( nmCountLo == 1
+                        && nmCountUp == 1
+                        && nmCoordLo == nmCoordUp )
+                    {
+
+                        if( boxes[i][nmCoordLo] == boxes[j][d+nmCoordUp] )
+                        {
+                            // box i is "on top" of box j.
+                            // It inherits the lower corner from box j:
+                            boxes[i][nmCoordLo] = boxes[j][nmCoordLo];
+                            boxes.erase( boxes.begin()+j );
+                            s--;
+                            j--;
+                            change = true;
+                        }
+
+                        if( boxes[i][d+nmCoordUp] == boxes[i][nmCoordLo] )
+                        {
+                            // box i is "below" of box j.
+                            // It inherits the upper corner from box j:
+                            boxes[i][d+nmCoordUp] = boxes[j][d+nmCoordUp];
+                            boxes.erase( boxes.begin()+j );
+                            s--;
+                            j--;
+                            change = true;
+                        }
+                    }
+                } // if boxes same level
+            } // for j
+        } // for i
+    }
+}
+
+/*
+template<short_t d, class Z>
+void gsHTree<d, Z>::getBoxes(gsMatrix<Z>& b1, gsMatrix<Z>& b2, gsVector<Z>& level) const
+{
+    std::vector<std::vector<Z> > boxes;
+
+    // get all boxes in vector-format
+    getBoxes_vec(boxes);
+
+    // connect boxes which have the same levels and are
+    // are aligned such that their union again is an
+    // axis-aligned box.
+    connect_Boxes(boxes);
+
+    // write the result into b1, b2, and level
+    b1.resize(boxes.size(),d);
+    b2.resize(boxes.size(),d);
+    level.resize(boxes.size());
+    for(size_t i = 0; i < boxes.size(); i++)
+    {
+        for(short_t j = 0; j < d; j++)
+        {
+            b1(i,j) = boxes[i][j];
+            b2(i,j) = boxes[i][j+d];
+        }
+        level[i] = boxes[i][2*d];
+    }
+}
+*/
 
 }//namespace gismo

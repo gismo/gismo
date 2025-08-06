@@ -116,9 +116,9 @@ public: // Member functions related to the tree starting at \a this node
 
     /// Iterates on all the nodes of the tree and applies \ visitor.
     /// The visitor controls the operation to be performed
-    template<typename visitor>
-    typename visitor::return_type
-    nodeSearch() const;
+//    template<typename visitor>
+//    typename visitor::return_type
+//    nodeSearch() const;
 
     gsKdTree * pointSearch(const point_t & p) const;
     
@@ -199,9 +199,6 @@ public: // Member functions related to \a this node
     bool isLeftChild()  const { return parent!=NULL && this==parent->left; }
 
     bool isRightChild() const { return parent!=NULL && this==parent->right; }
-
-    static bool isDegenerate(point_t const & k1, point_t const & k2)
-    { return (k1.array() >= k2.array()).any(); }
 
     gsKdTree * sibling() const
     { 
@@ -366,7 +363,7 @@ public: // Member functions related to \a this node
     rangeSearch(point_t const & k1, point_t const & k2, //change k1,k2 to a gsTreeData ??
                 int level, size_t maxPath = 16) const
     {
-        GISMO_ASSERT( !isDegenerate(k1,k2),
+        GISMO_ASSERT( !(k1.array() >= k2.array()).any(), // !isDegenerate(k1,k2)
                       "rangeSearch: Wrong order of points defining the box (or empty box): "
                       << k1.transpose() <<", "<< k2.transpose() <<".\n" );
 
@@ -386,7 +383,7 @@ public: // Member functions related to \a this node
             {
                 // Visit the leaf
                 GISMO_ASSERT( curNode->nodeData().check(), "Encountered an invalid leaf");
-                visitor::visitLeaf(curNode, level, res );
+                visitor::visitLeaf(curNode->nodeData(), level, res );
             }
             else // this is a split-node
             {
@@ -408,7 +405,7 @@ public: // Member functions related to \a this node
         return res;
     }
 
-    node_t * pointSearch(const point_t & p, int level, size_t maxPath = 16) const
+    const node_t * pointSearch(const point_t & p, int level, size_t maxPath = 16) const
     {
         std::vector<const node_t*> stack;
         stack.reserve( 2 * maxPath );
@@ -436,7 +433,6 @@ public: // Member functions related to \a this node
         GISMO_ERROR("pointSearch: Error ("<< p.transpose()<<").\n" );
     }
 
-
 /// Iterates on the leafs of the tree and applies \ visitor.  The
 /// visitor controls the operation to be performed
 template<typename visitor>
@@ -456,7 +452,7 @@ leafSearch()
         else
         {
             // Visit the leaf
-            visitor::visitLeaf(curNode, i);
+            visitor::template visitLeaf<d,Z>(curNode->nodeData(), i);
 
             while (curNode->parent != NULL &&
                    curNode != curNode->parent->left)

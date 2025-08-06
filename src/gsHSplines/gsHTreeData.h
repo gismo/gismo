@@ -26,16 +26,16 @@ public:
     
     static void split(const gsKdTree<d,Z,gsHTreeData> & node)
     {
-        node.left->box->second[node.axis] = 
-        node.right->box->first [node.axis] = node.pos;
+        node.left->nodeData().upperCorner()[node.axis] = 
+            node.right->nodeData().lowerCorner()[node.axis] = node.pos;
     }
     
     // Merges the data of right child into left child of the node
     //template<short_t d, class Z = index_t>
     static void mergeToLeft(const gsKdTree<d,Z,gsHTreeData> & node)
     {
-        kdBox * lbox = node.left->data->box;
-        kdBox * rbox = node.right->data->box;
+        const kdBox * lbox = &node.left ->nodeData().aabb();
+        const kdBox * rbox = &node.right->nodeData().aabb();
         lbox->second[node.axis] = rbox->second[node.axis];
         //rbox->first[node.axis] = lbox->first[axis];
     }
@@ -78,17 +78,17 @@ public:
         doSplit = 0;
     }
 
-    static void adaptiveAlignedSplit(gsHTreeData & insData, unsigned h,
-                                     const gsKdTree<d,Z,gsHTreeData> &  node,
+    static void adaptiveAlignedSplit(const gsHTreeData & insData, unsigned h,
+                                     gsKdTree<d,Z,gsHTreeData> &  node,
                                      int & doSplit)
     {
         for (short_t i = 0; i < d; ++i)
         {
-            const Z c1 = insData. first[i] - insData. first[i] % h; //floor
-            const Z cc = insData.second[i] % h;
-            const Z c2 = insData.second[i] + (cc ? h-cc : 0 ); // ceil
+            const Z c1 = insData.lowerCorner()[i] - insData.lowerCorner()[i] % h; //floor
+            const Z cc = insData.upperCorner()[i] % h;
+            const Z c2 = insData.upperCorner()[i] + (cc ? h-cc : 0 ); // ceil
 
-            if ( c1 > node.data->box->first[i] )
+            if ( c1 > node.nodeData().lowerCorner()[i] )
             {
                 // right child intersects insBox
                 node.axis = i;
@@ -96,7 +96,7 @@ public:
                 doSplit  = 1;
                 return;
             }
-            else if ( c2 <node.data->box->second[i]  )
+            else if ( c2 <node.nodeData().upperCorner()[i]  )
             {
                 // left child intersects insBox
                 node.axis = i;
@@ -143,6 +143,9 @@ public:
 
     const point & upperCorner() const { return box.second; }
           point & upperCorner()       { return box.second; }
+
+    const kdBox & aabb() const { return box; }
+    kdBox & aabb() { return box; }
 
     bool isAligned(unsigned index_level) const
     {

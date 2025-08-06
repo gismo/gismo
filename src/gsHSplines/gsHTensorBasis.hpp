@@ -1608,6 +1608,7 @@ void gsHTensorBasis<d,T>::uniformCoarsen(int numKnots)
 }
 
 
+/*
 template<short_t d, class T>
 std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const
 {
@@ -1621,7 +1622,6 @@ std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainB
     std::vector< std::vector< std::vector< std::vector< T > > > > dummy;
     return domainBoundariesGeneric( result, dummy, true );
 }
-
 
 template<short_t d, class T>
 std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector<index_t > > > >& indices,
@@ -1730,7 +1730,7 @@ std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainB
     }
     return res_aabb_unsigned;
 }
-
+*/
 
 template<short_t d, class T>
 void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T>& result)
@@ -1862,6 +1862,7 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, const std::
     }
     update_structure();
 }
+
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<index_t>& boxes ) const
