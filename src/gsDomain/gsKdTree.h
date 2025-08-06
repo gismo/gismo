@@ -3,7 +3,7 @@
     @brief Provides declaration of the tree node.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -27,7 +27,7 @@ namespace gismo {
     Template parameters
     \param d is the dimension
     \param Z is the box-coordinate index type
-    
+
     \ingroup HSplines
 */
 template<short_t d, class Z, class leafData> // TODO: use template template params to avoid duplivation
@@ -43,10 +43,10 @@ struct gsKdTree
     typedef gsKdTreeLeafIter<node_t,true > const_literator;
     //typedef gsHDomainLeafIter<node,false> literator;
     ///typedef gsHDomainLeafIter<node,true> const_literator;
-    
+
     /// axis in which the children of this node split the domain
     /// special value -1 denotes a leaf node
-    int axis; 
+    int axis;
 
     /// Split coordinate (meaningfull only for split nodes)
     Z pos;
@@ -73,7 +73,7 @@ struct gsKdTree
     gsKdTree(const leafData & leaf) : axis(-1), parent(0), left(0) , right(0),
                                        data(new leafData(leaf))
     { }
-    
+
     /// Recursively copies the whole subtree under \a o, and sets it's
     /// parent to \a parentNode
     gsKdTree(const gsKdTree & o, gsKdTree * parentNode = NULL) : axis(o.axis)
@@ -81,14 +81,14 @@ struct gsKdTree
         parent = parentNode;
         if ( axis == -1 )
         {
-            GISMO_ASSERT( (o.left == 0) && (o.right == 0), 
+            GISMO_ASSERT( (o.left == 0) && (o.right == 0),
                           "Problem: leaf with children." );
             data  = new leafData(*o.data);
             left = right = nullptr;
         }
         else
         {
-            GISMO_ASSERT( o.data == nullptr, 
+            GISMO_ASSERT( o.data == nullptr,
                           "Problem: split node with box." );
             pos   = o.pos;
             left  = new gsKdTree(*o.left , this);
@@ -101,7 +101,7 @@ struct gsKdTree
     ~gsKdTree()
     {
         // TODO: non-recursive
-        if ( isLeaf() ) 
+        if ( isLeaf() )
         {
             delete data;
         }
@@ -121,7 +121,7 @@ public: // Member functions related to the tree starting at \a this node
 //    nodeSearch() const;
 
     gsKdTree * pointSearch(const point_t & p) const;
-    
+
     literator beginLeafIterator()
     { return literator(this); }
 
@@ -159,7 +159,7 @@ private: // Structs related to tree operations
         typedef int return_type;
         static return_type init() {return 0;}
 
-        static void visitNode(node_t * , return_type & i)
+        static void visitNode(const node_t * , return_type & i)
         {
             i++;
         }
@@ -177,23 +177,23 @@ private: // Structs related to tree operations
         }
     };
 
-   
+
 public: // Member functions related to \a this node
-    
+
     // Data Accessors
     leafData & nodeData()
-    { 
+    {
         GISMO_ASSERT(data, "Asked for lowCorner at node without box data.");
-        return *data; 
+        return *data;
     }
 
     const leafData & nodeData() const { return const_cast<gsKdTree*>(this)->nodeData(); }
-    
+
     bool isLeaf() const { return axis == -1; }
 
     bool isRoot() const { return parent == NULL; }
 
-    bool isTerminal() const 
+    bool isTerminal() const
     { return (axis!=-1) && (left->axis==-1) && (right->axis==-1); }
 
     bool isLeftChild()  const { return parent!=NULL && this==parent->left; }
@@ -201,9 +201,9 @@ public: // Member functions related to \a this node
     bool isRightChild() const { return parent!=NULL && this==parent->right; }
 
     gsKdTree * sibling() const
-    { 
+    {
         GISMO_ASSERT( parent != 0, "Root does not have a sibling.");
-        return (parent->left == this ? parent->right : parent->left ); 
+        return (parent->left == this ? parent->right : parent->left );
     }
 
     void multiplyByTwo()
@@ -244,7 +244,7 @@ public: // Member functions related to \a this node
         left ->axis   =
         right->axis   = -1;
         // Set parent to this node
-        left ->parent = 
+        left ->parent =
         right->parent = this;
         // Set box and level
         left ->data   = data;
@@ -254,7 +254,7 @@ public: // Member functions related to \a this node
 
         leafData::split(*this);
         // substitutes
-        //left ->box->second[axis] = 
+        //left ->box->second[axis] =
         //right->box->first [axis] = pos;
     }
 
@@ -275,7 +275,7 @@ public: // Member functions related to \a this node
         axis  = - 1;
         data = left->data;
         left->data = NULL;
-        
+
         // Delete children
         delete  left;
         left  = NULL;
@@ -300,7 +300,7 @@ public: // Member functions related to \a this node
     {
         leafData::nextMidSplit(*this);
         //axis = ( parent == 0 ? 0 : (parent->axis+1)%d );
-        //pos  = box->first [axis] + 
+        //pos  = box->first [axis] +
         //    (box->second[axis] - box->first[axis])/2 ;
         split(); // Can be degenerate
     }
@@ -339,7 +339,7 @@ public: // Member functions related to \a this node
     gsKdTree * adaptiveSplit(const leafData & insData)
     {
         // assumption: insBox intersects box
-        int doSplit;        
+        int doSplit;
         leafData::adaptiveAlignedSplit(insData, *this, doSplit);
         if (doSplit)
         {
@@ -351,7 +351,7 @@ public: // Member functions related to \a this node
 
     friend std::ostream & operator<<(std::ostream & os, const gsKdTree & n)
     {
-        if ( n.isLeaf() ) 
+        if ( n.isLeaf() )
             os << "Leaf node "<< *n.data <<"\n";
         else
             os << "Split node, axis= "<< n.axis <<", pos="<< n.pos <<"\n";
@@ -467,6 +467,37 @@ leafSearch()
     return i;
 }
 
+template<typename visitor>
+typename visitor::return_type
+nodeSearch() const
+{
+    typename visitor::return_type i = visitor::init();
+
+    const node_t * curNode = this;
+
+    while(true)
+    {
+        visitor::visitNode(curNode, i);
+
+        if ( !curNode->isLeaf() )
+        {   //property: tree has no singles
+            curNode = curNode->left;
+        }
+        else
+        {
+            while (curNode->parent != NULL &&
+                   curNode != curNode->parent->left)
+                curNode = curNode->parent;
+
+            if ( curNode->isRoot() )
+                break;
+            else
+                curNode = curNode->parent->right;
+        }
+    }
+    return i;
+}
+
 };
 
 template<short_t d, class Z, class leafData>
@@ -485,6 +516,52 @@ template<short_t d, class Z, class leafData>
 inline void gsKdTree<d, Z, leafData>::printLeaves() const
 {
     leafSearch< printLeaves_visitor >();
+}
+
+template<short_t d, class Z, class leafData>
+inline void gsKdTree<d, Z, leafData>::makeCompressed()
+{
+    std::stack<node_t*, std::vector<node_t*> > tstack;
+    node_t * curNode;
+
+    // First step: gather all terminal nodes
+    std::stack<node_t*, std::vector<node_t*> > stack;
+    stack.push(this);
+    while ( ! stack.empty() )
+    {
+        curNode = stack.top();
+        stack.pop();
+
+        if ( curNode->isTerminal() )
+        {
+            // Remember this terminal node
+            tstack.push(curNode);
+        }
+        else if ( ! curNode->isLeaf() ) // this is a non-terminal split-node
+        {
+                stack.push(curNode->left );
+                stack.push(curNode->right);
+        }
+    }
+
+    // Second step: reccursively merge siblings that have the same level
+    while ( ! tstack.empty() )
+    {
+        curNode = tstack.top();
+        tstack.pop();
+
+        if (curNode->left->nodeData().level() == curNode->right->nodeData().level())
+        {
+            // Merge left and right
+            curNode->merge();
+            if ( !curNode->isRoot() &&
+                  curNode->parent->isTerminal() )
+                tstack.push(curNode->parent );
+        }
+    }
+
+    // // Store the max path length
+    // m_maxPath = minMaxPath().second;
 }
 
 

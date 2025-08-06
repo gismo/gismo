@@ -15,7 +15,7 @@ public:
     typedef typename kdBox::point point;
 
 private:
-    
+
     int m_level;
     kdBox box;
 
@@ -23,33 +23,31 @@ public:
 
     bool check() const
     { return (box.first.array() >= box.second.array()).any(); }
-    
+
     static void split(const gsKdTree<d,Z,gsHTreeData> & node)
     {
-        node.left->nodeData().upperCorner()[node.axis] = 
+        node.left->nodeData().upperCorner()[node.axis] =
             node.right->nodeData().lowerCorner()[node.axis] = node.pos;
     }
-    
+
     // Merges the data of right child into left child of the node
     //template<short_t d, class Z = index_t>
     static void mergeToLeft(const gsKdTree<d,Z,gsHTreeData> & node)
     {
-        const kdBox * lbox = &node.left ->nodeData().aabb();
-        const kdBox * rbox = &node.right->nodeData().aabb();
-        lbox->second[node.axis] = rbox->second[node.axis];
-        //rbox->first[node.axis] = lbox->first[axis];
+        node.left ->nodeData().upperCorner()[node.axis] =
+            node.right->nodeData().upperCorner()[node.axis];
     }
 
     void multiplyByTwo()
     {
         box.first .array() *= 2;
-        box.second.array() *= 2;   
+        box.second.array() *= 2;
     }
 
     void divideByTwo()
     {
         box.first .array() /= 2;
-        box.second.array() /= 2;   
+        box.second.array() /= 2;
     }
 
     static void nextMidSplit(gsKdTree<d,Z,gsHTreeData> &  node)
@@ -65,7 +63,7 @@ public:
         const unsigned mask = ~(h - 1);
         for ( unsigned i = 0; i < d; ++i )
         {
-            const unsigned c = 
+            const unsigned c =
                 (node.box.first [i] + (node.box.second[i] - node.box.first[i])/2) & mask ;
             if ( c != node.box.first [i] ) // avoid degenerate split
             {
@@ -150,7 +148,7 @@ public:
     bool isAligned(unsigned index_level) const
     {
         const unsigned h = 1 << (index_level - m_level);
-        
+
         for ( index_t i = 0; i!=box.first.size(); ++i )
         {
             if (box.second[i] % h != 0 ||
