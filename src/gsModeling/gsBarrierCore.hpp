@@ -94,14 +94,12 @@ T gsBarrierCore<d, T>::computeArea(const gsMultiPatch<T> &mp) {
 /// Compute the area of a multi-patch representing computational domain
 template<short_t d, typename T>
 T gsBarrierCore<d, T>::computeAreaInterior(const gsMultiPatch<T> &multiPatch) {
-  // Creating a multi-basis from the provided multi-patch
-  gsMultiBasis<T> multiBasis(multiPatch);
 
   // Initializing an expression evaluator
   gsExprEvaluator<T> evaluator;
 
   // Setting integration elements
-  evaluator.setIntegrationElements(multiBasis);
+  evaluator.setIntegrationDomain(multiPatch.domain());
 
   // Getting the geometry map
   geometryMap geometry = evaluator.getMap(multiPatch);
@@ -388,7 +386,7 @@ gsObjFoldoverFree<d, T>::gsObjFoldoverFree(const gsMultiPatch<T> &patches,
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
   defaultOptions();
-  m_assembler.setIntegrationElements(m_mb);
+  m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
 
@@ -453,7 +451,7 @@ gsObjQualityImprovePt<d, T>::gsObjQualityImprovePt(
     m_mp(patches),
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
-  m_assembler.setIntegrationElements(m_mb);
+    m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 //  defaultOptions();
 }
@@ -594,7 +592,7 @@ gsObjVHPt<d, T>::gsObjVHPt(const gsMultiPatch<T> &patches,
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
   defaultOptions();
-  m_assembler.setIntegrationElements(m_mb);
+  m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
 
@@ -683,7 +681,7 @@ gsObjPenaltyPt<d, T>::gsObjPenaltyPt(const gsMultiPatch<T> &patches,
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
   defaultOptions();
-  m_assembler.setIntegrationElements(m_mb);
+  m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
 
@@ -841,7 +839,7 @@ gsObjPenaltyPt2<d, T>::gsObjPenaltyPt2(const gsMultiPatch<T> &patches,
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
   defaultOptions();
-  m_assembler.setIntegrationElements(m_mb);
+  m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
 
@@ -1070,7 +1068,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   gsExprAssembler<T> assembler;
 
   gsMultiBasis<T> mb(mp);
-  assembler.setIntegrationElements(mb);
+  assembler.setIntegrationDomain(mb.domain());
 
   gsBoundaryConditions<> bc;
   bc.setGeoMap(mp);
@@ -1980,14 +1978,71 @@ frprod2_expr<E1, E2> const frprod2(E1 const &u,
   return frprod2_expr<E1, E2>(u, M);
 }
 
+/// Ternary expression for conditional evaluation
+template <class E0, class E1, class E2>
+class ternary_expr : public _expr<ternary_expr<E0, E1, E2>> {
+  typename E0::Nested_t _u;
+  typename E1::Nested_t _v;
+  typename E2::Nested_t _w;
+
+public:
+  typedef typename E1::Scalar Scalar;
+
+  explicit ternary_expr(_expr<E0> const &u, _expr<E1> const &v,
+                        _expr<E2> const &w)
+      : _u(u), _v(v), _w(w) {
+    GISMO_ASSERT(E0::ScalarValued, "Condition must be scalar valued");
+    GISMO_ASSERT((int)E1::ScalarValued == (int)E2::ScalarValued,
+                 "Both v and w must be scalar valued (or not).");
+    GISMO_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks,
+                 "Both v and w must be colblocks (or not).");
+    GISMO_ASSERT((int)E1::Space == (int)E2::Space,
+                 "Both v and w must be space (or not), but E1::Space = "
+                     << E1::Space << " and E2::Space = " << E2::Space);
+    GISMO_ASSERT(_v.rows() == _w.rows(), "Rows of v and w differ. _v.rows() = "
+                                             << _v.rows()
+                                             << ", _w.rows() = " << _w.rows());
+    GISMO_ASSERT(_v.cols() == _w.cols(),
+                 "Columns of v and w differ. _v.cols() = "
+                     << _v.cols() << ", _w.cols() = " << _w.cols());
+    GISMO_ASSERT(_v.rowVar() == _w.rowVar(), "rowVar of v and w differ.");
+    GISMO_ASSERT(_v.colVar() == _w.colVar(), "colVar of v and w differ.");
+  }
+
+public:
+  enum {
+    ScalarValued = E1::ScalarValued,
+    ColBlocks = E1::ColBlocks,
+    Space = E1::Space
+  }; // == E2::Space
+
+  //  const Scalar eval(const index_t k) const { return (_u.eval(k) > 0 ? _v.eval (k) : _w.eval(k)); }
+
+  const Temporary_t eval(const index_t k) const {
+    return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
+  }
+
+  // { res = eval_impl(_u,_v,_w,k); return  res;}
+
+  index_t rows() const { return _v.rows(); }
+  index_t cols() const { return _v.cols(); }
+  void parse(gsExprHelper<Scalar> &evList) const {
+    _u.parse(evList);
+    _v.parse(evList);
+    _w.parse(evList);
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
+};
+
 /// Ternary ternary_expr
 template<class E0, class E1, class E2>
-EIGEN_STRONG_INLINE
-ternary_expr<E0, E1, E2> ternary(const E0 &u,
-                                 const E1 &v,
-                                 const E2 &w) {
+EIGEN_STRONG_INLINE ternary_expr<E0, E1, E2> ternary(const E0 &u,
+                                                     const E1 &v,
+                                                     const E2 &w) {
   return ternary_expr<E0, E1, E2>(u, v, w);
 }
-} // namespace expr
 
+} // namespace expr
 }// namespace gismo

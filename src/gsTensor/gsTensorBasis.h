@@ -409,11 +409,17 @@ public:
     // Look at gsBasis class for documentation
     virtual void degreeReduce(short_t const & i = 1, short_t const dir = -1) override
     {
-        GISMO_UNUSED(dir);
-        GISMO_ASSERT( dir < this->dim(),
-                      "Invalid basis component requested" );
-        for (short_t j = 0; j < d; ++j)
+        if (dir == -1)
+        {
+            for (short_t j = 0; j < d; ++j)
             m_bases[j]->degreeReduce(i);
+        }
+        else
+        {
+            GISMO_ASSERT( dir < this->dim(),
+                          "Invalid basis component requested" );
+            m_bases[dir]->degreeReduce(i);
+        }
     }
 
     /// Get a const-iterator to the beginning of the bases vector

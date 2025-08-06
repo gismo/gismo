@@ -394,6 +394,7 @@ public:
     {
         return putGeometryToXml< gsTHBSpline<d,T,Trunc> >(obj,data);
     }
+    GSXML_GET_INTO(gsTHBSpline<TMPLA3(d,T,Trunc)>)
 };
 
 }// namespace internal
