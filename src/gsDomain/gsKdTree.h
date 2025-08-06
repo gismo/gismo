@@ -467,8 +467,25 @@ leafSearch()
     return i;
 }
 
-
 };
+
+template<short_t d, class Z, class leafData>
+inline int gsKdTree<d, Z, leafData>::size() const
+{
+    return nodeSearch< numNodes_visitor >();
+}
+
+template<short_t d, class Z, class leafData>
+inline int gsKdTree<d, Z, leafData>::leafSize() const
+{
+    return leafSearch< numLeaves_visitor >();
+}
+
+template<short_t d, class Z, class leafData>
+inline void gsKdTree<d, Z, leafData>::printLeaves() const
+{
+    leafSearch< printLeaves_visitor >();
+}
 
 
 }// namespace gismo
