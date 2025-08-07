@@ -260,6 +260,17 @@ if(GISMO_WITH_UMFPACK)
   #include_directories(SYSTEM ${UMFPACK_INCLUDES})
 endif(GISMO_WITH_UMFPACK)
 
+# Process external dependencies for optional modules BEFORE building sources
+list(REMOVE_DUPLICATES GISMO_OPTIONAL)
+list(SORT GISMO_OPTIONAL)
+foreach(gssm ${GISMO_OPTIONAL})
+  string(STRIP ${gssm} SUBMODULE)
+  if(EXISTS "${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
+    message(STATUS "Processing dependencies for optional module: ${SUBMODULE}")
+    include("${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
+  endif()
+endforeach()
+
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
 
@@ -295,8 +306,6 @@ endif()
 if (CMAKE_VERSION VERSION_GREATER 3.11.5)
   list(TRANSFORM GISMO_OPTIONAL STRIP)
 endif()
-list(REMOVE_DUPLICATES GISMO_OPTIONAL)
-list(SORT GISMO_OPTIONAL)
 set(GISMO_OPTIONAL ${GISMO_OPTIONAL}
   CACHE STRING "List of optional G+Smo modules" FORCE)
 foreach(gssm ${GISMO_OPTIONAL})
