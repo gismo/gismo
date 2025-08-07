@@ -6,6 +6,7 @@
 
 namespace gismo
 {
+    CLASS_TEMPLATE_INST gsElementHelper<1,real_t>;
     CLASS_TEMPLATE_INST gsElementHelper<2,real_t>;
     CLASS_TEMPLATE_INST gsElementHelper<3,real_t>;
 }
