@@ -12,6 +12,9 @@
 */
 
 #include <gismo.h>
+#ifdef gsMUMPS_ENABLED
+#include <gsMUMPS/gsMUMPS.h>
+#endif
 
 using namespace gismo;
 
@@ -93,6 +96,24 @@ int main(int argc, char** argv)
 #   else
     gsInfo << "PARDISO is not available.\n";
 #   endif
+
+#ifdef gsMUMPS_ENABLED
+    gsEigen::MUMPSLU<gsSparseMatrix<>> solverMUMPSLU;
+    solverMUMPSLU.ICNTL(4) = 0;
+    solverMUMPSLU.compute(Q);
+    x = solverMUMPSLU.solve(b);
+    gsInfo << "Error code of MUMPS "<< solverMUMPSLU.info() <<"\n";
+    gsInfo << "Solve Ax = b with MUMPSLU.\n";
+    report( x, x0, succeeded );
+
+    gsEigen::MUMPSLDLT<gsSparseMatrix<>,gsEigen::Lower> solverMUMPSLDLT;
+    solverMUMPSLDLT.ICNTL(4) = 0;
+    solverMUMPSLDLT.compute(Q);
+    x = solverMUMPSLDLT.solve(b);
+    gsInfo << "Error code of MUMPS "<< solverMUMPSLDLT.info() <<"\n";
+    gsInfo << "Solve Ax = b with MUMPSLDLT.\n";
+    report( x, x0, succeeded );
+#endif
 
 #ifdef GISMO_WITH_SUPERLU
     gsSparseSolver<>::SuperLU solverSLU;
