@@ -15,7 +15,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsDomain/gsDomain.h>
-#include <gsDomain/gsKdTree.h>
+#include <gsHSplines/gsHTree.h>
 #include <gsDomain/gsHDomainIterator.h>
 #include <gsDomain/gsHDomainBoundaryIterator.h>
 
@@ -78,11 +78,12 @@ template<short_t d, class T, class Z>
 class gsHDomain : public gsDomain<T>
 {
 public:
-    typedef gsKdTree<d,Z,gsHTreeData<d,Z> > gsHTree;
+    typedef gsHTree<d,Z> HTree_t;
     
     typedef gsDomainIteratorWrapper<T> domainIter;
-    typedef typename gsHTree::const_literator leafIterator;
-
+    typedef typename HTree_t::const_literator leafIterator;
+    typedef typename HTree_t::point point;
+    
     template <class _T, short_t _d, class _Z>
     friend class gsHDomainIterator;
     template <class _T, short_t _d, class _Z>
@@ -90,7 +91,7 @@ public:
 
 public:
 
-    explicit gsHDomain(const gsHTree & tree,
+    explicit gsHDomain(const HTree_t & tree,
                        const gsHTensorBasis<d,T>& basis)
     :
     m_tree(tree),
@@ -110,8 +111,9 @@ public:
 
     size_t numElements() const override
     {
-        leafIterator it = m_tree.beginLeafIterator();
+        leafIterator it = m_tree.beginLeafIterator(); //generic tree leaf iterator
         size_t nel(0);
+        point lc, uc;
         while (it.good())
         {
             if (m_basis.manualLevels() )
@@ -129,7 +131,12 @@ public:
                 nel += nel_local;
             }
             else
-                nel += ( it.data().upperCorner() - it.data().lowerCorner() ).prod();
+            {
+                //nel += ( it.data().upperCorner() - it.data().lowerCorner() ).prod();
+                m_tree.global2localIndex( it.data().upperCorner(), it.data().level(), uc);
+                m_tree.global2localIndex( it.data().lowerCorner(), it.data().level(), lc);
+                nel += (uc - lc).prod();
+            }
             it.next();
         }
         return nel;
@@ -141,6 +148,7 @@ public:
         leafIterator it = m_tree.beginLeafIterator();
         size_t nel(0);
         size_t nel_local;
+        point lc, uc;
         while (it.good())
         {
             if  (leafOnBoundary(s,it))
@@ -158,7 +166,12 @@ public:
                             nel_local *= uu - ll;
                         }
                         else
-                            nel_local *= it.data().upperCorner()[i] - it.data().lowerCorner()[i];
+                        {
+                            //nel_local *= it.data().upperCorner()[i] - it.data().lowerCorner()[i];
+                            m_tree.global2localIndex( it.data().upperCorner(), it.data().level(), uc);
+                            m_tree.global2localIndex( it.data().lowerCorner(), it.data().level(), lc);
+                            nel += (uc - lc).prod();
+                        }
                     }
                 nel +=  nel_local;
             }
@@ -179,7 +192,7 @@ public:
         return m_basis.support();
     }
 
-    const gsHTree & tree() const { return m_tree; }
+    const HTree_t & tree() const { return m_tree; }
 
 private:
 
@@ -208,7 +221,7 @@ private:
     }
 
 protected:
-    const gsKdTree<d,Z,gsHTreeData<d,Z> > & m_tree;
+    const HTree_t & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
 };

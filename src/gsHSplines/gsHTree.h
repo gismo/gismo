@@ -1,4 +1,4 @@
-
+#pragma once
 
 #include <gsDomain/gsKdTree.h>
 #include <gsHSplines/gsHTreeData.h>
@@ -19,9 +19,9 @@ namespace
         static return_type init() {return true;}
 
         template<short_t d, class Z>
-        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int level, return_type & res)
+        static void visitLeaf(const gismo::gsKdTree<d,Z,gismo::gsHTreeData<d,Z> > * leafNode, int level, return_type & res)
         {
-            if ( leafNode.level() != level )
+            if ( leafNode->nodeData().level() != level )
                 res = false;
         }
     };
@@ -35,9 +35,9 @@ namespace
         static return_type init() {return true;}
 
         template<short_t d, class Z>
-        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int level, return_type & res)
+        static void visitLeaf(const gismo::gsKdTree<d,Z,gismo::gsHTreeData<d,Z> > * leafNode, int level, return_type & res)
         {
-            if ( leafNode.level() <= level )
+            if ( leafNode->nodeData().level() <= level )
                 res = false;
         }
     };
@@ -52,10 +52,10 @@ namespace
         static return_type init() {return 1000000;}
 
         template<short_t d, class Z>
-        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int , return_type & res)
+        static void visitLeaf(const gismo::gsKdTree<d,Z,gismo::gsHTreeData<d,Z> > * leafNode, int , return_type & res)
         {
-            if ( leafNode.level() < res )
-                res = leafNode.level();
+            if ( leafNode->nodeData().level() < res )
+                res = leafNode->nodeData().level();
         }
     };
 
@@ -69,10 +69,10 @@ namespace
         static return_type init() {return -1;}
 
         template<short_t d, class Z>
-        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int , return_type & res)
+        static void visitLeaf(const gismo::gsKdTree<d,Z,gismo::gsHTreeData<d,Z> > * leafNode , int , return_type & res)
         {
-            if ( leafNode.level() > res )
-                res = leafNode.level();
+            if ( leafNode->nodeData().level() > res )
+                res = leafNode->nodeData().level();
         }
     };
 
@@ -83,9 +83,9 @@ namespace
         static return_type init() {return 0;}
 
         template<short_t d, class Z>
-        static void visitLeaf(gismo::gsHTreeData<d,Z> & leafNode, return_type &)
+        static void visitLeaf(gismo::gsKdTree<d,Z,gismo::gsHTreeData<d,Z> > * leafNode, return_type &)
         {
-            leafNode.level()--;
+            leafNode->nodeData().level()--;
         }
     };
 
@@ -95,9 +95,9 @@ namespace
         static return_type init() {return 0;}
 
         template<short_t d, class Z>
-        static void visitLeaf(gismo::gsHTreeData<d,Z> & leafNode, return_type &i)
+        static void visitLeaf(gismo::gsKdTree<d,Z,gismo::gsHTreeData<d,Z> > * leafNode, return_type &i)
         {
-            if (leafNode.level()>i) i=leafNode.level();
+            if (leafNode->nodeData().level()>i) i=leafNode->nodeData().level();
         }
     };
 
@@ -151,28 +151,28 @@ public:
     }
 
     /// Copy constructor (makes a deep copy)
-    gsHTree( const gsHTree & o) :
+    gsHTree(const gsHTree & o) : node(o), 
         m_upperIndex(o.m_upperIndex),
         m_indexLevel(o.m_indexLevel),
         m_maxInsLevel(o.m_maxInsLevel),
         m_maxPath(o.m_maxPath)
-    {
-    }
+    { }
 
     /// Assignment operator (makes a deep copy)
     gsHTree& operator=( const gsHTree & o)
     {
-        if ( this == &o )
-            return *this;
-
-        m_upperIndex  = o.m_upperIndex;
-        m_indexLevel  = o.m_indexLevel;
-        m_maxInsLevel = o.m_maxInsLevel;
-        m_maxPath    = o.m_maxPath;
-
+        if ( this != &o )
+        {
+            node::operator=(o);
+            m_upperIndex  = o.m_upperIndex;
+            m_indexLevel  = o.m_indexLevel;
+            m_maxInsLevel = o.m_maxInsLevel;
+            m_maxPath    = o.m_maxPath;
+        }
         return *this;
     }
 
+/*
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsHTree(gsHTree&& o) :
     m_upperIndex(std::move(o.m_upperIndex)),
@@ -192,6 +192,7 @@ public:
         return *this;
     }
 #endif
+*/
 
     /// Initialize the tree
     void init(point const & upp, unsigned index_level)
@@ -203,6 +204,15 @@ public:
             m_upperIndex[i] = (upp[i]<< m_indexLevel);
 
         m_maxPath = 1;
+            
+        // To be improved... bad programming
+        delete this->data;
+        this->data = new gsHTreeData<d,Z>(m_upperIndex);
+        this->axis = -1;
+        delete this->parent;
+        delete this->left;
+        delete this->right;
+        this->parent = this->left = this->right = nullptr;
     }
 
 	/// Initialize the tree with computing the index_level.
@@ -312,9 +322,7 @@ public:
     GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
 
     // Make a box
-    data_t iData;
-    iData.aabb() = box(k1,k2);
-    iData.level() = lvl;
+    data_t iData(k1,k2,lvl);
     const unsigned h = m_indexLevel - lvl;
     if( iData.aabb().isDegenerate() )
         return;
@@ -354,7 +362,7 @@ public:
             // Split the leaf (if possible)
             //node * newLeaf = curNode->adaptiveSplit(iBox);
             node * newLeaf = curNode->adaptiveAlignedSplit(iData, h);
-
+                        
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
@@ -397,9 +405,7 @@ void sinkBox (point const & k1,
                   "Max index level might be reached..");
 
     // Make a box
-    data_t iData;
-    iData.aabb() = box(k1,k2);
-    iData.level() = lvl;
+    data_t iData(k1,k2,lvl);
     if( iData.aabb().isDegenerate() )
         return;
 
@@ -429,7 +435,6 @@ void sinkBox (point const & k1,
             // Since we reached a leaf, it should overlap with iBox.
             // Split the leaf (if possible)
             node * newLeaf = curNode->adaptiveAlignedSplit(iData, m_indexLevel);
-
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  implies curNode was a leaf
@@ -467,9 +472,7 @@ void clearBox ( point const & k1, point const & k2,
     GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
 
     // Make a box
-    data_t iData;
-    iData.aabb() = box(k1,k2);
-    iData.level() = lvl;
+    data_t iData(k1,k2,lvl);
     if( iData.aabb().isDegenerate() )
         return;
 
@@ -604,12 +607,12 @@ void clearBox ( point const & k1, point const & k2,
             //return return_type();//!does not properly initialize the points
         }
 
-        static void visitLeaf(const gismo::gsHTreeData<d,Z> & leafNode , int level, return_type & res)
+        static void visitLeaf(const gismo::gsKdTree<d,Z,gsHTreeData<d,Z> > * leafNode , int level, return_type & res)
         {
-            if ( leafNode.level() == level )
+            if ( leafNode->nodeData().level() == level )
             {
-                res.first  = leafNode.lowerCorner();
-                res.second = leafNode.upperCorner();
+                res.first  = leafNode->nodeData().lowerCorner();
+                res.second = leafNode->nodeData().upperCorner();
             }
         }
     };

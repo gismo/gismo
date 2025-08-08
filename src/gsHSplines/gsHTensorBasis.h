@@ -166,7 +166,7 @@ public:
             for ( index_t i = 0; i!=d; ++i )
                 upp[i] = m_bases[0]->knots(i).numElements();
 
-            m_tree.nodeData().upperCorner() = upp; // REPLACES: m_tree.init(upp);
+            m_tree.init(upp);
         }
         update_structure();
     }

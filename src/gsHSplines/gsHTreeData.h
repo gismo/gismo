@@ -10,19 +10,31 @@ template<short_t d, class Z>
 class gsHTreeData
 {
 public:
-
     typedef          gsAABB<d, Z> kdBox;
     typedef typename kdBox::point point;
-
 private:
 
     int m_level;
     kdBox box;
 
 public:
+    gsHTreeData(point const & k1, point const & k2, int lvl = 0)
+    : m_level(lvl), box(k1,k2)
+    { }
+
+    explicit gsHTreeData(point const & k2)
+    : m_level(0), box(k2)
+    { }
+
+    friend std::ostream & operator<<(std::ostream & os, const gsHTreeData & td)
+    {
+        os << "Box("<<td.m_level<<"): ["<< td.box.first.transpose()
+           <<"]~["<<td.box.second.transpose() <<"]\n";
+        return os;
+    }
 
     bool check() const
-    { return (box.first.array() >= box.second.array()).any(); }
+    { return (box.second.array() >= box.first.array()).any(); }
 
     static void split(const gsKdTree<d,Z,gsHTreeData> & node)
     {

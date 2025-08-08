@@ -66,19 +66,50 @@ struct gsKdTree
     leafData * data;
 
     /// Constructor (empty node)
-    gsKdTree() : axis(-2), parent(0), left(0), right(0), data(nullptr)
+    gsKdTree() : axis(-2), parent(nullptr), left(nullptr), right(nullptr), data(nullptr)
     { }
 
     /// Constructor (root node)
-    gsKdTree(const leafData & leaf) : axis(-1), parent(0), left(0) , right(0),
+    explicit gsKdTree(const leafData & leaf) : axis(-1), parent(0), left(0) , right(0),
                                        data(new leafData(leaf))
     { }
 
     /// Recursively copies the whole subtree under \a o, and sets it's
     /// parent to \a parentNode
-    gsKdTree(const gsKdTree & o, gsKdTree * parentNode = NULL) : axis(o.axis)
+    gsKdTree(const gsKdTree & o, gsKdTree * parentNode = NULL)
     {
-        parent = parentNode;
+        _deep_copy(o,parentNode);
+    }
+
+    /// Assignment operator (makes a deep copy)
+    gsKdTree& operator=( const gsKdTree & o)
+    {
+        if ( this != &o )
+            _deep_copy(o,nullptr);
+        return *this;
+    }
+                                                                           
+    /// Recursively deletes the whole subtree under this node
+    ~gsKdTree()
+    {
+        // TODO: non-recursive
+        if ( isLeaf() )
+        {
+            delete data;
+        }
+        else
+        {
+            delete left;
+            delete right;
+        }
+    }
+
+protected:
+
+    void _deep_copy(const gsKdTree & o, gsKdTree * parentNode)
+    {
+        parent = o.parent;
+        axis   = o.axis;
         if ( axis == -1 )
         {
             GISMO_ASSERT( (o.left == 0) && (o.right == 0),
@@ -94,21 +125,6 @@ struct gsKdTree
             left  = new gsKdTree(*o.left , this);
             right = new gsKdTree(*o.right, this);
             data  = nullptr;
-        }
-    }
-
-    /// Recursively deletes the whole subtree under this node
-    ~gsKdTree()
-    {
-        // TODO: non-recursive
-        if ( isLeaf() )
-        {
-            delete data;
-        }
-        else
-        {
-            delete left;
-            delete right;
         }
     }
 
@@ -139,6 +155,8 @@ public: // Member functions related to the tree starting at \a this node
     /// Prints out the leaves of the kd-tree
     void printLeaves() const;
 
+    void printNodes() const;
+        
 private: // Structs related to tree operations
 
     /// Counts number of nodes in the tree
@@ -171,9 +189,21 @@ private: // Structs related to tree operations
         typedef int return_type;
         static return_type init() {return 0;}
 
-        static void visitLeaf(node_t * leafNode, return_type &)
+        static void visitLeaf(const node_t * leafNode, return_type &)
         {
             gsInfo << *leafNode;
+        }
+    };
+
+        /// Counts number of nodes in the tree
+    struct printNodes_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+
+        static void visitNode(const node_t * _Node, return_type &)
+        {
+            gsInfo << *_Node;
         }
     };
 
@@ -352,7 +382,10 @@ public: // Member functions related to \a this node
     friend std::ostream & operator<<(std::ostream & os, const gsKdTree & n)
     {
         if ( n.isLeaf() )
-            os << "Leaf node "<< *n.data <<"\n";
+        {
+            os << "Leaf node "<< *n.data;
+            os << "       -> axis= "<< n.axis <<", pos="<< n.pos <<"\n";
+        }
         else
             os << "Split node, axis= "<< n.axis <<", pos="<< n.pos <<"\n";
         return os;
@@ -383,7 +416,7 @@ public: // Member functions related to \a this node
             {
                 // Visit the leaf
                 GISMO_ASSERT( curNode->nodeData().check(), "Encountered an invalid leaf");
-                visitor::visitLeaf(curNode->nodeData(), level, res );
+                visitor::visitLeaf(curNode, level, res );
             }
             else // this is a split-node
             {
@@ -423,7 +456,7 @@ public: // Member functions related to \a this node
                 return curNode;
             }
             else // this is a split-node
-            {
+            {                
                 if ( p[curNode->axis] < curNode->pos)
                     stack.push_back(curNode->left);
                 else
@@ -452,7 +485,7 @@ leafSearch()
         else
         {
             // Visit the leaf
-            visitor::template visitLeaf<d,Z>(curNode->nodeData(), i);
+            visitor::visitLeaf(curNode, i);
 
             while (curNode->parent != NULL &&
                    curNode != curNode->parent->left)
@@ -515,7 +548,13 @@ inline int gsKdTree<d, Z, leafData>::leafSize() const
 template<short_t d, class Z, class leafData>
 inline void gsKdTree<d, Z, leafData>::printLeaves() const
 {
-    leafSearch< printLeaves_visitor >();
+    const_cast<gsKdTree*>(this)->leafSearch< printLeaves_visitor >();
+}
+
+template<short_t d, class Z, class leafData>
+inline void gsKdTree<d, Z, leafData>::printNodes() const
+{
+    this->nodeSearch< printNodes_visitor >();
 }
 
 template<short_t d, class Z, class leafData>
