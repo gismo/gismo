@@ -115,7 +115,7 @@ void gsTHBSplineBasis<d,T,Trunc>::representBasis()
             this->_knotIndexToDiadicIndex(level,low);
             this->_knotIndexToDiadicIndex(level,high);
         }
-        
+
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
         // based only on B-Splines (and not THB-Splines).
@@ -472,7 +472,7 @@ template<short_t dd>
 typename util::enable_if<dd==2,void>::type
 gsTHBSplineBasis<d,T, Trunc>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
                                                   gsVector<index_t> b2,
-                                                  unsigned level, 
+                                                  unsigned level,
                                                   const gsMatrix<T>& geom_coef,
                                                   gsMatrix<T>& cp,
                                                   gsKnotVector<T>& k1,
@@ -523,7 +523,7 @@ template<short_t d, class T, bool Trunc>
 void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
                                               gsMatrix<index_t>& b1, gsMatrix<index_t>& b2,
                                               gsVector<index_t>& level, gsMatrix<index_t>& nvertices) const
-{ 
+{
     this->m_tree.getBoxes(b1,b2,level); // splitting based on the quadtree
     int nboxes = level.size();
     //------------------------------------------------------------------------------------------------------------------------------
@@ -1377,7 +1377,7 @@ void gsTHBSplineBasis<d,T,Trunc>::activeAtLevel_into(index_t lvl, const gsMatrix
             {
                 gsInfo << "False pos "<< act <<"\n";
             //*/
-                            
+
             /* // TESTING
             gsInfo<< "---- Comparing \n" << base.active(u).transpose()
                   <<"\n";
@@ -1627,7 +1627,7 @@ inline void eval_tp(const std::vector<std::vector<gsMatrix<T> > > & cw,
 {
     if (n>-1)
     {
-        result[0](m,i) = cw[0][0].at(ti.at(0));//[dir][value].at(func)                
+        result[0](m,i) = cw[0][0].at(ti.at(0));//[dir][value].at(func)
         for ( short_t k=1; k<d; ++k)
             result[0](m,i) *= cw[k][0].at(ti.at(k));
     }
@@ -1772,7 +1772,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
                     {
                         //during active search we also know tfunction.
                         //If remembered we can evan evaluate here instead.
-                        
+
                         //Record truncated functions with their representation level
                         const int rlvl = repLevel(index);
                         tfunction[rlvl].push_back( std::make_pair(index,m) );
@@ -1838,7 +1838,7 @@ void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
     result0 = result;
     for (int l = 0; l <= n; l++)
         result[l].setZero();
-    
+
     index_t level;
     for (index_t j = 0; j < act.rows(); j++) // for all active functions
     {
@@ -2122,7 +2122,7 @@ void gsTHBSplineBasis<d, T, Trunc>::breakCycles(
 
                 polylines[level][line] = part1;
                 polylines[level].push_back(part2);
-		
+
                 std::vector<index_t> aabb1, aabb2;
                 findNewAABB(part1, aabb1);
                 findNewAABB(part2, aabb2);

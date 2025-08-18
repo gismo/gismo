@@ -79,11 +79,11 @@ class gsHDomain : public gsDomain<T>
 {
 public:
     typedef gsHTree<d,Z> HTree_t;
-    
+
     typedef gsDomainIteratorWrapper<T> domainIter;
     typedef typename HTree_t::const_literator leafIterator;
     typedef typename HTree_t::point point;
-    
+
     template <class _T, short_t _d, class _Z>
     friend class gsHDomainIterator;
     template <class _T, short_t _d, class _Z>
@@ -170,7 +170,7 @@ public:
                             //nel_local *= it.data().upperCorner()[i] - it.data().lowerCorner()[i];
                             m_tree.global2localIndex( it.data().upperCorner(), it.data().level(), uc);
                             m_tree.global2localIndex( it.data().lowerCorner(), it.data().level(), lc);
-                            nel += (uc - lc).prod();
+                            nel_local *= (uc[i] - lc[i]);
                         }
                     }
                 nel +=  nel_local;
@@ -214,7 +214,10 @@ private:
             }
             else
                 diadicSize = m_basis.tensorLevel(leaf.data().level()).knots(s.direction()).uSize() - 1;
-            return static_cast<size_t>(leaf.data().upperCorner().at(s.direction()) ) == diadicSize;// todo: more efficient
+
+            point upper;
+            m_tree.global2localIndex( leaf.data().upperCorner(), leaf.data().level(), upper);
+            return static_cast<size_t>(upper[s.direction()] ) == diadicSize;// todo: more efficient
         }
         else
             return leaf.data().lowerCorner().at(s.direction()) == 0;

@@ -41,20 +41,19 @@ class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdTree<d,Z,gsHTreeData<d,Z> > node;
-    typedef gsKdTree<d,Z,gsHTreeData<d,Z> > gsHTree;
+    // typedef gsKdTree<d,Z,gsHTreeData<d,Z> > node;
+    typedef gsHTree<d,Z> gsHTree_t;
+    // typedef gsKdTree<d,Z,gsHTreeData<d,Z> > gsKdTree_t;
 
-    typedef typename node::point_t point;
+    typedef typename gsHTree_t::point_t point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHTree hDomain;
-
-    typedef typename hDomain::const_literator leafIterator;
+    typedef typename gsHTree_t::const_literator leafIterator;
 
 public:
 
-    gsHDomainBoundaryIterator(const gsHTree & tree,
+    gsHDomainBoundaryIterator(const gsHTree_t & tree,
                               const gsHTensorBasis<d,T> & basis,
                               const boxSide & s)
     :
@@ -73,7 +72,7 @@ public:
     {
     }
 
-    void init(const gsHTree & tree, const boxSide & s)
+    void init(const gsHTree_t & tree, const boxSide & s)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
@@ -156,7 +155,7 @@ private:
     gsHDomainBoundaryIterator();
 
     /// Navigates to the first leaf on our side
-    void initLeaf(const hDomain & tree_domain)
+    void initLeaf(const gsHTree_t & tree_domain)
     {
         // Get the first leaf
         m_leaf = tree_domain.beginLeafIterator();
@@ -209,7 +208,9 @@ private:
             else
                 diadicSize = hbasis->tensorLevel(m_leaf.data().level()).knots(dir).uSize() - 1;
 
-            return static_cast<size_t>(m_leaf.data().upperCorner().at(dir) ) == diadicSize;// todo: more efficient
+            point upper;
+            m_tree.global2localIndex( m_leaf.data().upperCorner(), m_leaf.data().level(), upper);
+            return static_cast<size_t>(upper[dir] ) == diadicSize;// todo: more efficient
         }
         else
         {
@@ -222,10 +223,9 @@ private:
     /// active functions.
     void updateLeaf()
     {
-        const point & lower = m_leaf.data().lowerCorner();
-        const point & upper = m_leaf.data().upperCorner();
-        // gsDebug<<"leaf "<<  lower.transpose() <<", "
-        //        << upper.transpose() <<"\n";
+        point lower, upper;
+        m_tree.global2localIndex( m_leaf.data().lowerCorner(), m_leaf.data().level(), lower);
+        m_tree.global2localIndex( m_leaf.data().upperCorner(), m_leaf.data().level(), upper);
 
         const int level2 = m_leaf.data().level();
 
@@ -293,7 +293,7 @@ public:
 
 private:
 
-    const gsHTree & m_tree;
+    const gsHTree_t & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
     // Boundary parameters

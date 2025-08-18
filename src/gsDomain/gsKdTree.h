@@ -88,7 +88,7 @@ struct gsKdTree
             _deep_copy(o,nullptr);
         return *this;
     }
-                                                                           
+
     /// Recursively deletes the whole subtree under this node
     ~gsKdTree()
     {
@@ -108,13 +108,13 @@ protected:
 
     void _deep_copy(const gsKdTree & o, gsKdTree * parentNode)
     {
-        parent = o.parent;
+        parent = parentNode;
         axis   = o.axis;
         if ( axis == -1 )
         {
             GISMO_ASSERT( (o.left == 0) && (o.right == 0),
                           "Problem: leaf with children." );
-            data  = new leafData(*o.data);
+            data = new leafData(*o.data);
             left = right = nullptr;
         }
         else
@@ -156,7 +156,7 @@ public: // Member functions related to the tree starting at \a this node
     void printLeaves() const;
 
     void printNodes() const;
-        
+
 private: // Structs related to tree operations
 
     /// Counts number of nodes in the tree
@@ -384,7 +384,7 @@ public: // Member functions related to \a this node
         if ( n.isLeaf() )
         {
             os << "Leaf node "<< *n.data;
-            os << "       -> axis= "<< n.axis <<", pos="<< n.pos <<"\n";
+            os << "       -> axis= "<< n.axis <<"\n";
         }
         else
             os << "Split node, axis= "<< n.axis <<", pos="<< n.pos <<"\n";
@@ -456,7 +456,7 @@ public: // Member functions related to \a this node
                 return curNode;
             }
             else // this is a split-node
-            {                
+            {
                 if ( p[curNode->axis] < curNode->pos)
                     stack.push_back(curNode->left);
                 else

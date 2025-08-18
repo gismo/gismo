@@ -38,21 +38,18 @@ class gsHDomainIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdTree<d,Z,gsHTreeData<d,Z> > tree_t;
-    typedef tree_t node;
+    typedef gsHTree<d,Z> gsHTree_t;
 
-    typedef typename node::point_t point;
+    typedef typename gsHTree_t::point_t point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef tree_t hDomain;
-
-    typedef typename hDomain::const_literator leafIterator;
+    typedef typename gsHTree_t::const_literator leafIterator;
 
     typedef typename gsDomainIterator<T>::uPtr domainIter;
 public:
 
-    gsHDomainIterator(const tree_t & tree,
+    gsHDomainIterator(const gsHTree_t & tree,
                       const gsHTensorBasis<d,T> & basis)
     :
     gsDomainIterator<T>(),
@@ -74,7 +71,7 @@ public:
     gsHDomainIterator(const gsHDomainIterator & other) = default;
     domainIter clone() const override { return domainIter(new gsHDomainIterator(*this)); }
 
-    leafIterator init(const tree_t & tree)
+    leafIterator init(const gsHTree_t & tree)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
@@ -178,10 +175,9 @@ private:
     /// active functions.
     void updateLeaf()
     {
-        const point & lower = m_leaf.data().lowerCorner();
-        const point & upper = m_leaf.data().upperCorner();
-        // gsDebug<<"leaf "<<  lower.transpose() <<", "
-        //        << upper.transpose() <<"\n";
+        point lower, upper;
+        m_tree.global2localIndex( m_leaf.data().lowerCorner(), m_leaf.data().level(), lower);
+        m_tree.global2localIndex( m_leaf.data().upperCorner(), m_leaf.data().level(), upper);
 
         const int level2 = m_leaf.data().level();
 
@@ -233,7 +229,7 @@ public:
 
 private:
 
-    const tree_t & m_tree;
+    const gsHTree_t & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
     // The current leaf node of the tree

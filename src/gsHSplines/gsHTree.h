@@ -135,7 +135,7 @@ private:
     unsigned m_maxInsLevel;
 
     unsigned m_maxPath;
-    
+
 public:
     gsHTree() : m_indexLevel(0)
     {
@@ -151,7 +151,7 @@ public:
     }
 
     /// Copy constructor (makes a deep copy)
-    gsHTree(const gsHTree & o) : node(o), 
+    gsHTree(const gsHTree & o) : node(o),
         m_upperIndex(o.m_upperIndex),
         m_indexLevel(o.m_indexLevel),
         m_maxInsLevel(o.m_maxInsLevel),
@@ -204,7 +204,7 @@ public:
             m_upperIndex[i] = (upp[i]<< m_indexLevel);
 
         m_maxPath = 1;
-            
+
         // To be improved... bad programming
         delete this->data;
         this->data = new gsHTreeData<d,Z>(m_upperIndex);
@@ -323,7 +323,6 @@ public:
 
     // Make a box
     data_t iData(k1,k2,lvl);
-    const unsigned h = m_indexLevel - lvl;
     if( iData.aabb().isDegenerate() )
         return;
 
@@ -361,8 +360,9 @@ public:
 
             // Split the leaf (if possible)
             //node * newLeaf = curNode->adaptiveSplit(iBox);
+            const unsigned h = 1 << (m_indexLevel - curNode->nodeData().level()) ;
             node * newLeaf = curNode->adaptiveAlignedSplit(iData, h);
-                        
+
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
@@ -434,7 +434,9 @@ void sinkBox (point const & k1,
         {
             // Since we reached a leaf, it should overlap with iBox.
             // Split the leaf (if possible)
-            node * newLeaf = curNode->adaptiveAlignedSplit(iData, m_indexLevel);
+            const unsigned h = 1 << (m_indexLevel - curNode->nodeData().level()) ;
+            node * newLeaf = curNode->adaptiveAlignedSplit(iData, h);
+
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  implies curNode was a leaf
@@ -509,8 +511,8 @@ void clearBox ( point const & k1, point const & k2,
                 continue;
 
             // Split the leaf (if possible)
-            node * newLeaf = curNode->adaptiveAlignedSplit(iData, m_indexLevel);
-
+            const unsigned h = 1 << (m_indexLevel - curNode->nodeData().level()) ;
+            node * newLeaf = curNode->adaptiveAlignedSplit(iData, h);
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
@@ -545,7 +547,7 @@ void clearBox ( point const & k1, point const & k2,
 }
 
 
-            
+
     /// Iterates on the leafs of the tree and applies \ visitor.  The
     /// visitor controls the return type and the update of the result
     /// type at every leaf node
@@ -564,7 +566,7 @@ void clearBox ( point const & k1, point const & k2,
     {
         point pp;
         local2globalIndex(p, static_cast<unsigned>(level), pp);
-        
+
         GISMO_ASSERT( ( pp.array() <= m_upperIndex.array() ).all(),
                       "pointSearch: Wrong input: "<< p.transpose()<<", level "<<level<<".\n" );
         return node::pointSearch(pp,level,m_maxPath);
@@ -616,7 +618,7 @@ void clearBox ( point const & k1, point const & k2,
             }
         }
     };
-    
+
     std::pair<point, point>
     queryLevelCell(point const & lower, point const & upper,
                    int level) const
@@ -659,7 +661,7 @@ void clearBox ( point const & k1, point const & k2,
             result[i] = index[i] >> (m_maxInsLevel-lvl) ;
     }
 
-    void getBoxes_vec(std::vector<std::vector<Z>>& boxes) const;    
+    void getBoxes_vec(std::vector<std::vector<Z>>& boxes) const;
 };
 
 template<short_t d, class Z>
