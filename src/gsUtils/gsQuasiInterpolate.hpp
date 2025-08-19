@@ -25,49 +25,20 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     gsMatrix<T> bev, fev, pts, tmp;
     gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
-
     qRule.mapTo(ab, pts);//map points on element
     bb .eval_into(pts, bev);//evaluate basis
     fun.eval_into(pts, fev);//evaluate function
     bev.transposeInPlace();
     fev.transposeInPlace();
-    tmp = bev.partialPivLu().solve(fev);//solve on element
-
+    tmp = bev.fullPivLu().solve(fev);//solve on element
+    gsMatrix<T> interpolatedFev = bev.transpose() * tmp; // interpolated values at quad points
+    gsMatrix<T> error = fev - interpolatedFev; // local error
     // find the i-th BS:
     gsMatrix<index_t> act = bb.active(pts.col(0));
     index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
     GISMO_ASSERT(c<act.size(), "Problem with basis function index");
     return tmp.row(c);
 }
-
-/*
-gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsTensorBasis<d,T> &bb,
-                                              const gsFunction<T> &fun,
-                                              index_t i,
-                                              const gsMatrix<T> &ab)
-{
-    gsMatrix<T> bev, fev, pts, tmp;
-    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
-    gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes); //gsTPQuadRule ..
-
-    // for(pt..)
-    //{
-    qRule.mapTo(ab, pt);//map point on element
-    fun.eval_into(pts, fev);//evaluate function
-    //}
-    fev.transposeInPlace();
-
-    //solve
-    bev.transposeInPlace();// must be cwise
-    tmp = bev.partialPivLu().solve(fev);//solve on element
-
-    // find the i-th BS:
-    gsMatrix<index_t> act = bb.active(pts.col(0)); //cwise..?
-    index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
-    GISMO_ASSERT(c<act.size(), "Problem with basis function index");
-    return tmp.row(c);
-}
-*/
 
 template<typename T>
 template<short_t d>
@@ -93,11 +64,11 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
         return localIntpl(*b,fun,i);
     if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
-        return localIntpl(*b,fun,i);        
-    // If it is a gsRationalTHBSplineBasis, we check the source
-    if (const gsHTensorBasis<1, T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb.source())) 
         return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<2, T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb.source())) 
+    // If it is a gsRationalTHBSplineBasis, we check the source
+    if (const gsHTensorBasis<1, T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb.source()))
+        return localIntpl(*b,fun,i);
+    if (const gsHTensorBasis<2, T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb.source()))
         return localIntpl(*b,fun,i);
     if (const gsHTensorBasis<3, T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb.source()))
         return localIntpl(*b,fun,i);
@@ -410,6 +381,7 @@ void gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &b,
     index_t dim = fun.targetDim();
     result.resize(n,dim);
 
+#   pragma omp parallel for private(cf)
     for (index_t i = 0; i!=n; ++i)
     {
         cf = localIntpl(b,fun,i);
