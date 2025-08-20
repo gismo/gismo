@@ -680,6 +680,13 @@ public:
         return *this->m_bases[i];
     }
 
+    /**
+     * @brief Merges \a this basis with an \a other basis
+     * @note Merging bases does not work when `manualLevels` is true for either of the bases.
+     * @note Level 0 of both bases should be the same.
+     */
+    void merge(const gsHTensorBasis<d,T> & other);
+
     // Refine the basis uniformly by inserting \a numKnots new knots on each knot span
     virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
 
