@@ -279,7 +279,7 @@ namespace gismo
         HElementContainer neighborhood;
 
         level_t lvl = element.level();
-        level_t k = lvl - m + 1;
+        index_t k = lvl - m + 1;
         if (k >= 0)
         {
             // Get multi level support extension on level k
@@ -304,7 +304,7 @@ namespace gismo
         HElementContainer extension;
 
         level_t lvl = element.level();
-        level_t k = lvl - m + 2;
+        index_t k = lvl - m + 2;
         if (k - 1 >= 0)
         {
             // Get multi-level support extension on level k
