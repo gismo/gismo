@@ -1573,18 +1573,8 @@ void gsHTensorBasis<d,T>::merge(const gsHTensorBasis<d,T> & other)
         GISMO_ASSERT(this->tensorLevel(0).knots(j).asMatrix() == other.tensorLevel(0).knots(j).asMatrix(),"Root level must have the same root basis, but the knot vector in direction "<<j<<" is different.");
 #endif
 
-    // Loop over the leaves of the other tree
-    auto leafIt = other.tree().beginLeafIterator();
-    for (; leafIt.good(); leafIt.next())
-    {
-        if (leafIt.level()>0)
-        {
-            m_tree.sinkBox(leafIt.lowerCorner(), leafIt.upperCorner(), leafIt.level());
-            needLevel( m_tree.getMaxInsLevel() );
-        }
-    }
-    // Now we have all the boxes of the other basis in this basis.
-    // We need to update the structure of this basis.
+    m_tree.merge(other.tree());
+    needLevel( m_tree.getMaxInsLevel() );
     update_structure();
 }
 
