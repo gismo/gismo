@@ -236,64 +236,138 @@ gsHTree<d, Z>::merge(const gsHTree<d,Z> & other)
         const node* otherNode = current.second;
 
         // Case 1: other is a split node, but this is a leaf
-        // Insert the whole sub-tree of other into this
+        // Split this leaf to match other's structure and copy subtree
         if (!otherNode->isLeaf() && thisNode->isLeaf())
         {
-            // Split thisNode to match otherNode's structure using the proper split method
+            // Split this leaf using other's split parameters
             thisNode->axis = otherNode->axis;
             thisNode->pos = otherNode->pos;
-            thisNode->split(); // Use the proper split method from gsKdNode
+            thisNode->split();
 
-            // Now copy the subtree structure from other
-            // Delete the newly created children first
+            // Replace created children with copies from other
             delete thisNode->left;
             delete thisNode->right;
 
-            // Create deep copies of other's children
             thisNode->left = new node(*otherNode->left, thisNode);
             thisNode->right = new node(*otherNode->right, thisNode);
         }
         // Case 2: this has a split node but other has a leaf
-        // Do nothing
+        // Keep existing structure - no action needed
         else if (!thisNode->isLeaf() && otherNode->isLeaf())
         {
             // Do nothing - keep this tree's structure
         }
         // Case 3: both are split nodes
-        // Continue traversing both subtrees
+        // Check split compatibility and handle mismatches
         else if (!thisNode->isLeaf() && !otherNode->isLeaf())
         {
-            // Push left and right children to stack for further processing
-            stack.push(std::make_pair(thisNode->left, otherNode->left));
-            stack.push(std::make_pair(thisNode->right, otherNode->right));
+            // If splits match, traverse children directly
+            if (thisNode->axis == otherNode->axis && thisNode->pos == otherNode->pos)
+            {
+                stack.push(std::make_pair(thisNode->left, otherNode->left));
+                stack.push(std::make_pair(thisNode->right, otherNode->right));
+            }
+            else
+            {
+                // Split mismatch - preserve this tree's structure and spatially merge other's content
+                // gsDebug << "Split mismatch: thisNode axis=" << thisNode->axis
+                //         << " pos=" << thisNode->pos
+                //         << ", otherNode axis=" << otherNode->axis
+                //         << " pos=" << otherNode->pos << "\n";
+
+                // Since the splits don't match, we can't do a direct structural merge.
+                // Instead, we need to merge the other tree's leaves into this tree's structure.
+                // We'll recursively attempt to merge otherNode's left and right subtrees
+                // with the appropriate parts of thisNode.
+
+                // Determine which child of thisNode should receive otherNode's left child
+                // based on the spatial overlap of their boxes
+                if (otherNode->left && !otherNode->left->isLeaf())
+                {
+                    // Split node - merge with both children
+                    stack.push(std::make_pair(thisNode->left, otherNode->left));
+                    stack.push(std::make_pair(thisNode->right, otherNode->left));
+                }
+                else if (otherNode->left && otherNode->left->isLeaf())
+                {
+                    // Leaf node - determine spatial overlap
+                    if (otherNode->left->box->second[thisNode->axis] <= thisNode->pos)
+                    {
+                        stack.push(std::make_pair(thisNode->left, otherNode->left));
+                    }
+                    else if (otherNode->left->box->first[thisNode->axis] >= thisNode->pos)
+                    {
+                        stack.push(std::make_pair(thisNode->right, otherNode->left));
+                    }
+                    else
+                    {
+                        // Spans both sides
+                        stack.push(std::make_pair(thisNode->left, otherNode->left));
+                        stack.push(std::make_pair(thisNode->right, otherNode->left));
+                    }
+                }
+
+                // Process other's right child
+                if (otherNode->right && !otherNode->right->isLeaf())
+                {
+                    stack.push(std::make_pair(thisNode->left, otherNode->right));
+                    stack.push(std::make_pair(thisNode->right, otherNode->right));
+                }
+                else if (otherNode->right && otherNode->right->isLeaf())
+                {
+                    if (otherNode->right->box->second[thisNode->axis] <= thisNode->pos)
+                    {
+                        stack.push(std::make_pair(thisNode->left, otherNode->right));
+                    }
+                    else if (otherNode->right->box->first[thisNode->axis] >= thisNode->pos)
+                    {
+                        stack.push(std::make_pair(thisNode->right, otherNode->right));
+                    }
+                    else
+                    {
+                        stack.push(std::make_pair(thisNode->left, otherNode->right));
+                        stack.push(std::make_pair(thisNode->right, otherNode->right));
+                    }
+                }
+            }
         }
         // Case 4: both are leaves
-        // Take the maximum level (or apply other merging logic as needed)
+        // Merge leaf nodes by computing box intersection and taking max level
         else if (thisNode->isLeaf() && otherNode->isLeaf())
         {
-            // // Ensure both leaves represent the same spatial region
-            // // In theory, they should be identical, but we ensure consistency
-            // // by taking the intersection (which should be the same box)
-            // for (short_t i = 0; i < d; ++i)
-            // {
-            //     thisNode->box->first[i] = std::max(thisNode->box->first[i], otherNode->box->first[i]);
-            //     thisNode->box->second[i] = std::min(thisNode->box->second[i], otherNode->box->second[i]);
-            // }
-            // Verify that both leaves represent the same spatial region
-            GISMO_ASSERT(thisNode->box->first == otherNode->box->first &&
-                        thisNode->box->second == otherNode->box->second,
-                        "Leaf nodes at corresponding positions should have identical boxes");
+            // Check for box overlap
+            bool hasOverlap = true;
+            for (short_t i = 0; i < d; ++i)
+            {
+                if (thisNode->box->second[i] <= otherNode->box->first[i] ||
+                    otherNode->box->second[i] <= thisNode->box->first[i])
+                {
+                    hasOverlap = false;
+                    break;
+                }
+            }
 
+            if (!hasOverlap)
+            {
+                gsDebug << "Warning: Non-overlapping leaf boxes encountered in merge. Skipping merge.\n";
+                continue;
+            }
 
-            // Verify that the intersection is non-degenerate
+            // Compute box intersection
+            for (short_t i = 0; i < d; ++i)
+            {
+                thisNode->box->first[i] = std::max(thisNode->box->first[i], otherNode->box->first[i]);
+                thisNode->box->second[i] = std::min(thisNode->box->second[i], otherNode->box->second[i]);
+            }
+
             GISMO_ASSERT(!isDegenerate(*thisNode->box),
-                        "Leaf nodes at corresponding positions should have overlapping boxes");
+                        "Intersection of leaf node boxes should be non-degenerate");
 
             thisNode->level = std::max(thisNode->level, otherNode->level);
         }
     }
 
-    // Update maximum inserted level after merging
+    // Update max insertion level after merge
     computeMaxInsLevel();
 }
 
