@@ -242,6 +242,8 @@ public:
                            unsigned lvl,
                            gsVector<Z, d> & result) const;
 
+    const node* getRoot() const { return m_root; }
+
     /// Accessor for gsHTree::m_upperIndex
     const point & upperCorner() const
     {
@@ -274,6 +276,11 @@ public:
     */
     void insertBox (point const & lower, point const & upper,
                     node * _node, int lvl);
+
+    /** \brief Merge two trees
+    \todo continue docs
+    */
+    void merge(const gsHTree<d,Z> & other);
 
     /** \brief The insert function which insert box
     defined by points \em lower and \em upper to level \em lvl.
@@ -505,6 +512,8 @@ public:
 
     /// Prints out the leaves of the kd-tree
     void printLeaves() const;
+
+    void printNodes() const;
 
     /** \brief Returns the boxes which make up the hierarchical domain
     * and the respective levels.
@@ -782,6 +791,18 @@ private:
         static return_type init() {return 0;}
 
         static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
+        {
+            gsInfo << *leafNode;
+        }
+    };
+
+    /// Counts number of nodes in the tree
+    struct printNodes_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+
+        static void visitNode(gsKdNode<d, Z> * leafNode, return_type &)
         {
             gsInfo << *leafNode;
         }

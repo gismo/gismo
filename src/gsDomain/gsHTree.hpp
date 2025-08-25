@@ -189,7 +189,7 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
             {
-                // Increase level and reccurse
+                // Increase level and recurse
                 if ( ++curNode->level != lvl)
                     stack.push_back(curNode);
             }
@@ -218,6 +218,83 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
     // Update maximum inserted level
     if ( static_cast<unsigned>(lvl) > m_maxInsLevel)
         m_maxInsLevel = lvl;
+}
+
+template<short_t d, class Z> void
+gsHTree<d, Z>::merge(const gsHTree<d,Z> & other)
+{
+    // Traverse both trees simultaneously using a stack-based approach
+    std::stack<std::pair<node*, const node*>> stack;
+    stack.push(std::make_pair(m_root, other.getRoot()));
+
+    while (!stack.empty())
+    {
+        std::pair<node*, const node*> current = stack.top();
+        stack.pop();
+
+        node* thisNode = current.first;
+        const node* otherNode = current.second;
+
+        // Case 1: other is a split node, but this is a leaf
+        // Insert the whole sub-tree of other into this
+        if (!otherNode->isLeaf() && thisNode->isLeaf())
+        {
+            // Split thisNode to match otherNode's structure using the proper split method
+            thisNode->axis = otherNode->axis;
+            thisNode->pos = otherNode->pos;
+            thisNode->split(); // Use the proper split method from gsKdNode
+
+            // Now copy the subtree structure from other
+            // Delete the newly created children first
+            delete thisNode->left;
+            delete thisNode->right;
+
+            // Create deep copies of other's children
+            thisNode->left = new node(*otherNode->left, thisNode);
+            thisNode->right = new node(*otherNode->right, thisNode);
+        }
+        // Case 2: this has a split node but other has a leaf
+        // Do nothing
+        else if (!thisNode->isLeaf() && otherNode->isLeaf())
+        {
+            // Do nothing - keep this tree's structure
+        }
+        // Case 3: both are split nodes
+        // Continue traversing both subtrees
+        else if (!thisNode->isLeaf() && !otherNode->isLeaf())
+        {
+            // Push left and right children to stack for further processing
+            stack.push(std::make_pair(thisNode->left, otherNode->left));
+            stack.push(std::make_pair(thisNode->right, otherNode->right));
+        }
+        // Case 4: both are leaves
+        // Take the maximum level (or apply other merging logic as needed)
+        else if (thisNode->isLeaf() && otherNode->isLeaf())
+        {
+            // // Ensure both leaves represent the same spatial region
+            // // In theory, they should be identical, but we ensure consistency
+            // // by taking the intersection (which should be the same box)
+            // for (short_t i = 0; i < d; ++i)
+            // {
+            //     thisNode->box->first[i] = std::max(thisNode->box->first[i], otherNode->box->first[i]);
+            //     thisNode->box->second[i] = std::min(thisNode->box->second[i], otherNode->box->second[i]);
+            // }
+            // Verify that both leaves represent the same spatial region
+            GISMO_ASSERT(thisNode->box->first == otherNode->box->first &&
+                        thisNode->box->second == otherNode->box->second,
+                        "Leaf nodes at corresponding positions should have identical boxes");
+
+
+            // Verify that the intersection is non-degenerate
+            GISMO_ASSERT(!isDegenerate(*thisNode->box),
+                        "Leaf nodes at corresponding positions should have overlapping boxes");
+
+            thisNode->level = std::max(thisNode->level, otherNode->level);
+        }
+    }
+
+    // Update maximum inserted level after merging
+    computeMaxInsLevel();
 }
 
 template<short_t d, class Z> void
@@ -1398,6 +1475,12 @@ template<short_t d, class Z>
 inline void gsHTree<d, Z>::printLeaves() const
 {
     leafSearch< printLeaves_visitor >();
+}
+
+template<short_t d, class Z>
+inline void gsHTree<d, Z>::printNodes() const
+{
+    nodeSearch< printNodes_visitor >();
 }
 
 template<short_t d, class Z>
