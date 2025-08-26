@@ -1,14 +1,13 @@
-/** @file BaseExpression.h
+/** @file BaseObject.h
+@brief
 
-    @brief
+This file is part of the G+Smo library.
 
-    This file is part of the G+Smo library.
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-    Author(s): H.M.Verhelst
+Author(s): H.M.Verhelst
 */
 
 #pragma once
@@ -19,62 +18,84 @@ namespace gismo
 {
 namespace Expr
 {
+// IsConstant: Flag that indicates if the expression is constant, e.g., its derivatives are zero
+// Space: Flag that indicates whether the expression is a space
+template <typename E>
+class BaseExpression
+{
+protected:
+    BaseExpression() : deriv_(ExpressionTraits<E>::deriv) {};
+    BaseExpression(const BaseExpression&) : deriv_(ExpressionTraits<E>::deriv) {};
 
-    template <typename E>
-    struct ExpressionTraits
+    mutable short_t deriv_; // Used to store the required derivative order
+
+public:
+
+    typedef typename ExpressionTraits<E>::Scalar Scalar;
+    static constexpr size_t order = ExpressionTraits<E>::order;
+    static constexpr size_t space = ExpressionTraits<E>::space;
+    static constexpr size_t deriv = ExpressionTraits<E>::deriv;
+    static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
+
+    virtual size_t domainDim() const = 0;
+
+    virtual const std::array<size_t,order> & sizes() const = 0;
+
+    virtual void print(std::ostream &) const = 0;
+
+    virtual gsMatrix<Scalar> eval(const index_t) const = 0;
+
+
+    virtual void parse(gismo::ExpressionHelper<Scalar> &) const
     {
-    public:
-        typedef real_t Scalar;//todo
-        typedef const E Nested_t;
-    };
+        GISMO_NO_IMPLEMENTATION;
+        // static_cast<E const&>(*this).parse(helper);
+    }
 
-    // IsConstant: Flag that indicates if the expression is constant, e.g., its derivatives are zero
-    template <typename E, typename S, short_t _order, bool _isConstant = true>
-    class BaseExpression
+    virtual const SpaceObject<Scalar, space, order> & rowVar() const
     {
-    public:
-        typedef S Scalar; // Publicly expose Scalar type
+        GISMO_NO_IMPLEMENTATION;
+    //     return static_cast<E const&>(*this).rowVar();
+    }
 
-        // The order of the expression: 0: scalar, 1: vector, 2: matrix, etc.
-        static constexpr int order = _order;
-        // Flag that indicates if the expression is constant, e.g., its derivatives are zero
-        static constexpr bool isConstant = _isConstant;
+    virtual const SpaceObject<Scalar, space, order> & colVar() const
+    {
+        GISMO_NO_IMPLEMENTATION;
+    //     return static_cast<E const&>(*this).colVar();
+    }
 
-        // The size of the expression, which is an array of sizes for each dimension
-        const std::array<size_t, _order> sizes_;
-        // Access to sizes is direct
-        const std::array<size_t, _order>& sizes() const
-        {
-            return sizes_;
-        }
+public:
 
-    public:
+    void setDerivative(short_t d) const
+    {
+        deriv_ = math::max(deriv_, d);
+    }
 
-        gsMatrix<Scalar> eval(const index_t k) const { return static_cast<E const&>(*this).eval(k); }
+    short_t getDerivative() const { return deriv_; }
 
-    protected:
 
-        explicit BaseExpression(const std::array<size_t, order>& input_sizes)
-        :
-        sizes_(input_sizes)
-        {}
+    TransposeExpression<E> tr() const
+    {
+        return TransposeExpression<E>(static_cast<E const&>(*this));
+    }
 
-        BaseExpression(const BaseExpression&) = default;
-        BaseExpression& operator=(const BaseExpression&) = default;
-        ~BaseExpression() = default;
+    ArrayExpression<E> array() const
+    {
+        return ArrayExpression<E>(static_cast<E const&>(*this));
+    }
 
-        // Helper to calculate total elements from sizes (used internally by derived classes)
-        static size_t tensorSize(const std::array<size_t, order>& dims)
-        {
-            if (order == 0) return 1; // Scalar has 1 element
-            size_t total = 1;
-            for (size_t dim_size : dims)
-            {
-                total *= dim_size;
-            }
-            return total;
-        }
 
-    };
+    // Overload conversions
+    operator E&()             { return static_cast<      E&>(*this); }
+    operator E const&() const { return static_cast<const E&>(*this); }
+
+    E const & derived() const { return static_cast<const E&>(*this); }
+};
+
+/// Stream operator for expressions
+template <typename E>
+std::ostream &operator<<(std::ostream &os, const BaseExpression<E> & b)
+{b.print(os); return os; }
+
 }//namespace Expr
 }//namespace gismo
