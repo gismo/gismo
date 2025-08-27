@@ -340,7 +340,7 @@ public: // Member functions related to \a this node
     void anyMidSplit(unsigned h)
     {
         int doSplit;
-        leafData::adaptivedSplit(h,*this);
+        leafData::anyMidSplit(h, *this, doSplit);
         if (doSplit)
             split();
     }
