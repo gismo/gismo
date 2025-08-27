@@ -27,7 +27,7 @@ SUITE(gsFixedIssues_test)
         gsTHBSplineBasis<2> thbBasis(tensBasis);
 
         unsigned indexLevel = thbBasis.tree().getIndexLevel();
-        gsVector<domain_index_type, 2> upp = thbBasis.tree().upperCorner();
+        gsVector<domain_index_type, 2> upp = thbBasis.tree().upperCornerIndex();
         domain_index_type max = std::numeric_limits<domain_index_type>::max();
 
         // Check upp against under- and overflow

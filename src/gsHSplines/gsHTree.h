@@ -257,7 +257,7 @@ public:
         return m_upperIndex[k] >> (m_indexLevel - lvl);
     }
 
-        inline unsigned getIndexLevel() const
+    inline unsigned getIndexLevel() const
     {
         return m_indexLevel;
     }
@@ -279,7 +279,32 @@ public:
         this->template leafSearch< levelDown_visitor >();
     }
 
-        /// Returns a list of boxes defined by left-bottom (b1) and
+    /** \brief Returns the boxes which make up the hierarchical domain
+    * and the respective levels.
+    *
+    * Returns a list of boxes defined by left-bottom (b1) and
+    * right-top (b2) corners for the splitting in B-spline patches
+    * together with the corresponding levelOf()
+    *
+    * The boxes \em b1 and \em b2 are given as matrices
+    * of size <em>n</em> x <em>d</em>, where \em d is the dimension
+    * of the domain, and where \em n is the number of boxes of
+    * the gsHTree.\n
+    *
+    * The numbers in \em b1 and \em b2 are given as
+    * unique knot indices of gsHTree::m_maxInsLevel
+    *
+    * \param[out] b1 <em>n</em> x <em>d</em>-matrix, left bottom corners of boxes
+    * \param[out] b2 <em>n</em> x <em>d</em>-matrix, right upper corners of boxes
+    * \param[out] level vector of length \em n, corresponding levels
+    */
+    // getBoxes-functions might get removed at some point of time.
+    // Use iterators instead whenever possible.
+    void getBoxes(gsMatrix<Z>& b1,
+                  gsMatrix<Z>& b2,
+                  gsVector<Z>& level) const;
+
+    /// Returns a list of boxes defined by left-bottom (b1) and
     /// right-top (b2) corners for the splitting in B-spline patches
     /// together with the corresponding levelOf
     /// b1 and b2 are indexing in the corresponding level indices
@@ -290,7 +315,7 @@ public:
     // Use iterators instead whenever possible.
     void getBoxesInLevelIndex(gsMatrix<Z>& b1,
                               gsMatrix<Z>& b2,
-                              gsVector<index_t>& level) const;
+                              gsVector<Z>& level) const;
 
     /// \brief connect the boxes returned from quadtree getBoxes_vec()
     ///
@@ -665,9 +690,39 @@ void clearBox ( point const & k1, point const & k2,
 };
 
 template<short_t d, class Z>
+void gsHTree<d, Z>::getBoxes(gsMatrix<Z>& b1,
+                             gsMatrix<Z>& b2,
+                             gsVector<Z>& level) const
+{
+    std::vector<std::vector<Z> > boxes;
+
+    // get all boxes in vector-format
+    getBoxes_vec(boxes);
+
+    // connect boxes which have the same levels and are
+    // are aligned such that their union again is an
+    // axis-aligned box.
+    connect_Boxes(boxes);
+
+    // write the result into b1, b2, and level
+    b1.resize(boxes.size(),d);
+    b2.resize(boxes.size(),d);
+    level.resize(boxes.size());
+    for(size_t i = 0; i < boxes.size(); i++)
+    {
+        for(short_t j = 0; j < d; j++)
+        {
+            b1(i,j) = boxes[i][j];
+            b2(i,j) = boxes[i][j+d];
+        }
+        level[i] = boxes[i][2*d];
+    }
+}
+
+template<short_t d, class Z>
 void gsHTree<d, Z>::getBoxesInLevelIndex(gsMatrix<Z>& b1,
-                                           gsMatrix<Z>& b2,
-                                           gsVector<index_t>& level) const
+                                         gsMatrix<Z>& b2,
+                                         gsVector<Z>& level) const
 {
     std::vector<std::vector<Z> > boxes;
     getBoxes_vec(boxes);
