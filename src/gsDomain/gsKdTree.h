@@ -466,6 +466,13 @@ public: // Member functions related to \a this node
         GISMO_ERROR("pointSearch: Error ("<< p.transpose()<<").\n" );
     }
 
+template<typename visitor>
+typename visitor::return_type
+leafSearch() const
+{
+    return const_cast<node_t*>(this)->template leafSearch<visitor>();
+}
+
 /// Iterates on the leafs of the tree and applies \ visitor.  The
 /// visitor controls the operation to be performed
 template<typename visitor>
@@ -504,9 +511,16 @@ template<typename visitor>
 typename visitor::return_type
 nodeSearch() const
 {
+    return const_cast<node_t*>(this)->template nodeSearch<visitor>();
+}
+
+template<typename visitor>
+typename visitor::return_type
+nodeSearch()
+{
     typename visitor::return_type i = visitor::init();
 
-    const node_t * curNode = this;
+    node_t * curNode = this;
 
     while(true)
     {

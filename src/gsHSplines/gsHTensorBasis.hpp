@@ -1581,7 +1581,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
     m_bases.erase( m_bases.begin() );
 
     // Lift all indices in the tree by one level
-    m_tree.multiplyByTwo();
+    m_tree.liftIndexLevel();
 
     update_structure();
 }
@@ -1601,7 +1601,7 @@ void gsHTensorBasis<d,T>::uniformCoarsen(int numKnots)
     m_bases.pop_back();
 
     // Lift all indices in the tree by one level
-    m_tree.divideByTwo();
+    m_tree.reduceIndexLevel();
     // What happens when zero interior knots???????
 
     update_structure();

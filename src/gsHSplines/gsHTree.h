@@ -101,6 +101,32 @@ namespace
         }
     };
 
+    /// Multiplies everything by 2
+    struct liftCoordsOneLevel_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+
+        template<short_t d, class Z>
+        static void visitNode(gismo::gsKdTree<d,Z,gismo::gsHTreeData<d,Z> > * leafNode, return_type &)
+        {
+            leafNode->nodeData().multiplyByTwo();
+        }
+    };
+
+    /// Divides everything by 2
+    struct reduceCoordsOneLevel_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+
+        template<short_t d, class Z>
+        static void visitNode(gismo::gsKdTree<d,Z,gismo::gsHTreeData<d,Z> > * leafNode, return_type &)
+        {
+            leafNode->nodeData().divideByTwo();
+        }
+    };
+
 } //namespace
 
 namespace gismo {
@@ -250,6 +276,18 @@ public:
     gsHTree * clone() const;
 
 public:
+
+    void liftIndexLevel()
+    {
+        m_upperIndex *= 2;
+        this->template nodeSearch< liftCoordsOneLevel_visitor >();
+    }
+
+    void reduceIndexLevel()
+    {
+        m_upperIndex /= 2;
+        this->template nodeSearch< reduceCoordsOneLevel_visitor >();
+    }
 
     /// Returns the number of distinct knots in direction \a k of level \a lvl
     int numBreaks(int lvl, int k) const
@@ -593,7 +631,9 @@ void clearBox ( point const & k1, point const & k2,
         local2globalIndex(p, static_cast<unsigned>(level), pp);
 
         GISMO_ASSERT( ( pp.array() <= m_upperIndex.array() ).all(),
-                      "pointSearch: Wrong input: "<< p.transpose()<<", level "<<level<<".\n" );
+                      "pointSearch: Wrong input: "<< p.transpose()<<", level "<<level
+                      << ", i.e. "<< pp.transpose()
+                      << " should not exceed "<< m_upperIndex.transpose()<< ".\n" );
         return node::pointSearch(pp,level,m_maxPath);
     }
 
