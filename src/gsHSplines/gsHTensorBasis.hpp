@@ -1573,7 +1573,8 @@ void gsHTensorBasis<d,T>::merge(const gsHTensorBasis<d,T> & other)
         GISMO_ASSERT(this->tensorLevel(0).knots(j).asMatrix() == other.tensorLevel(0).knots(j).asMatrix(),"Root level must have the same root basis, but the knot vector in direction "<<j<<" is different.");
 #endif
 
-    m_tree.merge(other.tree());
+    gsHTree<d,index_t> newtree = gsHTree<d,index_t>::merge(m_tree,other.tree());
+    std::swap(m_tree,newtree);
     needLevel( m_tree.getMaxInsLevel() );
     update_structure();
 }
