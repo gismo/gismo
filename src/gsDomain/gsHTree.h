@@ -243,6 +243,7 @@ public:
                            gsVector<Z, d> & result) const;
 
     const node* getRoot() const { return m_root; }
+          node* getRoot()       { return m_root; }
 
     /// Accessor for gsHTree::m_upperIndex
     const point & upperCorner() const
@@ -280,7 +281,9 @@ public:
     /** \brief Merge two trees
     \todo continue docs
     */
-    void merge(const gsHTree<d,Z> & other);
+    // void merge(const gsHTree<d,Z> & other);
+    static gsHTree merge(const gsHTree<d,Z>& tree1, const gsHTree<d,Z>& tree2);
+
 
     /** \brief The insert function which insert box
     defined by points \em lower and \em upper to level \em lvl.
@@ -593,6 +596,18 @@ public:
     void computeMaxInsLevel();
 
 private:
+
+    static node* mergeNodes(const node* node1, const node* node2, node* parent = nullptr);
+    static node* mergeLeafWithSplit(const node* leafNode, const node* splitNode, node* parent);
+    static node* mergeTwoSplits(const node* node1, const node* node2, node* parent);
+    static node* createRefinedSplit(const node* primarySplit, const node* secondarySplit, node* parent);
+    static node* mergeNodeWithSplit(const node* targetNode, const node* splitNode, node* parent);
+    static box getNodeBox(const node* n);
+    static bool boxesOverlap(const typename node::kdBox& box1, const typename node::kdBox& box2);
+    static box intersectBoxes(const typename node::kdBox& box1, const typename node::kdBox& box2);
+    static bool nodeOverlapsWithBox(const node* node, const typename node::kdBox& box);
+    static node* splitNodeAndMerge(const node* targetNode, const node* splitNode, node* parent);
+    static node* copySubtreeInBox(const node* source, const typename node::kdBox& box, node* parent);
 
     /// Returns true if the boxes overlap
     /// \param box1

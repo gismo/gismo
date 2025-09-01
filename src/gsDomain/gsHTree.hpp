@@ -220,155 +220,390 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
         m_maxInsLevel = lvl;
 }
 
-template<short_t d, class Z> void
-gsHTree<d, Z>::merge(const gsHTree<d,Z> & other)
+template<short_t d, class Z>
+gsHTree<d,Z> gsHTree<d,Z>::merge(const gsHTree<d,Z>& tree1, const gsHTree<d,Z>& tree2)
 {
-    // Traverse both trees simultaneously using a stack-based approach
-    std::stack<std::pair<node*, const node*>> stack;
-    stack.push(std::make_pair(m_root, other.getRoot()));
+    // Create result tree with same parameters as tree1
+    gsHTree<d,Z> result;
+    result.m_indexLevel = tree1.m_indexLevel;
+    result.m_upperIndex = tree1.m_upperIndex;
+    result.m_maxInsLevel = std::max(tree1.m_maxInsLevel, tree2.m_maxInsLevel);
+    result.m_maxPath = 0; // Will be computed during merge
 
-    while (!stack.empty())
+    // // Merge the root nodes
+    result.m_root = mergeNodes(tree1.m_root, tree2.m_root);
+
+    // Compute max path length
+    result.computeMaxInsLevel();
+
+    return result;
+}
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node* gsHTree<d,Z>::mergeNodes(const node* node1, const node* node2, node* parent)
+{
+    // For split nodes, we need to compare their spatial regions differently
+    // since they don't have boxes directly stored
+
+    // Get the spatial regions of both nodes
+    typename node::kdBox box1 = getNodeBox(node1);
+    typename node::kdBox box2 = getNodeBox(node2);
+
+    // Ensure both nodes represent the same spatial region
+    GISMO_ASSERT(box1.first == box2.first && box1.second == box2.second,
+                 "Nodes must represent the same spatial region");
+
+    // Case 1: Both are leaves - take maximum level
+    if (node1->isLeaf() && node2->isLeaf())
     {
-        std::pair<node*, const node*> current = stack.top();
-        stack.pop();
-
-        node* thisNode = current.first;
-        const node* otherNode = current.second;
-
-        // Case 1: other is a split node, but this is a leaf
-        // Split this leaf to match other's structure and copy subtree
-        if (!otherNode->isLeaf() && thisNode->isLeaf())
-        {
-            // Split this leaf using other's split parameters
-            thisNode->axis = otherNode->axis;
-            thisNode->pos = otherNode->pos;
-            thisNode->split();
-
-            // Replace created children with copies from other
-            delete thisNode->left;
-            delete thisNode->right;
-
-            thisNode->left = new node(*otherNode->left, thisNode);
-            thisNode->right = new node(*otherNode->right, thisNode);
-        }
-        // Case 2: this has a split node but other has a leaf
-        // Keep existing structure - no action needed
-        else if (!thisNode->isLeaf() && otherNode->isLeaf())
-        {
-            // Do nothing - keep this tree's structure
-        }
-        // Case 3: both are split nodes
-        // Check split compatibility and handle mismatches
-        else if (!thisNode->isLeaf() && !otherNode->isLeaf())
-        {
-            // If splits match, traverse children directly
-            if (thisNode->axis == otherNode->axis && thisNode->pos == otherNode->pos)
-            {
-                stack.push(std::make_pair(thisNode->left, otherNode->left));
-                stack.push(std::make_pair(thisNode->right, otherNode->right));
-            }
-            else
-            {
-                // Split mismatch - preserve this tree's structure and spatially merge other's content
-                // gsDebug << "Split mismatch: thisNode axis=" << thisNode->axis
-                //         << " pos=" << thisNode->pos
-                //         << ", otherNode axis=" << otherNode->axis
-                //         << " pos=" << otherNode->pos << "\n";
-
-                // Since the splits don't match, we can't do a direct structural merge.
-                // Instead, we need to merge the other tree's leaves into this tree's structure.
-                // We'll recursively attempt to merge otherNode's left and right subtrees
-                // with the appropriate parts of thisNode.
-
-                // Determine which child of thisNode should receive otherNode's left child
-                // based on the spatial overlap of their boxes
-                if (otherNode->left && !otherNode->left->isLeaf())
-                {
-                    // Split node - merge with both children
-                    stack.push(std::make_pair(thisNode->left, otherNode->left));
-                    stack.push(std::make_pair(thisNode->right, otherNode->left));
-                }
-                else if (otherNode->left && otherNode->left->isLeaf())
-                {
-                    // Leaf node - determine spatial overlap
-                    if (otherNode->left->box->second[thisNode->axis] <= thisNode->pos)
-                    {
-                        stack.push(std::make_pair(thisNode->left, otherNode->left));
-                    }
-                    else if (otherNode->left->box->first[thisNode->axis] >= thisNode->pos)
-                    {
-                        stack.push(std::make_pair(thisNode->right, otherNode->left));
-                    }
-                    else
-                    {
-                        // Spans both sides
-                        stack.push(std::make_pair(thisNode->left, otherNode->left));
-                        stack.push(std::make_pair(thisNode->right, otherNode->left));
-                    }
-                }
-
-                // Process other's right child
-                if (otherNode->right && !otherNode->right->isLeaf())
-                {
-                    stack.push(std::make_pair(thisNode->left, otherNode->right));
-                    stack.push(std::make_pair(thisNode->right, otherNode->right));
-                }
-                else if (otherNode->right && otherNode->right->isLeaf())
-                {
-                    if (otherNode->right->box->second[thisNode->axis] <= thisNode->pos)
-                    {
-                        stack.push(std::make_pair(thisNode->left, otherNode->right));
-                    }
-                    else if (otherNode->right->box->first[thisNode->axis] >= thisNode->pos)
-                    {
-                        stack.push(std::make_pair(thisNode->right, otherNode->right));
-                    }
-                    else
-                    {
-                        stack.push(std::make_pair(thisNode->left, otherNode->right));
-                        stack.push(std::make_pair(thisNode->right, otherNode->right));
-                    }
-                }
-            }
-        }
-        // Case 4: both are leaves
-        // Merge leaf nodes by computing box intersection and taking max level
-        else if (thisNode->isLeaf() && otherNode->isLeaf())
-        {
-            // Check for box overlap
-            bool hasOverlap = true;
-            for (short_t i = 0; i < d; ++i)
-            {
-                if (thisNode->box->second[i] <= otherNode->box->first[i] ||
-                    otherNode->box->second[i] <= thisNode->box->first[i])
-                {
-                    hasOverlap = false;
-                    break;
-                }
-            }
-
-            if (!hasOverlap)
-            {
-                gsDebug << "Warning: Non-overlapping leaf boxes encountered in merge. Skipping merge.\n";
-                continue;
-            }
-
-            // Compute box intersection
-            for (short_t i = 0; i < d; ++i)
-            {
-                thisNode->box->first[i] = std::max(thisNode->box->first[i], otherNode->box->first[i]);
-                thisNode->box->second[i] = std::min(thisNode->box->second[i], otherNode->box->second[i]);
-            }
-
-            GISMO_ASSERT(!isDegenerate(*thisNode->box),
-                        "Intersection of leaf node boxes should be non-degenerate");
-
-            thisNode->level = std::max(thisNode->level, otherNode->level);
-        }
+        node* result = new node();
+        result->parent = parent;
+        result->box = new typename node::kdBox(box1); // Use computed box
+        result->level = std::max(node1->level, node2->level);
+        result->axis = -1; // Mark as leaf
+        result->left = result->right = nullptr;
+        return result;
     }
 
-    // Update max insertion level after merge
-    computeMaxInsLevel();
+    // Case 2: One is leaf, other is split - need to create refined structure
+    if (node1->isLeaf() && !node2->isLeaf())
+    {
+        return mergeLeafWithSplit(node1, node2, parent);
+    }
+
+    if (!node1->isLeaf() && node2->isLeaf())
+    {
+        return mergeLeafWithSplit(node2, node1, parent);
+    }
+
+    // Case 3: Both are splits
+    if (!node1->isLeaf() && !node2->isLeaf())
+    {
+        return mergeTwoSplits(node1, node2, parent);
+    }
+
+    return nullptr; // Should never reach here
+}
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node* gsHTree<d,Z>::mergeLeafWithSplit(const node* leafNode, const node* splitNode, node* parent)
+{
+    // Create a copy of the leaf node
+    node* result = new node(*leafNode, parent);
+
+    // Split it using the splitNode's parameters (reusing existing split logic)
+    result->axis = splitNode->axis;
+    result->pos = splitNode->pos;
+    result->split(); // This handles all the box bisection automatically!
+
+    // Recursively merge the children
+    result->left = mergeNodes(result->left, splitNode->left, result);
+    result->right = mergeNodes(result->right, splitNode->right, result);
+
+    return result;
+}
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node* gsHTree<d,Z>::mergeTwoSplits(const node* node1, const node* node2, node* parent)
+{
+    // If splits match exactly, merge recursively
+    if (node1->axis == node2->axis && node1->pos == node2->pos)
+    {
+        node* result = new node();
+        result->parent = parent;
+        result->box = nullptr;
+        result->axis = node1->axis;
+        result->pos = node1->pos;
+        result->level = 0;
+
+        result->left = mergeNodes(node1->left, node2->left, result);
+        result->right = mergeNodes(node1->right, node2->right, result);
+
+        return result;
+    }
+
+    // Splits don't match - need to create a refined structure
+    // Strategy: Use the split that creates the finest decomposition
+
+    // For deterministic behavior, choose the split with smaller axis, then smaller position
+    bool useNode1Split = (node1->axis < node2->axis) ||
+                        (node1->axis == node2->axis && node1->pos < node2->pos);
+
+    if (useNode1Split)
+    {
+        return createRefinedSplit(node1, node2, parent);
+    }
+    else
+    {
+        return createRefinedSplit(node2, node1, parent);
+    }
+}
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node* gsHTree<d,Z>::createRefinedSplit(const node* primarySplit, const node* secondarySplit, node* parent)
+{
+    // Create result with primary split's parameters
+    node* result = new node();
+    result->parent = parent;
+    result->box = nullptr;
+    result->axis = primarySplit->axis;
+    result->pos = primarySplit->pos;
+    result->level = 0;
+
+    // For each child of primarySplit, merge it with the appropriate parts of secondarySplit
+    result->left = mergeNodeWithSplit(primarySplit->left, secondarySplit, result);
+    result->right = mergeNodeWithSplit(primarySplit->right, secondarySplit, result);
+
+    return result;
+}
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node* gsHTree<d,Z>::mergeNodeWithSplit(const node* targetNode, const node* splitNode, node* parent)
+{
+    // Get the spatial region of targetNode
+    typename node::kdBox targetBox = getNodeBox(targetNode);
+
+    // Split the splitNode according to targetNode's spatial region
+    if (splitNode->isLeaf())
+    {
+        // If splitNode is a leaf, check if it overlaps with targetNode's region
+        typename node::kdBox splitBox = *splitNode->box;
+
+        if (boxesOverlap(targetBox, splitBox))
+        {
+            // Create intersection and merge
+            typename node::kdBox intersection = intersectBoxes(targetBox, splitBox);
+
+            node* intersectionLeaf = new node();
+            intersectionLeaf->box = new typename node::kdBox(intersection);
+            intersectionLeaf->level = splitNode->level;
+            intersectionLeaf->axis = -1;
+            intersectionLeaf->left = intersectionLeaf->right = nullptr;
+
+            node* result = mergeNodes(targetNode, intersectionLeaf, parent);
+            delete intersectionLeaf;
+            return result;
+        }
+        else
+        {
+            // No overlap - just copy targetNode
+            return new node(*targetNode, parent);
+        }
+    }
+    else
+    {
+        // splitNode is a split - determine which children overlap with targetBox
+        bool leftOverlaps = nodeOverlapsWithBox(splitNode->left, targetBox);
+        bool rightOverlaps = nodeOverlapsWithBox(splitNode->right, targetBox);
+
+        if (leftOverlaps && rightOverlaps)
+        {
+            // Both children overlap - need to split targetNode
+            return splitNodeAndMerge(targetNode, splitNode, parent);
+        }
+        else if (leftOverlaps)
+        {
+            return mergeNodeWithSplit(targetNode, splitNode->left, parent);
+        }
+        else if (rightOverlaps)
+        {
+            return mergeNodeWithSplit(targetNode, splitNode->right, parent);
+        }
+        else
+        {
+            // No overlap - just copy targetNode
+            return new node(*targetNode, parent);
+        }
+    }
+}
+
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node::kdBox gsHTree<d,Z>::getNodeBox(const node* n)
+{
+    if (n->isLeaf())
+    {
+        return *n->box;
+    }
+    else
+    {
+        // For split nodes, compute box from children using existing methods
+        const point& leftLow = n->left->isLeaf() ? n->left->lowCorner() : getNodeBox(n->left).first;
+        const point& leftUpp = n->left->isLeaf() ? n->left->uppCorner() : getNodeBox(n->left).second;
+        const point& rightLow = n->right->isLeaf() ? n->right->lowCorner() : getNodeBox(n->right).first;
+        const point& rightUpp = n->right->isLeaf() ? n->right->uppCorner() : getNodeBox(n->right).second;
+
+        typename node::kdBox result;
+        for (short_t i = 0; i < d; ++i)
+        {
+            result.first[i] = std::min(leftLow[i], rightLow[i]);
+            result.second[i] = std::max(leftUpp[i], rightUpp[i]);
+        }
+        return result;
+    }
+}
+
+template<short_t d, class Z>
+bool gsHTree<d,Z>::boxesOverlap(const typename node::kdBox& box1, const typename node::kdBox& box2)
+{
+    for (short_t i = 0; i < d; ++i)
+    {
+        if (box1.second[i] <= box2.first[i] || box2.second[i] <= box1.first[i])
+            return false;
+    }
+    return true;
+}
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node::kdBox gsHTree<d,Z>::intersectBoxes(const typename node::kdBox& box1, const typename node::kdBox& box2)
+{
+    typename node::kdBox result;
+    for (short_t i = 0; i < d; ++i)
+    {
+        result.first[i] = std::max(box1.first[i], box2.first[i]);
+        result.second[i] = std::min(box1.second[i], box2.second[i]);
+    }
+    return result;
+}
+
+template<short_t d, class Z>
+bool gsHTree<d,Z>::nodeOverlapsWithBox(const node* node, const typename node::kdBox& box)
+{
+    // Get the spatial region of the node
+    typename node::kdBox nodeBox = getNodeBox(node);
+
+    // Check if the boxes overlap
+    return boxesOverlap(nodeBox, box);
+}
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node* gsHTree<d,Z>::splitNodeAndMerge(const node* targetNode, const node* splitNode, node* parent)
+{
+    // Create a new split node with splitNode's parameters
+    node* result = new node();
+    result->parent = parent;
+    result->box = nullptr;
+    result->axis = splitNode->axis;
+    result->pos = splitNode->pos;
+    result->level = 0;
+
+    // Get targetNode's box
+    typename node::kdBox targetBox = getNodeBox(targetNode);
+
+    // Create left and right boxes by splitting targetBox
+    typename node::kdBox leftBox, rightBox;
+    bisectBox(targetBox, splitNode->axis, splitNode->pos, leftBox, rightBox);
+
+    // Create left child by merging targetNode's left part with splitNode's left child
+    if (nodeOverlapsWithBox(splitNode->left, leftBox))
+    {
+        node* leftTarget = new node();
+        if (targetNode->isLeaf())
+        {
+            leftTarget->box = new typename node::kdBox(leftBox);
+            leftTarget->level = targetNode->level;
+            leftTarget->axis = -1;
+            leftTarget->left = leftTarget->right = nullptr;
+        }
+        else
+        {
+            leftTarget = copySubtreeInBox(targetNode, leftBox, nullptr);
+        }
+
+        result->left = mergeNodeWithSplit(leftTarget, splitNode->left, result);
+        if (targetNode->isLeaf()) delete leftTarget;
+    }
+    else
+    {
+        result->left = copySubtreeInBox(targetNode, leftBox, result);
+    }
+
+    // Create right child by merging targetNode's right part with splitNode's right child
+    if (nodeOverlapsWithBox(splitNode->right, rightBox))
+    {
+        node* rightTarget = new node();
+        if (targetNode->isLeaf())
+        {
+            rightTarget->box = new typename node::kdBox(rightBox);
+            rightTarget->level = targetNode->level;
+            rightTarget->axis = -1;
+            rightTarget->left = rightTarget->right = nullptr;
+        }
+        else
+        {
+            rightTarget = copySubtreeInBox(targetNode, rightBox, nullptr);
+        }
+
+        result->right = mergeNodeWithSplit(rightTarget, splitNode->right, result);
+        if (targetNode->isLeaf()) delete rightTarget;
+    }
+    else
+    {
+        result->right = copySubtreeInBox(targetNode, rightBox, result);
+    }
+
+    return result;
+}
+
+template<short_t d, class Z>
+typename gsHTree<d,Z>::node* gsHTree<d,Z>::copySubtreeInBox(const node* source, const typename node::kdBox& box, node* parent)
+{
+    if (source->isLeaf())
+    {
+        // Create intersection using existing box logic
+        typename node::kdBox intersection = intersectBoxes(*source->box, box);
+
+        node* result = new node();
+        result->parent = parent;
+        result->box = new typename node::kdBox(intersection);
+        result->level = source->level;
+        result->axis = -1;
+        result->left = result->right = nullptr;
+        return result;
+    }
+    else
+    {
+        // Check overlap using existing methods
+        typename node::kdBox leftBox = *source->left->box;
+        typename node::kdBox rightBox = *source->right->box;
+
+        bool leftOverlaps = boxesOverlap(leftBox, box);
+        bool rightOverlaps = boxesOverlap(rightBox, box);
+
+        if (leftOverlaps && rightOverlaps)
+        {
+            // Both children overlap - copy structure using existing copy constructor
+            node* result = new node(*source, parent);
+            // Then recursively refine the children
+            delete result->left;
+            delete result->right;
+            result->left = copySubtreeInBox(source->left, box, result);
+            result->right = copySubtreeInBox(source->right, box, result);
+            return result;
+        }
+        else if (leftOverlaps)
+        {
+            return copySubtreeInBox(source->left, box, parent);
+        }
+        else if (rightOverlaps)
+        {
+            return copySubtreeInBox(source->right, box, parent);
+        }
+        else
+        {
+            // No overlap - create minimal leaf
+            typename node::kdBox sourceBox = getNodeBox(source);
+            typename node::kdBox intersection = intersectBoxes(sourceBox, box);
+
+            node* result = new node();
+            result->parent = parent;
+            result->box = new typename node::kdBox(intersection);
+            result->level = 0;
+            result->axis = -1;
+            result->left = result->right = nullptr;
+            return result;
+        }
+    }
 }
 
 template<short_t d, class Z> void
