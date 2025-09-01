@@ -18,7 +18,7 @@ namespace gismo
 namespace Expr
 {
 
-// --- ExpressionTraits specializations for ProductExpression ---
+    // --- ExpressionTraits specializations for ProductExpression ---
 // Primary template: Catches all unsupported combinations with a compile-time error
 template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
 struct ExpressionTraits<ProductExpression<LhsExpr, RhsExpr, LhsOrder, RhsOrder, LhsSpace, RhsSpace>>
@@ -36,7 +36,7 @@ struct ExpressionTraits<ProductExpression<LhsExpr, RhsExpr, LhsOrder, RhsOrder, 
 template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
 class ProductExpression
 {
-    static_assert(std::is_same<LhsExpr, void>::value,
+    static_assert(false,
                   "ProductExpression: Unsupported tensor order combination for product.");
 };
 
@@ -164,6 +164,9 @@ private:
 template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
 struct ExpressionTraits<ProductExpression<LhsExpr, RhsExpr, 2, 1, LhsSpace, RhsSpace>>
 {
+    typedef LhsExpr LhsType;
+    typedef RhsExpr RhsType;
+
     using Scalar = typename ExpressionTraits<LhsExpr>::Scalar;
     static constexpr size_t order = 1;
     static constexpr size_t space = ExpressionTraits<RhsExpr>::space; // TODO: Define appropriate space logic
@@ -345,7 +348,9 @@ typename std::enable_if<
 >::type
 operator*(const TransposeExpression<LhsExpr>& vec, const RhsExpr& mat)
 {
-    return TransposeExpression<ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>>(mat, vec.expr());
+    auto product = ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>(mat, vec.expr());
+    return TransposeExpression<ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>>(product);
+
 }
 
 // Matrix-matrix product

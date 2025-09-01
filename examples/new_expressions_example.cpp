@@ -78,10 +78,10 @@ int main(int argc, char *argv[])
     ExpressionHelper<real_t> helper;
     helper.points() = points;
 
-    auto α = helper.getConstant(2.0);
-    auto β = helper.getConstant(βvec);
-    auto γ = helper.getConstant(γmat);
-    auto δ = helper.getScalarFunction(fun);
+    auto α = helper.getConstant(2.0,"α");
+    auto β = helper.getConstant(βvec,"β");
+    auto γ = helper.getConstant(γmat,"γ");
+    auto δ = helper.getScalarFunction(fun,"δ");
 
     print(α);
     print(β);
@@ -119,74 +119,228 @@ int main(int argc, char *argv[])
     gsDebug<<"cross(β,β): "<< eval(helper, cross(β,β), points)<<"\n";
 
     gsInfo << "\n=== Vector Calculus Identity Tests ===\n";
+    gsInfo << "Reference: https://en.wikipedia.org/wiki/Vector_calculus_identities\n";
 
     // Create additional expressions for testing
     gsConstantFunction<> cfun1(5.0,3);
     gsConstantFunction<> cfun2(7.0,3);
     gsConstantFunction<> cfun3(gsVector<>::vec(1.0,2.0,3.0),3);
     gsConstantFunction<> cfun4(gsVector<>::vec(4.0,5.0,6.0),3);
-    auto ψ = helper.getScalarFunction(cfun1);  // Another scalar function
-    auto φ = helper.getScalarFunction(cfun2);  // Another scalar function
-    auto A = helper.getVectorFunction(cfun3);       // Vector field A
-    auto B = helper.getVectorFunction(cfun4);       // Vector field B (same as A for testing)
+    auto ψ = helper.getScalarFunction(cfun1,"ψ");  // Scalar function ψ
+    auto φ = helper.getScalarFunction(cfun2,"φ");  // Scalar function φ
+    auto A = helper.getVectorFunction(cfun3,"A");  // Vector field A
+    auto B = helper.getVectorFunction(cfun4,"B");  // Vector field B
 
-    gsInfo << "\n--- Operator tests ---\n";
-    print(ψ);
-    print(φ);
-    print(A);
-    print(B);
+    gsInfo << "\n--- Operator definitions ---\n";
+    gsInfo<<"ψ = "; print(ψ);
+    gsInfo<<"φ = "; print(φ);
+    gsInfo<<"A = "; print(A);
+    gsInfo<<"B = "; print(B);
 
-    print(grad(ψ));
-    print(div(A));
-    print(curl(A));
-    print(lapl(ψ));
+    // ==========================================================================
+    // FIRST DERIVATIVE IDENTITIES
+    // Reference: https://en.wikipedia.org/wiki/Vector_calculus_identities#First_derivative_identities
+    // ==========================================================================
 
-    print(ψ + φ);
-    print(ψ - φ);
-    print(ψ * φ);
-    print(ψ / φ);
+    gsInfo << "\n\n=== FIRST DERIVATIVE IDENTITIES ===\n";
+    gsInfo << "Reference: https://en.wikipedia.org/wiki/Vector_calculus_identities#First_derivative_identities\n";
 
-    gsInfo << "\n--- Gradient Identities ---\n";
-    print(grad(ψ + φ));                      // ∇(ψ + φ) = ∇ψ + ∇φ
-    print(grad(ψ * φ));                      // ∇(ψφ) = ψ∇φ + φ∇ψ
-    print(grad(ψ / φ));                      // ∇(ψ/φ) = (φ∇ψ - ψ∇φ)/φ²
-    print(grad(dot(A, B)));                  // ∇(A·B) = (A·∇)B + (B·∇)A + A×(∇×B) + B×(∇×A)
-    print(grad(cross(A, B)));                // ∇(A×B) = (∇A)×B - (∇B)×A
+    // Distributive properties
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Distributive_properties
+    gsInfo << "\n--- Distributive Properties ---\n";
+    gsInfo << "∇(ψ + φ) = ∇ψ + ∇φ\n";
+    gsInfo<<"∇(ψ + φ) = "; print(grad(ψ + φ));
 
-    gsInfo << "\n--- Divergence Identities ---\n";
-    print(div(A + B));                       // ∇·(A + B) = ∇·A + ∇·B
-    print(div(φ * A));                       // ∇·(φA) = φ∇·A + A·∇φ
-    print(div(cross(A, B)));                 // ∇·(A×B) = B·(∇×A) - A·(∇×B)
-    print(div(grad(ψ)));                     // ∇·(∇ψ) = ∇²ψ (Laplacian)
+    gsInfo << "∇(A + B) = ∇A + ∇B\n";
+    gsInfo<<"∇(A + B) = "; print(grad(A + B));
 
-    gsInfo << "\n--- Curl Identities ---\n";
-    print(curl(A + B));                      // ∇×(A + B) = ∇×A + ∇×B
-    print(curl(φ * A));                      // ∇×(φA) = φ(∇×A) + (∇φ)×A
-    print(curl(cross(A, B)));                // ∇×(A×B) = A(∇·B) - B(∇·A) + (B·∇)A - (A·∇)B
+    gsInfo << "∇·(A + B) = ∇·A + ∇·B\n";
+    gsInfo<<"∇·(A + B) = "; print(div(A + B));
 
-    gsInfo << "\n--- Laplacian Identities ---\n";
-    print(lapl(ψ + φ));                      // ∇²(ψ + φ) = ∇²ψ + ∇²φ
-    print(lapl(ψ * φ));                      // ∇²(ψφ) = ψ∇²φ + 2∇ψ·∇φ + φ∇²ψ
-    print(lapl(ψ / φ));                      // ∇²(ψ/φ) = (φ∇²ψ - ψ∇²φ - 2∇ψ·∇φ)/φ²
+    gsInfo << "∇×(A + B) = ∇×A + ∇×B\n";
+    gsInfo<<"∇×(A + B) = "; print(curl(A + B));
 
-    gsInfo << "\n--- Higher-Order Identities ---\n";
-    print(grad(grad(ψ)));                    // ∇(∇ψ) = Hessian matrix
-    print(curl(grad(ψ)));                    // ∇×(∇ψ) = 0 (curl of gradient is zero)
-    print(div(curl(A)));                     // ∇·(∇×A) = 0 (divergence of curl is zero)
-    print(curl(curl(A)));                    // ∇×(∇×A) = ∇(∇·A) - ∇²A
-    // print(grad(div(A)));                     // ∇(∇·A)
-    // print(lapl(grad(ψ)));                    // ∇²(∇ψ) = ∇(∇²ψ) = gradient of Laplacian
+    // Product rule for multiplication by a scalar
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Product_rule_for_multiplication_by_a_scalar
+    gsInfo << "\n--- Product Rule for Multiplication by a Scalar ---\n";
+    gsInfo << "∇(ψφ) = φ∇ψ + ψ∇φ\n";
+    gsInfo<<"∇(ψφ) = "; print(grad(ψ * φ));
 
-    gsInfo << "\n--- Product Rule Combinations ---\n";
-    print(grad(ψ * A));                      // ∇(ψA) = ψ∇A + A⊗∇ψ (tensor product)
-    print(div(ψ * A));                       // ∇·(ψA) = ψ∇·A + A·∇ψ
-    print(curl(ψ * A));                      // ∇×(ψA) = ψ(∇×A) + (∇ψ)×A
-    print(grad(A / φ));                      // ∇(A/φ) = (φ∇A - A⊗∇φ)/φ²
+    gsInfo << "∇·(ψA) = ψ∇·A + (∇ψ)·A\n";
+    gsInfo<<"∇·(ψA) = "; print(div(ψ * A));
 
-    // gsInfo << "\n--- Triple Product Identities ---\n";
-    // print(div(cross(A, cross(B, A))));       // ∇·(A×(B×A))
-    // print(curl(cross(A, cross(B, A))));      // ∇×(A×(B×A))
-    // print(grad(dot(A, cross(B, A))));        // ∇(A·(B×A))
+    gsInfo << "∇×(ψA) = ψ∇×A + (∇ψ)×A\n";
+    gsInfo<<"∇×(ψA) = "; print(curl(ψ * A));
+
+    gsInfo << "∇²(ψφ) = ψ∇²φ + 2∇ψ·∇φ + φ∇²ψ\n";
+    gsInfo<<"∇²(ψφ) = "; print(lapl(ψ * φ));
+
+    // Quotient rule for division by a scalar
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Quotient_rule_for_division_by_a_scalar
+    gsInfo << "\n--- Quotient Rule for Division by a Scalar ---\n";
+    gsInfo << "∇(ψ/φ) = (φ∇ψ - ψ∇φ)/φ²\n";
+    gsInfo<<"∇(ψ/φ) = "; print(grad(ψ / φ));
+
+    gsInfo << "∇·(A/φ) = (φ∇·A - ∇φ·A)/φ²\n";
+    gsInfo<<"∇·(A/φ) = "; print(div(A / φ));
+
+    gsInfo << "∇×(A/φ) = (φ∇×A - ∇φ×A)/φ²\n";
+    gsInfo<<"∇×(A/φ) = "; print(curl(A / φ));
+
+    // Chain rule - would need composed functions, commenting out for now
+    gsInfo << "\n--- Chain Rule ---\n";
+    gsInfo << "// Chain rule identities require function composition - not easily testable here\n";
+    gsInfo << "// ∇(f∘φ) = (f'∘φ)∇φ\n";
+    gsInfo << "// ∇(φ∘A) = (∇A)·(∇φ∘A)\n";
+
+    // Dot product rule
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Dot_product_rule
+    gsInfo << "\n--- Dot Product Rule ---\n";
+    gsInfo << "∇(A·B) = (A·∇)B + (B·∇)A + A×(∇×B) + B×(∇×A)\n";
+    gsInfo<<"∇(A·B) = "; print(grad(dot(A, B)));
+
+    // Cross product rule
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Cross_product_rule
+    gsInfo << "\n--- Cross Product Rule ---\n";
+    gsInfo << "∇·(A×B) = (∇×A)·B - A·(∇×B)\n";
+    gsInfo<<"∇·(A×B) = "; print(div(cross(A, B)));
+
+    gsInfo << "∇×(A×B) = A(∇·B) - B(∇·A) + (B·∇)A - (A·∇)B\n";
+    gsInfo<<"∇×(A×B) = "; print(curl(cross(A, B)));
+
+    // ==========================================================================
+    // SECOND DERIVATIVE IDENTITIES
+    // Reference: https://en.wikipedia.org/wiki/Vector_calculus_identities#Second_derivative_identities
+    // ==========================================================================
+
+    gsInfo << "\n\n=== SECOND DERIVATIVE IDENTITIES ===\n";
+    gsInfo << "Reference: https://en.wikipedia.org/wiki/Vector_calculus_identities#Second_derivative_identities\n";
+
+    // Divergence of curl is zero
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Divergence_of_curl_is_zero
+    gsInfo << "\n--- Divergence of Curl is Zero ---\n";
+    gsInfo << "∇·(∇×A) = 0\n";
+    gsInfo<<"∇·(∇×A) = "; print(div(curl(A)));
+
+    // Divergence of gradient is Laplacian
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Divergence_of_gradient_is_Laplacian
+    gsInfo << "\n--- Divergence of Gradient is Laplacian ---\n";
+    gsInfo << "Δψ = ∇²ψ = ∇·(∇ψ)\n";
+    gsInfo<<"∇·(∇ψ) = "; print(div(grad(ψ)));
+
+    // Curl of gradient is zero
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Curl_of_gradient_is_zero
+    gsInfo << "\n--- Curl of Gradient is Zero ---\n";
+    gsInfo << "∇×(∇φ) = 0\n";
+    gsInfo<<"∇×(∇φ) = "; print(curl(grad(φ)));
+
+    // Curl of curl
+    // https://en.wikipedia.org/wiki/Vector_calculus_identities#Curl_of_curl
+    gsInfo << "\n--- Curl of Curl ---\n";
+    gsInfo << "∇×(∇×A) = ∇(∇·A) - ∇²A\n";
+    gsInfo<<"WRONG: ∇×(∇×A) = "; print(curl(curl(A)));
+
+    // ==========================================================================
+    // SUMMARY OF IMPORTANT IDENTITIES
+    // Reference: https://en.wikipedia.org/wiki/Vector_calculus_identities#Summary_of_important_identities
+    // ==========================================================================
+
+    gsInfo << "\n\n=== SUMMARY OF IMPORTANT IDENTITIES ===\n";
+    gsInfo << "Reference: https://en.wikipedia.org/wiki/Vector_calculus_identities#Summary_of_important_identities\n";
+
+    // Gradient identities
+    gsInfo << "\n--- Gradient ---\n";
+    gsInfo << "• ∇(ψ + φ) = ∇ψ + ∇φ\n";
+    gsInfo<<"  Result: "; print(grad(ψ + φ));
+
+    gsInfo << "• ∇(ψφ) = φ∇ψ + ψ∇φ\n";
+    gsInfo<<"  Result: "; print(grad(ψ * φ));
+
+    gsInfo << "• ∇(ψA) = ∇ψ⊗A + ψ∇A\n";
+    gsInfo<<"  Result: "; print(grad(ψ * A));
+
+    gsInfo << "• ∇(A·B) = (A·∇)B + (B·∇)A + A×(∇×B) + B×(∇×A)\n";
+    gsInfo<<"  Result: "; print(grad(dot(A, B)));
+
+    // Divergence identities
+    gsInfo << "\n--- Divergence ---\n";
+    gsInfo << "• ∇·(A + B) = ∇·A + ∇·B\n";
+    gsInfo<<"  Result: "; print(div(A + B));
+
+    gsInfo << "• ∇·(ψA) = ψ∇·A + A·∇ψ\n";
+    gsInfo<<"  Result: "; print(div(ψ * A));
+
+    gsInfo << "• ∇·(A×B) = (∇×A)·B - (∇×B)·A\n";
+    gsInfo<<"  Result: "; print(div(cross(A, B)));
+
+    // Curl identities
+    gsInfo << "\n--- Curl ---\n";
+    gsInfo << "• ∇×(A + B) = ∇×A + ∇×B\n";
+    gsInfo<<"  Result: "; print(curl(A + B));
+
+    gsInfo << "• ∇×(ψA) = ψ(∇×A) + (∇ψ)×A\n";
+    gsInfo<<"  Result: "; print(curl(ψ * A));
+
+    gsInfo << "• ∇×(ψ∇φ) = ∇ψ×∇φ\n";
+    gsInfo<<"  Result: "; print(curl(ψ * grad(φ)));
+
+    gsInfo << "• ∇×(A×B) = A(∇·B) - B(∇·A) + (B·∇)A - (A·∇)B\n";
+    gsInfo<<"  Result: "; print(curl(cross(A, B)));
+
+    // Second derivatives
+    gsInfo << "\n--- Second Derivatives ---\n";
+    gsInfo << "• ∇·(∇×A) = 0\n";
+    gsInfo<<"  Result: "; print(div(curl(A)));
+
+    gsInfo << "• ∇×(∇ψ) = 0\n";
+    gsInfo<<"  Result: "; print(curl(grad(ψ)));
+
+    gsInfo << "• ∇·(∇ψ) = ∇²ψ (scalar Laplacian)\n";
+    gsInfo<<"  Result: "; print(div(grad(ψ)));
+
+    gsInfo << "• ∇×(∇×A) = ∇(∇·A) - ∇²A (vector Laplacian identity)\n";
+    gsInfo<<"  WRONG [needs implementation of grad(div), which is different from div(grad)]: "; print(curl(curl(A)));
+
+    gsInfo << "\n--- Additional Tests ---\n";
+    gsInfo<<"∇(ψA) = "; print(grad(ψ * A));                      // ∇(ψA) = ψ∇A + A⊗∇ψ (tensor product)
+    gsInfo<<"∇(A/φ) = "; print(grad(A / φ));                      // ∇(A/φ) = (φ∇A - A⊗∇φ)/φ²
+
+    gsInfo << "\n--- Complex Expressions ---\n";
+    gsInfo<<"∇·(A×(B×A)) = "; print(div(cross(A, cross(B, A))));       // Triple cross product divergence
+    gsInfo<<"∇×(A×(B×A)) = "; print(curl(cross(A, cross(B, A))));      // Triple cross product curl
+    gsInfo<<"∇(A·(B×A)) = ";  print(grad(dot(A, cross(B, A))));        // Scalar triple product gradient
+
+    gsInfo << "\n--- TESTING DIRECTIONAL DERIVATIVE (A·∇)B ---\n";
+
+    // Test if we can compute (A·∇)B as dot(A, grad(B))
+    gsInfo << "(A·∇)B = ";
+    try {
+        auto directional_derivative = dot(A, grad(B));
+        print(directional_derivative);
+    } catch (const std::exception& e) {
+        gsInfo << "ERROR: " << e.what() << "\n";
+    }
+
+    gsInfo << "\n--- DEBUGGING TEMPLATE MATCHING ---\n";
+
+    // Test what type A and B create when combined with dot
+    auto testDot = dot(A, B);
+    gsInfo << "Type of dot(A,B): ";
+    print(testDot);
+
+    // Test what type grad creates when applied to the dot product
+    auto testGradDot = grad(testDot);
+    gsInfo << "Type of grad(dot(A,B)): ";
+    print(testGradDot);
+
+    // Test curl of curl
+    auto testCurl = curl(A);
+    gsInfo << "Type of curl(A): ";
+    print(testCurl);
+
+    auto testCurlCurl = curl(testCurl);
+    gsInfo << "Type of curl(curl(A)): ";
+    print(testCurlCurl);
 
     return EXIT_SUCCESS;
 }

@@ -37,6 +37,12 @@ namespace Expr
     class BaseObject : public BaseExpression<BaseObject<T,_order,_isConstant,_space>>
     {
         using Base = BaseExpression<BaseObject<T,_order,_isConstant,_space>>;
+
+    protected:
+        const std::array<size_t, _order> sizes_;
+        const size_t domainDim_;
+        const std::string label_;
+
     public:
         typedef typename ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::Scalar Scalar;
         static constexpr size_t order = ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::order;
@@ -44,18 +50,11 @@ namespace Expr
         static constexpr size_t deriv = ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::deriv;
         static constexpr bool isConstant = ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::isConstant;
 
-        const std::array<size_t, _order> sizes_;
         // Access to sizes is direct
-        const std::array<size_t, _order>& sizes() const override
-        {
-            return sizes_;
-        }
+        const std::array<size_t, _order>& sizes() const override { return sizes_; }
 
-        const size_t domainDim_;
-        size_t domainDim() const
-        {
-            return domainDim_;
-        }
+        size_t domainDim() const { return domainDim_; }
+
 
     public:
 
@@ -74,18 +73,20 @@ namespace Expr
 
     protected:
 
-        explicit BaseObject(size_t domainDim, const std::array<size_t, order> & input_sizes)
+        explicit BaseObject(size_t domainDim, const std::array<size_t, order> & input_sizes, std::string label = "a")
         :
         Base(), // Initialize base class properly
         sizes_(input_sizes),
-        domainDim_(domainDim)
+        domainDim_(domainDim),
+        label_(label)
         {}
 
         BaseObject(const BaseObject& other)
         :
         Base(),
         sizes_(other.sizes_),
-        domainDim_(other.domainDim_)
+        domainDim_(other.domainDim_),
+        label_(other.label_)
         {}
 
         BaseObject& operator=(const BaseObject&)
@@ -94,17 +95,17 @@ namespace Expr
         }
         ~BaseObject() = default;
 
-        // Helper to calculate total elements from sizes (used internally by derived classes)
-        static size_t tensorSize(std::array<size_t, order> dims)
-        {
-            if (order == 0) return 1; // Scalar has 1 element
-            size_t total = 1;
-            for (size_t dim_size : dims)
-            {
-                total *= dim_size;
-            }
-            return total;
-        }
+        // // Helper to calculate total elements from sizes (used internally by derived classes)
+        // static size_t tensorSize(std::array<size_t, order> dims)
+        // {
+        //     if (order == 0) return 1; // Scalar has 1 element
+        //     size_t total = 1;
+        //     for (size_t dim_size : dims)
+        //     {
+        //         total *= dim_size;
+        //     }
+        //     return total;
+        // }
 
     };
 }//namespace Expr

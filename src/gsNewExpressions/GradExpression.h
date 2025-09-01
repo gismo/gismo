@@ -137,6 +137,16 @@ public:
 
 };
 
+// Partial specialization for dot product with space=0
+// ∇(A·B) = (A·∇)B + (B·∇)A + A×(∇×B) + B×(∇×A)
+// For vectors A,B (order 1), result is a vector (order 1)
+template <typename LhsExpr, typename RhsExpr>
+auto grad(const InnerProductExpression<LhsExpr,RhsExpr,1,1,0,0>& expr)
+-> decltype(dot(expr.lhs(), grad(expr.rhs())) + dot(expr.rhs(), grad(expr.lhs())) + cross(expr.lhs(), curl(expr.rhs())) + cross(expr.rhs(), curl(expr.lhs())))
+{
+    return (dot(expr.lhs(), grad(expr.rhs())) + dot(expr.rhs(), grad(expr.lhs())) + cross(expr.lhs(), curl(expr.rhs())) + cross(expr.rhs(), curl(expr.lhs())));
+}
+
 // Generic factory function for easy creation
 template <typename E>
 GradExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> grad(const E& expr)
@@ -205,16 +215,6 @@ auto grad(const ProductExpression<LhsExpr,RhsExpr,1,0,ExpressionTraits<LhsExpr>:
     return outer(grad(expr.lhs()), expr.rhs()) + expr.lhs() * grad(expr.rhs());
 }
 
-// Partial specialization for dot product
-// ∇(A·B) = (A·∇)B + (B·∇)A + A×(∇×B) + B×(∇×A)
-// For vectors A,B (order 1), result is a vector (order 1)
-template <typename LhsExpr, typename RhsExpr>
-auto grad(const InnerProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space> expr)
--> decltype(dot(expr.lhs(), grad(expr.rhs())) + dot(expr.rhs(), grad(expr.lhs())) + cross(expr.lhs(), curl(expr.rhs())) + cross(expr.rhs(), curl(expr.lhs())))
-{
-    return (dot(expr.lhs(), grad(expr.rhs())) + dot(expr.rhs(), grad(expr.lhs())) + cross(expr.lhs(), curl(expr.rhs())) + cross(expr.rhs(), curl(expr.lhs())));
-}
-
 // Partial specialization for cross product
 // ∇(A×B) = (∇A)×B - (∇B)×A
 // For vectors A,B (order 1), result is a matrix (order 2)
@@ -265,7 +265,7 @@ template <typename E>
 auto grad(const DivExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr)
 -> void
 {
-    static_assert(false,"∇(∇•) is undefined: gradient of divergence is not a valid operation");
+    GISMO_ERROR("∇(∇•): gradient of divergence is not implemented");
 }
 
 // Gradient of curl for vectors is undefined in 3D

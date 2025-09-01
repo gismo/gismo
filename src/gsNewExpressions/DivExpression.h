@@ -91,7 +91,7 @@ public:
 
     void print(std::ostream & os) const override
     {
-        os<<"\u2207\u2022("<<expr_<<")";
+        os<<"\u2207\u2027("<<expr_<<")";
     }
 
 };
@@ -142,7 +142,7 @@ public:
 
     void print(std::ostream & os) const override
     {
-        os<<"\u2207\u2022("<<expr_<<")";
+        os<<"\u2207\u2027("<<expr_<<")";
     }
 
 };
@@ -175,11 +175,11 @@ auto div(const SubtractExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::ord
 
 // Partial specialization for multiplication of a scalar and a vector
 // ∇•(fV) = ∇f • V + f ∇•V
-template <typename LhsExpr, typename RhsExpr>
-auto div(const ProductExpression<LhsExpr,RhsExpr,0,ExpressionTraits<RhsExpr>::order,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
--> decltype(grad(expr.lhs()) * expr.rhs() + expr.lhs() * div(expr.rhs()))
+template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
+auto div(const ProductExpression<LhsExpr,RhsExpr,0,1,LhsSpace,RhsSpace>& expr)
+-> decltype(dot(grad(expr.lhs()), expr.rhs()) + expr.lhs() * div(expr.rhs()))
 {
-    return grad(expr.lhs()) * expr.rhs() + expr.lhs() * div(expr.rhs());
+    return dot(grad(expr.lhs()), expr.rhs()) + expr.lhs() * div(expr.rhs());
 }
 
 // Partial specialization for cross product
@@ -187,9 +187,9 @@ auto div(const ProductExpression<LhsExpr,RhsExpr,0,ExpressionTraits<RhsExpr>::or
 // For vectors A,B (order 1), result is a scalar (order 0)
 template <typename LhsExpr, typename RhsExpr>
 auto div(const CrossProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
--> decltype(expr.rhs() * curl(expr.lhs()) - expr.lhs() * curl(expr.rhs()))
+-> decltype(dot(expr.rhs(), curl(expr.lhs())) - dot(expr.lhs(), curl(expr.rhs())))
 {
-    return expr.rhs() * curl(expr.lhs()) - expr.lhs() * curl(expr.rhs());
+    return dot(expr.rhs(), curl(expr.lhs())) - dot(expr.lhs(), curl(expr.rhs()));
 }
 
 // Partial specialization for outer product
@@ -199,6 +199,7 @@ template <typename LhsExpr, typename RhsExpr>
 auto div(const OuterProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
 -> decltype(div(expr.lhs()) * expr.rhs() + expr.lhs() * grad(expr.rhs()))
 {
+    GISMO_UNUSED(expr);
     return div(expr.lhs()) * expr.rhs() + expr.lhs() * grad(expr.rhs());
 }
 
@@ -231,7 +232,8 @@ template <typename E>
 auto div(const CurlExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr)
 -> ConstantObject<typename ExpressionTraits<E>::Scalar, 0>
 {
-    return ConstantObject<typename ExpressionTraits<E>::Scalar, 0>(std::array<size_t, 0>{});  // Divergence of curl is always zero scalar
+    GISMO_UNUSED(expr);
+    return ConstantObject<typename ExpressionTraits<E>::Scalar, 0>(std::array<size_t, 0>{},"0");  // Divergence of curl is always zero scalar
 }
 
 // Divergence of Laplacian is undefined
@@ -243,9 +245,14 @@ auto div(const LaplExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>
     GISMO_ERROR("∇•(∇²) is undefined: divergence of Laplacian is not defined (scalar has no divergence)");
 }
 
-// // Partial specialization for division of a tensor by a scalar
-// template <typename LhsExpr, typename RhsExpr>
-// auto div(DivisionExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,0> expr)
+// Partial specialization for division of a vector by a scalar
+// ∇•(A/φ) = (φ∇•A - ∇φ•A)/φ²
+template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
+auto div(const DivisionExpression<LhsExpr,RhsExpr,1,0,LhsSpace,RhsSpace>& expr)
+-> decltype((expr.rhs() * div(expr.lhs()) - dot(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs()))
+{
+    return (expr.rhs() * div(expr.lhs()) - dot(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs());
+}
 
 // --- Partial Specialization 2: Divergence of a VariableObject ---
 

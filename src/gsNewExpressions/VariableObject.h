@@ -45,18 +45,10 @@ private:
     const gsFunctionSet<Scalar> * m_fs;
     const gsFuncData<Scalar>    * m_fd;
 public:
-    // Default constructor for Eigen compatibility
-    VariableObject() : BaseObject<Scalar, _order, _isConstant, 0>(0, std::array<size_t, order>{}), m_fs(NULL), m_fd(NULL) {}
 
-    // Constructor for zero initialization (used by BlockDiag)
-    VariableObject(int zero_value) : BaseObject<Scalar, _order, _isConstant, 0>(0, std::array<size_t, order>{}), m_fs(NULL), m_fd(NULL)
-    {
-        static_cast<void>(zero_value); // Suppress unused parameter warning
-    }
-
-    VariableObject(size_t domainDim, const std::array<size_t, order> & input_sizes)
+    VariableObject(size_t domainDim, const std::array<size_t, order> & input_sizes, std::string label=(order==0)?"f":"F")
     :
-    BaseObject<Scalar, _order, _isConstant, 0>(domainDim, input_sizes),
+    BaseObject<Scalar, _order, _isConstant, 0>(domainDim, input_sizes, label),
     m_fs(NULL), m_fd(NULL)
     {
     }
@@ -88,37 +80,22 @@ public:
 
     void print(std::ostream & os) const override
     {
-        _print_impl<order>(os);
+        os<<Base::label_;
+        _print_arguments(os);
     }
 
 protected:
 
     void _print_arguments(std::ostream & os) const
     {
-        os<<"(";
-        for (size_t d=0; d!=this->domainDim(); d++)
-        {
-            os<<"x"<<d;
-            if (d!=this->domainDim()-1)
-                os<<",";
-        }
-        os<<")";
-    }
-
-    template <size_t _ORDER>
-    typename std::enable_if<_ORDER==0,void>::type
-    _print_impl(std::ostream & os) const
-    {
-        os<<"f";
-        _print_arguments(os);
-    }
-
-    template <size_t _ORDER>
-    typename std::enable_if<_ORDER!=0,void>::type
-    _print_impl(std::ostream & os) const
-    {
-        os<<"F";
-        _print_arguments(os);
+        // os<<"(";
+        // for (size_t d=0; d!=this->domainDim(); d++)
+        // {
+        //     os<<"x"<<d;
+        //     if (d!=this->domainDim()-1)
+        //         os<<",";
+        // }
+        // os<<")";
     }
 };
 }//namespace Expr

@@ -46,19 +46,19 @@ private:
     gsMatrix<Scalar> m_value;
 
 public:
-    ConstantObject(const std::array<size_t, order> & input_sizes)
+    ConstantObject(const std::array<size_t, order> & input_sizes, std::string label = "a")
     :
-    BaseObject<Scalar, _order, true, Space::None>(0, input_sizes)
+    BaseObject<Scalar, _order, true, Space::None>(0, input_sizes, label)
     {
         initSize();
         m_value.setZero();
     }
 
     // Default constructor for Eigen compatibility
-    ConstantObject() : BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{}) {}
+    ConstantObject() : BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{}, "ZERO") {}
 
     // Constructor for zero initialization (used by BlockDiag)
-    ConstantObject(int value) : BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{})
+    ConstantObject(int value) : BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{}, "0")
     {
         m_value.resize(1,1);
         m_value.setConstant(static_cast<Scalar>(value));
@@ -66,7 +66,7 @@ public:
 
     explicit ConstantObject(const Scalar & value)
     :
-    BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{})
+    BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{}, std::to_string(value))
     {
         m_value.resize(1,1);
         m_value.setConstant(value);
@@ -83,7 +83,7 @@ public:
 
     void print(std::ostream & os) const override
     {
-        _print_impl<order>(os);
+        os<<Base::label_;
     }
 
     size_t domainDim() const
@@ -105,18 +105,6 @@ protected:
         else
             GISMO_ERROR("ConstantObject only implemented for order 0, 1, or 2");
     }
-
-    template <size_t _ORDER>
-    typename std::enable_if<_ORDER==0,void>::type
-    _print_impl(std::ostream & os) const { os<<"α"; }
-
-    template <size_t _ORDER>
-    typename std::enable_if<_ORDER==1,void>::type
-    _print_impl(std::ostream & os) const { os<<"a"; }
-
-    template <size_t _ORDER>
-    typename std::enable_if<_ORDER!=0 && _ORDER!=1,void>::type
-    _print_impl(std::ostream & os) const { os<<"A"; }
 };
 
 

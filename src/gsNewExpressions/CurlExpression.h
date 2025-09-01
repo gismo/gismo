@@ -143,6 +143,16 @@ CurlExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, Expres
     return CurlExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>(expr);
 }
 
+// Curl of curl identity: ∇×(∇×A) = ∇(∇•A) - ∇²A
+// Specialized for space=0
+template <typename E>
+auto curl(const CurlExpression<E, 1, 0, true>& expr)
+-> decltype(/* grad(div(expr.expr())) -  */lapl(expr.expr()))
+{
+    gsWarn<<"Warning: Curl of curl identity is not fully implemented (missing grad(div))!"<<gsEndl;
+    return /* grad(div(expr.expr())) -  */lapl(expr.expr());
+}
+
 // Partial specialization for addition
 template <typename LhsExpr, typename RhsExpr>
 auto curl(const AddExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,ExpressionTraits<RhsExpr>::order,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
@@ -163,21 +173,31 @@ auto curl(const SubtractExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::or
 // Partial specialization for multiplication by a scalar
 // ∇×(ψA) = ψ(∇×A) + (∇ψ)×A
 // For scalar ψ (order 0) and vector A (order 1)
-template <typename LhsExpr, typename RhsExpr>
-auto curl(const ProductExpression<LhsExpr,RhsExpr,0,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
+auto curl(const ProductExpression<LhsExpr,RhsExpr,0,1,LhsSpace,RhsSpace>& expr)
 -> decltype(expr.lhs() * curl(expr.rhs()) + cross(grad(expr.lhs()), expr.rhs()))
 {
     return expr.lhs() * curl(expr.rhs()) + cross(grad(expr.lhs()), expr.rhs());
 }
 
-// Partial specialization for cross product
-// Note: The full curl(A×B) formula requires tensor operations not fully implemented
-// For now, return a generic curl expression
-template <typename LhsExpr, typename RhsExpr>
-CurlExpression<CrossProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>, 1, ExpressionTraits<LhsExpr>::space, false>
-curl(const CrossProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+// Partial specialization for vector × scalar
+// ∇×(Aψ) = ψ(∇×A) + A×(∇ψ)
+// For vector A (order 1) and scalar ψ (order 0)
+template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
+auto curl(const ProductExpression<LhsExpr,RhsExpr,1,0,LhsSpace,RhsSpace>& expr)
+-> decltype(expr.rhs() * curl(expr.lhs()) + cross(expr.lhs(), grad(expr.rhs())))
 {
-    return CurlExpression<CrossProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>, 1, ExpressionTraits<LhsExpr>::space, false>(expr);
+    return expr.rhs() * curl(expr.lhs()) + cross(expr.lhs(), grad(expr.rhs()));
+}
+
+// Partial specialization for cross product
+// ∇×(A×B) = A(∇·B) - B(∇·A) + (B·∇)A - (A·∇)B
+// For vectors A,B (order 1), result is a vector (order 1)
+template <typename LhsExpr, typename RhsExpr>
+auto curl(const CrossProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+-> decltype(expr.lhs() * div(expr.rhs()) - expr.rhs() * div(expr.lhs()) + dot(expr.rhs(), grad(expr.lhs())) - dot(expr.lhs(), grad(expr.rhs())))
+{
+    return expr.lhs() * div(expr.rhs()) - expr.rhs() * div(expr.lhs()) + dot(expr.rhs(), grad(expr.lhs())) - dot(expr.lhs(), grad(expr.rhs()));
 }
 
 // Partial specialization for gradient (second derivative identity)
@@ -187,7 +207,8 @@ template <typename E>
 auto curl(const GradExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>& expr)
 -> ConstantObject<typename ExpressionTraits<E>::Scalar, 1>
 {
-    return ConstantObject<typename ExpressionTraits<E>::Scalar, 1>(std::array<size_t, 1>{3});  // Curl of gradient is always zero vector of size 3
+    GISMO_UNUSED(expr);
+    return ConstantObject<typename ExpressionTraits<E>::Scalar, 1>(std::array<size_t, 1>{3},"0");  // Curl of gradient is always zero vector of size 3
 }
 
 // Partial specialization for outer product
@@ -198,6 +219,15 @@ auto curl(const OuterProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsE
 -> decltype(curl(expr.lhs()) * expr.rhs() - expr.lhs() * grad(expr.rhs()))
 {
     return curl(expr.lhs()) * expr.rhs() - expr.lhs() * grad(expr.rhs());
+}
+
+// Partial specialization for division of a vector by a scalar
+// ∇×(A/φ) = (φ∇×A - ∇φ×A)/φ²
+template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
+auto curl(const DivisionExpression<LhsExpr,RhsExpr,1,0,LhsSpace,RhsSpace>& expr)
+-> decltype((expr.rhs() * curl(expr.lhs()) - cross(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs()))
+{
+    return (expr.rhs() * curl(expr.lhs()) - cross(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs());
 }
 
 // === UNDEFINED OPERATIONS ===
@@ -213,15 +243,6 @@ template <typename E>
 auto curl(const DivExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>& expr) -> void
 {
     GISMO_ERROR("∇×(∇•) is undefined: curl of divergence is not defined (scalar has no curl)");
-}
-
-// Curl of curl is defined: ∇×(∇×A) = ∇(∇•A) - ∇²A
-// This is a valid vector calculus identity that we should implement
-template <typename E>
-auto curl(const CurlExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>& expr)
--> decltype(grad(div(expr.expr())) - lapl(expr.expr()))
-{
-    return grad(div(expr.expr())) - lapl(expr.expr());
 }
 
 // Curl of Laplacian is undefined

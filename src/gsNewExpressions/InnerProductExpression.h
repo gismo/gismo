@@ -98,7 +98,7 @@ public:
 
     void print(std::ostream & os) const override
     {
-        os<<this->lhs_expr_<<"\u2022"<<this->rhs_expr_;
+        os<<this->lhs_expr_<<"\u2027"<<this->rhs_expr_;
     }
 
 private:
@@ -187,6 +187,16 @@ auto inner(const LhsExpr& lhs, const RhsExpr& rhs)
 -> decltype(ddot(lhs, rhs))  // Use decltype to deduce return type
 {
     return ddot(lhs, rhs);    // Call the existing ddot function
+}
+
+// Specialized dot product for vector · gradient (directional derivative)
+// This computes (A·∇)B where A is a vector and ∇B is the gradient matrix
+// Mathematically: A^T * ∇B = ∇B^T*A, but we need the result as a vector (not transpose)
+template <typename LhsExpr, typename RhsExpr>
+auto dot(const LhsExpr& lhs, const GradExpression<RhsExpr, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<RhsExpr>::isConstant>& rhs)
+-> decltype(transpose(rhs) * lhs)
+{
+    return transpose(rhs) * lhs;
 }
 
 }//namespace Expr
