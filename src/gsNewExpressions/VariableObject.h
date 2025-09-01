@@ -18,14 +18,15 @@ namespace gismo
 namespace Expr
 {
 
-// template <class T, size_t _order, bool _isConstant>
-// struct ExpressionTraits<VariableObject<T, _order, _isConstant>>
-// {
-//     using Base = BaseObject<T, _order, _isConstant, Space::None>;
-//     static constexpr size_t order = Base::order;  // Use template parameter, not BaseObject::order
-//     static constexpr size_t space = Base::space;
-//     typedef T Scalar;
-// };
+template <class T, size_t _order, bool _isConstant>
+struct ExpressionTraits<VariableObject<T, _order, _isConstant>>
+{
+    typedef T Scalar;
+    static constexpr size_t order = _order;
+    static constexpr size_t space = Space::None;
+    static constexpr size_t deriv = 0;
+    static constexpr bool isConstant = _isConstant;
+};
 
 template <class T, size_t _order, bool _isConstant = false>
 class VariableObject : public BaseObject<T, _order, _isConstant, Space::None>
@@ -44,6 +45,15 @@ private:
     const gsFunctionSet<Scalar> * m_fs;
     const gsFuncData<Scalar>    * m_fd;
 public:
+    // Default constructor for Eigen compatibility
+    VariableObject() : BaseObject<Scalar, _order, _isConstant, 0>(0, std::array<size_t, order>{}), m_fs(NULL), m_fd(NULL) {}
+
+    // Constructor for zero initialization (used by BlockDiag)
+    VariableObject(int zero_value) : BaseObject<Scalar, _order, _isConstant, 0>(0, std::array<size_t, order>{}), m_fs(NULL), m_fd(NULL)
+    {
+        static_cast<void>(zero_value); // Suppress unused parameter warning
+    }
+
     VariableObject(size_t domainDim, const std::array<size_t, order> & input_sizes)
     :
     BaseObject<Scalar, _order, _isConstant, 0>(domainDim, input_sizes),
@@ -76,7 +86,7 @@ public:
             m_fd->flags |= NEED_DERIV2;
     }
 
-    void print(std::ostream & os) const
+    void print(std::ostream & os) const override
     {
         _print_impl<order>(os);
     }

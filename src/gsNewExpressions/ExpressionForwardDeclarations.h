@@ -60,41 +60,51 @@ namespace Expr
 
 
     ////////////////////////////////////////////////////////////////
-    // PRODUCT EXPRESSIONS
+    // Binary Operators
     ////////////////////////////////////////////////////////////////
 
-    template <typename LhsExpr, typename RhsExpr, typename Enable>
+    template <typename E>
+    class BinaryOperator;
+
+    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
     class ProductExpression;
 
-    template <typename LhsExpr, typename RhsExpr, typename Enable>
-    class DotProductExpression;
+    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    class InnerProductExpression;
 
-    template <typename LhsExpr, typename RhsExpr, typename Enable>
+    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    class OuterProductExpression;
+
+    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
     class CrossProductExpression;
 
-    ////////////////////////////////////////////////////////////////
-    // ADDITION EXPRESSIONS
-    ////////////////////////////////////////////////////////////////
+    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    class DivisionExpression;
 
-    template <typename LhsExpr, typename RhsExpr, typename Enable>
+    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
     class AddExpression;
 
-    ////////////////////////////////////////////////////////////////
-    // SUBTRACTION EXPRESSIONS
-    ////////////////////////////////////////////////////////////////
-
-    template <typename LhsExpr, typename RhsExpr, typename Enable>
-    class SubExpression;
+    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    class SubtractExpression;
 
     ////////////////////////////////////////////////////////////////
-    // DIFFERENTIAL OPERATORS
+    // Unary OPERATORS
     ////////////////////////////////////////////////////////////////
 
-    template <typename E, typename Enable>
+    template <typename E>
+    class UnaryOperator;
+
+    template <typename E, size_t Order, size_t Space, size_t IsConstant>
     class GradExpression;
 
-    template <typename E, typename Enable>
+    template <typename E, size_t Order, size_t Space, size_t IsConstant>
     class DivExpression;
+
+    template <typename E, size_t Order, size_t Space, size_t IsConstant>
+    class CurlExpression;
+
+    template <typename E, size_t Order, size_t Space, size_t IsConstant>
+    class LaplExpression;
 
     ////////////////////////////////////////////////////////////////
     // OTHER OPERATORS

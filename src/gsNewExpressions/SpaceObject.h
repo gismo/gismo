@@ -34,11 +34,12 @@ namespace Expr
     private:
         const gsFunctionSet<Scalar> * m_fs;
         const gsFuncData<Scalar>    * m_fd;
+        size_t m_id;
     public:
-        SpaceObject(size_t domainDim, const std::array<size_t, order> & input_sizes)
+        SpaceObject(size_t domainDim, const std::array<size_t, order> & input_sizes, size_t id)
         :
         BaseObject<Scalar, _order, false, _space>(domainDim, input_sizes),
-        m_fs(NULL), m_fd(NULL)
+        m_fs(NULL), m_fd(NULL), m_id(id)
         {
         }
 
@@ -57,6 +58,8 @@ namespace Expr
         void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
         void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
 
+        size_t id() const { return m_id; }
+
         void parse(gismo::ExpressionHelper<Scalar> & helper) const
         {
             helper.add(*this);
@@ -70,7 +73,7 @@ namespace Expr
         const SpaceObject<Scalar,_space,_order> & rowVar() const {return (_space==Space::Test  || _space==Space::Both) ? *this : NullObject<T,order>::get();}
         const SpaceObject<Scalar,_space,_order> & colVar() const {return (_space==Space::Trial || _space==Space::Both) ? *this : NullObject<T,order>::get();}
 
-        void print(std::ostream & os) const
+        void print(std::ostream & os) const override
         {
             _print_impl<space>(os);
         }

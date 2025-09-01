@@ -21,7 +21,7 @@ using namespace Expr;
 template <typename E>
 void print(const BaseExpression<E> & expr)
 {
-    gsInfo << "Expression(order=" << expr.order
+    gsInfo << expr<<" (order=" << expr.order
        << ", space=" << expr.space
        << ", sizes=";
     if (expr.order>0)
@@ -37,7 +37,9 @@ void print(const BaseExpression<E> & expr)
     }
     else
         gsInfo<<"none";
-    gsInfo<<")\n";
+    gsInfo<<", deriv=" << expr.getDerivative()
+       << ", isConstant=" << (expr.isConstant ? "true" : "false")
+       << ")\n";
 }
 
 
@@ -57,7 +59,7 @@ gsMatrix<typename E::Scalar> eval(ExpressionHelper<typename E::Scalar> & helper,
 int main(int argc, char *argv[])
 {
 
-    bool verbose = false;
+    // bool verbose = false;
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -101,7 +103,7 @@ int main(int argc, char *argv[])
 
     auto Dδ = Expr::grad(δ);
     print(Dδ);
-    auto DDδ = Expr::grad(Dδ);
+    auto DDδ = Expr::div(Dδ);
     eval(helper,DDδ,points);
     // gsDebugVar(DDδ.max
 
@@ -116,150 +118,75 @@ int main(int argc, char *argv[])
     gsDebug<<"dot(β,β): "<< eval(helper, dot(β,β), points)<<"\n";
     gsDebug<<"cross(β,β): "<< eval(helper, cross(β,β), points)<<"\n";
 
+    gsInfo << "\n=== Vector Calculus Identity Tests ===\n";
 
-    // gsDebug<<"Dδ, order = "<<Dδ.order<<", size = "<<Dδ.sizes()[0]<<"\n";
+    // Create additional expressions for testing
+    gsConstantFunction<> cfun1(5.0,3);
+    gsConstantFunction<> cfun2(7.0,3);
+    gsConstantFunction<> cfun3(gsVector<>::vec(1.0,2.0,3.0),3);
+    gsConstantFunction<> cfun4(gsVector<>::vec(4.0,5.0,6.0),3);
+    auto ψ = helper.getScalarFunction(cfun1);  // Another scalar function
+    auto φ = helper.getScalarFunction(cfun2);  // Another scalar function
+    auto A = helper.getVectorFunction(cfun3);       // Vector field A
+    auto B = helper.getVectorFunction(cfun4);       // Vector field B (same as A for testing)
 
-    // ScalarExpression<real_t> scalar_expr(5.0);
-    // gsVector<real_t> vector_data = gsVector<real_t>::LinSpaced(3, 1.0, 3.0);
-    // VectorExpression<real_t> vector_expr(vector_data);
-    // gsMatrix<real_t> matrix_data(2, 2);
-    // matrix_data << 1.0, 2.0,
-    //                3.0, 4.0;
-    // MatrixExpression<real_t> matrix_expr(matrix_data);
+    gsInfo << "\n--- Operator tests ---\n";
+    print(ψ);
+    print(φ);
+    print(A);
+    print(B);
 
-    // // Test addition of scalar + scalar
-    // auto scalar_plus_scalar = scalar_expr + scalar_expr;
-    // gsMatrix<real_t> result_scalar = scalar_plus_scalar.eval(0);
-    // std::cout << "Result of scalar + scalar:\n" << result_scalar << std::endl;
+    print(grad(ψ));
+    print(div(A));
+    print(curl(A));
+    print(lapl(ψ));
 
-    // // // Test addition of scalar + vector
-    // // auto scalar_plus_vector = scalar_expr + vector_expr;
-    // // gsMatrix<real_t> result_vector = scalar_plus_vector.eval(0);
-    // // std::cout << "Result of scalar + vector:\n" << result_vector << std::endl;
+    print(ψ + φ);
+    print(ψ - φ);
+    print(ψ * φ);
+    print(ψ / φ);
 
-    // // // Test addition of vector + scalar
-    // // auto vector_plus_scalar = vector_expr + scalar_expr;
-    // // gsMatrix<real_t> result_vector2 = vector_plus_scalar.eval(0);
-    // // std::cout << "Result of vector + scalar:\n" << result_vector2 << std::endl;
+    gsInfo << "\n--- Gradient Identities ---\n";
+    print(grad(ψ + φ));                      // ∇(ψ + φ) = ∇ψ + ∇φ
+    print(grad(ψ * φ));                      // ∇(ψφ) = ψ∇φ + φ∇ψ
+    print(grad(ψ / φ));                      // ∇(ψ/φ) = (φ∇ψ - ψ∇φ)/φ²
+    print(grad(dot(A, B)));                  // ∇(A·B) = (A·∇)B + (B·∇)A + A×(∇×B) + B×(∇×A)
+    print(grad(cross(A, B)));                // ∇(A×B) = (∇A)×B - (∇B)×A
 
-    // // Test addition of two vectors
-    // auto vector_plus_vector = vector_expr + vector_expr;
-    // gsMatrix<real_t> result_vector3 = vector_plus_vector.eval(0);
-    // std::cout << "Result of vector + vector:\n" << result_vector3 << std::endl;
+    gsInfo << "\n--- Divergence Identities ---\n";
+    print(div(A + B));                       // ∇·(A + B) = ∇·A + ∇·B
+    print(div(φ * A));                       // ∇·(φA) = φ∇·A + A·∇φ
+    print(div(cross(A, B)));                 // ∇·(A×B) = B·(∇×A) - A·(∇×B)
+    print(div(grad(ψ)));                     // ∇·(∇ψ) = ∇²ψ (Laplacian)
 
-    // // // Test addition of scalar + matrix
-    // // auto scalar_plus_matrix = scalar_expr + matrix_expr;
-    // // gsMatrix<real_t> result_matrix = scalar_plus_matrix.eval(0);
-    // // std::cout << "Result of scalar + matrix:\n" << result_matrix << std::endl;
+    gsInfo << "\n--- Curl Identities ---\n";
+    print(curl(A + B));                      // ∇×(A + B) = ∇×A + ∇×B
+    print(curl(φ * A));                      // ∇×(φA) = φ(∇×A) + (∇φ)×A
+    print(curl(cross(A, B)));                // ∇×(A×B) = A(∇·B) - B(∇·A) + (B·∇)A - (A·∇)B
 
-    // // // Test addition of matrix + scalar
-    // // auto matrix_plus_scalar = matrix_expr + scalar_expr;
-    // // gsMatrix<real_t> result_matrix2 = matrix_plus_scalar.eval(0);
-    // // std::cout << "Result of matrix + scalar:\n" << result_matrix2 << std::endl;
+    gsInfo << "\n--- Laplacian Identities ---\n";
+    print(lapl(ψ + φ));                      // ∇²(ψ + φ) = ∇²ψ + ∇²φ
+    print(lapl(ψ * φ));                      // ∇²(ψφ) = ψ∇²φ + 2∇ψ·∇φ + φ∇²ψ
+    print(lapl(ψ / φ));                      // ∇²(ψ/φ) = (φ∇²ψ - ψ∇²φ - 2∇ψ·∇φ)/φ²
 
-    // gsFunctionExpr<> fun("sin(x) + cos(y)",2);
-    // ScalarVariableExpression<real_t> scalar_var_expr(fun); // order 0
+    gsInfo << "\n--- Higher-Order Identities ---\n";
+    print(grad(grad(ψ)));                    // ∇(∇ψ) = Hessian matrix
+    print(curl(grad(ψ)));                    // ∇×(∇ψ) = 0 (curl of gradient is zero)
+    print(div(curl(A)));                     // ∇·(∇×A) = 0 (divergence of curl is zero)
+    print(curl(curl(A)));                    // ∇×(∇×A) = ∇(∇·A) - ∇²A
+    // print(grad(div(A)));                     // ∇(∇·A)
+    // print(lapl(grad(ψ)));                    // ∇²(∇ψ) = ∇(∇²ψ) = gradient of Laplacian
 
-    // // // Differetial operators of constant scalars, should all evaluate to null-expressions of the correct order
-    // // GradExpression<ScalarExpression<real_t>> grad_expr(scalar_expr); // order 1
-    // // DivExpression<GradExpression<ScalarExpression<real_t>>> div_grad_expr(grad_expr); // order 0
-    // // GradExpression<GradExpression<ScalarExpression<real_t>>> grad_grad_expr(grad_expr); // order 2
+    gsInfo << "\n--- Product Rule Combinations ---\n";
+    print(grad(ψ * A));                      // ∇(ψA) = ψ∇A + A⊗∇ψ (tensor product)
+    print(div(ψ * A));                       // ∇·(ψA) = ψ∇·A + A·∇ψ
+    print(curl(ψ * A));                      // ∇×(ψA) = ψ(∇×A) + (∇ψ)×A
+    print(grad(A / φ));                      // ∇(A/φ) = (φ∇A - A⊗∇φ)/φ²
 
-    // // // Differetial operators of variable scalars, should evaluate to differential operators of the correct order
-    // // GradExpression<ScalarVariableExpression<real_t>> grad_expr(scalar_var_expr); // order 1
-    // // DivExpression<GradExpression<ScalarVariableExpression<real_t>>> div_grad_expr(grad_expr); // order 0
-    // // GradExpression<GradExpression<ScalarVariableExpression<real_t>>> grad_grad_expr(grad_expr); // order 2
-
-    // // First-order derivative
-    // DerivativeTensor<1,FunctionExpression<0,real_t>> // second order
-    // DerivativeTensor<1,FunctionExpression<1,real_t>> // third order
-
-    // // Second-order derivative
-    // DerivativeTensor<2,FunctionExpression<0,real_t>> // second order
-    // DerivativeTensor<2,FunctionExpression<1,real_t>> // third order
-
-    // //
-    // grad(grad(s))
-    // div(grad(s)) // alias deriv2(s).sum()
-    // curl(f1)
-
-    // // NEW NAMING
-
-    // ExprEvaluator<> ev;
-    // ConstantExpression<0,real_t> s = ev.template Constant<0>(0.5);           // Template is not needed, but added for consistency with function (order can be derived from the type)
-    // ConstantExpression<1,real_t> v = ev.template Constant<1>(vector_data);   // Template is not needed, but added for consistency with function (order can be derived from the type)
-    // ConstantExpression<2,real_t> m = ev.template Constant<2>(matrix_data);   // Template is not needed, but added for consistency with function (order can be derived from the type)
-    // FunctionExpression<0,real_t> f = ev.template Function<0>(fun);           // Template is needed because we can only deduce the order from the target dimension of the function, which is runtime
-    // FunctionExpression<0,real_t> f0= ev.template Function0(fun.component(0));           // Template is needed because we can only deduce the order from the target dimension of the function, which is runtime
-    // FunctionExpression<1,real_t> f1= ev.template Function1(fun);           // Template is needed because we can only deduce the order from the target dimension of the function, which is runtime
-    // FunctionExpression<2,real_t> f2= ev.template Function2(fun,n,m); //reshapes          // Template is needed because we can only deduce the order from the target dimension of the function, which is runtime
-    // auto hess = grad(grad(s)) = hess(s);
-    // auto grad_hess = grad(hess);
-    // grad(s*grad(s)) = grad(s) * grad(s) + s * grad(grad(s)) = grad(s) * grad(s) + s * hess(s);
-    // ArrayExpression<ConstantExpression<1,real_t>> v_array = v.array(); //
-    // auto add_scalar_vector = s+v_array;
-
-
-
-    // SpaceExpression<0,Space::Test,real_t> phi= A.ScalarTrialSpace();
-    // SpaceExpression<0,Space::Trial,real_t> psi= A.ScalarTestSpace();
-
-
-
-    // MultExpression<
-
-    // s * v // always fine in Eigen
-    // s / v // not allowed in Eigen, use s / v.array() instead
-
-
-    // // COMPLETELY AVOID TRANSPOSED VECTORS IN EXPRESSIONS
-    // v * w // not allowed because both are column vectors, use v.array() * v.array() instead
-    // v.transpose() * w = inner(v,w) = dot(v,w) = v % w    // order 0, also for matrices also for scalar
-    // v * w.transpose() = outer(v,w) // order 2, only for vectors
-    //                     cross(v,w) // order 1, only for vectors
-
-    //                     times()
-
-    // v.transpose() * m * w = inner(v,m*w)
-    // v.transpose() * m.transpose() * w = inner(v,m.transpose()*w)
-
-    // grad(s) // allow
-    // inner(Expr::NABLA,s) = grad(s) // shortcut
-
-    // // Transpose expression
-    // s.transpose() //  not allows
-    // v.transpose() // not allowed
-    // m.transpose() // allowed
-
-    // m.flatten() // Eigen::asVector()
-    // m.squeeze() //
-
-    // // OPERATORS
-    // // * AdditionOperator       (+) -- for everything of same order, and scalar with any order
-    // // * SubtractionOperator    (-) -- for everything of same order, and scalar with any order
-
-    // // * ScalarMultiplicationOperator (*) -- scalar * everything, everything * scalar
-    // // * MatrixMultiplicationOperator (*) -- mat*mat, mat*vec
-    // // * TensorMultiplicationOperator (times) -- allows to multiply tensors of different orders, e.g., vector * matrix, specifying the axis of contraction
-    // // * HadamardProductOperator (*) -- vec*vec, mat*mat (automatically activated via .array() method)
-
-    // // * DivisionOperator       (/) -- by scalar, or by vector/matrix with array() method
-
-    // // * InnerProductOperator
-    // // * OuterProductOperator
-    // // * CrossProductOperator
-
-
-    // // DIFFERENTIAL OPERATORS
-    // // * GradientOperator       (grad) -- grad(s), grad(v), grad(m)
-    // // * DivergenceOperator     (div) -- div(v), div(m)
-    // // * CurlOperator           (curl) -- curl(v), curl(m)
-    // // * HessianOperator        (hess) -- hess(s), hess(v), hess(m)
-    // // * LaplacianOperator      (laplacian) -- laplacian(s), laplacian(v), laplacian(m)
-
-    // times(grad(m),0,v,0) // multiply grad(m) with v, contracting the first axis of grad(m) and the first axis of v
-    // times(grad(m).slice(0),v,0) // multiply grad(m) with v, contracting the first axis of grad(m) and the first axis of v
-
+    // gsInfo << "\n--- Triple Product Identities ---\n";
+    // print(div(cross(A, cross(B, A))));       // ∇·(A×(B×A))
+    // print(curl(cross(A, cross(B, A))));      // ∇×(A×(B×A))
+    // print(grad(dot(A, cross(B, A))));        // ∇(A·(B×A))
 
     return EXIT_SUCCESS;
 }

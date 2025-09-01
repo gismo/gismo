@@ -45,7 +45,7 @@ namespace Expr
 
         operator const SpaceObject<T,Space::None,_order> & () const
         {
-            static SpaceObject<T,Space::None,_order> vv(0,{});
+            static SpaceObject<T,Space::None,_order> vv(0,{}, 0);
             return vv;
         }
 

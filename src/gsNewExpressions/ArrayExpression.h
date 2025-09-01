@@ -21,6 +21,8 @@ namespace Expr
 template <typename E>
 struct ExpressionTraits<ArrayExpression<E>>
 {
+    typedef E ExprType; // Needed for UnaryOperator
+
     typedef typename ExpressionTraits<E>::Scalar Scalar;
     static constexpr size_t order = ExpressionTraits<E>::order;
     static constexpr size_t space = ExpressionTraits<E>::space;
@@ -30,19 +32,19 @@ struct ExpressionTraits<ArrayExpression<E>>
 };
 
 template<typename E>
-class ArrayExpression : public BaseExpression< ArrayExpression<E> >
+class ArrayExpression : public UnaryOperator< ArrayExpression<E> >
 {
-    using Base = BaseExpression<ArrayExpression<E>>;
+    using Base = UnaryOperator<ArrayExpression<E>>;
+
 
 public:
-    typedef typename ExpressionTraits<ArrayExpression<E>>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<ArrayExpression<E>>::order;
-    static constexpr size_t space = ExpressionTraits<ArrayExpression<E>>::space;
-    static constexpr size_t deriv = ExpressionTraits<ArrayExpression<E>>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<ArrayExpression<E>>::isConstant;
+    ArrayExpression(const E& expr)
+    :
+    Base(expr)
+    {
+    }
 
-    // sizes
-    const std::array<size_t, order> & sizes() const
+    std::array<size_t, Base::order> & sizes() const
     {
         return expr_.sizes();
     }
@@ -50,17 +52,6 @@ public:
     size_t domainDim() const
     {
         return expr_.domainDim();
-    }
-
-private:
-    const E& expr_;
-
-public:
-    ArrayExpression(const E& expr)
-    :
-    BaseExpression<ArrayExpression<E>>(),
-    expr_(expr)
-    {
     }
 
     gsMatrix<Scalar> eval(const index_t k) const
@@ -73,13 +64,13 @@ public:
         expr_.parse(helper);
     }
 
-    const SpaceObject<Scalar,space,order> & rowVar() const {return expr_.rowVar();}
-    const SpaceObject<Scalar,space,order> & colVar() const {return expr_.colVar();}
-
-    void print(std::ostream & os) const
+    void print(std::ostream & os) const override
     {
         os<<"array("<<expr_<<")";
     }
+
+protected:
+    using Base::expr_;
 
 };
 

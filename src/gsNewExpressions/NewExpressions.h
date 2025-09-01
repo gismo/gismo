@@ -19,7 +19,8 @@
 #include <gsNewExpressions/ExpressionForwardDeclarations.h>
 
 #include <gsNewExpressions/BaseExpression.h>
-
+#include <gsNewExpressions/UnaryOperator.h>
+#include <gsNewExpressions/BinaryOperator.h>
 
 #include <gsNewExpressions/BaseObject.h>
 
@@ -29,13 +30,19 @@
 #include <gsNewExpressions/SpaceObject.h>
 
 #include <gsNewExpressions/AddExpression.h>
+#include <gsNewExpressions/SubtractExpression.h>
 
 #include <gsNewExpressions/ProductExpression.h>
-#include <gsNewExpressions/DotProductExpression.h>
+#include <gsNewExpressions/InnerProductExpression.h>
+#include <gsNewExpressions/OuterProductExpression.h>
 #include <gsNewExpressions/CrossProductExpression.h>
+
+#include <gsNewExpressions/DivisionExpression.h>
 
 #include <gsNewExpressions/GradExpression.h>
 #include <gsNewExpressions/DivExpression.h>
+#include <gsNewExpressions/CurlExpression.h>
+#include <gsNewExpressions/LaplExpression.h>
 
 #include <gsNewExpressions/TransposeExpression.h>
 
@@ -57,6 +64,19 @@ public:
     static constexpr size_t deriv = 0;
     static constexpr bool isConstant = false;
 };
+
+// Specialization for const types - delegate to non-const version
+template <typename E>
+struct ExpressionTraits<const E>
+{
+    typedef typename ExpressionTraits<E>::Scalar Scalar;
+    static constexpr size_t order = ExpressionTraits<E>::order;
+    static constexpr size_t space = ExpressionTraits<E>::space;
+    static constexpr size_t deriv = ExpressionTraits<E>::deriv;
+    static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
+};
+
+
 
 // // Specialization for BaseObject to avoid circular dependency
 // template <class T, size_t _order, bool _isConstant, short_t _space>

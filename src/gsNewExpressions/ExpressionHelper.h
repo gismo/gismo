@@ -115,7 +115,7 @@ public:
     Expr::ConstantObject<T,0>      getConstant(const T s)
     {
         // Create a new constant scalar expression
-        Expr::ConstantObject<T,0> expr({});
+        Expr::ConstantObject<T,0> expr(std::array<size_t, 0>{});
         gsMatrix<T> val(1,1);
         val<<s;
         expr.setValue(val);
@@ -125,7 +125,7 @@ public:
     Expr::ConstantObject<T,1>      getConstant(const gsVector<T> & v)
     {
         // Create a new constant vector expression
-        Expr::ConstantObject<T,1> expr({v.rows()});
+        Expr::ConstantObject<T,1> expr(std::array<size_t,1>{(size_t)v.rows()});
         expr.setValue(v);
         return expr;
     }
@@ -133,7 +133,7 @@ public:
     Expr::ConstantObject<T,2>      getConstant(const gsMatrix<T> & m)
     {
         // Create a new constant matrix expression
-        Expr::ConstantObject<T,2> expr({m.rows(),m.cols()});
+        Expr::ConstantObject<T,2> expr(std::array<size_t,2>{(size_t)m.rows(),(size_t)m.cols()});
         expr.setValue(m);
         return expr;
     }
@@ -160,7 +160,7 @@ public:
     {
         GISMO_ASSERT(cfunc.targetDim()!=1,"Function is not scalar");
         // Create a new VariableObject scalar expression
-        Expr::VariableObject<T,1,true> expr(cfunc.domainDim(),{cfunc.targetDim()});
+        Expr::VariableObject<T,1,true> expr(cfunc.domainDim(),std::array<size_t,1>{(size_t)cfunc.targetDim()});
         expr.setSource(cfunc);
         return expr;
     }
@@ -169,46 +169,45 @@ public:
     {
         GISMO_ASSERT(func.targetDim()!=1,"Function is not scalar");
         // Create a new VariableObject scalar expression
-        Expr::VariableObject<T,1,false> expr(func.domainDim(),{func.targetDim()});
+        Expr::VariableObject<T,1,false> expr(func.domainDim(),std::array<size_t,1>{(size_t)func.targetDim()});
         expr.setSource(func);
         return expr;
     }
 
     // TODO: replace 3rd template with Expr::Space::Test
-    Expr::SpaceObject<T,Expr::Space::Test,0> getScalarTestSpace(const gsFunctionSet<T> & space)
+    Expr::SpaceObject<T,Expr::Space::Test,0> getScalarTestSpace(const gsFunctionSet<T> & space, size_t id = 0)
     {
         GISMO_ASSERT(space.targetDim()==1,"Function is not scalar");
         // Create a new VariableObject scalar expression
-        Expr::SpaceObject<T,Expr::Space::Test,0> expr(space.domainDim(),{});
+        Expr::SpaceObject<T,Expr::Space::Test,0> expr(space.domainDim(),std::array<size_t,0>{}, id);
         expr.setSource(space);
         return expr;
     }
 
     // TODO: replace 3rd template with Expr::Space::Trial
-    Expr::SpaceObject<T,Expr::Space::Trial,0> getScalarTrialSpace(const gsFunctionSet<T> & space)
+    Expr::SpaceObject<T,Expr::Space::Trial,0> getScalarTrialSpace(const gsFunctionSet<T> & space, size_t id = 0)
     {
         GISMO_ASSERT(space.targetDim()==1,"Function is not scalar");
         // Create a new VariableObject scalar expression
-        Expr::SpaceObject<T,Expr::Space::Trial,0> expr(space.domainDim(),{});
+        Expr::SpaceObject<T,Expr::Space::Trial,0> expr(space.domainDim(),std::array<size_t,0>{}, id);
         expr.setSource(space);
         return expr;
     }
 
-    Expr::SpaceObject<T,Expr::Space::Test,1> getVectorTestSpace(const gsFunctionSet<T> & space)
+    Expr::SpaceObject<T,Expr::Space::Test,1> getVectorTestSpace(const gsFunctionSet<T> & space, size_t id = 0)
     {
         GISMO_ASSERT(space.targetDim()!=1,"Function is not scalar");
         // Create a new VariableObject scalar expression
-        Expr::SpaceObject<T,Expr::Space::Test,1> expr(space.domainDim(),{});
+        Expr::SpaceObject<T,Expr::Space::Test,1> expr(space.domainDim(),std::array<size_t,1>{(size_t)space.targetDim()}, id);
         expr.setSource(space);
         return expr;
     }
 
-    // TODO: replace 3rd template with Expr::Space::Trial
-    Expr::SpaceObject<T,Expr::Space::Trial,1> getVectorTrialSpace(const gsFunctionSet<T> & space)
+    Expr::SpaceObject<T,Expr::Space::Trial,1> getVectorTrialSpace(const gsFunctionSet<T> & space, size_t id = 0)
     {
         GISMO_ASSERT(space.targetDim()!=1,"Function is not scalar");
         // Create a new VariableObject scalar expression
-        Expr::SpaceObject<T,Expr::Space::Trial,1> expr(space.domainDim(),{});
+        Expr::SpaceObject<T,Expr::Space::Trial,1> expr(space.domainDim(),std::array<size_t,1>{(size_t)space.targetDim()}, id);
         expr.setSource(space);
         return expr;
     }

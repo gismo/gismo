@@ -1,6 +1,6 @@
-/** @file BaseObject.h
+/** @file AddExpression.h
 
-    @brief
+    @brief Addition expression class
 
     This file is part of the G+Smo library.
 
@@ -18,8 +18,11 @@ namespace gismo
 namespace Expr
 {
 
-template <typename LhsExpr, typename RhsExpr, typename Enable>
-struct ExpressionTraits<AddExpression<LhsExpr, RhsExpr, Enable>>
+
+// --- Partial Specialization: Addition of two expressions of the SAME ORDER (X + X) ---
+// ExpressionTraits for same-order addition (N,N) -> N
+template <typename LhsExpr, typename RhsExpr, size_t Order, size_t LhsSpace, size_t RhsSpace>
+struct ExpressionTraits<AddExpression<LhsExpr, RhsExpr, Order, Order, LhsSpace, RhsSpace>>
 {
     // Static assertions to ensure compatibility
     static_assert(ExpressionTraits<LhsExpr>::order == ExpressionTraits<RhsExpr>::order,
@@ -27,119 +30,240 @@ struct ExpressionTraits<AddExpression<LhsExpr, RhsExpr, Enable>>
     static_assert(ExpressionTraits<LhsExpr>::space == ExpressionTraits<RhsExpr>::space,
                   "AddExpression requires same space operands");
 
+    typedef LhsExpr LhsType;
+    typedef RhsExpr RhsType;
+
     typedef typename ExpressionTraits<LhsExpr>::Scalar Scalar;
-
-    static constexpr size_t order = ExpressionTraits<LhsExpr>::order;
+    static constexpr size_t order = Order;
     static constexpr size_t space = ExpressionTraits<LhsExpr>::space;
-    static constexpr size_t deriv = ExpressionTraits<LhsExpr>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<LhsExpr>::isConstant &&
-                                      ExpressionTraits<RhsExpr>::isConstant;
-};
-
-// --- AddExpression using Partial Specialization (Redesigned) ---
-
-// Primary template: Catches all unsupported combinations with a compile-time error
-template <typename LhsExpr, typename RhsExpr, typename Enable = void>
-class AddExpression
-{
-    static_assert(std::is_same<LhsExpr, void>::value,
-                  "AddExpression: Unsupported tensor order combination for addition.");
-};
-
-// --- Partial Specialization 1: Addition of two expressions of the SAME ORDER (X + X) ---
-template <typename LhsExpr, typename RhsExpr>
-class AddExpression<LhsExpr, RhsExpr,
-    typename std::enable_if<(ExpressionTraits<LhsExpr>::order) == (ExpressionTraits<RhsExpr>::order) &&
-                            (ExpressionTraits<LhsExpr>::space) == (ExpressionTraits<RhsExpr>::space)>::type
-> : public BaseExpression<AddExpression<LhsExpr, RhsExpr>>
-{
-public:
-// Scalar and Order are from ExpressionTraits
-    typedef typename ExpressionTraits<LhsExpr>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<LhsExpr>::order;
-    static constexpr size_t space = ExpressionTraits<LhsExpr>::space;
-    // TODO:
-    // static constexpr size_t deriv = ExpressionTraits<LhsExpr>::deriv;
+    static constexpr size_t deriv = ExpressionTraits<RhsExpr>::deriv; //TODO
     static constexpr bool isConstant = ExpressionTraits<LhsExpr>::isConstant && ExpressionTraits<RhsExpr>::isConstant;
+};
 
-    const std::array<size_t, order> & sizes() const
+template <typename LhsExpr, typename RhsExpr, size_t Order, size_t LhsSpace, size_t RhsSpace>
+class AddExpression<LhsExpr, RhsExpr, Order, Order, LhsSpace, RhsSpace> : public BinaryOperator<AddExpression<LhsExpr, RhsExpr, Order, Order, LhsSpace, RhsSpace>>
+{
+    using Base = BinaryOperator<AddExpression<LhsExpr, RhsExpr, Order, Order, LhsSpace, RhsSpace>>;
+public:
+    AddExpression(const LhsExpr& lhs, const RhsExpr& rhs)
+        : Base(lhs, rhs)
     {
-        return lhs_expr_.sizes(); // Use left operand's sizes
+        for (size_t d=0; d!=Base::order; ++d)
+            GISMO_ENSURE(this->lhs_expr_.sizes()[d] == this->rhs_expr_.sizes()[d],"AddExpression requires same sizes in each dimension");
+    }
+
+    const std::array<size_t, Base::order> & sizes() const
+    {
+        return this->lhs_expr_.sizes(); // Use left operand's sizes
     }
 
     size_t domainDim() const
     {
-        return lhs_expr_.domainDim();
+        return this->lhs_expr_.domainDim(); // Use left operand's domain dimension
     }
 
-    const LhsExpr& lhs() const {return lhs_expr_;}
-    const RhsExpr& rhs() const {return rhs_expr_;}
+    gsMatrix<typename Base::Scalar> eval(const index_t k) const
+    {
+        gsMatrix<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        gsMatrix<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        lhs_val.array() += rhs_val.array(); // Element-wise addition
+        return lhs_val; // Return the modified lhs_val
+    }
+
+    void print(std::ostream & os) const override
+    {
+        // gsDebug<<"AddExpression print called\n";
+        // this->lhs_expr_.print(os);
+        // gsDebug<<this->lhs_expr_<<"\n";
+        // gsDebug<<this->rhs_expr_<<"\n";
+        os << this->lhs_expr_ << "+" << this->rhs_expr_;
+    }
+
+private:
+};
+
+// Partial Specialization: Addition of scalar (0) and higher order (N > 0) is now handled by operator+ SFINAE functions
+
+// TODO: Temporarily disabled due to ambiguity with (0,0) case - need proper SFINAE
+/*
+// --- Partial Specialization: Addition of scalar (0) and higher order (N > 0) ---
+template <typename LhsExpr, typename RhsExpr, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+class AddExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>
+ : public BinaryOperator<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>
+{
+    using Base = BinaryOperator<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>;
+public:
+    typedef typename ExpressionTraits<AddExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>>::Scalar Scalar;
+    static constexpr size_t order = ExpressionTraits<AddExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>>::order;
+    static constexpr size_t space = ExpressionTraits<AddExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>>::space;
+    static constexpr size_t deriv = ExpressionTraits<AddExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>>::deriv;
+    static constexpr bool isConstant = ExpressionTraits<AddExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>>::isConstant;
 
 public:
     AddExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-        : lhs_expr_(lhs),
-          rhs_expr_(rhs)
+        : BinaryOperator<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>(lhs, rhs)
     {
     }
 
     gsMatrix<Scalar> eval(const index_t k) const
     {
-        gsMatrix<Scalar> lhs_val = lhs_expr_.eval(k);
-        gsMatrix<Scalar> rhs_val = rhs_expr_.eval(k);
-        lhs_val.array() += rhs_val.array(); // Element-wise addition
-        return lhs_val; // Return the modified lhs_val
+        gsMatrix<Scalar> lhs_val = this->lhs_expr_.eval(k);
+        gsMatrix<Scalar> rhs_val = this->rhs_expr_.eval(k);
+        rhs_val.array() += lhs_val(0,0); // Add scalar to each element
+        return rhs_val;
     }
 
-    void parse(gismo::ExpressionHelper<Scalar> & helper) const
+    void print(std::ostream & os) const override
     {
-        lhs_expr_.parse(helper);
-        rhs_expr_.parse(helper);
+        os << this->lhs_expr_ << "+" << this->rhs_expr_;
     }
 
-    const SpaceObject<Scalar, space, order> & rowVar() const
+    const std::array<size_t, order> & sizes() const
     {
-        return lhs_expr_.rowVar(); // Use left operand's row variable
+        return this->rhs_expr_.sizes();
     }
 
-    const SpaceObject<Scalar, space, order> & colVar() const
+    size_t domainDim() const
     {
-        return lhs_expr_.colVar(); // Use left operand's column variable
-    }
-
-    void print(std::ostream & os) const
-    {
-        os<<lhs_expr_<<"+"<<rhs_expr_;
+        return this->rhs_expr_.domainDim();
     }
 
 private:
-    const LhsExpr& lhs_expr_;
-    const RhsExpr& rhs_expr_;
 };
 
-// Generic operator+ to create AddExpression instances
+// --- Partial Specialization: Addition of higher order (N > 0) and scalar (0) ---
+template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t LhsSpace, size_t RhsSpace>
+class AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>
+ : public BinaryOperator<
+     typename ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::Scalar,
+     ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::order,
+     ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::space,
+     LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>
+{
+    using Base = BinaryOperator<
+        typename ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::Scalar,
+        ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::order,
+        ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::space,
+        LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>;
+public:
+    typedef typename ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::Scalar Scalar;
+    static constexpr size_t order = ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::order;
+    static constexpr size_t space = ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::space;
+    static constexpr size_t deriv = ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::deriv;
+    static constexpr bool isConstant = ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::isConstant;
+
+public:
+    AddExpression(const LhsExpr& lhs, const RhsExpr& rhs)
+        : BinaryOperator<
+            typename ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::Scalar,
+            ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::order,
+            ExpressionTraits<AddExpression<LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>>::space,
+            LhsExpr, RhsExpr, LhsOrder, 0, LhsSpace, RhsSpace>(lhs, rhs)
+    {
+    }
+
+    gsMatrix<Scalar> eval(const index_t k) const
+    {
+        gsMatrix<Scalar> lhs_val = this->lhs_expr_.eval(k);
+        gsMatrix<Scalar> rhs_val = this->rhs_expr_.eval(k);
+        lhs_val.array() += rhs_val(0,0); // Add scalar to each element
+        return lhs_val;
+    }
+
+    void print(std::ostream & os) const override
+    {
+        os << this->lhs_expr_ << "+" << this->rhs_expr_;
+    }
+
+    const std::array<size_t, order> & sizes() const
+    {
+        return this->lhs_expr_.sizes();
+    }
+
+    size_t domainDim() const
+    {
+        return this->lhs_expr_.domainDim();
+    }
+
+private:
+};
+*/// Generic operator+ to create AddExpression instances using SFINAE
 template <typename LhsExpr, typename RhsExpr>
-AddExpression<LhsExpr, RhsExpr>
+typename std::enable_if<
+    ExpressionTraits<LhsExpr>::order == ExpressionTraits<RhsExpr>::order &&
+    ExpressionTraits<LhsExpr>::space == ExpressionTraits<RhsExpr>::space,
+    AddExpression<LhsExpr, RhsExpr, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
+>::type
 operator+(const LhsExpr& lhs, const RhsExpr& rhs)
 {
-    return AddExpression<LhsExpr, RhsExpr>(lhs, rhs);
+    return AddExpression<LhsExpr, RhsExpr, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
 
-// Specialization for transpose of a vector with a vector (more specific than generic)
+// Specialization for transpose expressions (these should trigger compile errors)
 template <typename LhsExpr, typename RhsExpr>
-auto operator+(const TransposeExpression<LhsExpr>& lhs, const RhsExpr& rhs)
-    -> AddExpression<TransposeExpression<LhsExpr>, RhsExpr>
+typename std::enable_if<
+    ExpressionTraits<LhsExpr>::order == ExpressionTraits<RhsExpr>::order &&
+    ExpressionTraits<LhsExpr>::space == ExpressionTraits<RhsExpr>::space,
+    AddExpression<TransposeExpression<LhsExpr>, RhsExpr, ExpressionTraits<TransposeExpression<LhsExpr>>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<TransposeExpression<LhsExpr>>::space, ExpressionTraits<RhsExpr>::space>
+>::type
+operator+(const TransposeExpression<LhsExpr>& lhs, const RhsExpr& rhs)
 {
     GISMO_ERROR("Addition of a transposed vector and a vector is not defined.");
-    return AddExpression<TransposeExpression<LhsExpr>, RhsExpr>(lhs, rhs);
+    return AddExpression<TransposeExpression<LhsExpr>, RhsExpr, ExpressionTraits<TransposeExpression<LhsExpr>>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<TransposeExpression<LhsExpr>>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
 
-// Specialization for vector with transpose of a vector (more specific than generic)
 template <typename LhsExpr, typename RhsExpr>
-auto operator+(const LhsExpr& lhs, const TransposeExpression<RhsExpr>& rhs)
-    -> AddExpression<LhsExpr, TransposeExpression<RhsExpr>>
+typename std::enable_if<
+    ExpressionTraits<LhsExpr>::order == ExpressionTraits<RhsExpr>::order &&
+    ExpressionTraits<LhsExpr>::space == ExpressionTraits<RhsExpr>::space,
+    AddExpression<LhsExpr, TransposeExpression<RhsExpr>, ExpressionTraits<LhsExpr>::order, ExpressionTraits<TransposeExpression<RhsExpr>>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<TransposeExpression<RhsExpr>>::space>
+>::type
+operator+(const LhsExpr& lhs, const TransposeExpression<RhsExpr>& rhs)
 {
     GISMO_ERROR("Addition of a vector and a transposed vector is not defined.");
-    return AddExpression<LhsExpr, TransposeExpression<RhsExpr>>(lhs, rhs);
+    return AddExpression<LhsExpr, TransposeExpression<RhsExpr>, ExpressionTraits<LhsExpr>::order, ExpressionTraits<TransposeExpression<RhsExpr>>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<TransposeExpression<RhsExpr>>::space>(lhs, rhs);
+}
+
+// Specialization for scalars
+template <typename LhsExpr>
+typename std::enable_if<
+    !std::is_same<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>>::value,
+    AddExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, Space::None>
+>::type
+operator+(const LhsExpr& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
+{
+    return AddExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, Space::None>(lhs, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>(rhs));
+}
+
+template <typename RhsExpr>
+typename std::enable_if<
+    !std::is_same<RhsExpr, ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>>::value,
+    AddExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, Space::None, ExpressionTraits<RhsExpr>::space>
+>::type
+operator+(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const RhsExpr& rhs)
+{
+    return AddExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, Space::None, ExpressionTraits<RhsExpr>::space>(ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>(lhs), rhs);
+}
+
+// Specialization for matrices
+template <typename LhsExpr>
+typename std::enable_if<
+    !std::is_same<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,ExpressionTraits<LhsExpr>::order>>::value,
+    AddExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,ExpressionTraits<LhsExpr>::order>, ExpressionTraits<LhsExpr>::order, ExpressionTraits<LhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<LhsExpr>::space>
+>::type
+operator+(const LhsExpr& lhs, const gsMatrix<typename ExpressionTraits<LhsExpr>::Scalar>& rhs)
+{
+    return AddExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,ExpressionTraits<LhsExpr>::order>, ExpressionTraits<LhsExpr>::order, ExpressionTraits<LhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<LhsExpr>::space>(lhs, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,ExpressionTraits<LhsExpr>::order>(rhs));
+}
+
+template <typename RhsExpr>
+typename std::enable_if<
+    !std::is_same<RhsExpr, ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,ExpressionTraits<RhsExpr>::order>>::value,
+    AddExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,ExpressionTraits<RhsExpr>::order>, RhsExpr, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<RhsExpr>::space>
+>::type
+operator+(const gsMatrix<typename ExpressionTraits<RhsExpr>::Scalar>& lhs, const RhsExpr& rhs)
+{
+    return AddExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,ExpressionTraits<RhsExpr>::order>, RhsExpr, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<RhsExpr>::space>(ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,ExpressionTraits<RhsExpr>::order>(lhs), rhs);
 }
 
 // // --- Partial Specialization 1: Addition of two expressions of the SAME ORDER (X + X) ---

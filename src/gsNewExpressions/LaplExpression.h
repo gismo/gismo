@@ -1,4 +1,4 @@
-/** @file DivExpression.h
+/** @file LaplExpression.h
 
     @brief
 
@@ -18,49 +18,47 @@ namespace gismo
 namespace Expr
 {
 
-template <typename E, typename Enable>
-struct ExpressionTraits<DivExpression<E, Enable>>
+// --- LaplExpression ---
+// Primary template: Catches all unsupported combinations with a compile-time error
+template <typename E, size_t Order, size_t Space, size_t IsConstant>
+struct ExpressionTraits<LaplExpression<E, Order, Space, IsConstant>>
 {
-    // Static assertions to ensure compatibility
-    // static_assert(ExpressionTraits<E>::order == 0,
-    //               "DivExpression requires a scalar (order 0) operand");
-    // static_assert(ExpressionTraits<E>::space != Space::None,
-    //               "DivExpression requires the operand to be defined in a space");
+    typedef E ExprType; // Needed for UnaryOperator
 
     typedef typename ExpressionTraits<E>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<E>::order-1; // Divergence results in a vector (order 1)
+    static constexpr size_t order = ExpressionTraits<E>::order; // Laplacian decreases order by 2
     static constexpr size_t space = ExpressionTraits<E>::space;
-    static constexpr size_t deriv = ExpressionTraits<E>::deriv + 1; // Increment derivative order
+    static constexpr size_t deriv = ExpressionTraits<E>::deriv + 2; // Increment derivative order
     static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
 };
 
-// --- DivExpression using Partial Specialization (Redesigned) ---
-// Primary template: Catches all unsupported combinations with a compile-time error
-template <typename E, typename Enable = void>
-class DivExpression : public BaseExpression<DivExpression<E>>
+template <typename E, size_t Order, size_t Space, size_t IsConstant>
+class LaplExpression : public UnaryOperator<LaplExpression<E, Order, Space, IsConstant>>
 {
-    static_assert(std::is_same<Enable, void>::value,
-                  "TODO");
+    static_assert(Order == 0,
+                  "LaplExpression: Unsupported tensor order. Only scalars (order 0) are supported for Laplacian operations.");
+    static_assert(IsConstant == 0 || IsConstant == 1,
+                  "LaplExpression: IsConstant must be 0 (variable) or 1 (constant).");
 };
 
-// --- Partial Specialization 1: Divergence of a constant expression ---
-template <typename E>
-class DivExpression<E,
-    typename std::enable_if<(ExpressionTraits<E>::isConstant)>::type
-> : public BaseExpression<DivExpression<E, typename std::enable_if<(ExpressionTraits<E>::isConstant)>::type>>
+// --- Partial Specialization 1: Laplacian of a constant expression ---
+template <typename E, size_t Order, size_t Space>
+class LaplExpression<E, Order, Space, 1> : public UnaryOperator<LaplExpression<E, Order, Space, 1>>
 {
-    using Base = BaseExpression<DivExpression<E, typename std::enable_if<(ExpressionTraits<E>::isConstant)>::type>>;
-
+    using Base = UnaryOperator<LaplExpression<E, Order, Space, 1>>;
+private:
+    mutable gsMatrix<typename Base::Scalar> tmp;
+    using Base::expr_;
 public:
-    typedef typename ExpressionTraits<DivExpression<E>>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<DivExpression<E>>::order;
-    static constexpr size_t space = ExpressionTraits<DivExpression<E>>::space;
-    static constexpr size_t deriv = ExpressionTraits<DivExpression<E>>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<DivExpression<E>>::isConstant;
-
-    const std::array<size_t, order> & sizes() const
+    LaplExpression(const E& expr)
+    :
+    Base(expr)
     {
-        return sizes_;
+    }
+
+    const std::array<size_t, Base::order> & sizes() const
+    {
+        return expr_.sizes();
     }
 
     size_t domainDim() const
@@ -68,89 +66,7 @@ public:
         return expr_.domainDim();
     }
 
-private:
-    std::array<size_t,order> sizes_;
-    mutable gsMatrix<Scalar> tmp;
-    const E& expr_;
-
-public:
-    DivExpression(const E& expr)
-    :
-    BaseExpression<DivExpression<E>>(),
-    expr_(expr)
-    {
-        // Assumes symmetry!
-        for (short_t d=0; d!=E::order; d++)
-        {
-            GISMO_ENSURE(expr_.sizes()[d] == expr_.sizes()[0]);
-            GISMO_ENSURE(expr_.sizes()[d] == expr_.domainDim());
-        }
-
-        for (short_t d=1; d!=E::order; d++)
-            sizes_[d-1] = expr_.sizes()[d];
-    }
-
-    gsMatrix<Scalar> eval(const index_t k) const
-    {
-        GISMO_UNUSED(k);
-        tmp.resize(expr_.source().domainDim(),1);
-        tmp.setZero();
-        return tmp;
-    }
-
-    void parse(gismo::ExpressionHelper<Scalar> & helper) const
-    {
-    }
-
-};
-
-// --- Partial Specialization 2: divient of a variable object ---
-template <typename E>
-class DivExpression<E,
-    typename std::enable_if<(ExpressionTraits<E>::isConstant==false)>::type
-> : public BaseExpression<DivExpression<E, typename std::enable_if<(ExpressionTraits<E>::isConstant==false)>::type>>
-{
-    using Base = BaseExpression<DivExpression<E, typename std::enable_if<(ExpressionTraits<E>::isConstant==false)>::type>>;
-public:
-    typedef typename ExpressionTraits<DivExpression<E>>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<DivExpression<E>>::order;
-    static constexpr size_t space = ExpressionTraits<DivExpression<E>>::space;
-    static constexpr size_t deriv = ExpressionTraits<DivExpression<E>>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<DivExpression<E>>::isConstant;
-
-    const std::array<size_t, order> & sizes() const
-    {
-        return sizes_;
-    }
-
-    size_t domainDim() const
-    {
-        return expr_.domainDim();
-    }
-
-private:
-    std::array<size_t,order> sizes_;
-    mutable gsMatrix<Scalar> tmp;
-    E & expr_;
-
-public:
-    DivExpression(E & expr)
-    :
-    BaseExpression<DivExpression<E>>(),
-    expr_(expr)
-    {
-        // Assumes symmetry!
-        for (short_t d=0; d!=E::order; d++)
-        {
-            GISMO_ENSURE(expr_.sizes()[d] == expr_.sizes()[0]);
-            GISMO_ENSURE(expr_.sizes()[d] == expr_.domainDim());
-        }
-
-        for (short_t d=1; d!=E::order; d++)
-            sizes_[d-1] = expr_.sizes()[d];
-    }
-
-    gsMatrix<Scalar> eval(const index_t k) const
+    gsMatrix<typename Base::Scalar> eval(const index_t k) const
     {
         GISMO_UNUSED(k);
         tmp.resize(expr_.domainDim(),1);
@@ -158,142 +74,154 @@ public:
         return tmp;
     }
 
-    void parse(gismo::ExpressionHelper<Scalar> & helper) const
+    void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
     {
-        expr_.parse(helper);
-        expr_.setDerivative(deriv);
+        GISMO_UNUSED(helper);
     }
 
-    void print(std::ostream & os) const
+    void print(std::ostream & os) const override
     {
-        os<<"\u2207\u2022("<<expr_<<")";
+        os<<"\u0394("<<expr_<<")";
+    }
+};
+
+// --- Partial Specialization 2: Laplacian of a variable object ---
+template <typename E, size_t Order, size_t Space>
+class LaplExpression<E, Order, Space, 0> : public UnaryOperator<LaplExpression<E, Order, Space, 0>>
+{
+    using Base = UnaryOperator<LaplExpression<E, Order, Space, 0>>;
+private:
+    mutable gsMatrix<typename Base::Scalar> tmp;
+    using Base::expr_;
+
+public:
+    LaplExpression(const E & expr)
+    :
+    Base(expr)
+    {
+    }
+
+    const std::array<size_t, Base::order> & sizes() const
+    {
+        return expr_.sizes();
+    }
+
+    size_t domainDim() const
+    {
+        return expr_.domainDim();
+    }
+
+    gsMatrix<typename Base::Scalar> eval(const index_t k) const
+    {
+        GISMO_UNUSED(k);
+        tmp.resize(expr_.domainDim(),1);
+        tmp.setZero();
+        return tmp;
+    }
+
+    void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
+    {
+        expr_.parse(helper);
+        expr_.setDerivative(Base::deriv);
+    }
+
+    void print(std::ostream & os) const override
+    {
+        os<<"\u0394("<<expr_<<")";
     }
 
 };
 
 // Generic factory function for easy creation
 template <typename E>
-DivExpression<E> div(E& expr)
+LaplExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> lapl(const E& expr)
 {
-    return DivExpression<E>(expr);
+    return LaplExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>(expr);
 }
 
 // Partial specialization for addition
 template <typename LhsExpr, typename RhsExpr>
-auto div(const AddExpression<LhsExpr,RhsExpr> expr)
--> AddExpression<DivExpression<LhsExpr>, DivExpression<RhsExpr>>
+auto lapl(const AddExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,ExpressionTraits<RhsExpr>::order,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+-> decltype(lapl(expr.lhs()) + lapl(expr.rhs()))
 {
-    return AddExpression<DivExpression<LhsExpr>, DivExpression<RhsExpr>>(div(expr.lhs()),div(expr.rhs()));
+    return lapl(expr.lhs()) + lapl(expr.rhs()); // ∇²(ψ + φ) = ∇²ψ + ∇²φ
 }
 
-// --- Partial Specialization 2: Divergence of a VariableObject ---
+// Partial specialization for subtraction
+// ∇²(ψ - φ) = ∇²ψ - ∇²φ
+template <typename LhsExpr, typename RhsExpr>
+auto lapl(const SubtractExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,ExpressionTraits<RhsExpr>::order,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+-> decltype(lapl(expr.lhs()) - lapl(expr.rhs()))
+{
+    return lapl(expr.lhs()) - lapl(expr.rhs());
+}
 
+// Partial specialization for product (second derivative identity)
+// ∇²(ψφ) = ψ∇²φ + 2∇ψ•∇φ + φ∇²ψ
+// For scalar functions ψ,φ (order 0), result is scalar (order 0)
+template <typename LhsExpr, typename RhsExpr>
+auto lapl(const ProductExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,ExpressionTraits<RhsExpr>::order,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+-> decltype(expr.lhs() * lapl(expr.rhs()) + expr.rhs() * lapl(expr.lhs()) + ConstantObject<double,0>(2.0) * dot(grad(expr.lhs()), grad(expr.rhs())))
+{
+    static_assert(ExpressionTraits<LhsExpr>::order == 0 && ExpressionTraits<RhsExpr>::order == 0,
+                  "Laplacian of product only implemented for scalar functions (order 0)");
+    return expr.lhs() * lapl(expr.rhs()) + expr.rhs() * lapl(expr.lhs()) + ConstantObject<double,0>(2.0) * dot(grad(expr.lhs()), grad(expr.rhs()));
+}
 
+// Partial specialization for division of scalar by scalar
+// ∇²(ψ/φ) = (φ∇²ψ - ψ∇²φ - 2∇ψ·∇φ)/φ²
+// For scalar functions ψ,φ (order 0), result is scalar (order 0)
+template <typename LhsExpr, typename RhsExpr>
+auto lapl(const DivisionExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,ExpressionTraits<RhsExpr>::order,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+-> decltype((expr.rhs() * lapl(expr.lhs()) - expr.lhs() * lapl(expr.rhs()) - ConstantObject<double,0>(2.0) * dot(grad(expr.lhs()), grad(expr.rhs()))) / (expr.rhs() * expr.rhs()))
+{
+    static_assert(ExpressionTraits<LhsExpr>::order == 0 && ExpressionTraits<RhsExpr>::order == 0,
+                  "Laplacian of division only implemented for scalar functions (order 0)");
+    return (expr.rhs() * lapl(expr.lhs()) - expr.lhs() * lapl(expr.rhs()) - ConstantObject<double,0>(2.0) * dot(grad(expr.lhs()), grad(expr.rhs()))) / (expr.rhs() * expr.rhs());
+}
 
-// // --- Partial Specialization 1: Addition of two expressions of the SAME ORDER (X + X) ---
-// template <typename LhsExpr, typename RhsExpr>
-// class AddExpression<ArrayExpression<LhsExpr>, RhsExpr,
-//     typename std::enable_if<0 == (RhsExpr::order)>::type // Simplified condition
-// > : public BaseObject<LhsExpr,
-//                           typename LhsExpr::Scalar,
-//                           LhsExpr::order,
-//                           LhsExpr::isConstant && RhsExpr::isConstant,
-//                           0> // Use LhsExpr's Scalar and Order directly
-// {
-// public:
-// // Scalar and Order are directly from LhsExpr/RhsExpr
-//     typedef typename LhsExpr::Scalar Scalar;
-//     static constexpr int order = LhsExpr::order;
+// === UNDEFINED OPERATIONS ===
+// These operations are mathematically undefined and will produce compile-time errors
 
-// public:
-//     AddExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-//         : BaseObject<RhsExpr, typename LhsExpr::Scalar, order, LhsExpr::isConstant && RhsExpr::isConstant, 0>(rhs.sizes()), // Pass RhsExpr as Derived to BaseObject
-//           lhs_expr_(lhs),
-//           rhs_expr_(rhs)
-//     {
-//     }
+// Laplacian of gradient produces third derivatives
+// ∇²(∇ψ) = ∇(∇²ψ) is a valid operation (third derivative)
+// This could be implemented as a third derivative expression if needed
+template <typename E>
+auto lapl(const GradExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr)
+-> decltype(grad(lapl(expr.expr())))
+{
+    return grad(lapl(expr.expr()));
+}
 
-//     gsMatrix<Scalar> eval(const index_t k) const
-//     {
-//         gsMatrix<Scalar> lhs_val = lhs_expr_.eval(k);
-//         gsMatrix<Scalar> rhs_val = rhs_expr_.eval(k);
-//         lhs_val.array() += rhs_val; // Element-wise addition
-//         return lhs_val; // Return the modified lhs_val
-//     }
+// Laplacian of divergence is undefined for vector fields
+// ∇²(∇•A) is undefined because divergence of a vector produces a scalar,
+// and we already have ∇²(scalar), so this would be valid if the input expression is appropriate
+template <typename E>
+auto lapl(const DivExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr)
+-> void
+{
+    static_assert(false, "∇²(∇•A) is undefined for vector fields.");
+}
 
-// private:
-//     const LhsExpr& lhs_expr_;
-//     const RhsExpr& rhs_expr_;
-// };
+// Laplacian of curl is defined: ∇²(∇×A) = ∇×(∇²A)
+// This is a valid vector calculus identity
+template <typename E>
+auto lapl(const CurlExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr)
+-> decltype(curl(lapl(expr.expr())))
+{
+    return curl(lapl(expr.expr()));
+}
 
-
-
-// // --- Partial Specialization 2: Scalar (Order 0) + Higher Order (Order N > 0) ---
-// template <typename LhsExpr, typename RhsExpr>
-// class AddExpression<LhsExpr, RhsExpr,
-//     typename std::enable_if<(LhsExpr::order == 0) && (RhsExpr::order > 0)>::type // Simplified condition
-// > : public BaseObject<RhsExpr, typename LhsExpr::Scalar, RhsExpr::order> // Base on RhsExpr for Scalar and Order
-// {
-// public:
-//     typedef typename RhsExpr::Scalar Scalar;
-//     static constexpr int order = RhsExpr::order;
-
-// public:
-//     AddExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-//         : BaseObject<RhsExpr, typename LhsExpr::Scalar, order>(rhs.sizes()), // Pass RhsExpr as Derived to BaseObject
-//           lhs_expr_(lhs),
-//           rhs_expr_(rhs)
-//     {}
-
-//     gsMatrix<Scalar> eval(const index_t k) const
-//     {
-//         gsMatrix<Scalar> lhs_val = lhs_expr_.eval(k);
-//         gsMatrix<Scalar> rhs_val = rhs_expr_.eval(k);
-//         rhs_val.array() += lhs_val.value(); // Add scalar to each element of lhs_val
-//         return rhs_val;
-//     }
-
-// private:
-//     const LhsExpr& lhs_expr_;
-//     const RhsExpr& rhs_expr_;
-// };
-
-
-// // Scalar + Scalar
-// AddExpression<ScalarExpression<real_t>, ScalarExpression<real_t>> operator+(const ScalarExpression<real_t>& lhs, const ScalarExpression<real_t>& rhs)
-// {
-//     return AddExpression<ScalarExpression<real_t>, ScalarExpression<real_t>>(lhs, rhs);
-// }
-
-// // Scalar + Vector
-// AddExpression<ScalarExpression<real_t>, VectorExpression<real_t>> operator+(const ScalarExpression<real_t>& lhs, const VectorExpression<real_t>& rhs)
-// {
-//     return AddExpression<ScalarExpression<real_t>, VectorExpression<real_t>>(lhs, rhs);
-// }
-
-// // Vector + Scalar
-// AddExpression<ScalarExpression<real_t>, VectorExpression<real_t>> operator+(const VectorExpression<real_t>& lhs, const ScalarExpression<real_t>& rhs)
-// {
-//     return AddExpression<ScalarExpression<real_t>, VectorExpression<real_t>>(rhs, lhs);
-// }
-
-// // Vector + Vector
-// AddExpression<VectorExpression<real_t>, VectorExpression<real_t>> operator+(const VectorExpression<real_t>& lhs, const VectorExpression<real_t>& rhs)
-// {
-//     return AddExpression<VectorExpression<real_t>, VectorExpression<real_t>>(lhs, rhs);
-// }
-
-// // Scalar + Matrix
-// AddExpression<ScalarExpression<real_t>, MatrixExpression<real_t>> operator+(const ScalarExpression<real_t>& lhs, const MatrixExpression<real_t>& rhs)
-// {
-//     return AddExpression<ScalarExpression<real_t>, MatrixExpression<real_t>>(lhs, rhs);
-// }
-
-// // Matrix + Scalar
-// AddExpression<ScalarExpression<real_t>, MatrixExpression<real_t>> operator+(const MatrixExpression<real_t>& lhs, const ScalarExpression<real_t>& rhs)
-// {
-//     return AddExpression<ScalarExpression<real_t>, MatrixExpression<real_t>>(rhs, lhs);
-// }
+// Laplacian of Laplacian (fourth derivative)
+// ∇²(∇²ψ) = ∇⁴ψ is a valid operation (biharmonic operator)
+// However, it is not implemented as a separate expression type
+template <typename E>
+auto lapl(const LaplExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr)
+-> void
+{
+    static_assert(false,"∇²(∇²ψ) = ∇⁴ψ is not implemented as a separate expression type.");
+    // return lapl(lapl(expr.expr()));
+}
 
 }//namespace Expr
 }//namespace gismo

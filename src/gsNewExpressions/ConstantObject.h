@@ -50,6 +50,26 @@ public:
     :
     BaseObject<Scalar, _order, true, Space::None>(0, input_sizes)
     {
+        initSize();
+        m_value.setZero();
+    }
+
+    // Default constructor for Eigen compatibility
+    ConstantObject() : BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{}) {}
+
+    // Constructor for zero initialization (used by BlockDiag)
+    ConstantObject(int value) : BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{})
+    {
+        m_value.resize(1,1);
+        m_value.setConstant(static_cast<Scalar>(value));
+    }
+
+    explicit ConstantObject(const Scalar & value)
+    :
+    BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{})
+    {
+        m_value.resize(1,1);
+        m_value.setConstant(value);
     }
 
     gsMatrix<Scalar> eval(const index_t) const
@@ -58,15 +78,33 @@ public:
     }
 
     void setValue(const gsMatrix<T> & value) { m_value = value;}
-
+    void setConstant(const T value) { m_value.setConstant(value);}
     void parse(gismo::ExpressionHelper<Scalar> &) const {}
 
-    void print(std::ostream & os) const
+    void print(std::ostream & os) const override
     {
         _print_impl<order>(os);
     }
 
+    size_t domainDim() const
+    {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
 protected:
+    using Base::sizes_;
+
+    void initSize()
+    {
+        if (order==0)
+            m_value.resize(1,1);
+        else if (order==1)
+            m_value.resize(sizes_[0],1);
+        else if (order==2)
+            m_value.resize(sizes_[0],sizes_[1]);
+        else
+            GISMO_ERROR("ConstantObject only implemented for order 0, 1, or 2");
+    }
 
     template <size_t _ORDER>
     typename std::enable_if<_ORDER==0,void>::type
@@ -80,5 +118,8 @@ protected:
     typename std::enable_if<_ORDER!=0 && _ORDER!=1,void>::type
     _print_impl(std::ostream & os) const { os<<"A"; }
 };
+
+
+
 }//namespace Expr
 }//namespace gismo
