@@ -17,12 +17,17 @@
 // Constructor implementation
 gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<double> basis,
                             const gsMultiPatch<> mapping,
-                            const index_t   numElevate,
                             index_t maxIter,
                             double IntensityMAE)
 {
-    gsInfo<<"\n <>r-refinement";
-    this->m_basis        = basis;
+    gsInfo<<"\n <>r-refinement (!!! We use B-spline for ADmapping) \n";
+    gsMultiBasis<double> dbasis(mapping, true);//not NURBS
+    //... condition for the convergence 
+    while (dbasis.basis(0).numElements()<basis.basis(0).numElements())
+        dbasis.uniformRefine();
+
+    this->m_basis        = dbasis;
+    this->n_basis        = basis;
     this->m_mapping      = mapping; 
     this->m_maxIter      = maxIter;
     this->m_IntensityMAE = IntensityMAE;
@@ -37,7 +42,6 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<doub
          sN = gsFunctionExpr<>("x","y","z",3);
     }
     //Get all interfaces and boundaries:
-    mp.degreeElevate(numElevate);
     mp.computeTopology();
 
     // ... Neumann boundary conditions
@@ -49,6 +53,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<doub
     {
         bc_mae.addCondition( *bit, condition_type::neumann, &sN );
     }
+    
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
 
@@ -342,7 +347,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildStrategyDensity(const std::vect
 }
 
 // Build and return a MultiPatch object
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density, bool composition) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density) const 
 {
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -372,7 +377,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     // It could be beneficial for the composition of the two mappings
-    //A.options().setReal("quA", 2.0);
+    // A.options().setReal("quA", quadValue);
     //A.options().setInt("quB", 2);
     A.options().setSwitch("SameElement",false);
 
@@ -387,9 +392,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
 
     // Set pow for BFO method dim in parameteric domain
     auto IGdim     = G.domainDim();
-
-    // Set dimension of target geometry
-    auto ITdim     = this->m_mapping.geoDim();
 
     // Set factor for BFO method
     auto gammaMAE  = factorial(G.domainDim());
@@ -506,6 +508,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol)).sqNorm()  ));
         auto L2MAERes = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
         auto Ddet     = ev.min(jac(PP).det());
+
         Iter_mae[ip]  = ip;
         h1Res[ip]     = l2errRes;// Compute the H1 residual
         l2err[ip]     = L2MAERes;// Compute the L2 error in MA equation
@@ -539,43 +542,65 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     ProjectionNormalCPoints(Psi);
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-    if (composition){
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        //... test if geometry is a surface in 3d
-        bool other = false;
-        if (IGdim < this->m_mapping.geoDim()){
-            other = true;
-        }
-        // Psi.addAutoBoundaries();
-        geometryMap PP = A.getMap(Psi);
-        //PP(this->m_mapping);
-        auto comp = A.getCoeff(this->m_mapping, PP);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble(v * comp.tr() );// blocked by this one
-        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        vsolVector = this->Poisson.L2ProjectVec(A.rhs(), other);
-        v_sol.extract(Psi);
-        Psi.addAutoBoundaries();
-        Psi.computeTopology();
-        //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
-        slv_time += timer.stop();
-        timer.stop();
-        gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
-        return Psi;
-    }
-    else{
-        slv_time += timer.stop();
-        timer.stop();
-        gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
-        return Psi;
-    }
+    // ...
+    slv_time += timer.stop();
+    timer.stop();
+    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    return Psi;
+
 };
 
+// computes the projection L^2 of a composition and return a MultiPatch object
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiPatch<> Psitp, double quadValue) const 
+{
+    typedef gsExprAssembler<>::geometryMap geometryMap;
+    typedef gsExprAssembler<>::variable    variable;
+    typedef gsExprAssembler<>::space       space;
+    typedef gsExprAssembler<>::solution    solution;
+    gsSparseSolver<>::CGDiagonal solver;
 
+    gsInfo<<"<> mapping composition \n";
+    gsMultiPatch<> Psi;
+    
+    double slv_time(0);
+    gsStopwatch timer;
+    timer.restart();
+    //! [Problem setup]
+    gsExprAssembler<> A(1,1);
+    // It could be beneficial for the composition of the two mappings
+    A.options().setReal("quA", quadValue);
+    //A.options().setInt("quB", 2);
+    A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
+    // Elements used for numerical integration
+    A.setIntegrationElements(this->n_basis);
+
+    gsExprEvaluator<> ev(A);
+    //... 
+    space v        = A.getSpace(this->n_basis);
+    gsMatrix<> vsolVector;
+    solution v_sol = A.getSolution(v, vsolVector);
+
+    //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+    geometryMap PP = A.getMap(Psitp);
+    //...
+    auto comp = A.getCoeff(this->m_mapping, PP);
+
+    A.initSystem(this->m_mapping.geoDim());
+    //Obtain control points for the gradient of mpLeft.comp(Psi)
+    A.assemble(v*v.tr(), v * comp.tr() );// blocked by this one
+    vsolVector = solver.compute(A.matrix()).solve(A.rhs());
+    v_sol.extract(Psi);
+    Psi.addAutoBoundaries();
+    Psi.computeTopology();
+    //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
+    slv_time += timer.stop();
+    timer.stop();
+    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    return Psi;
+};
 
 // Build and return a MultiPatch object
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiPatch<> &density, gsMultiPatch<> lsPsi, bool composition, int Niter) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiPatch<> &density, gsMultiPatch<> lsPsi, int Niter) const 
 {
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -605,7 +630,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     // It could be beneficial for the composition of the two mappings
-    //A.options().setReal("quA", 2.0);
+    // A.options().setReal("quA", quadValue);
     //A.options().setInt("quB", 2);
     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
 
@@ -621,9 +646,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     // Set pow for BFO method dim in parameteric domain
     auto IGdim     = G.domainDim();
 
-    // Set dimension of target geometry
-    auto ITdim     = this->m_mapping.geoDim();
-
     // Set factor for BFO method
     auto gammaMAE  = factorial(G.domainDim());
 
@@ -631,36 +653,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMovingMultiPatch(const gsMultiP
     gsMatrix<> solVector;
     solution u_sol  = A.getSolution(u, solVector);
 
-    if (composition){
-        //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        //... test if geometry is a surface in 3d
-        bool other = false;
-        if (IGdim < this->m_mapping.geoDim()){
-            other = true;
-        }
-        //... 
-        gsMultiPatch<>    Psi;
-        space v        = A.getSpace(this->m_basis);
-        gsMatrix<> vsolVector;
-        solution v_sol = A.getSolution(v, vsolVector);
-        // Psi.addAutoBoundaries();
-        geometryMap PP = A.getMap(lsPsi);
-        //PP(this->m_mapping);
-        auto comp = A.getCoeff(this->m_mapping, PP);
-        A.initSystem(ITdim);
-        //Obtain control points for the gradient of mpLeft.comp(Psi)
-        A.assemble( v * comp.tr() );// blocked by this one
-        // vsolVector = solver.compute(A.matrix()).solve(A.rhs());
-        vsolVector = this->Poisson.L2ProjectVec(A.rhs(), other);
-        v_sol.extract(Psi);
-        Psi.addAutoBoundaries();
-        Psi.computeTopology();
-        //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
-        slv_time += timer.stop();
-        timer.stop();
-        gsInfo<<" Compose two mappings. CPU-time : "<< slv_time   <<"<>\n";
-        return Psi;
-    }
     // ---- manipulation of density function ----
     //.. geometry map
     geometryMap PP   = A.getMap(lsPsi);

@@ -207,12 +207,14 @@ int main(int argc, char *argv[])
     ###   Step 1-2 : Computes the density function
     ###        and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
     auto density                    = MAE.buildStrategyDensity( elwise, 0.8);
 
     if (IntensityMAE>0){
     // auto density                 = MAE.buildAnalyticDensity( f);
     auto geometrytp                 = MAE.buildMultiPatch(density);
+    geometrytp                      = MAE.buildCompMultiPatch(geometrytp);// computes the composition mapping mpLeft o Psitp
+
     CorrecNormalCPoints(mpLeft, geometrytp);
     index_t numPaches               = geometrytp.nPatches();
     for( index_t i=0; i<numPaches; ++i)

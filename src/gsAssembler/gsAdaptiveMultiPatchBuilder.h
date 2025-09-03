@@ -24,7 +24,6 @@ public:
     // Constructor
     gsAdaptiveMultiPatchBuilder(const gsMultiBasis<double> basis,
                                 const gsMultiPatch<> mapping,
-                                const index_t numElevate,
                                 index_t maxIter     = 30,
                                 double IntensityMAE = 9.0);
 
@@ -41,10 +40,13 @@ public:
     gsMultiPatch<> buildStrategyDensity(const std::vector<double> &elwiseERROR, const double MarkPercentage = 0.9) const;
 
     // Method to build a multipatch adaptive mapping
-    gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density, bool composition=true) const;
+    gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density) const;
 
     // Method to build a multipatch adaptive mapping TODO: CAN BE OPTIMIZED @BAHARI
-    gsMultiPatch<> buildMovingMultiPatch(const gsMultiPatch<> &density, gsMultiPatch<> lsPsi, bool composition=true, int Niter = 0) const;
+    gsMultiPatch<> buildMovingMultiPatch(const gsMultiPatch<> &density, gsMultiPatch<> lsPsi, int Niter = 0) const;
+
+    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
+    gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, double quadValue = 4.) const;
 
     // Method to find the span of a knot vector
     index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;
@@ -61,6 +63,7 @@ public:
                            const gsMatrix<double>& vector_un, gsMatrix<double>& rhs) const;
 
 private:
+    gsMultiBasis<double> n_basis;
     gsMultiBasis<double> m_basis;
     gsMultiPatch<double> m_mapping;
     gsMultiPatch<double> mp;

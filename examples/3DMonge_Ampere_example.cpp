@@ -27,17 +27,18 @@ int main(int argc, char *argv[])
     index_t numLRefine  = 1;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
-    double IntensityMAE = 12.;
+    double IntensityMAE = 9.;
+    double quadValue    = 4.0;
     bool export_b64     = false;
 
     // Specify the file path
     // std::string fn("pde/example3D.xml");
     //std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
+    //std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/mhd.xml");
     //std::string fn("pde/infinit_plate.xml");
-    //std::string fn("pde/circle.xml");
+    std::string fn("pde/circle.xml");
     //std::string fn("surfaces/cylinder.xml"); 
     //std::string fn("domain2d/lake.xml");
 
@@ -54,6 +55,7 @@ int main(int argc, char *argv[])
                  1);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
+    cmd.addReal("q","quadValue", "Quadrature rule number of  points in each direction", quadValue);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -62,12 +64,12 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
-    //gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::NurbsSphere(1.,0.,0.,0.));
-    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::NurbsSphere(1.,0.,0.,0.));
+    // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
     // ...
-    // gsMultiPatch<> mpLeft;
-    // fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft;
+    fd.getId(1,mpLeft);
     auto coefsMap  = mpLeft.patch(0).coefs();
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -82,16 +84,11 @@ int main(int argc, char *argv[])
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
-    // TODO : build Hdiv solver
-    //gsMultiBasis<double> Hdivbasis(mpLeft, true);//true: poly-splines (not NURBS)
-    //Hdivbasis.degreeElevate(1);
-    //dbasis.setDegree(2);
-
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    // A.options().setReal("quA", 2.0);
-    // A.options().setInt("quB", 2);
+    A.options().setReal("quA", quadValue);
+    // A.options().setInt("quB", 1);
     A.options().setSwitch("SameElement",false);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
@@ -100,17 +97,11 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
-    // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
-
-    gsStopwatch timer;
-    timer.restart();
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     for (int r=0; r< numRefine; ++r)
     {
         dbasis.uniformRefine();
-        // mpLeft.uniformRefine();
+        mpLeft.uniformRefine();
     }
     //... condition for the convergence 
     while (dbasis.basis(0).numElements()<1e3)
@@ -118,6 +109,13 @@ int main(int argc, char *argv[])
         dbasis.uniformRefine();
         numRefine++;
     }    
+    // Elements used for numerical integration
+    A.setIntegrationElements(dbasis);
+    gsExprEvaluator<> ev(A);
+
+    gsStopwatch timer;
+    timer.restart();
+
     //... some infos on the computational domain
     auto corners         = dbasis.basis(0).support();
     gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() <<"\n";
@@ -137,11 +135,22 @@ int main(int argc, char *argv[])
     ###                                  Step 1-2 : Computes the density function
     ###                                     and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, numElevate, maxIter, IntensityMAE);
-    auto density = MAE.buildAnalyticDensity(f);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
+    auto density   = MAE.buildAnalyticDensity(f);
+    auto rho       = A.getCoeff(density);
+    gsInfo << "Density function computed: "<< ev.integral( rho.val() ) <<"\n";
+    auto Psitp     = MAE.buildMultiPatch(density);// build the adaptive mapping
+    gsInfo << "MultiPatch adaptive geometry computed\n";
     // //------------------------------------
-    auto Psitp   = MAE.buildMultiPatch(density, true);//if true : composition of geometry maps
-    gsInfo << "MultiPatch geometry computed\n";
+    geometryMap G  = A.getMap(mpLeft);
+    geometryMap PP = A.getMap(Psitp);
+    auto comp      = A.getCoeff(mpLeft, PP);
+    // ...
+    std::cout << std::setprecision(15);
+    std::cout << ", G :   geometry volume: "<< ev.integral( jac(G).det()  ) <<"\n";
+    std::cout << ", Comp: geometry volume: "<< ev.integral( jac(G).det()  )-ev.integral( jac(PP).det() *jac(comp).det() ) <<"\n";
+    Psitp        = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
+    std::cout << ", GPP : geometry volume: "<<  ev.integral( jac(G).det()  )-ev.integral( jac(PP).det()  ) <<"\n";
 
     //! [Export visualization in ParaView]
     if (plot)

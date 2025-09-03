@@ -228,12 +228,13 @@ int main(int argc, char *argv[])
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, Psi, numElevate, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, Psi, maxIter, IntensityMAE);
     // auto density = MAE.buildDensity(elwise, 0.005, 0);
     auto density = MAE.buildStrategyDensity(elwise, 0.95);
 
     // auto density = MAE.buildAnalyticDensity(f);
-    auto Psitp   = MAE.buildMultiPatch(density, false); // false means we work on the computational domain
+    auto Psitp   = MAE.buildMultiPatch(density); 
+
     if (true){
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping

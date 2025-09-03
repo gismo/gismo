@@ -28,48 +28,34 @@
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
     <Basis type="BSplineBasis" index="0">
-     <KnotVector degree="2">0 0 0 0.5 1 1 1 </KnotVector>
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
     </Basis>
     <Basis type="BSplineBasis" index="1">
-     <KnotVector degree="2">0 0 0 0.5 1 1 1 </KnotVector>
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
     </Basis>
    </Basis>
    <weights>
-    1.        
-    0.85355339
-    0.85355339
-    1.
-    1.
-    0.85355339
-    0.85355339
     1
-    1.
-    0.85355339
-    0.85355339
-    1. 
-    1.
-    0.85355339
-    0.85355339
-    1. 
+    0.7071067811865475
+    1
+    0.7071067811865475
+    1
+    0.7071067811865475
+    1
+    0.7071067811865475
+    1
    </weights>
   </Basis>
   <coefs geoDim="2">
-    1. 0.
-    1. 0.41421356
-    0.41421356 1.
-    0. 1.
-    1. -0.41421356
-    0.3 0.
-    0. 0.3
-    -0.41421356 1.
-    0.41421356 -1.
-    0. -0.3
-    -0.3 0.
-    -1. 0.41421356
-    0. -1.
-    -0.41421356 -1.
-    -1. -0.41421356
-    -1. 0.
+   0 1.
+   1. 1.
+   1. 0.
+  -1 1.
+   0. 0.
+   1. -1.
+  -1. 0
+  -1. -1.
+   0 -1.
   </coefs>
  </Geometry>
  <MultiPatch parDim="2" id="1">
