@@ -22,6 +22,9 @@
 namespace gismo
 {
 
+struct BoundarySign { bool operator()(short_t s) const { return s==0; } };
+struct InteriorSign { bool operator()(short_t s) const { return s>0; } };
+
 template<short_t d, class Z>
 class gsCutTreeData
 {
@@ -79,8 +82,8 @@ public:
         for ( unsigned i = 0; i < d; ++i )
         {
             const unsigned c =
-                (node.box.first [i] + (node.box.second[i] - node.box.first[i])/2) & mask ;
-            if ( c != node.box.first [i] ) // avoid degenerate split
+                (node.nodeData().box.first [i] + (node.nodeData().box.second[i] - node.nodeData().box.first[i])/2) & mask ;
+            if ( c != node.nodeData().box.first [i] ) // avoid degenerate split
             {
                 node.axis = i;
                 node.pos  = c;
@@ -127,21 +130,28 @@ public:
 
 };
 
-template<short_t d, class T>
+// Forward declaration
+template<typename SignOp, short_t d, class T, class Z>
+class gsTrimmedDomainIterator;
+
+template<short_t d, class T, class Z=index_t>
 class gsTrimmedDomain : public gsDomain<T>
 {
 public:
-    typedef gsCutTreeData<d,index_t> TData_t;
-    typedef gsKdTree<d,index_t,TData_t > Tree_t;
+    typedef gsCutTreeData<d,Z> TData_t;
+    typedef gsKdTree<d,Z,TData_t > Tree_t;
 
     typedef gsDomainIteratorWrapper<T> domainIter;
     typedef typename Tree_t::const_literator leafIterator;
-    typedef typename Tree_t::point point_t;
+    typedef typename Tree_t::point_t point_t;
 
-    template <class _T, short_t _d, class _Z>
+    // template <class _T, short_t _d, class _Z>
+    // friend class gsTrimmedDomainIterator;
+    // template <class _T, short_t _d, class _Z>
+    // friend class gsTrimmedDomainBoundaryIterator;
+
+    template <typename SignOp, short_t _d, class _T, class _Z>
     friend class gsTrimmedDomainIterator;
-    template <class _T, short_t _d, class _Z>
-    friend class gsTrimmedDomainBoundaryIterator;
 
 public: // virtual interface
 
@@ -154,7 +164,7 @@ public: // virtual interface
     {
         GISMO_NO_IMPLEMENTATION
     }
-    
+
 public: // non-virtual interface
 
     inline std::vector<bool> inDomain(const gsMatrix<T> & u)
@@ -179,14 +189,14 @@ public: // non-virtual interface
 
     domainIter beginAll() const override
     {
-        GISMO_NO_IMPLEMENTATION
-        //return domainIter(new gsTrimmedDomainIterator<T,d,Z>(m_tree));
+        // GISMO_NO_IMPLEMENTATION
+        return domainIter(new gsTrimmedDomainIterator<InteriorSign,d,T,Z>(m_tree,this->boundingBox(),m_upperIndex));
     }
 
     domainIter beginBdr(const boxSide bs) const override
     {
-        GISMO_NO_IMPLEMENTATION
-       //return domainIter(new gsTrimmedDomainBoundaryIterator<T,d,Z>(m_tree,bs));
+        // GISMO_NO_IMPLEMENTATION
+       return domainIter(new gsTrimmedDomainIterator<BoundarySign,d,T,Z>(m_tree,this->boundingBox(),m_upperIndex));
     }
 
     size_t numElements() const override
@@ -196,9 +206,12 @@ public: // non-virtual interface
         point_t lc, uc;
         while (it.good())
         {
-            uc = it.data().upperCorner();
-            lc = it.data().lowerCorner();
-            nel += (uc - lc).prod();
+            if (InteriorSign()(it.data().sign()))
+            {
+                uc = it.data().upperCorner();
+                lc = it.data().lowerCorner();
+                nel += (uc - lc).prod();
+            }
             it.next();
         }
         return nel;
@@ -206,21 +219,34 @@ public: // non-virtual interface
 
     size_t numElementsBdr(boxSide const & s = boundary::none) const override
     {
-        return 0;
+        leafIterator it = m_tree.beginLeafIterator(); //generic tree leaf iterator
+        size_t nel(0);
+        point_t lc, uc;
+        while (it.good())
+        {
+            if (BoundarySign()(it.data().sign()))
+            {
+                uc = it.data().upperCorner();
+                lc = it.data().lowerCorner();
+                nel += (uc - lc).prod();
+            }
+            it.next();
+        }
+        return nel;
     }
 
     short_t dim() const override { return d; }
 
     const Tree_t & tree() const { return m_tree; }
 
-private:
+protected:
 
     void init(T tol, index_t samples = 10)
     {
 
     }
 
-    void init(gsTensorBasis<d,T> & tbasis, index_t samples = 3)
+    void init(const gsTensorBSplineBasis<d,T> & tbasis, index_t samples = 3)
     {
         gsVector<index_t>  numNodes(d);
         numNodes.setConstant(samples);
@@ -231,19 +257,20 @@ private:
 
 
         // Make a box
-        TData_t iData(point_t::Zeros(), m_upperIndex);
+        TData_t iData(point_t::Zero(), m_upperIndex);
         m_tree = Tree_t(iData);
-        
+
         // Initialize stack
-        std::vector<TData_t*> stack;
+        std::vector<Tree_t*> stack;
         stack.reserve(  std::pow(4,d) );
         stack.push_back(&m_tree);
 
-        gsVector<T> wts, u1, u2;
+        gsVector<T,d> u1, u2;
+        gsVector<T> wts;
         gsMatrix<T> pts;
         gsVector<short_t> sgn;
 
-        node_t * curNode;
+        Tree_t * curNode;
         while ( ! stack.empty() )
         {
             curNode = stack.back(); //top();
@@ -252,17 +279,17 @@ private:
             if ( curNode->isLeaf() ) // reached a leaf
             {
                 auto & k1 = curNode->nodeData().lowerCorner();
-                auto & k2 = curNode->nodeData().upperCorner();    
+                auto & k2 = curNode->nodeData().upperCorner();
                 for(short_t j = 0; j < d;j++)
                 {
                     const gsKnotVector<T> & kv = tbasis.knots(j);
                     u1[j] = kv.uValue(k1[j]);
                     u2[j] = kv.uValue(k2[j]);
-                }                
+                }
                 //question: treat Trivial boxes ?
 
                 // TODO: For all elements inside [k1,k2].....
-                QuRule->mapTo(u1, u2, pts, wts);
+                QuRule.mapTo(u1, u2, pts, wts);
                 sgn = this->sign(pts);
 
                 if ( (sgn.array() == 1).all() ) // domain active ?
@@ -284,8 +311,9 @@ private:
                 }
                 else //more than one element
                 {
-                    node * newLeaf = curNode->anyMidSplit(1);
-                    stack.push_back(newLeaf);
+                    curNode->anyMidSplit(1);
+                    stack.push_back(curNode->left );
+                    stack.push_back(curNode->right);
                 }
             }
             else // roll down the tree
@@ -304,51 +332,60 @@ private:
         //Second pass:
         // assign active elements
         // subdivide into cut-cells upto cutlevel
-        
+
     }
 
 protected:
-    const Tree_t m_tree;
+    Tree_t m_tree;
     point_t m_upperIndex;
 };
 
 
 /// Class representing an implicit trimmed domain
-template<short_t d, class T>
-class gsImplTrimmedDomain : gsTrimmedDomain<T>
+template<short_t d, class T, class Z=index_t>
+class gsImplTrimmedDomain : public gsTrimmedDomain<d,T,Z>
 {
 private:
     typename gsFunction<T>::Ptr m_implFunction; // implicit function
-    
+    gsMatrix<T> m_boundingBox;
+
 public:
-    gsImplTrimmedDomain(const gsFunction<T> & fnc, gsTensorBasis<d,T> & tbasis)
+    gsImplTrimmedDomain(const gsFunction<T> & fnc, const gsTensorBSplineBasis<d,T> & tbasis)
+    :
+    m_implFunction(memory::make_shared_not_owned(&fnc)),
+    m_boundingBox(fnc.support())
     {
         this->init(tbasis, 3);
     }
 
+    void setBoundingBox(const gsMatrix<T> & bb)
+    {
+        m_boundingBox = bb;
+    }
+
     virtual gsMatrix<T> boundingBox() const override
     {
-        return fnc.support();
+        return m_boundingBox;
     }
-    
-    inline gsVector<int> sign(const gsMatrix<T> & u)
+
+    inline gsVector<short_t> sign(const gsMatrix<T> & u)
     {
-        gsMatrix<T> val = m_implFunction->eval(u);
-        return val.array().sign();
+        gsVector<T> val = m_implFunction->eval(u).row(0);
+        return gsVector<short_t>(val.array().sign().template cast<short_t>());
     }
 
 };
 
-template<class T>
+template<short_t d, class T>
 class gsImmersedGeometry// : public gsFunction<T>
 {
 private:
     typename gsFunction<T>::Ptr m_bgGeo; // background geometry
-    gsImplTrimmedDomain<T> m_trDomain;  // trimmed domain
+    gsImplTrimmedDomain<d,  T> m_trDomain;  // trimmed domain
 
 public:
     gsImmersedGeometry(const gsFunction<T> & bgGeo,
-                       const gsImplTrimmedDomain<T> & trDomain) :
+                       const gsImplTrimmedDomain<d, T> & trDomain) :
     m_bgGeo(bgGeo.clone()), m_trDomain(trDomain)
     { }
 
@@ -357,12 +394,12 @@ public://function interface?
 public:
     const gsFunction<T> & background() const { return *m_bgGeo; }
 
-    const gsImplTrimmedDomain<T> & domain() const { return m_trDomain; }
+    const gsImplTrimmedDomain<d, T> & domain() const { return m_trDomain; }
 
     /// Return a triangulation of the boundaty of the immersed geometry
     memory::unique_ptr<gsMesh<T> > toBoundaryMesh(int npoints = 50) const
     {
-        gsVector<index_t>  numNodes(2); numNodes.setConstant(3);
+        gsVector<index_t,d>  numNodes; numNodes.setConstant(3);
         gsLobattoRule<real_t> qurule(numNodes);
 
         auto supp = m_bgGeo.support();
@@ -377,25 +414,214 @@ public:
 
 };
 
-template<class T>
-class gsTrimmedDomainIterator
+template<typename SignOp, short_t d, class T, class Z>
+class gsTrimmedDomainIterator : public gsDomainIterator<T>
 {
+
+public:
+
+    typedef gsTrimmedDomain<d,T,Z> Domain_t;
+    typedef typename Domain_t::TData_t TData_t;
+    typedef typename Domain_t::Tree_t Tree_t;
+    typedef typename Tree_t::const_literator leafIterator;
+    typedef typename Tree_t::point_t point_t;
+
+
+    typedef typename std::vector<T>::const_iterator  uiter;
+
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
+
     // elements:
     // bool active (true/false)
     // int position (-1,0,1) (out, cut, in)
-private:
-    gsDofMapper m_mapper;
 
-    // gsKdTree
-    
 public:
-    gsTrimmedDomainIterator(const gsImplTrimmedDomain<T> & trdom,
-                            const gsBasis<T> & basis, index_t cutlevel = 0)
+
+    gsTrimmedDomainIterator(const Tree_t & tree, const gsMatrix<T> & boundingBox, const point_t & upperIndex)
+    :
+    gsDomainIterator<T>(),
+    m_tree(tree),
+    m_boundingBox(boundingBox),
+    m_upperIndex(upperIndex)
     {
-        init(trdom,basis,cutlevel);
+        m_leaf = init(m_tree);
+        if (!SignOp()(m_leaf.data().sign()))
+            nextLeaf();
+        updateLeaf();
     }
 
-    const gsDofMapper & mapper() const { return m_mapper; }
+    gsTrimmedDomainIterator(const gsTrimmedDomainIterator & other) = default;
+    domainIter clone() const override { return domainIter(new gsTrimmedDomainIterator(*this)); }
+
+    leafIterator init(const Tree_t & tree)
+    {
+        // Initialize mesh data
+        m_meshStart.resize(d);
+        m_meshEnd  .resize(d);
+
+        // Initialize cell data
+        m_curElement.resize(d);
+
+        // Allocate breaks
+        m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
+
+        return tree.beginLeafIterator();
+    }
+
+    // ---> Documentation in gsDomainIterator.h
+    void next() override
+    {
+        gsDebug<<"Next\n";
+        bool isGood(m_leaf.good());
+        if (m_leaf.good())
+        {
+            if (SignOp()(m_leaf.data().sign()))
+            {
+                gsDebug<<"Leaf with corners "<<m_leaf.data().lowerCorner().transpose()
+                      <<"~"<<m_leaf.data().upperCorner().transpose()
+                      <<" and sign "<<m_leaf.data().sign()<<"\n";
+
+                isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+                if (!isGood) // went through all elements in m_leaf
+                {
+                    isGood = nextLeaf();
+                    gsDebug<<"Going to next leaf\n";
+                }
+            }
+            else
+            {
+                isGood = nextLeaf();
+                gsDebug<<"Going to next leaf\n";
+            }
+        }
+    }
+
+    // ---> Documentation in gsDomainIterator.h
+    void next(index_t increment) override
+    {
+        // increment through elements
+        //todo: better implementation
+        // compute the number of elements between curElement and meshEnd
+        // use m_leaf.numElements() to skip leaves
+        // arrive at the element or end
+        bool isGood(m_leaf.good());
+        gsDebug<<"Next with increment "<<increment<<"\n";
+        for (index_t i = 0; i < increment && isGood; ++i)
+        {
+            if (m_leaf.good())
+            {
+                if (SignOp()(m_leaf.data().sign()))
+                {
+                    gsDebug<<"Leaf with corners "<<m_leaf.data().lowerCorner().transpose()
+                      <<"~"<<m_leaf.data().upperCorner().transpose()
+                      <<" and sign "<<m_leaf.data().sign()<<"\n";
+                    isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+                    if (!isGood) // went through all elements in m_leaf
+                        isGood = nextLeaf();
+                }
+                else
+                    isGood = nextLeaf();
+            }
+        }
+    }
+
+    /// Resets the iterator so that it can be used for another
+    /// iteration through all boundary elements.
+    void reset() override
+    {
+        m_leaf = m_tree.beginLeafIterator();
+        updateLeaf();
+    }
+
+    gsVector<T> lowerCorner() const override
+    {
+        gsVector<T> lower;
+        lower.resize(d);
+        for (short_t i = 0; i < d ; ++i)
+            lower[i] = *m_curElement[i];
+        return lower;
+    }
+
+    gsVector<T> upperCorner() const override
+    {
+        gsVector<T> upper;
+        upper.resize(d);
+        for (short_t i = 0; i < d ; ++i)
+            upper[i]  = *(m_curElement[i]+1);
+        return upper;
+    }
+
+    short_t sign() const
+    {
+        return m_leaf.data().sign();
+    }
+
+private:
+
+    /// returns true if there is a another leaf with a boundary element
+    bool nextLeaf()
+    {
+        bool isGood = m_leaf.next();
+        while (isGood)
+        {
+            if (SignOp()(m_leaf.data().sign()))
+            {
+                updateLeaf();
+                return true;
+            }
+            isGood = m_leaf.next();
+        }
+        return false;
+    }
+
+    /// Computes lower, upper and center point of the current element, maps the reference
+    /// quadrature nodes and weights to the current element, and computes the
+    /// active functions.
+    void updateLeaf()
+    {
+        point_t lower = m_leaf.data().lowerCorner();
+        point_t upper = m_leaf.data().upperCorner();
+
+        // Update leaf box
+        for (size_t dim = 0; dim < d; ++dim)
+        {
+            index_t start = lower(dim);
+            index_t end  = upper(dim) ;
+
+            m_breaks[dim].clear();
+            for (index_t index = start; index <= end; ++index)
+            {
+                T coord = (T)index / (T)m_upperIndex[dim];
+                m_breaks[dim].push_back( m_boundingBox(dim,0)+coord*(m_boundingBox(dim,1)-m_boundingBox(dim,0)) );
+            }
+
+            m_curElement(dim) =
+            m_meshStart(dim)  = m_breaks[dim].begin();
+
+            // for n breaks, we have n - 1 elements (spans)
+            m_meshEnd(dim) =  m_breaks[dim].end() - 1;
+        }
+    }
+
+private:
+
+    const Tree_t & m_tree;
+    const gsMatrix<T> m_boundingBox;
+    const point_t m_upperIndex;
+
+        // The current leaf node of the tree
+    leafIterator m_leaf;
+
+    // Coordinates of the grid cell boundaries
+    // \todo remove this member
+    std::vector< std::vector<T> > m_breaks;
+
+    // Extent of the tensor grid
+    gsVector<uiter, d> m_meshStart, m_meshEnd;
+
+    // Current element as pointers to it's supporting mesh-lines
+    gsVector<uiter, d> m_curElement;
+
 };
 
 template<class T>
@@ -419,7 +645,10 @@ int main(int argc, char* argv[])
     bg.knots(0).transform(-1,1);
     bg.knots(1).transform(-1,1);
     // defines the inside or the outside of the (parametric) domain
-    gsFunctionExpr<> impl_fun("1 - x^2 - y^2", 2)
+    gsFunctionExpr<> impl_fun("1 - x^2 - y^2", 2);
+    gsMatrix<> bb(2,2);
+    bb << -1, 1,
+          -1, 1;
 
     // uses the two objects above to get an immersed geometry
     //gsImmersedGeometry<real_t> igo(bg, inOut);
@@ -428,13 +657,42 @@ int main(int argc, char* argv[])
     gsKnotVector<> kv(-1,1,9,2);
     gsTensorBSplineBasis<2,real_t> tbs(kv,kv);
 
-    gsImplTrimmedDomain<real_t> tr_domain(impl_fun, tbs);
+    gsImplTrimmedDomain<2,real_t> tr_domain(impl_fun, tbs);
+    tr_domain.setBoundingBox(bb);
+    gsDebugVar(tr_domain.boundingBox());
 
 
     tr_domain.tree().printLeaves();
-    
 
-    
+
+    // test iterator
+    gsVector<> InteriorLabel(tr_domain.numElements());
+    gsMatrix<> InteriorBoxes(2,tr_domain.numElements()*2);
+    for (auto & elem : tr_domain.allElements())
+    {
+        gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<InteriorSign,2,real_t,index_t> &>(elem).sign()
+              <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
+        InteriorLabel[elem.id()] = static_cast<gsTrimmedDomainIterator<InteriorSign,2,real_t,index_t> &>(elem).sign();
+        InteriorBoxes.col(elem.id()*2)   = elem.lowerCorner();
+        InteriorBoxes.col(elem.id()*2+1) = elem.upperCorner();
+    }
+    gsWriteParaview(InteriorBoxes,InteriorLabel,"interior_elements");
+
+    gsVector<> BoundaryLabel(tr_domain.numElementsBdr());
+    gsMatrix<> BoundaryBoxes(2,tr_domain.numElementsBdr()*2);
+    for (auto & elem : gsDomain<real_t>::ElementRange( tr_domain.beginBdr(boundary::none), tr_domain.endBdr(boundary::none) ) )
+    {
+        gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<BoundarySign,2,real_t,index_t> &>(elem).sign()
+              <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
+
+        BoundaryLabel[elem.id()] = static_cast<gsTrimmedDomainIterator<BoundarySign,2,real_t,index_t> &>(elem).sign();
+        BoundaryBoxes.col(elem.id()*2)   = elem.lowerCorner();
+        BoundaryBoxes.col(elem.id()*2+1) = elem.upperCorner();
+    }
+    gsWriteParaview(BoundaryBoxes,BoundaryLabel,"boundary_elements");
+
+    gsWriteParaview(impl_fun, bb, "implicit_function");
+
     gsVector<unsigned,2> upp;
     upp.setConstant(kv.numElements());
     //gsTrimmedDomain<2,unsigned> tree;
