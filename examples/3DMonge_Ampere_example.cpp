@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     bool plot           = false;
     index_t numRefine   = 3;
     index_t numLRefine  = 1;
-    index_t numElevate  = 0;
+    index_t numReduce   = 0;
     index_t maxIter     = 30;
     double IntensityMAE = 9.;
     double quadValue    = 4.0;
@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
     //std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/mhd.xml");
     //std::string fn("pde/infinit_plate.xml");
     std::string fn("pde/circle.xml");
     //std::string fn("surfaces/cylinder.xml"); 
@@ -45,7 +44,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+                "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", numReduce );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
 
@@ -73,7 +72,7 @@ int main(int argc, char *argv[])
     auto coefsMap  = mpLeft.patch(0).coefs();
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    mpLeft.degreeElevate(numElevate);
+    // mpLeft.degreeReduce(numElevate);
     mpLeft.computeTopology();
     
     // Right-hand side function : Analytical density function rho_1
@@ -98,17 +97,21 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
-    for (int r=0; r< numRefine; ++r)
+    gsVector<>  h1err(numRefine+1), l2err(numRefine+1);
+    gsVector<int>  DoFPDE(numRefine+1);
+    while (dbasis.basis(0).numElements()<1e2)
     {
         dbasis.uniformRefine();
-        mpLeft.uniformRefine();
     }
-    //... condition for the convergence 
-    while (dbasis.basis(0).numElements()<1e3)
+    for (int r=0; r<= numRefine; ++r)
     {
-        dbasis.uniformRefine();
-        numRefine++;
-    }    
+    dbasis.uniformRefine();
+    // //... condition for the convergence 
+    // while (dbasis.basis(0).numElements()<1e3)
+    // {
+    //     dbasis.uniformRefine();
+    //     numRefine++;
+    // }    
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
@@ -135,34 +138,45 @@ int main(int argc, char *argv[])
     ###                                  Step 1-2 : Computes the density function
     ###                                     and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE, numReduce = numReduce);
     auto density   = MAE.buildAnalyticDensity(f);
-    auto rho       = A.getCoeff(density);
-    gsInfo << "Density function computed: "<< ev.integral( rho.val() ) <<"\n";
     auto Psitp     = MAE.buildMultiPatch(density);// build the adaptive mapping
-    gsInfo << "MultiPatch adaptive geometry computed\n";
     // //------------------------------------
     geometryMap G  = A.getMap(mpLeft);
     geometryMap PP = A.getMap(Psitp);
+    gsFunctionExpr<> iDe("2.+0.*x","2.+0.*y",2);
+    auto ide = A.getCoeff(iDe, G);
     auto comp      = A.getCoeff(mpLeft, PP);
+    gsMultiPatch<> PsiF  = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
+    // gsInfo << "Composition of geometry maps computed\n";
+    geometryMap PPF = A.getMap(PsiF);
+    // ...
+    DoFPDE[r] = dbasis.basis(0).size();
+    gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
+    timer.restart();
+    l2err[r]  = ev.integral( jac(G).det())-ev.integral(jac(PPF).det() );
+    h1err[r]  = math::sqrt(ev.integralBdr((PPF-comp).sqNorm()));
     // ...
     std::cout << std::setprecision(15);
     std::cout << ", G :   geometry volume: "<< ev.integral( jac(G).det()  ) <<"\n";
-    std::cout << ", Comp: geometry volume: "<< ev.integral( jac(G).det()  )-ev.integral( jac(PP).det() *jac(comp).det() ) <<"\n";
-    Psitp        = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
-    std::cout << ", GPP : geometry volume: "<<  ev.integral( jac(G).det()  )-ev.integral( jac(PP).det()  ) <<"\n";
-
-    //! [Export visualization in ParaView]
+    std::cout << ", Comp: geometry volume: "<< ev.integral( jac(G).det()  )- ev.integral( jac(PP).det() *jac(comp).det() ) <<"\n";
+    // ...
+    std::cout << ", GPP : geometry volume: "<< l2err[r] <<"\n";
+    std::cout << ", GPP : geometry boundary: "<<  h1err[r] <<"\n";
+    //------------------------------------    
+    //! [Export visualization in ParaView] 
     if (plot)
     {
         gsMultiPatch<> Psi;
         if (mpLeft.dim()== 3){
-        for(size_t i =0; i<Psitp.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(Psitp.patch(i)) ));
+        for(size_t i =0; i<PsiF.nPatches(); ++i)
+            // Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
+            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
         }
         else{
-        for(size_t i =0; i<Psitp.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));            
+        for(size_t i =0; i<PsiF.nPatches(); ++i)
+            // Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(PsiF.patch(i)) ));
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiF.patch(i)) ));            
         }
         Psi.addAutoBoundaries();
         Psi.computeTopology();
@@ -227,7 +241,21 @@ int main(int argc, char *argv[])
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     //! [Export visualization in ParaView]
-
+    }
+    // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
+    std::ofstream outFile("errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
+    if (outFile.is_open())
+    {
+        outFile << "#DoF_PDE:  \n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
+        outFile << "#B_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
+        outFile.close(); // Close the file after writing
+    }
+    else
+    {
+        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
+    }
     return EXIT_SUCCESS;
 
 

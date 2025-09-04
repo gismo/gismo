@@ -18,14 +18,17 @@
 gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<double> basis,
                             const gsMultiPatch<> mapping,
                             index_t maxIter,
-                            double IntensityMAE)
+                            double IntensityMAE,
+                            index_t numReduce)
 {
-    gsInfo<<"\n <>r-refinement (!!! We use B-spline for ADmapping) \n";
+    gsInfo<<"\n <>r-refinement (!!!";
     gsMultiBasis<double> dbasis(mapping, true);//not NURBS
+    if (dbasis.degree()-numReduce >= 1)
+        dbasis.degreeReduce(numReduce);
     //... condition for the convergence 
     while (dbasis.basis(0).numElements()<basis.basis(0).numElements())
         dbasis.uniformRefine();
-
+    gsInfo<<" We use B-spline of degree "<< dbasis.degree()<<" for AdMapping) \n";
     this->m_basis        = dbasis;
     this->n_basis        = basis;
     this->m_mapping      = mapping; 
@@ -574,7 +577,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiPatch<> P
     // Elements used for numerical integration
     A.setIntegrationElements(this->n_basis);
 
-    gsExprEvaluator<> ev(A);
     //... 
     space v        = A.getSpace(this->n_basis);
     gsMatrix<> vsolVector;

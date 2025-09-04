@@ -25,7 +25,8 @@ public:
     gsAdaptiveMultiPatchBuilder(const gsMultiBasis<double> basis,
                                 const gsMultiPatch<> mapping,
                                 index_t maxIter     = 30,
-                                double IntensityMAE = 9.0);
+                                double IntensityMAE = 9.0,
+                                index_t numReduce = 0);
 
     // Method to project normal control points
     void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1) const;

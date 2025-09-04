@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
     gsConstantFunction<> g(0.,0.,2);
 
     //! [Refinement]
-    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
     
     gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
