@@ -36,17 +36,25 @@ void markEdge(gsSurfMesh & mesh, gsSurfMesh::Halfedge_property<bool> & sharp,
 //};
 int main(int argc, char** argv)
 {
+    std::string fn("off/octtorus.off");
+    bool plot = false;
+    index_t r(1);
+
+    gsCmdLine cmd("Hi, give me a mesh");
+    cmd.addPlainString("filename", "File containing mesh", fn);
+    cmd.addSwitch("plot", "Plot the results", plot);
+    cmd.addInt   ("r", "ref", "Number of refinement steps", r);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
     // Create mesh
     
     gsSurfMesh mesh;
-    
+    gsReadFile<>(fn,mesh);
+
     typedef gsEigen::Vector<real_t,3> Point;
     typedef gsSurfMesh::Vertex Vertex;
 
-    // gsFileData readOffClass obj1;
-    // obj1.readOFF("C:/Users/jimt1/Documents/Git_Repos/gismo/build/bin/Debug/initial_cube.off");
-                                                      
-    // gsSurfMesh:: mesh = obj1.getFirst(gsSurfMesh());
+/*
     mesh.add_vertex(Point(-1,-1,-1)); // Vertices
     mesh.add_vertex(Point( 1,-1,-1));
     mesh.add_vertex(Point(-1, 1,-1));
@@ -66,15 +74,25 @@ int main(int argc, char** argv)
     //markEdge(mesh, sharp, 2, 3);
     //markEdge(mesh, sharp, 0, 2);
     //markEdge(mesh, sharp, 1, 3);
-    /*mesh.write("initial_cube.off");*/
     mesh.write("out_ds_0.off");
+    */
     gsInfo << "Input: " << mesh.n_vertices() << " vertices, "
         << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
     // One step of Catmull-Clark subdivisions
-    gsSurfMesh new_mesh = mesh.ds_subdivide_robust();
+    for( index_t i = 0; i<r; ++i)
+    {
+        gsSurfMesh new_mesh = mesh.ds_subdivide_robust();
+        mesh = new_mesh; // to do: implement inPlace
+        //mesh.ds_subdivide();
+    }
 
+    mesh.write("out_ds_1.off");
 
-    new_mesh.write("out_ds_1.off");
+    if (plot)
+    {
+        gsWriteParaview(mesh,"mesh_in", { });
+        gsFileManager::open("mesh_in.vtk");
+    }
 
     //mesh.ds_subdivide();
     //mesh.write("out_ds_1.off");
