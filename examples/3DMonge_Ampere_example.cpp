@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
     index_t numRefine   = 3;
     index_t numLRefine  = 1;
     index_t numReduce   = 0;
+    index_t numElevate  = 0;
     index_t maxIter     = 30;
     double IntensityMAE = 9.;
     double quadValue    = 4.0;
@@ -44,6 +45,8 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "e", "degreeElevation",
+                "Number of degree Elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addInt( "r", "degreeRedution",
                 "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", numReduce );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
@@ -72,7 +75,7 @@ int main(int argc, char *argv[])
     auto coefsMap  = mpLeft.patch(0).coefs();
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    // mpLeft.degreeReduce(numElevate);
+    mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
     
     // Right-hand side function : Analytical density function rho_1
@@ -144,8 +147,6 @@ int main(int argc, char *argv[])
     // //------------------------------------
     geometryMap G  = A.getMap(mpLeft);
     geometryMap PP = A.getMap(Psitp);
-    gsFunctionExpr<> iDe("2.+0.*x","2.+0.*y",2);
-    auto ide = A.getCoeff(iDe, G);
     auto comp      = A.getCoeff(mpLeft, PP);
     gsMultiPatch<> PsiF  = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
     // gsInfo << "Composition of geometry maps computed\n";
