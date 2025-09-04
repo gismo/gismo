@@ -149,7 +149,7 @@ template <typename E>
 auto curl(const CurlExpression<E, 1, 0, true>& expr)
 -> decltype(/* grad(div(expr.expr())) -  */lapl(expr.expr()))
 {
-    gsWarn<<"Warning: Curl of curl identity is not fully implemented (missing grad(div))!"<<gsEndl;
+    gsWarn<<"Warning: Curl of curl identity is not fully implemented (missing grad(div))!\n";
     return /* grad(div(expr.expr())) -  */lapl(expr.expr());
 }
 
