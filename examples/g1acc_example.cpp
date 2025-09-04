@@ -43,10 +43,10 @@ int main(int argc, char** argv)
     typedef gsEigen::Vector<real_t,3> Point;
     typedef gsSurfMesh::Vertex Vertex;
 
-    //readOffClass obj1;
-    //obj1.readOFF("C:/Users/jimt1/Documents/Git_Repos/gismo/build/bin/Debug/initial_cube.off");
-    //                                                  
-    //gsSurfMesh:: mesh = obj1.getFirst(gsSurfMesh());
+    // gsFileData readOffClass obj1;
+    // obj1.readOFF("C:/Users/jimt1/Documents/Git_Repos/gismo/build/bin/Debug/initial_cube.off");
+                                                      
+    // gsSurfMesh:: mesh = obj1.getFirst(gsSurfMesh());
     mesh.add_vertex(Point(-1,-1,-1)); // Vertices
     mesh.add_vertex(Point( 1,-1,-1));
     mesh.add_vertex(Point(-1, 1,-1));
@@ -68,11 +68,16 @@ int main(int argc, char** argv)
     //markEdge(mesh, sharp, 1, 3);
     /*mesh.write("initial_cube.off");*/
     mesh.write("out_ds_0.off");
+    gsInfo << "Input: " << mesh.n_vertices() << " vertices, "
+        << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
     // One step of Catmull-Clark subdivisions
-    mesh.ds_subdivide();
+    gsSurfMesh new_mesh = mesh.ds_subdivide_robust();
 
-    gsInfo << "Input: "<<mesh.n_vertices()<< " vertices, "
-           << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
+
+    new_mesh.write("out_ds_1.off");
+
+    //mesh.ds_subdivide();
+    //mesh.write("out_ds_1.off");
 
     //gsSurfScheme sf(mesh);
     //const gsMultiPatch<real_t> & mp = sf.acc5();
@@ -80,7 +85,9 @@ int main(int argc, char** argv)
     //gsInfo << "Output: "<< mp <<"\n";
 
     // Export as an XML file, that can be used with gsView to visualize on ParaView
-
+    /*
+    * 
+    *mesh.ds_subdivide();
     mesh.write("out_ds_1.off");
     mesh.ds_subdivide();
     mesh.write("out_ds_2.off");
@@ -92,6 +99,14 @@ int main(int argc, char** argv)
     mesh.write("out_ds_5.off");
     mesh.ds_subdivide();
     mesh.write("out_ds_6.off");
+    
+    
+    
+    
+    
+    
+    */
+
 
     //gsWrite(mesh, "out_acc5");
 

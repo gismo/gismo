@@ -1235,8 +1235,6 @@ public: //---------------------------------------------- low-level connectivity
     Face fface(Face f) const {
         return fconn_[f].fface_;
     }
-    /// returns renumbered face
-    void gsSurfMesh::renumber_vertex_in_face(std::vector<std::vector<Vertex>> ds_Verts, int offset_v);
     
     /// sets the incident F-Face for Doo-Sabin subdivision to\c f
     void set_fface(Face f, Face ff) {
@@ -1850,6 +1848,12 @@ public: //--------------------------------------------- higher-level operations
     /// deletes the face \c f from the mesh
     void delete_face(Face f);
 
+    /// barycentric dual-mesh (dual-graph)
+     /** Dual mesh (Dual-graph) creation for 2-manifold polygons without boundaries.
+     * Options:
+     * \t 1 - Barycentric Dual graph.
+     */
+    gsSurfMesh dual_graph(int option);
     //@}
 
 
@@ -1955,6 +1959,13 @@ public: // Doo-Sabin functions
     /// Doo-Sabin subdivision
     void ds_subdivide();
 
+    /// Doo-Sabin subdivision robust
+    gsSurfMesh ds_subdivide_robust();
+
+    /// Doo-Sabin Image point caluculation per vertex in a face
+    Point ds_image_point_calc(Vertex oldv, Face oldf);
+
+
     /// Image vertex per face for Doo-Sabin subdivision scheme
     gsMatrix<real_t> get_image_vertex_coeffs(unsigned int face_valence);
 
@@ -1963,6 +1974,13 @@ public: // Doo-Sabin functions
 
     /// Maximum velence in the mesh vertices
     unsigned int maximum_mesh_valence(Vertex_container verts);
+
+public: // Loop subdivision
+
+    ///  Loop subdivision
+    void loop_subdivide();
+
+    
 
 private: //--------------------------------------------------- helper functions
 

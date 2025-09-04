@@ -2455,8 +2455,7 @@ void gsSurfMesh::ds_subdivide() {
     
 
     index_t fnv = n_vertices(); // Number of vertices in the current mesh
-    index_t fnf = n_faces(); // Number if faces in the current mesh
-    unsigned int max_valence{gsSurfMesh::maximum_mesh_valence(vertices())};
+    //unsigned int max_valence{gsSurfMesh::maximum_mesh_valence(vertices())};
     std::vector<std::vector<int>> ds_vertex_connectity{};
     std::vector<Point> im_vertex_points{};
 
@@ -2520,10 +2519,6 @@ void gsSurfMesh::ds_subdivide() {
         
         ds_vertex_connectity.push_back(imVertsVector);
 
-        //// Create the F-face from the image vertices
-        //gsSurfMesh::Face fface;
-        //fface = mesh.add_face(imVertsVectorDummy);
-        //set_fface(fit,fface);
 
     }
 
@@ -2569,7 +2564,7 @@ void gsSurfMesh::ds_subdivide() {
     garbage_collection();
 
     //gsDebugVar(position(Vertex(0)));
-    for (int i = 0; i < im_vertex_points.size();i++) {
+    for (int i = 0; i < im_vertex_points.size(); i++) {
         add_vertex(im_vertex_points[i]);
     }
     //unsigned int max_face_id{n_faces()+fnf-1};
@@ -2583,19 +2578,17 @@ void gsSurfMesh::ds_subdivide() {
         imVertsVector.clear();
     }
 
-        // loop over all edges
+    // loop over all edges
     std::vector<std::vector<Vertex>>  eVertsVector;
     std::vector<Vertex>  eFaceVertsVector{};
-//
+
     Halfedge start_he;
     Halfedge next_he;
     Edge current_edge;
     Face start_face;
     Face current_face;
     Vertex next_v;
-//
-//
-//
+
 #   pragma omp parallel for default(shared)
 
     for (auto vit : vertices())
@@ -2605,48 +2598,117 @@ void gsSurfMesh::ds_subdivide() {
             v = vit;
             // Initial half-edge
             for (auto start_he : halfedges(vit)) {
-              
+
                 he = start_he;
                 do {
                     eFaceVertsVector.push_back(v);
                     he = opposite_halfedge(he);
                     he = cw_rotated_halfedge(he);
                     v = from_vertex(he);
-                    
+
                 } while (v != vit);
                 break;
             }
             add_face(eFaceVertsVector);
             eFaceVertsVector.clear();
 
-            
 
-            
-            
         }
 
     }
-    
-//        // Create the E-Face from image vectors
-//        gsSurfMesh::Face eface{ nm.add_face(eFaceVertsVector) };
-//
-    
+
 }
 
+gsSurfMesh gsSurfMesh::ds_subdivide_robust() {
+    // New Mesh
+    gsSurfMesh new_mesh;
 
-void gsSurfMesh::renumber_vertex_in_face(std::vector<std::vector<Vertex>> ds_Verts, int offset_v){
-    //nf.idx_ = f.idx_ - offset_face;
-    gsSurfMesh::Halfedge he;
-    gsSurfMesh::Vertex nv;
-    std::vector<Vertex>  faceVertsVector{};
-    int counter{ 0 };
-    for (std::vector<Vertex> vv : ds_Verts) {
-        for (int vindex = 0; vindex < vv.size()+1;vindex++) {
+    // Make a map to identify the new vertices
+    std::map<std::pair<Vertex, Face>, Vertex> Map;
+
+
+    // Creation of V-Faces
+    Vertex v;
+    std::vector<Vertex> ffv;
+    for (auto oldv : vertices()) {
+
+        // add new vertices and face
+        ffv.clear();
+        for (auto oldf : faces(oldv)) {
+            v = new_mesh.add_vertex(ds_image_point_calc(oldv,oldf));
+            ffv.push_back(v);
+            Map[std::make_pair(oldv, oldf)] = v;
+        }
+        new_mesh.add_face(ffv);
+    }
+
+    for (auto oldf : faces()) {
+        ffv.clear();
+        for (auto oldv : vertices(oldf)) {
+            ffv.push_back(Map[std::make_pair(oldv, oldf)]);
+        }
+        new_mesh.add_face(ffv);
+    }
+
+    for (auto olde : edges()) {
+        if (!is_boundary(olde)){
+            auto h0 = halfedge(olde, 0);
+            auto h1 = halfedge(olde, 1);
+
+            // Create E-Face
+            new_mesh.add_quad(Map[std::make_pair(from_vertex(h1), face(h0))],
+                Map[std::make_pair(from_vertex(h0), face(h0))],
+                Map[std::make_pair(from_vertex(h0), face(h1))],
+                Map[std::make_pair(from_vertex(h1), face(h1))]
             
-            vv[vindex].idx_ = vv[vindex].idx() - offset_v;
+            );
         }
     }
+
+    return new_mesh;
 }
+
+Point gsSurfMesh::ds_image_point_calc(Vertex oldv, Face oldf) {
+    unsigned int face_valence{ valence(oldf) };
+
+    unsigned int tempi{ 0 };
+    for (auto vit : vertices(oldf)) {
+        if (vit == oldv) {
+            break;
+        }
+        tempi++;
+    }
+    real_t val{ 0 };
+    
+    gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
+    coords.setZero();
+    unsigned int tempj{ 0 };
+    // Creating the mask (image vertice coefficients) by looping to the number
+    // of vertices
+    for (auto vit : vertices(oldf)) {
+        if (vit == oldv) {
+            val = (real_t)(face_valence + 5) / (4 * face_valence); 
+            tempj++;
+            coords += val * position(vit);
+        }
+        else {
+            val = (3 + 2 * cos(2.0 * EIGEN_PI * (tempi - tempj) / face_valence)) / (4 * face_valence);
+            tempj++;
+            coords += val * position(vit);
+
+        }
+        
+    }
+    Point temp;
+    temp[0] = coords(0);
+    temp[1] = coords(1);
+    temp[2] = coords(2);
+
+    return temp;
+    
+
+}
+
 
 gsMatrix<real_t> gsSurfMesh::get_image_vertex_coeffs(unsigned int face_valence) {
 
@@ -2707,6 +2769,80 @@ gsVector<real_t> gsSurfMesh::edge_vector(Edge e) {
     return evec;
 
 }
+
+gsSurfMesh gsSurfMesh::dual_graph(int option) {
+
+    // Dual-mesh instance
+    gsSurfMesh dm;
+
+
+    //Instances of the original mesh
+    gsSurfMesh::Vertex v;
+    gsSurfMesh::Face f;
+    gsSurfMesh::Edge e;
+
+    // Calculate the dual vertices (from original faces)
+    
+
+    for (auto f : faces()) {
+
+    }
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+void gsSurfMesh::loop_subdivide() {
+
+    gsSurfMesh::Vertex v;
+    gsSurfMesh::Halfedge he;
+    gsSurfMesh::Face f;
+
+    // reserve vertices, edges, faces
+    reserve(n_vertices() + n_edges() + n_faces(),
+        2 * n_edges(), 4 * n_faces());
+
+    auto points = get_vertex_property<Point>("v:point");
+
+
+    index_t fnv = n_vertices(); // Number of vertices in the current mesh
+
+
+    // Tessalate the current mesh, in order to have pure triangle mesh
+    for (auto fit : faces()) {
+        
+        if (valence(fit) > 3) {
+            triangulate(fit);
+    }
+
+    // In each face 
+
+
+    }
+
+
+
+
+
+}
+
+
+
+
+
+
+
 
 namespace internal {
 
