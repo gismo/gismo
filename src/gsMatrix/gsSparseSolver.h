@@ -18,9 +18,11 @@ namespace gismo {
 // forward declarations
 template<typename T> class gsEigenCGIdentity;
 template<typename T> class gsEigenCGDiagonal;
+template<typename T> class gsEigenCGCustom;
 template<typename T> class gsEigenBiCGSTABIdentity;
 template<typename T> class gsEigenBiCGSTABDiagonal;
 template<typename T> class gsEigenBiCGSTABILUT;
+template<typename T> class gsEigenBiCGSTABCustom;
 template<typename T> class gsEigenSparseLU;
 template<typename T> class gsEigenSparseQR;
 template<typename T> class gsEigenSimplicialLDLT;
@@ -54,7 +56,7 @@ template<typename T> class gsEigenDGMRES;
     solver.compute(M);
     gsMatrix<> x = solver.solve(b);
     \endcode
-    
+
     See also
     http://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
     and
@@ -70,9 +72,11 @@ public:
 
     typedef gsEigenCGIdentity<T>           CGIdentity ;
     typedef gsEigenCGDiagonal<T>           CGDiagonal;
+    typedef gsEigenCGCustom<T>             CGCustom;
     typedef gsEigenBiCGSTABDiagonal<T>     BiCGSTABDiagonal;
     typedef gsEigenBiCGSTABIdentity<T>     BiCGSTABIdentity;
     typedef gsEigenBiCGSTABILUT<T>         BiCGSTABILUT;
+    typedef gsEigenBiCGSTABCustom<T>       BiCGSTABCustom;
     typedef gsEigenSparseLU<T>             LU;
     typedef gsEigenSparseQR<T>             QR;
     typedef gsEigenSimplicialLDLT<T>       SimplicialLDLT;
@@ -87,7 +91,7 @@ public:
     typedef gsEigenMINRES<T>               MINRES;
     typedef gsEigenGMRES<T>                GMRES;
     typedef gsEigenDGMRES<T>               DGMRES;
-    
+
 public:
     typedef gsSparseMatrix<T> MatrixT;
     typedef gsMatrix<T>       VectorT;
@@ -111,7 +115,7 @@ public:
     }
 
     /// Prints the object as a string with extended details.
-    virtual std::string detail() const 
+    virtual std::string detail() const
     {
         std::ostringstream os;
         print(os);
@@ -121,6 +125,7 @@ public:
     static uPtr get(const std::string & slv)
     {
         if (slv=="CGDiagonal")       return uPtr(new CGDiagonal());
+        if (slv=="CGIdentity")       return uPtr(new CGIdentity());
         if (slv=="SimplicialLDLT")   return uPtr(new SimplicialLDLT());
         if (slv=="SimplicialLLT")   return uPtr(new SimplicialLLT());
 #       ifdef GISMO_WITH_PARDISO
@@ -191,9 +196,11 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
 
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenCGIdentity,     CGIdentity)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenCGDiagonal,     CGDiagonal)
+GISMO_EIGEN_SPARSE_SOLVER (gsEigenCGCustom,      CGCustom)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenBiCGSTABIdentity, BiCGSTABIdentity)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenBiCGSTABDiagonal, BiCGSTABDiagonal)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenBiCGSTABILUT,     BiCGSTABILUT)
+GISMO_EIGEN_SPARSE_SOLVER (gsEigenBiCGSTABCustom,   BiCGSTABCustom)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenSparseLU,       SparseLU)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenSparseQR,       SparseQR)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenSimplicialLDLT, SimplicialLDLT)

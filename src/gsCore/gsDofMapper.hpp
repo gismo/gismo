@@ -11,13 +11,27 @@
     Author(s): C. Hofreither, A. Mantzaflaris
 **/
 
+#include <gsCore/gsFunctionSet.h>
+#include <gsCore/gsBasis.h>
+#include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsMultiBasis.h>
+
+#include <gsMSplines/gsMappedBasis.h>
+
+#include <gsPde/gsBoundaryConditions.h>
 
 namespace gismo
 {
 
+// template<class T>
+// void gsDofMapper::init( const gsMappedBasis<2,T> & bases, index_t nComp)
+// {
+//     GISMO_ASSERT(nComp>0,"Zero components");
+//     this->setIdentity(bases.nPatches(), bases.size(), nComp);
+// }
+
 template<class T>
-void gsDofMapper::init( const gsMultiBasis<T> & bases, index_t nComp)
+void gsDofMapper::init( const gsFunctionSet<T> & bases, index_t nComp)
 {
     GISMO_ASSERT(nComp>0,"Zero components");
     m_shift = m_bshift = 0;
@@ -26,21 +40,37 @@ void gsDofMapper::init( const gsMultiBasis<T> & bases, index_t nComp)
     m_numElimDofs.assign(nComp+1,0);
     m_offset.clear();
 
-    const size_t nPatches = bases.nBases();
+    const size_t nPatches = bases.nPieces();
 
     // Initialize offsets and dof holder
     m_offset.reserve( nPatches );
     m_offset.push_back(0);
     for (size_t k = 1; k < nPatches; ++k)
-        m_offset.push_back( m_offset.back() + bases[k-1].size() );
+        m_offset.push_back( m_offset.back() + bases.basis(k-1).size() );
 
-    m_numFreeDofs.assign(1+nComp,m_offset.back() + bases.back().size()); m_numFreeDofs.front()=0;
+    m_numFreeDofs.assign(1+nComp,m_offset.back() + bases.basis(nPatches-1).size()); m_numFreeDofs.front()=0;
 
     m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
 }
 
 template<class T>
-void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
+void gsDofMapper::init( const gsFunctionSet<T> & basis, const gsBoxTopology & topology, index_t nComp)
+{
+    init(basis, nComp);
+    gsMatrix<index_t> b1, b2;
+    for ( gsBoxTopology::const_iiterator it = topology.iBegin();
+            it != topology.iEnd(); ++it )
+    {
+        const gsBasis<T> & basis1 = basis.basis(it->first().patch);
+        const gsBasis<T> & basis2 = basis.basis(it->second().patch);
+        basis1.matchWith(*it, basis2, b1, b2);
+        for (size_t i=0; i!=this->componentsSize(); ++i)
+            this->matchDofs(it->first().patch, b1,it->second().patch, b2,i);
+    }
+}
+
+template<class T>
+void gsDofMapper::init( std::vector<const gsFunctionSet<T> *> const & bases)
 {
     const index_t numComp = bases.size();
     m_shift = m_bshift = 0;
@@ -48,7 +78,7 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
     m_numCpldDofs.assign(numComp+1,1); m_numCpldDofs.front()=0;
     m_offset.clear();
 
-    const size_t nPatches = bases[0]->nBases();
+    const size_t nPatches = bases[0]->nPieces();
 
     //Checking if bases are same size in for components.
     std::vector<index_t> offsets(nPatches);
@@ -75,7 +105,7 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
     {
         index_t dofsPatches = 0;
         for (index_t comp = 0; comp < numComp; ++comp)
-            dofsPatches += bases[comp]->back().size();
+            dofsPatches += bases[comp]->basis(bases[comp]->nPieces()-1).size();
         m_numFreeDofs.assign(numComp+1,m_offset.back() + dofsPatches);
 	m_numFreeDofs.front()=0;
     }
@@ -83,7 +113,7 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
     //i.e. bases[comp]->back().size() are equal for all comp
     else
     {
-      m_numFreeDofs.assign(numComp+1, (m_offset.back() + bases[0]->back().size())); m_numFreeDofs.front()=0;
+      m_numFreeDofs.assign(numComp+1, (m_offset.back() + bases[0]->basis(bases[0]->nPieces()-1).size())); m_numFreeDofs.front()=0;
     }
 
     m_numElimDofs.assign(numComp+1,0);
@@ -91,12 +121,12 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
 }
 
 template<class T>
-void gsDofMapper::init(const gsMultiBasis<T>         &basis,
+void gsDofMapper::init(const gsFunctionSet<T>         &basis,
                        const gsBoundaryConditions<T> &bc, int unk)
 {
     init(basis, 1); //one component
 
-    /// \todo move this code to gsMultiBasis::getMapper
+    /// \todo move this code to gsMultiBasis::getMapper. @hverhelst: WHY??
     for (typename gsBoundaryConditions<T>::const_iterator
          it = bc.dirichletBegin() ; it != bc.dirichletEnd(); ++it )
     {
@@ -105,7 +135,7 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
             GISMO_ASSERT(it->ps.patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a boundary condition is set on a patch id which does not exist.");
 
-            gsMatrix<index_t> bnd = basis[it->ps.patch].boundary(it->ps.side());
+            gsMatrix<index_t> bnd = basis.basis(it->ps.patch).boundary(it->ps.side());
             markBoundary(it->ps.patch, bnd);
         }
     }
@@ -119,7 +149,179 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
             GISMO_ASSERT(it->patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a corner boundary condition is set on a patch id which does not exist.");
 
-            eliminateDof(basis[it->patch].functionAtCorner(it->corner), it->patch);
+            eliminateDof(basis.basis(it->patch).functionAtCorner(it->corner), it->patch);
+        }
+    }
+}
+
+template<class T>
+void gsDofMapper::init(const gsBasis<T>         &basis,
+                       const gsBoundaryConditions<T> &bc,
+                       index_t nComp,
+                       int unk)
+{
+    gsMultiBasis<T> mbasis(basis);
+    init(mbasis, bc, nComp, unk,false);
+}
+
+template<class T>
+void gsDofMapper::init(const gsMultiBasis<T>         &basis,
+                       const gsBoundaryConditions<T> &bc,
+                       index_t nComp,
+                       int unk,
+                       bool conforming)
+{
+    if (conforming)
+        init(basis, basis.topology(), bc, nComp, unk );
+    else
+        init(basis, gsBoxTopology() , bc, nComp, unk );
+}
+
+template<class T>
+void gsDofMapper::init(const gsMappedBasis<2,T>      &basis,
+                       const gsBoundaryConditions<T> &bc,
+                       index_t nComp,
+                       int unk,
+                       bool conforming)
+{
+    if (conforming)
+        init(basis, basis.getTopol(), bc, nComp, unk );
+    else
+        init(basis, gsBoxTopology() , bc, nComp, unk );
+}
+
+template<class T>
+void gsDofMapper::init(const gsMultiPatch<T>         &geometry,
+                       const gsBoundaryConditions<T> &bc,
+                       index_t nComp,
+                       int unk,
+                       bool conforming)
+{
+    if (conforming)
+        init(geometry, geometry.topology(), bc, nComp, unk );
+    else
+        init(geometry, gsBoxTopology() , bc, nComp, unk );
+}
+
+template<class T>
+void gsDofMapper::init(const gsFunctionSet<T>        &basis,
+                       const gsBoxTopology           &topology,
+                       const gsBoundaryConditions<T> &bc,
+                       index_t nComp,
+                       int unk)
+{
+    init(basis, topology, nComp);
+
+    // if (conforming)
+    // {
+    //     for ( gsBoxTopology::const_iiterator it = basis.topology().iBegin();
+    //             it != basis.topology().iEnd(); ++it )
+    //     {
+    //         if ( it->type() != interaction::contact ) // If the interface type is 'contact' ignore it.
+    //             basis.matchInterface(*it,*this);
+    //     }
+    // }
+
+    // Strong Dirichlet conditions
+    gsMatrix<index_t> bnd, bnd1;
+    for (typename gsBoundaryConditions<T>::const_iterator
+         it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
+    {
+        if (unk!=-1 && it->unknown() != unk) continue;
+
+        GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->numPatches(),
+                    "Problem: a boundary condition is set on a patch id which does not exist.");
+
+        bnd = basis.basis(it->ps.patch).boundary(it->ps.side());
+        this->markBoundary(it->ps.patch, bnd, it->unkComponent());
+    }
+
+    // Clamped boundary condition (per DoF)
+    for (typename gsBoundaryConditions<T>::const_iterator
+         it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
+    {
+        if (unk!=-1 && it->unknown() != unk) continue;
+
+        GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->numPatches(),
+                        "Problem: a boundary condition is set on a patch id which does not exist.");
+
+        const index_t cc = it->unkComponent();
+        bnd = basis.basis(it->ps.patch).boundary(it->ps.side());
+        bnd1= basis.basis(it->ps.patch).boundaryOffset(it->ps.side(), 1);
+        if (!it->ps.parameter())
+            bnd.swap(bnd1);
+        for (index_t c = 0; c!=nComp; c++) // for all components
+        {
+            if (c==cc || cc==-1 )
+                for (index_t k = 0; k < bnd.size(); ++k)
+                    this->matchDof(it->ps.patch, (bnd)(k, 0),
+                                   it->ps.patch, (bnd1)(k, 0), c);
+        }
+    }
+
+    // Collapsed
+    for (typename gsBoundaryConditions<T>::const_iterator
+         it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )
+    {
+        if (unk!=-1 && it->unknown() != unk) continue;
+
+        GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->numPatches(),
+                        "Problem: a boundary condition is set on a patch id which does not exist.");
+        const index_t cc = it->unkComponent();
+        bnd = basis.basis(it->ps.patch).boundary(it->ps.side());
+        // match all DoFs to the first one of the side
+        for (index_t c = 0; c!=nComp; c++) // for all components
+        {
+            if (c==cc || cc==-1)
+                for (index_t k = 0; k < bnd.size() - 1; ++k)
+                    this->matchDof(it->ps.patch, (bnd)(0, 0),
+                                   it->ps.patch, (bnd)(k + 1, 0), c);
+        }
+    }
+
+    // Coupled boundary condition (per DoF)
+    for (typename gsBoundaryConditions<T>::const_cpliterator
+         it = bc.coupledBegin(); it != bc.coupledEnd(); ++it )
+    {
+        if (unk!=-1 && it->unknown != unk) continue;
+
+        GISMO_ASSERT(static_cast<size_t>(it->ifc.first().patch) < this->numPatches(),
+                        "Problem: a boundary condition is set on a patch id which does not exist.");
+        GISMO_ASSERT(static_cast<size_t>(it->ifc.second().patch) < this->numPatches(),
+                        "Problem: a boundary condition is set on a patch id which does not exist.");
+
+        const index_t cc = it->component;
+        bnd = basis.basis(it->ifc.first().patch).boundary(it->ifc.first().side());
+        bnd1= basis.basis(it->ifc.second().patch).boundary(it->ifc.second().side());
+        GISMO_ASSERT(bnd.rows() == bnd1.rows(),
+                        "Problem: trying to couple boundaries of different size.");
+
+        // match all DoFs to the first one of the side
+        for (index_t c = 0; c!=nComp; c++) // for all components
+        {
+            if (c==cc || cc==-1)
+            {
+                for (index_t k = 0; k < bnd.size() -1; ++k)
+                    this->matchDof(it->ifc.first().patch,  (bnd)(k, 0),
+                                   it->ifc.second().patch, (bnd1)(k + 1, 0), c);
+                for (index_t k = 0; k < bnd1.size(); ++k)
+                    this->matchDof(it->ifc.second().patch, (bnd1)(k, 0),
+                                   it->ifc.first().patch,  (bnd)(k, 0), c);
+            }
+        }
+    }
+
+    // Corners
+    for (typename gsBoundaryConditions<T>::const_citerator
+            it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
+    {
+        if (unk!=-1 && it->unknown != unk) continue;
+        for (index_t r = 0; r!=nComp; ++r)
+        {
+            if (it->component!=-1 && it->component!=r) continue;
+            GISMO_ASSERT(static_cast<size_t>(it->patch) < this->numPatches(),
+                            "Problem: a corner boundary condition is set on a patch id which does not exist.");
+            this->eliminateDof(basis.basis(it->patch).functionAtCorner(it->corner), it->patch, it->component);
         }
     }
 }

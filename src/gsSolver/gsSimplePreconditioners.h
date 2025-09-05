@@ -307,30 +307,52 @@ public:
     static uPtr make(const MatrixPtr& mat)
     { return memory::make_unique( new gsGaussSeidelOp(mat) ); }
 
-    void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const { step_impl<ordering>(rhs,x); }
+
+    template <gsGaussSeidel::ordering _ordering>
+    typename std::enable_if<(_ordering == gsGaussSeidel::forward), void>::type
+    step_impl(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
-        if ( ordering == gsGaussSeidel::forward )
-            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
-        if ( ordering == gsGaussSeidel::reverse )
-            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
-        if ( ordering == gsGaussSeidel::symmetric )
-        {
-            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
-            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
-        }
+        internal::gaussSeidelSweep<T>(m_expr,x,rhs);
     }
 
-    void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    template <gsGaussSeidel::ordering _ordering>
+    typename std::enable_if<(_ordering == gsGaussSeidel::reverse), void>::type
+    step_impl(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
-        if ( ordering == gsGaussSeidel::forward )
-            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
-        if ( ordering == gsGaussSeidel::reverse )
-            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
-        if ( ordering == gsGaussSeidel::symmetric )
-        {
-            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
-            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
-        }
+        internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+    }
+
+    template <gsGaussSeidel::ordering _ordering>
+    typename std::enable_if<(_ordering == gsGaussSeidel::symmetric), void>::type
+    step_impl(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+        internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+    }
+
+    void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const { stepT_impl<ordering>(rhs,x); }
+
+    template <gsGaussSeidel::ordering _ordering>
+    typename std::enable_if<(_ordering == gsGaussSeidel::forward), void>::type
+    stepT_impl(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+    }
+
+    template <gsGaussSeidel::ordering _ordering>
+    typename std::enable_if<(_ordering == gsGaussSeidel::reverse), void>::type
+    stepT_impl(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+    }
+
+    template <gsGaussSeidel::ordering _ordering>
+    typename std::enable_if<(_ordering == gsGaussSeidel::symmetric), void>::type
+    stepT_impl(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+        internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
     }
 
     index_t rows() const {return m_expr.rows();}

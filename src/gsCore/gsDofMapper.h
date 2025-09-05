@@ -81,14 +81,85 @@ public:
      * @param dirichlet
      * @param unk
      */
+    GISMO_DEPRECATED
     template<class T>
     gsDofMapper(
-        const gsMultiBasis<T>         &bases,
+        const gsFunctionSet<T>         &bases,
         const gsBoundaryConditions<T> &dirichlet,
         int unk = 0
         ) : m_shift(0), m_bshift(0)
     {
-      init(bases, dirichlet, unk); //obsolete, one component
+        init(bases, dirichlet, unk); //obsolete, one component
+    }
+
+    // template<class T>
+    // gsDofMapper(
+    //     const gsFunctionSet<T>         &bases,
+    //     const gsBoundaryConditions<T> &dirichlet,
+    //     int nComp,
+    //     int unk = 0
+    //     ) : m_shift(0), m_bshift(0)
+    // {
+    //   init(bases, dirichlet, nComp, unk); //obsolete, one component
+    // }
+
+    template<class T>
+    gsDofMapper(
+        const gsMultiBasis<T>         &bases,
+        index_t nComp = 1,
+        bool conforming = true
+        ) : m_shift(0), m_bshift(0)
+    {
+        if (conforming)
+            init(bases, bases.topology(), nComp);
+        else
+            init(bases, gsBoxTopology(),  nComp);
+    }
+
+    template<class T>
+    gsDofMapper(
+        const gsFunctionSet<T>         &bases,
+        const gsBoxTopology            &topology,
+        index_t nComp
+        ) : m_shift(0), m_bshift(0)
+    {
+        init(bases, topology, nComp);
+    }
+
+    template<class T>
+    gsDofMapper(
+        const gsMultiBasis<T>         &bases,
+        const gsBoundaryConditions<T> &dirichlet,
+        int nComp,
+        int unk = 0,
+        bool conforming = true
+        ) : m_shift(0), m_bshift(0)
+    {
+        init(bases, dirichlet, nComp, unk, conforming);
+    }
+
+    template<short_t d, class T>
+    gsDofMapper(
+        const gsMappedBasis<d,T>      &bases,
+        const gsBoundaryConditions<T> &dirichlet,
+        int nComp,
+        int unk = 0,
+        bool conforming = true
+        ) : m_shift(0), m_bshift(0)
+    {
+        init(bases, dirichlet, nComp, unk, conforming);
+    }
+
+    template<class T>
+    gsDofMapper(
+        const gsMultiPatch<T>         &geometry,
+        const gsBoundaryConditions<T> &dirichlet,
+        int nComp,
+        int unk = 0,
+        bool conforming = true
+        ) : m_shift(0), m_bshift(0)
+    {
+        init(geometry, dirichlet, nComp, unk, conforming);
     }
 
     /**
@@ -98,7 +169,7 @@ public:
      * @param bases
      */
     template<class T>
-    gsDofMapper(const gsMultiBasis<T> & bases, index_t nComp = 1)
+    gsDofMapper(const gsFunctionSet<T> & bases, index_t nComp = 1)
     {
         init(bases, nComp);
     }
@@ -111,7 +182,7 @@ public:
      */
     template<class T>
     gsDofMapper(
-        std::vector<const gsMultiBasis<T> *> const & bases
+        std::vector<const gsFunctionSet<T> *> const & bases
         )
     {
         init(bases);
@@ -141,19 +212,67 @@ public:
         initPatchDofs(patchDofSizes, nComp);
     }
 
-    /// Initialize by a gsMultiBasis
+    /// Initialize by a gsFunctionSet
     template <typename T>
-    void init(const gsMultiBasis<T> & bases, index_t nComp = 1);
+    void init(const gsFunctionSet<T> & bases, index_t nComp = 1);
 
-    /// Initialize by a vector of gsMultiBasis.
+    /// Initialize by a gsFunctionSet and a topology (explicitly given)
     template <typename T>
-    void init( std::vector<const gsMultiBasis<T> *> const & bases);
+    void init(const gsFunctionSet<T> & bases, const gsBoxTopology & topology, index_t nComp = 1);
 
-    /// Initialize by gsMultiBasis, boundary conditions and the index
+    /// Initialize by a vector of gsFunctionSet.
+    template <typename T>
+    void init( std::vector<const gsFunctionSet<T> *> const & bases);
+
+    /// Initialize by gsFunctionSet, boundary conditions and the index
     /// of the unknown to be eliminated
+    GISMO_DEPRECATED
     template<class T>
-    void init(const gsMultiBasis<T>         &basis,
-	      const gsBoundaryConditions<T> &dirichlet, int unk = 0);
+    void init(const gsFunctionSet<T>         &basis,
+	          const gsBoundaryConditions<T> &dirichlet, int unk = 0);
+
+    /**
+     * @brief Initialize by gsFunctionSet, boundary conditions, the number of components and the index
+     * of the unknown to be eliminated
+     * @param basis
+     * @param dirichlet
+     * @param nComp number of components
+     * @param unk index of the unknown to be eliminated
+     * @param conforming if true, the mapper assumes that the basis is conforming on the interfaces
+     */
+    template<class T>
+    void init(const gsFunctionSet<T>         &basis,
+              const gsBoxTopology            &topology,
+	          const gsBoundaryConditions<T>  &dirichlet,
+              index_t nComp,
+              int unk = 0);
+
+    template<class T>
+    void init(const gsMultiBasis<T>          &basis,
+	          const gsBoundaryConditions<T>  &dirichlet,
+              index_t nComp,
+              int unk = 0,
+              bool conforming = true);
+
+    template<class T>
+    void init(const gsMappedBasis<2,T>       &basis,
+	          const gsBoundaryConditions<T>  &dirichlet,
+              index_t nComp,
+              int unk = 0,
+              bool conforming = true);
+
+    template<class T>
+    void init(const gsMultiPatch<T>          &geometry,
+	          const gsBoundaryConditions<T>  &dirichlet,
+              index_t nComp,
+              int unk = 0,
+              bool conforming = true);
+
+    template<class T>
+    void init(const gsBasis<T>              &basis,
+              const gsBoundaryConditions<T> &dirichlet,
+              index_t nComp,
+              int unk = 0);
 
     void swap(gsDofMapper & other)
     {
@@ -275,7 +394,7 @@ public:
      */
     void localToGlobal(const gsMatrix<index_t>& locals,
                        index_t patchIndex,
-                       gsMatrix<index_t>& globals, 
+                       gsMatrix<index_t>& globals,
 		               index_t comp = 0) const;
 
     /** \brief Computes the global indices of the input local indices
@@ -288,7 +407,7 @@ public:
     void localToGlobal2(const gsMatrix<index_t>& locals,
                         index_t patchIndex,
                         gsMatrix<index_t>& globals,
-                        index_t & numFree, 
+                        index_t & numFree,
 		                index_t comp = 0) const;
 
     /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.
@@ -503,7 +622,7 @@ public:
     /// \brief For all global index, this function assigns
     /// a pair (patch,dof) that maps to that global index
     std::vector<std::pair<index_t,index_t> > anyPreImages(index_t comp = 0) const;
-    
+
     /// \brief Produces the inverse of the mapping on patch \a k
     /// assuming that the map is invertible on that patch
     std::map<index_t,index_t> inverseOnPatch(const index_t k) const;

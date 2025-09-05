@@ -95,7 +95,7 @@ public:
     gsMultiBasis( const gsMultiBasis& other );
 
     memory::shared_ptr<gsDomain<T> > domain() const;
-    
+
 #if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsMultiBasis(gsMultiBasis&& other) : m_bases(give(other.m_bases)), m_topology(give(other.m_topology)) {}
@@ -611,56 +611,117 @@ public:
         m_topology = tpl;
     }
 
-
+    /**
+     * @brief Constructs a gsDofMapper for the multi-basis.
+     *
+     * The mapper can be constructed either as conforming or non-conforming.
+     * In the conforming case, the mapper matches the degrees of freedom
+     * along the interfaces specified in the topology of the multi-basis.
+     * In the non-conforming case, the mapper treats all degrees of freedom
+     * as independent.
+     *
+     * @param conforming If true, a conforming mapper is constructed.
+     * @param bc The boundary conditions to be applied.
+     * @param nComp The number of components of the solution.
+     * @param unk The index of the unknown for which the mapper is constructed.
+     * @param mapper The resulting mapper.
+     * @param finalize If true, the mapper is finalized after construction.
+     *                 If false, further modifications to the mapper are possible.
+     */
     void getMapper(bool conforming,
                    const gsBoundaryConditions<T> & bc,
-                   int unk,
+                   index_t nComp,
+                   index_t unk,
                    gsDofMapper & mapper,
                    bool finalize = true) const;
 
+    /**
+     * @brief Constructs a gsDofMapper for the multi-basis.
+     *
+     * @note Assumes a single-component solution and unk=0.
+     *
+     * See the other overload of getMapper() for details.
+     */
     void getMapper(bool conforming,
                    const gsBoundaryConditions<T> & bc,
+                   index_t nComp,
                    gsDofMapper & mapper,
                    bool finalize = true) const
-    { getMapper(conforming, bc, 0, mapper, finalize); }
+    { getMapper(conforming, bc, nComp, 0, mapper, finalize); }
 
+    /**
+     * @brief Constructs a gsDofMapper for the multi-basis.
+     *
+     * @note Assumes one component.
+     *
+     * See the other overload of getMapper() for details.
+     */
     void getMapper(iFace::strategy is,
                    const gsBoundaryConditions<T> & bc,
                    gsDofMapper & mapper,
-                   int unk,
+                   index_t unk,
                    bool finalize = true) const
-    { getMapper(is==iFace::glue, bc, unk, mapper, finalize); }
+    { getMapper(is==iFace::glue, bc, 1, unk, mapper, finalize); }
 
+    /**
+     * @brief Constructs a gsDofMapper for the multi-basis.
+     *
+     * @note Assumes a single-component solution and unk=0.
+     */
     void getMapper(dirichlet::strategy ds,
                    iFace::strategy is,
                    const gsBoundaryConditions<T> & bc,
                    gsDofMapper & mapper,
-                   int unk,
+                   index_t unk,
                    bool finalize = true) const
     {
         if ( ds == dirichlet::elimination )
-            getMapper(is==iFace::glue, bc, unk, mapper, finalize);
+            getMapper(is==iFace::glue, bc, 1, unk, mapper, finalize);
         else
-            getMapper(is==iFace::glue,        mapper, finalize);
+            getMapper(is==iFace::glue,     1,      mapper, finalize);
     }
 
+    /**
+     * @brief Constructs and returns a gsDofMapper for the multi-basis.
+     *
+     * The mapper can be constructed either as conforming or non-conforming.
+     * In the conforming case, the mapper matches the degrees of freedom
+     * along the interfaces specified in the topology of the multi-basis.
+     * In the non-conforming case, the mapper treats all degrees of freedom
+     * as independent.
+     *
+     * @param conforming If true, a conforming mapper is constructed.
+     * @param bc The boundary conditions to be applied.
+     * @param mapper The resulting mapper.
+     * @param finalize If true, the mapper is finalized after construction.
+     *                 If false, further modifications to the mapper are possible.
+     */
     gsDofMapper getMapper(dirichlet::strategy ds,
                           iFace::strategy is,
                           const gsBoundaryConditions<T> & bc,
-                          int unk,
+                          index_t unk,
                           bool finalize = true) const
     {
         gsDofMapper mapper;
         if ( ds == dirichlet::elimination )
-            getMapper(is==iFace::glue, bc, unk, mapper, finalize);
+            getMapper(is==iFace::glue, bc, 1, unk, mapper, finalize);
         else
-            getMapper(is==iFace::glue,        mapper, finalize);
+            getMapper(is==iFace::glue,     1,      mapper, finalize);
         return mapper;
     }
 
-
-    // to remove
-    void getMapper(bool conforming, gsDofMapper & mapper, bool finalize = true) const;
+    /**
+     * @brief Constructs a gsDofMapper for the multi-basis without boundary conditions
+     *
+     * @param conforming If true, a conforming mapper is constructed.
+     * @param nComp The number of components of the solution.
+     * @param mapper The resulting mapper.
+     * @param finalize If true, the mapper is finalized after construction.
+     *                 If false, further modifications to the mapper are possible.
+     */
+    void getMapper(bool conforming, index_t nComp, gsDofMapper & mapper, bool finalize = true) const;
+    void getMapper(bool conforming, gsDofMapper & mapper, bool finalize = true) const
+    { getMapper(conforming, 1, mapper, finalize); }
 
     void getMapper(iFace::strategy is, gsDofMapper & mapper, bool finalize = true) const
     { getMapper(is==iFace::glue, mapper, finalize); }

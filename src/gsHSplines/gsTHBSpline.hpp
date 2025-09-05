@@ -65,7 +65,7 @@ void gsTHBSpline<d,T,Trunc>::increaseMultiplicity(index_t lvl, int dir, T knotVa
     this->basis().increaseMultiplicity(lvl,dir,knotValue,mult);
     gsDebug<<"increased"<<std::endl;
     // Compute the transfer matrix
-    gsSparseMatrix<T> trMatrix;
+    gsSparseMatrix<T,RowMajor> trMatrix;
     this->basis().transfer(OX, trMatrix);
     gsDebug<<"transfer"<<std::endl;
     // Multiply the coeffs by the transfer matrix
