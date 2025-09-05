@@ -59,6 +59,29 @@ public:
     /// @brief This function sets up a multigrid hierarchy by uniform refinement
     ///
     /// @param mBasis                    The gsMultiBasis to be refined (initial basis)
+    /// @param numComponents             The number of components of the space
+    /// @param boundaryConditions        The boundary conditions
+    /// @param assemblerOptions          A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
+    /// @param levels                    The number of levels
+    /// @param numberOfKnotsToBeInserted The number of knots to be inserted, defaulted to 1
+    /// @param multiplicityOfKnotsToBeInserted The multiplicity of the knots to be inserted, defaulted to 1
+    /// @param unk                       Since the gsBoundaryCondition object can obtain data for systems
+    ///                                  of PDEs, we have to provide information concerning which unknown
+    ///                                  we are refering to.
+    static gsGridHierarchy buildByRefinement(
+        gsMultiBasis<T> mBasis,
+        index_t numComponents,
+        const gsBoundaryConditions<T>& boundaryConditions,
+        const gsOptionList& assemblerOptions,
+        index_t levels,
+        index_t numberOfKnotsToBeInserted = 1,
+        index_t multiplicityOfKnotsToBeInserted = 1,
+        index_t unk = 0
+        );
+
+    /// @brief This function sets up a multigrid hierarchy by uniform refinement
+    ///
+    /// @param mBasis                    The gsMultiBasis to be refined (initial basis)
     /// @param boundaryConditions        The boundary conditions
     /// @param options                   A gsOptionList defining the necessary infomation
     /// Takes boundary conditions for unknown 0.
@@ -70,6 +93,32 @@ public:
     {
         return gsGridHierarchy::buildByRefinement(
             give(mBasis),
+            boundaryConditions,
+            options,
+            options.askInt( "Levels", 3 ),
+            options.askInt( "NumberOfKnotsToBeInserted", 1 ),
+            options.askInt( "MultiplicityOfKnotsToBeInserted", 1 ),
+            0
+        );
+    }
+
+    /// @brief This function sets up a multigrid hierarchy by uniform refinement
+    ///
+    /// @param mBasis                    The gsMultiBasis to be refined (initial basis)
+    /// @param numComponents             The number of components of the space
+    /// @param boundaryConditions        The boundary conditions
+    /// @param options                   A gsOptionList defining the necessary infomation
+    /// Takes boundary conditions for unknown 0.
+    static gsGridHierarchy buildByRefinement(
+        gsMultiBasis<T> mBasis,
+        index_t numComponents,
+        const gsBoundaryConditions<T>& boundaryConditions,
+        const gsOptionList& options
+        )
+    {
+        return gsGridHierarchy::buildByRefinement(
+            give(mBasis),
+            numComponents,
             boundaryConditions,
             options,
             options.askInt( "Levels", 3 ),
@@ -106,6 +155,31 @@ public:
     /// @brief This function sets up a grid hierarchy by coarsening
     ///
     /// @param mBasis                    The gsMultiBasis to be coarsened (initial basis)
+    /// @param numComponents             The number of components of the space
+    /// @param boundaryConditions        The boundary conditions
+    /// @param assemblerOptions          A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
+    /// @param levels                    The maximum number of levels
+    /// @param degreesOfFreedom          Number of dofs in the coarsest grid in the grid hierarchy
+    /// @param unk                       Since the gsBoundaryCondition object can obtain data for systems
+    ///                                  of PDEs, we have to provide information concerning which unknown
+    ///                                  we are refering to.
+    ///
+    /// The algorithm terminates if either the number of levels is reached or the number of degrees of freedom
+    /// is below the given threshold.
+    ///
+    static gsGridHierarchy buildByCoarsening(
+        gsMultiBasis<T> mBasis,
+        index_t numComponents,
+        const gsBoundaryConditions<T>& boundaryConditions,
+        const gsOptionList& assemblerOptions,
+        index_t levels,
+        index_t degreesOfFreedom = 0,
+        index_t unk = 0
+        );
+
+    /// @brief This function sets up a grid hierarchy by coarsening
+    ///
+    /// @param mBasis                    The gsMultiBasis to be coarsened (initial basis)
     /// @param boundaryConditions        The boundary conditions
     /// @param options                   A gsOptionList defining the necessary infomation
     ///
@@ -125,6 +199,52 @@ public:
             0
         );
     }
+
+    /// @brief This function sets up a grid hierarchy by coarsening
+    ///
+    /// @param mBasis                    The gsMultiBasis to be coarsened (initial basis)
+    /// @param numComponents             The number of components of the space
+    /// @param boundaryConditions        The boundary conditions
+    /// @param options                   A gsOptionList defining the necessary infomation
+    ///
+    /// Takes boundary conditions for unkown 0.
+    static gsGridHierarchy buildByCoarsening(
+        gsMultiBasis<T> mBasis,
+        index_t numComponents,
+        const gsBoundaryConditions<T>& boundaryConditions,
+        const gsOptionList& options
+    )
+    {
+        return gsGridHierarchy::buildByCoarsening(
+            give(mBasis),
+            numComponents,
+            boundaryConditions,
+            options,
+            options.askInt( "Levels", 3 ),
+            options.askInt( "DegreesOfFreedom", 0 ),
+            0
+        );
+    }
+
+    /// @brief This function sets up a grid hierarchy from a hierarchical basis, by coarsening
+    ///
+    /// @param mBasis                    The gsMultiBasis to be coarsened
+    /// @param numComponents             The number of components of the space
+    /// @param boundaryConditions        The boundary conditions
+    /// @param assemblerOptions          A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
+    /// @param unk                       Since the gsBoundaryCondition object can obtain data for systems
+    ///                                  of PDEs, we have to provide information concerning which unknown
+    ///                                  we are refering to.
+    ///
+    /// The algorithm terminates if the lowest level is reached.
+    ///
+    static gsGridHierarchy buildByHierarchicalCoarsening(
+        gsMultiBasis<T> mBasis,
+        index_t numComponents,
+        const gsBoundaryConditions<T>& boundaryConditions,
+        const gsOptionList& assemblerOptions,
+        index_t unk = 0
+        );
 
     /// Get the default options
     static gsOptionList defaultOptions()
