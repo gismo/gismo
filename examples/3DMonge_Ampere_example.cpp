@@ -31,7 +31,8 @@ int main(int argc, char *argv[])
     double IntensityMAE = 9.;
     double quadValue    = 4.0;
     bool export_b64     = false;
-
+    bool last           = false;
+    index_t coef_V      = 1.;
     // Specify the file path
     // std::string fn("pde/example3D.xml");
     //std::string fn("volumes/GshapedVolume.xml");
@@ -50,12 +51,15 @@ int main(int argc, char *argv[])
                 "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", numReduce );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
+    cmd.addInt("c", "coef_V", "volume coef mult", coef_V);
 
     cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("last", "Solve solely for the last level of h-refinement",
+                  last);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addReal("q","quadValue", "Quadrature rule number of  points in each direction", quadValue);
 
@@ -72,9 +76,9 @@ int main(int argc, char *argv[])
     // ...
     gsMultiPatch<> mpLeft;
     fd.getId(1,mpLeft);
-    auto coefsMap  = mpLeft.patch(0).coefs();
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
+    mpLeft.patch(0).coefs() *= coef_V;
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
     
@@ -85,7 +89,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Density function "<< f << "\n";
 
     //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<double> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -100,12 +104,20 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
-    gsVector<>  h1err(numRefine+1), l2err(numRefine+1);
-    gsVector<int>  DoFPDE(numRefine+1);
     while (dbasis.basis(0).numElements()<1e2)
     {
         dbasis.uniformRefine();
     }
+    // h-refine each basis
+    if (last)
+    {
+        for (int r =0; r < numRefine; ++r)
+            dbasis.uniformRefine();
+        numRefine = 0;
+    }
+    // ... 
+    gsVector<>  h1err(numRefine+1), l2err(numRefine+1);
+    gsVector<int>  DoFPDE(numRefine+1);
     for (int r=0; r<= numRefine; ++r)
     {
     dbasis.uniformRefine();
@@ -155,12 +167,13 @@ int main(int argc, char *argv[])
     DoFPDE[r] = dbasis.basis(0).size();
     gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
     timer.restart();
-    l2err[r]  = ev.integral( jac(G).det())-ev.integral(jac(PPF).det() );
+    l2err[r]  = EIGEN_PI*coef_V*coef_V + ev.integral(jac(PPF).det() );
     h1err[r]  = math::sqrt(ev.integralBdr((PPF-comp).sqNorm()));
     // ...
     std::cout << std::setprecision(15);
-    std::cout << ", G :   geometry volume: "<< ev.integral( jac(G).det()  ) <<"\n";
-    std::cout << ", Comp: geometry volume: "<< ev.integral( jac(G).det()  )- ev.integral( jac(PP).det() *jac(comp).det() ) <<"\n";
+    std::cout << ", G :   volume Initial: "<< ev.integral( jac(G).det()  ) <<"\n";
+    std::cout << ", G :   geometry volume: "<< EIGEN_PI*coef_V*coef_V + ev.integral( jac(G).det()  ) <<"\n";
+    std::cout << ", Comp: geometry volume: "<< EIGEN_PI*coef_V*coef_V + ev.integral( (jac(PP).det() *jac(comp).det()) ) <<"\n";
     // ...
     std::cout << ", GPP : geometry volume: "<< l2err[r] <<"\n";
     std::cout << ", GPP : geometry boundary: "<<  h1err[r] <<"\n";
@@ -169,15 +182,29 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsMultiPatch<> Psi;
+        if ( dbasis.basis(0).IsRational){
         if (mpLeft.dim()== 3){
         for(size_t i =0; i<PsiF.nPatches(); ++i)
-            // Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
-            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
+            Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
+            // Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
         }
         else{
         for(size_t i =0; i<PsiF.nPatches(); ++i)
-            // Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(PsiF.patch(i)) ));
-            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiF.patch(i)) ));            
+            Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(PsiF.patch(i)) ));
+            //Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiF.patch(i)) ));            
+        }
+        }
+        else{
+        if (mpLeft.dim()== 3){
+        for(size_t i =0; i<PsiF.nPatches(); ++i)
+            Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
+            // Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
+        }
+        else{
+        for(size_t i =0; i<PsiF.nPatches(); ++i)
+            Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(PsiF.patch(i)) ));
+            //Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiF.patch(i)) ));            
+        }
         }
         Psi.addAutoBoundaries();
         Psi.computeTopology();

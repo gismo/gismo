@@ -562,7 +562,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiPatch<> P
     typedef gsExprAssembler<>::solution    solution;
     gsSparseSolver<>::CGDiagonal solver;
 
-    gsInfo<<"<> mapping composition \n";
+    gsInfo<<"<> computes composition \n";
     gsMultiPatch<> Psi;
     
     double slv_time(0);
@@ -572,7 +572,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiPatch<> P
     gsExprAssembler<> A(1,1);
     // It could be beneficial for the composition of the two mappings
     A.options().setReal("quA", quadValue);
-    //A.options().setInt("quB", 2);
+    // A.options().setInt("quRule", 2);
     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
     // Elements used for numerical integration
     A.setIntegrationElements(this->n_basis);
