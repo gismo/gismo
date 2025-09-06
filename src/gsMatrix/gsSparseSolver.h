@@ -160,6 +160,7 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
     {                                                                   \
         typedef typename gsSparseSolver<T>::MatrixT MatrixT;            \
         typedef typename gsSparseSolver<T>::VectorT VectorT;            \
+        typedef typename gsEigenAdaptor<T>::eigenName EigenSolverT;     \
     protected:                                                          \
         index_t m_rows;                                                 \
         index_t m_cols;                                                 \
@@ -181,6 +182,14 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
         {                                                               \
             return gsEigenAdaptor<T>::eigenName::solve(rhs);            \
         }                                                               \
+        /* This function is enabled only if EigenSolverT inherits from IterativeSolverBase */ \
+        template<typename U = EigenSolverT>                             \
+        typename std::enable_if<std::is_base_of<gsEigen::IterativeSolverBase<U>, U>::value, VectorT>::type \
+        solveWithGuess(const VectorT &rhs, const VectorT &guess) const  \
+        {                                                               \
+            return gsEigenAdaptor<T>::eigenName::solveWithGuess(rhs, guess); \
+        }                                                               \
+                                                                        \
         bool succeed() const                                            \
         { return gsEigenAdaptor<T>::eigenName::info()==gsEigen::Success;} \
         int info() const                                                \
