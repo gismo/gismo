@@ -1000,16 +1000,11 @@ public: //-------------------------------------------- constructor / destructor
     /// assign \c rhs to \c *this. performs a deep copy of all properties.
     gsSurfMesh& operator=(const gsSurfMesh& rhs);
 
+    /// move \c rhs to \c *this
+    gsSurfMesh& operator=(gsSurfMesh&& rhs) noexcept;
+
     /// assign \c rhs to \c *this. does not copy custom properties.
     gsSurfMesh& assign(const gsSurfMesh& rhs);
-
-    /// assign \c rhs to \c *this. performs a deep copy of all properties.
-    //void move(gsSurfMesh&& other_mesh);
-
-    void move(gsSurfMesh other) noexcept {
-        std::swap(*this, other);
-        //other.clear();
-    }
 
     //@}
 

@@ -103,6 +103,7 @@ operator=(const gsSurfMesh& rhs)
 }
 
 
+
 //-----------------------------------------------------------------------------
 
 
@@ -158,55 +159,45 @@ assign(const gsSurfMesh& rhs)
     return *this;
 }
 //-----------------------------------------------------------------------------
-//void 
-//gsSurfMesh::move(gsSurfMesh&& other_mesh)
-//{
-//    if(this!=&other_mesh){
-//        // clear properties
-//        this->vprops_.clear();
-//        this->hprops_.clear();
-//        this->eprops_.clear();
-//        this->fprops_.clear();
-//        this->mprops_.clear();
-//
-//        // allocate standard properties
-//        this->vconn_ = add_vertex_property<Vertex_connectivity>("v:connectivity");
-//        this->hconn_ = add_halfedge_property<Halfedge_connectivity>("h:connectivity");
-//        this->fconn_ = add_face_property<Face_connectivity>("f:connectivity");
-//        this->vpoint_ = add_vertex_property<Point>("v:point", Point(0, 0, 0));
-//        this->vdeleted_ = add_vertex_property<bool>("v:deleted", false);
-//        this->edeleted_ = add_edge_property<bool>("e:deleted", false);
-//        this->fdeleted_ = add_face_property<bool>("f:deleted", false);
-//
-//        // normals might be there, therefore use get_property
-//        this->vnormal_ = get_vertex_property<Point>("v:normal");
-//        this->fnormal_ = get_face_property<Point>("f:normal");
-//
-//        // move properties from other mesh
-//        this->vconn_ = std::move(other_mesh.vconn_);
-//        this->hconn_ = std::move(other_mesh.hconn_);
-//        this->fconn_ = std::move(other_mesh.fconn_);
-//        this->vpoint_ = std::move(other_mesh.vpoint_);
-//        this->vdeleted_ = std::move(other_mesh.vdeleted_);
-//        this->edeleted_ = std::move(other_mesh.edeleted_);
-//        this->fdeleted_ = std::move(other_mesh.fdeleted_);
-//        this->vnormal_ = std::move(other_mesh.vnormal_);
-//        this->fnormal_ = std::move(other_mesh.fnormal_);
-//
-//        // resize (needed by property containers)
-//        this->vprops_.resize(vertices_size());
-//        this->hprops_.resize(halfedges_size());
-//        this->eprops_.resize(edges_size());
-//        this->fprops_.resize(faces_size());
-//        this->mprops_.resize(1);
-//
-//        // how many elements are deleted?
-//        this->deleted_vertices_ = std::move(deleted_vertices_);
-//        this->deleted_edges_ = std::move(deleted_edges_);
-//        this->deleted_faces_ = std::move(deleted_faces_);
-//        this->garbage_ = std::move(garbage_);
-//    }
-//}
+gsSurfMesh&
+gsSurfMesh::
+operator=(gsSurfMesh&& rhs) noexcept
+{
+    if (this != &rhs)
+    {
+        
+        // deep copy of property containers
+        vprops_ = rhs.vprops_;
+        hprops_ = rhs.hprops_;
+        eprops_ = rhs.eprops_;
+        fprops_ = rhs.fprops_;
+        mprops_ = rhs.mprops_;
+
+        // property handles contain pointers, have to be reassigned
+        vconn_ = vertex_property<Vertex_connectivity>("v:connectivity");
+        hconn_ = halfedge_property<Halfedge_connectivity>("h:connectivity");
+        fconn_ = face_property<Face_connectivity>("f:connectivity");
+        vdeleted_ = vertex_property<bool>("v:deleted");
+        edeleted_ = edge_property<bool>("e:deleted");
+        fdeleted_ = face_property<bool>("f:deleted");
+        vpoint_ = get_vertex_property<Point>("v:point");
+
+        // normals might be there, therefore use get_property
+        vnormal_ = get_vertex_property<Point>("v:normal");
+        fnormal_ = get_face_property<Point>("f:normal");
+
+        // how many elements are deleted?
+        deleted_vertices_ = rhs.deleted_vertices_;
+        deleted_edges_ = rhs.deleted_edges_;
+        deleted_faces_ = rhs.deleted_faces_;
+        garbage_ = rhs.garbage_;
+
+        rhs.clear();
+
+    }
+    return *this;
+    
+}
 
 
 //-----------------------------------------------------------------------------
@@ -2675,7 +2666,7 @@ void gsSurfMesh::ds_subdivide()
 void gsSurfMesh::ds_subdivide_robust()
 {
     // New Mesh instance
-    gsSurfMesh&& new_mesh{};
+    gsSurfMesh new_mesh;
 
     // Make a map to identify the new vertices
     std::map<std::pair<Vertex, Face>, Vertex> Map;
@@ -2720,7 +2711,7 @@ void gsSurfMesh::ds_subdivide_robust()
             );
         }
     }
-    move(new_mesh);
+    *this = std::move(new_mesh);
 
 }
 
@@ -2841,7 +2832,7 @@ gsVector<real_t> gsSurfMesh::edge_vector(Edge e)
 void gsSurfMesh::dual_mesh(int option)
 {
     // Dual-mesh instance
-    gsSurfMesh&& dm{};
+    gsSurfMesh dm;
 
     //Instances of the original mesh
     gsSurfMesh::Vertex v;
@@ -2873,8 +2864,8 @@ void gsSurfMesh::dual_mesh(int option)
 
     }
     
-       
-    move(dm);
+                
+    *this = std::move(dm);
 
 }
 
