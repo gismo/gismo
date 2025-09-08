@@ -38,11 +38,13 @@ int main(int argc, char** argv)
 {
     std::string fn("off/cube.off");
     bool plot = false;
+    bool dm = false;
     index_t r(1);
 
     gsCmdLine cmd("Hi, give me a mesh");
     cmd.addPlainString("filename", "File containing mesh", fn);
     cmd.addSwitch("plot", "Plot the results", plot);
+    cmd.addSwitch("dual", "Create the dual mesh (graph)", dm);
     cmd.addInt   ("r", "ref", "Number of refinement steps", r);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -54,37 +56,15 @@ int main(int argc, char** argv)
     typedef gsEigen::Vector<real_t,3> Point;
     typedef gsSurfMesh::Vertex Vertex;
 
-/*
-    mesh.add_vertex(Point(-1,-1,-1)); // Vertices
-    mesh.add_vertex(Point( 1,-1,-1));
-    mesh.add_vertex(Point(-1, 1,-1));
-    mesh.add_vertex(Point( 1, 1,-1));
-    mesh.add_vertex(Point(-1,-1, 1));
-    mesh.add_vertex(Point( 1,-1, 1));
-    mesh.add_vertex(Point(-1, 1, 1));
-    mesh.add_vertex(Point( 1, 1, 1));
-    mesh.add_quad( Vertex(0), Vertex(4), Vertex(6), Vertex(2) ); // Faces
-    mesh.add_quad( Vertex(1), Vertex(3), Vertex(7), Vertex(5) );
-    mesh.add_quad( Vertex(0), Vertex(1), Vertex(5), Vertex(4) );
-    mesh.add_quad( Vertex(2), Vertex(6), Vertex(7), Vertex(3) );
-    mesh.add_quad( Vertex(0), Vertex(2), Vertex(3), Vertex(1) );
-    mesh.add_quad( Vertex(4), Vertex(5), Vertex(7), Vertex(6) );
-    //auto sharp = mesh.add_halfedge_property<bool>("h:sharp"); // Sharp edges
-    //markEdge(mesh, sharp, 0, 1);
-    //markEdge(mesh, sharp, 2, 3);
-    //markEdge(mesh, sharp, 0, 2);
-    //markEdge(mesh, sharp, 1, 3);
-    mesh.write("out_ds_0.off");
-    */  
-    gsMatrix<real_t> M;
-    M = mesh.get_image_vertex_coeffs(3);
+    //gsMatrix<real_t> M;
+    //M = mesh.get_image_vertex_coeffs(3);
 
-    gsDebug << M << std::endl;
+    //gsDebug << M << std::endl;
 
     gsInfo << "Input: " << mesh.n_vertices() << " vertices, "
         << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
-    // One step of Catmull-Clark subdivisions
-    gsSurfMesh nm;
+    // r steps of Doo-Sabin subdivisions
+
     for( index_t i = 0; i<r; ++i)
     {
         mesh.ds_subdivide_robust();
@@ -94,7 +74,10 @@ int main(int argc, char** argv)
     }
 
     mesh.write("mesh_in.off");
-    mesh.dual_mesh(1);
+    if (dm) {
+        mesh.dual_mesh(1);
+
+    }
     if (plot)
     {
         gsWriteParaview(mesh,"mesh_in", { });

@@ -1008,7 +1008,7 @@ public: //-------------------------------------------- constructor / destructor
 
     void move(gsSurfMesh other) noexcept {
         std::swap(*this, other);
-        other.clear();
+        //other.clear();
     }
 
     //@}
@@ -1856,7 +1856,7 @@ public: //--------------------------------------------- higher-level operations
     /// deletes the face \c f from the mesh
     void delete_face(Face f);
 
-    /// barycentric dual-mesh (dual-graph)
+    /// creates dual-mesh (dual-graph) (only for non-boundry 2-manifolds)
      /** Dual mesh (Dual-graph) creation for 2-manifold polygons without boundaries.
      * Options:
      * 
@@ -1864,6 +1864,11 @@ public: //--------------------------------------------- higher-level operations
      * 
      */
     void dual_mesh(int option);
+
+    /// calculate barycenter of a face
+    Point face_barycenter(Face f);
+
+
     //@}
 
 

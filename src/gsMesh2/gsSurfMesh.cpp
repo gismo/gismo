@@ -2675,7 +2675,7 @@ void gsSurfMesh::ds_subdivide()
 void gsSurfMesh::ds_subdivide_robust()
 {
     // New Mesh instance
-    gsSurfMesh new_mesh;
+    gsSurfMesh&& new_mesh{};
 
     // Make a map to identify the new vertices
     std::map<std::pair<Vertex, Face>, Vertex> Map;
@@ -2720,8 +2720,8 @@ void gsSurfMesh::ds_subdivide_robust()
             );
         }
     }
-    move((gsSurfMesh&&)new_mesh);
-    /*return new_mesh;*/
+    move(new_mesh);
+
 }
 
 Point gsSurfMesh::ds_image_point_calc(Vertex oldv, Face oldf)
@@ -2841,7 +2841,7 @@ gsVector<real_t> gsSurfMesh::edge_vector(Edge e)
 void gsSurfMesh::dual_mesh(int option)
 {
     // Dual-mesh instance
-    gsSurfMesh dm;
+    gsSurfMesh&& dm{};
 
     //Instances of the original mesh
     gsSurfMesh::Vertex v;
@@ -2851,24 +2851,12 @@ void gsSurfMesh::dual_mesh(int option)
 
     if (option == 1) {
 
-        // Calculate the dual vertices (from original faces)
+        // Calculate the dual vertices (from barycenter of original faces)
 
-        Point tmp;
-        unsigned int f_val{ 0 };
-        gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
         std::map<Face, Vertex> FVMap;
 
         for (auto fit : faces()) {
-            f_val = valence(fit);
-            coords.setZero();
-            for (auto vit : vertices(fit)) {
-                coords += position(vit);
-            }
-            coords = coords / f_val;
-            tmp[0] = coords(0);
-            tmp[1] = coords(1);
-            tmp[2] = coords(2);
-            v = dm.add_vertex(tmp);
+            v = dm.add_vertex(face_barycenter(fit));
             FVMap[fit] = v;
         }
 
@@ -2886,11 +2874,29 @@ void gsSurfMesh::dual_mesh(int option)
     }
     
        
-    move((gsSurfMesh&&)dm);
+    move(dm);
 
 }
 
+Point gsSurfMesh::face_barycenter(Face f)
+{
+    unsigned int f_val{ 0 };
+    gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
+    Point tmp;
 
+    f_val = valence(f);
+    coords.setZero();
+    for (auto vit : vertices(f)) {
+        coords += position(vit);
+    }
+    coords = coords / f_val;
+    tmp[0] = coords(0);
+    tmp[1] = coords(1);
+    tmp[2] = coords(2);
+
+    return tmp;
+
+}
 
 
 
