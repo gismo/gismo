@@ -74,7 +74,8 @@ int main(int argc, char *argv[])
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
     // ...
-    gsMultiPatch<> mpLeft;
+    gsMultiPatch<> PsiF; // final adaptive mapping after composition
+    gsMultiPatch<> mpLeft;// Initial geometry
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -86,6 +87,7 @@ int main(int argc, char *argv[])
     // Load the file
     gsFunctionExpr<> f;
     fd.getId(2003, f);
+    f.set_t(coef_V);
     gsInfo<<"Density function "<< f << "\n";
 
     //! [Refinement]
@@ -121,7 +123,7 @@ int main(int argc, char *argv[])
     for (int r=0; r<= numRefine; ++r)
     {
     dbasis.uniformRefine();
-    // //... condition for the convergence 
+    // ... condition for the convergence 
     // while (dbasis.basis(0).numElements()<1e3)
     // {
     //     dbasis.uniformRefine();
@@ -130,6 +132,7 @@ int main(int argc, char *argv[])
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
+    ev.options().setSwitch("SameElement",false);
 
     gsStopwatch timer;
     timer.restart();
@@ -160,23 +163,40 @@ int main(int argc, char *argv[])
     geometryMap G  = A.getMap(mpLeft);
     geometryMap PP = A.getMap(Psitp);
     auto comp      = A.getCoeff(mpLeft, PP);
-    gsMultiPatch<> PsiF  = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
+    PsiF      = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
     // gsInfo << "Composition of geometry maps computed\n";
     geometryMap PPF = A.getMap(PsiF);
     // ...
     DoFPDE[r] = dbasis.basis(0).size();
     gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
     timer.restart();
-    l2err[r]  = EIGEN_PI*coef_V*coef_V + ev.integral(jac(PPF).det() );
+    l2err[r]  = std::abs(EIGEN_PI*coef_V*coef_V -std::abs( ev.integral(jac(PPF).det()) ));
     h1err[r]  = math::sqrt(ev.integralBdr((PPF-comp).sqNorm()));
     // ...
     std::cout << std::setprecision(15);
-    std::cout << ", G :   volume Initial: "<< ev.integral( jac(G).det()  ) <<"\n";
-    std::cout << ", G :   geometry volume: "<< EIGEN_PI*coef_V*coef_V + ev.integral( jac(G).det()  ) <<"\n";
-    std::cout << ", Comp: geometry volume: "<< EIGEN_PI*coef_V*coef_V + ev.integral( (jac(PP).det() *jac(comp).det()) ) <<"\n";
+    std::cout << "G   :   Initial volume   : "<< ev.integral( jac(G).det()  ) <<"\n";
+    std::cout << "G   :   geometry volume  : "<< std::abs(EIGEN_PI*coef_V*coef_V -std::abs( ev.integral( jac(G).det()  ))) <<"\n";
+    std::cout << "Comp:   geometry volume  : "<< std::abs(EIGEN_PI*coef_V*coef_V -std::abs( ev.integral( (jac(PP).det() *jac(comp).det()) ) ))<<"\n";
     // ...
-    std::cout << ", GPP : geometry volume: "<< l2err[r] <<"\n";
-    std::cout << ", GPP : geometry boundary: "<<  h1err[r] <<"\n";
+    std::cout << "GPP :   geometry volume  : "<< l2err[r] <<"\n";
+    // gsWrite(Psitp,"Psi");
+    std::cout << "GPP :   geometry boundary: "<<  h1err[r] <<"\n";
+    }
+
+    // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
+    std::ofstream outFile("errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
+    if (outFile.is_open())
+    {
+        outFile << "#DoF_PDE:  \n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
+        outFile << "#B_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
+        outFile.close(); // Close the file after writing
+    }
+    else
+    {
+        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
+    }
     //------------------------------------    
     //! [Export visualization in ParaView] 
     if (plot)
@@ -269,20 +289,21 @@ int main(int argc, char *argv[])
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     //! [Export visualization in ParaView]
-    }
-    // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
-    std::ofstream outFile("errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
-    if (outFile.is_open())
+    //! [Error and convergence rates]
+    gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
+    gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
+    //! [Error and convergence rates]
+    if (numRefine>0)
     {
-        outFile << "#DoF_PDE:  \n"<< std::scientific << DoFPDE.transpose() << "\n";
-        outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
-        outFile << "#B_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
-        outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
-        outFile.close(); // Close the file after writing
-    }
-    else
-    {
-        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
+        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
+              <<  ( l2err.head(numRefine).array()  /
+                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
+                   <<"\n";
+
+        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
+              <<( h1err.head(numRefine).array() /
+                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     return EXIT_SUCCESS;
 
