@@ -105,7 +105,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
         coarseMapper = getMapper(glueInterfaces,eliminateDirichlet,basis,numComponents,boundaryConditions,unk);
         coarseMapper.finalize();
         // Refine each base and store the local transfer matrices
-        for (index_t j = 0; j < basis.nBases(); ++j)
+        for (size_t j = 0; j < basis.nBases(); ++j)
             basis.basis(j).uniformRefine_withTransfer(localTransferMatrices[j],numberOfKnotsToBeInserted,multiplicityOfKnotsToBeInserted);
         // Store the fine mapper
         fineMapper = getMapper(glueInterfaces,eliminateDirichlet,basis,numComponents,boundaryConditions,unk);
@@ -191,7 +191,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
         fineMapper = getMapper(glueInterfaces,eliminateDirichlet,coarseMBasis,numComponents,boundaryConditions,unk);
         fineMapper.finalize();
         // Coarsen each base and store the local transfer matrices
-        for (index_t j = 0; j < coarseMBasis.nBases(); ++j)
+        for (size_t j = 0; j < coarseMBasis.nBases(); ++j)
             coarseMBasis.basis(j).uniformCoarsen_withTransfer(localTransferMatrices[j],1);
         // Store the coarse mapper
         coarseMapper = getMapper(glueInterfaces,eliminateDirichlet,coarseMBasis,numComponents,boundaryConditions,unk);
@@ -228,7 +228,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
 {
     // Check all bases
     unsigned maxLevel = 0;
-    for (index_t i = 0; i < mBasis.nBases(); ++i)
+    for (size_t i = 0; i < mBasis.nBases(); ++i)
         if (gsHTensorBasis<1,T>* basis = dynamic_cast<gsHTensorBasis<1,T>*>(&mBasis.basis(i)))
             maxLevel = math::max(maxLevel, basis->maxLevel());
         else if (gsHTensorBasis<2,T>* basis = dynamic_cast<gsHTensorBasis<2,T>*>(&mBasis.basis(i)))
@@ -239,6 +239,8 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
             maxLevel = math::max(maxLevel, basis->maxLevel());
         else
             GISMO_ERROR("Basis " << i << " must be hierarchical.");
+    maxLevel = math::min(maxLevel, (unsigned)options.askInt("Levels", 2));
+
 
     gsGridHierarchy<T> result;
 
@@ -250,7 +252,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
     bool eliminateDirichlet = dirichlet::elimination==options.askInt("DirichletStrategy",11);
     std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(result.m_mBases[0].nBases());
     gsDofMapper coarseMapper, fineMapper;
-    for (index_t i = 0; i != maxLevel; i++)
+    for (size_t i = 0; i != maxLevel; i++)
     {
         gsSparseMatrix<T, RowMajor> transferMatrix;
         gsMultiBasis<T> coarseMBasis = result.m_mBases[i];
@@ -259,7 +261,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
         fineMapper.finalize();
         gsDebugVar(fineMapper.freeSize());
         // Coarsen each base and store the local transfer matrices
-        for (index_t j = 0; j < coarseMBasis.nBases(); ++j)
+        for (size_t j = 0; j < coarseMBasis.nBases(); ++j)
             if (coarseMBasis.basis(j).domainDim()==1)
                 static_cast<gsHTensorBasis<1,T>*>(&coarseMBasis.basis(j))->unrefineFinestLevel_withTransfer(localTransferMatrices[j]);
             else if (coarseMBasis.basis(j).domainDim()==2)
