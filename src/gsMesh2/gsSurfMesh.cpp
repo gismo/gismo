@@ -157,6 +157,56 @@ assign(const gsSurfMesh& rhs)
 
     return *this;
 }
+//-----------------------------------------------------------------------------
+//void 
+//gsSurfMesh::move(gsSurfMesh&& other_mesh)
+//{
+//    if(this!=&other_mesh){
+//        // clear properties
+//        this->vprops_.clear();
+//        this->hprops_.clear();
+//        this->eprops_.clear();
+//        this->fprops_.clear();
+//        this->mprops_.clear();
+//
+//        // allocate standard properties
+//        this->vconn_ = add_vertex_property<Vertex_connectivity>("v:connectivity");
+//        this->hconn_ = add_halfedge_property<Halfedge_connectivity>("h:connectivity");
+//        this->fconn_ = add_face_property<Face_connectivity>("f:connectivity");
+//        this->vpoint_ = add_vertex_property<Point>("v:point", Point(0, 0, 0));
+//        this->vdeleted_ = add_vertex_property<bool>("v:deleted", false);
+//        this->edeleted_ = add_edge_property<bool>("e:deleted", false);
+//        this->fdeleted_ = add_face_property<bool>("f:deleted", false);
+//
+//        // normals might be there, therefore use get_property
+//        this->vnormal_ = get_vertex_property<Point>("v:normal");
+//        this->fnormal_ = get_face_property<Point>("f:normal");
+//
+//        // move properties from other mesh
+//        this->vconn_ = std::move(other_mesh.vconn_);
+//        this->hconn_ = std::move(other_mesh.hconn_);
+//        this->fconn_ = std::move(other_mesh.fconn_);
+//        this->vpoint_ = std::move(other_mesh.vpoint_);
+//        this->vdeleted_ = std::move(other_mesh.vdeleted_);
+//        this->edeleted_ = std::move(other_mesh.edeleted_);
+//        this->fdeleted_ = std::move(other_mesh.fdeleted_);
+//        this->vnormal_ = std::move(other_mesh.vnormal_);
+//        this->fnormal_ = std::move(other_mesh.fnormal_);
+//
+//        // resize (needed by property containers)
+//        this->vprops_.resize(vertices_size());
+//        this->hprops_.resize(halfedges_size());
+//        this->eprops_.resize(edges_size());
+//        this->fprops_.resize(faces_size());
+//        this->mprops_.resize(1);
+//
+//        // how many elements are deleted?
+//        this->deleted_vertices_ = std::move(deleted_vertices_);
+//        this->deleted_edges_ = std::move(deleted_edges_);
+//        this->deleted_faces_ = std::move(deleted_faces_);
+//        this->garbage_ = std::move(garbage_);
+//    }
+//}
 
 
 //-----------------------------------------------------------------------------
@@ -2441,7 +2491,8 @@ gsMultiPatch<real_t> gsSurfMesh::linear_patches() const
     return mp;
 }
 
-void gsSurfMesh::ds_subdivide() {
+void gsSurfMesh::ds_subdivide()
+{
     
     gsSurfMesh::Vertex v;
     gsSurfMesh::Halfedge he;
@@ -2574,7 +2625,9 @@ void gsSurfMesh::ds_subdivide() {
         for (int vi = 0; vi < vv.size(); vi++) {
             imVertsVector.push_back(Vertex(vv[vi]));
         }
+
         add_face(imVertsVector);
+        this->write("mesh_in.off");
         imVertsVector.clear();
     }
 
@@ -2605,7 +2658,7 @@ void gsSurfMesh::ds_subdivide() {
                     he = opposite_halfedge(he);
                     he = cw_rotated_halfedge(he);
                     v = from_vertex(he);
-
+     
                 } while (v != vit);
                 break;
             }
@@ -2619,20 +2672,21 @@ void gsSurfMesh::ds_subdivide() {
 
 }
 
-gsSurfMesh gsSurfMesh::ds_subdivide_robust() {
-    // New Mesh
+void gsSurfMesh::ds_subdivide_robust()
+{
+    // New Mesh instance
     gsSurfMesh new_mesh;
 
     // Make a map to identify the new vertices
     std::map<std::pair<Vertex, Face>, Vertex> Map;
 
 
-    // Creation of V-Faces
+    // Create of V-Faces
     Vertex v;
     std::vector<Vertex> ffv;
     for (auto oldv : vertices()) {
 
-        // add new vertices and face
+        // Map vertices and face of old mesh with new (calculated) vertex
         ffv.clear();
         for (auto oldf : faces(oldv)) {
             v = new_mesh.add_vertex(ds_image_point_calc(oldv,oldf));
@@ -2642,6 +2696,7 @@ gsSurfMesh gsSurfMesh::ds_subdivide_robust() {
         new_mesh.add_face(ffv);
     }
 
+    // Create of F-faces
     for (auto oldf : faces()) {
         ffv.clear();
         for (auto oldv : vertices(oldf)) {
@@ -2650,12 +2705,13 @@ gsSurfMesh gsSurfMesh::ds_subdivide_robust() {
         new_mesh.add_face(ffv);
     }
 
+    // Create E-Face by looping through boundary of F,V-faces
     for (auto olde : edges()) {
         if (!is_boundary(olde)){
             auto h0 = halfedge(olde, 0);
             auto h1 = halfedge(olde, 1);
 
-            // Create E-Face
+            
             new_mesh.add_quad(Map[std::make_pair(from_vertex(h1), face(h0))],
                 Map[std::make_pair(from_vertex(h0), face(h0))],
                 Map[std::make_pair(from_vertex(h0), face(h1))],
@@ -2664,41 +2720,49 @@ gsSurfMesh gsSurfMesh::ds_subdivide_robust() {
             );
         }
     }
-
-    return new_mesh;
+    move((gsSurfMesh&&)new_mesh);
+    /*return new_mesh;*/
 }
 
-Point gsSurfMesh::ds_image_point_calc(Vertex oldv, Face oldf) {
+Point gsSurfMesh::ds_image_point_calc(Vertex oldv, Face oldf)
+{
     unsigned int face_valence{ valence(oldf) };
 
-    unsigned int tempi{ 0 };
-    for (auto vit : vertices(oldf)) {
-        if (vit == oldv) {
+    // Find the halfedge of the vertex I am looking in case the IDs of mesh
+    // are not sequencial (i.e. Quad ID: 1,23,3,5)
+    Halfedge hf = halfedge(oldf);
+    for (auto hh : halfedges(oldf))
+    {
+        if (from_vertex(hh) == oldv)
+        {
+            hf = hh;
             break;
         }
-        tempi++;
     }
+
     real_t val{ 0 };
     
     gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
     coords.setZero();
-    unsigned int tempj{ 0 };
-    // Creating the mask (image vertice coefficients) by looping to the number
-    // of vertices
-    for (auto vit : vertices(oldf)) {
-        if (vit == oldv) {
-            val = (real_t)(face_valence + 5) / (4 * face_valence); 
-            tempj++;
-            coords += val * position(vit);
-        }
-        else {
-            val = (3 + 2 * cos(2.0 * EIGEN_PI * (tempi - tempj) / face_valence)) / (4 * face_valence);
-            tempj++;
-            coords += val * position(vit);
+    int tempj{ 0 };
 
-        }
-        
+    // Coefficient of the first (current) vertex (i=j case)
+    val = (real_t)(face_valence + 5) / (4 * face_valence);
+    coords += val * position(from_vertex(hf));
+    real_t sum_val{ val };
+    Halfedge next_he{next_halfedge(hf)};
+
+    // Creating the mask (image vertice coefficients) by looping to the number
+    // of halfedges until I reach the initial half-edge (case i!=j).
+    while (next_he!=hf) {
+        tempj++;
+        val = (3 + 2 * cos(2.0 * EIGEN_PI * (0 - tempj) / face_valence)) / (4 * face_valence);
+        coords += val * position(from_vertex(next_he));
+        next_he = next_halfedge(next_he);
+        sum_val += val;
+
     }
+
     Point temp;
     temp[0] = coords(0);
     temp[1] = coords(1);
@@ -2706,17 +2770,18 @@ Point gsSurfMesh::ds_image_point_calc(Vertex oldv, Face oldf) {
 
     return temp;
     
-
 }
 
 
-gsMatrix<real_t> gsSurfMesh::get_image_vertex_coeffs(unsigned int face_valence) {
+gsMatrix<real_t> gsSurfMesh::get_image_vertex_coeffs(unsigned int face_valence)
+{
 
 
     // Initializing matrix coefficient for face
     gsSparseMatrix<real_t> M(3*face_valence, 3*face_valence);
     M.setZero();
     real_t val{ 0 };
+
     // Creating the mask (image vertice coefficients) by looping to the number
     // of vertices
     for (int icount = 0; icount < face_valence; icount++) {
@@ -2738,12 +2803,14 @@ gsMatrix<real_t> gsSurfMesh::get_image_vertex_coeffs(unsigned int face_valence) 
 
         }
     }
+
     return M;
 
 }   
 
 
-unsigned int gsSurfMesh::maximum_mesh_valence(Vertex_container verts) {
+unsigned int gsSurfMesh::maximum_mesh_valence(Vertex_container verts)
+{
     
     int max_val{ -1 };
     for (Vertex v : verts) {
@@ -2755,7 +2822,8 @@ unsigned int gsSurfMesh::maximum_mesh_valence(Vertex_container verts) {
     return max_val;
 }
 
-gsVector<real_t> gsSurfMesh::edge_vector(Edge e) {
+gsVector<real_t> gsSurfMesh::edge_vector(Edge e)
+{
 
     gsVector<real_t> evec(3);
 
@@ -2770,30 +2838,55 @@ gsVector<real_t> gsSurfMesh::edge_vector(Edge e) {
 
 }
 
-gsSurfMesh gsSurfMesh::dual_graph(int option) {
-
+void gsSurfMesh::dual_mesh(int option)
+{
     // Dual-mesh instance
     gsSurfMesh dm;
-
 
     //Instances of the original mesh
     gsSurfMesh::Vertex v;
     gsSurfMesh::Face f;
+    gsSurfMesh::Face fop;
     gsSurfMesh::Edge e;
 
-    // Calculate the dual vertices (from original faces)
-    
+    if (option == 1) {
 
-    for (auto f : faces()) {
+        // Calculate the dual vertices (from original faces)
+
+        Point tmp;
+        unsigned int f_val{ 0 };
+        gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
+        std::map<Face, Vertex> FVMap;
+
+        for (auto fit : faces()) {
+            f_val = valence(fit);
+            coords.setZero();
+            for (auto vit : vertices(fit)) {
+                coords += position(vit);
+            }
+            coords = coords / f_val;
+            tmp[0] = coords(0);
+            tmp[1] = coords(1);
+            tmp[2] = coords(2);
+            v = dm.add_vertex(tmp);
+            FVMap[fit] = v;
+        }
+
+        std::vector<Vertex> df;
+        for (auto vit : vertices()) {
+            df.clear();
+            for (auto fit : faces(vit)) {
+                df.push_back(FVMap[fit]);
+            }
+            dm.add_face(df);
+
+
+        }
 
     }
-
-
-
-
-
-
-
+    
+       
+    move((gsSurfMesh&&)dm);
 
 }
 
@@ -2803,7 +2896,8 @@ gsSurfMesh gsSurfMesh::dual_graph(int option) {
 
 
 
-void gsSurfMesh::loop_subdivide() {
+void gsSurfMesh::loop_subdivide()
+{
 
     gsSurfMesh::Vertex v;
     gsSurfMesh::Halfedge he;

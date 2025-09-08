@@ -1003,6 +1003,14 @@ public: //-------------------------------------------- constructor / destructor
     /// assign \c rhs to \c *this. does not copy custom properties.
     gsSurfMesh& assign(const gsSurfMesh& rhs);
 
+    /// assign \c rhs to \c *this. performs a deep copy of all properties.
+    //void move(gsSurfMesh&& other_mesh);
+
+    void move(gsSurfMesh other) noexcept {
+        std::swap(*this, other);
+        other.clear();
+    }
+
     //@}
 
 
@@ -1851,9 +1859,11 @@ public: //--------------------------------------------- higher-level operations
     /// barycentric dual-mesh (dual-graph)
      /** Dual mesh (Dual-graph) creation for 2-manifold polygons without boundaries.
      * Options:
+     * 
      * \t 1 - Barycentric Dual graph.
+     * 
      */
-    gsSurfMesh dual_graph(int option);
+    void dual_mesh(int option);
     //@}
 
 
@@ -1870,6 +1880,9 @@ public: //------------------------------------------ geometry-related functions
 
     /// vector of vertex positions
     std::vector<Point>& points() { return vpoint_.vector(); }
+
+    /// update vertex position to specified position
+    void update_vertex(Vertex v, Point& pos) { vpoint_[v] = pos; }
 
     /// compute face normals by calling compute_face_normal(Face) for each face.
     void update_face_normals();
@@ -1960,7 +1973,7 @@ public: // Doo-Sabin functions
     void ds_subdivide();
 
     /// Doo-Sabin subdivision robust
-    gsSurfMesh ds_subdivide_robust();
+    void ds_subdivide_robust();
 
     /// Doo-Sabin Image point caluculation per vertex in a face
     Point ds_image_point_calc(Vertex oldv, Face oldf);

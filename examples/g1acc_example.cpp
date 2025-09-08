@@ -36,7 +36,7 @@ void markEdge(gsSurfMesh & mesh, gsSurfMesh::Halfedge_property<bool> & sharp,
 //};
 int main(int argc, char** argv)
 {
-    std::string fn("off/octtorus.off");
+    std::string fn("off/cube.off");
     bool plot = false;
     index_t r(1);
 
@@ -75,19 +75,26 @@ int main(int argc, char** argv)
     //markEdge(mesh, sharp, 0, 2);
     //markEdge(mesh, sharp, 1, 3);
     mesh.write("out_ds_0.off");
-    */
+    */  
+    gsMatrix<real_t> M;
+    M = mesh.get_image_vertex_coeffs(3);
+
+    gsDebug << M << std::endl;
+
     gsInfo << "Input: " << mesh.n_vertices() << " vertices, "
         << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
     // One step of Catmull-Clark subdivisions
+    gsSurfMesh nm;
     for( index_t i = 0; i<r; ++i)
     {
-        gsSurfMesh new_mesh = mesh.ds_subdivide_robust();
-        mesh = new_mesh; // to do: implement inPlace
+        mesh.ds_subdivide_robust();
+      
+        /*mesh = new_mesh;*/ // TODO: implement inPlace
         //mesh.ds_subdivide();
     }
 
-    mesh.write("out_ds_1.off");
-
+    mesh.write("mesh_in.off");
+    mesh.dual_mesh(1);
     if (plot)
     {
         gsWriteParaview(mesh,"mesh_in", { });
