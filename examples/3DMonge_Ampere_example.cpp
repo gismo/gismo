@@ -162,7 +162,9 @@ int main(int argc, char *argv[])
     // //------------------------------------
     geometryMap G  = A.getMap(mpLeft);
     geometryMap PP = A.getMap(Psitp);
-    auto comp      = A.getCoeff(mpLeft, PP);
+    geometryMap PG = A.getMap(Psitp);
+    PG(mpLeft);
+    auto comp      = A.getCoeff(mpLeft, PP);    
     PsiF      = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
     // gsInfo << "Composition of geometry maps computed\n";
     geometryMap PPF = A.getMap(PsiF);
@@ -171,7 +173,7 @@ int main(int argc, char *argv[])
     gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
     timer.restart();
     l2err[r]  = std::abs(EIGEN_PI*coef_V*coef_V -std::abs( ev.integral(jac(PPF).det()) ));
-    h1err[r]  = math::sqrt(ev.integralBdr((PPF-comp).sqNorm()));
+    h1err[r]  = math::sqrt(ev.integralBdr((PPF-PG).sqNorm()));
     // ...
     std::cout << std::setprecision(15);
     std::cout << "G   :   Initial volume   : "<< ev.integral( jac(G).det()  ) <<"\n";
@@ -181,6 +183,9 @@ int main(int argc, char *argv[])
     std::cout << "GPP :   geometry volume  : "<< l2err[r] <<"\n";
     // gsWrite(Psitp,"Psi");
     std::cout << "GPP :   geometry boundary: "<<  h1err[r] <<"\n";
+    gsVector<> pointtp(2);
+    pointtp << 2.403857e-02, 1.000000e+00;
+    gsInfo << "Solved in " << mpLeft.patch(0).eval(pointtp) << " seconds.\n";
     }
 
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types

@@ -755,6 +755,8 @@ public:
              //gsInfo <<"Calls comp......\n";
              // Recursive case: first evaluate the composed map
              auto intermediateResult = m_fd->values[0].col(k);
+             gsVector<T> tmp2(2);
+             tmp2 << intermediateResult[0], intermediateResult[1];
              //auto Result = m_fd->values[0].col(k);
              /*
              // two pistes
@@ -762,6 +764,15 @@ public:
              // 2. conserve the same eval and swap col outside by updating image with intermediate mapping
              // */
              tmp = m_composedMap->patch(0).eval(intermediateResult);
+             if(tmp.hasNaN()){
+             gsInfo << "Intermediate result:\n" << intermediateResult << "\n";
+             if(intermediateResult[1] >= 0.999999999999){
+                    gsInfo << "intermediateResult.at(1) == 0."<< intermediateResult[1] <<"\n";
+                tmp2<<  intermediateResult[0], 1.;
+             }
+             gsInfo << "fn--------------------------------- result:\n" << tmp << "\n";
+             }
+             tmp = m_composedMap->patch(0).eval(tmp2);
              return tmp;
          }
          //Case: m_composedMap is not initialized!
