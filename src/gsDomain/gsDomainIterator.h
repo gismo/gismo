@@ -173,6 +173,12 @@ public:
         return *this;
     }
 
+    void skipTo(size_t elemId)
+    {
+        m_domainIter->skipTo(elemId);
+        m_domainIter->resetId(elemId);
+    }
+
     /// Decrement by a number of steps
     // gsDomainIteratorWrapper operator-(index_t k) const
     // {
@@ -295,6 +301,14 @@ private:
             this->prev();
     }
 
+    /// Skips to an arbitrary element id
+    virtual void skipTo(size_t elemId)
+    {
+        const index_t amount = elemId - m_id;
+        if (amount > 0) next( amount);
+        if (amount < 0) prev(-amount);
+    }
+
     /// Resets the iterator so that it points to the first element
     virtual void reset()
     {
@@ -303,7 +317,7 @@ private:
     }
 
 protected:
-    inline void resetId  () { m_id = 0;}
+    inline void resetId  (size_t val = 0) { m_id = val;}
     inline void nextId(index_t _k = 1) { m_id += _k; }
     inline void prevId(index_t _k = 1) { m_id -= _k; }
 
@@ -444,6 +458,8 @@ public:
         GISMO_NO_IMPLEMENTATION
     }
 
+    virtual void skipTo(size_t elemId)
+    { GISMO_ERROR("Cannot proceed to skipTo element. End iterator reached."); }
 
 };
 

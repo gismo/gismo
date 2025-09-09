@@ -68,6 +68,11 @@ public:
         m_it -= decrement;
     }
 
+    void skipTo(size_t elemId) override
+    {        
+        m_it += elemId - this->id();
+    }
+
     // Documentation in gsDomainIterator.h
     void reset() override
     {
