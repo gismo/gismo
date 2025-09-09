@@ -64,7 +64,7 @@ public:
         expr_.parse(helper);
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"array("<<expr_<<")";
     }

@@ -52,13 +52,10 @@ public:
     SubtractExpression(const LhsExpr& lhs, const RhsExpr& rhs)
         : Base(lhs, rhs)
     {
-        for (size_t d=0; d!=Base::order; ++d)
+        for (size_t d=0; d!=Base::order; ++d) {
             GISMO_ENSURE(this->lhs_expr_.sizes()[d] == this->rhs_expr_.sizes()[d],"SubtractExpression requires same sizes in each dimension");
-    }
-
-    const std::array<size_t, Base::order> & sizes() const
-    {
-        return this->lhs_expr_.sizes();
+            this->sizes_[d] = this->lhs_expr_.sizes()[d];  // Fill Base::sizes_
+        }
     }
 
     size_t domainDim() const
@@ -74,7 +71,7 @@ public:
         return lhs_val; // Return the modified lhs_val
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os << this->lhs_expr_ << "-" << this->rhs_expr_;
     }
@@ -91,7 +88,7 @@ typename std::enable_if<
     ExpressionTraits<LhsExpr>::space == ExpressionTraits<RhsExpr>::space,
     SubtractExpression<LhsExpr, RhsExpr, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-operator-(const LhsExpr& lhs, const RhsExpr& rhs)
+operator-(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return SubtractExpression<LhsExpr, RhsExpr, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }

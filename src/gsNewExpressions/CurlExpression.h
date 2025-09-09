@@ -84,7 +84,7 @@ public:
         GISMO_UNUSED(helper);
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"\u2207\u00D7("<<expr_<<")";
     }
@@ -129,7 +129,7 @@ public:
         return tmp;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"\u2207\u00D7("<<expr_<<")";
     }
@@ -195,9 +195,9 @@ auto curl(const ProductExpression<LhsExpr,RhsExpr,1,0,LhsSpace,RhsSpace>& expr)
 // For vectors A,B (order 1), result is a vector (order 1)
 template <typename LhsExpr, typename RhsExpr>
 auto curl(const CrossProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
--> decltype(expr.lhs() * div(expr.rhs()) - expr.rhs() * div(expr.lhs()) + dot(expr.rhs(), grad(expr.lhs())) - dot(expr.lhs(), grad(expr.rhs())))
+-> decltype(expr.lhs() * div(expr.rhs()) - expr.rhs() * div(expr.lhs()) + transpose(grad(expr.rhs())) * expr.lhs() - transpose(grad(expr.lhs())) * expr.rhs())
 {
-    return expr.lhs() * div(expr.rhs()) - expr.rhs() * div(expr.lhs()) + dot(expr.rhs(), grad(expr.lhs())) - dot(expr.lhs(), grad(expr.rhs()));
+    return expr.lhs() * div(expr.rhs()) - expr.rhs() * div(expr.lhs()) + transpose(grad(expr.rhs())) * expr.lhs() - transpose(grad(expr.lhs())) * expr.rhs();
 }
 
 // Partial specialization for gradient (second derivative identity)

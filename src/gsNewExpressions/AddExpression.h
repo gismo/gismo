@@ -49,12 +49,14 @@ public:
         : Base(lhs, rhs)
     {
         for (size_t d=0; d!=Base::order; ++d)
-            GISMO_ENSURE(this->lhs_expr_.sizes()[d] == this->rhs_expr_.sizes()[d],"AddExpression requires same sizes in each dimension");
-    }
-
-    const std::array<size_t, Base::order> & sizes() const
-    {
-        return this->lhs_expr_.sizes(); // Use left operand's sizes
+        {
+            GISMO_ENSURE(this->lhs_expr_.sizes()[d] == this->rhs_expr_.sizes()[d],"AddExpression requires same sizes in each dimension, but got "+std::to_string(this->lhs_expr_.sizes()[d])+" and "+std::to_string(this->rhs_expr_.sizes()[d])+" in dimension "+std::to_string(d));
+        }
+        // Copy sizes from left operand to base class sizes_
+        for (size_t d=0; d!=Base::order; ++d)
+        {
+            this->sizes_[d] = this->lhs_expr_.sizes()[d];
+        }
     }
 
     size_t domainDim() const
@@ -70,7 +72,7 @@ public:
         return lhs_val; // Return the modified lhs_val
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         // gsDebug<<"AddExpression print called\n";
         // this->lhs_expr_.print(os);
@@ -113,7 +115,7 @@ public:
         return rhs_val;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os << this->lhs_expr_ << "+" << this->rhs_expr_;
     }
@@ -170,7 +172,7 @@ public:
         return lhs_val;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os << this->lhs_expr_ << "+" << this->rhs_expr_;
     }
@@ -194,7 +196,7 @@ typename std::enable_if<
     ExpressionTraits<LhsExpr>::space == ExpressionTraits<RhsExpr>::space,
     AddExpression<LhsExpr, RhsExpr, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-operator+(const LhsExpr& lhs, const RhsExpr& rhs)
+operator+(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return AddExpression<LhsExpr, RhsExpr, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
@@ -206,7 +208,7 @@ typename std::enable_if<
     ExpressionTraits<LhsExpr>::space == ExpressionTraits<RhsExpr>::space,
     AddExpression<TransposeExpression<LhsExpr>, RhsExpr, ExpressionTraits<TransposeExpression<LhsExpr>>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<TransposeExpression<LhsExpr>>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-operator+(const TransposeExpression<LhsExpr>& lhs, const RhsExpr& rhs)
+operator+(const TransposeExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     GISMO_ERROR("Addition of a transposed vector and a vector is not defined.");
     return AddExpression<TransposeExpression<LhsExpr>, RhsExpr, ExpressionTraits<TransposeExpression<LhsExpr>>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<TransposeExpression<LhsExpr>>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
@@ -218,7 +220,7 @@ typename std::enable_if<
     ExpressionTraits<LhsExpr>::space == ExpressionTraits<RhsExpr>::space,
     AddExpression<LhsExpr, TransposeExpression<RhsExpr>, ExpressionTraits<LhsExpr>::order, ExpressionTraits<TransposeExpression<RhsExpr>>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<TransposeExpression<RhsExpr>>::space>
 >::type
-operator+(const LhsExpr& lhs, const TransposeExpression<RhsExpr>& rhs)
+operator+(const BaseExpression<LhsExpr>& lhs, const TransposeExpression<RhsExpr>& rhs)
 {
     GISMO_ERROR("Addition of a vector and a transposed vector is not defined.");
     return AddExpression<LhsExpr, TransposeExpression<RhsExpr>, ExpressionTraits<LhsExpr>::order, ExpressionTraits<TransposeExpression<RhsExpr>>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<TransposeExpression<RhsExpr>>::space>(lhs, rhs);
@@ -230,7 +232,7 @@ typename std::enable_if<
     !std::is_same<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>>::value,
     AddExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, Space::None>
 >::type
-operator+(const LhsExpr& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
+operator+(const BaseExpression<LhsExpr>& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
 {
     return AddExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, Space::None>(lhs, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>(rhs));
 }
@@ -240,7 +242,7 @@ typename std::enable_if<
     !std::is_same<RhsExpr, ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>>::value,
     AddExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, Space::None, ExpressionTraits<RhsExpr>::space>
 >::type
-operator+(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const RhsExpr& rhs)
+operator+(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return AddExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, Space::None, ExpressionTraits<RhsExpr>::space>(ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>(lhs), rhs);
 }
@@ -251,7 +253,7 @@ typename std::enable_if<
     !std::is_same<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,ExpressionTraits<LhsExpr>::order>>::value,
     AddExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,ExpressionTraits<LhsExpr>::order>, ExpressionTraits<LhsExpr>::order, ExpressionTraits<LhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<LhsExpr>::space>
 >::type
-operator+(const LhsExpr& lhs, const gsMatrix<typename ExpressionTraits<LhsExpr>::Scalar>& rhs)
+operator+(const BaseExpression<LhsExpr>& lhs, const gsMatrix<typename ExpressionTraits<LhsExpr>::Scalar>& rhs)
 {
     return AddExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,ExpressionTraits<LhsExpr>::order>, ExpressionTraits<LhsExpr>::order, ExpressionTraits<LhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<LhsExpr>::space>(lhs, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,ExpressionTraits<LhsExpr>::order>(rhs));
 }
@@ -261,7 +263,7 @@ typename std::enable_if<
     !std::is_same<RhsExpr, ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,ExpressionTraits<RhsExpr>::order>>::value,
     AddExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,ExpressionTraits<RhsExpr>::order>, RhsExpr, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-operator+(const gsMatrix<typename ExpressionTraits<RhsExpr>::Scalar>& lhs, const RhsExpr& rhs)
+operator+(const gsMatrix<typename ExpressionTraits<RhsExpr>::Scalar>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return AddExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,ExpressionTraits<RhsExpr>::order>, RhsExpr, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<RhsExpr>::space>(ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,ExpressionTraits<RhsExpr>::order>(lhs), rhs);
 }

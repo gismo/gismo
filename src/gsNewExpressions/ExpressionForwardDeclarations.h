@@ -39,7 +39,7 @@ namespace Expr
     ////////////////////////////////////////////////////////////////
 
     // Base Object
-    template <class T, size_t _order, bool _isConstant, size_t _space>
+    template <typename E>
     class BaseObject;
 
     // Null Object

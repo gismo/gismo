@@ -46,8 +46,10 @@ template <typename E, size_t Order, size_t Space>
 class LaplExpression<E, Order, Space, 1> : public UnaryOperator<LaplExpression<E, Order, Space, 1>>
 {
     using Base = UnaryOperator<LaplExpression<E, Order, Space, 1>>;
+    typedef typename Base::Scalar T;
+    using Base::order;
 private:
-    mutable gsMatrix<typename Base::Scalar> tmp;
+    mutable gsMatrix<T> tmp;
     using Base::expr_;
 public:
     LaplExpression(const E& expr)
@@ -56,7 +58,7 @@ public:
     {
     }
 
-    const std::array<size_t, Base::order> & sizes() const
+    const std::array<size_t, order> & sizes() const
     {
         return expr_.sizes();
     }
@@ -66,7 +68,7 @@ public:
         return expr_.domainDim();
     }
 
-    gsMatrix<typename Base::Scalar> eval(const index_t k) const
+    gsMatrix<T> eval(const index_t k) const
     {
         GISMO_UNUSED(k);
         tmp.resize(expr_.domainDim(),1);
@@ -74,12 +76,12 @@ public:
         return tmp;
     }
 
-    void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
+    void parse(gismo::ExpressionHelper<T> & helper) const
     {
         GISMO_UNUSED(helper);
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"\u0394("<<expr_<<")";
     }
@@ -90,8 +92,11 @@ template <typename E, size_t Order, size_t Space>
 class LaplExpression<E, Order, Space, 0> : public UnaryOperator<LaplExpression<E, Order, Space, 0>>
 {
     using Base = UnaryOperator<LaplExpression<E, Order, Space, 0>>;
+    typedef typename Base::Scalar T;
+    using Base::order;
+
 private:
-    mutable gsMatrix<typename Base::Scalar> tmp;
+    mutable gsMatrix<T> tmp;
     using Base::expr_;
 
 public:
@@ -111,7 +116,7 @@ public:
         return expr_.domainDim();
     }
 
-    gsMatrix<typename Base::Scalar> eval(const index_t k) const
+    gsMatrix<T> eval(const index_t k) const
     {
         GISMO_UNUSED(k);
         tmp.resize(expr_.domainDim(),1);
@@ -119,13 +124,7 @@ public:
         return tmp;
     }
 
-    void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
-    {
-        expr_.parse(helper);
-        expr_.setDerivative(Base::deriv);
-    }
-
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"\u0394("<<expr_<<")";
     }

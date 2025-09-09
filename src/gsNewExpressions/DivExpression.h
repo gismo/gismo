@@ -84,12 +84,12 @@ public:
         return tmp;
     }
 
-    void parse(ExpressionHelper<typename Base::Scalar> & helper) const override
+    void parse(ExpressionHelper<typename Base::Scalar> & helper) const
     {
         GISMO_UNUSED(helper);
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"\u2207\u2027("<<expr_<<")";
     }
@@ -140,7 +140,7 @@ public:
         return tmp;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"\u2207\u2027("<<expr_<<")";
     }

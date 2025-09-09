@@ -86,7 +86,7 @@ public:
         GISMO_UNUSED(helper);
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"\u2207("<<this->expr_<<")";
     }
@@ -130,7 +130,7 @@ public:
         return tmp;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"\u2207("<<this->expr_<<")";
     }

@@ -90,8 +90,6 @@ int main(int argc, char *argv[])
 
 
     gsDebug<<"α + α: "<< eval(helper, α + α, points)<<"\n";
-    // gsDebug<<"α + β: "<< eval(helper, α + β, points)<<"\n";
-    // gsDebug<<"β + α: "<< eval(helper, β + α, points)<<"\n";
     gsDebug<<"β + β: "<< eval(helper, β + β, points)<<"\n";
     gsDebug<<"γ + γ: "<< eval(helper, γ + γ, points)<<"\n";
     gsDebug<<"δ + δ: "<< eval(helper, δ + δ, points)<<"\n";

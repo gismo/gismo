@@ -56,21 +56,12 @@ class InnerProductExpression<LhsExpr, RhsExpr, 1, 1, LhsSpace, RhsSpace>
 {
     using Base = BinaryOperator<InnerProductExpression<LhsExpr, RhsExpr, 1, 1, LhsSpace, RhsSpace>>;
 
-protected:
-
-    std::array<size_t, Base::order> sizes_;
-
 public:
     InnerProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
         : Base(lhs, rhs)
     {
         // Inner product of vectors results in a scalar (order 0 - no dimensions)
-        // So sizes_ is an empty array for order 0
-    }
-
-    const std::array<size_t, Base::order> & sizes() const
-    {
-        return sizes_;
+        // sizes_ is an empty array for order 0, so nothing to initialize
     }
 
     size_t domainDim() const
@@ -96,7 +87,7 @@ public:
         return res;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<this->lhs_expr_<<"\u2027"<<this->rhs_expr_;
     }
@@ -114,16 +105,12 @@ class InnerProductExpression<LhsExpr, RhsExpr, 2, 2, ExpressionTraits<LhsExpr>::
     using Base = BinaryOperator<InnerProductExpression<LhsExpr, RhsExpr, 2, 2, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>>;
 
 protected:
-
-    std::array<size_t, Base::order> sizes_;
-
 public:
     InnerProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
         : Base(lhs, rhs)
     {
+        // Inner product results in a scalar (order 0), so sizes_ is empty
     }
-
-    const std::array<size_t, Base::order> & sizes() const { return sizes_; }
 
     size_t domainDim() const
     {
@@ -138,7 +125,7 @@ public:
         return (lhs_val.array()*rhs_val.array()).sum().matrix();
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<this->lhs_expr_<<":"<<this->rhs_expr_;
     }
@@ -156,14 +143,14 @@ typename std::enable_if<
     ExpressionTraits<RhsExpr>::order == 1,
     InnerProductExpression<LhsExpr, RhsExpr, 1, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-dot(const LhsExpr& lhs, const RhsExpr& rhs)
+dot(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return InnerProductExpression<LhsExpr, RhsExpr, 1, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
 
 // `inner` alias for `dot`
 template <typename LhsExpr, typename RhsExpr>
-auto inner(const LhsExpr& lhs, const RhsExpr& rhs)
+auto inner(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 -> decltype(dot(lhs, rhs))  // Use decltype to deduce return type
 {
     return dot(lhs, rhs);    // Call the existing dot function
@@ -176,14 +163,14 @@ typename std::enable_if<
     ExpressionTraits<RhsExpr>::order == 2,
     InnerProductExpression<LhsExpr, RhsExpr, 2, 2, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-ddot(const LhsExpr& lhs, const RhsExpr& rhs)
+ddot(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return InnerProductExpression<LhsExpr, RhsExpr, 2, 2, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
 
 // `inner` alias for `ddot`
 template <typename LhsExpr, typename RhsExpr>
-auto inner(const LhsExpr& lhs, const RhsExpr& rhs)
+auto inner(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 -> decltype(ddot(lhs, rhs))  // Use decltype to deduce return type
 {
     return ddot(lhs, rhs);    // Call the existing ddot function
@@ -193,7 +180,7 @@ auto inner(const LhsExpr& lhs, const RhsExpr& rhs)
 // This computes (A·∇)B where A is a vector and ∇B is the gradient matrix
 // Mathematically: A^T * ∇B = ∇B^T*A, but we need the result as a vector (not transpose)
 template <typename LhsExpr, typename RhsExpr>
-auto dot(const LhsExpr& lhs, const GradExpression<RhsExpr, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<RhsExpr>::isConstant>& rhs)
+auto dot(const BaseExpression<LhsExpr>& lhs, const GradExpression<RhsExpr, ExpressionTraits<RhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<RhsExpr>::isConstant>& rhs)
 -> decltype(transpose(rhs) * lhs)
 {
     return transpose(rhs) * lhs;

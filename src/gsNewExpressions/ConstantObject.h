@@ -22,25 +22,20 @@ namespace Expr
 template <class T, size_t _order>
 struct ExpressionTraits<ConstantObject<T, _order>>
 {
-    using Base = BaseObject<T, _order, true, Space::None>;
-    typedef typename ExpressionTraits<Base>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<Base>::order;  // Use template parameter, not Base
-    static constexpr size_t space = ExpressionTraits<Base>::space;
-    static constexpr size_t deriv = ExpressionTraits<Base>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<Base>::isConstant;
+    typedef T Scalar;
+    static constexpr size_t order = _order;
+    static constexpr size_t space = Space::None;
+    static constexpr size_t deriv = 0;
+    static constexpr bool isConstant = true;
 };
 
 template <class T, size_t _order>
-class ConstantObject : public BaseObject<T, _order, true, Space::None>
+class ConstantObject : public BaseObject<ConstantObject<T, _order>>
 {
-    using Base = BaseObject<T, _order, true, Space::None>;
-public:
-
-    typedef typename ExpressionTraits<ConstantObject<T, _order>>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<ConstantObject<T, _order>>::order;
-    static constexpr size_t space = ExpressionTraits<ConstantObject<T, _order>>::space;
-    static constexpr size_t deriv = ExpressionTraits<ConstantObject<T, _order>>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<ConstantObject<T, _order>>::isConstant;
+    using Base = BaseObject<ConstantObject<T, _order>>;
+    typedef typename Base::Scalar Scalar;
+    using Base::order;
+    using Base::sizes_;
 
 private:
     gsMatrix<Scalar> m_value;
@@ -48,25 +43,15 @@ private:
 public:
     ConstantObject(const std::array<size_t, order> & input_sizes, std::string label = "a")
     :
-    BaseObject<Scalar, _order, true, Space::None>(0, input_sizes, label)
+    Base(0, input_sizes, label)
     {
         initSize();
         m_value.setZero();
     }
 
-    // Default constructor for Eigen compatibility
-    ConstantObject() : BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{}, "ZERO") {}
-
-    // Constructor for zero initialization (used by BlockDiag)
-    ConstantObject(int value) : BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{}, "0")
-    {
-        m_value.resize(1,1);
-        m_value.setConstant(static_cast<Scalar>(value));
-    }
-
     explicit ConstantObject(const Scalar & value)
     :
-    BaseObject<Scalar, _order, true, Space::None>(0, std::array<size_t, order>{}, std::to_string(value))
+    Base(0, std::array<size_t, order>{}, std::to_string(value))
     {
         m_value.resize(1,1);
         m_value.setConstant(value);
@@ -81,7 +66,7 @@ public:
     void setConstant(const T value) { m_value.setConstant(value);}
     void parse(gismo::ExpressionHelper<Scalar> &) const {}
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<Base::label_;
     }
@@ -92,8 +77,6 @@ public:
     }
 
 protected:
-    using Base::sizes_;
-
     void initSize()
     {
         if (order==0)

@@ -37,28 +37,27 @@ public:
     static constexpr size_t deriv = ExpressionTraits<E>::deriv;
     static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
 
-    virtual size_t domainDim() const = 0;
+    size_t domainDim() const { return static_cast<const E&>(*this).domainDim(); }
 
-    virtual const std::array<size_t,order> & sizes() const = 0;
+    const std::array<size_t,order> & sizes() const { return static_cast<const E&>(*this).sizes(); }
 
-    virtual void print(std::ostream &) const = 0;
+    void print(std::ostream & os) const { static_cast<const E&>(*this).print(os); }
 
-    virtual gsMatrix<Scalar> eval(const index_t) const = 0;
+    gsMatrix<Scalar> eval(const index_t k) const { return static_cast<const E&>(*this).eval(k); }
 
-
-    virtual void parse(gismo::ExpressionHelper<Scalar> &) const
+    void parse(gismo::ExpressionHelper<Scalar> &) const
     {
         GISMO_NO_IMPLEMENTATION;
         // static_cast<E const&>(*this).parse(helper);
     }
 
-    virtual const SpaceObject<Scalar, space, order> & rowVar() const
+    const SpaceObject<Scalar, space, order> & rowVar() const
     {
         GISMO_NO_IMPLEMENTATION;
     //     return static_cast<E const&>(*this).rowVar();
     }
 
-    virtual const SpaceObject<Scalar, space, order> & colVar() const
+    const SpaceObject<Scalar, space, order> & colVar() const
     {
         GISMO_NO_IMPLEMENTATION;
     //     return static_cast<E const&>(*this).colVar();

@@ -20,93 +20,80 @@ namespace gismo
 {
 namespace Expr
 {
-    // Traits class for BaseObject to avoid circular dependency
-    template <class T, size_t _order, bool _isConstant, size_t _space>
-    struct ExpressionTraits<BaseObject<T, _order, _isConstant, _space>>
+template <typename E>
+class BaseObject : public BaseExpression<E>
+{
+    using Base = BaseExpression<E>;
+
+protected:
+    typedef typename Base::Scalar T;
+    using Base::order;
+
+    const std::array<size_t, order> sizes_;
+    const size_t domainDim_;
+    const std::string label_;
+
+public:
+
+// Access to sizes is direct
+    const std::array<size_t, order>& sizes() const  { return sizes_; }
+
+    size_t domainDim() const { return domainDim_; }
+
+public:
+
+    gsMatrix<T> eval(const index_t) const
     {
-        typedef T Scalar;
-        static constexpr size_t order = _order;  // Use template parameter, not BaseObject::order
-        static constexpr size_t space = _space;
-        static constexpr size_t deriv = 0;
-        static constexpr bool isConstant = _isConstant;
-    };
+        GISMO_NO_IMPLEMENTATION;
+    }
 
-    // IsConstant: Flag that indicates if the expression is constant, e.g., its derivatives are zero
-    // Space: Flag that indicates whether the expression is a space
-    template <class T, size_t _order, bool _isConstant = true, size_t _space = Space::None>
-    class BaseObject : public BaseExpression<BaseObject<T,_order,_isConstant,_space>>
+    void parse(gismo::ExpressionHelper<T> &) const
     {
-        using Base = BaseExpression<BaseObject<T,_order,_isConstant,_space>>;
+        GISMO_NO_IMPLEMENTATION;
+    }
 
-    protected:
-        const std::array<size_t, _order> sizes_;
-        const size_t domainDim_;
-        const std::string label_;
+    const SpaceObject<T,Space::None,order> & rowVar() const {return NullObject<T,order>::get();}
+    const SpaceObject<T,Space::None,order> & colVar() const {return NullObject<T,order>::get();}
 
-    public:
-        typedef typename ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::Scalar Scalar;
-        static constexpr size_t order = ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::order;
-        static constexpr size_t space = ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::space;
-        static constexpr size_t deriv = ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::deriv;
-        static constexpr bool isConstant = ExpressionTraits<BaseObject<T,_order,_isConstant,_space>>::isConstant;
+    ~BaseObject() = default;
 
-        // Access to sizes is direct
-        const std::array<size_t, _order>& sizes() const override { return sizes_; }
+    explicit BaseObject(size_t domainDim, const std::array<size_t, order> & input_sizes, std::string label = "a")
+    :
+    Base(), // Initialize base class properly
+    sizes_(input_sizes),
+    domainDim_(domainDim),
+    label_(label)
+    {}
 
-        size_t domainDim() const { return domainDim_; }
+    BaseObject(const BaseObject& other)
+    :
+    Base(),
+    sizes_(other.sizes_),
+    domainDim_(other.domainDim_),
+    label_(other.label_)
+    {}
+
+    BaseObject& operator=(const BaseObject&)
+    {
+        return *this;
+    }
+
+protected:
 
 
-    public:
 
-        gsMatrix<Scalar> eval(const index_t) const
-        {
-            GISMO_NO_IMPLEMENTATION;
-        }
+    // // Helper to calculate total elements from sizes (used internally by derived classes)
+    // static size_t tensorSize(std::array<size_t, order> dims)
+    // {
+    //     if (order == 0) return 1; // Scalar has 1 element
+    //     size_t total = 1;
+    //     for (size_t dim_size : dims)
+    //     {
+    //         total *= dim_size;
+    //     }
+    //     return total;
+    // }
 
-        void parse(gismo::ExpressionHelper<Scalar> &) const
-        {
-            GISMO_NO_IMPLEMENTATION;
-        }
-
-        virtual const SpaceObject<Scalar,Space::None,_order> & rowVar() const {return NullObject<T,_order>::get();}
-        virtual const SpaceObject<Scalar,Space::None,_order> & colVar() const {return NullObject<T,_order>::get();}
-
-    protected:
-
-        explicit BaseObject(size_t domainDim, const std::array<size_t, order> & input_sizes, std::string label = "a")
-        :
-        Base(), // Initialize base class properly
-        sizes_(input_sizes),
-        domainDim_(domainDim),
-        label_(label)
-        {}
-
-        BaseObject(const BaseObject& other)
-        :
-        Base(),
-        sizes_(other.sizes_),
-        domainDim_(other.domainDim_),
-        label_(other.label_)
-        {}
-
-        BaseObject& operator=(const BaseObject&)
-        {
-            return *this;
-        }
-        ~BaseObject() = default;
-
-        // // Helper to calculate total elements from sizes (used internally by derived classes)
-        // static size_t tensorSize(std::array<size_t, order> dims)
-        // {
-        //     if (order == 0) return 1; // Scalar has 1 element
-        //     size_t total = 1;
-        //     for (size_t dim_size : dims)
-        //     {
-        //         total *= dim_size;
-        //     }
-        //     return total;
-        // }
-
-    };
+};
 }//namespace Expr
 }//namespace gismo

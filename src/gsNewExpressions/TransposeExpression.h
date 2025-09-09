@@ -38,16 +38,37 @@ class TransposeExpression : public UnaryOperator< TransposeExpression<E> >
 
     using Base = UnaryOperator<TransposeExpression<E>>;
 
+protected:
+    mutable std::array<size_t, Base::order> sizes_;
+
 public:
     TransposeExpression(const E& expr)
     :
     Base(expr)
     {
+        initializeSizes(expr, std::integral_constant<size_t, Base::order>{});
     }
+
+private:
+    void initializeSizes(const E& expr, std::integral_constant<size_t, 1>)
+    {
+        // Vector transpose: sizes remain the same
+        sizes_ = expr.sizes();
+    }
+
+    void initializeSizes(const E& expr, std::integral_constant<size_t, 2>)
+    {
+        // Matrix transpose: swap dimensions
+        auto orig_sizes = expr.sizes();
+        sizes_[0] = orig_sizes[1];
+        sizes_[1] = orig_sizes[0];
+    }
+
+public:
 
     const std::array<size_t, Base::order> & sizes() const
     {
-        return expr_.sizes();
+        return sizes_;
     }
 
     size_t domainDim() const
@@ -60,12 +81,12 @@ public:
         return expr_.eval(k).transpose();
     }
 
-    void parse(ExpressionHelper<typename Base::Scalar> & helper) const override
+    void parse(ExpressionHelper<typename Base::Scalar> & helper) const
     {
         expr_.parse(helper);
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<"("<<expr_<<")\u1D40";
     }

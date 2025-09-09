@@ -47,6 +47,10 @@ public:
     DivisionExpression(const LhsExpr& lhs, const RhsExpr& rhs)
         : Base(lhs, rhs)
     {
+        // Division: result has same size as left operand (we're dividing by scalar)
+        for (size_t d = 0; d < Base::order; ++d) {
+            this->sizes_[d] = lhs.sizes()[d];
+        }
     }
 
     gsMatrix<typename Base::Scalar> eval(const index_t k) const
@@ -57,17 +61,12 @@ public:
         return lhs_val; // Return the modified lhs_val
     }
 
-    const std::array<size_t, Base::order> & sizes() const
-    {
-        return this->lhs_expr_.sizes();
-    }
-
     size_t domainDim() const
     {
         return this->lhs_expr_.domainDim();
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<this->lhs_expr_<<"/"<<this->rhs_expr_;
     }
@@ -81,7 +80,7 @@ private:
 template <typename LhsExpr, typename RhsExpr>
 typename std::enable_if<ExpressionTraits<RhsExpr>::order == 0,
                         DivisionExpression<LhsExpr, RhsExpr, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>>::type
-operator/(const LhsExpr& lhs, const RhsExpr& rhs)
+operator/(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return DivisionExpression<LhsExpr, RhsExpr, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }

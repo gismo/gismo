@@ -20,16 +20,22 @@ namespace gismo
 namespace Expr
 {
 
-    template <class T, size_t _order>
-    class NullObject : public BaseObject<T, _order, true, 0>
+    template<class T, size_t _order>
+    struct ExpressionTraits<NullObject<T, _order>>
     {
-        using Base = BaseObject<T, _order, true, 0>;
-    public:
-        typedef T Scalar; // Define Scalar type for this expression
-        static constexpr size_t order = Base::order;
-        static constexpr size_t space = Base::space;
-        static constexpr size_t deriv = Base::deriv;
-        static constexpr bool isConstant = Base::isConstant;
+        typedef T Scalar;
+        static constexpr size_t order = _order;
+        static constexpr size_t space = Space::None;
+        static constexpr size_t deriv = 0;
+        static constexpr bool isConstant = true;
+    };
+
+    template <class T, size_t _order>
+    class NullObject : public BaseObject<NullObject<T, _order>>
+    {
+        using Base = BaseObject<NullObject<T, _order>>;
+        typedef typename Base::Scalar Scalar;
+        using Base::order;
 
     public:
 
@@ -43,15 +49,15 @@ namespace Expr
             GISMO_NO_IMPLEMENTATION;
         }
 
-        operator const SpaceObject<T,Space::None,_order> & () const
+        operator const SpaceObject<T,Space::None,order> & () const
         {
-            static SpaceObject<T,Space::None,_order> vv(0,{}, 0);
+            static SpaceObject<T,Space::None,order> vv(0,{}, 0);
             return vv;
         }
 
         explicit NullObject()
         :
-        BaseObject<T, _order, true, 0>(0,{})
+        Base(0,{})
         {}
 
         NullObject(const NullObject&) = default;

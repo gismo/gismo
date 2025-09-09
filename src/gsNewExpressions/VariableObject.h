@@ -29,17 +29,12 @@ struct ExpressionTraits<VariableObject<T, _order, _isConstant>>
 };
 
 template <class T, size_t _order, bool _isConstant = false>
-class VariableObject : public BaseObject<T, _order, _isConstant, Space::None>
+class VariableObject : public BaseObject<VariableObject<T, _order, _isConstant>>
 {
-    using Base = BaseObject<T, _order, _isConstant, 0>;
+    using Base = BaseObject<VariableObject<T, _order, _isConstant>>;
+    typedef typename Base::Scalar Scalar;
+    using Base::order;
     using Base::deriv_;
-public:
-
-    typedef typename ExpressionTraits<ConstantObject<T, _order>>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<ConstantObject<T, _order>>::order;
-    static constexpr size_t space = ExpressionTraits<ConstantObject<T, _order>>::space;
-    static constexpr size_t deriv = ExpressionTraits<ConstantObject<T, _order>>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<ConstantObject<T, _order>>::isConstant;
 
 private:
     const gsFunctionSet<Scalar> * m_fs;
@@ -48,7 +43,7 @@ public:
 
     VariableObject(size_t domainDim, const std::array<size_t, order> & input_sizes, std::string label=(order==0)?"f":"F")
     :
-    BaseObject<Scalar, _order, _isConstant, 0>(domainDim, input_sizes, label),
+    Base(domainDim, input_sizes, label),
     m_fs(NULL), m_fd(NULL)
     {
     }
@@ -78,7 +73,7 @@ public:
             m_fd->flags |= NEED_DERIV2;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<Base::label_;
         _print_arguments(os);
@@ -88,6 +83,7 @@ protected:
 
     void _print_arguments(std::ostream & os) const
     {
+        GISMO_UNUSED(os);
         // os<<"(";
         // for (size_t d=0; d!=this->domainDim(); d++)
         // {

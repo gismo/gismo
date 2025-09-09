@@ -21,15 +21,13 @@ namespace Expr
 {
 
 template <class T, size_t _space, size_t _order>
-class SpaceObject : public BaseObject<T, _order, false, _space>
+class SpaceObject : public BaseObject<SpaceObject<T, _space, _order>>
 {
-    using Base = BaseObject<T, _order, false, _space>;
+    using Base = BaseObject<SpaceObject<T, _space, _order>>;
+    typedef typename Base::Scalar Scalar;
+    using Base::order;
+    using Base::space;
     using Base::deriv_;
-public:
-    typedef T Scalar; // Define Scalar type for this expression
-    static constexpr size_t order = Base::order;
-    static constexpr bool isConstant = Base::isConstant;
-    static constexpr size_t space = Base::space;
 
 private:
     const gsFunctionSet<Scalar> * m_fs;
@@ -39,7 +37,7 @@ public:
     SpaceObject(size_t domainDim, const std::array<size_t, order> & input_sizes, size_t id,
                 std::string label=(space==Space::Test)?"φ":(space==Space::Trial)?"ψ":"UNKNOWN_SPACE")
     :
-    BaseObject<Scalar, _order, false, _space>(domainDim, input_sizes, label),
+    Base(domainDim, input_sizes, label),
     m_fs(NULL), m_fd(NULL), m_id(id)
     {
     }
@@ -74,7 +72,7 @@ public:
     const SpaceObject<Scalar,_space,_order> & rowVar() const {return (_space==Space::Test  || _space==Space::Both) ? *this : NullObject<T,order>::get();}
     const SpaceObject<Scalar,_space,_order> & colVar() const {return (_space==Space::Trial || _space==Space::Both) ? *this : NullObject<T,order>::get();}
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<Base::label_;
         _print_arguments(os);

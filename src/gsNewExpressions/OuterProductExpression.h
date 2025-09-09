@@ -45,17 +45,13 @@ class OuterProductExpression<LhsExpr, RhsExpr, 1, 1, Space::None, Space::None>
     using Base::order;
 protected:
 
-    std::array<size_t, order> sizes_;
-
 public:
     OuterProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
         : Base(lhs, rhs)
     {
-        sizes_[0] = lhs.sizes()[0];
-        sizes_[1] = rhs.sizes()[0];
+        this->sizes_[0] = lhs.sizes()[0];
+        this->sizes_[1] = rhs.sizes()[0];
     }
-
-    const std::array<size_t, order> & sizes() const { return sizes_; }
 
     size_t domainDim() const
     {
@@ -74,7 +70,7 @@ public:
         return lhs_val.operator*(rhs_val.transpose());
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<this->lhs_expr_<<"\u2297"<<this->rhs_expr_;
     }
@@ -90,7 +86,7 @@ template<typename LhsExpr, typename RhsExpr>
 typename std::enable_if<ExpressionTraits<LhsExpr>::order == 1 &&
                         ExpressionTraits<RhsExpr>::order == 1,
                         OuterProductExpression<LhsExpr, RhsExpr, 1, 1, Space::None, Space::None>>::type
-outer(const LhsExpr& lhs, const RhsExpr& rhs)
+outer(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return OuterProductExpression<LhsExpr, RhsExpr, 1, 1, Space::None, Space::None>(lhs, rhs);
 }

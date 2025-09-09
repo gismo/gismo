@@ -47,18 +47,15 @@ class CrossProductExpression<LhsExpr, RhsExpr, 1, 1, LhsSpace, RhsSpace>
 
 protected:
 
-    std::array<size_t,Base::order> sizes_;
-
 public:
     CrossProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-        : Base(lhs, rhs),
-          sizes_({3})
+        : Base(lhs, rhs)
     {
         GISMO_ENSURE(lhs.sizes()[0]==3,"lhs must be a vector of size 3");
         GISMO_ENSURE(rhs.sizes()[0]==3,"rhs must be a vector of size 3");
+        // Fill Base::sizes_ - cross product always produces 3D vector
+        this->sizes_[0] = 3;
     }
-
-    const std::array<size_t, Base::order> & sizes() const { return sizes_; }
 
     size_t domainDim() const
     {
@@ -77,7 +74,7 @@ public:
         return lhs_vec.cross(rhs_vec);
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<this->lhs_expr_<<"\u00D7"<<this->rhs_expr_;
     }

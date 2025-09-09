@@ -64,11 +64,10 @@ public:
     ProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
         : Base(lhs, rhs)
     {
-    }
-
-    const std::array<size_t, Base::order> & sizes() const
-    {
-        return this->rhs_expr_.sizes();
+        // Copy sizes from the higher-order operand (RHS)
+        for (size_t i = 0; i < Base::order; ++i) {
+            this->sizes_[i] = rhs.sizes()[i];
+        }
     }
 
     size_t domainDim() const
@@ -85,7 +84,7 @@ public:
     }
 
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<this->lhs_expr_<<"*"<<this->rhs_expr_;
     }
@@ -119,10 +118,6 @@ class ProductExpression<LhsExpr, RhsExpr, 2, 2, LhsSpace, RhsSpace>
 public:
     using Scalar = typename Base::Scalar;
 
-protected:
-
-    std::array<size_t,order> sizes_;
-
 public:
     ProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
         : Base(lhs, rhs)
@@ -131,11 +126,9 @@ public:
                      "Size mismatch in * operator.\n"<<
                      "lhs ("<<lhs.sizes()[0]<<" x "<<lhs.sizes()[1]<<") = "<<lhs<<"\n"<<
                      "rhs ("<<rhs.sizes()[0]<<" x "<<rhs.sizes()[1]<<") = "<<rhs<<")\n");
-        sizes_[0] = lhs.sizes()[0];
-        sizes_[1] = rhs.sizes()[1];
+        this->sizes_[0] = lhs.sizes()[0];
+        this->sizes_[1] = rhs.sizes()[1];
     }
-
-    const std::array<size_t, order> & sizes() const { return sizes_; }
 
     size_t domainDim() const
     {
@@ -150,7 +143,7 @@ public:
         return lhs_val * rhs_val;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<this->lhs_expr_<<"*"<<this->rhs_expr_;
     }
@@ -185,10 +178,6 @@ class ProductExpression<LhsExpr, RhsExpr, 2, 1, LhsSpace, RhsSpace>
 public:
     using Scalar = typename Base::Scalar;
 
-protected:
-
-    std::array<size_t,order> sizes_;
-
 public:
     ProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
         : Base(lhs, rhs)
@@ -196,11 +185,9 @@ public:
         GISMO_ENSURE(lhs.sizes()[1]==rhs.sizes()[0],
                      "Size mismatch in * operator.\n"<<
                      "lhs ("<<lhs.sizes()[0]<<" x "<<lhs.sizes()[1]<<") = "<<lhs<<"\n"<<
-                     "rhs ("<<rhs.sizes()[0]<<" x "<<rhs.sizes()[1]<<") = "<<rhs<<")\n");
-        sizes_[0] = lhs.sizes()[0];
+                     "rhs ("<<rhs.sizes()[0]<<") = "<<rhs<<")\n");
+        this->sizes_[0] = lhs.sizes()[0];
     }
-
-    const std::array<size_t, order> & sizes() const { return sizes_; }
 
     size_t domainDim() const
     {
@@ -216,7 +203,7 @@ public:
         return lhs_val * rhs_val;
     }
 
-    void print(std::ostream & os) const override
+    void print(std::ostream & os) const
     {
         os<<this->lhs_expr_<<"*"<<this->rhs_expr_;
     }
@@ -242,7 +229,7 @@ typename std::enable_if<
     ExpressionTraits<RhsExpr>::order == 0,
     ProductExpression<LhsExpr, RhsExpr, 0, 0, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-operator*(const LhsExpr& lhs, const RhsExpr& rhs)
+operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return ProductExpression<LhsExpr, RhsExpr, 0, 0, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
@@ -268,7 +255,7 @@ typename std::enable_if<
     !std::is_same<RhsExpr, ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>>::value,
     decltype(ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>(std::declval<typename ExpressionTraits<RhsExpr>::Scalar>()) * std::declval<RhsExpr>())
 >::type
-operator*(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const RhsExpr& rhs)
+operator*(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>(lhs) * rhs;
 }
@@ -278,7 +265,7 @@ typename std::enable_if<
     !std::is_same<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>>::value,
     decltype(std::declval<LhsExpr>() * ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>(std::declval<typename ExpressionTraits<LhsExpr>::Scalar>()))
 >::type
-operator*(const LhsExpr& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
+operator*(const BaseExpression<LhsExpr>& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
 {
     return lhs * ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>(rhs);
 }
@@ -291,7 +278,7 @@ typename std::enable_if<
     ExpressionTraits<RhsExpr>::order != 0,
     ProductExpression<LhsExpr, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-operator*(const LhsExpr& lhs, const RhsExpr& rhs)
+operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return ProductExpression<LhsExpr, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
@@ -301,7 +288,7 @@ typename std::enable_if<
     !std::is_same<RhsExpr, ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>>::value,
     ProductExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, Space::None, ExpressionTraits<RhsExpr>::space>
 >::type
-operator*(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const RhsExpr& rhs)
+operator*(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return ProductExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, Space::None, ExpressionTraits<RhsExpr>::space>(ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>(lhs), rhs);
 }
@@ -311,7 +298,7 @@ typename std::enable_if<
     !std::is_same<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>>::value,
     ProductExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, Space::None>
 >::type
-operator*(const LhsExpr& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
+operator*(const BaseExpression<LhsExpr>& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
 {
     return ProductExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, Space::None>(lhs, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>(rhs));
 }
@@ -323,7 +310,7 @@ typename std::enable_if<
     ExpressionTraits<RhsExpr>::order == 0,
     ProductExpression<RhsExpr, LhsExpr, 0, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>
 >::type
-operator*(const LhsExpr& lhs, const RhsExpr& rhs)
+operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return ProductExpression<RhsExpr, LhsExpr, 0, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>(rhs, lhs);
 }
@@ -335,9 +322,9 @@ typename std::enable_if<
     ExpressionTraits<RhsExpr>::order == 1,
     ProductExpression<LhsExpr, RhsExpr, 2, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-operator*(const LhsExpr& mat, const RhsExpr& vec)
+operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
-    return ProductExpression<LhsExpr, RhsExpr, 2, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(mat, vec);
+    return ProductExpression<LhsExpr, RhsExpr, 2, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
 
 template <typename LhsExpr, typename RhsExpr>
@@ -346,11 +333,23 @@ typename std::enable_if<
     ExpressionTraits<RhsExpr>::order == 2,
     TransposeExpression<ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>>
 >::type
-operator*(const TransposeExpression<LhsExpr>& vec, const RhsExpr& mat)
+operator*(const TransposeExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
-    auto product = ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>(mat, vec.expr());
+    auto product = ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>(rhs, lhs.expr());
     return TransposeExpression<ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>>(product);
 
+}
+
+// Specialization for transpose-vector dot product: (vector)^T * vector = scalar
+template <typename LhsExpr, typename RhsExpr>
+typename std::enable_if<
+    ExpressionTraits<LhsExpr>::order == 1 &&
+    ExpressionTraits<RhsExpr>::order == 1,
+    InnerProductExpression<LhsExpr, RhsExpr, 1, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
+>::type
+operator*(const TransposeExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
+{
+    return InnerProductExpression<LhsExpr, RhsExpr, 1, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs.expr(), rhs);
 }
 
 // Matrix-matrix product
@@ -360,14 +359,14 @@ typename std::enable_if<
     ExpressionTraits<RhsExpr>::order == 2,
     ProductExpression<LhsExpr, RhsExpr, 2, 2, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
 >::type
-operator*(const LhsExpr& lhs, const RhsExpr& rhs)
+operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 {
     return ProductExpression<LhsExpr, RhsExpr, 2, 2, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
 }
 
 // // Specialization for transpose of a vector with a vector (more specific than generic)
 // template <typename LhsExpr, typename RhsExpr>
-// auto operator*(const TransposeExpression<LhsExpr>& lhs, const RhsExpr& rhs)
+// auto operator*(const TransposeExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
 //     -> ProductExpression<TransposeExpression<LhsExpr>, RhsExpr>
 // {
 //     GISMO_ERROR("Multiplication of a transposed vector and a vector is not defined.");
@@ -376,7 +375,7 @@ operator*(const LhsExpr& lhs, const RhsExpr& rhs)
 
 // // Specialization for vector with transpose of a vector (more specific than generic)
 // template <typename LhsExpr, typename RhsExpr>
-// auto operator*(const LhsExpr& lhs, const TransposeExpression<RhsExpr>& rhs)
+// auto operator*(const BaseExpression<LhsExpr>& lhs, const TransposeExpression<RhsExpr>& rhs)
 //     -> ProductExpression<LhsExpr, TransposeExpression<RhsExpr>>
 // {
 //     GISMO_ERROR("Multiplication of a vector and a transposed vector is not defined.");

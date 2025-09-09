@@ -38,21 +38,23 @@ struct ExpressionTraits<UnaryOperator<Operator>>
 template <typename Operator>
 class UnaryOperator : public BaseExpression<Operator>
 {
+    using Base = BaseExpression<Operator>;
+    typedef typename Base::Scalar T;
+    using Base::deriv;
 public:
-    typedef typename ExpressionTraits<Operator>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<Operator>::order;
-    static constexpr size_t space = ExpressionTraits<Operator>::space;
-    static constexpr size_t deriv = ExpressionTraits<Operator>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<Operator>::isConstant;
-
     typedef typename ExpressionTraits<Operator>::ExprType ExprType;
 
     const ExprType& expr() const { return static_cast<const ExprType&>(expr_); }
 
-    void parse(gismo::ExpressionHelper<Scalar> & helper) const override
+    void parse(gismo::ExpressionHelper<T> & helper) const
     {
         expr_.parse(helper);
         expr_.setDerivative(deriv);
+    }
+
+    void print(std::ostream & os) const
+    {
+        static_cast<const Operator&>(*this).print(os);
     }
 
     // Note: sizes() and domainDim() are NOT defined here - derived classes must implement them
