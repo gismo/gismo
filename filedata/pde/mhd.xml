@@ -4,7 +4,7 @@
   <!-- Manufactured density function : Right-hand side function of MAE : exp(-100 * ( x**2 + y**2-0.75)**2) -->
 
 
-  <Function type="FunctionExpr" id="2003" dim="2">1./cosh(2.*(2./(y**2-4.*x*(x-1)**2+1.)-2.))**2</Function>
+  <Function type="FunctionExpr" id="2003" dim="2">1./(2.+cos(10.*pi*sqrt((x)**2+(y+2.)**2)))</Function>
 
     <!--
     exp( -10.*(4.*(x-0.1)**2+2.*(y-0.35)**2 - 1.4)**2)
@@ -25,8 +25,45 @@
   <!-- For poisson test 2-->
   <Function type="FunctionExpr" id="2000" dim="2"> 1./cosh(2.*(2./(y**2-4.*x*(x-1)**2+1.)-2.))**2 </Function>
   <Function type="FunctionExpr" id="2001" dim="2"> -1.0*y**2*sinh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))/((-x*(x - 1)**2 + 0.25*y**2 + 0.25)**3*cosh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**3) - 1.5*y**2*sinh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**2/((-x*(x - 1)**2 + 0.25*y**2 + 0.25)**4*cosh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**4) + 0.5*y**2/((-x*(x - 1)**2 + 0.25*y**2 + 0.25)**4*cosh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**2) - 0.5*(24.0*x - 16.0)*sinh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))/((-x*(x - 1)**2 + 0.25*y**2 + 0.25)**2*cosh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**3) - 0.375*16.0*(x*(2*x - 2) + (x - 1)**2)**2*sinh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**2/((-x*(x - 1)**2 + 0.25*y**2 + 0.25)**4*cosh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**4) + 0.125*(16.0*(x*(2*x - 2) + (x - 1)**2)**2)/((-x*(x - 1)**2 + 0.25*y**2 + 0.25)**4*cosh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**2) - 0.5*(2*x*(2*x - 2) + 2*(x - 1)**2)*(4.0*x*(2*x - 2) + 4.0*(x - 1)**2)*sinh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))/((-x*(x - 1)**2 + 0.25*y**2 + 0.25)**3*cosh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**3) + 1.0*sinh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))/((-x*(x - 1)**2 + 0.25*y**2 + 0.25)**2*cosh(4.0 - 4.0/(-4.0*x*(x - 1)**2 + y**2 + 1.0))**3) </Function>
- 
- <Geometry type="TensorNurbs2" id="0">
+
+ <Geometry type="TensorBSpline2" id="0">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="2">0 0 0 0.5 1 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="2">0 0 0 0.5 1 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="2">2.4888 3.74144 
+2.5334 3.8567 
+2.6326 4.0671 
+2.7072 4.16236 
+2.61124 3.80502 
+2.65524 3.87081 
+2.70898 4.05413 
+2.77047 4.10909 
+2.75958 3.7179 
+2.83713 3.78984 
+3.00317 3.77918 
+3.08348 3.8427 
+2.78312 3.59546 
+2.86654 3.61398 
+3.03337 3.65102 
+3.11678 3.66954 
+</coefs>
+ </Geometry> 
+ <MultiPatch parDim="2" id="1">
+  <patches type="id_range">0 0</patches>
+  <boundary>0 1
+   0 2
+   0 3
+   0 4
+  </boundary>
+ </MultiPatch>
+</xml>
+
+<!-- <Geometry type="TensorNurbs2" id="0">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
     <Basis type="BSplineBasis" index="0">
@@ -366,13 +403,4 @@
 1.71599999999999919265e-01 1.44600000000000017408e+00
 1.31000000000000005329e-01 1.41800000000000014921e+00
   </coefs>
- </Geometry>
- <MultiPatch parDim="2" id="1">
-  <patches type="id_range">0 0</patches>
-  <boundary>0 1
-   0 2
-   0 3
-   0 4
-  </boundary>
- </MultiPatch>
-</xml>
+ </Geometry>-->

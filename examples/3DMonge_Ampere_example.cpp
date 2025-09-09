@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
     // Specify the file path
     //std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/infinit_plate.xml");
-    std::string fn("pde/circle.xml");
+    // std::string fn("pde/circle.xml");
+    std::string fn("pde/mhd.xml");
     //std::string fn("surfaces/cylinder.xml"); 
     //std::string fn("domain2d/lake.xml");
 
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Density function "<< f << "\n";
 
     //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
+    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -118,7 +119,7 @@ int main(int argc, char *argv[])
         numRefine = 0;
     }
     // ... 
-    gsVector<>  h1err(numRefine+1), l2err(numRefine+1);
+    gsVector<>  h1err(numRefine+1), l2err(numRefine+1), l3err(numRefine+1);
     gsVector<int>  DoFPDE(numRefine+1);
     for (int r=0; r<= numRefine; ++r)
     {
@@ -132,7 +133,6 @@ int main(int argc, char *argv[])
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
-    ev.options().setSwitch("SameElement",false);
 
     gsStopwatch timer;
     timer.restart();
@@ -165,27 +165,25 @@ int main(int argc, char *argv[])
     geometryMap PG = A.getMap(Psitp);
     PG(mpLeft);
     auto comp      = A.getCoeff(mpLeft, PP);    
-    PsiF      = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
-    // gsInfo << "Composition of geometry maps computed\n";
+    PsiF           = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
+    // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
     geometryMap PPF = A.getMap(PsiF);
     // ...
     DoFPDE[r] = dbasis.basis(0).size();
     gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
     timer.restart();
-    l2err[r]  = std::abs(EIGEN_PI*coef_V*coef_V -std::abs( ev.integral(jac(PPF).det()) ));
+    l2err[r]  = std::abs(ev.integral( jac(G).det()  ) - ( ev.integral(jac(PPF).det()) ));
     h1err[r]  = math::sqrt(ev.integralBdr((PPF-PG).sqNorm()));
+    l3err[r]  = std::abs(ev.integral( jac(G).det()  ) - ( ev.integral( (jac(PP).det() *jac(comp).det()) ) ));
     // ...
     std::cout << std::setprecision(15);
     std::cout << "G   :   Initial volume   : "<< ev.integral( jac(G).det()  ) <<"\n";
-    std::cout << "G   :   geometry volume  : "<< std::abs(EIGEN_PI*coef_V*coef_V -std::abs( ev.integral( jac(G).det()  ))) <<"\n";
-    std::cout << "Comp:   geometry volume  : "<< std::abs(EIGEN_PI*coef_V*coef_V -std::abs( ev.integral( (jac(PP).det() *jac(comp).det()) ) ))<<"\n";
+    std::cout << "G   :   geometry volume  : "<< std::abs(ev.integral( jac(G).det()  ) -( ev.integral( jac(G).det()  ))) <<"\n";
+    std::cout << "Comp:   geometry volume  : "<< l3err[r] <<"\n";
     // ...
     std::cout << "GPP :   geometry volume  : "<< l2err[r] <<"\n";
     // gsWrite(Psitp,"Psi");
     std::cout << "GPP :   geometry boundary: "<<  h1err[r] <<"\n";
-    gsVector<> pointtp(2);
-    pointtp << 2.403857e-02, 1.000000e+00;
-    gsInfo << "Solved in " << mpLeft.patch(0).eval(pointtp) << " seconds.\n";
     }
 
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
@@ -195,6 +193,7 @@ int main(int argc, char *argv[])
         outFile << "#DoF_PDE:  \n"<< std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
         outFile << "#B_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << l3err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
     }
@@ -211,24 +210,20 @@ int main(int argc, char *argv[])
         if (mpLeft.dim()== 3){
         for(size_t i =0; i<PsiF.nPatches(); ++i)
             Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
-            // Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
         }
         else{
         for(size_t i =0; i<PsiF.nPatches(); ++i)
             Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(PsiF.patch(i)) ));
-            //Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiF.patch(i)) ));            
         }
         }
         else{
         if (mpLeft.dim()== 3){
         for(size_t i =0; i<PsiF.nPatches(); ++i)
-            Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
-            // Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
+            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
         }
         else{
         for(size_t i =0; i<PsiF.nPatches(); ++i)
-            Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(PsiF.patch(i)) ));
-            //Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiF.patch(i)) ));            
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiF.patch(i)) ));            
         }
         }
         Psi.addAutoBoundaries();
