@@ -682,30 +682,3 @@ int main(int argc, char* argv[])
     
     return EXIT_SUCCESS;
 }
-
-
-/*
-Hi Hugo,
-
-I did some updates in immersed_example and pushed everything.
-
-1. The trimmed domain consists of a tree and a background (untrimmed) gsDomain
-
-2. The trimmed domain iterator has a leaf, a grid-iterator and a current element:
-   The grid iterator iterates over the cells of the leaf.
-   The current element is always an element of the background domain,
-   and is found using the 'skipTo' method that we made yesterday.
-
-3. I tried some implicit functions in 2D. And fell at a bug
-   The functions f(x)=1, f(x)=-1 and f(x)=0 result in segfault. This is to be checked.
-
-4. Since now we have element iterator, the next step is to compute the volume of the circle.
-   To get a good computation, the gsGaussRule must be modified at the cut cells.
-   The modification is that all weights corresponding to Gauss nodes that have negative sign
-   must become zero, or 10^{-16}.
-   This will be dine in a new quad-rule, the gsCutCellRule, that
-   essentially keeps a gsGaussRule and modifies the weights as needed.
-   With that one we can do our first integrals ..
-
-to be continued !
-*/
