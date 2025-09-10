@@ -71,6 +71,7 @@ public:
             isGood = isGood && nextLexicographicIter(curElement, meshEnd);
     }
 private:
+
     inline gsVector<unsigned, D> tensorIndex(const size_t & m) const
     {
         gsVector<unsigned, D> ind;
@@ -84,13 +85,30 @@ private:
         }
         return ind;
     }
+
+    inline size_t flatIndex(const gsVector<size_t> & ind) const
+    {
+        size_t m;
+
+        m = ind(D-1);
+        for ( int i=D-2; i>=0; --i )
+            m = m * (meshEnd[i] - meshStart[i]) + ind[i];
+        return m;
+    }
+
 public:
 
-    void skipTo(size_t elemId)
+    //Element index is a tensor-product element index
+    size_t skipTo(const gsVector<size_t> & elemIndex)
     {
-        gsVector<unsigned, D> ind = tensorIndex(elemId);
+        gsVector<size_t> ii(1);
+        GISMO_ASSERT((index_t)D==elemIndex.size(), "Expecting one element index.");
         for (int i = 0; i < D; ++i)
-            curElement[i].skipTo(ind[i]);
+        {
+            ii[0] = elemIndex[i];
+            curElement[i].skipTo(ii);
+        }
+        return flatIndex(elemIndex);
     }
 
     // Documentation in gsDomainIterator.h

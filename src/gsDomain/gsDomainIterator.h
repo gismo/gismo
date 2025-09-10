@@ -173,10 +173,10 @@ public:
         return *this;
     }
 
-    void skipTo(size_t elemId)
+    void skipTo(const gsVector<size_t> & elemIndex)
     {
-        m_domainIter->skipTo(elemId);
-        m_domainIter->resetId(elemId);
+        const index_t _id = m_domainIter->skipTo(elemIndex);
+        m_domainIter->resetId( _id );
     }
 
     /// Decrement by a number of steps
@@ -301,13 +301,10 @@ private:
             this->prev();
     }
 
-    /// Skips to an arbitrary element id
-    virtual void skipTo(size_t elemId)
-    {
-        const index_t amount = elemId - m_id;
-        if (amount > 0) next( amount);
-        if (amount < 0) prev(-amount);
-    }
+    /// Skips to an arbitrary element index, and return the new element ID.
+    /// The index is a vector of ints and is defined in the implementation
+    virtual size_t skipTo(const gsVector<size_t> & elemIndex)
+    { GISMO_NO_IMPLEMENTATION }
 
     /// Resets the iterator so that it points to the first element
     virtual void reset()
@@ -458,7 +455,7 @@ public:
         GISMO_NO_IMPLEMENTATION
     }
 
-    virtual void skipTo(size_t elemId)
+    virtual size_t skipTo(const gsVector<size_t> & elemId)
     { GISMO_ERROR("Cannot proceed to skipTo element. End iterator reached."); }
 
 };
