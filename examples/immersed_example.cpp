@@ -23,7 +23,7 @@ namespace gismo
 {
 
 struct BoundarySign { bool operator()(short_t s) const { return s==0; } };
-struct InteriorSign { bool operator()(short_t s) const { return s>0; } };
+struct InteriorSign { bool operator()(short_t s) const { return s>=0; } };
 
 template<short_t d, class Z>
 class gsCutTreeData
@@ -136,7 +136,7 @@ class gsTrimmedDomainIterator;
 
 template<short_t d, class T, class Z=size_t>
 class gsTrimmedDomain : public gsDomain<T>
-{    
+{
 public:
     typedef gsCutTreeData<d,Z> TData_t;
     typedef gsKdTree<d,Z,TData_t > Tree_t;
@@ -370,7 +370,7 @@ public:
 private:
     // The trimmed domain being iterated on
     const Domain_t & m_tdomain;
-    
+
     // The current leaf node of the tree
     leafIterator m_leaf;
 
@@ -402,9 +402,8 @@ public:
         else  // went through all elements in m_leaf
         {
             nextLeaf();
-            gsDebug<<"Going to next leaf\n";
         }
-        
+
     }
 
     // ---> Documentation in gsDomainIterator.h
@@ -429,7 +428,7 @@ public:
                     isGood = nextLeaf();
             }
             else
-                isGood = nextLeaf();                
+                isGood = nextLeaf();
         }
 
         if (m_gridIter)
@@ -441,7 +440,7 @@ public:
     void reset() override
     {
         m_leaf = m_tdomain.tree().beginLeafIterator();
-        if (!SignOp()(m_leaf.data().sign()))
+        if (m_leaf.good() && !SignOp()(m_leaf.data().sign()))
             nextLeaf();
         updateLeaf();
     }
@@ -472,8 +471,11 @@ private:
 
     void updateLeaf()
     {
-        m_gridIter.reset( m_leaf.data().lowerCorner(), m_leaf.data().upperCorner() );
-        m_current.skipTo( *m_gridIter );//copy gsVector<D> -->gsVector<>
+        if(m_leaf.good())
+        {
+            m_gridIter.reset( m_leaf.data().lowerCorner(), m_leaf.data().upperCorner() );
+            m_current.skipTo( *m_gridIter );//copy gsVector<D> -->gsVector<>
+        }
     }
 };
 
@@ -540,8 +542,41 @@ public:
 };
 
 template<class T>
-class gsCutCellRule
-{ }; // todo
+class gsCutCellRule : public gsQuadRule<T>
+{
+public:
+
+    typedef memory::unique_ptr<gsCutCellRule> uPtr;
+
+    gsCutCellRule(const gsQuadRule<T> & rule, const gsFunction<T> & levelSet)
+    :
+    m_rule(rule), m_levelSet(levelSet)
+    {
+
+    }
+
+    static uPtr make(const gsQuadRule<T> & rule, const gsFunction<T> & levelSet)
+    {
+        return uPtr(new gsCutCellRule(rule, levelSet));
+    }
+
+    inline void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
+                             gsMatrix<T>& nodes,       gsVector<T>& weights ) const override
+    {
+        gsMatrix<T> vals;
+        m_rule.mapTo(lower, upper, nodes, weights);
+        m_levelSet.eval_into(nodes,vals);
+        for (index_t i = 0; i < vals.cols(); ++i)
+            if (vals(0,i) < 0)
+            {
+                weights[i] = 0;
+            }
+    }
+
+protected:
+    const gsQuadRule<T> & m_rule;
+    const gsFunction<T> & m_levelSet;
+};
 
 }//namespace gismo
 
@@ -557,9 +592,9 @@ void test_2D(int k)
     // defines the inside or the outside of the (parametric) domain
 
     // These ones have some problems
-    //gsFunctionExpr<> impl_fun("1", 2);
-    //gsFunctionExpr<> impl_fun("-1", 2);
-    //gsFunctionExpr<> impl_fun("0", 2);
+    // gsFunctionExpr<> impl_fun("1", 2);
+    // gsFunctionExpr<> impl_fun("-1", 2);
+    // gsFunctionExpr<> impl_fun("0", 2);
 
     gsFunctionExpr<> impl_fun("1 - (x-1)^2 - (y-1)^2", 2);
     //gsFunctionExpr<> impl_fun("1 - x^2 - y^2", 2);
@@ -608,6 +643,18 @@ void test_2D(int k)
     gsWriteParaview(BoundaryBoxes,BoundaryLabel,"boundary_elements2d");
 
     gsWriteParaview(impl_fun, bb, "implicit_function2d");
+
+    gsMatrix<> pts;
+    gsVector<> wts;
+    gsGaussRule<real_t> rule(gsVector<index_t,2>::Constant(5));
+    gsCutCellRule<real_t> ccrule(rule, impl_fun);
+    real_t area(0.0);
+    for (auto & elem : tr_domain.allElements())
+    {
+        ccrule.mapTo(elem.lowerCorner(), elem.upperCorner(), pts, wts);
+        area += wts.sum();
+    }
+    gsInfo<<"Area = "<<area<<"\n";
 }
 
 
@@ -623,7 +670,7 @@ void test_3D(int k)
     gsMatrix<> bb(3,2);
     bb << -1, 1,
           -1, 1,
-          -1, 1;    
+          -1, 1;
 
     // uses the two objects above to get an immersed geometry
     //gsImmersedGeometry<real_t> igo(bg, inOut);
@@ -633,7 +680,6 @@ void test_3D(int k)
     gsTensorBSplineBasis<3,real_t> tbs(kv,kv,kv);
 
     gsImplTrimmedDomain<3,real_t> tr_domain(impl_fun, tbs);
-    gsDebugVar(tr_domain.boundingBox());
 
     //tr_domain.tree().printLeaves();
 
@@ -665,6 +711,19 @@ void test_3D(int k)
     gsWriteParaview(BoundaryBoxes,BoundaryLabel,"boundary_elements3d");
 
     gsWriteParaview(impl_fun, bb, "implicit_function3d");
+
+    gsMatrix<> pts;
+    gsVector<> wts;
+    gsGaussRule<real_t> rule(gsVector<index_t,3>::Constant(5));
+    gsCutCellRule<real_t> ccrule(rule, impl_fun);
+    real_t area(0.0);
+    for (auto & elem : tr_domain.allElements())
+    {
+        ccrule.mapTo(elem.lowerCorner(), elem.upperCorner(), pts, wts);
+        gsDebugVar(wts.transpose());
+        area += wts.sum();
+    }
+    gsInfo<<"Area = "<<area<<"\n";
 }
 
 int main(int argc, char* argv[])
@@ -679,6 +738,6 @@ int main(int argc, char* argv[])
 
     test_2D(numKnots);
     test_3D(numKnots);
-    
+
     return EXIT_SUCCESS;
 }
