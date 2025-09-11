@@ -16,6 +16,7 @@
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsExport.h>
+#include <gsCore/gsBoxTopology.h>
 
 namespace gismo
 {
