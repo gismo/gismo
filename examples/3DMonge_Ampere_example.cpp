@@ -34,15 +34,15 @@ int main(int argc, char *argv[])
     bool last           = false;
     index_t coef_V      = 1.;
     // Specify the file path
-    // std::string fn("pde/example3D.xml");
+    std::string fn("pde/example3D.xml");
     //std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
-    //std::string fn("pde/quart_annulus.xml");
+    // std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/infinit_plate.xml");
     // std::string fn("pde/circle.xml");
-    std::string fn("pde/mhd.xml");
+    // std::string fn("pde/mhd.xml");
     //std::string fn("surfaces/cylinder.xml"); 
-    //std::string fn("domain2d/lake.xml");
+    // std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Density function "<< f << "\n";
 
     //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<double> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
