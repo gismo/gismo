@@ -767,6 +767,8 @@ public:
 
             if(tmp.hasNaN()){
             if(m_composedMap->patch(0).parDim()==2){
+            std::cout << std::setprecision(15);
+            gsInfo << "___________________________ "<< intermediateResult << " " << tmp << "\n"; 
             if(intermediateResult[1] >= 0.999999999999)
                 tmp2<<  intermediateResult[0], 1.;
             else if(intermediateResult[1] <= 1e-16)
@@ -791,6 +793,7 @@ public:
                 tmp2<<  0., intermediateResult[1], intermediateResult[2];
             }
             tmp = m_composedMap->patch(0).eval(tmp2);
+            gsInfo << "___________________________ "<< tmp2 << " " << tmp << "\n"; 
             }
             return tmp;
          }

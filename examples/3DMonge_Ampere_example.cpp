@@ -34,14 +34,14 @@ int main(int argc, char *argv[])
     bool last           = false;
     index_t coef_V      = 1.;
     // Specify the file path
-    std::string fn("pde/example3D.xml");
+    // std::string fn("pde/example3D.xml");
     //std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/infinit_plate.xml");
-    // std::string fn("pde/circle.xml");
+    std::string fn("pde/circle.xml");
     // std::string fn("pde/mhd.xml");
-    //std::string fn("surfaces/cylinder.xml"); 
+    // std::string fn("surfaces/cylinder.xml"); 
     // std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -75,7 +75,13 @@ int main(int argc, char *argv[])
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
     // ...
-    gsMultiPatch<> PsiF; // final adaptive mapping after composition
+    gsMultiPatch<> PsiF, Psitp; // final adaptive mapping after composition
+    std::string fs("./PsiF.xml");
+    gsFileData<> fsd(fs);
+    fsd.getId(1,PsiF);
+    std::string fr("./Psi_mappingy.xml");
+    gsFileData<> frd(fr);
+    frd.getId(1,Psitp);
     gsMultiPatch<> mpLeft;// Initial geometry
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
@@ -166,18 +172,19 @@ int main(int argc, char *argv[])
     PG(mpLeft);
     auto comp      = A.getCoeff(mpLeft, PP);    
     PsiF           = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
+    gsWrite(Psitp,"Psi");
     // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
     geometryMap PPF = A.getMap(PsiF);
     // ...
     DoFPDE[r] = dbasis.basis(0).size();
     gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
     timer.restart();
-    l2err[r]  = std::abs(ev.integral( jac(G).det()  ) - ( ev.integral(jac(PPF).det()) ));
+    l2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PPF)) ));
     h1err[r]  = math::sqrt(ev.integralBdr((PPF-PG).sqNorm()));
-    l3err[r]  = std::abs(ev.integral( jac(G).det()  ) - ( ev.integral( (jac(PP).det() *jac(comp).det()) ) ));
+    l3err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(comp).det()*jac(PP).det() ) ));
     // ...
     std::cout << std::setprecision(15);
-    std::cout << "G   :   Initial volume   : "<< ev.integral( jac(G).det()  ) <<"\n";
+    std::cout << "G   :   Initial volume   : "<< ev.integral( meas(G)  ) <<"\n";
     std::cout << "G   :   geometry volume  : "<< std::abs(ev.integral( jac(G).det()  ) -( ev.integral( jac(G).det()  ))) <<"\n";
     std::cout << "Comp:   geometry volume  : "<< l3err[r] <<"\n";
     // ...
@@ -206,7 +213,8 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsMultiPatch<> Psi;
-        if ( dbasis.basis(0).IsRational){
+        gsInfo << PsiF.basis(0).IsRational << dbasis.basis(0).IsRational <<" <<<<<<<<<_\n";
+        if ( !PsiF.basis(0).IsRational){
         if (mpLeft.dim()== 3){
         for(size_t i =0; i<PsiF.nPatches(); ++i)
             Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
@@ -230,7 +238,7 @@ int main(int argc, char *argv[])
         Psi.computeTopology();
 
         //Psi.uniformRefine();
-        gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
+        gsMultiBasis<> basis(Psi, true);//true: poly-splines (not NURBS)
 
         geometryMap PPF = A.getMap(Psi);
         auto ff_TG      = A.getCoeff(f, PPF);
@@ -241,7 +249,7 @@ int main(int argc, char *argv[])
         //MarkingStrategy adaptRefCrit = errorFraction;
         real_t adaptRefParam = 0.7;
         // Elements used for numerical integration
-        A.setIntegrationElements(dbasis);
+        A.setIntegrationElements(basis);
         gsExprEvaluator<> ev(A);
 
         for (int r=0; r<=numLRefine; ++r)
@@ -264,7 +272,7 @@ int main(int argc, char *argv[])
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             // Refine the marked elements with a 1-ring of cells around marked elements
-            gsRefineMarkedElements( dbasis, elMarked, 1);
+            gsRefineMarkedElements( basis, elMarked, 1);
             gsRefineMarkedElements( Psi, elMarked, 1);
             }
 
