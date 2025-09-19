@@ -311,17 +311,16 @@ protected:
                     continue;
                 }
 
-                // There are both positive and negative signs
-                if ( 1 == (k2-k1).prod() )
+                if ( 1 == (k2-k1).prod() ) // single element ?
                 {
                     curNode->nodeData().sign() = 0;
+                    continue;
                 }
-                else //more than one element
-                {
-                    curNode->anyMidSplit(1);
-                    stack.push_back(curNode->left );
-                    stack.push_back(curNode->right);
-                }
+
+                //more than one element
+                curNode->anyMidSplit(1);
+                stack.push_back(curNode->left );
+                stack.push_back(curNode->right);
             }
             else // roll down the tree
             {
@@ -583,7 +582,7 @@ protected:
 using namespace gismo;
 
 
-void test_2D(int k)
+void test_2D(int p, int k)
 {
     // defines the background geometry
     gsTensorBSpline<2,real_t> bg = *gsNurbsCreator<>::BSplineSquare(5,0,0);
@@ -592,12 +591,12 @@ void test_2D(int k)
     // defines the inside or the outside of the (parametric) domain
 
     // These ones have some problems
-    // gsFunctionExpr<> impl_fun("1", 2);
-    // gsFunctionExpr<> impl_fun("-1", 2);
-    // gsFunctionExpr<> impl_fun("0", 2);
+    //gsFunctionExpr<> impl_fun("1", 2);
+    //gsFunctionExpr<> impl_fun("-1", 2);
+    //gsFunctionExpr<> impl_fun("0", 2);
 
-    gsFunctionExpr<> impl_fun("1 - (x-1)^2 - (y-1)^2", 2);
-    //gsFunctionExpr<> impl_fun("1 - x^2 - y^2", 2);
+    //gsFunctionExpr<> impl_fun("1 - (x-1)^2 - (y-1)^2", 2);
+    gsFunctionExpr<> impl_fun("1 - x^2 - y^2", 2);
     //gsFunctionExpr<> impl_fun("x-y", 2);
     //gsFunctionExpr<> impl_fun("x*y", 2);
     gsMatrix<> bb(2,2);
@@ -608,45 +607,44 @@ void test_2D(int k)
     //gsImmersedGeometry<real_t> igo(bg, inOut);
 
     // Background basis
-    gsKnotVector<> kv(-1,1,k,2);
+    gsKnotVector<> kv(-1,1,k,p+1);
     gsTensorBSplineBasis<2,real_t> tbs(kv,kv);
 
     gsImplTrimmedDomain<2,real_t> tr_domain(impl_fun, tbs);
-    gsDebugVar(tr_domain.boundingBox());
+    //gsDebugVar(tr_domain.boundingBox());
 
-    tr_domain.tree().printLeaves();
+    //tr_domain.tree().printLeaves();
 
     // test iterator
     gsVector<> InteriorLabel(tr_domain.numElements());
     gsMatrix<> InteriorBoxes(2,tr_domain.numElements()*2);
     for (auto & elem : tr_domain.allElements())
     {
-        gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<InteriorSign,2,real_t> &>(elem).sign()
-              <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
+        //gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<InteriorSign,2,real_t> &>(elem).sign()
+        //      <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
         InteriorLabel[elem.id()] = static_cast<gsTrimmedDomainIterator<InteriorSign,2,real_t> &>(elem).sign();
         InteriorBoxes.col(elem.id()*2)   = elem.lowerCorner();
         InteriorBoxes.col(elem.id()*2+1) = elem.upperCorner();
     }
-    gsWriteParaview(InteriorBoxes,InteriorLabel,"interior_elements2d");
+    //gsWriteParaview(InteriorBoxes,InteriorLabel,"interior_elements2d");
 
     gsVector<> BoundaryLabel(tr_domain.numElementsBdr());
     gsMatrix<> BoundaryBoxes(2,tr_domain.numElementsBdr()*2);
     for (auto & elem : gsDomain<real_t>::ElementRange( tr_domain.beginBdr(boundary::none), tr_domain.endBdr(boundary::none) ) )
     {
-        gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<BoundarySign,2,real_t> &>(elem).sign()
-              <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
+        //gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<BoundarySign,2,real_t> &>(elem).sign()
+        //      <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
 
         BoundaryLabel[elem.id()] = static_cast<gsTrimmedDomainIterator<BoundarySign,2,real_t> &>(elem).sign();
         BoundaryBoxes.col(elem.id()*2)   = elem.lowerCorner();
         BoundaryBoxes.col(elem.id()*2+1) = elem.upperCorner();
     }
-    gsWriteParaview(BoundaryBoxes,BoundaryLabel,"boundary_elements2d");
-
-    gsWriteParaview(impl_fun, bb, "implicit_function2d");
+    //gsWriteParaview(BoundaryBoxes,BoundaryLabel,"boundary_elements2d");
+    //gsWriteParaview(impl_fun, bb, "implicit_function2d");
 
     gsMatrix<> pts;
     gsVector<> wts;
-    gsGaussRule<real_t> rule(gsVector<index_t,2>::Constant(5));
+    gsGaussRule<real_t> rule(gsVector<index_t,2>::Constant(p+1));
     gsCutCellRule<real_t> ccrule(rule, impl_fun);
     real_t area(0.0);
     for (auto & elem : tr_domain.allElements())
@@ -655,10 +653,11 @@ void test_2D(int k)
         area += wts.sum();
     }
     gsInfo<<"Area = "<<area<<"\n";
+    gsInfo<<"Error = "<< math::abs(area-EIGEN_PI)<<"\n";
 }
 
 
-void test_3D(int k)
+void test_3D(int p, int k)
 {
     // defines the background geometry
     gsTensorBSpline<3,real_t> bg = *gsNurbsCreator<>::BSplineCube(5,0,0);
@@ -676,7 +675,7 @@ void test_3D(int k)
     //gsImmersedGeometry<real_t> igo(bg, inOut);
 
     // Background basis
-    gsKnotVector<> kv(-1,1,k,2);
+    gsKnotVector<> kv(-1,1,k,p+1);
     gsTensorBSplineBasis<3,real_t> tbs(kv,kv,kv);
 
     gsImplTrimmedDomain<3,real_t> tr_domain(impl_fun, tbs);
@@ -688,56 +687,58 @@ void test_3D(int k)
     gsMatrix<> InteriorBoxes(3,tr_domain.numElements()*2);
     for (auto & elem : tr_domain.allElements())
     {
-        gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<InteriorSign,3,real_t> &>(elem).sign()
-              <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
+        //gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<InteriorSign,3,real_t> &>(elem).sign()
+        //      <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
         InteriorLabel[elem.id()] = static_cast<gsTrimmedDomainIterator<InteriorSign,3,real_t> &>(elem).sign();
         InteriorBoxes.col(elem.id()*2)   = elem.lowerCorner();
         InteriorBoxes.col(elem.id()*2+1) = elem.upperCorner();
     }
-    gsWriteParaview(InteriorBoxes,InteriorLabel,"interior_elements3d");
+    //gsWriteParaview(InteriorBoxes,InteriorLabel,"interior_elements3d");
 
     gsVector<> BoundaryLabel(tr_domain.numElementsBdr());
     gsMatrix<> BoundaryBoxes(3,tr_domain.numElementsBdr()*2);
     for (auto & elem : gsDomain<real_t>::ElementRange( tr_domain.beginBdr(boundary::none), tr_domain.endBdr(boundary::none) ) )
     {
-        gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<BoundarySign,3,real_t> &>(elem).sign()
-              <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
+        //gsInfo<<"Element with sign "<<static_cast<gsTrimmedDomainIterator<BoundarySign,3,real_t> &>(elem).sign()
+        //      <<" and corners "<<elem.lowerCorner().transpose()<<" , "<<elem.upperCorner().transpose()<<"\n";
 
         //BoundaryLabel[elem.id()] = static_cast<gsTrimmedDomainIterator<BoundarySign,3,real_t,index_t> &>(elem).sign();
         BoundaryLabel[elem.id()] = elem.id();
         BoundaryBoxes.col(elem.id()*2)   = elem.lowerCorner();
         BoundaryBoxes.col(elem.id()*2+1) = elem.upperCorner();
     }
-    gsWriteParaview(BoundaryBoxes,BoundaryLabel,"boundary_elements3d");
 
-    gsWriteParaview(impl_fun, bb, "implicit_function3d");
+    //gsWriteParaview(BoundaryBoxes,BoundaryLabel,"boundary_elements3d");
+    //gsWriteParaview(impl_fun, bb, "implicit_function3d");
 
     gsMatrix<> pts;
     gsVector<> wts;
-    gsGaussRule<real_t> rule(gsVector<index_t,3>::Constant(5));
+    gsGaussRule<real_t> rule(gsVector<index_t,3>::Constant(p+1));
     gsCutCellRule<real_t> ccrule(rule, impl_fun);
     real_t area(0.0);
     for (auto & elem : tr_domain.allElements())
     {
         ccrule.mapTo(elem.lowerCorner(), elem.upperCorner(), pts, wts);
-        gsDebugVar(wts.transpose());
+        //gsDebugVar(wts.transpose());
         area += wts.sum();
     }
     gsInfo<<"Area = "<<area<<"\n";
+    gsInfo<<"Error = "<< math::abs(area-(4./3.)*EIGEN_PI)<<"\n";
 }
 
 int main(int argc, char* argv[])
 {
-    index_t numKnots  = 9;
+    index_t p = 2, numKnots  = 9;
     gsCmdLine cmd("Immersing the geometry and the basis.");
     cmd.addInt( "k", "knots", "Number of knots per direction",  numKnots );
+    cmd.addInt( "p", "degree", "Degree",  p );
     // cmd.addPlainString("input", "G+Smo input basis file.", input);
     // cmd.addString("o", "output", "Name of the output file.", output);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    test_2D(numKnots);
-    test_3D(numKnots);
+    test_2D(p,numKnots);
+    test_3D(p,numKnots);
 
     return EXIT_SUCCESS;
 }
