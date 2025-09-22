@@ -36,7 +36,7 @@ void markEdge(gsSurfMesh & mesh, gsSurfMesh::Halfedge_property<bool> & sharp,
 //};
 int main(int argc, char** argv)
 {
-    std::string fn("off/cube.off");
+    std::string fn("off/cube_with_boundary.off");
     bool plot = false;
     bool dm = false;
     index_t r(1);
@@ -56,14 +56,17 @@ int main(int argc, char** argv)
     typedef gsEigen::Vector<real_t,3> Point;
     typedef gsSurfMesh::Vertex Vertex;
 
-    //gsMatrix<real_t> M;
-    //M = mesh.get_image_vertex_coeffs(3);
+    gsMatrix<real_t> M;
+    M = mesh.get_image_vertex_coeffs(4);
 
-    //gsDebug << M << std::endl;
+    gsDebug << M << std::endl;
 
     gsInfo << "Input: " << mesh.n_vertices() << " vertices, "
         << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
     // r steps of Doo-Sabin subdivisions
+
+    // Check if we have boundaries in our mesh
+    //mesh.boundary_reconstruction();
 
     for( index_t i = 0; i<r; ++i)
     {

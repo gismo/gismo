@@ -1978,6 +1978,17 @@ public: // Doo-Sabin functions
     /// Doo-Sabin Image point caluculation per vertex in a face
     Point ds_image_point_calc(Vertex oldv, Face oldf);
 
+    /// boundary reconstruction
+    void boundary_reconstruction();
+
+    /// boundary modification using Polyhedral Modification Method (Nasri) in case where the mesh has boundaries
+    std::map<Vertex, Vertex> boundary_polyhedral_modification();
+
+    /// Expanded Chebysev point \c b on the polynomial in M0-Mn-1
+    std::vector<real_t> chebysev_points(Face f, int boundverts);
+
+    /// reflection of a vertex aroung a halfedge
+    Point reflection(Halfedge he, Vertex v, Point ref_point);
 
     /// Image vertex per face for Doo-Sabin subdivision scheme
     gsMatrix<real_t> get_image_vertex_coeffs(unsigned int face_valence);
