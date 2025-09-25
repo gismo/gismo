@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     // std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/infinit_plate.xml");
     std::string fn("pde/circle.xml");
-    // std::string fn("pde/mhd.xml");
+    //std::string fn("pde/mhd.xml");
     // std::string fn("surfaces/cylinder.xml"); 
     // std::string fn("domain2d/lake.xml");
 
@@ -76,12 +76,12 @@ int main(int argc, char *argv[])
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
     // ...
     gsMultiPatch<> PsiF, Psitp; // final adaptive mapping after composition
-    std::string fs("./PsiF.xml");
-    gsFileData<> fsd(fs);
-    fsd.getId(1,PsiF);
-    std::string fr("./Psi_mappingy.xml");
-    gsFileData<> frd(fr);
-    frd.getId(1,Psitp);
+    // std::string fs("./PsiF.xml");
+    // gsFileData<> fsd(fs);
+    // fsd.getId(1,PsiF);
+    // std::string fr("./Psi_mappingy.xml");
+    // gsFileData<> frd(fr);
+    // frd.getId(1,Psitp);
     gsMultiPatch<> mpLeft;// Initial geometry
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
@@ -116,12 +116,15 @@ int main(int argc, char *argv[])
     while (dbasis.basis(0).numElements()<1e2)
     {
         dbasis.uniformRefine();
+        //mpLeft.uniformRefine();
     }
     // h-refine each basis
     if (last)
     {
-        for (int r =0; r < numRefine; ++r)
+        for (int r =0; r < numRefine; ++r){
             dbasis.uniformRefine();
+            //mpLeft.uniformRefine();
+        }
         numRefine = 0;
     }
     // ... 
@@ -130,6 +133,7 @@ int main(int argc, char *argv[])
     for (int r=0; r<= numRefine; ++r)
     {
     dbasis.uniformRefine();
+    //mpLeft.uniformRefine();
     // ... condition for the convergence 
     // while (dbasis.basis(0).numElements()<1e3)
     // {
@@ -172,9 +176,51 @@ int main(int argc, char *argv[])
     PG(mpLeft);
     auto comp      = A.getCoeff(mpLeft, PP);    
     PsiF           = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
+    geometryMap PPF = A.getMap(PsiF);
+    //------------------------------------ Interpolation of the mapping
+    gsKnotVector<> KV(0.0, 1.0, dbasis.basis(0).numElements(1)+1, dbasis.basis(0).minDegree()+4);
+    gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( Psitp.patch(0)).knots(0);
+    gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psitp.patch(0)).knots(1);
+    gsInfo << "Knot vector for interpolation " << KV << "\n";
+    gsInfo << "Knot vector of the mapping " << kv1 << "\n";
+    gsBasis<>::uPtr tBasis;
+    switch (dbasis.basis(0).dim()) // static dispatch..
+    {
+    case 1:
+        tBasis = gsBSplineBasis<>::make(KV);
+        break;
+    case 2:
+        tBasis = memory::make_unique(new gsTensorBSplineBasis<2>(KV, KV));
+        break;
+    // case 3:
+    //     tBasis = memory::make_unique(new gsTensorBSplineBasis<3>(KV,KV,KV));
+    //     break;
+    default:
+    {
+        gsWarn<<"Dimension must be 1, 2 or 3!";
+        return 0;
+    }
+    };
+    gsMatrix<> intGrid = tBasis->anchors();
+    gsInfo <<"Int. grid dim: "<< intGrid.dim() <<"\n";
+    // Evaluate f at the Greville points
+    gsMatrix<> intfavlues = Psitp.patch(0).eval(intGrid);
+    gsMatrix<> fValues    = mpLeft.patch(0).eval(intfavlues);
+    gsInfo <<"Function values dim: "<< fValues.dim() <<"\n";
+    // Returns a geometry with basis = tBasis
+    // and coefficients being
+    // computed as the interpolant of \a funct
+    gsGeometry<>::uPtr interpolant = tBasis->interpolateData(fValues, intGrid);
+
+    gsInfo << "Result :"<< *interpolant <<"\n";
+
+    // Save the result as an XML file
+    gsFileData<> fd;
+    gsMultiPatch<> PsiFInt;
+    PsiFInt.addPatch(give(interpolant));
+    geometryMap PGI = A.getMap(PsiFInt);
     gsWrite(Psitp,"Psi");
     // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
-    geometryMap PPF = A.getMap(PsiF);
     // ...
     DoFPDE[r] = dbasis.basis(0).size();
     gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
@@ -191,6 +237,8 @@ int main(int argc, char *argv[])
     std::cout << "GPP :   geometry volume  : "<< l2err[r] <<"\n";
     // gsWrite(Psitp,"Psi");
     std::cout << "GPP :   geometry boundary: "<<  h1err[r] <<"\n";
+    std::cout << "GPI :   geometry volume  : "<<  std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) )) <<"\n";
+    std::cout << "GPI :   geometry boundary: "<<  math::sqrt(ev.integralBdr((PGI-PG).sqNorm())) <<"\n";
     }
 
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
@@ -213,8 +261,8 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsMultiPatch<> Psi;
-        gsInfo << PsiF.basis(0).IsRational << dbasis.basis(0).IsRational <<" <<<<<<<<<_\n";
-        if ( !PsiF.basis(0).IsRational){
+        gsInfo <<mpLeft.basis(0).IsRational << dbasis.basis(0).IsRational <<" <<<<<<<<<_\n";
+        if ( mpLeft.basis(0).IsRational){
         if (mpLeft.dim()== 3){
         for(size_t i =0; i<PsiF.nPatches(); ++i)
             Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));

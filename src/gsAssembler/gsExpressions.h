@@ -754,7 +754,7 @@ public:
          {
             //gsInfo <<"Calls comp......\n";
             // Recursive case: first evaluate the composed map
-            auto intermediateResult = m_fd->values[0].col(k);
+            gsMatrix<_Float32> intermediateResult = m_fd->values[0].col(k);
             gsVector<T> tmp2(m_composedMap->patch(0).parDim());
             tmp2 << intermediateResult[0], intermediateResult[1];
             //auto Result = m_fd->values[0].col(k);
@@ -763,11 +763,10 @@ public:
             // 1. if we can compute the composition directly from a m_fd->values[0].col(k)
             // 2. conserve the same eval and swap col outside by updating image with intermediate mapping
             // */
-            tmp = m_composedMap->patch(0).eval(intermediateResult);
-
+            tmp = m_composedMap->patch(0).eval(tmp2);
             if(tmp.hasNaN()){
             if(m_composedMap->patch(0).parDim()==2){
-            std::cout << std::setprecision(15);
+            std::cout << std::setprecision(60);
             gsInfo << "___________________________ "<< intermediateResult << " " << tmp << "\n"; 
             if(intermediateResult[1] >= 0.999999999999)
                 tmp2<<  intermediateResult[0], 1.;
