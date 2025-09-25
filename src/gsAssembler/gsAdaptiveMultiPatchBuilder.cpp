@@ -554,7 +554,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
 };
 
 // computes the projection L^2 of a composition and return a MultiPatch object
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiPatch<> Psitp, double quadValue) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree, double quadValue) const 
 {
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -575,10 +575,12 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiPatch<> P
     // A.options().setInt("quRule", 2);
     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
     // Elements used for numerical integration
-    A.setIntegrationElements(this->n_basis);
+    gsMultiBasis<> basis_comp = this->n_basis;
+    basis_comp.degreeElevate(elevDegree);
+    A.setIntegrationElements(basis_comp);
 
     //... 
-    space v        = A.getSpace(this->n_basis);
+    space v        = A.getSpace(basis_comp);
     gsMatrix<> vsolVector;
     solution v_sol = A.getSolution(v, vsolVector);
 

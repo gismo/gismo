@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
     index_t numReduce   = 0;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
+    index_t elevDegree  = 0; // degree elevation for the composition of geometry maps
     double IntensityMAE = 9.;
     double quadValue    = 4.0;
     bool export_b64     = false;
@@ -48,6 +49,8 @@ int main(int argc, char *argv[])
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree Elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addInt( "v", "elevDegree",
+                "Number of degree Elevation steps to perform fro the composition (0: equalize degree in all directions)", elevDegree );
     cmd.addInt( "r", "degreeRedution",
                 "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", numReduce );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
@@ -128,7 +131,7 @@ int main(int argc, char *argv[])
         numRefine = 0;
     }
     // ... 
-    gsVector<>  h1err(numRefine+1), l2err(numRefine+1), l3err(numRefine+1);
+    gsVector<>  h1err(numRefine+1), l2err(numRefine+1), l3err(numRefine+1), Ih1err(numRefine+1), Il2err(numRefine+1);
     gsVector<int>  DoFPDE(numRefine+1);
     for (int r=0; r<= numRefine; ++r)
     {
@@ -175,70 +178,43 @@ int main(int argc, char *argv[])
     geometryMap PG = A.getMap(Psitp);
     PG(mpLeft);
     auto comp      = A.getCoeff(mpLeft, PP);    
-    PsiF           = MAE.buildCompMultiPatch(Psitp, quadValue); //composition of geometry maps
+    PsiF           = MAE.buildCompMultiPatch(Psitp, elevDegree); //composition of geometry maps
     geometryMap PPF = A.getMap(PsiF);
-    //------------------------------------ Interpolation of the mapping
-    gsKnotVector<> KV(0.0, 1.0, dbasis.basis(0).numElements(1)+1, dbasis.basis(0).minDegree()+4);
-    gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( Psitp.patch(0)).knots(0);
-    gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psitp.patch(0)).knots(1);
-    gsInfo << "Knot vector for interpolation " << KV << "\n";
-    gsInfo << "Knot vector of the mapping " << kv1 << "\n";
-    gsBasis<>::uPtr tBasis;
-    switch (dbasis.basis(0).dim()) // static dispatch..
-    {
-    case 1:
-        tBasis = gsBSplineBasis<>::make(KV);
-        break;
-    case 2:
-        tBasis = memory::make_unique(new gsTensorBSplineBasis<2>(KV, KV));
-        break;
-    // case 3:
-    //     tBasis = memory::make_unique(new gsTensorBSplineBasis<3>(KV,KV,KV));
-    //     break;
-    default:
-    {
-        gsWarn<<"Dimension must be 1, 2 or 3!";
-        return 0;
-    }
-    };
-    gsMatrix<> intGrid = tBasis->anchors();
-    gsInfo <<"Int. grid dim: "<< intGrid.dim() <<"\n";
+    //------------------------------------ Interpolation of the mapping by collocation method !!!
+    gsMultiBasis<> tBasis = dbasis;
+    tBasis.degreeElevate(elevDegree);
+    gsMatrix<> intGrid = tBasis.basis(0).anchors();
     // Evaluate f at the Greville points
     gsMatrix<> intfavlues = Psitp.patch(0).eval(intGrid);
     gsMatrix<> fValues    = mpLeft.patch(0).eval(intfavlues);
-    gsInfo <<"Function values dim: "<< fValues.dim() <<"\n";
-    // Returns a geometry with basis = tBasis
-    // and coefficients being
-    // computed as the interpolant of \a funct
-    gsGeometry<>::uPtr interpolant = tBasis->interpolateData(fValues, intGrid);
-
-    gsInfo << "Result :"<< *interpolant <<"\n";
-
-    // Save the result as an XML file
+    gsGeometry<>::uPtr interpolant = tBasis.basis(0).interpolateAtAnchors(fValues);
+    // extract the mapping
     gsFileData<> fd;
     gsMultiPatch<> PsiFInt;
     PsiFInt.addPatch(give(interpolant));
+    gsInfo << "Degree of the interpolated mapping " << PsiFInt.patch(0).basis().degree(0) << PsiF.patch(0).basis().degree(0) << "\n";
     geometryMap PGI = A.getMap(PsiFInt);
-    gsWrite(Psitp,"Psi");
+    // gsWrite(Psitp,"Psi");
     // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
     // ...
     DoFPDE[r] = dbasis.basis(0).size();
     gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
     timer.restart();
-    l2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PPF)) ));
-    h1err[r]  = math::sqrt(ev.integralBdr((PPF-PG).sqNorm()));
-    l3err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(comp).det()*jac(PP).det() ) ));
     // ...
     std::cout << std::setprecision(15);
-    std::cout << "G   :   Initial volume   : "<< ev.integral( meas(G)  ) <<"\n";
-    std::cout << "G   :   geometry volume  : "<< std::abs(ev.integral( jac(G).det()  ) -( ev.integral( jac(G).det()  ))) <<"\n";
+    std::cout << "Error analysis of various parameterizations\n";
+    l3err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(comp).det()*jac(PP).det() ) ));
     std::cout << "Comp:   geometry volume  : "<< l3err[r] <<"\n";
-    // ...
-    std::cout << "GPP :   geometry volume  : "<< l2err[r] <<"\n";
-    // gsWrite(Psitp,"Psi");
-    std::cout << "GPP :   geometry boundary: "<<  h1err[r] <<"\n";
-    std::cout << "GPI :   geometry volume  : "<<  std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) )) <<"\n";
-    std::cout << "GPI :   geometry boundary: "<<  math::sqrt(ev.integralBdr((PGI-PG).sqNorm())) <<"\n";
+    // ... Error using projection method
+    l2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PPF)) ));
+    h1err[r]  = math::sqrt(ev.integralBdr((PPF-PG).sqNorm()));
+    std::cout << "GPP :   geometry volume  : "<< l2err[r]  <<"\n";
+    std::cout << "GPP :   geometry boundary: "<<  h1err[r]  <<"\n";
+    // ... Error using Interpolation method
+    Il2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
+    Ih1err[r]  = math::sqrt(ev.integralBdr((PGI-PG).sqNorm())); 
+    std::cout << "GPI :   geometry volume  : "<<  Il2err[r] <<"\n";
+    std::cout << "GPI :   geometry boundary: "<<  Ih1err[r] <<"\n";
     }
 
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
@@ -248,6 +224,8 @@ int main(int argc, char *argv[])
         outFile << "#DoF_PDE:  \n"<< std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
         outFile << "#B_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
+        outFile << "#INTERPOL V_error: \n" << std::scientific << std::setprecision(3) << Il2err.transpose() << "\n";
+        outFile << "#INTERPOL B_error: \n" << std::scientific << std::setprecision(3) << Ih1err.transpose() << "\n";
         outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << l3err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
@@ -261,8 +239,7 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsMultiPatch<> Psi;
-        gsInfo <<mpLeft.basis(0).IsRational << dbasis.basis(0).IsRational <<" <<<<<<<<<_\n";
-        if ( mpLeft.basis(0).IsRational){
+        if ( !PsiF.basis(0).weights().isOnes(1e-6)){
         if (mpLeft.dim()== 3){
         for(size_t i =0; i<PsiF.nPatches(); ++i)
             Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
