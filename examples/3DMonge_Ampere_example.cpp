@@ -40,10 +40,10 @@ int main(int argc, char *argv[])
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
     //std::string fn("pde/infinit_plate.xml");
-    std::string fn("pde/circle.xml");
+    //std::string fn("pde/circle.xml");
     //std::string fn("pde/mhd.xml");
     // std::string fn("surfaces/cylinder.xml"); 
-    // std::string fn("domain2d/lake.xml");
+    std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -102,7 +102,8 @@ int main(int argc, char *argv[])
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
-
+    if (dbasis.degree()-numReduce >= 1)
+        dbasis.degreeReduce(numReduce);
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     A.options().setReal("quA", quadValue);
@@ -181,20 +182,20 @@ int main(int argc, char *argv[])
     PsiF           = MAE.buildCompMultiPatch(Psitp, elevDegree); //composition of geometry maps
     geometryMap PPF = A.getMap(PsiF);
     //------------------------------------ Interpolation of the mapping by collocation method !!!
-    gsMultiBasis<> tBasis = dbasis;
-    tBasis.degreeElevate(elevDegree);
-    gsMatrix<> intGrid = tBasis.basis(0).anchors();
+    gsMultiBasis<> d2basis = dbasis;//true: poly-splines (not NURBS)
+    d2basis.degreeElevate(elevDegree);
+    gsMatrix<> intGrid = d2basis.basis(0).anchors();
     // Evaluate f at the Greville points
     gsMatrix<> intfavlues = Psitp.patch(0).eval(intGrid);
     gsMatrix<> fValues    = mpLeft.patch(0).eval(intfavlues);
-    gsGeometry<>::uPtr interpolant = tBasis.basis(0).interpolateAtAnchors(fValues);
+    gsGeometry<>::uPtr interpolant = d2basis.basis(0).interpolateAtAnchors(fValues);
     // extract the mapping
     gsFileData<> fd;
     gsMultiPatch<> PsiFInt;
     PsiFInt.addPatch(give(interpolant));
+    gsWrite(PsiFInt,"Psi");
     gsInfo << "Degree of the interpolated mapping " << PsiFInt.patch(0).basis().degree(0) << PsiF.patch(0).basis().degree(0) << "\n";
     geometryMap PGI = A.getMap(PsiFInt);
-    // gsWrite(Psitp,"Psi");
     // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
     // ...
     DoFPDE[r] = dbasis.basis(0).size();

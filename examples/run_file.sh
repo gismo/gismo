@@ -21,10 +21,9 @@ EXECUTABLE="./bin/3DMonge_Ampere_example"
 
 # Parameters (tags) to run the executable with -r 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
 TAGS=(
-    "-l -1 -u 4 -f 12. -q 1 -c 1 -v 0 -e 0"
-    "-l -1 -u 4 -f 12. -q 2 -c 1 -v 1 -e 0"
-    "-l -1 -u 4 -f 12. -q 3 -c 1 -v 2 -e 0"
-    "-l -1 -u 4 -f 12. -q 4 -c 1 -v 3 -e 0"
+    "-l -1 -u 4 -f 12. -q 1 -c 1 -v 0 -e 0 -r 3"
+    "-l -1 -u 4 -f 12. -q 2 -c 1 -v 1 -e 0 -r 3"
+    "-l -1 -u 4 -f 12. -q 3 -c 1 -v 2 -e 0 -r 3"
     # .. Poisson 2D ..
     # "-r 2 -u 4 -f  0.  -l 5 -a 0.0 -c 0 -p 0 -e 0"
     # "-r 2 -u 4 -f  0.  -l 5 -a 0.5 -c 1 -p 0 -e 0"
