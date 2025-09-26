@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     index_t numReduce   = 0;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
-    index_t elevDegree  = 0; // degree elevation for the composition of geometry maps
+    index_t elevDegree  = 2; // degree elevation for the composition of geometry maps
     double IntensityMAE = 9.;
     double quadValue    = 4.0;
     bool export_b64     = false;
@@ -42,8 +42,8 @@ int main(int argc, char *argv[])
     //std::string fn("pde/infinit_plate.xml");
     //std::string fn("pde/circle.xml");
     //std::string fn("pde/mhd.xml");
-    // std::string fn("surfaces/cylinder.xml"); 
-    std::string fn("domain2d/lake.xml");
+    std::string fn("surfaces/cylinder.xml"); 
+    // std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -78,14 +78,7 @@ int main(int argc, char *argv[])
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
     // ...
-    gsMultiPatch<> PsiF, Psitp; // final adaptive mapping after composition
-    // std::string fs("./PsiF.xml");
-    // gsFileData<> fsd(fs);
-    // fsd.getId(1,PsiF);
-    // std::string fr("./Psi_mappingy.xml");
-    // gsFileData<> frd(fr);
-    // frd.getId(1,Psitp);
-    gsMultiPatch<> mpLeft;// Initial geometry
+    gsMultiPatch<> mpLeft, PsiF;// Initial geometry and the resluted adaptive mapping
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -137,13 +130,6 @@ int main(int argc, char *argv[])
     for (int r=0; r<= numRefine; ++r)
     {
     dbasis.uniformRefine();
-    //mpLeft.uniformRefine();
-    // ... condition for the convergence 
-    // while (dbasis.basis(0).numElements()<1e3)
-    // {
-    //     dbasis.uniformRefine();
-    //     numRefine++;
-    // }    
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
@@ -171,36 +157,36 @@ int main(int argc, char *argv[])
     ###                                     and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE, numReduce = numReduce);
-    auto density   = MAE.buildAnalyticDensity(f);
-    auto Psitp     = MAE.buildMultiPatch(density);// build the adaptive mapping
+    auto density        = MAE.buildAnalyticDensity(f);
+    auto Psitp          = MAE.buildMultiPatch(density);// build the adaptive mapping
     // //------------------------------------
-    geometryMap G  = A.getMap(mpLeft);
-    geometryMap PP = A.getMap(Psitp);
-    geometryMap PG = A.getMap(Psitp);
+    geometryMap G       = A.getMap(mpLeft);
+    geometryMap PP      = A.getMap(Psitp);
+    geometryMap PG      = A.getMap(Psitp);
     PG(mpLeft);
-    auto comp      = A.getCoeff(mpLeft, PP);    
-    PsiF           = MAE.buildCompMultiPatch(Psitp, elevDegree); //composition of geometry maps
+    auto comp           = A.getCoeff(mpLeft, PP);    
+    gsMultiPatch<> PsiF = MAE.buildCompMultiPatch(Psitp, elevDegree); //composition of geometry maps
     geometryMap PPF = A.getMap(PsiF);
     //------------------------------------ Interpolation of the mapping by collocation method !!!
-    gsMultiBasis<> d2basis = dbasis;//true: poly-splines (not NURBS)
-    d2basis.degreeElevate(elevDegree);
-    gsMatrix<> intGrid = d2basis.basis(0).anchors();
-    // Evaluate f at the Greville points
-    gsMatrix<> intfavlues = Psitp.patch(0).eval(intGrid);
-    gsMatrix<> fValues    = mpLeft.patch(0).eval(intfavlues);
-    gsGeometry<>::uPtr interpolant = d2basis.basis(0).interpolateAtAnchors(fValues);
-    // extract the mapping
-    gsFileData<> fd;
-    gsMultiPatch<> PsiFInt;
-    PsiFInt.addPatch(give(interpolant));
-    gsWrite(PsiFInt,"Psi");
-    gsInfo << "Degree of the interpolated mapping " << PsiFInt.patch(0).basis().degree(0) << PsiF.patch(0).basis().degree(0) << "\n";
-    geometryMap PGI = A.getMap(PsiFInt);
-    // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
-    // ...
-    DoFPDE[r] = dbasis.basis(0).size();
-    gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
-    timer.restart();
+    // gsMultiBasis<> d2basis = dbasis;//true: poly-splines (not NURBS)
+    // d2basis.degreeElevate(elevDegree);
+    // gsMatrix<> intGrid = d2basis.basis(0).anchors();
+    // // Evaluate f at the Greville points
+    // gsMatrix<> intfavlues = Psitp.patch(0).eval(intGrid);
+    // gsMatrix<> fValues    = mpLeft.patch(0).eval(intfavlues);
+    // gsGeometry<>::uPtr interpolant = d2basis.basis(0).interpolateAtAnchors(fValues);
+    // // extract the mapping
+    // gsFileData<> fd;
+    // gsMultiPatch<> PsiFInt;
+    // PsiFInt.addPatch(give(interpolant));
+    // gsWrite(PsiFInt,"Psi");
+    // gsInfo << "Degree of the interpolated mapping " << PsiFInt.patch(0).basis().degree(0) << PsiF.patch(0).basis().degree(0) << "\n";
+    // geometryMap PGI = A.getMap(PsiFInt);
+    // // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
+    // // ...
+    // DoFPDE[r] = dbasis.basis(0).size();
+    // gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
+    // timer.restart();
     // ...
     std::cout << std::setprecision(15);
     std::cout << "Error analysis of various parameterizations\n";
@@ -211,11 +197,11 @@ int main(int argc, char *argv[])
     h1err[r]  = math::sqrt(ev.integralBdr((PPF-PG).sqNorm()));
     std::cout << "GPP :   geometry volume  : "<< l2err[r]  <<"\n";
     std::cout << "GPP :   geometry boundary: "<<  h1err[r]  <<"\n";
-    // ... Error using Interpolation method
-    Il2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
-    Ih1err[r]  = math::sqrt(ev.integralBdr((PGI-PG).sqNorm())); 
-    std::cout << "GPI :   geometry volume  : "<<  Il2err[r] <<"\n";
-    std::cout << "GPI :   geometry boundary: "<<  Ih1err[r] <<"\n";
+    // // ... Error using Interpolation method
+    // Il2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
+    // Ih1err[r]  = math::sqrt(ev.integralBdr((PGI-PG).sqNorm())); 
+    // std::cout << "GPI :   geometry volume  : "<<  Il2err[r] <<"\n";
+    // std::cout << "GPI :   geometry boundary: "<<  Ih1err[r] <<"\n";
     }
 
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
@@ -225,8 +211,8 @@ int main(int argc, char *argv[])
         outFile << "#DoF_PDE:  \n"<< std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
         outFile << "#B_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
-        outFile << "#INTERPOL V_error: \n" << std::scientific << std::setprecision(3) << Il2err.transpose() << "\n";
-        outFile << "#INTERPOL B_error: \n" << std::scientific << std::setprecision(3) << Ih1err.transpose() << "\n";
+        // outFile << "#INTERPOL V_error: \n" << std::scientific << std::setprecision(3) << Il2err.transpose() << "\n";
+        // outFile << "#INTERPOL B_error: \n" << std::scientific << std::setprecision(3) << Ih1err.transpose() << "\n";
         outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << l3err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing

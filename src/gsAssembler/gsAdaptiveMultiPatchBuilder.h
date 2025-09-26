@@ -47,7 +47,7 @@ public:
     gsMultiPatch<> buildMovingMultiPatch(const gsMultiPatch<> &density, gsMultiPatch<> lsPsi, int Niter = 0) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
-    gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree = 0, double quadValue = 1.) const;
+    gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree = 2, double quadValue = 1.) const;
 
     // Method to find the span of a knot vector
     index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;

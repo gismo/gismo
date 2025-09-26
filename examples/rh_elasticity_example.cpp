@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
     if (IntensityMAE>0){
     // auto density                 = MAE.buildAnalyticDensity( f);
     auto geometrytp                 = MAE.buildMultiPatch(density);
-    geometrytp                      = MAE.buildCompMultiPatch(geometrytp);// computes the composition mapping mpLeft o Psitp
+    geometrytp                      = MAE.buildCompMultiPatch(geometrytp, 0);//0: I don't want to elevate degree. computes the composition mapping mpLeft o Psitp
 
     CorrecNormalCPoints(mpLeft, geometrytp);
     index_t numPaches               = geometrytp.nPatches();

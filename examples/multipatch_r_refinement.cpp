@@ -24,7 +24,14 @@ int main(int argc, char *argv[])
     index_t numRefine  = 3;
     index_t numElevate = 0;
     index_t maxIter    = 50;
-    bool last          = true;
+    bool last          = false;
+    // Specify the file path
+    //std::string fn("pde/circle.xml");
+    //std::string fn("pde/mhd.xml");
+    std::string fn("surfaces/cylinder.xml"); 
+    // load the file
+    gsFileData<> fd(fn);
+
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -92,6 +99,9 @@ int main(int argc, char *argv[])
 
     gsInfo<<"The domain is "<< mp.detail() << "\n";
     
+    gsMultiPatch<> mpLeft;// Initial geometry
+    fd.getId(1,mpLeft);
+
     gsBoundaryConditions<> bc_x;
     bc_x.setGeoMap(mp);
    for ( gsMultiPatch<>::const_biterator
@@ -177,7 +187,15 @@ int main(int argc, char *argv[])
 
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
-
+    // h-refine each basis
+    if (last)
+    {
+        for (int r =0; r < numRefine; ++r){
+            dbasis.uniformRefine();
+            //mpLeft.uniformRefine();
+        }
+        numRefine = 0;
+    }
     //... nromalisation of density function
     auto CoeffDensity = 10.;
     gsVector<>  h1err(numRefine+1); //l2err(numRefine+1) : The solution exists up to an additive constant.
@@ -191,8 +209,6 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine();
         mp.uniformRefine();
-        if( last && r != numRefine)
-            continue;
 
         u.setup(bc_x, dirichlet::interpolation, 0);
         // Initialize the system :  identity mapping as initial guess
@@ -250,9 +266,10 @@ int main(int argc, char *argv[])
         index_t NiterPicard{0};
         gsMatrix<> sv0; //
         solution u_lsol = A.getSolution(u, sv0);
+        gsInfo<< A.numDofs() <<std::flush;
         for(int ip{0}; ip<=maxIter; ++ip)
         {
-            gsInfo << "------------ Picard iteration\n";
+            gsInfo<<std::flush;
             sv0        = solVectorx;
             // .. computes the composition
             auto    ff = A.getCoeff(f,PP);
@@ -262,7 +279,6 @@ int main(int argc, char *argv[])
             A.initSystem();
             setup_time += timer.stop();
 
-            gsInfo<< A.numDofs() <<std::flush;
             timer.restart();
             A.assemble(
             igrad(u, G) * igrad(u, G).tr() *meas(G) //matrix
