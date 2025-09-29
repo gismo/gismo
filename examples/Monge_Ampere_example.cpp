@@ -115,6 +115,7 @@ int main(int argc, char *argv[])
     mp.computeTopology();
     //mp.addAutoBoundaries();
 
+    gsMultiPatch<> PsiPsi;
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function rho_1
@@ -174,6 +175,10 @@ int main(int argc, char *argv[])
 
     // Set the discretization space
     space u = A.getSpace(dbasis);
+
+    //... solution vector and solution variable for gradient of potential function
+    gsMatrix<> vsolVector;
+    solution v_sol = A.getSolution(u, vsolVector);
 
     // Set the source term with respect to target geometry
     auto ff = A.getCoeff(f, GLeft);
@@ -282,29 +287,28 @@ int main(int argc, char *argv[])
         // Picard loop
         auto  sv0 = solVector; //
         solution u_lsol = A.getSolution(u, sv0);
+
+        // ... compute the projection of gradient of potential function
+        A.initSystem(IGdim);
+        // Obtain control points for the gradient of PsiPsi
+        A.assemble(u * igrad(u_sol,G));
+        vsolVector = Poisson.L2ProjectScalar(A.rhs().col(0));
+        v_sol.extract(PsiPsi);
+        for(index_t Mp=1; Mp<mpLeft.dim(); ++Mp){
+            gsMultiPatch<> PsiPsitp_temp;
+            vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+            v_sol.extract(PsiPsitp_temp);
+            PsiPsi.embed(Mp+1);
+            PsiPsi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+        }
+        // ... correct boundary
+        ProjectionNormalCPoints(PsiPsi);
+        PsiPsi.addAutoBoundaries();
+        PsiPsi.computeTopology();
         for(int ip{0}; ip<=maxIter; ++ip)
         {
-            gsMultiPatch<> UU;
-            u_sol.extract(UU);
-            auto u_s       = A.getCoeff(UU);
-            //space v        = A.getSpace(m_basis);
-            gsMatrix<> vsolVector;
-            solution v_sol = A.getSolution(u, vsolVector);
-
-            A.initSystem(IGdim);
-            // Obtain control points for the gradient of Psi
-            A.assemble(u * grad(u_s) );//rhs vector
-            vsolVector = Poisson.L2ProjectVec(A.rhs());
-
-            gsMultiPatch<> Psi;
-            v_sol.extract(Psi);
-            // ... correct boundary
-            ProjectionNormalCPoints(Psi);
-            Psi.addAutoBoundaries();
-            Psi.computeTopology();
             //.. geometry map
-            geometryMap PP    = A.getMap(Psi);
-            gsInfo << " #min det(Jac) : " << ip << " "<<ev.min(jac(PP).det()) << "=";
+            geometryMap PP    = A.getMap(PsiPsi);
             //... density in new optimized mesh
             auto rho = A.getCoeff(density, PP);
             // ... update residual
@@ -355,6 +359,19 @@ int main(int argc, char *argv[])
                         << ".. min JAcobian : "<<Ddet<<"..";
                 break;
                 } //
+            A.initSystem(IGdim);
+            // Obtain control points for the gradient of PsiPsi
+            A.assemble(u * igrad(u_sol,G));
+            for(index_t Mp=0; Mp<mpLeft.dim(); ++Mp){
+                gsMultiPatch<> PsiPsitp_temp;
+                vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+                v_sol.extract(PsiPsitp_temp);
+                PsiPsi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+            }
+            // ... correct boundary
+            ProjectionNormalCPoints(PsiPsi);
+            PsiPsi.addAutoBoundaries();
+            PsiPsi.computeTopology();
         }//for loop
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
@@ -388,29 +405,8 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        gsMultiPatch<> UU;
-        u_sol.extract(UU);
-        //gsWrite(UU, "U_solution");
-        auto u_s = A.getCoeff(UU);
-
-        //gsMultiBasis<> gbasis(dbasis);
-        //gbasis.reduceContinuity(1);
-        space v = A.getSpace(dbasis);
-        gsMatrix<> vsolVector;
-        solution v_sol = A.getSolution(v, vsolVector);
-        A.initSystem(IGdim);
-
-        // Obtain control points for the gradient of Psi
-        A.assemble( v * v.tr() , v * igrad(u_s,G));
-        vsolVector = Poisson.L2ProjectVec(A.rhs());
-        gsMultiPatch<> Psi, Psitp;
-        v_sol.extract(Psitp);
-        //... correct the boundary
-        ProjectionNormalCPoints(Psitp);
-        Psitp.addAutoBoundaries();
-
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        geometryMap PP = A.getMap(Psitp);
+        geometryMap PP = A.getMap(PsiPsi);
         // //:::::::::::::::::::: TESTUNG THE COMPOSITION : BUG ---  TODO ::::::::::::::::::::::::: 
         // geometryMap PPLoc = A.getMap(Psitp);
         // PPLoc(mpLeft);
@@ -419,19 +415,22 @@ int main(int argc, char *argv[])
         // gsInfo << "integral Comp ERR "<< ev.integral( (comp0-PPLoc).sqNorm()) <<"\n";//Strange behavior
         // gsInfo <<"max error Quadrature " << ev.max( (comp0-PPLoc).norm() ) <<"\n";// Strange behavior they are the same
 
-        //auto comp  = PP(mpLeft);
-        // auto comp  = A.getCoeff(mpLeft, PP);
-        // A.initSystem(mpLeft.geoDim());
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble( v * v.tr() , v * comp.tr() );// blocked by this one
-        // vsolVector = Poisson.L2ProjectVec(A.rhs());
-        // v_sol.extract(Psitp);
-        // Psitp.addAutoBoundaries();
-        // Psitp.computeTopology();
-        gsInfo << "end of adaptive mapping computation\n" << Psitp<< "\n";
-
-        for(size_t i =0; i<Psitp.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
+        auto comp  = A.getCoeff(mpLeft, PP);
+        A.initSystem(mpLeft.geoDim());
+        //Obtain control points for the gradient of mpLeft.comp(Psi)
+        A.assemble(u * comp.tr() );// blocked by this one
+        for(index_t Mp=0; Mp<mpLeft.geoDim(); ++Mp){
+            gsMultiPatch<> PsiPsitp_temp;
+            vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+            v_sol.extract(PsiPsitp_temp);
+            PsiPsi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+        }
+        PsiPsi.addAutoBoundaries();
+        PsiPsi.computeTopology();
+        gsInfo << "end of adaptive mapping computation\n" << PsiPsi<< "\n";
+        gsMultiPatch<> Psi;
+        for(size_t i =0; i<PsiPsi.nPatches(); ++i)
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiPsi.patch(i)) ));
         Psi.addAutoBoundaries();
         Psi.computeTopology();
 
