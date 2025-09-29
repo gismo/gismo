@@ -33,16 +33,15 @@ int main(int argc, char *argv[])
     double quadValue    = 4.0;
     bool export_b64     = false;
     bool last           = false;
-    index_t coef_V      = 1.;
     // Specify the file path
     // std::string fn("pde/example3D.xml");
-    //std::string fn("volumes/GshapedVolume.xml");
+    // std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/infinit_plate.xml");
-    //std::string fn("pde/circle.xml");
-    //std::string fn("pde/mhd.xml");
-    std::string fn("surfaces/cylinder.xml"); 
+    // std::string fn("pde/infinit_plate.xml");
+    std::string fn("pde/circle.xml");
+    // std::string fn("pde/mhd.xml");
+    // std::string fn("surfaces/egg.xml"); 
     // std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -55,7 +54,6 @@ int main(int argc, char *argv[])
                 "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", numReduce );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-    cmd.addInt("c", "coef_V", "volume coef mult", coef_V);
 
     cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt("quRule",
@@ -82,7 +80,7 @@ int main(int argc, char *argv[])
     fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    mpLeft.patch(0).coefs() *= coef_V;
+    //mpLeft.patch(0).coefs() *= coef_V;
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
     
@@ -90,7 +88,6 @@ int main(int argc, char *argv[])
     // Load the file
     gsFunctionExpr<> f;
     fd.getId(2003, f);
-    f.set_t(coef_V);
     gsInfo<<"Density function "<< f << "\n";
 
     //! [Refinement]
@@ -165,7 +162,8 @@ int main(int argc, char *argv[])
     geometryMap PG      = A.getMap(Psitp);
     PG(mpLeft);
     auto comp           = A.getCoeff(mpLeft, PP);    
-    gsMultiPatch<> PsiF = MAE.buildCompMultiPatch(Psitp, elevDegree); //composition of geometry maps
+    PsiF                = MAE.buildCompMultiPatch(Psitp, elevDegree); //composition of geometry maps
+    PsiF.computeTopology();
     geometryMap PPF = A.getMap(PsiF);
     //------------------------------------ Interpolation of the mapping by collocation method !!!
     // gsMultiBasis<> d2basis = dbasis;//true: poly-splines (not NURBS)
@@ -182,10 +180,10 @@ int main(int argc, char *argv[])
     // gsWrite(PsiFInt,"Psi");
     // gsInfo << "Degree of the interpolated mapping " << PsiFInt.patch(0).basis().degree(0) << PsiF.patch(0).basis().degree(0) << "\n";
     // geometryMap PGI = A.getMap(PsiFInt);
-    // // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
+    // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
     // // ...
-    // DoFPDE[r] = dbasis.basis(0).size();
-    // gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
+    DoFPDE[r] = dbasis.basis(0).size();
+    gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
     // timer.restart();
     // ...
     std::cout << std::setprecision(15);
@@ -216,6 +214,7 @@ int main(int argc, char *argv[])
         outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << l3err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
+        gsInfo << "Error analysis results appended to errorGeometry_analysis.txt.\n";
     }
     else
     {
@@ -227,6 +226,7 @@ int main(int argc, char *argv[])
     {
         gsMultiPatch<> Psi;
         if ( !PsiF.basis(0).weights().isOnes(1e-6)){
+            gsInfo<<"Rational mapping \n";
         if (mpLeft.dim()== 3){
         for(size_t i =0; i<PsiF.nPatches(); ++i)
             Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
@@ -237,6 +237,7 @@ int main(int argc, char *argv[])
         }
         }
         else{
+            gsInfo<<"nonRational mapping \n";
         if (mpLeft.dim()== 3){
         for(size_t i =0; i<PsiF.nPatches(); ++i)
             Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
@@ -251,18 +252,18 @@ int main(int argc, char *argv[])
 
         //Psi.uniformRefine();
         gsMultiBasis<> basis(Psi, true);//true: poly-splines (not NURBS)
-
-        geometryMap PPF = A.getMap(Psi);
-        auto ff_TG      = A.getCoeff(f, PPF);
+        // Elements used for numerical integration
+        A.setIntegrationElements(basis);
+        gsExprEvaluator<> ev(A);
+        // ...
+        geometryMap PPsi = A.getMap(Psi);
+        auto ff_TG      = A.getCoeff(f, PPsi);
         // --------------- adaptive refinement ---------------
         // Specify cell-marking strategy...
         MarkingStrategy adaptRefCrit = PUCA;
         //MarkingStrategy adaptRefCrit = GARU;
         //MarkingStrategy adaptRefCrit = errorFraction;
         real_t adaptRefParam = 0.7;
-        // Elements used for numerical integration
-        A.setIntegrationElements(basis);
-        gsExprEvaluator<> ev(A);
 
         for (int r=0; r<=numLRefine; ++r)
         {
@@ -271,7 +272,7 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            ev.integralElWise( ( ff_TG ).sqNorm() );
+            ev.integralElWise( ff_TG.val() );
             //ev.integralElWise( 1/jac(PPF).absDet() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
@@ -286,7 +287,7 @@ int main(int argc, char *argv[])
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( basis, elMarked, 1);
             gsRefineMarkedElements( Psi, elMarked, 1);
-            }
+        }
 
         //::::::::::::::::::::      end       :::::::::::::::::::::::::
         gsInfo<<"Plotting in Paraview...\n";
@@ -297,7 +298,7 @@ int main(int argc, char *argv[])
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
         collection.addField(ff_TG, "density function");
-        collection.addField(jac(PPF).det(), "Jacobian function");
+        collection.addField(jac(PPsi).det(), "Jacobian function");
         collection.saveTimeStep();
         collection.save();
 

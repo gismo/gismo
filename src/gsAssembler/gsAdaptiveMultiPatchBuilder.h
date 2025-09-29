@@ -22,7 +22,7 @@ class GISMO_EXPORT gsAdaptiveMultiPatchBuilder
 {
 public:
     // Constructor
-    gsAdaptiveMultiPatchBuilder(const gsMultiBasis<double> basis,
+    gsAdaptiveMultiPatchBuilder(const gsMultiBasis<> basis,
                                 const gsMultiPatch<> mapping,
                                 index_t maxIter     = 30,
                                 double IntensityMAE = 9.0,
@@ -42,9 +42,6 @@ public:
 
     // Method to build a multipatch adaptive mapping
     gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density) const;
-
-    // Method to build a multipatch adaptive mapping TODO: CAN BE OPTIMIZED @BAHARI
-    gsMultiPatch<> buildMovingMultiPatch(const gsMultiPatch<> &density, gsMultiPatch<> lsPsi, int Niter = 0) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
     gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree = 2, double quadValue = 1.) const;
