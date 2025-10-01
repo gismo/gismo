@@ -64,10 +64,10 @@ int main(int argc, char** argv)
         // Reading degree of bezier patches (consider the same degree in each
         // direction)
         if (line_c == 0) {
-            Nu = (int)(str[3] - '0');
-            Nv = (int)(str[4] - '0');
-            dim = (int)(str[5] - '0');
-
+            
+            Nu = (str[3] >= 'A') ? (str[3] - 'A' + 10) : (str[3] - '0');
+            Nv = (str[4] >= 'A') ? (str[4] - 'A' + 10) : (str[4] - '0');
+            dim = (str[5] >= 'A') ? (str[5] - 'A' + 10) : (str[5] - '0');
             deg1 = Nu + 1;
 
         }
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     }
     gsKnotVector<> kv(0, 1, 0, deg1);
     gsTensorBSplineBasis<2> bb(kv, kv);
-    mp.resize((line_c-1)/25);
+    mp.resize((line_c - 1) / pow(deg1,2));
     line_c = 0;
     for (std::string str:lines) {
         
