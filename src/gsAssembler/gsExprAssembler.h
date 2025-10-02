@@ -122,6 +122,8 @@ public:
 
     /// Returns a reference to the options structure
     gsOptionList & options() {return m_options;}
+    const gsOptionList & options() const {return m_options;}
+
 
     /// Returns the internally stored sparse fiber matrix
     const FiberMatrix & fiberMatrix() const

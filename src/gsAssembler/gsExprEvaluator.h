@@ -72,7 +72,7 @@ public:
     //gsExprEvaluator(typename gsExprHelper<T> env)
 
     gsExprEvaluator(const gsExprAssembler<T> & o)
-    : m_exprdata(o.exprData()), m_options(defaultOptions())
+    : m_exprdata(o.exprData()), m_options(o.options()) // use same exprData as o and copy options from o
     { }
 
     gsOptionList defaultOptions()
