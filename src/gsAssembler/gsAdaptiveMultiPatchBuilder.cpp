@@ -507,10 +507,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
 
-        sv0               = sv0 - solVector;
-        auto l2errRes = math::sqrt(ev.integral( ( grad(u_lsol)).sqNorm()  ));
+        auto l2errRes = math::sqrt(ev.integral( ( grad(u_sol)-grad(u_lsol)).sqNorm()  ));
         auto L2MAERes = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
         auto Ddet     = ev.min(jac(PP).det());
+        sv0           = solVector;
 
         Iter_mae[ip]  = ip;
         h1Res[ip]     = l2errRes;// Compute the H1 residual
