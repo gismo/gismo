@@ -116,11 +116,11 @@ int main(int argc, char *argv[])
             if (plot_patchid)
             {
                 gsField<> nfield = gsFieldCreator<>::patchIds(mp);
-                gsWriteParaview(nfield, pname, numSamples);
+                gsWriteParaviewUnstructuredGrid(nfield, pname, numSamples);
             }
             else
             {
-                gsWriteParaview(mp, pname, numSamples, plot_mesh, plot_net);
+                gsWriteParaviewUnstructuredGrid(mp, pname, numSamples);
             }
 
             break;
