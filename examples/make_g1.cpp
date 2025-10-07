@@ -18,6 +18,29 @@
 using namespace gismo;
 
 
+gsMultiPatch<> mesh_to_multipatch(const gsSurfMesh & msh)
+{
+    gsKnotVector<> kv(0,1,0,2);
+    gsTensorBSplineBasis<2> bs(kv,kv);
+    gsMatrix<> coefs;
+    int cc;
+    gsMultiPatch<> result;
+    auto points = msh.get_vertex_property<gsSurfMesh::Point>("v:point");
+    for ( auto ff : msh.faces() ) //for all faces
+    {
+        coefs.resize(4, 3);
+        cc = 0;
+        for (auto v : msh.vertices(ff)) //for all vertices
+        {
+            coefs.row(cc<2 ? cc : 5-cc) = points[v].transpose();
+            ++cc;
+        }
+        result.addPatch( bs.makeGeometry(give(coefs)) );
+    }
+    result.computeTopology();
+    return result;
+}
+
 
 // Toepliz of (0,1,0,..0)
 gsMatrix<> circulant(index_t n)
@@ -30,18 +53,98 @@ gsMatrix<> circulant(index_t n)
     return C;
 }
 
+bool checkG1(gsMultiPatch<> & mp, bool verbose = false) // BUG on boundary ??
+{
+    gsMultiBasis<> basis(mp);
+    gsExprEvaluator<> ev;
+    ev.setIntegrationDomain(basis.domain());
+    auto G = ev.getMap(mp);
+
+    ev.integralInterface( ( G.left() - G.right() ).sqNorm() );
+    ev.calcSqrt();
+    bool ok = (ev.value()<1e-3);
+    if (ok) gsInfo  <<"\nSurface is C0.";
+    gsInfo  <<"\nResult (C0): "<< ev.value() <<"\n";
+    if (verbose)
+        gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";//<<"\n";
+
+    ev.integralInterface( (sn(G.left()).normalized()-sn(G.right()).normalized()).sqNorm() );
+    ev.calcSqrt();
+    ok &= (ev.value()<1e-3);
+    if (ok) gsInfo  <<"\nSurface is G1.";
+    gsInfo  <<"\nResult (G1): "<< ev.value() <<"\n";
+    if (verbose)
+        gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";//<<"\n";
+    ev.integralInterface( (sn(G.left())-sn(G.right())).sqNorm() );
+    ev.calcSqrt();
+    ok &= (ev.value()<1e-3);
+    if (ok) gsInfo  <<"\nSurface has continuous normal.";
+    gsInfo  <<"\nResult (non-unit normal): "<< ev.value() <<"\n";
+
+    /*
+    ev.maxInterface( abs( (fform(G.left() ).inv()*fform2nd(G.left() )).det() -
+                          (fform(G.right()).inv()*fform2nd(G.right())).det() ) );
+    ok &= (ev.value()<1e-3);
+    if (ok) gsInfo  <<"\nSurface has continuous Gauss curvature.";
+    gsInfo  <<"\nResult (Gauss curv. diff): "<< ev.value() <<"\n";
+    if (verbose)
+        gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";//<<"\n";
+
+
+
+
+    ev.maxInterface( abs( (fform(G.left() ).inv()*fform2nd(G.left() )).trace().val() -
+                          (fform(G.right()).inv()*fform2nd(G.right())).trace().val() ) );
+    ok &= (ev.value()<1e-3);
+    if (ok) gsInfo  <<"\nSurface has continuous mean curvature.";
+    gsInfo  <<"\nResult (mean curv. diff): "<< ev.value() <<"\n";
+    if (verbose)
+        gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";//<<"\n";
+
+
+    ev.minInterface( (sn(G.left()).normalized()+sn(G.right()).normalized()).norm()/2.0 );
+    if (ev.value()<1e-3) gsInfo <<"\nSurface is NOT oriented properly.";
+    else gsInfo <<"\nSurface is oriented.";
+    gsInfo  <<"\nResult (orient): "<< ev.value() <<"\n";
+    if (verbose)
+        gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";//<<"\n";
+
+    */
+/*
+    //test vertices
+    ev.options().setReal("quA",0);
+    ev.options().setInt ("quB",2);
+    ev.options().addInt ("quRule","",gsQuadrature::GaussLobatto); //Gauss-Lobatto
+
+    ev.maxInterface( (G.left()-G.right()).norm() );
+    gsInfo  <<"\nResult (vertex values diff): "<< ev.value() <<"\n";
+    if (verbose)
+        gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";//<<"\n";
+
+    ev.maxInterface( (sn(G.left()).normalized()-sn(G.right()).normalized()).norm());
+    gsInfo  <<"Result (vertex unit normals diff): "<< ev.value() <<"\n";
+    if (verbose) gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";
+
+    ev.maxInterface( (sn(G.left())-sn(G.right()) ).norm() );
+    gsInfo  <<"Result (vertex normals diff): "<< ev.value() <<"\n";
+    if (verbose) gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";
+*/
+    return ok;
+}
+
 void PlotBasis(const gsSparseMatrix<> & cf, const gsMultiPatch<> & mp,
                const int & ns,
-               const bool pm = false, const bool pn = false)
+               const bool pm = false, bool pn = false)
 {
     //gsFileData<> xml;
     gsParaviewCollection col("ccbasis");
     gsMultiPatch<> mmp = mp;
-    const index_t d = mp.parDim();
+    index_t d = mp.geoDim();
     gsInfo << "dim " <<d<<"\n";
     const size_t np = mp.nPatches();
     gsVector<index_t> offset(np+1);
     offset[0] = 0;
+    mmp.patch(0).embed(d+1);
     for ( size_t i = 1; i< np; ++i)
     {
         offset[i] = offset[i-1] + mp.patch(i-1).basis().size();
@@ -65,7 +168,13 @@ void PlotBasis(const gsSparseMatrix<> & cf, const gsMultiPatch<> & mp,
 
         // Export XML
         //xml << mmp;
+        
+        //--- Check that the function is G1
+        // if (!checkG1(mmp, false))
+        //    gsInfo <<"----------- Basis function number "<< k <<" FAILED the test ------------\n";
 
+        if (d>2) pn = false; // no control net in 4D
+        
         // Export Paraview
         std::string gcBasisFct = "ccbasis" + util::to_string(k);
         gsWriteParaview(mmp, gcBasisFct, ns, pm, pn);
@@ -135,7 +244,8 @@ index_t g1Dimension(const gsSurfMesh & msh)
         bool bdr = msh.is_boundary(ee);
         // Note for Extraordinary edge on boundary we still count 4)
         bool eed = (4!=msh.valence(msh.vertex(ee,0)) || 4!=msh.valence(msh.vertex(ee,1)) );
-        c1dim += (!bdr && eed ? 2 : 4);
+        //c1dim += (!bdr && eed ? 2 : 4);
+        c1dim += 4 * bdr  + 2*(!bdr&&eed);
     }
     gsInfo << "Dimension V+E: "<< c1dim <<"\n";
     
@@ -164,7 +274,7 @@ void g1Matrices(index_t n, real_t & a0,
     a0 = 2 * math::cos(2*EIGEN_PI/n);
     gsMatrix<> C = circulant(n);
     C.transposeInPlace(); // Making column-circulant !!
-    gsInfo << "C:\n" << C <<"\n";
+    //gsInfo << "C:\n" << C <<"\n";
 
     C1.resize(n+2,n);
     auto C1s = C1.topRows(n);
@@ -175,7 +285,7 @@ void g1Matrices(index_t n, real_t & a0,
     C1s.diagonal().array() -= a0;
     typename gsMatrix<>::JacobiSVD svd = C1s.jacobiSvd(gsEigen::ComputeFullV);
     C1.bottomRows(2) = svd.matrixV().rightCols(2).transpose();
-    gsInfo << "C1:\n" << C1 <<"\n";
+    //gsInfo << "C1:\n" << C1 <<"\n";
     //Note: auto K1 = C1.bottomRows(2).transpose();
 
     index_t sz = n + (n%2==0);
@@ -191,7 +301,7 @@ void g1Matrices(index_t n, real_t & a0,
         for(index_t q = 0; q!=n; ++q, tmp *= -1)
             RR[q]= tmp;
     }
-    gsInfo << "C2:\n" << C2 <<"\n";
+    //gsInfo << "C2:\n" << C2 <<"\n";
 }
 
 gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapper)
@@ -260,7 +370,7 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
             os = offset[pi];
             cmapper.indexOnPatch(v.idx(), pi, ci);
             M.insert(os+cpIndex(ci, 0, 1), c1dim) = (real_t)0.5;
-            M.insert(os+cpIndex(ci, 1, 1),c1dim) = (real_t)1.0;
+            M.insert(os+cpIndex(ci, 1, 1), c1dim) = (real_t)1.0;
             os = offset[pi2];// next patch
             cmapper.indexOnPatch(v.idx(), pi2, ci);
             M.insert(os+cpIndex(ci, 1, 0), c1dim++) = (real_t)0.5;
@@ -270,7 +380,7 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
             M.insert(os+cpIndex(ci, 0, 1), c1dim) = (real_t)0.5;
             os = offset[pi2];// next patch
             cmapper.indexOnPatch(v.idx(), pi2, ci);
-            M.insert(os+cpIndex(ci, 1, 0),c1dim) = (real_t)0.5;
+            M.insert(os+cpIndex(ci, 1, 0), c1dim) = (real_t)0.5;
             M.insert(os+cpIndex(ci, 1, 1), c1dim++) = (real_t)1.0;
         }
 
@@ -301,22 +411,23 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
                 pi = msh.face(h).idx();
                 os = offset[pi];
                 cmapper.indexOnPatch(v.idx(), pi, ci);
+                M.insert(os+cpIndex(ci, 0, 0), c1dim) = (real_t)0.25;
                 M.insert(os+cpIndex(ci, 0, 1), c1dim++) = (real_t)0.5;
             }
         }
 
           if (n!=4 && !msh.is_boundary(v)) //inner EV (n+3 functions)
           {
-              gsInfo << "EV: " << c1dim <<"\n";
+              //gsInfo << "EV: " << c1dim <<"\n";
               g1Matrices(n, a, C1, C2);
               auto K1 = C1.bottomRows(2).transpose();
-              gsInfo << "K1:\n" << K1 <<"\n";
+              //gsInfo << "K1:\n" << K1 <<"\n";
 
               b.resize(n+2,1);
               b.topRows(n).setConstant(2 - a);
               b.bottomRows(2).setZero();
               gsMatrix<> sol1 = C1.fullPivLu().solve(b);
-              gsInfo << "sol1: " << sol1.transpose() <<"\n";
+              //gsInfo << "sol1: " << sol1.transpose() <<"\n";
 
               b.setZero(C2.rows(), 1);
               // b.topRows(n).setConstant(a);
@@ -326,7 +437,7 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
                   b.at(q) = 0.2 * ( a-5*(a-2)*sol1.at(q) + 4*a*(0.5*sol1.at(q)-0.1) );
 
               gsMatrix<> sol2 = C2.fullPivLu().solve(b);
-              gsInfo << "sol2: " << sol2.transpose() <<"\n";
+              //gsInfo << "sol2: " << sol2.transpose() <<"\n";
               //gsInfo << "b:\n" << b.transpose() <<"\n";
 
               // Basis function attached to the vertex value
@@ -371,7 +482,7 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
               }
 
               sol2 = C2.fullPivLu().solve(b);
-              gsInfo << "sol2: "<< sol2.transpose() <<"\n";
+              //gsInfo << "sol2: "<< sol2.transpose() <<"\n";
 
               //Basis functions attached to the two partial derivatives at the vertex.
               k = 0;
@@ -475,7 +586,7 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
         // Edge on boundary ?
         bool bdr = msh.touches_boundary(he);
         // Extraordinary edge? (note: no new functions for boundart EHE)
-        bool ee = (4!=msh.valence(msh.from_vertex(he)) || 4!=msh.valence(msh.from_vertex(he)) );
+        bool ee = (4!=msh.valence(msh.from_vertex(he)) || 4!=msh.valence(msh.to_vertex(he)) );
 
         pi = msh.face(he).idx(); // patch
         os = offset[pi];
@@ -493,7 +604,7 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
         }
         if (!bdr && !ee) // inner regular HE
         {
-            //4 
+            // 4
         }
         if (bdr) // boundary (EHE or regular)
         {
@@ -515,6 +626,7 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
 
     //gsInfo << "Matrix:\n"<< M.toDense() <<"\n";
     gsInfo << "Number of functions is "<< c1dim <<"\n";
+    GISMO_ASSERT(c1dim==M.cols(), "Not equal "<< c1dim <<"!="<< M.cols() );
     return M;
 }
 
@@ -528,6 +640,7 @@ int main(int argc, char *argv[])
     bool get_basis = false;
     bool get_mesh = false;
     bool get_geo = false;
+    bool plot = false;
 
     //! [Parse Command line]
     gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");
@@ -541,7 +654,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("pid"  , "Plot the ID of each patch and boudanries as color", plot_patchid);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
     cmd.addString("o", "oname", "Filename to use for the ParaView output", pname);
-
+    cmd.addSwitch("plot", "Plot basis", plot);
+    
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse Command line]
 
@@ -554,12 +668,15 @@ int main(int argc, char *argv[])
 
     gsMultiBasis<> mb(mp);
     gsMultiPatch<> mp5(mp);
-    mp.degreeReduce(4);
+    mp.degreeReduce( mb.degree(0)-1 );
     gsDofMapper cmapper = mp.getMapper(1e-3); // np*4
     gsWrite(mp,"mp");
-
+    
     //triangle_planar.xml: 7 vertices, 18 halfedges, 3 faces
     gsSurfMesh msh = mp.toMesh();
+    msh.write("mp_mesh.off");
+    gsWrite( mesh_to_multipatch(msh), "mp_mesh");
+
 //    msh.read("/user/amantzaf/home/Workspace/gitlab/catmull-clark-Marsala/Julia/Data/OFF_Meshes/triangle_planar.off");
 
     msh.write("out.off");
@@ -570,17 +687,25 @@ int main(int argc, char *argv[])
 
     //Create transfer matrix
     gsSparseMatrix<> M = basisFromMesh(msh, cmapper);
-
     //gsMappedBasis<2, real_t> mbasis(mb, M);
     //gsFileData<> out;
     //out << mbasis;
     //out.save("basis");
 
+    gsMappedSpline<2, real_t> srf(mp5, M); //Create spline using projection
+    gsMultiPatch<> pr = srf.exportToPatches();
+    gsFileData<> out;
+    out << pr;
+    out.save("surface_g1");
+    
 //    gsWriteParaview(mp, ""e, numSamples, plot_mesh, plot_net);
 //    gsFileManager::open(pname+".pvd");
 
-    PlotBasis(M, mp5, 1000, false, true); //last false is for the net
+    if (plot)
+        PlotBasis(M, mp5, numSamples, false, true); //last false is for the net
     //gsFileManager::open("ccbasis.pvd");
-                
+
+    
+    
     return EXIT_SUCCESS;
 }
