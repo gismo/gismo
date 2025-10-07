@@ -222,6 +222,13 @@ inline index_t cpIndex(index_t HEcorner, index_t xstep, index_t ystep)
     }
 }
 
+inline unsigned int vertex_degree(const gsSurfMesh & msh, gsSurfMesh::Vertex v)
+{
+    unsigned int k = 0;
+    for (auto f: msh.faces(v)) { ++k; GISMO_UNUSED(f); }
+    return msh.is_boundary(v) ? 2*k : k;
+}
+
 index_t g1Dimension(const gsSurfMesh & msh)
 {
     index_t n, c1dim(0);
@@ -239,13 +246,17 @@ index_t g1Dimension(const gsSurfMesh & msh)
     }
     gsInfo << "Dimension V  "<< c1dim <<"\n";
 
-    for ( auto ee : msh.edges() ) //for all edges he in msh
+    for ( auto ed : msh.edges() ) //for all edges he in msh
     {
-        bool bdr = msh.is_boundary(ee);
+        bool bdr = msh.is_boundary(ed);
         // Note for Extraordinary edge on boundary we still count 4)
-        bool eed = (4!=msh.valence(msh.vertex(ee,0)) || 4!=msh.valence(msh.vertex(ee,1)) );
-        //c1dim += (!bdr && eed ? 2 : 4);
-        c1dim += 4 * bdr  + 2*(!bdr&&eed);
+
+        bool ee = !( (4==vertex_degree(msh, msh.vertex(ed,0)) ||
+                      2==vertex_degree(msh, msh.vertex(ed,0)) ) &&
+                     (4==vertex_degree(msh, msh.vertex(ed,1)) ||
+                      2==vertex_degree(msh, msh.vertex(ed,1)) )  );
+        // 4*boundary + 4*inner_regular + 2*inner_EE
+        c1dim += 4 * bdr  + 4*( !bdr && !ee) + 2*(!bdr && ee);
     }
     gsInfo << "Dimension V+E: "<< c1dim <<"\n";
     
@@ -580,13 +591,18 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
 
     }//end for vertices
 
+    gsInfo << "--> Dimension V  "<< c1dim <<"\n";
+        
     for ( auto he : msh.halfedges() ) //for all halfedges he in msh
     {
         if ( msh.is_boundary(he) ) continue;
         // Edge on boundary ?
         bool bdr = msh.touches_boundary(he);
         // Extraordinary edge? (note: no new functions for boundart EHE)
-        bool ee = (4!=msh.valence(msh.from_vertex(he)) || 4!=msh.valence(msh.to_vertex(he)) );
+        bool ee = !( (4==vertex_degree(msh, msh.from_vertex(he)) ||
+                      2==vertex_degree(msh, msh.from_vertex(he)) ) &&
+                     (4==vertex_degree(msh, msh.to_vertex(he)) ||
+                      2==vertex_degree(msh, msh.to_vertex(he)) )  );
 
         pi = msh.face(he).idx(); // patch
         os = offset[pi];
@@ -604,7 +620,17 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
         }
         if (!bdr && !ee) // inner regular HE
         {
-            // 4
+            pi2 = msh.face(msh.opposite_halfedge(he)).idx();
+            cmapper.indexOnPatch( msh.to_vertex(he).idx(), pi2, ci2 );
+            os2 = offset[pi2];
+
+            M.insert(os +cpIndex(ci , 2, 0),c1dim  ) = (real_t)0.5;
+            M.insert(os +cpIndex(ci , 2, 1),c1dim  ) = (real_t)1.0;
+            M.insert(os2+cpIndex(ci2, 3, 0),c1dim++) = (real_t)0.5;
+
+            M.insert(os +cpIndex(ci , 3, 0),c1dim  ) = (real_t)0.5;
+            M.insert(os +cpIndex(ci , 3, 1),c1dim  ) = (real_t)1.0;
+            M.insert(os2+cpIndex(ci2, 2, 0),c1dim++) = (real_t)0.5;
         }
         if (bdr) // boundary (EHE or regular)
         {
@@ -668,6 +694,9 @@ int main(int argc, char *argv[])
 
     gsMultiBasis<> mb(mp);
     gsMultiPatch<> mp5(mp);
+    if ( mb.degree(0)<5)
+        mp5.degreeIncrease(5-mb.degree(0));
+
     mp.degreeReduce( mb.degree(0)-1 );
     gsDofMapper cmapper = mp.getMapper(1e-3); // np*4
     gsWrite(mp,"mp");
@@ -691,13 +720,13 @@ int main(int argc, char *argv[])
     //gsFileData<> out;
     //out << mbasis;
     //out.save("basis");
-
+    
     gsMappedSpline<2, real_t> srf(mp5, M); //Create spline using projection
     gsMultiPatch<> pr = srf.exportToPatches();
     gsFileData<> out;
     out << pr;
     out.save("surface_g1");
-    
+
 //    gsWriteParaview(mp, ""e, numSamples, plot_mesh, plot_net);
 //    gsFileManager::open(pname+".pvd");
 
