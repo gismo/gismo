@@ -52,21 +52,22 @@ void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1){
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool plot           = false;
-    index_t numRefine   = 4;
-    index_t numLRefine  = 3;
-    index_t numElevate  = 0;
-    index_t maxIter     = 50;
-    double eps          = 1e-7; // pinalization coefficient
-    double tolPicard    = 1e-8;
-    double IntensityMAE = 9.;
-    bool export_b64     = false;
-    bool errS      = false;
-    bool last           = false;
+    bool plot           = false; // plot solution or not
+    index_t numRefine   = 4;     // number of uniform refinement
+    index_t numElevate  = 0;     // number of degree elevation
+    index_t maxIter     = 50;    // maximum number of Picard iterations
+    double eps          = 1e-6;  // pinalization coefficient
+    double tolPicard    = 1e-12; // tolerance for Picard iterations
+    double IntensityMAE = 9.;    // Intensity of density function
+    bool export_b64     = false; // export in base64 format
+    bool errS           = false; // save errors or not
+    bool last           = false; // solve solely for the last level of h-refinement
+    bool onlyH          = false; // only local h-refinement after initial refinement
+
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy...
     MarkingStrategy adaptRefCrit = PUCA;
-    //MarkingStrategy adaptRefCrit = GARU;
+    // MarkingStrategy adaptRefCrit = GARU;
     //MarkingStrategy adaptRefCrit = errorFraction;
     real_t adaptRefParam = 0.75;
 
@@ -90,6 +91,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution",        plot);
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement",               last);
     cmd.addSwitch("errS", "Create a file in ... and save errors",                          errS);
+    cmd.addSwitch("b64",  "Export the solution in base64 format",                         export_b64);
+    cmd.addSwitch("onlyH","Perform only local h-refinement after initial refinement",      onlyH);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -106,7 +109,7 @@ int main(int argc, char *argv[])
     gsInfo << "INFO IN PARAMETRIC DOMAIN "<< mpLeft.dim() << mpLeft.parDim() <<"\n";
     //================================== -------------------------- =====================================
     //==================================   Independent of the geometry ==================================
-    //================================== This part is fixed for all    ==================================
+    //==================================    This part is fixed for all ==================================
     //================================== -------------------------- =====================================
     // .... one single patch
     gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
@@ -119,7 +122,6 @@ int main(int argc, char *argv[])
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mp.patch(i)) ));
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-
     // Manufactured identity mapping
     gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function rho_1
@@ -140,6 +142,21 @@ int main(int argc, char *argv[])
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(Psi, true);//true: poly-splines (not NURBS)
+
+    //.. initial refinement to have the same number of elements as the adaptive geometry
+    for (int r=0; r<4; ++r)
+    {
+        dbasis.uniformRefine();
+        Psi.uniformRefine();
+    }
+    if( last){
+    for (int r=0; r<numRefine; ++r)
+    {
+        dbasis.uniformRefine();
+        Psi.uniformRefine();
+    }
+    numRefine = 0;
+    }
 
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
@@ -202,17 +219,6 @@ int main(int argc, char *argv[])
     double setup_time(0), ma_time(0), slv_time(0);
     gsStopwatch timer;
     timer.restart();
-    for (int r=0; r<4; ++r)
-    {
-        dbasis.uniformRefine();
-    }
-    if( last){
-    for (int r=0; r<numRefine; ++r)
-    {
-        dbasis.uniformRefine();
-    }
-    numRefine = 0;
-    }
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     gsVector<>  DoFs_sys(numRefine+1), Solv_time(numRefine+1);;
     gsVector<>  h1Res(numRefine+1), l2err(numRefine+1), Iter_mae(numRefine+1); //    
@@ -220,11 +226,11 @@ int main(int argc, char *argv[])
     gsSparseSolver<>::CGDiagonal solver; // exact solver
     gsSparseSolver<>::CGDiagonal Ssolver;// relaxation solver
     // Ssolver.setMaxIterations(20);
-    Ssolver.setTolerance(1e-5);
+    Ssolver.setTolerance(1e-4);
 
     dbasis.uniformRefine();
+    Psi.uniformRefine();
     timer.restart();
-    // gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
     // -------------------- for projection --------------------
     u.setup(bc_mae, dirichlet::l2Projection, 0);
     A.initSystem();
@@ -251,6 +257,10 @@ int main(int argc, char *argv[])
     timer.restart();
     // densityVector = Poisson.L2ProjectScalar(A.rhs());
     densityVector = solver.solve(A.rhs());
+    for(index_t ds= 0; ds<densityVector.size(); ++ds){
+        if (densityVector.coeff(ds)<=0.)
+            densityVector.coeffRef(ds) = 0.;
+    }
     slv_time += timer.stop();
     gsMultiPatch<> density, u_phi;
     density_sol.extract(density);
@@ -259,7 +269,7 @@ int main(int argc, char *argv[])
     // gsMultiPatch<> density;
     // gsFileData<> fdr(fr);
     // fdr.getId(1, density);
-    auto rho = A.getCoeff(density, G);
+    auto rho = A.getCoeff(density, PP);
     // ... manipulation of density function
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
@@ -286,7 +296,7 @@ int main(int argc, char *argv[])
     // Compute the Neumann terms defined on physical space
     auto g_N      = A.getBdrFunction(G);
     auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
-    //... nromalisation of density function
+    //... normalisation of a density function
     auto CoeffDensity{ev.integral((int_uh_0*abs(rho.val()) + int_uh_1))};
     auto ExprMAE     = pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
     auto CoeffConductivity{Neumann_Int/ev.integral(ExprMAE)};
@@ -295,14 +305,11 @@ int main(int argc, char *argv[])
     );
     // Compute the Neumann terms defined on physical space
     A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
-    //A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
-    //A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
     gsInfo<< "." <<std::flush;// Assemblying done
     timer.restart();
     solVector = A.rhs();
     // solVector = Poisson.solve(A.rhs());
     solVector = Ssolver.solve(A.rhs());
-    // gsInfo<< "vsolVector norm ----" << ev.integral((u_sol-v_sol).norm()) << "\n";
     slv_time += timer.stop();
     u_sol.extract(u_phi);
     gsInfo<< "." <<std::flush; // Linear solving done
@@ -316,42 +323,37 @@ int main(int argc, char *argv[])
     // Obtain control points for the gradient of Psi
     A.assemble(u * igrad(u_sol,G));
     ma_time += timer.stop();
+    for(index_t Mp=0; Mp<mp.dim(); ++Mp){
+    gsMultiPatch<> PsiPsitp_temp;
     timer.restart();
-    // vsolVector = Poisson.L2ProjectScalar(A.rhs().col(0));
-    vsolVector = solver.solve(A.rhs().col(0));
+    // vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+    vsolVector = solver.solve(A.rhs().col(Mp));
     slv_time += timer.stop();
-    v_sol.extract(Psi);
-    for(index_t Mp=1; Mp<mpLeft.dim(); ++Mp){
-        gsMultiPatch<> PsiPsitp_temp;
-        timer.restart();
-        // vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
-        vsolVector = solver.solve(A.rhs().col(Mp));
-        slv_time += timer.stop();
-        v_sol.extract(PsiPsitp_temp);
-        Psi.embed(Mp+1);
-        Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+    v_sol.extract(PsiPsitp_temp);
+    Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
     }
-    // ... correct boundary
+    // // ... correct boundary
     ProjectionNormalCPoints(Psi);
     Psi.addAutoBoundaries();
     Psi.computeTopology();
+    gsInfo<< "_start rh-refinement loop" <<std::flush; // Projection done
     for (int r=0; r<=numRefine; ++r)
     {
+        // initialize time counters
+        setup_time=0.; ma_time=0.; slv_time=0.;
+        // ......... End initialization for density.........
+        if( r > 0){
         //! [beginRefLoop]
         gsInfo << "====== Loop " << r << " of "
                 <<numRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
-        // initialize time counters
-        setup_time=0.; ma_time=0.; slv_time=0.;
-        if( r > 0){
-
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
-        ev.integralElWise(int_uh_0*fP.val()+int_uh_1 );
-        //ev.integralElWise( 1/jac(PPF).absDet() );
+        // ev.integralElWise(int_uh_0*rho.val()+int_uh_1 );
+        // ev.integralElWise( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)   );
+        ev.integralElWise( fP.val() );
 
-        const std::vector<real_t> eltErrs  = ev.elementwise();
         //! [errorComputation]
-
+        const std::vector<real_t> eltErrs  = ev.elementwise();
         //! [adaptRefinementPart]
         // Mark elements for refinement, based on the computed local errors and
         // the refinement-criterion and -parameter.
@@ -362,94 +364,83 @@ int main(int argc, char *argv[])
         gsRefineMarkedElements( dbasis, elMarked, 0);
         gsRefineMarkedElements( Psi, elMarked, 0);
         gsRefineMarkedElements( u_phi, elMarked, 0);
-        //gsRefineMarkedElements( density, elMarked, 1);
+        //gsRefineMarkedElements( density, elMarked, 0);
+        }
+        gsInfo<< "." <<std::flush; // h-refinement done
+        // ... refinement
+        if (r > 0 && onlyH){
+            continue;
         }
         timer.restart();
+        // -------------------- It solver for projection --------------------
         // gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
-        // -------------------- for projection --------------------
         u.setup(bc_mae, dirichlet::l2Projection, 0);
         A.initSystem();
         DoFs_sys[r] = A.numDofs();
         A.assemble(u *u.tr());//matrix
         auto MProj = A.matrix();
         solver.compute( MProj);
-        // -------------------- for MAE system ----------------
+        gsInfo<< "." <<std::flush; // Initialize Projection Iterative solver done        
+        // -------------------- It solver for MAE system ----------------
         u.setup(bc_mae, dirichlet::l2Projection, 0);
         A.initSystem();
         A.assemble(grad(u) * grad(u).tr() + eps * u *u.tr());//matrix
         auto MMAe = A.matrix();
         Ssolver.compute( MMAe );
         slv_time += timer.stop();
-
-        // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
-        // Solution vector and solution variable
-        u.setup(bc_mae, dirichlet::l2Projection, 0);
-        timer.restart();
-        A.initSystem();
-        A.assemble(u* ff.val());//rhs vector
-        ma_time += timer.stop();
-        timer.restart();
-        // densityVector = Poisson.L2ProjectScalar(A.rhs());
-        densityVector = solver.solve(A.rhs());
-        slv_time += timer.stop();
-        density_sol.extract(density);
-        // gsWrite(density, "density");
-        // std::string fr("pde/density_hand.xml");
-        // gsMultiPatch<> density;
-        // gsFileData<> fdr(fr);
-        // fdr.getId(1, density);
-        auto rho = A.getCoeff(density, G);
-        // ... manipulation of density function
-        auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
-        double  int_uh_0 = 0.;
-        double  int_uh_1  = 1.;
-        if (empldensity < 1e-5|| IntensityMAE <= 1. )
-        {
-            gsInfo << "Density function is constant in the domain rho = 1.\n";
-        }
-        else{
-            int_uh_0  = (IntensityMAE-1.)/empldensity;
-            int_uh_1  = (1.*ev.max(abs(rho.val()))-IntensityMAE*ev.min(abs(rho.val())))/empldensity;
-            gsInfo << "Density function is not constant in the domain\n";
-        }
-        gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
-        // ......... End initialization for density.........
-
+        gsInfo<< "." <<std::flush; // Initialize Iterative solver done
         // .... Picard loop  .... ...........................
-        auto  sv0 = u_phi.patch(0).coefs(); //...
+
+        // // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
+        // u.setup(bc_mae, dirichlet::l2Projection, 0);
+        // timer.restart();
+        // A.initSystem();
+        // A.assemble(u* ff.val());//rhs vector
+        // ma_time += timer.stop();
+        // timer.restart();
+        // // densityVector = Poisson.L2ProjectScalar(A.rhs());
+        // densityVector = solver.solve(A.rhs());
+        // slv_time += timer.stop();
+        // for(index_t ds= 0; ds<densityVector.size(); ++ds){
+        //     if (densityVector.coeff(ds)<=0.)
+        //         densityVector.coeffRef(ds) = 0.;
+        // }
+        // density_sol.extract(density);
+        // // ... manipulation of density function
+        // auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
+        // double  int_uh_0 = 0.;
+        // double  int_uh_1  = 1.;
+        // if (empldensity < 1e-5|| IntensityMAE <= 1. )
+        // {
+        //     gsInfo << "Density function is constant in the domain rho = 1.\n";
+        // }
+        // else{
+        //     int_uh_0  = (IntensityMAE-1.)/empldensity;
+        //     int_uh_1  = (1.*ev.max(abs(rho.val()))-IntensityMAE*ev.min(abs(rho.val())))/empldensity;
+        //     gsInfo << "Density function is not constant in the domain\n";
+        // }
+        // gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
+        // ......... End initialization for density.........
+        auto  sv0 = u_phi.patch(0).coefs(); // initial guess set as last solution
         solution u_lsol = A.getSolution(u, sv0);
 
         for(int ip{0}; ip<=maxIter; ++ip)
         {
-            //.. geometry map
-            geometryMap PP    = A.getMap(Psi);
-            //... density in new optimized mesh
-            auto rho          = A.getCoeff(density, PP);
-            // ... update residual
-            solution u_sol    = A.getSolution(u, solVector);
-
             // ...  0  dirichlet for boundaries
             timer.restart();
             //u.setup(bc_mae, dirichlet::l2Projection, 0);
             // Initialize the system
             A.initSystem();
-
-            // Compute the system matrix and right-hand side ... Monge-Ampere eqaution .....
             // .. update Coeffeicient of conductivity
             auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
-            // if (dbasis.minCwiseDegree() > 2)
-            // auto  ExprMAE     = pow( abs(pow(lapl(u_sol).val(),IGdim) - gammaMAE*hess(u_sol).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
             auto IntegDensity = ev.integral(ExprMAE);
             CoeffConductivity = Neumann_Int/IntegDensity;
             // MAE system
             A.assemble(u * CoeffConductivity * (-1.) * ExprMAE);//rhs vector
-            //gsInfo << "End Assemnles \n";
 
             // Compute the Neumann terms defined on physical space
             auto g_N = A.getBdrFunction(G);
             A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
-            //A.assembleIfc(mp.interfaces(), u.left() * (u_I.tr() * nv(G.left())));
-            //A.assembleIfc(mp.interfaces(), u.right() * (u_I.tr() * nv(G.right())));
             ma_time += timer.stop();
 
             gsInfo<< " ." <<std::flush;// Assemblying done
@@ -463,8 +454,6 @@ int main(int argc, char *argv[])
             // omp_set_dynamic(0);     // Explicitly disable dynamic teams
             // omp_set_num_threads(1); // Use these threads for later parallel regions
             h1Res[r]    = math::sqrt(ev.integral( ( grad(u_sol)-grad(u_lsol)).sqNorm()  ));
-            l2err[r]    = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
-            double Ddet = ev.min(jac(PP).det());
             sv0         = solVector;
             Iter_mae[r] = ip;
 
@@ -472,20 +461,15 @@ int main(int argc, char *argv[])
                 // ! end Picard loop
                 gsInfo<< "\n Niter in Picard : " << ip
                         << ".. H1 residual : "<<std::scientific<<h1Res[r]
-                        << ".. L2 MAE residual : "<<std::scientific<<l2err[r]
-                        << ".. min JAcobian : "<<Ddet<<"..";
+                        << ".. min JAcobian : "<<ev.min(jac(PP).det())<<"..";
                 break;
                 } //
             timer.restart();
             A.initSystem(IGdim);
             // Obtain control points for the gradient of Psi
             A.assemble(u * grad(u_sol));
-            // A.assemble(u*u.tr(), u * grad(u_sol));// blocked by this one
-            // solver.compute( A.matrix() );
-            // vsolVector = solver.solve( A.rhs() );
-            // v_sol.extract(Psi);
             ma_time += timer.stop();
-            for(index_t Mp=0; Mp<mpLeft.dim(); ++Mp){
+            for(index_t Mp=0; Mp<mp.dim(); ++Mp){
             gsMultiPatch<> PsiPsitp_temp;
             timer.restart();
             // vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
@@ -502,6 +486,7 @@ int main(int argc, char *argv[])
         }//for loop
         // omp_set_dynamic(0);     // Explicitly disable dynamic teams
         // omp_set_num_threads(1); // Use these threads for later parallel regions
+        l2err[r]     = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
         Solv_time[r] = slv_time;// cpu time for a solver
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time<<"\n";
     gsInfo<<"     Setup: "<< setup_time <<"\n";
@@ -530,11 +515,13 @@ int main(int argc, char *argv[])
     }
     else
         gsInfo << "Errors are not saved. To save them, try with --errS.\n";
+    if(numRefine >0){
     //! [Error and convergence rates]
     gsInfo<< "\n#DoFs  : \n"<<std::scientific<<std::setprecision(3)<<DoFs_sys.transpose()<<"\n";
     gsInfo<< "#L2 error: \n"<<std::scientific<<l2err.transpose()<<"\n";
     gsInfo<< "#H1 res  : \n"<<std::scientific<<h1Res.transpose()<<"\n";
     gsInfo<< "#CPU-time: \n"<<std::scientific<<Solv_time.transpose()<<"\n";
+    }
     //! [Export visualization in ParaView]
     if (plot)
     {

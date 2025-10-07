@@ -42,6 +42,7 @@ public:
 
     // Method to build a multipatch adaptive mapping
     gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density) const;
+    gsMultiPatch<> buildOpadMultiPatch(const gsMultiPatch<> mpLeft, gsMultiPatch<> Psi, const gsMultiPatch<> &density) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
     gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree = 2, double quadValue = 1.) const;

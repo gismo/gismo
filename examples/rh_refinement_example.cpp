@@ -35,7 +35,8 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/circle.xml");
+    // std::string fn("pde/circle.xml");
+    std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");

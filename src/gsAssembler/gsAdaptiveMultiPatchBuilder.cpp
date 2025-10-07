@@ -448,7 +448,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     //! [Solver loop]
     gsInfo<< A.numDofs() <<std::flush;
     // Picard loop
-    gsVector<>  h1Res(m_maxIter+1), l2err(m_maxIter+1), Iter_mae(m_maxIter+1);
     auto  sv0 = solVector; //
     solution u_lsol = A.getSolution(u, sv0);
     for(int ip{0}; ip<=m_maxIter; ++ip)
@@ -504,17 +503,11 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
         solVector = this->Poisson.solve(A.rhs());
         gsInfo<< "." <<std::flush; // Linear solving done
 
-        // omp_set_dynamic(0);     // Explicitly disable dynamic teams
-        // omp_set_num_threads(1); // Use these threads for later parallel regions
-
         auto l2errRes = math::sqrt(ev.integral( ( grad(u_sol)-grad(u_lsol)).sqNorm()  ));
         auto L2MAERes = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
         auto Ddet     = ev.min(jac(PP).det());
         sv0           = solVector;
 
-        Iter_mae[ip]  = ip;
-        h1Res[ip]     = l2errRes;// Compute the H1 residual
-        l2err[ip]     = L2MAERes;// Compute the L2 error in MA equation
         if ( l2errRes < 1e-8 || ip == m_maxIter ){
             // ! end Picard loop
             gsInfo<< "\n Niter in Picard : " << ip
@@ -545,6 +538,224 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<>
     ProjectionNormalCPoints(Psi);
     Psi.addAutoBoundaries();
     Psi.computeTopology();
+    // ...
+    slv_time += timer.stop();
+    timer.stop();
+    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    return Psi;
+
+};
+
+// Build and return a MultiPatch object in hierarchical refinement
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildOpadMultiPatch(const gsMultiPatch<> mpLeft, gsMultiPatch<> Psi, const gsMultiPatch<> &density) const 
+{
+    typedef gsExprAssembler<>::geometryMap geometryMap;
+    typedef gsExprAssembler<>::variable    variable;
+    typedef gsExprAssembler<>::space       space;
+    typedef gsExprAssembler<>::solution    solution;
+
+    // Neumann Boundary conditions object to define and manage boundary conditions for the problem
+    gsBoundaryConditions<> bc_mae;
+    // Manufactured identity mapping
+    gsFunctionExpr<> sN("x","y",2);
+    if (this->m_basis.dim() == 3){
+        sN = gsFunctionExpr<>("x","y","z",3);
+    }
+
+    bc_mae.setGeoMap(this->mp);
+    // For simplicity, set Neumann boundary conditions
+    for ( gsMultiPatch<>::const_biterator
+                bit = this->mp.bBegin(); bit != this->mp.bEnd(); ++bit)
+    {
+            bc_mae.addCondition( *bit, condition_type::neumann, &sN );
+    }
+    //! [Refinement]
+    gsMultiBasis<double> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
+
+    gsInfo<<"<> Picard iterations \n";
+    double slv_time(0);
+    gsStopwatch timer;
+    timer.restart();
+    //! [Problem setup]
+    gsExprAssembler<> A(1,1);
+    // It could be beneficial for the composition of the two mappings
+    // A.options().setReal("quA", quadValue);
+    //A.options().setInt("quB", 2);
+    A.options().setSwitch("SameElement",false);
+
+    // Elements used for numerical integration
+    A.setIntegrationElements(this->m_basis);
+    gsExprEvaluator<> ev(A);
+    // Set the square geometry map
+    geometryMap G     = A.getMap(mp);
+
+    // Set the Physical geometry map
+    geometryMap GLeft = A.getMap(mpLeft);
+
+    // Set the Target geometry adaptive map
+    geometryMap PP    = A.getMap(Psi);
+
+    // Set pow for BFO method dim in parameteric domain
+    auto IGdim        = G.domainDim();
+
+    // Set factor for BFO method
+    auto gammaMAE     = factorial(G.domainDim());
+
+    // Set the discretization space
+    space u           = A.getSpace(dbasis);
+
+    //... solution vector and solution variable for gradient of potential function
+    gsMatrix<> vsolVector;
+    solution v_sol    = A.getSolution(u, vsolVector);
+
+    //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
+    auto u_I          = ev.getVariable(sN, G);
+
+    // Solution vector and solution variable
+    gsMatrix<> solVector;
+    solution u_sol    = A.getSolution(u, solVector);
+
+    //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
+    gsSparseSolver<>::CGDiagonal solver; // exact solver
+    gsSparseSolver<>::CGDiagonal Ssolver;// relaxation solver
+    // Ssolver.setMaxIterations(20);
+    Ssolver.setTolerance(1e-4);
+
+    dbasis.uniformRefine();
+    Psi.uniformRefine();
+    timer.restart();
+    // -------------------- for projection --------------------
+    u.setup(bc_mae, dirichlet::l2Projection, 0);
+    A.initSystem();
+    A.assemble(u *u.tr());//matrix
+    auto MProj = A.matrix();
+    solver.compute( MProj);
+    // -------------------- for MAE system ----------------
+    u.setup(bc_mae, dirichlet::l2Projection, 0);
+    A.initSystem();
+    A.assemble(grad(u) * grad(u).tr() + 1e-6 * u *u.tr());//matrix
+    auto MMAe = A.matrix();
+    Ssolver.compute( MMAe );
+    slv_time += timer.stop();
+
+    // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
+    // Solution vector and solution variable
+    auto rho = A.getCoeff(density, PP);
+    // ... manipulation of density function
+    auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
+    double  int_uh_0 = 0.;
+    double  int_uh_1  = 1.;
+    if (empldensity < 1e-5|| this->m_IntensityMAE <= 1. )
+    {
+        gsInfo << "Density function is constant in the domain rho = 1.\n";
+    }
+    else{
+        int_uh_0  = (this->m_IntensityMAE-1.)/empldensity;
+        int_uh_1  = (1.*ev.max(abs(rho.val()))-this->m_IntensityMAE*ev.min(abs(rho.val())))/empldensity;
+        gsInfo << "Density function is not constant in the domain\n";
+    }
+    gsInfo << "Density functio: min "<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/ max " << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "\n";
+    // ......... End initialization for density.........
+        
+    // ......... Start solving the Monge-Ampere equation .........
+    // u.setup(bc_mae, dirichlet::l2Projection, 0);
+    // Compute the system matrix and right-hand side
+
+    // Initialize the system :  identity mapping as initial guess
+    A.initSystem();
+    // Initialize the system : start Computing the conductivity coeffeicient ...
+    // Compute the Neumann terms defined on physical space
+    auto g_N      = A.getBdrFunction(G);
+    auto Neumann_Int{ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) )};
+    //... normalisation of a density function
+    auto CoeffDensity{ev.integral((int_uh_0*abs(rho.val()) + int_uh_1))};
+    auto ExprMAE     = pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+    auto CoeffConductivity{Neumann_Int/ev.integral(ExprMAE)};
+
+    A.assemble(u*  CoeffConductivity * (-1.)*ExprMAE//rhs vector
+    );
+    // Compute the Neumann terms defined on physical space
+    A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
+    gsInfo<< "." <<std::flush;// Assemblying done
+    timer.restart();
+    solVector = A.rhs();
+    // solVector = Poisson.solve(A.rhs());
+    solVector = Ssolver.solve(A.rhs());
+    slv_time += timer.stop();
+    gsInfo<< "." <<std::flush; // Linear solving done
+
+    auto  sv0       = solVector; // initial guess set as last solution
+    solution u_lsol = A.getSolution(u, sv0);
+    //! [Solver loop]
+    gsInfo<< A.numDofs() <<std::flush;
+    for(int ip{0}; ip<=this->m_maxIter; ++ip)
+    {
+        A.initSystem(IGdim);
+        // Obtain control points for the gradient of Psi
+        A.assemble(u * grad(u_sol));
+        for(index_t Mp=0; Mp<mp.dim(); ++Mp){
+        gsMultiPatch<> PsiPsitp_temp;
+        timer.restart();
+        // vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+        // vsolVector = solver.solve(A.rhs().col(Mp));
+        vsolVector = solver.solveWithGuess(A.rhs().col(Mp), Psi.patch(0).coefs().col(Mp));
+        slv_time += timer.stop();
+        v_sol.extract(PsiPsitp_temp);
+        Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+        }
+        // // ... correct boundary
+        ProjectionNormalCPoints(Psi);
+        Psi.addAutoBoundaries();
+        Psi.computeTopology();
+        // ...  0  dirichlet for boundaries
+        //u.setup(bc_mae, dirichlet::l2Projection, 0);
+        // Initialize the system
+        A.initSystem();
+        // .. update Coeffeicient of conductivity
+        auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+        auto IntegDensity = ev.integral(ExprMAE);
+        CoeffConductivity = Neumann_Int/IntegDensity;
+        // MAE system
+        A.assemble(u * CoeffConductivity * (-1.) * ExprMAE);//rhs vector
+
+        // Compute the Neumann terms defined on physical space
+        auto g_N = A.getBdrFunction(G);
+        A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
+
+        gsInfo<< " ." <<std::flush;// Assemblying done
+        timer.restart();
+        // solVector = Poisson.solve(A.rhs());
+        // solVector = Ssolver.solve(A.rhs());
+        solVector = Ssolver.solveWithGuess(A.rhs(), sv0);
+        slv_time += timer.stop();
+        gsInfo<< "." <<std::flush; // Linear solving done
+
+        // omp_set_dynamic(0);     // Explicitly disable dynamic teams
+        // omp_set_num_threads(1); // Use these threads for later parallel regions
+        auto h1Res= math::sqrt(ev.integral( ( grad(u_sol)-grad(u_lsol)).sqNorm()  ));
+        sv0       = solVector;
+
+        if ( h1Res < 1e-8 || ip == this->m_maxIter ){
+            // ! end Picard loop
+            gsInfo<< "\n Niter in Picard : " << ip
+                    << ".. H1 residual : "<<std::scientific<<h1Res
+                    << ".. min JAcobian : "<<ev.min(jac(PP).det())<<"..";
+            break;
+            } //
+    }//for loop
+    A.initSystem(IGdim);
+    // Obtain control points for the gradient of Psi
+    A.assemble(u * grad(u_sol));
+    for(index_t Mp=0; Mp<mp.dim(); ++Mp){
+    gsMultiPatch<> PsiPsitp_temp;
+    timer.restart();
+    // vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+    // vsolVector = solver.solve(A.rhs().col(Mp));
+    vsolVector = solver.solveWithGuess(A.rhs().col(Mp), Psi.patch(0).coefs().col(Mp));
+    slv_time += timer.stop();
+    v_sol.extract(PsiPsitp_temp);
+    Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+    }
     // ...
     slv_time += timer.stop();
     timer.stop();
