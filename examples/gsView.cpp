@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
     bool get_basis = false;
     bool get_mesh = false;
     bool get_geo = false;
+    bool base64 = false;
 
     //! [Parse Command line]
     gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");
@@ -41,6 +42,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("pid"  , "Plot the ID of each patch and boudanries as color", plot_patchid);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
     cmd.addString("o", "oname", "Filename to use for the ParaView output", pname);
+    cmd.addSwitch( "base64", "whether to write in binary", base64);
+
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse Command line]
@@ -116,11 +119,11 @@ int main(int argc, char *argv[])
             if (plot_patchid)
             {
                 gsField<> nfield = gsFieldCreator<>::patchIds(mp);
-                gsWriteParaviewUnstructuredGrid(nfield, pname, numSamples);
+                gsWriteParaviewUnstructuredGrid(nfield, pname, numSamples, base64);
             }
             else
             {
-                gsWriteParaviewUnstructuredGrid(mp, pname, numSamples);
+                gsWriteParaviewUnstructuredGrid(mp, pname, numSamples, base64);
             }
 
             break;

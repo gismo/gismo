@@ -2271,9 +2271,8 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
 template<class T>
 void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
                                       std::string const & fn,
-                                      unsigned npts)
+                                      unsigned npts, bool export_base64)
 {
-    const bool export_base64 = true;
     std::string mfn(fn);
     mfn.append(".vtu");
     std::ofstream file(mfn.c_str());
@@ -2489,9 +2488,9 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
 template<class T>
 void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
                                       std::string const & fn,
-                                      unsigned npts)
+                                      unsigned npts,
+                                      bool export_base64)
 {
-    const bool export_base64 = true;
     std::string mfn(fn);
     mfn.append(".vtu");
     std::ofstream file(mfn.c_str());

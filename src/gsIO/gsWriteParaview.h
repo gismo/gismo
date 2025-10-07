@@ -158,7 +158,7 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
 /// \param fn filename where paraview file is written (without extension)
 /// \param npts number of points used for sampling each patch
 template<class T>
-void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch, std::string const & fn, unsigned npts = NS);
+void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch, std::string const & fn, unsigned npts = NS, bool export_base64 = false);
 
 /// \brief Export a field (solution on geometry) to a single unstructured grid file (all patches in one .vtu file)
 ///
@@ -166,7 +166,7 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch, std::string
 /// \param fn filename where paraview file is written (without extension)
 /// \param npts number of points used for sampling each patch
 template<class T>
-void gsWriteParaviewUnstructuredGrid(const gsField<T> & field, std::string const & fn, unsigned npts = NS);
+void gsWriteParaviewUnstructuredGrid(const gsField<T> & field, std::string const & fn, unsigned npts = NS, bool export_base64 = false);
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
