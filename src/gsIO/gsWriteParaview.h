@@ -152,6 +152,22 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
 template<class T>
 void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool ctrlNet = false);
 
+/// \brief Export a multipatch Geometry to a single unstructured grid file (all patches in one .vtu file)
+///
+/// \param mPatch a multipatch object
+/// \param fn filename where paraview file is written (without extension)
+/// \param npts number of points used for sampling each patch
+template<class T>
+void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch, std::string const & fn, unsigned npts = NS);
+
+/// \brief Export a field (solution on geometry) to a single unstructured grid file (all patches in one .vtu file)
+///
+/// \param field a field object
+/// \param fn filename where paraview file is written (without extension)
+/// \param npts number of points used for sampling each patch
+template<class T>
+void gsWriteParaviewUnstructuredGrid(const gsField<T> & field, std::string const & fn, unsigned npts = NS);
+
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
 /// \param Geo a vector of the geometries to be plotted
