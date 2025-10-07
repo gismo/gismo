@@ -11,6 +11,7 @@
     Author(s): S. Moore, A. Mantzaflaris
 */
 
+#include "gsCore/gsDebug.h"
 #include <gismo.h>
 
 
@@ -20,8 +21,10 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     bool plot = false;
+    bool export_base64 = false;
     gsCmdLine cmd("Testing the heat equation.");
     cmd.addSwitch("plot", "Plot the result in ParaView.", plot);
+    cmd.addSwitch("base64", "write in binary format", export_base64);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Source function
@@ -99,6 +102,7 @@ int main(int argc, char *argv[])
     gsParaviewCollection collection(baseName);
     collection.options().setInt("numPoints", 1000);
     collection.options().setInt("precision", 5);
+    collection.options().setSwitch("base64", export_base64);
 
     if ( plot )
     {
