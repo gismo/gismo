@@ -15,6 +15,11 @@
 #pragma once
 
 #include <gsIO/gsParaviewCollection.h>
+#include <gsIO/gsBase64.h>
+
+#include <map>
+#include <type_traits>
+#include <vector>
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
@@ -32,6 +37,92 @@
 
 namespace gismo
 {
+
+namespace detail
+{
+    template <typename Scalar>
+    inline std::string vtkTypeName()
+    {
+        if (std::is_same<Scalar, float>::value)
+            return "Float32";
+        if (std::is_same<Scalar, double>::value)
+            return "Float64";
+        if (std::is_same<Scalar, short>::value)
+            return "Int16";
+        if (std::is_same<Scalar, unsigned short>::value)
+            return "UInt16";
+        if (std::is_same<Scalar, int>::value)
+            return "Int32";
+        if (std::is_same<Scalar, unsigned int>::value)
+            return "UInt32";
+        if (std::is_same<Scalar, long>::value)
+            return sizeof(long) == 4 ? "Int32" : "Int64";
+        if (std::is_same<Scalar, unsigned long>::value)
+            return sizeof(unsigned long) == 4 ? "UInt32" : "UInt64";
+        if (std::is_same<Scalar, long long>::value)
+            return "Int64";
+        if (std::is_same<Scalar, unsigned long long>::value)
+            return "UInt64";
+        if (std::is_same<Scalar, index_t>::value)
+            return sizeof(index_t) == 4 ? "Int32" : "Int64";
+
+        GISMO_ERROR("Unsupported scalar type for VTK DataArray.");
+        return "";
+    }
+} // namespace detail
+
+template <class MatrixType>
+inline void writeDataArray(std::ostream & stream,
+                           const MatrixType & matrix,
+                           std::map<std::string, std::string> attributes,
+                           unsigned precision,
+                           bool export_base64)
+{
+    typedef typename MatrixType::Scalar Scalar;
+
+    const std::string vtkType = detail::vtkTypeName<Scalar>();
+
+    const bool hasComponents = attributes.find("NumberOfComponents") != attributes.end();
+
+    stream << "<DataArray type=\"" << vtkType << "\" format=\""
+           << (export_base64 ? "binary" : "ascii") << "\" ";
+
+    for (const auto & attr : attributes)
+    {
+        if (!attr.first.empty())
+            stream << attr.first << "=\"" << attr.second << "\" ";
+    }
+
+    if (matrix.rows() > 1 && !hasComponents)
+        stream << "NumberOfComponents=\"" << matrix.rows() << "\" ";
+
+    stream << ">\n";
+
+    if (export_base64)
+    {
+        std::vector<Scalar> copy;
+        copy.reserve(static_cast<std::size_t>(matrix.rows()) * static_cast<std::size_t>(matrix.cols()));
+        for (index_t j = 0; j < matrix.cols(); ++j)
+            for (index_t i = 0; i < matrix.rows(); ++i)
+                copy.push_back(matrix(i, j));
+
+        std::vector<uint64_t> header(1, static_cast<uint64_t>(copy.size() * sizeof(Scalar)));
+        stream << Base64::Encode(header) << Base64::Encode(copy) << "\n";
+    }
+    else
+    {
+        stream.setf(std::ios::fixed);
+        stream.precision(precision);
+        for (index_t j = 0; j < matrix.cols(); ++j)
+        {
+            for (index_t i = 0; i < matrix.rows(); ++i)
+                stream << matrix(i, j) << ' ';
+        }
+        stream << "\n";
+    }
+
+    stream << "</DataArray>\n";
+}
 
 // Export a 3D parametric mesh
 template<class T>
@@ -2182,6 +2273,7 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
                                       std::string const & fn,
                                       unsigned npts)
 {
+    const bool export_base64 = true;
     std::string mfn(fn);
     mfn.append(".vtu");
     std::ofstream file(mfn.c_str());
@@ -2194,8 +2286,12 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
     // Collect data from all patches
     std::vector<gsMatrix<T>> patchPoints;
     std::vector<gsVector<unsigned>> patchNp;
+    std::vector<index_t> patchPointCounts;
+    std::vector<index_t> patchCells;
+    std::vector<index_t> patchVerticesPerCell;
     index_t totalPoints = 0;
     index_t totalCells = 0;
+    index_t totalConnectivityEntries = 0;
 
     // First pass: evaluate all patches and count points/cells
     for (index_t i = 0; i < mPatch.nPatches(); ++i)
@@ -2224,50 +2320,79 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
 
         patchPoints.push_back(eval_geo);
         totalPoints += eval_geo.cols();
+        patchPointCounts.push_back(eval_geo.cols());
 
         // Calculate number of cells for this patch
         index_t cellsInPatch = 1;
         for (int dim = 0; dim < d; ++dim)
             cellsInPatch *= (np[dim] - 1);
         totalCells += cellsInPatch;
+        patchCells.push_back(cellsInPatch);
+
+        index_t verticesPerCell = (d == 1) ? 2 : (d == 2) ? 4 : 8;
+        patchVerticesPerCell.push_back(verticesPerCell);
+        totalConnectivityEntries += cellsInPatch * verticesPerCell;
     }
 
     // Write VTK header
     file << "<?xml version=\"1.0\"?>\n";
-    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\"";
+    if (export_base64)
+    {
+        const bool is_little_endian = []() -> bool
+        {
+            const unsigned short value = 0x0001;
+            return *(reinterpret_cast<const unsigned char*>(&value)) == 0x01;
+        }();
+        file << " byte_order=\"" << (is_little_endian ? "LittleEndian" : "BigEndian")
+             << "\" header_type=\"UInt64\"";
+    }
+    file << ">\n";
     file << "<UnstructuredGrid>\n";
     file << "<Piece NumberOfPoints=\"" << totalPoints << "\" NumberOfCells=\"" << totalCells << "\">\n";
 
-    // Write points
-    file << "<Points>\n";
-    file << "<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (const auto& points : patchPoints)
+    // Aggregate point coordinates
+    gsMatrix<T> allPoints(3, totalPoints);
+    index_t pointColOffset = 0;
+    for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
     {
-        for (index_t j = 0; j < points.cols(); ++j)
-        {
-            file << points(0, j) << " " << points(1, j) << " " << points(2, j) << "\n";
-        }
+        const index_t cols = patchPointCounts[patchIdx];
+        allPoints.block(0, pointColOffset, 3, cols) = patchPoints[patchIdx];
+        pointColOffset += cols;
     }
-    file << "</DataArray>\n";
-    file << "</Points>\n";
 
-    // Write cells
-    file << "<Cells>\n";
-    
-    // Connectivity
-    file << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    // Prepare cell data containers
+    gsMatrix<index_t> connectivity(1, totalConnectivityEntries);
+    gsMatrix<index_t> offsets(1, totalCells);
+    gsMatrix<unsigned short> cellTypes(1, totalCells);
+    gsMatrix<index_t> patchIds(1, totalCells);
+
+    index_t connPos = 0;
+    index_t offsetIdx = 0;
     index_t pointOffset = 0;
+    index_t runningOffset = 0;
+
     for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
     {
         const gsVector<unsigned>& np = patchNp[patchIdx];
         const int d = mPatch.patch(patchIdx).domainDim();
+        const index_t verticesPerCell = patchVerticesPerCell[patchIdx];
+        const index_t cellsInPatch = patchCells[patchIdx];
+        const unsigned short cellType = static_cast<unsigned short>((d == 1) ? 3 : (d == 2) ? 9 : 12);
 
         if (d == 1)
         {
             // 1D: line segments
             for (index_t i = 0; i < np[0] - 1; ++i)
             {
-                file << (pointOffset + i) << " " << (pointOffset + i + 1) << "\n";
+                connectivity(0, connPos++) = pointOffset + i;
+                connectivity(0, connPos++) = pointOffset + i + 1;
+
+                runningOffset += verticesPerCell;
+                offsets(0, offsetIdx) = runningOffset;
+                cellTypes(0, offsetIdx) = cellType;
+                patchIds(0, offsetIdx) = static_cast<index_t>(patchIdx);
+                ++offsetIdx;
             }
         }
         else if (d == 2)
@@ -2281,7 +2406,17 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
                     index_t i1 = i0 + 1;
                     index_t i2 = i0 + np[0] + 1;
                     index_t i3 = i0 + np[0];
-                    file << i0 << " " << i1 << " " << i2 << " " << i3 << "\n";
+
+                    connectivity(0, connPos++) = i0;
+                    connectivity(0, connPos++) = i1;
+                    connectivity(0, connPos++) = i2;
+                    connectivity(0, connPos++) = i3;
+
+                    runningOffset += verticesPerCell;
+                    offsets(0, offsetIdx) = runningOffset;
+                    cellTypes(0, offsetIdx) = cellType;
+                    patchIds(0, offsetIdx) = static_cast<index_t>(patchIdx);
+                    ++offsetIdx;
                 }
             }
         }
@@ -2302,77 +2437,44 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
                         index_t i5 = i4 + 1;
                         index_t i6 = i4 + np[0] + 1;
                         index_t i7 = i4 + np[0];
-                        file << i0 << " " << i1 << " " << i2 << " " << i3 << " "
-                             << i4 << " " << i5 << " " << i6 << " " << i7 << "\n";
+
+                        connectivity(0, connPos++) = i0;
+                        connectivity(0, connPos++) = i1;
+                        connectivity(0, connPos++) = i2;
+                        connectivity(0, connPos++) = i3;
+                        connectivity(0, connPos++) = i4;
+                        connectivity(0, connPos++) = i5;
+                        connectivity(0, connPos++) = i6;
+                        connectivity(0, connPos++) = i7;
+
+                        runningOffset += verticesPerCell;
+                        offsets(0, offsetIdx) = runningOffset;
+                        cellTypes(0, offsetIdx) = cellType;
+                        patchIds(0, offsetIdx) = static_cast<index_t>(patchIdx);
+                        ++offsetIdx;
                     }
                 }
             }
         }
 
-        pointOffset += patchPoints[patchIdx].cols();
+        pointOffset += patchPointCounts[patchIdx];
     }
-    file << "</DataArray>\n";
 
-    // Offsets
-    file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
-    index_t offset = 0;
-    for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
-    {
-        const gsVector<unsigned>& np = patchNp[patchIdx];
-        const int d = mPatch.patch(patchIdx).domainDim();
+    // Write points
+    file << "<Points>\n";
+    writeDataArray(file, allPoints, {{"",""}}, PLOT_PRECISION, export_base64);
+    file << "</Points>\n";
 
-        index_t cellsInPatch = 1;
-        for (int dim = 0; dim < d; ++dim)
-            cellsInPatch *= (np[dim] - 1);
-
-        index_t verticesPerCell = (d == 1) ? 2 : (d == 2) ? 4 : 8;
-        for (index_t c = 0; c < cellsInPatch; ++c)
-        {
-            offset += verticesPerCell;
-            file << offset << "\n";
-        }
-    }
-    file << "</DataArray>\n";
-
-    // Cell types
-    file << "<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
-    for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
-    {
-        const gsVector<unsigned>& np = patchNp[patchIdx];
-        const int d = mPatch.patch(patchIdx).domainDim();
-
-        index_t cellsInPatch = 1;
-        for (int dim = 0; dim < d; ++dim)
-            cellsInPatch *= (np[dim] - 1);
-
-        // VTK cell types: 3=line, 9=quad, 12=hexahedron
-        int cellType = (d == 1) ? 3 : (d == 2) ? 9 : 12;
-        for (index_t c = 0; c < cellsInPatch; ++c)
-        {
-            file << cellType << "\n";
-        }
-    }
-    file << "</DataArray>\n";
+    // Write cells
+    file << "<Cells>\n";
+    writeDataArray(file, connectivity, {{"Name","connectivity"}}, PLOT_PRECISION, export_base64);
+    writeDataArray(file, offsets, {{"Name","offsets"}}, PLOT_PRECISION, export_base64);
+    writeDataArray(file, cellTypes, {{"Name","types"}}, PLOT_PRECISION, export_base64);
     file << "</Cells>\n";
 
     // Cell data for patch IDs
     file << "<CellData Scalars=\"PatchID\">\n";
-    file << "<DataArray type=\"Int32\" Name=\"PatchID\" format=\"ascii\">\n";
-    for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
-    {
-        const gsVector<unsigned>& np = patchNp[patchIdx];
-        const int d = mPatch.patch(patchIdx).domainDim();
-
-        index_t cellsInPatch = 1;
-        for (int dim = 0; dim < d; ++dim)
-            cellsInPatch *= (np[dim] - 1);
-
-        for (index_t c = 0; c < cellsInPatch; ++c)
-        {
-            file << patchIdx << "\n";
-        }
-    }
-    file << "</DataArray>\n";
+    writeDataArray(file, patchIds, {{"Name","PatchID"}}, PLOT_PRECISION, export_base64);
     file << "</CellData>\n";
 
     file << "</Piece>\n";
@@ -2389,6 +2491,7 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
                                       std::string const & fn,
                                       unsigned npts)
 {
+    const bool export_base64 = true;
     std::string mfn(fn);
     mfn.append(".vtu");
     std::ofstream file(mfn.c_str());
@@ -2402,8 +2505,12 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
     std::vector<gsMatrix<T>> patchPoints;
     std::vector<gsMatrix<T>> patchFields;
     std::vector<gsVector<unsigned>> patchNp;
+    std::vector<index_t> patchPointCounts;
+    std::vector<index_t> patchCells;
+    std::vector<index_t> patchVerticesPerCell;
     index_t totalPoints = 0;
     index_t totalCells = 0;
+    index_t totalConnectivityEntries = 0;
 
     // First pass: evaluate all patches and count points/cells
     for (index_t i = 0; i < field.nPieces(); ++i)
@@ -2440,81 +2547,90 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
         patchPoints.push_back(eval_geo);
         patchFields.push_back(eval_field);
         totalPoints += eval_geo.cols();
+        patchPointCounts.push_back(eval_geo.cols());
 
         // Calculate number of cells for this patch
         index_t cellsInPatch = 1;
         for (int dim = 0; dim < d; ++dim)
             cellsInPatch *= (np[dim] - 1);
         totalCells += cellsInPatch;
+        patchCells.push_back(cellsInPatch);
+
+        index_t verticesPerCell = (d == 1) ? 2 : (d == 2) ? 4 : 8;
+        patchVerticesPerCell.push_back(verticesPerCell);
+        totalConnectivityEntries += cellsInPatch * verticesPerCell;
     }
 
     // Write VTK header
     file << "<?xml version=\"1.0\"?>\n";
-    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\"";
+    if (export_base64)
+    {
+        const bool is_little_endian = []() -> bool
+        {
+            const unsigned short value = 0x0001;
+            return *(reinterpret_cast<const unsigned char*>(&value)) == 0x01;
+        }();
+        file << " byte_order=\"" << (is_little_endian ? "LittleEndian" : "BigEndian")
+             << "\" header_type=\"UInt64\"";
+    }
+    file << ">\n";
     file << "<UnstructuredGrid>\n";
     file << "<Piece NumberOfPoints=\"" << totalPoints << "\" NumberOfCells=\"" << totalCells << "\">\n";
 
     // Determine field type (scalar, vector, or tensor)
     index_t fieldRows = patchFields[0].rows();
     std::string fieldType = (fieldRows == 1) ? "Scalars" : (fieldRows > 3 ? "Tensors" : "Vectors");
-    
-    // Write point data (solution field)
-    file << "<PointData " << fieldType << "=\"SolutionField\">\n";
-    file << "<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\"" << fieldRows << "\">\n";
-    
-    for (const auto& fieldData : patchFields)
-    {
-        for (index_t j = 0; j < fieldData.cols(); ++j)
-        {
-            for (index_t i = 0; i < fieldData.rows(); ++i)
-                file << fieldData(i, j) << " ";
-            // Pad vectors to 3 components if needed
-            if (fieldType == "Vectors" && fieldData.rows() < 3)
-            {
-                for (index_t i = fieldData.rows(); i < 3; ++i)
-                    file << "0 ";
-            }
-            file << "\n";
-        }
-    }
-    file << "</DataArray>\n";
-    file << "</PointData>\n";
+    bool padVectors = (fieldType == "Vectors" && fieldRows < 3);
+    index_t fieldComponents = padVectors ? 3 : fieldRows;
 
-    // Write points (geometry)
-    file << "<Points>\n";
-    file << "<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (const auto& points : patchPoints)
-    {
-        for (index_t j = 0; j < points.cols(); ++j)
-        {
-            file << points(0, j) << " " << points(1, j) << " " << points(2, j) << "\n";
-        }
-    }
-    file << "</DataArray>\n";
-    file << "</Points>\n";
+    gsMatrix<T> allPoints(3, totalPoints);
+    gsMatrix<T> allField = gsMatrix<T>::Zero(fieldComponents, totalPoints);
 
-    // Write cells (same as geometry-only version)
-    file << "<Cells>\n";
-    
-    // Connectivity
-    file << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    index_t columnOffset = 0;
+    for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
+    {
+        const index_t cols = patchPointCounts[patchIdx];
+        allPoints.block(0, columnOffset, 3, cols) = patchPoints[patchIdx];
+        allField.block(0, columnOffset, patchFields[patchIdx].rows(), cols) = patchFields[patchIdx];
+        columnOffset += cols;
+    }
+
+    // Prepare cell data containers
+    gsMatrix<index_t> connectivity(1, totalConnectivityEntries);
+    gsMatrix<index_t> offsets(1, totalCells);
+    gsMatrix<unsigned short> cellTypes(1, totalCells);
+    gsMatrix<index_t> patchIds(1, totalCells);
+
+    index_t connPos = 0;
+    index_t offsetIdx = 0;
     index_t pointOffset = 0;
+    index_t runningOffset = 0;
+
     for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
     {
         const gsVector<unsigned>& np = patchNp[patchIdx];
         const int d = field.patch(patchIdx).domainDim();
+        const index_t verticesPerCell = patchVerticesPerCell[patchIdx];
+        const index_t cellsInPatch = patchCells[patchIdx];
+        const unsigned short cellType = static_cast<unsigned short>((d == 1) ? 3 : (d == 2) ? 9 : 12);
 
         if (d == 1)
         {
-            // 1D: line segments
             for (index_t i = 0; i < np[0] - 1; ++i)
             {
-                file << (pointOffset + i) << " " << (pointOffset + i + 1) << "\n";
+                connectivity(0, connPos++) = pointOffset + i;
+                connectivity(0, connPos++) = pointOffset + i + 1;
+
+                runningOffset += verticesPerCell;
+                offsets(0, offsetIdx) = runningOffset;
+                cellTypes(0, offsetIdx) = cellType;
+                patchIds(0, offsetIdx) = static_cast<index_t>(patchIdx);
+                ++offsetIdx;
             }
         }
         else if (d == 2)
         {
-            // 2D: quads
             for (index_t j = 0; j < np[1] - 1; ++j)
             {
                 for (index_t i = 0; i < np[0] - 1; ++i)
@@ -2523,13 +2639,22 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
                     index_t i1 = i0 + 1;
                     index_t i2 = i0 + np[0] + 1;
                     index_t i3 = i0 + np[0];
-                    file << i0 << " " << i1 << " " << i2 << " " << i3 << "\n";
+
+                    connectivity(0, connPos++) = i0;
+                    connectivity(0, connPos++) = i1;
+                    connectivity(0, connPos++) = i2;
+                    connectivity(0, connPos++) = i3;
+
+                    runningOffset += verticesPerCell;
+                    offsets(0, offsetIdx) = runningOffset;
+                    cellTypes(0, offsetIdx) = cellType;
+                    patchIds(0, offsetIdx) = static_cast<index_t>(patchIdx);
+                    ++offsetIdx;
                 }
             }
         }
         else if (d == 3)
         {
-            // 3D: hexahedra
             for (index_t k = 0; k < np[2] - 1; ++k)
             {
                 for (index_t j = 0; j < np[1] - 1; ++j)
@@ -2544,77 +2669,54 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
                         index_t i5 = i4 + 1;
                         index_t i6 = i4 + np[0] + 1;
                         index_t i7 = i4 + np[0];
-                        file << i0 << " " << i1 << " " << i2 << " " << i3 << " "
-                             << i4 << " " << i5 << " " << i6 << " " << i7 << "\n";
+
+                        connectivity(0, connPos++) = i0;
+                        connectivity(0, connPos++) = i1;
+                        connectivity(0, connPos++) = i2;
+                        connectivity(0, connPos++) = i3;
+                        connectivity(0, connPos++) = i4;
+                        connectivity(0, connPos++) = i5;
+                        connectivity(0, connPos++) = i6;
+                        connectivity(0, connPos++) = i7;
+
+                        runningOffset += verticesPerCell;
+                        offsets(0, offsetIdx) = runningOffset;
+                        cellTypes(0, offsetIdx) = cellType;
+                        patchIds(0, offsetIdx) = static_cast<index_t>(patchIdx);
+                        ++offsetIdx;
                     }
                 }
             }
         }
 
-        pointOffset += patchPoints[patchIdx].cols();
+        pointOffset += patchPointCounts[patchIdx];
     }
-    file << "</DataArray>\n";
 
-    // Offsets
-    file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
-    index_t offset = 0;
-    for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
+    if (padVectors)
     {
-        const gsVector<unsigned>& np = patchNp[patchIdx];
-        const int d = field.patch(patchIdx).domainDim();
-
-        index_t cellsInPatch = 1;
-        for (int dim = 0; dim < d; ++dim)
-            cellsInPatch *= (np[dim] - 1);
-
-        index_t verticesPerCell = (d == 1) ? 2 : (d == 2) ? 4 : 8;
-        for (index_t c = 0; c < cellsInPatch; ++c)
-        {
-            offset += verticesPerCell;
-            file << offset << "\n";
-        }
+        // zero padding already handled by initialisation
     }
-    file << "</DataArray>\n";
 
-    // Cell types
-    file << "<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
-    for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
-    {
-        const gsVector<unsigned>& np = patchNp[patchIdx];
-        const int d = field.patch(patchIdx).domainDim();
+    // Write point data (solution field)
+    file << "<PointData " << fieldType << "=\"SolutionField\">\n";
+    writeDataArray(file, allField, {{"Name","SolutionField"}}, PLOT_PRECISION, export_base64);
+    file << "</PointData>\n";
 
-        index_t cellsInPatch = 1;
-        for (int dim = 0; dim < d; ++dim)
-            cellsInPatch *= (np[dim] - 1);
+    // Write points (geometry)
+    file << "<Points>\n";
+    writeDataArray(file, allPoints, {{"",""}}, PLOT_PRECISION, export_base64);
+    file << "</Points>\n";
 
-        // VTK cell types: 3=line, 9=quad, 12=hexahedron
-        int cellType = (d == 1) ? 3 : (d == 2) ? 9 : 12;
-        for (index_t c = 0; c < cellsInPatch; ++c)
-        {
-            file << cellType << "\n";
-        }
-    }
-    file << "</DataArray>\n";
+    // Write cells
+    file << "<Cells>\n";
+    writeDataArray(file, connectivity, {{"Name","connectivity"}}, PLOT_PRECISION, export_base64);
+    writeDataArray(file, offsets, {{"Name","offsets"}}, PLOT_PRECISION, export_base64);
+    writeDataArray(file, cellTypes, {{"Name","types"}}, PLOT_PRECISION, export_base64);
     file << "</Cells>\n";
 
     // Cell data for patch IDs
     file << "<CellData Scalars=\"PatchID\">\n";
-    file << "<DataArray type=\"Int32\" Name=\"PatchID\" format=\"ascii\">\n";
-    for (size_t patchIdx = 0; patchIdx < patchPoints.size(); ++patchIdx)
-    {
-        const gsVector<unsigned>& np = patchNp[patchIdx];
-        const int d = field.patch(patchIdx).domainDim();
-
-        index_t cellsInPatch = 1;
-        for (int dim = 0; dim < d; ++dim)
-            cellsInPatch *= (np[dim] - 1);
-
-        for (index_t c = 0; c < cellsInPatch; ++c)
-        {
-            file << patchIdx << "\n";
-        }
-    }
-    file << "</DataArray>\n";
+    writeDataArray(file, patchIds, {{"Name","PatchID"}}, PLOT_PRECISION, export_base64);
     file << "</CellData>\n";
 
     file << "</Piece>\n";
