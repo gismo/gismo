@@ -359,10 +359,15 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
     index_t pi, pi2, os, os2, ci, ci2;
     c1dim = 0;//reset
 
+    //for neighbor
+    gsSurfMesh::Vertex v_N;
+    real_t a_N;
+    int n_N;
+
     real_t a;
     gsMatrix<> C1, C2, b;
     for (auto v : msh.vertices()) //for all vertices
-    {                    
+    {
         n = msh.valence(v);
         if (n==2) //corner vertex - we assume msh.is_boundary(v) [manifold mesh]
         {
@@ -417,37 +422,118 @@ gsSparseMatrix<> basisFromMesh(const gsSurfMesh & msh, const gsDofMapper & cmapp
             cmapper.indexOnPatch(v.idx(), pi2, ci);
             M.insert(os+cpIndex(ci, 1, 0), c1dim) = (real_t)0.5;
             M.insert(os+cpIndex(ci, 1, 1), c1dim++) = (real_t)1.0;
+
+            //MODIF BOUNDARY REGULAR neighbors
         }
 
         if (n==4 && !msh.is_boundary(v) ) // inner regular
         {
             for ( auto he : msh.halfedges(v) ) // iterate over all HE (n=4 functions)
             {
-                auto h = he;
+                auto h = he; // First patch
                 pi = msh.face(h).idx();
                 os = offset[pi];
                 cmapper.indexOnPatch(v.idx(), pi, ci);
                 M.insert(os+cpIndex(ci, 0, 0), c1dim) = (real_t)0.25;
                 M.insert(os+cpIndex(ci, 1, 0), c1dim) = (real_t)0.5;
                 M.insert(os+cpIndex(ci, 0, 1), c1dim) = (real_t)0.5;
-                M.insert(os+cpIndex(ci, 1, 1), c1dim) = (real_t)1.0;    
-                h = msh.ccw_rotated_halfedge(h);// next patch
+                M.insert(os+cpIndex(ci, 1, 1), c1dim) = (real_t)1.0;//ANCHOR!
+
+                v_N = msh.to_vertex(h);
+                n_N = msh.valence(v_N); //modif first axis
+                if ( 4 != n_N && !msh.is_boundary(v_N) )
+                {
+                    a_N = 2 * math::cos(2*EIGEN_PI/n_N);
+                    M.insert(os+cpIndex(ci, 2, 0), c1dim) = (real_t)0.225;//=9/40
+                    M.insert(os+cpIndex(ci, 2, 1), c1dim) = (real_t)(0.225 - a_N/80);
+                    M.insert(os+cpIndex(ci, 3, 1), c1dim) = (real_t)(0.0675*a_N);//=27/400*a_N
+                }
+                v_N = msh.to_vertex( msh.ccw_rotated_halfedge(h) );
+                n_N = msh.valence(v_N); //modif second axis
+                if ( 4 != n_N && !msh.is_boundary(v_N) )
+                {
+                    a_N = 2 * math::cos(2*EIGEN_PI/n_N);
+                    M.insert(os+cpIndex(ci, 0, 2), c1dim) = (real_t)0.225;//=9/40
+                    M.insert(os+cpIndex(ci, 1, 2), c1dim) = (real_t)(0.225 - a_N/80);
+                    M.insert(os+cpIndex(ci, 1, 3), c1dim) = (real_t)(0.0675*a_N);//=27/400*a_N
+                }
+                
+                h = msh.ccw_rotated_halfedge(h);// Second patch
                 pi = msh.face(h).idx();
                 os = offset[pi];
                 cmapper.indexOnPatch(v.idx(), pi, ci);
                 M.insert(os+cpIndex(ci, 0, 0), c1dim) = (real_t)0.25;
                 M.insert(os+cpIndex(ci, 1, 0), c1dim) = (real_t)0.5;
-                h = msh.ccw_rotated_halfedge(h);// next patch
+
+                v_N = msh.to_vertex(h);
+                n_N = msh.valence(v_N); //modif first axis
+                if ( 4 != n_N && !msh.is_boundary(v_N) )
+                {
+                    a_N = 2 * math::cos(2*EIGEN_PI/n_N);
+                    M.insert(os+cpIndex(ci, 2, 0), c1dim) = (real_t)0.225;//=9/40
+                    M.insert(os+cpIndex(ci, 2, 1), c1dim) = (real_t)(0.225 - a_N/80);
+                    M.insert(os+cpIndex(ci, 3, 1), c1dim) = (real_t)(0.0675*a_N);//=27/400*a_N
+                }
+                v_N = msh.to_vertex( msh.ccw_rotated_halfedge(h) );
+                n_N = msh.valence(v_N); //modif second axis
+                if ( 4 != n_N && !msh.is_boundary(v_N) )
+                {
+                    a_N = 2 * math::cos(2*EIGEN_PI/n_N);
+                    M.insert(os+cpIndex(ci, 0, 2), c1dim) = (real_t)(-0.025);//=-1/40
+                    M.insert(os+cpIndex(ci, 1, 2), c1dim) = -(2-a_N)/80;
+                    M.insert(os+cpIndex(ci, 1, 3), c1dim) = -0.0075*a_N;//=-3/400*a_N
+                }
+
+                h = msh.ccw_rotated_halfedge(h);// Third patch
                 pi = msh.face(h).idx();
                 os = offset[pi];
                 cmapper.indexOnPatch(v.idx(), pi, ci);
                 M.insert(os+cpIndex(ci, 0, 0), c1dim) = (real_t)0.25;
-                h = msh.ccw_rotated_halfedge(h); // next patch
+
+                v_N = msh.to_vertex(h);
+                n_N = msh.valence(v_N); //modif first axis
+                if ( 4 != n_N && !msh.is_boundary(v_N) )
+                {
+                    a_N = 2 * math::cos(2*EIGEN_PI/n_N);
+                    M.insert(os+cpIndex(ci, 2, 0), c1dim) = (real_t)(-0.025);//=-1/40
+                    M.insert(os+cpIndex(ci, 2, 1), c1dim) = -(2-a_N)/80;
+                    M.insert(os+cpIndex(ci, 3, 1), c1dim) = -0.0075*a_N;//=-3/400*a_N
+                }
+                v_N = msh.to_vertex( msh.ccw_rotated_halfedge(h) );
+                n_N = msh.valence(v_N); //modif second axis
+                if ( 4 != n_N && !msh.is_boundary(v_N) )
+                {
+                    a_N = 2 * math::cos(2*EIGEN_PI/n_N);
+                    M.insert(os+cpIndex(ci, 0, 2), c1dim) = (real_t)(-0.025);//=-1/40
+                    M.insert(os+cpIndex(ci, 1, 2), c1dim) = -(2-a_N)/80; //------------------
+                    M.insert(os+cpIndex(ci, 1, 3), c1dim) = -0.0075*a_N;//=-3/400*a_N
+                }
+                
+                h = msh.ccw_rotated_halfedge(h); // Forth patch
                 pi = msh.face(h).idx();
                 os = offset[pi];
                 cmapper.indexOnPatch(v.idx(), pi, ci);
                 M.insert(os+cpIndex(ci, 0, 0), c1dim) = (real_t)0.25;
-                M.insert(os+cpIndex(ci, 0, 1), c1dim++) = (real_t)0.5;
+                M.insert(os+cpIndex(ci, 0, 1), c1dim) = (real_t)0.5;
+
+                n_N = msh.valence(v_N); //modif first axis
+                if ( 4 != n_N && !msh.is_boundary(v_N) )
+                {
+                    a_N = 2 * math::cos(2*EIGEN_PI/n_N);
+                    M.insert(os+cpIndex(ci, 2, 0), c1dim) = (real_t)(-0.025);//=-1/40
+                    M.insert(os+cpIndex(ci, 2, 1), c1dim) = -(2-a_N)/80;
+                    M.insert(os+cpIndex(ci, 3, 1), c1dim) = -0.0075*a_N;//=-3/400*a_N
+                }
+                v_N = msh.to_vertex( msh.ccw_rotated_halfedge(h) );
+                n_N = msh.valence(v_N); //modif second axis
+                if ( 4 != n_N && !msh.is_boundary(v_N) )
+                {
+                    a_N = 2 * math::cos(2*EIGEN_PI/n_N);
+                    M.insert(os+cpIndex(ci, 0, 2), c1dim) = (real_t)0.225;//=9/40
+                    M.insert(os+cpIndex(ci, 1, 2), c1dim) = (real_t)(0.225 - a_N/80);
+                    M.insert(os+cpIndex(ci, 1, 3), c1dim) = (real_t)(0.0675*a_N);//=27/400*a_N
+                }
+                ++c1dim;
             }
         }
 
