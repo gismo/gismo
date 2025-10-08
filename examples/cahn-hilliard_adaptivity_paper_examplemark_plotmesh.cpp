@@ -13,22 +13,12 @@
                L. Venta Viñuela (UniPv)
 
 
-    Tensor product (check flags in .xml file):
-    time./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000
-
-    THB (check flags in .xml file):
-    (For L2 projection in the coarsening)
-        time ./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000 -c 0
-    (For QI based on local interpolation in the coarsening)
-        time ./bin/cahn-hilliard_adaptivity_example --plot --random -r 5 -t 1e-3 -N 1000 -c 1
-
-    With lambda 1.5e-3
-    ./bin/cahn-hilliard_adaptivity_example_corrected --plot -r 5 -t 1.5e-3 --random  -N 1000 -c 0 -v 2 -s 0 -f pde/cahn_hilliard_bvp.xml -o "test"
-
-    // With pardiso solver (lambda = 1.5e-3)
-    srun ./build_pardiso/bin/cahn-hilliard_adaptivity_paper_example -r 6 -t 1.5e-3 -N 1000 -c 0 -v 2 -s 0 --plot --random -f pde/cahn_hilliard_bvp.xml    -o "results_random/trial_merge/out" 1> results_random/trial_merge/trial_r_6_tp.log
-    srun ./build_pardiso/bin/cahn-hilliard_adaptivity_paper_example -r 6 -t 1.5e-3 -N 1000 -c 0 -v 2 -s 0 --plot --random -f pde/cahn_hilliard_bvp_ad.xml -o "results_random/trial_merge/out" 1> results_random/trial_merge/trial_r_5_l2.log
-    srun ./build_pardiso/bin/cahn-hilliard_adaptivity_paper_example -r 6 -t 1.5e-3 -N 1000 -c 1 -v 2 -s 0 --plot --random -f pde/cahn_hilliard_bvp_ad.xml -o "results_random/trial_merge/out" 1> results_random/trial_merge/trial_r_6_qi.log
+    2D
+    ./build_pardiso/bin/cahn-hilliard_adaptivity_paper_examplemark_plotmesh -r 6 -t 1.5e-3 -N 1000 -c 0 -v 2 -s 0 -p 20 --plot           --random -f pde/cahn_hilliard_bvp_Sameelement1.xml      -o “output/TP_nucleation_2D”
+    ./build_pardiso/bin/cahn-hilliard_adaptivity_paper_examplemark_plotmesh -r 6 -t 1.5e-3 -N 1000 -c 1 -v 2 -s 0 -p 20 --plot --plotmesh --random -f pde/cahn_hilliard_bvp_ad_Sameelement1.xml  -o “output/QI_nucleation_2D”
+    3D
+    ./build_pardiso/bin/cahn-hilliard_adaptivity_paper_examplemark_plotmesh  -r 6 -t 1.5e-3 -N 1000 -c 0 -v 2 -s 0 -p 20 --plot           --random -f pde/cahn_hilliard_3d_bvp.xml      -o "output/TP_nucleation_3D"
+    ./build_pardiso/bin/cahn-hilliard_adaptivity_paper_examplemark_plotmesh  -r 6 -t 1.5e-3 -N 1000 -c 1 -v 2 -s 0 -p 20 --plot --plotmesh --random -f pde/cahn_hilliard_3d_bvp_ad.xml  -o “output/QI_nucleation_3D”
 
     -----------------------------------------------------------------------
     TODO;
@@ -418,16 +408,16 @@ gsSparseSolver<>::uPtr solver;
         if (pattern==0) // nucleation
         {
             if (dim==2)
-                file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_nucleation.xml";
+                file_name = "pde/ic_nucleation.xml";
             else if (dim==3)
-                file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_nucleation_3d.xml";
+                file_name = "pde/ic_nucleation_3d.xml";
         }
         else if (pattern==1) // spinoidal
         {
             if (dim==2)
-                file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_spinoidal.xml";
+                file_name = "pde/ic_spinoidal.xml";
             else if (dim==3)
-                file_name = "/home/lucasventa/gismo_random/filedata/pde/ic_spinoidal_3d.xml";
+                file_name = "pde/ic_spinoidal_3d.xml";
         }
 
         gsMultiPatch<> MP;
