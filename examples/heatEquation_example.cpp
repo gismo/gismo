@@ -22,9 +22,11 @@ int main(int argc, char *argv[])
 {
     bool plot = false;
     bool export_base64 = false;
+    int numSteps = 40;
     gsCmdLine cmd("Testing the heat equation.");
     cmd.addSwitch("plot", "Plot the result in ParaView.", plot);
     cmd.addSwitch("base64", "write in binary format", export_base64);
+    cmd.addInt( "n", "numsteps", "Number of time steps.", numSteps);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Source function
@@ -93,7 +95,6 @@ int main(int argc, char *argv[])
     gsMatrix<> Sol, Rhs;
     int ndof = assembler.numDofs();
     real_t endTime = 0.1;
-    int numSteps = 40;
     Sol.setZero(ndof, 1); // Initial solution
 
     real_t Dt = endTime / numSteps ;
