@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    // std::string fn("pde/circle.xml");
-    std::string fn("pde/lshape.xml");
+    std::string fn("pde/circle.xml");
+    // std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -86,19 +86,19 @@ int main(int argc, char *argv[])
     fd.getId(2001, rhs);
 
     //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<double> bs_basis(mpLeft, true);//true: poly-splines (not NURBS)
 
-    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< bs_basis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
     //! [Problem setup]
-    gsExprAssembler<> A(1,1);
+    gsExprAssembler<> ACM(1,1);
     //A.setOptions(Aopt);
-    gsInfo<<"Active options:\n"<< A.options() <<"\n";
+    gsInfo<<"Active options:\n"<< ACM.options() <<"\n";
 
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
+    ACM.setIntegrationElements(bs_basis);
+    gsExprEvaluator<> evCM(ACM);
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 
     for (int r=0; r<=numRefine; ++r)
     {
-        dbasis.uniformRefine();
+        bs_basis.uniformRefine();
         mpLeft.uniformRefine();
     }
     gsBoundaryConditions<> bc;
@@ -122,47 +122,47 @@ int main(int argc, char *argv[])
     {
        bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
     }
-    geometryMap GLeft = A.getMap(mpLeft);
+    geometryMap GLeft = ACM.getMap(mpLeft);
     gsStopwatch timer;
 
     // Set the discretization space // different boundary condition !
-    space ru   = A.getSpace(dbasis);
+    space ru   = ACM.getSpace(bs_basis);
 
     // Set the source term for Poisson equation
-    auto SFunc = A.getCoeff(rhs, GLeft);
+    auto rhs_f = ACM.getCoeff(rhs, GLeft);
 
     // Solution vector and solution variable
     gsMatrix<> rsolVector;
+    solution u_sol = ACM.getSolution(ru, rsolVector);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 0: Computes the initial solution of the PDEs 
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     ru.setup(bc, dirichlet::l2Projection, 0);
     // Initialize the system
-    A.initSystem();
+    ACM.initSystem();
     gsInfo<< "Solving PDEs " <<std::flush;
-    gsInfo<< A.numDofs() <<std::flush;    
+    gsInfo<< ACM.numDofs() <<std::flush;    
     //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
     timer.restart();
-    A.assemble(
+    ACM.assemble(
     igrad(ru, GLeft) * igrad(ru, GLeft).tr() * meas(GLeft) //matrix
     ,
-    ru * SFunc * meas(GLeft) //rhs vector
+    ru * rhs_f * meas(GLeft) //rhs vector
     );
     gsInfo<< "." <<std::flush;// Assemblying done
     timer.restart();
-    solver.compute( A.matrix() );
-    rsolVector     = solver.solve(A.rhs());
-    solution u_sol = A.getSolution(ru, rsolVector);
-    ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
+    solver.compute( ACM.matrix() );
+    rsolVector     = solver.solve(ACM.rhs());
+    evCM.integralElWise( (ilapl(u_sol, GLeft) +rhs_f).sqNorm() );
     //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
-    auto elwise    = ev.elementwise();
+    auto elwise    = evCM.elementwise();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(bs_basis, mpLeft, maxIter, IntensityMAE);
     // auto density = MAE.buildDensity(elwise, 0.05, circleN);
     auto density = MAE.buildStrategyDensity(elwise, 0.9);
     auto Psitp   = MAE.buildMultiPatch(density);
@@ -196,6 +196,8 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
     if (true){
+    gsMultiPatch<> sol_restr; // restricted solution
+    //boubdary conditions
     gsBoundaryConditions<> bc;
     bc.setGeoMap(Psi);
     // For simplicity, set Dirichlet boundary conditions
@@ -208,8 +210,11 @@ int main(int argc, char *argv[])
     gsInfo<<"Source function is "<< rhs << "\n";
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
-    dbasis.clear();
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
+    //! [Problem setup]
+    gsExprAssembler<> A(1,1);
+    A.setIntegrationElements(bs_basis);
+    gsExprEvaluator<> ev(A);
 
     geometryMap PP  = A.getMap(Psi);
     
@@ -221,10 +226,13 @@ int main(int argc, char *argv[])
     space ru        = A.getSpace(dbasis);
 
     // Set the source term for Poisson equation
-    auto SFunc      = A.getCoeff(rhs, PP);
+    auto rhs_f      = A.getCoeff(rhs, PP);
 
     // Recover manufactured solution for Poisson equation
     auto u_ex       = ev.getVariable(s, PP);
+
+    // solution as mutlipatch
+    // auto ru_sol       = A.getSolution(sol_restr);
 
     // Solution vector and solution variable
     gsMatrix<> rsolVector;
@@ -254,7 +262,7 @@ int main(int argc, char *argv[])
         A.assemble(
         igrad(ru, PP) * igrad(ru, PP).tr() * meas(PP) //matrix
         ,
-        ru * SFunc * meas(PP) //rhs vector
+        ru * rhs_f * meas(PP) //rhs vector
         );
 
         ma_time += timer.stop();
@@ -267,14 +275,8 @@ int main(int argc, char *argv[])
         timer.restart();
         solver.compute( A.matrix() );
         rsolVector = solver.solve(A.rhs());
-
         slv_time += timer.stop();
-
         gsInfo<< "." <<std::flush; // Linear solving done
-
-        ru.setup(bc, dirichlet::l2Projection, -1);
-        ev.integralElWise( (ilapl(ru_sol, PP)+ SFunc ).sqNorm() );
-        auto elwise = ev.elementwise();
 
         // Compute the global error indicators.
         DoFPDE[r] = A.numDofs();
@@ -290,11 +292,15 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
             // ev.integralElWise( (  igrad(ru_sol, PP)*meas(PP) ).sqNorm() );
-            ev.integralElWise( (  ilapl(ru_sol, PP) + SFunc ).sqNorm() );
-
+            ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
+            //! [errorComputation]
             std::vector<real_t> eltErrs  = ev.elementwise();
             std::vector<bool> elMarked( eltErrs.size() );
-            //! [errorComputation]
+
+            // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // ###   Step 1-2 : Computes the density function
+            // ###         and the multipatch adaptive mapping
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
@@ -310,11 +316,17 @@ int main(int argc, char *argv[])
                 }
                 for(size_t i=0; i<eltErrs.size(); ++i)
                 {
-                    if (Minvalue/pow(DoFPDE[r],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
+                    auto POWMinvalue = Minvalue/pow(DoFPDE[r],adaptRefParam);
+                    if (POWMinvalue < eltErrs[i]) // Avoid numerical issues
                     {
                         elMarked[i] = true;
                     }
                 }
+            evCM.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
+            gsInfo << "Number of elements in  basis: " << dbasis.basis(0).size() << "\n";
+            auto density = MAE.buildStrategyDensity(elwise, 0.85);
+            auto Psitp   = MAE.buildMultiPatch(density);
+            Psi          = MAE.buildCompBasisMultiPatch(dbasis, Psitp);// computes the composition mapping mpLeft o Psitp
             }
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             // Refine the marked elements with a 1-ring of cells around marked elements
@@ -388,7 +400,7 @@ int main(int argc, char *argv[])
         collection.newTimeStep(&Psi);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
-        collection.addField((  ilapl(ru_sol, PP)+ SFunc ).sqNorm()*meas(PP),"indecator");
+        collection.addField((  ilapl(ru_sol, PP)+ rhs_f ).sqNorm()*meas(PP),"indecator");
         collection.addField(jac(PP).det(), "Jacobian function");
         collection.addField(u_ex, "exact solution");
         collection.saveTimeStep();

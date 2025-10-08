@@ -39,16 +39,29 @@ public:
 
     // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
     gsMultiPatch<> buildStrategyDensity(const std::vector<double> &elwiseERROR, const double MarkPercentage = 0.9) const;
+    
+    //-------------------------------------------------------------------------------------------------------------------------
+    //                          functions to build mapping from density       .................................................
+    //-------------------------------------------------------------------------------------------------------------------------
 
     // Method to build a multipatch adaptive mapping
     gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density) const;
-    gsMultiPatch<> buildOpadMultiPatch(const gsMultiPatch<> mpLeft, gsMultiPatch<> Psi, const gsMultiPatch<> &density) const;
+
+    // Method to build a multipatch adaptive mapping in the same space (hb-spline)
+    gsMultiPatch<> buildHBMultiPatch(const gsMultiBasis<> dbasis, const gsMultiPatch<> &density) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
-    gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree = 2, double quadValue = 1.) const;
+    gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree = 0, double quadValue = 1.) const;
+
+    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
+    gsMultiPatch<> buildCompBasisMultiPatch(const gsMultiBasis<> dbasis, const gsMultiPatch<> Psitp) const;
 
     // Method to find the span of a knot vector
     index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;
+
+    //-------------------------------------------------------------------------------------------------------------------------
+    //                          Useful functions for time moving meshes       .................................................
+    //-------------------------------------------------------------------------------------------------------------------------
 
     // Method to compute the basis functions and their derivatives
     void basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,

@@ -69,15 +69,16 @@ int main(int argc, char *argv[])
 
     // Load the file
     gsFileData<> fd(fn);
+    // ...
+    gsMultiPatch<> mpLeft, PsiF;// Initial geometry and the resluted adaptive mapping
+    fd.getId(1,mpLeft);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::NurbsSphere(1.,0.,0.,0.));
-    // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    // gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
-    // ...
-    gsMultiPatch<> mpLeft, PsiF;// Initial geometry and the resluted adaptive mapping
-    fd.getId(1,mpLeft);
+    // mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    // mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
+
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     //mpLeft.patch(0).coefs() *= coef_V;
