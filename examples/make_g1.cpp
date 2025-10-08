@@ -42,6 +42,18 @@ gsMultiPatch<> mesh_to_multipatch(const gsSurfMesh & msh)
 }
 
 
+bool on_xy_plane(gsMultiPatch<> & mp)
+{
+    index_t n = mp.geoDim();
+    if ( n<3 )
+        return true;
+    n = n - 2;
+    for (size_t q = 0; q < mp.nPatches(); ++q)
+        if ( (mp.patch(q).coefs().rightCols(n).array()!=0).any() )
+            return false;
+    return true;
+}
+
 // Toepliz of (0,1,0,..0)
 gsMatrix<> circulant(index_t n)
 {
@@ -60,26 +72,37 @@ bool checkG1(gsMultiPatch<> & mp, bool verbose = false) // BUG on boundary ??
     ev.setIntegrationDomain(basis.domain());
     auto G = ev.getMap(mp);
 
+    if (verbose)
+        gsInfo  <<"\nG : ["<<mp.parDim()<<"] --> ["<<mp.geoDim()<< "]\n";
+        
     ev.integralInterface( ( G.left() - G.right() ).sqNorm() );
     ev.calcSqrt();
     bool ok = (ev.value()<1e-3);
-    if (ok) gsInfo  <<"\nSurface is C0.";
-    gsInfo  <<"\nResult (C0): "<< ev.value() <<"\n";
+    if (verbose && ok) gsInfo  <<"\nSurface is C0.";
+    if (!ok) gsInfo  <<"\nResult (C0): "<< ev.value() <<"\n";
     if (verbose)
+    {
         gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";//<<"\n";
+    }
 
     ev.integralInterface( (sn(G.left()).normalized()-sn(G.right()).normalized()).sqNorm() );
     ev.calcSqrt();
     ok &= (ev.value()<1e-3);
-    if (ok) gsInfo  <<"\nSurface is G1.";
-    gsInfo  <<"\nResult (G1): "<< ev.value() <<"\n";
+    if (verbose && ok) gsInfo  <<"\nSurface is G1.";
+    if (!ok) gsInfo  <<"\nResult (G1): "<< ev.value() <<"\n";
     if (verbose)
+    {
         gsInfo<<"Per edge: "<<ev.allValues().transpose() <<"\n";//<<"\n";
+    }
+
+    /*
     ev.integralInterface( (sn(G.left())-sn(G.right())).sqNorm() );
     ev.calcSqrt();
     ok &= (ev.value()<1e-3);
-    if (ok) gsInfo  <<"\nSurface has continuous normal.";
-    gsInfo  <<"\nResult (non-unit normal): "<< ev.value() <<"\n";
+    if (verbose &&ok) gsInfo  <<"\nSurface has continuous normal.";
+    if (verbose)
+        gsInfo  <<"\nResult (non-unit normal): "<< ev.value() <<"\n";
+    */
 
     /*
     ev.maxInterface( abs( (fform(G.left() ).inv()*fform2nd(G.left() )).det() -
@@ -140,6 +163,7 @@ void PlotBasis(const gsSparseMatrix<> & cf, const gsMultiPatch<> & mp,
     gsParaviewCollection col("ccbasis");
     gsMultiPatch<> mmp = mp;
     index_t d = mp.geoDim();
+    if ( on_xy_plane(mmp) && 3==d) --d;
     gsInfo << "dim " <<d<<"\n";
     const size_t np = mp.nPatches();
     gsVector<index_t> offset(np+1);
@@ -170,8 +194,8 @@ void PlotBasis(const gsSparseMatrix<> & cf, const gsMultiPatch<> & mp,
         //xml << mmp;
         
         //--- Check that the function is G1
-        // if (!checkG1(mmp, false))
-        //    gsInfo <<"----------- Basis function number "<< k <<" FAILED the test ------------\n";
+        if (2==d && !checkG1(mmp, false))
+            gsInfo <<"----------- Basis function number "<< k <<" FAILED the test ------------\n";
 
         if (d>2) pn = false; // no control net in 4D
         
@@ -690,6 +714,7 @@ int main(int argc, char *argv[])
     filedata.getFirst(mp);
     gsInfo<< "Got "<< mp <<"\n";
     mp.computeTopology(1e-3);
+        
     gsDofMapper mapper = mp.getMapper(1e-3); // np*36
 
     gsMultiBasis<> mb(mp);
@@ -726,6 +751,9 @@ int main(int argc, char *argv[])
     gsFileData<> out;
     out << pr;
     out.save("surface_g1");
+
+    if (!checkG1(pr, false))
+            gsInfo <<"----------- Surface is not G1---\n";
 
 //    gsWriteParaview(mp, ""e, numSamples, plot_mesh, plot_net);
 //    gsFileManager::open(pname+".pvd");
