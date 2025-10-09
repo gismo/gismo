@@ -1,0 +1,17 @@
+[project]
+name = "gismo"
+version = "25.7.0"
+description = "G+Smo (Geometry + Simulation Modules) is a C++ library for isogeometric analysis"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64"]
+
+[tasks]
+configure = "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGISMO_BUILD_EXAMPLES=ON"
+build = "cmake --build build -j4"
+rebuild = { depends-on = ["configure", "build"] }
+clean = "rm -rf build"
+
+[dependencies]
+cmake = ">=3.20"
+cxx-compiler = "*"
+eigen = ">=3.3"
