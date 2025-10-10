@@ -129,7 +129,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR, const double eps, index_t circleN, bool maxminVar) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<double> &elwiseERROR, const double eps, bool maxminVar) const 
 {
     gsInfo<<"<>density function";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -155,53 +155,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     A_0.initSystem();
     auto errorVector   = A_0.rhs();
     solution error_sol = A_0.getSolution(u_0, errorVector);
-    //..
-    if (this->m_basis.dim() == 2){
-        index_t n1   = basis_0.basis(0).component(0).numElements();
-        index_t n2   = basis_0.basis(0).component(1).numElements();
-        //... compute the error as a piecewise constant function
-        #pragma omp parallel for
-        for (index_t i1 = 0; i1 < n1; i1++){
-            for (index_t j1 = 0; j1 < n2; j1++){
-                auto i         = i1*n2 + j1;
-                double Elcontr = 0.;
-                index_t s      = 0;
-                for (index_t i2 = std::max(0,i1-circleN); i2 <= std::min(n1,i1+circleN); i2++){
-                    for (index_t j2 = std::max(0,j1-circleN); j2 <= std::min(n2,j1+circleN); j2++){
-                        auto j   = i2*n2 + j2;
-                        Elcontr += elwiseERROR[j];
-                        s       += 1;
-                    }
-                }
-                errorVector(i) = Elcontr/s;
-            }
-        }
-    }
-    else{
-        index_t n1   = basis_0.basis(0).component(0).numElements();
-        index_t n2   = basis_0.basis(0).component(1).numElements();
-        index_t n3   = basis_0.basis(0).component(2).numElements();
-        //... compute the error as a piecewise constant function
-        #pragma omp parallel for
-        for (index_t i1 = 0; i1 < n1; i1++){
-            for (index_t j1 = 0; j1 < n2; j1++){
-               for (index_t k1 = 0; k1 < n3; k1++){
-                    auto i         = i1*n2*n3 + j1*n3 + k1;
-                    double Elcontr = 0.;
-                    index_t s      = 0;
-                    for (index_t i2 = std::max(0,i1-circleN); i2 <= std::min(n1,i1+circleN); i2++){
-                        for (index_t j2 = std::max(0,j1-circleN); j2 <= std::min(n2,j1+circleN); j2++){
-                            for(index_t k2 = std::max(0,k1-circleN); k2 <= std::min(n3,k1+circleN); k2++){
-                                auto j   = i2*n2*n3 + j2*n3 + k2;
-                                Elcontr += elwiseERROR[j];
-                                s       += 1;
-                            }
-                        }
-                    }
-                    errorVector(i) = Elcontr/s;
-               }
-            }
-        }
+    // ...
+    #pragma omp parallel for
+    for (index_t i = 0; i < elwnumb; i++){
+        errorVector(i) = elwiseERROR[i];
     }
     //... normalize the error vector
     if (maxminVar){

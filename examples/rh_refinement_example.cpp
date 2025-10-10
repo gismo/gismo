@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(bs_basis, mpLeft, maxIter, IntensityMAE);
-    // auto density = MAE.buildDensity(elwise, 0.05, circleN);
+    // auto density = MAE.buildDensity(elwise, 0.05);
     auto density = MAE.buildStrategyDensity(elwise, 0.9);
     auto Psitp   = MAE.buildMultiPatch(density);
     Psitp        = MAE.buildCompMultiPatch(Psitp);// computes the composition mapping mpLeft o Psitp
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-    while (bs_basis.size()<1e4){
+    while (bs_basis.size()<3e3){
     bs_basis.uniformRefine();
     }
     // approximately takes 10 seconds
