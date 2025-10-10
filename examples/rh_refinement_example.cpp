@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
-    index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
     std::string fn("pde/circle.xml");
@@ -40,23 +39,19 @@ int main(int argc, char *argv[])
     // std::string fn("domain2d/lake.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
-    cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
-    cmd.addString( "d", "file", "Input XML file data", fn );
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
-    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
-    cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
-    cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
-    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
-    cmd.addInt("quRule",
-                 "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-                 1);
+    cmd.addReal( "a",    "adaptRefParam",    "parameter for local h-refinement loops",                                  adaptRefParam );
+    cmd.addInt( "c",     "NumArMarEl",       "augement NumArMarEl with such quantity in local h-refinement loops",      NumArMarEl );
+    cmd.addString( "d",  "file",             "Input XML file data",                                                     fn );
+    cmd.addInt( "e",     "degreeElevation",  "Number of degree elevation steps to perform before solving",              numElevate );
+    cmd.addReal( "f",    "IntensityMAE",     "Intensity of density function",                                           IntensityMAE);
+    cmd.addInt("i",      "iter",             "Maximum number of iterations for the iterative Picard",                   maxIter);
+    cmd.addInt( "l",     "numLRefine",       "Number of local h-refinement loops",                                      numLRefine );
+    cmd.addInt( "r",     "adaptRefCrit",     "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",            adaptRefCrit );
+    cmd.addInt( "u",     "uniformRefine",    "Number of Uniform h-refinement loops",                                    numRefine );
 
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
+    cmd.addInt("quRule",                     "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",            1);
+    cmd.addSwitch("plot",                    "Create a ParaView visualization file with the solution",                  plot);
+    cmd.addSwitch("errorsave",               "Create a file in ... and save errors",                                    errorsave);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -190,7 +185,11 @@ int main(int argc, char *argv[])
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-
+    while (bs_basis.size()<1e4){
+    bs_basis.uniformRefine();
+    }
+    // approximately takes 10 seconds
+    MAE = gsAdaptiveMultiPatchBuilder(bs_basis, mpLeft, maxIter, IntensityMAE);
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Start hierarchical refinement
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -230,9 +229,6 @@ int main(int argc, char *argv[])
 
     // Recover manufactured solution for Poisson equation
     auto u_ex       = ev.getVariable(s, PP);
-
-    // solution as mutlipatch
-    // auto ru_sol       = A.getSolution(sol_restr);
 
     // Solution vector and solution variable
     gsMatrix<> rsolVector;
@@ -296,11 +292,6 @@ int main(int argc, char *argv[])
             //! [errorComputation]
             std::vector<real_t> eltErrs  = ev.elementwise();
             std::vector<bool> elMarked( eltErrs.size() );
-
-            // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            // ###   Step 1-2 : Computes the density function
-            // ###         and the multipatch adaptive mapping
-            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
@@ -324,7 +315,8 @@ int main(int argc, char *argv[])
                 }
             evCM.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
             gsInfo << "Number of elements in  basis: " << dbasis.basis(0).size() << "\n";
-            auto density = MAE.buildStrategyDensity(elwise, 0.85);
+            // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            auto density = MAE.buildStrategyDensity(elwise, 0.9);
             auto Psitp   = MAE.buildMultiPatch(density);
             Psi          = MAE.buildCompBasisMultiPatch(dbasis, Psitp);// computes the composition mapping mpLeft o Psitp
             }
@@ -332,8 +324,6 @@ int main(int argc, char *argv[])
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
-
-            NumArMarEl  = NumArMarEl + FactRefPar;
             //
             }
     }

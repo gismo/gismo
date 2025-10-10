@@ -226,25 +226,25 @@ int main(int argc, char *argv[])
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     gsVector<>  DoFs_sys(numRefine+1), Solv_time(numRefine+1);;
     gsVector<>  l2Gdisp(numRefine+1), error_mae(numRefine+1); //    
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
-    // gsSparseSolver<>::CGDiagonal solver; // exact solver
-    // gsSparseSolver<>::CGDiagonal Ssolver;// relaxation solver
+    // gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
+    gsSparseSolver<>::CGDiagonal solver; // exact solver
+    gsSparseSolver<>::CGDiagonal Ssolver;// relaxation solver
     // Ssolver.setMaxIterations(20);
-    // Ssolver.setTolerance(1e-4);
-    // timer.restart();
-    // // -------------------- for projection --------------------
-    // u.setup(bc_mae, dirichlet::l2Projection, 0);
-    // A.initSystem();
-    // A.assemble(u *u.tr());//matrix
-    // auto MProj = A.matrix();
-    // solver.compute( MProj);
-    // // -------------------- for MAE system ----------------
-    // u.setup(bc_mae, dirichlet::l2Projection, 0);
-    // A.initSystem();
-    // A.assemble(grad(u) * grad(u).tr() + eps * u *u.tr());//matrix
-    // auto MMAe = A.matrix();
-    // Ssolver.compute( MMAe );
-    // setup_time += timer.stop();
+    Ssolver.setTolerance(1e-4);
+    timer.restart();
+    // -------------------- for projection --------------------
+    u.setup(bc_mae, dirichlet::l2Projection, 0);
+    A.initSystem();
+    A.assemble(u *u.tr());//matrix
+    auto MProj = A.matrix();
+    solver.compute( MProj);
+    // -------------------- for MAE system ----------------
+    u.setup(bc_mae, dirichlet::l2Projection, 0);
+    A.initSystem();
+    A.assemble(grad(u) * grad(u).tr() + eps * u *u.tr());//matrix
+    auto MMAe = A.matrix();
+    Ssolver.compute( MMAe );
+    setup_time += timer.stop();
 
     // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
     // Solution vector and solution variable
@@ -256,8 +256,8 @@ int main(int argc, char *argv[])
     A.assemble(u* ff.val());//rhs vector
     ma_time += timer.stop();
     timer.restart();
-    densityVector = Poisson.L2ProjectScalar(A.rhs());
-    // densityVector = solver.solve(A.rhs());
+    // densityVector = Poisson.L2ProjectScalar(A.rhs());
+    densityVector = solver.solve(A.rhs());
     slv_time += timer.stop();
     for(index_t ds= 0; ds<densityVector.size(); ++ds){
         if (densityVector.coeff(ds)<=0.)
@@ -308,8 +308,8 @@ int main(int argc, char *argv[])
     A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
     gsInfo<< "." <<std::flush;// Assemblying done
     timer.restart();
-    solVector = Poisson.solve(A.rhs());
-    // solVector = Ssolver.solve(A.rhs());
+    // solVector = Poisson.solve(A.rhs());
+    solVector = Ssolver.solve(A.rhs());
     slv_time += timer.stop();
     u_sol.extract(u_phi);
     gsInfo<< "." <<std::flush; // Linear solving done
@@ -326,8 +326,8 @@ int main(int argc, char *argv[])
     for(index_t Mp=0; Mp<mp.dim(); ++Mp){
     gsMultiPatch<> PsiPsitp_temp;
     timer.restart();
-    vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
-    // vsolVector = solver.solve(A.rhs().col(Mp));
+    // vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+    vsolVector = solver.solve(A.rhs().col(Mp));
     slv_time += timer.stop();
     v_sol.extract(PsiPsitp_temp);
     Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
@@ -351,8 +351,8 @@ int main(int argc, char *argv[])
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
         // ev.integralElWise(int_uh_0*rho.val()+int_uh_1 );
-        ev.integralElWise( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)   );
-        //ev.integralElWise( fP.val() );
+        // ev.integralElWise( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)   );
+        ev.integralElWise( fP.val() );
 
         //! [errorComputation]
         const std::vector<real_t> eltErrs  = ev.elementwise();
@@ -381,53 +381,53 @@ int main(int argc, char *argv[])
         }
 
         // -------------------- It solver for projection --------------------
-        gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
+        // gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), eps);
         u.setup(bc_mae, dirichlet::l2Projection, 0);
         A.initSystem();
         gsInfo<< A.numDofs() <<std::flush;
         DoFs_sys[r] = A.numDofs();
-        // A.assemble(u *u.tr());//matrix
-        // auto MProj = A.matrix();
-        // solver.compute( MProj);
-        // gsInfo<< "." <<std::flush; // Initialize Projection Iterative solver done        
-        // // -------------------- It solver for MAE system ----------------
-        // u.setup(bc_mae, dirichlet::l2Projection, 0);
-        // A.initSystem();
-        // A.assemble(grad(u) * grad(u).tr() + eps * u *u.tr());//matrix
-        // auto MMAe = A.matrix();
-        // Ssolver.compute( MMAe );
-        // gsInfo<< "." <<std::flush; // Initialize Iterative solver done
+        A.assemble(u *u.tr());//matrix
+        auto MProj = A.matrix();
+        solver.compute( MProj);
+        gsInfo<< "." <<std::flush; // Initialize Projection Iterative solver done        
+        // -------------------- It solver for MAE system ----------------
+        u.setup(bc_mae, dirichlet::l2Projection, 0);
+        A.initSystem();
+        A.assemble(grad(u) * grad(u).tr() + eps * u *u.tr());//matrix
+        auto MMAe = A.matrix();
+        Ssolver.compute( MMAe );
+        gsInfo<< "." <<std::flush; // Initialize Iterative solver done
 
 
-        // // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
-        // u.setup(bc_mae, dirichlet::l2Projection, 0);
-        // timer.restart();
-        // A.initSystem();
-        // A.assemble(u* ff.val());//rhs vector
-        // ma_time += timer.stop();
-        // timer.restart();
-        // // densityVector = Poisson.L2ProjectScalar(A.rhs());
-        // densityVector = solver.solve(A.rhs());
-        // slv_time += timer.stop();
-        // for(index_t ds= 0; ds<densityVector.size(); ++ds){
-        //     if (densityVector.coeff(ds)<=0.)
-        //         densityVector.coeffRef(ds) = 0.;
-        // }
-        // density_sol.extract(density);
-        // // ... manipulation of density function
-        // auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
-        // double  int_uh_0 = 0.;
-        // double  int_uh_1  = 1.;
-        // if (empldensity < 1e-5|| IntensityMAE <= 1. )
-        // {
-        //     gsInfo << "Density function is constant in the domain rho = 1.\n";
-        // }
-        // else{
-        //     int_uh_0  = (IntensityMAE-1.)/empldensity;
-        //     int_uh_1  = (1.*ev.max(abs(rho.val()))-IntensityMAE*ev.min(abs(rho.val())))/empldensity;
-        //     std::cout << std::setprecision(1);
-        //     gsInfo << ".rho~"<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/" << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "."<<std::flush;
-        // }
+        // ......... INITIALIZE THE SYSTEM BY COMPUTIONG A Appr-DENSITY IN UNIT-SQUARE .........
+        u.setup(bc_mae, dirichlet::l2Projection, 0);
+        timer.restart();
+        A.initSystem();
+        A.assemble(u* ff.val());//rhs vector
+        ma_time += timer.stop();
+        timer.restart();
+        // densityVector = Poisson.L2ProjectScalar(A.rhs());
+        densityVector = solver.solve(A.rhs());
+        slv_time += timer.stop();
+        for(index_t ds= 0; ds<densityVector.size(); ++ds){
+            if (densityVector.coeff(ds)<=0.)
+                densityVector.coeffRef(ds) = 0.;
+        }
+        density_sol.extract(density);
+        // ... manipulation of density function
+        auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
+        double  int_uh_0 = 0.;
+        double  int_uh_1  = 1.;
+        if (empldensity < 1e-5|| IntensityMAE <= 1. )
+        {
+            gsInfo << "Density function is constant in the domain rho = 1.\n";
+        }
+        else{
+            int_uh_0  = (IntensityMAE-1.)/empldensity;
+            int_uh_1  = (1.*ev.max(abs(rho.val()))-IntensityMAE*ev.min(abs(rho.val())))/empldensity;
+            std::cout << std::setprecision(1);
+            gsInfo << ".rho~"<< ev.min(int_uh_0*abs(rho.val()) + int_uh_1)<<"/" << ev.max(int_uh_0*abs(rho.val()) + int_uh_1) << "."<<std::flush;
+        }
         // .... Picard loop  .... ...........................
         auto  sv0 = u_phi.patch(0).coefs(); // initial guess set as last solution
         solution u_lsol = A.getSolution(u, sv0);
@@ -453,8 +453,9 @@ int main(int argc, char *argv[])
 
             gsInfo<< " ." <<std::flush;// Assemblying done
             timer.restart();
-            solVector = Poisson.solve(A.rhs());
-            // solVector = Ssolver.solveWithGuess(A.rhs(), sv0);
+            // solVector = Poisson.solve(A.rhs());
+            // solVector = Ssolver.solve(A.rhs());
+            solVector = Ssolver.solveWithGuess(A.rhs(), sv0);
             slv_time += timer.stop();
             gsInfo<< "." <<std::flush; // Linear solving done
 
@@ -478,8 +479,9 @@ int main(int argc, char *argv[])
             for(index_t Mp=0; Mp<mp.dim(); ++Mp){
             gsMultiPatch<> PsiPsitp_temp;
             timer.restart();
-            vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
-            // vsolVector = solver.solveWithGuess(A.rhs().col(Mp), Psi.patch(0).coefs().col(Mp));
+            // vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+            // vsolVector = solver.solve(A.rhs().col(Mp));
+            vsolVector = solver.solveWithGuess(A.rhs().col(Mp), Psi.patch(0).coefs().col(Mp));
             slv_time += timer.stop();
             v_sol.extract(PsiPsitp_temp);
             Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
@@ -511,23 +513,28 @@ int main(int argc, char *argv[])
     if (plot)
     {
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-        // geometryMap PP = A.getMap(Psi);
         // // //::::::::::::::::::::...
-        // auto comp  = A.getCoeff(mpLeft, PP);
-        // A.initSystem(mpLeft.geoDim());
-        // //Obtain control points for the gradient of mpLeft.comp(Psi)
-        // A.assemble(u*u.tr(), u * comp.tr() );// blocked by this one
-        // solver.compute( A.matrix() );
-        // vsolVector = solver.solve( A.rhs() );
-        // v_sol.extract(Psi);
-        // for(index_t Mp=0; Mp<mpLeft.geoDim(); ++Mp){
-        //     gsMultiPatch<> PsiPsitp_temp;
-        //     vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
-        //     v_sol.extract(PsiPsitp_temp);
-        //     Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
-        // }
-        // Psi.addAutoBoundaries();
-        // Psi.computeTopology();
+        auto comp  = A.getCoeff(mpLeft, PP);
+        A.initSystem(mpLeft.geoDim());
+        A.assemble(u * comp.tr() );// blocked by this one
+        for(index_t Mp=0; Mp<mpLeft.geoDim(); ++Mp){
+        gsMultiPatch<> PsiPsitp_temp;
+        timer.restart();
+        vsolVector = solver.solve(A.rhs().col(Mp));
+        slv_time += timer.stop();
+        v_sol.extract(PsiPsitp_temp);
+        Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+        }
+        if (mpLeft.dim() < mpLeft.geoDim() ){
+            /// special case where a mpping is surface in three dimensions
+            gsInfo << "surface in three dimensions\n";
+            gsMultiPatch<> PsiPsitp_temp;
+            vsolVector = solver.solve(A.rhs().col(2));
+            v_sol.extract(PsiPsitp_temp);
+            Psi.embed(3);
+            Psi.patch(0).coefs().col(2) = PsiPsitp_temp.patch(0).coefs().col(0);
+        }
+        Psi.computeTopology();
 
         //::::::::::::::::::::      end       :::::::::::::::::::::::::
         gsInfo<<"Plotting in Paraview...\n";
