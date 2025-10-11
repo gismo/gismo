@@ -756,8 +756,8 @@ public:
             // Recursive case: first evaluate the composed map
             gsMatrix<_Float32> intermediateResult = m_fd->values[0].col(k);
             gsVector<T> tmp2(m_composedMap->patch(0).parDim());
-            tmp2 << intermediateResult[0], intermediateResult[1];
-            //auto Result = m_fd->values[0].col(k);
+            tmp2 << intermediateResult(0), intermediateResult(1);
+            //auto Result = m_fd->values(0).col(k);
             /*
             // two pistes
             // 1. if we can compute the composition directly from a m_fd->values[0].col(k)
@@ -768,28 +768,28 @@ public:
             if(m_composedMap->patch(0).parDim()==2){
             std::cout << std::setprecision(60);
             gsInfo << "___________________________ "<< intermediateResult << " " << tmp << "\n"; 
-            if(intermediateResult[1] >= 0.999999999999)
-                tmp2<<  intermediateResult[0], 1.;
-            else if(intermediateResult[1] <= 1e-16)
-                tmp2<<  intermediateResult[0], 0.;
-            else if(intermediateResult[0] >= 0.999999999999)
-                tmp2<<  1., intermediateResult[1];
-            else if(intermediateResult[0] <= 1e-16)
-                tmp2<<  0., intermediateResult[1];
+            if(intermediateResult(1) >= 0.999999999999)
+                tmp2<<  intermediateResult(0), 1.;
+            else if(intermediateResult(1) <= 1e-16)
+                tmp2<<  intermediateResult(0), 0.;
+            else if(intermediateResult(0) >= 0.999999999999)
+                tmp2<<  1., intermediateResult(1);
+            else if(intermediateResult(0) <= 1e-16)
+                tmp2<<  0., intermediateResult(1);
             }
             if(m_composedMap->patch(0).parDim()==3){
-            if(intermediateResult[2] >= 0.999999999999)
-                tmp2<<  intermediateResult[0], intermediateResult[1], 1.;
-            else if(intermediateResult[2] <= 1e-16)
-                tmp2<<  intermediateResult[0], intermediateResult[1], 0.;
-            if(intermediateResult[1] >= 0.999999999999)
-                tmp2<<  intermediateResult[0], 1., intermediateResult[2];
-            else if(intermediateResult[1] <= 1e-16)
-                tmp2<<  intermediateResult[0], 0., intermediateResult[2];
-            else if(intermediateResult[0] >= 0.999999999999)
-                tmp2<<  1., intermediateResult[1], intermediateResult[2];
-            else if(intermediateResult[0] <= 1e-16)
-                tmp2<<  0., intermediateResult[1], intermediateResult[2];
+            if(intermediateResult(2) >= 0.999999999999)
+                tmp2<<  intermediateResult(0), intermediateResult(1), 1.;
+            else if(intermediateResult(2) <= 1e-16)
+                tmp2<<  intermediateResult(0), intermediateResult(1), 0.;
+            if(intermediateResult(1) >= 0.999999999999)
+                tmp2<<  intermediateResult(0), 1., intermediateResult(2);
+            else if(intermediateResult(1) <= 1e-16)
+                tmp2<<  intermediateResult(0), 0., intermediateResult(2);
+            else if(intermediateResult(0) >= 0.999999999999)
+                tmp2<<  1., intermediateResult(1), intermediateResult(2);
+            else if(intermediateResult(0) <= 1e-16)
+                tmp2<<  0., intermediateResult(1), intermediateResult(2);
             }
             tmp = m_composedMap->patch(0).eval(tmp2);
             gsInfo << "___________________________ "<< tmp2 << " " << tmp << "\n"; 

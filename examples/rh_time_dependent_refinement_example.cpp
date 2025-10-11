@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
-    auto density                    = MAE.buildDensity(elwise, 0.1,circleN, false);
+    auto density                    = MAE.buildDensity(elwise, 0.1);
     gsMultiPatch<> Psi              = MAE.buildMultiPatch(density);
     //gsMultiPatch<> mpPsi = MAE.buildMovingMultiPatch(density, Psi, true, 3);
 
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
         // Update the density function and the multipatch adaptive mapping
         ev.integralElWise( igrad(xi_pr, GLeft).sqNorm() );
         auto elwise         = ev.elementwise();
-        auto density        = MAE.buildDensity(elwise, 0.1, circleN, false);
+        auto density        = MAE.buildDensity(elwise, 0.1);
         gsMultiPatch<> Psi  = MAE.buildMultiPatch(density);// true for composition
         // gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 15);
         //gsMultiPatch<> mpPsi = MAE.buildMovingMultiPatch(density, Psilast, false, 3);
