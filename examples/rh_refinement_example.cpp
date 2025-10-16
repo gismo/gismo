@@ -34,8 +34,8 @@ int main(int argc, char *argv[])
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/circle.xml");
-    // std::string fn("pde/lshape.xml");
+    // std::string fn("pde/circle.xml");
+    std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -158,10 +158,14 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(bs_basis, mpLeft, maxIter, IntensityMAE);
-    // auto density = MAE.buildDensity(elwise, 0.05);
-    auto density = MAE.buildStrategyDensity(elwise, 0.9);
+    std::vector<bool> elMarked( elwise.size() );
+    // //! [adaptRefinementPart]
+    // Mark elements for refinement, based on the computed local errors and
+    // the refinement-criterion and -parameter.
+    gsMarkElementsForRef( elwise, adaptRefCrit, 0.7, elMarked);
+    auto density = MAE.buildStrategyDensity(bs_basis, elwise, elMarked, 0.7);
     auto Psitp   = MAE.buildMultiPatch(density);
-    Psitp        = MAE.buildCompMultiPatch(Psitp);// computes the composition mapping mpLeft o Psitp
+    Psitp        = MAE.buildCompMultiPatch(Psitp);// computes the composition mapping mpLeft o Psitp    
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -170,26 +174,18 @@ int main(int argc, char *argv[])
     {
         gsInfo << "IntensityMAE < 1, so the density function is not used.\n";
         // Use the original multipatch
-        index_t numPaches               = Psitp.nPatches();
-        for( index_t i=0; i<numPaches; ++i)
-        {
-        index_t coefsNum                = Psitp.patch(i).coefsSize();
-        for ( index_t j=0; j<coefsNum; ++j)
-        {
-        Psitp.patch(i).coef(j) = mpLeft.patch(i).coef(j) ;
-        }
-    }
-    }    
+        Psitp.swap(mpLeft );
+    }  
     gsMultiPatch<> Psi;
     for(size_t i =0; i<Psitp.nPatches(); ++i)
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-    while (bs_basis.size()<3e3){
-    bs_basis.uniformRefine();
-    }
-    // approximately takes 10 seconds
-    MAE = gsAdaptiveMultiPatchBuilder(bs_basis, mpLeft, maxIter, IntensityMAE);
+    // while (bs_basis.size()<3e3){
+    // bs_basis.uniformRefine();
+    // }
+    // // refine the grid for MAE solver
+    // MAE = gsAdaptiveMultiPatchBuilder(bs_basis, mpLeft, maxIter, IntensityMAE);
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Start hierarchical refinement
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -205,11 +201,16 @@ int main(int argc, char *argv[])
     {
        bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
     }
+    // gsFunctionExpr<> g("0.*x","0.*y",2);
+    // bc.addCondition(0,2, condition_type::neumann, &g,0,false);
+    // bc.addCondition(0,4, condition_type::dirichlet, &s,0,false);
+    // bc.addCondition(0,3, condition_type::dirichlet, &s,0,false);
+    // bc.addCondition(0,1, condition_type::neumann, &g,0,false);
+    gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
+
     gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
     gsInfo<<"Source function is "<< rhs << "\n";
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-
-    gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     A.setIntegrationElements(bs_basis);
@@ -241,6 +242,7 @@ int main(int argc, char *argv[])
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     for (int r=0; r<=numLRefine; ++r)
     {
+       gsInfo <<"*------* degree: "<< bs_basis.minCwiseDegree() <<"\n";
         //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
         ru.setup(bc, dirichlet::l2Projection, 0);
 
@@ -297,6 +299,13 @@ int main(int argc, char *argv[])
             // the refinement-criterion and -parameter.
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
             if (IntensityMAE >1.){
+                // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                // evCM.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
+                // auto elwise  = evCM.elementwise();
+                auto density = MAE.buildStrategyDensity(dbasis, eltErrs, elMarked, adaptRefParam);
+                auto Psitp   = MAE.buildMultiPatch(density);
+                Psi          = MAE.buildCompBasisMultiPatch(dbasis, Psitp);// computes the composition mapping mpLeft o Psitp
+                // -----------------
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)
                 {
@@ -313,12 +322,6 @@ int main(int argc, char *argv[])
                         elMarked[i] = true;
                     }
                 }
-            evCM.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
-            gsInfo << "Number of elements in  basis: " << dbasis.basis(0).size() << "\n";
-            // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            auto density = MAE.buildStrategyDensity(elwise, 0.9);
-            auto Psitp   = MAE.buildMultiPatch(density);
-            Psi          = MAE.buildCompBasisMultiPatch(dbasis, Psitp);// computes the composition mapping mpLeft o Psitp
             }
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             // Refine the marked elements with a 1-ring of cells around marked elements

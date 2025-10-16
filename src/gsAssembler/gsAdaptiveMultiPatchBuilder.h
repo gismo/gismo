@@ -38,7 +38,7 @@ public:
     gsMultiPatch<> buildDensity(const std::vector<double> &elwiseERROR, const double eps = 0.1, bool maxminVar = false) const;
 
     // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
-    gsMultiPatch<> buildStrategyDensity(const std::vector<double> &elwiseERROR, const double MarkPercentage = 0.9) const;
+    gsMultiPatch<> buildStrategyDensity(const gsMultiBasis<> basis, const std::vector<double> &elwiseERROR, const  std::vector<bool> elMarked, const double MarkPercentage = 0.9) const;
     
     //-------------------------------------------------------------------------------------------------------------------------
     //                          functions to build mapping from density       .................................................
@@ -54,7 +54,7 @@ public:
     gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree = 0, double quadValue = 1.) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
-    gsMultiPatch<> buildCompBasisMultiPatch(const gsMultiBasis<> dbasis, const gsMultiPatch<> Psitp) const;
+    gsMultiPatch<> buildCompBasisMultiPatch(gsMultiBasis<> dbasis, const gsMultiPatch<> Psitp, int degreeEl = 2) const;
 
     // Method to find the span of a knot vector
     index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;

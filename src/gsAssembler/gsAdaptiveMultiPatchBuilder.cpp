@@ -23,12 +23,13 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<> ba
 {
     gsInfo<<"\n <>r-refinement (!!!";
     gsMultiBasis<double> dbasis(mapping, true);//not NURBS
-    if (dbasis.degree()-numReduce >= 1)
-        dbasis.degreeReduce(numReduce);
     //... condition for the convergence 
     while (dbasis.basis(0).numElements()<basis.basis(0).numElements())
         dbasis.uniformRefine();
-    gsInfo<<" We use B-spline of degree "<< dbasis.degree()<<" for AdMapping) \n";
+    if (dbasis.basis(0).numElements()== basis.basis(0).numElements())
+        gsInfo<<" We use B-spline of degree "<< dbasis.degree()<<" for AdMapping) \n";
+    if (dbasis.degree()-numReduce >= 1)
+        dbasis.degreeReduce(numReduce);
     this->m_basis        = dbasis;
     this->n_basis        = basis;
     this->m_mapping      = mapping; 
@@ -136,17 +137,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
-    //...............error as a piecewise constant function
-    gsMultiBasis<double> basis_0(m_mapping, true);
-    basis_0.setDegree(0);
-    //... refine uniformly until the number of elements is equal to the number of elwiseERROR
-    int refnumb = basis_0.basis(0).size();
+    //...............error as a piecewise constant function this->n_basis
+    gsMultiBasis<double> basis_0 = n_basis;
+    for( index_t i_dir=0; i_dir<n_basis.dim(); ++i_dir)
+       basis_0.basis(0).degreeDecrease(n_basis.basis(0).degree(i_dir),i_dir);
+    //....
     int elwnumb = elwiseERROR.size();
-    while ( refnumb< elwnumb)
-    {
-        basis_0.uniformRefine();
-        refnumb = basis_0.basis(0).size();
-    }
+    //...
     gsExprAssembler<> A_0(1,1);
     // Elements used for numerical integration
     A_0.setIntegrationElements(basis_0);    
@@ -156,72 +153,94 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const std::vector<doubl
     auto errorVector   = A_0.rhs();
     solution error_sol = A_0.getSolution(u_0, errorVector);
     // ...
-    #pragma omp parallel for
-    for (index_t i = 0; i < elwnumb; i++){
-        errorVector(i) = elwiseERROR[i];
-    }
+    std::vector<bool> elMarked( elwiseERROR.size(), true);
     //... normalize the error vector
+    const double Maxvalue   = errorVector.maxCoeff();
+    const double Minvalue   = errorVector.minCoeff();
+    const double meanvalue  = eps*(Maxvalue + Minvalue);
     if (maxminVar){
-        const double Maxvalue   = errorVector.maxCoeff();
-        const double Minvalue   = errorVector.minCoeff();
-        // gsInfo << "Density function: min "<< errorVector.minCoeff() <<"/ max " << errorVector.maxCoeff() << "\n";    
-        const double meanvalue  = eps*(Maxvalue + Minvalue);
+        // all element that ar lower than Minvalue+meanvalue set to the same value
+        #pragma omp parallel for
         for (index_t i1 = 0; i1 < elwnumb; i1++){
-            if (errorVector(i1) > Minvalue+meanvalue)
-                errorVector(i1)  = Minvalue+meanvalue;
+            if (errorVector(i1) <= Minvalue+meanvalue)
+                elMarked[i1]  = false;
             //else errorVector(i1) = Minvalue;
         }
     }
 
+    //------------------------------------------------------
+    // numMarked: Number of marked cells on current patch, also currently marked cell
+    // poffset  : offset index for the first element on a patch
+    // globalCount: counter for the current global element index
+    int globalCount = 0;
+
+    for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn )// for all patches
+    {
+        // for all elements in patch pn
+        typename gsBasis<>::domainIter domIt =  // add patchInd to domainiter ?
+            this->m_mapping.basis(pn).domain()->beginAll();
+        typename gsBasis<>::domainIter domItEnd =  // add patchInd to domainiter ?
+            this->m_mapping.basis(pn).domain()->endAll();
+        for (; domIt<domItEnd; ++domIt )
+        {
+            if( elMarked[ globalCount++ ] ) // refine this element ?
+            {
+                errorVector(domIt.id()) =  elwiseERROR[domIt.id()]; 
+                // Advance marked cells counter
+            }
+            else
+                errorVector(domIt.id()) = Minvalue+meanvalue; 
+        }
+    }
     //...............End error as a function
+    gsMultiPatch<> error_ml;
+    error_sol.extract(error_ml);
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     // Elements used for numerical integration
     A.setIntegrationElements(this->m_basis);
     gsExprEvaluator<> ev(A);
+    A.options().setSwitch("SameElement",false);
 
     // Set the discretization space
     space u             = A.getSpace(this->m_basis);
-    // Set the Target geometry map
-    geometryMap GLeft   = A.getMap(this->m_mapping);
-    // Set the source term with respect to target geometry
-    //auto            ff  = A.getCoeff(Multipatchsol, GLeft);
     // Solution vector and solution variable
     gsMatrix<> densityVector;
     //...
     solution density_sol = A.getSolution(u, densityVector);
+    // ...
+    auto rho             = A.getCoeff(error_ml);
     //...
     //u.setup(bc_mae, dirichlet::l2Projection, 0);
     A.initSystem();
-    A.assemble(u * error_sol); //rhs vector
-
+    A.assemble(u * rho); //rhs vector
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
     //...
     gsMultiPatch<> density;
     density_sol.extract(density);
+    gsWrite(density, "density.xml");
     gsInfo<<"<>\n";
     return  density;
 }
 
 // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildStrategyDensity(const std::vector<double> &elwiseERROR, const double MarkPercentage) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildStrategyDensity(const gsMultiBasis<> basis, const std::vector<double> &elwiseERROR, const  std::vector<bool> elMarked, const double MarkPercentage) const 
 {
     gsInfo<<"<>density function";
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
-    //...............error as a piecewise constant function
-    gsMultiBasis<double> basis_0(m_mapping, true);
-    basis_0.setDegree(0);
-    //... refine uniformly until the number of elements is equal to the number of elwiseERROR
-    int refnumb = basis_0.basis(0).size();
-    int elwnumb = elwiseERROR.size();
-    while ( refnumb< elwnumb)
+    //...............error as a piecewise constant function this->n_basis
+    gsMultiBasis<> basis_0 = basis;
+    basis_0.degreeDecrease(basis.basis(0).maxDegree());
+    #pragma omp parallel for
+    for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn )// for all patches
     {
-        basis_0.uniformRefine();
-        refnumb = basis_0.basis(0).size();
+    for( index_t i_dir=0; i_dir<basis.dim(); ++i_dir)
+       basis_0.basis(pn).degreeDecrease(basis.basis(pn).degree(i_dir),i_dir);
     }
+    //....
     gsExprAssembler<> A_0(1,1);
     // Elements used for numerical integration
     A_0.setIntegrationElements(basis_0);    
@@ -229,59 +248,42 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildStrategyDensity(const std::vect
     space u_0          = A_0.getSpace(basis_0);
     A_0.initSystem();
     auto errorVector   = A_0.rhs();
+    
     solution error_sol = A_0.getSolution(u_0, errorVector);
-    //..
-    // The vector of local errors will need to be sorted,
-    // which will be done on a copy:
-    std::vector<double> elErrCopy = elwiseERROR;
 
-    // Compute the index from which the refinement should start,
-    // once the vector is sorted.
-    size_t idxRefineStart = cast<double,size_t>( math::floor( MarkPercentage * (double)(elwnumb) ) );
-    // ...and just to be sure we are in range:
-    if( idxRefineStart == elErrCopy.size() )
+    //------------------------------------------------------
+    // numMarked: Number of marked cells on current patch, also currently marked cell
+    // poffset  : offset index for the first element on a patch
+    // globalCount: counter for the current global element index
+    int globalCount = 0;
+    #pragma omp parallel for
+    for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn )// for all patches
     {
-        GISMO_ASSERT(idxRefineStart >= 1, "idxRefineStart can't get negative");
-        idxRefineStart -= 1;
-    }
-    // Sort the list using bubblesort.
-    // After each loop, the largest elements are at the end
-    // of the list. Since we are only interested in the largest elements,
-    // it is enough to run the sorting until enough "largest" elements
-    // have been found, i.e., until we have reached indexRefineStart
-    size_t lastSwapDone = elErrCopy.size() - 1;
-    size_t lastCheckIdx = lastSwapDone;
-
-    bool didSwap;
-    double tmp;
-    do{
-        didSwap = false;
-        lastCheckIdx = lastSwapDone;
-        for( size_t i=0; i < lastCheckIdx; i++)
-            if( elErrCopy[i] > elErrCopy[i+1] )
+        // for all elements in patch pn
+        typename gsBasis<>::domainIter domIt =  // add patchInd to domainiter ?
+            basis.basis(pn).domain()->beginAll();
+        typename gsBasis<>::domainIter domItEnd =  // add patchInd to domainiter ?
+            basis.basis(pn).domain()->endAll();
+        for (; domIt<domItEnd; ++domIt )
+        {
+            if( elMarked[ globalCount++ ] ) // refine this element ?
             {
-                tmp = elErrCopy[i];
-                elErrCopy[i] = elErrCopy[i+1];
-                elErrCopy[i+1] = tmp;
-
-                didSwap = true;
-                lastSwapDone = i;
+                errorVector(domIt.id()) = 1.;//elwiseERROR[domIt.id()]; 
+                // Advance marked cells counter
             }
-    }while( didSwap && (lastSwapDone+1 >= idxRefineStart ) );
-
-    // Compute the threshold:
-    auto Thr = elErrCopy[ idxRefineStart ];
-    // Now just check for each element, whether the local error
-    // is above the computed threshold or not, and mark accordingly.
-    for( size_t i=0; i < elwiseERROR.size(); i++)
-        ( elwiseERROR[i] >= Thr ? errorVector(i) = Thr : errorVector(i) = elwiseERROR[i] );
-
+            // else
+            //     errorVector(domIt.id()) =  Thr; 
+        }
+    }
     //...............End error as a function
+    gsMultiPatch<> error_ml;
+    error_sol.extract(error_ml);
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     // Elements used for numerical integration
     A.setIntegrationElements(this->m_basis);
     gsExprEvaluator<> ev(A);
+    A.options().setSwitch("SameElement",false);
 
     // Set the discretization space
     space u             = A.getSpace(this->m_basis);
@@ -289,11 +291,14 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildStrategyDensity(const std::vect
     gsMatrix<> densityVector;
     //...
     solution density_sol = A.getSolution(u, densityVector);
+    // ...
+    auto rho             = A.getCoeff(error_ml);
+
     //...
     //u.setup(bc_mae, dirichlet::l2Projection, 0);
     A.initSystem();
-    A.assemble(u * error_sol); //rhs vector
-
+    A.assemble(u * rho); //rhs vector
+    gsInfo << "size of solution and errorVector is: " << errorVector.size() << "  =  " << elwiseERROR.size() << "\n";
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
     //...
     gsMultiPatch<> density;
@@ -784,7 +789,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiPatch<> P
 
 
 // computes the projection L^2 of a composition and return a MultiPatch object
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompBasisMultiPatch(const gsMultiBasis<> dbasis, const gsMultiPatch<> Psitp) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompBasisMultiPatch(gsMultiBasis<> dbasis, const gsMultiPatch<> Psitp, int degreeEl) const 
 {
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -803,6 +808,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompBasisMultiPatch(const gsMul
     // A.options().setInt("quRule", 2);
     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
 
+    //.. degree elevation
+    dbasis.degreeElevate(degreeEl);
+
+    //...
     A.setIntegrationElements(dbasis);
     //... 
     space v        = A.getSpace(dbasis);

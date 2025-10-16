@@ -20,8 +20,9 @@
 
     -->
   <!-- For poisson test Circle-->
-  <Function type="FunctionExpr" id="2000" dim="2"> 1./(1.+exp(200.*(y**2-0.2-0.1*sin(3.*pi*x) )) )</Function>
-  <Function type="FunctionExpr" id="2001" dim="2"> 6.79736680846654e-13*y**2*exp(200.0*y**2 - 20.0*sin(3*pi*x))/(4.24835425529159e-18*exp(200.0*y**2 - 20.0*sin(3*pi*x)) + 1.0)**2 - 5.77552444110533e-30*y**2*exp(400.0*y**2 - 40.0*sin(3*pi*x))/(4.24835425529159e-18*exp(200.0*y**2 - 20.0*sin(3*pi*x)) + 1.0)**3 + 7.64703765952486e-16*pi**2*exp(200.0*y**2 - 20.0*sin(3*pi*x))*sin(3*pi*x)/(4.24835425529159e-18*exp(200.0*y**2 - 20.0*sin(3*pi*x)) + 1.0)**2 + 1.52940753190497e-14*pi**2*exp(200.0*y**2 - 20.0*sin(3*pi*x))*cos(3*pi*x)**2/(4.24835425529159e-18*exp(200.0*y**2 - 20.0*sin(3*pi*x)) + 1.0)**2 + 1.69934170211664e-15*exp(200.0*y**2 - 20.0*sin(3*pi*x))/(4.24835425529159e-18*exp(200.0*y**2 - 20.0*sin(3*pi*x)) + 1.0)**2 - 1.2994929992487e-31*pi**2*exp(400.0*y**2 - 40.0*sin(3*pi*x))*cos(3*pi*x)**2/(4.24835425529159e-18*exp(200.0*y**2 - 20.0*sin(3*pi*x)) + 1.0)**3 </Function>
+  <Function type="FunctionExpr" id="2000" dim="2"> 1./(1.+exp(200.*(y-cos(pi*x) )) )</Function>
+  <Function type="FunctionExpr" id="2001" dim="2"> 40000.0*pi**2*exp(200.0*y - 200.0*cos(pi*x))*sin(pi*x)**2/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 + 200.0*pi**2*exp(200.0*y - 200.0*cos(pi*x))*cos(pi*x)/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 + 40000.0*exp(200.0*y - 200.0*cos(pi*x))/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 
+                                                  - 80000.0*pi**2*exp(400.0*y - 400.0*cos(pi*x))*sin(pi*x)**2/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**3 - 80000.0*exp(400.0*y - 400.0*cos(pi*x))/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**3 </Function>
 
  <Geometry type="TensorNurbs2" id="0">
   <Basis type="TensorNurbsBasis2">
