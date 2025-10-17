@@ -27,34 +27,36 @@ public:
                                 index_t maxIter     = 30,
                                 double IntensityMAE = 9.0,
                                 index_t numReduce = 0);
+    //... Square mapping
+    gsMultiPatch<double> mp; 
+    mutable gsMultiPatch<double> gsPsi;
 
-    // Method to project normal control points
-    void ProjectionNormalCPoints(gsMultiPatch<>& Psi, int boxMaxNumber = 1) const;
+public:
 
-    // Method to build a density function
+    //... uniform refinement
+    void uniformRefine();
+
+    // Method to project control points following  normal direction at the boundaries
+    void NormalProjectPts(gsMultiPatch<>& Psi) const;
+
+    // Method to build a density function from analytic form
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
-    // Method to build a density function from a given solution vector
-    gsMultiPatch<> buildDensity(const std::vector<double> &elwiseERROR, const double eps = 0.1, bool maxminVar = false) const;
-
     // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
-    gsMultiPatch<> buildStrategyDensity(const gsMultiBasis<> basis, const std::vector<double> &elwiseERROR, const  std::vector<bool> elMarked, const double MarkPercentage = 0.9) const;
+    gsMultiPatch<> buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked) const;
     
     //-------------------------------------------------------------------------------------------------------------------------
     //                          functions to build mapping from density       .................................................
     //-------------------------------------------------------------------------------------------------------------------------
 
     // Method to build a multipatch adaptive mapping
-    gsMultiPatch<> buildMultiPatch(const gsMultiPatch<> &density) const;
+    void buildMultiPatch(const gsMultiPatch<> &density) const;
 
     // Method to build a multipatch adaptive mapping in the same space (hb-spline)
     gsMultiPatch<> buildHBMultiPatch(const gsMultiBasis<> dbasis, const gsMultiPatch<> &density) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
-    gsMultiPatch<> buildCompMultiPatch(gsMultiPatch<> Psitp, index_t elevDegree = 0, double quadValue = 1.) const;
-
-    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
-    gsMultiPatch<> buildCompBasisMultiPatch(gsMultiBasis<> dbasis, const gsMultiPatch<> Psitp, int degreeEl = 2) const;
+    gsMultiPatch<> buildCompMultiPatch(gsMultiBasis<> dbasis, int degreeEl = 2) const;
 
     // Method to find the span of a knot vector
     index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;
@@ -73,18 +75,19 @@ public:
     // Method to compute the right-hand side vector for the adaptive multi-patch assembly
     void assemble_rhsvector_ad(const index_t& p1, const index_t& p2,
                            const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
-                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_cp,
-                           const gsMatrix<double>& vector_un, gsMatrix<double>& rhs) const;
+                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
+                           gsMatrix<double>& rhs) const;
     void assemble_nurbsrhsvector_ad(const index_t& p1, const index_t& p2,
                            const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
                            const gsKnotVector<double>& omega_1, const gsKnotVector<double>& omega_2,
                            const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_cp,
                            gsMatrix<double>& rhs) const;
+    // degees of freedom used in the computation
+    int DoFs;
 private:
     gsMultiBasis<double> n_basis;
     gsMultiBasis<double> m_basis;
     gsMultiPatch<double> m_mapping;
-    gsMultiPatch<double> mp;
     index_t m_maxIter;
     double m_IntensityMAE;
     gsBoundaryConditions<> bc_mae;

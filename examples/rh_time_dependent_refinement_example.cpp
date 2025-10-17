@@ -25,16 +25,14 @@ int main(int argc, char *argv[])
     index_t numLRefine    = 3;
     index_t numElevate    = 0;
     index_t maxIter       = 15;
-    index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
     double IntensityMAE   = 12.;
     bool export_b64       = false;
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy...
-    index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
-    real_t  adaptRefParam = 0.; // ... adapt parameter.
+    index_t adaptRefCrit  = 1;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
+    real_t  adaptRefParam = 0.5; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
-    index_t circleN       = 1;
     double dt             = 1e-5;
     index_t plotNum       = 1e-4/dt; // plot every 1e-4/dt iterations 10 iterations 
     gsInfo << "plotNun = " << plotNum << " " << 5%plotNum<< " " << 10%plotNum << "\n";
@@ -46,7 +44,6 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
     cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
@@ -121,7 +118,6 @@ int main(int argc, char *argv[])
     for (int r=0; r< numRefine; ++r)
     {
         dbasis.uniformRefine();
-        mpLeft.uniformRefine();// mondatory to have the same number of elements in order to assemble rhs in adaptive mesh to be solved after
     }
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mpLeft);
@@ -179,9 +175,11 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
-    auto density                    = MAE.buildDensity(elwise, 0.1);
-    gsMultiPatch<> Psi              = MAE.buildMultiPatch(density);
-    //gsMultiPatch<> mpPsi = MAE.buildMovingMultiPatch(density, Psi, true, 3);
+    std::vector<bool> elMarked( elwise.size() );
+    gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
+    auto density   = MAE.buildDensity(dbasis, elMarked);
+    auto Psi       = MAE.buildMultiPatch(density);
+    // auto Psi       = MAE.buildCompMultiPatch(PsiSquare);//compute the compostion
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -262,11 +260,6 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
 
-    // gsFileManager::open("ParaviewOutput/solution.pvd");
-    const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(0);
-    const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
-    const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(0);
-    const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(1);
 
     gsInfo<<"Plotting in Paraview...\n";
     gsParaviewCollection collection("ParaviewOutput/time_solution", &ev);
@@ -280,13 +273,6 @@ int main(int argc, char *argv[])
         collection.addField(ru_sol, "solution");
         collection.saveTimeStep();
     }
-
-    //..............................................................................................
-    // collection for projecting a solution into B-spline space for computing a new adaptive mapping
-    gsMatrix<> xi_Vector = rsolVector*0.;
-    solution xi_pr       = A.getSolution(ru, xi_Vector);
-    gsMatrix<> rhsVector = rsolVector;
-    rhsVector.setZero();
 
 
     gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
@@ -304,16 +290,13 @@ int main(int argc, char *argv[])
         ###   Step in time : Computes the density function
         ###         and the multipatch adaptove mapping
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        MAE.assemble_rhsvector_ad(degree1, degree2, kv1, kv2, Psi.patch(0).coefs(), Psi.patch(0).coefs(), rsolVector, rhsVector);
-        xi_Vector           = MAE.Poisson.L2ProjectScalar(rhsVector);
-        //------------------------------------------------------------------
-        // Update the density function and the multipatch adaptive mapping
-        ev.integralElWise( igrad(xi_pr, GLeft).sqNorm() );
-        auto elwise         = ev.elementwise();
-        auto density        = MAE.buildDensity(elwise, 0.1);
-        gsMultiPatch<> Psi  = MAE.buildMultiPatch(density);// true for composition
-        // gsMultiPatch<> Psi  = MAE.buildMovingMultiPatch(density, Psilast, false, 15);
-        //gsMultiPatch<> mpPsi = MAE.buildMovingMultiPatch(density, Psilast, false, 3);
+        ev.integralElWise( igrad(ru_sol,PP).sqNorm() );
+        auto elwise = ev.elementwise();
+        std::vector<bool> elMarked( elwise.size() );
+        gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
+        auto density        = MAE.buildDensity(dbasis, elMarked);
+        gsMultiPatch<> Psi  = MAE.buildMultiPatch(density);
+        // ...
         Psi.addAutoBoundaries();
         Psi.computeTopology();
         
@@ -405,7 +388,7 @@ int main(int argc, char *argv[])
     std::ofstream outFile("error_analysis.txt", std::ios::app); // Open file in append mode
     if (outFile.is_open())
     {
-        outFile << "#DoF_PDE: " << adaptRefParam <<" "<< NumArMarEl <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#DoF_PDE: " << adaptRefParam <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
         outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability

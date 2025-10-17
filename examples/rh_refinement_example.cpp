@@ -34,8 +34,8 @@ int main(int argc, char *argv[])
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    // std::string fn("pde/circle.xml");
-    std::string fn("pde/lshape.xml");
+    std::string fn("pde/circle.xml");
+    // std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -81,9 +81,9 @@ int main(int argc, char *argv[])
     fd.getId(2001, rhs);
 
     //! [Refinement]
-    gsMultiBasis<double> bs_basis(mpLeft, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
 
-    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< bs_basis.minCwiseDegree() <<"\n";
+    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     //A.setOptions(Aopt);
     gsInfo<<"Active options:\n"<< ACM.options() <<"\n";
 
-    ACM.setIntegrationElements(bs_basis);
+    ACM.setIntegrationElements(dbasis);
     gsExprEvaluator<> evCM(ACM);
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
     for (int r=0; r<=numRefine; ++r)
     {
-        bs_basis.uniformRefine();
+        dbasis.uniformRefine();
         mpLeft.uniformRefine();
     }
     gsBoundaryConditions<> bc;
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     gsStopwatch timer;
 
     // Set the discretization space // different boundary condition !
-    space ru   = ACM.getSpace(bs_basis);
+    space ru   = ACM.getSpace(dbasis);
 
     // Set the source term for Poisson equation
     auto rhs_f = ACM.getCoeff(rhs, GLeft);
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
     timer.restart();
     solver.compute( ACM.matrix() );
     rsolVector     = solver.solve(ACM.rhs());
-    evCM.integralElWise( (ilapl(u_sol, GLeft) +rhs_f).sqNorm() );
+    evCM.integralElWise( (ilapl(u_sol, GLeft) +rhs_f).sqNorm()*meas(GLeft) );
     //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise    = evCM.elementwise();
 
@@ -157,19 +157,21 @@ int main(int argc, char *argv[])
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(bs_basis, mpLeft, maxIter, IntensityMAE);
-    std::vector<bool> elMarked( elwise.size() );
-    // //! [adaptRefinementPart]
-    // Mark elements for refinement, based on the computed local errors and
-    // the refinement-criterion and -parameter.
-    gsMarkElementsForRef( elwise, adaptRefCrit, 0.7, elMarked);
-    auto density = MAE.buildStrategyDensity(bs_basis, elwise, elMarked, 0.7);
-    auto Psitp   = MAE.buildMultiPatch(density);
-    Psitp        = MAE.buildCompMultiPatch(Psitp);// computes the composition mapping mpLeft o Psitp    
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
+    //.. mark elements location
+    std::vector<bool> eldensityMarked( elwise.size() );
+    gsMarkElementsForRef( elwise, adaptRefCrit, 0.8, eldensityMarked);
+    auto density   = MAE.buildDensity(dbasis, eldensityMarked);
+    MAE.buildMultiPatch(density);// compute adaptive mapping
+    auto Psitp     = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp    
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    // while (MAE.DoFs < 3e3){
+    //     MAE.uniformRefine();
+    //     gsInfo<< " DoFs in MAE = " << MAE.DoFs <<" \n";
+    // }
     if (IntensityMAE <= 1.)
     {
         gsInfo << "IntensityMAE < 1, so the density function is not used.\n";
@@ -181,11 +183,7 @@ int main(int argc, char *argv[])
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
     Psi.addAutoBoundaries();
     Psi.computeTopology();
-    // while (bs_basis.size()<3e3){
-    // bs_basis.uniformRefine();
-    // }
-    // // refine the grid for MAE solver
-    // MAE = gsAdaptiveMultiPatchBuilder(bs_basis, mpLeft, maxIter, IntensityMAE);
+
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Start hierarchical refinement
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -201,6 +199,7 @@ int main(int argc, char *argv[])
     {
        bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
     }
+
     // gsFunctionExpr<> g("0.*x","0.*y",2);
     // bc.addCondition(0,2, condition_type::neumann, &g,0,false);
     // bc.addCondition(0,4, condition_type::dirichlet, &s,0,false);
@@ -213,7 +212,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    A.setIntegrationElements(bs_basis);
+    A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
 
     geometryMap PP  = A.getMap(Psi);
@@ -242,7 +241,7 @@ int main(int argc, char *argv[])
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     for (int r=0; r<=numLRefine; ++r)
     {
-       gsInfo <<"*------* degree: "<< bs_basis.minCwiseDegree() <<"\n";
+       gsInfo <<"*------* degree: "<< dbasis.minCwiseDegree() <<"\n";
         //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
         ru.setup(bc, dirichlet::l2Projection, 0);
 
@@ -253,8 +252,6 @@ int main(int argc, char *argv[])
 
         gsInfo<< "Solving PDEs " <<std::flush;
         gsInfo<< A.numDofs() <<std::flush;
-        
-        //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
 
         timer.restart();
         A.assemble(
@@ -287,24 +284,43 @@ int main(int argc, char *argv[])
         //! [beginRefLoop]
             gsInfo << "====== Loop " << r << " of "
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
+
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
             // ev.integralElWise( (  igrad(ru_sol, PP)*meas(PP) ).sqNorm() );
-            ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
+            ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm()*meas(PP) );
             //! [errorComputation]
-            std::vector<real_t> eltErrs  = ev.elementwise();
+            std::vector<real_t> eltErrs  = ev.elementwise();            
+            if (IntensityMAE >1.){
+                std::vector<bool> eldensityMarked( eltErrs.size() );
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
+                auto density   = MAE.buildDensity( dbasis, eldensityMarked);
+                gsInfo<<"Plotting in Paraview...\n";
+                gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+                collection.options().setSwitch("plotElements", true);
+                collection.options().setSwitch("base64", export_b64);
+                collection.options().setInt("plotElements.resolution", 16);
+                collection.options().setInt("numPoints", 10000);
+                geometryMap GP = A.getMap(MAE.mp);
+                auto rho = A.getCoeff(density, GP);
+                collection.newTimeStep(&MAE.mp);
+                collection.addField(rho,"density");
+                collection.saveTimeStep();
+                collection.save();
+                gsFileManager::open("ParaviewOutput/solution.pvd");
+                return  0;
+
+                MAE.buildMultiPatch(density);// compute adaptive mapping
+                Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
+            }
+
+            // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             std::vector<bool> elMarked( eltErrs.size() );
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
             if (IntensityMAE >1.){
-                // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                // evCM.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
-                // auto elwise  = evCM.elementwise();
-                auto density = MAE.buildStrategyDensity(dbasis, eltErrs, elMarked, adaptRefParam);
-                auto Psitp   = MAE.buildMultiPatch(density);
-                Psi          = MAE.buildCompBasisMultiPatch(dbasis, Psitp);// computes the composition mapping mpLeft o Psitp
                 // -----------------
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)

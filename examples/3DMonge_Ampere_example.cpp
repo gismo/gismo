@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot           = false;
-    index_t numRefine   = 3;
+    index_t numRefine   = 0;
     index_t numLRefine  = 1;
     index_t numReduce   = 0;
     index_t numElevate  = 0;
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     double IntensityMAE = 9.;
     double quadValue    = 4.0;
     bool export_b64     = false;
-    bool last           = false;
+    bool last           = true;
     // Specify the file path
     // std::string fn("pde/example3D.xml");
     // std::string fn("volumes/GshapedVolume.xml");
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
     geometryMap PG      = A.getMap(Psitp);
     PG(mpLeft);
     auto comp           = A.getCoeff(mpLeft, PP);    
-    PsiF                = MAE.buildCompMultiPatch(Psitp, elevDegree); //composition of geometry maps
+    PsiF                = MAE.buildCompMultiPatch(dbasis, elevDegree); //composition of geometry maps
     PsiF.computeTopology();
     geometryMap PPF = A.getMap(PsiF);
     //------------------------------------ Interpolation of the mapping by collocation method !!!
