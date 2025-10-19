@@ -40,7 +40,7 @@ inline index_t cpIndex(index_t HEcorner, index_t xstep, index_t ystep)
         return 30 - str[1]*xstep + str[0]*ystep;
         break;
     default:
-        GISMO_ERROR("indexOnPatch error.");
+        GISMO_ERROR("indexOnPatch error: "<< HEcorner);
         break;
     }
 }
@@ -51,6 +51,7 @@ class BBMapper
 {
     class BBMapperHandle //Rename: BBMapperHandle
     {
+    public:
         const BBMapper * m_bbm;
         gsSurfMesh::Halfedge m_he;
 
@@ -271,13 +272,80 @@ public:
 
     inline index_t lp(gsSurfMesh::Halfedge h) const
     { return msh.face(h).idx(); }
-    inline index_t lc(gsSurfMesh::Halfedge h) const
+    inline index_t l0(gsSurfMesh::Halfedge h) const
     { return ci[h].second; }
     inline index_t rp(gsSurfMesh::Halfedge h) const
     { return msh.face(msh.opposite_halfedge(h)).idx(); }
-    inline index_t rc(gsSurfMesh::Halfedge h) const
+    inline index_t r0(gsSurfMesh::Halfedge h) const
     { return ci[h].first; }
 
+    /// Returns the index of the BB point (i,j) on left patch
+    inline index_t lcp(gsSurfMesh::Halfedge h, index_t i, index_t j) const
+    { return offset[lp(h)] + cpIndex(l0(h), i, j); }
+    /// Returns the index of the BB point (i,j) on right patch
+    inline index_t rcp(gsSurfMesh::Halfedge h, index_t i, index_t j) const
+    { return offset[rp(h)] + cpIndex(r0(h), j, i);/*note: (j,i) on purpose!*/ }
+
+    inline void insert(gsSurfMesh::Halfedge h, index_t fid, index_t i, index_t j, real_t val)
+    {
+        GISMO_ASSERT(i>=0, "Index cannot be negative "<< i);
+        if  (j<0)
+        {
+            M.insert( rcp(h,i,-j), fid ) = val; // OK
+            if (0==i) // (0,-j) -- on CW halfedge
+            {
+                auto cwh = msh.cw_rotated_halfedge(h);
+                if (-1 != rp(cwh))
+                    M.insert( rcp(cwh,-j,0), fid ) = val;
+            }
+        }
+        else//j>=0
+        {
+            if (0==j) //on this halfedge
+            {
+                if (0==i) // (0,0) -- on vertex
+                {
+                    for ( auto vh : msh.halfedges(msh.from_vertex(h)) )
+                        if (-1 != lp(vh))
+                            M.insert( lcp(vh,0,0), fid) = val;
+                    return;
+                }
+                else if (-1 != rp(h)) //edge twin
+                {
+                    M.insert( rcp(h, i,0), fid ) = val;
+                }
+            }
+
+            M.insert( lcp(h,i,j), fid ) = val; // OK
+
+            if (0==i) // (0,j) -- on CCW halfedge
+            {
+                auto ccwh = msh.ccw_rotated_halfedge(h);
+                if (-1 != lp(ccwh))
+                    M.insert( lcp(ccwh,j,0), fid ) = val;
+            }
+        }
+    }
+
+    inline void insert(gsSurfMesh::Vertex v, index_t fid, real_t val)
+    {
+        for ( auto h : msh.halfedges(v) )
+            M.insert( lcp(h,0,0), fid ) = val;
+    }
+
+    /// Inserts symmetrically control points on both patches
+    /// Assumes that both left and right patches are valid
+    inline void insertBoth(gsSurfMesh::Halfedge h, index_t fid,
+                           index_t i, index_t j, real_t val)
+    {
+        GISMO_ASSERT(!(j<0), "Index cannot be nagative "<< i);
+        insert(h, fid, i, j, val);
+        if (0!=j)
+            insert(h, fid, i,-j, val);
+    }
+
+    //--------------
+    
     BBMapperHandle atHalfedge(gsSurfMesh::Halfedge h) const
         { return BBMapperHandle(M, cmapper, offset, msh, h); }
     //{ return BBMapperHandle(*this, h); }
@@ -632,10 +700,16 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
             auto h = msh.next_halfedge(msh.opposite_halfedge(msh.halfedge(v)));
             auto bb = bbmap.atHalfedge(h);
             // four "corner functions" to add (square)
-            bb.insert(c1dim++, 0, 0, 1.0);
-            bb.insert(c1dim++, 0, 1, 1.0);
-            bb.insert(c1dim++, 1, 0, 1.0);
-            bb.insert(c1dim++, 1, 1, 1.0);
+            // bb.insert(c1dim++, 0, 0, 1.0);
+            // bb.insert(c1dim++, 0, 1, 1.0);
+            // bb.insert(c1dim++, 1, 0, 1.0);
+            // bb.insert(c1dim++, 1, 1, 1.0);
+
+            bbmap.insert(h, c1dim++, 0, 0, 1.0);
+            bbmap.insert(h, c1dim++, 0, 1, 1.0);
+            bbmap.insert(h, c1dim++, 1, 0, 1.0);
+            bbmap.insert(h, c1dim++, 1, 1, 1.0);
+
         }
 
         if (n==3 && msh.is_boundary(v)) // boundary regular (T-junction) $$4
@@ -647,12 +721,12 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
             for (index_t j : {-1,1})
             {
                 //Anchor (01)
-                bb.insert(c1dim, 0,j , 1.0);
-                bb.insert(c1dim, 0,0 , 0.5);
+                bbmap.insert(h, c1dim, 0,j , 1.0);
+                bbmap.insert(h, c1dim, 0,0 , 0.5);
                 ++c1dim;
                 // Anchor (11)
-                bb.insert(c1dim, 1,j , 1.0);
-                bb.insert(c1dim, 1,0 , 0.5);
+                bbmap.insert(h, c1dim, 1,j , 1.0);
+                bbmap.insert(h, c1dim, 1,0 , 0.5);
                 ++c1dim;
             }
             /*
@@ -702,23 +776,22 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
             for ( auto he : msh.halfedges(v) ) // iterate over all HE (n=4 functions)
             {
                 //corner
-                for ( index_t q : bbmap.allCorners( msh.from_vertex(he)) )
-                    M.insert(q, c1dim) = (real_t)0.25;
+                bbmap.insert(he,c1dim,0,0, 0.25);
+                //for ( index_t q : bbmap.allCorners( msh.from_vertex(he)) )
+                //    M.insert(q, c1dim) = (real_t)0.25;
                 auto bb = bbmap.atHalfedge(he);
                 //first axis
-                bb.insert(c1dim, 1,1 , 1.0);
-                bb.insert(c1dim, 1,0 , 0.5);
-
-                //bb.insert(c1dim, 0,1, 0.5); //TODO instead (all twins)
+                bbmap.insert(he,c1dim, 1,1 , 1.0);
+                bbmap.insert(he,c1dim, 1,0 , 0.5);
+                bbmap.insert(he,c1dim, 0,1 , 0.5);
 
                 // M.insert(bb.left (1, 1), c1dim) = (real_t)1.0;
                 // M.insert(bb.left (1, 0), c1dim) = (real_t)0.5;
                 // M.insert(bb.right(1, 0), c1dim) = (real_t)0.5;     
                 auto bb1 = bbmap.atHalfedge(msh.ccw_rotated_halfedge(he));
                 //second axis
-                bb1.insert(c1dim, 1,0 , 0.5);
-                // M.insert(bb1.left (1,0), c1dim) = (real_t)0.5;
-                // M.insert(bb1.right(1,0), c1dim) = (real_t)0.5;
+//                bb1.insert(c1dim, 1,0 , 0.5);
+//                bbmap.insert(msh.ccw_rotated_halfedge(he), c1dim, 1,0 , 0.5);
                 ++c1dim;
             }
 // /*
@@ -736,9 +809,9 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
                         const index_t cc = c1dim - 4 + i;
                        if ( (i==hc) || (i+1)%4==hc ) //HE adjacent function cc
                        {
-                           bb.insert    (cc, 2,0 , 0.225);//=9/40
-                           bb.insertBoth(cc, 2,1 , 0.225 - a_N/80);
-                           bb.insertBoth(cc, 3,1 , 0.0675*a_N);//=27/400*a_N
+                           bbmap.insert    (h,cc, 2,0 , 0.225);//=9/40
+                           bbmap.insertBoth(h,cc, 2,1 , 0.225 - a_N/80);
+                           bbmap.insertBoth(h,cc, 3,1 , 0.0675*a_N);//=27/400*a_N
 
                             // M.insert(bb.left (2, 0), cc) = (real_t)0.225;//=9/40;
                             // M.insert(bb.right(2, 0), cc) = (real_t)0.225;//=9/40;
@@ -749,9 +822,9 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
                         }
                         else
                         {
-                            bb.insert    (cc, 2,0 , -0.025);//=-1/40
-                            bb.insertBoth(cc, 2,1 , -(2-a_N)/80);
-                            bb.insertBoth(cc, 3,1 , -0.0075*a_N);//=-3/400*a_N
+                            bbmap.insert    (h,cc, 2,0 , -0.025);//=-1/40
+                            bbmap.insertBoth(h,cc, 2,1 , -(2-a_N)/80);
+                            bbmap.insertBoth(h,cc, 3,1 , -0.0075*a_N);//=-3/400*a_N
                            
                             // M.insert(bb.left (2,0), cc) = (real_t)(-0.025);//=-1/40
                             // M.insert(bb.right(2,0), cc) = (real_t)(-0.025);//=-1/40
@@ -794,15 +867,15 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
 
               // for( auto vv : bbmap.allCorners(v) )
               //    M.insert(vv, c1dim) = (real_t)1.0;
-              for ( auto ff : msh.faces(v) ) //for all faces, set vertex value
-              {
-                  pi = ff.idx();
-                  cmapper.indexOnPatch( v.idx(), pi, ci);
-                  os = offset[pi];
-                  M.insert(os+cpIndex(ci, 0, 0), c1dim) = (real_t)1.0;
-              }
+              // for ( auto ff : msh.faces(v) ) //for all faces, set vertex value
+              // {
+              //     pi = ff.idx();
+              //     cmapper.indexOnPatch( v.idx(), pi, ci);
+              //     os = offset[pi];
+              //     M.insert(os+cpIndex(ci, 0, 0), c1dim) = (real_t)1.0;
+              // }
               // NEW: ?
-              //bbmap.insert(vv, c1dim, 1.0);
+              bbmap.insert(v, c1dim, 1.0);
 
               index_t k = 0;// (continues) Basis function attached to the vertex value
               for ( auto he : msh.halfedges(v) ) //for all halfedges he in msh
@@ -811,11 +884,11 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
 
 // /*
                   auto bb = bbmap.atHalfedge(he);
-                  bb.insert    (c1dim,  1, 1, sol2.at(k)           );
-                  bb.insertBoth(c1dim,  0, 1, sol1.at(k)           );
-                  bb.insertBoth(c1dim,  0, 2, 0.5*sol1.at(k) - 0.1 );
-                  bb.insertBoth(c1dim,  1, 2, 0.5*R1               );
-                  
+                  bbmap.insert    (he,c1dim,  1, 1, sol2.at(k)           );
+                  bbmap.insert(he,c1dim,  0, 1, sol1.at(k)           );
+                  bbmap.insert(he,c1dim,  0, 2, 0.5*sol1.at(k) - 0.1 );
+                  bbmap.insertBoth(he,c1dim,  1, 2, 0.5*R1               );
+
                   // M.insert(bb.right(1, 1), c1dim) = sol2.at(k);
                   // //
                   // M.insert(bb.right(0, 1), c1dim) = sol1.at(k);
@@ -871,66 +944,57 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
                   //
                   real_t R2 = 0.1 * ( 5*a*K1(k,1) - 10*(a-2)*(0.5*K1(k,1)));
                   real_t R4 = 0.1 * (-5*a*K1(k,1) + 10*a*(0.5*K1(k,1)));
-/*
+// /*
                   auto bb = bbmap.atHalfedge(he);
                   //first
-                  M.insert(bb.right(1, 1), c1dim) = sol2(k,0);
-                  
-                  M.insert(bb.right(0, 1), c1dim) = K1(k,0);
-                  M.insert(bb.right(0, 2), c1dim) = K1(k,0) * 0.5;
-                  M.insert(bb.right(1, 2), c1dim) = 0.5 * R1;
-                  M.insert(bb.right(1, 3), c1dim) = 0.5 * R3;
-                  //left
-                  M.insert(bb.left (0, 1), c1dim) = K1(k,0);
-                  M.insert(bb.left (0, 2), c1dim) = K1(k,0) * 0.5;
-                  M.insert(bb.left (1, 2), c1dim) = 0.5 * R1;
-                  M.insert(bb.left (1, 3), c1dim) = 0.5 * R3;
+                  bbmap.insert(he,c1dim, 1,1, sol2(k,0) );
+                  bbmap.insert(he,c1dim, 1,0, K1(k,0));
+                  bbmap.insert(he,c1dim, 2,0, K1(k,0) * 0.5);
+                  bbmap.insertBoth(he,c1dim, 2,1, 0.5 * R1);
+                  bbmap.insertBoth(he,c1dim, 3,1, 0.5 * R3);
+
                   //second
-                  M.insert(bb.right(1, 1), 1+c1dim) = sol2(k,1);
-                  
-                  M.insert(bb.right(1, 0), 1+c1dim) = K1(k,1);
-                  M.insert(bb.right(2, 0), 1+c1dim) = K1(k,1) * 0.5;
-                  M.insert(bb.right(2, 1), 1+c1dim) = 0.5 * R2;
-                  M.insert(bb.right(3, 1), 1+c1dim) = 0.5 * R4;
-                  //left
-                  M.insert(bb.left (0, 1), 1+c1dim) = K1(k,1);
-                  M.insert(bb.left (0, 2), 1+c1dim) = K1(k,1) * 0.5;
-                  M.insert(bb.left (1, 2), 1+c1dim) = 0.5 * R2;
-                  M.insert(bb.left (1, 3), 1+c1dim) = 0.5 * R4;
+                  bbmap.insert(he,1+c1dim,     1,1, sol2(k,1));
+                  bbmap.insert(he,1+c1dim,     1,0, K1(k,1));
+                  bbmap.insert(he,1+c1dim,     2,0, K1(k,1) * 0.5);
+                  bbmap.insertBoth(he,1+c1dim, 2,1, 0.5 * R2);
+                  bbmap.insertBoth(he,1+c1dim, 3,1, 0.5 * R4);
+
+//                  bbmap.insert(he,1+c1dim, 0,-1, K1(k,1));
+
                   ++k;
                   continue;
                   //--------------------------------------- //known to work
-*/
+//*/
                   pi = msh.face(he).idx();
                   os = offset[pi];
                   cmapper.indexOnPatch(v.idx(), pi, ci);
                   //first
-                  M.insert(os+cpIndex(ci, 1, 0), c1dim) = K1(k,0);
-                  M.insert(os+cpIndex(ci, 2, 0), c1dim) = K1(k,0) * 0.5;
-                  M.insert(os+cpIndex(ci, 2, 1), c1dim) = 0.5 * R1;
-                  M.insert(os+cpIndex(ci, 3, 1), c1dim) = 0.5 * R3;//
+                   M.insert(os+cpIndex(ci, 1, 0), c1dim) = K1(k,0);
+                   M.insert(os+cpIndex(ci, 2, 0), c1dim) = K1(k,0) * 0.5;
+                   M.insert(os+cpIndex(ci, 2, 1), c1dim) = 0.5 * R1;
+                   M.insert(os+cpIndex(ci, 3, 1), c1dim) = 0.5 * R3;//
                   
-                  M.insert(os+cpIndex(ci, 1, 1), c1dim) = sol2(k,0);
+                   M.insert(os+cpIndex(ci, 1, 1), c1dim) = sol2(k,0);
                   //second
-                  M.insert(os+cpIndex(ci, 1, 0), 1+c1dim) = K1(k,1);
-                  M.insert(os+cpIndex(ci, 2, 0), 1+c1dim) = K1(k,1) * 0.5;
-                  M.insert(os+cpIndex(ci, 2, 1), 1+c1dim) = 0.5 * R2;//..
-                  M.insert(os+cpIndex(ci, 3, 1), 1+c1dim) = 0.5 * R4;//..
-                  
-                  M.insert(os+cpIndex(ci, 1, 1), 1+c1dim) = sol2(k,1);
+                  //M.insert(os+cpIndex(ci, 1, 0), 1+c1dim) = K1(k,1);
+                  //M.insert(os+cpIndex(ci, 2, 0), 1+c1dim) = K1(k,1) * 0.5;
+                  //M.insert(os+cpIndex(ci, 2, 1), 1+c1dim) = 0.5 * R2;//..
+                  //M.insert(os+cpIndex(ci, 3, 1), 1+c1dim) = 0.5 * R4;//..
+                 //M.insert(os+cpIndex(ci, 1, 1), 1+c1dim) = sol2(k,1);
                   pi = msh.face(msh.opposite_halfedge(he)).idx();
                   cmapper.indexOnPatch(v.idx(), pi, ci);
                   os = offset[pi];
                   //first
-                  M.insert(os+cpIndex(ci, 0, 1), c1dim) = K1(k,0);
-                  M.insert(os+cpIndex(ci, 0, 2), c1dim) = K1(k,0) * 0.5;
-                  M.insert(os+cpIndex(ci, 1, 2), c1dim) = 0.5 * R1;
-                  M.insert(os+cpIndex(ci, 1, 3), c1dim) = 0.5 * R3;//..
+                   M.insert(os+cpIndex(ci, 0, 1), c1dim) = K1(k,0);
+                   M.insert(os+cpIndex(ci, 0, 2), c1dim) = K1(k,0) * 0.5;
+                   M.insert(os+cpIndex(ci, 1, 2), c1dim) = 0.5 * R1;
+                   M.insert(os+cpIndex(ci, 1, 3), c1dim) = 0.5 * R3;//..
                   //second
-                  M.insert(os+cpIndex(ci, 0, 1), 1+c1dim) = K1(k,1);
-                  M.insert(os+cpIndex(ci, 0, 2), 1+c1dim) = K1(k,1) * 0.5;
-                  M.insert(os+cpIndex(ci, 1, 2), 1+c1dim) = 0.5 * R2;//..
-                  M.insert(os+cpIndex(ci, 1, 3), 1+c1dim) = 0.5 * R4;//..
+                  //M.insert(os+cpIndex(ci, 0, 1), 1+c1dim) = K1(k,1);
+                  //M.insert(os+cpIndex(ci, 0, 2), 1+c1dim) = K1(k,1) * 0.5;
+                  //M.insert(os+cpIndex(ci, 1, 2), 1+c1dim) = 0.5 * R2;//..
+                  //M.insert(os+cpIndex(ci, 1, 3), 1+c1dim) = 0.5 * R4;//..
                   ++k;
               }
               c1dim+=2;
@@ -941,29 +1005,28 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
               {
                   real_t R1 = -(a-2)*(5.0/(4*a)) + (3.0/5.0)*a*(5.0/(4*a));
                   real_t R2 =      a*(5.0/(4*a)) - (a-2)*(5.0/(4*a));
-/*
+// /*
                   auto bb = bbmap.atHalfedge(he);
-                  //current face F [INVERT indices]
-                  M.insert(bb.right(1, 1), c1dim) = 1;
-                  M.insert(bb.right(2, 0), c1dim) =  5.0/(4*a);
-                  M.insert(bb.right(0, 2), c1dim) =  5.0/(4*a);
-                  M.insert(bb.right(3, 0), c1dim) =  5.0/(4*a);
-                  M.insert(bb.right(0, 3), c1dim) =  5.0/(4*a);
-                  M.insert(bb.right(1, 2), c1dim) =  0.5*R1;
-                  M.insert(bb.right(2, 1), c1dim) =  0.5*R1;
-                  M.insert(bb.right(1, 3), c1dim) =  0.5*R2;
-                  M.insert(bb.right(3, 1), c1dim) =  0.5*R2;
-                  // previous face F-1
-                  M.insert(bb.left (0, 2), c1dim) =  5.0/(4*a);
-                  M.insert(bb.left (0, 3), c1dim) =  5.0/(4*a);
-                  M.insert(bb.left (1, 2), c1dim) =  0.5*R1;
-                  M.insert(bb.left (1, 3), c1dim) =  0.5*R2;
-                  // next face F+1
-                  bb.reset(msh, msh.ccw_rotated_halfedge(he));
-                  M.insert(bb.right(0, 2), c1dim) =  5.0/(4*a);
-                  M.insert(bb.right(0, 3), c1dim) =  5.0/(4*a);
-                  M.insert(bb.right(1, 2), c1dim) =  0.5*R1;
-                  M.insert(bb.right(1, 3), c1dim) =  0.5*R2;
+
+                  // current f
+                  bbmap.insert(he,c1dim, 1, 1, 1.0       );
+                  bbmap.insert(he,c1dim, 2, 0, 5.0/(4*a) );
+                  bbmap.insert(he,c1dim, 0, 2, 5.0/(4*a) );
+
+                  bbmap.insert(he,c1dim, 3, 0, 5.0/(4*a) );
+                  bbmap.insert(he,c1dim, 0, 3, 5.0/(4*a) );
+
+                  bbmap.insert(he,c1dim, 1, 2, 0.5*R1    );
+                  bbmap.insert(he,c1dim, 2, 1, 0.5*R1    );
+                  bbmap.insert(he,c1dim, 2,-1, 0.5*R1    );//right face
+
+                  bbmap.insert(he,c1dim, 1, 3, 0.5*R2    );
+                  bbmap.insert(he,c1dim, 3, 1, 0.5*R2    );
+                  bbmap.insert(he,c1dim, 3,-1, 0.5*R2    );//right face
+                  // next face
+                  auto hh = msh.ccw_rotated_halfedge(he);
+                  bbmap.insert(hh,c1dim, 2,1, 0.5*R1    );
+                  bbmap.insert(hh,c1dim, 3,1, 0.5*R2    );
 
                   if (3==n)
                       M.col(c1dim) *= -1;
@@ -971,7 +1034,7 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
                   ++k;
                   ++c1dim;
                   continue;
-*/
+//*/
 //--------------------------------------- //known to work
 
                   pi = msh.face(he).idx();
@@ -1044,12 +1107,22 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
             cmapper.indexOnPatch( msh.to_vertex(he).idx(), pi2, ci2 );
             os2 = offset[pi2];
             //two functions per edge (or one per halfedge)
-            M.insert(os +cpIndex(ci , 2, 1),c1dim) = (real_t)1.0;
-            M.insert(os2+cpIndex(ci2, 3, 1),c1dim) = (real_t)(-1.0);
+            bbmap.insert(he,c1dim, 2, 1,  1.0);
+            bbmap.insert(he,c1dim, 2,-1, -1.0);
+
+            // M.insert(os +cpIndex(ci , 2, 1),c1dim) = (real_t)1.0;
+            // M.insert(os2+cpIndex(ci2, 3, 1),c1dim) = (real_t)(-1.0);
             ++c1dim;
         }
         if (!bdr && !ee) // inner regular HE
         {
+            bbmap.insert(he,c1dim  , 2,0, 0.5);
+            bbmap.insert(he,c1dim++, 2,1, 1.0);
+
+            bbmap.insert(he,c1dim  , 3, 0, 0.5);
+            bbmap.insert(he,c1dim++, 3, 1, 1.0);
+
+            /*
             pi2 = msh.face(msh.opposite_halfedge(he)).idx();
             cmapper.indexOnPatch( msh.to_vertex(he).idx(), pi2, ci2 );
             os2 = offset[pi2];
@@ -1061,23 +1134,35 @@ gsSparseMatrix<> basisFromMesh(gsSurfMesh & msh, gsDofMapper & cmapper)
             M.insert(os +cpIndex(ci , 3, 0),c1dim  ) = (real_t)0.5;
             M.insert(os +cpIndex(ci , 3, 1),c1dim  ) = (real_t)1.0;
             M.insert(os2+cpIndex(ci2, 2, 0),c1dim++) = (real_t)0.5;
+            */
         }
         if (bdr) // boundary (EHE or regular)
         {
-            M.insert(os +cpIndex(ci , 2, 0),c1dim++) = (real_t)1.0;
-            M.insert(os +cpIndex(ci , 3, 0),c1dim++) = (real_t)1.0;
-            M.insert(os +cpIndex(ci , 2, 1),c1dim++) = (real_t)1.0;
-            M.insert(os +cpIndex(ci , 3, 1),c1dim++) = (real_t)1.0;
+            bbmap.insert(he,c1dim++, 2,0, 1.0);
+            bbmap.insert(he,c1dim++, 3,0, 1.0);
+            bbmap.insert(he,c1dim++, 2,1, 1.0);
+            bbmap.insert(he,c1dim++, 3,1, 1.0);
+            
+            // M.insert(os +cpIndex(ci , 2, 0),c1dim++) = (real_t)1.0;
+            // M.insert(os +cpIndex(ci , 3, 0),c1dim++) = (real_t)1.0;
+            // M.insert(os +cpIndex(ci , 2, 1),c1dim++) = (real_t)1.0;
+            // M.insert(os +cpIndex(ci , 3, 1),c1dim++) = (real_t)1.0;
         }
     } //end for halfedges
 
     for ( auto ff : msh.faces() ) //for all faces
     {
-        os = offset[ff.idx()];
-        M.insert(os+cpIndex(0, 2, 2),c1dim++) = (real_t)1.0;
-        M.insert(os+cpIndex(0, 2, 3),c1dim++) = (real_t)1.0;
-        M.insert(os+cpIndex(0, 3, 2),c1dim++) = (real_t)1.0;
-        M.insert(os+cpIndex(0, 3, 3),c1dim++) = (real_t)1.0;
+        auto he = msh.halfedge(ff);
+        bbmap.insert(he,c1dim++, 2,2, 1.0);
+        bbmap.insert(he,c1dim++, 2,3, 1.0);
+        bbmap.insert(he,c1dim++, 3,2, 1.0);
+        bbmap.insert(he,c1dim++, 3,3, 1.0);
+        
+        // os = offset[ff.idx()];
+        // M.insert(os+cpIndex(0, 2, 2),c1dim++) = (real_t)1.0;
+        // M.insert(os+cpIndex(0, 2, 3),c1dim++) = (real_t)1.0;
+        // M.insert(os+cpIndex(0, 3, 2),c1dim++) = (real_t)1.0;
+        // M.insert(os+cpIndex(0, 3, 3),c1dim++) = (real_t)1.0;
     }
 
     //gsInfo << "Matrix:\n"<< M.toDense() <<"\n";
