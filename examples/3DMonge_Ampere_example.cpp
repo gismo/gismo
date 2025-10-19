@@ -156,11 +156,11 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE, numReduce = numReduce);
     auto density        = MAE.buildAnalyticDensity(f);
-    auto Psitp          = MAE.buildMultiPatch(density);// build the adaptive mapping
+    MAE.buildMultiPatch(density);// build the adaptive mapping
     // //------------------------------------
     geometryMap G       = A.getMap(mpLeft);
-    geometryMap PP      = A.getMap(Psitp);
-    geometryMap PG      = A.getMap(Psitp);
+    geometryMap PP      = A.getMap(MAE.gsPsi);
+    geometryMap PG      = A.getMap(MAE.gsPsi);
     PG(mpLeft);
     auto comp           = A.getCoeff(mpLeft, PP);    
     PsiF                = MAE.buildCompMultiPatch(dbasis, elevDegree); //composition of geometry maps

@@ -176,12 +176,12 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     typedef gsExprAssembler<>::solution    solution;
     //...............error as a piecewise constant function this->n_basis
     gsMultiBasis<> basis_0 = Givbasis;
-    // basis_0.degreeDecrease(basis.basis(0).maxDegree());
-    #pragma omp parallel for
-    for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn )// for all patches
+    // ... We want each element to be reprensted by one basis for all patches
+    for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn ) 
     {
-    for( index_t i_dir=0; i_dir<Givbasis.dim(); ++i_dir)
+    for( index_t i_dir=0; i_dir<Givbasis.dim(); ++i_dir){
        basis_0.basis(pn).degreeDecrease(Givbasis.basis(pn).degree(i_dir),i_dir);
+       }
     }
     //....
     gsExprAssembler<> A_0(1,1);
@@ -198,7 +198,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // globalCount: counter for the current global element index
     int globalCount = 0;
-    #pragma omp parallel for
     for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn )// for all patches
     {
         // for all elements in patch pn
