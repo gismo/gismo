@@ -56,7 +56,7 @@ public:
     gsMultiPatch<> buildHBMultiPatch(const gsMultiBasis<> dbasis, const gsMultiPatch<> &density) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
-    gsMultiPatch<> buildCompMultiPatch(gsMultiBasis<> dbasis, int degreeEl = 2) const;
+    gsMultiPatch<> buildCompMultiPatch(gsMultiBasis<> dbasis, int degreeEl = 0) const;
 
     // Method to find the span of a knot vector
     index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;

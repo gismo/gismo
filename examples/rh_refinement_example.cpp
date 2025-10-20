@@ -34,8 +34,8 @@ int main(int argc, char *argv[])
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/circle.xml");
-    // std::string fn("pde/lshape.xml");
+    // std::string fn("pde/circle.xml");
+    std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -88,12 +88,12 @@ int main(int argc, char *argv[])
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
     //! [Problem setup]
-    gsExprAssembler<> ACM(1,1);
+    gsExprAssembler<> A(1,1);
     //A.setOptions(Aopt);
-    gsInfo<<"Active options:\n"<< ACM.options() <<"\n";
+    gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
-    ACM.setIntegrationElements(dbasis);
-    gsExprEvaluator<> evCM(ACM);
+    A.setIntegrationElements(dbasis);
+    gsExprEvaluator<> ev(A);
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -117,41 +117,41 @@ int main(int argc, char *argv[])
     {
        bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
     }
-    geometryMap GLeft = ACM.getMap(mpLeft);
+    geometryMap GLeft = A.getMap(mpLeft);
     gsStopwatch timer;
 
     // Set the discretization space // different boundary condition !
-    space ru   = ACM.getSpace(dbasis);
+    space ru   = A.getSpace(dbasis);
 
     // Set the source term for Poisson equation
-    auto rhs_f = ACM.getCoeff(rhs, GLeft);
+    auto rhs_f = A.getCoeff(rhs, GLeft);
 
     // Solution vector and solution variable
     gsMatrix<> rsolVector;
-    solution u_sol = ACM.getSolution(ru, rsolVector);
+    solution u_sol = A.getSolution(ru, rsolVector);
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 0: Computes the initial solution of the PDEs 
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     ru.setup(bc, dirichlet::l2Projection, 0);
     // Initialize the system
-    ACM.initSystem();
+    A.initSystem();
     gsInfo<< "Solving PDEs " <<std::flush;
-    gsInfo<< ACM.numDofs() <<std::flush;    
+    gsInfo<< A.numDofs() <<std::flush;    
     //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
     timer.restart();
-    ACM.assemble(
+    A.assemble(
     igrad(ru, GLeft) * igrad(ru, GLeft).tr() * meas(GLeft) //matrix
     ,
     ru * rhs_f * meas(GLeft) //rhs vector
     );
     gsInfo<< "." <<std::flush;// Assemblying done
     timer.restart();
-    solver.compute( ACM.matrix() );
-    rsolVector     = solver.solve(ACM.rhs());
-    evCM.integralElWise( (ilapl(u_sol, GLeft) +rhs_f).sqNorm()*meas(GLeft) );
+    solver.compute( A.matrix() );
+    rsolVector     = solver.solve(A.rhs());
+    ev.integralElWise( (ilapl(u_sol, GLeft) +rhs_f).sqNorm()*meas(GLeft) );
     //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
-    auto elwise    = evCM.elementwise();
+    auto elwise    = ev.elementwise();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
@@ -179,8 +179,9 @@ int main(int argc, char *argv[])
         Psitp.swap(mpLeft );
     }  
     gsMultiPatch<> Psi;
-    for(size_t i =0; i<Psitp.nPatches(); ++i)
+    for(size_t i =0; i<Psitp.nPatches(); ++i){
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
+    }
     Psi.addAutoBoundaries();
     Psi.computeTopology();
 
@@ -293,22 +294,22 @@ int main(int argc, char *argv[])
             std::vector<real_t> eltErrs  = ev.elementwise();            
             if (IntensityMAE >1.){
                 std::vector<bool> eldensityMarked( eltErrs.size() );
-                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.75, eldensityMarked);                 
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked);
-                gsInfo<<"Plotting in Paraview...\n";
-                gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-                collection.options().setSwitch("plotElements", true);
-                collection.options().setSwitch("base64", export_b64);
-                collection.options().setInt("plotElements.resolution", 16);
-                collection.options().setInt("numPoints", 10000);
-                geometryMap GP = A.getMap(MAE.mp);
-                auto rho = A.getCoeff(density, GP);
-                collection.newTimeStep(&MAE.mp);
-                collection.addField(rho,"density");
-                collection.saveTimeStep();
-                collection.save();
-                gsFileManager::open("ParaviewOutput/solution.pvd");
-                return  0;
+                // gsInfo<<"Plotting in Paraview...\n";
+                // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+                // collection.options().setSwitch("plotElements", true);
+                // collection.options().setSwitch("base64", export_b64);
+                // collection.options().setInt("plotElements.resolution", 16);
+                // collection.options().setInt("numPoints", 10000);
+                // geometryMap GP = A.getMap(MAE.mp);
+                // auto rho = A.getCoeff(density, GP);
+                // collection.newTimeStep(&MAE.mp);
+                // collection.addField(rho,"density");
+                // collection.saveTimeStep();
+                // collection.save();
+                // gsFileManager::open("ParaviewOutput/solution.pvd");
+                // return  0;
 
                 MAE.buildMultiPatch(density);// compute adaptive mapping
                 Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp

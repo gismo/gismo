@@ -237,20 +237,20 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
     gsInfo << ".";
 
-    // if (!gsPsi.empty()){
-    // // If the given density is defined on an adaptive mesh, it must first be projected onto a uniform mesh
-    // // since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
-    // const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).knots(0);
-    // const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).knots(1);
-    // const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).degree(0);
-    // const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).degree(1);
-    // gsMatrix<> rhsVector = A.rhs();
-    // rhsVector.setZero();
-    // //...
-    // assemble_rhsvector_ad(degree1, degree2, kv1, kv2, gsPsi.patch(0).coefs(), densityVector, rhsVector);
-    // densityVector           = this->Poisson.L2ProjectScalar(rhsVector);
-    // gsInfo << ".";
-    // }
+    if (!gsPsi.empty()){
+    // If the given density is defined on an adaptive mesh, it must first be projected onto a uniform mesh
+    // since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
+    const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).knots(0);
+    const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).knots(1);
+    const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).degree(0);
+    const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).degree(1);
+    gsMatrix<> rhsVector = A.rhs();
+    rhsVector.setZero();
+    //...
+    assemble_rhsvector_ad(degree1, degree2, kv1, kv2, gsPsi.patch(0).coefs(), densityVector, rhsVector);
+    densityVector           = this->Poisson.L2ProjectScalar(rhsVector);
+    gsInfo << ".";
+    }
     //...
     gsMultiPatch<> density;
     density_sol.extract(density);
