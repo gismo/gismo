@@ -208,14 +208,16 @@ int main(int argc, char *argv[])
     ###        and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
-    auto density                    = MAE.buildStrategyDensity( elwise, 0.8);
+    //.. mark elements location
+    std::vector<bool> eldensityMarked( elwise.size() );
+    gsMarkElementsForRef( elwise, adaptRefCrit, 0.8, eldensityMarked);
+    auto density   = MAE.buildDensity(dbasis, eldensityMarked);
+    MAE.buildMultiPatch(density);// compute adaptive mapping
 
     if (IntensityMAE>0){
-    // auto density                 = MAE.buildAnalyticDensity( f);
-    auto geometrytp                 = MAE.buildMultiPatch(density);
-    geometrytp                      = MAE.buildCompMultiPatch(geometrytp, 0);//0: I don't want to elevate degree. computes the composition mapping mpLeft o Psitp
-
+    auto geometrytp                  = MAE.buildCompMultiPatch(dbasis);
     CorrecNormalCPoints(mpLeft, geometrytp);
+    
     index_t numPaches               = geometrytp.nPatches();
     for( index_t i=0; i<numPaches; ++i)
     {

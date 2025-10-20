@@ -754,7 +754,7 @@ public:
          {
             //gsInfo <<"Calls comp......\n";
             // Recursive case: first evaluate the composed map
-            gsMatrix<_Float32> intermediateResult = m_fd->values[0].col(k);
+            gsMatrix<> intermediateResult = m_fd->values[0].col(k);
             gsVector<T> tmp2(m_composedMap->patch(0).parDim());
             tmp2 << intermediateResult(0), intermediateResult(1);
             //auto Result = m_fd->values(0).col(k);
@@ -767,7 +767,7 @@ public:
             if(tmp.hasNaN()){
             if(m_composedMap->patch(0).parDim()==2){
             std::cout << std::setprecision(60);
-            gsInfo << "___________________________ "<< intermediateResult << " " << tmp << "\n"; 
+            // gsInfo << "___________________________ "<< intermediateResult << " " << tmp << "\n"; 
             if(intermediateResult(1) >= 0.999999999999)
                 tmp2<<  intermediateResult(0), 1.;
             else if(intermediateResult(1) <= 1e-16)
@@ -792,7 +792,7 @@ public:
                 tmp2<<  0., intermediateResult(1), intermediateResult(2);
             }
             tmp = m_composedMap->patch(0).eval(tmp2);
-            gsInfo << "___________________________ "<< tmp2 << " " << tmp << "\n"; 
+            // gsInfo << "___________________________ "<< tmp2 << " " << tmp << "\n"; 
             }
             return tmp;
          }

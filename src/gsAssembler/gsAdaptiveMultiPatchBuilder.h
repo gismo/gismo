@@ -48,7 +48,6 @@ public:
     //-------------------------------------------------------------------------------------------------------------------------
     //                          functions to build mapping from density       .................................................
     //-------------------------------------------------------------------------------------------------------------------------
-
     // Method to build a multipatch adaptive mapping
     void buildMultiPatch(const gsMultiPatch<> &density) const;
 
@@ -58,29 +57,24 @@ public:
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
     gsMultiPatch<> buildCompMultiPatch(gsMultiBasis<> dbasis, int degreeEl = 0) const;
 
-    // Method to find the span of a knot vector
-    index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;
-
     //-------------------------------------------------------------------------------------------------------------------------
     //                          Useful functions for time moving meshes       .................................................
     //-------------------------------------------------------------------------------------------------------------------------
+    // Method to find the span of a knot vector
+    index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;
 
     // Method to compute the basis functions and their derivatives
     void basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
                      gsVector<double>& d0,
                      gsVector<double>& d1) const;
-    void nurbsbasis_functions(const gsKnotVector<double>& knots,const gsKnotVector<double>& omega, const index_t& degree, const double& x, index_t& span,
-                     gsVector<double>& dbasis0,
-                     gsVector<double>& dbasis1)  const;
     // Method to compute the right-hand side vector for the adaptive multi-patch assembly
-    void assemble_rhsvector_ad(const index_t& p1, const index_t& p2,
+    void assemble_rhsvector_2d(const index_t& p1, const index_t& p2,
                            const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
                            const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
                            gsMatrix<double>& rhs) const;
-    void assemble_nurbsrhsvector_ad(const index_t& p1, const index_t& p2,
-                           const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
-                           const gsKnotVector<double>& omega_1, const gsKnotVector<double>& omega_2,
-                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_cp,
+    void assemble_rhsvector_3d(const index_t& p1, const index_t& p2, const index_t& p3,
+                           const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2, const gsKnotVector<double>& knots_3,
+                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
                            gsMatrix<double>& rhs) const;
     // degees of freedom used in the computation
     int DoFs;

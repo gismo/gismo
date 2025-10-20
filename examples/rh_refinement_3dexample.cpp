@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris & M. BAHARI
+    Author(s): M. BAHARI
 */
 
 //! [Include namespace]
@@ -33,7 +33,6 @@ int main(int argc, char *argv[])
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
-    index_t circleN       = 0;
     // Specify the file path
     std::string fn("pde/example3D.xml");
     //std::string fn("surfaces/quarter_sphere.xml"); 
@@ -78,6 +77,9 @@ int main(int argc, char *argv[])
     // reaction coefficient:
     //double coeff_reac = 0.;
 
+    // .. density function computed analytically
+    gsFunctionExpr<> ff;
+    fd.getId(2003, ff);
     // source term: and manufactured solution
     gsFunctionExpr<> s;
     fd.getId(2000, s);
@@ -169,10 +171,12 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
-    // auto density = MAE.buildStrategyDensity(elwise, 0.75);
-    gsFunctionExpr<> ff;
-    fd.getId(2003, ff);
-    auto density = MAE.buildAnalyticDensity(ff);
+    // auto density = MAE.buildAnalyticDensity(ff);
+    //.. mark elements location
+    std::vector<bool> eldensityMarked( elwise.size() );
+    gsMarkElementsForRef( elwise, adaptRefCrit, 0.8, eldensityMarked);
+    auto density   = MAE.buildDensity(dbasis, eldensityMarked);
+    MAE.buildMultiPatch(density);
     // gsMultiPatch<> mp; 
     // if (dbasis.dim()==2)
     //     mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,0,0));
@@ -192,8 +196,7 @@ int main(int argc, char *argv[])
     // gsFileManager::open("ParaviewOutput/solution.pvd");
     // return 0;
 
-    auto Psitp   = MAE.buildMultiPatch(density);
-    Psitp        = MAE.buildCompMultiPatch(Psitp);// computes the composition mapping mpLeft o Psitp
+    auto Psitp      = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
     
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
