@@ -1253,7 +1253,11 @@ void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value)
 template<class T>
 void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const std::vector<T> & values)
 {
-    GISMO_ASSERT(boxes.cols()/2==(index_t)values.size() || values.size()==0,"Values should have size 0 or equal to the number of boxes (i.e., boxes.cols()/2)");
+    GISMO_ASSERT(boxes.cols()/2==(index_t)values.size() || values.size()==0,
+        "Values should have size 0 or equal to the number of boxes (i.e., boxes.cols()/2 = " +
+        std::to_string(boxes.cols()/2) + "), but got values.size() = " +
+        std::to_string(values.size()));
+
     const short_t d = boxes.rows();
     gsMesh<T> mesh; // only needs vertices
     gsMatrix<> tmpbox;

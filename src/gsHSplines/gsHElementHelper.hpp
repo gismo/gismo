@@ -201,7 +201,7 @@ namespace gismo
     {
         level_t lvl = element.level();
         // GISMO_ASSERT(lvl > k,"Current level should be larger than requested level, l = "<<lvl<<", k = "<<k);
-        GISMO_ASSERT(lvl >= 0,"Level lvl = "<<lvl<<" should be larger than 0");
+        GISMO_ASSERT(lvl >= 0,"Level lvl = "<<lvl<<" should be non-negative");
         HElementContainer descendants;
         if (jump == lvl)
         {

@@ -240,7 +240,7 @@ namespace gismo
                 if (std::any_of(siblings.begin(), siblings.end(),[&refined](const element_t & elem) { return refined.find(elem) != refined.end(); }))
                     continue;
                 // If any of the siblings is not active, skip it
-                if (std::any_of(siblings.begin(), siblings.end(),[&it](const element_t & elem) { return it->first.level() < elem.level(); }))
+                if (std::any_of(siblings.begin(), siblings.end(),[&it](const element_t & elem) { return it->first.level() != elem.level(); }))
                     continue;
             }
 

@@ -145,14 +145,18 @@ public:
 
     /// Get the TNeighborhood of the element at a specific level
     /// @param element The element for which the TNeighborhood is requested.
-    /// @param m The level of the neighborhood.
-    /// @return A set of elements representing the TNeighborhood of the element at the specified level
+    /// @param m The jump/offset parameter indicating how many levels to go back in the hierarchy.
+    /// @return A set of elements representing the HNeighborhood of the element at the specified jump level
+    HElementContainer getHNeighborhood(const element_t & element, level_t m) const;
+    /// Get the TNeighborhood of the element at a specific jump level
+    /// @param element The element for which the TNeighborhood is requested.
+    /// @param m The jump/offset parameter indicating how many levels to go back in the hierarchy.
+    /// @return A set of elements representing the TNeighborhood of the element at the specified jump level
     HElementContainer getTNeighborhood(const element_t & element, level_t m) const;
-
-    /// Get the neighborhood of the element at a specific level
+    /// Get the neighborhood of the element at a specific jump level
     /// @param element The element for which the neighborhood is requested.
-    /// @param m The level of the neighborhood.
-    /// @return A set of elements representing the neighborhood of the element at the specified level
+    /// @param m The jump/offset parameter indicating how many levels to go back in the hierarchy.
+    /// @return A set of elements representing the neighborhood of the element at the specified jump level
     /// @note If the basis is a tensor basis, the TNeighborhood is returned.
     ///       If the basis is a HBSpline basis, the HNeighborhood is returned.
     ///       If the basis is neither, an error is thrown.
