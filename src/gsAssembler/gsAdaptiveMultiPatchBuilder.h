@@ -29,8 +29,10 @@ public:
                                 index_t numReduce = 0);
     //... Square mapping
     gsMultiPatch<double> mp; 
+    // ... optimal mapping in unit-square to itself
     mutable gsMultiPatch<double> gsPsi;
-
+    // m_maxIter: max iterations, in moving mesh we want to change max iteration since we start with adaptive mapping
+    index_t m_maxIter;
 public:
 
     //... uniform refinement
@@ -82,7 +84,6 @@ private:
     gsMultiBasis<double> n_basis;
     gsMultiBasis<double> m_basis;
     gsMultiPatch<double> m_mapping;
-    index_t m_maxIter;
     double m_IntensityMAE;
     gsBoundaryConditions<> bc_mae;
 public:

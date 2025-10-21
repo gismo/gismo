@@ -28,14 +28,15 @@ int main(int argc, char *argv[])
     double IntensityMAE   = 12.;
     bool export_b64       = false;
     bool errorsave        = false;
+    bool basisRation      = true; //true: poly-splines (not NURBS)
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    // std::string fn("pde/circle.xml");
-    std::string fn("pde/lshape.xml");
+    std::string fn("pde/circle.xml");
+    // std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
@@ -81,8 +82,7 @@ int main(int argc, char *argv[])
     fd.getId(2001, rhs);
 
     //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
-
+    gsMultiBasis<double> dbasis(mpLeft, basisRation);
     gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
@@ -153,33 +153,38 @@ int main(int argc, char *argv[])
     //ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise    = ev.elementwise();
 
+
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
+    gsMultiPatch<> Psitp;
+    if (IntensityMAE <= 1.)
+    {
+        gsInfo << "IntensityMAE < 1, so mpLeft is used.\n";
+        // Use the original multipatch
+        Psitp = mpLeft;
+    }  
+    else{
     //.. mark elements location
     std::vector<bool> eldensityMarked( elwise.size() );
     gsMarkElementsForRef( elwise, adaptRefCrit, 0.8, eldensityMarked);
     auto density   = MAE.buildDensity(dbasis, eldensityMarked);
     MAE.buildMultiPatch(density);// compute adaptive mapping
-    auto Psitp     = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp    
+    Psitp     = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp    
+    }
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    // while (MAE.DoFs < 3e3){
-    //     MAE.uniformRefine();
-    //     gsInfo<< " DoFs in MAE = " << MAE.DoFs <<" \n";
-    // }
-    if (IntensityMAE <= 1.)
-    {
-        gsInfo << "IntensityMAE < 1, so the density function is not used.\n";
-        // Use the original multipatch
-        Psitp.swap(mpLeft );
-    }  
     gsMultiPatch<> Psi;
-    for(size_t i =0; i<Psitp.nPatches(); ++i){
+    if (Psitp.basis(0).weights().any()){
+    for(size_t i =0; i<Psitp.nPatches(); ++i)
+        Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(Psitp.patch(i)) ));
+    }
+    else{
+    for(size_t i =0; i<Psitp.nPatches(); ++i)
         Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
     }
     Psi.addAutoBoundaries();
@@ -242,7 +247,6 @@ int main(int argc, char *argv[])
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     for (int r=0; r<=numLRefine; ++r)
     {
-       gsInfo <<"*------* degree: "<< dbasis.minCwiseDegree() <<"\n";
         //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
         ru.setup(bc, dirichlet::l2Projection, 0);
 
@@ -288,29 +292,14 @@ int main(int argc, char *argv[])
 
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            // ev.integralElWise( (  igrad(ru_sol, PP)*meas(PP) ).sqNorm() );
-            ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm()*meas(PP) );
+            // ev.integralElWise( (  igrad(ru_sol, PP) ).sqNorm() );
+            ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
             //! [errorComputation]
             std::vector<real_t> eltErrs  = ev.elementwise();            
-            if (IntensityMAE >1.){
+            if (IntensityMAE >1. && r>0){
                 std::vector<bool> eldensityMarked( eltErrs.size() );
-                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.75, eldensityMarked);                 
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);                 
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked);
-                // gsInfo<<"Plotting in Paraview...\n";
-                // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-                // collection.options().setSwitch("plotElements", true);
-                // collection.options().setSwitch("base64", export_b64);
-                // collection.options().setInt("plotElements.resolution", 16);
-                // collection.options().setInt("numPoints", 10000);
-                // geometryMap GP = A.getMap(MAE.mp);
-                // auto rho = A.getCoeff(density, GP);
-                // collection.newTimeStep(&MAE.mp);
-                // collection.addField(rho,"density");
-                // collection.saveTimeStep();
-                // collection.save();
-                // gsFileManager::open("ParaviewOutput/solution.pvd");
-                // return  0;
-
                 MAE.buildMultiPatch(density);// compute adaptive mapping
                 Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
             }

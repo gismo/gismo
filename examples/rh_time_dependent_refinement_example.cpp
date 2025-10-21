@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     index_t numRefine     = 4;
     index_t numLRefine    = 3;
     index_t numElevate    = 0;
-    index_t maxIter       = 15;
+    index_t maxIter       = 25;
     double IntensityMAE   = 12.;
     bool export_b64       = false;
     bool errorsave        = false;
@@ -178,8 +178,8 @@ int main(int argc, char *argv[])
     std::vector<bool> elMarked( elwise.size() );
     gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
     auto density   = MAE.buildDensity(dbasis, elMarked);
-    auto Psi       = MAE.buildMultiPatch(density);
-    // auto Psi       = MAE.buildCompMultiPatch(PsiSquare);//compute the compostion
+    MAE.buildMultiPatch(density);
+    auto Psi       = MAE.gsPsi;//MAE.buildCompMultiPatch(dbasis);//compute the compostion
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -253,13 +253,36 @@ int main(int argc, char *argv[])
     A.assemble(
     ru * ru.tr() * meas(PP) //matrix
     ,
-    ru * u_ex * meas(PP) //rhs vector
+    ru * u_ex.tr() * meas(PP) //rhs vector
     );
     gsInfo<< ".+" <<std::flush;// Assemblying done
     timer.restart();
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
 
+
+    // ... We want to work with a mesh with small displacement in each step -----
+    ev.integralElWise( igrad(ru_sol,PP).sqNorm() );
+    elwise = ev.elementwise();
+    std::vector<bool> elMarked( elwise.size() );
+    gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
+    density        = MAE.buildDensity(dbasis, elMarked);
+    MAE.buildMultiPatch(density);
+    Psi  = MAE.gsPsi;
+    // ....
+    ru.setup(bc, dirichlet::l2Projection, 0);
+    // Initialize the system
+    A.initSystem();
+    timer.restart();
+    A.assemble(
+    ru * ru.tr() * meas(PP) //matrix
+    ,
+    ru * u_ex.tr() * meas(PP) //rhs vector
+    );
+    gsInfo<< ".+" <<std::flush;// Assemblying done
+    timer.restart();
+    solver.compute( A.matrix() );
+    rsolVector = solver.solve(A.rhs());
 
     gsInfo<<"Plotting in Paraview...\n";
     gsParaviewCollection collection("ParaviewOutput/time_solution", &ev);
@@ -280,6 +303,7 @@ int main(int argc, char *argv[])
     //adapt_parameter << 0,0,0,0,0;
     gsInfo<< "(dot1=assembled, dot2=solved)\n";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
+    MAE.m_maxIter = 3;
     for (int r=0; r<=numLRefine; ++r)
     {
         // ... update the mapping
@@ -295,7 +319,8 @@ int main(int argc, char *argv[])
         std::vector<bool> elMarked( elwise.size() );
         gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
         auto density        = MAE.buildDensity(dbasis, elMarked);
-        gsMultiPatch<> Psi  = MAE.buildMultiPatch(density);
+        MAE.buildMultiPatch(density);
+        gsMultiPatch<> Psi  = MAE.gsPsi;
         // ...
         Psi.addAutoBoundaries();
         Psi.computeTopology();
@@ -341,7 +366,7 @@ int main(int argc, char *argv[])
             nsolVector -= du;
             slv_time   += timer.stop();
             gsInfo<<'.'<<du.norm()<< "." <<std::flush; // Non-linear iteration done
-            if ( du.norm() < 1e-5 ) break;
+            if ( du.norm() < 1e-10 ) break;
         }
         rsolVector = nsolVector;
         //... End of Non linear solver for Allen-Cahn equation

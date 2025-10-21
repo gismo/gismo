@@ -202,9 +202,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     {
         // for all elements in patch pn
         typename gsBasis<>::domainIter domIt =  // add patchInd to domainiter ?
-            Givbasis.basis(pn).domain()->beginAll();
+            basis_0.basis(pn).domain()->beginAll();
         typename gsBasis<>::domainIter domItEnd =  // add patchInd to domainiter ?
-            Givbasis.basis(pn).domain()->endAll();
+            basis_0.basis(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
@@ -379,6 +379,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     solVector = this->Poisson.solve(A.rhs());
     gsInfo<< "." <<std::flush; // Linear solving done
 
+    if(gsPsi.empty()){
     // Initial guess for the gradient of potential function
     A.initSystem(IGdim);
     // Obtain control points for the gradient of Psi
@@ -398,6 +399,9 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     }
     // // ... correct boundary
     NormalProjectPts(Psi);
+    }
+    else
+        Psi = gsPsi;
     //! [Solver loop]
     // Picard loop
     auto  sv0 = solVector; //
