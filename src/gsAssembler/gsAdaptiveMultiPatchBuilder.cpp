@@ -175,14 +175,15 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
     //...............error as a piecewise constant function this->n_basis
-    gsMultiBasis<> basis_0 = Givbasis;
+    gsMultiBasis<> basis_0 = this->m_basis;
     // ... We want each element to be reprensted by one basis for all patches
     for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn ) 
     {
-    for( index_t i_dir=0; i_dir<Givbasis.dim(); ++i_dir){
-       basis_0.basis(pn).degreeDecrease(Givbasis.basis(pn).degree(i_dir),i_dir);
+    for( index_t i_dir=0; i_dir<this->m_basis.dim(); ++i_dir){
+       basis_0.basis(pn).degreeDecrease(this->m_basis.basis(pn).degree(i_dir),i_dir);
        }
     }
+    gsInfo << "DoFs = " << basis_0.size() << " --- " << elMarked.size() << "<\n";
     //....
     gsExprAssembler<> A_0(1,1);
     // Elements used for numerical integration
@@ -195,20 +196,20 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
 
     //------------------------------------------------------
     // piecewise density construction from error distribution 
-    // numMarked: Number of marked cells on current patch, also currently marked cell
     // globalCount: counter for the current global element index
     int globalCount = 0;
     for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn )// for all patches
     {
         // for all elements in patch pn
         typename gsBasis<>::domainIter domIt =  // add patchInd to domainiter ?
-            basis_0.basis(pn).domain()->beginAll();
+            Givbasis.basis(pn).domain()->beginAll();
         typename gsBasis<>::domainIter domItEnd =  // add patchInd to domainiter ?
-            basis_0.basis(pn).domain()->endAll();
+            Givbasis.basis(pn).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
-            if( elMarked[ globalCount++ ] ) // refine this element ?
-                errorVector(domIt.id()) = 1.; 
+            if( elMarked[ globalCount++ ] ){ // refine this element ?
+                errorVector(basis_0.basis(0).elementIndex(domIt.centerPoint()) ) = 1.; 
+        }
         }
     }
     //  End error as a function

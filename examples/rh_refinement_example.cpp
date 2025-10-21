@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
             ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
             //! [errorComputation]
             std::vector<real_t> eltErrs  = ev.elementwise();            
-            if (IntensityMAE >1. && r>0){
+            if (IntensityMAE >1.){
                 std::vector<bool> eldensityMarked( eltErrs.size() );
                 gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);                 
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked);
