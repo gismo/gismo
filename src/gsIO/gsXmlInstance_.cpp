@@ -12,7 +12,8 @@ namespace internal
 {
     CLASS_TEMPLATE_INST gsXml< gsMatrix<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMatrix<index_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<real_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<real_t,RowMajor> >;
+    CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<real_t,ColMajor> >;
     // CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<index_t> >;
     // CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<bool> >;
 

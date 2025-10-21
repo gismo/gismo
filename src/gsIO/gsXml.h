@@ -115,7 +115,7 @@ template<class T>
 inline bool gsGetReal(std::istream & is, T & var)
 {
     GISMO_STATIC_ASSERT(!std::numeric_limits<T>::is_integer,
-        "The second parameter needs to be an integer type.");
+        "The second parameter needs to be a real type.");
     std::string dn;
     if ( !(is >> dn) ) return false;
     const std::string::size_type slh( dn.find("/") );
@@ -270,7 +270,7 @@ inline gsXmlNode* searchId(const int id, gsXmlNode* root,
 /// \param label the label which is sought for
 /// \param tag_name Limit search to tags named \em tag_name .
 /// \param print_warning Print warning if search was not successful
-inline gsXmlNode* searchLabel(const std::string label, 
+inline gsXmlNode* searchLabel(const std::string label,
                            gsXmlNode* root,
                            const char* tag_name = NULL,
                            const bool print_warning = true) {
@@ -417,8 +417,8 @@ void getSparseEntriesFromXml ( gsXmlNode * node,
                                gsSparseEntries<T> & result );
 
 /// Helper to insert sparse matrices into XML
-template<class T>
-gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat,
+template<class T, int _Options>
+gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T,_Options> const & mat,
                                    gsXmlTree & data, std::string name = "SparseMatrix");
 
 }// end namespace internal
