@@ -1,4 +1,4 @@
-/** @file cahn-hilliard.cpp
+/** @file cahn-hilliard_example.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Cahn-Hilliard equation
 
@@ -9,7 +9,7 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s): M. Marsala (UniFi)
-               H.M. Verhelst (UniFi)
+               H.M. Verhelst (UniPv)
                L. Venta Viñuela (UniPv)
 
 
@@ -27,8 +27,6 @@
     TODO;
     - Change hmax to a gsExprAssembler<>::element el; el.diam();
     -----------------------------------------------------------------------
-
-
 
 */
 
@@ -89,9 +87,9 @@ int main(int argc, char *argv[])
     gsOptionList CHopt;
     fd.getId(3, CHopt); // id=3: reference solution
 
-    real_t theta    = CHopt.askReal("theta",1.5);
-    real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
-    real_t M0       = CHopt.askReal("M0",0.005);
+    // real_t theta    = CHopt.askReal("theta",1.5);
+    // real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
+    // real_t M0       = CHopt.askReal("M0",0.005);
     real_t penalty  = 1e4*lambda;
 
     gsOptionList TIMEopt;
@@ -238,8 +236,8 @@ int main(int argc, char *argv[])
     collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
 
     real_t dt_old = dt;
-    real_t t_rho = TIMEopt.askReal("t_rho",0.9);
-    real_t t_err = 1;
+    // real_t t_rho = TIMEopt.askReal("t_rho",0.9);
+    // real_t t_err = 1;
     index_t lmax = 1;
     std::vector<gsMatrix<>> Csols(2);
 
