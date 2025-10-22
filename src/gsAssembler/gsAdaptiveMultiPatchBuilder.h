@@ -28,9 +28,11 @@ public:
                                 double IntensityMAE = 9.0,
                                 index_t numReduce = 0);
     //... Square mapping
-    gsMultiPatch<double> mp; 
+    gsMultiPatch<> mp; 
     // ... optimal mapping in unit-square to itself
-    mutable gsMultiPatch<double> gsPsi;
+    mutable gsMultiPatch<> gsPsi;
+    // ... density coefs
+    mutable gismo::gsMatrix<> errorVector;
     // m_maxIter: max iterations, in moving mesh we want to change max iteration since we start with adaptive mapping
     index_t m_maxIter;
 public:
@@ -45,7 +47,7 @@ public:
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
     // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
-    gsMultiPatch<> buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked) const;
+    gsMultiPatch<> buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const bool setRhoZero = true) const;
     
     //-------------------------------------------------------------------------------------------------------------------------
     //                          functions to build mapping from density       .................................................

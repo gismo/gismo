@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris & M. BAHARI
+    Author(s): M. BAHARI
 */
 
 //! [Include namespace]
@@ -28,7 +28,6 @@ int main(int argc, char *argv[])
     double IntensityMAE   = 12.;
     bool export_b64       = false;
     bool errorsave        = false;
-    bool basisRation      = true; //true: poly-splines (not NURBS)
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
@@ -82,7 +81,7 @@ int main(int argc, char *argv[])
     fd.getId(2001, rhs);
 
     //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, basisRation);
+    gsMultiBasis<double> dbasis(mpLeft, false);
     gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
@@ -172,7 +171,9 @@ int main(int argc, char *argv[])
     gsMarkElementsForRef( elwise, adaptRefCrit, 0.8, eldensityMarked);
     auto density   = MAE.buildDensity(dbasis, eldensityMarked);
     MAE.buildMultiPatch(density);// compute adaptive mapping
-    Psitp     = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp    
+    Psitp     = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp 
+    // if (MAE.DoFs < 2e3)
+    //     MAE.uniformRefine();   
     }
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -298,7 +299,7 @@ int main(int argc, char *argv[])
             std::vector<real_t> eltErrs  = ev.elementwise();            
             if (IntensityMAE >1.){
                 std::vector<bool> eldensityMarked( eltErrs.size() );
-                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);                 
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked);
                 MAE.buildMultiPatch(density);// compute adaptive mapping
                 Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp

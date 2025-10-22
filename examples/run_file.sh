@@ -23,12 +23,12 @@ EXECUTABLE="./bin/rh_refinement_example"
 TAGS=(
     # "-l -1 -u 3 -f 12. -q 1 -c 1 -v 0 -e 0"
     # .. Poisson 2D ...
-    # "-r 2 -u 4 -f  0.  -l 5 -a 0.0 -c 0 -e 0"
+    # "-r 2 -u 4 -f  0.  -l 1 -a 0.0 -c 0 -e 0"
     # "-r 2 -u 4 -f  0.  -l 5 -a 0.5 -c 1 -e 0"
-    # "-r 2 -u 4 -f  0.  -l 5 -a 0.7 -c 0 -e 0"
-    # "-r 2 -u 4 -f  12. -l 6 -a 0.0 -c 0 -e 0"
-    "-r 2 -u 4 -f  12. -l 2 -a 0.5 -c 0 -e 0"
-    # "-r 2 -u 4 -f  12. -l 5 -a 0.7 -c 0 -e 0"
+    # "-r 2 -u 4 -f  0.  -l 5 -a 0.7 -c 1 -e 0"
+    # "-r 2 -u 4 -f  12. -l 1 -a 0.0 -c 0 -e 0"
+    # "-r 2 -u 4 -f  12. -l 5 -a 0.5 -c 0 -e 0"
+    "-r 2 -u 4 -f  12. -l 2 -a 0.7 -c 1 -e 0"
     # 3 dimensions case
     #"-r 2 -u 1 -f  0.  -l 2 -a 0.0 -c 0 -p 0 -e 0 -i 1"
     #"-r 2 -u 1 -f  0.  -l 2 -a 0.5 -c 0 -p 3 -e 0 -i 1"

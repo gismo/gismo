@@ -26,10 +26,9 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<> ba
     //... condition for the convergence 
     while (dbasis.basis(0).numElements()<basis.basis(0).numElements())
         dbasis.uniformRefine();
-    if (dbasis.basis(0).numElements()== basis.basis(0).numElements())
-        gsInfo << "Using B-splines of degree " << dbasis.degree() << " for the adaptive mapping ";
     if (dbasis.degree()-numReduce >= 1)
         dbasis.degreeReduce(numReduce);
+    gsInfo << "Using B-splines of degree " << dbasis.degree() << " for the adaptive mapping ";
     this->m_basis        = dbasis;
     this->n_basis        = basis;
     this->m_mapping      = mapping; 
@@ -167,8 +166,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked) const 
-{
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const bool setRhoZero) const 
+{   
+    //.. setRhoZero: if true set the density to zero before adding the error distribution
     gsInfo<<"<>density function";
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -183,7 +183,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
        basis_0.basis(pn).degreeDecrease(this->m_basis.basis(pn).degree(i_dir),i_dir);
        }
     }
-    gsInfo << "DoFs = " << basis_0.size() << " --- " << elMarked.size() << "<\n";
     //....
     gsExprAssembler<> A_0(1,1);
     // Elements used for numerical integration
@@ -191,7 +190,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     // Set the discretization space
     space u_0          = A_0.getSpace(basis_0);
     A_0.initSystem();
-    auto errorVector   = A_0.rhs();
+    if (!this->errorVector.any() || setRhoZero){
+        gsInfo << "..Initializing..";
+         this->errorVector   = A_0.rhs();
+     }
     solution error_sol = A_0.getSolution(u_0, errorVector);
 
     //------------------------------------------------------
@@ -208,7 +210,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ){ // refine this element ?
-                errorVector(basis_0.basis(0).elementIndex(domIt.centerPoint()) ) = 1.; 
+                this->errorVector(basis_0.basis(pn).elementIndex(domIt.centerPoint()) ) += 0.5; 
         }
         }
     }
