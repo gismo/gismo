@@ -38,7 +38,7 @@ public:
 public:
 
     //... uniform refinement
-    void uniformRefine();
+    void uniformRefine(const index_t numRefine = 1);
 
     // Method to project control points following  normal direction at the boundaries
     void NormalProjectPts(gsMultiPatch<>& Psi) const;

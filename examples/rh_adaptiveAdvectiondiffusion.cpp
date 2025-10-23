@@ -35,7 +35,6 @@ int main(int argc, char *argv[])
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
-    index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     std::string fn("pde/infinit_plate.xml");
 
@@ -48,7 +47,6 @@ int main(int argc, char *argv[])
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
     cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt("quRule",
@@ -97,9 +95,9 @@ int main(int argc, char *argv[])
     // //..... Test 2 ADVECTION DUFFFUSION
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     // .... one single patch
-    gsMultiPatch<> Psi = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    Psi.degreeElevate(numElevate);
-    Psi.computeTopology();
+    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    mpLeft.degreeElevate(numElevate);
+    mpLeft.computeTopology();
     // Define Stabilization method
     auto Stabilizationtype = stabilizerCDR::SUPG;
     // Define  Dirichlet boundary conditions
@@ -119,20 +117,25 @@ int main(int argc, char *argv[])
     //Manufactured density function 1./cosh(100. * ( -x - 0.2 + y ))
     gsFunctionExpr<> f("( 1./cosh( 10.*( -x+y -0.2 ) )**2 + 1/(1.+exp((0.95-x)/0.01)) )",2);
     
-    gsInfo<<"The Initial domain is "<< Psi.detail() << "\n";
+    gsInfo<<"The Initial domain is "<< mpLeft.detail() << "\n";
 
+     //! [Refinement]
+    for (int r=0; r<= numRefine; ++r)
+    {
+        mpLeft.uniformRefine();
+    }
 
     //gsOptionList Aopt;
 
     //! [Refinement]
-    gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     //dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
     //gsInfo << dbasis.degree(0) << " degree  \n";
 
-    gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< oPsi_get_max_threads() <<"\n";
 #endif
@@ -151,29 +154,21 @@ int main(int argc, char *argv[])
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);    
     gsStopwatch timer;
 
-     //! [Refinement]
-    Psi.uniformRefine();
-    for (int r=0; r<= numRefine; ++r)
-    {
-        dbasis.uniformRefine();
-        //Psi.uniformRefine();
-        Psi.uniformRefine();
-    }
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
     
     // Set Dirichlet boundary conditions
     gsBoundaryConditions<> bc;
-    bc.setGeoMap(Psi);
+    bc.setGeoMap(mpLeft);
     // given by exact solution Dg on all boundaries:
     for ( gsMultiPatch<>::const_biterator
-                bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
+                bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
     {
         bc.addCondition( *bit, condition_type::dirichlet, &Dg );
     }
     // --------------- define Pde ---------------
     timer.restart();
     //! [definePde]
-    gsConvDiffRePde<real_t> cdrPde(Psi, bc, & coeff_diff,& coeff_conv, & coeff_reac, & SourceFunc);
+    gsConvDiffRePde<real_t> cdrPde(mpLeft, bc, & coeff_diff,& coeff_conv, & coeff_reac, & SourceFunc);
     //! [definePde]
     //! [constructAssembler]
     // Construct assembler
@@ -191,7 +186,7 @@ int main(int argc, char *argv[])
     ev.setIntegrationElements(cdrAss.multiBasis());
 
     // // Set the geometry optimal map
-    geometryMap PP    = ev.getMap(Psi);  
+    geometryMap PP    = ev.getMap(mpLeft);  
 
     // Recover rhs for Poisson equation
     auto SFunc        = ev.getVariable(SourceFunc, PP);
@@ -226,14 +221,28 @@ int main(int argc, char *argv[])
     
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
-    ###         and the multipatch adaptove mapping
+    ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, Psi, maxIter, IntensityMAE);
-    // auto density = MAE.buildDensity(elwise, 0.005, 0);
-    auto density = MAE.buildStrategyDensity(elwise, 0.95);
-
-    // auto density = MAE.buildAnalyticDensity(f);
-    auto Psitp   = MAE.buildMultiPatch(density); 
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
+    gsMultiPatch<> Psitp;
+    if (IntensityMAE <= 1.)
+    {
+        gsInfo << "IntensityMAE < 1, so mpLeft is used.\n";
+        // Use the original multipatch
+        Psitp = mpLeft;
+    }  
+    else{
+    //.. mark elements location
+    std::vector<bool> eldensityMarked( elwise.size() ,false);
+    gsMarkElementsForRef( elwise, adaptRefCrit, 0.1, eldensityMarked);
+    auto density   = MAE.buildDensity(dbasis, eldensityMarked);
+    MAE.buildMultiPatch(density);// compute adaptive mapping
+    Psitp            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
+    MAE.NormalProjectPts(Psitp);// correct the boundary
+    // while (MAE.DoFs < 1e3)
+    //     MAE.uniformRefine(2);// uniform refine for better accuracy
+    // MAE.buildDensity(dbasis, eldensityMarked, elwise);
+    }
 
     if (true){
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -271,30 +280,26 @@ int main(int argc, char *argv[])
    gsMultiBasis<> bases( Psi, true );//true: poly-splines (not NURBS)
    //! [GetBasisFromTHB]
 
-   // --------------- define Pde ---------------
-   //! [definePde]
-   gsConvDiffRePde<real_t> cdrPde(Psi, bcInfo, & coeff_diff,& coeff_conv, & coeff_reac, & SourceFunc);
-   //! [definePde]
-
-   // --------------- set up adaptive refinement loop ---------------
-
-   //! [constructAssembler]
-   // Construct assembler
-   gsCDRAssembler<real_t> cdrAss( cdrPde, bases);
-   // Set stabilization flag to 1 = SUPG
-   cdrAss.options().setInt("Stabilization", Stabilizationtype);
-   // Compute Dirichlet values by L2-projection
-   // Caution: Interpolation does not work for locally refined (T)HB-splines!
-   cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
-   //! [constructAssembler]
-
    // --------------- adaptive refinement loop ---------------
    //! [beginRefLoop]
    for( int refLoop = 0; refLoop <= numLRefine; refLoop++)
    {
-   //! [beginRefLoop]
+        // --------------- define Pde ---------------
+        //! [definePde]
+        gsConvDiffRePde<real_t> cdrPde(Psi, bcInfo, & coeff_diff,& coeff_conv, & coeff_reac, & SourceFunc);
+        //! [definePde]
+        // --------------- set up adaptive refinement loop ---------------
+        //! [constructAssembler]
+        // Construct assembler
+        gsCDRAssembler<real_t> cdrAss( cdrPde, bases);
+        // Set stabilization flag to 1 = SUPG
+        cdrAss.options().setInt("Stabilization", Stabilizationtype);
+        // Compute Dirichlet values by L2-projection
+        // Caution: Interpolation does not work for locally refined (T)HB-splines!
+        cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
+
        gsInfo << "====== Loop " << refLoop << " of "
-              <<numLRefine<< " ======" << "\n";
+              <<numLRefine<< " ======degree "<< cdrAss.multiBasis().size(0)<< "\n";
        // --------------- solving ---------------
 
        //! [solverPart]
@@ -335,19 +340,43 @@ int main(int argc, char *argv[])
         l2err[refLoop]    = math::sqrt(ev.integralElWise( (u_ex - is).sqNorm()*meas(Gm) ) );
         h1err[refLoop]    = math::sqrt(ev.integralElWise( (igrad(u_ex,Gm) - igrad(is,Gm)).sqNorm()*meas(Gm) ) );
         DoFPDE[refLoop]   = cdrAss.numDofs();
-
+        if (refLoop <numLRefine){
        // --------------- adaptive refinement ---------------
-       ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm()*meas(Gm) );
+       ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm());
        //ev.integralElWise( ( igrad(is,Gm)).sqNorm() );
        const std::vector<real_t> eltErrs  = ev.elementwise();
        //! [errorComputation]
+
+        if (IntensityMAE >1. ){
+            std::vector<bool> eldensityMarked( eltErrs.size() );
+            gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.9, eldensityMarked);                 
+            // double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+            // for(size_t i=0; i<eltErrs.size(); ++i)
+            // {
+            //     if (eldensityMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
+            //     {
+            //         Minvalue = eltErrs[i];
+            //     }
+            // }
+            // for(size_t i=0; i<eltErrs.size(); ++i)
+            // {
+            //     if (Minvalue/pow(DoFPDE[refLoop],0.8) < eltErrs[i]) // Avoid numerical issues
+            //     {
+            //         eldensityMarked[i] = true;
+            //     }
+            // }
+            auto density   = MAE.buildDensity( cdrAss.multiBasis(), eldensityMarked, false);// false: do not set rho to zero
+            MAE.buildMultiPatch(density);// compute adaptive mapping
+            Psi            = MAE.buildCompMultiPatch(cdrAss.multiBasis());// computes the composition mapping mpLeft o Psitp
+            MAE.NormalProjectPts(Psi);// correct the boundary
+        }
 
        //! [adaptRefinementPart]
        // Mark elements for refinement, based on the computed local errors and
        // the refinement-criterion and -parameter.
        std::vector<bool> elMarked( eltErrs.size() );
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-        if (IntensityMAE >1.){
+        if (IntensityMAE >1. && refLoop > numLRefine){
             double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
             for(size_t i=0; i<eltErrs.size(); ++i)
             {
@@ -367,24 +396,19 @@ int main(int argc, char *argv[])
        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
        // Refine the marked elements with a 1-ring of cells around marked elements
-       gsRefineMarkedElements( cdrAss.multiBasis(), elMarked, NumArMarEl );
+       gsRefineMarkedElements( bases, elMarked, NumArMarEl );
        //! [adaptRefinementPart]
-
+       gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
        //! [repairInterfaces]
        // Call repair interfaces to make sure that the new meshes
        // match along patch interfaces.
-       cdrAss.multiBasis().repairInterfaces( Psi.interfaces() );
-
+       bases.repairInterfaces( Psi.interfaces() );
        //! [repairInterfaces]
 
        //! [refreshAssembler]
        cdrAss.refresh();
-       //! [refreshAssembler]
-        NumArMarEl = NumArMarEl + FactRefPar;
-        // if (r%2==0){
-        FactRefPar = 1*FactRefPar;
-        //}
+        }
 
        //! [Export to Paraview]
        // Export the final solution

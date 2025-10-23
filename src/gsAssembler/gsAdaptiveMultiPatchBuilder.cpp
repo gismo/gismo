@@ -70,11 +70,14 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiBasis<> ba
 
 
 // Uniform refinement 
-void gsAdaptiveMultiPatchBuilder::uniformRefine()
+void gsAdaptiveMultiPatchBuilder::uniformRefine(const index_t numRefine)
 {
+    for( index_t i=0; i< numRefine; ++i){
     this->m_basis.uniformRefine();
     this->n_basis.uniformRefine();
     this->gsPsi.uniformRefine();
+    }
+
     this->DoFs      = m_basis.size();
 
     // ... Neumann boundary conditions
@@ -210,7 +213,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ){ // refine this element ?
-                this->errorVector(basis_0.basis(pn).elementIndex(domIt.centerPoint()) ) += 0.5; 
+                // element index in the basis_0
+                auto gIndex = basis_0.basis(pn).elementIndex(domIt.centerPoint());
+                this->errorVector( gIndex) += 0.5;// add the error value to the density function
         }
         }
     }
