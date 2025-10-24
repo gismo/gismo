@@ -2482,289 +2482,8 @@ gsMultiPatch<real_t> gsSurfMesh::linear_patches() const
     return mp;
 }
 
+
 void gsSurfMesh::ds_subdivide()
-{
-    
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Halfedge he;
-    gsSurfMesh::Face f;
-
-    // reserve vertices, edges, faces
-    reserve(n_vertices() + n_edges() + n_faces(),
-        2 * n_edges(), 4 * n_faces());
-
-    auto points = get_vertex_property<Point>("v:point");
-    
-
-    index_t fnv = n_vertices(); // Number of vertices in the current mesh
-    //unsigned int max_valence{gsSurfMesh::maximum_mesh_valence(vertices())};
-    std::vector<std::vector<int>> ds_vertex_connectity{};
-    std::vector<Point> im_vertex_points{};
-
-    /*
-    Calculate all images of vertex in each face and then create the F-Faces
-    The used relationships are coming for irregular meshes from Doo-Sabin
-    subdivision initial scheme.
-    */
-
-    int valcounter{ 0 };
-    Point tmp; // Temporary point
-    // loop over all faces
-#   pragma omp parallel for default(shared)
-    for (auto fit : faces()) {
-
-
-        unsigned int fval{ valence(fit) };
-
-        /*
-          loop through all vertices to find the image vertices
-          The used relationships are coming for irregular meshes from Doo-Sabin
-          subdivision initial scheme.
-        */ 
-        gsMatrix<real_t> imageVCoeffs = gsSurfMesh::get_image_vertex_coeffs(fval);
-        // Compute original vertex positions in each face
-        gsVector<real_t> orVertsVectorCoords(3*fval);
-        orVertsVectorCoords.setZero();
-
-        std::vector<Vertex> orVerts{};
-        orVerts.reserve(fval);
-
-        auto fv = vertices(fit);
-        valcounter = 0;
-        //for (auto orv = fv.begin(); orv != orv.end(); ++orv, ++orv)
-        for (auto orv : vertices(fit)) {
-            tmp = points[orv];
-            orVertsVectorCoords(valcounter * 3 + 0)= tmp[0];
-            orVertsVectorCoords(valcounter * 3 + 1) = tmp[1];
-            orVertsVectorCoords(valcounter * 3 + 2) = tmp[2];
-            valcounter++;
-            v = orv;
-            orVerts.push_back(v);
-        }
-        
-
-        // Compute image vertex positions in each face
-        gsVector<real_t> imVertsVectorCoords{imageVCoeffs * orVertsVectorCoords};
-
-        // Adding image vertex to mesh
-        std::vector<int>  imVertsVector{};
-        std::vector<Vertex>  imVertsVectorDummy{};
-        imVertsVector.reserve(fval); 
-        for (unsigned int i = 0; i < fval; i++) {
-            tmp[0] = imVertsVectorCoords(i * 3 + 0);
-            tmp[1] = imVertsVectorCoords(i * 3 + 1);
-            tmp[2] = imVertsVectorCoords(i * 3 + 2);
-            im_vertex_points.push_back(tmp);
-            v = add_vertex(tmp);
-            add_image_vertex_to_vertex(orVerts[i], v, fit);
-            imVertsVector.push_back(v.idx()-fnv);        }
-        
-        ds_vertex_connectity.push_back(imVertsVector);
-
-
-    }
-
-    std::vector<int>  imVertsIDVector{};
-    // loop over all vertices and their image vertices
-#   pragma omp parallel for default(shared)
-
-    for (int i = 0; i < fnv; i++) {
-        v = gsSurfMesh::Vertex(i);
-
-        // Create the V-Faces               
-        imVertsIDVector.clear();
-        
-        for (auto fit : faces(v)) {
-            for (auto pair : image_vertices(v)) {
-                if (fit == pair.second) {
-                    imVertsIDVector.push_back(pair.first.idx() - fnv);
-                    break;
-                }
-                
-            }
-        }
- 
-        ds_vertex_connectity.push_back(imVertsIDVector);
-
-
-    }
-
-
-   // Remove old and  renumber original vertices
-    unsigned int max_num_verts{ n_vertices() };
-    for (int i = 0; i < max_num_verts; i++) {
-        v = gsSurfMesh::Vertex(i);
-        // Delete the original vertex
-        delete_vertex(v);
-    }
-    for (auto fit : faces()) {
-        delete_face(fit);
-    }
-    for (auto eit : edges()) {
-        delete_edge(eit);
-    }
-    garbage_collection();
-
-    //gsDebugVar(position(Vertex(0)));
-    for (int i = 0; i < im_vertex_points.size(); i++) {
-        add_vertex(im_vertex_points[i]);
-    }
-    //unsigned int max_face_id{n_faces()+fnf-1};
-    std::vector<Vertex> imVertsVector{};
-#   pragma omp parallel for default(shared)
-    for (auto vv : ds_vertex_connectity) {
-        for (int vi = 0; vi < vv.size(); vi++) {
-            imVertsVector.push_back(Vertex(vv[vi]));
-        }
-
-        add_face(imVertsVector);
-        this->write("mesh_in.off");
-        imVertsVector.clear();
-    }
-
-    // loop over all edges
-    std::vector<std::vector<Vertex>>  eVertsVector;
-    std::vector<Vertex>  eFaceVertsVector{};
-
-    Halfedge start_he;
-    Halfedge next_he;
-    Edge current_edge;
-    Face start_face;
-    Face current_face;
-    Vertex next_v;
-
-#   pragma omp parallel for default(shared)
-
-    for (auto vit : vertices())
-    {
-        if (is_boundary(vit)) {
-            // Initial vertex;
-            v = vit;
-            // Initial half-edge
-            for (auto start_he : halfedges(vit)) {
-
-                he = start_he;
-                do {
-                    eFaceVertsVector.push_back(v);
-                    he = opposite_halfedge(he);
-                    he = cw_rotated_halfedge(he);
-                    v = from_vertex(he);
-     
-                } while (v != vit);
-                break;
-            }
-            add_face(eFaceVertsVector);
-            eFaceVertsVector.clear();
-
-
-        }
-
-    }
-
-}
-
-void gsSurfMesh::boundary_reconstruction()
-{
-      bool no_boundary{ false };
-      // Search for boundary vertex
-      for (auto vit : vertices()) {
-        if (is_boundary(vit)) {
-           no_boundary = true;
-           break;
-        }
-      }
-      if (!no_boundary) {
-          return;
-      }
-
-      // Modify the new mesh in case it has boundary (temporary solution)
-      std::map<Vertex, Vertex> MapBound{ boundary_polyhedral_modification() };
-      std::vector<Vertex> vecOut;
-      std::vector<Vertex> vecIn;
-      std::vector<Vertex> vecTotal;
-      std::map<Vertex, Vertex> vecBound;
-      std::map<int, std::vector<Vertex>> vecNew;
-      int ni, no;
-      Halfedge he, hh;
-
-      for (auto fit : faces()) {
-          vecOut.clear();
-          vecIn.clear();
-          vecTotal.clear();
-          if (is_boundary(fit)) {
-              he = halfedge(fit);
-              hh = he;
-               do{
-                  if (!is_boundary(to_vertex(hh))) {
-                      vecIn.push_back(to_vertex(hh));
-                      vecOut.push_back(MapBound[to_vertex(hh)]);
-                  }
-                  else {
-                      vecBound[to_vertex(hh)] = to_vertex(hh);
-                  }
-                  hh = next_halfedge(hh);
-               } while (hh != he);
-
-             //for (int nv = 0; nv != vecIn.size() - 1; nv++) {
-             //    he = find_halfedge(vecIn[nv], vecIn[nv + 1]);
-             //    gsInfo << "s: " << from_vertex(he) << "\n";
-             //    gsInfo << "e: " << to_vertex(he) << "\n";
-             // }
-
-             //vecTotal.resize(vecIn.size() + vecOut.size());
- /*            no = vecOut.size()-1;*/
-      /*       for (ni = 0; ni != vecOut.size();ni++) {
-                 vecTotal[ni] = vecIn[ni];
-                 vecTotal[vecTotal.size() - 1 - ni] = vecOut[ni];
-             } */
-             //for (int nv = 0; nv != vecOut.size()-1;nv++) {
-             //    new_edge(vecOut[nv+1], vecOut[nv]);
-             //}
-             //new_edge(vecOut[vecOut.size() - 1], vecIn[vecIn.size() - 1]);
-             //new_edge(vecIn[0], vecOut[0]);
-                 std::reverse(vecIn.begin(), vecIn.end());
-            vecOut.insert(vecOut.end(), vecIn.begin(), vecIn.end());
-            
-            vecNew[fit.idx()] = vecOut;
-          }
-          
-
-      }
-      //for (const auto& keyval : vecBound) {
-      //    delete_vertex(keyval.first);
-      //}
-
-      for (const auto& keyval : vecNew) {
-          //delete_face(Face(keyval.first));
-          add_face(keyval.second);
-      }
-
-      //for (const auto& keyval : vecNew) {
-      //    delete_face(Face(keyval.first));
-      //}
-
-
-
-
-      //gsSurfMesh new_mesh;
-      //for (const auto& keyval : vecNew) {
-      //    vecOut.clear();
-      //    for (auto vit : keyval.second) {
-      //        vecOut.push_back(new_mesh.add_vertex(position(vit)));
-      //    }
-      //    new_mesh.add_face(vecOut);
-      //}
-
-      garbage_collection();
-
-      this->write("mesh_in222.off");
-  
-
-}
-
-
-
-void gsSurfMesh::ds_subdivide_robust()
 {
     // New Mesh instance
     gsSurfMesh new_mesh;
@@ -2900,191 +2619,6 @@ Point gsSurfMesh::ds_image_point_calc(Vertex oldv, Face oldf)
     
 }
 
-std::map<gsSurfMesh::Vertex, gsSurfMesh::Vertex> gsSurfMesh::boundary_polyhedral_modification()
-{
-    //std::vector<Halfedge> bound_he_vec;
-    std::vector<Halfedge> boundary_he_per_face;
-    std::map<Vertex,Vertex> MapBound;
-    Face bound_face;
-
-
-
-    Point M0, N0, Mmm1, M2mm1, N2mm1, G, tmp;
-    int counter_i{ 0 };
-    Halfedge he,hh;
-
-#   pragma omp parallel for default(shared)
-
-    for (auto vit : vertices()) {
-        if (is_boundary(vit) && valence(vit)!=2) {
-            
-            // Find boundary halfedge and store it
-
-            he = halfedge(vit);
-            while (!touches_boundary(he)) {
-                he = ccw_rotated_halfedge(he);
-            }
-            //bound_he_vec.push_back(he);
-            bound_face = face(he);
-            // Modification respective on the case using polyhedral modification
-            // the cases are:
-            // 1. 3-valence vertex (boundary edge)(valence = 3)
-            // 2. Convex corner (valence = 2)
-            // 3. Concave corner (valence > 3)
-            // TODO: Face cases.
-            
-            // Calculate Chebysev points
-
-            boundary_he_per_face.clear();
-            boundary_he_per_face.push_back(he);
-            hh = next_halfedge(he);
-            while (hh != he) {
-                if (touches_boundary(hh)) {
-                    boundary_he_per_face.push_back(hh);
-                }
-                hh = next_halfedge(hh);
-            }
-            
-            std::vector<real_t> chebp_coeff_vec{ chebysev_points(face(he),boundary_he_per_face.size()+1) };
-            //new_face_vertices.resize(2 * chebp_coeff_vec.size());
-
-            if (boundary_he_per_face.size() == 1) { // edge-face case
-                M0        = position(from_vertex(boundary_he_per_face[0]));
-                Mmm1      = position(to_vertex(boundary_he_per_face[0]));
-                counter_i = 0;
-                hh        = prev_halfedge(boundary_he_per_face[0]);
-                while (from_vertex(hh) != to_vertex(boundary_he_per_face[0])) {
-                    tmp   = 0.5 * ((1 + chebp_coeff_vec[counter_i]) * M0 + (1 - chebp_coeff_vec[counter_i]) * Mmm1);
-                    tmp = reflection(boundary_he_per_face[0], from_vertex(hh), tmp);
-                    MapBound[from_vertex(hh)] = add_vertex(tmp);
-
-                    counter_i++;
-                    hh    = prev_halfedge(hh);
-                }
-            }
-            else if (boundary_he_per_face.size() == 2) {
-                G     = position(to_vertex(boundary_he_per_face[0]));
-                M0    = position(from_vertex(boundary_he_per_face[0]));
-                N0    = position(to_vertex(boundary_he_per_face[1])) ;
-                M2mm1 = reflection(boundary_he_per_face[1], from_vertex(boundary_he_per_face[0]),  G);
-                N2mm1 = reflection(boundary_he_per_face[0], to_vertex(boundary_he_per_face[1]),  G);
-
-
-            }
-
-
-
-
-
-
-         }
-
-    }
-    return MapBound;
-
-}
-
-Point gsSurfMesh::reflection(Halfedge he, Vertex v, Point ref_point)
-{
-    Point tmp;
-    gsVector<real_t> dirhe{position(to_vertex(he))- position(from_vertex(he)) };
-    gsVector<real_t> w{ position(v) - ref_point };
-    gsVector<real_t> projw_dirhe{ dirhe.dot(w) / pow((dirhe.dot(dirhe)),2) * dirhe };
-    return ref_point-w+2*projw_dirhe;
-
-}
-std::vector<real_t> gsSurfMesh::chebysev_points(Face f, int boundverts) {
-    
-    unsigned int m;
-    std::vector<real_t> chebpvec;
-    real_t b{ 0 };
-
-
-    if (boundverts == 2) { // edge-face case
-        m = valence(f) - 2;
-        for (int i = 0; i < m; i++) {
-            b = cos( (2 * i + 1) * EIGEN_PI/(2 * m) ) / cos( EIGEN_PI / (2 * m));
-            chebpvec.push_back(b);
-        }
-
-    }
-    else if (boundverts == 3) { // convex corner case (single one)
-        m = valence(f) - 3;
-        for (int i = 0; i < 2*m + 1; i++) {
-            b = cos((2 * i + 1) * EIGEN_PI / (4 * m)) / cos(EIGEN_PI / (4 * m));
-            chebpvec.push_back(b);
-        }
-    }
-
-    return chebpvec;
-
-}
-
-gsMatrix<real_t> gsSurfMesh::get_image_vertex_coeffs(unsigned int face_valence)
-{
-
-
-    // Initializing matrix coefficient for face
-    gsSparseMatrix<real_t> M(3*face_valence, 3*face_valence);
-    M.setZero();
-    real_t val{ 0 };
-
-    // Creating the mask (image vertice coefficients) by looping to the number
-    // of vertices
-    for (int icount = 0; icount < face_valence; icount++) {
-        for (int jcount = 0; jcount < face_valence; jcount++) {
-            if (icount == jcount) {
-                val = (real_t)(face_valence + 5) / (4 * face_valence);
-                M.insert(3 * icount, 3 * jcount) = val;
-                M.insert(3 * icount +1, 3 * jcount + 1) = val;
-                M.insert(3 * icount + 2, 3 * jcount + 2) = val;
-
-            }
-            else {
-                val = (3 + 2 * cos(2.0 * EIGEN_PI * (icount - jcount) / face_valence)) / (4 * face_valence);
-                M.insert(3*icount, 3*jcount) = val;
-                M.insert(3 * icount + 1, 3 * jcount + 1) = val;
-                M.insert(3 * icount + 2, 3 * jcount + 2) = val;
-
-            }
-
-        }
-    }
-
-    return M;
-
-}   
-
-
-unsigned int gsSurfMesh::maximum_mesh_valence(Vertex_container verts)
-{
-    
-    int max_val{ -1 };
-    for (Vertex v : verts) {
-        if (valence(v) > max_val) {
-            max_val = valence(v);
-        }
-    }              
-
-    return max_val;
-}
-
-gsVector<real_t> gsSurfMesh::edge_vector(Edge e)
-{
-
-    gsVector<real_t> evec(3);
-
-    Vertex v0{ vertex(e,0) };
-    Vertex v1{ vertex(e,1) };
-    Point v0pos{ position(v0) };
-    Point v1pos{ position(v1) };
-    evec(0) = v0pos[0] - v1pos[0];
-    evec(1) = v0pos[1] - v1pos[1];
-    evec(2) = v0pos[2] - v1pos[2];
-    return evec;
-
-}
-
 void gsSurfMesh::dual_mesh(int option)
 {
     // Dual-mesh instance
@@ -3150,13 +2684,23 @@ Point gsSurfMesh::face_barycenter(Face f)
 
 
 
-void gsSurfMesh::loop_subdivide()
+void gsSurfMesh::loop_subdivide(int mask_option)
 {
 
+    gsSurfMesh nm;
     gsSurfMesh::Vertex v;
-    gsSurfMesh::Halfedge he;
-    gsSurfMesh::Face f;
 
+    // Tessalate the current mesh, in order to have pure triangle mesh
+    for (auto fit : faces()) {
+        
+        if (valence(fit) > 3) {
+            triangulate(fit);
+        }
+
+    }
+
+    // Export the triangle mesh
+    write("mesh_in_triang.off");
     // reserve vertices, edges, faces
     reserve(n_vertices() + n_edges() + n_faces(),
         2 * n_edges(), 4 * n_faces());
@@ -3165,24 +2709,120 @@ void gsSurfMesh::loop_subdivide()
 
 
     index_t fnv = n_vertices(); // Number of vertices in the current mesh
+    index_t num_f = n_faces(); // Number of faces in the current mesh
 
-
-    // Tessalate the current mesh, in order to have pure triangle mesh
-    for (auto fit : faces()) {
+    gsSurfMesh::Halfedge he,nh,ph,hh;
+    Point tmp;
+    std::map<Edge, Vertex> edgeVerts;
+    std::map<Vertex, Vertex> innerVerts;
+    // In each edge create the new vertices  (odd rules)
+    for (auto he : halfedges()) {
         
-        if (valence(fit) > 3) {
-            triangulate(fit);
+        if (touches_boundary(he)) {
+            tmp = (real_t)1 / 2 * position(from_vertex(he)) +
+                  (real_t)1 / 2 * position(to_vertex(he));
+        }
+        else {
+            nh = next_halfedge(he);
+            ph = prev_halfedge(opposite_halfedge(he));
+            tmp = (real_t)3 / 8 * position(from_vertex(he)) +
+                  (real_t)3 / 8 * position(to_vertex(he))   + 
+                  (real_t)1 / 8 * position(to_vertex(nh))   + 
+                  (real_t)1 / 8 * position(from_vertex(ph));
+        }
+        if (edgeVerts.count(edge(he)) > 0) {
+            //edgeVertsFace[face(he)].push_back(edgeVerts[edge(he)]);
+            continue;
+        }
+        v = nm.add_vertex(tmp);
+        
+        edgeVerts[edge(he)] = v;
+        //edgeVertsFace[face(he)].push_back(v);
     }
 
-    // In each face 
+    index_t n;
+    real_t a,b,c;
+    
+    // For each old vertex modify its position (even rules)
+    // For boundary we will impose the classic rule which causes cubic spline at the infinity
+    // In case of boundary vertices we will leave them in tact (See Hoppe 1994, Bierman 2000, Ling 2008)
+    for (auto it = 0; it < fnv; it++) {
+        v = Vertex(it);
+        if (is_boundary(v)) {
+            he = halfedge(v);
+            hh = he;
 
+            // Find he touching boundary
+            while (!touches_boundary(hh)) {
+                hh = ccw_rotated_halfedge(hh);
+            }
+            he = hh;
+            // Apply boundary mask
+            tmp = (real_t)3 / 4 * position(from_vertex(he)) +
+                (real_t)1 / 8 * position(to_vertex(he));
+            hh = he;
+            do {
+                hh=ccw_rotated_halfedge(hh);
+                if (is_boundary(to_vertex(hh))) {
+                    tmp += (real_t)1 / 8 * position(to_vertex(hh));
+                }
+            } while (ccw_rotated_halfedge(hh) != he);
+        }
+        else {
+            n = valence(v);
+            he = halfedge(v);
+            if (mask_option == 0) {  // Simplified averganging mask (Warren,Weimer 2002)
+                if (n == 3) {
+                    a = (real_t)3 / 16;
+                }
+                else {
+                    a = (real_t)3 / (8 * n);
+                }
+            }
+            else {  // Loop's original mask (1987)
+                a = (0.625 - ( 0.375 + 0.25 *cos(2*3.14159 / (real_t)n)) * (0.375 + 0.25 * cos(2 * 3.14159 / (real_t)n)))/ (real_t)n;
+            }
+            b = a;
+            c = 1.0 - a * n;
+            
+            
 
+            // Apply inner mask
+            tmp =  c * position(v);
+            hh = he;
+            do {
+                tmp += b * position(to_vertex(hh));
+                hh = ccw_rotated_halfedge(hh);
+            } while (hh != he);
+
+        }
+        innerVerts[v] = nm.add_vertex(tmp);
+    }
+
+    for (auto he : halfedges()) {
+
+        v = from_vertex(he);
+        ph = prev_halfedge(he);
+        nm.add_triangle(innerVerts[v], edgeVerts[edge(he)], edgeVerts[edge(ph)]);
+    }
+    Edge e;
+    Face f;
+    std::vector<Vertex> edgeVertsFace;
+    for (auto it = 0; it < num_f; it++) {
+        f = Face(it);
+        edgeVertsFace.clear();
+        for (auto hit : halfedges(f)) {
+            e = edge(hit);
+            edgeVertsFace.push_back(edgeVerts[e]);
+        }
+
+        nm.add_face(edgeVertsFace);
+    
     }
 
 
-
-
-
+    *this = std::move(nm);
+     
 }
 
 

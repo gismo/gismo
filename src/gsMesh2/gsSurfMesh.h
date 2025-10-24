@@ -134,12 +134,6 @@ public: //------------------------------------------------------ topology types
         explicit Face(int _idx=-1) : Base_handle(_idx) {}
     };
 
-    /// Image Vertex if assigned (Doo-Sabin subdivision)
-    struct ImageVertexDS : public Vertex {
-         /// Constructor (assigning the original vertex)   
-        Vertex origVertex;
-        ImageVertexDS(Vertex original_vertex) : origVertex(original_vertex){};
-    };
 
 public: //-------------------------------------------------- connectivity types
 
@@ -149,10 +143,6 @@ public: //-------------------------------------------------- connectivity types
     {
         /// an outgoing halfedge per vertex (it will be a bounday halfedge for boundary vertices)
         Halfedge  halfedge_;
-
-        /// image vertices vector during doo-sabin subdivision
-        
-        std::vector<std::pair<Vertex,Face>> imVertDS_{};
     };
 
 
@@ -1216,32 +1206,11 @@ public: //---------------------------------------------- low-level connectivity
         hconn_[h].vertex_ = v;
     }
 
-    /// sets the image vertex \c imv to \c v 
-    void add_image_vertex_to_vertex(Vertex v, Vertex imv, Face f)
-    {
-        vconn_[v].imVertDS_.push_back(std::make_pair(imv, f));
-    }
-
-    /// returns the image vertex of adjacent faces to \c v
-    std::vector<std::pair<Vertex,Face>> image_vertices(Vertex v) const
-    {
-        return vconn_[v].imVertDS_;
-    }
 
     /// returns the face incident to halfedge \c h
     Face face(Halfedge h) const
     {
         return hconn_[h].face_;
-    }
-
-    /// returns the f-face incident to \c f
-    Face fface(Face f) const {
-        return fconn_[f].fface_;
-    }
-    
-    /// sets the incident F-Face for Doo-Sabin subdivision to\c f
-    void set_fface(Face f, Face ff) {
-        fconn_[f].fface_ = ff;
     }
 
     /// sets the incident face to halfedge \c h to \c f
@@ -1972,37 +1941,21 @@ public: // Doo-Sabin functions
     /// Doo-Sabin subdivision
     void ds_subdivide();
 
-    /// Doo-Sabin subdivision robust
-    void ds_subdivide_robust();
-
     /// Doo-Sabin Image point caluculation per vertex in a face
     Point ds_image_point_calc(Vertex oldv, Face oldf);
 
-    /// boundary reconstruction
-    void boundary_reconstruction();
-
-    /// boundary modification using Polyhedral Modification Method (Nasri) in case where the mesh has boundaries
-    std::map<Vertex, Vertex> boundary_polyhedral_modification();
-
-    /// Expanded Chebysev point \c b on the polynomial in M0-Mn-1
-    std::vector<real_t> chebysev_points(Face f, int boundverts);
-
-    /// reflection of a vertex aroung a halfedge
-    Point reflection(Halfedge he, Vertex v, Point ref_point);
-
-    /// Image vertex per face for Doo-Sabin subdivision scheme
-    gsMatrix<real_t> get_image_vertex_coeffs(unsigned int face_valence);
-
-    /// returns vector from edge
-    gsVector<real_t> edge_vector(Edge e);
-
-    /// Maximum velence in the mesh vertices
-    unsigned int maximum_mesh_valence(Vertex_container verts);
 
 public: // Loop subdivision
 
     ///  Loop subdivision
-    void loop_subdivide();
+    /** Loop subdvision
+     * Options:
+     *
+     * \t 0 - Simplified Loop's scheme.
+     * \t 1 - Original Loop's scheme.
+     *
+     */
+    void loop_subdivide(int mask_option);
 
     
 
