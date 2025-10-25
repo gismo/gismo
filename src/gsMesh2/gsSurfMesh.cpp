@@ -687,7 +687,7 @@ update_face_normals()
 }
 
 
-Normal
+gsSurfMesh::Normal
 gsSurfMesh::
 compute_face_normal(Face f) const
 {
@@ -740,7 +740,7 @@ update_vertex_normals()
 }
 
 
-Normal
+gsSurfMesh::Normal
 gsSurfMesh::
 compute_vertex_normal(Vertex v) const
 {
@@ -1924,7 +1924,7 @@ void gsSurfMesh::cc_subdivide()
     }
 }
 
-gsSurfMesh::Vertex_property<Point>
+gsSurfMesh::Vertex_property<gsSurfMesh::Point>
 gsSurfMesh::cc_limit_points(std::string label)
 {
     auto points = get_vertex_property<Point>("v:point");
@@ -1970,7 +1970,7 @@ gsSurfMesh::cc_limit_points(std::string label)
 }
 
 
-gsSurfMesh::Vertex_property<Point>
+gsSurfMesh::Vertex_property<gsSurfMesh::Point>
 gsSurfMesh::cc_limit_normals(std::string label, bool normalize)
 {
     auto points = get_vertex_property<Point>("v:point");
@@ -2009,7 +2009,7 @@ gsSurfMesh::cc_limit_normals(std::string label, bool normalize)
     return limits;
 }
 
-gsSurfMesh::Vertex_property<Point>
+gsSurfMesh::Vertex_property<gsSurfMesh::Point>
 gsSurfMesh::cc_limit_tangent_vec(std::string label, bool normalize)
 {
     gsSurfMesh::Vertex v;
@@ -2456,7 +2456,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         gsGetReal(str, x);
         gsGetReal(str, y);
         gsGetReal(str, z);
-        result.add_vertex(Point(x,y,z));
+        result.add_vertex(gsSurfMesh::Point(x,y,z));
     }
 
     /* //Alternative for reading quads only (with complex topolog)

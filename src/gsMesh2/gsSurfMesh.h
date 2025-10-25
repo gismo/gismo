@@ -16,27 +16,15 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsXml.h>
 
-namespace gismo // typedefs
-{
-typedef gsEigen::Vector<real_t,3> Point;
-typedef gsEigen::Vector<float,2> Vec2f;
-/// Normal type
-typedef Point Normal;
-/// Color type
-typedef Point Color;
-/// Texture coordinate type
-typedef Point Texture_coordinate;
-}
-
-#define Eigen gsEigen
-EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Point)
-EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Vec2f)
-#undef Eigen
+//#define Eigen gsEigen
+//EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Point)
+//#undef Eigen
 
 #include <gsMesh2/gsProperty.h>
 
 
-namespace gismo {
+namespace gismo
+{
 
 /// A halfedge data structure for polygonal meshes.
 class GISMO_EXPORT gsSurfMesh
@@ -44,11 +32,11 @@ class GISMO_EXPORT gsSurfMesh
 public:
 /// Scalar type
 typedef real_t Scalar;
-typedef gismo::Point Point;
 
-private:
-/// 3D vector type
-typedef gsEigen::Vector<Scalar,3> Vec3;
+typedef gsVector3d<Scalar> Point;
+
+/// Normal type
+typedef Point Normal;
 
 public:
 
@@ -1031,6 +1019,48 @@ public:
     /// \sa add_triangle, add_face
     Face add_quad(Vertex v1, Vertex v2, Vertex v3, Vertex v4);
 
+    // Insert a new quad by four consecutive border edges
+    Face add_quad(Edge e0, Edge e1, Edge e2, Edge e3);
+
+    // Insert a new edge between two vertices, even if one exists
+    Edge add_edge(Vertex start, Vertex end)
+    {
+        if (end.idx()>start.idx())
+            std::swap(start,end);
+
+        Halfedge h = new_edge(start,end);
+        set_halfedge(start, h);
+        set_halfedge(end, opposite_halfedge(h));
+        set_next_halfedge(h, opposite_halfedge(h));
+        set_next_halfedge(opposite_halfedge(h), h);
+        return edge(h);
+    }
+
+    /// Insert new edge between two vertices, if one does not exist
+    /// Complexity proportional to the number of halfedges
+    Edge find_or_add_edge(Vertex start, Vertex end)
+    {
+        if (end.idx()>start.idx())
+            std::swap(start,end);
+
+        //brut search
+        for( Halfedge a : halfedges() )
+            if ( from_vertex(a) == start && to_vertex(a)== end)
+                return edge(a);
+        return add_edge(start,end);
+
+        /*
+        Halfedge h = find_halfedge(start,end);
+        if (!h.is_valid())
+        {   //try the opposite as well
+            h = find_halfedge(end,start);
+            if ( h.is_valid() )
+                h = opposite_halfedge(h);
+        }
+        return h.is_valid() ? edge(h) : add_edge(start,end);
+        */
+    }
+
 public:
 
     /// returns number of (deleted and valid) vertices in the mesh
@@ -1042,7 +1072,6 @@ public:
     /// returns number of (deleted and valid)faces in the mesh
     unsigned int faces_size() const { return (unsigned int) fprops_.size(); }
 
-
     /// returns number of vertices in the mesh
     unsigned int n_vertices() const { return vertices_size() - deleted_vertices_; }
     /// returns number of halfedge in the mesh
@@ -1052,10 +1081,8 @@ public:
     /// returns number of faces in the mesh
     unsigned int n_faces() const { return faces_size() - deleted_faces_; }
 
-
     /// returns true iff the mesh is empty, i.e., has no vertices
     unsigned int empty() const { return n_vertices() == 0; }
-
 
     /// clear mesh: remove all vertices, edges, faces
     void clear();
@@ -1097,6 +1124,131 @@ public:
         return fdeleted_[f];
     }
 
+public:
+
+    /// returns an outgoing halfedge of vertex \c v.
+    /// if \c v is a boundary vertex this will be a boundary halfedge.
+    Halfedge halfedge(Vertex v) const
+    {
+        return vconn_[v].halfedge_;
+    }
+
+    /// returns the \c i'th halfedge of edge \c e. \c i has to be 0 or 1.
+    Halfedge halfedge(Edge e, unsigned int i) const
+    {
+        assert(i<=1);
+        return Halfedge((e.idx() << 1) + i);
+    }
+
+    /// returns a halfedge of face \c f
+    Halfedge halfedge(Face f) const
+    {
+        return fconn_[f].halfedge_;
+    }
+
+    /// return the edge that contains halfedge \c h as one of its two halfedges.
+    inline Edge edge(Halfedge h) const { return Edge(h.idx() >> 1); }
+
+    /// returns the \c i'th vertex of edge \c e. \c i has to be 0 or 1.
+    Vertex vertex(Edge e, unsigned int i) const
+    {
+        assert(i<=1);
+        return to_vertex(halfedge(e, i));
+    }
+
+    /// returns the vertex the halfedge \c h emanates from
+    Vertex from_vertex(Halfedge h) const
+    {
+        return to_vertex(opposite_halfedge(h));
+    }
+
+    /// returns the vertex the halfedge \c h points to
+    Vertex to_vertex(Halfedge h) const
+    {
+        return hconn_[h].vertex_;
+    }
+
+    /// returns the face incident to halfedge \c h
+    Face face(Halfedge h) const
+    {
+        return hconn_[h].face_;
+    }
+
+    /// returns the face incident to the \c i'th halfedge of edge \c e. \c i has to be 0 or 1.
+    Face face(Edge e, unsigned int i) const
+    {
+        assert(i<=1);
+        return face(halfedge(e, i));
+    }
+
+public:
+    
+    /// set the outgoing halfedge of vertex \c v to \c h
+    void set_halfedge(Vertex v, Halfedge h)
+    {
+        vconn_[v].halfedge_ = h;
+    }
+
+    /// sets the vertex the halfedge \c h points to to \c v
+    void set_vertex(Halfedge h, Vertex v)
+    {
+        hconn_[h].vertex_ = v;
+    }
+
+    /// sets the incident face to halfedge \c h to \c f
+    void set_face(Halfedge h, Face f)
+    {
+        hconn_[h].face_ = f;
+    }
+
+    /// sets the next halfedge of \c h within the face to \c nh
+    void set_next_halfedge(Halfedge h, Halfedge nh)
+    {
+        hconn_[h].next_halfedge_ = nh;
+        hconn_[nh].prev_halfedge_ = h;
+    }
+
+    /// sets the halfedge of face \c f to \c h
+    void set_halfedge(Face f, Halfedge h)
+    {
+        fconn_[f].halfedge_ = h;
+    }
+
+public:
+
+    /// returns the next halfedge within the incident face
+    Halfedge next_halfedge(Halfedge h) const
+    {
+        return hconn_[h].next_halfedge_;
+    }
+
+    /// returns the previous halfedge within the incident face
+    Halfedge prev_halfedge(Halfedge h) const
+    {
+        return hconn_[h].prev_halfedge_;
+    }
+
+    /// returns the opposite halfedge of \c h
+    Halfedge opposite_halfedge(Halfedge h) const
+    {
+        return Halfedge((h.idx() & 1) ? h.idx()-1 : h.idx()+1);
+    }
+
+    /// returns the halfedge that is rotated counter-clockwise around the
+    /// start vertex of \c h. it is the opposite halfedge of the previous halfedge of \c h.
+    inline Halfedge ccw_rotated_halfedge(Halfedge h) const
+    { return opposite_halfedge(prev_halfedge(h)); }
+
+    /// returns the halfedge that is rotated clockwise around the
+    /// start vertex of \c h. it is the next halfedge of the opposite halfedge of \c h.
+    inline Halfedge cw_rotated_halfedge(Halfedge h) const
+    { return next_halfedge(opposite_halfedge(h)); }
+
+    inline Halfedge forward_halfedge(gsSurfMesh::Halfedge he)
+    { return next_halfedge(opposite_halfedge(next_halfedge(he))); }
+
+public:
+
     /// return whether vertex \c v is valid, i.e. the index it stores is within the array bounds.
     bool is_valid(Vertex v) const
     {
@@ -1118,35 +1270,6 @@ public:
         return (0 <= f.idx()) && (f.idx() < (int)faces_size());
     }
 
-
-public:
-
-    /// returns an outgoing halfedge of vertex \c v.
-    /// if \c v is a boundary vertex this will be a boundary halfedge.
-    Halfedge halfedge(Vertex v) const
-    {
-        return vconn_[v].halfedge_;
-    }
-
-    /// set the outgoing halfedge of vertex \c v to \c h
-    void set_halfedge(Vertex v, Halfedge h)
-    {
-        vconn_[v].halfedge_ = h;
-    }
-
-    /// returns whether \c v is a boundary vertex
-    bool is_boundary(Vertex v) const
-    {
-        Halfedge h(halfedge(v));
-        return (!(h.is_valid() && face(h).is_valid()));
-    }
-
-    /// returns whether \c v is isolated, i.e., not incident to any face
-    bool is_isolated(Vertex v) const
-    {
-        return !halfedge(v).is_valid();
-    }
-
     /// returns whether \c v is a manifold vertex (not incident to several patches)
     bool is_manifold(Vertex v) const
     {
@@ -1163,112 +1286,11 @@ public:
         return n<2;
     }
 
-    /// returns the vertex the halfedge \c h points to
-    Vertex to_vertex(Halfedge h) const
+    /// returns whether \c v is a boundary vertex
+    bool is_boundary(Vertex v) const
     {
-        return hconn_[h].vertex_;
-    }
-
-    /// returns the vertex the halfedge \c h emanates from
-    Vertex from_vertex(Halfedge h) const
-    {
-        return to_vertex(opposite_halfedge(h));
-    }
-
-    /// sets the vertex the halfedge \c h points to to \c v
-    void set_vertex(Halfedge h, Vertex v)
-    {
-        hconn_[h].vertex_ = v;
-    }
-
-    /// returns the face incident to halfedge \c h
-    Face face(Halfedge h) const
-    {
-        return hconn_[h].face_;
-    }
-
-    /// sets the incident face to halfedge \c h to \c f
-    void set_face(Halfedge h, Face f)
-    {
-        hconn_[h].face_ = f;
-    }
-
-    /// returns the next halfedge within the incident face
-    Halfedge next_halfedge(Halfedge h) const
-    {
-        return hconn_[h].next_halfedge_;
-    }
-
-    /// sets the next halfedge of \c h within the face to \c nh
-    void set_next_halfedge(Halfedge h, Halfedge nh)
-    {
-        hconn_[h].next_halfedge_ = nh;
-        hconn_[nh].prev_halfedge_ = h;
-    }
-
-    /// returns the previous halfedge within the incident face
-    Halfedge prev_halfedge(Halfedge h) const
-    {
-        return hconn_[h].prev_halfedge_;
-    }
-
-    /// returns the opposite halfedge of \c h
-    Halfedge opposite_halfedge(Halfedge h) const
-    {
-        return Halfedge((h.idx() & 1) ? h.idx()-1 : h.idx()+1);
-    }
-
-    /// returns the halfedge that is rotated counter-clockwise around the
-    /// start vertex of \c h. it is the opposite halfedge of the previous halfedge of \c h.
-    Halfedge ccw_rotated_halfedge(Halfedge h) const
-    {
-        return opposite_halfedge(prev_halfedge(h));
-    }
-
-    /// returns the halfedge that is rotated clockwise around the
-    /// start vertex of \c h. it is the next halfedge of the opposite halfedge of \c h.
-    Halfedge cw_rotated_halfedge(Halfedge h) const
-    {
-        return next_halfedge(opposite_halfedge(h));
-    }
-
-    /// return the edge that contains halfedge \c h as one of its two halfedges.
-    Edge edge(Halfedge h) const
-    {
-        return Edge(h.idx() >> 1);
-    }
-
-    /// returns whether h is a boundary halfege, i.e., if its face does not exist.
-    bool is_boundary(Halfedge h) const
-    {
-        return !face(h).is_valid();
-    }
-
-    /// returns whether h touches the boundary, i.e., its opposite is a boundary halfedge.
-    bool touches_boundary(Halfedge h) const
-    {
-        return is_boundary(opposite_halfedge(h));
-    }
-
-    /// returns the \c i'th halfedge of edge \c e. \c i has to be 0 or 1.
-    Halfedge halfedge(Edge e, unsigned int i) const
-    {
-        assert(i<=1);
-        return Halfedge((e.idx() << 1) + i);
-    }
-
-    /// returns the \c i'th vertex of edge \c e. \c i has to be 0 or 1.
-    Vertex vertex(Edge e, unsigned int i) const
-    {
-        assert(i<=1);
-        return to_vertex(halfedge(e, i));
-    }
-
-    /// returns the face incident to the \c i'th halfedge of edge \c e. \c i has to be 0 or 1.
-    Face face(Edge e, unsigned int i) const
-    {
-        assert(i<=1);
-        return face(halfedge(e, i));
+        Halfedge h(halfedge(v));
+        return (!(h.is_valid() && face(h).is_valid()));
     }
 
     /// returns whether \c e is a boundary edge, i.e., if one of its
@@ -1276,18 +1298,6 @@ public:
     bool is_boundary(Edge e) const
     {
         return (is_boundary(halfedge(e, 0)) || is_boundary(halfedge(e, 1)));
-    }
-
-    /// returns a halfedge of face \c f
-    Halfedge halfedge(Face f) const
-    {
-        return fconn_[f].halfedge_;
-    }
-
-    /// sets the halfedge of face \c f to \c h
-    void set_halfedge(Face f, Halfedge h)
-    {
-        fconn_[f].halfedge_ = h;
     }
 
     /// returns whether \c f is a boundary face, i.e., it one of its edges is a boundary edge.
@@ -1305,6 +1315,37 @@ public:
         return false;
     }
 
+    /// returns whether h is a boundary halfege, i.e., if its face does not exist.
+    bool is_boundary(Halfedge h) const
+    {
+        return !face(h).is_valid();
+    }
+
+    /// returns whether h touches the boundary, i.e., its opposite is a boundary halfedge.
+    bool touches_boundary(Halfedge h) const
+    {
+        return is_boundary(opposite_halfedge(h));
+    }
+
+    /// returns whether \c v is isolated, i.e., not incident to any face
+    bool is_isolated(Vertex v) const
+    {
+        return !halfedge(v).is_valid();
+    }
+
+    inline bool is_regular(Vertex v)
+    {
+        int d = vertex_degree(v);
+        return d!=4 && d!=2;
+    }
+
+    inline bool is_near_boundary(Vertex v, const gsSurfMesh& mesh)
+    {
+        for (auto u: mesh.vertices(v))
+            if ( mesh.is_boundary(u) )
+                return true;
+        return false;
+    }
 
 public:
 
@@ -1480,7 +1521,6 @@ public:
         return mprops_.get_type(name);
     }
 
-
     /// returns the names of all vertex properties
     std::vector<std::string> vertex_properties() const
     {
@@ -1634,7 +1674,6 @@ public:
     /// \sa trianglate()
     void triangulate(Face f);
 
-
     /// returns whether collapsing the halfedge \c h is topologically legal.
     /// \attention This function is only valid for triangle meshes.
     bool is_collapse_ok(Halfedge h);
@@ -1664,7 +1703,6 @@ public:
      \sa split(Face, const Point&)
      */
     void split(Face f, Vertex v);
-
 
     /// Quad-split face connecting vertex \a v, starting from corner
     /// \a s of the face
@@ -1745,6 +1783,8 @@ public:
      */
     void flip(Edge e);
 
+public:
+
     /** returns the valence (number of incident edges or neighboring vertices)
      of vertex \c v. */
     unsigned int valence(Vertex v) const;
@@ -1756,6 +1796,35 @@ public:
 
     /// returns the sum of all valences of faces in the mesh
     unsigned int face_valence_sum() const;
+
+        inline unsigned int num_faces(gsSurfMesh::Vertex v)
+    {
+        unsigned int cnt = 0;
+        for (auto f: faces(v)) { ++cnt; GISMO_UNUSED(f); }
+        return cnt;
+    }
+
+    /// Returns the degree of a vertex.
+    /*
+     Let k(v) = #incident faces
+     Let n(v) = #incident edges
+     Degree d(v) := if (v interior) d(v)= k=n else d(v)= 2*k=2*(n-1)
+     Therefore:
+     - Corner vertex:  d==2
+     - Regular vertex (boundary or interior): d==4
+     - Irregular vertex (boundary or interior): d!=4 and d!=2
+     Examples:
+     - Corner vertex            : k=1, n=2,   d=2
+     - Regular interior vertex  : k=4, n=4,   d=4
+     - Regular boundary vertex  : k=2, n=3,   d=4
+     - Irregular interior vertex: k=k, n=k,   d=k   (i.e. 3,5,6,7,..)
+     - Irregular boundary vertex: k=k, n=k+1, d=2*k (i.e. 6,8,10,12,..)
+    */
+    inline unsigned int vertex_degree(gsSurfMesh::Vertex v)
+    {
+        const unsigned int k = num_faces(v);
+        return is_boundary(v) ? 2*k : k;
+    }
 
     /// find the halfedge from start to end
     Halfedge find_halfedge(Vertex start, Vertex end) const;
@@ -1780,8 +1849,14 @@ public:
     /// position of a vertex
     Point& position(Vertex v) { return vpoint_[v]; }
 
+    /// compute the length of edge \c e.
+    Scalar edge_length(Edge e) const;
+
+    /// Vertex point coordinates
+    Vertex_property<Point> & points() { return vpoint_; }
+
     /// vector of vertex positions
-    std::vector<Point>& points() { return vpoint_.vector(); }
+    std::vector<Point>& pointsVec() { return vpoint_.vector(); }
 
     /// compute face normals by calling compute_face_normal(Face) for each face.
     void update_face_normals();
@@ -1795,52 +1870,31 @@ public:
     /// compute normal vector of vertex \c v.
     Normal compute_vertex_normal(Vertex v) const;
 
-    /// compute the length of edge \c e.
-    Scalar edge_length(Edge e) const;
+public: // Catmull-Clark functions
 
-    // Insert a new edge between two vertices, even if one exists
-    Edge add_edge(Vertex start, Vertex end)
-    {
-        if (end.idx()>start.idx())
-            std::swap(start,end);
+    /// Catmull-Clark subdivision
+    void cc_subdivide();
 
-        Halfedge h = new_edge(start,end);
-        set_halfedge(start, h);
-        set_halfedge(end, opposite_halfedge(h));
-        set_next_halfedge(h, opposite_halfedge(h));
-        set_next_halfedge(opposite_halfedge(h), h);
-        return edge(h);
-    }
+    /// Compute CC vertex limit positions
+    Vertex_property<Point> cc_limit_points(std::string label = "v:limit");
 
-    /// Insert new edge between two vertices, if one does not exist
-    /// Complexity proportional to the number of halfedges
-    Edge find_or_add_edge(Vertex start, Vertex end)
-    {
-        if (end.idx()>start.idx())
-            std::swap(start,end);
+    /// Compute CC vertex limit normals
+    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal",
+                                            bool normalize = true);
 
-        //brut search
-        for( Halfedge a : halfedges() )
-            if ( from_vertex(a) == start && to_vertex(a)== end)
-                return edge(a);
-        return add_edge(start,end);
+    /// Compute CC vertex limit tangent
+    Vertex_property<Point> cc_limit_tangent_vec(std::string label = "v:tanvec",
+                                                bool normalize = true);
 
-        /*
-        Halfedge h = find_halfedge(start,end);
-        if (!h.is_valid())
-        {   //try the opposite as well
-            h = find_halfedge(end,start);
-            if ( h.is_valid() )
-                h = opposite_halfedge(h);
-        }
-        return h.is_valid() ? edge(h) : add_edge(start,end);
-        */
-    }
+    /// Generate linear tensor-product patches (possibly merging faces)
+    gsMultiPatch<real_t> linear_patches() const;
 
-    // Insert a new quad by four consecutive border edges
-    Face add_quad(Edge e0, Edge e1, Edge e2, Edge e3);
+    // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
+    inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
 
-private:
+    void mergeDoubleVertices();
+
+    private:
 
     Face new_quad(gsSurfMesh::Halfedge * h, int sz);
 
@@ -1881,78 +1935,6 @@ private:
             " edges and "<<sm.n_faces()<<" faces.\n";
         return os;
     }
-
-    inline unsigned int num_faces(gsSurfMesh::Vertex v)
-    {
-        unsigned int cnt = 0;
-        for (auto f: faces(v)) { ++cnt; GISMO_UNUSED(f); }
-        return cnt;
-    }
-
-    // Returns the degree of a vertex.
-    //Notation/definition:
-    // k(v) = #incident faces
-    // n(v) = #incident edges
-    // Degree d(v) := if (v interior) k=n else 2*k=2*(n-1)
-    // Characterization:
-    // Corner vertex:  d==2
-    // Regular vertex (boundary or interior): d==4
-    // Irregular vertex (boundary or interior): d!=4 and d!=2
-    // Examples:
-    // Corner vertex            : k=1, n=2,   d=2
-    // Regular interior vertex  : k=4, n=4,   d=4
-    // Regular boundary vertex  : k=2, n=3,   d=4
-    // Irregular interior vertex: k=k, n=k,   d=k   (i.e. 3,5,6,7,..)
-    // Irregular boundary vertex: k=k, n=k+1, d=2*k (i.e. 6,8,10,12,..)
-    inline unsigned int vertex_degree(gsSurfMesh::Vertex v)
-    {
-        const unsigned int k = num_faces(v);
-        return is_boundary(v) ? 2*k : k;
-    }
-
-    inline bool is_regular(gsSurfMesh::Vertex v)
-    {
-        int d = vertex_degree(v);
-        return d!=4 && d!=2;
-    }
-
-    inline bool is_near_boundary(gsSurfMesh::Vertex v, const gsSurfMesh& mesh)
-    {
-        for (auto u: mesh.vertices(v))
-            if ( mesh.is_boundary(u) )
-                return true;
-        return false;
-    }
-
-    inline gsSurfMesh::Halfedge forward_halfedge(gsSurfMesh::Halfedge he)
-    { return next_halfedge(opposite_halfedge(next_halfedge(he))); }
-
-
-public: // Catmull-Clark functions
-
-    /// Catmull-Clark subdivision
-    void cc_subdivide();
-
-    /// Compute CC vertex limit positions
-    Vertex_property<Point> cc_limit_points(std::string label = "v:limit");
-
-    /// Compute CC vertex limit normals
-    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal",
-                                            bool normalize = true);
-
-    /// Compute CC vertex limit tangent
-    Vertex_property<Point> cc_limit_tangent_vec(std::string label = "v:tanvec",
-                                                bool normalize = true);
-
-    /// Generate linear tensor-product patches (possibly merging faces)
-    gsMultiPatch<real_t> linear_patches() const;
-
-    // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
-    inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
-
-    void mergeDoubleVertices();
-
-private:
 
     /** make sure that the outgoing halfedge of vertex v is a boundary halfedge
      if v is a boundary vertex. */
