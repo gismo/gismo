@@ -1853,10 +1853,17 @@ public:
     Scalar edge_length(Edge e) const;
 
     /// Vertex point coordinates
+    const Vertex_property<Point> & points() const
+    { return const_cast<Vertex_property<Point>&>(vpoint_); }
+
+    /// Vertex point coordinates
     Vertex_property<Point> & points() { return vpoint_; }
 
     /// vector of vertex positions
     std::vector<Point>& pointsVec() { return vpoint_.vector(); }
+
+    /// vector of vertex positions
+    const std::vector<Point>& pointsVec() const { return vpoint_.vector(); }
 
     /// compute face normals by calling compute_face_normal(Face) for each face.
     void update_face_normals();
