@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
     fd.getId(3, CHopt); // id=3: reference solution
 
     // real_t theta    = CHopt.askReal("theta",1.5);
-    // real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
+    real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
     // real_t M0       = CHopt.askReal("M0",0.005);
     real_t penalty  = 1e4*lambda;
 
