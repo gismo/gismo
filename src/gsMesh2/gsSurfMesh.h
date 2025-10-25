@@ -38,9 +38,6 @@ EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Vec2f)
 
 namespace gismo {
 
-//== CLASS DEFINITION =========================================================
-
-
 /// A halfedge data structure for polygonal meshes.
 class GISMO_EXPORT gsSurfMesh
 {
@@ -53,7 +50,7 @@ private:
 /// 3D vector type
 typedef gsEigen::Vector<Scalar,3> Vec3;
 
-public: //------------------------------------------------------ topology types
+public:
 
     /// Base class for all topology types (internally it is basically an index)
     /// \sa Vertex, Halfedge, Edge, Face
@@ -137,7 +134,7 @@ public: //------------------------------------------------------ topology types
 
 
 
-public: //-------------------------------------------------- connectivity types
+public:
 
     /// This type stores the vertex connectivity
     /// \sa Halfedge_connectivity, Face_connectivity
@@ -174,7 +171,7 @@ public: //-------------------------------------------------- connectivity types
 
 
 
-public: //------------------------------------------------------ property types
+public:
 
     /// Vertex property of type T
     /// \sa Halfedge_property, Edge_property, Face_property
@@ -297,7 +294,7 @@ public: //------------------------------------------------------ property types
 
 
 
-public: //------------------------------------------------------ iterator types
+public:
 
     /// this class iterates linearly over all vertices
     /// \sa vertices_begin(), vertices_end()
@@ -558,7 +555,7 @@ public: //------------------------------------------------------ iterator types
 
 
 
-public: //-------------------------- containers for C++11 range-based for loops
+public:
 
     /// this helper class is a container for iterating through all
     /// vertices using C++11 range-based for-loops.
@@ -622,7 +619,7 @@ public: //-------------------------- containers for C++11 range-based for loops
 
 
 
-public: //---------------------------------------------------- circulator types
+public:
 
     /// this class circulates through all one-ring neighbors of a vertex.
     /// it also acts as a container-concept for C++11 range-based for loops.
@@ -635,7 +632,8 @@ public: //---------------------------------------------------- circulator types
         Vertex_around_vertex_circulator(const gsSurfMesh* m=NULL, Vertex v=Vertex())
         : mesh_(m), active_(true)
         {
-            if (mesh_) halfedge_ = mesh_->halfedge(v);
+            if (mesh_)
+                halfedge_ = mesh_->halfedge(v);
         }
 
         /// are two circulators equal?
@@ -651,7 +649,7 @@ public: //---------------------------------------------------- circulator types
             return !operator==(rhs);
         }
 
-        /// pre-increment (rotate couter-clockwise)
+        /// pre-increment (rotate counter-clockwise)
         Vertex_around_vertex_circulator& operator++()
         {
             assert(mesh_);
@@ -682,7 +680,12 @@ public: //---------------------------------------------------- circulator types
         Halfedge halfedge() const { return halfedge_; }
 
         // helper for C++11 range-based for-loops
-        Vertex_around_vertex_circulator& begin() { active_=!halfedge_.is_valid(); return *this; }
+        Vertex_around_vertex_circulator& begin()
+        {
+            active_=!halfedge_.is_valid();
+            return *this;
+        }
+
         // helper for C++11 range-based for-loops
         Vertex_around_vertex_circulator& end()   { active_=true;  return *this; }
 
@@ -796,6 +799,8 @@ public: //---------------------------------------------------- circulator types
         {
             assert(mesh_ && halfedge_.is_valid());
             do {
+                if (halfedge_ == mesh_->ccw_rotated_halfedge(halfedge_))
+                    break;
                 halfedge_ = mesh_->ccw_rotated_halfedge(halfedge_);
             } while (mesh_->is_boundary(halfedge_));
             active_ = true;
@@ -823,7 +828,11 @@ public: //---------------------------------------------------- circulator types
         operator bool() const { return halfedge_.is_valid(); }
 
         // helper for C++11 range-based for-loops
-        Face_around_vertex_circulator& begin() { active_=!halfedge_.is_valid(); return *this; }
+        Face_around_vertex_circulator& begin()
+        {
+            active_=!(halfedge_.is_valid() );
+            return *this;
+        }
         // helper for C++11 range-based for-loops
         Face_around_vertex_circulator& end()   { active_=true;  return *this; }
 
@@ -969,7 +978,7 @@ public: //---------------------------------------------------- circulator types
 
 
 
-public: //-------------------------------------------- constructor / destructor
+public:
 
     /// \name Construct, destruct, assignment
     //@{
@@ -994,13 +1003,7 @@ public: //-------------------------------------------- constructor / destructor
 
     //@}
 
-
-
-
-public: //------------------------------------------------------------- file IO
-
-    /// \name File IO
-    //@{
+public:
 
     /// read mesh from file \c filename. file extension determines file type.
     /// \sa write(const std::string& filename)
@@ -1010,15 +1013,8 @@ public: //------------------------------------------------------------- file IO
     /// \sa read(const std::string& filename)
     bool write(const std::string& filename) const;
 
-    //@}
 
-
-
-
-public: //----------------------------------------------- add new vertex / face
-
-    /// \name Add new elements by hand
-    //@{
+public:
 
     /// add a new vertex with position \c p
     Vertex add_vertex(const Point& p);
@@ -1035,15 +1031,7 @@ public: //----------------------------------------------- add new vertex / face
     /// \sa add_triangle, add_face
     Face add_quad(Vertex v1, Vertex v2, Vertex v3, Vertex v4);
 
-    //@}
-
-
-
-
-public: //--------------------------------------------------- memory management
-
-    /// \name Memory Management
-    //@{
+public:
 
     /// returns number of (deleted and valid) vertices in the mesh
     unsigned int vertices_size() const { return (unsigned int) vprops_.size(); }
@@ -1084,7 +1072,6 @@ public: //--------------------------------------------------- memory management
     /// remove deleted vertices/edges/faces
     void garbage_collection();
 
-
     /// returns whether vertex \c v is deleted
     /// \sa garbage_collection()
     bool is_deleted(Vertex v) const
@@ -1110,7 +1097,6 @@ public: //--------------------------------------------------- memory management
         return fdeleted_[f];
     }
 
-
     /// return whether vertex \c v is valid, i.e. the index it stores is within the array bounds.
     bool is_valid(Vertex v) const
     {
@@ -1132,15 +1118,8 @@ public: //--------------------------------------------------- memory management
         return (0 <= f.idx()) && (f.idx() < (int)faces_size());
     }
 
-    //@}
 
-
-
-
-public: //---------------------------------------------- low-level connectivity
-
-    /// \name Low-level connectivity
-    //@{
+public:
 
     /// returns an outgoing halfedge of vertex \c v.
     /// if \c v is a boundary vertex this will be a boundary halfedge.
@@ -1326,15 +1305,8 @@ public: //---------------------------------------------- low-level connectivity
         return false;
     }
 
-    //@}
 
-
-
-
-public: //--------------------------------------------------- property handling
-
-    /// \name gsProperty handling
-    //@{
+public:
 
     /** add a vertex property of type \c T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
@@ -1538,16 +1510,8 @@ public: //--------------------------------------------------- property handling
     /// prints the names of all properties
     void property_stats() const;
 
-    //@}
 
-
-
-
-public: //--------------------------------------------- iterators & circulators
-
-    /// \name Iterators & Circulators
-    //@{
-
+public:
     /// returns start iterator for vertices
     Vertex_iterator vertices_begin() const
     {
@@ -1650,16 +1614,8 @@ public: //--------------------------------------------- iterators & circulators
         return Halfedge_around_face_circulator(this, f);
     }
 
-    //@}
 
-
-
-
-
-public: //--------------------------------------------- higher-level operations
-
-    /// \name Higher-level Topological Operations
-    //@{
+public:
 
     /// returns whether the mesh a triangle mesh. this function simply tests
     /// each face, and therefore is not very efficient.
@@ -1816,13 +1772,7 @@ public: //--------------------------------------------- higher-level operations
     /// deletes the face \c f from the mesh
     void delete_face(Face f);
 
-    //@}
-
-
-public: //------------------------------------------ geometry-related functions
-
-    /// \name Geometry-related Functions
-    //@{
+public:
 
     /// position of a vertex (read only)
     const Point& position(Vertex v) const { return vpoint_[v]; }
@@ -1848,12 +1798,51 @@ public: //------------------------------------------ geometry-related functions
     /// compute the length of edge \c e.
     Scalar edge_length(Edge e) const;
 
-    //@}
+    // Insert a new edge between two vertices, even if one exists
+    Edge add_edge(Vertex start, Vertex end)
+    {
+        if (end.idx()>start.idx())
+            std::swap(start,end);
 
+        Halfedge h = new_edge(start,end);
+        set_halfedge(start, h);
+        set_halfedge(end, opposite_halfedge(h));
+        set_next_halfedge(h, opposite_halfedge(h));
+        set_next_halfedge(opposite_halfedge(h), h);
+        return edge(h);
+    }
 
+    /// Insert new edge between two vertices, if one does not exist
+    /// Complexity proportional to the number of halfedges
+    Edge find_or_add_edge(Vertex start, Vertex end)
+    {
+        if (end.idx()>start.idx())
+            std::swap(start,end);
 
+        //brut search
+        for( Halfedge a : halfedges() )
+            if ( from_vertex(a) == start && to_vertex(a)== end)
+                return edge(a);
+        return add_edge(start,end);
 
-private: //---------------------------------------------- allocate new elements
+        /*
+        Halfedge h = find_halfedge(start,end);
+        if (!h.is_valid())
+        {   //try the opposite as well
+            h = find_halfedge(end,start);
+            if ( h.is_valid() )
+                h = opposite_halfedge(h);
+        }
+        return h.is_valid() ? edge(h) : add_edge(start,end);
+        */
+    }
+
+    // Insert a new quad by four consecutive border edges
+    Face add_quad(Edge e0, Edge e1, Edge e2, Edge e3);
+
+private:
+
+    Face new_quad(gsSurfMesh::Halfedge * h, int sz);
 
     /// allocate a new vertex, resize vertex properties accordingly.
     Vertex new_vertex()
@@ -1874,12 +1863,11 @@ private: //---------------------------------------------- allocate new elements
         Halfedge h0(halfedges_size()-2);
         Halfedge h1(halfedges_size()-1);
 
-        set_vertex(h0, end); //to_vertex*
-        set_vertex(h1, start); //to_vertex
-
+        set_vertex(h0, end);   // h0: start->end
+        set_vertex(h1, start); // h1: end-->start
         return h0;
     }
-
+    
     /// allocate a new face, resize face properties accordingly.
     Face new_face()
     {
@@ -1893,6 +1881,52 @@ private: //---------------------------------------------- allocate new elements
             " edges and "<<sm.n_faces()<<" faces.\n";
         return os;
     }
+
+    inline unsigned int num_faces(gsSurfMesh::Vertex v)
+    {
+        unsigned int cnt = 0;
+        for (auto f: faces(v)) { ++cnt; GISMO_UNUSED(f); }
+        return cnt;
+    }
+
+    // Returns the degree of a vertex.
+    //Notation/definition:
+    // k(v) = #incident faces
+    // n(v) = #incident edges
+    // Degree d(v) := if (v interior) k=n else 2*k=2*(n-1)
+    // Characterization:
+    // Corner vertex:  d==2
+    // Regular vertex (boundary or interior): d==4
+    // Irregular vertex (boundary or interior): d!=4 and d!=2
+    // Examples:
+    // Corner vertex            : k=1, n=2,   d=2
+    // Regular interior vertex  : k=4, n=4,   d=4
+    // Regular boundary vertex  : k=2, n=3,   d=4
+    // Irregular interior vertex: k=k, n=k,   d=k   (i.e. 3,5,6,7,..)
+    // Irregular boundary vertex: k=k, n=k+1, d=2*k (i.e. 6,8,10,12,..)
+    inline unsigned int vertex_degree(gsSurfMesh::Vertex v)
+    {
+        const unsigned int k = num_faces(v);
+        return is_boundary(v) ? 2*k : k;
+    }
+
+    inline bool is_regular(gsSurfMesh::Vertex v)
+    {
+        int d = vertex_degree(v);
+        return d!=4 && d!=2;
+    }
+
+    inline bool is_near_boundary(gsSurfMesh::Vertex v, const gsSurfMesh& mesh)
+    {
+        for (auto u: mesh.vertices(v))
+            if ( mesh.is_boundary(u) )
+                return true;
+        return false;
+    }
+
+    inline gsSurfMesh::Halfedge forward_halfedge(gsSurfMesh::Halfedge he)
+    { return next_halfedge(opposite_halfedge(next_halfedge(he))); }
+
 
 public: // Catmull-Clark functions
 
@@ -1910,16 +1944,15 @@ public: // Catmull-Clark functions
     Vertex_property<Point> cc_limit_tangent_vec(std::string label = "v:tanvec",
                                                 bool normalize = true);
 
-    /// Generate ACC3 biqubic Bezier patches
-    gsMultiPatch<real_t> cc_acc3(bool comp_topology = false) const;
-
     /// Generate linear tensor-product patches (possibly merging faces)
     gsMultiPatch<real_t> linear_patches() const;
 
     // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
     inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
 
-private: //--------------------------------------------------- helper functions
+    void mergeDoubleVertices();
+
+private:
 
     /** make sure that the outgoing halfedge of vertex v is a boundary halfedge
      if v is a boundary vertex. */
@@ -1934,7 +1967,7 @@ private: //--------------------------------------------------- helper functions
     /// are there deleted vertices, edges or faces?
     bool garbage() const { return garbage_; }
 
-private: //------------------------------------------------------- private data
+private:
 
     friend bool GISMO_EXPORT read_poly(gsSurfMesh& mesh, const std::string& filename);
 
@@ -1970,10 +2003,6 @@ private: //------------------------------------------------------- private data
     std::vector<bool>        add_face_needs_adjust_;
     NextCache                add_face_next_cache_;
 };
-
-
-//------------------------------------------------------------ output operators
-
 
 inline std::ostream& operator<<(std::ostream& os, gsSurfMesh::Vertex v)
 {
@@ -2017,6 +2046,4 @@ public:
 
 }//namespace internal
 
-//=============================================================================
 } // namespace gismo
-//=============================================================================
