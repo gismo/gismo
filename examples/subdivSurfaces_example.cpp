@@ -17,7 +17,6 @@ int main(int argc, char** argv)
     bool cc = false;
     bool ds = false;
     bool loop = false;
-    bool cubic = false;
     index_t r(1);
     index_t lo(1);
 

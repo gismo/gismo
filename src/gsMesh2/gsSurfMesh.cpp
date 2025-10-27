@@ -2722,6 +2722,9 @@ void gsSurfMesh::loop_subdivide(int mask_option)
             tmp = (real_t)1 / 2 * position(from_vertex(he)) +
                   (real_t)1 / 2 * position(to_vertex(he));
         }
+        else if (is_boundary(he)){
+            continue;
+        }
         else {
             nh = next_halfedge(he);
             ph = prev_halfedge(opposite_halfedge(he));
@@ -2745,10 +2748,15 @@ void gsSurfMesh::loop_subdivide(int mask_option)
     
     // For each old vertex modify its position (even rules)
     // For boundary we will impose the classic rule which causes cubic spline at the infinity
-    // In case of boundary vertices we will leave them in tact (See Hoppe 1994, Bierman 2000, Ling 2008)
+    // In case of boundary vertices in corner we will leave them in tact (See Hoppe 1994, Bierman 2000, Ling 2008)
     for (auto it = 0; it < fnv; it++) {
         v = Vertex(it);
         if (is_boundary(v)) {
+
+        /*    if (valence(v) == 3) {
+               tmp == position(v);
+           }*/
+
             he = halfedge(v);
             hh = he;
 
@@ -2800,6 +2808,10 @@ void gsSurfMesh::loop_subdivide(int mask_option)
     }
 
     for (auto he : halfedges()) {
+
+        if (is_boundary(he)) {
+            continue;
+        }
 
         v = from_vertex(he);
         ph = prev_halfedge(he);
