@@ -25,7 +25,7 @@ void CorrecNormalCPoints(const gsMultiPatch<>& mpLeft, gsMultiPatch<>& Psi, inde
     // Projection normal of control points (exact geometry)
     for (int boxNumber = 0; boxNumber < boxMaxNumber; ++boxNumber)
     {
-        // test if the boundary interface is not an inner interface between patches
+        // ...
         for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(1).size(); ++i_x) // x=0 control points be like (0,:) in this case
         {
             Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1] = mpLeft.patch(boxNumber).coef( mpLeft.patch(boxNumber).basis().boundary(1).at(i_x) ).array()[1];
@@ -63,7 +63,6 @@ int main(int argc, char *argv[])
     //bool export_b64     = false;
     bool errorsave        = false;
     real_t adaptRefParam  = 0.;     // ... adapt parameter.
-    index_t FactRefPar    = 0;    // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
     std::string fn("pde/infinit_plate.xml");
     // --------------- adaptive refinement ---------------
@@ -80,7 +79,6 @@ int main(int argc, char *argv[])
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
@@ -213,50 +211,38 @@ int main(int argc, char *argv[])
     gsMarkElementsForRef( elwise, adaptRefCrit, 0.8, eldensityMarked);
     auto density   = MAE.buildDensity(dbasis, eldensityMarked);
     MAE.buildMultiPatch(density);// compute adaptive mapping
-
-    if (IntensityMAE>0){
-    auto geometrytp                  = MAE.buildCompMultiPatch(dbasis);
+    auto geometrytp      = MAE.buildCompMultiPatch(dbasis);
     CorrecNormalCPoints(mpLeft, geometrytp);
-    
-    index_t numPaches               = geometrytp.nPatches();
-    for( index_t i=0; i<numPaches; ++i)
-    {
-    index_t coefsNum                = geometrytp.patch(i).coefsSize();
-    for ( index_t j=0; j<coefsNum; ++j)
-    {
-        mpLeft.patch(i).coef(j)     = geometrytp.patch(i).coef(j);
-    }
-    }
+    // refine to have at least 1e3
+    if (numRefine <5)
+    MAE.uniformRefine(5-numRefine);
+
+    if (IntensityMAE<=1.){
+        geometrytp = mpLeft;
     }
     // mpLeft.coefs().swap(geometrytp.coefs());
     // gsInfo<<"Making geometry"<< (mpLeft.coefs()-geometrytp.coefs())<< "\n";
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsMultiPatch<> geometry;	
-    for(size_t i =0; i<mpLeft.nPatches(); ++i)
-        geometry.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
+    gsMultiPatch<> geometry, geometryRef;	
+    for(size_t i =0; i<mpLeft.nPatches(); ++i){
+        geometryRef.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
+        geometry.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(geometrytp.patch(i)) ));
         //geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(geometrytp.patch(i)) ));
-    geometry.addAutoBoundaries();
+    }
     geometry.computeTopology();
+    geometryRef.computeTopology();
+
     //gsWrite(geometry, "geometry_mapping");
     //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
 
     //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
     if (true){
     // creating basis
-    gsMultiBasis<> basis(geometry, true);//true: poly-splines (not NURBS)
+    gsMultiBasis<> basis(geometry, false);//true: poly-splines (not NURBS)
     gsVector<>     l2err(numLRefine+1), h1err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
-
-    //=============================================//
-              // Assembling & solving //
-    //=============================================//
-
-    // creating assembler
-    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);
-    assembler.options().setReal("YoungsModulus",youngsModulus);
-    assembler.options().setReal("PoissonsRatio",poissonsRatio);
     
     for (int r=0; r<=numLRefine; ++r)
     {
@@ -344,32 +330,42 @@ int main(int argc, char *argv[])
             // the refinement-criterion and -parameter.
             std::vector<bool> elMarked( eltErrs.size() );
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-            if (IntensityMAE >1.){
-                double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
-                for(size_t i=0; i<eltErrs.size(); ++i)
-                {
-                    if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
-                    {
-                        Minvalue = eltErrs[i];
-                    }
-                }
-                for(size_t i=0; i<eltErrs.size(); ++i)
-                {
-                    if (Minvalue/pow(DoFPDE[r],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
-                    {
-                        elMarked[i] = true;
-                    }
-                }
-            }
+
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
+            
+            if (IntensityMAE >1.){
+                // std::vector<bool> eldensityMarked( eltErrs.size() );
+                // gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);                 
+                // auto density   = MAE.buildDensity( assembler.multiBasis(), eldensityMarked, true);// false: do not set rho to zero
+                // MAE.buildMultiPatch(density);// compute adaptive mapping
+                // geometry       = MAE.buildCompMultiPatch(assembler.multiBasis());// computes the composition mapping mpLeft o Psitp
+                // CorrecNormalCPoints(geometryRef, geometry);
+                // gsRefineMarkedElements(geometryRef, elMarked, NumArMarEl);
+            //     double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+            //     for(size_t i=0; i<eltErrs.size(); ++i)
+            //     {
+            //         if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
+            //         {
+            //             Minvalue = eltErrs[i];
+            //         }
+            //     }
+            //     for(size_t i=0; i<eltErrs.size(); ++i)
+            //     {
+            //         if (Minvalue/pow(DoFPDE[r],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
+            //         {
+            //             elMarked[i] = true;
+            //         }
+            //     }
+            //     NumArMarEl +=5;
+            }
 
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( basis, elMarked, NumArMarEl);
             gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
-            gsRefineMarkedElements( geometry, elMarked, NumArMarEl);
+            gsRefineMarkedElements(geometry, elMarked, NumArMarEl);
+
             gsInfo << "assemble refined\n";
             
-            NumArMarEl = NumArMarEl + FactRefPar;
             assembler.refresh();
             }
     //! [Export visualization in ParaView]

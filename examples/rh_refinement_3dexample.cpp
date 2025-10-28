@@ -32,10 +32,9 @@ int main(int argc, char *argv[])
     // Specify cell-marking strategy...
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.; // ... adapt parameter.
-    index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
     // Specify the file path
-    std::string fn("pde/example3D.xml");
-    //std::string fn("surfaces/quarter_sphere.xml"); 
+    // std::string fn("pde/example3D.xml");
+    std::string fn("volumes/GshapedVolume.xml"); 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
@@ -44,9 +43,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
-    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
     cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt("quRule",
@@ -155,8 +152,8 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
     solution u_sol = A.getSolution(ru, rsolVector);
-    // ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
-    ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
+    ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
+    // ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise = ev.elementwise();
 
     // if (IntensityMAE >1.){
@@ -170,33 +167,28 @@ int main(int argc, char *argv[])
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 1-2 : Computes the density function
+    ###         and the multipatch adaptive mapping
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
-    // auto density = MAE.buildAnalyticDensity(ff);
+    gsMultiPatch<> Psitp;
+    if (IntensityMAE <= 1.)
+    {
+        gsInfo << "IntensityMAE < 1, so mpLeft is used.\n";
+        // Use the original multipatch
+        Psitp = mpLeft;
+    }  
+    else{
     //.. mark elements location
     std::vector<bool> eldensityMarked( elwise.size() );
     gsMarkElementsForRef( elwise, adaptRefCrit, 0.8, eldensityMarked);
     auto density   = MAE.buildDensity(dbasis, eldensityMarked);
-    MAE.buildMultiPatch(density);
-    // gsMultiPatch<> mp; 
-    // if (dbasis.dim()==2)
-    //     mp.addPatch(gsNurbsCreator<>::BSplineSquare(1,0,0));
-    // else
-    //     mp.addPatch(gsNurbsCreator<>::BSplineCube(1,0,0,0));
-    // auto u_density = A.getCoeff(density);
-    // gsInfo<<"Plotting in Paraview...\n";
-    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    // collection.options().setSwitch("plotElements", true);
-    // collection.options().setSwitch("base64", export_b64);
-    // collection.options().setInt("plotElements.resolution", 16);
-    // collection.options().setInt("numPoints", 10000);
-    // collection.newTimeStep(&mp);
-    // collection.addField(u_density,"density");
-    // collection.saveTimeStep();
-    // collection.save();
-    // gsFileManager::open("ParaviewOutput/solution.pvd");
-    // return 0;
-
-    auto Psitp      = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
+    MAE.buildMultiPatch(density);// compute adaptive mapping
+    Psitp     = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp 
+    // if (MAE.DoFs < 2e3)
+    //     MAE.uniformRefine();   
+    }
     
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -328,6 +320,12 @@ int main(int argc, char *argv[])
             std::vector<bool> elMarked( eltErrs.size() );
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
             if (IntensityMAE >1.){
+                std::vector<bool> eldensityMarked( eltErrs.size() );
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
+                auto density   = MAE.buildDensity( dbasis, eldensityMarked);
+                MAE.buildMultiPatch(density);// compute adaptive mapping
+                Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
+                // ------------------------------
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)
                 {
@@ -349,10 +347,6 @@ int main(int argc, char *argv[])
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
-
-            NumArMarEl = NumArMarEl + FactRefPar;
-            // if (r%2==0){
-            FactRefPar = 2*FactRefPar;
             //}
             }
     }

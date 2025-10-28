@@ -54,7 +54,8 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot           = false; // plot solution or not
     index_t numRefine   = 4;     // number of uniform refinement
-    index_t numElevate  = 0;     // number of degree elevation
+    index_t numIRefine  = 3;     // number for initial refinement
+    index_t numElevate  = 1;     // number of degree elevation
     index_t maxIter     = 50;    // maximum number of Picard iterations
     double eps          = 1e-6;  // pinalization coefficient
     double tolPicard    = 1e-12; // tolerance for Picard iterations
@@ -83,6 +84,7 @@ int main(int argc, char *argv[])
     cmd.addInt("i",       "iter",            "Maximum number of iterations for Picard",    maxIter);
     cmd.addInt( "e",      "degreeElevation", "Number of degree elevation ",                numElevate );
     cmd.addInt( "u",      "uniformRefine",    "Number of Uniform h-refinement loops",      numRefine );
+    cmd.addInt( "g",      "G-uniformRefine",    "Number of Uniform global-refinement",     numIRefine);
     cmd.addString("d",    "file",             "Input XML file data",                       fn );
     cmd.addReal( "l",     "adaptRefParam",     "percentage of local h-refinement loops",   adaptRefParam );
     cmd.addReal( "f",     "IntensityMAE",      "Intensity of density function",            IntensityMAE);
@@ -100,8 +102,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    // fd.getId(1,mpLeft);
+    gsMultiPatch<> mpLeft; //= gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
+    fd.getId(1,mpLeft);
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.degreeElevate(numElevate);
@@ -148,7 +150,7 @@ int main(int argc, char *argv[])
     gsMultiBasis<double> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
     //.. initial refinement to have the same number of elements as the adaptive geometry
-    while(dbasis.basis(0).size() < 1000)
+    for (int r=0; r<numIRefine; ++r)
     {
         dbasis.uniformRefine();
         Psi.uniformRefine();
@@ -162,7 +164,7 @@ int main(int argc, char *argv[])
     numRefine = 0;
     }
 
-    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"nbasis: " << dbasis.basis(0).size() <<"\n";
+    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<" nbasis: " << dbasis.basis(0).size() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
@@ -208,7 +210,7 @@ int main(int argc, char *argv[])
     // Set the source term with respect to target geometry
     auto ff           = A.getCoeff(f, GLeft);
     // Set the source term with respect to target geometry
-    auto fP           = A.getCoeff(f, PP);
+    auto fP           = A.getCoeff(f,  GLeft, PP);
 
     //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
     auto u_I          = ev.getVariable(sN, G);
@@ -513,6 +515,12 @@ int main(int argc, char *argv[])
     if (plot)
     {
         //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
+        // -------------------- for projection --------------------
+        u.setup(bc_mae, dirichlet::l2Projection, 0);
+        A.initSystem();
+        A.assemble(u *u.tr());//matrix
+        auto MProj = A.matrix();
+        solver.compute( MProj);
         // // //::::::::::::::::::::...
         auto comp  = A.getCoeff(mpLeft, PP);
         A.initSystem(mpLeft.geoDim());
@@ -523,8 +531,10 @@ int main(int argc, char *argv[])
         vsolVector = solver.solve(A.rhs().col(Mp));
         slv_time += timer.stop();
         v_sol.extract(PsiPsitp_temp);
+
         Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
         }
+
         if (mpLeft.dim() < mpLeft.geoDim() ){
             /// special case where a mpping is surface in three dimensions
             gsInfo << "surface in three dimensions\n";

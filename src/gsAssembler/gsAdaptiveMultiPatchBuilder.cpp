@@ -102,7 +102,7 @@ void gsAdaptiveMultiPatchBuilder::uniformRefine(const index_t numRefine)
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(this->m_basis.basis(0), bc_mae, A.options(), 1e-6);  
     this->Poisson   = Poisson;
     this->mp        = mp;
-    gsInfo<< this->DoFs << "<uniRefine> \n";
+    gsInfo << "<>"<< this->DoFs <<" DoFs after uniRefine <>\n";
 }
 
 // Method to project control points following  normal direction at the boundaries
@@ -215,7 +215,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
             if( elMarked[ globalCount++ ] ){ // refine this element ?
                 // element index in the basis_0
                 auto gIndex = basis_0.basis(pn).elementIndex(domIt.centerPoint());
-                this->errorVector( gIndex) += 0.5;// add the error value to the density function
+                this->errorVector( gIndex) = 0.5;// add the error value to the density function
         }
         }
     }

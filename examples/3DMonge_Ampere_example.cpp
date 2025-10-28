@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
-    // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::NurbsSphere(1.,0.,0.,0.));
+    //gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::NurbsSphere(1.,0.,0.,0.));
     // mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     // mpLeft = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-0.5,-0.5,-0.5);
 
@@ -108,11 +108,11 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
-    while (dbasis.basis(0).numElements()<1e2)
-    {
-        dbasis.uniformRefine();
-        //mpLeft.uniformRefine();
-    }
+    // while (dbasis.basis(0).numElements()<1e2)
+    // {
+    //     dbasis.uniformRefine();
+    //     //mpLeft.uniformRefine();
+    // }
     // h-refine each basis
     if (last)
     {

@@ -24,17 +24,17 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot             = false;
-    index_t numRefine     = 4;
-    index_t numLRefine    = 3;
-    index_t numElevate    = 0;
+    index_t numRefine     = 2;
+    index_t numLRefine    = 6;
+    index_t numElevate    = 1;
     index_t maxIter       = 50;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
-    double IntensityMAE   = 6.;
+    double IntensityMAE   = 9.;
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
-    real_t  adaptRefParam = 0.; // ... adapt parameter.
+    real_t  adaptRefParam = 0.7; // ... adapt parameter.
     // Specify the file path
     std::string fn("pde/infinit_plate.xml");
 
@@ -214,8 +214,8 @@ int main(int argc, char *argv[])
     gsExprEvaluator<>::variable ru_sol = ev.getVariable(solField.fields());
 
     // Get the element-wise norms.
-    //ev.integralElWise( ( coeff_diffPP * ilapl(ru_sol,PP) - igrad(ru_sol, PP) * coeff_convPP- coeff_reacPP * ru_sol + SFunc).sqNorm() );
-    ev.integralElWise( (igrad(ru_sol, PP)).sqNorm() );
+    ev.integralElWise( ( coeff_diffPP * ilapl(ru_sol,PP) - igrad(ru_sol, PP) * coeff_convPP- coeff_reacPP * ru_sol + SFunc).sqNorm() );
+    //ev.integralElWise( (igrad(ru_sol, PP)).sqNorm() );
     // ev.integralElWise( frho);
     auto elwise = ev.elementwise();
     
@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
     gsMultiPatch<> Psitp;
-    if (IntensityMAE <= 1.)
+    if (IntensityMAE <= 100. )
     {
         gsInfo << "IntensityMAE < 1, so mpLeft is used.\n";
         // Use the original multipatch
@@ -234,15 +234,15 @@ int main(int argc, char *argv[])
     else{
     //.. mark elements location
     std::vector<bool> eldensityMarked( elwise.size() ,false);
-    gsMarkElementsForRef( elwise, adaptRefCrit, 0.1, eldensityMarked);
+    gsMarkElementsForRef( elwise, adaptRefCrit, 0.7, eldensityMarked);
     auto density   = MAE.buildDensity(dbasis, eldensityMarked);
     MAE.buildMultiPatch(density);// compute adaptive mapping
     Psitp            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
     MAE.NormalProjectPts(Psitp);// correct the boundary
-    // while (MAE.DoFs < 1e3)
-    //     MAE.uniformRefine(2);// uniform refine for better accuracy
-    // MAE.buildDensity(dbasis, eldensityMarked, elwise);
     }
+    // while (MAE.DoFs < 1e3)
+    MAE.uniformRefine(5-numRefine);// uniform refine for better accuracy
+    // MAE.buildDensity(dbasis, eldensityMarked, elwise);
 
     if (true){
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
         cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
 
        gsInfo << "====== Loop " << refLoop << " of "
-              <<numLRefine<< " ======degree "<< cdrAss.multiBasis().size(0)<< "\n";
+              <<numLRefine<< " ======\n";
        // --------------- solving ---------------
 
        //! [solverPart]
@@ -342,56 +342,39 @@ int main(int argc, char *argv[])
         DoFPDE[refLoop]   = cdrAss.numDofs();
         if (refLoop <numLRefine){
        // --------------- adaptive refinement ---------------
-       ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm());
-       //ev.integralElWise( ( igrad(is,Gm)).sqNorm() );
+    //    ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm());
+       ev.integralElWise( ( igrad(is,Gm)).sqNorm() );
        const std::vector<real_t> eltErrs  = ev.elementwise();
        //! [errorComputation]
-
-        if (IntensityMAE >1. ){
-            std::vector<bool> eldensityMarked( eltErrs.size() );
-            gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.9, eldensityMarked);                 
-            // double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
-            // for(size_t i=0; i<eltErrs.size(); ++i)
-            // {
-            //     if (eldensityMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
-            //     {
-            //         Minvalue = eltErrs[i];
-            //     }
-            // }
-            // for(size_t i=0; i<eltErrs.size(); ++i)
-            // {
-            //     if (Minvalue/pow(DoFPDE[refLoop],0.8) < eltErrs[i]) // Avoid numerical issues
-            //     {
-            //         eldensityMarked[i] = true;
-            //     }
-            // }
-            auto density   = MAE.buildDensity( cdrAss.multiBasis(), eldensityMarked, false);// false: do not set rho to zero
-            MAE.buildMultiPatch(density);// compute adaptive mapping
-            Psi            = MAE.buildCompMultiPatch(cdrAss.multiBasis());// computes the composition mapping mpLeft o Psitp
-            MAE.NormalProjectPts(Psi);// correct the boundary
-        }
-
        //! [adaptRefinementPart]
        // Mark elements for refinement, based on the computed local errors and
        // the refinement-criterion and -parameter.
        std::vector<bool> elMarked( eltErrs.size() );
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-        if (IntensityMAE >1. && refLoop > numLRefine){
-            double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
-            for(size_t i=0; i<eltErrs.size(); ++i)
-            {
-                if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
-                {
-                    Minvalue = eltErrs[i];
-                }
-            }
-            for(size_t i=0; i<eltErrs.size(); ++i)
-            {
-                if (Minvalue/pow(DoFPDE[refLoop],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
-                {
-                    elMarked[i] = true;
-                }
-            }
+       
+        if (IntensityMAE >1. && refLoop == numLRefine -1){
+            std::vector<bool> eldensityMarked( eltErrs.size() );
+            gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
+            auto density   = MAE.buildDensity( cdrAss.multiBasis(), eldensityMarked, false);// false: do not set rho to zero
+            MAE.buildMultiPatch(density);// compute adaptive mapping
+            Psi            = MAE.buildCompMultiPatch(cdrAss.multiBasis());// computes the composition mapping mpLeft o Psitp
+            MAE.NormalProjectPts(Psi);// correct the boundary
+        //     double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+        //     for(size_t i=0; i<eltErrs.size(); ++i)
+        //     {
+        //         if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
+        //         {
+        //             Minvalue = eltErrs[i];
+        //         }
+        //     }
+        //     for(size_t i=0; i<eltErrs.size(); ++i)
+        //     {
+        //         if (Minvalue/pow(DoFPDE[refLoop],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
+        //         {
+        //             elMarked[i] = true;
+        //         }
+        //     }
+        //     NumArMarEl +=5;
         }
        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 

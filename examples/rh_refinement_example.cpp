@@ -297,21 +297,19 @@ int main(int argc, char *argv[])
             ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
             //! [errorComputation]
             std::vector<real_t> eltErrs  = ev.elementwise();            
-            if (IntensityMAE >1.){
-                std::vector<bool> eldensityMarked( eltErrs.size() );
-                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
-                auto density   = MAE.buildDensity( dbasis, eldensityMarked);
-                MAE.buildMultiPatch(density);// compute adaptive mapping
-                Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
-            }
-
             // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             std::vector<bool> elMarked( eltErrs.size() );
             // //! [adaptRefinementPart]
             // Mark elements for refinement, based on the computed local errors and
             // the refinement-criterion and -parameter.
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+
             if (IntensityMAE >1.){
+                std::vector<bool> eldensityMarked( eltErrs.size() );
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
+                auto density   = MAE.buildDensity( dbasis, eldensityMarked);
+                MAE.buildMultiPatch(density);// compute adaptive mapping
+                Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o Psitp
                 // -----------------
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)
