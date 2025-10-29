@@ -137,12 +137,6 @@ public:
     /// @return The support extension of the element at the specified jump level as a box in
     box_t getMultiLevelSupportExtension(const element_t & element, level_t jump) const;
 
-    /// Get the HNeighborhood of the element at a specific level
-    /// @param element The element for which the HNeighborhood is requested.
-    /// @param m The level of the neighborhood.
-    /// @return A set of elements representing the HNeighborhood of the element at the specified level
-    HElementContainer getHNeighborhood(const element_t & element, level_t m) const;
-
     /// Get the TNeighborhood of the element at a specific level
     /// @param element The element for which the TNeighborhood is requested.
     /// @param m The jump/offset parameter indicating how many levels to go back in the hierarchy.
