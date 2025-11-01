@@ -331,6 +331,8 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
     uiterator uit = std::lower_bound(ubegin(), uend(), knot);
     const mult_t fa = uit.firstAppearance();
 
+    const mult_t lg = (domainUBegin() - ubegin());
+    const mult_t rg = (uend() - domainUEnd() - 1);
     // update multiplicity sums
     nonConstMultIterator upos = m_multSum.begin() + uit.uCardinalIndex();
     if (upos==m_multSum.end() || *uit != knot) // knot value does not exist ?
@@ -339,6 +341,12 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
 
     // insert repeated knots
     m_repKnots.insert(m_repKnots.begin() + fa, mult, knot);
+
+    if ((0 != lg) && (knot <= *domainBegin()))
+        trimLeft(mult);
+
+    if ((0 != rg) && (knot >= *domainEnd()))
+        trimRight(mult);
 
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 }
@@ -453,13 +461,33 @@ void gsKnotVector<T>::affineTransformTo(T newBeg, T newEnd)
                  "Cannot transform the knot-vector to invalid interval ["<<newBeg<<","<<newEnd<<"].\n");
 
     const T beg   = m_repKnots.front();
-    const T rr    = (newEnd - newBeg) / (m_repKnots.back() - beg);
+    const T intknots = m_repKnots.size() - (2*m_deg + 2);
+    
     uiterator uit = ubegin();
-    uit.setValue(newBeg);
-    ++uit;
-    for (; uit != uend()-1; ++uit)
-        uit.setValue(newBeg + (*uit - beg) * rr);
-    uit.setValue(newEnd);
+    if (numLeftGhosts() != 0) {
+        const T rr = (newEnd - newBeg) / (intknots+1);
+        uit.setValue(newBeg - (m_deg)*rr);
+        ++uit;
+        for (; uit != uend() - 1; ++uit) {
+            uit.setValue(newBeg - (m_deg)*rr + (*uit - beg) * rr);
+        }
+            
+        uit.setValue(newEnd);
+        for (int i = 1; i < m_deg + 1; i++) {
+            uit.setValue(newEnd + i * rr);
+        }
+            
+    }
+    else {
+        const T rr = (newEnd - newBeg) / (m_repKnots.back() - beg);
+        uit.setValue(newBeg);
+        ++uit;
+        for (; uit != uend() - 1; ++uit)
+            uit.setValue(newBeg + (*uit - beg) * rr);
+        uit.setValue(newEnd);
+    }
+    
+    
 
     GISMO_ASSERT( check(), "affineTransformTo() has produced an invalid knot vector.");
 }
@@ -868,6 +896,8 @@ template<typename T>
 void gsKnotVector<T>::increaseMultiplicity(const mult_t i, bool boundary)
 {
     GISMO_ASSERT( i>=0, "Expecting non-negative number");
+    const mult_t lg = (domainUBegin() - ubegin()) * i;
+    const mult_t rg = (uend() - domainUEnd() - 1) * i;
     size_t newSize = size() + i*(uSize()-2);
     knotContainer tmp;
     tmp.reserve(newSize);
@@ -891,6 +921,9 @@ void gsKnotVector<T>::increaseMultiplicity(const mult_t i, bool boundary)
     for (nonConstMultIterator m = m_multSum.begin(); m != m_multSum.end()-1; ++m)
         *m += i * r++;
     m_multSum.back() += i * (boundary ? r : r-1 );
+
+    if (0 != lg) trimLeft(lg);
+    if (0 != rg) trimRight(rg);
 }
 
 template<typename T>
@@ -987,9 +1020,20 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
     iterator itr = begin() + 1;
     result.resize(1, size()-m_deg-1 ) ;
     unsigned i = 1;
-
-    if ( m_deg!=0)
+    const mult_t lg = (domainUBegin() - ubegin());
+    const mult_t rg = (uend() - domainUEnd() - 1);
+    
+    if ((lg != 0) || (rg != 0)) 
     {
+        gsKnotVector tmp(*this);
+        tmp.insert(*domainBegin(), lg);
+        tmp.insert(*domainEnd(),rg);
+        tmp.greville_into(result);
+        return;
+    }
+    
+    if ( m_deg!=0)
+    {   
         result(0,0) = std::accumulate( itr, itr+m_deg, (T)(0.0) ) / (T)(m_deg) ;
 
         if ( result(0,0) < *(itr-1) )// Ensure that the point is in range
