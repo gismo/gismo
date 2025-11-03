@@ -6,16 +6,12 @@
 rm -r ../build/error_analysis.txt
 
 # Build r_refinement_square before running
-# make 3DMonge_Ampere_example -j 15
-# make rh_refinement_example -j 15
-make rh_refinement_3dexample -j 15
+make rh_refinement_example -j 2
 # make rh_adaptiveAdvectiondiffusion -j 15
 # make rh_elasticity_example -j 15
 
 # Path to the executable
-# EXECUTABLE="./bin/3DMonge_Ampere_example"
-# EXECUTABLE="./bin/rh_refinement_example"
-EXECUTABLE="./bin/rh_refinement_3dexample"
+EXECUTABLE="./bin/rh_refinement_example"
 # EXECUTABLE="./bin/rh_adaptiveAdvectiondiffusion"
 # EXECUTABLE="./bin/rh_elasticity_example"
 
@@ -28,26 +24,27 @@ TAGS=(
     # "-r 2 -u 4 -f  0.  -l 5 -a 0.7 -c 1 -e 0"
     # "-r 2 -u 4 -f  12. -l 5 -a 0.0 -c 0 -e 0"
     # "-r 2 -u 4 -f  12. -l 5 -a 0.5 -c 0 -e 0"
-    # "-r 2 -u 4 -f  12. -l 5 -a 0.7 -c 1 -e 0"
+    # "-r 2 -u 4 -f  12. -l 2 -a 0.7 -c 1 -e 0"
     # 3 dimensions case
-    "-r 2 -u 1 -f  0.  -l 4 -a 0.0 -c 0 -e 0"
-    "-r 2 -u 1 -f  0.  -l 6 -a 0.5 -c 0 -e 0"
-    "-r 2 -u 1 -f  0.  -l 6 -a 0.7 -c 1 -e 0"
-    "-r 2 -u 1 -f  10. -l 4 -a 0.0 -c 0 -e 0"
-    "-r 2 -u 1 -f  10. -l 6 -a 0.5 -c 1 -e 0"
-    "-r 2 -u 1 -f  10. -l 6 -a 0.7 -c 1 -e 0"
+    # "-r 2 -u 0 -f  0.  -l 5 -a 0.0 -c 0 -e 0 -d "volumes/GshapedVolume.xml""
+    # "-r 2 -u 0 -f  0.  -l 6 -a 0.5 -c 0 -e 0 -d "volumes/GshapedVolume.xml""
+    # "-r 2 -u 0 -f  0.  -l 6 -a 0.7 -c 1 -e 0 -d "volumes/GshapedVolume.xml""
+    # "-r 2 -u 0 -f  12. -l 4 -a 0.0 -c 0 -e 0 -p 0.5 -d "volumes/GshapedVolume.xml""
+    "-r 2 -u 0 -f  12. -l 5 -a 0.5 -c 0 -e 0 -d "volumes/GshapedVolume.xml""
+    "-r 2 -u 0 -f  12. -l 5 -a 0.7 -c 1 -e 0 -d "volumes/GshapedVolume.xml""
     #.. Advection diffusion ... -f 0. : without r-refinement
-    # "-r 2 -u 2  -f  0. -l 6 -a 0.7 -c 1 -e 1"
+    # "-r 2 -u 2  -f   0. -l 6 -a 0.7 -c 1 -e 1"
+    # "-r 2 -u 2  -f  12. -l 6 -a 0.7 -c 1 -e 1"
     # .. Elasticity 2D ...
     #"-r 2 -u 2 -f  0.  -l 6 -a 0.0 -e 0"
     #"-r 2 -u 2 -f  0.  -l 6 -a 0.7 -e 0"
-    #"-r 2 -u 2 -f  12. -l 3 -a 0.0 -e 0"
+    # "-r 2 -u 2 -f  12. -l 3 -a 0.0 -e 0"
     # "-r 2 -u 2 -f  12. -l 6 -a 0.7  -e 0"
 )
 
 # Run the executable with each set of parameters
 for TAG in "${TAGS[@]}"; do
     echo "Running $EXECUTABLE with parameters: $TAG"
-    $EXECUTABLE --errorsave $TAG
+    $EXECUTABLE --errorsave  $TAG
     echo "-------------------------------------------------"
 done

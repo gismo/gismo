@@ -1,6 +1,6 @@
 /** @file rh_refinement_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a Ellepitc PDE with adaptive refinement
+    @brief Tutorial on how to use expression assembler to solve a parabolic PDE with adaptive refinement
 
     This file is part of the G+Smo library.
 
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
     std::vector<bool> elMarked( elwise.size() );
     gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
     auto density   = MAE.buildDensity(dbasis, elMarked);

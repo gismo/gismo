@@ -131,116 +131,40 @@ int main(int argc, char *argv[])
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
 
-    //! [Refinement]
-    gsMultiBasis<> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
-    
-    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
-    //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
-    for (int r=0; r<=numRefine; ++r)
-    {
-        dbasis.uniformRefine();
-        mpLeft.uniformRefine();
-    }
-
-    //=================================================//
-         // Assembling & solving for the initial guess//
-    //=================================================//
-
-    // creating assembler
-    gsElasticityAssembler<real_t> assembler(mpLeft,dbasis,bcInfo,g);
-    assembler.options().setReal("YoungsModulus",youngsModulus);
-    assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    gsInfo<<"Assembling...\n";
-    gsStopwatch clock;
-    clock.restart();
-    assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with "
-           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
-
-    gsInfo << "Solving...\n";
-    clock.restart();
-
-#ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLLT solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
-#else
-    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
-#endif
-
-    //=============================================//
-                      // Output //
-    //=============================================//
-
-    // constructing displacement as an IGA function
-    gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
-    // constructing stress tensor
-    gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_components::all_2D_vector);
-
-    // constructing an IGA field (geometry + solution) for displacement
-    gsField<> solutionField(assembler.patches(),solution);
-    // constructing an IGA field (geometry + solution) for stresses
-    gsField<> stressField(assembler.patches(),stresses,true);
-
-    gsExprEvaluator<> evi;
-    evi.setIntegrationElements(assembler.multiBasis());
-    gsExprEvaluator<>::geometryMap PPi = evi.getMap(mpLeft);
-    //... error computation
-    auto istress = evi.getVariable(stressField.fields());
-
-    // ev.integralElWise( idiv(istress, PP) * meas(PP) )
-    gsInfo << "Stress: min "<< istress.ppart() << "\n";
-    evi.integralElWise( idiv(istress, PPi).sqNorm());
-    // ev.integralBdrBc(bcInfo.get("nuemann"),(istress* nv(PP)).sqNorm());
-    auto elwise = evi.elementwise();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1-2 : Computes the density function
     ###        and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE);
-    //.. mark elements location
-    std::vector<bool> eldensityMarked( elwise.size() );
-    gsMarkElementsForRef( elwise, adaptRefCrit, 0.8, eldensityMarked);
-    auto density   = MAE.buildDensity(dbasis, eldensityMarked);
-    MAE.buildMultiPatch(density);// compute adaptive mapping
-    auto geometrytp      = MAE.buildCompMultiPatch(dbasis);
-    CorrecNormalCPoints(mpLeft, geometrytp);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
     // refine to have at least 1e3
     if (numRefine <5)
-    MAE.uniformRefine(5-numRefine);
+        MAE.uniformRefine(5-numRefine);
 
-    if (IntensityMAE<=1.){
-        geometrytp = mpLeft;
-    }
-    // mpLeft.coefs().swap(geometrytp.coefs());
-    // gsInfo<<"Making geometry"<< (mpLeft.coefs()-geometrytp.coefs())<< "\n";
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsMultiPatch<> geometry, geometryRef;	
+    gsMultiPatch<> geometry;	
     for(size_t i =0; i<mpLeft.nPatches(); ++i){
-        geometryRef.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
-        geometry.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(geometrytp.patch(i)) ));
-        //geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(geometrytp.patch(i)) ));
+        geometry.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
+        //geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));
     }
     geometry.computeTopology();
-    geometryRef.computeTopology();
-
-    //gsWrite(geometry, "geometry_mapping");
-    //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
 
     //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
     if (true){
     // creating basis
     gsMultiBasis<> basis(geometry, false);//true: poly-splines (not NURBS)
+
+    for (int r=0; r<=numRefine; ++r)
+    {
+        basis.uniformRefine();
+    }
+    gsInfo << "Patches: "<< geometry.basis(0).size() <<", degree: "<< basis.basis(0).size() <<"\n";
+
     gsVector<>     l2err(numLRefine+1), h1err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
     
@@ -334,34 +258,17 @@ int main(int argc, char *argv[])
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             
             if (IntensityMAE >1.){
-                // std::vector<bool> eldensityMarked( eltErrs.size() );
-                // gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);                 
-                // auto density   = MAE.buildDensity( assembler.multiBasis(), eldensityMarked, true);// false: do not set rho to zero
-                // MAE.buildMultiPatch(density);// compute adaptive mapping
-                // geometry       = MAE.buildCompMultiPatch(assembler.multiBasis());// computes the composition mapping mpLeft o Psitp
+                std::vector<bool> eldensityMarked( eltErrs.size() );
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);
+                auto density   = MAE.buildDensity( basis, eldensityMarked, true);// false: do not set rho to zero
+                MAE.buildMultiPatch(density);// compute adaptive mapping
+                geometry       = MAE.buildCompMultiPatch(basis);// computes the composition mapping mpLeft o Psitp
                 // CorrecNormalCPoints(geometryRef, geometry);
                 // gsRefineMarkedElements(geometryRef, elMarked, NumArMarEl);
-            //     double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
-            //     for(size_t i=0; i<eltErrs.size(); ++i)
-            //     {
-            //         if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
-            //         {
-            //             Minvalue = eltErrs[i];
-            //         }
-            //     }
-            //     for(size_t i=0; i<eltErrs.size(); ++i)
-            //     {
-            //         if (Minvalue/pow(DoFPDE[r],adaptRefParam) < eltErrs[i]) // Avoid numerical issues
-            //         {
-            //             elMarked[i] = true;
-            //         }
-            //     }
-            //     NumArMarEl +=5;
             }
 
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( basis, elMarked, NumArMarEl);
-            gsRefineMarkedElements( assembler.multiBasis(), elMarked, NumArMarEl);
             gsRefineMarkedElements(geometry, elMarked, NumArMarEl);
 
             gsInfo << "assemble refined\n";
