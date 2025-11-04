@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
         gsExprAssembler<> assembler(1,1);
 
         // Elements used for numerical integration
-        assembler.setIntegrationDomain(mb_local.domain());
+        assembler.setIntegrationElements(mb_local);
         gsExprEvaluator<> ev(assembler);
 
         // Set the geometry map

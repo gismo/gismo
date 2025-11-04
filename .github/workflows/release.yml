@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - main
+      - stable
     paths:
       - 'changelog'
 #    tags:

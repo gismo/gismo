@@ -67,7 +67,7 @@ gsBiharmonicExprAssembler<T>& gsBiharmonicExprAssembler<T>::operator=( const gsB
         m_options=other.m_options;
 
         // To do: make copy constructor for the gsExprAssembler
-        m_assembler.setIntegrationDomain(m_basis.domain());
+        m_assembler.setIntegrationElements(m_basis);
         m_assembler.setOptions(m_options);
     }
     return *this;
@@ -90,7 +90,7 @@ gsBiharmonicExprAssembler<T>& gsBiharmonicExprAssembler<T>::operator=( gsBiharmo
     m_options=give(other.m_options);
 
     // To do: make copy constructor for the gsExprAssembler
-    m_assembler.setIntegrationDomain(m_basis.domain());
+    m_assembler.setIntegrationElements(m_basis);
     m_assembler.setOptions(m_options);
     return *this;
 }
@@ -131,7 +131,7 @@ template <class T>
 void gsBiharmonicExprAssembler<T>::_initialize()
 {
     // Elements used for numerical integration
-    m_assembler.setIntegrationDomain(m_basis.domain());
+    m_assembler.setIntegrationElements(m_basis);
     m_assembler.setOptions(m_options.getGroup("ExprAssembler"));
 
     GISMO_ASSERT(m_bcs.hasGeoMap(),"No geometry map was assigned to the boundary conditions. Use bc.setGeoMap to assign one!");
@@ -616,7 +616,7 @@ void gsBiharmonicExprAssembler<T>::_getDirichletNeumannValuesL2Projection(
         mapperBdy.finalize();
 
         gsExprAssembler<T> A(1,1);
-        A.setIntegrationDomain(dbasis.domain());
+        A.setIntegrationElements(dbasis);
 
         auto G = A.getMap(mp);
         auto uu = A.getSpace(*bb2);
@@ -654,7 +654,7 @@ void gsBiharmonicExprAssembler<T>::_getDirichletNeumannValuesL2Projection(
         mapperBdy.finalize();
 
         gsExprAssembler<T> A(1,1);
-        A.setIntegrationDomain(dbasis.domain());
+        A.setIntegrationElements(dbasis);
 
         auto G = A.getMap(mp);
         auto uu = A.getSpace(dbasis);
@@ -737,8 +737,8 @@ void gsBiharmonicExprAssembler<T>::_computeStabilityParameter(
         gsExprAssembler<T> A2(1, 1), B2(1, 1);
 
         // Elements used for numerical integration
-        A2.setIntegrationDomain(dbasis_temp.domain());
-        B2.setIntegrationDomain(dbasis_temp.domain());
+        A2.setIntegrationElements(dbasis_temp);
+        B2.setIntegrationElements(dbasis_temp);
 
         // Set the geometry map
         auto GA = A2.getMap(mp_temp);

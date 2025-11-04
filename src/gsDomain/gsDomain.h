@@ -95,19 +95,6 @@ class gsDomain
 
 public:
 
-    /// Helper class for range-based for loops
-    class ElementRange
-    {
-        iterator begin_, end_;
-    public:
-        ElementRange(iterator _begin, iterator _end)
-        : begin_(give(_begin)), end_(give(_end)) { }
-        iterator & begin() { return begin_; }
-        iterator & end()   { return end_;   }
-    };
-
-public:
-
 
     // iterator(index_t i)
 
@@ -175,41 +162,6 @@ public: // Domain element iterators
     {
         return iterator(new gsDomainIteratorEnd<T>(this->numElementsBdr(bs)));
     }
-
-    /// Returns a pair of two iterators, that define a chunk (range)
-    /// per thread of elements that can be used in a parallel for
-    /// loop. If a single thread is available then it returns the pair
-    /// ( beginAll(), endAll() )
-    inline ElementRange allElements() const
-    {
-#ifdef _OPENMP
-        const int num_threads = omp_get_num_threads();
-        const int num_elem    = numElements();
-        const int chunk_size  = (num_elem + num_threads - 1) / num_threads;
-        int chunk_start = chunk_size * omp_get_thread_num();
-        if (chunk_start < num_elem)
-        {
-            iterator domIt = beginAll();
-            domIt += chunk_start;
-            chunk_start += chunk_size;
-            iterator domItEnd = iterator(new gsDomainIteratorEnd<T>(
-                     (chunk_start < num_elem) ? chunk_start : num_elem));
-            return ElementRange( give(domIt), give(domItEnd) );
-        }
-        else // no work for this thread
-        {
-            iterator domIt = iterator(new gsDomainIteratorEnd<T>(0));
-            return ElementRange( domIt, domIt );
-        }
-#else
-        return ElementRange( beginAll(), endAll() );
-#endif
-    }
-
-    // TO DO:
-    //GISMO_ELEMENT_RANGE_LOOP(allElements, numElements, beginAll, endAll)
-    //GISMO_ELEMENT_RANGE_LOOP(bdrElements, elementsBdr, beginBdr, endBdr)
-    //GISMO_ELEMENT_RANGE_LOOP(ifcElements, elementsIfc, beginIfc, endIfc)
 
     // for multipatch
     virtual iterator beginIfc(const boundaryInterface bi) const

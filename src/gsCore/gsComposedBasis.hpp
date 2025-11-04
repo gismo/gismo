@@ -257,11 +257,12 @@ void gsComposedBasis<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) 
     //            = d2B/dudu * du/dx2 * du/dx1 + d2B/dudv * du/dx2 * dv/dx1 + d2B/dvdu * du/dx1 * dv/dx2 + d2B/dvdv * dv/dx2 * du/dx1
 
     // Get the domain and target dimensions
-    index_t domainDim, targetDim, bDomainDim;
+    index_t domainDim, targetDim, bDomainDim, bTargetDim;
     domainDim = m_composition->domainDim();
     targetDim = m_composition->targetDim();
     bDomainDim = m_basis->domainDim();
-    GISMO_ASSERT(1==m_basis->targetDim(),"The basis should be scalar-valued"); // HMV: I think
+    bTargetDim = m_basis->targetDim();
+    GISMO_ASSERT(bTargetDim==1,"The basis should be scalar-valued"); // HMV: I think
 
     // Compute the composition and its derivatives
     gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
@@ -494,8 +495,8 @@ public:
         CompositionType * composition;
         if      (gsXmlNode* compData = compNode->first_node("Geometry"))
             composition = gsXml< gsGeometry<T> >::get (compData) ;
-        else if (gsXmlNode* compData2 = compNode->first_node("Function"))
-            composition = gsXml< gsFunction<T> >::get (compData2) ;
+        else if (gsXmlNode* compData = compNode->first_node("Function"))
+            composition = gsXml< gsFunction<T> >::get (compData) ;
         else
             GISMO_ERROR("gsXmlUtils: get ComposedBasis: No composition found.");
 

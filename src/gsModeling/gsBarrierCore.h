@@ -23,7 +23,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsBasis.h>
 
-#include <gsExpressions/gsExprHelper.h>
+#include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsAssembler/gsExprAssembler.h>
 

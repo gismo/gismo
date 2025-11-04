@@ -15,6 +15,7 @@
 #include <string>
 
 #include <gismo.h>
+#include <gsIO/gsIOUtils.h>
 
 #include <gsParasolid/gsWriteParasolid.h>
 

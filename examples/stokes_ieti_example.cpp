@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
         typedef gsExprAssembler<>::solution    solution;
 
         gsExprAssembler<> assembler(dim+1,dim+1);
-        assembler.setIntegrationDomain(mb_local[0].domain());
+        assembler.setIntegrationElements(mb_local[0]);
         gsExprEvaluator<> ev(assembler);
         geometryMap G = assembler.getMap(mp_local);
 

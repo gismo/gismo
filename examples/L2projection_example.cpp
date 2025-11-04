@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
 
     // Compute the error
     gsExprEvaluator<> ev;
-    ev.setIntegrationDomain(mb.domain());
+    ev.setIntegrationElements(mb);
     auto G = ev.getMap(mp);
     auto ori = ev.getVariable(mp);
     auto proj= ev.getVariable(*geom);

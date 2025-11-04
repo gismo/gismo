@@ -14,7 +14,6 @@
 #pragma once
 
 // STD includes
-#include <cstdint>
 #include <vector>
 #include <iterator>
 #include <set>

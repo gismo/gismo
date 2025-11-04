@@ -394,7 +394,7 @@ struct patchCorner : public boxCorner
 public:
     index_t patch;
 public:
-    patchCorner() : boxCorner(0), patch(0) { }
+    patchCorner() : boxCorner(0) { }
     patchCorner(index_t p,boundary::corner c)
         : boxCorner(c), patch (p) { }
 
@@ -649,7 +649,7 @@ GISMO_DELETE_COMPARISON_OPERATORS(boxComponent,patchComponent)
 struct GISMO_EXPORT boundaryInterface
 {
 public:
-    boundaryInterface() : m_type(interaction::conforming) { }
+    boundaryInterface() { }
 
     // special constructor for the 2d case
     boundaryInterface(patchSide const & _ps1,

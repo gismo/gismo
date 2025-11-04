@@ -25,7 +25,6 @@ stages:
     GIT_CLEAN_FLAGS: none
   tags:
     - ubuntu-gs
-    - large
 
 .windows:
   variables:

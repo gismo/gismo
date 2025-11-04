@@ -253,18 +253,11 @@ public:
 
     static TensorBSpline2Ptr NurbsQrtPlateWHoleC0();
 
-    /// Makes a Isosceles triangle with height \a H and width \a W
+    /// Makes a Isosceles triangle with height \a H and width \a W 
     static TensorBSpline2Ptr BSplineTriangle(T const & H = 1, T const & W = 1);
 
     /// Makes a star with \a N patches, outer radius \a R0 and inner radius \a R1
     static gsMultiPatch<T> BSplineStar(index_t const & N = 3, T const & R0 = 1, T const & R1 = 0.5 );
-
-    /// Makes a cylinder with radius \a R and height \a H, consisting of 4 patches
-    static gsMultiPatch<T> MultiPatchCylinder(T const & R = 1, T const & H = 1);
-
-    /// Makes a cylinder with radius \a R and height \a H, consisting of 4 patches
-    static gsMultiPatch<T> MultiPatchAnnulus(T const & Ri = 0.5, T const & Ro = 1);
-
 
 }; // struct
 

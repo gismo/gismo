@@ -1338,7 +1338,6 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 {
     GISMO_ENSURE(!m_manualLevels || (size_t)(maxLevel)<m_uIndices.size(),"Maximum manual level reached, maxLevel = "<<maxLevel<<", m_uIndices.size() = "<<m_uIndices.size());
     // +1 for the initial basis in m_bases
-    m_bases.reserve(maxLevel+1);
     const int extraLevels = maxLevel + 1 - m_bases.size();
     for ( int i = 0; i < extraLevels; ++i )
     {
@@ -2095,10 +2094,10 @@ public:
             return NULL;
         }
         std::string s = btype->value() ;
-        if ( s.compare(0, 10,"THBSplineB", 10) == 0 )
-            return gsXml< gsTHBSplineBasis<d,T> >::get(node);
         if ( s.compare(0, 9, "HBSplineB" , 9 ) == 0 ) // needs correct d as well
             return gsXml< gsHBSplineBasis<d,T> >::get(node);
+        if ( s.compare(0, 10,"THBSplineB", 10) == 0 )
+            return gsXml< gsTHBSplineBasis<d,T> >::get(node);
 
         gsWarn<<"gsXmlUtils: gsHTensorBasis: No known basis \""<<s<<"\". Error.\n";
         return NULL;

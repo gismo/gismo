@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
        // ( which is, at least, equivalent to the energy norm in this example )
        // using the known exact solution.
        gsExprEvaluator<> ev;
-       ev.setIntegrationDomain(cdrAss.multiBasis().domain());
+       ev.setIntegrationElements(cdrAss.multiBasis());
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
        gsExprEvaluator<>::variable is = ev.getVariable(solField.fields());
        auto ms = ev.getVariable(g, Gm);

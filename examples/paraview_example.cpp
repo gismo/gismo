@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
     //! [gsExprEvaluator]
     gsExprEvaluator<> evaluator; 
     gsExprEvaluator<>::geometryMap geoMap = evaluator.getMap(mPatch);
-    evaluator.setIntegrationDomain(mBasis.domain());
+    evaluator.setIntegrationElements(mBasis);
 
     evaluator.writeParaview( meas(geoMap), geoMap, output+"ExprEval");
     evaluator.writeParaview(usn(geoMap), geoMap, output+"ExprEval");

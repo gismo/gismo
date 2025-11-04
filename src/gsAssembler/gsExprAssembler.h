@@ -15,8 +15,7 @@
 
 #include <gsUtils/gsPointGrid.h>
 #include <gsAssembler/gsQuadrature.h>
-#include <gsExpressions/gsExprHelper.h>
-#include <gsExpressions/gsFeSpaceData.h>
+#include <gsAssembler/gsExprHelper.h>
 #include <gsDomain/gsDomain.h>
 
 #include <gsAssembler/gsCPPInterface.h>
@@ -46,9 +45,9 @@ private:
     FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
-    std::list<gismo::expr::gsFeSpaceData<T> > m_sdata;
-    std::vector<gismo::expr::gsFeSpaceData<T>*> m_vrow;
-    std::vector<gismo::expr::gsFeSpaceData<T>*> m_vcol;
+    std::list<gsFeSpaceData<T> > m_sdata;
+    std::vector<gsFeSpaceData<T>*> m_vrow;
+    std::vector<gsFeSpaceData<T>*> m_vcol;
 
     int m_sparsity;//0:unknown, 1:volume, 2:boundary, 4:interface pre-allocated
     mutable bool m_modified;
@@ -670,7 +669,7 @@ private:
                               "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
 
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
-                              "Invalid values for fixed part " << colMap.boundarySize() <<" != "<< fixedDofs.size() );
+                              "Invalid values for fixed part");
 
                 //GISMO_ASSERT( colMap.boundarySize()==0 || m_rhs.cols()==1,
                 //              "Invalid values for fixed part");
@@ -940,27 +939,29 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     auto arg_tpl0 = std::make_tuple(args...);
     op_tuple(CM, arg_tpl0);
     if (!isMatrix) return;
-
+    
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
+
+    typename gsBasis<T>::domainIter domItEnd = m_exprdata->domain().endAll();
     unsigned patchInd;
     _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
-    , lock
+                    , lock
 #endif
-          );
+            );
 
-    for ( auto & elem : m_exprdata->domain().allElements() )
+#pragma omp for
+    for (auto domIt = m_exprdata->domain().beginAll();
+        domIt<domItEnd; ++domIt)
     {
-        m_exprdata->points() = elem.centerPoint();
-        patchInd = elem.patch();
+        m_exprdata->points() = domIt.centerPoint();
+        patchInd = domIt.patch();
         op_tuple(pp, arg_tpl);
     }
-
 }//parallel
-
 #ifdef _OPENMP
     for (auto & l : lock)
         omp_destroy_lock(&l);
@@ -992,6 +993,12 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
 
 #pragma omp parallel
 {
+/*
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+#endif
+*/
         auto arg_tpl = std::make_tuple(args...);
         m_exprdata->parsePattern(arg_tpl);
         typename gsBasis<T>::domainIter domIt;
@@ -1121,6 +1128,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     // Optimization for the case when the quadrature rule is the same for all patches
     // bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
+    typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -1139,25 +1147,28 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     typename gsQuadRule<T>::uPtr QuRule;
     index_t QuPatch = -1;
-
-    for ( auto & elem : m_exprdata->domain().allElements() )
+#pragma omp for
+    for (auto domIt = m_exprdata->domain().beginAll();
+         domIt<domItEnd; ++domIt)
     {
-        if (/*changeQuadrature && */QuPatch!=elem.patch())
+//#pragma omp critical
+//        gsDebug<<"\n------> tid="<<omp_get_thread_num()<<"; patch="<< domIt.patch()<<"; element="<< domIt.id() <<"\n";
+        if (/*changeQuadrature && */QuPatch!=domIt.patch())
         {
-            QuPatch = elem.patch();
+            QuPatch = domIt.patch();
             // get Degree of the domain
             QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
         }
 
         // Map the Quadrature rule to the element
-        QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
+        QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                        m_exprdata->points(), m_exprdata->weights());
 
         if (m_exprdata->points().cols()==0)
             continue;// is this useful?
 
         m_exprdata->precompute( QuPatch );
-        //m_exprdata->precompute( elem ); //todo
+        //m_exprdata->precompute( domIt ); //todo
 
         // Assemble contributions of the element
         op_tuple(ee, arg_tpl);
@@ -1198,6 +1209,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
+//#   pragma omp parallel for
     for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
     {
         const boundary_condition<T> * it = &iit->get();
@@ -1251,6 +1263,8 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     _checkMatrix CM(m_modified);
     op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
+
+//#   pragma omp parallel for
 
     for (gsBoxTopology::const_biterator it = bnd.begin();
          it != bnd.end(); ++it )
@@ -1375,6 +1389,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     clearRhs();
 
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+    typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 
 #pragma omp parallel
 {
@@ -1387,18 +1402,19 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     typename gsQuadRule<T>::uPtr QuRule;
     index_t QuPatch = -1;
-
-    for ( auto & elem : m_exprdata->domain().allElements() )
+#pragma omp for
+    for (auto domIt = m_exprdata->domain().beginAll();
+         domIt<domItEnd; ++domIt)
     {
-        if (changeQuadrature && QuPatch!=elem.patch())
+        if (changeQuadrature && QuPatch!=domIt.patch())
         {
-            QuPatch = elem.patch();
+            QuPatch = domIt.patch();
             // get Degree of the domain
             QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
         }
 
         // Map the Quadrature rule to the element
-        QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
+        QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                         m_exprdata->points(), m_exprdata->weights());
 
         if (m_exprdata->points().cols()==0)
@@ -1547,13 +1563,20 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
-    //bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
-//#pragma omp parallel
+    bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+#pragma omp parallel
 {
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     cPoints.resize( m_exprdata->domain().nPieces() );
     cWeights.resize( m_exprdata->domain().nPieces() );
 
+     // Note: omp thread will loop over all patches and will work on Ep/nt
+    // elements, where Ep is the elements on the patch.
     index_t count = 0;
     for (unsigned patchInd = 0; patchInd < m_exprdata->domain().nPieces(); ++patchInd)
     {
@@ -1567,11 +1590,21 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
         cPoints[patchInd].resize(bb.domainDim(), sz );
         cWeights[patchInd].resize( sz );
 
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt = bb.domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = bb.domain()->endAll();
+
         // Start iteration over elements of patchInd
-        for ( auto & elem : bb.domain()->allElements() ) //todo: parallelize
+        // use parallel for instead
+#       ifdef _OPENMP
+        domIt += tid;
+        for ( ; domIt<domItEnd; domIt+=nt )
+#       else
+        for (; domIt<domItEnd; ++domIt )
+#       endif
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
 
             cWeights[patchInd].segment(count, numNodes) = m_exprdata->weights();

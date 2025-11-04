@@ -29,7 +29,6 @@
 #include <gsNurbs/gsTensorNurbs.h>
 
 #include <gsHSplines/gsTHBSpline.h>
-#include <gsHSplines/gsRationalTHBSpline.h>
 
 #include <gsModeling/gsPlanarDomain.h>
 #include <gsModeling/gsTrimSurface.h>
@@ -48,14 +47,6 @@
 #include <gsCore/gsComposedFunction.h>
 
 #include <gsIO/gsXmlGenericUtils.hpp>
-
-#define GSXML_PUT_DYNAMIC_CAST(TYPE) \
-if (const TYPE * g = dynamic_cast<const TYPE *>(ptr)) \
-    return gsXml<TYPE>::put(*g, data);
-
-#define GSXML_GET_TYPE(TYPE) \
-if (s == gsXml<TYPE>::type().c_str()) \
-    return gsXml<TYPE>::get(node);
 
 namespace gismo {
 
@@ -541,27 +532,39 @@ public:
         }
         std::string s = gtype->value() ;
 
-        GSXML_GET_TYPE(gsBSpline<T>)
-        GSXML_GET_TYPE(gsNurbs<T>)
-        GSXML_GET_TYPE(gsTHBSpline<TMPLA2(1,T)>)
-        GSXML_GET_TYPE(gsTHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTHBSpline<TMPLA2(3,T)>)
-        GSXML_GET_TYPE(gsHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsHBSpline<TMPLA2(3,T)>)
+        if ( s == "BSpline"    )
+            return gsXml< gsBSpline<T> >::get(node);
+        if ( s == "Nurbs"      )
+            return gsXml< gsNurbs<T> >::get(node);
+        if ( s == "HBSpline2"  )
+            return gsXml< gsHBSpline<2,T> >::get(node);
+        if ( s == "HBSpline3"  )
+            return gsXml< gsHBSpline<3,T> >::get(node);
+        if ( s == "THBSpline1" )
+            return gsXml< gsTHBSpline<1,T> >::get(node);
+        if ( s == "THBSpline2" )
+            return gsXml< gsTHBSpline<2,T> >::get(node);
+        if ( s == "THBSpline3" )
+            return gsXml< gsTHBSpline<3,T> >::get(node);
 
-        GSXML_GET_TYPE(gsRationalTHBSpline<TMPLA2(1,T)>)
-        GSXML_GET_TYPE(gsRationalTHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsRationalTHBSpline<TMPLA2(3,T)>)
 
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(1,T)>)
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(3,T)>)
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(4,T)>)
-        GSXML_GET_TYPE(gsTensorNurbs<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTensorNurbs<TMPLA2(3,T)>)
-        GSXML_GET_TYPE(gsTensorNurbs<TMPLA2(4,T)>)
+        if ( s == "TensorBSpline1" )
+            return gsXml< gsTensorBSpline<1,T> >::get(node);
+        if ( s == "TensorBSpline2" )
+            return gsXml< gsTensorBSpline<2,T> >::get(node);
+        if ( s == "TensorBSpline3" )
+            return gsXml< gsTensorBSpline<3,T> >::get(node);
+        if ( s == "TensorBSpline4" )
+            return gsXml< gsTensorBSpline<4,T> >::get(node);
+        if ( s == "TensorNurbs2" )
+            return gsXml< gsTensorNurbs<2,T> >::get(node);
+        if ( s == "TensorNurbs3" )
+            return gsXml< gsTensorNurbs<3,T> >::get(node);
+        if ( s == "TensorNurbs4" )
+            return gsXml< gsTensorNurbs<4,T> >::get(node);
 
-        GSXML_GET_TYPE(gsComposedGeometry<T>)
+        if ( s == "ComposedGeometry")
+            return gsXml< gsComposedGeometry<T> >::get(node);
 
         //if ( s == "TrimSurface" )
         //    return gsXml< gsTrimSurface<T> >::get(node);
@@ -579,29 +582,73 @@ public:
 	{
 	    const gsGeometry<T> * ptr = & obj;
 
-        GSXML_PUT_DYNAMIC_CAST(gsBSpline<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsNurbs<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSpline<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSpline<TMPLA2(4, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbs<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbs<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbs<TMPLA2(4, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSpline<TMPLA2(1, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSpline<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTrimSurface<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(1, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsRationalTHBSpline<TMPLA2(1, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsRationalTHBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsRationalTHBSpline<TMPLA2(3, T)>)
+	    if ( const gsBSpline<T> * g =
+             dynamic_cast<const gsBSpline<T> *>( ptr ) )
+		    return gsXml< gsBSpline<T> >::put(*g,data);
+
+	    if ( const gsNurbs<T> * g =
+             dynamic_cast<const gsNurbs<T> *>( ptr ) )
+		    return gsXml< gsNurbs<T> >::put(*g,data);
+
+	    if ( const gsTensorBSpline<2,T> * g =
+             dynamic_cast<const gsTensorBSpline<2,T> *>( ptr ) )
+            return gsXml< gsTensorBSpline<2,T> >::put(*g,data);
+
+	    if ( const gsTensorBSpline<3,T> * g =
+             dynamic_cast<const gsTensorBSpline<3,T> *>( ptr ) )
+            return gsXml< gsTensorBSpline<3,T> >::put(*g,data);
+
+	    if ( const gsTensorBSpline<4,T> * g =
+             dynamic_cast<const gsTensorBSpline<4,T> *>( ptr ) )
+            return gsXml< gsTensorBSpline<4,T> >::put(*g,data);
+
+	    if ( const gsTensorNurbs<2,T> * g =
+             dynamic_cast<const gsTensorNurbs<2,T> *>( ptr ) )
+            return gsXml< gsTensorNurbs<2,T> >::put(*g,data);
+
+	    if ( const gsTensorNurbs<3,T> * g =
+             dynamic_cast<const gsTensorNurbs<3,T> *>( ptr ) )
+            return gsXml< gsTensorNurbs<3,T> >::put(*g,data);
+
+	    if ( const gsTensorNurbs<4,T> * g =
+             dynamic_cast<const gsTensorNurbs<4,T> *>( ptr ) )
+            return gsXml< gsTensorNurbs<4,T> >::put(*g,data);
+
+	    if ( const gsTHBSpline<1,T> * g =
+             dynamic_cast<const gsTHBSpline<1,T> *>( ptr ) )
+	        return gsXml< gsTHBSpline<1,T> >::put(*g,data);
+
+	    if ( const gsTHBSpline<2,T> * g =
+             dynamic_cast<const gsTHBSpline<2,T> *>( ptr ) )
+	        return gsXml< gsTHBSpline<2,T> >::put(*g,data);
+
+	    if ( const gsTHBSpline<3,T> * g =
+             dynamic_cast<const gsTHBSpline<3,T> *>( ptr ) )
+	        return gsXml< gsTHBSpline<3,T> >::put(*g,data);
+
+	    if ( const gsTrimSurface<T> * g =
+             dynamic_cast<const gsTrimSurface<T> *>( ptr ) )
+		    return gsXml< gsTrimSurface<T> >::put(*g,data);
+
+	    if ( const gsHBSpline<1,T> * g =
+	    	 dynamic_cast<const gsHBSpline<1,T> *>( ptr ) )
+            return gsXml< gsHBSpline<1,T> >::put(*g,data);
+
+	    if ( const gsHBSpline<2,T> * g =
+	    	 dynamic_cast<const gsHBSpline<2,T> *>( ptr ) )
+            return gsXml< gsHBSpline<2,T> >::put(*g,data);
+
+	    if ( const gsHBSpline<3,T> * g =
+	    	 dynamic_cast<const gsHBSpline<3,T> *>( ptr ) )
+            return gsXml< gsHBSpline<3,T> >::put(*g,data);
+
         //if ( const gsTriangularBezier<2,T> * g =
         //     dynamic_cast<const gsTriangularBezier<2,T> *>( ptr ) )
         //    return gsXml< gsTriangularBezier<2,T> >::put(*g,data);
 
-        GSXML_PUT_DYNAMIC_CAST(gsComposedGeometry<T>)
+        if ( const gsComposedGeometry<T> * g =
+             dynamic_cast<const gsComposedGeometry<T> *>( ptr ) )
+            return gsXml< gsComposedGeometry<T> >::put(*g,data);
 
 		gsWarn<<"gsXmlUtils: put Geometry: No known object \""<< obj <<"\". Error.\n";
         return NULL;
@@ -632,9 +679,12 @@ public:
             return NULL;
         }
         std::string s = ftype->value() ;
-        GSXML_GET_TYPE(gsConstantFunction<T>)
-        GSXML_GET_TYPE(gsFunctionExpr<T>)
-        GSXML_GET_TYPE(gsComposedFunction<T>)
+        if ( s == "ConstantFunction"   )
+            return gsXml< gsConstantFunction<T> >::get(node);
+        if ( s == "FunctionExpr"        )
+            return gsXml< gsFunctionExpr<T> >::get(node);
+        if ( s == "ComposedFunction"    )
+            return gsXml< gsComposedFunction<T> >::get(node);
 
         gsWarn<<"gsXmlUtils: getFunction: No known function \""<<s<<"\". Error.\n";
         return NULL;
@@ -645,9 +695,17 @@ public:
 	{
 	    const gsFunction<T> * ptr = & obj;
 
-        GSXML_PUT_DYNAMIC_CAST(gsConstantFunction<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsFunctionExpr<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsComposedFunction<T>)
+	    if ( const gsConstantFunction<T> * g =
+             dynamic_cast<const gsConstantFunction<T> *>( ptr ) )
+		    return gsXml< gsConstantFunction<T> >::put(*g,data);
+
+	    if ( const gsFunctionExpr<T> * g =
+             dynamic_cast<const gsFunctionExpr<T> *>( ptr ) )
+		    return gsXml< gsFunctionExpr<T> >::put(*g,data);
+
+	    if ( const gsComposedFunction<T> * g =
+             dynamic_cast<const gsComposedFunction<T> *>( ptr ) )
+            return gsXml< gsComposedFunction<T> >::put(*g,data);
 
         gsWarn<<"gsXmlUtils: put Function: No known object \""<< obj <<"\". Error.\n";
         return NULL;
@@ -679,8 +737,10 @@ public:
         }
         std::string s = gtype->value() ;
 
-        GSXML_GET_TYPE(gsBSpline<T>)
-        GSXML_GET_TYPE(gsNurbs<T>)
+        if ( s == "BSpline"    )
+            return gsXml< gsBSpline<T> >::get(node);
+        if ( s == "Nurbs"      )
+            return gsXml< gsNurbs<T> >::get(node);
 
         gsWarn<<"gsXmlUtils: getCurve: No known curve \""<<s<<"\". Error.\n";
         return NULL;
@@ -692,9 +752,17 @@ public:
 	{
 	    const gsGeometry<T> * ptr = & obj;
 
-        GSXML_PUT_DYNAMIC_CAST(gsBSpline<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsNurbs<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(1, T)>)
+	    if ( const gsBSpline<T> * g =
+             dynamic_cast<const gsBSpline<T> *>( ptr ) )
+		    return gsXml< gsBSpline<T> >::put(*g,data);
+
+	    if ( const gsNurbs<T> * g =
+             dynamic_cast<const gsNurbs<T> *>( ptr ) )
+		    return gsXml< gsNurbs<T> >::put(*g,data);
+
+	    if ( const gsHBSpline<1,T> * g =
+	    	 dynamic_cast<const gsHBSpline<1,T> *>( ptr ) )
+            return gsXml< gsHBSpline<1,T> >::put(*g,data);
 
 		gsWarn<<"gsXmlUtils: put Curve: No known object "<< obj <<"Error.\n";
         return NULL;
@@ -726,10 +794,15 @@ public:
         }
         std::string s = gtype->value() ;
 
-        GSXML_GET_TYPE(gsTHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTensorNurbs<TMPLA2(2,T)>)
+        if ( s == "HBSpline2"  )
+            return gsXml< gsHBSpline<2,T> >::get(node);
+        if ( s == "THBSpline2" )
+            return gsXml< gsTHBSpline<2,T> >::get(node);
+
+        if ( s == "TensorBSpline2" )
+            return gsXml< gsTensorBSpline<2,T> >::get(node);
+        if ( s == "TensorNurbs2" )
+            return gsXml< gsTensorNurbs<2,T> >::get(node);
 
         gsWarn<<"gsXmlUtils: getSurface: No known surface \""<<s<<"\". Error.\n";
         return NULL;
@@ -740,10 +813,21 @@ public:
 	{
 	    const gsGeometry<T> * ptr = & obj;
 
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbs<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(2, T)>)
+	    if ( const gsTensorBSpline<2,T> * g =
+             dynamic_cast<const gsTensorBSpline<2,T> *>( ptr ) )
+            return gsXml< gsTensorBSpline<2,T> >::put(*g,data);
+
+	    if ( const gsTensorNurbs<2,T> * g =
+             dynamic_cast<const gsTensorNurbs<2,T> *>( ptr ) )
+            return gsXml< gsTensorNurbs<2,T> >::put(*g,data);
+
+	    if ( const gsTHBSpline<2,T> * g =
+             dynamic_cast<const gsTHBSpline<2,T> *>( ptr ) )
+	        return gsXml< gsTHBSpline<2,T> >::put(*g,data);
+
+	    if ( const gsHBSpline<2,T> * g =
+	    	 dynamic_cast<const gsHBSpline<2,T> *>( ptr ) )
+            return gsXml< gsHBSpline<2,T> >::put(*g,data);
 
 		gsWarn<<"gsXmlUtils: put Geometry: No known object "<< obj <<"Error.\n";
         return NULL;
@@ -773,32 +857,48 @@ public:
         }
         std::string s = btype->value() ;
 
-        GSXML_GET_TYPE(gsBSplineBasis<T>)
-        GSXML_GET_TYPE(gsNurbsBasis<T>)
+        if ( s == "BSplineBasis" )
+            return gsXml< gsBSplineBasis<T> >::get(node);
+        if ( s == "NurbsBasis"   )
+            return gsXml< gsNurbsBasis<T>   >::get(node);
 
-        GSXML_GET_TYPE(gsTHBSplineBasis<TMPLA2(1, T)>)
-        GSXML_GET_TYPE(gsTHBSplineBasis<TMPLA2(2, T)>)
-        GSXML_GET_TYPE(gsTHBSplineBasis<TMPLA2(3, T)>)
-        GSXML_GET_TYPE(gsTHBSplineBasis<TMPLA2(4, T)>)
+        if ( s == "HBSplineBasis" )
+            return gsXml< gsHBSplineBasis<1,T> >::get(node);
+        if ( s == "HBSplineBasis2" )
+            return gsXml< gsHBSplineBasis<2,T> >::get(node);
+        if ( s == "HBSplineBasis3" )
+            return gsXml< gsHBSplineBasis<3,T> >::get(node);
+        if ( s == "HBSplineBasis4" )
+            return gsXml< gsHBSplineBasis<4,T> >::get(node);
 
-        GSXML_GET_TYPE(gsHBSplineBasis<TMPLA2(1, T)>)
-        GSXML_GET_TYPE(gsHBSplineBasis<TMPLA2(2, T)>)
-        GSXML_GET_TYPE(gsHBSplineBasis<TMPLA2(3, T)>)
-        GSXML_GET_TYPE(gsHBSplineBasis<TMPLA2(4, T)>)
+        if ( s == "THBSplineBasis" )
+            return gsXml< gsTHBSplineBasis<1,T> >::get(node);
+        if ( s == "THBSplineBasis2" )
+            return gsXml< gsTHBSplineBasis<2,T> >::get(node);
+        if ( s == "THBSplineBasis3" )
+            return gsXml< gsTHBSplineBasis<3,T> >::get(node);
+        if ( s == "THBSplineBasis4" )
+            return gsXml< gsTHBSplineBasis<4,T> >::get(node);
 
-        GSXML_GET_TYPE(gsRationalTHBSplineBasis<TMPLA2(1, T)>)
-        GSXML_GET_TYPE(gsRationalTHBSplineBasis<TMPLA2(2, T)>)
-        GSXML_GET_TYPE(gsRationalTHBSplineBasis<TMPLA2(3, T)>)
+        //if ( s == "gsTriangularBezierBasis2" )
+        //    return gsXml< gsTriangularBezierBasis<2,T> >::get(node);
 
-        GSXML_GET_TYPE(gsTensorBSplineBasis<TMPLA2(2, T)>)
-        GSXML_GET_TYPE(gsTensorBSplineBasis<TMPLA2(3, T)>)
-        GSXML_GET_TYPE(gsTensorBSplineBasis<TMPLA2(4, T)>)
+        if ( s == "TensorBSplineBasis2" )
+            return gsXml< gsTensorBSplineBasis<2, T> >::get(node);
+        if ( s == "TensorBSplineBasis3" )
+            return gsXml< gsTensorBSplineBasis<3, T> >::get(node);
+        if ( s == "TensorBSplineBasis4" )
+            return gsXml< gsTensorBSplineBasis<4, T> >::get(node);
 
-        GSXML_GET_TYPE(gsTensorNurbsBasis<TMPLA2(2, T)>)
-        GSXML_GET_TYPE(gsTensorNurbsBasis<TMPLA2(3, T)>)
-        GSXML_GET_TYPE(gsTensorNurbsBasis<TMPLA2(4, T)>)
+        if ( s == "TensorNurbsBasis2" )
+            return gsXml< gsTensorNurbsBasis<2, T> >::get(node);
+        if ( s == "TensorNurbsBasis3" )
+            return gsXml< gsTensorNurbsBasis<3, T> >::get(node);
+        if ( s == "TensorNurbsBasis4" )
+            return gsXml< gsTensorNurbsBasis<4, T> >::get(node);
 
-        GSXML_GET_TYPE(gsComposedBasis<T>)
+        if ( s == "ComposedBasis" )
+            return gsXml< gsComposedBasis<T> >::get(node);
 
         gsWarn<<"gsXmlUtils: getBasis: No known basis \""<<s<<"\". Error.\n";
         return NULL;
@@ -809,33 +909,69 @@ public:
     {
         const gsBasis<T> * ptr = & obj;
 
-        GSXML_PUT_DYNAMIC_CAST(gsBSplineBasis<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsNurbsBasis<T>)
+        if ( const gsBSplineBasis<T> * g =
+             dynamic_cast<const gsBSplineBasis<T> *>( ptr ) )
+            return gsXml< gsBSplineBasis<T> >::put(*g,data);
+
+        if ( const gsNurbsBasis<T> * g =
+             dynamic_cast<const gsNurbsBasis<T> *>( ptr ) )
+            return gsXml< gsNurbsBasis<T> >::put(*g,data);
 
         // Tensor B-spline
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSplineBasis<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSplineBasis<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSplineBasis<TMPLA2(4, T)>)
+        if ( const gsTensorBSplineBasis<2, T> * g =
+             dynamic_cast<const gsTensorBSplineBasis<2, T> *>( ptr ) )
+            return gsXml< gsTensorBSplineBasis<2, T> >::put(*g,data);
+
+        if ( const gsTensorBSplineBasis<3, T> * g =
+             dynamic_cast<const gsTensorBSplineBasis<3, T> *>( ptr ) )
+            return gsXml< gsTensorBSplineBasis<3, T> >::put(*g,data);
+
+        if ( const gsTensorBSplineBasis<4, T> * g =
+             dynamic_cast<const gsTensorBSplineBasis<4, T> *>( ptr ) )
+            return gsXml< gsTensorBSplineBasis<4, T> >::put(*g,data);
 
         // Tensor Nurbs
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbsBasis<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbsBasis<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbsBasis<TMPLA2(4, T)>)
+        if ( const gsTensorNurbsBasis<2, T> * g =
+             dynamic_cast<const gsTensorNurbsBasis<2, T> *>( ptr ) )
+            return gsXml< gsTensorNurbsBasis<2, T> >::put(*g,data);
+
+        if ( const gsTensorNurbsBasis<3, T> * g =
+             dynamic_cast<const gsTensorNurbsBasis<3, T> *>( ptr ) )
+            return gsXml< gsTensorNurbsBasis<3, T> >::put(*g,data);
+
+        if ( const gsTensorNurbsBasis<4, T> * g =
+             dynamic_cast<const gsTensorNurbsBasis<4, T> *>( ptr ) )
+            return gsXml< gsTensorNurbsBasis<4, T> >::put(*g,data);
+
 
         // Tensor-Hier. B-splines
-        GSXML_PUT_DYNAMIC_CAST(gsHTensorBasis<TMPLA2(1, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHTensorBasis<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHTensorBasis<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHTensorBasis<TMPLA2(4, T)>)
+        if ( const gsHTensorBasis<1,T>  * g =
+             dynamic_cast<const gsHTensorBasis<1,T> *>( ptr ) )
+            return gsXml< gsHTensorBasis<1,T> >::put(*g,data);
 
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSplineBasis<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsRationalTHBSplineBasis<TMPLA2(3, T)>)
+        if ( const gsHTensorBasis<2,T>  * g =
+             dynamic_cast<const gsHTensorBasis<2,T> *>( ptr ) )
+            return gsXml< gsHTensorBasis<2,T> >::put(*g,data);
+
+        if ( const gsHTensorBasis<3,T>  * g =
+             dynamic_cast<const gsHTensorBasis<3,T> *>( ptr ) )
+            return gsXml< gsHTensorBasis<3,T> >::put(*g,data);
+
+        if ( const gsHTensorBasis<4,T>  * g =
+             dynamic_cast<const gsHTensorBasis<4,T> *>( ptr ) )
+            return gsXml< gsHTensorBasis<4,T> >::put(*g,data);
+
+        if ( const gsTHBSplineBasis<3,T>  * g =
+             dynamic_cast<const gsTHBSplineBasis<3,T> *>( ptr ) )
+            return gsXml< gsTHBSplineBasis<3,T> >::put(*g,data);
 
         //if ( const gsTriangularBezierBasis<2,T>  * g =
         //     dynamic_cast<const gsTriangularBezierBasis<2,T> *>( ptr ) )
         //    return gsXml< gsTriangularBezierBasis<2,T> >::put(*g,data);
 
-        GSXML_PUT_DYNAMIC_CAST(gsComposedBasis<T>)
+        if ( const gsComposedBasis<T> * g =
+             dynamic_cast<const gsComposedBasis<T> *>( ptr ) )
+            return gsXml< gsComposedBasis<T> >::put(*g,data);
 
         gsWarn<<"gsXmlUtils put: getBasis: No known basis \""<<obj<<"\". Error.\n";
         return NULL;
@@ -859,8 +995,10 @@ public:
                       "Something went wrong. Expected Pde tag." );
 
         std::string s = node->first_attribute("type")->value() ;
-        GSXML_GET_TYPE(gsPoissonPde<T>)
-        GSXML_GET_TYPE(gsSurfacePoissonPde<T>)
+        if ( s == "PoissonPde" )
+            return gsXml< gsPoissonPde<T> >::get(node);
+        if ( s == "SurfacePoissonPde" )
+            return gsXml< gsSurfacePoissonPde<T> >::get(node);
 
         gsWarn<<"gsXmlUtils: getPde: No known Pde \""<<s<<"\". Error.\n";
         return NULL;
@@ -1466,5 +1604,3 @@ public:
 //#undef GSXML_COMMON_FUNCTIONS
 //#undef TMPLA2
 //#undef TMPLA3
-#undef GSXML_GET_TYPE
-#undef GSXML_PUT_DYNAMIC_CAST

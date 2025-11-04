@@ -162,22 +162,22 @@ public: // iterator ends
 
     domainIter beginAll() const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this));
+        return new gsKnotDomainIterator<T>(*this);
     }
 
     domainIter beginBdr(const boxSide   /* bs */) const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this));
+        return new gsKnotDomainIterator<T>(*this);
     }
 
     domainIter endAll() const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this,false));
+        return new gsKnotDomainIterator<T>(*this,false);
     }
 
     domainIter endBdr(const boxSide   /* bs */) const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this,false));
+        return new gsKnotDomainIterator<T>(*this,false);
     }
 
     short_t dim() const override { return 1; }

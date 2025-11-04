@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
        // Compute the error in the H1-seminorm ( = energy norm in this example )
        // using the known exact solution.
        gsExprEvaluator<> ev;
-       ev.setIntegrationDomain(PoissonAssembler.multiBasis().domain());
+       ev.setIntegrationElements(PoissonAssembler.multiBasis());
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
        gsExprEvaluator<>::variable is = ev.getVariable(sol);
        auto ms = ev.getVariable(g, Gm);

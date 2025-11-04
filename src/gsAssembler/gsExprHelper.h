@@ -13,15 +13,14 @@
 
 #pragma once
 
-#include <gsExpressions/gsExpressions.h>
-#include <gsExpressions/gsFeElement.h>
+#include <gsAssembler/gsExpressions.h>
 #include <gsUtils/gsThreaded.h>
 
 namespace gismo
 {
 
 /**
- * @brief Helper class for expressions, holding an expression environment
+   Class holding an expression environment
  */
 template<class T>
 class gsExprHelper
@@ -90,35 +89,25 @@ public:
 
     ~gsExprHelper() { }
 
-    /// @brief @todo
     gsMatrix<T> & points()    { return m_points; }
-    /// @brief @todo
     gsMatrix<T> & pointsIfc() { return this->iface().m_points; }
 
-    /// @brief @todo
     gsVector<T> & weights()    { return m_weights; }
-    /// @brief @todo
     const gsVector<T> & weights() const { return m_weights; }
 
-    /// @brief @todo
     gsVector<T> & weightsIfc() { return this->iface().m_weights; }
-    /// @brief @todo
     const gsVector<T> & weightsIfc() const { return this->iface().m_weights; }
 
-    /// @brief @todo
     bool isMirrored() const { return nullptr!=m_mirror; }
 
-    /// @brief @todo
     static uPtr make() { return uPtr(new gsExprHelper()); }
 
-    /// @brief @todo
     void reset()
     {
         points().clear();
         //mapVar.reset();
     }
 
-    /// @brief @todo
     void cleanUp()
     {
         #pragma omp single
@@ -143,16 +132,12 @@ public:
         }//implicit barrier
     }
 
-    /// @brief @todo
     void setDomain(typename gsDomain<T>::Ptr domain) { m_domain = give(domain); }
 
-    /// @brief @todo
     bool domainSet() { return NULL!=m_domain;}
 
-    /// @brief @todo
     const gsDomain<T> & domain() const { return *m_domain; }
 
-    /// @brief @todo
     const gsMultiPatch<T> & multiPatch() const
     {
         if ( !m_mdata.empty() )
@@ -170,14 +155,12 @@ public:
         GISMO_ERROR("Geometry map not set.");
     }
 
-    /// @brief @todo
     const gsMapData<T> & multiPatchData() const
     {
         GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
         return m_mdata.begin()->second;
     }
 
-    /// @brief @todo
     geometryMap getMap(const gsFunctionSet<T> & mp)
     {
         expr::gsGeometryMap<T> gm;
@@ -185,7 +168,6 @@ public:
         return gm;
     }
 
-    /// @brief @todo
     expr::gsFeVariable<T> getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
         expr::gsFeVariable<T> var;
@@ -194,7 +176,6 @@ public:
         return var;
     }
 
-    /// @brief @todo
     composition getVar(const gsFunctionSet<T> & mp, geometryMap & G)
     {
         expr::gsComposition<T> var(G);
@@ -202,7 +183,6 @@ public:
         return var;
     }
 
-<<<<<<< HEAD:src/gsAssembler/gsExprHelper.h
     //// Represents the function:  mp o Gleft o GRight 
     compositionAd getVar(const gsFunctionSet<T> & mp, geometryMap & GLeft, geometryMap & GRight)
     {
@@ -211,9 +191,6 @@ public:
         return var;
     }
 
-=======
-    /// @brief @todo
->>>>>>> origin/stable:src/gsExpressions/gsExprHelper.h
     expr::gsFeSpace<T> getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
         expr::gsFeSpace<T> var;
@@ -222,17 +199,14 @@ public:
         return var;
     }
 
-    /// @brief @todo
     variable getMutVar() const
     {
         expr::gsFeVariable<T> var;
         return var;
     }
 
-    /// @brief @todo
     element getElement() { return m_element; }
 
-    /// @brief @todo
     composition getMutVar(geometryMap & G)
     {
         expr::gsComposition<T> var(G);
@@ -240,7 +214,6 @@ public:
         return var;
     }
 
-    /// @brief @todo
     void setMutSource(const gsFunctionSet<T> & func)
     {
         mutSrc = &func;
@@ -248,7 +221,6 @@ public:
 
     //void clearMutSource() ?
 
-    /// @brief @todo
     void activateFlags(unsigned flg)
     {
         // Additional evaluation flags

@@ -68,8 +68,9 @@ template<typename T>
 gsSparseMatrix<T> assembleMass(const gsBasis<T>& basis)
 {
     gsExprAssembler<T> mass(1,1);
-    mass.setIntegrationDomain(basis.domain());
-    typename gsExprAssembler<T>::space u = mass.getSpace(basis);
+    gsMultiBasis<T> mb(basis);
+    mass.setIntegrationElements(mb);
+    typename gsExprAssembler<T>::space u = mass.getSpace(mb);
     mass.initMatrix();
     mass.assemble( u * u.tr() );
     gsSparseMatrix<T> result;
@@ -81,8 +82,9 @@ template<typename T>
 gsSparseMatrix<T> assembleStiffness(const gsBasis<T>& basis)
 {
     gsExprAssembler<T> stiff(1,1);
-    stiff.setIntegrationDomain(basis.domain());
-    typename gsExprAssembler<T>::space u = stiff.getSpace(basis);
+    gsMultiBasis<T> mb(basis);
+    stiff.setIntegrationElements(mb);
+    typename gsExprAssembler<T>::space u = stiff.getSpace(mb);
     stiff.initMatrix();
     stiff.assemble( grad(u) * grad(u).tr() );
     gsSparseMatrix<T> result;

@@ -1064,7 +1064,7 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    A.setIntegrationDomain(dbasis.domain());
+    A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map

@@ -76,7 +76,7 @@ void createSplineBasisL2Projection(gsMultiBasis<> & mb_level1, gsMultiBasis<> & 
     gsExprAssembler<> A(1,1);
     gsExprEvaluator<> ev(A);
 
-    A.setIntegrationDomain(mb_level2.domain());
+    A.setIntegrationElements(mb_level2);
 
     // Set the discretization space
     auto u = A.getSpace(mb_level2);

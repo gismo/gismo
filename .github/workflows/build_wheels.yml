@@ -39,7 +39,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: artifact-macos_wheel_${{ matrix.arch }}
+        name: artifact-macos_wheel
         path: ./wheelhouse/*.whl
         overwrite: true
 
@@ -61,7 +61,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: artifact-linux_wheel_x86_64
+        name: artifact-linux_wheel
         path: ./wheelhouse/*.whl
         overwrite: true
 
@@ -97,7 +97,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: artifact-linux_wheel_qemu_${{ matrix.arch }}
+        name: artifact-linux_wheel_qemu
         path: ./wheelhouse/*.whl
         overwrite: true
 
@@ -130,7 +130,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - uses: pypa/gh-action-pypi-publish@v1.13.0
+      - uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           skip_existing: true
           user: __token__

@@ -68,10 +68,10 @@ class gsDomainIteratorWrapper
     uPtr m_domainIter;//change as Ptr
 
 public:
-    explicit gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr = nullptr) : m_domainIter(_itptr)
+    gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr = nullptr) : m_domainIter(_itptr)
     { }
 
-    explicit gsDomainIteratorWrapper(uPtr _iter) : m_domainIter(give(_iter))
+    gsDomainIteratorWrapper(uPtr _iter) : m_domainIter(give(_iter))
     { }
 
     gsDomainIteratorWrapper(const gsDomainIteratorWrapper & _other)
@@ -93,7 +93,7 @@ public:
     }
 
     /// Move assignment operator
-    gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other) EIGEN_NOEXCEPT
+    gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other)
     {
         m_domainIter = give(_other.m_domainIter);
         return *this;
@@ -133,14 +133,6 @@ public:
         return *this;
     }
 
-    /// Post-increment operator to proceed to the next element
-    size_t operator++(int)
-    {
-        size_t oid = id();
-        ++(*this);
-        return oid;
-    }
-
     /// Decrement operator to proceed to the next element
     gsDomainIteratorWrapper& operator--()
     {
@@ -158,12 +150,12 @@ public:
     }
 
     /// Increment by a number of steps
-    gsDomainIteratorWrapper operator+(index_t k) const
-    {
-        gsDomainIteratorWrapper result(m_domainIter->clone());
-        result += k;
-        return result;
-    }
+    // gsDomainIteratorWrapper operator+(index_t k) const
+    // {
+    //     gsDomainIteratorWrapper result(m_domainIter->clone());
+    //     result += k;
+    //     return result;
+    // }
 
     /// Decrement operator to proceed to the next element
     gsDomainIteratorWrapper& operator-=(index_t k)
@@ -192,8 +184,6 @@ public:
     }
 
     gsDomainIterator<T> * get() { return m_domainIter.get(); }
-
-    gsDomainIterator<T> & operator*() { return *m_domainIter; }
 
 public:
 
@@ -235,8 +225,6 @@ public:
 
     inline index_t patch() const {return m_domainIter->patch();}
 
-    inline index_t localId() const {return m_domainIter->localId();}
-    
     /// Fetches data of integer type based on string label
     const index_t & label(const std::string & _label)
     {return m_domainIter->label(_label); }
@@ -265,7 +253,7 @@ public:
 
     virtual uPtr clone() const { GISMO_NO_IMPLEMENTATION }
 
-    //void setPatch(index_t k) { m_pside.patch = k; }
+    void setPatch(index_t k) { m_pside.patch = k; }
 
 private:
 
@@ -311,9 +299,6 @@ public:
 
     /// Returns the element id -- see also patch() for the patch index
     size_t id() const   { return m_id; }
-
-    /// Returns the local element id -- e.g. the id inside the patch
-    virtual size_t localId() const { return m_id; }
 
     /// Return dimension of the elements
     short_t dim() const   { return centerPoint().size(); }

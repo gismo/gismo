@@ -77,7 +77,6 @@ m_domainDim(1)
 template <class T>
 gsConstantFunction<T>::gsConstantFunction(const gsConstantFunction<T> & o)
 :
-gsGeometry<T>(),
 m_domainDim(o.m_domainDim)
 {
     m_coefs = o.m_coefs;

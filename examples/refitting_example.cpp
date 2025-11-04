@@ -344,7 +344,7 @@ int main(int argc, char *argv[])
             gsExprEvaluator<> ev;
             gsMultiPatch<> mp_tmp(mp_res.patch(p));
             gsMultiBasis<> dbasis(mp_tmp);
-            ev.setIntegrationDomain(dbasis.domain());
+            ev.setIntegrationElements(dbasis);
             geometryMap G = ev.getMap(mp_tmp);
             area = ev.integral(meas(G));
             funcs.at(p) = gsConstantFunction<>(hausdorffs.at(p) / math::sqrt(area),2);

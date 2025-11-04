@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
 
         // Set up and compute the L2-error to the known exact solution...
         gsExprEvaluator<> ev;
-        ev.setIntegrationDomain(pa.multiBasis().domain());
+        ev.setIntegrationElements(pa.multiBasis());
         gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
         gsExprEvaluator<>::variable f1 = ev.getVariable(mpsol);
         auto ff = ev.getVariable(f, Gm);

@@ -93,13 +93,6 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
         return localIntpl(*b,fun,i);
     if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
-        return localIntpl(*b,fun,i);        
-    // If it is a gsRationalTHBSplineBasis, we check the source
-    if (const gsHTensorBasis<1, T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb.source())) 
-        return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<2, T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb.source())) 
-        return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<3, T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb.source()))
         return localIntpl(*b,fun,i);
     else
         return localIntpl(bb,fun,i,bb.elementInSupportOf(i));

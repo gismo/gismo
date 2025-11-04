@@ -32,7 +32,7 @@ SUITE(gsExprAssembler_test)
             mb.uniformRefine();
 
         gsExprEvaluator<> ev;
-        ev.setIntegrationDomain(mb.domain());
+        ev.setIntegrationElements(mb);
         gsExprEvaluator<>::geometryMap G = ev.getMap(patches);
         auto f = ev.getVariable(ff, G);
 
@@ -65,7 +65,7 @@ SUITE(gsExprAssembler_test)
         // Create evaluator
         gsMultiBasis<> mb(mp);
         gsExprEvaluator<> ev;
-        ev.setIntegrationDomain(mb.domain());
+        ev.setIntegrationElements(mb);
         ev.options().addReal("quA","",2); // added precision to approx pi
         ev.options().addInt("quB","", 2); // added precision to approx pi
         auto G = ev.getMap(mp);

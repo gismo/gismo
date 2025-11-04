@@ -60,7 +60,7 @@ void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> &
     mapperBdy.finalize();
 
     gsExprAssembler<real_t> A(1,1);
-    A.setIntegrationDomain(basis.domain());
+    A.setIntegrationElements(basis);
 
     auto G = A.getMap(mp);
     auto uu = A.getSpace(basis);
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     // Elements used for numerical integration
-    A.setIntegrationDomain(basis.domain());
+    A.setIntegrationElements(basis);
     gsExprEvaluator<real_t> ev(A);
 
     // Set the geometry map

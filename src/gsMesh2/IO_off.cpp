@@ -39,11 +39,12 @@ struct imemstream: virtual membuf, std::istream
     : membuf(base), std::istream(static_cast<std::streambuf*>(this)) { }
 };
 
+//-----------------------------------------------------------------------------
+
 
 bool read_off_ascii(gsSurfMesh& mesh,
                     char * node)
 {
-    typedef gsSurfMesh::Point Point;
 //    std::fstream fs;
 //    fs.getline(in, sizeof buffer );
 
@@ -51,8 +52,8 @@ bool read_off_ascii(gsSurfMesh& mesh,
     //int                  nc;
     unsigned int         i, j, idx;
     unsigned int         nV, nF, nE;
-    Point                 p, n, c;
-    gsVector<real_t,2>   t;
+    Point                p, n, c;
+    Vec2f                t;
     gsSurfMesh::Vertex v;
 
     gsDebugVar( strlen(node) );
@@ -168,8 +169,6 @@ bool read_off_ascii(gsSurfMesh& mesh,
                     const bool has_texcoords,
                     const bool has_colors)
 {
-    typedef gsSurfMesh::Point Point;
-    typedef gsSurfMesh::Normal Normal;
 //    std::fstream fs;
 //    fs.getline(in, sizeof buffer );
 
@@ -178,16 +177,16 @@ bool read_off_ascii(gsSurfMesh& mesh,
     unsigned int         i, j, items, idx;
     unsigned int         nV, nF, nE;
     Point                p, n, c;
-    gsVector<real_t,2>  t;
+    Vec2f                t;
     gsSurfMesh::Vertex v;
 
     // properties
     gsSurfMesh::Vertex_property<Normal>              normals;
-    gsSurfMesh::Vertex_property<Point>  texcoords;
-    gsSurfMesh::Vertex_property<Point>               colors;
+    gsSurfMesh::Vertex_property<Texture_coordinate>  texcoords;
+    gsSurfMesh::Vertex_property<Color>               colors;
     if (has_normals)   normals   = mesh.vertex_property<Normal>("v:normal",Point(0,0,0));
-    if (has_texcoords) texcoords = mesh.vertex_property<Point>("v:texcoord",Point(0,0,0));
-    if (has_colors)    colors    = mesh.vertex_property<Point>("v:color",Point(0,0,0));
+    if (has_texcoords) texcoords = mesh.vertex_property<Texture_coordinate>("v:texcoord",Point(0,0,0));
+    if (has_colors)    colors    = mesh.vertex_property<Color>("v:color",Color(0,0,0));
 
 
     // #Vertice, #Faces, #Edges
@@ -273,18 +272,20 @@ bool read_off_ascii(gsSurfMesh& mesh,
     return true;
 }
 
+
+//-----------------------------------------------------------------------------
+
+
 bool read_off_binary(gsSurfMesh& mesh,
                      FILE* in,
                      const bool has_normals,
                      const bool has_texcoords,
                      const bool has_colors)
 {
-    typedef gsSurfMesh::Point  Point;
-    typedef gsSurfMesh::Normal Normal;
     unsigned int       i, j, idx;
     unsigned int       nV, nF, nE;
-    Point               p, n, c;
-    gsVector<real_t,2>  t;
+    Point              p, n, c;
+    Vec2f              t;
     gsSurfMesh::Vertex  v;
 
 
@@ -294,9 +295,9 @@ bool read_off_binary(gsSurfMesh& mesh,
 
     // properties
     gsSurfMesh::Vertex_property<Normal>              normals;
-    gsSurfMesh::Vertex_property<Point>  texcoords;
+    gsSurfMesh::Vertex_property<Texture_coordinate>  texcoords;
     if (has_normals)   normals   = mesh.vertex_property<Normal>("v:normal",Point(0,0,0));
-    if (has_texcoords) texcoords = mesh.vertex_property<Point>("v:texcoord", Point(0,0,0));
+    if (has_texcoords) texcoords = mesh.vertex_property<Texture_coordinate>("v:texcoord", Texture_coordinate(0,0,0));
 
 
     // #Vertice, #Faces, #Edges
@@ -348,6 +349,10 @@ bool read_off_binary(gsSurfMesh& mesh,
 
     return true;
 }
+
+
+//-----------------------------------------------------------------------------
+
 
 bool read_off(gsSurfMesh& mesh, const std::string& filename)
 {
@@ -406,10 +411,12 @@ bool read_off(gsSurfMesh& mesh, const std::string& filename)
     return ok;
 }
 
+
+//-----------------------------------------------------------------------------
+
+
 bool write_off(const gsSurfMesh& mesh, const std::string& filename)
 {
-    typedef gsSurfMesh::Point Point;
-    typedef gsSurfMesh::Normal Normal;
     FILE* out = fopen(filename.c_str(), "w");
     if (!out)
         return false;
@@ -419,8 +426,8 @@ bool write_off(const gsSurfMesh& mesh, const std::string& filename)
     bool  has_texcoords = false;
     bool  has_colors = false;
     gsSurfMesh::Vertex_property<Normal> normals = mesh.get_vertex_property<Normal>("v:normal");
-    gsSurfMesh::Vertex_property<Point>  texcoords = mesh.get_vertex_property<Point>("v:texcoord");
-    gsSurfMesh::Vertex_property<Point> colors = mesh.get_vertex_property<Point>("v:color");
+    gsSurfMesh::Vertex_property<Texture_coordinate>  texcoords = mesh.get_vertex_property<Texture_coordinate>("v:texcoord");
+    gsSurfMesh::Vertex_property<Color> colors = mesh.get_vertex_property<Color>("v:color");
     if (normals)   has_normals = true;
     if (texcoords) has_texcoords = true;
     if (colors) has_colors = true;
@@ -451,13 +458,13 @@ bool write_off(const gsSurfMesh& mesh, const std::string& filename)
 
         if (has_colors)
         {
-            const Point& c = colors[*vit];
+            const Color& c = colors[*vit];
             fprintf(out, " %.10f %.10f %.10f", cast<real_t,double>(c[0]), cast<real_t,double>(c[1]), cast<real_t,double>(c[2]));
         }
 
         if (has_texcoords)
         {
-            const Point& t = texcoords[*vit];
+            const Texture_coordinate& t = texcoords[*vit];
             fprintf(out, " %.10f %.10f", cast<real_t,double>(t[0]), cast<real_t,double>(t[1]));
         }
 
