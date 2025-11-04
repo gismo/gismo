@@ -167,30 +167,33 @@ public:
         else
         {
             GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
-                          "Invalid basis component "<< dir <<" requested for degree elevation" );
+                          "Invalid basis component "<< dir <<" requested for uniform refinement." );
 
-            gsVector<index_t,d> sz;
-            m_src->size_cwise(sz);
+            gsVector<index_t,d> sz_weights, sz_coefs;
+            m_src->size_cwise(sz_coefs);
+            sz_weights = sz_coefs;
             m_src->component(dir).uniformRefine_withTransfer( transfer, numKnots, mul );
 
-            const index_t coefs_cols = coefs.cols();
-            const index_t weights_cols = m_weights.cols();
+            const index_t coefs_cols = coefs.cols();           // Original number of columns
+            const index_t weights_cols = m_weights.cols();     // Original number of columns
 
             coefs = m_weights.asDiagonal() * coefs; //<<<<-----this goes wrong!!
-            swapTensorDirection(0, dir, sz, coefs);
-            coefs.resize( sz[0], coefs_cols * sz.template tail<static_cast<short_t>(d-1)>().prod() );
+            swapTensorDirection(0, dir, sz_coefs, coefs);
+            coefs.resize( sz_coefs[0], coefs_cols * sz_coefs.template tail<static_cast<short_t>(d-1)>().prod() );
             coefs     = transfer * coefs;
 
-            swapTensorDirection(0, dir, sz, m_weights);
-            m_weights.resize( sz[0], weights_cols * sz.template tail<static_cast<short_t>(d-1)>().prod() );
+
+            swapTensorDirection(0, dir, sz_weights, m_weights);
+            m_weights.resize( sz_weights[0], weights_cols * sz_weights.template tail<static_cast<short_t>(d-1)>().prod() );
             m_weights = transfer * m_weights;
 
-            sz[0] = coefs.rows();
+            sz_coefs[0] = coefs.rows();
+            sz_weights[0] = m_weights.rows();
 
-            coefs.resize( sz.prod(), coefs_cols );
-            m_weights.resize( sz.prod(), weights_cols );
-            swapTensorDirection(0, dir, sz, coefs);
-            swapTensorDirection(0, dir, sz, m_weights);
+            coefs.resize( sz_coefs.prod(), coefs_cols );
+            m_weights.resize( sz_weights.prod(), weights_cols );
+            swapTensorDirection(0, dir, sz_coefs, coefs);
+            swapTensorDirection(0, dir, sz_weights, m_weights);
 
             coefs.array().colwise() /= m_weights.col(0).array();
         }

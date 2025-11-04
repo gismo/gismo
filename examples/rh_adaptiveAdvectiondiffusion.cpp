@@ -237,8 +237,8 @@ int main(int argc, char *argv[])
         DoFPDE[refLoop]   = cdrAss.numDofs();
         if (refLoop <numLRefine){
        // --------------- adaptive refinement ---------------
-    //    ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm());
-       ev.integralElWise( ( igrad(is,Gm)).sqNorm() );
+       ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm());
+    //    ev.integralElWise( ( igrad(is,Gm)).sqNorm() );
        const std::vector<real_t> eltErrs  = ev.elementwise();
        //! [errorComputation]
        //! [adaptRefinementPart]
@@ -250,9 +250,9 @@ int main(int argc, char *argv[])
         if (IntensityMAE >1. && refLoop == numLRefine -1){
             std::vector<bool> eldensityMarked( eltErrs.size() );
             gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
-            auto density   = MAE.buildDensity( cdrAss.multiBasis(), eldensityMarked, false);// false: do not set rho to zero
+            auto density   = MAE.buildDensity( dbasis, eldensityMarked, false);// false: do not set rho to zero
             MAE.buildMultiPatch(density);// compute adaptive mapping
-            Psi            = MAE.buildCompMultiPatch(cdrAss.multiBasis());// computes the composition mapping mpLeft o mpLeft
+            Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o mpLeft
             MAE.NormalProjectPts(Psi);// correct the boundary
         }
        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";

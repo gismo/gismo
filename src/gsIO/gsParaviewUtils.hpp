@@ -17,7 +17,7 @@
 #include <gsMSplines/gsMappedBasis.h>   // Only to make linker happy
 #include <gsCore/gsDofMapper.h>         // Only to make linker happy
 #include <gsCore/gsLinearAlgebra.h>         // Only to make linker happy
-#include <gsAssembler/gsExprHelper.h>  
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsBase64.h>
@@ -204,7 +204,7 @@ namespace gismo
         << "<UnstructuredGrid>\n";
 
 
-        const gsMultiPatch<T> bezierExt = mPatch.extractBezier(); 
+        const gsMultiPatch<T> bezierExt = mPatch.extractBezier();
         index_t totalPoints = bezierExt.coefsSize();
 
         // Set up matrices with cell data
