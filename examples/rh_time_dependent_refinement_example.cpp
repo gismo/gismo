@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
     //..... Test 1
     // convection coefficient:
-    gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
+    // gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
     gsFunctionExpr<> NmHomogen("0.","0.",2);
 
     // convection coefficient:
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
     space ru = A.getSpace(dbasis);
 
     // Set the source term for Poisson equation
-    auto SFunc      = A.getCoeff(rhs, GLeft);
+    // auto SFunc      = A.getCoeff(rhs, GLeft);
     auto sol_0      = A.getCoeff(s, GLeft);
 
     // Solution vector and solution variable
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
     A.initSystem();
     gsInfo<< "Solving PDEs " <<std::flush;
     gsInfo<< A.numDofs() <<std::flush;
-    //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
+    // ...
     timer.restart();
     A.assemble(
     ru * ru.tr() * meas(GLeft) //matrix
@@ -166,7 +166,6 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     rsolVector = solver.solve(A.rhs());
     solution u_sol = A.getSolution(ru, rsolVector);
-    //ev.integralElWise( (ilapl(u_sol, GLeft) +SFunc).sqNorm() );
     ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
     auto elwise = ev.elementwise();
 
@@ -228,11 +227,6 @@ int main(int argc, char *argv[])
     // Set the discretization space // different boundary condition !
     space ru          = A.getSpace(dbasis);
 
-    // Set the source term for Poisson equation
-    auto SFunc        = A.getCoeff(rhs, PP);
-
-    auto coeff_convPP = A.getCoeff(coeff_conv, PP);
-
     // Recover manufactured solution for Poisson equation
     auto u_ex         = ev.getVariable(s, PP);
 
@@ -248,7 +242,7 @@ int main(int argc, char *argv[])
     A.initSystem();
     gsInfo<< "Solving PDEs " <<std::flush;
     gsInfo<< A.numDofs() <<std::flush;
-    //auto h_Tau =  m_h/(2.*coeff_conv.squaredNorm()+m_h);
+    // ...
     timer.restart();
     A.assemble(
     ru * ru.tr() * meas(PP) //matrix

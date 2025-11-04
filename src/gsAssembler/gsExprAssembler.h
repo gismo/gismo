@@ -311,8 +311,8 @@ public:
 
     /// Registers \a func as a variable defined on \a GLeft.compose(GRight) and returns a
     /// handle to it
-    expr::gsCompositionAd<T> getCoeff(const gsFunctionSet<T> & func, geometryMap & GLeft, geometryMap & GRight)
-    { return m_exprdata->getVar(func,GLeft,GRight); }
+    // expr::gsCompositionAd<T> getCoeff(const gsFunctionSet<T> & func, geometryMap & GLeft, geometryMap & GRight)
+    // { return m_exprdata->getVar(func,GLeft,GRight); }
 
     /// \brief Registers a representation of a solution variable from
     /// space \a s, based on the vector \a cf.

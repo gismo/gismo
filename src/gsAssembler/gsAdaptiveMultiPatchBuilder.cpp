@@ -29,7 +29,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
 {
     gsInfo<<"\n <>r-refinement (!!!";
     // Build a (non-NURBS) multi-basis from the geometry mapping for the Monge–Ampère solver
-    gsMultiBasis<> dbasis(mapping, false);
+    gsMultiBasis<> dbasis(mapping, true);
     //... refine basis for convergence 
     for (int r=0; r<=numRefine; ++r)
         dbasis.uniformRefine();

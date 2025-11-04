@@ -209,11 +209,12 @@ int main(int argc, char *argv[])
 
     // Set the source term with respect to target geometry
     auto ff           = A.getCoeff(f, GLeft);
+
     // Set the source term with respect to target geometry
-    auto fP           = A.getCoeff(f,  GLeft, PP);
+    auto fp           = A.getCoeff(f,  PP);
 
     //gsFunctionExpr<> sI("0.5*(x**2+y**2)+x*y",2);
-    auto u_I          = ev.getVariable(sN, G);
+    // auto u_I          = ev.getVariable(sN, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
@@ -352,9 +353,9 @@ int main(int argc, char *argv[])
                 <<numRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======\n";
         // --------------- error estimation/computation ---------------
         // Get the element-wise norms.
-        // ev.integralElWise(int_uh_0*rho.val()+int_uh_1 );
+        ev.integralElWise(int_uh_0*rho.val()+int_uh_1 );
         // ev.integralElWise( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)   );
-        ev.integralElWise( fP.val() );
+
 
         //! [errorComputation]
         const std::vector<real_t> eltErrs  = ev.elementwise();
@@ -554,7 +555,7 @@ int main(int argc, char *argv[])
         collection.options().setInt("plotElements.resolution", 16);
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
-        collection.addField(fP, "density function");
+        collection.addField(fp, "density function");
         collection.addField(jac(PP).det(), "Jacobian function");
         collection.saveTimeStep();
         collection.save();

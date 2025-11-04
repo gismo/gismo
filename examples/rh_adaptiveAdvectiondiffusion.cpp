@@ -220,7 +220,6 @@ int main(int argc, char *argv[])
        ev.setIntegrationElements(cdrAss.multiBasis());
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(Psi);
        gsExprEvaluator<>::variable is = ev.getVariable(solField.fields());
-       auto ms = ev.getVariable(Dg, Gm);
 
        // Get the element-wise norms.
         // Recover rhs for Poisson equation

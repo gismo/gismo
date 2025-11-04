@@ -106,12 +106,6 @@ public:
 
         return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
     }
-
-    std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const
-    {
-        return m_src->asElements(boxes, refExt);
-    }
-
 public:
     void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
     {

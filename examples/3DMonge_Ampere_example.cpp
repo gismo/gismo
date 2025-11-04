@@ -154,14 +154,12 @@ int main(int argc, char *argv[])
     ###                                  Step 1-2 : Computes the density function
     ###                                     and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(dbasis, mpLeft, maxIter, IntensityMAE, numReduce = numReduce);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE, numReduce = numReduce);
     auto density        = MAE.buildAnalyticDensity(f);
     MAE.buildMultiPatch(density);// build the adaptive mapping
     // //------------------------------------
     geometryMap G       = A.getMap(mpLeft);
     geometryMap PP      = A.getMap(MAE.gsPsi);
-    geometryMap PG      = A.getMap(MAE.gsPsi);
-    PG(mpLeft);
     auto comp           = A.getCoeff(mpLeft, PP);    
     PsiF                = MAE.buildCompMultiPatch(dbasis, elevDegree); //composition of geometry maps
     PsiF.computeTopology();
@@ -193,7 +191,7 @@ int main(int argc, char *argv[])
     std::cout << "Comp:   geometry volume  : "<< l3err[r] <<"\n";
     // ... Error using projection method
     l2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PPF)) ));
-    h1err[r]  = math::sqrt(ev.integralBdr((PPF-PG).sqNorm()));
+    h1err[r]  = math::sqrt(ev.integralBdr((PPF-comp).sqNorm()));
     std::cout << "GPP :   geometry volume  : "<< l2err[r]  <<"\n";
     std::cout << "GPP :   geometry boundary: "<<  h1err[r]  <<"\n";
     // // ... Error using Interpolation method

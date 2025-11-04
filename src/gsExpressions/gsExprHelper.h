@@ -83,7 +83,7 @@ public:
     typedef const expr::gsFeVariable<T>    variable;
     typedef const expr::gsFeSpace<T>       space;
     typedef const expr::gsComposition<T>   composition;
-    typedef const expr::gsCompositionAd<T>   compositionAd;
+    // typedef const expr::gsCompositionAd<T>   compositionAd;
     typedef const expr::gsNullExpr<T>      nullExpr;
 
 public:
@@ -202,18 +202,15 @@ public:
         return var;
     }
 
-<<<<<<< HEAD:src/gsAssembler/gsExprHelper.h
-    //// Represents the function:  mp o Gleft o GRight 
-    compositionAd getVar(const gsFunctionSet<T> & mp, geometryMap & GLeft, geometryMap & GRight)
-    {
-        expr::gsCompositionAd<T> var(GLeft, GRight); // Gleft o GRight
-        var.setSource(mp); // outer (on the left) function
-        return var;
-    }
+    // //// Represents the function:  mp o Gleft o GRight 
+    // compositionAd getVar(const gsFunctionSet<T> & mp, geometryMap & GLeft, geometryMap & GRight)
+    // {
+    //     expr::gsCompositionAd<T> var(GLeft, GRight); // Gleft o GRight
+    //     var.setSource(mp); // outer (on the left) function
+    //     return var;
+    // }
 
-=======
     /// @brief @todo
->>>>>>> origin/stable:src/gsExpressions/gsExprHelper.h
     expr::gsFeSpace<T> getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
         expr::gsFeSpace<T> var;
@@ -416,24 +413,24 @@ public:
                 .setData(eh.m_cdata[ give(k) ]);
     }
 
-    void add(const expr::gsCompositionAd<T> & sym)
-    {
-        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
+    // void add(const expr::gsCompositionAd<T> & sym)
+    // {
+    //     gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
 
-        // register the innerRight
-        add(sym.innerRight());
-        sym.innerRight().data().flags |= NEED_VALUE;
+    //     // register the innerRight
+    //     add(sym.innerRight());
+    //     sym.innerRight().data().flags |= NEED_VALUE;
 
-        // register innerLeft o innerRight as composition
-        auto k2 = std::make_pair(sym.innerLeft().m_fs, &eh.m_mdata[sym.innerRight().m_fs]);
-        eh.m_cdata[k2].mine().flags |= NEED_VALUE;
+    //     // register innerLeft o innerRight as composition
+    //     auto k2 = std::make_pair(sym.innerLeft().m_fs, &eh.m_mdata[sym.innerRight().m_fs]);
+    //     eh.m_cdata[k2].mine().flags |= NEED_VALUE;
 
-        // register F o (innerLeft o innerRight) as second-step composition
-        auto k3 = std::make_pair(sym.m_fs, &eh.m_cdata[k2]);
-        eh.m_cdataAd[k3].mine().flags |= NEED_VALUE;
-        const_cast<expr::gsCompositionAd<T>&>(sym)
-            .setData( eh.m_cdataAd[ give(k3) ]);
-    }
+    //     // register F o (innerLeft o innerRight) as second-step composition
+    //     auto k3 = std::make_pair(sym.m_fs, &eh.m_cdata[k2]);
+    //     eh.m_cdataAd[k3].mine().flags |= NEED_VALUE;
+    //     const_cast<expr::gsCompositionAd<T>&>(sym)
+    //         .setData( eh.m_cdataAd[ give(k3) ]);
+    // }
 
     template <class E>
     void add(const expr::symbol_expr<E> & sym)
