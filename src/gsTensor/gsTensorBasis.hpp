@@ -489,7 +489,7 @@ void gsTensorBasis<d,T>::deriv2Single_into(index_t i,
             // Multiply with values
             for (short_t r = 0; r != k; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
-            for (short_t r = k+1; r != l; ++r)
+            for (short_t r = k+1; r < l; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
             for (short_t r = l+1; r < d; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
