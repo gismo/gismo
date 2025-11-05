@@ -1,6 +1,6 @@
 /** @file Monge_Ampere_example.cpp
 
-    @brief Tutorial on how to use expression assembler to builde multipatch-solver from anayltic density function
+    @brief Tutorial on how to use expression assembler to builde multipatch adaptive-mesh solver from anayltic density function
 
     This file is part of the G+Smo library.
 

@@ -1,6 +1,6 @@
 /** @file Monge_Ampere_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation
+    @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation in THB splines basis.
 
     This file is part of the G+Smo library.
 

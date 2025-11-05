@@ -83,7 +83,7 @@ void gsAdaptiveMultiPatchBuilder::uniformRefine(const index_t numRefine)
 {
     for( index_t i=0; i< numRefine; ++i){
     this->m_basis.uniformRefine();
-    this->gsPsi.uniformRefine();
+    this->MAmapping.uniformRefine();
     }
 
     this->DoFs      = m_basis.size();
@@ -245,28 +245,28 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
     gsInfo << ".";
 
-    if (!gsPsi.empty()){
+    if (!MAmapping.empty()){
     // If the given density is defined on an adaptive mesh, it must first be projected onto a uniform mesh
     // since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
-    const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).knots(0);
-    const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).knots(1);
-    const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).degree(0);
-    const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( gsPsi.patch(0)).degree(1);
-    if (gsPsi.dim()==2){
+    const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).knots(0);
+    const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).knots(1);
+    const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).degree(0);
+    const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).degree(1);
+    if (MAmapping.dim()==2){
     gsMatrix<> rhsVector = A.rhs();
     rhsVector.setZero();
     //...
-    assemble_rhsvector_2d(degree1, degree2, kv1, kv2, gsPsi.patch(0).coefs(), densityVector, rhsVector);
+    assemble_rhsvector_2d(degree1, degree2, kv1, kv2, MAmapping.patch(0).coefs(), densityVector, rhsVector);
     densityVector           = this->Poisson.L2ProjectScalar(rhsVector);
     gsInfo << ".";
     }
     else{
-    const gsKnotVector<double> kv3 =  static_cast<gsTensorNurbs<3> &>( gsPsi.patch(0)).knots(2);
-    const index_t degree3 =  static_cast<gsTensorNurbs<3> &>( gsPsi.patch(0)).degree(2);
+    const gsKnotVector<double> kv3 =  static_cast<gsTensorNurbs<3> &>( MAmapping.patch(0)).knots(2);
+    const index_t degree3 =  static_cast<gsTensorNurbs<3> &>( MAmapping.patch(0)).degree(2);
     gsMatrix<> rhsVector = A.rhs();
     rhsVector.setZero();
     //...
-    assemble_rhsvector_3d(degree1, degree2, degree3, kv1, kv2, kv3, gsPsi.patch(0).coefs(), densityVector, rhsVector);
+    assemble_rhsvector_3d(degree1, degree2, degree3, kv1, kv2, kv3, MAmapping.patch(0).coefs(), densityVector, rhsVector);
     densityVector           = this->Poisson.L2ProjectScalar(rhsVector);
     gsInfo << "..";
     }
@@ -373,7 +373,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     solVector = this->Poisson.solve(A.rhs());
     gsInfo<< "." <<std::flush; // Linear solving done
 
-    if(gsPsi.empty()){
+    if(MAmapping.empty()){
     // Initial guess for the gradient of potential function
     A.initSystem(IGdim);
     // Obtain control points for the gradient of Psi
@@ -395,7 +395,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     NormalProjectPts(Psi);
     }
     else
-        Psi = gsPsi;
+        Psi = MAmapping;
     //! [Solver loop]
     // Picard loop
     auto  sv0 = solVector; //
@@ -463,7 +463,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     Psi.addAutoBoundaries();
     Psi.computeTopology();
     // ....
-    this->gsPsi = Psi;
+    this->MAmapping = Psi;
     timer.stop();
     gsInfo<<" CPU-time : "<<std::scientific<< slv_time   <<"<>\n";
 };
@@ -494,7 +494,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiBasis<> d
     solution v_sol = A.getSolution(v, vsolVector);
 
     //::::::::::::::::::::    Compute the composition of geometry maps      :::::::::::::::::::::::::
-    geometryMap PP = A.getMap(this->gsPsi);
+    geometryMap PP = A.getMap(this->MAmapping);
     //...
     A.initSystem();
     A.assemble(v*v.tr());//Matrix in one dimension
@@ -516,7 +516,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiBasis<> d
         Psi.embed(i+1);
         Psi.patch(0).coefs().col(i) = PsiVec.patch(0).coefs();
     }
-    Psi.addAutoBoundaries();
     Psi.computeTopology();
     //#-++++++++++++++++++++++++ End of sharing part of any geometry------------------------------
     slv_time += timer.stop();

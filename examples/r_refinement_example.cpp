@@ -1,6 +1,6 @@
 /** @file 3DMonge_Ampere_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a non-linear Monge-Ampere equation in 3D
+    @brief Tutorial on how to use compute the Monge-Ampere mapping  for r-refinement in two and three dimensions.
 
     This file is part of the G+Smo library.
 
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
     MAE.buildMultiPatch(density);// build the adaptive mapping
     // //------------------------------------
     geometryMap G       = A.getMap(mpLeft);
-    geometryMap PP      = A.getMap(MAE.gsPsi);
+    geometryMap PP      = A.getMap(MAE.MAmapping);
     auto comp           = A.getCoeff(mpLeft, PP);    
     PsiF                = MAE.buildCompMultiPatch(dbasis, elevDegree); //composition of geometry maps
     PsiF.computeTopology();

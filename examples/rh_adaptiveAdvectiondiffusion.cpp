@@ -250,9 +250,9 @@ int main(int argc, char *argv[])
             std::vector<bool> eldensityMarked( eltErrs.size() );
             gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
             auto density   = MAE.buildDensity( dbasis, eldensityMarked, false);// false: do not set rho to zero
-            MAE.buildMultiPatch(density);// compute adaptive mapping
-            Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o mpLeft
-            MAE.NormalProjectPts(Psi);// correct the boundary
+            MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
+            Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
+            MAE.NormalProjectPts(Psi);// correct the boundary (square)
         }
        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 

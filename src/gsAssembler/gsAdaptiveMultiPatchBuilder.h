@@ -29,8 +29,8 @@ public:
                                 index_t numReduce   = 0);
     //... Square mapping
     gsMultiPatch<> mp; 
-    // ... optimal mapping in unit-square to itself
-    mutable gsMultiPatch<> gsPsi;
+    // ... optimal Monge-Ampere mapping in unit-square to itself
+    mutable gsMultiPatch<> MAmapping;
     // ... density coefs
     mutable gismo::gsMatrix<> errorVector;
     // m_maxIter: max iterations, in moving mesh we want to change max iteration since we start with adaptive mapping

@@ -1,6 +1,6 @@
 /** @file rh_refinement_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a parabolic PDE with adaptive refinement
+    @brief Tutorial on how to use expression assembler to solve a parabolic PDE with adaptive r-refinement
 
     This file is part of the G+Smo library.
 
@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
     gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
     auto density   = MAE.buildDensity(dbasis, elMarked);
     MAE.buildMultiPatch(density);
-    auto Psi       = MAE.gsPsi;//MAE.buildCompMultiPatch(dbasis);//compute the compostion
+    auto Psi       = MAE.MAmapping;//MAE.buildCompMultiPatch(dbasis);//compute the compostion
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Define hierarchical adaptive mapping
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
     gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
     density        = MAE.buildDensity(dbasis, elMarked);
     MAE.buildMultiPatch(density);
-    Psi  = MAE.gsPsi;
+    Psi  = MAE.MAmapping;
     // ....
     ru.setup(bc, dirichlet::l2Projection, 0);
     // Initialize the system
@@ -314,7 +314,7 @@ int main(int argc, char *argv[])
         gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
         auto density        = MAE.buildDensity(dbasis, elMarked);
         MAE.buildMultiPatch(density);
-        gsMultiPatch<> Psi  = MAE.gsPsi;
+        gsMultiPatch<> Psi  = MAE.MAmapping;
         // ...
         Psi.addAutoBoundaries();
         Psi.computeTopology();

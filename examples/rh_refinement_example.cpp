@@ -1,6 +1,6 @@
 /** @file rh_refinement_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a Ellepitc PDE with adaptive refinement
+    @brief Tutorial on how to use expression assembler to solve a Ellepitc PDE with adaptive rh-refinement
 
     This file is part of the G+Smo library.
 
@@ -179,7 +179,6 @@ int main(int argc, char *argv[])
     if (IntensityMAE >1.){
         gsInfo << "The initial MAE mapping before THB:";
         ru.setup(bc, dirichlet::l2Projection, 0);
-        // Compute the system matrix and right-hand side
         // Initialize the system
         A.initSystem();
         setup_time += timer.stop();
@@ -214,8 +213,8 @@ int main(int argc, char *argv[])
         std::vector<bool> eldensityMarked( eltErrs.size() );
         gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);                 
         auto density   = MAE.buildDensity( dbasis, eldensityMarked);
-        MAE.buildMultiPatch(density);// compute adaptive mapping
-        Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o mpLeft
+        MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
+        Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
     }
 
     for (int r=0; r<=numLRefine; ++r)
@@ -282,8 +281,8 @@ int main(int argc, char *argv[])
                 std::vector<bool> eldensityMarked( eltErrs.size() );
                 gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);                 
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked);
-                MAE.buildMultiPatch(density);// compute adaptive mapping
-                Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o mpLeft
+                MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
+                Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
                 // -----------------
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)
