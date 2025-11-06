@@ -39,27 +39,22 @@ int main(int argc, char *argv[])
     double epsilon        = 0.007389228264793657;
 
     // Specify the file path
-    std::string fn("pde/quart_annulus.xml");
-    //std::string fn("pde/circle.xml");
+    std::string fn("pde/bsimple.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
-    cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addString( "d", "file", "Input XML file data", fn );
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
-    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
-    cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-    cmd.addInt( "p", "FactRefPar", "augement adaptRefParam with such quantity in local h-refinement loops",  FactRefPar );
-    cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
-    cmd.addReal( "t", "dt", "time step",  dt);
-    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
-    cmd.addInt("quRule",
-                 "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-                 1);
-
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
+    cmd.addReal(  "a", "adaptRefParam",   "parameter for local h-refinement loops",                                                            adaptRefParam );
+    cmd.addString("d", "file",            "Input XML file data",                                                                               fn );
+    cmd.addInt(   "e", "degreeElevation", "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addReal(  "f", "IntensityMAE",    "Intensity of density function",                                                                     IntensityMAE);
+    cmd.addInt(   "i", "iter",            "Maximum number of iterations for the iterative Picard",                                             maxIter);
+    cmd.addInt(   "l", "numLRefine",      "Number of local h-refinement loops",                                                                numLRefine );
+    cmd.addInt(   "p", "FactRefPar",      "augement adaptRefParam with such quantity in local h-refinement loops",                             FactRefPar );
+    cmd.addInt(   "r", "adaptRefCrit",    "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",                                      adaptRefCrit );
+    cmd.addReal( "t",  "dt",              "time step",                                                                                         dt);
+    cmd.addInt(  "u",  "uniformRefine",   "Number of Uniform h-refinement loops",                                                              numRefine );
+    cmd.addInt("quRule", "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",                                                       1);
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution",                                                            plot);
+    cmd.addSwitch("errorsave", "Create a file in ... and save errors",                                                                         errorsave);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -78,7 +73,6 @@ int main(int argc, char *argv[])
     // convection coefficient:
     // gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
     gsFunctionExpr<> NmHomogen("0.","0.",2);
-
     // convection coefficient:
     // gsMatrix<> coeff_conv{1,2};
     // diffusion coefficient:
@@ -90,7 +84,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> s;
     fd.getId(1995, s);
     gsFunctionExpr<> rhs;
-    fd.getId(2001, rhs);
+    fd.getId(1996, rhs);
 
     //! [Refinement]
     gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
@@ -121,13 +115,7 @@ int main(int argc, char *argv[])
     }
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mpLeft);
-    // For simplicity, set Dirichlet boundary conditions ?? not tested yet
-    // for ( gsMultiPatch<>::const_biterator
-    //         bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
-    // {
-    //    bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
-    // }
-    // For simplicity, set Neumann boundary conditions
+    // Set Neumann boundary conditions
     for ( gsMultiPatch<>::const_biterator
             bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
     {
@@ -180,15 +168,8 @@ int main(int argc, char *argv[])
     MAE.buildMultiPatch(density);
     auto Psi       = MAE.MAmapping;//MAE.buildCompMultiPatch(dbasis);//compute the compostion
 
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 3: Define hierarchical adaptive mapping
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    // .. to stor the previous mapping
     gsMultiPatch<> Psilast;
-    // gsMultiPatch<> Psi;
-    // for(size_t i =0; i<Psitp.nPatches(); ++i)
-    //     Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psitp.patch(i)) ));
-    Psi.addAutoBoundaries();
-    Psi.computeTopology();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 3: Start hierarchical refinement
@@ -197,12 +178,6 @@ int main(int argc, char *argv[])
     if (true){
     gsBoundaryConditions<> bc;
     bc.setGeoMap(Psi);
-    // // For simplicity, set Dirichlet boundary conditions
-    // for ( gsMultiPatch<>::const_biterator
-    //         bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
-    // {
-    //    bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
-    // }
     // For simplicity, set Dirichlet boundary conditions
     for ( gsMultiPatch<>::const_biterator
             bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
@@ -394,13 +369,7 @@ int main(int argc, char *argv[])
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
     gsInfo<<"     Norms: "<< err_time   <<"\n";
-
-
-    //! [Error and convergence rates]
-    // gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
-    // gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    // gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
-
+    
     if (errorsave)
     {
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types

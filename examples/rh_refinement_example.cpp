@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     real_t  adaptRefParamMAE = 0.7; // ... adapt parameter for MAE mapping.
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    std::string fn("pde/circle.xml");
-    // std::string fn("pde/lshape.xml");
+    // std::string fn("pde/circle.xml");
+    std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     // std::string fn("pde/example3D.xml");
     // std::string fn("volumes/GshapedVolume.xml"); 
@@ -91,13 +91,11 @@ int main(int argc, char *argv[])
     gsSparseSolver<>::CGDiagonal solver;
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 1-2 : Initialization for Monge-Ampere mapping
+    ###   Step 1 : Initialization for Monge-Ampere mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
 
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 3: Define hierarchical adaptive mapping
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    // ... Define hierarchical mapping
     gsMultiPatch<> Psi;
     if (mpLeft.basis(0).weights().any()){
     if (mpLeft.dim()== 3){
@@ -122,7 +120,7 @@ int main(int argc, char *argv[])
     Psi.computeTopology();
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 4: Start r- and h- refinement: Simultaneous
+    ###   Step 2: Start r- and h- refinement: Simultaneous
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsMultiPatch<> sol_restr; // restricted solution
     //boubdary conditions
@@ -208,8 +206,7 @@ int main(int argc, char *argv[])
 
         //! [errorComputation]
         std::vector<real_t> eltErrs  = ev.elementwise();            
-        // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        std::vector<bool> elMarked( eltErrs.size() );
+        // ... compute MAE mapping from a given error distribution
         std::vector<bool> eldensityMarked( eltErrs.size() );
         gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);                 
         auto density   = MAE.buildDensity( dbasis, eldensityMarked);
@@ -337,14 +334,10 @@ int main(int argc, char *argv[])
         outFile.close(); // Close the file after writing
     }
     else
-    {
         gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
     }
-    }
     else
-    {
         gsInfo << "Errors are not saved. To save them, try with --errorsave.\n";
-    }
 
     //! [Error and convergence rates]
     if (numLRefine>0 && false)

@@ -35,26 +35,22 @@ int main(int argc, char *argv[])
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.7; // ... adapt parameter.
-    // Specify the file path
-    std::string fn("pde/infinit_plate.xml");
+    // Define Stabilization method
+    auto Stabilizationtype = stabilizerCDR::SUPG;
 
+    
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
-    cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
-    cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
-    cmd.addString( "d", "file", "Input XML file data", fn );
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
-    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
-    cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-    cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
-    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
-    cmd.addInt("quRule",
-                 "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-                 1);
-
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
+    cmd.addReal(    "a", "adaptRefParam",    "parameter for local h-refinement loops",                                                            adaptRefParam );
+    cmd.addInt(     "c", "NumArMarEl",       "augement NumArMarEl with such quantity in local h-refinement loops",                                NumArMarEl );
+    cmd.addInt(     "e", "degreeElevation",  "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addReal(    "f", "IntensityMAE",     "Intensity of density function",                                                                     IntensityMAE);
+    cmd.addInt(     "i", "iter",             "Maximum number of iterations for the iterative Picard",                                             maxIter);
+    cmd.addInt(     "l", "numLRefine",       "Number of local h-refinement loops",                                                                numLRefine );
+    cmd.addInt(     "r", "adaptRefCrit",     "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",                                      adaptRefCrit );
+    cmd.addInt(     "u", "uniformRefine",    "Number of Uniform h-refinement loops",                                                              numRefine );
+    cmd.addInt("quRule",                     "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",                                      1);
+    cmd.addSwitch("plot",                    "Create a ParaView visualization file with the solution",                                            plot);
+    cmd.addSwitch("errorsave",               "Create a file in ... and save errors",                                                              errorsave);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -65,8 +61,6 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
-    // Define Stabilization method
-    auto Stabilizationtype = stabilizerCDR::SUPG;
     // Define  Dirichlet boundary conditions
     gsFunctionExpr<> Dg("if( y <= 0.2*(1.-x), 1,0)", 2);
     // Manufactured solition
@@ -81,41 +75,6 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> coeff_reac("0",2);
     // // Right-hand side function
     gsFunctionExpr<> SourceFunc("0.",2);
-    //Manufactured density function 1./cosh(100. * ( -x - 0.2 + y ))
-    gsFunctionExpr<> f("( 1./cosh( 10.*( -x+y -0.2 ) )**2 + 1/(1.+exp((0.95-x)/0.01)) )",2);
-    
-    /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //..... Test 2 : POISSON EQUATION
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    //     // Load the file
-    // gsFileData<> fd(fn);
-    // gsInfo << "Loaded file " << fd.lastPath() << "\n";
-    // // Create a gsMultipatch and add the loaded geometry
-    // gsMultiPatch<> Psi;
-    // fd.getId(1,Psi);
-    // // Elevate and p-refine the basis to order p + numElevate
-    // // where p is the highest degree in the dbasis
-    // Psi.degreeElevate(numElevate);
-    // Psi.computeTopology();
-    // //...
-    // // Define Stabilization method
-    // auto Stabilizationtype = stabilizerCDR::SUPG;
-    // // convection coefficient
-    // gsFunctionExpr<> coeff_conv("1/(1.+exp((x +y  - 0.)/(0.001*2)))","1/(1.+exp((x +y  - 0.)/(0.001*2)))",2);
-    // // diffusion coefficient:
-    // gsFunctionExpr<> coeff_diff("0.001","0","0","0.001",2);
-    // // For a posterior error estimate
-    // gsFunctionExpr<> coeff_diffMax("0.001",2);
-    // // reaction coefficient:
-    // gsFunctionExpr<> coeff_reac("1./(0.001*2)*( 1.- 1/(1.+exp((x +y  - 0.)/(0.001*2))) )",2);
-    // // Define  Dirichlet boundary conditions
-    // gsFunctionExpr<> Dg("1/(1.+exp((x +y  - 0.)/(0.001*2)))", 2);
-    // // Manufactured solition
-    // gsFunctionExpr<> s("1/(1.+exp((x +y  - 0.)/(0.001*2)))",2);
-    // // // Right-hand side function
-    // gsFunctionExpr<> SourceFunc("0.",2);
-    // // analytic density function
-    // gsFunctionExpr<> f("1./cosh( 25.*( x+y -0. ) )",2);
 
 
 #ifdef _OPENMP
@@ -148,9 +107,26 @@ int main(int argc, char *argv[])
     ###   Step 4: Define hierarchical adaptive mapping
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsMultiPatch<> Psi;
+    if (mpLeft.basis(0).weights().any()){
+    if (mpLeft.dim()== 3){
     for(size_t i =0; i<mpLeft.nPatches(); ++i)
-        Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));
-    Psi.addAutoBoundaries();
+        Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(mpLeft.patch(i)) ));
+    }
+    else{
+    for(size_t i =0; i<mpLeft.nPatches(); ++i)
+        Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
+    }
+    }
+    else{
+    if (mpLeft.dim()== 3){
+    for(size_t i =0; i<mpLeft.nPatches(); ++i)
+        Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(mpLeft.patch(i)) ));
+    }
+    else{
+    for(size_t i =0; i<mpLeft.nPatches(); ++i)
+        Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));            
+    }
+    }
     Psi.computeTopology();
 
    // --------------- add bonudary conditions ---------------
@@ -246,7 +222,8 @@ int main(int argc, char *argv[])
        std::vector<bool> elMarked( eltErrs.size() );
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
        
-        if (IntensityMAE >1. && refLoop == numLRefine -1){
+        if (IntensityMAE >1. && refLoop <= numLRefine -1){
+            //... compute MAE mapping from a given error distribution
             std::vector<bool> eldensityMarked( eltErrs.size() );
             gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
             auto density   = MAE.buildDensity( dbasis, eldensityMarked, false);// false: do not set rho to zero

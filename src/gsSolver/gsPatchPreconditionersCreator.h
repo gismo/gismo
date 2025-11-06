@@ -184,7 +184,6 @@ public:
 
             gsMatrix<T> solve(const gsMatrix<T>& b) const;
             gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const;
-            gsMatrix<T> L2ProjectVec(const gsMatrix<T>& b, bool other = false) const;
 
         private:
             std::vector<gsMatrix<T>> ds;
