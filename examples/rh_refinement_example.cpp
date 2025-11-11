@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
     bool plot             = false;
     index_t numRefine     = 4;
     index_t numLRefine    = 3;
+    index_t numMAERefine  = 2;
     index_t numElevate    = 0;
     index_t maxIter       = 50;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
@@ -52,6 +53,7 @@ int main(int argc, char *argv[])
     cmd.addReal( "p",    "adaptRefParamMAE", "parameter for MAE mapping in local h-refinement loops",                   adaptRefParamMAE );
     cmd.addInt( "r",     "adaptRefCrit",     "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",            adaptRefCrit );
     cmd.addInt( "u",     "uniformRefine",    "Number of Uniform h-refinement loops",                                    numRefine );
+    cmd.addInt( "v",     "numMAERefine",     "Number of MAE mapping refinement loops",                                  numMAERefine );
 
     cmd.addInt("quRule",                     "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",            1);
     cmd.addSwitch("plot",                    "Create a ParaView visualization file with the solution",                  plot);
@@ -93,7 +95,7 @@ int main(int argc, char *argv[])
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1 : Initialization for Monge-Ampere mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numMAERefine, maxIter, IntensityMAE);
 
     // ... Define hierarchical mapping
     gsMultiPatch<> Psi;
@@ -135,7 +137,7 @@ int main(int argc, char *argv[])
 
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
-    for (int r=0; r<=numRefine; ++r)
+    for (int r=0; r<numRefine; ++r)
         dbasis.uniformRefine();
 
     gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
@@ -175,7 +177,7 @@ int main(int argc, char *argv[])
     gsInfo<< "(dot1=assembled, dot2=solved)\n";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     if (IntensityMAE >1.){
-        gsInfo << "The initial MAE mapping before THB:";
+        gsInfo << "The initial MAE mapping before THB:\n";
         ru.setup(bc, dirichlet::l2Projection, 0);
         // Initialize the system
         A.initSystem();
@@ -208,7 +210,7 @@ int main(int argc, char *argv[])
         std::vector<real_t> eltErrs  = ev.elementwise();            
         // ... compute MAE mapping from a given error distribution
         std::vector<bool> eldensityMarked( eltErrs.size() );
-        gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);                 
+        gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.9, eldensityMarked);                 
         auto density   = MAE.buildDensity( dbasis, eldensityMarked);
         MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
         Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
@@ -273,11 +275,9 @@ int main(int argc, char *argv[])
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
 
             if (IntensityMAE >1.){
-                if (MAE.DoFs < 1e3 && r>0)
-                    MAE.uniformRefine();// refine the MAE mapping if DoFs are small
                 std::vector<bool> eldensityMarked( eltErrs.size() );
                 gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);                 
-                auto density   = MAE.buildDensity( dbasis, eldensityMarked);
+                auto density   = MAE.buildDensity( dbasis, eldensityMarked, r);
                 MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
                 Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
                 // -----------------
@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
                 }
                 for(size_t i=0; i<eltErrs.size(); ++i)
                 {
-                    auto POWMinvalue = Minvalue/pow(DoFPDE[r],adaptRefParam);
+                    auto POWMinvalue = Minvalue/pow(DoFPDE[r],1./mpLeft.dim());
                     if (POWMinvalue < eltErrs[i]) // Avoid numerical issues
                     {
                         elMarked[i] = true;
@@ -301,7 +301,13 @@ int main(int argc, char *argv[])
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
-            gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+            // gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+
+            //! [repairInterfaces]
+            // Call repair interfaces to make sure that the new meshes
+            // match along patch interfaces.
+            dbasis.repairInterfaces( Psi.interfaces() );
+            //! [repairInterfaces]
             //
             }
     }

@@ -26,12 +26,12 @@ TAGS=(
     # "-r 2 -u 3 -f  12. -l 6 -a 0.5 -c 0 -e 0"
     # "-r 2 -u 3 -f  12. -l 6 -a 0.7 -c 1 -e 0"
     # 3 dimensions case
-    # "-r 2 -u 0 -f  0.  -l 3 -a 0.0 -c 0 -e 0 -d "pde/example3D.xml""
-    "-r 2 -u 0 -f  0.  -l 3 -a 0.5 -c 0 -e 0 -d "pde/example3D.xml""
-    "-r 2 -u 0 -f  0.  -l 4 -a 0.7 -c 1 -e 0 -d "pde/example3D.xml""
-    "-r 2 -u 0 -f  12. -l 3 -a 0.0 -c 0 -e 0 -d "pde/example3D.xml""
-    "-r 2 -u 0 -f  12. -l 4 -a 0.5 -c 0 -e 0 -d "pde/example3D.xml""
-    "-r 2 -u 0 -f  12. -l 4 -a 0.7 -c 1 -e 0 -d "pde/example3D.xml""
+    # "-r 2 -u 0 -f  0.  -l 4 -a 0.0 -c 0 -d "pde/example3D.xml""
+    # "-r 2 -u 0 -f  0.  -l 5 -a 0.5 -c 0 -d "pde/example3D.xml""
+    # "-r 2 -u 0 -f  0.  -l 5 -a 0.7 -c 1 -d "pde/example3D.xml""
+    "-r 2 -u 0 -f  9. -l 4 -a 0.0 -c 0 -d "pde/example3D.xml""
+    "-r 2 -u 0 -f  9. -l 4 -a 0.5 -c 0 -d "pde/example3D.xml""
+    "-r 2 -u 0 -f  9. -l 4 -a 0.7 -c 1 -d "pde/example3D.xml""
     #.. Advection diffusion ... -f 0. : without r-refinement
     # "-r 2 -u 2  -f   0. -l 6 -a 0.7 -c 1 -e 1"
     # "-r 2 -u 2  -f  12. -l 6 -a 0.7 -c 1 -e 1"

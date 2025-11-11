@@ -32,7 +32,7 @@ public:
     // ... optimal Monge-Ampere mapping in unit-square to itself
     mutable gsMultiPatch<> MAmapping;
     // ... density coefs
-    mutable gismo::gsMatrix<> errorVector;
+    mutable gismo::gsMatrix<> errorVector;    
     // m_maxIter: max iterations, in moving mesh we want to change max iteration since we start with adaptive mapping
     index_t m_maxIter;
     // degees of freedom used in the computation
@@ -49,7 +49,7 @@ public:
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
     // Build and return a density as a MultiPatch object from marked elements using local h-refinement strategies
-    gsMultiPatch<> buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const bool setRhoZero = true) const;
+    gsMultiPatch<> buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const  index_t setRhoZero = 0) const;
     
     //-----------------------------------------
     //  functions to build mapping from density
@@ -58,7 +58,7 @@ public:
     void buildMultiPatch(const gsMultiPatch<> &density) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
-    gsMultiPatch<> buildCompMultiPatch(gsMultiBasis<> dbasis, int degreeEl = 0) const;
+    gsMultiPatch<> buildCompMultiPatch(gsMultiBasis<> Cbasis, int degreeEl = 0) const;
 
     //----------------------------------------
     // Useful functions for time moving meshes

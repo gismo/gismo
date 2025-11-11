@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     bool plot           = false;
     index_t numRefine   = 0;
     index_t numLRefine  = 1;
+    index_t numRefineMAE= 3;
     index_t numReduce   = 0;
     index_t numElevate  = 0;
     index_t maxIter     = 30;
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "degreeRedution",
                 "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", numReduce );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt( "m", "uniformRefineMAE", "Number of Uniform h-refinement loops for MAE mapping",  numRefineMAE );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
 
     cmd.addString( "d", "file", "Input XML file data", fn );
@@ -154,7 +156,7 @@ int main(int argc, char *argv[])
     ###                                  Step 1-2 : Computes the density function
     ###                                     and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE, numReduce = numReduce);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduce = numReduce);
     auto density        = MAE.buildAnalyticDensity(f);
     MAE.buildMultiPatch(density);// build the adaptive mapping
     // //------------------------------------

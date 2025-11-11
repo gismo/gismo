@@ -31,7 +31,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     // Build a (non-NURBS) multi-basis from the geometry mapping for the Monge–Ampère solver
     gsMultiBasis<> dbasis(mapping, true);
     //... refine basis for convergence 
-    for (int r=0; r<=numRefine; ++r)
+    for (int r=0; r<numRefine; ++r)
         dbasis.uniformRefine();
 
     // Reduce degree if possible while maintaining minimum degree of 1
@@ -170,9 +170,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const bool setRhoZero) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const index_t setRhoLevel) const 
 {   
-    //.. setRhoZero: if true set the density to zero before adding the error distribution
+    //.. setRhoLevel: if 0 set the density to zero before adding the error distribution
     gsInfo<<"<>density function";
     // ... error as a piecewise constant function
     gsMultiBasis<> basis_0 = this->m_basis;
@@ -190,16 +190,24 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     // Set the discretization space
     space u_0          = A_0.getSpace(basis_0);
     A_0.initSystem();
-    if (this->errorVector.size() < A_0.rhs().size() || setRhoZero){
+
+    if (this->errorVector.size() < A_0.rhs().size() || setRhoLevel == 0){
         gsInfo << "~buildfromzero~";
-        this->errorVector   = A_0.rhs();
-     }
+        this->errorVector.resize(A_0.rhs().size());
+        // ... initialize to zero
+        this->errorVector.setZero();
+    }
     solution error_sol = A_0.getSolution(u_0, errorVector);
 
     //------------------------------------------------------
     // piecewise density construction from error distribution 
+    double valueLevel = 0.5;
+    for (index_t i=0; i< setRhoLevel; ++i){
+        valueLevel += pow(0.5, i+2);
+    }
     // globalCount: counter for the current global element index
     int globalCount = 0;
+    #pragma omp parallel for
     for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn )// for all patches
     {
         // for all elements in patch pn
@@ -207,15 +215,20 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
             Givbasis.basis(pn).domain()->beginAll();
         typename gsBasis<>::domainIter domItEnd =  // add patchInd to domainiter ?
             Givbasis.basis(pn).domain()->endAll();
+        #pragma omp parallel for
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ){ // refine this element ?
                 // element index in the basis_0
                 auto gIndex = basis_0.basis(pn).elementIndex(domIt.centerPoint());
-                if (this->errorVector( gIndex) >=0.5)
-                    this->errorVector( gIndex) += this->errorVector( gIndex)*this->errorVector( gIndex);// accumulate the error value to the density function
-                else
-                    this->errorVector( gIndex) = 0.5;// add the error value to the density function
+                if (this->errorVector( gIndex) ==0 || setRhoLevel==0){
+                    // add the error value to the density function
+                    this->errorVector( gIndex) = 0.5;
+                }
+                else if( this->errorVector( gIndex) >= pow(0.5, setRhoLevel+1) ){
+                    // accumulate the error value to the density function
+                    this->errorVector( gIndex)  = valueLevel;
+                }
             }
         }
     }
@@ -271,6 +284,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     gsInfo << "..";
     }
     }
+    gsInfo <<densityVector.minCoeff()<<"/"<<densityVector.maxCoeff() << ".";
     //...
     gsMultiPatch<> density;
     density_sol.extract(density);
@@ -422,11 +436,11 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
         solVector         = this->Poisson.solve(A.rhs());
         // ... compute error and residual
         auto l2Res        = math::sqrt(ev.integral( ( grad(u_sol)-grad(u_lsol)).sqNorm()  ));
-        auto L2MAE        = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
-        auto Ddet         = ev.min(jac(PP).det());
         sv0               = solVector;
 
-        if ( l2Res < 1e-8 || ip == m_maxIter ){
+        if ( l2Res < 1e-5 || ip == m_maxIter ){
+            auto L2MAE        = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
+            auto Ddet         = ev.min(jac(PP).det());
             // ! end Picard loop
             gsInfo  << ". L2_res  : "<<std::scientific<<l2Res
                     << ". L2_err  : "<<std::scientific<<L2MAE
@@ -458,7 +472,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
 };
 
 // computes the projection L^2 of a composition and return a MultiPatch object
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiBasis<> dbasis, int degreeEl) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiBasis<> Cbasis, int degreeEl) const 
 {
 
     gsInfo<<"<> computes composition";
@@ -472,12 +486,12 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiBasis<> d
     // A.options().setInt("quRule", 2);
     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
     //.. degree elevation   
-    dbasis.degreeElevate(degreeEl);
+    Cbasis.degreeElevate(degreeEl);
     //...
-    A.setIntegrationElements(dbasis);
+    A.setIntegrationElements(Cbasis);
 
     //... 
-    space v        = A.getSpace(dbasis);
+    space v        = A.getSpace(Cbasis);
     gsMatrix<> vsolVector;
     solution v_sol = A.getSolution(v, vsolVector);
 
