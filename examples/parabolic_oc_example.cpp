@@ -122,6 +122,109 @@ gsTensorBSplineBasis<3> tensorBasis(const gsMultiBasis<>& A, const gsMultiBasis<
         );
 }
 
+real_t getOpNorm(const gsSparseMatrix<>& mat)
+{
+    real_t max = 0;
+    for (index_t i=0; i<mat.rows(); ++i)
+       if (mat(i,i)>max) max = mat(i,i);
+    return max;
+}
+
+gsSparseMatrix<real_t, RowMajor> mkTimeEmbedding(const gsSparseMatrix<real_t, RowMajor>& mat)
+{
+    // Compensate for initial conditions
+    const index_t sz1 = mat.rows();
+    gsSparseMatrix<> timeEmbedding1(sz1-1,sz1);
+    for (index_t j=0; j<sz1-1; ++j)
+        timeEmbedding1(j,j+1)=1;
+
+    const index_t sz2 = mat.cols();
+    gsSparseMatrix<> timeEmbedding2(sz2, sz2-1);
+    for (index_t j=0; j<sz2-1; ++j)
+        timeEmbedding2(j+1,j)=1;
+
+    return timeEmbedding1 * mat * timeEmbedding2;
+}
+
+gsLinearOperator<>::Ptr makeSpaceTimeMultiGridSolver(
+        gsSparseMatrix<> matrixA, gsSparseMatrix<> matrixB, gsSparseMatrix<> matrixC,
+        const gsMultiBasis<>& mbY, const gsBoundaryConditions<>& bcY,
+        const gsMultiBasis<>& tiY, const gsBoundaryConditions<>& icY,
+        gsOptionList opt,
+        std::string& info)
+{
+
+    const gsSparseMatrix<> fineMatrix = matrixA + matrixB + matrixC;
+    gsInfo << "Setup space-time multigrid solver...\n" << std::flush;
+    gsOptionList cmd;
+    cmd.addInt( "InterfaceStrategy", "", iFace::conforming      );
+    cmd.addInt( "DirichletStrategy", "", dirichlet::elimination );
+    gsGridHierarchy<> ghSpace = gsGridHierarchy<>::buildByCoarsening(mbY, bcY, cmd);
+    gsGridHierarchy<> ghTime  = gsGridHierarchy<>::buildByCoarsening(tiY, icY, cmd);
+    index_t szGhSpace = ghSpace.getTransferMatrices().size();
+    index_t szGhTime = ghTime.getTransferMatrices().size();
+
+    std::vector<gsSparseMatrix<real_t, RowMajor>> transfers;
+
+    GISMO_ENSURE( ghSpace.getTransferMatrices().size() > 0, "Need at least one transfer." );
+    GISMO_ENSURE( ghTime.getTransferMatrices().size() > 0, "Need at least one transfer." );
+
+    while (true)
+    {
+        const real_t B_norm = getOpNorm(matrixB);
+        const real_t C_norm = getOpNorm(matrixC);
+        gsInfo << "  B_norm: " << B_norm << ", C_norm: " << C_norm << ", ratio: " << B_norm/C_norm << "; ";
+        if (B_norm < C_norm)
+        {
+            if (szGhTime<1) {
+                gsInfo << "cannot coarsen in time.\n";
+                break;
+            }
+            else
+                gsInfo << "coarsen in time... " << std::flush;
+            info.append("t");
+            const index_t sz = szGhSpace>0 ? ghSpace.getTransferMatrices()[szGhSpace-1].rows() : ghSpace.getTransferMatrices()[szGhSpace].cols();
+            gsSparseMatrix<real_t,RowMajor> transferSpace(sz,sz); transferSpace.setIdentity();
+            gsSparseMatrix<real_t,RowMajor> transferTime = mkTimeEmbedding(ghTime.getTransferMatrices()[szGhTime-1]);
+            transfers.push_back( transferTime.kron(transferSpace) );
+            szGhTime -= 1;
+        }
+        else
+        {
+            if (szGhSpace<1) {
+                gsInfo << "cannot coarsen in space.\n";
+                break;
+            }
+            else
+                gsInfo << "coarsen in space... " << std::flush;
+            info.append("s");
+            gsSparseMatrix<real_t,RowMajor> transferSpace = ghSpace.getTransferMatrices()[szGhSpace-1];
+            const index_t sz = szGhTime>0 ? ghTime.getTransferMatrices()[szGhTime-1].rows() : ghTime.getTransferMatrices()[szGhTime].cols();
+            gsSparseMatrix<real_t,RowMajor> transferTime(sz-1,sz-1); transferTime.setIdentity();
+            transfers.push_back( transferTime.kron(transferSpace) );
+            szGhSpace -= 1;
+        }
+        // update
+        matrixB = transfers.back().transpose() * matrixB * transfers.back();
+        matrixC = transfers.back().transpose() * matrixC * transfers.back();
+        gsInfo << "done.\n";
+    }
+
+    std::reverse(transfers.begin(), transfers.end());
+
+    gsInfo << "  Have " << transfers.size() << " transfer matrices.\n";
+    GISMO_ENSURE( transfers.size() > 0, "Need at least one transfer." );
+
+    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( fineMatrix, transfers );
+    mg->setOptions(opt);
+    for (index_t i=1; i<mg->numLevels(); ++i)
+        mg->setSmoother(i, makeGaussSeidelOp(mg->matrix(i)));
+    gsInfo << "done.\n";
+
+    return mg;
+
+}
+
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
@@ -159,7 +262,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre smoothing steps (only for mg)", preSmooth);
     cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post smoothing steps (only for mg)", postSmooth);
     cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
-    cmd.addInt   ("y", "PreconderType",         "0=Direct, 1=FD in time and direct in space, 2=FD in time and multigrid in space", pcTypeIdx);
+    cmd.addInt   ("y", "PreconderType",         "0=Direct, 1=FD in time and direct in space, 2=FD in time and multigrid in space, 3=multigrid in space and time", pcTypeIdx);
     cmd.addInt   ("d", "DesiredState",          "0=const (like i.c), 1=follows parabolic proces", desiredStateIdx);
     cmd.addInt   ("",  "ControlSpace",          "0=Reduced continuity (1 for time, 2 for space); 1=equal to state space; "
                                                 "2=Reduced continuity for time, full for space", controlSpaceIdx);
@@ -183,7 +286,7 @@ int main(int argc, char *argv[])
 
     if (geoIdx<0          || geoIdx>=(int)(util::size(geos))         ) { gsInfo << "Unfeasible choice for --Geometry (-g).\n";        ok=false; }
     if (obsTypeIdx<0      || obsTypeIdx>=(int)(util::size(obstypes)) ) { gsInfo << "Unfeasible choice for --ObservationType (-o).\n"; ok=false; }
-    if (pcTypeIdx<0       || pcTypeIdx>2                             ) { gsInfo << "Unfeasible choice for --PreconderType (-y).\n";   ok=false; }
+    if (pcTypeIdx<0       || pcTypeIdx>3                             ) { gsInfo << "Unfeasible choice for --PreconderType (-y).\n";   ok=false; }
     if (desiredStateIdx<0 || desiredStateIdx>1                       ) { gsInfo << "Unfeasible choice for --DesiredState (-d).\n";    ok=false; }
     if (controlSpaceIdx<0 || controlSpaceIdx>2                       ) { gsInfo << "Unfeasible choice for --ControlSpace.\n";         ok=false; }
     if (!ok) return -1;
@@ -520,12 +623,23 @@ int main(int argc, char *argv[])
     gsLinearOperator<>::Ptr schur = gsSumOp<>::make( Mo, gsScaledOp<>::make( gsProductOp<>::make( LhT, MuInv, Lh ), alpha ) );
 
     gsLinearOperator<>::Ptr schurPreconder;
+    std::string mginfo;
     if (pcTypeIdx==0)
         schurPreconder = makeSparseCholeskySolver(gsSparseMatrix<>(gsSparseMatrix<>(time_massYo+alpha*time_stiffY).kron( space_massY ) + (kappa*kappa*alpha)*time_massY.kron(space_biharmY)));
     else if (pcTypeIdx==1)
         schurPreconder = fastDiagnonalization( time_massYo+alpha*time_stiffY, space_massY, (kappa*kappa*alpha)*time_massY, space_biharmY, gsSolverOp<gsSparseSolver<>::SimplicialLDLT>::make);
-    else // if (pcTypeIdx==2)
+    else if (pcTypeIdx==2)
         schurPreconder = fastDiagnonalization( time_massYo+alpha*time_stiffY, space_massY, (kappa*kappa*alpha)*time_massY, space_biharmY, makeMultiGridSolver{mbY, bcY, time_massY.rows(), cmd.getGroup("MG")});
+    else // if (pcTypeIdx==3)
+        schurPreconder = makeSpaceTimeMultiGridSolver(
+            time_massYo.kron(space_massY),
+            (kappa*kappa*alpha)*time_massY.kron(space_biharmY),
+            alpha*(time_stiffY.kron(space_massY)),
+            mbY, bcY,
+            tiY, icY,
+            cmd.getGroup("MG"),
+            mginfo
+        );
 
 
     // For initial conditions (as above)
@@ -551,8 +665,9 @@ int main(int argc, char *argv[])
                 fwPreconder = makeSparseCholeskySolver(gsSparseMatrix<>(gsSparseMatrix<>(time_stiffY).kron( space_massY ) + (kappa*kappa)*time_massY.kron(space_biharmY)));
             else if (pcTypeIdx==1)
                 fwPreconder = fastDiagnonalization( time_stiffY, space_massY, (kappa*kappa)*time_massY, space_biharmY, gsSolverOp<gsSparseSolver<>::SimplicialLDLT>::make);
-            else // if (pcTypeIdx==2)
+            else // if (pcTypeIdx==2) || (pcTypeIdx==3) // TODO
                 fwPreconder = fastDiagnonalization( time_stiffY, space_massY, (kappa*kappa)*time_massY, space_biharmY, makeMultiGridSolver{mbY, bcY, time_massY.rows(), cmd.getGroup("MG")});
+
             gsInfo << "Compute parabolic desired state..." << std::flush;
             gsMatrix<> rhs;
             Lh->apply(-Lh_ic.transpose()*initialConditionY, rhs);
@@ -749,7 +864,8 @@ int main(int argc, char *argv[])
                 "Y_spaceDofs\t"
                 "Y_timeDofs\t"
                 "U_spaceDofs\t"
-                "U_timeDofs\n";
+                "U_timeDofs\t"
+                "mginfo\n";
 
         outfile << "parabolic_oc_example\t"
             << geoIdx << "\t"
@@ -765,8 +881,10 @@ int main(int argc, char *argv[])
             outfile << "direct\t";
         else if (pcTypeIdx==1)
             outfile << "fd-d\t";
-        else //if (pcTypeIdx==2)
+        else if (pcTypeIdx==2)
             outfile << "fd-mg-" << cycles << "-" << preSmooth << "-" << postSmooth << "\t";
+        else //if (pcTypeIdx==3)
+            outfile << "st-mg-" << cycles << "-" << preSmooth << "-" << postSmooth << "\t";
         outfile
             << iter1 << "\t"
             << cond1 << "\t"
@@ -775,7 +893,8 @@ int main(int argc, char *argv[])
             << space_massY.rows() << "\t"
             << time_massY.rows() << "\t"
             << space_massU.rows() << "\t"
-            << time_massU.rows() << "\n";
+            << time_massU.rows() << "\t"
+            << mginfo << "\n";
     }
 
     {

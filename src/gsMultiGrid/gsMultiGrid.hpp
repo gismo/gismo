@@ -319,7 +319,7 @@ void gsMultiGridOp<T>::setOptions(const gsOptionList & opt)
     m_symmSmooth       = opt.askSwitch("SymmSmooth"                  , m_symmSmooth      );
 
     const index_t nc   = opt.askInt   ("NumCycles"                   , -1                );
-    if (nc > -1)
+    if (nc > -1 && m_nLevels >1 )
     {
         m_numCycles.setConstant(m_nLevels-1, nc);
         // The direct solver on coarsest level is only invoked once
