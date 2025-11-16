@@ -1797,6 +1797,15 @@ private:
         return os;
     }
 
+public: // Extract spline functions
+
+    gsMultiPatch<> asSpline(int deg) const;
+
+private:
+
+gsMultiPatch<> asOddSpline (int deg) const;
+gsMultiPatch<> asEvenSpline(int deg) const;
+
 public: // Doo-Sabin functions
 
     /// Doo-Sabin subdivision

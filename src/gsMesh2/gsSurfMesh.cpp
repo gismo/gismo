@@ -49,17 +49,10 @@ gsSurfMesh(const gsMatrix<Scalar> & pts)
         this->add_vertex(col);
 }
 
-//-----------------------------------------------------------------------------
-
-
 gsSurfMesh::
 ~gsSurfMesh()
 {
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh&
 gsSurfMesh::
@@ -96,11 +89,6 @@ operator=(const gsSurfMesh& rhs)
 
     return *this;
 }
-
-
-
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh&
 gsSurfMesh::
@@ -153,10 +141,8 @@ assign(const gsSurfMesh& rhs)
 
     return *this;
 }
-//-----------------------------------------------------------------------------
-gsSurfMesh&
-gsSurfMesh::
-operator=(gsSurfMesh&& rhs) noexcept
+
+gsSurfMesh& gsSurfMesh::operator=(gsSurfMesh&& rhs) noexcept
 {
     if (this != &rhs)
     {
@@ -194,10 +180,6 @@ operator=(gsSurfMesh&& rhs) noexcept
     
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 bool
 gsSurfMesh::
 read(const std::string& filename)
@@ -205,20 +187,12 @@ read(const std::string& filename)
     return read_mesh(*this, filename);
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 bool
 gsSurfMesh::
 write(const std::string& filename) const
 {
     return write_mesh(*this, filename);
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -236,10 +210,6 @@ clear()
     garbage_ = false;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 free_memory()
@@ -250,10 +220,6 @@ free_memory()
     fprops_.free_memory();
     mprops_.free_memory();
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -267,10 +233,6 @@ reserve(unsigned int nvertices,
     fprops_.reserve(nfaces);
     mprops_.reserve(1);
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -298,10 +260,6 @@ property_stats() const
     for (unsigned int i=0; i<props.size(); ++i)
         std::cout << "\t" << props[i] << std::endl;
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh::Vertex
 gsSurfMesh::
@@ -375,10 +333,6 @@ add_triangle(Vertex v0, Vertex v1, Vertex v2)
     add_face_vertices_[2] = v2;
     return add_face(add_face_vertices_);
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 gsSurfMesh::Face
 gsSurfMesh::
@@ -584,10 +538,6 @@ add_face(const std::vector<Vertex>& vertices)
     return f;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 unsigned int
 gsSurfMesh::
 valence(Vertex v) const
@@ -620,9 +570,6 @@ hcount(Vertex v, const Halfedge_property<bool>  & prop) const
     return count;
 }
 
-//-----------------------------------------------------------------------------
-
-
 unsigned int
 gsSurfMesh::
 valence(Face f) const
@@ -652,9 +599,6 @@ face_valence_sum() const
     return count;
 }
 
-//-----------------------------------------------------------------------------
-
-
 bool
 gsSurfMesh::
 is_triangle_mesh() const
@@ -666,10 +610,6 @@ is_triangle_mesh() const
 
     return true;
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 bool
 gsSurfMesh::
@@ -683,10 +623,6 @@ is_quad_mesh() const
     return true;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 triangulate()
@@ -699,10 +635,6 @@ triangulate()
     for (; fit!=fend; ++fit)
         triangulate(*fit);
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -749,10 +681,6 @@ triangulate(Face f)
 
     set_face(base_h, f);
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -873,20 +801,12 @@ gsSurfMesh::compute_vertex_normal(Vertex v) const
     return nn;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 gsSurfMesh::Scalar
 gsSurfMesh::
 edge_length(Edge e) const
 {
     return (vpoint_[vertex(e,0)] - vpoint_[vertex(e,1)]).norm();
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -1054,9 +974,6 @@ void gsSurfMesh::quad_split()
 
 }
 
-//-----------------------------------------------------------------------------
-
-
 gsSurfMesh::Halfedge
 gsSurfMesh::
 split(Edge e, Vertex v)
@@ -1156,10 +1073,6 @@ split(Edge e, Vertex v)
     return t1;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 gsSurfMesh::Halfedge
 gsSurfMesh::
 insert_vertex(Halfedge h0, Vertex v)
@@ -1195,6 +1108,16 @@ insert_vertex(Halfedge h0, Vertex v)
     set_vertex(h1, v2);
     set_face(h1, fh);
 
+    const bool do_sharp = hprops_.has("h:sharp");
+    if (do_sharp) //inherit sharp flag to new halfedges
+    {
+        Halfedge_property<bool> sharp = get_halfedge_property<bool>("h:sharp");
+        if( sharp[h0])
+            sharp[h1] = true;
+        if( sharp[o0])
+            sharp[o1] = true;
+    }
+
     set_next_halfedge(o1, o0);
     set_next_halfedge(o2, o1);
     set_vertex(o1, v);
@@ -1212,9 +1135,6 @@ insert_vertex(Halfedge h0, Vertex v)
 
     return o1;
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 gsSurfMesh::Halfedge
@@ -1256,10 +1176,6 @@ insert_edge(Halfedge h0, Halfedge h1)
     return h4;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 bool
 gsSurfMesh::
 is_flip_ok(Edge e) const
@@ -1283,10 +1199,6 @@ is_flip_ok(Edge e) const
 
     return true;
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -1339,10 +1251,6 @@ flip(Edge e)
     if (halfedge(vb0) == a0)
         set_halfedge(vb0, b1);
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 bool
 gsSurfMesh::
@@ -1404,10 +1312,6 @@ is_collapse_ok(Halfedge v0v1)
     return true;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 collapse(Halfedge h)
@@ -1426,10 +1330,6 @@ collapse(Halfedge h)
     if (next_halfedge(next_halfedge(o1)) == o1)
         remove_loop(o1);
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -1484,10 +1384,6 @@ remove_edge(Halfedge h)
     garbage_ = true;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 remove_loop(Halfedge h)
@@ -1537,10 +1433,6 @@ remove_loop(Halfedge h)
     garbage_ = true;
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 delete_vertex(Vertex v)
@@ -1576,10 +1468,6 @@ delete_vertex(Vertex v)
     }
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 void
 gsSurfMesh::
 delete_edge(Edge e)
@@ -1592,9 +1480,6 @@ delete_edge(Edge e)
     if (f0.is_valid()) delete_face(f0);
     if (f1.is_valid()) delete_face(f1);
 }
-
-
-//-----------------------------------------------------------------------------
 
 void
 gsSurfMesh::
@@ -1710,10 +1595,6 @@ delete_face(Face f)
 
     garbage_ = true;
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void
 gsSurfMesh::
@@ -1867,6 +1748,41 @@ inline bool gsSurfMesh::has_flag(Vertex v,
     return false;
 }
 
+gsMultiPatch<> gsSurfMesh::asOddSpline(int deg) const
+{
+    GISMO_ASSERT(deg%2==1, "Expecting odd degree.");
+    gsMultiPatch<> res;
+
+    
+    return res;
+}
+
+gsMultiPatch<> gsSurfMesh::asEvenSpline(int deg) const
+{
+    GISMO_ASSERT(deg%2==1, "Expecting even degree.");
+    gsMultiPatch<> res;
+    const std::vector<gsSurfMesh::Point> & pt = pointsVec();
+    gsMatrix<> coefs( (deg+1)*(deg+1),3);
+    int r = deg/2;
+    int n;
+    for (auto v : vertices())
+    {
+        n = valence(v);
+        if (4==n)
+        {
+            
+        }
+    }
+
+
+    return res;
+}
+
+gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
+{
+    return (deg%2==0) ? asEvenSpline(deg) : asOddSpline(deg);
+}
+    
 void gsSurfMesh::cc_subdivide()
 {
     gsSurfMesh::Vertex v;
