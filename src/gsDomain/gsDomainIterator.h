@@ -235,6 +235,8 @@ public:
 
     inline index_t patch() const {return m_domainIter->patch();}
 
+    inline index_t localId() const {return m_domainIter->localId();}
+    
     /// Fetches data of integer type based on string label
     const index_t & label(const std::string & _label)
     {return m_domainIter->label(_label); }
@@ -263,7 +265,7 @@ public:
 
     virtual uPtr clone() const { GISMO_NO_IMPLEMENTATION }
 
-    void setPatch(index_t k) { m_pside.patch = k; }
+    //void setPatch(index_t k) { m_pside.patch = k; }
 
 private:
 
@@ -309,6 +311,9 @@ public:
 
     /// Returns the element id -- see also patch() for the patch index
     size_t id() const   { return m_id; }
+
+    /// Returns the local element id -- e.g. the id inside the patch
+    virtual size_t localId() const { return m_id; }
 
     /// Return dimension of the elements
     short_t dim() const   { return centerPoint().size(); }

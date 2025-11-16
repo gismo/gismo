@@ -26,12 +26,9 @@ template <typename T> size_t write(FILE* out, T& t)
     return fwrite((char*)&t, 1, sizeof(t), out);
 }
 
-
-//-----------------------------------------------------------------------------
-
-
 bool read_poly(gsSurfMesh& mesh, const std::string& filename)
 {
+    typedef gsSurfMesh::Point Point;
     // open file (in binary mode)
     FILE* in = fopen(filename.c_str(), "rb");
     if (!in) return false;
@@ -78,13 +75,11 @@ bool read_poly(gsSurfMesh& mesh, const std::string& filename)
 }
 
 
-//-----------------------------------------------------------------------------
-
-
 bool write_poly(const gsSurfMesh& mesh, const std::string& filename)
 {
+    typedef gsSurfMesh::Point Point;
     // check for colors
-    auto color = mesh.get_vertex_property<Color>("v:color");
+    auto color = mesh.get_vertex_property<Point>("v:color");
     bool has_colors = color;
 
 
@@ -120,7 +115,7 @@ bool write_poly(const gsSurfMesh& mesh, const std::string& filename)
     fwrite((char*)fconn.data(), sizeof(gsSurfMesh::Face_connectivity),     nf, out);
     fwrite((char*)point.data(), sizeof(Point),                               nv, out);
 
-    if (has_colors) fwrite((char*)color.data(), sizeof(Color), nv, out);
+    if (has_colors) fwrite((char*)color.data(), sizeof(Point), nv, out);
 
     fclose(out);
 
@@ -128,6 +123,4 @@ bool write_poly(const gsSurfMesh& mesh, const std::string& filename)
 }
 
 
-//=============================================================================
 } // namespace gismo
-//=============================================================================

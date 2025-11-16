@@ -62,6 +62,8 @@ public:
 
 private:
 
+    virtual size_t localId() const { return m_cur.id(); }
+
     void next() override
     {
         //note: we cannot rely on this->id()
