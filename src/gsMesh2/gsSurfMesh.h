@@ -1207,6 +1207,9 @@ public:
     inline Halfedge forward_halfedge(gsSurfMesh::Halfedge he) const
     { return next_halfedge(opposite_halfedge(next_halfedge(he))); }
 
+    inline Halfedge backward_halfedge(gsSurfMesh::Halfedge he) const
+    { return prev_halfedge(opposite_halfedge(prev_halfedge(he))); }
+
 public:
 
     /// return whether vertex \c v is valid, i.e. the index it stores is within the array bounds.
@@ -1803,8 +1806,7 @@ public: // Extract spline functions
 
 private:
 
-gsMultiPatch<> asOddSpline (int deg) const;
-gsMultiPatch<> asEvenSpline(int deg) const;
+    memory::unique_ptr<gsGeometry<> > asPatch(Halfedge h, int deg) const;
 
 public: // Doo-Sabin functions
 

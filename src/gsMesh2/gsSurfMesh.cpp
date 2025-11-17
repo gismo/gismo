@@ -1748,41 +1748,76 @@ inline bool gsSurfMesh::has_flag(Vertex v,
     return false;
 }
 
-gsMultiPatch<> gsSurfMesh::asOddSpline(int deg) const
+gsGeometry<>::uPtr gsSurfMesh::asPatch(gsSurfMesh::Halfedge h, int deg) const
 {
-    GISMO_ASSERT(deg%2==1, "Expecting odd degree.");
-    gsMultiPatch<> res;
+    static gsKnotVector<> kv;
+    kv.initUniform(0, 1, 0, 1, 1, deg);
+    static gsTensorBSplineBasis<2> bs;
+    bs = { kv,kv };
+    static gsMatrix<> coefs;
+    coefs.resize( (deg+1)*(deg+1), 3);
 
-    
-    return res;
-}
+    Halfedge hh;
+    index_t c = 0;
 
-gsMultiPatch<> gsSurfMesh::asEvenSpline(int deg) const
-{
-    GISMO_ASSERT(deg%2==1, "Expecting even degree.");
-    gsMultiPatch<> res;
-    const std::vector<gsSurfMesh::Point> & pt = pointsVec();
-    gsMatrix<> coefs( (deg+1)*(deg+1),3);
-    int r = deg/2;
-    int n;
-    for (auto v : vertices())
+    for (index_t i = 0; i<(deg/2); ++i)
     {
-        n = valence(v);
-        if (4==n)
-        {
-            
-        }
+        h = backward_halfedge(h);
+        h = next_halfedge(next_halfedge(opposite_halfedge(h)));
     }
 
-
-    return res;
+    for (int j = 0; j<deg; ++j)
+    {
+        coefs.row(c++) = vpoint_[from_vertex(h)];
+        coefs.row(c++) = vpoint_[  to_vertex(h)];
+        hh = h;
+        for (int i = 1; i<deg; ++i)
+        {
+            hh = forward_halfedge(hh);
+            coefs.row(c++) = vpoint_[to_vertex(hh)];
+        }
+        h = ccw_rotated_halfedge((prev_halfedge(h)));
+    }
+    //last row
+    coefs.row(c++) = vpoint_[from_vertex(h)];
+    coefs.row(c++) = vpoint_[  to_vertex(h)];
+    hh = h;
+    for (int i = 1; i<deg; ++i)
+    {
+        hh = opposite_halfedge( prev_halfedge( opposite_halfedge(
+             prev_halfedge( opposite_halfedge(hh) ))));
+        coefs.row(c++) = vpoint_[to_vertex(hh)];
+    }
+    return bs.makeGeometry(coefs);
 }
 
 gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
 {
-    return (deg%2==0) ? asEvenSpline(deg) : asOddSpline(deg);
+    gsMultiPatch<> res;
+    int n;
+
+    if ( 0 == deg%2 )
+        for (auto v : vertices())
+        {
+            n = valence(v);
+            if (4==n)
+                res.addPatch( asPatch(halfedge(v), deg) );
+        }
+    else // 1 == deg%2
+        for (auto f : faces())
+        {
+            for ( auto v : vertices(f) )
+            {
+                n = valence(v);
+                if ( n!=4 ) break;
+            }
+            if (4==n)
+                res.addPatch( asPatch(halfedge(f), deg) );
+        }
+
+    return res;
 }
-    
+
 void gsSurfMesh::cc_subdivide()
 {
     gsSurfMesh::Vertex v;
