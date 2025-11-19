@@ -1,6 +1,6 @@
-/** @file 3DMonge_Ampere_example.cpp
+/** @file r_refinement_example.cpp
 
-    @brief Tutorial on how to use compute the Monge-Ampere mapping  for r-refinement in two and three dimensions.
+    @brief Tutorial on how to use compute the Monge-Ampere mapping for adaptive mesh in two and three dimensions.
 
     This file is part of the G+Smo library.
 
@@ -23,56 +23,73 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot           = false;
-    index_t numRefine   = 0;
+    index_t numRefine   = 2;
     index_t numLRefine  = 1;
     index_t numRefineMAE= 3;
     index_t numReduce   = 0;
     index_t numElevate  = 0;
-    index_t maxIter     = 30;
-    index_t elevDegree  = 2; // degree elevation for the composition of geometry maps
+    index_t maxIter     = 50;
+    index_t elevDegree  = 0; // degree elevation for the composition of geometry maps
     double IntensityMAE = 9.;
     double quadValue    = 4.0;
-    bool export_b64     = false;
+    bool bs_nrbs        = false;
     bool last           = true;
+    bool colloc         = false;
+    bool fit            = false;
+    // gsStopwatch timer;
+    // timer.restart();
+
     // Specify the file path
     // std::string fn("pde/example3D.xml");
     // std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
-    // std::string fn("pde/quart_annulus.xml");
+    std::string fn("pde/bsimple.xml");
     // std::string fn("pde/infinit_plate.xml");
-    std::string fn("pde/circle.xml");
-    // std::string fn("pde/mhd.xml");
+    // std::string fn("pde/circle.xml");
     // std::string fn("surfaces/egg.xml"); 
     // std::string fn("domain2d/lake.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
-    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree Elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "v", "elevDegree",
-                "Number of degree Elevation steps to perform fro the composition (0: equalize degree in all directions)", elevDegree );
-    cmd.addInt( "r", "degreeRedution",
-                "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", numReduce );
-    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
-    cmd.addInt( "m", "uniformRefineMAE", "Number of Uniform h-refinement loops for MAE mapping",  numRefineMAE );
-    cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
-
-    cmd.addString( "d", "file", "Input XML file data", fn );
-    cmd.addInt("quRule",
-                 "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-                 1);
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", 
+                maxIter);
+    cmd.addInt( "e", "degreeElevation", "Number of degree Elevation steps to perform before solving (0: equalize degree in all directions)", 
+                numElevate );
+    cmd.addInt( "v", "elevDegree", "Number of degree Elevation steps to perform fro the composition (0: equalize degree in all directions)", 
+                elevDegree );
+    cmd.addInt( "r", "degreeRedution", "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", 
+                numReduce );
+    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  
+                numRefine );
+    cmd.addInt( "m", "uniformRefineMAE", "Number of Uniform h-refinement loops for MAE mapping",  
+                numRefineMAE );
+    cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  
+                numLRefine );
+    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  
+                IntensityMAE);
+    cmd.addReal("q","quadValue", "Quadrature rule number of  points in each direction", 
+                quadValue);
+    cmd.addString( "d", "file", "Input XML file data", 
+                fn );
+    cmd.addInt("quRule", "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
+                1);
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", 
+                plot);
+    cmd.addSwitch("nrb", "basis use nrubs or bspline format",
+                bs_nrbs);
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement",
-                  last);
-    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
-    cmd.addReal("q","quadValue", "Quadrature rule number of  points in each direction", quadValue);
-
+                last);
+    cmd.addSwitch("colloc", "Compute the the compodition using collocation method",
+                colloc);                
+    cmd.addSwitch("fit", "Use fitting to compute the composition",
+                fit);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
+    if(fit)
+      bs_nrbs = true;// fitting doesn't support nurbs format
     // Load the file
     gsFileData<> fd(fn);
     // ...
-    gsMultiPatch<> mpLeft, PsiF;// Initial geometry and the resluted adaptive mapping
+    gsMultiPatch<> mpLeft, mpPsi;// Initial geometry and the resluted adaptive mapping
     fd.getId(1,mpLeft);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
@@ -83,8 +100,6 @@ int main(int argc, char *argv[])
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    //mpLeft.patch(0).coefs() *= coef_V;
-    mpLeft.degreeElevate(numElevate);
     mpLeft.computeTopology();
     
     // Right-hand side function : Analytical density function rho_1
@@ -94,9 +109,11 @@ int main(int argc, char *argv[])
     gsInfo<<"Density function "<< f << "\n";
 
     //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, false);//true: poly-splines (not NURBS)
-    if (dbasis.degree()-numReduce >= 1)
-        dbasis.degreeReduce(numReduce);
+    gsMultiBasis<double> dbasis(mpLeft, bs_nrbs);//true: poly-splines (not NURBS)
+    // Elevate and p-refine the basis to order p + numElevate
+    // where p is the highest degree in the bases
+    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     A.options().setReal("quA", quadValue);
@@ -104,115 +121,101 @@ int main(int argc, char *argv[])
     A.options().setSwitch("SameElement",false);
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
+    // Elements used for numerical integration
+    A.setIntegrationElements(dbasis);
+    gsExprEvaluator<> ev(A);
+
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
-    //::::::::::::::::::::      mesh adaptation solver         :::::::::::::::::::::::::
-    // while (dbasis.basis(0).numElements()<1e2)
-    // {
-    //     dbasis.uniformRefine();
-    //     //mpLeft.uniformRefine();
-    // }
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###                                  Step r* : Computes the density function
+    ###                                     and the multipatch adaptive mapping from a given mesh
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduce);
+    auto density        = MAE.buildAnalyticDensity(f); // build the density function (we avoid composing rho o F o Psi here)
+    MAE.buildMultiPatch(density, 1e-8);// build the adaptive mapping
+    // //------------------------------------
+    geometryMap G       = A.getMap(mpLeft);
+    geometryMap PP      = A.getMap(MAE.MAmapping);
+    auto Cmp            = A.getCoeff(mpLeft, PP);
+
     // h-refine each basis
     if (last)
     {
         for (int r =0; r < numRefine; ++r){
             dbasis.uniformRefine();
-            //mpLeft.uniformRefine();
         }
         numRefine = 0;
     }
     // ... 
-    gsVector<>  h1err(numRefine+1), l2err(numRefine+1), l3err(numRefine+1), Ih1err(numRefine+1), Il2err(numRefine+1);
+    gsVector<>  Bdrerr(numRefine+1), Volerr(numRefine+1)// L2 projection errors
+                // , CVolerr(numRefine+1)
+                , IBdrerr(numRefine+1), IVolerr(numRefine+1)// Interpolation errors
+                , FBdrerr(numRefine+1), FVolerr(numRefine+1);// Fitting errors
     gsVector<int>  DoFPDE(numRefine+1);
     for (int r=0; r<= numRefine; ++r)
     {
     dbasis.uniformRefine();
-    // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
-
-    gsStopwatch timer;
-    timer.restart();
 
     //... some infos on the computational domain
-    auto corners         = dbasis.basis(0).support();
-    gsInfo << "numElement :" << dbasis.basis(0).numElements() << " degree " << dbasis.degree() <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() <<"\n";
-    gsInfo << "corners : (";
-    for (index_t i = 0; i < dbasis.dim()-1; i++)
-    {
-      gsInfo << corners.at(i)<< ",";
-    }
-    gsInfo << corners.at(dbasis.dim()-1)<<"),(";
-    for (index_t i = 0; i < dbasis.dim()-1; i++)
-    {
-      gsInfo << corners.at(dbasis.dim()+i)<< ",";            
-    }
-    gsInfo <<  corners.at(2*dbasis.dim()-1)<< ")\n";
+    gsInfo << r <<"th iter:{ numElement " << dbasis.basis(0).numElements() << " degree " << dbasis.degree() 
+            <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() <<"}-----------------------------------------------\n";
 
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###                                  Step 1-2 : Computes the density function
-    ###                                     and the multipatch adaptive mapping
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduce = numReduce);
-    auto density        = MAE.buildAnalyticDensity(f);
-    MAE.buildMultiPatch(density);// build the adaptive mapping
-    // //------------------------------------
-    geometryMap G       = A.getMap(mpLeft);
-    geometryMap PP      = A.getMap(MAE.MAmapping);
-    auto comp           = A.getCoeff(mpLeft, PP);    
-    PsiF                = MAE.buildCompMultiPatch(dbasis, elevDegree); //composition of geometry maps
-    PsiF.computeTopology();
-    geometryMap PPF = A.getMap(PsiF);
-    //------------------------------------ Interpolation of the mapping by collocation method !!!
-    // gsMultiBasis<> d2basis = dbasis;//true: poly-splines (not NURBS)
-    // d2basis.degreeElevate(elevDegree);
-    // gsMatrix<> intGrid = d2basis.basis(0).anchors();
-    // // Evaluate f at the Greville points
-    // gsMatrix<> intfavlues = Psitp.patch(0).eval(intGrid);
-    // gsMatrix<> fValues    = mpLeft.patch(0).eval(intfavlues);
-    // gsGeometry<>::uPtr interpolant = d2basis.basis(0).interpolateAtAnchors(fValues);
-    // // extract the mapping
-    // gsFileData<> fd;
-    // gsMultiPatch<> PsiFInt;
-    // PsiFInt.addPatch(give(interpolant));
-    // gsWrite(PsiFInt,"Psi");
-    // gsInfo << "Degree of the interpolated mapping " << PsiFInt.patch(0).basis().degree(0) << PsiF.patch(0).basis().degree(0) << "\n";
-    // geometryMap PGI = A.getMap(PsiFInt);
-    // gsInfo << "Composition of geometry maps computed\n";EIGEN_PI*coef_V*coef_V
-    // // ...
-    DoFPDE[r] = dbasis.basis(0).size();
-    gsInfo << "DOF of the PDE space: "<< DoFPDE[r] <<"\n";
-    // timer.restart();
-    // ...
-    std::cout << std::setprecision(15);
-    std::cout << "Error analysis of various parameterizations\n";
-    l3err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(comp).det()*jac(PP).det() ) ));
-    std::cout << "Comp:   geometry volume  : "<< l3err[r] <<"\n";
-    // ... Error using projection method
-    l2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PPF)) ));
-    h1err[r]  = math::sqrt(ev.integralBdr((PPF-comp).sqNorm()));
-    std::cout << "GPP :   geometry volume  : "<< l2err[r]  <<"\n";
-    std::cout << "GPP :   geometry boundary: "<<  h1err[r]  <<"\n";
-    // // ... Error using Interpolation method
-    // Il2err[r]  = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
-    // Ih1err[r]  = math::sqrt(ev.integralBdr((PGI-PG).sqNorm())); 
-    // std::cout << "GPI :   geometry volume  : "<<  Il2err[r] <<"\n";
-    // std::cout << "GPI :   geometry boundary: "<<  Ih1err[r] <<"\n";
+    //----------------------------------------------------------------------
+    // ... computes the composition of geometry maps L^2-projection method !
+    //----------------------------------------------------------------------
+    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue);
+    geometryMap GPi = A.getMap(mpPsi);
+    //--------------------------------------
+    // ... Error analysis
+    //--------------------------------------
+    DoFPDE[r]       = dbasis.basis(0).size();
+    // CVolerr[r]      = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(Cmp).det()*jac(PP).det() ) ));
+    Volerr[r]       = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));
+    Bdrerr[r]       = math::sqrt(ev.integral((GPi-Cmp).sqNorm()));
+
+    if (colloc){
+    //---------------------------------------------------------- 
+    //...Interpolation of the mapping by collocation method !
+    //----------------------------------------------------------
+    gsMultiPatch<> mpPsiInt = MAE.buildColCompMultiPatch(dbasis);
+    geometryMap PGI         = A.getMap(mpPsiInt);
+    // ... Error using Interpolation method
+    IVolerr[r]      = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
+    IBdrerr[r]      = math::sqrt(ev.integral((PGI-Cmp).sqNorm())); 
+    }
+
+    if(fit){
+    //---------------------------------------------------------- 
+    //...Interpolation of the mapping by fit method !
+    //----------------------------------------------------------
+    gsMultiPatch<> mpPsiFit = MAE.buildFitCompMultiPatch(dbasis);
+    geometryMap PGF         = A.getMap(mpPsiFit);
+    // ... Error analysis
+    FVolerr[r]      = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
+    FBdrerr[r]      = math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
+    }
     }
 
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
     std::ofstream outFile("errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
     if (outFile.is_open())
     {
-        outFile << "#DoF_PDE:  \n"<< std::scientific << DoFPDE.transpose() << "\n";
-        outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
-        outFile << "#B_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
-        // outFile << "#INTERPOL V_error: \n" << std::scientific << std::setprecision(3) << Il2err.transpose() << "\n";
-        // outFile << "#INTERPOL B_error: \n" << std::scientific << std::setprecision(3) << Ih1err.transpose() << "\n";
-        outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << l3err.transpose() << "\n";
+        outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduce <<"\n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << Volerr.transpose() << "\n";
+        outFile << "#L_error: \n" << std::scientific << std::setprecision(3) << Bdrerr.transpose() << "\n";
+        if (colloc){
+        outFile << "#INTERPOL V_error: \n" << std::scientific << std::setprecision(3) << IVolerr.transpose() << "\n";
+        outFile << "#INTERPOL L_error: \n" << std::scientific << std::setprecision(3) << IBdrerr.transpose() << "\n";
+        }
+        if (fit){
+        outFile << "#FITTING V_error: \n" << std::scientific << std::setprecision(3) << FVolerr.transpose() << "\n";
+        outFile << "#FITTING L_error: \n" << std::scientific << std::setprecision(3) << FBdrerr.transpose() << "\n";
+        }
+        // outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << CVolerr.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
         gsInfo << "Error analysis results appended to errorGeometry_analysis.txt.\n";
@@ -222,30 +225,54 @@ int main(int argc, char *argv[])
         gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
     }
     //------------------------------------    
+    //! [Error and convergence rates]
+    // --- Print header ---
+    gsInfo << std::setw(12) << "DoFs" << " & "
+        //  << std::setw(13) << "V(F∘Ψ)"     << " & "
+         << std::setw(13) << "V(Πp(F'))"  << " & "
+         << std::setw(13) << "L2(Πp(F'))" << " & "
+         << std::setw(6)  << "EOcl2"      << "\n";
+    gsInfo << std::string(50, '-') << "\n";
+    // --- Print table row by row ---
+    auto orderofConv = ( Bdrerr.head(numRefine).array() /
+                  Bdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+    gsInfo << std::setw(12) << DoFPDE[0] << " & "
+            // << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< Volerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[0] << "&"
+            << std::setw(12) << "--" << "\n";
+    for (int i = 1; i <= numRefine; i++) {
+        gsInfo << std::setw(12) << DoFPDE[i] << " & "
+            //  << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Volerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[i] << "&"
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << "\n";
+            }
+
     //! [Export visualization in ParaView] 
     if (plot)
     {
         gsMultiPatch<> Psi;
-        if ( !PsiF.basis(0).weights().isOnes(1e-6)){
+        if ( mpPsi.basis(0).weights().any()){
             gsInfo<<"Rational mapping \n";
         if (mpLeft.dim()== 3){
-        for(size_t i =0; i<PsiF.nPatches(); ++i)
-            Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(PsiF.patch(i)) ));
+        for(size_t i =0; i<mpPsi.nPatches(); ++i)
+            Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(mpPsi.patch(i)) ));
         }
         else{
-        for(size_t i =0; i<PsiF.nPatches(); ++i)
-            Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(PsiF.patch(i)) ));
+        for(size_t i =0; i<mpPsi.nPatches(); ++i)
+            Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpPsi.patch(i)) ));
         }
         }
         else{
             gsInfo<<"nonRational mapping \n";
         if (mpLeft.dim()== 3){
-        for(size_t i =0; i<PsiF.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(PsiF.patch(i)) ));
+        for(size_t i =0; i<mpPsi.nPatches(); ++i)
+            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(mpPsi.patch(i)) ));
         }
         else{
-        for(size_t i =0; i<PsiF.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(PsiF.patch(i)) ));            
+        for(size_t i =0; i<mpPsi.nPatches(); ++i)
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpPsi.patch(i)) ));            
         }
         }
         Psi.addAutoBoundaries();
@@ -258,7 +285,7 @@ int main(int argc, char *argv[])
         gsExprEvaluator<> ev(A);
         // ...
         geometryMap PPsi = A.getMap(Psi);
-        auto ff_TG      = A.getCoeff(f, PPsi);
+        auto ff_TG       = A.getCoeff(f, PPsi);
         // --------------- adaptive refinement ---------------
         // Specify cell-marking strategy...
         MarkingStrategy adaptRefCrit = PUCA;
@@ -274,7 +301,7 @@ int main(int argc, char *argv[])
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
             ev.integralElWise( ff_TG.val() );
-            //ev.integralElWise( 1/jac(PPF).absDet() );
+            //ev.integralElWise( 1/jac(GPi).absDet() );
 
             const std::vector<real_t> eltErrs  = ev.elementwise();
             //! [errorComputation]
@@ -294,7 +321,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
-        collection.options().setSwitch("base64", export_b64);
+        collection.options().setSwitch("base64", false);
         collection.options().setInt("plotElements.resolution", 16);
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(&Psi);
@@ -310,23 +337,7 @@ int main(int argc, char *argv[])
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
-    //! [Export visualization in ParaView]
-    //! [Error and convergence rates]
-    gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
-    gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
-    //! [Error and convergence rates]
-    if (numRefine>0)
-    {
-        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-              <<  ( l2err.head(numRefine).array()  /
-                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
-                   <<"\n";
 
-        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
-              <<( h1err.head(numRefine).array() /
-                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
-    }
     return EXIT_SUCCESS;
 
 

@@ -21,6 +21,14 @@ using namespace gismo;
 class GISMO_EXPORT gsAdaptiveMultiPatchBuilder
 {
 public:
+
+    /** @brief gsAdaptiveMultiPatchBuilder: Main constructor of the r-refinement class
+    * @param mapping initial geometry mapping
+    * @param numRefine number of uniform refinement steps to perform on the basis before solving
+    * @param maxIter maximum number of iterations for the Picard loop
+    * @param IntensityMAE intensity of the density function for the Monge-Ampere problem
+    * @param numReduce number of degree reduction steps to perform on the basis before solving
+    */
     // Constructor
     gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,
                                 index_t numRefine   = 0,
@@ -55,11 +63,17 @@ public:
     //  functions to build mapping from density
     //-----------------------------------------
     // Method to build a multipatch Monge-Ampere mapping
-    void buildMultiPatch(const gsMultiPatch<> &density) const;
+    void buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE = 1e-5) const;
 
-    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps
-    gsMultiPatch<> buildCompMultiPatch(gsMultiBasis<> Cbasis, int degreeEl = 0) const;
+    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : L2-projection
+    gsMultiPatch<> buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue = 1) const;
 
+    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : fitting
+    gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 10, const real_t lambda = 0.) const;
+
+    // computes the projection of a composition and return a MultiPatch object :: Collocation
+    gsMultiPatch<> buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const;
+    
     //----------------------------------------
     // Useful functions for time moving meshes
     //----------------------------------------

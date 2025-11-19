@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     index_t numElevate    = 0;
     index_t maxIter       = 50;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
-    double IntensityMAE   = 12.;
+    double IntensityMAE   = 10.;
     bool export_b64       = false;
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     real_t  adaptRefParamMAE = 0.7; // ... adapt parameter for MAE mapping.
     // Specify the file path
     // std::string fn("pde/quart_annulus.xml");
-    // std::string fn("pde/circle.xml");
-    std::string fn("pde/lshape.xml");
+    std::string fn("pde/circle.xml");
+    // std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     // std::string fn("pde/example3D.xml");
     // std::string fn("volumes/GshapedVolume.xml"); 
@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
         std::vector<real_t> eltErrs  = ev.elementwise();            
         // ... compute MAE mapping from a given error distribution
         std::vector<bool> eldensityMarked( eltErrs.size() );
-        gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.9, eldensityMarked);                 
+        gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.85, eldensityMarked);                 
         auto density   = MAE.buildDensity( dbasis, eldensityMarked);
         MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
         Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
@@ -273,11 +273,30 @@ int main(int argc, char *argv[])
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
 
             if (IntensityMAE >1.){
+                // if (MAE.DoFs < 2e3)
+                //     MAE.uniformRefine();
                 std::vector<bool> eldensityMarked( eltErrs.size() );
                 gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);                 
-                auto density   = MAE.buildDensity( dbasis, eldensityMarked);
+                auto density   = MAE.buildDensity( dbasis, eldensityMarked, r);
                 MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
                 Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
+                // -----------------
+                double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+                for(size_t i=0; i<eltErrs.size(); ++i)
+                {
+                    if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
+                    {
+                        Minvalue = eltErrs[i];
+                    }
+                }
+                for(size_t i=0; i<eltErrs.size(); ++i)
+                {
+                    auto POWMinvalue = Minvalue/pow(DoFPDE[r],adaptRefParam);
+                    if (POWMinvalue < eltErrs[i]) // Avoid numerical issues
+                    {
+                        elMarked[i] = true;
+                    }
+                }
             }
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             // Refine the marked elements with a 1-ring of cells around marked elements
@@ -288,7 +307,7 @@ int main(int argc, char *argv[])
             // match along patch interfaces.
             dbasis.repairInterfaces( Psi.interfaces() );
             //! [repairInterfaces]
-            //
+            
             }
     }
     //! [Solver loop]    

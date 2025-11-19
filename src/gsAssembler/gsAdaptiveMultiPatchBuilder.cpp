@@ -35,19 +35,16 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
         dbasis.uniformRefine();
 
     // Reduce degree if possible while maintaining minimum degree of 1
-    if (dbasis.degree()-numReduce >= 1)
-        dbasis.degreeReduce(numReduce);
+    if (numReduce > 0){
+        int reduceDegree = std::min(dbasis.degree()-1, numReduce);
+        dbasis.degreeDecrease(reduceDegree);
+    }
 
     gsInfo << "Using B-splines of degree " << dbasis.degree() << " for the Monge-Ampere mapping ";
-    // Store input parameters
-    this->m_basis        = dbasis;
-    this->m_mapping      = mapping; 
-    this->m_maxIter      = maxIter;
-    this->m_IntensityMAE = IntensityMAE;
-
     // Create parametric domain matching initial mapping
     auto corners         = dbasis.basis(0).support();
-    mp                   = gsNurbsCreator<>::BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
+    mp.addPatch(gsNurbsCreator<>::BSplineRectangle(corners.at(0), corners.at(1), corners.at(2), corners.at(3)));
+    // BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
     gsFunctionExpr<> sN("x","y",2);
     if (dbasis.dim() == 3){
         mp  = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,corners.at(3),corners.at(0)-0.5,corners.at(1)-0.5,corners.at(2)-0.5);
@@ -65,15 +62,20 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     {
         bc_mae.addCondition( *bit, condition_type::neumann, &sN );
     }
-    
+     
+    //... Poisson fast diagonalization solver
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    
-    //::::::::::::::::::::      Poisson fast diagonalization solver         :::::::::::::::::::::::::
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(this->m_basis.basis(0), bc_mae, A.options(), 1e-6);  
-    this->Poisson   = Poisson;
-    this->mp        = mp;
-    this->DoFs      = m_basis.size();
+    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), 1e-6);  
+
+    // Store input parameters
+    this->m_basis        = dbasis;
+    this->m_mapping      = mapping; 
+    this->m_maxIter      = maxIter;
+    this->m_IntensityMAE = IntensityMAE;
+    this->Poisson        = Poisson;
+    this->mp             = mp;
+    this->DoFs           = m_basis.size();
     gsInfo<<"."<<this->DoFs <<" DoFs(MAE)<> \n";
 }
 
@@ -141,7 +143,7 @@ void gsAdaptiveMultiPatchBuilder::NormalProjectPts(gsMultiPatch<>& Psi) const
 // Build and return a density as a MultiPatch object from analytical function (we avoid three compositions (r o F o Psi) here to be r o Psi)
 gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctionExpr<>   &f) const 
 {
-    gsInfo<<"<>density function";
+    gsInfo<<"<>density function: ";
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     // Elements used for numerical integration
@@ -165,7 +167,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
     solution density_sol = A.getSolution(u, densityVector);
     gsMultiPatch<> density;
     density_sol.extract(density);
-    gsInfo<<"<>\n";
+    gsInfo<< densityVector.maxCoeff()<< "/"<<densityVector.minCoeff()<<"<>\n";
     return  density;
 }
 
@@ -191,12 +193,19 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     space u_0          = A_0.getSpace(basis_0);
     A_0.initSystem();
 
-    if (this->errorVector.size() < A_0.rhs().size() || setRhoLevel == 0){
-        gsInfo << "~buildfromzero~";
-        this->errorVector.resize(A_0.rhs().size());
-        // ... initialize to zero
-        this->errorVector.setZero();
-    }
+    // if (this->errorVector.size() < A_0.rhs().size() || setRhoLevel == 0){
+    //     gsInfo << "~buildfromzero~";
+    //     this->errorVector.resize(A_0.rhs().size());
+    //     // ... initialize to zero
+    //     this->errorVector.setZero();
+    // }
+    gsInfo << "~";
+    this->errorVector.resize(A_0.rhs().size());
+    gismo::gsMatrix<> ElmAccuNmb;
+    ElmAccuNmb.resize(A_0.rhs().size());
+    // ... initialize to zero
+    this->errorVector.setZero();
+    ElmAccuNmb.setOnes();
     solution error_sol = A_0.getSolution(u_0, errorVector);
 
     //------------------------------------------------------
@@ -221,13 +230,14 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
             if( elMarked[ globalCount++ ] ){ // refine this element ?
                 // element index in the basis_0
                 auto gIndex = basis_0.basis(pn).elementIndex(domIt.centerPoint());
-                if (this->errorVector( gIndex) ==0 || setRhoLevel==0){
+                if (setRhoLevel==0){
                     // add the error value to the density function
-                    this->errorVector( gIndex) = 0.5;
+                    this->errorVector( gIndex) = 0.75;
                 }
-                else if( this->errorVector( gIndex) >= pow(0.5, setRhoLevel+1) ){
+                else {
                     // accumulate the error value to the density function
-                    this->errorVector( gIndex)  = valueLevel;
+                    this->errorVector( gIndex)  += pow(0.75, ElmAccuNmb( gIndex));//G series: sum = 3
+                    ElmAccuNmb( gIndex) += 1.;
                 }
             }
         }
@@ -292,9 +302,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     return  density;
 }
 
-
 // Build and return a MultiPatch object
-void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density) const
+void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE) const
 {
     // Neumann Boundary conditions object to define and manage boundary conditions for the problem
     gsBoundaryConditions<> bc_mae;
@@ -320,9 +329,6 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     timer.restart();
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    // It could be beneficial for the composition of the two mappings
-    // A.options().setReal("quA", quadValue);
-    //A.options().setInt("quB", 2);
     A.options().setSwitch("SameElement",false);
 
     // Elements used for numerical integration
@@ -438,7 +444,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
         auto l2Res        = math::sqrt(ev.integral( ( grad(u_sol)-grad(u_lsol)).sqNorm()  ));
         sv0               = solVector;
 
-        if ( l2Res < 1e-5 || ip == m_maxIter ){
+        if ( l2Res < tolMAE || ip == m_maxIter ){
             auto L2MAE        = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
             auto Ddet         = ev.min(jac(PP).det());
             // ! end Picard loop
@@ -472,10 +478,10 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
 };
 
 // computes the projection L^2 of a composition and return a MultiPatch object
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiBasis<> Cbasis, int degreeEl) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue) const 
 {
 
-    gsInfo<<"<> computes composition";
+    gsInfo<<"<L2> computes composition";
     gsMultiPatch<> Psi;
     
     double slv_time(0);
@@ -483,10 +489,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiBasis<> C
     timer.restart();
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    // A.options().setInt("quRule", 2);
+    A.options().setReal("quA", quadValue);
     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
-    //.. degree elevation   
-    Cbasis.degreeElevate(degreeEl);
     //...
     A.setIntegrationElements(Cbasis);
 
@@ -517,6 +521,72 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(gsMultiBasis<> C
         Psi.embed(i+1);
         Psi.patch(0).coefs().col(i) = PsiVec.patch(0).coefs();
     }
+    Psi.computeTopology();
+    //...
+    slv_time += timer.stop();
+    timer.stop();
+    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    return Psi;
+};
+
+// computes the projection of a composition and return a MultiPatch object :: fitting
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData, const real_t lambda) const 
+{
+
+    gsInfo<<"<Fit> computes composition";
+    assert(Cbasis.dim() == 2 && "Only single patch 2D fitting is implemented so far.");
+
+    gsMultiPatch<> Psi;    
+    // Copy tensor basis
+    gsTHBSplineBasis<2>  THB ( Cbasis.basis(0));
+
+    double slv_time(0);
+    gsStopwatch timer;
+    timer.restart();
+    //...  just to generate grid
+    gsMultiBasis<> T_tbasis(mp, true);
+    while( T_tbasis.basis(0).size() < Cbasis.basis(0).size() * numElData)
+        T_tbasis.uniformRefine();
+
+    gsMatrix<> intGrid             = T_tbasis.basis(0).anchors();
+    // Evaluate f at the Greville points
+    gsMatrix<> intfavlues          = MAmapping.patch(0).eval(intGrid);
+    gsMatrix<> fValues             = m_mapping.patch(0).eval(intfavlues);    
+
+    //! [Create  Hfitter]
+    // Create hierarchical refinement object
+    gsFitting<> ref( intGrid, fValues, THB);
+    //... compute coefs
+    ref.compute(lambda);
+     
+    //! [extract the mapping]
+    Psi.addPatch(give(*ref.result()));
+    Psi.computeTopology();
+    //...
+    slv_time += timer.stop();
+    timer.stop();
+    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    return Psi;
+};
+
+// computes the projection of a composition and return a MultiPatch object :: Collocation
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const 
+{
+
+    gsInfo<<"<Col> computes composition";
+
+    gsMultiPatch<> Psi; 
+    double slv_time(0);
+    gsStopwatch timer;
+    timer.restart();
+
+    gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
+    // Evaluate f at the Greville points
+    gsMatrix<> intfavlues          = MAmapping.patch(0).eval(intGrid);
+    gsMatrix<> fValues             = m_mapping.patch(0).eval(intfavlues);
+    gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateAtAnchors(fValues);
+    // extract the mapping
+    Psi.addPatch(give(interpolant));
     Psi.computeTopology();
     //...
     slv_time += timer.stop();
