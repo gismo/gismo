@@ -112,7 +112,8 @@ int main(int argc, char *argv[])
     gsMultiBasis<double> dbasis(mpLeft, bs_nrbs);//true: poly-splines (not NURBS)
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    //dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    dbasis.degreeIncrease(numElevate);
     
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -126,9 +127,6 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###                                  Step r* : Computes the density function
@@ -152,7 +150,7 @@ int main(int argc, char *argv[])
     }
     // ... 
     gsVector<>  Bdrerr(numRefine+1), Volerr(numRefine+1)// L2 projection errors
-                // , CVolerr(numRefine+1)
+                , CVolerr(numRefine+1)
                 , IBdrerr(numRefine+1), IVolerr(numRefine+1)// Interpolation errors
                 , FBdrerr(numRefine+1), FVolerr(numRefine+1);// Fitting errors
     gsVector<int>  DoFPDE(numRefine+1);
@@ -162,20 +160,19 @@ int main(int argc, char *argv[])
 
     //... some infos on the computational domain
     gsInfo << r <<"th iter:{ numElement " << dbasis.basis(0).numElements() << " degree " << dbasis.degree() 
-            <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() <<"}-----------------------------------------------\n";
+            <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() 
+            <<"}------------------------------------------------------\n";
 
     //----------------------------------------------------------------------
     // ... computes the composition of geometry maps L^2-projection method !
     //----------------------------------------------------------------------
     mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue);
     geometryMap GPi = A.getMap(mpPsi);
-    //--------------------------------------
     // ... Error analysis
-    //--------------------------------------
-    DoFPDE[r]       = dbasis.basis(0).size();
-    // CVolerr[r]      = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(Cmp).det()*jac(PP).det() ) ));
-    Volerr[r]       = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));
-    Bdrerr[r]       = math::sqrt(ev.integral((GPi-Cmp).sqNorm()));
+    DoFPDE[r]               = dbasis.basis(0).size();
+    CVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(Cmp).det()*jac(PP).det() ) ));
+    Volerr[r]               = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));
+    Bdrerr[r]               = math::sqrt(ev.integral((GPi-Cmp).sqNorm()));
 
     if (colloc){
     //---------------------------------------------------------- 
@@ -184,8 +181,8 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mpPsiInt = MAE.buildColCompMultiPatch(dbasis);
     geometryMap PGI         = A.getMap(mpPsiInt);
     // ... Error using Interpolation method
-    IVolerr[r]      = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
-    IBdrerr[r]      = math::sqrt(ev.integral((PGI-Cmp).sqNorm())); 
+    IVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
+    IBdrerr[r]              = math::sqrt(ev.integral((PGI-Cmp).sqNorm())); 
     }
 
     if(fit){
@@ -195,8 +192,8 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mpPsiFit = MAE.buildFitCompMultiPatch(dbasis);
     geometryMap PGF         = A.getMap(mpPsiFit);
     // ... Error analysis
-    FVolerr[r]      = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
-    FBdrerr[r]      = math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
+    FVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
+    FBdrerr[r]              = math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
     }
     }
 
@@ -215,7 +212,7 @@ int main(int argc, char *argv[])
         outFile << "#FITTING V_error: \n" << std::scientific << std::setprecision(3) << FVolerr.transpose() << "\n";
         outFile << "#FITTING L_error: \n" << std::scientific << std::setprecision(3) << FBdrerr.transpose() << "\n";
         }
-        // outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << CVolerr.transpose() << "\n";
+        outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << CVolerr.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
         gsInfo << "Error analysis results appended to errorGeometry_analysis.txt.\n";
@@ -228,22 +225,22 @@ int main(int argc, char *argv[])
     //! [Error and convergence rates]
     // --- Print header ---
     gsInfo << std::setw(12) << "DoFs" << " & "
-        //  << std::setw(13) << "V(F∘Ψ)"     << " & "
-         << std::setw(13) << "V(Πp(F'))"  << " & "
-         << std::setw(13) << "L2(Πp(F'))" << " & "
-         << std::setw(6)  << "EOcl2"      << "\n";
+         << std::setw(13) << "V(F∘Ψ)"     << " & "
+         << std::setw(13) << "V(Πp(F∘Ψ))"  << " & "
+         << std::setw(13) << "L2(Πp(F∘Ψ))" << " & "
+         << std::setw(6)  << "EOcL2"      << "\n";
     gsInfo << std::string(50, '-') << "\n";
     // --- Print table row by row ---
     auto orderofConv = ( Bdrerr.head(numRefine).array() /
                   Bdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
     gsInfo << std::setw(12) << DoFPDE[0] << " & "
-            // << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Volerr[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[0] << "&"
             << std::setw(12) << "--" << "\n";
     for (int i = 1; i <= numRefine; i++) {
         gsInfo << std::setw(12) << DoFPDE[i] << " & "
-            //  << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[i] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< Volerr[i] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[i] << "&"
              << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << "\n";

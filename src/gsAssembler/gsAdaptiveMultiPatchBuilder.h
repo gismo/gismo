@@ -35,9 +35,9 @@ public:
                                 index_t maxIter     = 30,
                                 double IntensityMAE = 9.0,
                                 index_t numReduce   = 0);
-    //... Square mapping
+    //... Identity mapping in square to itself
     gsMultiPatch<> mp; 
-    // ... optimal Monge-Ampere mapping in unit-square to itself
+    // ... optimal Monge-Ampere mapping in square to itself
     mutable gsMultiPatch<> MAmapping;
     // ... density coefs
     mutable gismo::gsMatrix<> errorVector;    
@@ -53,7 +53,7 @@ public:
     // Project control points following  normal direction at the boundaries for square domain 
     void NormalProjectPts(gsMultiPatch<>& Psi) const;
 
-    // Method to build a density function from analytic form
+    // Method to build a density function from analytic form: we project first f o F into a spline space (avoid composing three functions)
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
     // Build and return a density as a MultiPatch object from marked elements using local h-refinement strategies
@@ -62,7 +62,7 @@ public:
     //-----------------------------------------
     //  functions to build mapping from density
     //-----------------------------------------
-    // Method to build a multipatch Monge-Ampere mapping
+    // Method to build a multipatch Monge-Ampere mapping: tolMAE is tolerance in Picard iterations
     void buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE = 1e-5) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : L2-projection

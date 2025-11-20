@@ -27,8 +27,8 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
                             double IntensityMAE,
                             index_t numReduce)
 {
-    gsInfo<<"\n <>r-refinement (!!!";
-    // Build a (non-NURBS) multi-basis from the geometry mapping for the Monge–Ampère solver
+    gsInfo<<"\n <>r-refinement ";
+    // Build a (B-spline) multi-basis from the geometry mapping for the Monge–Ampère solver
     gsMultiBasis<> dbasis(mapping, true);
     //... refine basis for convergence 
     for (int r=0; r<numRefine; ++r)
@@ -40,7 +40,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
         dbasis.degreeDecrease(reduceDegree);
     }
 
-    gsInfo << "Using B-splines of degree " << dbasis.degree() << " for the Monge-Ampere mapping ";
+    gsInfo << "Using B-splines of degree " << dbasis.degree() << " DoFs ";
     // Create parametric domain matching initial mapping
     auto corners         = dbasis.basis(0).support();
     mp.addPatch(gsNurbsCreator<>::BSplineRectangle(corners.at(0), corners.at(1), corners.at(2), corners.at(3)));
@@ -76,7 +76,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     this->Poisson        = Poisson;
     this->mp             = mp;
     this->DoFs           = m_basis.size();
-    gsInfo<<"."<<this->DoFs <<" DoFs(MAE)<> \n";
+    gsInfo<<this->DoFs <<"<> \n";
 }
 
 
@@ -269,7 +269,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     gsInfo << ".";
 
     if (!MAmapping.empty()){
-    // If the given density is defined on an adaptive mesh, it must first be projected onto a uniform mesh
+    // If a given density is defined on an adaptive mesh, it must first be projected to a uniform mesh
     // since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
     const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).knots(0);
     const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).knots(1);
@@ -430,7 +430,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
         A.initSystem();
 
         // Compute the system matrix and right-hand side Monge-Ampere eqaution
-        auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det())+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+        auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det()+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1)), 1./IGdim);
         // .. update Coeffeicient of conductivity
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffCond         = Neumann_Int/IntegDensity;
@@ -461,14 +461,14 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     gsMultiPatch<> PsiPsitp_temp;
     timer.restart();
     vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
-    slv_time     += timer.stop();
+    slv_time  += timer.stop();
     v_sol.extract(PsiPsitp_temp);
     Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
     }
     //... correct the boundary
     NormalProjectPts(Psi);
     // ...
-    }//for loop
+    }//END for loop
     Psi.addAutoBoundaries();
     Psi.computeTopology();
     // ....
@@ -513,6 +513,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     vsolVector = solver.solve(A.rhs().col(0));
     v_sol.extract(Psi);
 
+    #pragma omp for
     for(index_t i=1; i<this->m_mapping.geoDim(); ++i)
     {
         gsMultiPatch<> PsiVec;
@@ -525,7 +526,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     //...
     slv_time += timer.stop();
     timer.stop();
-    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
     return Psi;
 };
 
@@ -565,7 +566,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     //...
     slv_time += timer.stop();
     timer.stop();
-    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
     return Psi;
 };
 
@@ -591,7 +592,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMulti
     //...
     slv_time += timer.stop();
     timer.stop();
-    gsInfo<<" CPU-time : "<< slv_time   <<"<>\n";
+    gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
     return Psi;
 };
 
