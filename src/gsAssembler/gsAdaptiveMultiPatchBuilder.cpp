@@ -547,7 +547,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     //...  just to generate grid
     gsMultiBasis<> T_tbasis(mp, true);
 
-    while ( T_tbasis.basis(0).numElements() < Cbasis.basis(0).numElements()*numElData)
+    while ( T_tbasis.basis(0).numElements() <= Cbasis.basis(0).numElements()*numElData)
     {
         T_tbasis.uniformRefine();
     }

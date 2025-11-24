@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     index_t maxIter     = 50;
     index_t elevDegree  = 0; // degree elevation for the composition of geometry maps
     double IntensityMAE = 9.;
-    double quadValue    = 4.0;
+    double quadValue    = 2.0;
     bool bs_nrbs        = false;
     bool last           = true;
     bool colloc         = false;
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by fit method !
     //----------------------------------------------------------
-    gsMultiPatch<> mpPsi    = MAE.buildFitCompMultiPatch(dbasis);
+    gsMultiPatch<> mpPsi    = MAE.buildFitCompMultiPatch(dbasis,50);
     geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
     FVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
@@ -211,8 +211,10 @@ int main(int argc, char *argv[])
     {
         outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduce <<"\n"
                 << std::scientific << DoFPDE.transpose() << "\n";
+        if (L2proj){
         outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << Volerr.transpose() << "\n";
         outFile << "#L_error: \n" << std::scientific << std::setprecision(3) << Bdrerr.transpose() << "\n";
+        }
         if (colloc){
         outFile << "#INTERPOL V_error: \n" << std::scientific << std::setprecision(3) << IVolerr.transpose() << "\n";
         outFile << "#INTERPOL L_error: \n" << std::scientific << std::setprecision(3) << IBdrerr.transpose() << "\n";
