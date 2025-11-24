@@ -58,4 +58,21 @@ foreach(file ${gismo_UNITTESTS})
   set_property(TEST unit_${testname} PROPERTY LABELS unittests)
 endforeach(file ${FILES})
 
+# Setup code coverage target
+if(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
+  # Exclude external libraries and test code from coverage
+  set(COVERAGE_EXCLUDES 
+    '*/external/*'
+    '*/unittests/*'
+    '*/optional/gsUnitTest/*'
+    '/usr/*'
+  )
+  include(CodeCoverage)
+  SETUP_TARGET_FOR_COVERAGE(
+    NAME coverage
+    EXECUTABLE ctest
+    DEPENDENCIES unittests
+  )
+endif()
+
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
