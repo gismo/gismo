@@ -314,4 +314,264 @@ SUITE(gsHSplines_test)
         CHECK_CLOSE(bbox(0, 0), 0.0, 1e-10);
         CHECK_CLOSE(bbox(0, 1), 1.0, 1e-10);
     }
+
+    // Additional comprehensive tests for gsHSplines module
+
+    TEST(gsTHBSplineBasis_2D_Construction)
+    {
+        gsKnotVector<> kv1(0, 1, 2, 2);
+        gsKnotVector<> kv2(0, 1, 2, 2);
+        gsTensorBSplineBasis<2> tensorBasis(kv1, kv2);
+        
+        gsTHBSplineBasis<2> thb(tensorBasis);
+        
+        CHECK_EQUAL(thb.dim(), 2);
+        CHECK(thb.size() > 0);
+    }
+
+    TEST(gsTHBSplineBasis_MultipleRefinements)
+    {
+        gsKnotVector<> kv(0, 1, 1, 4);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        size_t initialSize = thb.size();
+        
+        // Refine a region
+        std::vector<index_t> boxes;
+        boxes.push_back(0); // level
+        boxes.push_back(0); // lower bound
+        boxes.push_back(2); // upper bound
+        
+        thb.refineElements(boxes);
+        
+        CHECK(thb.size() >= initialSize);
+    }
+
+    TEST(gsTHBSpline_ZeroCoefficients)
+    {
+        gsKnotVector<> kv(0, 1, 1, 2);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        gsMatrix<> coefs(thb.size(), 1);
+        coefs.setZero();
+        
+        gsTHBSpline<1> thbSpline(thb, coefs);
+        
+        gsMatrix<> point(1, 1);
+        point << 0.5;
+        
+        gsMatrix<> result = thbSpline.eval(point);
+        
+        CHECK_CLOSE(result(0, 0), 0.0, 1e-10);
+    }
+
+    TEST(gsTHBSpline_ConstantFunction)
+    {
+        gsKnotVector<> kv(0, 1, 1, 2);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        gsMatrix<> coefs(thb.size(), 1);
+        coefs.setOnes();
+        
+        gsTHBSpline<1> thbSpline(thb, coefs);
+        
+        gsMatrix<> point(1, 1);
+        point << 0.5;
+        
+        gsMatrix<> result = thbSpline.eval(point);
+        
+        // Sum of basis functions should be 1
+        CHECK_CLOSE(result(0, 0), 1.0, 1e-8);
+    }
+
+    TEST(gsTHBSplineBasis_ActiveFunctions)
+    {
+        gsKnotVector<> kv(0, 1, 2, 3);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        gsMatrix<> point(1, 1);
+        point << 0.5;
+        
+        gsMatrix<unsigned> active;
+        thb.active_into(point, active);
+        
+        CHECK(active.size() > 0);
+    }
+
+    TEST(gsTHBSpline_2D_Evaluation)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 2);
+        gsKnotVector<> kv2(0, 1, 1, 2);
+        gsTensorBSplineBasis<2> tensorBasis(kv1, kv2);
+        
+        gsTHBSplineBasis<2> thb(tensorBasis);
+        
+        gsMatrix<> coefs(thb.size(), 1);
+        for (index_t i = 0; i < coefs.rows(); i++)
+            coefs(i, 0) = i * 0.1;
+        
+        gsTHBSpline<2> thbSpline(thb, coefs);
+        
+        gsMatrix<> point(2, 1);
+        point << 0.5, 0.5;
+        
+        gsMatrix<> result = thbSpline.eval(point);
+        
+        CHECK(result.rows() > 0);
+    }
+
+    TEST(gsTHBSplineBasis_Degree)
+    {
+        gsKnotVector<> kv(0, 1, 3, 2);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        CHECK_EQUAL(thb.degree(), 3);
+    }
+
+    TEST(gsTHBSpline_Coefs)
+    {
+        gsKnotVector<> kv(0, 1, 1, 3);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        gsMatrix<> coefs(thb.size(), 1);
+        for (index_t i = 0; i < coefs.rows(); i++)
+            coefs(i, 0) = i + 1.5;
+        
+        gsTHBSpline<1> thbSpline(thb, coefs);
+        
+        const gsMatrix<>& retrievedCoefs = thbSpline.coefs();
+        
+        CHECK_EQUAL(retrievedCoefs.rows(), coefs.rows());
+        for (index_t i = 0; i < coefs.rows(); i++)
+            CHECK_CLOSE(retrievedCoefs(i, 0), i + 1.5, 1e-10);
+    }
+
+    TEST(gsTHBSplineBasis_BasisSize)
+    {
+        gsKnotVector<> kv(0, 1, 2, 5);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        size_t basisSize = thb.size();
+        CHECK(basisSize > 0);
+        CHECK(basisSize == basis.size());
+    }
+
+    TEST(gsTHBSpline_MultiplePoints)
+    {
+        gsKnotVector<> kv(0, 1, 1, 3);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        gsMatrix<> coefs(thb.size(), 1);
+        coefs.setConstant(2.5);
+        
+        gsTHBSpline<1> thbSpline(thb, coefs);
+        
+        gsMatrix<> points(1, 5);
+        points << 0.1, 0.3, 0.5, 0.7, 0.9;
+        
+        gsMatrix<> result = thbSpline.eval(points);
+        
+        CHECK_EQUAL(result.cols(), 5);
+        for (int i = 0; i < 5; i++)
+            CHECK_CLOSE(result(0, i), 2.5, 1e-8);
+    }
+
+    TEST(gsTHBSplineBasis_DomainDimension)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 2);
+        gsKnotVector<> kv2(0, 1, 1, 2);
+        gsKnotVector<> kv3(0, 1, 1, 2);
+        gsTensorBSplineBasis<3> tensorBasis(kv1, kv2, kv3);
+        
+        gsTHBSplineBasis<3> thb(tensorBasis);
+        
+        CHECK_EQUAL(thb.dim(), 3);
+    }
+
+    TEST(gsTHBSpline_SecondDerivative)
+    {
+        gsKnotVector<> kv(0, 1, 3, 3);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        gsMatrix<> coefs(thb.size(), 1);
+        for (index_t i = 0; i < coefs.rows(); i++)
+            coefs(i, 0) = i * i;
+        
+        gsTHBSpline<1> thbSpline(thb, coefs);
+        
+        gsMatrix<> point(1, 1);
+        point << 0.5;
+        
+        gsMatrix<> deriv2 = thbSpline.deriv2(point);
+        
+        CHECK(deriv2.rows() > 0);
+    }
+
+    TEST(gsTHBSplineBasis_Anchors)
+    {
+        gsKnotVector<> kv(0, 1, 2, 3);
+        gsBSplineBasis<> basis(kv);
+        gsTHBSplineBasis<1> thb(basis);
+        
+        gsMatrix<> anchors;
+        thb.anchors_into(anchors);
+        
+        CHECK(anchors.rows() > 0);
+        CHECK(anchors.cols() > 0);
+    }
+
+    /* 
+     * Step-by-step instructions for additional complex gsHSplines tests:
+     * 
+     * 1. gsHBox tests:
+     *    - Create gsHTensorBasis with refinement
+     *    - Extract elements as gsHBox objects
+     *    - Test gsHBox containment checks
+     *    - Test gsHBox intersection with other boxes
+     *    - Test parent/child relationships in hierarchy
+     *    - Test support extensions for basis functions
+     * 
+     * 2. gsHBoxContainer tests:
+     *    - Create container of gsHBox objects
+     *    - Test insertion and removal operations
+     *    - Test iteration over boxes
+     *    - Test sorting by level or position
+     *    - Test union and intersection operations on containers
+     * 
+     * 3. gsHBoxUtils tests:
+     *    - Test domain unions of box collections
+     *    - Test domain intersections
+     *    - Test box splitting and merging
+     *    - Test neighborhood computation
+     * 
+     * 4. gsRationalTHBSpline tests:
+     *    - Create rational THB-spline (NURBS variant)
+     *    - Test weight management
+     *    - Test evaluation with rational basis
+     *    - Test derivative computation
+     *    - Test projection onto rational space
+     * 
+     * 5. gsHFitting tests:
+     *    - Set up hierarchical fitting problem
+     *    - Provide scattered data points
+     *    - Test automatic refinement based on error
+     *    - Test adaptive fitting algorithm
+     *    - Verify convergence properties
+     * 
+     * 6. Advanced refinement tests:
+     *    - Test refinement by error indicators
+     *    - Test adaptive refinement strategies
+     *    - Test coarsening operations
+     *    - Test refinement with hanging nodes
+     *    - Test truncation mechanism for THB-splines
+     */
 }
