@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by fit method !
     //----------------------------------------------------------
-    gsMultiPatch<> mpPsi    = MAE.buildFitCompMultiPatch(dbasis, 100);
+    gsMultiPatch<> mpPsi    = MAE.buildFitCompMultiPatch(dbasis);
     geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
     FVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
@@ -209,7 +209,8 @@ int main(int argc, char *argv[])
     std::ofstream outFile("errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
     if (outFile.is_open())
     {
-        outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduce <<"\n"<< std::scientific << DoFPDE.transpose() << "\n";
+        outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduce <<"\n"
+                << std::scientific << DoFPDE.transpose() << "\n";
         outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << Volerr.transpose() << "\n";
         outFile << "#L_error: \n" << std::scientific << std::setprecision(3) << Bdrerr.transpose() << "\n";
         if (colloc){

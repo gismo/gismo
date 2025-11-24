@@ -546,11 +546,16 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     timer.restart();
     //...  just to generate grid
     gsMultiBasis<> T_tbasis(mp, true);
-    T_tbasis.uniformRefine( (Cbasis.basis(0).numElements()+ 1)+ numElData);
+
+    while ( T_tbasis.basis(0).numElements() < Cbasis.basis(0).numElements()*numElData)
+    {
+        T_tbasis.uniformRefine();
+    }
+    gsInfo<<":gridsize="<<T_tbasis.basis(0).numElements()<<"/"<<Cbasis.basis(0).numElements();
 
     gsMatrix<> intGrid             = T_tbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<float> intfavlues          = this->MAmapping.patch(0).eval(intGrid);
+    gsMatrix<float> intfavlues     = this->MAmapping.patch(0).eval(intGrid);
     gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
 
     //! [Create  Hfitter]
