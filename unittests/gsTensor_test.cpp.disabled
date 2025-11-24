@@ -1,0 +1,331 @@
+/** @file gsTensor_test.cpp
+
+    @brief Tests for gsTensor module - tensor-structured objects
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): Copilot
+*/
+
+#include "gismo_unittest.h"
+
+SUITE(gsTensor_test)
+{
+    // TEST(gsGridIterator_1D)
+    {
+        gsVector<unsigned, 1> sizes;
+        sizes << 5;
+        
+        gsGridIterator<unsigned, 1> grid(sizes);
+        
+        int count = 0;
+        for (; grid; ++grid)
+        {
+            count++;
+        }
+        
+        CHECK_EQUAL(count, 5);
+    }
+
+    // TEST(gsGridIterator_2D)
+    {
+        gsVector<unsigned, 2> sizes;
+        sizes << 3, 4;
+        
+        gsGridIterator<unsigned, 2> grid(sizes);
+        
+        int count = 0;
+        for (; grid; ++grid)
+        {
+            count++;
+        }
+        
+        CHECK_EQUAL(count, 12); // 3 * 4
+    }
+
+    // TEST(gsGridIterator_3D)
+    {
+        gsVector<unsigned, 3> sizes;
+        sizes << 2, 3, 4;
+        
+        gsGridIterator<unsigned, 3> grid(sizes);
+        
+        int count = 0;
+        for (; grid; ++grid)
+        {
+            count++;
+        }
+        
+        CHECK_EQUAL(count, 24); // 2 * 3 * 4
+    }
+
+    // TEST(gsGridIterator_IndexAccess)
+    {
+        gsVector<unsigned, 2> sizes;
+        sizes << 3, 3;
+        
+        gsGridIterator<unsigned, 2> grid(sizes);
+        
+        // First element should be (0, 0)
+        CHECK_EQUAL((*grid)[0], 0);
+        CHECK_EQUAL((*grid)[1], 0);
+        
+        ++grid;
+        // Second element should be (1, 0) for row-major iteration
+        CHECK((*grid)[0] >= 0);
+        CHECK((*grid)[1] >= 0);
+    }
+
+    // TEST(gsGridIterator_Reset)
+    {
+        gsVector<unsigned, 2> sizes;
+        sizes << 3, 3;
+        
+        gsGridIterator<unsigned, 2> grid(sizes);
+        
+        // Advance iterator
+        ++grid;
+        ++grid;
+        
+        // Reset to beginning
+        grid.reset();
+        
+        CHECK_EQUAL((*grid)[0], 0);
+        CHECK_EQUAL((*grid)[1], 0);
+    }
+
+    TEST(gsTensorBasis_Construction_2D)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 3);
+        gsKnotVector<> kv2(0, 1, 1, 4);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        CHECK_EQUAL(basis.dim(), 2);
+        CHECK(basis.size() > 0);
+    }
+
+    TEST(gsTensorBasis_Size)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 3); // 3 + 1 = 4 basis functions
+        gsKnotVector<> kv2(0, 1, 1, 2); // 2 + 1 = 3 basis functions
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        // Total basis functions should be 4 * 3 = 12
+        size_t expectedSize = kv1.size() * kv2.size();
+        CHECK_EQUAL(basis.size(), expectedSize);
+    }
+
+    TEST(gsTensorBasis_Component)
+    {
+        gsKnotVector<> kv1(0, 1, 2, 3);
+        gsKnotVector<> kv2(0, 1, 1, 4);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        // Access component bases
+        auto& comp0 = basis.component(0);
+        auto& comp1 = basis.component(1);
+        
+        CHECK_EQUAL(comp0.degree(), 2);
+        CHECK_EQUAL(comp1.degree(), 1);
+    }
+
+    TEST(gsTensorBasis_Degree)
+    {
+        gsKnotVector<> kv1(0, 1, 2, 3);
+        gsKnotVector<> kv2(0, 1, 3, 2);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        CHECK_EQUAL(basis.degree(0), 2);
+        CHECK_EQUAL(basis.degree(1), 3);
+    }
+
+    TEST(gsTensorBasis_Support)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 2);
+        gsKnotVector<> kv2(0, 1, 1, 2);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        gsMatrix<> support = basis.support();
+        
+        CHECK_EQUAL(support.rows(), 2);
+        CHECK_EQUAL(support.cols(), 2);
+        CHECK_CLOSE(support(0, 0), 0.0, 1e-10);
+        CHECK_CLOSE(support(0, 1), 1.0, 1e-10);
+        CHECK_CLOSE(support(1, 0), 0.0, 1e-10);
+        CHECK_CLOSE(support(1, 1), 1.0, 1e-10);
+    }
+
+    TEST(gsTensorBasis_Active)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 3);
+        gsKnotVector<> kv2(0, 1, 1, 3);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        gsMatrix<> point(2, 1);
+        point << 0.5, 0.5;
+        
+        gsMatrix<unsigned> active;
+        basis.active_into(point, active);
+        
+        CHECK(active.size() > 0);
+    }
+
+    TEST(gsTensorBasis_Eval)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 2);
+        gsKnotVector<> kv2(0, 1, 1, 2);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        gsMatrix<> point(2, 1);
+        point << 0.5, 0.5;
+        
+        gsMatrix<> result;
+        basis.eval_into(point, result);
+        
+        CHECK(result.rows() > 0);
+        CHECK_EQUAL(result.cols(), 1);
+    }
+
+    TEST(gsTensorBSpline_Construction)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 2);
+        gsKnotVector<> kv2(0, 1, 1, 2);
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        gsMatrix<> coefs(basis.size(), 2);
+        coefs.setRandom();
+        
+        gsTensorBSpline<2> geom(basis, coefs);
+        
+        CHECK_EQUAL(geom.geoDim(), 2);
+        CHECK_EQUAL(geom.domainDim(), 2);
+    }
+
+    TEST(gsTensorBSpline_Evaluation)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 2);
+        gsKnotVector<> kv2(0, 1, 1, 2);
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        gsMatrix<> coefs(basis.size(), 2);
+        for (index_t i = 0; i < coefs.rows(); i++)
+        {
+            coefs(i, 0) = 0.5;
+            coefs(i, 1) = 0.5;
+        }
+        
+        gsTensorBSpline<2> geom(basis, coefs);
+        
+        gsMatrix<> point(2, 1);
+        point << 0.5, 0.5;
+        
+        gsMatrix<> result = geom.eval(point);
+        
+        CHECK_EQUAL(result.rows(), 2);
+        CHECK_EQUAL(result.cols(), 1);
+    }
+
+    TEST(gsTensorBasis_Anchors)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 3);
+        gsKnotVector<> kv2(0, 1, 1, 3);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        gsMatrix<> anchors;
+        basis.anchors_into(anchors);
+        
+        CHECK_EQUAL(anchors.rows(), 2);
+        CHECK(anchors.cols() > 0);
+    }
+
+    TEST(gsTensorBasis_BoundaryBasis)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 3);
+        gsKnotVector<> kv2(0, 1, 1, 3);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        // Get boundary basis on west side
+        auto boundaryBasis = basis.boundaryBasis(boundary::west);
+        
+        CHECK(boundaryBasis.get() != nullptr);
+        CHECK_EQUAL(boundaryBasis->dim(), 1);
+    }
+
+    TEST(gsTensorBasis_ConnectivityAtAnchors)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 2);
+        gsKnotVector<> kv2(0, 1, 1, 2);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        gsMesh<> mesh = basis.connectivity();
+        
+        CHECK(mesh.numVertices() > 0);
+    }
+
+    // TEST(fromTensorIndex)
+    {
+        gsVector<unsigned, 2> idx, sz;
+        idx << 1, 2;
+        sz << 3, 4;
+        
+        // Index (1, 2) in a 3x4 grid
+        // Should be: 1 + 2*3 = 7
+        int result = fromTensorIndex<2>(idx, sz);
+        
+        CHECK_EQUAL(result, 7);
+    }
+
+    // TEST(fromTensorIndex_3D)
+    {
+        gsVector<unsigned, 3> idx, sz;
+        idx << 1, 2, 1;
+        sz << 2, 3, 4;
+        
+        // Index (1, 2, 1) in a 2x3x4 grid
+        // Should be: 1 + 2*2 + 1*2*3 = 1 + 4 + 6 = 11
+        int result = fromTensorIndex<3>(idx, sz);
+        
+        CHECK_EQUAL(result, 11);
+    }
+
+    TEST(gsTensorBasis_ElementSupport)
+    {
+        gsKnotVector<> kv1(0, 1, 1, 3);
+        gsKnotVector<> kv2(0, 1, 1, 3);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        gsMatrix<unsigned> indices;
+        basis.connectivity(gsMatrix<>::Zero(2, 1), indices);
+        
+        CHECK(indices.size() > 0);
+    }
+
+    TEST(gsTensorBasis_MaxDegree)
+    {
+        gsKnotVector<> kv1(0, 1, 2, 3);
+        gsKnotVector<> kv2(0, 1, 3, 2);
+        
+        gsTensorBSplineBasis<2> basis(kv1, kv2);
+        
+        short_t maxDeg = basis.maxDegree();
+        
+        CHECK(maxDeg >= 2);
+        CHECK(maxDeg >= 3);
+        CHECK_EQUAL(maxDeg, 3);
+    }
+}
