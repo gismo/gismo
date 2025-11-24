@@ -546,13 +546,12 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     timer.restart();
     //...  just to generate grid
     gsMultiBasis<> T_tbasis(mp, true);
-    while( T_tbasis.basis(0).size() < Cbasis.basis(0).size() * numElData)
-        T_tbasis.uniformRefine();
+    T_tbasis.uniformRefine( (Cbasis.basis(0).numElements()+ 1)+ numElData);
 
     gsMatrix<> intGrid             = T_tbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<> intfavlues          = MAmapping.patch(0).eval(intGrid);
-    gsMatrix<> fValues             = m_mapping.patch(0).eval(intfavlues);    
+    gsMatrix<float> intfavlues          = this->MAmapping.patch(0).eval(intGrid);
+    gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
 
     //! [Create  Hfitter]
     // Create hierarchical refinement object
@@ -583,9 +582,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMulti
 
     gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<> intfavlues          = MAmapping.patch(0).eval(intGrid);
-    gsMatrix<> fValues             = m_mapping.patch(0).eval(intfavlues);
-    gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateAtAnchors(fValues);
+    gsMatrix<float> intfavlues     = this->MAmapping.patch(0).eval(intGrid);
+    gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
+    gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateData(fValues, intGrid);
     // extract the mapping
     Psi.addPatch(give(interpolant));
     Psi.computeTopology();

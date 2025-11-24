@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
     bool last           = true;
     bool colloc         = false;
     bool fit            = false;
+    bool L2proj         = true;
+
     // gsStopwatch timer;
     // timer.restart();
 
@@ -82,6 +84,8 @@ int main(int argc, char *argv[])
                 colloc);                
     cmd.addSwitch("fit", "Use fitting to compute the composition",
                 fit);
+    cmd.addSwitch("L2proj", "Use L2-projection to compute the composition",
+                L2proj);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     if(fit)
@@ -112,8 +116,8 @@ int main(int argc, char *argv[])
     gsMultiBasis<double> dbasis(mpLeft, bs_nrbs);//true: poly-splines (not NURBS)
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    //dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-    dbasis.degreeIncrease(numElevate);
+    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    //dbasis.degreeIncrease(numElevate);
     
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -163,23 +167,27 @@ int main(int argc, char *argv[])
             <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() 
             <<"}------------------------------------------------------\n";
 
+    DoFPDE[r]               = dbasis.basis(0).size();
+    CVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(Cmp).det()*jac(PP).det() ) ));
+
     //----------------------------------------------------------------------
     // ... computes the composition of geometry maps L^2-projection method !
     //----------------------------------------------------------------------
+    if(L2proj)
+    {
     mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue);
     geometryMap GPi = A.getMap(mpPsi);
     // ... Error analysis
-    DoFPDE[r]               = dbasis.basis(0).size();
-    CVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(Cmp).det()*jac(PP).det() ) ));
     Volerr[r]               = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));
     Bdrerr[r]               = math::sqrt(ev.integral((GPi-Cmp).sqNorm()));
+    }
 
     if (colloc){
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by collocation method !
     //----------------------------------------------------------
-    gsMultiPatch<> mpPsiInt = MAE.buildColCompMultiPatch(dbasis);
-    geometryMap PGI         = A.getMap(mpPsiInt);
+    gsMultiPatch<> mpPsi    = MAE.buildColCompMultiPatch(dbasis);
+    geometryMap PGI         = A.getMap(mpPsi);
     // ... Error using Interpolation method
     IVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
     IBdrerr[r]              = math::sqrt(ev.integral((PGI-Cmp).sqNorm())); 
@@ -189,8 +197,8 @@ int main(int argc, char *argv[])
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by fit method !
     //----------------------------------------------------------
-    gsMultiPatch<> mpPsiFit = MAE.buildFitCompMultiPatch(dbasis);
-    geometryMap PGF         = A.getMap(mpPsiFit);
+    gsMultiPatch<> mpPsi    = MAE.buildFitCompMultiPatch(dbasis, 100);
+    geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
     FVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
     FBdrerr[r]              = math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
