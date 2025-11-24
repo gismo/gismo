@@ -29,7 +29,7 @@ gsMatrix<T> * innerProduct( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
     K->setZero();
 
-    int nGauss = int( ceil( double(B1.degree(0) + B2.degree(0) + 1)/2 ) );
+    int nGauss = int( ceil( T(B1.degree(0) + B2.degree(0) + 1)/2 ) );
     if (nGauss<1) nGauss=1;
 
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
@@ -66,7 +66,7 @@ gsMatrix<T> * innerProduct1( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
     K->setZero();
 
-    int nGauss = int( ceil( double(B1.degree(0)-1 + B2.degree(0)-1 + 1)/2 ) );
+    int nGauss = int( ceil( T(B1.degree(0)-1 + B2.degree(0)-1 + 1)/2 ) );
     if (nGauss<1) nGauss=1;
 
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
@@ -103,7 +103,7 @@ gsMatrix<T> * innerProduct2( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
     K->setZero();
 
-    int nGauss = int( ceil( double(B1.degree(0)-2 + B2.degree(0)-2 + 1)/2 ) );
+    int nGauss = int( ceil( T(B1.degree(0)-2 + B2.degree(0)-2 + 1)/2 ) );
     if (nGauss<1) nGauss=1;
 
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
@@ -781,8 +781,8 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
 	    fdOut << *geo.get();
 	    fdOut.dump(fout);
     }
-    
-    
+
+
     /// Scale the points contained in file \a fin from [0, 1]^D to [tMin, tMax]^D and save it to \a fout.
     template <class T>
     void scalePts(const std::string& fin,
@@ -823,13 +823,13 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
         fdOut.dump(fout);
     }
 
-    
+
     /** \brief sortPointCloud: sorts the point cloud into interior and boundary points.
     * parameters and points ordered by : interior (parameters/points) and
       boundary (parameters/points) ordered anticlockwise south-east-north-west edges,
       plus the 4 corner domains stored in a vector [c1, c2, c3, c4].
     * @param parameters : matrix of parameters
-    * @param points : matrix of points 
+    * @param points : matrix of points
     * @param corners : vector of corner domains indeces [c1, c2, c3, c4]
     */
     template<class T>
@@ -867,7 +867,7 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
                     b_north.push_back(i);// north edge
             }
         }
-    
+
         corners.push_back(interiors.size()); // c1
         corners.push_back(interiors.size() + b_south.size()); // c2
         corners.push_back(interiors.size() + b_south.size() + b_east.size()); // c3
@@ -945,7 +945,7 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
         uv_north.col(0) = tcol;
         tcol = uv_north.col(1).reverse();
         uv_north.col(1) = tcol;
-        
+
         p_north.resize(tmp_north.rows(), tmp_north.cols());
         for(size_t i = 0; i<tmp.size(); i++)
         {
@@ -982,13 +982,13 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     } // end sortPointCloud
 
 
-    
+
     /** \brief sampleGridGeometry: samples a grid point cloud from a given geometry
     * @param mp : input multi-patch
     * @param numPatch : patch number
     * @param numSamples : number of samples in each direction
     * @param params : output parameters
-    * @param points : output points 
+    * @param points : output points
     */
     template<class T>
     void sampleGridGeometry(const gsMultiPatch<T> & mp,
@@ -998,14 +998,14 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
                             gsMatrix<T> & points)
     {
         GISMO_ASSERT( numPatch <= mp.nPatches()-1 , "Patch number not found, quitting.");
-        
+
         const gsGeometry<T> & geometry = mp.patch(numPatch);
-        
+
         gsVector<unsigned> numPtsVec(2);
         numPtsVec<<numSamples,numSamples;
         gsVector<T> a = geometry.support().col(0);
         gsVector<T> b = geometry.support().col(1);
-        
+
         params = gsPointGrid(a,b, numPtsVec);
         geometry.eval_into(params, points);
     }
@@ -1017,7 +1017,7 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
      * @param numSamples : number of interior samples
      * @param numBdr : number of boundary samples
      * @param params : output parameters
-     * @param points : output points 
+     * @param points : output points
      */
     template<class T>
     void sampleScatteredGeometry(const gsMultiPatch<T> & mp,
@@ -1028,18 +1028,18 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
                                 gsMatrix<T> & points)
     {
         GISMO_ASSERT( numPatch <= mp.nPatches()-1 , "Patch number not found, quitting.");
-        
+
         const gsGeometry<T> & geometry = mp.patch(numPatch);
-        
+
 
         // Sample the interior parameters
         gsVector<unsigned> numPtsVec(2);
         numPtsVec<<numSamples,numSamples;
         gsVector<T> a = geometry.support().col(0);
         gsVector<T> b = geometry.support().col(1);
-        
+
         T urange= b(0)-a(0); // umax - umin
-        
+
         gsMatrix<T> mu = gsMatrix<T>::Random(1,numSamples); // 3x3 Matrix filled with random numbers between (-1,1)
         mu = (mu + gsMatrix<T>::Constant(1,numSamples,1))*urange/2.; // add 1 to the matrix to have values between 0 and 2; multiply with range/2
         mu = (mu + gsMatrix<T>::Constant(1,numSamples,a(0))); //set LO as the lower bound (offset)
@@ -1048,14 +1048,14 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
         gsMatrix<T> mv= gsMatrix<T>::Random(1,numSamples); // 3x3 Matrix filled with random numbers between (-1,1)
         mv = (mv + gsMatrix<T>::Constant(1,numSamples,1))*vrange/2.; // add 1 to the matrix to have values between 0 and 2; multiply with range/2
         mv = (mv + gsMatrix<T>::Constant(1,numSamples,a(1))); //set LO as the lower bound (offset)
-        
+
         gsMatrix<T> uv_interiors(2, numSamples);
         uv_interiors << mu, mv; //interior parameters
 
         // Sample the boundary and the corner parameters
         if (numBdr < 2)
             numBdr = cast<T,index_t>(math::ceil(math::sqrt(numSamples))) + 2; // number of boundary points
-        
+
         gsMatrix<T> uv_boundary(2, numBdr*4-4);
         gsMatrix<T> b_0(1, numBdr-1);
         gsMatrix<T> b_1(1, numBdr-1);
@@ -1105,7 +1105,7 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
         gsMatrix<T> zeros = gsMatrix<T>::Zero(1, numBdr-1);
         gsMatrix<T> ones  = gsMatrix<T>::Ones(1, numBdr-1);
 
-    
+
         uv_boundary << b_0,     v_ones, b_2,    v_zeros, u_zeros, b_1,    u_ones, b_3;
 
         params.resize(2, numSamples + numBdr*4-4);

@@ -407,7 +407,7 @@ private:
 
         static inline void acc_global(const T contrib, T & res)
         {
-#           pragma omp atomic update
+#           pragma omp critical
             res += contrib;
         }
     };
@@ -418,7 +418,7 @@ private:
         {res = math::min(contrib, res);	}
         static inline void acc_global(const T contrib, T & res)
         {
-#           pragma omp atomic write
+#           pragma omp critical
             res = math::min(contrib, res);
         }
 
@@ -430,7 +430,7 @@ private:
         { res = math::max(contrib, res); }
         static inline void acc_global(const T contrib, T & res)
         {
-#           pragma omp atomic write
+#           pragma omp critical
             res = math::max(contrib, res);
         }
     };

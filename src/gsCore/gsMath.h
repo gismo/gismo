@@ -2,12 +2,12 @@
 
     @brief Mathematical functions for use in G+Smo.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Bressan, A. Mantzaflaris
 */
 
@@ -22,13 +22,17 @@
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
+#ifdef gsAutoDiff_ENABLED
+  #include <gsAutoDiff/gsAutoDiff2.h>
+#endif
+
 namespace gismo {
 
 /** @namespace gismo::math
 
     @brief
     This namespace contains common mathematical functions.
-    
+
     \ingroup Core
 */
 namespace math {
@@ -91,6 +95,23 @@ using codi::isinf;
 //using codi::real;
 //using codi::imag;
 //using codi::conj;
+#endif
+
+#ifdef gsAutoDiff_ENABLED
+using autodiff::detail::abs;
+using autodiff::detail::sqrt;
+using autodiff::detail::pow;
+using autodiff::detail::exp;
+using autodiff::detail::log;
+using autodiff::detail::sin;
+using autodiff::detail::cos;
+using autodiff::detail::tan;
+using autodiff::detail::asin;
+using autodiff::detail::acos;
+using autodiff::detail::atan;
+using autodiff::detail::sinh;
+using autodiff::detail::cosh;
+using autodiff::detail::tanh;
 #endif
 
 #ifdef gsUniversal_ENABLED
@@ -351,12 +372,12 @@ inline int ipow(int x, unsigned exp)
 }
 
 /// integer square root
-inline unsigned isqrt(unsigned value) 
+inline unsigned isqrt(unsigned value)
 {
     const unsigned sr = static_cast<unsigned>(std::sqrt(static_cast<double>(value)));
     //do { ++sr; } while(sr * sr  <= value); // pick closest integer
-    //do { --sr; } while(sr * sr   > value);  
-    return sr; 
+    //do { --sr; } while(sr * sr   > value);
+    return sr;
 }
 
 /// Returns convex combination of \a a and \a b with weight \a t

@@ -61,7 +61,7 @@ struct epsilon_type<ad_type_tag>
 {
     static inline DScalarValue value()
     {
-        static const DScalarValue epsilon = 
+        static const DScalarValue epsilon =
             std::numeric_limits<DScalarValue>::epsilon();
         return epsilon;
     }
@@ -160,7 +160,7 @@ template <typename T>
 inline T nequal_impl(const T& v0, const T& v1, ad_type_tag)
 {
     const T epsilon( epsilon_type<ad_type_tag>::value() );
-    const T eps_norm = (max(T(1),max(abs(v0),abs(v1))) * epsilon);
+    const T eps_norm = (std::max(T(1),std::max(abs(v0),abs(v1))) * epsilon);
     return (abs(v0 - v1) > eps_norm) ? T(1) : T(0);
 }
 
@@ -248,7 +248,7 @@ template <typename T>
 inline T equal_impl(const T& v0, const T& v1, ad_type_tag)
 {
     const T epsilon( epsilon_type<ad_type_tag>::value() );
-    const T eps_norm = (max(T(1),max(abs(v0),abs(v1))) * epsilon);
+    const T eps_norm = (std::max(T(1),std::max(abs(v0),abs(v1))) * epsilon);
     return (abs(v0 - v1) <= eps_norm) ? T(1) : T(0);
 }
 
@@ -331,8 +331,8 @@ inline T nor_impl(const T& v0, const T& v1, ad_type_tag)
 } //namespace numeric
 
 template <typename Iterator>
-inline bool string_to_real(Iterator& itr_external, 
-                           const Iterator end, DScalar& t, 
+inline bool string_to_real(Iterator& itr_external,
+                           const Iterator end, DScalar& t,
                            numeric::details::ad_type_tag)
 {
     const std::string num(itr_external,end);
@@ -340,16 +340,16 @@ inline bool string_to_real(Iterator& itr_external,
     return true;
 }
 
-inline bool is_true (const DScalar& v) 
+inline bool is_true (const DScalar& v)
 { return details::numeric::details::is_true_impl (v); }
 
-inline bool is_false(const DScalar& v) 
+inline bool is_false(const DScalar& v)
 { return details::numeric::details::is_false_impl(v); }
 } // namespace details
 
 namespace rtl { namespace io { namespace details {
 
-inline void print_type(const std::string& fmt, const DScalar& v, 
+inline void print_type(const std::string& fmt, const DScalar& v,
                        exprtk::details::numeric::details::ad_type_tag)
 {
     printf(fmt.c_str(),v.getValue());

@@ -691,14 +691,14 @@ private:
                                         // If matrix is symmetric, we could
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
-#                                       pragma omp atomic
+#                                       pragma omp critical
                                         m_fmatrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
                                     else if (elim) // colMap.is_boundary_index(jj) )
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-#                                       pragma omp atomic
+#                                       pragma omp critical
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
                                     }
@@ -711,7 +711,7 @@ private:
 #ifdef _OPENMP
                             for(index_t a = 0; a!= m_rhs.cols();++a)
                             {
-#                              pragma omp atomic
+#                              pragma omp critical
                                 m_rhs(ii,a) += localMat(rls+i,a);
                             }
 #else
@@ -1137,7 +1137,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         {
             QuPatch = elem.patch();
             // get Degree of the domain
-            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+            QuRule = gsQuadrature::getPtr<T>(this->trialSpace(0).source().basis(QuPatch), m_options);
         }
 
         // Map the Quadrature rule to the element

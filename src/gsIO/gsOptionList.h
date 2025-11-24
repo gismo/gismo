@@ -61,6 +61,13 @@ public:
     index_t     askInt   (const std::string & label, const index_t &     value = 0     ) const;
     /// @copydoc gsOptionList::askString()
     Real      askReal  (const std::string & label, const Real &      value = 0     ) const;
+#ifdef gsAutoDiff_ENABLED
+    Real      askReal  (const std::string & label, const autodiff::detail::Dual<double,double> & value ) const
+    {
+        // Extract value part for configuration parameter
+        return this->askReal(label, static_cast<double>(value.val));
+    }
+#endif
     /// @copydoc gsOptionList::askString()
     bool        askSwitch(const std::string & label, const bool &        value = false ) const;
 
@@ -106,6 +113,13 @@ public:
     void addInt   (const std::string & label, const std::string & desc, const index_t &     value );
     /// @copydoc gsOptionList::addString()
     void addReal  (const std::string & label, const std::string & desc, const Real &      value );
+#ifdef gsAutoDiff_ENABLED
+    void addReal  (const std::string & label, const std::string & desc, const autodiff::detail::Dual<double,double> & value )
+    {
+        // Extract value part for configuration parameter
+        this->addReal(label, desc, static_cast<double>(value.val));
+    }
+#endif
     /// @copydoc gsOptionList::addString()
     void addSwitch(const std::string & label, const std::string & desc, const bool &        value );
 

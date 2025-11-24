@@ -113,7 +113,6 @@ public:
 
 // Other
 #include <gsExpressions/_expr.h>
-#include <gsExpressions/_expr_macros.h>
 // A
 #include <gsExpressions/abs_expr.h>
 #include <gsExpressions/add_expr.h>
@@ -192,6 +191,9 @@ public:
 // X
 // Y
 // Z
+
+#include <gsExpressions/_expr_macros.h>
+
 
 #undef MatExprType
 #undef AutoReturn_t

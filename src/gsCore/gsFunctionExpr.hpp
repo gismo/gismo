@@ -82,6 +82,9 @@
 #include <gsUniversal/exprtk_universal_forward.hpp>
 #endif
 
+#if defined(gsAutoDiff_ENABLED)
+#include <gsAutoDiff/exprtk_autodiff_forward.hpp>
+#endif
 #include <exprtk.hpp>
 
 #if defined(GISMO_WITH_ADIFF)
@@ -104,6 +107,9 @@
 #include <gsUniversal/exprtk_universal_adaptor.hpp>
 #endif
 
+#if defined(gsAutoDiff_ENABLED)
+#include <gsAutoDiff/exprtk_autodiff_adaptor.hpp>
+#endif
 
 #include <gsIO/gsXml.h>
 

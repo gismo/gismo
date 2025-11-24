@@ -92,7 +92,6 @@ void gsFunction<T>::div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 template <class T>
 void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-
     //gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
     const index_t parDim = u.rows();                // dimension of domain
     const index_t tarDim = targetDim();             // dimension of codomain

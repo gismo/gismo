@@ -2,12 +2,12 @@
 
     @brief Provides declaration of TensorNurbsBasis abstract interface.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -21,7 +21,7 @@
 namespace gismo
 {
 
-/** \brief 
+/** \brief
     A tensor product Non-Uniform Rational B-spline (NURBS) basis.
 
     This is the rational version of gsTensorBSplineBasis.
@@ -37,7 +37,7 @@ template<short_t d, class T>
 class gsTensorNurbsBasis : public gsRationalBasis<typename gsBSplineTraits<d,T>::Basis>
 {
 
-public: 
+public:
     typedef gsKnotVector<T> KnotVectorType;
 
     typedef memory::unique_ptr<gsGeometry<T> > gsGeoPtr;
@@ -68,7 +68,7 @@ public:
 
     /// @brief Unique pointer for gsTensorNurbsBasis
     typedef memory::unique_ptr< gsTensorNurbsBasis > uPtr;
-    
+
     //typedef typename Base::iterator iterator;
     //typedef typename Base::const_iterator const_iterator;
 
@@ -197,7 +197,7 @@ public:
     }
 
     /// @brief Gives back the boundary basis at boxSide s
-    gsBasis<real_t> * boundaryBasis_impl(const boxSide & s) const override;
+    gsBasis<T> * boundaryBasis_impl(const boxSide & s) const override;
 
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
