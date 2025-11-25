@@ -93,18 +93,31 @@ int main(int argc, char *argv[])
     // Create a gsMultipatch and add the loaded geometry
     gsMultiPatch<> mpLeft;
     fd.getId(1,mpLeft);
-    // Elevate and p-refine the basis to order p + numElevate
-    // where p is the highest degree in the bases
-    mpLeft.degreeElevate(numElevate);
-    mpLeft.computeTopology();
-
-    // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
+    // Right-hand side function : Analytical density function rho_1
     // Load the file
     gsFunctionExpr<> f;
     fd.getId(2003, f);
-    gsFunctionExpr<> rhs;
-    fd.getId(2001, rhs);
     gsInfo<<"Density function "<< f << "\n";
+
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 1-2 : Computes the density function
+    ###        and the multipatch adaptove mapping
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
+    // refine to have at least 1e3
+    if (numRefine <5)
+        MAE.uniformRefine(5-numRefine);
+
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###   Step 4: Define hierarchical adaptive mapping
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    gsMultiPatch<> geometry;	
+    for(size_t i =0; i<mpLeft.nPatches(); ++i){
+        geometry.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
+        //geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));
+    }
+    geometry.computeTopology();
+    gsMultiPatch<> geometryRef = geometry; // make a copy of geometry before adaptive refinement
 
     //=============================================//
         // Setting loads and boundary conditions //
@@ -135,34 +148,17 @@ int main(int argc, char *argv[])
     gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
 #endif
 
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 1-2 : Computes the density function
-    ###        and the multipatch adaptove mapping
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
-    // refine to have at least 1e3
-    if (numRefine <5)
-        MAE.uniformRefine(5-numRefine);
-
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 4: Define hierarchical adaptive mapping
-     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsMultiPatch<> geometry;	
-    for(size_t i =0; i<mpLeft.nPatches(); ++i){
-        geometry.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
-        //geometry.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));
-    }
-    geometry.computeTopology();
-
     //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
-    if (true){
     // creating basis
-    gsMultiBasis<> basis(geometry, false);//true: poly-splines (not NURBS)
-
+    gsMultiBasis<> basis(geometry, true);//true: poly-splines (not NURBS)
     for (int r=0; r<=numRefine; ++r)
     {
         basis.uniformRefine();
+        geometryRef.uniformRefine();
     }
+    gsMultiBasis<> Cbasis(geometryRef, false);; // make a copy of basis before adaptive refinement
+    // basis.degreeElevate(numElevate);
+
     gsInfo << "Patches: "<< geometry.basis(0).size() <<", degree: "<< basis.basis(0).size() <<"\n";
 
     gsVector<>     l2err(numLRefine+1), h1err(numLRefine+1);
@@ -257,19 +253,20 @@ int main(int argc, char *argv[])
 
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             
-            if (IntensityMAE >1.){
-                std::vector<bool> eldensityMarked( eltErrs.size() );
-                gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.8, eldensityMarked);
-                auto density   = MAE.buildDensity( basis, eldensityMarked, true);// false: do not set rho to zero
+            if (IntensityMAE >1. && r== 0){
+                // std::vector<bool> eldensityMarked( eltErrs.size() );
+                // gsMarkElementsForRef( eltErrs, 1, 0.1, eldensityMarked);
+                // auto density   = MAE.buildDensity( basis, eldensityMarked);// false: do not set rho to zero
+                auto density   = MAE.buildAnalyticDensity(f);// false: do not set rho to zero
                 MAE.buildMultiPatch(density);// compute adaptive mapping
-                geometry       = MAE.buildCompMultiPatch(basis);// computes the composition mapping mpLeft o Psitp
-                // CorrecNormalCPoints(geometryRef, geometry);
+                geometry       = MAE.buildColCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o Psitp
+                CorrecNormalCPoints(geometryRef, geometry);
                 // gsRefineMarkedElements(geometryRef, elMarked, NumArMarEl);
             }
 
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( basis, elMarked, NumArMarEl);
-            gsRefineMarkedElements(geometry, elMarked, NumArMarEl);
+            // gsRefineMarkedElements(geometry, elMarked, NumArMarEl);
 
             gsInfo << "assemble refined\n";
             
@@ -348,7 +345,6 @@ int main(int argc, char *argv[])
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     //! [Export visualization in ParaView]
-    }
 
     return EXIT_SUCCESS;
 
