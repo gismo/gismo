@@ -555,7 +555,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
 
     gsMatrix<> intGrid             = T_tbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<float> intfavlues     = this->MAmapping.patch(0).eval(intGrid);
+    gsMatrix<> intfavlues     = this->MAmapping.patch(0).eval(intGrid);
+    intfavlues = intfavlues.cwiseMax(0).cwiseMin(1);
     gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
 
     //! [Create  Hfitter]
@@ -587,7 +588,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMulti
 
     gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<float> intfavlues     = this->MAmapping.patch(0).eval(intGrid);
+    gsMatrix<> intfavlues = this->MAmapping.patch(0).eval(intGrid);
+    intfavlues = intfavlues.cwiseMax(0).cwiseMin(1);
     gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
     gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateData(fValues, intGrid);
     // extract the mapping
