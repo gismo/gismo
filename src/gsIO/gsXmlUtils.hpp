@@ -28,6 +28,7 @@
 #include <gsNurbs/gsTensorNurbs.h>
 
 #include <gsHSplines/gsTHBSpline.h>
+// #include <gsRemappedBasis/gsDecoupledSpline.h>
 
 #include <gsModeling/gsPlanarDomain.h>
 #include <gsModeling/gsTrimSurface.h>
@@ -35,6 +36,10 @@
 #include <gsModeling/gsCurveFitting.h>
 
 #include <gsUtils/gsMesh/gsMesh.h>
+
+#ifdef gsRemappedBasis_ENABLED
+#include <gsRemappedBasis/src/gsDecoupledSpline.h>
+#endif
 
 //#include <gsTrBezier/gsTriangularBezierBasis.h>
 //#include <gsTrBezier/gsTriangularBezier.h>
@@ -559,6 +564,11 @@ public:
         if ( s == "TensorNurbs4" ) 
             return gsXml< gsTensorNurbs<4,T> >::get(node);
 
+#ifdef gsRemappedBasis_ENABLED
+        if ( s == "DecoupledSpline2" )
+            return gsXml< gsDecoupledSpline<2,T> >::get(node);
+#endif
+
         //if ( s == "TrimSurface" )
         //    return gsXml< gsTrimSurface<T> >::get(node);
 
@@ -634,6 +644,12 @@ public:
 	    if ( const gsHBSpline<3,T> * g = 
 	    	 dynamic_cast<const gsHBSpline<3,T> *>( ptr ) )
             return gsXml< gsHBSpline<3,T> >::put(*g,data);
+
+#ifdef gsRemappedBasis_ENABLED
+	    if ( const gsDecoupledSpline<2,T> * g = 
+	    	 dynamic_cast<const gsDecoupledSpline<2,T> *>( ptr ) )
+            return gsXml< gsDecoupledSpline<2,T> >::put(*g,data);
+#endif
 
         //if ( const gsTriangularBezier<2,T> * g =
         //     dynamic_cast<const gsTriangularBezier<2,T> *>( ptr ) )
