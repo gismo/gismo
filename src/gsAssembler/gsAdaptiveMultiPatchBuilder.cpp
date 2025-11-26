@@ -25,7 +25,8 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
                             index_t numRefine,
                             index_t maxIter,
                             double IntensityMAE,
-                            index_t numReduce)
+                            index_t numReduce,
+                            index_t numElevate)
 {
     gsInfo<<"\n <>r-refinement ";
     // Build a (B-spline) multi-basis from the geometry mapping for the Monge–Ampère solver
@@ -33,11 +34,14 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     //... refine basis for convergence 
     for (int r=0; r<numRefine; ++r)
         dbasis.uniformRefine();
-
     // Reduce degree if possible while maintaining minimum degree of 1
     if (numReduce > 0){
         int reduceDegree = std::min(dbasis.degree()-1, numReduce);
         dbasis.degreeDecrease(reduceDegree);
+    }
+    else if (numElevate > 0){
+        // Elevate degree if possible
+        dbasis.degreeElevate(numElevate);
     }
 
     gsInfo << "Using B-splines of degree " << dbasis.degree() << " DoFs ";
@@ -506,11 +510,11 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     A.assemble(v*v.tr());//Matrix in one dimension
     solver.compute( A.matrix() );
     // ...
-    auto comp = A.getCoeff(this->m_mapping, PP);
+    auto comp      = A.getCoeff(this->m_mapping, PP);
 
     A.initSystem(this->m_mapping.geoDim());
     A.assemble(v * comp.tr() );// blocked by this one
-    vsolVector = solver.solve(A.rhs().col(0));
+    vsolVector     = solver.solve(A.rhs().col(0));
     v_sol.extract(Psi);
 
     #pragma omp for
@@ -553,11 +557,11 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     }
     gsInfo<<":gridsize="<<T_tbasis.basis(0).numElements()<<"/"<<Cbasis.basis(0).numElements();
 
-    gsMatrix<> intGrid             = T_tbasis.basis(0).anchors();
+    gsMatrix<> intGrid     = T_tbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<> intfavlues     = this->MAmapping.patch(0).eval(intGrid);
-    intfavlues = intfavlues.cwiseMax(0).cwiseMin(1);
-    gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
+    gsMatrix<> intfavlues  = this->MAmapping.patch(0).eval(intGrid);
+    intfavlues             = intfavlues.cwiseMax(0).cwiseMin(1);
+    gsMatrix<> fValues     = this->m_mapping.patch(0).eval(intfavlues);
 
     //! [Create  Hfitter]
     // Create hierarchical refinement object
@@ -588,8 +592,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMulti
 
     gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<> intfavlues = this->MAmapping.patch(0).eval(intGrid);
-    intfavlues = intfavlues.cwiseMax(0).cwiseMin(1);
+    gsMatrix<> intfavlues          = this->MAmapping.patch(0).eval(intGrid);
+    intfavlues                     = intfavlues.cwiseMax(0).cwiseMin(1);
     gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
     gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateData(fValues, intGrid);
     // extract the mapping

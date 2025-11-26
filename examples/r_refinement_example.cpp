@@ -22,21 +22,22 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool plot           = false;
-    index_t numRefine   = 2;
-    index_t numLRefine  = 1;
-    index_t numRefineMAE= 3;
-    index_t numReduce   = 0;
-    index_t numElevate  = 0;
-    index_t maxIter     = 50;
-    index_t elevDegree  = 0; // degree elevation for the composition of geometry maps
-    double IntensityMAE = 9.;
-    double quadValue    = 2.0;
-    bool bs_nrbs        = false;
-    bool last           = true;
-    bool colloc         = false;
-    bool fit            = false;
-    bool L2proj         = true;
+    bool plot              = false;
+    index_t numRefine      = 2;
+    index_t numLRefine     = 1;
+    index_t numRefineMAE   = 3;
+    index_t numReduceMAE   = 0;
+    index_t numElevateMAE  = 0;
+    index_t numElevate     = 0;
+    index_t maxIter        = 50;
+    index_t elevDegree     = 0; // degree elevation for the composition of geometry maps
+    double IntensityMAE    = 9.;
+    double quadValue       = 2.0;
+    bool bs_nrbs           = false;
+    bool last              = true;
+    bool colloc            = false;
+    bool fit               = false;
+    bool L2proj            = true;
 
     // gsStopwatch timer;
     // timer.restart();
@@ -58,8 +59,10 @@ int main(int argc, char *argv[])
                 numElevate );
     cmd.addInt( "v", "elevDegree", "Number of degree Elevation steps to perform fro the composition (0: equalize degree in all directions)", 
                 elevDegree );
-    cmd.addInt( "r", "degreeRedution", "Number of degree Reduction steps to perform before solving (0: equalize degree in all directions)", 
-                numReduce );
+    cmd.addInt( "r", "degreeRedution", "Number of degree Reduction steps to perform before solving MAE", 
+                numReduceMAE );
+    cmd.addInt( "s", "degreeMAEElevation", "Number of degree Elevation steps to perform before solving MAE", 
+                numElevateMAE );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  
                 numRefine );
     cmd.addInt( "m", "uniformRefineMAE", "Number of Uniform h-refinement loops for MAE mapping",  
@@ -136,7 +139,7 @@ int main(int argc, char *argv[])
     ###                                  Step r* : Computes the density function
     ###                                     and the multipatch adaptive mapping from a given mesh
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduce);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduceMAE, numElevateMAE);
     auto density        = MAE.buildAnalyticDensity(f); // build the density function (we avoid composing rho o F o Psi here)
     MAE.buildMultiPatch(density, 1e-8);// build the adaptive mapping
     // //------------------------------------
@@ -209,7 +212,7 @@ int main(int argc, char *argv[])
     std::ofstream outFile("errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
     if (outFile.is_open())
     {
-        outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduce <<"\n"
+        outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduceMAE <<"\n"
                 << std::scientific << DoFPDE.transpose() << "\n";
         if (L2proj){
         outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << Volerr.transpose() << "\n";
@@ -232,8 +235,9 @@ int main(int argc, char *argv[])
     {
         gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
     }
-    //------------------------------------    
+    //--------------------------------------------------------------------------------------------------
     //! [Error and convergence rates]
+    //--------------------------------------------------------------------------------------------------    
     // --- Print header ---
     gsInfo << std::setw(12) << "DoFs" << " & "
          << std::setw(13) << "V(F∘Ψ)"     << " & "

@@ -34,7 +34,8 @@ public:
                                 index_t numRefine   = 0,
                                 index_t maxIter     = 30,
                                 double IntensityMAE = 9.0,
-                                index_t numReduce   = 0);
+                                index_t numReduce   = 0,
+                                index_t numElevate  = 0);
     //... Identity mapping in square to itself
     gsMultiPatch<> mp; 
     // ... optimal Monge-Ampere mapping in square to itself

@@ -59,6 +59,8 @@ int main(int argc, char *argv[])
     index_t numElevate    = 0;
     index_t maxIter       = 30;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
+    index_t numReduceMAE   = 0;
+    index_t numElevateMAE  = 0;
     double IntensityMAE   = 12.;
     //bool export_b64     = false;
     bool errorsave        = false;
@@ -74,6 +76,10 @@ int main(int argc, char *argv[])
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  numLRefine );
+    cmd.addInt( "r", "degreeRedution", "Number of degree Reduction steps to perform before solving MAE", 
+                numReduceMAE );
+    cmd.addInt( "s", "degreeMAEElevation", "Number of degree Elevation steps to perform before solving MAE", 
+                numElevateMAE );
     cmd.addString( "d", "file", "Input XML file data", fn );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
@@ -83,7 +89,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
     cmd.addInt( "c", "NumArMarEl", "augement NumArMarEl with such quantity in local h-refinement loops",  NumArMarEl );
-    cmd.addInt( "r", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
+    cmd.addInt( "g", "adaptRefCrit", "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",  adaptRefCrit );
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -103,7 +109,7 @@ int main(int argc, char *argv[])
     ###   Step 1-2 : Computes the density function
     ###        and the multipatch adaptove mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE, numReduceMAE, numElevateMAE);
     // refine to have at least 1e3
     if (numRefine <5)
         MAE.uniformRefine(5-numRefine);
