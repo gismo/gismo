@@ -510,7 +510,7 @@ public:
 
     /// \brief For \a gl being a global index, this function returns
     /// true whenever \a gl corresponds to patch \a k
-    bool indexOnPatch(const index_t gl, const index_t k) const;
+    bool indexOnPatch(const index_t gl, const index_t k, index_t & local) const;
 
     /// \brief For \a n being an index which is already offsetted, it
     /// returns the global index where it is mapped to by the dof

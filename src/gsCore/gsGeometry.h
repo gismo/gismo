@@ -604,11 +604,6 @@ public:
                                 const T accuracy = 1e-6,
                                 const bool directed=false) const;
 
-    /// Recovers the points of the geometry from the given points \a xyz and parameters \a uv
-    void recoverPoints(gsMatrix<T> & xyz,
-                       gsMatrix<T> & uv, index_t k,
-                       const T accuracy) const;
-
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }
 

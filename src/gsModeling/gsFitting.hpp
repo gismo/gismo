@@ -988,6 +988,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
     }
 }
 
+/*
 // compute the approximation errors
 template<class T>
 void gsFitting<T>::computeErrors()
@@ -1007,7 +1008,8 @@ void gsFitting<T>::computeErrors()
         if ( err > m_max_error ) m_max_error = err;
         if ( err < m_min_error ) m_min_error = err;
     }
-}*/
+}
+*/
 
 
 

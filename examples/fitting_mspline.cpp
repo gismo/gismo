@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
 
     fitting.compute(lambda); // smoothing parameter lambda
 
-    fitting.parameterCorrection(1e-12,maxPcIter);
+    fitting.parameterCorrection(1e-12,maxPcIter); //?
 
     timer.stop();
 
@@ -202,13 +202,6 @@ int main(int argc, char* argv[])
     fitting.computeApproxError(error, 0);
 
     gsInfo << "RMSE: " << std::sqrt(error/fval.cols()) << "\n";  
-
-
-
-
-
-
-
 
     gsFileData<> newdata;
     gsMultiPatch<> surf = test.exportToPatches();

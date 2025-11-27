@@ -208,7 +208,7 @@ public:
             mfile <<"</Collection>\n";
             mfile <<"</VTKFile>\n";
 
-            gsDebug << "Exporting to " << m_filename << "\n";
+            //gsDebug << "Exporting to " << m_filename << "\n";
             std::ofstream f( m_filename.c_str() );
             GISMO_ASSERT(f.is_open(), "Error creating "<< m_filename );
             f << mfile.rdbuf();

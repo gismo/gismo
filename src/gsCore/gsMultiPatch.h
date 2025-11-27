@@ -403,9 +403,14 @@ public:
     /// Used to get a mapper with unique vertices
     gsDofMapper getMapper(T tol) const;
 
+    gsDofMapper getBoxMapper() const;
+
     /// Creates a surface mesh out of this multipatch
     gsSurfMesh toMesh() const;
-    
+
+    /// returns a mesh with the same patch topology as this multipatch
+    gsSurfMesh topologyToMesh() const;
+
     /// Clear (delete) all patches
     void clear()
     {
