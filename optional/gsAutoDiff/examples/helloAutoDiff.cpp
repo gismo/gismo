@@ -33,8 +33,12 @@ dual testFunction(dual x)
 
 int main()
 {
+    std::cout << "========================================" << std::endl;
+    std::cout << "   FORWARD-MODE AD (dual numbers)" << std::endl;
+    std::cout << "========================================" << std::endl;
+    
     // Example 1: Computing derivatives directly from dual numbers
-    std::cout << "=== Example 1: Direct derivative extraction ===" << std::endl;
+    std::cout << "\n=== Example 1: Direct derivative extraction ===" << std::endl;
     dual x = 1.0;
     autodiff::detail::seed<1>(x, 1.0);  // Seed x for differentiation
     dual u = testFunction(x);
@@ -96,6 +100,73 @@ int main()
     std::cout << "\n=== Example 4: Verification ===" << std::endl;
     std::cout << "The derivatives should match the basis function values" << std::endl;
     std::cout << "since spline.eval() = sum(coef[i] * basis[i])" << std::endl;
+
+    std::cout << "\n\n========================================" << std::endl;
+    std::cout << "   DUAL vs VAR: Conceptual Comparison" << std::endl;
+    std::cout << "========================================" << std::endl;
+    
+    std::cout << "\n=== Example 5: Understanding Forward vs Reverse Mode ===" << std::endl;
+    std::cout << "\nFORWARD MODE (autodiff::dual):" << std::endl;
+    std::cout << "  - Implemented and fully supported in GISMO" << std::endl;
+    std::cout << "  - Works with gsMatrix<dual>, gsBSpline<dual>, etc." << std::endl;
+    std::cout << "  - Computes derivatives by propagating dual numbers forward" << std::endl;
+    std::cout << "  - One pass per input variable to get all outputs' derivatives" << std::endl;
+    std::cout << "  - Efficient when #inputs <= #outputs" << std::endl;
+    std::cout << "\n  Example: For a spline with " << coefs.rows() << " coefficients:" << std::endl;
+    std::cout << "    - To get Jacobian (all outputs w.r.t. all inputs): " << coefs.rows() << " forward passes" << std::endl;
+    std::cout << "    - Each pass: seed one coefficient, evaluate spline" << std::endl;
+    std::cout << "    - Result: one column of Jacobian per pass" << std::endl;
+    
+    std::cout << "\nREVERSE MODE (autodiff::var):" << std::endl;
+    std::cout << "  - Available in autodiff library" << std::endl;
+    std::cout << "  - NOT YET fully integrated with GISMO types" << std::endl;
+    std::cout << "  - Requires NumTraits and other Eigen support" << std::endl;
+    std::cout << "  - Computes derivatives by backpropagation" << std::endl;
+    std::cout << "  - One pass per output variable to get all inputs' derivatives" << std::endl;
+    std::cout << "  - Efficient when #outputs <= #inputs" << std::endl;
+    std::cout << "\n  Example: For the same spline with " << coefs.rows() << " coefficients:" << std::endl;
+    std::cout << "    - To get gradient of one output w.r.t. all inputs: 1 reverse pass" << std::endl;
+    std::cout << "    - Each pass: evaluate forward, then backpropagate from one output" << std::endl;
+    std::cout << "    - Result: one row of Jacobian per pass" << std::endl;
+    
+    std::cout << "\n=== Example 6: When to use which mode ===" << std::endl;
+    std::cout << "\nUse FORWARD MODE (dual) when:" << std::endl;
+    std::cout << "  1. Computing derivatives w.r.t. spatial coordinates (x, y, z)" << std::endl;
+    std::cout << "     Example: df/dx, df/dy for a function f(x,y)" << std::endl;
+    std::cout << "  2. Computing Jacobians with few inputs, many outputs" << std::endl;
+    std::cout << "  3. Working with GISMO geometry objects (splines, patches, etc.)" << std::endl;
+    std::cout << "  4. Need is ALREADY SUPPORTED in GISMO!" << std::endl;
+    
+    std::cout << "\nUse REVERSE MODE (var) when:" << std::endl;
+    std::cout << "  1. Computing gradients for optimization (many parameters, one objective)" << std::endl;
+    std::cout << "     Example: gradient of error function w.r.t. 1000s of coefficients" << std::endl;
+    std::cout << "  2. Computing Jacobians with many inputs, few outputs" << std::endl;
+    std::cout << "  3. Machine learning / neural network applications" << std::endl;
+    std::cout << "  4. Would require additional GISMO integration work" << std::endl;
+    
+    std::cout << "\n=== Example 7: Efficiency comparison ===" << std::endl;
+    std::cout << "\nScenario: Spline with " << coefs.rows() << " coefficients, " << result.rows() << " output components" << std::endl;
+    std::cout << "\nCompute full Jacobian (all outputs w.r.t. all inputs):" << std::endl;
+    std::cout << "  - Forward mode: " << coefs.rows() << " passes (one per input)" << std::endl;
+    std::cout << "  - Reverse mode: " << result.rows() << " passes (one per output)" << std::endl;
+    std::cout << "  - Winner: " << (coefs.rows() < result.rows() ? "Forward" : "Reverse") << " mode" << std::endl;
+    
+    std::cout << "\nCompute gradient of scalar objective w.r.t. all " << coefs.rows() << " coefficients:" << std::endl;
+    std::cout << "  - Forward mode: " << coefs.rows() << " passes" << std::endl;
+    std::cout << "  - Reverse mode: 1 pass" << std::endl;
+    std::cout << "  - Winner: Reverse mode (much faster!)" << std::endl;
+    
+    std::cout << "\nCurrent example (derivatives w.r.t. spatial point):" << std::endl;
+    std::cout << "  - Inputs: 1-3 (x, y, z coordinates)" << std::endl;
+    std::cout << "  - Outputs: " << result.rows() << " (spline components)" << std::endl;
+    std::cout << "  - Winner: Forward mode (as used in GISMO)" << std::endl;
+    
+    std::cout << "\n========================================" << std::endl;
+    std::cout << "For GISMO development, forward mode (dual) is the primary choice" << std::endl;
+    std::cout << "because most use cases involve derivatives w.r.t. few spatial variables." << std::endl;
+    std::cout << "Reverse mode (var) could be beneficial for future shape optimization" << std::endl;
+    std::cout << "or parameter fitting applications with many unknowns." << std::endl;
+    std::cout << "========================================\n" << std::endl;
 }
 
 
