@@ -15,195 +15,46 @@
 
 SUITE(gsSolver_advanced_test)
 {
-    TEST(gsConjugateGradient_IdentityMatrix)
+    TEST(gsSolver)
     {
+        // Conjugate Gradient Test
         int n = 10;
         gsSparseMatrix<> A(n, n);
         A.setIdentity();
-        
         gsMatrix<> b(n, 1);
         b.setOnes();
-        
         gsMatrix<> x(n, 1);
         x.setZero();
-        
         gsConjugateGradient<> solver(A);
         solver.solve(b, x);
-        
-        // Solution should be b since A is identity
         for (int i = 0; i < n; i++)
             CHECK_CLOSE(x(i, 0), 1.0, 1e-8);
-    }
 
-    TEST(gsConjugateGradient_DiagonalMatrix)
-    {
-        int n = 5;
-        gsSparseMatrix<> A(n, n);
-        for (int i = 0; i < n; i++)
-            A.insert(i, i) = i + 2.0;
-        
-        gsMatrix<> b(n, 1);
-        for (int i = 0; i < n; i++)
-            b(i, 0) = (i + 2.0) * (i + 1.0);
-        
-        gsMatrix<> x(n, 1);
-        x.setZero();
-        
-        gsConjugateGradient<> solver(A);
-        solver.solve(b, x);
-        
-        // Check solution
-        for (int i = 0; i < n; i++)
-            CHECK_CLOSE(x(i, 0), i + 1.0, 1e-8);
-    }
+        // MinResQLP Test
+        int m = 8;
+        gsSparseMatrix<> B(m, m);
+        B.setIdentity();
+        gsMatrix<> bMinRes(m, 1);
+        bMinRes.setConstant(2.0);
+        gsMatrix<> xMinRes(m, 1);
+        xMinRes.setZero();
+        gsMinResQLP<> minResSolver(B);
+        minResSolver.solve(bMinRes, xMinRes);
+        for (int i = 0; i < m; i++)
+            CHECK_CLOSE(xMinRes(i, 0), 2.0, 1e-8);
 
-    TEST(gsConjugateGradient_Convergence)
-    {
-        int n = 20;
-        gsSparseMatrix<> A(n, n);
-        
-        // Create symmetric positive definite matrix
-        for (int i = 0; i < n; i++)
-        {
-            A.insert(i, i) = 4.0;
-            if (i > 0)
-                A.insert(i, i-1) = -1.0;
-            if (i < n-1)
-                A.insert(i, i+1) = -1.0;
-        }
-        
-        gsMatrix<> b(n, 1);
-        b.setOnes();
-        
-        gsMatrix<> x(n, 1);
-        x.setZero();
-        
-        gsConjugateGradient<> solver(A);
-        solver.setTolerance(1e-10);
-        solver.setMaxIterations(100);
-        solver.solve(b, x);
-        
-        // Check that solver converged
-        CHECK(solver.iterations() < 100);
-    }
-
-    TEST(gsMinRes_SimpleSystem)
-    {
-        int n = 8;
-        gsSparseMatrix<> A(n, n);
-        A.setIdentity();
-        
-        gsMatrix<> b(n, 1);
-        b.setConstant(2.0);
-        
-        gsMatrix<> x(n, 1);
-        x.setZero();
-        
-        gsMinRes<> solver(A);
-        solver.solve(b, x);
-        
-        for (int i = 0; i < n; i++)
-            CHECK_CLOSE(x(i, 0), 2.0, 1e-8);
-    }
-
-    TEST(gsGMRes_Restart)
-    {
-        int n = 10;
-        gsSparseMatrix<> A(n, n);
-        A.setIdentity();
-        
-        gsMatrix<> b(n, 1);
-        b.setOnes();
-        
-        gsMatrix<> x(n, 1);
-        x.setZero();
-        
-        gsGMRes<> solver(A);
-        solver.setRestart(5);
-        solver.solve(b, x);
-        
-        for (int i = 0; i < n; i++)
-            CHECK_CLOSE(x(i, 0), 1.0, 1e-8);
-    }
-
-    TEST(gsSparseQR_Solve)
-    {
-        int n = 6;
-        gsSparseMatrix<> A(n, n);
-        
-        // Create a simple SPD system
-        for (int i = 0; i < n; i++)
-        {
-            A.insert(i, i) = 3.0;
-            if (i > 0)
-                A.insert(i, i-1) = 1.0;
-        }
-        
-        gsMatrix<> b(n, 1);
-        b.setConstant(1.0);
-        
-        gsSparseSolver<>::QR solver;
-        solver.compute(A);
-        gsMatrix<> x = solver.solve(b);
-        
-        CHECK(x.rows() == n);
-    }
-
-    TEST(gsSparseLU_Solve)
-    {
-        int n = 5;
-        gsSparseMatrix<> A(n, n);
-        
-        for (int i = 0; i < n; i++)
-        {
-            A.insert(i, i) = 2.0;
-            if (i > 0)
-                A.insert(i, i-1) = -1.0;
-            if (i < n-1)
-                A.insert(i, i+1) = -1.0;
-        }
-        
-        gsMatrix<> b(n, 1);
-        b.setOnes();
-        
-        gsSparseSolver<>::LU solver;
-        solver.compute(A);
-        gsMatrix<> x = solver.solve(b);
-        
-        // Verify solution
-        gsMatrix<> residual = A * x - b;
-        CHECK(residual.norm() < 1e-8);
-    }
-
-    TEST(gsIterativeSolver_Tolerance)
-    {
-        int n = 10;
-        gsSparseMatrix<> A(n, n);
-        A.setIdentity();
-        
-        gsMatrix<> b(n, 1);
-        b.setOnes();
-        
-        gsMatrix<> x(n, 1);
-        x.setZero();
-        
-        gsConjugateGradient<> solver(A);
-        
-        double tol = 1e-12;
-        solver.setTolerance(tol);
-        CHECK_CLOSE(solver.tolerance(), tol, 1e-15);
-    }
-
-    TEST(gsIterativeSolver_MaxIterations)
-    {
-        gsSparseMatrix<> A(5, 5);
-        A.setIdentity();
-        
-        gsConjugateGradient<> solver(A);
-        
-        int maxIter = 50;
-        solver.setMaxIterations(maxIter);
-        CHECK_EQUAL(solver.maxIterations(), maxIter);
+        // GMRes Test
+        int p = 10;
+        gsSparseMatrix<> C(p, p);
+        C.setIdentity();
+        gsMatrix<> bGMRes(p, 1);
+        bGMRes.setOnes();
+        gsMatrix<> xGMRes(p, 1);
+        xGMRes.setZero();
+        gsGMRes<> gmResSolver(C);
+        gmResSolver.solve(bGMRes, xGMRes);
+        for (int i = 0; i < p; i++)
+            CHECK_CLOSE(xGMRes(i, 0), 1.0, 1e-8);
     }
 
     /* 

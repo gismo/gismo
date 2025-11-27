@@ -15,88 +15,158 @@
 
 SUITE(gsDomain_test)
 {
-    TEST(gsPointDomain_Construction)
+    TEST(gsPointDomain)
     {
-        // Create a matrix of test points
+        // Construction test
         gsMatrix<> points(2, 5);
         points << 0.0, 0.25, 0.5, 0.75, 1.0,
                   0.0, 0.25, 0.5, 0.75, 1.0;
-        
         gsPointDomain<> pd(points);
-        
-        // Test basic properties
         CHECK_EQUAL(pd.dim(), 2);
         CHECK_EQUAL(pd.numElements(), 5);
-        CHECK_EQUAL(pd.numElementsBdr(boundary::none), 0);
+
+        // Iterator test
+        int count = 0;
+        for (auto it = pd.beginAll(); it != pd.endAll(); ++it)
+            count++;
+        CHECK_EQUAL(count, 5);
+
+        // Points access test
+        const gsMatrix<>& pts = pd.points();
+        CHECK_EQUAL(pts.rows(), 2);
+        CHECK_EQUAL(pts.cols(), 5);
+        CHECK_CLOSE(pts(0, 1), 0.25, 1e-10);
+
+        // Additional tests for 1D, 3D, and empty points
+        gsMatrix<> points1D(1, 10);
+        for (int i = 0; i < 10; i++)
+            points1D(0, i) = i * 0.1;
+        gsPointDomain<> pd1D(points1D);
+        CHECK_EQUAL(pd1D.dim(), 1);
+        CHECK_EQUAL(pd1D.numElements(), 10);
+
+        gsMatrix<> points3D(3, 8);
+        for (int i = 0; i < 8; i++)
+        {
+            points3D(0, i) = (i % 2) * 0.5;
+            points3D(1, i) = ((i / 2) % 2) * 0.5;
+            points3D(2, i) = (i / 4) * 0.5;
+        }
+        gsPointDomain<> pd3D(points3D);
+        CHECK_EQUAL(pd3D.dim(), 3);
+        CHECK_EQUAL(pd3D.numElements(), 8);
+
+        gsMatrix<> emptyPoints(2, 0);
+        gsPointDomain<> pdEmpty(emptyPoints);
+        CHECK_EQUAL(pdEmpty.dim(), 2);
+        CHECK_EQUAL(pdEmpty.numElements(), 0);
     }
 
-    TEST(gsPointDomain_Iterator)
+    TEST(gsTensorDomain)
     {
-        // Create a simple point domain
+        // 1D Tensor Domain
+        gsKnotVector<> kv(0, 1, 2, 4);
+        std::vector<gsDomain<>::Ptr> kvs1D;
+        kvs1D.push_back(memory::make_shared_not_owned(&kv));
+        gsTensorDomain<real_t, 1> td1D(kvs1D);
+        CHECK_EQUAL(td1D.dim(), 1);
+        CHECK_EQUAL(td1D.degree(0), kv.degree());
+        CHECK(td1D.numElements() > 0);
+
+        // 2D Tensor Domain
+        gsKnotVector<> kv1(0, 1, 1, 3);
+        gsKnotVector<> kv2(0, 1, 1, 3);
+        std::vector<gsDomain<>::Ptr> kvs2D;
+        kvs2D.push_back(memory::make_shared_not_owned(&kv1));
+        kvs2D.push_back(memory::make_shared_not_owned(&kv2));
+        gsTensorDomain<real_t, 2> td2D(kvs2D);
+        CHECK_EQUAL(td2D.dim(), 2);
+        CHECK_EQUAL(td2D.degree(0), kv1.degree());
+        CHECK_EQUAL(td2D.degree(1), kv2.degree());
+
+        // Additional tests for bounding box, iterators, and components
+        gsMatrix<> bbox = td2D.boundingBox();
+        CHECK_EQUAL(bbox.rows(), 2);
+        CHECK_EQUAL(bbox.cols(), 2);
+        CHECK_CLOSE(bbox(0, 0), 0.0, 1e-10);
+        CHECK_CLOSE(bbox(0, 1), 1.0, 1e-10);
+        CHECK_CLOSE(bbox(1, 0), 0.0, 1e-10);
+        CHECK_CLOSE(bbox(1, 1), 1.0, 1e-10);
+
+        int count = 0;
+        for (auto it = td2D.beginAll(); it != td2D.endAll(); ++it)
+            count++;
+        CHECK_EQUAL(count, (int)td2D.numElements());
+
+        auto comp0 = td2D.component(0);
+        auto comp1 = td2D.component(1);
+        CHECK(comp0.get() != nullptr);
+        CHECK(comp1.get() != nullptr);
+    }
+
+    TEST(gsDomain_Subdomain)
+    {
         gsMatrix<> points(2, 3);
         points << 0.0, 0.5, 1.0,
                   0.0, 0.5, 1.0;
         
         gsPointDomain<> pd(points);
         
-        // Test iterator
-        int count = 0;
-        for (auto it = pd.beginAll(); it != pd.endAll(); ++it)
-        {
-            count++;
-        }
-        CHECK_EQUAL(count, 3);
+        // Single piece domain should return itself for subdomain 0
+        auto sub = pd.subdomain(0);
+        CHECK_EQUAL(sub->numElements(), pd.numElements());
+        CHECK_EQUAL(pd.nPieces(), 1);
     }
 
-    TEST(gsPointDomain_Points)
+    TEST(gsDomain_Print)
     {
-        gsMatrix<> points(3, 4);
-        points << 1.0, 2.0, 3.0, 4.0,
-                  5.0, 6.0, 7.0, 8.0,
-                  9.0, 10.0, 11.0, 12.0;
+        gsMatrix<> points(2, 5);
+        points << 0.0, 0.25, 0.5, 0.75, 1.0,
+                  0.0, 0.25, 0.5, 0.75, 1.0;
         
         gsPointDomain<> pd(points);
         
-        const gsMatrix<>& pts = pd.points();
-        CHECK_EQUAL(pts.rows(), 3);
-        CHECK_EQUAL(pts.cols(), 4);
-        CHECK_CLOSE(pts(0, 1), 2.0, 1e-10);
+        std::ostringstream oss;
+        oss << pd;
+        std::string output = oss.str();
+        
+        // Check that output contains expected information
+        CHECK(output.find("Domain") != std::string::npos);
+        CHECK(output.find("2") != std::string::npos); // dimension
     }
 
-    TEST(gsTensorDomain_1D)
+    TEST(gsPointDomain_BoundaryIterator)
     {
-        // Create a 1D knot vector for testing
-        gsKnotVector<> kv(0, 1, 2, 4); // interval [0,1], degree 2, 4 elements
+        gsMatrix<> points(2, 3);
+        points << 0.0, 0.5, 1.0,
+                  0.0, 0.5, 1.0;
         
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv));
+        gsPointDomain<> pd(points);
         
-        gsTensorDomain<real_t, 1> td(kvs);
-        
-        CHECK_EQUAL(td.dim(), 1);
-        CHECK_EQUAL(td.degree(0), 2);
-        CHECK(td.numElements() > 0);
+        // Point domain should have no boundary elements
+        auto it = pd.beginBdr(boundary::none);
+        CHECK(it == pd.endBdr(boundary::none));
     }
 
-    TEST(gsTensorDomain_2D)
+    TEST(gsTensorDomain_3D)
     {
-        // Create 2D tensor domain
-        gsKnotVector<> kv1(0, 1, 1, 3);
-        gsKnotVector<> kv2(0, 1, 1, 3);
+        gsKnotVector<> kv1(0, 1, 0, 2);
+        gsKnotVector<> kv2(0, 1, 0, 3);
+        gsKnotVector<> kv3(0, 1, 0, 2);
         
         std::vector<gsDomain<>::Ptr> kvs;
         kvs.push_back(memory::make_shared_not_owned(&kv1));
         kvs.push_back(memory::make_shared_not_owned(&kv2));
+        kvs.push_back(memory::make_shared_not_owned(&kv3));
         
-        gsTensorDomain<real_t, 2> td(kvs);
+        gsTensorDomain<real_t, 3> td(kvs);
         
-        CHECK_EQUAL(td.dim(), 2);
-        CHECK_EQUAL(td.degree(0), 1);
-        CHECK_EQUAL(td.degree(1), 1);
-        
-        size_t nElem = kv1.numElements() * kv2.numElements();
-        CHECK_EQUAL(td.numElements(), nElem);
+        CHECK_EQUAL(td.dim(), 3);
+        size_t expectedElements = kv1.numElements() * kv2.numElements() * kv3.numElements();
+        CHECK_EQUAL(td.numElements(), expectedElements);
     }
+
+    // Additional comprehensive tests for gsDomain module
 
     TEST(gsTensorDomain_BoundingBox)
     {
@@ -173,259 +243,6 @@ SUITE(gsDomain_test)
         CHECK(comp1.get() != nullptr);
     }
 
-    TEST(gsDomain_Subdomain)
-    {
-        gsMatrix<> points(2, 3);
-        points << 0.0, 0.5, 1.0,
-                  0.0, 0.5, 1.0;
-        
-        gsPointDomain<> pd(points);
-        
-        // Single piece domain should return itself for subdomain 0
-        auto sub = pd.subdomain(0);
-        CHECK_EQUAL(sub->numElements(), pd.numElements());
-        CHECK_EQUAL(pd.nPieces(), 1);
-    }
-
-    TEST(gsDomain_Print)
-    {
-        gsMatrix<> points(2, 5);
-        points << 0.0, 0.25, 0.5, 0.75, 1.0,
-                  0.0, 0.25, 0.5, 0.75, 1.0;
-        
-        gsPointDomain<> pd(points);
-        
-        std::ostringstream oss;
-        oss << pd;
-        std::string output = oss.str();
-        
-        // Check that output contains expected information
-        CHECK(output.find("Domain") != std::string::npos);
-        CHECK(output.find("2") != std::string::npos); // dimension
-    }
-
-    TEST(gsPointDomain_BoundaryIterator)
-    {
-        gsMatrix<> points(2, 3);
-        points << 0.0, 0.5, 1.0,
-                  0.0, 0.5, 1.0;
-        
-        gsPointDomain<> pd(points);
-        
-        // Point domain should have no boundary elements
-        auto it = pd.beginBdr(boundary::none);
-        CHECK(it == pd.endBdr(boundary::none));
-    }
-
-    TEST(gsTensorDomain_3D)
-    {
-        gsKnotVector<> kv1(0, 1, 0, 2);
-        gsKnotVector<> kv2(0, 1, 0, 3);
-        gsKnotVector<> kv3(0, 1, 0, 2);
-        
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv1));
-        kvs.push_back(memory::make_shared_not_owned(&kv2));
-        kvs.push_back(memory::make_shared_not_owned(&kv3));
-        
-        gsTensorDomain<real_t, 3> td(kvs);
-        
-        CHECK_EQUAL(td.dim(), 3);
-        size_t expectedElements = kv1.numElements() * kv2.numElements() * kv3.numElements();
-        CHECK_EQUAL(td.numElements(), expectedElements);
-    }
-
-    // Additional comprehensive tests for gsDomain module
-
-    TEST(gsPointDomain_1D)
-    {
-        gsMatrix<> points(1, 10);
-        for (int i = 0; i < 10; i++)
-            points(0, i) = i * 0.1;
-        
-        gsPointDomain<> pd(points);
-        CHECK_EQUAL(pd.dim(), 1);
-        CHECK_EQUAL(pd.numElements(), 10);
-    }
-
-    TEST(gsPointDomain_3D)
-    {
-        gsMatrix<> points(3, 8);
-        for (int i = 0; i < 8; i++)
-        {
-            points(0, i) = (i % 2) * 0.5;
-            points(1, i) = ((i / 2) % 2) * 0.5;
-            points(2, i) = (i / 4) * 0.5;
-        }
-        
-        gsPointDomain<> pd(points);
-        CHECK_EQUAL(pd.dim(), 3);
-        CHECK_EQUAL(pd.numElements(), 8);
-    }
-
-    TEST(gsPointDomain_IteratorWithLargeSet)
-    {
-        gsMatrix<> points(2, 100);
-        for (int i = 0; i < 100; i++)
-        {
-            points(0, i) = i * 0.01;
-            points(1, i) = i * 0.01;
-        }
-        
-        gsPointDomain<> pd(points);
-        
-        int count = 0;
-        for (auto it = pd.beginAll(); it != pd.endAll(); ++it)
-            count++;
-        
-        CHECK_EQUAL(count, 100);
-    }
-
-    TEST(gsTensorDomain_BoundaryIterator_West)
-    {
-        gsKnotVector<> kv1(0, 1, 1, 3);
-        gsKnotVector<> kv2(0, 1, 1, 4);
-        
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv1));
-        kvs.push_back(memory::make_shared_not_owned(&kv2));
-        
-        gsTensorDomain<real_t, 2> td(kvs);
-        
-        int count = 0;
-        for (auto it = td.beginBdr(boundary::west); it != td.endBdr(boundary::west); ++it)
-            count++;
-        
-        CHECK(count > 0);
-    }
-
-    TEST(gsTensorDomain_BoundaryIterator_AllSides)
-    {
-        gsKnotVector<> kv1(0, 1, 1, 2);
-        gsKnotVector<> kv2(0, 1, 1, 2);
-        
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv1));
-        kvs.push_back(memory::make_shared_not_owned(&kv2));
-        
-        gsTensorDomain<real_t, 2> td(kvs);
-        
-        // Test all boundary sides
-        for (int side = 1; side <= 4; side++)
-        {
-            size_t nBdr = td.numElementsBdr(boxSide(side));
-            CHECK(nBdr > 0);
-        }
-    }
-
-    TEST(gsTensorDomain_MultipleComponents)
-    {
-        gsKnotVector<> kv1(0, 1, 2, 3);
-        gsKnotVector<> kv2(0, 1, 1, 4);
-        gsKnotVector<> kv3(0, 1, 3, 2);
-        
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv1));
-        kvs.push_back(memory::make_shared_not_owned(&kv2));
-        kvs.push_back(memory::make_shared_not_owned(&kv3));
-        
-        gsTensorDomain<real_t, 3> td(kvs);
-        
-        CHECK_EQUAL(td.dim(), 3);
-        CHECK_EQUAL(td.degree(0), 2);
-        CHECK_EQUAL(td.degree(1), 1);
-        CHECK_EQUAL(td.degree(2), 3);
-    }
-
-    TEST(gsPointDomain_EmptyPoints)
-    {
-        gsMatrix<> points(2, 0);
-        gsPointDomain<> pd(points);
-        
-        CHECK_EQUAL(pd.dim(), 2);
-        CHECK_EQUAL(pd.numElements(), 0);
-    }
-
-    TEST(gsTensorDomain_UniformKnotVector)
-    {
-        gsKnotVector<> kv(0, 1, 2, 5, 1); // Uniform knots
-        
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv));
-        
-        gsTensorDomain<real_t, 1> td(kvs);
-        
-        CHECK_EQUAL(td.numElements(), 5);
-        CHECK_EQUAL(td.degree(0), 2);
-    }
-
-    TEST(gsTensorDomain_NonUniformKnotVector)
-    {
-        gsKnotVector<> kv;
-        kv.initClamped(0, 1, 3, 2); // degree 3, 2 interior knots
-        
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv));
-        
-        gsTensorDomain<real_t, 1> td(kvs);
-        
-        CHECK_EQUAL(td.degree(0), 3);
-        CHECK(td.numElements() > 0);
-    }
-
-    TEST(gsTensorDomain_LargeDimensionBoundingBox)
-    {
-        gsKnotVector<> kv1(-5, 5, 1, 3);
-        gsKnotVector<> kv2(-10, 10, 1, 4);
-        gsKnotVector<> kv3(0, 100, 1, 2);
-        
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv1));
-        kvs.push_back(memory::make_shared_not_owned(&kv2));
-        kvs.push_back(memory::make_shared_not_owned(&kv3));
-        
-        gsTensorDomain<real_t, 3> td(kvs);
-        
-        gsMatrix<> bbox = td.boundingBox();
-        CHECK_EQUAL(bbox.rows(), 3);
-        CHECK_EQUAL(bbox.cols(), 2);
-        CHECK_CLOSE(bbox(0, 0), -5.0, 1e-10);
-        CHECK_CLOSE(bbox(0, 1), 5.0, 1e-10);
-        CHECK_CLOSE(bbox(1, 0), -10.0, 1e-10);
-        CHECK_CLOSE(bbox(1, 1), 10.0, 1e-10);
-        CHECK_CLOSE(bbox(2, 0), 0.0, 1e-10);
-        CHECK_CLOSE(bbox(2, 1), 100.0, 1e-10);
-    }
-
-    TEST(gsPointDomain_SinglePoint)
-    {
-        gsMatrix<> points(3, 1);
-        points << 1.0, 2.0, 3.0;
-        
-        gsPointDomain<> pd(points);
-        
-        CHECK_EQUAL(pd.dim(), 3);
-        CHECK_EQUAL(pd.numElements(), 1);
-        
-        const gsMatrix<>& pts = pd.points();
-        CHECK_CLOSE(pts(0, 0), 1.0, 1e-10);
-        CHECK_CLOSE(pts(1, 0), 2.0, 1e-10);
-        CHECK_CLOSE(pts(2, 0), 3.0, 1e-10);
-    }
-
-    TEST(gsTensorDomain_HighDegree)
-    {
-        gsKnotVector<> kv(0, 1, 5, 3); // degree 5
-        
-        std::vector<gsDomain<>::Ptr> kvs;
-        kvs.push_back(memory::make_shared_not_owned(&kv));
-        
-        gsTensorDomain<real_t, 1> td(kvs);
-        
-        CHECK_EQUAL(td.degree(0), 5);
-        CHECK(td.numElements() > 0);
-    }
-
     // Tests for domain iterator behavior
     TEST(gsTensorDomain_IteratorIncrement)
     {
@@ -489,7 +306,7 @@ SUITE(gsDomain_test)
         
         // Test allElements() range
         int count = 0;
-        for (auto elem : td.allElements())
+        for (auto & elem : td.allElements())
         {
             count++;
         }

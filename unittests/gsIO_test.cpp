@@ -15,47 +15,29 @@
 
 SUITE(gsIO_test)
 {
-    TEST(gsWrite_BSpline_XML)
+    TEST(gsIO_BSpline_XML)
     {
         // Create a simple B-spline curve
         gsKnotVector<> kv(0, 1, 1, 3);
         gsBSplineBasis<> basis(kv);
-        
         gsMatrix<> coefs(3, 2);
         coefs << 0, 0,
                  0.5, 1,
                  1, 0;
-        
         gsBSpline<> curve(kv, coefs);
-        
+
         // Write to XML
         std::string filename = "/tmp/test_curve.xml";
         gsWrite(curve, filename);
-        
+
         // Verify file exists
         std::ifstream file(filename);
         CHECK(file.good());
         file.close();
-    }
 
-    TEST(gsRead_BSpline_XML)
-    {
-        // Create and write a curve
-        gsKnotVector<> kv(0, 1, 2, 2);
-        gsBSplineBasis<> basis(kv);
-        
-        gsMatrix<> coefs(2, 1);
-        coefs << 0, 1;
-        
-        gsBSpline<> curve(kv, coefs);
-        
-        std::string filename = "/tmp/test_curve_read.xml";
-        gsWrite(curve, filename);
-        
         // Read it back
         gsFileData<> fd(filename);
-        gsGeometry<>::uPtr geom;
-        fd.getId(0, geom);
+        auto geom = fd.getFirst<gsGeometry<>>();
         
         CHECK(geom.get() != nullptr);
         CHECK_EQUAL(geom->domainDim(), 1);
@@ -82,37 +64,27 @@ SUITE(gsIO_test)
         file.close();
     }
 
-    TEST(gsWrite_Matrix_XML)
+    TEST(gsIO_Matrix_XML)
     {
+        // Write a matrix to XML
         gsMatrix<> mat(3, 4);
         mat << 1, 2, 3, 4,
                5, 6, 7, 8,
                9, 10, 11, 12;
-        
         std::string filename = "/tmp/test_matrix.xml";
         gsWrite(mat, filename);
-        
+
+        // Verify file exists
         std::ifstream file(filename);
         CHECK(file.good());
         file.close();
-    }
 
-    TEST(gsRead_Matrix_XML)
-    {
-        gsMatrix<> mat(2, 3);
-        mat << 1.5, 2.5, 3.5,
-               4.5, 5.5, 6.5;
-        
-        std::string filename = "/tmp/test_matrix_read.xml";
-        gsWrite(mat, filename);
-        
+        // Read the matrix back
         gsFileData<> fd(filename);
-        gsMatrix<> readMat;
-        fd.getId(0, readMat);
-        
-        CHECK_EQUAL(readMat.rows(), 2);
-        CHECK_EQUAL(readMat.cols(), 3);
-        CHECK_CLOSE(readMat(0, 0), 1.5, 1e-10);
+        auto readMat = fd.getFirst<gsMatrix<>>();
+        CHECK_EQUAL(readMat->rows(), 3);
+        CHECK_EQUAL(readMat->cols(), 4);
+        CHECK_CLOSE((*readMat)(0, 0), 1, 1e-10);
     }
 
     TEST(gsFileData_HasId)
