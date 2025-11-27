@@ -70,6 +70,9 @@ template<class E> class temp_expr;
 template<class E1, class E2, bool = E1::ColBlocks && !E1::ScalarValued && !E2::ScalarValued> class mult_expr
 {using E1::GISMO_ERROR_mult_expr_has_invalid_template_arguments;};
 
+template<class T> class onormal_expr;
+template<class T> class normal_expr;
+
 
 /*
   Traits class for expressions
