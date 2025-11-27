@@ -15,7 +15,8 @@
 
 #include <gsUtils/gsPointGrid.h>
 #include <gsAssembler/gsQuadrature.h>
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
+#include <gsExpressions/gsFeSpaceData.h>
 #include <gsDomain/gsDomain.h>
 
 #include <gsAssembler/gsCPPInterface.h>
@@ -41,13 +42,13 @@ private:
     gsOptionList m_options;
 
     mutable gsSparseMatrix<T> m_matrix;
-    typedef gsFiberMatrix<T,false> FiberMatrix;
+    typedef gsFiberMatrix<T,ColMajor> FiberMatrix;
     FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
-    std::list<gsFeSpaceData<T> > m_sdata;
-    std::vector<gsFeSpaceData<T>*> m_vrow;
-    std::vector<gsFeSpaceData<T>*> m_vcol;
+    std::list<gismo::expr::gsFeSpaceData<T> > m_sdata;
+    std::vector<gismo::expr::gsFeSpaceData<T>*> m_vrow;
+    std::vector<gismo::expr::gsFeSpaceData<T>*> m_vcol;
 
     int m_sparsity;//0:unknown, 1:volume, 2:boundary, 4:interface pre-allocated
     mutable bool m_modified;
@@ -134,7 +135,7 @@ public:
     /// Call this function to fill the sparsematrix with all the assemblies so far
     const gsSparseMatrix<T> & makeMatrix() const
     {
-        m_fmatrix.toSparseMatrix(m_matrix);
+        m_fmatrix.toSparseMatrix_into(m_matrix);
         m_modified = false;
         return m_matrix;
     }
@@ -151,6 +152,11 @@ public:
         matrix();
         m_modified = true;
         return give(m_matrix);
+    }
+
+    EIGEN_STRONG_INLINE FiberMatrix giveFiberMatrix()
+    {
+        return give(m_fmatrix);
     }
 
     /// @brief Returns the right-hand side vector(s)
@@ -655,7 +661,7 @@ private:
                               "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
 
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
-                              "Invalid values for fixed part");
+                              "Invalid values for fixed part " << colMap.boundarySize() <<" != "<< fixedDofs.size() );
 
                 //GISMO_ASSERT( colMap.boundarySize()==0 || m_rhs.cols()==1,
                 //              "Invalid values for fixed part");
@@ -880,13 +886,13 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
-        if (!m_vcol.front()->valid()) m_vcol.front()->init();
+        if (!m_vcol[i]->valid()) m_vcol[i]->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
                                    m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
 
-        if ( m_vcol[i] != m_vrow[i] )
+        if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
-            if (!m_vrow.front()->valid()) m_vrow.front()->init();
+            if (!m_vrow[i]->valid()) m_vrow[i]->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
                                        m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
         }
@@ -917,28 +923,35 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
         omp_init_lock(&l);
 #endif
 
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parsePattern(arg_tpl);
-
-    typename gsBasis<T>::domainIter domItEnd = m_exprdata->domain().endAll();
     unsigned patchInd;
     _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
-                    , lock
+    , lock
 #endif
-            );
+          );
 
-#pragma omp for
-    for (auto domIt = m_exprdata->domain().beginAll();
-        domIt<domItEnd; ++domIt)
+    for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        m_exprdata->points() = domIt.centerPoint();
-        patchInd = domIt.patch();
+        m_exprdata->points() = elem.centerPoint();
+        patchInd = elem.patch();
         op_tuple(pp, arg_tpl);
     }
+
 }//parallel
+
 #ifdef _OPENMP
     for (auto & l : lock)
         omp_destroy_lock(&l);
@@ -959,14 +972,17 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
         omp_init_lock(&l);
 #endif
 
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
 #pragma omp parallel
 {
-/*
-#ifdef _OPENMP
-        const int tid = omp_get_thread_num();
-        const int nt  = omp_get_num_threads();
-#endif
-*/
         auto arg_tpl = std::make_tuple(args...);
         m_exprdata->parsePattern(arg_tpl);
         typename gsBasis<T>::domainIter domIt;
@@ -1021,6 +1037,16 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
 #pragma omp parallel
@@ -1053,8 +1079,8 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        typename gsBasis<T>::domainIter domIt = basis1.domain()->subdomain(iFace.first().patch)->beginBdr(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->subdomain(iFace.first().patch)->endBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
 
         // Start iteration over elements
         //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
@@ -1086,7 +1112,6 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     // Optimization for the case when the quadrature rule is the same for all patches
     // bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
-    typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -1105,28 +1130,25 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     typename gsQuadRule<T>::uPtr QuRule;
     index_t QuPatch = -1;
-#pragma omp for
-    for (auto domIt = m_exprdata->domain().beginAll();
-         domIt<domItEnd; ++domIt)
+
+    for ( auto & elem : m_exprdata->domain().allElements() )
     {
-//#pragma omp critical
-//        gsDebug<<"\n------> tid="<<omp_get_thread_num()<<"; patch="<< domIt.patch()<<"; element="<< domIt.id() <<"\n";
-        if (/*changeQuadrature && */QuPatch!=domIt.patch())
+        if (/*changeQuadrature && */QuPatch!=elem.patch())
         {
-            QuPatch = domIt.patch();
+            QuPatch = elem.patch();
             // get Degree of the domain
             QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
         }
 
         // Map the Quadrature rule to the element
-        QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+        QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                        m_exprdata->points(), m_exprdata->weights());
 
         if (m_exprdata->points().cols()==0)
             continue;// is this useful?
 
         m_exprdata->precompute( QuPatch );
-        //m_exprdata->precompute( domIt ); //todo
+        //m_exprdata->precompute( elem ); //todo
 
         // Assemble contributions of the element
         op_tuple(ee, arg_tpl);
@@ -1167,7 +1189,6 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
-//#   pragma omp parallel for
     for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
     {
         const boundary_condition<T> * it = &iit->get();
@@ -1221,8 +1242,6 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     _checkMatrix CM(m_modified);
     op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
-
-//#   pragma omp parallel for
 
     for (gsBoxTopology::const_biterator it = bnd.begin();
          it != bnd.end(); ++it )
@@ -1347,7 +1366,6 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     clearRhs();
 
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
-    typename gsDomain<T>::iterator domItEnd = m_exprdata->domain().endAll();
 
 #pragma omp parallel
 {
@@ -1360,19 +1378,18 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     typename gsQuadRule<T>::uPtr QuRule;
     index_t QuPatch = -1;
-#pragma omp for
-    for (auto domIt = m_exprdata->domain().beginAll();
-         domIt<domItEnd; ++domIt)
+
+    for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (changeQuadrature && QuPatch!=domIt.patch())
+        if (changeQuadrature && QuPatch!=elem.patch())
         {
-            QuPatch = domIt.patch();
+            QuPatch = elem.patch();
             // get Degree of the domain
             QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
         }
 
         // Map the Quadrature rule to the element
-        QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+        QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                         m_exprdata->points(), m_exprdata->weights());
 
         if (m_exprdata->points().cols()==0)
@@ -1521,20 +1538,13 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
-    bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
-#pragma omp parallel
+    //bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+//#pragma omp parallel
 {
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
-
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     cPoints.resize( m_exprdata->domain().nPieces() );
     cWeights.resize( m_exprdata->domain().nPieces() );
 
-     // Note: omp thread will loop over all patches and will work on Ep/nt
-    // elements, where Ep is the elements on the patch.
     index_t count = 0;
     for (unsigned patchInd = 0; patchInd < m_exprdata->domain().nPieces(); ++patchInd)
     {
@@ -1548,21 +1558,11 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
         cPoints[patchInd].resize(bb.domainDim(), sz );
         cWeights[patchInd].resize( sz );
 
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt = bb.domain()->beginAll();
-        typename gsBasis<T>::domainIter domItEnd = bb.domain()->endAll();
-
         // Start iteration over elements of patchInd
-        // use parallel for instead
-#       ifdef _OPENMP
-        domIt += tid;
-        for ( ; domIt<domItEnd; domIt+=nt )
-#       else
-        for (; domIt<domItEnd; ++domIt )
-#       endif
+        for ( auto & elem : bb.domain()->allElements() ) //todo: parallelize
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+            QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
 
             cWeights[patchInd].segment(count, numNodes) = m_exprdata->weights();

@@ -16,8 +16,8 @@
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsAssembler/gsExpressions.h>
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExpressions.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsDomain/gsTensorDomainIterator.h>

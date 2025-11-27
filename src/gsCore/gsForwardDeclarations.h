@@ -14,6 +14,7 @@
 #pragma once
 
 // STD includes
+#include <cstdint>
 #include <vector>
 #include <iterator>
 #include <set>
@@ -136,6 +137,7 @@ template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainBou
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;
 template <class T=real_t>                class gsFunction;
+template <class T=real_t>                class gsComposedFunction;
 template <class T=real_t>                class gsFuncCoordinate;
 template <class T=real_t>                class gsFuncData;
 template <class T=real_t>                class gsMapData;
@@ -150,13 +152,13 @@ template <class basis_t >                class gsRationalBasis;
 template <short_t d, class T=real_t>     class gsTensorBasis;
 template <short_t d, class T=real_t>     class gsHTensorBasis;
 template <short_t d, class T=real_t>     class gsMappedBasis;
+template <class T=real_t>                class gsComposedBasis;
 
 template <class T=real_t>                class gsKnotVector;
-//template <class T=real_t>              class gsCompactKnotVector;
-template <class T=real_t>                class gsBSplineBasis;
-template <class T=real_t>                class gsNurbsBasis;
 template <short_t d, class T=real_t>     class gsTensorBSplineBasis;
+template <class T=real_t>                using gsBSplineBasis = gsTensorBSplineBasis<1,T>;
 template <short_t d, class T=real_t>     class gsTensorNurbsBasis;
+template <class T=real_t>                using gsNurbsBasis = gsTensorNurbsBasis<1,T>;
 template <short_t d, class T=real_t>     struct gsBSplineTraits;
 
 template <short_t d, class T=real_t>     class gsCompositeIncrSmoothnessBasis;
@@ -165,10 +167,10 @@ template <short_t d, class T=real_t>     class gsCompositeGeom;
 template <class T=real_t>                class gsBernsteinBasis;
 template <short_t d, class T=real_t>     class gsTensorBernsteinBasis;
 
-//template <class T=real_t>              class gsHKnotVector;
-template <short_t d, class T=real_t>     class gsHBSplineBasis;
-template <short_t d, class T=real_t>     class gsTHBSplineBasis;
-template <short_t d, class T=real_t>     class gsTHBSpline;
+template <short_t d, class T=real_t, bool Trunc=true>     class gsTHBSplineBasis;
+template <short_t d, class T=real_t, bool Trunc=true>     class gsTHBSpline;
+template <short_t d, class T=real_t>     using gsHBSplineBasis = gsTHBSplineBasis<d,T,false>;
+template <short_t d, class T=real_t>     using gsHBSpline = gsTHBSpline<d,T,false>;
 template <short_t d, class T=real_t, class Z=index_t>     class gsHDomain;
 template <short_t d, class T=real_t>     class gsRationalTHBSplineBasis;
 template <short_t d, class T=real_t>     class gsRationalTHBSpline;
@@ -180,9 +182,9 @@ template <class T=real_t>                class gsBezier;
 template <short_t d, class T=real_t>     class gsTensorBSpline;
 template <short_t d, class T=real_t>     class gsTensorNurbs;
 template <short_t d, class T=real_t>     class gsTensorBezier;
-template <short_t d, class T=real_t>     class gsHBSpline;
 template <class T=real_t>                class gsTrimSurface;
 template <short_t d, class T=real_t>     class gsMappedSpline;
+template <class T=real_t>                class gsComposedGeometry;
 
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;
@@ -335,6 +337,13 @@ class gsParaviewDataSet;
 class gsSurfMesh;
 
 // gsIO
+
+namespace internal
+{
+
+template<class Object> class gsXml;
+
+}
 
 template<class T>
 void gsWriteParaviewTPgrid(gsMatrix<T> const& points,

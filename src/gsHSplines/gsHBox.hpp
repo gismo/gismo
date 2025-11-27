@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsUtils/gsCombinatorics.h>
-#include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsDomain/gsHDomainIterator.h>
 #include <gsHSplines/gsAABB.h>

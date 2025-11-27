@@ -150,8 +150,8 @@ public:
     }
 
     GISMO_DEPRECATED
-    void adjacent( const gsVector<bool> & orient,
-                   gsDomainIterator<T>  & other ) override
+    void adjacent( const gsVector<bool> & /* orient */,
+                   gsDomainIterator<T>  & /* other */ ) override
     {
         GISMO_NO_IMPLEMENTATION
         // // 2D only for now

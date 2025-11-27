@@ -16,9 +16,8 @@
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsMSplines/gsMappedBasis.h>   // Only to make linker happy
 #include <gsCore/gsDofMapper.h>         // Only to make linker happy
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
-#include <gsIO/gsIOUtils.h>
 #include <gsIO/gsParaviewUtils.h>
 
 #include<fstream>

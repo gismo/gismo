@@ -62,6 +62,8 @@ public:
 
 private:
 
+    virtual size_t localId() const { return m_cur.id(); }
+
     void next() override
     {
         //note: we cannot rely on this->id()
@@ -135,6 +137,18 @@ public:
             m_domains[i] = multiBasis.basis(i).domain();
     }
 
+    /** @brief Constructor from a \ref gsMultipatch.
+     *
+     * @param mp The multipatch from which the domains are extracted.
+     */
+    //gsCompositeDomain(const gsFunctionSet<T> & multiBasis)
+    gsCompositeDomain(const gsMultiPatch<T> & mp)
+    : Base(), m_domains(mp.nPieces()), m_topology(&mp.topology())
+    {
+        for (index_t i = 0; i != mp.nPieces(); ++i)
+            m_domains[i] = mp.patch(i).basis().domain();
+    }
+
     // void insert(Ptr other);
 
     Ptr subdomain(index_t k) const override { return m_domains[k]; }
@@ -146,7 +160,7 @@ public:
 
     const domainContainer & subdomains() const { return m_domains;}
 
-    iterator beginAll() const  override { return new gsCompositeDomainIterator<T>(m_domains); }
+    iterator beginAll() const  override { return iterator(new gsCompositeDomainIterator<T>(m_domains)); }
 
     /// See \ref gsDomain.h for documentation.
     size_t numElements() const override

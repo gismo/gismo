@@ -101,7 +101,7 @@ public:
 
 public:
 
-    index_t nPieces() const {return m_mbases->nPieces();}
+    index_t nPieces() const override {return m_mbases->nPieces();}
 
     /// getter for (const) m_bases[i]
     BasisType const & getBase(int i) const
@@ -143,23 +143,22 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMappedSpline)
 
-    short_t domainDim() const
+    short_t domainDim() const override
     { return m_mbases->domainDim(); }
 
-    short_t targetDim() const
+    short_t targetDim() const override
     { return m_global.cols(); }
 
     /// returns the amount of patches of the multi patch
     size_t nPatches() const
     { return m_mbases->nPatches(); }
 
-    const gsMappedSingleSpline<d,T> & piece(const index_t k) const
-    { return m_ss[k]; }
+    const gsMappedSingleSpline<d,T> & piece(const index_t k) const override { return m_ss[k]; }
 
-    index_t size() const {return nPieces();}
+    index_t size() const override {return nPieces();}
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     { return m_mbases->print(os); }
 
     const gsMappedBasis<d,T> & getMappedBasis() const
@@ -174,23 +173,23 @@ public:
     gsMultiPatch<T> exportToPatches() const;
 
     // support (domain of definition)
-    gsMatrix<T> supportOf(const index_t & k) const
+    gsMatrix<T> supportOf(const index_t & k) const override
     { return m_mbases->getBase(k).support(); }
 
     gsGeometry<T> * exportPatch(int i,gsMatrix<T> const & localCoef) const;
 
 private:
     // Avoid warnings for hidden overloads w.r.t gsFunctionSet
-    void active_into(const gsMatrix<T> &,gsMatrix<index_t>&) const
+    void active_into(const gsMatrix<T> &,gsMatrix<index_t>&) const override
     { GISMO_NO_IMPLEMENTATION; }
-    void eval_into(const gsMatrix<T> &,gsMatrix<T>&) const
+    void eval_into(const gsMatrix<T> &,gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv_into(const gsMatrix<T> &,gsMatrix<T>&) const
+    void deriv_into(const gsMatrix<T> &,gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv2_into(const gsMatrix<T> &,gsMatrix<T>&) const
+    void deriv2_into(const gsMatrix<T> &,gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION; }
     void evalAllDers_into(const gsMatrix<T> &, int,
-                          std::vector<gsMatrix<T> >&, bool) const
+                          std::vector<gsMatrix<T> >&, bool) const override
     { GISMO_NO_IMPLEMENTATION; }
 
 public:

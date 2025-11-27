@@ -15,7 +15,6 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsIO/gsXml.h>
 
 namespace gismo
 {
@@ -206,13 +205,13 @@ public:
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     // Note: functions cannot be defaulted/deleted in VS2013 or older
-    gsOptionList(gsOptionList && other) :
+    gsOptionList(gsOptionList && other) EIGEN_NOEXCEPT :
         m_strings(std::move(other.m_strings)),
         m_ints(std::move(other.m_ints)),
         m_reals(std::move(other.m_reals)),
         m_switches(std::move(other.m_switches)) { }
 
-    gsOptionList& operator=(gsOptionList && other)
+    gsOptionList& operator=(gsOptionList && other) EIGEN_NOEXCEPT
     {
         m_strings  = std::move(other.m_strings);
         m_ints     = std::move(other.m_ints);
@@ -285,30 +284,6 @@ inline std::ostream &operator<<(std::ostream &os, const gsOptionList::OptionList
 inline bool operator< ( const gsOptionList::OptionListEntry& a, const gsOptionList::OptionListEntry& b )
 { return a.label < b.label; }
 
-
-namespace internal
-{
-
-/** \brief Read OptionList from XML data
-    \ingroup IO
-*/
-template<>
-class GISMO_EXPORT gsXml<gsOptionList>
-{
-private:
-    gsXml();
-public:
-    GSXML_COMMON_FUNCTIONS(gsOptionList)
-    GSXML_GET_POINTER(gsOptionList)
-    static std::string tag () { return "OptionList"; }
-    static std::string type() { return ""; }
-
-    static void get_into(gsXmlNode * node, gsOptionList & result);
-    static gsXmlNode * put (const gsOptionList & obj, gsXmlTree & data);
-};
-
-}
-
 #ifdef GISMO_WITH_PYBIND11
 
   /**
@@ -319,3 +294,5 @@ public:
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
+
+#include <gsIO/gsOptionListXml.h>

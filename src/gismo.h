@@ -49,6 +49,7 @@ namespace internal
 #include <gsCore/gsFunctionSet.h>
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFunction.h>
+#include <gsCore/gsComposedFunction.h>
 #include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsBoundary.h>
 
@@ -81,6 +82,9 @@ namespace internal
 
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
+#include <gsCore/gsComposedBasis.h>
+#include <gsCore/gsComposedGeometry.h>
+
 // Tensors
 #include <gsDomain/gsTensorDomainIterator.h>
 #include <gsDomain/gsTensorDomainBoundaryIterator.h>
@@ -102,8 +106,8 @@ namespace internal
 #include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
-#include <gsHSplines/gsHBSplineBasis.h>
-#include <gsHSplines/gsHBSpline.h>
+// #include <gsHSplines/gsHBSplineBasis.h>
+// #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSpline.h>
@@ -167,7 +171,7 @@ namespace internal
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
 

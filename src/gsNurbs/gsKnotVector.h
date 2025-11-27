@@ -162,22 +162,22 @@ public: // iterator ends
 
     domainIter beginAll() const override
     {
-        return new gsKnotDomainIterator<T>(*this);
+        return domainIter(new gsKnotDomainIterator<T>(*this));
     }
 
-    domainIter beginBdr(const boxSide   bs) const override
+    domainIter beginBdr(const boxSide   /* bs */) const override
     {
-        return new gsKnotDomainIterator<T>(*this);
+        return domainIter(new gsKnotDomainIterator<T>(*this));
     }
 
     domainIter endAll() const override
     {
-        return new gsKnotDomainIterator<T>(*this,false);
+        return domainIter(new gsKnotDomainIterator<T>(*this,false));
     }
 
-    domainIter endBdr(const boxSide   bs) const override
+    domainIter endBdr(const boxSide   /* bs */) const override
     {
-        return new gsKnotDomainIterator<T>(*this,false);
+        return domainIter(new gsKnotDomainIterator<T>(*this,false));
     }
 
     short_t dim() const override { return 1; }
@@ -739,6 +739,7 @@ public: // things required by gsKnotVector
     /// Returns the degree of the knot vector.
     short_t degree(short_t i = 0) const override //overload from gsDomain
     {
+        GISMO_UNUSED(i);
         return m_deg;
     }
 

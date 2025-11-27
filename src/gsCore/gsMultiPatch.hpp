@@ -21,6 +21,7 @@
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsTensor/gsTensorBasis.h>
 #include <gsAssembler/gsQuadrature.h>
+#include <gsDomain/gsCompositeDomain.h>
 
 #include <gsNurbs/gsNurbsBasis.h>
 
@@ -45,7 +46,7 @@ gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
     m_patches.push_back(geo.clone().release());
     //m_patches[0]->setId(0); // Note: for the single-patch constructor the id remains unchanged
     addBox();
-    this->addAutoBoundaries();
+    this->addAutoBoundaries();//inefficient
 }
 
 template<class T>
@@ -55,6 +56,12 @@ gsMultiPatch<T>::gsMultiPatch( const gsMultiPatch& other )
     // clone all geometries
     cloneAll( other.m_patches.begin(), other.m_patches.end(),
               this->m_patches.begin());
+}
+
+template<class T>
+memory::shared_ptr<gsDomain<T> > gsMultiPatch<T>::domain() const
+{
+    return memory::make_shared( new gsCompositeDomain<T>(*this) );
 }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
@@ -169,7 +176,7 @@ gsMultiPatch<T>::parameterRange(int i) const
 
 template<class T>
 gsBasis<T> &
-gsMultiPatch<T>::basis( size_t i ) const
+gsMultiPatch<T>::basis( size_t i )
 {
     GISMO_ASSERT( i < m_patches.size(), "Invalid patch index requested from gsMultiPatch" );
     return m_patches[i]->basis();

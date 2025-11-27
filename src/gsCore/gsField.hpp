@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsDomain/gsDomainIterator.h>
 
@@ -28,7 +28,7 @@ T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
 {
     GISMO_UNUSED(numEvals);// todo: subdivided quadrature elements
     gsExprEvaluator<T> ev;
-    ev.setIntegrationElements(B);
+    ev.setIntegrationDomain(B.domain());
     auto G = ev.getMap(this->patches());
     auto f1a = ev.getVariable(*m_fields);
     auto f1b = ev.getVariable(*m_fields, G);
@@ -47,7 +47,7 @@ T gsField<T>::distanceH1(gsFunctionSet<T> const & func,
                          int) const
 {
     gsExprEvaluator<T> ev;
-    ev.setIntegrationElements(B);
+    ev.setIntegrationDomain(B.domain());
     auto G = ev.getMap(this->patches());
     auto f1a = ev.getVariable(*m_fields);
     auto f1b = ev.getVariable(*m_fields, G);
@@ -74,7 +74,7 @@ T gsField<T>::distanceH2(gsFunctionSet<T> const & func,
         mb = gsMultiBasis<T>(mp);
 
     gsExprEvaluator<T> ev;
-    ev.setIntegrationElements(mb);
+    ev.setIntegrationDomain(mb.domain());
     auto G = ev.getMap(this->patches());
     auto f1a = ev.getVariable(*m_fields);
     auto f1b = ev.getVariable(*m_fields, G);
