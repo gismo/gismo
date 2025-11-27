@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by collocation method !
     //----------------------------------------------------------
-    gsMultiPatch<> mpPsi    = MAE.buildColCompMultiPatch(dbasis);
+    mpPsi                   = MAE.buildColCompMultiPatch(dbasis);
     geometryMap PGI         = A.getMap(mpPsi);
     // ... Error using Interpolation method
     IVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by fit method !
     //----------------------------------------------------------
-    gsMultiPatch<> mpPsi    = MAE.buildFitCompMultiPatch(dbasis,50);
+    mpPsi                   = MAE.buildFitCompMultiPatch(dbasis,50);
     geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
     FVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
@@ -244,9 +244,10 @@ int main(int argc, char *argv[])
          << std::setw(13) << "V(Πp(F∘Ψ))"  << " & "
          << std::setw(13) << "L2(Πp(F∘Ψ))" << " & "
          << std::setw(6)  << "EOcL2"      << "\n";
-    gsInfo << std::string(50, '-') << "\n";
     // --- Print table row by row ---
-    auto orderofConv = ( Bdrerr.head(numRefine).array() /
+    if (L2proj){
+    gsInfo << std::string(50, '-') << "L2Proj\n";
+        auto orderofConv = ( Bdrerr.head(numRefine).array() /
                   Bdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
     gsInfo << std::setw(12) << DoFPDE[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
@@ -260,7 +261,41 @@ int main(int argc, char *argv[])
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[i] << "&"
              << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << "\n";
             }
-
+    }
+    if (colloc){
+    gsInfo << std::string(50, '-') << "Colloc\n";
+    auto orderofConv = ( IBdrerr.head(numRefine).array() /
+                  IBdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+    gsInfo << std::setw(12) << DoFPDE[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< IVolerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< IBdrerr[0] << "&"
+            << std::setw(12) << "--" << "\n";
+    for (int i = 1; i <= numRefine; i++) {
+        gsInfo << std::setw(12) << DoFPDE[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IVolerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IBdrerr[i] << "&"
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << "\n";
+            }
+    }
+    if (fit){
+    gsInfo << std::string(50, '-') << "Fit\n";
+    auto orderofConv = ( FBdrerr.head(numRefine).array() /
+                  FBdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+    gsInfo << std::setw(12) << DoFPDE[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< FVolerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< FBdrerr[0] << "&"
+            << std::setw(12) << "--" << "\n";
+    for (int i = 1; i <= numRefine; i++) {
+        gsInfo << std::setw(12) << DoFPDE[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FVolerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FBdrerr[i] << "&"
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << "\n";
+            }
+    }
     //! [Export visualization in ParaView] 
     if (plot)
     {

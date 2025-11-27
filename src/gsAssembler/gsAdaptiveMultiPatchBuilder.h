@@ -70,7 +70,7 @@ public:
     gsMultiPatch<> buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue = 1) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : fitting
-    gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 1, const real_t lambda = 0.) const;
+    gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 100, const real_t lambda = 0.) const;
 
     // computes the projection of a composition and return a MultiPatch object :: Collocation
     gsMultiPatch<> buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const;
