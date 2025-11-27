@@ -152,8 +152,6 @@ public:
         /// a halfedge that is part of the face
         Halfedge  halfedge_;
 
-        /// F-Face for Doo-Sabin subdivision
-        Face fface_;
     };
 
 

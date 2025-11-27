@@ -1760,12 +1760,14 @@ gsGeometry<>::uPtr gsSurfMesh::asPatch(gsSurfMesh::Halfedge h, int deg) const
     Halfedge hh;
     index_t c = 0;
 
+    // Finding the first point and take its halfedge
     for (index_t i = 0; i<(deg/2); ++i)
     {
         h = backward_halfedge(h);
         h = next_halfedge(next_halfedge(opposite_halfedge(h)));
     }
 
+    // Going through the control points for each row
     for (int j = 0; j<deg; ++j)
     {
         coefs.row(c++) = vpoint_[from_vertex(h)];
@@ -1795,13 +1797,33 @@ gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
 {
     gsMultiPatch<> res;
     int n;
-
+    Halfedge he, hh;
+    bool evface;
     if ( 0 == deg%2 )
         for (auto v : vertices())
         {
             n = valence(v);
-            if (4==n)
-                res.addPatch( asPatch(halfedge(v), deg) );
+
+            he = halfedge(v);
+            
+            evface = false;
+            hh = he;
+            // exluding ev faces
+            do
+            {
+                if (valence(face(hh)) != 4)
+                {
+                    evface = true;
+                    break;
+                }
+                hh = ccw_rotated_halfedge(hh);
+            } while (hh != he);
+
+            if (evface)
+                continue;
+
+            if (4==n)  // exluding ev points
+                res.addPatch( asPatch(he, deg) );
         }
     else // 1 == deg%2
         for (auto f : faces())
