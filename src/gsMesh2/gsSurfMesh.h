@@ -1801,10 +1801,10 @@ private:
 public: // Extract spline functions
 
     gsMultiPatch<> asSpline(int deg) const;
-
-private:
-
     memory::unique_ptr<gsGeometry<> > asPatch(Halfedge h, int deg) const;
+//private:
+//
+//    memory::unique_ptr<gsGeometry<> > asPatch(Halfedge h, int deg) const;
 
 public: // Doo-Sabin functions
 
