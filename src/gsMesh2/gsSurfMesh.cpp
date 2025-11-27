@@ -1748,7 +1748,7 @@ inline bool gsSurfMesh::has_flag(Vertex v,
     return false;
 }
 
-gsGeometry<>::uPtr gsSurfMesh::asPatch(gsSurfMesh::Halfedge h, int deg) const
+inline gsGeometry<>::uPtr gsSurfMesh::asPatch(gsSurfMesh::Halfedge h, int deg) const
 {
     static gsKnotVector<> kv;
     kv.initUniform(0, 1, 0, 1, 1, deg);
@@ -1798,6 +1798,7 @@ gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
     gsMultiPatch<> res;
     int n;
     Halfedge he, hh;
+    Vertex ve;
     bool evface;
     if ( 0 == deg%2 )
         for (auto v : vertices())
@@ -1828,11 +1829,35 @@ gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
     else // 1 == deg%2
         for (auto f : faces())
         {
+            if (valence(f) != 4) continue;
+
+            evface = false;
+
             for ( auto v : vertices(f) )
             {
                 n = valence(v);
+                                
                 if ( n!=4 ) break;
+
+                he = halfedge(v);
+                hh = he;
+
+                // exluding ev faces
+                do
+                {
+                    if (valence(face(hh)) != 4)
+                    {
+                        evface = true;
+                        break;
+                    }
+                    hh = ccw_rotated_halfedge(hh);
+                } while (hh != he);
+
+                if (evface) break;
             }
+
+            if (evface) continue;
+
             if (4==n)
                 res.addPatch( asPatch(halfedge(f), deg) );
         }
