@@ -19,11 +19,6 @@
 //#include <vector>
 //#include <algorithm>			// For lower_bound
 
-// Do not inject symbols into namespace std — that is undefined behavior
-// and can conflict with other libraries (e.g. LibTorch). If formatted
-// output for std::pair is needed, use an explicit helper or stream
-// the pair members where required.
-
 namespace gismo {
 
 /** \brief This class is derived from std::vector, and adds sort tracking.
