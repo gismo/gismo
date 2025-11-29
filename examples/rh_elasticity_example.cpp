@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot             = false;
-    index_t numRefine     = 2;
+    index_t numRefine     = 3;
     index_t numLRefine    = 0;
     index_t numElevate    = 0;
     index_t maxIter       = 30;
@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
     //bool export_b64     = false;
     bool errorsave        = false;
     real_t adaptRefParam  = 0.;     // ... adapt parameter.
+    real_t MAERefParam    = 0.9;   // ... adapt parameter for MAE
     // Specify the file path
     std::string fn("pde/infinit_plate.xml");
     // --------------- adaptive refinement ---------------
@@ -85,6 +86,7 @@ int main(int argc, char *argv[])
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
     cmd.addReal( "a", "adaptRefParam", "parameter for local h-refinement loops",  adaptRefParam );
+    cmd.addReal( "m", "MAERefParam", "parameter for r-refinement loops",  MAERefParam );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("errorsave", "Create a file in ... and save errors", errorsave);
     cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  IntensityMAE);
@@ -101,6 +103,7 @@ int main(int argc, char *argv[])
     fd.getId(1,mpLeft);
     // Right-hand side function : Analytical density function rho_1
     // Load the file
+    mpLeft.degreeElevate(1);
     gsFunctionExpr<> f;
     fd.getId(2003, f);
     gsInfo<<"Density function "<< f << "\n";
@@ -124,7 +127,7 @@ int main(int argc, char *argv[])
     }
     geometry.computeTopology();
     gsMultiPatch<> geometryRef = geometry; // make a copy of geometry before adaptive refinement
-
+    
     //=============================================//
         // Setting loads and boundary conditions //
     //=============================================//
@@ -157,13 +160,14 @@ int main(int argc, char *argv[])
     //::::::::::::::::::::  Elasticity equation - (manufactured exact solution)         :::::::::::::::::::::::::
     // creating basis
     gsMultiBasis<> basis(geometry, true);//true: poly-splines (not NURBS)
+    basis.degreeElevate(numElevate);
     for (int r=0; r<=numRefine; ++r)
     {
         basis.uniformRefine();
         geometryRef.uniformRefine();
     }
+    
     gsMultiBasis<> Cbasis(geometryRef, false);; // make a copy of basis before adaptive refinement
-    // basis.degreeElevate(numElevate);
 
     gsInfo << "Patches: "<< geometry.basis(0).size() <<", degree: "<< basis.basis(0).size() <<"\n";
 
@@ -258,18 +262,16 @@ int main(int argc, char *argv[])
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
 
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
-            
-            if (IntensityMAE >1. && r== 0){
+            if (IntensityMAE >1.){
                 // std::vector<bool> eldensityMarked( eltErrs.size() );
-                // gsMarkElementsForRef( eltErrs, 1, 0.1, eldensityMarked);
-                // auto density   = MAE.buildDensity( basis, eldensityMarked);// false: do not set rho to zero
+                // gsMarkElementsForRef( eltErrs, adaptRefCrit, MAERefParam, eldensityMarked);
+                // auto density   = MAE.buildDensity( basis, eldensityMarked,2);// false: do not set rho to zero
                 auto density   = MAE.buildAnalyticDensity(f);// false: do not set rho to zero
                 MAE.buildMultiPatch(density);// compute adaptive mapping
                 geometry       = MAE.buildColCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o Psitp
                 CorrecNormalCPoints(geometryRef, geometry);
                 // gsRefineMarkedElements(geometryRef, elMarked, NumArMarEl);
             }
-
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( basis, elMarked, NumArMarEl);
             // gsRefineMarkedElements(geometry, elMarked, NumArMarEl);

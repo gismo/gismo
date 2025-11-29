@@ -176,19 +176,24 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const index_t setRhoLevel) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const index_t setRhogrid, const index_t setRhoLevel) const 
 {   
     //.. setRhoLevel: if 0 set the density to zero before adding the error distribution
     gsInfo<<"<>density function";
     // ... error as a piecewise constant function
-    gsMultiBasis<> basis_0 = this->m_basis;
+    gsMultiBasis<> basis_0 (mp, true); // make a copy of basis before adaptive refinement
+    basis_0.uniformRefine(setRhogrid); // refine to have enough resolution for error representation
+    if (setRhogrid == 0){
+        basis_0 = this->m_basis;
+    }
     // ... We want each element to be reprensted by one basis for all patches
     for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn ) 
     {
-    for( index_t i_dir=0; i_dir<this->m_basis.dim(); ++i_dir){
-       basis_0.basis(pn).degreeDecrease(this->m_basis.basis(pn).degree(i_dir),i_dir);
+    for( index_t i_dir=0; i_dir<basis_0.dim(); ++i_dir){
+       basis_0.basis(pn).degreeDecrease(basis_0.basis(pn).degree(i_dir),i_dir);
        }
     }
+    gsInfo << " Using degree "<< basis_0.basis(0).size() <<"DoFs for Piecewise Cst rho";
     // ...
     gsExprAssembler<> A_0(1,1);
     // Elements used for numerical integration

@@ -58,7 +58,7 @@ public:
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
     // Build and return a density as a MultiPatch object from marked elements using local h-refinement strategies
-    gsMultiPatch<> buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const  index_t setRhoZero = 0) const;
+    gsMultiPatch<> buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const index_t setRhogrid = 0, const  index_t setRhoZero = 0) const;
     
     //-----------------------------------------
     //  functions to build mapping from density
@@ -70,7 +70,7 @@ public:
     gsMultiPatch<> buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue = 1) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : fitting
-    gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 100, const real_t lambda = 0.) const;
+    gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 50, const real_t lambda = 0.) const;
 
     // computes the projection of a composition and return a MultiPatch object :: Collocation
     gsMultiPatch<> buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const;
