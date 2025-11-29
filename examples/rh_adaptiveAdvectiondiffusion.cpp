@@ -35,12 +35,14 @@ int main(int argc, char *argv[])
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.7; // ... adapt parameter.
+    real_t  MAERefParam   = 0.9; // ... adapt parameter for MAE
     // Define Stabilization method
     auto Stabilizationtype = stabilizerCDR::SUPG;
 
     
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
-    cmd.addReal(    "a", "adaptRefParam",    "parameter for local h-refinement loops",                                                            adaptRefParam );
+    cmd.addReal(    "a", "adaptRefParam",    "parameter for local h-refinement loops",                                                            adaptRefParam);
+    cmd.addReal(    "m", "MAERefParam",      "parameter for MAE mapping in local h-refinement loops",                                             MAERefParam );
     cmd.addInt(     "c", "NumArMarEl",       "augement NumArMarEl with such quantity in local h-refinement loops",                                NumArMarEl );
     cmd.addInt(     "e", "degreeElevation",  "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addReal(    "f", "IntensityMAE",     "Intensity of density function",                                                                     IntensityMAE);
@@ -99,7 +101,7 @@ int main(int argc, char *argv[])
     ###   Step 1-2 : Computes the density function
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE,0,1);
     // while (MAE.DoFs < 1e3)
     MAE.uniformRefine(5-numRefine);// uniform refine for better accuracy
 
@@ -197,14 +199,6 @@ int main(int argc, char *argv[])
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(Psi);
        gsExprEvaluator<>::variable is = ev.getVariable(solField.fields());
 
-       // Get the element-wise norms.
-        // Recover rhs for Poisson equation
-        auto SFunc        = ev.getVariable(SourceFunc, Gm);
-        // Coeffs for advection-reaction diffusion equation
-        auto coeff_convGm = ev.getVariable(coeff_conv, Gm);
-        auto coeff_diffGm = ev.getVariable(coeff_diffMax, Gm);
-        auto coeff_reacGm = ev.getVariable(coeff_reac, Gm);
-
         // Recover manufactured solution for Poisson equation
         auto u_ex         = ev.getVariable(s, Gm);
         l2err[refLoop]    = math::sqrt(ev.integralElWise( (u_ex - is).sqNorm()*meas(Gm) ) );
@@ -212,8 +206,14 @@ int main(int argc, char *argv[])
         DoFPDE[refLoop]   = cdrAss.numDofs();
         if (refLoop <numLRefine){
        // --------------- adaptive refinement ---------------
-       ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm());
-    //    ev.integralElWise( ( igrad(is,Gm)).sqNorm() );
+        // // Recover rhs for Poisson equation
+        // auto SFunc        = ev.getVariable(SourceFunc, Gm);
+        // // Coeffs for advection-reaction diffusion equation
+        // auto coeff_convGm = ev.getVariable(coeff_conv, Gm);
+        // auto coeff_diffGm = ev.getVariable(coeff_diffMax, Gm);
+        // auto coeff_reacGm = ev.getVariable(coeff_reac, Gm);
+       //    ev.integralElWise( ( coeff_diffGm * ilapl(is,Gm) - igrad(is, Gm)*coeff_convGm - coeff_reacGm * is + SFunc).sqNorm());
+       ev.integralElWise( ( igrad(is,Gm)).sqNorm() );
        const std::vector<real_t> eltErrs  = ev.elementwise();
        //! [errorComputation]
        //! [adaptRefinementPart]
@@ -225,11 +225,28 @@ int main(int argc, char *argv[])
         if (IntensityMAE >1. && refLoop <= numLRefine -1){
             //... compute MAE mapping from a given error distribution
             std::vector<bool> eldensityMarked( eltErrs.size() );
-            gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
-            auto density   = MAE.buildDensity( dbasis, eldensityMarked, false);// false: do not set rho to zero
+            gsMarkElementsForRef( eltErrs, adaptRefCrit, MAERefParam, eldensityMarked);                 
+            auto density   = MAE.buildDensity( dbasis, eldensityMarked, 1, 0);
             MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
             Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
             MAE.NormalProjectPts(Psi);// correct the boundary (square)
+            // -----------------
+            double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+            for(size_t i=0; i<eltErrs.size(); ++i)
+            {
+                if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
+                {
+                    Minvalue = eltErrs[i];
+                }
+            }
+            for(size_t i=0; i<eltErrs.size(); ++i)
+            {
+                auto POWMinvalue = Minvalue/pow(DoFPDE[refLoop],adaptRefParam);
+                if (POWMinvalue < eltErrs[i]) // Avoid numerical issues
+                {
+                    elMarked[i] = true;
+                }
+            }
         }
        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
