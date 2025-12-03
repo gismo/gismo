@@ -29,6 +29,10 @@
 // Note: Do not include eigen.hpp files here as they pull in Eigen/Core too early
 // They will be included from gsAutoDiffEigen.h after Eigen plugins are set up
 #include <autodiff/forward/dual.hpp>
+// we need real_t and util::to_string behaviour
+#include <gsCore/gsForwardDeclarations.h>
+#include <type_traits>
+#include <utility>
 
 // Reverse-mode autodiff is available via <autodiff/reverse/var.hpp>
 // For now, VarAdaptor is not included by default due to namespace compatibility issues
@@ -100,4 +104,35 @@ using gismo::math::isnan;
 using gismo::math::isfinite;
 
 #undef Eigen
+
+// Avoid duplicate definitions on multiple includes
+#ifndef GISMO_AUTODIFF_TO_STRING_OVERLOADS
+#define GISMO_AUTODIFF_TO_STRING_OVERLOADS
+namespace gismo {
+namespace util {
+
+template <class C, class = void>
+struct has_val : std::false_type {};
+template <class C>
+struct has_val<C, std::void_t<decltype(std::declval<const C&>().val)>> : std::true_type {};
+
+// Convert autodiff expression-like types to a `real_t` and stringify that.
+// Disable for types that are already `real_t` to avoid recursion.
+template <typename E, std::enable_if_t<has_val<E>::value && !std::is_same<std::decay_t<E>, real_t>::value, int> = 0>
+inline std::string to_string(const E &value)
+{
+   return util::to_string(static_cast<real_t>(value.val));
+}
+
+// ExprPtr special-case (reverse-mode expression pointers)
+template <typename T>
+inline std::string to_string(const autodiff::reverse::detail::ExprPtr<T> &expr)
+{
+   if (expr) return util::to_string(static_cast<real_t>(expr->val));
+   return std::string("null");
+}
+
+} // namespace util
+} // namespace gismo
+#endif
 
