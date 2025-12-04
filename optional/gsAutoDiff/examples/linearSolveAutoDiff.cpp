@@ -15,11 +15,34 @@
 //! [Include namespace]
 #include <gismo.h>
 #include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiffUtils.h>
 
 using namespace gismo;
 //! [Include namespace]
 
 using namespace autodiff;
+
+// template<class T, class Solver = gsSparseSolver<T>::LU>
+// void solveSystemBackward(const gsSparseMatrix<T>& A,
+//                           const gsMatrix<T>& b,
+//                           gsMatrix<T>& x)
+// {
+//       // Solve transposed problem
+//       Solver solver;
+//       solver.compute(A.transpose());
+//       solver.solve()
+// }
+
+// template<class T, class Solver = gsSparseSolver<T>::LU>
+// void solveSystemForward(const gsSparseMatrix<T>& A,
+//                           const gsMatrix<T>& b,
+//                           gsMatrix<T>& x)
+// {
+//       // Solve the linear system Ax = b
+//       Solver solver;
+//       solver.compute(A);
+//       x = solver.solve(b);
+// }
 
 int main()
 {
@@ -60,6 +83,22 @@ int main()
     std::cout << "Solution x = \n" << x1_val << std::endl;
     std::cout << "Derivative dx/d(alpha) = \n" << dx1_dalpha << std::endl;
     
+      // --- Analytical (implicit function theorem) check for Example 1 ---
+      {
+            gsMatrix<double> A1_val(2,2), dA1_dalpha(2,2), db1_dalpha(2,1);
+            double alpha_val = autodiff::detail::derivative<0>(alpha);
+            A1_val << 2.0 + alpha_val, 1.0,
+                          1.0,           3.0;
+            // derivatives of A entries wrt alpha
+            for (index_t i=0;i<2;++i)
+                  for (index_t j=0;j<2;++j)
+                        dA1_dalpha(i,j) = autodiff::detail::derivative<1>(A1(i,j));
+            db1_dalpha.setZero();
+            // analytic dx/dalpha = A^{-1} * (db/dalpha - dA/dalpha * x)
+            gsMatrix<double> dx1_check = A1_val.fullPivLu().solve(db1_dalpha - dA1_dalpha * x1_val);
+            std::cout << "Analytical dx/d(alpha) = \n" << dx1_check << std::endl;
+            std::cout << "Difference (AutoDiff - Analytical) = " << (dx1_dalpha - dx1_check).norm() << std::endl;
+      }
     // ========================================================================
     // Example 2: RHS depends on parameter, LHS does not
     // ========================================================================
@@ -94,6 +133,9 @@ int main()
     std::cout << "Solution x = \n" << x2_val << std::endl;
     std::cout << "Derivative dx/d(beta) = \n" << dx2_dbeta << std::endl;
     
+
+
+
     // ========================================================================
     // Example 3: Both LHS and RHS depend on parameter
     // ========================================================================
@@ -130,6 +172,23 @@ int main()
     std::cout << "Solution x = \n" << x3_val << std::endl;
     std::cout << "Derivative dx/d(gamma) = \n" << dx3_dgamma << std::endl;
     
+      // --- Analytical (implicit function theorem) check for Example 3 ---
+      {
+            // Build double matrix A3_val and its derivative dA3/dgamma, and db3/dgamma
+            gsMatrix<double> A3_val(2,2), dA3_dgamma(2,2), db3_dgamma(2,1);
+            double gamma_val = autodiff::detail::derivative<0>(gamma);
+            A3_val << 2.0 + gamma_val, 1.0,
+                          1.0,             3.0 + gamma_val;
+            for (index_t i=0;i<2;++i)
+                  for (index_t j=0;j<2;++j)
+                        dA3_dgamma(i,j) = autodiff::detail::derivative<1>(A3(i,j));
+            for (index_t i=0;i<2;++i)
+                  db3_dgamma(i,0) = autodiff::detail::derivative<1>(b3(i,0));
+            // analytic dx/dgamma = A^{-1} * (db/dgamma - dA/dgamma * x)
+            gsMatrix<double> dx3_check = A3_val.fullPivLu().solve(db3_dgamma - dA3_dgamma * x3_val);
+            std::cout << "Analytical dx/d(gamma) = \n" << dx3_check << std::endl;
+            std::cout << "Difference (AutoDiff - Analytical) = " << (dx3_dgamma - dx3_check).norm() << std::endl;
+      }
     // ========================================================================
     // Verification using implicit function theorem
     // ========================================================================
@@ -156,5 +215,11 @@ int main()
     std::cout << "through linear solvers using the implicit function theorem:" << std::endl;
     std::cout << "  If A(p)*x(p) = b(p), then dx/dp = -A^(-1) * (dA/dp * x - db/dp)" << std::endl;
     
+
+
+      // ========================================================================
+
+
+
     return 0;
 }
