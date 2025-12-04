@@ -25,6 +25,12 @@ template<typename IndicesType>
 const RowSelection<Derived,IndicesType> selectRows(const IndicesType & ind) const;
 
 
+auto pruned(Scalar tol)
+{
+    Derived & M = derived();
+    return M.unaryExpr([&](Scalar x) {return (abs(x) <= tol) ? (Scalar)(0) : x; });
+}
+
 /**
   * \brief Simple (inplace) Gauss elimination without any pivoting
   */
