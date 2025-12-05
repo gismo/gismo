@@ -28,6 +28,7 @@ const RowSelection<Derived,IndicesType> selectRows(const IndicesType & ind) cons
 auto pruned(Scalar tol)
 {
     Derived & M = derived();
+    using std::abs;
     return M.unaryExpr([&](Scalar x) {return (abs(x) <= tol) ? (Scalar)(0) : x; });
 }
 
