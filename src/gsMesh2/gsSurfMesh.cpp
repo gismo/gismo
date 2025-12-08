@@ -2407,7 +2407,7 @@ void gsSurfMesh::ds_subdivide()
         // Map vertices and face of old mesh with new (calculated) vertex
         ffv.clear();
         for (auto oldf : faces(oldv)) {
-            v = new_mesh.add_vertex(ds_image_point_calc(oldv,oldf));
+            v = new_mesh.add_vertex(ds_image_point_calc_vanila(oldv,oldf));
             ffv.push_back(v);
             Map[std::make_pair(oldv, oldf)] = v;
         }
@@ -2450,7 +2450,7 @@ void gsSurfMesh::ds_subdivide()
 }
 
 gsSurfMesh::Point
-gsSurfMesh::ds_image_point_calc(Vertex oldv, Face oldf)
+gsSurfMesh::ds_image_point_calc_interpolation(Vertex oldv, Face oldf)
 {
     unsigned int face_valence{ valence(oldf) };
 
@@ -2523,6 +2523,62 @@ gsSurfMesh::ds_image_point_calc(Vertex oldv, Face oldf)
 
     return temp;
     
+}
+
+gsSurfMesh::Point
+gsSurfMesh::ds_image_point_calc_vanila(Vertex oldv, Face oldf)
+{
+    unsigned int face_valence{ valence(oldf) };
+
+    // Find the halfedge of the vertex I am looking in case the IDs of mesh
+    // are not sequencial (i.e. Quad ID: 1,23,3,5)
+    Halfedge hf = halfedge(oldf);
+    for (auto hh : halfedges(oldf))
+    {
+        if (from_vertex(hh) == oldv)
+        {
+            hf = hh;
+            break;
+        }
+    }
+
+    real_t val{ 0 };
+
+    gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
+    coords.setZero();
+
+
+    
+
+    int tempj{ 0 };
+
+    // Coefficient of the first (current) vertex (i=j case)
+    val = (real_t)(face_valence + 5) / (4 * face_valence);
+    coords += val * position(from_vertex(hf));
+    real_t sum_val{ val };
+    Halfedge next_he{ next_halfedge(hf) };
+
+    // Creating the mask (image vertice coefficients) by looping to the number
+    // of halfedges until I reach the initial half-edge (case i!=j).
+    while (next_he != hf) {
+        tempj++;
+        val = (3 + 2 * cos(2.0 * EIGEN_PI * (0 - tempj) / face_valence)) / (4 * face_valence);
+        coords += val * position(from_vertex(next_he));
+        next_he = next_halfedge(next_he);
+        sum_val += val;
+
+    }
+
+
+
+
+    Point temp;
+    temp[0] = coords(0);
+    temp[1] = coords(1);
+    temp[2] = coords(2);
+
+    return temp;
+
 }
 
 void gsSurfMesh::dual_mesh(int option)

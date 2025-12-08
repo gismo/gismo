@@ -1812,8 +1812,8 @@ public: // Doo-Sabin functions
     void ds_subdivide();
 
     /// Doo-Sabin Image point caluculation per vertex in a face
-    Point ds_image_point_calc(Vertex oldv, Face oldf);
-
+    Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);
+    Point ds_image_point_calc_vanila(Vertex oldv, Face oldf);
 
 public: // Loop subdivision
 
