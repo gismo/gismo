@@ -21,55 +21,26 @@
 
 #pragma once
 
-using namespace autodiff;
-
-using autodiff::reverse::detail::BinaryExpr;
-using autodiff::reverse::detail::ExprPtr;
+#include "gsAutoDiffTraits.h"
 #include <type_traits>
 #include <utility>
+#include <cmath>
 #include <gsCore/gsForwardDeclarations.h>
-
-// If the helpers are not yet defined, provide them here too
-#ifndef GISMO_AUTODIFF_TO_STRING_OVERLOADS
-#define GISMO_AUTODIFF_TO_STRING_OVERLOADS
-namespace gismo {
-namespace util {
-
-template <class C, class = void>
-struct has_val : std::false_type {};
-template <class C>
-struct has_val<C, std::void_t<decltype(std::declval<const C&>().val)>> : std::true_type {};
-
-template <typename E, std::enable_if_t<has_val<E>::value && !std::is_same<std::decay_t<E>, real_t>::value, int> = 0>
-inline std::string to_string(const E &value)
-{
-    return util::to_string(static_cast<real_t>(value.val));
-}
-
-template <typename T>
-inline std::string to_string(const autodiff::reverse::detail::ExprPtr<T> &expr)
-{
-    if (expr) return util::to_string(static_cast<real_t>(expr->val));
-    return std::string("null");
-}
-
-} // namespace util
-} // namespace gismo
-#endif
 
 namespace gismo
 {
     template<typename T, typename Solver>
-    struct SolveExpr : BinaryExpr<T> {
+    struct SolveExpr : autodiff::reverse::detail::BinaryExpr<T> {
         // Using declarations for base class
-        using BinaryExpr<T>::l;  // A (matrix input, as ExprPtr<T> or extended)
-        using BinaryExpr<T>::r;  // b (vector input)
-        using BinaryExpr<T>::val;
+        using Base = autodiff::reverse::detail::BinaryExpr<T>;
+        using Base::l;  // A (matrix input, as ExprPtr<T> or extended)
+        using Base::r;  // b (vector input)
+        using Base::val;
 
         Solver solver;  // Template parameter for solver type
 
-        SolveExpr(const T& v, const ExprPtr<T>& a, const ExprPtr<T>& bb, Solver s)
-            : BinaryExpr<T>(v, a, bb), solver(std::move(s)) {}
+        SolveExpr(const T& v, const autodiff::reverse::detail::ExprPtr<T>& a, const autodiff::reverse::detail::ExprPtr<T>& bb, Solver s)
+            : Base(v, a, bb), solver(std::move(s)) {}
 
         void propagate(const T& wprime) override {
             // Assuming solver.solve_transpose(wprime) computes A^T v = wprime
@@ -78,7 +49,7 @@ namespace gismo
             // Handle A if variable (e.g., propagate to l if needed)
         }
 
-        void propagatex(const ExprPtr<T>& wprime) override {
+        void propagatex(const autodiff::reverse::detail::ExprPtr<T>& wprime) override {
             // Similar for higher-order, if implemented
             auto adjoint_b = solver.solve_transpose(wprime);  // Assuming overloaded for ExprPtr
             r->propagatex(adjoint_b);
@@ -93,9 +64,34 @@ namespace gismo
 
     // Convenience function
     template<typename T, typename Solver>
-    ExprPtr<T> solve(const ExprPtr<T>& a, const ExprPtr<T>& b, Solver solver) 
+    autodiff::reverse::detail::ExprPtr<T> solve(const autodiff::reverse::detail::ExprPtr<T>& a, const autodiff::reverse::detail::ExprPtr<T>& b, Solver solver) 
     {
         T x_val = solver.solve(b->val);
         return std::make_shared<SolveExpr<T, Solver>>(x_val, a, b, std::move(solver));
     }
+}
+
+namespace gismo {
+namespace math {
+    using autodiff::var;
+    inline var abs(const var& x) { using std::abs; return abs(x); }
+    inline var sqrt(const var& x) { using std::sqrt; return sqrt(x); }
+    inline var pow(const var& x, const var& y) { using std::pow; return pow(x, y); }
+    inline var pow(const var& x, double y) { using std::pow; return pow(x, y); }
+    inline var exp(const var& x) { using std::exp; return exp(x); }
+    inline var log(const var& x) { using std::log; return log(x); }
+    inline var sin(const var& x) { using std::sin; return sin(x); }
+    inline var cos(const var& x) { using std::cos; return cos(x); }
+    inline var tan(const var& x) { using std::tan; return tan(x); }
+    inline var asin(const var& x) { using std::asin; return asin(x); }
+    inline var acos(const var& x) { using std::acos; return acos(x); }
+    inline var atan(const var& x) { using std::atan; return atan(x); }
+    inline var sinh(const var& x) { using std::sinh; return sinh(x); }
+    inline var cosh(const var& x) { using std::cosh; return cosh(x); }
+    inline var tanh(const var& x) { using std::tanh; return tanh(x); }
+    
+    inline bool isinf(const var& x) { return std::isinf(autodiff::val(x)); }
+    inline bool isnan(const var& x) { return std::isnan(autodiff::val(x)); }
+    inline bool isfinite(const var& x) { return std::isfinite(autodiff::val(x)); }
+}
 }

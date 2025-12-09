@@ -18,8 +18,38 @@
 #include <autodiff/reverse/var.hpp>
 #include <iostream>
 #include <sstream>
+#include <cmath>
+#include <algorithm>
 
 namespace gismo {
+
+// Import standard math functions to prevent name hiding
+using std::abs;
+using std::sqrt;
+using std::pow;
+using std::exp;
+using std::log;
+using std::log10;
+using std::sin;
+using std::cos;
+using std::tan;
+using std::asin;
+using std::acos;
+using std::atan;
+using std::atan2;
+using std::sinh;
+using std::cosh;
+using std::tanh;
+using std::erf;
+using std::floor;
+using std::ceil;
+using std::round;
+using std::trunc;
+using std::max;
+using std::min;
+using std::isinf;
+using std::isnan;
+using std::isfinite;
 
 /**
  * @brief Wrapper for autodiff::var that provides value semantics
@@ -50,6 +80,8 @@ public:
     // Construct from ExprPtr (this is the key to fixing the type consistency)
     VarAdaptor(const ExprPtr& e) : var(e) {}
     
+    ~VarAdaptor() {}
+
     // Assignment operators
     VarAdaptor& operator=(const VarAdaptor& other) { var = other.var; return *this; }
     VarAdaptor& operator=(VarAdaptor&& other) { var = std::move(other.var); return *this; }
@@ -260,116 +292,116 @@ inline bool operator<(const U& l, const VarAdaptor<T>& r)
 template<typename T>
 inline VarAdaptor<T> abs(const VarAdaptor<T>& x)
 {
-    using autodiff::reverse::detail::abs;
+    using std::abs;
     return VarAdaptor<T>(abs(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> sqrt(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::sqrt(x.var));
+    return VarAdaptor<T>(sqrt(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> pow(const VarAdaptor<T>& x, const VarAdaptor<T>& y)
 {
-    return VarAdaptor<T>(autodiff::pow(x.var, y.var));
+    return VarAdaptor<T>(pow(x.var, y.var));
 }
 
 template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
 inline VarAdaptor<T> pow(const VarAdaptor<T>& x, const U& y)
 {
-    return VarAdaptor<T>(autodiff::pow(x.var, y));
+    return VarAdaptor<T>(pow(x.var, y));
 }
 
 template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
 inline VarAdaptor<T> pow(const U& x, const VarAdaptor<T>& y)
 {
-    return VarAdaptor<T>(autodiff::pow(x, y.var));
+    return VarAdaptor<T>(pow(x, y.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> exp(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::exp(x.var));
+    return VarAdaptor<T>(exp(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> log(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::log(x.var));
+    return VarAdaptor<T>(log(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> log10(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::log10(x.var));
+    return VarAdaptor<T>(log10(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> sin(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::sin(x.var));
+    return VarAdaptor<T>(sin(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> cos(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::cos(x.var));
+    return VarAdaptor<T>(cos(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> tan(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::tan(x.var));
+    return VarAdaptor<T>(tan(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> asin(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::asin(x.var));
+    return VarAdaptor<T>(asin(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> acos(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::acos(x.var));
+    return VarAdaptor<T>(acos(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> atan(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::atan(x.var));
+    return VarAdaptor<T>(atan(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> atan2(const VarAdaptor<T>& y, const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::atan2(y.var, x.var));
+    return VarAdaptor<T>(atan2(y.var, x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> sinh(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::sinh(x.var));
+    return VarAdaptor<T>(sinh(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> cosh(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::cosh(x.var));
+    return VarAdaptor<T>(cosh(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> tanh(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::tanh(x.var));
+    return VarAdaptor<T>(tanh(x.var));
 }
 
 template<typename T>
 inline VarAdaptor<T> erf(const VarAdaptor<T>& x)
 {
-    return VarAdaptor<T>(autodiff::erf(x.var));
+    return VarAdaptor<T>(erf(x.var));
 }
 
 // Floor, ceil, round return non-differentiable operations (just the value)
@@ -444,6 +476,84 @@ inline std::istream& operator>>(std::istream& is, VarAdaptor<T>& v)
     if (is >> val)
         v = VarAdaptor<T>(val);
     return is;
+}
+
+// Missing mixed comparison operators
+template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
+inline bool operator>(const VarAdaptor<T>& l, const U& r)
+{
+    return autodiff::val(l.var) > r;
+}
+
+template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
+inline bool operator>(const U& l, const VarAdaptor<T>& r)
+{
+    return l > autodiff::val(r.var);
+}
+
+template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
+inline bool operator<=(const VarAdaptor<T>& l, const U& r)
+{
+    return autodiff::val(l.var) <= r;
+}
+
+template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
+inline bool operator<=(const U& l, const VarAdaptor<T>& r)
+{
+    return l <= autodiff::val(r.var);
+}
+
+template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
+inline bool operator>=(const VarAdaptor<T>& l, const U& r)
+{
+    return autodiff::val(l.var) >= r;
+}
+
+template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
+inline bool operator>=(const U& l, const VarAdaptor<T>& r)
+{
+    return l >= autodiff::val(r.var);
+}
+
+template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
+inline bool operator!=(const VarAdaptor<T>& l, const U& r)
+{
+    return autodiff::val(l.var) != r;
+}
+
+template<typename T, typename U, typename = std::enable_if_t<std::is_arithmetic<U>::value>>
+inline bool operator!=(const U& l, const VarAdaptor<T>& r)
+{
+    return l != autodiff::val(r.var);
+}
+
+namespace math {
+    using gismo::abs;
+    using gismo::sqrt;
+    using gismo::pow;
+    using gismo::exp;
+    using gismo::log;
+    using gismo::log10;
+    using gismo::sin;
+    using gismo::cos;
+    using gismo::tan;
+    using gismo::asin;
+    using gismo::acos;
+    using gismo::atan;
+    using gismo::atan2;
+    using gismo::sinh;
+    using gismo::cosh;
+    using gismo::tanh;
+    using gismo::erf;
+    using gismo::floor;
+    using gismo::ceil;
+    using gismo::round;
+    using gismo::trunc;
+    using gismo::max;
+    using gismo::min;
+    using gismo::isinf;
+    using gismo::isnan;
+    using gismo::isfinite;
 }
 
 } // namespace gismo
