@@ -1803,6 +1803,7 @@ gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
     if ( 0 == deg%2 )
         for (auto v : vertices())
         {
+            if (is_boundary(v)) continue; // handling boundaries
             n = valence(v);
 
             he = halfedge(v);
@@ -1832,6 +1833,7 @@ gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
             if (valence(f) != 4) continue;
 
             evface = false;
+            if (is_boundary(f)) continue; // handling boundaries
 
             for ( auto v : vertices(f) )
             {
