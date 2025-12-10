@@ -32,6 +32,19 @@ auto pruned(Scalar tol)
     return M.unaryExpr([&](Scalar x) {return (abs(x) <= tol) ? (Scalar)(0) : x; });
 }
 
+/// Applies Gram-Schmidt orthogonalization to the columns of matrix \a A inplace
+void GramSchmidtInPlace()
+{
+
+    Derived& A = derived();
+    for (index_t i = 0; i < A.rows(); ++i)
+    {
+        for (index_t j = 0; j < i; ++j) // remove previous components
+            A.col(i).noalias() -= A.col(i).dot(A.col(j)) * A.col(j);
+        A.col(i).normalize();
+    }
+}
+
 /**
   * \brief Simple (inplace) Gauss elimination without any pivoting
   */
