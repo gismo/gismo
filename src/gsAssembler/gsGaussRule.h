@@ -55,6 +55,7 @@ public:
     /// using quA *deg_i + quB nodes (direction-wise)
     gsGaussRule(const gsBasis<T> & basis, const T quA, const index_t quB, short_t fixDir = -1);
     //const unsigned digits = std::numeric_limits<T>::digits10 );
+    gsGaussRule(const gsDomain<T> & domain, const T quA, const index_t quB, short_t fixDir = -1);
 
     /// Initialize a tensor-product Gauss quadrature rule for \a basis
     /// using quA *deg_i + quB nodes (direction-wise). Values of quA
@@ -62,28 +63,30 @@ public:
     gsGaussRule(const gsBasis<T> & basis, const gsOptionList & options, short_t fixDir = -1);
     //const unsigned digits = std::numeric_limits<T>::digits10 );
 
+    gsGaussRule(const gsDomain<T> & domain, const gsOptionList & options, short_t fixDir = -1);
+
     ~gsGaussRule() { }
-    
+
 public:
     // see gsQuadRule.h for documentation
-    void setNodes( gsVector<index_t> const & numNodes, 
+    void setNodes( gsVector<index_t> const & numNodes,
                    unsigned digits = 0 );
 
     using gsQuadRule<T>::setNodes; // unhide base
 
 private:
 
-    void init(const gsBasis<T> & basis, const T quA, const index_t quB, short_t fixDir);
-    
+    void init(const gsDomain<T> & domain, const T quA, const index_t quB, short_t fixDir);
+
     /**
      * @brief Computes the Gauss quadrature rule with \a n nodes in the interval [-1,1].
      *
      * This function is called by setNodes(), if lookupReference() (which is called first) returned \a false.
      */
-    static void computeReference(index_t n, gsVector<T> & x, gsVector<T> & w, 
+    static void computeReference(index_t n, gsVector<T> & x, gsVector<T> & w,
                                  unsigned digits =  0 );
 
-    /** 
+    /**
      *@brief  Look up function for the Gauss quadrature rule in the interval [-1,1].
      *
      * When the member function setNodes() is called, it will first try to look up

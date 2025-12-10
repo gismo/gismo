@@ -84,13 +84,13 @@ public:
                     gsWarn<<"Unknown tag in XML multipatch object.\n";
                 }
 
-                for (gsXmlNode * child = mp_node->first_node("boundary"); child;
-                        child = child->next_sibling("boundary"))
+                for (gsXmlNode * ch= mp_node->first_node("boundary"); ch;
+                        ch = ch->next_sibling("boundary"))
                 {
                     std::vector< patchSide > tmp_boundaries;
-                    if (child)
+                    if (ch)
                     {
-                        getBoundaries(child, tmp_ids, tmp_boundaries);
+                        getBoundaries(ch, tmp_ids, tmp_boundaries);
                         allboundaries.insert( allboundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
                     }
                 }
@@ -258,7 +258,8 @@ public:
         typedef typename std::vector<typename gsFunctionSet<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
-            gsXmlNode * ff = putFunctionToXml<T>(*fit, data, count);
+            GISMO_ASSERT((dynamic_cast<gsFunction<T> *>(fit->get())),"Function is not of type gsFunction<T>");
+            gsXmlNode * ff = putFunctionToXml<T>(static_cast<gsFunction<T> &>(*(fit->get())), data, count);
             BCs->append_node(ff);
             ++count;
         }

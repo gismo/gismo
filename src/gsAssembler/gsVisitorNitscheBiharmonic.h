@@ -74,7 +74,7 @@ public:
         const index_t numActive = actives.rows();
 
         // Evaluate basis values and derivatives on element
-        basis.evalAllDers_into(md.points, 2, basisData);
+        basis.evalAllDers_into(md.points, 2, basisData, true);
 
         // Compute geometry related values
         geo.computeMap(md);
@@ -88,7 +88,7 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T> & element,
+    inline void assemble(gsDomainIteratorWrapper<T> & element,
                          const gsVector<T>   & quWeights)
     {
         const unsigned d = element.dim();

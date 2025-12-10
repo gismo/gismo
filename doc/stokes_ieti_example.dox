@@ -1,0 +1,130 @@
+namespace gismo {
+/**
+
+\page stokes_ieti_example stokes_ieti_example.cpp
+
+We consider a Stokes boundary value problem with both Dirichlet (inflow / no-slip) and
+Neumann boundary conditions. The computational domain is \f$\Omega\subset \mathbb R^d\f$.
+The variational problem characterizing velocity \f$u\f$ and pressure \f$p\f$ is as follows:
+Find \f$ (u,p) \in V \times Q = [H^1_{0,D}(\Omega)]^d \times L^2(\Omega)\f$ such that
+\f[\begin{eqnarray}
+    \int_\Omega \nabla u : \nabla v d x & + & \int_\Omega p \nabla \cdot v d x & = & \int_{\Gamma_N} g \cdot v dx \\
+    & & \int_\Omega q \nabla \cdot u d x & = & 0
+\end{eqnarray}\f]
+for all \f$ (v,q) \in V \times Q \f$. The domain \f$ \Omega \f$ is composed of non-overlapping
+patches \f$ \Omega_k \f$.
+
+The theoretical framework follows the paper J. Sogn and S. Takacs. Stable discretizations and IETI-DP
+solvers for the Stokes system in multi-patch Isogeometric Analysis. ESAIM: Mathematical Modelling and
+Numerical Analysis, vol. 57 (2), p. 921 – 925, 2023.
+
+We discretize using the Galerkin principle, i.e., by choosing \f$ V_h \times Q_h \subset V \times Q \f$.
+Since the Stokes equations are a saddle point problem, we have to choose a pair of spaces that is
+inf-sup stable.
+
+For the individual patches \f$ \Omega_k \f$, we choose the Taylor-Hood spaces, i.e., \f$ V_h \f$ is composed of
+splines of degree \f$ p+1 \f$ and smoothnes \f$ C^{p-1} \f$, and \f$ Q_h \f$ is composed of
+splines of degree \f$ p \f$ and smoothnes \f$ C^{p-1} \f$. Both spaces use the same grid (breakpoints).
+
+The global space is constructed as follows. Since the velocity space is in \f$ H^1 \f$, we need continuity
+for the velocity. On each patch, we have a isogeometric function space \f$ V_k \f$. We assume that the
+function spaces are *fully matching*. The global function space is
+\f[
+        V_h = \{ v\in [H^1_{0,D}(\Omega)]^d \;:\;  v|_{\Omega_k} \in V_k \}.
+\f]
+For the pressure, we only need \f$ L^2 \f$, so we choose a discontinuous space
+\f[
+        Q_h = \{ q\in L^2(\Omega) \;:\;  v|_{\Omega_k} \in Q_k \}.
+\f]
+
+The solution with the IETI-Solver is analogous to the file \c ieti_example.cpp. Here, we only discuss
+the changes that have to be made to solve the Stokes equations, as opposed to the Poisson equation (as in
+\c itei_example.cpp).
+
+We first start by setting up one \a gsMultiBasis object for each velocity component and one for the
+pressure; these are collected in a vector.
+
+\snippet stokes_ieti_example.cpp Define Bases
+
+Analogously, we set up one \a gsIetiMapper object for each velocity component and one for the pressure.
+For the setup of the corresponding \a gsDofMapper objects, we use instances of an appropriate assembler.
+Here, we choose that the pressure is discontinuous:
+
+\snippet stokes_ieti_example.cpp Define Mapper
+
+As primal degrees of freedom, we choose the corner values and edge averages of the velocity components.
+Additionally, we use the averages of the pressure (on each of the patches as primals), see paper for a
+corresponding motivation.
+
+\snippet stokes_ieti_example.cpp Define Primals
+
+As opposed to the \a gsIetiMapper objects, we only have one \a gsIetiSystem, only one
+\a gsScaledDirichletPrec and only one \a gsPrimalSystem.
+
+\snippet stokes_ieti_example.cpp Define System
+\snippet stokes_ieti_example.cpp Define System2
+
+For each patch, the local Stokes system is assembled with the \a gsExpressionAssembler:
+
+\snippet stokes_ieti_example.cpp Assemble
+
+This assembler yields a matrix, representing (for \f$d=2\f$) the linear system
+\f[
+        A_k :=
+        \begin{pmatrix}
+            K_k   &         &  D_{x,k}^\top \\
+                  &   K_k   &  D_{y,k}^\top \\
+          D_{x,k} & D_{y,k} &
+        \end{pmatrix},
+\f]
+where \f$ K_k \f$ is a standard grad-grad-stiffness matrix (as for the Poisson problem) and \f$ D_{x,k} \f$
+and \f$ D_{y,k} \f$ represent \f$ \int \partial_x u p dx \f$ and \f$ \int \partial_y u p dx \f$
+respectively. If we would not have primal dofs, this matrix could be directly handed over to the
+\a gsIetiSystem.
+
+The matrices that are provided by the \a gsIetiMapper objects refer to scaler problems. Therefore,
+they have to be combined accordingly: the jump matrices for the Stokes system are block-diagonal
+combinations of the jump matrices for the individual variables. Analogously, the vectors and indices
+for the primal degrees of freedom have to be handled. This is done by the called functions.
+\snippet stokes_ieti_example.cpp Jump Matrix
+\snippet stokes_ieti_example.cpp Primals
+
+In the example \c ieti_example.cpp, we have chosen the corresponding Dirichlet problem for the
+scaled Dirichlet preconditioner. While this is also possible for the Stokes equations (altough in
+this case, one has to deal with the fact that the pressure has to be restricted
+to \f$ L^2_0(\Omega_k) \f$), an alternative has been proven it self to be more efficient. Here,
+we make use of the fact that the scaled Dirichlet preconditioner should represent \f$ H^{1/2} \f$
+on the skeleton, both for the Poision and the Stokes equations. This can be achived by just considering
+a (vector-valued) Poisson problem (which is much cheaper to solve than the Stokes equations, see
+the paper more details. We do not need to assemble matrix for the Poission problem, we just take the
+upper-left part of \f$ A_k \f$ that consists of \f$ diag( K_k, K_k ) \f$.
+
+\snippet stokes_ieti_example.cpp Preconditioner
+
+Now, the data can be provided to the \a gsIetiSystem and the \a gsPrimalSystem as for the Poisson problem.
+
+\snippet stokes_ieti_example.cpp Register
+
+Also the setup of the primal system is done as for the Poisson problem. More work would be necessary
+here if the problem only had Dirichlet conditions: In that case, we would have \f$ Q = L^2_0(\Omega) \f$,
+so we would need to specify that the average pressure vanishes, i.e., \f$ \int_\Omega p dx = 0 \f$.
+This can be formulated as a constraint in the primal system.
+
+\snippet stokes_ieti_example.cpp Register primal
+
+Since the Schur complement formulation is symmetric and positive definite, we can apply a preconditioned
+conjugate gradient solver.
+
+\snippet stokes_ieti_example.cpp Solve
+
+
+\section stokes_ieti_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/stokes_ieti_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include stokes_ieti_example.cpp
+
+*/
+
+}

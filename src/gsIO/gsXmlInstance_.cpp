@@ -16,6 +16,8 @@ namespace internal
     // CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<index_t> >;
     // CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<bool> >;
 
+    CLASS_TEMPLATE_INST gsXml< gsFunction<real_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsFunctionSet<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsGeometry<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsCurve<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsSurface<real_t> >;
@@ -27,7 +29,7 @@ namespace internal
 
     CLASS_TEMPLATE_INST gsXml< gsNurbs<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsNurbsBasis<real_t> >;
-        
+
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<2,real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<3,real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<4,real_t> >;
@@ -35,10 +37,14 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<3,real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<4,real_t> >;
 
+    CLASS_TEMPLATE_INST gsXml< gsComposedBasis<real_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsComposedGeometry<real_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsComposedFunction<real_t> >;
+
     //CLASS_TEMPLATE_INST gsXml< gsBezier<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMesh<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsCurveFitting<real_t> >;
-    
+
     CLASS_TEMPLATE_INST gsXml< gsPde<real_t>        >;
     CLASS_TEMPLATE_INST gsXml< gsPoissonPde<real_t> >;
 //    CLASS_TEMPLATE_INST gsXml< gsSurfacePoissonPde<real_t> >;
@@ -46,7 +52,7 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsCurveLoop<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsPlanarDomain<real_t> >;
 
-    
+
 } // end namespace internal
 
 

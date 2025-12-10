@@ -21,6 +21,72 @@
 namespace gismo
 {
 
+namespace internal
+{
+
+/**
+ * @struct ElementBlock
+ * @brief Represents a bezier extraction operator as a collection of element blocks.
+ *
+ * This structure holds information about a block of elements, including the number
+ * of elements, active nodes, Bezier coefficient vectors, and polynomial degrees
+ * in the R, S, and T directions.
+ *
+ * @var ElementBlock::numElements
+ * Number of (Bezier) elements in the block.
+ *
+ * @var ElementBlock::actives
+ * List of basis functions represented as matrices of indices.
+ *
+ * @var ElementBlock::coefVectors
+ * List of Bezier coefficient vectors represented as matrices of real numbers.
+ *
+ * 
+ * 
+ * @var ElementBlock::PR
+ * Polynomial degree in the R direction.
+ *
+ * @var ElementBlock::PS
+ * Polynomial degree in the S direction.
+ *
+ * @var ElementBlock::PT
+ * Polynomial degree in the T direction.
+ * 
+ * Each local bezier operator is constructed as:
+ * \f$ 
+ * NN_e = \texttt{size(actives)}\left \{ \begin{bmatrix}
+ * N_1 \\ N_2 \\ \vdots \\ N_i
+ * \end{bmatrix}\right.
+ * =
+ * NN_e \left{ \underbrace{
+ * \begin{bmatrix}
+ * \dots & CV_1 & \dots \\ 
+ * \dots & CV_2 & \dots \\ 
+ * & \vdots & \\ 
+ * \dots & CV_i & \dots
+ * \end{bmatrix}
+ * }_{NCVC_i}
+ * \right.
+ * 
+ * 
+ * \left. \begin{bmatrix}
+ * B_1 \\ B_2 \\ B_3 \\ \vdots \\ B_{j-1} \\ B_j
+ * \end{bmatrix}\right \} NCVC_i = \texttt{(PR+1)(PS+1)(PT+1)}
+ * \f$
+ * 
+ */
+struct ElementBlock
+{
+    index_t numElements;    // NE
+    std::list<gsMatrix<index_t>> actives;       // Nodes ( size = NE )
+    std::list<gsMatrix<real_t>>  coefVectors;   // Bezier Coefficient Vectors ID ( size = NE )
+    index_t PR; // Polynomial degree in R direction  
+    index_t PS; // Polynomial degree in S direction  
+    index_t PT; // Polynomial degree in T direction  
+};
+} // end namespace internal
+
+
 /** @brief Container class for a set of geometry patches and their
     topology, that is, the interface connections and outer boundary
     faces.
@@ -96,6 +162,8 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMultiPatch)
 
+    memory::shared_ptr<gsDomain<T> > domain() const;
+
 public:
 
     /// Get a const-iterator to the patches
@@ -120,13 +188,31 @@ public:
 
 public:
 
-    const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
+    /// Utility function to resize container to hold \a N patches (caution: empty pointers)
+    void resize(size_t N)
+    {
+        if ( N!=m_patches.size() )
+        {
+            clear();
+            m_patches.resize(N, nullptr);
+            setBoxes(N);
+        }
+    }
+
+    void setPatch(index_t pid, typename gsGeometry<T>::uPtr ptr)
+    {
+        ptr->setId(pid);
+        delete m_patches[pid];
+        m_patches[pid] = ptr.release();
+    }
+
+    const gsGeometry<T> & piece(const index_t i) const override { return patch(i); }
 
     gsMultiPatch<T> coord(const index_t c) const;
 
-    index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
+    index_t nPieces() const override { return static_cast<index_t>(m_patches.size()); }
 
-    index_t size() const { return 1; }
+    index_t size() const override { return 1; }
 
     /// Return the number of coefficients (control points)
     index_t coefsSize() const
@@ -174,7 +260,7 @@ public:
     }
 
     /// \brief Prints the object as a string
-    std::ostream& print( std::ostream& os ) const;
+    std::ostream& print( std::ostream& os ) const override;
 
     /// \brief Prints the object as a string with extended details
     std::string detail() const;
@@ -185,11 +271,11 @@ public:
         //GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
         return m_dim;
     }
-    short_t domainDim () const {return parDim();}
+    short_t domainDim () const override {return parDim();}
 
     /// \brief Dimension of the geometry (must match for all patches).
     short_t geoDim() const;
-    short_t targetDim () const {return geoDim();}
+    short_t targetDim () const override {return geoDim();}
 
     /// \brief Co-dimension of the geometry (must match for all patches).
     short_t coDim() const;
@@ -233,7 +319,9 @@ public:
     void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
-    gsBasis<T> & basis( const size_t i ) const;
+    gsBasis<T> & basis( const size_t i);
+    inline const gsBasis<T> & basis( const size_t i ) const
+    { return const_cast<gsMultiPatch<T>&>(*this).basis(i); }
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     index_t addPatch(typename gsGeometry<T>::uPtr g);
@@ -270,7 +358,7 @@ public:
 
     /// \brief Refine uniformly all patches by inserting \a numKnots
     /// in each knot-span with multipliplicity \a mul
-    void uniformRefine(int numKnots = 1, int mul = 1);
+    void uniformRefine(int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     /// \brief Elevate the degree of all patches by \a elevationSteps, preserves smoothness
     void degreeElevate(short_t const elevationSteps = 1, short_t const dir = -1);
@@ -279,6 +367,9 @@ public:
 
     /// \brief Reduce the degree of all patches by \a elevationSteps.
     void degreeReduce(int elevationSteps = 1);
+
+    /// \brief Decrease the degree of all patches by \a elevationSteps.
+    void degreeDecrease(int elevationSteps = 1);
 
     /// \brief Coarsen uniformly all patches by removing \a numKnots
     /// in each knot-span
@@ -309,6 +400,12 @@ public:
     /// called.
     void closeGaps( T tol = 1e-4 );
 
+    /// Used to get a mapper with unique vertices
+    gsDofMapper getMapper(T tol) const;
+
+    /// Creates a surface mesh out of this multipatch
+    gsSurfMesh toMesh() const;
+    
     /// Clear (delete) all patches
     void clear()
     {
@@ -347,8 +444,11 @@ public:
             sthChanged = false;
             for( size_t i = 0; i < bivec.size(); i++ )
             {
-                change = repairInterface( bivec[i] );
-                sthChanged = sthChanged || change;
+                if ( bivec[i].type() != interaction::contact)
+                {
+                    change = repairInterface( bivec[i] );
+                    sthChanged = sthChanged || change;
+                }
             }
             k++; // just to be sure this cannot go on infinitely
         }
@@ -410,6 +510,18 @@ public:
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }
     const BoundaryRep & sides() const { return m_sides; }
+
+    /**
+     * @brief Extracts a Bezier representation of the current gsMultiPatch object.
+     *
+     * This function extracts the Bezier representation of the current gsMultiPatch object.
+     *
+     * @tparam T The numerical type used for the definition of the gsMultiPatch object.
+     * @return A gsMultiPatch object containing the Bezier representation of the original object.
+     *
+     * @note Currently, only bivariate splines are supported.
+     */
+    gsMultiPatch<T> extractBezier() const;
     
 protected:
 
@@ -442,6 +554,11 @@ private:
            const gsVector<bool> &matched,
            gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
            T tol, index_t reference=0);
+
+public:
+    /// @brief Performs Bezier extraction on the multipatch
+    /// @return The ElementBlock structure of the Bezier extraction, which contains the Bezier coefficients and the active nodes for each bezier patch;
+    std::map< std::array<size_t, 4>, internal::ElementBlock> BezierOperator() const;
 
 }; // class gsMultiPatch
 

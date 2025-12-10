@@ -127,9 +127,9 @@ struct gsCurveIntersectionResult
     // Equality operators
     bool operator==(const gsCurveIntersectionResult& other) const
     {
-    return  m_paramOnCurve1 == other.paramOnCurve1 &&
-            m_paramOnCurve2 == other.paramOnCurve2 &&
-            m_point == other.point;
+    return  m_paramOnCurve1 == other.m_paramOnCurve1 &&
+            m_paramOnCurve2 == other.m_paramOnCurve2 &&
+            m_point == other.m_point;
     }
 
     bool operator!=(const gsCurveIntersectionResult& other) const
@@ -180,6 +180,7 @@ private:
 
 /// representing and manipulating bounding boxes for gsBSpline object
 template<class T=real_t>
+
 class gsCurveBoundingBox
 {
 public:
@@ -196,7 +197,7 @@ public:
         }
 
         // compute min / max from control points
-        for (unsigned ipt = 0; ipt != curve.coefsSize(); ++ipt)
+        for (index_t ipt = 0; ipt != curve.coefsSize(); ++ipt)
         {
             typename gsMatrix<T>::ConstRowXpr p = curve.coef(ipt); // Access once per iteration
             for (short_t i = 0; i != curve.geoDim(); ++i)

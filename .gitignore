@@ -1,5 +1,6 @@
 # Submodule files
 submodules.txt
+.gitmodules
 
 # CLion user-specific files
 .idea
@@ -31,9 +32,13 @@ CMakeFiles/
 *.rej
 
 # paraview result files
-*.vtp
 *.pvd
-
+*.vtk
+*.vts
+*.vtp
 
 #Mac OS
 **/.DS_Store
+
+#Symbolic link Eigen library
+external/Eigen

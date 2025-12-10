@@ -39,12 +39,12 @@ public:
 
     /// Initialize
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
+                    const index_t,
                     const gsOptionList & options,
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
-        rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
+        rule = gsQuadrature::get(*basis.domain(), options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
         md.flags = NEED_MEASURE | NEED_VALUE;
@@ -62,7 +62,7 @@ public:
         numActive = actives.rows();
 
         // Evaluate basis functions on element
-        basis.evalAllDers_into(md.points, 0, basisData);
+        basis.evalAllDers_into(md.points, 0, basisData, true);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);
@@ -77,7 +77,7 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & /*element*/,
+    inline void assemble(gsDomainIteratorWrapper<T>    & /*element*/,
                          gsVector<T> const      & quWeights)
     {
         gsMatrix<T> &bVals = basisData[0];
@@ -98,7 +98,7 @@ public:
 
     /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patchIndex,
-                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              const std::vector<gsMatrix<T> > & /*eliminatedDofs*/,
                               gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs

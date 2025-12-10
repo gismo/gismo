@@ -22,7 +22,7 @@ namespace gismo
 
 /**
  * @brief      This class provides a function that returns a constant error on each element
- * 
+ *
  * The elements of the provided basis are extracted and the errors from the error container
  * are associated to each element. The function can be passed to a Paraview export.
  *
@@ -38,7 +38,7 @@ public:
      * @param[in]  basis   The basis
      * @param[in]  errors  The errors per element
      */
-    gsElementErrorPlotter(const gsBasis<T>& basis, const std::vector<T>& errors ) 
+    gsElementErrorPlotter(const gsBasis<T>& basis, const std::vector<T>& errors )
     : m_basis(basis),m_errors(errors)
     { }
 
@@ -51,12 +51,13 @@ public:
             int iter =0;
             // Start iteration over elements
 
-            typename gsBasis<T>::domainIter domIt = m_basis.makeDomainIterator();
-            for (; domIt->good(); domIt->next() )
+            typename gsBasis<T>::domainIter domIt = m_basis.domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = m_basis.domain()->endAll();
+            for (; domIt<domItEnd; ++domIt )
             {
                  bool flag = true;
-                const gsVector<T>& low = domIt->lowerCorner();
-                const gsVector<T>& upp = domIt->upperCorner();
+                const gsVector<T>& low = domIt.lowerCorner();
+                const gsVector<T>& upp = domIt.upperCorner();
 
 
                 for(int d=0; d<domainDim();++d )

@@ -242,7 +242,6 @@ int main(int argc, char *argv[])
     };
 
     if (geoIdx<0          || geoIdx>=(int)(util::size(geos))         ) { gsInfo << "Unfeasible choice for --Geometry (-g).\n";        ok=false; }
-    if (pcTypeIdx<0       || pcTypeIdx>3                             ) { gsInfo << "Unfeasible choice for --PreconderType (-y).\n";   ok=false; }
     if (!ok) return -1;
 
     gsInfo << "Run parabolic_oc_example with options:\n" << cmd << std::endl;

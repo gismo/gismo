@@ -53,23 +53,23 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
         knots1  = tb2->knots(dim).unique();
         knots2  = next_basis.knots(dim).unique();
 
-        // Check nestedness. 
+        // Check nestedness.
         intersection.clear();
         difference.clear();
         // The unique knots of the new basis must contain the ones of the previous level
         std::set_intersection(  knots2.begin(), knots2.end(),
-                                knots1.begin(), knots1.end(), 
+                                knots1.begin(), knots1.end(),
                                 std::back_inserter(intersection) );
         // The difference of the two must not contain any knot in knots1!
         std::set_difference(  knots1.begin(), knots1.end(),
-                                intersection.begin(), intersection.end(), 
+                                intersection.begin(), intersection.end(),
                                 std::back_inserter(difference) );
         GISMO_ASSERT(difference.size()==0,"Knot vector is not nested!");
 
         difference.clear();
         // The difference of the two must not contain any knot in knots1!
         std::set_difference(knots2.begin(), knots2.end(),
-                            knots1.begin(), knots1.end(), 
+                            knots1.begin(), knots1.end(),
                                 std::back_inserter(difference) );
 
         // We reverse since later on we loop and pop the elements on the back
@@ -84,7 +84,7 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
             typename std::vector<T>::iterator diff_ptr = difference.begin();
             // Find the index of the highest knot below the different knot
             i = tmpknots.uFind(*diff_ptr).uIndex(); // index of the knot span in which *it is located
-            
+
             // Count how many difference knots lay in the same span
             for (n = 0, diff_ptr = difference.begin(); diff_ptr!=difference.end() && tmpknots.uFind(*diff_ptr).uIndex()==i; n++, diff_ptr++);
             // Count the distance between two element indices. It should be larger than n
@@ -100,7 +100,7 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
             else
             {
                 // We add the first knot
-                diff_ptr = difference.begin();                
+                diff_ptr = difference.begin();
                 newIdx = dirIndices[i] + 1;
             }
 
@@ -111,7 +111,7 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
             // Remove the difference knot, since it is treated
             difference.erase(diff_ptr);
         }
-        
+
         lvlIndices[dim] = dirIndices;
     }
     m_uIndices.push_back(lvlIndices);
@@ -152,7 +152,7 @@ index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 
     if (m_manualLevels)
         this->_knotIndexToDiadicIndex(maxLevel,loIdx);
-    
+
     return m_tree.levelOf( loIdx, maxLevel);
 }
 
@@ -306,7 +306,6 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
     refine(boxes);
     gsSparseMatrix<> transf;
     this->transfer(OX, transf);
-    gsDebug<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 
@@ -379,6 +378,7 @@ void gsHTensorBasis<d,T>::unrefineElements_withTransfer(std::vector<index_t> con
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int dir)
 {
+    GISMO_UNUSED(dir);
     GISMO_ASSERT(dir==-1,"Direction is not implemented");
 
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
@@ -882,7 +882,7 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
     }
 
     // reconstruct the whole tree to fix alignment
-    gsHDomain<d> newtree( m_tree.upperCornerIndex() );
+    gsHTree<d,index_t> newtree( m_tree.upperCornerIndex() );
     auto leafIt = m_tree.beginLeafIterator();
     for (; leafIt.good(); leafIt.next())
     {
@@ -1338,6 +1338,7 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 {
     GISMO_ENSURE(!m_manualLevels || (size_t)(maxLevel)<m_uIndices.size(),"Maximum manual level reached, maxLevel = "<<maxLevel<<", m_uIndices.size() = "<<m_uIndices.size());
     // +1 for the initial basis in m_bases
+    m_bases.reserve(maxLevel+1);
     const int extraLevels = maxLevel + 1 - m_bases.size();
     for ( int i = 0; i < extraLevels; ++i )
     {
@@ -1501,7 +1502,7 @@ boundaryOffset(boxSide const & s,index_t offset) const
 
 template<short_t d, class T>
 gsMatrix<index_t>  gsHTensorBasis<d,T>::
-boundaryOffset(boxSide const & s,index_t offset, index_t level) const
+boundaryOffsetLevel(boxSide const & s,index_t offset, index_t level) const
 {
     //get information on the side
     //index_t k   = s.direction();
@@ -1553,7 +1554,7 @@ functionAtCorner(boxCorner const & c, index_t level) const
 /*
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                           std::vector<gsMatrix<T> >& result) const;
+                                           std::vector<gsMatrix<T> >& result, bool sameElement) const;
 {
     result.resize(n+1);
 
@@ -1572,7 +1573,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
 
     // Keep consistency of finest level
     tensorBasis * last_basis = m_bases.back()->clone().release();
-    last_basis->uniformRefine(1,mul);
+    last_basis->uniformRefine(1,mul,dir);
     m_bases.push_back( last_basis );
 
     // Delete the first level
@@ -1967,6 +1968,96 @@ void gsHTensorBasis<d,T>::degreeDecrease(int const & i, int const dir)
     this->update_structure();
 }
 
+template<int d,class T>
+index_t gsHTensorBasis<d,T>::gradingParameter() const
+{
+    std::vector<size_t> levels(this->numLevels() + 1);
+    levels[0] = 0;
+    for (index_t l = 0; l < this->numLevels(); ++l)
+        levels[l+1] = levels[l] + this->m_xmatrix[l].size();
+
+    index_t grading = 0;
+    // Loop over each element
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+    {
+        index_t min(0), max(0);
+        // Indices of active basis functions over the element
+        gsVector<index_t> indices = this->active(it.centerPoint());
+        for (index_t l = 0; l < this->numLevels(); ++l)
+        {
+            // Indices are sorted, so taken two functions of different levels,
+            // the one that belongs to the lowest level has a lower index
+            min = indices[0] - levels[l] <= levels[l+1] - levels[l] ? l : min;
+            max = indices[indices.size()-1] - levels[l] <= levels[l+1] - levels[l] ? l : max;
+        }
+        grading = max - min > grading ? max - min : grading;
+    }
+
+    return grading;
+}
+
+template<int d,class T>
+index_t gsHTensorBasis<d,T>::maxLoading() const
+{
+    index_t max = 0;
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+        max = max > this->active(it.centerPoint()).size() ? max : this->active(it.centerPoint()).size();
+
+    return max;
+}
+
+template<int d,class T>
+index_t gsHTensorBasis<d,T>::minLoading() const
+{
+    index_t min = this->normalLoading();
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+        min = min < this->active(it.centerPoint()).size() ? min : this->active(it.centerPoint()).size();
+
+    return min;
+}
+
+template<int d, class T>
+real_t gsHTensorBasis<d,T>::averageLoading() const
+{
+    index_t sum(0), count(0);
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it, ++count)
+        sum += this->active(it.centerPoint()).size();
+
+    return sum/static_cast<real_t>(count);
+}
+
+template<int d, class T>
+index_t gsHTensorBasis<d, T>::overloadedElements() const
+{
+    index_t count(0);
+    index_t normal = this->normalLoading();
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+        count = this->active(it.centerPoint()).size() > normal ? count+1 : count;
+
+    return count;
+}
+
+template<int d, class T>
+real_t gsHTensorBasis<d, T>::averageOverloading() const
+{
+    index_t sum(0), count(0);
+    index_t normal = this->normalLoading();
+    const gsDomain<>::Ptr domain = this->domain();
+    for (auto it = domain->beginAll(); it != domain->endAll(); ++it)
+        if (this->active(it.centerPoint()).size() > normal)
+        {
+            sum += this->active(it.centerPoint()).size();
+            ++count;
+        }
+
+    return sum/static_cast<real_t>(count);
+}
+
 template<short_t d, class T>
 bool gsHTensorBasis<d,T>::testPartitionOfUnity(const index_t npts, const T tol) const
 {
@@ -2004,10 +2095,10 @@ public:
             return NULL;
         }
         std::string s = btype->value() ;
-        if ( s.compare(0, 9, "HBSplineB" , 9 ) == 0 ) // needs correct d as well
-            return gsXml< gsHBSplineBasis<d,T> >::get(node);
         if ( s.compare(0, 10,"THBSplineB", 10) == 0 )
             return gsXml< gsTHBSplineBasis<d,T> >::get(node);
+        if ( s.compare(0, 9, "HBSplineB" , 9 ) == 0 ) // needs correct d as well
+            return gsXml< gsHBSplineBasis<d,T> >::get(node);
 
         gsWarn<<"gsXmlUtils: gsHTensorBasis: No known basis \""<<s<<"\". Error.\n";
         return NULL;
@@ -2031,6 +2122,7 @@ public:
         gsWarn<<"gsXmlUtils put: getBasis: No known basis \""<<obj<<"\". Error.\n";
         return NULL;
     }
+    GSXML_GET_INTO(gsHTensorBasis<TMPLA2(d,T)>);
 };
 
 } // namespace internal

@@ -1789,10 +1789,11 @@ public: //--------------------------------------------- higher-level operations
      */
     void flip(Edge e);
 
-
     /** returns the valence (number of incident edges or neighboring vertices)
      of vertex \c v. */
     unsigned int valence(Vertex v) const;
+
+    unsigned int hcount(Vertex v, const Halfedge_property<bool>  & prop) const;
 
     /// returns the valence of face \c f (its number of vertices)
     unsigned int valence(Face f) const;
@@ -1914,7 +1915,10 @@ public: // Catmull-Clark functions
 
     /// Generate linear tensor-product patches (possibly merging faces)
     gsMultiPatch<real_t> linear_patches() const;
-    
+
+    // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
+    inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
+
 private: //--------------------------------------------------- helper functions
 
     /** make sure that the outgoing halfedge of vertex v is a boundary halfedge

@@ -1,0 +1,26 @@
+namespace gismo {
+
+/**
+\page Interfaces Interfaces
+
+\gismo has multiple interfaces
+
+
+<h3>Python interfaces</h3>
+G+Smo currently has two separate sets of Python bindings: Bindings based on <a href="https://github.com/pybind/pybind11">pybind11</a> and bindings based on <a href="https://cppyy.readthedocs.io/en/latest/">cppyy</a>. The main difference is that the pybind11-bindings are precompiled while the cppyy-bindings are based on JIT and are generated at runtime.
+
+- \subpage Python_cppyy_interface
+
+- \subpage Python_pybind11_interface
+
+<h3>C interface</h3>
+- \subpage C_interface
+
+<h3>Julia interface</h3>
+- \subpage Julia_interface
+
+<h3>MATLAB interface</h3>
+- \subpage MATLAB_interface
+
+*/
+}

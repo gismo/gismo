@@ -667,8 +667,8 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
         index_t sz = indices.rows();
         gsSparseEntries<> se;
         se.reserve(sz);
-        for (index_t i=0; i<sz; ++i)
-            se.add(indices(i,0),i,(real_t)(1));
+        for (index_t l=0; l<sz; ++l)
+            se.add(indices(l,0),l,(real_t)(1));
         gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
         transfer.setFrom(se);
         if (sz>0)
@@ -819,7 +819,7 @@ gsMatrix<> assembleLumpedMass(
     {
         w_n.setup(bcInfo, dirichlet::interpolation, 0);
     }
-    ex.setIntegrationElements(basis);
+    ex.setIntegrationDomain(basis.domain());
     ex.initSystem();
     ex.assemble(w_n * meas(G));
     return ex.rhs();
@@ -844,7 +844,7 @@ gsSparseMatrix<> assembleMass(
     {
         w_n.setup(bcInfo, dirichlet::interpolation, 0);
     }
-    ex.setIntegrationElements(basis);
+    ex.setIntegrationDomain(basis.domain());
     ex.initSystem();
     ex.assemble(w_n * meas(G) * w_n.tr());
     return ex.matrix();
@@ -873,7 +873,7 @@ gsSparseMatrix<> assembleMixedMass(
         v_n.setup(bcInfo, dirichlet::interpolation, 0);
         u_n.setup(bcInfo, dirichlet::interpolation, 0);
     }
-    ex.setIntegrationElements(basisU);
+    ex.setIntegrationDomain(basisU.domain());
     ex.initSystem();
     ex.assemble(u_n * meas(G) * v_n.tr());
     return ex.matrix().transpose();

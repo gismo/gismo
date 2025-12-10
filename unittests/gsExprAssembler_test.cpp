@@ -32,7 +32,7 @@ SUITE(gsExprAssembler_test)
             mb.uniformRefine();
 
         gsExprEvaluator<> ev;
-        ev.setIntegrationElements(mb);
+        ev.setIntegrationDomain(mb.domain());
         gsExprEvaluator<>::geometryMap G = ev.getMap(patches);
         auto f = ev.getVariable(ff, G);
 
@@ -50,7 +50,7 @@ SUITE(gsExprAssembler_test)
     {
         // Create a circle
         gsMultiPatch<> mp;
-        mp.addPatch(gsNurbsCreator<>::NurbsDisk(0.5));
+        mp.addPatch(gsNurbsCreator<>::NurbsDisk(1.0));
         mp.computeTopology();
         mp.embed(3);
         mp.uniformRefine(1);
@@ -65,7 +65,7 @@ SUITE(gsExprAssembler_test)
         // Create evaluator
         gsMultiBasis<> mb(mp);
         gsExprEvaluator<> ev;
-        ev.setIntegrationElements(mb);
+        ev.setIntegrationDomain(mb.domain());
         ev.options().addReal("quA","",2); // added precision to approx pi
         ev.options().addInt("quB","", 2); // added precision to approx pi
         auto G = ev.getMap(mp);

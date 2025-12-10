@@ -102,7 +102,7 @@ macro(OFA_AutodetectX86)
     if(_error)
       message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
-    
+
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
     # Windows
@@ -114,29 +114,50 @@ macro(OFA_AutodetectX86)
     string(REGEX REPLACE ".* Stepping ([0-9]+) .*" "\\1" _cpu_mstepping "${_cpu_id}")
 
   else()
-    
+
     # Try to retrieve CPUID directly
     try_run(_exit _ok
       ${CMAKE_CURRENT_BINARY_DIR}
       ${CMAKE_SOURCE_DIR}/cmake/ofa/cpuinfo_x86.cxx
       RUN_OUTPUT_VARIABLE _cpuinfo)
 
-    if(_ok AND ${_exit} EQUAL 0)    
+    if(_ok AND ${_exit} EQUAL 0)
       string(REGEX REPLACE ".*vendor_id[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _vendor_id "${_cpuinfo}")
       string(REGEX REPLACE ".*cpu family[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_family "${_cpuinfo}")
       string(REGEX REPLACE ".*model[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_model "${_cpuinfo}")
       string(REGEX REPLACE ".*stepping[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_stepping "${_cpuinfo}")
       string(REGEX REPLACE ".*flags[ \t]*:[ \t]+([^\n]+).*" "\\1" _cpu_flags "${_cpuinfo}")
-      
+
     else()
-      
+
       message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
     endif()
   endif()
 
   # Determine CPU from CPUID
   if(_vendor_id STREQUAL "GenuineIntel")
-    if(_cpu_family EQUAL 6)
+    if(_cpu_family EQUAL 19)
+
+      # MIC architecture
+      if(_cpu_model EQUAL 1)
+        set(TARGET_ARCHITECTURE "diamondrapids")
+      elseif(_cpu_model EQUAL 0)
+        set(TARGET_ARCHITECTURE "novalake")
+
+      else()
+        message(WARNING
+          " Your CPU is not known.\n"
+          " Auto-detection of optimization flags failed and will use the 65nm Core 2 CPU settings.\n"
+          " Please send an email to gismo@inria.fr with the following content so that we can update the OFA script:\n"
+          " Vendor id:    ${_vendor_id}\n"
+          " CPU family:   ${_cpu_family}\n"
+          " CPU mode:     ${_cpu_model}\n"
+          " CPU stepping: ${_cpu_stepping}\n"
+          " CPU flags:    ${_cpu_flags}")
+        set(TARGET_ARCHITECTURE "merom")
+      endif()
+
+    elseif(_cpu_family EQUAL 6)
       # taken from the Intel ORM
       # http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html
       # CPUID Signature Values Of Recent Intel Microarchitectures
@@ -199,39 +220,30 @@ macro(OFA_AutodetectX86)
       elseif(_cpu_model EQUAL 92 OR _cpu_model EQUAL 95)
         set(TARGET_ARCHITECTURE "goldmont")
 
-      elseif(_cpu_model EQUAL 90 OR _cpu_model EQUAL 93 OR _cpu_model EQUAL 74 OR _cpu_model EQUAL 76 OR _cpu_model EQUAL 77 OR _cpu_model EQUAL 55)
+      elseif(_cpu_model EQUAL 55 OR _cpu_model EQUAL 74 OR _cpu_model EQUAL 76 OR _cpu_model EQUAL 77 OR _cpu_model EQUAL 90 OR _cpu_model EQUAL 93)
         set(TARGET_ARCHITECTURE "silvermont")
 
       elseif(_cpu_model EQUAL 28 OR _cpu_model EQUAL 38 OR _cpu_model EQUAL 39 OR _cpu_model EQUAL 53 OR _cpu_model EQUAL 54)
         set(TARGET_ARCHITECTURE "bonnell")
 
-      # Big cores
-      elseif(_cpu_model EQUAL 183 OR _cpu_model EQUAL 186)
-        set(TARGET_ARCHITECTURE "raptorlake")
-  
-      elseif(_cpu_model EQUAL 167)
-        set(TARGET_ARCHITECTURE "rocketlake")
+      # Big cores (server)
+      elseif(_cpu_model EQUAL 221)
+        set(TARGET_ARCHITECTURE "clearwaterforest")
 
-      elseif(_cpu_model EQUAL 151 OR _cpu_model EQUAL 154)
-        set(TARGET_ARCHITECTURE "alderlake")
+      elseif(_cpu_model EQUAL 175)
+        set(TARGET_ARCHITECTURE "sierraforest")
 
+      elseif(_cpu_model EQUAL 173 OR _cpu_model EQUAL 174)
+        set(TARGET_ARCHITECTURE "graniterapids")
+
+      elseif(_cpu_model EQUAL 207)
+        set(TARGET_ARCHITECTURE "emeraldrapids")
+        
       elseif(_cpu_model EQUAL 143)
         set(TARGET_ARCHITECTURE "sapphirerapids")
 
-      elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158 OR _cpu_model EQUAL 165)
-        set(TARGET_ARCHITECTURE "kabylake")
-
-      elseif(_cpu_model EQUAL 140)
-        set(TARGET_ARCHITECTURE "tigerlake")
-
-      elseif(_cpu_model EQUAL 125 OR _cpu_model EQUAL 126)
-        set(TARGET_ARCHITECTURE "icelake")
-
       elseif(_cpu_model EQUAL 106 OR _cpu_model EQUAL 108)
         set(TARGET_ARCHITECTURE "icelake-avx512")
-
-      elseif(_cpu_model EQUAL 102)
-        set(TARGET_ARCHITECTURE "cannonlake")
 
       elseif(_cpu_model EQUAL 85)
         if(_cpu_stepping LESS 5)
@@ -242,25 +254,83 @@ macro(OFA_AutodetectX86)
           set(TARGET_ARCHITECTURE "cooperlake")
         endif()
 
+      elseif(_cpu_model EQUAL 79 OR _cpu_model EQUAL 86)
+        set(TARGET_ARCHITECTURE "broadwell")
+
+      elseif(_cpu_model EQUAL 63)
+        set(TARGET_ARCHITECTURE "haswell")
+
+      elseif(_cpu_model EQUAL 62)
+        set(TARGET_ARCHITECTURE "ivybridge")
+
+      elseif(_cpu_model EQUAL 45)
+        set(TARGET_ARCHITECTURE "sandybridge")
+
+      elseif(_cpu_model EQUAL 44 OR _cpu_model EQUAL 47)
+        set(TARGET_ARCHITECTURE "westmere")
+
+      elseif(_cpu_model EQUAL 26 OR _cpu_model EQUAL 30 OR _cpu_model EQUAL 46)
+        set(TARGET_ARCHITECTURE "nehalem")
+
+      elseif(_cpu_model EQUAL 23 OR _cpu_model EQUAL 29)
+        set(TARGET_ARCHITECTURE "penryn")
+
+      # Big cores (client)
+      elseif(_cpu_model EQUAL 204)
+        set(TARGET_ARCHITECTURE "pantherlake")
+
+      elseif(_cpu_model EQUAL 188 OR _cpu_model EQUAL 189)
+        set(TARGET_ARCHITECTURE "lunarlake")
+
+      elseif(_cpu_model EQUAL 181 OR _cpu_model EQUAL 197 OR _cpu_model EQUAL 198)
+        set(TARGET_ARCHITECTURE "arrowlake")
+
+      elseif(_cpu_model EQUAL 170 OR _cpu_model EQUAL 171 OR _cpu_model EQUAL 172)
+        set(TARGET_ARCHITECTURE "meteorlake")
+
+      elseif(_cpu_model EQUAL 183 OR _cpu_model EQUAL 186 OR _cpu_model EQUAL 190 OR _cpu_model EQUAL 191)
+        set(TARGET_ARCHITECTURE "raptorlake") # Raptor Lake refresh = Bartlett Lake
+
+      elseif(_cpu_model EQUAL 151 OR _cpu_model EQUAL 154)
+        set(TARGET_ARCHITECTURE "alderlake")
+
+      elseif(_cpu_model EQUAL 167)
+        set(TARGET_ARCHITECTURE "rocketlake")
+
+      elseif(_cpu_model EQUAL 165 OR _cpu_model EQUAL 166)
+        set(TARGET_ARCHITECTURE "cometlake")
+
+      elseif(_cpu_model EQUAL 140 OR _cpu_model EQUAL 141)
+        set(TARGET_ARCHITECTURE "tigerlake")
+
+      elseif(_cpu_model EQUAL 125 OR _cpu_model EQUAL 126)
+        set(TARGET_ARCHITECTURE "icelake")
+
+      elseif(_cpu_model EQUAL 102)
+        set(TARGET_ARCHITECTURE "cannonlake")
+
+      elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158)
+        set(TARGET_ARCHITECTURE "kabylake")
+
       elseif(_cpu_model EQUAL 78 OR _cpu_model EQUAL 94)
         set(TARGET_ARCHITECTURE "skylake")
 
-      elseif(_cpu_model EQUAL 61 OR _cpu_model EQUAL 71 OR _cpu_model EQUAL 79 OR _cpu_model EQUAL 86)
+      elseif(_cpu_model EQUAL 61 OR _cpu_model EQUAL 71)
         set(TARGET_ARCHITECTURE "broadwell")
 
-      elseif(_cpu_model EQUAL 60 OR _cpu_model EQUAL 69 OR _cpu_model EQUAL 70 OR _cpu_model EQUAL 63)
+      elseif(_cpu_model EQUAL 60 OR _cpu_model EQUAL 69 OR _cpu_model EQUAL 70)
         set(TARGET_ARCHITECTURE "haswell")
 
-      elseif(_cpu_model EQUAL 58 OR _cpu_model EQUAL 62)
+      elseif(_cpu_model EQUAL 58)
         set(TARGET_ARCHITECTURE "ivybridge")
 
-      elseif(_cpu_model EQUAL 42 OR _cpu_model EQUAL 45)
+      elseif(_cpu_model EQUAL 42)
         set(TARGET_ARCHITECTURE "sandybridge")
 
-      elseif(_cpu_model EQUAL 37 OR _cpu_model EQUAL 44 OR _cpu_model EQUAL 47)
+      elseif(_cpu_model EQUAL 37)
         set(TARGET_ARCHITECTURE "westmere")
 
-      elseif(_cpu_model EQUAL 26 OR _cpu_model EQUAL 30 OR _cpu_model EQUAL 31 OR _cpu_model EQUAL 46)
+      elseif(_cpu_model EQUAL 30 OR _cpu_model EQUAL 31)
         set(TARGET_ARCHITECTURE "nehalem")
 
       elseif(_cpu_model EQUAL 23 OR _cpu_model EQUAL 29)
@@ -276,10 +346,26 @@ macro(OFA_AutodetectX86)
         set(TARGET_ARCHITECTURE "core")
 
       elseif(_cpu_model LESS 14)
-        message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the generic CPU settings with SSE2.")
+        message(WARNING
+          " Your CPU is not known.\n"
+          " Auto-detection of optimization flags failed and will use the generic CPU settings with SSE2.\n"
+          " Please send an email to gismo@inria.fr with the following content so that we can update the OFA script:\n"
+          " Vendor id:    ${_vendor_id}\n"
+          " CPU family:   ${_cpu_family}\n"
+          " CPU mode:     ${_cpu_model}\n"
+          " CPU stepping: ${_cpu_stepping}\n"
+          " CPU flags:    ${_cpu_flags}")
         set(TARGET_ARCHITECTURE "generic")
       else()
-        message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the 65nm Core 2 CPU settings.")
+        message(WARNING
+          " Your CPU is not known.\n"
+          " Auto-detection of optimization flags failed and will use the 65nm Core 2 CPU settings.\n"
+          " Please send an email to gismo@inria.fr with the following content so that we can update the OFA script:\n"
+          " Vendor id:    ${_vendor_id}\n"
+          " CPU family:   ${_cpu_family}\n"
+          " CPU mode:     ${_cpu_model}\n"
+          " CPU stepping: ${_cpu_stepping}\n"
+          " CPU flags:    ${_cpu_flags}")
         set(TARGET_ARCHITECTURE "merom")
       endif()
 
@@ -360,7 +446,7 @@ macro(OFA_AutodetectX86)
     elseif(_cpu_family EQUAL 5) # 05h (K6)
 
     endif()
-    
+
   else()
     message(WARNING "Auto-detection of optimization flags failed and will use the generic CPU settings.")
     return()

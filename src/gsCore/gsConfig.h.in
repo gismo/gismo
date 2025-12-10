@@ -49,7 +49,6 @@
 #cmakedefine GISMO_WITH_MPI
 #cmakedefine GISMO_WITH_PARDISO
 #cmakedefine GISMO_WITH_PASTIX
-#cmakedefine GISMO_WITH_PSOLID
 #cmakedefine GISMO_WITH_SPECTRA
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_TAUCS

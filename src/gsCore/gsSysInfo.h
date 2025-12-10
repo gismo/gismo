@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <cstdint>
 
 namespace gismo
 {

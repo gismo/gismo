@@ -71,7 +71,7 @@ public:
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
-        rule = gsQuadrature::get(basis, options);
+        rule = gsQuadrature::get(*basis.domain(), options);
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
@@ -92,7 +92,7 @@ public:
         //col(point) = B1_xx B2_yy B1_zz B_xy B1_xz B1_xy B2_xx ...
 
         // Evaluate basis functions on element
-        basis.evalAllDers_into(md.points, 2, basisData);
+        basis.evalAllDers_into(md.points, 2, basisData, true);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);
@@ -106,7 +106,7 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & ,
+    inline void assemble(gsDomainIteratorWrapper<T>    & ,
                          const gsVector<T>      & quWeights)
     {
         gsMatrix<T> & basisVals  = basisData[0];

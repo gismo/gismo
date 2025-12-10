@@ -13,11 +13,10 @@
 
 #pragma once
 
-#include <gsNurbs/gsNurbs.h>
-#include <gsNurbs/gsNurbsBasis.h>
 #include <gsCore/gsRationalBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsTensor/gsTensorTools.h>
+#include <gsNurbs/gsNurbsBasis.h>
 
 namespace gismo
 {
@@ -41,6 +40,8 @@ class gsTensorNurbsBasis : public gsRationalBasis<typename gsBSplineTraits<d,T>:
 public: 
     typedef gsKnotVector<T> KnotVectorType;
 
+    typedef memory::unique_ptr<gsGeometry<T> > gsGeoPtr;
+
     /// @brief Base type
     typedef gsRationalBasis<typename gsBSplineTraits<d,T>::Basis> Base;
 
@@ -60,7 +61,7 @@ public:
     typedef typename gsBSplineTraits<d,T>::RatGeometry GeometryType;
 
     /// @brief Associated Boundary basis type
-    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::RatBasis BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
 
     /// @brief Shared pointer for gsTensorNurbsBasis
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;
@@ -73,21 +74,8 @@ public:
 
 public:
 
-    /// @brief Constructors for gsTensorNurbsBasis
-    gsTensorNurbsBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
-    : Base( new gsBSplineBasis<T>(KV1, KV1.degree()), new gsBSplineBasis<T>(KV2, KV2.degree()) )
-    { }
-
-    gsTensorNurbsBasis( const KnotVectorType& KV1, const KnotVectorType& KV2, const KnotVectorType& KV3 )
-    : Base( new gsBSplineBasis<T>(KV1, KV1.degree()),
-            new gsBSplineBasis<T>(KV2, KV2.degree()),
-            new gsBSplineBasis<T>(KV3, KV3.degree()) )
-    { }
-
-    // TO DO: more constructors
-    //gsTensorNurbsBasis( gsBSplineBasis * x,  gsBSplineBasis* y, Basis_t* z ) : Base(x,y,z) { };
-    //gsTensorNurbsBasis( std::vector<Basis_t* > const & bb ) : Base(bb) { };
-
+    explicit gsTensorNurbsBasis(std::vector<KnotVectorType> KV, gsMatrix<T> w)
+    : Base(new Src_t(give(KV)), give(w)) { }
 
     // Constructors forwarded from the base class
     gsTensorNurbsBasis() : Base() { };
@@ -96,23 +84,18 @@ public:
 
     gsTensorNurbsBasis( const Src_t & basis ) : Base(basis) { }
 
-    gsTensorNurbsBasis( std::vector<gsBasis<T>* > const & bb, gsMatrix<T> w ) : Base(Src_t(bb), give(w)) { }
-
     gsTensorNurbsBasis( Src_t* basis, gsMatrix<T> w ) : Base(basis, give(w)) { }
 
     gsTensorNurbsBasis(const gsTensorNurbsBasis & o) : Base(o) { }
 
     GISMO_CLONE_FUNCTION(gsTensorNurbsBasis)
 
-    //static uPtr make(std::vector<gsBasis<T>* > const & bb, gsMatrix<T> w)
-    //{ return uPtr( new gsTensorNurbsBasis(bb, w) ); }
-  
-    GISMO_MAKE_GEOMETRY_NEW
+    gsGeoPtr makeGeometry( gsMatrix<T> coefs ) const override;
 
 public:
 
     /// @brief Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         os << "TensorNurbsBasis: dim=" << this->dim()<< ", size="<< this->size() << ".";
         for ( unsigned i = 0; i!=d; ++i )
@@ -138,15 +121,6 @@ public:
         m_src->size_cwise(result);
     }
 
-    size_t numElements() const
-    {
-        return m_src->numElements();
-        // size_t nElem = m_bases[0]->numElements();
-        // for (short_t dim = 1; dim < d; ++dim)
-        //     nElem *= m_bases[dim]->numElements();
-        // return nElem;
-    }
-
     /// Returns the strides for all dimensions
     void stride_cwise(gsVector<index_t,d> & result) const
     {
@@ -166,7 +140,7 @@ public:
         m_src->swapDirections(i, j);
     }
 
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1, int mul=1, int dir=-1)
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1) override
     {
         GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                       "Invalid dimensions" );
@@ -193,7 +167,7 @@ public:
         else
         {
             GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
-                          "Invalid basis component "<< dir <<" requested for degree elevation" );
+                          "Invalid basis component "<< dir <<" requested for uniform refinement." );
 
             gsVector<index_t,d> sz;
             m_src->size_cwise(sz);
@@ -222,22 +196,8 @@ public:
         }
     }
 
-#ifdef __DOXYGEN__
     /// @brief Gives back the boundary basis at boxSide s
-    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
-#endif
-
-    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
-    {
-        typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(n1);
-        gsMatrix<index_t> ind = m_src->boundary(n1);
-        
-        gsMatrix<T> ww( ind.size(),1);
-        for ( index_t i=0; i<ind.size(); ++i)
-            ww(i,0) = m_weights( (ind)(i,0), 0);
-        
-        return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
-    }
+    gsBasis<real_t> * boundaryBasis_impl(const boxSide & s) const override;
 
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
@@ -247,7 +207,7 @@ public:
 
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const override
     {
         if ( const gsTensorNurbsBasis<d,T> * _other = dynamic_cast<const gsTensorNurbsBasis<d,T> *>(&other) )
             m_src->matchWith(bi,_other->source(),bndThis,bndOther,offset);
@@ -264,5 +224,22 @@ protected:
 
 };
 
-
 } // namespace gismo
+
+// *****************************************************************
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsTensorNurbsBasis.hpp)
+#else
+#ifdef gsTensorNurbsBasis_EXPORT
+#include GISMO_HPP_HEADER(gsTensorNurbsBasis.hpp)
+#undef  EXTERN_CLASS_TEMPLATE
+#define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
+#endif
+namespace gismo
+{
+EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<2,real_t>;
+EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<3,real_t>;
+EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<4,real_t>;
+}
+#endif
+// *****************************************************************

@@ -27,16 +27,17 @@ namespace gismo
  *
  * \param d the dimension of the parameter domain
  * \param T the coefficient type
+ * \param Trunc switch between THB and HB
  *
  * \ingroup basis
  * \ingroup HSplines
  */
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
     /// @brief Associated geometry type.
-    typedef gsTHBSpline<d,T> GeometryType;
+    typedef typename util::conditional<Trunc, gsTHBSpline<d,T>, gsHBSpline<d,T>>::type GeometryType;
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
 
@@ -54,7 +55,7 @@ public:
 
     /// @brief Associated Boundary basis type.
     typedef typename
-    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T> >::type BoundaryBasisType;
+    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T, Trunc> >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
     using gsHTensorBasis<d, T>::m_manualLevels;
@@ -82,66 +83,77 @@ public:
 public:
 
     gsTHBSplineBasis()
-    { 
-        representBasis(); 
-    }
+    { if (Trunc) representBasis(); }
 
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
                      const std::vector<index_t> & boxes) 
     : gsHTensorBasis<d,T>(tbasis, boxes)
-    { representBasis(); }
+    { if (Trunc) representBasis(); }
 
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
                      gsMatrix<T> const & boxes)
     : gsHTensorBasis<d,T>(tbasis, boxes) 
-    {  representBasis(); }
+    { if (Trunc) representBasis(); }
 
     gsTHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
                       gsMatrix<T> const & boxes, 
                       const std::vector<index_t> & levels)
     : gsHTensorBasis<d,T>(tbasis, boxes, levels)
-    {  representBasis(); }
+    { if (Trunc) representBasis(); }
 
     /// @brief Constructor out of a tensor BSpline Basis
     gsTHBSplineBasis(gsBasis<T> const&  tbasis, bool manualLevels=false)
         : gsHTensorBasis<d,T>(tbasis, manualLevels)
-    {  representBasis(); }
+    { if (Trunc) representBasis(); }
 
 #ifdef __DOXYGEN__
     /// @brief Gives back the boundary basis at boxSide s
     typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
 #endif
-    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
+    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &) override
     {
         return basisSlice(n1.direction(),n1.parameter());
     }
 
 public:
 
+    using gsHTensorBasis<d,T>::tensorLevel;
+
     // Look at gsBasis.h for the documentation of this function
-    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const override;
 
     /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
     // Look at gsBasis class for documentation
-    void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const;
+    void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const override;
+
+    index_t numActiveMax(const gsMatrix<T> & u, gsMatrix<index_t> & offset) const;
+
+    // returns all actives at \a u from level \a lvl only
+    // Does not clear result, only appends data
+    void activeAtLevel_into(index_t lvl, const gsMatrix<T>& u,
+                            std::vector<index_t> & result) const;
 
     // Look at gsBasis class for documentation
-    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const;
+    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // Look at gsBasis class for documentatation
     void deriv2Single_into(index_t i,
                            const gsMatrix<T>& u,
-                           gsMatrix<T>& result) const;
+                           gsMatrix<T>& result) const override;
 
     // Look at gsBasis class for documentation
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
  
     // Look at gsBasis class for documentation
     void derivSingle_into(index_t i,
                              const gsMatrix<T> & u,
-                          gsMatrix<T>& result) const;
+                          gsMatrix<T>& result) const override;
+
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result,
+                          bool sameElement = false) const override;
 
     // look at eval_into
     void fastEval_into(const gsMatrix<T>& u,
@@ -167,7 +179,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -176,7 +188,7 @@ public:
                     processed(lvl) = 1;
                 }
 
-                if (m_is_truncated[index] == -1)
+                if (!isTruncated(index))
                 {
                     index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndex = -1;
@@ -232,7 +244,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -241,7 +253,7 @@ public:
                     processed(lvl) = 1;
                 }
 
-                if (m_is_truncated[index] == -1)
+                if (!isTruncated(index))
                 {
                     index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndex = -1;
@@ -302,7 +314,7 @@ public:
                 if (ind != 0 && index == 0)
                     break;
 
-                unsigned lvl = getPresLevelOfBasisFun(index);
+                unsigned lvl = repLevel(index);
 
                 if (processed(lvl) == 0)
                 {
@@ -311,7 +323,7 @@ public:
                     processed(lvl) = 1;
                 }
 
-                if (m_is_truncated[index] == -1)
+                if (!isTruncated(index))
                 {
                     index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndx = -1;
@@ -348,7 +360,7 @@ public:
     }
 
     // Look at gsBasis class for documentation
-    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     // Because of overriding one of the "eval_into" functions, all
     // functions in the base class with this name are hidden from the
@@ -363,10 +375,8 @@ public:
     unsigned numTruncated() const
     { return m_presentation.size(); }
 
-    bool isTruncated(unsigned i) const
-    {
-        return (this->m_is_truncated[i] != -1);
-    }
+    inline bool isTruncated(unsigned i) const
+    { return Trunc && (this->m_is_truncated[i] != -1); }
 
     /// @brief Returns an iterator to the representation of the first truncated basis function
     typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedBegin() const
@@ -379,7 +389,7 @@ public:
     /// @brief Returns sparse representation of the i-th basis function.
     const gsSparseVector<T>& getCoefs(unsigned i) const
     {
-        if (this->m_is_truncated[i] == -1)
+        if (!isTruncated(i))
         {
             GISMO_ERROR("This basis function has no sparse representation. "
                         "It is not truncated.");
@@ -390,24 +400,20 @@ public:
         }
     }
 
-
+    // Documentation in gsBasis::evalSingle_into
     void evalSingle_into(index_t i,
                          const gsMatrix<T>& u,
-                         gsMatrix<T>& result) const;
+                         gsMatrix<T>& result) const override;
+
+    /// Retruns the represenation level of basis function \a index
+    index_t repLevel(const index_t index) const
+    { return (isTruncated(index) ? m_is_truncated[index] : this->levelOf(index)); }
+
+    /// Returns the tensor-product basis where basis function \a index has representation in
+    const tensorBasis & repBasis(const index_t index) const
+    { return tensorLevel(repLevel(index)); }
 
 private:
-
-    unsigned getPresLevelOfBasisFun(const unsigned index) const
-    {
-        if (m_is_truncated[index] == -1)
-        {
-            return this->levelOf(index);
-        }
-        else
-        {
-            return m_is_truncated[index];
-        }
-    }
 
     /// @brief Computes and saves representation of all basis functions.
     void representBasis(); // rename: precompute coeffs
@@ -503,14 +509,14 @@ private:
 public:
 
   /// @brief Returns the dimension of the parameter space
-  short_t domainDim() const { return d; }
+  short_t domainDim() const override { return d; }
 
     GISMO_CLONE_FUNCTION(gsTHBSplineBasis)
 
   /// @brief Prints the object as a string.
-  std::ostream &print(std::ostream &os) const
+  std::ostream &print(std::ostream &os) const override
   {
-      os << "Truncated ";
+      os << (Trunc?"Truncated ": "Hierachical ");
       gsHTensorBasis<d,T>::printBasic(os);
       //this->printCharMatrix(os);
       return os;
@@ -535,8 +541,7 @@ public:
                           unsigned level,
                           const gsMatrix<T>& geom_coef,
                           gsMatrix<T>& cp, gsKnotVector<T>& k1,
-                          gsKnotVector<T>& k2) const
-    { getBsplinePatchGlobal_impl<d>(b1,b2,level,geom_coef,cp,k1,k2); }
+                               gsKnotVector<T>& k2) const;
 
   /**
    * @brief Return the list of B-spline patches to represent a THB-spline geometry.
@@ -605,18 +610,17 @@ public:
     /// level. Geometry of the patch is defined via input coefficients.
     gsTensorBSpline<d,T> getBSplinePatch(const std::vector<index_t>& boundingBox,
                                          const unsigned level,
-                                         const gsMatrix<T>& geomCoefs) const
-    { return getBSplinePatch_impl<d>(boundingBox, level, geomCoefs); }
+                                         const gsMatrix<T>& geomCoefs) const;
 
 private:
     /**
      * @brief Initialize the characteristic and coefficient
      * matrices and the internal bspline representations.
     **/
-    void update_structure() 
+    void update_structure() override
     {
         gsHTensorBasis<d,T>::update_structure(); 
-        representBasis();
+        if (Trunc) representBasis();
     }
 
     /**
@@ -636,15 +640,15 @@ private:
 
     gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<index_t> >& old,
                            const std::vector<gsSortedVector<index_t> >& n,
-                           const gsSparseMatrix<T,RowMajor> & transfer) const;
+                           const gsSparseMatrix<T,RowMajor> & transfer) const override;
 
     gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
                                    const std::vector<gsSortedVector<index_t> >& n, 
-                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
+                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const override;
 
     gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
                                    const std::vector<gsSortedVector<index_t> >& n,
-                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
+                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const override;
     
 
     // ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -660,7 +664,6 @@ private:
 	return secondBox[0] < firstBox[0] && secondBox[1] < firstBox[1] &&
 	       firstBox[2] < secondBox[2] && firstBox[3] < secondBox[3];   
     }
-    
 
     /// @brief Checks if the boxes are the same
     ///
@@ -728,12 +731,12 @@ private:
 
     template<short_t dd>
     typename util::enable_if<dd!=2,void>::type
-    getBsplinePatchGlobal_impl(gsVector<index_t> b1,
-                               gsVector<index_t> b2,
-                               unsigned level,
-                               const gsMatrix<T>& geom_coef,
-                               gsMatrix<T>& cp, gsKnotVector<T>& k1,
-                               gsKnotVector<T>& k2) const { GISMO_NO_IMPLEMENTATION }
+    getBsplinePatchGlobal_impl(gsVector<index_t> ,
+                               gsVector<index_t> ,
+                               unsigned ,
+                               const gsMatrix<T>&,
+                               gsMatrix<T>&, gsKnotVector<T>&,
+                               gsKnotVector<T>&) const { GISMO_NO_IMPLEMENTATION }
 
     template<short_t dd>
     typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
@@ -743,12 +746,12 @@ private:
 
     template<short_t dd>
     typename util::enable_if<dd!=2,gsTensorBSpline<d,T> >::type
-    getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
-                    const unsigned level,
-                    const gsMatrix<T>& geomCoefs) const { GISMO_NO_IMPLEMENTATION }
+    getBSplinePatch_impl(const std::vector<index_t>&,
+                    const unsigned,
+                    const gsMatrix<T>&) const { GISMO_NO_IMPLEMENTATION }
 
     
-private:
+protected:
 
     // m_is_truncated(j)
     // if -1   : j-th basis function is not truncated,
@@ -781,6 +784,10 @@ private:
   void pybind11_init_gsTHBSplineBasis3(pybind11::module &m);
   void pybind11_init_gsTHBSplineBasis4(pybind11::module &m);
 
+  void pybind11_init_gsHBSplineBasis2(pybind11::module &m);
+  void pybind11_init_gsHBSplineBasis3(pybind11::module &m);
+  void pybind11_init_gsHBSplineBasis4(pybind11::module &m);
+
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
@@ -788,4 +795,3 @@ private:
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTHBSplineBasis.hpp)
 #endif
-

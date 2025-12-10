@@ -18,6 +18,9 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #   include <windows.h>
+#if defined(__GNUC__)
+#   include <cpuid.h>
+#endif
 #elif __APPLE__
 #   include <sys/utsname.h>
 #   include <sys/sysctl.h>
@@ -594,11 +597,20 @@ namespace gismo
     unsigned   nExIds, i =  0;
     char CPUBrandString[0x40];
 
+#if defined(__GNUC__)
+    __cpuid(0x80000000, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
+#else
     __cpuid(CPUInfo, 0x80000000);
+#endif
     nExIds = CPUInfo[0];
 
-    for (i=0x80000000; i<=nExIds; ++i) {
-      __cpuid(CPUInfo, i);
+    for (i=0x80000000; i<=nExIds; ++i)
+    {
+#if defined(__GNUC__)
+        __cpuid(i, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
+#else
+        __cpuid(CPUInfo, i);
+#endif
       if  (i == 0x80000002)
         memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
       else if  (i == 0x80000003)
@@ -616,12 +628,15 @@ namespace gismo
 
     // Supply an oversized buffer, and avoid an extra call to sysctlbyname.
     CPUBrandString.resize(size);
-    if (sysctlbyname("machdep.cpu.brand_string", &CPUBrandString[0], &size, NULL, 0) == 0 && size > 0) {
-      if (CPUBrandString[size-1] == '\0')
-        size--;
-      CPUBrandString.resize(size);
-      return CPUBrandString;
+    if (sysctlbyname("machdep.cpu.brand_string", &CPUBrandString[0], &size, NULL, 0) == 0 && size > 0)
+    {
+        if (CPUBrandString[size-1] == '\0')
+            size--;
+        CPUBrandString.resize(size);
+        return CPUBrandString;
     }
+    else
+        return 0;
 
 #elif __linux__ || __unix__
 #   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
@@ -635,7 +650,7 @@ namespace gismo
     memset(CPUBrandString, 0, sizeof(CPUBrandString));
 
     for (unsigned int i = 0x80000000; i <= nExIds; ++i)
-      {
+    {
         __cpuid(i, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
 
         if (i == 0x80000002)
@@ -650,8 +665,8 @@ namespace gismo
 
 #   else
 
-    char hostname[HOST_NAME_MAX + 1];
-    gethostname(hostname, HOST_NAME_MAX + 1);
+    char hostname[128];
+    gethostname(hostname, 128);
 
     std::string str = "Unknown-CPU [";
     str += hostname;
@@ -662,8 +677,6 @@ namespace gismo
 #   endif
 
 #endif
-
-    return "Unknown-CPU";
   }
 
   std::string gsSysInfo::getMemoryInfo()
@@ -697,19 +710,19 @@ namespace gismo
     int64_t memsize;
     std::size_t size = sizeof(memsize);
 
-    if (sysctlbyname("hw.memsize", &memsize, &size, NULL, 0) == 0) {
-      return (uint64_t)memsize;
-    }
+    if (sysctlbyname("hw.memsize", &memsize, &size, NULL, 0) == 0)
+        return (uint64_t)memsize;
+    else
+        return 0;
 
 #elif __linux__ || __unix__
 
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     return (uint64_t)(pages * page_size);
-
-#endif
-
+#else
     return 0;
+#endif
   }
 
 } // namespace gismo

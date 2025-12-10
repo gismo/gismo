@@ -26,9 +26,8 @@
 namespace gismo
 {
 
-template<short_t d, class T>
-gsMatrix<index_t>  gsTHBSplineBasis<d,T>::
-boundaryOffset(boxSide const & s,index_t offset) const
+template<short_t d, class T, bool Trunc>
+gsMatrix<index_t>  gsTHBSplineBasis<d,T, Trunc>::boundaryOffset(boxSide const & s,index_t offset) const
 {
     if (1!=offset)
         return gsHTensorBasis<d,T>::boundaryOffset(s,offset);
@@ -71,16 +70,16 @@ boundaryOffset(boxSide const & s,index_t offset) const
 
 }
 
-template<short_t d, class T>
-typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
+template<short_t d, class T, bool Trunc>
+typename gsTHBSplineBasis<d,T,Trunc>::BoundaryBasisType * gsTHBSplineBasis<d,T,Trunc>::basisSlice(index_t dir_fixed,T par ) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
     GISMO_ASSERT(dir_fixed>=0 && static_cast<index_t>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
     const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType::uPtr bBSplineBasis =
         this->m_bases[0]->boundaryBasis(side);
-    typename gsTHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
-        new typename gsTHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
+    typename gsTHBSplineBasis<d,T,Trunc>::BoundaryBasisType* bBasis =
+        new typename gsTHBSplineBasis<d,T,Trunc>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
 
     if(d!=1)
     {
@@ -91,8 +90,8 @@ typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basis
     return bBasis;
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::representBasis()
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::representBasis()
 {
     // Cleanup previous basis
     this->m_is_truncated.resize(this->size());
@@ -106,7 +105,7 @@ void gsTHBSplineBasis<d,T>::representBasis()
         index_t tensor_index = this->flatTensorIndexOf(j, level);
 
         // element indices
-        this->m_bases[level]->elementSupport_into(tensor_index, element_ind);
+        tensorLevel(level).elementSupport_into(tensor_index, element_ind);
 
         // I tried with block, I can not trick the compiler to use references
         low = element_ind.col(0); //block<d, 1>(0, 0);
@@ -116,11 +115,14 @@ void gsTHBSplineBasis<d,T>::representBasis()
             this->_knotIndexToDiadicIndex(level,low);
             this->_knotIndexToDiadicIndex(level,high);
         }
-
+        
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
         // based only on B-Splines (and not THB-Splines).
         // this is not the same as query 3
+        //
+        // Important note: if there is an orphan element of some level
+        // representation might be done in that level !
         index_t clevel = this->m_tree.query4(low, high, level);
 
         if (level != clevel) // we must compute its presentation
@@ -138,8 +140,8 @@ void gsTHBSplineBasis<d,T>::representBasis()
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::_representBasisFunction(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T, Trunc>::_representBasisFunction(
     const unsigned j,
     const unsigned pres_level,
     const gsVector<index_t, d>& finest_low,
@@ -182,7 +184,6 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
     {
         _updateSizeOfCoefs(level, level + 1, finest_low,
                            finest_high, cur_size_of_coefs);
-
 
         // index of a support of the j-th basis function (l_low, l_high
         // on level, and l1_high, l1_low on level + 1)
@@ -236,8 +237,8 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T, Trunc>::_saveNewBasisFunPresentation(
     const gsMatrix<T>& coefs,
     const gsVector<index_t, d>& act_size_of_coefs,
     const unsigned j,
@@ -295,8 +296,8 @@ void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
 }
 
 
-template<short_t d, class T>
-unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
+template<short_t d, class T, bool Trunc>
+unsigned gsTHBSplineBasis<d,T,Trunc>::_basisFunIndexOnLevel(
     const gsVector<index_t, d>& index,
     const unsigned level,
     const gsVector<index_t, d>& fin_low,
@@ -334,8 +335,8 @@ unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::_truncate(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T, Trunc>::_truncate(
     gsMatrix<T>& coefs,
     const gsVector<index_t, d>& act_size_of_coefs,
     const gsVector<index_t, d>& size_of_coefs,
@@ -419,8 +420,8 @@ void gsTHBSplineBasis<d,T>::_truncate(
 }
 
 
-template<short_t d, class T>
-unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
+template<short_t d, class T, bool Trunc>
+unsigned gsTHBSplineBasis<d,T,Trunc>::_updateSizeOfCoefs(
     const unsigned clevel,
     const unsigned flevel,
     const gsVector<index_t, d>& finest_low,
@@ -466,10 +467,10 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
 }
 
 // return the B-spline representation of a THB-spline subpatch
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 template<short_t dd>
 typename util::enable_if<dd==2,void>::type
-gsTHBSplineBasis<d,T>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
+gsTHBSplineBasis<d,T, Trunc>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
                                                   gsVector<index_t> b2,
                                                   unsigned level, 
                                                   const gsMatrix<T>& geom_coef,
@@ -517,8 +518,8 @@ gsTHBSplineBasis<d,T>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
 }
 
 // returns the list of B-spline patches to represent a THB-spline geometry
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
                                               gsMatrix<index_t>& b1, gsMatrix<index_t>& b2,
                                               gsVector<index_t>& level, gsMatrix<index_t>& nvertices) const
 { 
@@ -574,8 +575,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMa
 }
 
 // returns the list of B-spline patches to represent a THB-spline geometry
-template<short_t d, class T>
-gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const
+template<short_t d, class T, bool Trunc>
+gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const
 {
     GISMO_ASSERT(d==2,"Dim must be 2 for now");
 
@@ -602,8 +603,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
     return result;
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getConnectedComponents(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::getConnectedComponents(
     std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const
 {
     //identify the outer polylines- conected components
@@ -616,7 +617,7 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
             break;
         }
     }
-    gsDebug<<"new min level"<<"\n";
+    //gsDebug<<"new min level"<<"\n";
     std::vector< std::vector< std::vector< std::vector<index_t> > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector<index_t > > > aabb;//axis aligned bounding box
     std::vector< std::vector<index_t > > boxes;
@@ -712,8 +713,8 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
 }
 
 //return data for trimming in parasolid
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches_trimming(
     const gsMatrix<T>& geom_coef,
     gsMatrix<T>& cp,
     gsMatrix<index_t>& b1,
@@ -882,8 +883,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
 
 
 //return data for trimming in parasolid
-template<short_t d, class T>
-gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
+template<short_t d, class T, bool Trunc>
+gsMultiPatch<T> gsTHBSplineBasis<d,T,Trunc>::getBsplinePatchesToMultiPatch_trimming(
     const gsMatrix<T>& geom_coef,
     std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const
 {
@@ -901,7 +902,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
             break;
         }
     }
-    gsDebug<<"new min level"<<"\n";
+    //gsDebug<<"new min level"<<"\n";
     std::vector< std::vector< std::vector< std::vector< T > > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector<index_t > > > aabb;//axis aligned bounding box
     std::vector< std::vector<index_t > > boxes;
@@ -1032,8 +1033,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
 */
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::globalRefinement(const gsMatrix<T> & thbCoefs,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::globalRefinement(const gsMatrix<T> & thbCoefs,
                                              int level, gsMatrix<T> & lvlCoefs) const
 {
     const index_t n = thbCoefs.cols();
@@ -1077,24 +1078,363 @@ void gsTHBSplineBasis<d,T>::globalRefinement(const gsMatrix<T> & thbCoefs,
     }
 }
 
-
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const
+template<index_t d>
+inline gsVector<index_t, d> tensorIndex(index_t m,
+                                        const gsVector<index_t, d> & str)
 {
-    gsMatrix<T> currPoint;
-    gsMatrix<index_t> ind;
-    point low, upp, cur;
+    gsVector<index_t, d> rvo;
+    for (short_t i = d-1; i>=0; --i)
+    {
+        rvo[d-i-1] = m % str[i];
+        m     -= rvo[i];
+    }
+    return rvo;
+}
+
+template<class Iter, class Vec> //raname as: next intersection
+// rename: findEqualIndex
+bool findNextMatch(Iter & it, Iter stop, Vec & cur,
+                     const Vec & low, const Vec & upp,
+                     const Vec & str)
+{
+    index_t ci;
+    while (it!=stop)
+    {
+        ci = cur.dot(str);
+        if (ci == *it)
+            return true;
+        else if ( ci < *it )
+        {
+            // problem: we should be inside [low,upp].
+            // but what happens if we are not ?
+            /*
+             cur = tensorIndex(*it, str);
+             for (index_t i = cur.size()-1; i>=0; ++i)
+             {
+                 if (cur[i]>upp[i]) //impossible for i=d-1
+                     cur[i] = upp[i];
+                 else if (cur[i]<low[i])
+                 {
+                     cur[i] = low[i];
+                     if (i+1<cur.size())
+                         cur[i+1] += 1;
+                     else
+                         return false;
+                 }
+             }
+             // HOW TO BREAK ?
+             //if ( (cur.array() > upp.array()).any() ) break;
+             if (cur.dot(str) > upp.dot(str) ) break;
+            //*/
+
+            if (!nextCubePoint(cur,low,upp)) break; //move by one..
+        }
+        else // *it < ci
+            it = std::lower_bound(it, stop, ci);
+    }
+
+    return false;
+}
+
+// finds nonzero index in the iterator it.
+// assumes [low,upp] and iterator have stride str
+template<class T, class Vec>
+bool findNextMatch(const gsSparseVector<T> & sv, index_t & ii,
+                     Vec & cur, const Vec & low, const Vec & upp,
+                     const Vec & str)
+{
+    index_t ci;
+    while ( ii<sv.data().size() )
+    {
+        ci = cur.dot(str);
+        if ( ci == sv.data().index(ii) )
+            return true;
+        else if ( ci < sv.data().index(ii) )
+        {
+            if (!nextCubePoint(cur,low,upp)) break;
+        }
+        else // ii < ci
+            ii = sv.data().searchLowerIndex(ii, sv.data().size(), ci);
+    }
+    return false;
+}
+
+ /*
+//template<short_t d, class T, bool Trunc>
+//index_t gsTHBSplineBasis<d,T,Trunc>::
+template<class T>
+active_detail(const gsMatrix<T> & u,
+              gsMatrix<index_t> &actives,//sorted active functions
+              gsMatrix<index_t> & offset,//level offset
+              // ???
+              std::vector<std:vector<index_t> > & repLvl, // [rlvl]->list(act)
+              gsMatrix<index_t  & repLevel> // for each function: [rlvl] -> []
+    ) const
+{
+    point low, upp, cur, mstr, str, ll, uu, cc;
+    index_t ii;
+    // todo: store active_cwise/stride_cwise
     const int maxLevel = this->m_tree.getMaxInsLevel();
+    gsMatrix<T> currPoint;
+    offset.setZero(maxLevel+1, u.cols()); //trim at the end
+    // stores [rlvl]->(act,level)
+    std::vector<std::vector<std::pair<index_t,index_t> > > tfunction(maxLevel+1);
+
+    for (index_t i = 0; i != u.cols(); i++) // for all points
+    {
+        currPoint = u.col(i);
+        for(short_t k = 0; k != d; ++k)
+            low[k] = m_bases[maxLevel]->knots(k).uFind( currPoint.at(k) ).uIndex();
+        if (m_manualLevels)
+            this->_knotIndexToDiadicIndex(maxLevel,low);
+        // Identify the level of the point
+        index_t lvl = std::min(this->m_tree.levelOf(low, maxLevel),(int) m_xmatrix.size()-1);
+        //offset.col(i).setZero();
+
+        typename CMatrix::const_iterator it;
+        for(int level = 0; level <= maxLevel; level++) // for all relevant levels
+        {
+            if (level>lvl && tfunction[level].empty()) //nothing to do here
+                continue; // 0 offset
+
+            m_bases[level]->active_cwise(currPoint, low, upp);//my be improved: start from finest lvl
+            m_bases[level]->stride_cwise(mstr);
+
+            if ( level<= lvl)
+            {
+                it = m_xmatrix[level].begin();
+                cur = low;
+                while ( findNextMatch(it, m_xmatrix[level].end(), cur, low, upp, mstr) )
+                {
+                    const index_t act = this->m_xmatrix_offset[level] + (it - m_xmatrix[level].begin());//flattensortohier ?
+                    if ( isTruncated(act) )
+                    {
+                        //Record truncated functions with their representation level
+                        const int rlvl = repLevel(act);
+                        tfunction[rlvl].push_back( std::make_pair(act,level) );
+                    }
+                    else
+                        ++offset(level, i);
+                    ++it;//advance both
+                    nextCubePoint(cur,low,upp);
+                }
+            }
+
+            // count truncated active functions
+            if ( !tfunction[level].empty() )
+            {
+                for ( std::pair<index_t,index_t> & q : tfunction[level] )
+                {
+                    const gsSparseVector<T>& coefs = getCoefs(q.first);
+                    typename gsSparseVector<T>::InnerIterator it(coefs);
+                    cur = low;
+                    ii = 0;
+                    if ( findNextMatch(coefs, ii, cur, low, upp, mstr) )
+                        ++offset(q.second, i);
+                }
+                tfunction[level].clear();
+            }
+        }// end level
+    }//end points
+
+    // ii =maxLevel;
+    // while (offset[ii]==) --ii;
+    // offset.conservativeresize(ii,gsEigen::NoChange);
+
+    return offset.sum();
+}
+// */
+
+template<short_t d, class T, bool Trunc>
+index_t gsTHBSplineBasis<d,T,Trunc>::numActiveMax(const gsMatrix<T> & u,
+                                            gsMatrix<index_t> & offset) const
+{
+    point low, upp, cur, mstr, str, ll, uu, cc;
+    index_t ii;
+    // todo: store active_cwise/stride_cwise
+    const int maxLevel = this->maxLevel();
+    gsMatrix<T> currPoint;
+    offset.setZero(maxLevel+1, u.cols()); //trim at the end
+    // stores [rlvl]->(act,level)
+    std::vector<std::vector<std::pair<index_t,index_t> > > tfunction(maxLevel+1);
+
+    for (index_t i = 0; i != u.cols(); i++) // for all points
+    {
+        currPoint = u.col(i);
+        for(short_t k = 0; k != d; ++k)
+            low[k] = m_bases[maxLevel]->knots(k).uFind( currPoint.at(k) ).uIndex();
+        if (m_manualLevels)
+            this->_knotIndexToDiadicIndex(maxLevel,low);
+        // Identify the level of the point
+        index_t lvl = std::min(this->m_tree.levelOf(low, maxLevel),(int) m_xmatrix.size()-1);
+        //offset.col(i).setZero();
+
+        typename CMatrix::const_iterator it;
+        for(int level = 0; level <= maxLevel; level++) // for all relevant levels
+        {
+            if (level>lvl && tfunction[level].empty()) //nothing to do here
+                continue; // 0 offset
+
+            m_bases[level]->active_cwise(currPoint, low, upp);//my be improved: start from finest lvl
+            m_bases[level]->stride_cwise(mstr);
+
+            if ( level<= lvl)
+            {
+                it = m_xmatrix[level].begin();
+                cur = low;
+                while ( findNextMatch(it, m_xmatrix[level].end(), cur, low, upp, mstr) )
+                {
+                    const index_t act = this->m_xmatrix_offset[level] + (it - m_xmatrix[level].begin());//flattensortohier ?
+                    if ( isTruncated(act) )
+                    {
+                        //Record truncated functions with their representation level
+                        const int rlvl = repLevel(act);
+                        tfunction[rlvl].push_back( std::make_pair(act,level) );
+                    }
+                    else
+                        ++offset(level, i);
+                    ++it;//advance both
+                    nextCubePoint(cur,low,upp);
+                }
+            }
+
+            // count truncated active functions
+            if ( !tfunction[level].empty() )
+            {
+                for ( std::pair<index_t,index_t> & q : tfunction[level] )
+                {
+                    const gsSparseVector<T>& coefs = getCoefs(q.first);
+                    cur = low;
+                    ii = 0;
+                    if ( findNextMatch(coefs, ii, cur, low, upp, mstr) )
+                        ++offset(q.second, i);
+                }
+                tfunction[level].clear();
+            }
+        }// end level
+    }//end points
+
+    // ii =maxLevel;
+    // while (offset[ii]==) --ii;
+    // offset.conservativeresize(ii,gsEigen::NoChange);
+
+    return offset.sum();
+}
+
+// returns all actives at \a u from level \a lvl only
+// Does not clear result, only appends data
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::activeAtLevel_into(index_t lvl, const gsMatrix<T>& u,
+                                               std::vector<index_t> & result) const
+{
+    gsMatrix<index_t> ind;
+    GISMO_ASSERT(1==u.cols(), "Expecting single point");
+    point low, upp, cur, mstr, str, ll, uu, cc;
+    m_bases[lvl]->active_cwise(u, low, upp);//my be improved: start from finest lvl
+    index_t ii;
+    this->m_bases[lvl]->stride_cwise(mstr);
+    cur = low;
+    typename CMatrix::const_iterator it = m_xmatrix[lvl].begin();
+    typename CMatrix::const_iterator end = m_xmatrix[lvl].end();
+    while ( findNextMatch(it, end, cur, low, upp, mstr) )
+    {
+        const index_t act = this->m_xmatrix_offset[lvl] + (it - m_xmatrix[lvl].begin());
+        if ( isTruncated(act) )
+        {
+            const gsSparseVector<T>& coefs = getCoefs(act);
+            const gsTensorBSplineBasis<d, T>& base =
+                *this->m_bases[repLevel(act)];
+
+            base.active_cwise(u, ll, uu);
+            base.stride_cwise(str);
+            cc = ll;
+            ii = 0;
+            if ( findNextMatch(coefs, ii, cc, ll, uu, str) )
+                result.push_back(act);
+
+            //*/
+
+            /* // known to work
+            base.active_into(u, ind);
+            for (index_t k = 0; k < ind.rows(); ++k)
+                if (coefs(ind.at(k)) != 0)
+                {
+                    gsInfo<< "1.GOT value indeed "<< coefs.data().value(ii)<< " at " << ind.at(k) <<".\n";
+                    if (!rr) gsInfo << "Missed "<< ind.at(k) <<"\n";
+                    result.push_back(act);
+                    break;
+                }
+            if (rr)
+            {
+                gsInfo << "False pos "<< act <<"\n";
+            //*/
+                            
+            /* // TESTING
+            gsInfo<< "---- Comparing \n" << base.active(u).transpose()
+                  <<"\n";
+            typename gsSparseVector<T>::InnerIterator it(coefs);
+            while (it) { gsInfo<< " " << it.index(); ++it;}
+            gsInfo<<"\n";
+            typename gsSparseVector<T>::InnerIterator it2(coefs);
+            while (it2) { gsInfo<< " " << it2.value(); ++it2;}
+            gsInfo<<"\n";
+            base.active_cwise(u, ll, uu);
+            base.stride_cwise(str);
+            cc = ll;
+            ii = 0;
+
+            while ( findNextMatch(coefs, ii, cc, ll, uu, str) )
+            {
+                result.push_back(act);
+
+                //coefs.data().index(ii);
+                //coefs.data().value(ii);
+                gsInfo<< "got value "<< coefs.data().value(ii)<< " at " << cc.dot(str) <<" = "<< coefs.data().index(ii)<<".\n";
+                //result.push_back(act);
+
+                break;
+                ii++;
+                //nextCubePoint(cc,ll,uu);
+            }
+
+            for (index_t k = 0; k < ind.rows(); ++k)
+                if (coefs(ind.at(k)) != 0)
+                {
+                    gsInfo<< "2.GOT value indeed "<< coefs.data().value(ii)<< " at " << ind.at(k) <<".\n";
+                    break;
+                }
+            }
+            //*/
+        }
+        else
+            result.push_back(act);
+        ++it;//advance both
+        nextCubePoint(cur,low,upp);
+    }
+}
+
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const
+{
+    gsMatrix<T> currPoint; // HIGHLY INEFFICIENT
+    point low;
+    const int maxLevel = this->maxLevel();
+
+//    gsMatrix<index_t> offset(lvl,u.cols());
+//    std::vector<std::vector<index_t> > offset_tmp(u.cols());
 
     std::vector<std::vector<index_t> > temp_output;//collects the outputs
     temp_output.resize( u.cols() );
-    size_t sz = 0;
+    size_t ov = 1, sz = 0;
+    for(short_t i = 0; i != d; ++i)
+        ov *= this->m_bases.front()->component(i).degree() + 1;
 
     for(index_t p = 0; p < u.cols(); p++) //for all input points
     {
-        currPoint = u.col(p); 
+        temp_output[p].reserve(ov+2);
+        currPoint = u.col(p);
         for(short_t i = 0; i != d; ++i)
-            low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
+            low[i] = tensorLevel(maxLevel).knots(i).uFind( currPoint(i,0) ).uIndex();
 
         if (m_manualLevels)
             this->_knotIndexToDiadicIndex(maxLevel,low);
@@ -1103,64 +1443,27 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
         const int lvl = std::min(this->m_tree.levelOf(low, maxLevel),(int) m_xmatrix.size()-1);
 
         for(int i = 0; i <= lvl; i++)
-        {
-            m_bases[i]->active_cwise(currPoint, low, upp);
-            cur = low;
-            do
-            {
-                typename CMatrix::const_iterator it =
-                    m_xmatrix[i].find_it_or_fail( m_bases[i]->index(cur) );
+            activeAtLevel_into(i,currPoint,temp_output[p]);
 
-                if( it != m_xmatrix[i].end() )// if index is found
-                {
-                    const index_t act = this->m_xmatrix_offset[i] + (it - m_xmatrix[i].begin());
-
-                    if (this->m_is_truncated[act] == -1) 
-                    {
-                        temp_output[p].push_back(act);
-                    }
-                    else 
-                    {
-                        const gsSparseVector<T>& coefs = getCoefs(act);
-                        const gsTensorBSplineBasis<d, T>& base =
-                            *this->m_bases[this->m_is_truncated[act]];
-
-                        base.active_into(currPoint, ind);
-
-                        for (index_t k = 0; k < ind.rows(); ++k) 
-                        {
-                            if (coefs(ind.at(k)) != 0)
-                            {
-                                temp_output[p].push_back(act);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            while( nextCubePoint(cur,low,upp) );
-        }
-
-        // update result size
+        // find maximum overload sz
         if ( temp_output[p].size() > sz )
             sz = temp_output[p].size();
     }
 
     result.resize(sz, u.cols() );
-    for(index_t i = 0; i < result.cols(); i++)
+    for(index_t i = 0; i < u.cols(); i++)
     {
-        result.col(i).topRows(temp_output[i].size())
-            = gsAsConstVector<index_t>(temp_output[i]);
+        std::copy(temp_output[i].begin(), temp_output[i].end(), result.col(i).data() );
         result.col(i).bottomRows(sz-temp_output[i].size()).setZero();
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::evalSingle_into(index_t i,
                                             const gsMatrix<T>& u,
                                             gsMatrix<T>& result) const
 {
-    if (this->m_is_truncated[i] == -1)  // basis function not truncated
+    if (!isTruncated(i))  // basis function not truncated
     {
         unsigned level = this->levelOf(i);
         unsigned tensor_index = flatTensorIndexOf(i, level);
@@ -1168,26 +1471,22 @@ void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
     }
     else
     {
-
-        unsigned level = this->m_is_truncated[i];
-
+        unsigned level = repLevel(i);
         const gsSparseVector<T>& coefs = getCoefs(i);
-
-        const gsTensorBSplineBasis<d, T>& base =
-            *this->m_bases[level];
+        const gsTensorBSplineBasis<d, T>& base = tensorLevel(level);
 
         gsTensorDeboor<d, T, gsKnotVector<T>, gsSparseVector<T> >
             (u, base, coefs, result);
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::deriv2Single_into(index_t i,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::deriv2Single_into(index_t i,
                                               const gsMatrix<T>& u,
                                               gsMatrix<T>& result) const
 {
 
-    if (this->m_is_truncated[i] == -1) // basis function not truncated
+    if (!isTruncated(i)) // basis function not truncated
     {
         const unsigned level = this->levelOf(i);
         const unsigned fl_tensor_index = flatTensorIndexOf(i, level);
@@ -1195,22 +1494,28 @@ void gsTHBSplineBasis<d,T>::deriv2Single_into(index_t i,
     }
     else
     {
-        const unsigned level = this->m_is_truncated[i];
+        const unsigned level = repLevel(i);
         const gsSparseVector<T>& coefs = this->getCoefs(i);
-        const gsTensorBSplineBasis<d, T> & base =
-            *this->m_bases[level];
+        const gsTensorBSplineBasis<d, T> & base = tensorLevel(level);
 
         gsTensorDeriv2_into<d, T, gsKnotVector<T>,
                             gsSparseVector<T> >(u, base, coefs, result);
     }
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
+    /*
+    // slightly slower currently (!sameElement)
+    std::vector<gsMatrix<T> > tmp(1);
+    evalAllDers_into(u, 0, tmp);
+     tmp[0].swap(result);
+    return;
+    //*/
     gsMatrix<index_t> indices;
     gsMatrix<T> res(1, 1);
-    this->active_into(u, indices);
+    this->active_into(u, indices);//note: evaluating too many separate points together is inefficient
 
     result.setZero(indices.rows(), u.cols());
 
@@ -1229,8 +1534,8 @@ void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const
 {
     gsMatrix<index_t> indices;
     this->active_into(u, indices);
@@ -1256,10 +1561,9 @@ void gsTHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& resul
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-
     gsMatrix<index_t> indices;
     this->active_into(u, indices);
     gsMatrix<T> res(d, 1);
@@ -1282,13 +1586,13 @@ void gsTHBSplineBasis<d,T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result
 }
 
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::derivSingle_into(index_t i,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::derivSingle_into(index_t i,
                                              const gsMatrix<T> & u,
                                              gsMatrix<T>& result) const
 {
 
-    if (this->m_is_truncated[i] == -1) // basis function not truncated
+    if (!isTruncated(i)) // basis function not truncated
     {
         unsigned level = this->levelOf(i);
         unsigned fl_tensor_index = flatTensorIndexOf(i, level);
@@ -1296,10 +1600,9 @@ void gsTHBSplineBasis<d,T>::derivSingle_into(index_t i,
     }
     else
     {
-        unsigned level = this->m_is_truncated[i];
+        unsigned level = repLevel(i);
         const gsSparseVector<T>& coefs = this->getCoefs(i);
-        const gsTensorBSplineBasis<d,T>& base =
-            *this->m_bases[level];
+        const gsTensorBSplineBasis<d,T>& base = tensorLevel(level);
         gsTensorDeriv_into<d, T, gsKnotVector<T>,
                            gsSparseVector<T> >(u, base, coefs, result);
     }
@@ -1307,9 +1610,340 @@ void gsTHBSplineBasis<d,T>::derivSingle_into(index_t i,
 
 
 template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::decomposeDomain(
-    typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& boundaryAABB,
-    typename gsTHBSplineBasis<d, T>::TrimmingCurves& trimCurves) const
+inline void eval_tp(const std::vector<std::vector<gsMatrix<T> > > & cw,
+                    const gsVector<index_t,d> & ti,
+                    int n, const gsVector<index_t> & str,
+                    index_t m, index_t i,
+                    std::vector<gsMatrix<T> > & result)
+{
+    if (n>-1)
+    {
+        result[0](m,i) = cw[0][0].at(ti.at(0));//[dir][value].at(func)                
+        for ( short_t k=1; k<d; ++k)
+            result[0](m,i) *= cw[k][0].at(ti.at(k));
+    }
+
+    if (n>0)
+    {
+        T * acc = result[1].col(i).data() + str[1]*m;
+        for ( short_t k=0; k<d; ++k)
+        {
+            // derivative w.r.t. k-th variable
+            *acc = cw[k][1].at(ti.at(k));   //cw[k][1].at
+            for ( short_t l=0; l<k; ++l)
+                *acc *= cw[l][0].at(ti.at(l));
+            for ( short_t l=k+1; l<d; ++l)
+                *acc *= cw[l][0].at(ti.at(l));
+            ++acc;
+        }
+    }
+
+    if (n>1)
+    {
+        short_t mc = ti.size();
+        T * acc = result[2].col(i).data() + str[2]*m;
+        for ( short_t k=0; k<d; ++k)
+        {
+            *(acc+k) = cw[k][2].at(ti.at(k)); // pure 2nd derivative w.r.t. k-th variable
+            for ( short_t l=0; l<k; ++l)
+                *(acc+k) *= cw[l][0].at(ti.at(l));
+            for ( short_t l=k+1; l<d; ++l)
+            {
+                *(acc+k) *= cw[l][0].at(ti.at(l));
+                // Then all mixed derivatives follow in lex order
+                *(acc+mc) = cw[k][1].at(ti.at(k)) * cw[l][1].at(ti.at(l));
+                for ( short_t q=0; q<k; ++q)
+                    *(acc+mc) *= cw[q][0].at(ti.at(q));
+                for ( short_t q=k+1; q<l; ++q)
+                    *(acc+mc) *= cw[q][0].at(ti.at(q));
+                for ( short_t q=l+1; q<d; ++q)
+                    *(acc+mc) *= cw[q][0].at(ti.at(q));
+                ++mc;
+            }
+        }
+        //++
+    }
+}
+
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::evalAllDers_into(const gsMatrix<T> & u, int n,
+                                             std::vector<gsMatrix<T> >& result,
+                                             bool sameElement) const
+{
+    //gsBasis<T>::evalAllDers_into(u,n,result); return;
+    result.resize(n+1);
+    if (0==u.cols()) return;
+
+    const int maxLevel = this->maxLevel();
+    // stores [rlvl]->[act,m]
+    //std::vector<index_t,std::list<std::pair<index_t,index_t> > > tfunction;
+    std::vector<std::vector<std::pair<index_t,index_t> > > tfunction(maxLevel+1);
+
+    gsMatrix<T> tmp(1,1);
+    std::vector<std::vector<gsMatrix<T> > > cw(d);//, cwt(d);
+    std::vector<gsMatrix<T> > temp(n+1), cwa(d);
+    point low(d), ki(d), kil, til, tlow, tupp, tstr, tcur;
+
+    gsMatrix<index_t> tact, act;
+    if (sameElement)
+        active_into(u.col(0), act);
+    else
+        active_into(u, act);
+
+//    gsMatrix<index_t> astr;
+//    index_t result_size(sameElement ? numActiveMax(u.col(0),astr) : numActiveMax(u,astr));
+    index_t result_size = act.rows();//to try: conservativeResize on the go?
+
+    // yes: BETTER COMPUTE ACTIVES (maybe also m_bases->actCWise) HERE ONCE AND FOR ALL
+    // together with active offsets and maybe also tfunction
+
+    gsVector<index_t> str(n+1);
+    for (int l = 0; l <= n; l++)
+    {
+        str[l] = numCompositions(l,d);
+        result[l].setZero(result_size * str[l], u.cols());//zeros in case of sameElement=false
+        temp[l].resize(str[l], 1);
+    }
+
+    index_t m, index(0);
+
+//    /* // NEW IMPL
+
+    std::vector<std::vector<index_t> >thbact;
+
+    int lvl(0);
+    for (index_t i = 0; i != u.cols(); i++) // for all points
+    {
+        if (!sameElement || 0==i)
+        {
+            // Identify the level of the point
+            for(short_t k = 0; k != d; ++k)
+            {
+                auto kit = m_bases[maxLevel]->knots(k).uFind( u(k,i) );
+                ki [k] = kit.lastAppearance() - m_bases[maxLevel]->degree(k);
+                low[k] = kit.uIndex();//unique index
+            }
+            if (m_manualLevels)
+                this->_knotIndexToDiadicIndex(maxLevel,low);
+            lvl = std::min(this->m_tree.levelOf(low, maxLevel),(int) m_xmatrix.size()-1);
+        }
+
+        m = 0; // (!) problem with !sameElement -> numbering in result: counting relies on thbact.size()
+        thbact.resize(lvl+1);
+
+        for(int level = 0; level <= maxLevel; level++) // for all relevant levels(..how about act_offset)
+        {
+            if ( level<=lvl && (!sameElement || 0==i) )
+            {
+                thbact[level].clear();
+                activeAtLevel_into(level,u.col(i),thbact[level]);
+            }
+
+            if ( (level>lvl || thbact[level].empty()) && tfunction[level].empty()) //nothing to do here
+                continue;
+
+            for(short_t k = 0; k!=d; ++k)
+            {
+                *tmp.data() = u(k,i);
+                this->m_bases[level]->component(k).evalAllDers_into(tmp, n, cw[k], sameElement);
+                kil[k] = this->m_bases[level]->component(k).firstActive( u(k,i) ); // get it differently?
+            }
+
+            if (level<=lvl)
+                for (size_t j = 0; j!=thbact[level].size(); ++j, ++m) // for all actives
+                {
+                    index = thbact[level][j];
+                    if ( !isTruncated(index) ) // basis function not truncated
+                    {
+                        til = this->m_bases[level]->tensorIndex(flatTensorIndexOf(index, level));
+                        til -= kil; //numbering in element-local position
+                        eval_tp(cw,til,n,str,m,i,result);
+                    }
+                    else if (!sameElement || 0==i)// function is truncated
+                    {
+                        //during active search we also know tfunction.
+                        //If remembered we can evan evaluate here instead.
+                        
+                        //Record truncated functions with their representation level
+                        const int rlvl = repLevel(index);
+                        tfunction[rlvl].push_back( std::make_pair(index,m) );
+                    }
+                }
+
+            // Evaluate any truncated functions
+            if ( !tfunction[level].empty() )
+            {
+                for(short_t k = 0; k!=d; ++k) til[k] = kil[k] + this->m_bases[level]->degree(k);
+                this->m_bases[level]->stride_cwise(tstr);//todo: active cwise - we already jave kil (=lower)
+                index_t ii;
+                //-------
+                for ( std::pair<index_t,index_t> & q : tfunction[level] )
+                {
+                    const gsSparseVector<T>& coefs = getCoefs(q.first);
+
+                    ii = 0;
+                    tcur = kil;
+                    while ( findNextMatch(coefs, ii, tcur, kil, til, tstr) )
+                    {
+                        low = tcur-kil;
+                        eval_tp(cw,low,n,str,0,0,temp);
+                        for ( index_t l = 0; l <= n; ++l)
+                        {
+                            auto acc = result[l].col(i).segment(q.second*str[l],str[l]);
+                            acc += coefs.data().value(ii) * temp[l];
+                        }
+
+                        ++ii;//advance both
+                        nextCubePoint(tcur,kil,til);
+                    }
+
+                    /* // known to work
+                    this->m_bases[level]->active_into(u.col(i), tact);// expensive
+                    for ( index_t k = 0; k < tact.rows(); ++k)
+                    {
+                        if ( 0!=coefs[tact.at(k)] )
+                        {
+                            til = this->m_bases[level]->tensorIndex(tact.at(k)) - kil;//reused numbering in element-local position
+                            eval_tp(cw,til,n,str,0,0,temp);
+                            for ( index_t l = 0; l <= n; ++l)
+                            {
+                                auto acc = result[l].col(i).segment(q.second*str[l],str[l]);
+                                acc += coefs[tact.at(k)] * temp[l];
+                            }
+                        }
+                    }
+                    //*/
+                }
+                if(!sameElement)
+                    tfunction[level].clear();
+            }
+
+        }//end level
+    }//end point i
+
+    //------------------------------------------
+    //*/
+    // known to work
+    /*
+    std::vector<gsMatrix<T> > result0;
+    result0 = result;
+    for (int l = 0; l <= n; l++)
+        result[l].setZero();
+    
+    index_t level;
+    for (index_t j = 0; j < act.rows(); j++) // for all active functions
+    {
+        if (sameElement)
+        {
+            index = act.at(j);
+            level = this->levelOf(index);
+            til = this->m_bases[level]->tensorIndex(flatTensorIndexOf(index, level));
+        }
+        for (index_t i = 0; i != u.cols(); i++) // for all points
+        {
+            if (!sameElement)
+            {
+                index = act(j, i);
+                if (j != 0 && index == 0) break;
+                level = this->levelOf(index);//
+                til = this->m_bases[level]->tensorIndex(flatTensorIndexOf(index, level));//
+            }
+
+            if ( !isTruncated(index) )  // basis function not truncated
+            {
+                for(short_t k = 0; k!=d; ++k)
+                {
+                    *tmp.data() = u(k,i);
+                    this->m_bases[level]->component(k).evalAllDersSingle_into(til[k], tmp, n, cwa[k]);
+                }
+                // -- Start eval
+                if (n>-1)
+                {
+                    result[0](j,i) = cwa[0].at(0);
+                    for ( short_t k=1; k<d; ++k)
+                        result[0](j,i) *= cwa[k].at(0);
+                }
+
+                if (n>0)
+                {
+                    T * acc = result[1].col(i).data() + str[1]*j;
+                    for ( short_t k=0; k<d; ++k)
+                    {
+                        // derivative w.r.t. k-th variable
+                        *acc = cwa[k].at(1);
+                        for ( short_t l=0; l<k; ++l)
+                            *acc *= cwa[l].at(0);
+                        for ( short_t l=k+1; l<d; ++l)
+                            *acc *= cwa[l].at(0);
+                        ++acc;
+                    }
+                }
+
+                if (n>1)
+                {
+                    short_t m = d;
+                    T * acc = result[2].col(i).data() + str[2]*j;
+                    for ( short_t k=0; k<d; ++k)
+                    {
+                        *(acc+k) = cwa[k].at(2); // pure 2nd derivative w.r.t. k-th variable
+                        for ( short_t l=0; l<k; ++l)
+                            *(acc+k) *= cwa[l].at(0);
+                        for ( short_t l=k+1; l<d; ++l)
+                        {
+                            *(acc+k) *= cwa[l].at(0);
+                            // Then all mixed derivatives follow in lex order
+                            *(acc+m) = cwa[k].at(1) * cwa[l].at(1);
+                            for ( short_t q=0; q<k; ++q)
+                                *(acc+m) *= cwa[q].at(0);
+                            for ( short_t q=k+1; q<l; ++q)
+                                *(acc+m) *= cwa[q].at(0);
+                            for ( short_t q=l+1; q<d; ++q)
+                                *(acc+m) *= cwa[q].at(0);
+                            ++m;
+                        }
+                    }
+                    //TODO higher n here
+                }
+                // -- End eval
+            }
+            else// function is truncated
+            {
+                const int rlvl = repLevel(index);
+                const gsSparseVector<T>& coefs = getCoefs(index);
+                this->m_bases[rlvl]->active_into(u.col(i), tact);
+                this->m_bases[rlvl]->evalAllDers_into(u.col(i), n, temp, sameElement);
+                for (int l = 0; l <= n; l++)
+                {
+                    auto acc = result[l].col(i).segment(j*str[l],str[l]);
+                    for ( index_t q = 0; q < tact.rows(); ++q) // for all non-zero basis functions
+                        acc += coefs[tact.at(q)] * temp[l].col(0).segment(str[l]*q, str[l]);
+                }
+            }
+        }
+    }
+
+    for (int l = 0; l <= n; l++)
+    {
+        if ( (result[l] - result0[l]).norm() > 1e-5)
+        {
+            gsInfo <<"l ======== "<<l<<"\n";
+            gsInfo <<"Old:\n"<< result[l] <<"\n";
+            gsInfo <<"New:\n"<< result0[l] <<"\n";
+            gsInfo <<"diff:\n"<< (result[l] - result0[l]) <<"\n";
+            for (m = 0; m!= act.rows(); ++m)
+                gsInfo<< (isTruncated(act.at(m)) ? "yes : " : "" )
+                <<  repLevel(index) <<"\n";
+            GISMO_ERROR("not Ok");
+        }
+    }
+ //*/
+
+}
+
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::decomposeDomain(
+    typename gsTHBSplineBasis<d, T, Trunc>::AxisAlignedBoundingBox& boundaryAABB,
+    typename gsTHBSplineBasis<d, T, Trunc>::TrimmingCurves& trimCurves) const
 {
     Polylines polylines;
     AxisAlignedBoundingBox aabb;
@@ -1384,10 +2018,10 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 }
 
 
-template<short_t d, class T>
+template<short_t d, class T, bool Trunc>
 template<short_t dd>
 typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
-gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
+gsTHBSplineBasis<d,T,Trunc>::getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
                                             const unsigned level,
                                             const gsMatrix<T>& geomCoefs) const
 {
@@ -1440,10 +2074,26 @@ gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& bounding
     return gsTensorBSpline<d, T> (basis, newCoefs);
 }
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::breakCycles(
-    typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& aabb,
-    typename gsTHBSplineBasis<d, T>::Polylines& polylines) const
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::getBsplinePatchGlobal(gsVector<index_t> b1,
+                          gsVector<index_t> b2,
+                          unsigned level,
+                          const gsMatrix<T>& geom_coef,
+                          gsMatrix<T>& cp, gsKnotVector<T>& k1,
+                          gsKnotVector<T>& k2) const
+{ getBsplinePatchGlobal_impl<d>(b1,b2,level,geom_coef,cp,k1,k2); };
+
+template<short_t d, class T, bool Trunc>
+gsTensorBSpline<d,T> gsTHBSplineBasis<d, T, Trunc>::getBSplinePatch(const std::vector<index_t>& boundingBox,
+                                         const unsigned level,
+                                         const gsMatrix<T>& geomCoefs) const
+{ return getBSplinePatch_impl<d>(boundingBox, level, geomCoefs); }
+
+
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::breakCycles(
+    typename gsTHBSplineBasis<d, T, Trunc>::AxisAlignedBoundingBox& aabb,
+    typename gsTHBSplineBasis<d, T, Trunc>::Polylines& polylines) const
 {
     for (size_t level = 0; level != polylines.size(); level++)
     {
@@ -1480,8 +2130,8 @@ void gsTHBSplineBasis<d, T>::breakCycles(
 // ......................................................................
 
 // utility funcition for breakCycles
-template<short_t d, class T>
-index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T> >& line,
+template<short_t d, class T, bool Trunc>
+index_t gsTHBSplineBasis<d, T, Trunc>::identifyCycle(const std::vector< std::vector< T> >& line,
                                               std::pair<T, T>& pt) const
 {
     std::map< std::pair<T, T>, index_t > times;
@@ -1528,8 +2178,8 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T>
 }
 
 // utility funcition for breakCycles
-template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::breakPolylineIntoTwoParts(
     const std::vector< std::vector< T> >& line,
     const index_t segment,
     const std::pair<T, T>& meetingPt,
@@ -1582,8 +2232,8 @@ void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
 }
 
 // utility funcition for breakCycles
-template<short_t d, class T>
-void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& polyline,
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d, T, Trunc>::findNewAABB(const std::vector< std::vector<T> >& polyline,
                                          std::vector<index_t>& aabb) const
 {
     T minX = polyline[0][0];
@@ -1650,8 +2300,8 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
 // Code for hierarchical coarsening
 // --------------------------------------------------------------------------------
 
-template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& result)
+template<short_t d, class T, bool Trunc>
+void gsTHBSplineBasis<d,T,Trunc>::transferbyLvl (std::vector<gsSparseMatrix<T> >& result)
 {
     result.clear();
     gsVector<index_t> level;
@@ -1695,8 +2345,8 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resu
 }
 
 //todo remove
-template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
+template<short_t d, class T, bool Trunc>
+gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
 {
     int size1= 0, size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -1762,8 +2412,8 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedV
     }
     return result;
 }
-template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
+template<short_t d, class T, bool Trunc>
+gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
                                                        const std::vector<gsSortedVector<index_t> >& n,
                                                        const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
@@ -1939,8 +2589,8 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<g
     return result;
 }
 
-template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
+template<short_t d, class T, bool Trunc>
+gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
                                                       const std::vector<gsSortedVector<index_t> >& n,
                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
@@ -2176,26 +2826,28 @@ namespace internal
 {
 
 /// Get a Truncated Hierarchical B-spline basis from XML data
-template<short_t d, class T>
-class gsXml< gsTHBSplineBasis<d,T> >
+template<short_t d, class T, bool Trunc>
+class gsXml< gsTHBSplineBasis<d,T,Trunc> >
 {
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<TMPLA2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<TMPLA3(d,T,Trunc)>);
     static std::string tag () { return "Basis"; }
-    static std::string type () { return "THBSplineBasis"+ (d>1 ? to_string(d):""); }
+    static std::string type () { return std::string(Trunc?"T":"") + "HBSplineBasis"+ (d>1 ? to_string(d):""); }
 
-    static gsTHBSplineBasis<d,T> * get (gsXmlNode * node)
+    static gsTHBSplineBasis<d,T,Trunc> * get (gsXmlNode * node)
     {
-        return getHTensorBasisFromXml< gsTHBSplineBasis<d,T> > (node);
+        return getHTensorBasisFromXml< gsTHBSplineBasis<d,T,Trunc> > (node);
     }
 
-    static gsXmlNode * put (const gsTHBSplineBasis<d,T> & obj,
+    static gsXmlNode * put (const gsTHBSplineBasis<d,T,Trunc> & obj,
                             gsXmlTree & data )
     {
-        return putHTensorBasisToXml< gsTHBSplineBasis<d,T> > (obj, data);
+        return putHTensorBasisToXml< gsTHBSplineBasis<d,T,Trunc> > (obj, data);
     }
+
+    GSXML_GET_INTO(gsTHBSplineBasis<TMPLA3(d,T,Trunc)>)
 };
 
 

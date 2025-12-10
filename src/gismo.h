@@ -49,6 +49,7 @@ namespace internal
 #include <gsCore/gsFunctionSet.h>
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFunction.h>
+#include <gsCore/gsComposedFunction.h>
 #include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsBoundary.h>
 
@@ -75,15 +76,19 @@ namespace internal
 
 #include <gsCore/gsFieldCreator.h>
 
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 #include <gsCore/gsSysInfo.h>
 
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
+#include <gsCore/gsComposedBasis.h>
+#include <gsCore/gsComposedGeometry.h>
+
 // Tensors
-#include <gsTensor/gsTensorDomainIterator.h>
-#include <gsTensor/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsTensorDomainIterator.h>
+#include <gsDomain/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsPointDomain.h>
 #include <gsTensor/gsGridIterator.h>
 #include <gsTensor/gsGenericTensorBasis.h>
 
@@ -101,9 +106,11 @@ namespace internal
 #include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
-#include <gsHSplines/gsHBSplineBasis.h>
-#include <gsHSplines/gsHBSpline.h>
+// #include <gsHSplines/gsHBSplineBasis.h>
+// #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsHSplines/gsRationalTHBSplineBasis.h>
+#include <gsHSplines/gsRationalTHBSpline.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 #include <gsHSplines/gsHBox.h>
@@ -164,12 +171,15 @@ namespace internal
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
 
 #include <gsAssembler/gsAdaptiveMeshing.h>
 #include <gsAssembler/gsAdaptiveMeshingUtils.h>
+
+#include <gsDomain/gsPointDomain.h>
+#include <gsDomain/gsPointDomainIterator.h>
 
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
@@ -207,6 +217,7 @@ namespace internal
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
+#include <gsIO/gsCsv.h>
 
 /* ----------- Parallel ----------- */
 #include <gsParallel/gsMpi.h>

@@ -20,21 +20,68 @@
 namespace gismo {
 
 template<typename T>
+T gsL2Projection<T>::_project(  const gsMultiBasis<T>  & integrationBasis,
+                                const gsFunctionSet<T> & projectionBasis,
+                                const gsFunctionSet<T> & geometryMap,
+                                const gsFunctionSet<T> & sourceFunction,
+                                      gsMatrix<T>      & coefs,
+                                const gsOptionList     & options)
+{
+    // Clear the result
+    coefs.clear();    
+
+    // Create an assembler
+    gsExprAssembler<T> A(1,1);
+
+    // Set the integration elements
+    A.setIntegrationDomain(integrationBasis.domain());
+
+    // Assign the space
+    space u = A.getSpace(projectionBasis,sourceFunction.targetDim());
+
+    // Assign the source function
+    auto f = A.getCoeff(sourceFunction);
+
+    // Assign the geometry map
+    typename gsExprAssembler<T>::geometryMap G = A.getMap(geometryMap);
+
+    // Set up the space
+    u.setup(options.askInt("Continuity",-1));
+
+    // Initialize the system
+    A.initSystem();
+
+    // Assemble the system
+    A.assemble(u*u.tr() * meas(G),u * f * meas(G));
+
+    // Solve the system
+    typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<T>::get( options.askString("LinearSolver","SimplicialLDLT") );
+    solver->compute(A.matrix());
+    coefs = solver->solve(A.rhs());
+
+    if (options.askSwitch("ComputeError",true))
+    {
+        // Extract the solution and compute the error
+        solution sol = A.getSolution(u, coefs);
+        gsExprEvaluator<> ev(A);
+        return ev.integral((sol-f).sqNorm() * meas(G));
+    }
+    else
+        return -1;
+}
+
+template<typename T>
 T gsL2Projection<T>::projectGeometry(   const gsBasis<T> & basis,
                                         const gsGeometry<T> & geometry,
                                         gsMatrix<T> & result)
 {
     result.clear();
 
-    gsMultiBasis<T> mb(basis);
-    gsMultiPatch<T> mp;
-    mp.addPatch(geometry);
-
     gsExprAssembler<T> A(1,1);
-    A.setIntegrationElements(mb);
-    space u = A.getSpace(mb,mp.targetDim());
-    auto f = A.getCoeff(mp);
-    geometryMap G = A.getMap(mp);
+    A.setIntegrationDomain(basis.domain());
+    space u = A.getSpace(basis, geometry.targetDim());
+    auto f = A.getCoeff(geometry);
+    geometryMap G = A.getMap(geometry);
 
     u.setup(-1);
     A.initSystem();
@@ -62,7 +109,7 @@ T gsL2Projection<T>::projectGeometry(   const gsMultiBasis<T> & basis,
     gsExprAssembler<T> A(1,1);
     gsMatrix<T> solVector;
 
-    A.setIntegrationElements(basis);
+    A.setIntegrationDomain(basis.domain());
     space u = A.getSpace(basis,geometry.targetDim());
     solution sol = A.getSolution(u, solVector);
     auto f = A.getCoeff(geometry);
@@ -92,7 +139,7 @@ T gsL2Projection<T>::projectGeometry(   const gsMultiBasis<T> & basis,
                                         gsMatrix<T> & result)
 {
     gsExprAssembler<T> A(1,1);
-    A.setIntegrationElements(basis);
+    A.setIntegrationDomain(basis.domain());
     space u = A.getSpace(basis,geometry.targetDim());
     auto f = A.getCoeff(geometry);
     geometryMap G = A.getMap(geometry);
@@ -120,7 +167,7 @@ T gsL2Projection<T>::projectGeometry(   const gsMultiBasis<T> & intbasis,
 {
     gsExprAssembler<T> A(1,1);
 
-    A.setIntegrationElements(intbasis);
+    A.setIntegrationDomain(intbasis.domain());
     space u = A.getSpace(basis,geometry.targetDim());
     auto f = A.getCoeff(geometry);
     geometryMap G = A.getMap(geometry);
@@ -151,7 +198,7 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
     gsExprAssembler<T> A(1,1);
     gsMatrix<T> solVector;
 
-    A.setIntegrationElements(basis);
+    A.setIntegrationDomain(basis.domain());
     space u = A.getSpace(basis,source.targetDim());
     auto  f = A.getCoeff(source);
     solution sol = A.getSolution(u, solVector);
@@ -182,7 +229,7 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
 {
     gsExprAssembler<T> A(1,1);
 
-    A.setIntegrationElements(basis);
+    A.setIntegrationDomain(basis.domain());
     space u = A.getSpace(basis,source.targetDim());
     auto  f = A.getCoeff(source);
     solution sol = A.getSolution(u, result);
@@ -211,7 +258,7 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T>   & intbasis,
 {
     gsExprAssembler<T> A(1,1);
 
-    A.setIntegrationElements(intbasis);
+    A.setIntegrationDomain(intbasis.domain());
     space u = A.getSpace(basis,source.targetDim());
     auto  f = A.getCoeff(source);
     geometryMap G = A.getMap(geometry);
@@ -241,7 +288,7 @@ T gsL2Projection<T>::projectGeometryBoundaries(const gsMultiBasis<T> & basis,
     gsExprAssembler<T> A(1,1);
     gsMatrix<T> solVector;
 
-    A.setIntegrationElements(basis);
+    A.setIntegrationDomain(basis.domain());
     space u = A.getSpace(basis,geometry.geoDim());
     solution sol = A.getSolution(u, solVector);
     geometryMap G = A.getMap(geometry);
@@ -286,7 +333,7 @@ T gsL2Projection<T>::projectGeometryPenalty(const gsMultiBasis<T> & basis,
     gsExprAssembler<T> A(1,1);
     gsMatrix<T> solVector;
 
-    A.setIntegrationElements(basis);
+    A.setIntegrationDomain(basis.domain());
     space u = A.getSpace(basis,geometry.geoDim());
     solution sol = A.getSolution(u, solVector);
     geometryMap G = A.getMap(geometry);
