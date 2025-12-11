@@ -1809,7 +1809,14 @@ public: // Extract spline functions
 public: // Doo-Sabin functions
 
     /// Doo-Sabin subdivision
-    void ds_subdivide();
+    /** Doo-Sabin subdvision
+     * Options:
+     *
+     * \t 0 - interpolation in boundary using Chaikin's scheme.
+     * \t 1 - vanila version that leads to trimmed boundaries.
+     *
+     */
+    void ds_subdivide(index_t option = 0);
 
     /// Doo-Sabin Image point caluculation per vertex in a face
     Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);

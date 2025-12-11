@@ -2390,12 +2390,11 @@ gsMultiPatch<real_t> gsSurfMesh::linear_patches() const
     return mp;
 }
 
-void gsSurfMesh::ds_subdivide()
+void gsSurfMesh::ds_subdivide(index_t option)
 {
     // New Mesh instance
     gsSurfMesh new_mesh;
 
-    //new_mesh = new_mesh_mod;
 
     // Make a map to identify the new vertices
     std::map<std::pair<Vertex, Face>, Vertex> Map;
@@ -2409,12 +2408,15 @@ void gsSurfMesh::ds_subdivide()
         // Map vertices and face of old mesh with new (calculated) vertex
         ffv.clear();
         for (auto oldf : faces(oldv)) {
-            v = new_mesh.add_vertex(ds_image_point_calc_vanila(oldv,oldf));
+            if (option == 1)
+                v = new_mesh.add_vertex(ds_image_point_calc_vanila(oldv, oldf));
+            else
+                v = new_mesh.add_vertex(ds_image_point_calc_interpolation(oldv, oldf));
             ffv.push_back(v);
             Map[std::make_pair(oldv, oldf)] = v;
         }
         if (ffv.size() == 2) {
-            new_mesh.new_edge(ffv[0],ffv[1]);
+            new_mesh.add_edge(ffv[0],ffv[1]);
 
         }
         else if (ffv.size() > 2) {
