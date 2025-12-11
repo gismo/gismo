@@ -18,39 +18,48 @@ namespace gismo
 namespace Expr
 {
 
-template <class T, size_t _order, bool _isConstant>
-struct ExpressionTraits<VariableObject<T, _order, _isConstant>>
+template <class T, size_t _Order, bool _IsConstant>
+struct ExpressionTraits<VariableObject<T, _Order, _IsConstant>>
 {
     typedef T Scalar;
-    static constexpr size_t order = _order;
-    static constexpr size_t space = Space::None;
-    static constexpr size_t deriv = 0;
-    static constexpr bool isConstant = _isConstant;
+    static constexpr size_t Order = _Order;
+    static constexpr size_t Space = SpaceType::None;
+    static constexpr size_t Deriv = 0;
+    static constexpr bool IsConstant = _IsConstant;
 };
 
-template <class T, size_t _order, bool _isConstant = false>
-class VariableObject : public BaseObject<VariableObject<T, _order, _isConstant>>
+template <class T, size_t _Order, bool _IsConstant = false>
+class VariableObject : public BaseObject<VariableObject<T, _Order, _IsConstant>>
 {
-    using Base = BaseObject<VariableObject<T, _order, _isConstant>>;
+    using Base = BaseObject<VariableObject<T, _Order, _IsConstant>>;
+    using Base::Deriv_;
+
+public:
+    // Expose the static traits publicly
+    using Base::Order;
+    using Base::Space;
+    using Base::Deriv;
+    using Base::IsConstant;
+    using Base::sizes_;
     typedef typename Base::Scalar Scalar;
-    using Base::order;
-    using Base::deriv_;
 
 private:
     const gsFunctionSet<Scalar> * m_fs;
     const gsFuncData<Scalar>    * m_fd;
 public:
 
-    VariableObject(size_t domainDim, const std::array<size_t, order> & input_sizes, std::string label=(order==0)?"f":"F")
+    VariableObject(size_t domainDim, const std::array<size_t, Order> & input_sizes, std::string label=(Order==0)?"f":"F")
     :
     Base(domainDim, input_sizes, label),
     m_fs(NULL), m_fd(NULL)
     {
     }
 
-    gsMatrix<Scalar> eval(const index_t k) const
+    ExpressionValue<Scalar> eval(const index_t k) const
     {
-        return m_fd->values[0].col(k).blockDiag(order+1);
+        ExpressionValue<Scalar> result(1, 1);
+        result(0, 0) = m_fd->values[0].col(k)/* .blockDiag(Order+1) */;
+        return result;
     }
 
     const gsFunctionSet<T> & source() const {return *m_fs;}
@@ -67,9 +76,9 @@ public:
     {
         helper.add(*this);
         m_fd->flags |= NEED_VALUE;
-        if (deriv_ > 0)
+        if (Deriv_ > 0)
             m_fd->flags |= NEED_DERIV;
-        if (deriv_ > 1)
+        if (Deriv_ > 1)
             m_fd->flags |= NEED_DERIV2;
     }
 

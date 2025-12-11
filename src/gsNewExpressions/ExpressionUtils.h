@@ -18,7 +18,7 @@ namespace gismo
 namespace Expr
 {
 
-enum Space
+enum SpaceType
 {
     None = 0,
     Test = 1,

@@ -18,369 +18,551 @@ namespace gismo
 namespace Expr
 {
 
-    // --- ExpressionTraits specializations for ProductExpression ---
-// Primary template: Catches all unsupported combinations with a compile-time error
-template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
-struct ExpressionTraits<ProductExpression<LhsExpr, RhsExpr, LhsOrder, RhsOrder, LhsSpace, RhsSpace>>
+// --- Generic ExpressionTraits for ProductExpression ---
+// Single unified traits template that handles all valid combinations
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+struct ExpressionTraits<ProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
-    typedef LhsExpr LhsType;
-    typedef RhsExpr RhsType;
+    typedef _LhsExpr LhsType;
+    typedef _RhsExpr RhsType;
 
-    typedef typename ExpressionTraits<LhsExpr>::Scalar Scalar;
-    static constexpr size_t order = 0; // Default/fallback, should not be used
-    static constexpr size_t space = Space::None; // TODO: Define appropriate space logic
-    static constexpr size_t deriv = ExpressionTraits<RhsExpr>::deriv; //TODO // Conservative approach
-    static constexpr bool isConstant = ExpressionTraits<LhsExpr>::isConstant && ExpressionTraits<RhsExpr>::isConstant;
+    typedef typename ExpressionTraits<_LhsExpr>::Scalar Scalar;
+    
+    // Product order logic: depends on the tensor operation type
+    // For scalar * anything: keep the other order
+    // For matrix-vector: 2*1 -> 1, 1*2 -> 1 (dot products)
+    // For matrix-matrix: 2*2 -> 2
+    static constexpr size_t Order = (_LhsOrder == 0) ? _RhsOrder : 
+                                    (_RhsOrder == 0) ? _LhsOrder :
+                                    ((_LhsOrder == 2 && _RhsOrder == 1) ? 1 :
+                                    ((_LhsOrder == 1 && _RhsOrder == 2) ? 1 :
+                                    ((_LhsOrder == 2 && _RhsOrder == 2) ? 2 : 0)));
+    
+    // Space logic: prefer non-None space; if both different non-None, use Both
+    static constexpr size_t Space = (_LhsSpace != SpaceType::None && _RhsSpace != SpaceType::None && _LhsSpace != _RhsSpace) 
+                                   ? static_cast<size_t>(SpaceType::Both)
+                                   : ((_LhsSpace != SpaceType::None) ? _LhsSpace : _RhsSpace);
+    
+    static constexpr size_t Deriv = (ExpressionTraits<_LhsExpr>::Deriv > ExpressionTraits<_RhsExpr>::Deriv)
+                                   ? ExpressionTraits<_LhsExpr>::Deriv : ExpressionTraits<_RhsExpr>::Deriv;
+    static constexpr bool IsConstant = ExpressionTraits<_LhsExpr>::IsConstant && ExpressionTraits<_RhsExpr>::IsConstant;
 };
 
-template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
-class ProductExpression
+// --- Unified ProductExpression class with enable_if specializations for eval() ---
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+class ProductExpression : public BinaryOperator<ProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
-    static_assert(false,
-                  "ProductExpression: Unsupported tensor order combination for product.");
-};
-
-// --- Partial specialization 1: Scalar multiplication
-template <typename LhsExpr, typename RhsExpr, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
-struct ExpressionTraits<ProductExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>>
-{
-    typedef LhsExpr LhsType;
-    typedef RhsExpr RhsType;
-
-    typedef typename ExpressionTraits<LhsExpr>::Scalar Scalar;
-    static constexpr size_t order = RhsOrder;
-    static constexpr size_t space = ExpressionTraits<RhsExpr>::space; // TODO: Define appropriate space logic
-    static constexpr size_t deriv = ExpressionTraits<RhsExpr>::deriv; // Conservative approach
-    static constexpr bool isConstant = ExpressionTraits<LhsExpr>::isConstant && ExpressionTraits<RhsExpr>::isConstant;
-};
-
-template <typename LhsExpr, typename RhsExpr, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
-class ProductExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>
- : public BinaryOperator<ProductExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>>
-{
-    using Base = BinaryOperator<ProductExpression<LhsExpr, RhsExpr, 0, RhsOrder, LhsSpace, RhsSpace>>;
+    using Base = BinaryOperator<ProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>;
 
 public:
-    ProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
+    ProductExpression(const _LhsExpr& lhs, const _RhsExpr& rhs)
         : Base(lhs, rhs)
     {
-        // Copy sizes from the higher-order operand (RHS)
-        for (size_t i = 0; i < Base::order; ++i) {
-            this->sizes_[i] = rhs.sizes()[i];
+        // Set sizes based on the product operation type
+        if (_LhsOrder == 0 && _RhsOrder > 0) {
+            // Scalar * Expression: inherit sizes from RHS
+            for (size_t d = 0; d != _RhsOrder; ++d) {
+                this->sizes_[d] = this->rhs_expr_.sizes()[d];
+            }
+        } else if (_LhsOrder > 0 && _RhsOrder == 0) {
+            // Expression * Scalar: inherit sizes from LHS
+            for (size_t d = 0; d != _LhsOrder; ++d) {
+                this->sizes_[d] = this->lhs_expr_.sizes()[d];
+            }
+        } else if (_LhsOrder == 2 && _RhsOrder == 2) {
+            // Matrix * Matrix: (m,n) * (n,p) -> (m,p)
+            GISMO_ENSURE(this->lhs_expr_.sizes()[1] == this->rhs_expr_.sizes()[0], 
+                        "ProductExpression: Size mismatch in matrix-matrix product");
+            this->sizes_[0] = this->lhs_expr_.sizes()[0];
+            this->sizes_[1] = this->rhs_expr_.sizes()[1];
+        } else if (_LhsOrder == 2 && _RhsOrder == 1) {
+            // Matrix * Vector: (m,n) * (n,) -> (m,)
+            GISMO_ENSURE(this->lhs_expr_.sizes()[1] == this->rhs_expr_.sizes()[0], 
+                        "ProductExpression: Size mismatch in matrix-vector product");
+            this->sizes_[0] = this->lhs_expr_.sizes()[0];
+        } else if (_LhsOrder == 1 && _RhsOrder == 2) {
+            // Vector * Matrix: handled specially (transpose involved)
+            GISMO_ENSURE(this->lhs_expr_.sizes()[0] == this->rhs_expr_.sizes()[0], 
+                        "ProductExpression: Size mismatch in vector-matrix product");
+            this->sizes_[0] = this->rhs_expr_.sizes()[1];
+        } else if (_LhsOrder == 0 && _RhsOrder == 0) {
+            // Scalar * Scalar: no sizes needed
+        } else if (_LhsOrder == 1 && _RhsOrder == 1) {
+            // Vector . Vector (dot product): becomes scalar, no sizes
         }
     }
 
     size_t domainDim() const
     {
-        return this->rhs_expr_.domainDim();
+        return (_LhsOrder >= _RhsOrder) ? this->lhs_expr_.domainDim() : this->rhs_expr_.domainDim();
     }
 
-    gsMatrix<typename Base::Scalar> eval(const index_t k) const
+    // --- eval() specialization 0: Fallback/default for unhandled combinations ---
+    // This handles edge cases not covered by the specific specializations
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<!((LO == 0 && RO == 0 && LS == SpaceType::None && RS == SpaceType::None) ||
+                              (LO == 0 && RO > 0 && RS == SpaceType::None) ||
+                              (LO == 0 && RO > 0 && RS != SpaceType::None) ||
+                              (LO > 0 && RO == 0) ||
+                              (LO == 2 && RO == 2 && LS == SpaceType::None && RS == SpaceType::None) ||
+                              (LO == 2 && RO == 2 && LS != SpaceType::None && RS != SpaceType::None && LS == RS) ||
+                              (LO == 2 && RO == 1 && LS == SpaceType::None && RS == SpaceType::None) ||
+                              (LO == 2 && RO == 1 && LS != SpaceType::None && RS != SpaceType::None && LS == RS)),
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
     {
-        gsMatrix<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        gsMatrix<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        rhs_val.array() *= lhs_val.value(); // Element-wise multiplication
-        return rhs_val; // Return the modified rhs_val
+        gsDebug<<"ProductExpression: eval fallback (handling edge case) at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        // For (0,0) with different spaces or other edge cases, treat as scalar multiplication
+        if (lhs_val.rowCardinality() == 1 && lhs_val.colCardinality() == 1 &&
+            rhs_val.rowCardinality() == 1 && rhs_val.colCardinality() == 1)
+        {
+            ExpressionValue<typename Base::Scalar> result(1, 1);
+            result(0, 0) = lhs_val(0, 0) * rhs_val(0, 0);
+            return result;
+        }
+        
+        // General case: elementwise multiplication with broadcasting if needed
+        ExpressionValue<typename Base::Scalar> result(rhs_val.rowCardinality(), rhs_val.colCardinality());
+        
+        if (lhs_val.rowCardinality() == 1 && lhs_val.colCardinality() == 1)
+        {
+            // LHS is scalar, broadcast to RHS size
+            typename Base::Scalar scalar_value = lhs_val(0, 0)(0, 0);
+            for (index_t i = 0; i < result.rowCardinality(); ++i)
+            {
+                for (index_t j = 0; j < result.colCardinality(); ++j)
+                {
+                    result(i, j) = rhs_val(i, j).array() * scalar_value;
+                }
+            }
+        }
+        else if (rhs_val.rowCardinality() == 1 && rhs_val.colCardinality() == 1)
+        {
+            // RHS is scalar, broadcast to LHS size
+            typename Base::Scalar scalar_value = rhs_val(0, 0)(0, 0);
+            result.resize(lhs_val.rowCardinality(), lhs_val.colCardinality());
+            for (index_t i = 0; i < result.rowCardinality(); ++i)
+            {
+                for (index_t j = 0; j < result.colCardinality(); ++j)
+                {
+                    result(i, j) = lhs_val(i, j).array() * scalar_value;
+                }
+            }
+        }
+        else
+        {
+            // Both non-scalar: elementwise multiplication
+            result.resize(lhs_val.rowCardinality(), lhs_val.colCardinality());
+            for (index_t i = 0; i < result.rowCardinality(); ++i)
+            {
+                for (index_t j = 0; j < result.colCardinality(); ++j)
+                {
+                    result(i, j) = lhs_val(i, j) * rhs_val(i, j);
+                }
+            }
+        }
+        
+        return result;
     }
 
+    // --- eval() specialization 1: Scalar (0,0) * Scalar (0,0) ---
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<LO == 0 && RO == 0 && LS == SpaceType::None && RS == SpaceType::None,
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        gsDebug<<"ProductExpression: eval Scalar * Scalar at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        ExpressionValue<typename Base::Scalar> result(1, 1);
+        result(0, 0) = lhs_val(0, 0) * rhs_val(0, 0);
+        return result;
+    }
+
+    // --- eval() specialization 2: Scalar * Expression (0, N, *, None) ---
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<(LO == 0) && (RO > 0) && (RS == SpaceType::None),
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        gsDebug<<"ProductExpression: eval Scalar * Expression (None space) at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        typename Base::Scalar scalar_value = lhs_val(0, 0)(0, 0);
+        ExpressionValue<typename Base::Scalar> result(1, 1);
+        result(0, 0) = rhs_val(0, 0).array() * scalar_value;
+        return result;
+    }
+
+    // --- eval() specialization 3: Scalar * Expression (0, N, *, Space) ---
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<(LO == 0) && (RO > 0) && (RS != SpaceType::None),
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        gsDebug<<"ProductExpression: eval Scalar * Expression (space-dependent) at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        typename Base::Scalar scalar_value = lhs_val(0, 0)(0, 0);
+        ExpressionValue<typename Base::Scalar> result(rhs_val.rowCardinality(), rhs_val.colCardinality());
+        
+        for (index_t i = 0; i < result.rowCardinality(); ++i)
+        {
+            for (index_t j = 0; j < result.colCardinality(); ++j)
+            {
+                result(i, j) = rhs_val(i, j).array() * scalar_value;
+            }
+        }
+        
+        return result;
+    }
+
+    // --- eval() specialization 4: Expression * Scalar (N, 0, Space, *) ---
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<(LO > 0) && (RO == 0),
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        gsDebug<<"ProductExpression: eval Expression * Scalar at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        typename Base::Scalar scalar_value = rhs_val(0, 0)(0, 0);
+        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+        
+        for (index_t i = 0; i < result.rowCardinality(); ++i)
+        {
+            for (index_t j = 0; j < result.colCardinality(); ++j)
+            {
+                result(i, j) = lhs_val(i, j).array() * scalar_value;
+            }
+        }
+        
+        return result;
+    }
+
+    // --- eval() specialization 5: Matrix-Matrix product (2,2) None x None ---
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<LO == 2 && RO == 2 && LS == SpaceType::None && RS == SpaceType::None,
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        gsDebug<<"ProductExpression: eval Matrix * Matrix (None, None) at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        ExpressionValue<typename Base::Scalar> result(1, 1);
+        result(0, 0) = lhs_val(0, 0) * rhs_val(0, 0);
+        return result;
+    }
+
+    // --- eval() specialization 6: Matrix-Matrix product (2,2) Same Space x Same Space ---
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<LO == 2 && RO == 2 && LS != SpaceType::None && RS != SpaceType::None && LS == RS,
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        gsDebug<<"ProductExpression: eval Matrix * Matrix (same space) at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
+                    lhs_val.colCardinality() == rhs_val.colCardinality(),
+                    "ProductExpression: Cardinality mismatch in matrix-matrix product");
+        
+        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+        
+        for (index_t i = 0; i < result.rowCardinality(); ++i)
+        {
+            for (index_t j = 0; j < result.colCardinality(); ++j)
+            {
+                result(i, j) = lhs_val(i, j) * rhs_val(i, j);
+            }
+        }
+        
+        return result;
+    }
+
+    // --- eval() specialization 7: Matrix-Vector product (2,1) None x None ---
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<LO == 2 && RO == 1 && LS == SpaceType::None && RS == SpaceType::None,
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        gsDebug<<"ProductExpression: eval Matrix * Vector (None, None) at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        ExpressionValue<typename Base::Scalar> result(1, 1);
+        result(0, 0) = lhs_val(0, 0) * rhs_val(0, 0);
+        return result;
+    }
+
+    // --- eval() specialization 8: Matrix-Vector product (2,1) Same Space x Same Space ---
+    template <size_t LO = _LhsOrder, size_t RO = _RhsOrder, size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<LO == 2 && RO == 1 && LS != SpaceType::None && RS != SpaceType::None && LS == RS,
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        gsDebug<<"ProductExpression: eval Matrix * Vector (same space) at k="<<k<<"\n";
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        
+        GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
+                    lhs_val.colCardinality() == rhs_val.colCardinality(),
+                    "ProductExpression: Cardinality mismatch in matrix-vector product");
+        
+        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+        
+        for (index_t i = 0; i < result.rowCardinality(); ++i)
+        {
+            for (index_t j = 0; j < result.colCardinality(); ++j)
+            {
+                result(i, j) = lhs_val(i, j) * rhs_val(i, j);
+            }
+        }
+        
+        return result;
+    }
 
     void print(std::ostream & os) const
     {
-        os<<this->lhs_expr_<<"*"<<this->rhs_expr_;
+        os << this->lhs_expr_ << "*" << this->rhs_expr_;
     }
-
-private:
-    using Base::lhs_expr_;
-    using Base::rhs_expr_;
 };
 
-// --- Partial specialization 2: Multiplication of equal order (matrix only)
-template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
-struct ExpressionTraits<ProductExpression<LhsExpr, RhsExpr, 2, 2, LhsSpace, RhsSpace>>
-{
-    typedef LhsExpr LhsType;
-    typedef RhsExpr RhsType;
-
-    typedef typename ExpressionTraits<LhsExpr>::Scalar Scalar;
-    static constexpr size_t order = 2;
-    static constexpr size_t space = ExpressionTraits<RhsExpr>::space; // TODO: Define appropriate space logic
-    static constexpr size_t deriv = ExpressionTraits<RhsExpr>::deriv; // Conservative approach
-    static constexpr bool isConstant = ExpressionTraits<LhsExpr>::isConstant && ExpressionTraits<RhsExpr>::isConstant;
-};
-
-template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
-class ProductExpression<LhsExpr, RhsExpr, 2, 2, LhsSpace, RhsSpace>
- : public BinaryOperator<ProductExpression<LhsExpr, RhsExpr, 2, 2, LhsSpace, RhsSpace>>
-{
-    using Base = BinaryOperator<ProductExpression<LhsExpr, RhsExpr, 2, 2, LhsSpace, RhsSpace>>;
-    using Base::order;
-
-public:
-    using Scalar = typename Base::Scalar;
-
-public:
-    ProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-        : Base(lhs, rhs)
-    {
-        GISMO_ENSURE(lhs.sizes()[1]==rhs.sizes()[0],
-                     "Size mismatch in * operator.\n"<<
-                     "lhs ("<<lhs.sizes()[0]<<" x "<<lhs.sizes()[1]<<") = "<<lhs<<"\n"<<
-                     "rhs ("<<rhs.sizes()[0]<<" x "<<rhs.sizes()[1]<<") = "<<rhs<<")\n");
-        this->sizes_[0] = lhs.sizes()[0];
-        this->sizes_[1] = rhs.sizes()[1];
-    }
-
-    size_t domainDim() const
-    {
-        gsWarn<<"Correct?\n";
-        return this->lhs_expr_.domainDim();
-    }
-
-    gsMatrix<Scalar> eval(const index_t k) const
-    {
-        gsMatrix<Scalar> lhs_val = this->lhs_expr_.eval(k);
-        gsMatrix<Scalar> rhs_val = this->rhs_expr_.eval(k);
-        return lhs_val * rhs_val;
-    }
-
-    void print(std::ostream & os) const
-    {
-        os<<this->lhs_expr_<<"*"<<this->rhs_expr_;
-    }
-
-private:
-    using Base::lhs_expr_;
-    using Base::rhs_expr_;
-};
-
-// --- ExpressionTraits for matrix-vector product (2,1) -> vector (1)
-template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
-struct ExpressionTraits<ProductExpression<LhsExpr, RhsExpr, 2, 1, LhsSpace, RhsSpace>>
-{
-    typedef LhsExpr LhsType;
-    typedef RhsExpr RhsType;
-
-    using Scalar = typename ExpressionTraits<LhsExpr>::Scalar;
-    static constexpr size_t order = 1;
-    static constexpr size_t space = ExpressionTraits<RhsExpr>::space; // TODO: Define appropriate space logic
-    static constexpr size_t deriv = ExpressionTraits<RhsExpr>::deriv; //TODO
-    static constexpr bool isConstant = ExpressionTraits<LhsExpr>::isConstant && ExpressionTraits<RhsExpr>::isConstant;
-};
-
-// --- Partial specialization 3: Multiplication of matrix with vector
-template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
-class ProductExpression<LhsExpr, RhsExpr, 2, 1, LhsSpace, RhsSpace>
- : public BinaryOperator<ProductExpression<LhsExpr, RhsExpr, 2, 1, LhsSpace, RhsSpace>>
-{
-    using Base = BinaryOperator<ProductExpression<LhsExpr, RhsExpr, 2, 1, LhsSpace, RhsSpace>>;
-    using Base::order;
-
-public:
-    using Scalar = typename Base::Scalar;
-
-public:
-    ProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-        : Base(lhs, rhs)
-    {
-        GISMO_ENSURE(lhs.sizes()[1]==rhs.sizes()[0],
-                     "Size mismatch in * operator.\n"<<
-                     "lhs ("<<lhs.sizes()[0]<<" x "<<lhs.sizes()[1]<<") = "<<lhs<<"\n"<<
-                     "rhs ("<<rhs.sizes()[0]<<") = "<<rhs<<")\n");
-        this->sizes_[0] = lhs.sizes()[0];
-    }
-
-    size_t domainDim() const
-    {
-        gsWarn<<"Correct?\n";
-        return this->lhs_expr_.domainDim();
-    }
-
-
-    gsMatrix<Scalar> eval(const index_t k) const
-    {
-        gsMatrix<Scalar> lhs_val = this->lhs_expr_.eval(k);
-        gsMatrix<Scalar> rhs_val = this->rhs_expr_.eval(k);
-        return lhs_val * rhs_val;
-    }
-
-    void print(std::ostream & os) const
-    {
-        os<<this->lhs_expr_<<"*"<<this->rhs_expr_;
-    }
-
-private:
-    using Base::lhs_expr_;
-    using Base::rhs_expr_;
-};
-
-// // Generic operator* to create ProductExpression instances
-// template <typename LhsExpr, typename RhsExpr>
-// ProductExpression<LhsExpr, RhsExpr,LhsExpr::order,RhsExpr::order>
-// operator*(const LhsExpr& lhs, const RhsExpr& rhs)
-// {
-//     return ProductExpression<LhsExpr, RhsExpr,LhsExpr::order,RhsExpr::order>(lhs, rhs);
-// }
-
-// Specialization for scalar multiplication
-// Specialization: Scalar × Scalar
-template <typename LhsExpr, typename RhsExpr>
+// Generic operator* to create ProductExpression instances using SFINAE
+template <typename _LhsExpr, typename _RhsExpr>
 typename std::enable_if<
-    ExpressionTraits<LhsExpr>::order == 0 &&
-    ExpressionTraits<RhsExpr>::order == 0,
-    ProductExpression<LhsExpr, RhsExpr, 0, 0, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
+    _LhsExpr::Order == 0 && _RhsExpr::Order == 0,
+    ProductExpression<_LhsExpr, _RhsExpr, 0, 0, _LhsExpr::Space, _RhsExpr::Space>
 >::type
-operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
+operator*(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return ProductExpression<LhsExpr, RhsExpr, 0, 0, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
+    return ProductExpression<_LhsExpr, _RhsExpr, 0, 0, _LhsExpr::Space, _RhsExpr::Space>(lhs, rhs);
 }
 
-// Scalar multiplication operators for primitive types
-// Note: These must be carefully written to avoid recursion with ConstantObject
-
-// Disabled to prevent recursion with expression objects
-// template <typename Scalar>
-// ProductExpression<ConstantObject<Scalar,0>, ConstantObject<Scalar,0>, 0, 0, 0, 0>
-// operator*(const Scalar lhs, const Scalar rhs)
-// {
-//     return ProductExpression<ConstantObject<Scalar,0>, ConstantObject<Scalar,0>, 0, 0, 0, 0>(
-//         ConstantObject<Scalar,0>(lhs),
-//         ConstantObject<Scalar,0>(rhs)
-//     );
-// }
-
-// Temporarily disabled to avoid recursion - these need better SFINAE conditions
-/*
-template <typename RhsExpr>
+// Specialization: Scalar Expression × Non-scalar Expression
+template <typename _LhsExpr, typename _RhsExpr>
 typename std::enable_if<
-    !std::is_same<RhsExpr, ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>>::value,
-    decltype(ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>(std::declval<typename ExpressionTraits<RhsExpr>::Scalar>()) * std::declval<RhsExpr>())
+    _LhsExpr::Order == 0 && _RhsExpr::Order != 0,
+    ProductExpression<_LhsExpr, _RhsExpr, 0, _RhsExpr::Order, _LhsExpr::Space, _RhsExpr::Space>
 >::type
-operator*(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const BaseExpression<RhsExpr>& rhs)
+operator*(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>(lhs) * rhs;
+    return ProductExpression<_LhsExpr, _RhsExpr, 0, _RhsExpr::Order, _LhsExpr::Space, _RhsExpr::Space>(lhs, rhs);
 }
 
-template <typename LhsExpr>
+// Specialization: Expression × Scalar Expression
+template <typename _LhsExpr, typename _RhsExpr>
 typename std::enable_if<
-    !std::is_same<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>>::value,
-    decltype(std::declval<LhsExpr>() * ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>(std::declval<typename ExpressionTraits<LhsExpr>::Scalar>()))
+    _LhsExpr::Order != 0 && _RhsExpr::Order == 0,
+    ProductExpression<_RhsExpr, _LhsExpr, 0, _LhsExpr::Order, _RhsExpr::Space, _LhsExpr::Space>
 >::type
-operator*(const BaseExpression<LhsExpr>& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
+operator*(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return lhs * ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>(rhs);
-}
-*/
-
-// Specialization: Scalar × Non-scalar
-template <typename LhsExpr, typename RhsExpr>
-typename std::enable_if<
-    ExpressionTraits<LhsExpr>::order == 0 &&
-    ExpressionTraits<RhsExpr>::order != 0,
-    ProductExpression<LhsExpr, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
->::type
-operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
-{
-    return ProductExpression<LhsExpr, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
+    return ProductExpression<_RhsExpr, _LhsExpr, 0, _LhsExpr::Order, _RhsExpr::Space, _LhsExpr::Space>(rhs, lhs);
 }
 
-template <typename RhsExpr>
-typename std::enable_if<
-    !std::is_same<RhsExpr, ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>>::value,
-    ProductExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, Space::None, ExpressionTraits<RhsExpr>::space>
->::type
-operator*(const typename ExpressionTraits<RhsExpr>::Scalar lhs, const BaseExpression<RhsExpr>& rhs)
+// Specialization: Expression × Scalar primitive
+template <typename _LhsExpr>
+ProductExpression<ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,0>, _LhsExpr, 0, _LhsExpr::Order, 0, _LhsExpr::Space>
+operator*(const BaseExpression<_LhsExpr>& lhs, const typename ExpressionTraits<_LhsExpr>::Scalar rhs)
 {
-    return ProductExpression<ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>, RhsExpr, 0, ExpressionTraits<RhsExpr>::order, Space::None, ExpressionTraits<RhsExpr>::space>(ConstantObject<typename ExpressionTraits<RhsExpr>::Scalar,0>(lhs), rhs);
+    return ProductExpression<ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,0>, _LhsExpr, 0, _LhsExpr::Order, 0, _LhsExpr::Space>(ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,0>(rhs), lhs);
 }
 
-template <typename LhsExpr>
-typename std::enable_if<
-    !std::is_same<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>>::value,
-    ProductExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, Space::None>
->::type
-operator*(const BaseExpression<LhsExpr>& lhs, const typename ExpressionTraits<LhsExpr>::Scalar rhs)
+// Specialization: Scalar primitive × Expression
+template <typename _RhsExpr>
+ProductExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,0>, _RhsExpr, 0, _RhsExpr::Order, 0, _RhsExpr::Space>
+operator*(const typename ExpressionTraits<_RhsExpr>::Scalar lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return ProductExpression<LhsExpr, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>, ExpressionTraits<LhsExpr>::order, 0, ExpressionTraits<LhsExpr>::space, Space::None>(lhs, ConstantObject<typename ExpressionTraits<LhsExpr>::Scalar,0>(rhs));
-}
-
-// Specialization: Expression × Scalar
-template <typename LhsExpr, typename RhsExpr>
-typename std::enable_if<
-    ExpressionTraits<LhsExpr>::order != 0 &&
-    ExpressionTraits<RhsExpr>::order == 0,
-    ProductExpression<RhsExpr, LhsExpr, 0, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>
->::type
-operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
-{
-    return ProductExpression<RhsExpr, LhsExpr, 0, ExpressionTraits<LhsExpr>::order, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>(rhs, lhs);
+    return ProductExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,0>, _RhsExpr, 0, _RhsExpr::Order, 0, _RhsExpr::Space>(ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,0>(lhs), rhs);
 }
 
 // Specialization for matrix-vector product
-template <typename LhsExpr, typename RhsExpr>
+template <typename _LhsExpr, typename _RhsExpr>
 typename std::enable_if<
-    ExpressionTraits<LhsExpr>::order == 2 &&
-    ExpressionTraits<RhsExpr>::order == 1,
-    ProductExpression<LhsExpr, RhsExpr, 2, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
+    _LhsExpr::Order == 2 && _RhsExpr::Order == 1,
+    ProductExpression<_LhsExpr, _RhsExpr, 2, 1, _LhsExpr::Space, _RhsExpr::Space>
 >::type
-operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
+operator*(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return ProductExpression<LhsExpr, RhsExpr, 2, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
+    return ProductExpression<_LhsExpr, _RhsExpr, 2, 1, _LhsExpr::Space, _RhsExpr::Space>(lhs, rhs);
 }
 
-template <typename LhsExpr, typename RhsExpr>
+// Specialization for matrix-vector product (vector primitive)
+template <typename _LhsExpr, int _Rows>
 typename std::enable_if<
-    ExpressionTraits<LhsExpr>::order == 1 &&
-    ExpressionTraits<RhsExpr>::order == 2,
-    TransposeExpression<ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>>
+    _LhsExpr::Order == 2,
+    ProductExpression<_LhsExpr, ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,1>, 2, 1, _LhsExpr::Space, SpaceType::None>
 >::type
-operator*(const TransposeExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
+operator*(const BaseExpression<_LhsExpr>& lhs, const gsVector<typename ExpressionTraits<_LhsExpr>::Scalar, _Rows>& rhs)
 {
-    auto product = ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>(rhs, lhs.expr());
-    return TransposeExpression<ProductExpression<RhsExpr, LhsExpr, 2, 1, ExpressionTraits<RhsExpr>::space, ExpressionTraits<LhsExpr>::space>>(product);
+    return ProductExpression<_LhsExpr, ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,1>, 2, 1, _LhsExpr::Space, SpaceType::None>(lhs, ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,1>(rhs));
+}
+
+// Specialization for matrix-vector product (matrix primitive)
+template <typename _RhsExpr, int _Rows, int _Cols>
+typename std::enable_if<
+    _RhsExpr::Order == 1,
+    ProductExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,2>, _RhsExpr, 2, 1, SpaceType::None, _RhsExpr::Space>
+>::type
+operator*(const gsMatrix<typename ExpressionTraits<_RhsExpr>::Scalar, _Rows, _Cols>& lhs, const BaseExpression<_RhsExpr>& rhs)
+{
+    return ProductExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,2>, _RhsExpr, 2, 1, SpaceType::None, _RhsExpr::Space>(ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,2>(lhs), rhs);
+}
+
+// Specialization for vector-matrix product
+template <typename _LhsExpr, typename _RhsExpr>
+typename std::enable_if<
+    _LhsExpr::Order == 1 && _RhsExpr::Order == 2,
+    TransposeExpression<ProductExpression<_RhsExpr, _LhsExpr, 2, 1, _RhsExpr::Space, _LhsExpr::Space>>
+>::type
+operator*(const TransposeExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
+{
+    auto product = ProductExpression<_RhsExpr, _LhsExpr, 2, 1, _RhsExpr::Space, _LhsExpr::Space>(rhs, lhs.expr());
+    return TransposeExpression<ProductExpression<_RhsExpr, _LhsExpr, 2, 1, _RhsExpr::Space, _LhsExpr::Space>>(product);
 
 }
+
+// Specialization for vector-matrix product (matrix primitive)
+template <typename _LhsExpr, int _Rows, int _Cols>
+typename std::enable_if<
+    _LhsExpr::Order == 1,
+    ProductExpression<ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,2>, _LhsExpr, 2, 1, SpaceType::None, _LhsExpr::Space>
+>::type
+operator*(const TransposeExpression<_LhsExpr>& lhs, const gsMatrix<typename ExpressionTraits<_LhsExpr>::Scalar, _Rows, _Cols>& rhs)
+{
+    return ProductExpression<ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,2>, _LhsExpr, 2, 1, SpaceType::None, _LhsExpr::Space>(ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,2>(rhs), lhs.expr());
+}
+
+// Specialization for vector-matrix product (vector primitive)
+template <typename _RhsExpr, int _Rows>
+typename std::enable_if<
+    _RhsExpr::Order == 2,
+    ProductExpression<_RhsExpr, TransposeExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,1>>, 2, 1, _RhsExpr::Space, SpaceType::None>
+>::type
+operator*(const gsEigen::Transpose<gsVector<typename ExpressionTraits<_RhsExpr>::Scalar, _Rows>>& lhs, const BaseExpression<_RhsExpr>& rhs)
+{
+    return ProductExpression<_RhsExpr, TransposeExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,1>>, 2, 1, _RhsExpr::Space, SpaceType::None>(rhs, TransposeExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,1>>(ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,1>(lhs)));
+}   
 
 // Specialization for transpose-vector dot product: (vector)^T * vector = scalar
-template <typename LhsExpr, typename RhsExpr>
+template <typename _LhsExpr, typename _RhsExpr>
 typename std::enable_if<
-    ExpressionTraits<LhsExpr>::order == 1 &&
-    ExpressionTraits<RhsExpr>::order == 1,
-    InnerProductExpression<LhsExpr, RhsExpr, 1, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
+    _LhsExpr::Order == 1 && _RhsExpr::Order == 1,
+    InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, _LhsExpr::Space, _RhsExpr::Space>
 >::type
-operator*(const TransposeExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
+operator*(const TransposeExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return InnerProductExpression<LhsExpr, RhsExpr, 1, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs.expr(), rhs);
+    return InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, _LhsExpr::Space, _RhsExpr::Space>(lhs.expr(), rhs);
+}
+
+// Specialization for vector-matrix dot product: vector * (vector)^T = matrix
+template <typename _LhsExpr, typename _RhsExpr>
+typename std::enable_if<
+    _LhsExpr::Order == 1 && _RhsExpr::Order == 1,
+    OuterProductExpression<_LhsExpr, _RhsExpr, 2, 2, _LhsExpr::Space, _RhsExpr::Space>
+>::type
+operator*(const BaseExpression<_LhsExpr>& lhs, const TransposeExpression<_RhsExpr>&rhs)
+{
+    return OuterProductExpression<_LhsExpr, _RhsExpr, 2, 2, _LhsExpr::Space, _RhsExpr::Space>(lhs, rhs.expr());
 }
 
 // Matrix-matrix product
-template <typename LhsExpr, typename RhsExpr>
+template <typename _LhsExpr, typename _RhsExpr>
 typename std::enable_if<
-    ExpressionTraits<LhsExpr>::order == 2 &&
-    ExpressionTraits<RhsExpr>::order == 2,
-    ProductExpression<LhsExpr, RhsExpr, 2, 2, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>
+    _LhsExpr::Order == 2 && _RhsExpr::Order == 2,
+    ProductExpression<_LhsExpr, _RhsExpr, 2, 2, _LhsExpr::Space, _RhsExpr::Space>
 >::type
-operator*(const BaseExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
+operator*(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return ProductExpression<LhsExpr, RhsExpr, 2, 2, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>(lhs, rhs);
+    return ProductExpression<_LhsExpr, _RhsExpr, 2, 2, _LhsExpr::Space, _RhsExpr::Space>(lhs, rhs);
 }
 
-// // Specialization for transpose of a vector with a vector (more specific than generic)
-// template <typename LhsExpr, typename RhsExpr>
-// auto operator*(const TransposeExpression<LhsExpr>& lhs, const BaseExpression<RhsExpr>& rhs)
-//     -> ProductExpression<TransposeExpression<LhsExpr>, RhsExpr>
-// {
-//     GISMO_ERROR("Multiplication of a transposed vector and a vector is not defined.");
-//     return ProductExpression<TransposeExpression<LhsExpr>, RhsExpr>(lhs, rhs);
-// }
+// Specialization for matrix-matrix product (first argument primitive)
+template <typename _RhsExpr, int _Rows, int _Cols>
+typename std::enable_if<
+    _RhsExpr::Order == 2,
+    ProductExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,2>, _RhsExpr, 2, 2, SpaceType::None, _RhsExpr::Space>
+>::type
+operator*(const gsMatrix<typename ExpressionTraits<_RhsExpr>::Scalar, _Rows, _Cols>& lhs, const BaseExpression<_RhsExpr>& rhs)
+{
+    return ProductExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,2>, _RhsExpr, 2, 2, SpaceType::None, _RhsExpr::Space>(ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,2>(lhs), rhs);
+}
 
-// // Specialization for vector with transpose of a vector (more specific than generic)
-// template <typename LhsExpr, typename RhsExpr>
-// auto operator*(const BaseExpression<LhsExpr>& lhs, const TransposeExpression<RhsExpr>& rhs)
-//     -> ProductExpression<LhsExpr, TransposeExpression<RhsExpr>>
-// {
-//     GISMO_ERROR("Multiplication of a vector and a transposed vector is not defined.");
-//     return ProductExpression<LhsExpr, TransposeExpression<RhsExpr>>(lhs, rhs);
-// }
+// Specialization for matrix-matrix product (second argument primitive)
+template <typename _LhsExpr, int _Rows, int _Cols>
+typename std::enable_if<
+    _LhsExpr::Order == 2,
+    ProductExpression<_LhsExpr, ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,2>, 2, 2, _LhsExpr::Space, SpaceType::None>
+>::type
+operator*(const BaseExpression<_LhsExpr>& lhs, const  gsMatrix<typename ExpressionTraits<_LhsExpr>::Scalar, _Rows, _Cols>& rhs)
+{
+    return ProductExpression<_LhsExpr, ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,2>, 2, 2, _LhsExpr::Space, SpaceType::None>(lhs, ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar,2>(rhs));
+}
+
+// Specialization for NullObject
+template <typename _T, size_t _LhsSpace, size_t _LhsOrder, typename _RhsExpr>
+auto operator*(const NullObject<_T,_LhsSpace,_LhsOrder>& /* lhs */, const BaseExpression<_RhsExpr>& /* rhs */)
+-> NullObject<_T,SpaceType::None,0>
+{
+    return NullObject<_T,SpaceType::None,0>::get();
+}
+
+template <typename _LhsExpr, typename _T, size_t _RhsSpace, size_t _RhsOrder>
+auto operator*(const BaseExpression<_LhsExpr>& /* lhs */, const NullObject<_T,_RhsSpace,_RhsOrder>& /* rhs */)
+-> NullObject<_T,SpaceType::None,0>
+{
+    return NullObject<_T,SpaceType::None,0>::get();
+}
+
+// Specialization: operator-
+template <typename _Expr>
+auto operator-(const BaseExpression<_Expr>& expr)
+-> decltype(-1.0*expr)
+{
+    return -1.0*expr;
+}
+
+// Variation of ProductExpression where LHS is a SolutionObject and RhsExpr is NOT a SolutionObject
+template <typename _LhsExpr, typename _RhsExpr, typename _SpaceObject>
+typename std::enable_if<
+    !std::is_base_of<SolutionObject<typename _LhsExpr::Scalar,_LhsExpr::Space,_LhsExpr::Order>, _RhsExpr>::value,
+    decltype(variation(std::declval<_RhsExpr>(), std::declval<_SpaceObject>()))
+>::type
+variation(const ProductExpression<SolutionObject<typename _LhsExpr::Scalar,_LhsExpr::Space,_LhsExpr::Order>,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,SolutionObject<typename _LhsExpr::Scalar,_LhsExpr::Space,_LhsExpr::Order>::Order,_RhsExpr::Space> & expr,
+          const _SpaceObject & space)
+{
+    return expr.lhs()*variation(expr.rhs(), space);
+}
+
+// Variation of ProductExpression where RHS is a SolutionObject and LhsExpr is NOT a SolutionObject
+template <typename _LhsExpr, typename _RhsExpr, typename _SpaceObject>
+typename std::enable_if<
+    !std::is_base_of<SolutionObject<typename _RhsExpr::Scalar,_RhsExpr::Space,_RhsExpr::Order>, _LhsExpr>::value,
+    decltype(variation(std::declval<_LhsExpr>(), std::declval<_SpaceObject>()))
+>::type
+variation(const ProductExpression<_LhsExpr,SolutionObject<typename _RhsExpr::Scalar,_RhsExpr::Space,_RhsExpr::Order>,_LhsExpr::Order,_RhsExpr::Order,_LhsExpr::Space,SolutionObject<typename _RhsExpr::Scalar,_RhsExpr::Space,_RhsExpr::Order>::Order> & expr,
+          const _SpaceObject & space)
+{
+    return variation(expr.lhs(), space)*expr.rhs();
+}
+
+template<typename _LhsExpr, typename _RhsExpr, typename _SpaceObject>
+auto variation(const ProductExpression<_LhsExpr,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,_LhsExpr::Space,_RhsExpr::Space> & expr,
+               const _SpaceObject & space)
+-> decltype(variation(expr.lhs(), space)*expr.rhs() + expr.lhs()*variation(expr.rhs(), space))
+{
+    return variation(expr.lhs(), space)*expr.rhs() + expr.lhs()*variation(expr.rhs(), space);
+}
 
 }//namespace Expr
 }//namespace gismo

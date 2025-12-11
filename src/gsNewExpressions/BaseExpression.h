@@ -19,31 +19,39 @@ namespace gismo
 namespace Expr
 {
 // IsConstant: Flag that indicates if the expression is constant, e.g., its derivatives are zero
-// Space: Flag that indicates whether the expression is a space
+// Space: Flag that indicates whether the expression is a Space
 template <typename E>
 class BaseExpression
 {
 protected:
-    BaseExpression() : deriv_(ExpressionTraits<E>::deriv) {};
-    BaseExpression(const BaseExpression&) : deriv_(ExpressionTraits<E>::deriv) {};
+    BaseExpression() : Deriv_(ExpressionTraits<E>::Deriv) {};
+    BaseExpression(const BaseExpression&) : Deriv_(ExpressionTraits<E>::Deriv) {};
 
-    mutable short_t deriv_; // Used to store the required derivative order
+    mutable short_t Deriv_; // Used to store the required derivative order
 
 public:
 
     typedef typename ExpressionTraits<E>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<E>::order;
-    static constexpr size_t space = ExpressionTraits<E>::space;
-    static constexpr size_t deriv = ExpressionTraits<E>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
+    static constexpr size_t Order = ExpressionTraits<E>::Order;
+    static constexpr size_t Space = ExpressionTraits<E>::Space;
+    static constexpr size_t Deriv = ExpressionTraits<E>::Deriv;
+    static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
+
+    // Getters of static members
+    static size_t order() {return Order;};
+    static size_t space() {return Space;};
+    static size_t deriv() {return Deriv;};
+    static size_t isConstant() {return IsConstant;};
 
     size_t domainDim() const { return static_cast<const E&>(*this).domainDim(); }
 
-    const std::array<size_t,order> & sizes() const { return static_cast<const E&>(*this).sizes(); }
+    const std::array<size_t,Order> & sizes() const { return static_cast<const E&>(*this).sizes(); }
 
     void print(std::ostream & os) const { static_cast<const E&>(*this).print(os); }
 
-    gsMatrix<Scalar> eval(const index_t k) const { return static_cast<const E&>(*this).eval(k); }
+    ExpressionValue<Scalar> eval(const index_t k) const { return static_cast<const E&>(*this).eval(k); }
+
+    bool isZero() const { return false; }
 
     void parse(gismo::ExpressionHelper<Scalar> &) const
     {
@@ -51,26 +59,17 @@ public:
         // static_cast<E const&>(*this).parse(helper);
     }
 
-    const SpaceObject<Scalar, space, order> & rowVar() const
-    {
-        GISMO_NO_IMPLEMENTATION;
-    //     return static_cast<E const&>(*this).rowVar();
-    }
-
-    const SpaceObject<Scalar, space, order> & colVar() const
-    {
-        GISMO_NO_IMPLEMENTATION;
-    //     return static_cast<E const&>(*this).colVar();
-    }
+    const SpaceObject<Scalar, Space, Order> & test () const { return Space==SpaceType::Both ? static_cast<E const&>(*this).test() : NullObject<Scalar,Space,Order>::get(); }
+    const SpaceObject<Scalar, Space, Order> & trial() const { return Space==SpaceType::Both ? static_cast<E const&>(*this).trial() : NullObject<Scalar,Space,Order>::get(); }
 
 public:
 
     void setDerivative(short_t d) const
     {
-        deriv_ = math::max(deriv_, d);
+        Deriv_ = math::max(Deriv_, d);
     }
 
-    short_t getDerivative() const { return deriv_; }
+    short_t getDerivative() const { return Deriv_; }
 
 
     TransposeExpression<E> tr() const
@@ -95,6 +94,12 @@ public:
 template <typename E>
 std::ostream &operator<<(std::ostream &os, const BaseExpression<E> & b)
 {b.print(os); return os; }
+
+template <typename E, typename SpaceObj>
+VariationObject<BaseExpression<E>, SpaceObj> variation(const BaseExpression<E> & sol,const SpaceObj & space)
+{
+    GISMO_ERROR("Not implemented.");
+}
 
 }//namespace Expr
 }//namespace gismo

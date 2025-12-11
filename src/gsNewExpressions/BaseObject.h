@@ -27,22 +27,27 @@ class BaseObject : public BaseExpression<E>
 
 protected:
     typedef typename Base::Scalar T;
-    using Base::order;
 
-    const std::array<size_t, order> sizes_;
+    const std::array<size_t, Base::Order> sizes_;
     const size_t domainDim_;
     const std::string label_;
 
 public:
+    // Expose the static traits publicly so they can be accessed as LhsExpr::Order etc.
+    using Base::Order;
+    using Base::Space;
+    using Base::Deriv;
+    using Base::IsConstant;
+    using Base::Scalar;
 
-// Access to sizes is direct
-    const std::array<size_t, order>& sizes() const  { return sizes_; }
+    // Access to sizes is direct
+    const std::array<size_t, Order>& sizes() const  { return sizes_; }
 
     size_t domainDim() const { return domainDim_; }
 
 public:
 
-    gsMatrix<T> eval(const index_t) const
+    ExpressionValue<T> eval(const index_t) const
     {
         GISMO_NO_IMPLEMENTATION;
     }
@@ -52,12 +57,9 @@ public:
         GISMO_NO_IMPLEMENTATION;
     }
 
-    const SpaceObject<T,Space::None,order> & rowVar() const {return NullObject<T,order>::get();}
-    const SpaceObject<T,Space::None,order> & colVar() const {return NullObject<T,order>::get();}
-
     ~BaseObject() = default;
 
-    explicit BaseObject(size_t domainDim, const std::array<size_t, order> & input_sizes, std::string label = "a")
+    explicit BaseObject(size_t domainDim, const std::array<size_t, Order> & input_sizes, std::string label = "a")
     :
     Base(), // Initialize base class properly
     sizes_(input_sizes),
@@ -78,14 +80,16 @@ public:
         return *this;
     }
 
+    std::string label() const { return label_; }
+
 protected:
 
 
 
     // // Helper to calculate total elements from sizes (used internally by derived classes)
-    // static size_t tensorSize(std::array<size_t, order> dims)
+    // static size_t tensorSize(std::array<size_t, Order> dims)
     // {
-    //     if (order == 0) return 1; // Scalar has 1 element
+    //     if (Order == 0) return 1; // Scalar has 1 element
     //     size_t total = 1;
     //     for (size_t dim_size : dims)
     //     {
@@ -95,5 +99,12 @@ protected:
     // }
 
 };
+
+template <typename E, typename SpaceObj>
+VariationObject<BaseObject<E>, SpaceObj> variation(const BaseObject<E> & sol,const SpaceObj & space)
+{
+    return VariationObject<BaseObject<E>, SpaceObj>(sol,space, false);
+}
+
 }//namespace Expr
 }//namespace gismo

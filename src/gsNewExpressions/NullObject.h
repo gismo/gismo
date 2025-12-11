@@ -20,26 +20,33 @@ namespace gismo
 namespace Expr
 {
 
-    template<class T, size_t _order>
-    struct ExpressionTraits<NullObject<T, _order>>
+    template<class T, size_t _Space, size_t _Order>
+    struct ExpressionTraits<NullObject<T, _Space, _Order>>
     {
         typedef T Scalar;
-        static constexpr size_t order = _order;
-        static constexpr size_t space = Space::None;
-        static constexpr size_t deriv = 0;
-        static constexpr bool isConstant = true;
+        static constexpr size_t Order = _Order;
+        static constexpr size_t Space = _Space;
+        static constexpr size_t Deriv = 0;
+        static constexpr bool IsConstant = true;
     };
 
-    template <class T, size_t _order>
-    class NullObject : public BaseObject<NullObject<T, _order>>
+    template <class T, size_t _Space, size_t _Order>
+    class NullObject : public BaseObject<NullObject<T, _Space, _Order>>
     {
-        using Base = BaseObject<NullObject<T, _order>>;
+        using Base = BaseObject<NullObject<T, _Space, _Order>>;
+
+    public:
+        // Expose the static traits publicly
+        using Base::Order;
+        using Base::Space;
+        using Base::Deriv;
+        using Base::IsConstant;
+        using Base::sizes_;
         typedef typename Base::Scalar Scalar;
-        using Base::order;
 
     public:
 
-        gsMatrix<Scalar> eval(const index_t) const
+        ExpressionValue<Scalar> eval(const index_t) const
         {
             GISMO_ERROR("The null expression should not be evaluated");
         }
@@ -49,11 +56,11 @@ namespace Expr
             GISMO_NO_IMPLEMENTATION;
         }
 
-        operator const SpaceObject<T,Space::None,order> & () const
-        {
-            static SpaceObject<T,Space::None,order> vv(0,{}, 0);
-            return vv;
-        }
+        // operator const NullSpaceObject<T,_Space,_Order> & () const
+        // {
+        //     static NullSpaceObject<T,_Space,_Order> vv(0,{}, 0);
+        //     return vv;
+        // }
 
         explicit NullObject()
         :

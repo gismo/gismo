@@ -25,10 +25,10 @@ struct ExpressionTraits<UnaryOperator<Operator>>
     typedef typename ExpressionTraits<Operator>::ExprType ExprType;
 
     typedef typename ExpressionTraits<Operator>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<Operator>::order;
-    static constexpr size_t space = ExpressionTraits<Operator>::space;
-    static constexpr size_t deriv = ExpressionTraits<Operator>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<Operator>::isConstant;
+    static constexpr size_t Order = ExpressionTraits<Operator>::Order;
+    static constexpr size_t Space = ExpressionTraits<Operator>::Space;
+    static constexpr size_t Deriv = ExpressionTraits<Operator>::Deriv;
+    static constexpr bool IsConstant = ExpressionTraits<Operator>::IsConstant;
 };
 
 /**
@@ -40,8 +40,15 @@ class UnaryOperator : public BaseExpression<Operator>
 {
     using Base = BaseExpression<Operator>;
     typedef typename Base::Scalar T;
-    using Base::deriv;
+
 public:
+    // Expose the static traits publicly so they can be accessed as LhsExpr::Order etc.
+    using Base::Order;
+    using Base::Space;
+    using Base::Deriv;
+    using Base::IsConstant;
+    using Base::Scalar;
+
     typedef typename ExpressionTraits<Operator>::ExprType ExprType;
 
     const ExprType& expr() const { return static_cast<const ExprType&>(expr_); }
@@ -49,7 +56,7 @@ public:
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
         expr_.parse(helper);
-        expr_.setDerivative(deriv);
+        expr_.setDerivative(Deriv);
     }
 
     void print(std::ostream & os) const

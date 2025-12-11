@@ -20,31 +20,104 @@ namespace gismo
 namespace Expr
 {
 
-template <class T, size_t _space, size_t _order>
-class SpaceObject : public BaseObject<SpaceObject<T, _space, _order>>
+template <class T, size_t _Space, size_t _Order>
+struct ExpressionTraits<SpaceObject<T, _Space, _Order>>
 {
-    using Base = BaseObject<SpaceObject<T, _space, _order>>;
+    typedef T Scalar;
+    static constexpr size_t Order = _Order;
+    static constexpr size_t Space = _Space;
+    static constexpr size_t Deriv = 0;
+    static constexpr bool IsConstant = false;
+};
+
+template <class T, size_t _Space, size_t _Order>
+class SpaceObject : public BaseObject<SpaceObject<T, _Space, _Order>>
+{
+    static_assert(_Space==SpaceType::None || _Space==SpaceType::Test || _Space==SpaceType::Trial, "SpaceObject can only be None, Test or Trial space.");
+
+    using Base = BaseObject<SpaceObject<T, _Space, _Order>>;
+    using Base::Deriv_;
+
+public:
+    // Expose the static traits publicly
+    using Base::Order;
+    using Base::Space;
+    using Base::Deriv;
+    using Base::IsConstant;
     typedef typename Base::Scalar Scalar;
-    using Base::order;
-    using Base::space;
-    using Base::deriv_;
 
 private:
     const gsFunctionSet<Scalar> * m_fs;
     const gsFuncData<Scalar>    * m_fd;
     size_t m_id;
+
 public:
-    SpaceObject(size_t domainDim, const std::array<size_t, order> & input_sizes, size_t id,
-                std::string label=(space==Space::Test)?"φ":(space==Space::Trial)?"ψ":"UNKNOWN_SPACE")
+    SpaceObject(size_t domainDim, const std::array<size_t, Order> & input_sizes, size_t id,
+                std::string label=(Space==SpaceType::Test)?"φ":(Space==SpaceType::Trial)?"ψ":"UNKNOWN_SPACE")
     :
     Base(domainDim, input_sizes, label),
     m_fs(NULL), m_fd(NULL), m_id(id)
     {
     }
 
-    gsMatrix<Scalar> eval(const index_t k) const
+    // Specialization for Test space using enable_if
+    template <size_t S = _Space>
+    typename std::enable_if<S == SpaceType::Test, ExpressionValue<Scalar>>::type
+    eval(const index_t k) const
     {
-        return m_fd->values[0].col(k).blockDiag(order);
+        // Get the number of active basis functions
+        index_t numActive = m_fd->values[0].rows();
+        
+        // Test space: cardinality is (numActive, 1) - no runtime branching
+        ExpressionValue<Scalar> result(numActive, 1);
+        
+        // Fill in the values for each basis function
+        for (index_t i = 0; i < numActive; ++i)
+        {
+            result(i, 0) = m_fd->values[0].col(k).segment(i, 1).blockDiag(Order ? this->sizes()[0] : 1);
+        }
+        
+        return result;
+    }
+
+    // Specialization for Trial space using enable_if
+    template <size_t S = _Space>
+    typename std::enable_if<S == SpaceType::Trial, ExpressionValue<Scalar>>::type
+    eval(const index_t k) const
+    {
+        // Get the number of active basis functions
+        index_t numActive = m_fd->values[0].rows();
+        
+        // Trial space: cardinality is (1, numActive) - no runtime branching
+        ExpressionValue<Scalar> result(1, numActive);
+        
+        // Fill in the values for each basis function
+        for (index_t i = 0; i < numActive; ++i)
+        {
+            result(0, i) = m_fd->values[0].col(k).segment(i, 1).blockDiag(Order ? this->sizes()[0] : 1);
+        }
+        
+        return result;
+    }
+
+    // Specialization for None space using enable_if
+    template <size_t S = _Space>
+    typename std::enable_if<S == SpaceType::None, ExpressionValue<Scalar>>::type
+    eval(const index_t k) const
+    {
+        // Get the number of active basis functions
+        index_t numActive = m_fd->values[0].rows();
+        
+        // None space: cardinality is (1, 1) - no runtime branching
+        ExpressionValue<Scalar> result(1, 1);
+        
+        // Fill in the values (single entry)
+        for (index_t i = 0; i < numActive; ++i)
+        {
+            result(0, 0) = m_fd->values[0].col(k).segment(i, 1).blockDiag(Order ? this->sizes()[0] : 1);
+        }
+        
+        return result;
     }
 
     const gsFunctionSet<T> & source() const {return *m_fs;}
@@ -63,24 +136,19 @@ public:
     {
         helper.add(*this);
         m_fd->flags |= NEED_VALUE;
-        if (deriv_ > 0)
+        if (Deriv_ > 0)
             m_fd->flags |= NEED_DERIV;
-        if (deriv_ > 1)
+        if (Deriv_ > 1)
             m_fd->flags |= NEED_DERIV2;
     }
-
-    const SpaceObject<Scalar,_space,_order> & rowVar() const {return (_space==Space::Test  || _space==Space::Both) ? *this : NullObject<T,order>::get();}
-    const SpaceObject<Scalar,_space,_order> & colVar() const {return (_space==Space::Trial || _space==Space::Both) ? *this : NullObject<T,order>::get();}
 
     void print(std::ostream & os) const
     {
         os<<Base::label_;
         _print_arguments(os);
-        // _print_impl<space>(os);
     }
 
 protected:
-
     void _print_arguments(std::ostream & os) const
     {
         os<<"(";
@@ -93,5 +161,7 @@ protected:
         os<<")";
     }
 };
+
 }//namespace Expr
 }//namespace gismo
+

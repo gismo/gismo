@@ -18,6 +18,8 @@ namespace gismo
 namespace Expr
 {
 
+// NOTE: BINARY OBJECTS ARE THE ONLY ONES THAT CAN HAVE SPACE::BOTH
+
 // ExpressionTraits for BinaryOperator - forwards template parameters
 template <typename Operator>
 struct ExpressionTraits<BinaryOperator<Operator>>
@@ -26,10 +28,10 @@ struct ExpressionTraits<BinaryOperator<Operator>>
     typedef typename ExpressionTraits<Operator>::RhsType RhsType;
 
     typedef typename ExpressionTraits<Operator>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<Operator>::order;
-    static constexpr size_t space = ExpressionTraits<Operator>::space;
-    static constexpr size_t deriv = ExpressionTraits<Operator>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<Operator>::isConstant;
+    static constexpr size_t Order = ExpressionTraits<Operator>::Order;
+    static constexpr size_t Space = ExpressionTraits<Operator>::Space;
+    static constexpr size_t Deriv = ExpressionTraits<Operator>::Deriv;
+    static constexpr bool IsConstant = ExpressionTraits<Operator>::IsConstant;
 };
 
 /**
@@ -43,23 +45,36 @@ class BinaryOperator : public BaseExpression<BinaryOperator<Operator>>
     using Base = BaseExpression<BinaryOperator<Operator>>;
 protected:
     typedef typename Base::Scalar T;
-    using Base::order;
+
 public:
+    // Expose the static traits publicly so they can be accessed as LhsExpr::Order etc.
+    using Base::Order;
+    using Base::Space;
+    using Base::Deriv;
+    using Base::IsConstant;
+    using Base::Scalar;
+
     typedef typename ExpressionTraits<Operator>::LhsType LhsType;
     typedef typename ExpressionTraits<Operator>::RhsType RhsType;
 
     const LhsType& lhs() const {return lhs_expr_;}
     const RhsType& rhs() const {return rhs_expr_;}
 
-    // const SpaceObject<T, LhsExpr::space, LhsExpr::order> & rowVar() const
-    // {
-    //     return lhs_expr_.rowVar(); // Use left operand's row variable
-    // }
+    const SpaceObject<T, Base::Space, Base::Order> & test () const
+    {
+        if (this->lhs().Space == SpaceType::Test || this->lhs().Space == SpaceType::Both)
+            return this->lhs().test();
+        else if (this->rhs().Space == SpaceType::Test || this->rhs().Space == SpaceType::Both)
+            return this->rhs().test();
+    }
 
-    // const SpaceObject<T, RhsExpr::space, RhsExpr::order> & colVar() const
-    // {
-    //     return rhs_expr_.colVar(); // Use right operand's column variable
-    // }
+    const SpaceObject<T, Base::Space, Base::Order> & trial() const
+    {
+        if (this->lhs().Space == SpaceType::Trial || this->lhs().Space == SpaceType::Both)
+            return this->lhs().trial();
+        else if (this->rhs().Space == SpaceType::Trial || this->rhs().Space == SpaceType::Both)
+            return this->rhs().trial();
+    }
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
@@ -72,7 +87,7 @@ public:
         static_cast<const Operator&>(*this).print(os);
     }
 
-    const std::array<size_t, order>& sizes() const
+    const std::array<size_t, Order>& sizes() const
     {
         return sizes_;
     }
@@ -125,7 +140,7 @@ protected:
     const RhsType rhs_expr_;
 
     // Common sizes array for all binary operators
-    std::array<size_t, order> sizes_;
+    std::array<size_t, Order> sizes_;
 };
 
 }//namespace Expr

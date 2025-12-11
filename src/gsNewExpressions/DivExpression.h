@@ -18,111 +18,51 @@ namespace gismo
 namespace Expr
 {
 
-template <typename E, size_t Order, size_t Space, size_t IsConstant>
-struct ExpressionTraits<DivExpression<E, Order, Space, IsConstant>>
+template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+struct ExpressionTraits<DivExpression<_E, _Order, _Space, _IsConstant>>
 {
-    static_assert(Order == 1,
+    static_assert(_Order == 1,
                 "DivExpression: Unsupported tensor order. Only vectors (order 1) are supported for divergence operations.");
 
-    typedef E ExprType; // Needed for UnaryOperator
+    typedef _E ExprType; // Needed for UnaryOperator
 
-    typedef typename ExpressionTraits<E>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<E>::order-1; // Divergence results in a vector (order 1)
-    static constexpr size_t space = ExpressionTraits<E>::space;
-    static constexpr size_t deriv = ExpressionTraits<E>::deriv + 1; // Increment derivative order
-    static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
+    typedef typename ExpressionTraits<_E>::Scalar Scalar;
+    static constexpr size_t Order = ExpressionTraits<_E>::Order-1; // Divergence results in a vector (order 1)
+    static constexpr size_t Space = ExpressionTraits<_E>::Space;
+    static constexpr size_t Deriv = ExpressionTraits<_E>::Deriv + 1; // Increment derivative order
+    static constexpr bool IsConstant = ExpressionTraits<_E>::IsConstant;
 };
 
-// --- Partial Specialization 1: Divergence of a constant expression ---
-template <typename E, size_t Order, size_t Space>
-class DivExpression<E, Order, Space, 1> : public UnaryOperator<DivExpression<E, Order, Space, 1>>
+// --- Unified DivExpression using enable_if for Space-aware eval ---
+template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+class DivExpression : public UnaryOperator<DivExpression<_E, _Order, _Space, _IsConstant>>
 {
-    static_assert(Order == 1,
+    static_assert(_Order == 1,
                   "DivExpression: Unsupported tensor order. Only vectors (order 1) are supported for divergence operations.");
 
-
-    using Base = UnaryOperator<DivExpression<E, Order, Space, 1>>;
+    using Base = UnaryOperator<DivExpression<_E, _Order, _Space, _IsConstant>>;
 
 private:
-    std::array<size_t,Base::order> sizes_;
+    std::array<size_t,Base::Order> sizes_;
     mutable gsMatrix<typename Base::Scalar> tmp;
     using Base::expr_;
 
 public:
-    DivExpression(const E& expr)
-    :
-    Base(expr)
+    typedef typename Base::Scalar Scalar;
+
+    explicit DivExpression(const _E& e) : Base(e), tmp(1, 1)
     {
         // Assumes symmetry!
-        for (short_t d=0; d!=ExpressionTraits<E>::order; d++)
+        for (short_t d=0; d!=ExpressionTraits<_E>::Order; d++)
         {
             GISMO_ENSURE(expr_.sizes()[d] == expr_.sizes()[0], "All sizes must be equal for the div operator");
-            // GISMO_ENSURE(expr_.sizes()[d] == expr_.domainDim(), "All sizes must be equal to the domain dimension for the div operator");
         }
 
-        for (short_t d=1; d!=ExpressionTraits<E>::order; d++)
+        for (short_t d=1; d!=ExpressionTraits<_E>::Order; d++)
             sizes_[d-1] = expr_.sizes()[d];
     }
 
-
-    const std::array<size_t, Base::order> & sizes() const
-    {
-        return sizes_;
-    }
-
-    size_t domainDim() const
-    {
-        GISMO_ASSERT(expr_.domainDim() == 0,"A constant expression should have domain dimension 0");
-        return 0;
-    }
-
-    gsMatrix<typename Base::Scalar> eval(const index_t k) const
-    {
-        GISMO_UNUSED(k);
-        tmp.resize(expr_.domainDim(),1);
-        tmp.setZero();
-        return tmp;
-    }
-
-    void parse(ExpressionHelper<typename Base::Scalar> & helper) const
-    {
-        GISMO_UNUSED(helper);
-    }
-
-    void print(std::ostream & os) const
-    {
-        os<<"\u2207\u2027("<<expr_<<")";
-    }
-
-};
-
-// --- Partial Specialization 2: Divergence of a variable object ---
-template <typename E, size_t Order, size_t Space>
-class DivExpression<E, Order, Space, 0> : public UnaryOperator<DivExpression<E, Order, Space, 0>>
-{
-    using Base = UnaryOperator<DivExpression<E, Order, Space, 0>>;
-private:
-    std::array<size_t,Base::order> sizes_;
-    mutable gsMatrix<typename Base::Scalar> tmp;
-    using Base::expr_;
-
-public:
-    DivExpression(const E & expr)
-    :
-    Base(expr)
-    {
-        // Assumes symmetry!
-        for (short_t d=0; d!=ExpressionTraits<E>::order; d++)
-        {
-            GISMO_ENSURE(expr_.sizes()[d] == expr_.sizes()[0], "All sizes must be equal for the div operator");
-            GISMO_ENSURE(expr_.sizes()[d] == expr_.domainDim(), "All sizes must be equal to the domain dimension for the div operator");
-        }
-
-        for (short_t d=1; d!=ExpressionTraits<E>::order; d++)
-            sizes_[d-1] = expr_.sizes()[d];
-    }
-
-    const std::array<size_t, Base::order> & sizes() const
+    const std::array<size_t, Base::Order> & sizes() const
     {
         return sizes_;
     }
@@ -132,12 +72,94 @@ public:
         return expr_.domainDim();
     }
 
-    gsMatrix<typename Base::Scalar> eval(const index_t k) const
+    // Eval for Space = None (constant)
+    template <size_t S = _Space, size_t C = _IsConstant>
+    typename std::enable_if<S == SpaceType::None && C == 1, ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
     {
         GISMO_UNUSED(k);
-        tmp.resize(expr_.domainDim(),1);
+        ExpressionValue<typename Base::Scalar> result(1, 1);
+        tmp.resize(1, 1);
         tmp.setZero();
-        return tmp;
+        result(0, 0) = tmp;
+        return result;
+    }
+
+    // Eval for Space = None (variable)
+    template <size_t S = _Space, size_t C = _IsConstant>
+    typename std::enable_if<S == SpaceType::None && C == 0, ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        // Divergence computation: sum of diagonal derivatives
+        // ∇‧V = ∂V_x/∂x + ∂V_y/∂y + ∂V_z/∂z
+        const index_t dim = expr_.domainDim();
+        gsAsConstMatrix<Scalar, Dynamic, Dynamic> deriv = 
+            expr_.data().values[1].reshapeCol(k, dim, expr_.data().values[0].rows());
+        
+        Scalar divVal = 0;
+        for (index_t d = 0; d < dim; ++d)
+            divVal += deriv(d, d);
+        
+        tmp.resize(1, 1);
+        tmp(0, 0) = divVal;
+        
+        ExpressionValue<typename Base::Scalar> result(1, 1);
+        result(0, 0) = tmp;
+        return result;
+    }
+
+    // Eval for Space = Test or Trial (constant)
+    template <size_t S = _Space, size_t C = _IsConstant>
+    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 1, ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        GISMO_UNUSED(k);
+        ExpressionValue<typename Base::Scalar> result(1, 1);
+        tmp.resize(1, 1);
+        tmp.setZero();
+        result(0, 0) = tmp;
+        return result;
+    }
+
+    // Eval for Space = Test or Trial (variable)
+    template <size_t S = _Space, size_t C = _IsConstant>
+    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 0, ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
+    {
+        // Divergence for basis functions: compute divergence for each basis function
+        const index_t numActive = expr_.data().values[0].rows();
+        const index_t dim = expr_.domainDim();
+        gsAsConstMatrix<Scalar, Dynamic, Dynamic> deriv = 
+            expr_.data().values[1].reshapeCol(k, dim, numActive);
+        
+        ExpressionValue<typename Base::Scalar> result(
+            S == SpaceType::Test ? numActive : 1,
+            S == SpaceType::Trial ? numActive : 1
+        );
+        
+        // Compute divergence for each basis function
+        for (index_t i = 0; i < numActive; ++i)
+        {
+            Scalar divVal = 0;
+            for (index_t d = 0; d < dim; ++d)
+                divVal += deriv(d, i * dim + d);
+            
+            tmp.resize(1, 1);
+            tmp(0, 0) = divVal;
+            
+            if (S == SpaceType::Test)
+                result(i, 0) = tmp;
+            else // Trial
+                result(0, i) = tmp;
+        }
+        
+        return result;
+    }
+
+    void parse(ExpressionHelper<typename Base::Scalar> & helper) const
+    {
+        helper.add(expr_);
+        expr_.data().flags |= NEED_DERIV;
     }
 
     void print(std::ostream & os) const
@@ -148,17 +170,17 @@ public:
 };
 
 // Generic factory function for easy creation
-template <typename E>
-DivExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>
-div(const E& expr)
+template <typename _E>
+DivExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant>
+div(const _E& expr)
 {
-    return DivExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>(expr);
+    return DivExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant>(expr);
 }
 
 // Partial specialization for addition
 // ∇•(X + Y) = ∇•X + ∇•Y
-template <typename LhsExpr, typename RhsExpr>
-auto div(const AddExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,ExpressionTraits<RhsExpr>::order,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space> expr)
+template <typename _LhsExpr, typename _RhsExpr>
+auto div(const AddExpression<_LhsExpr,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,_LhsExpr::Space,_RhsExpr::Space> expr)
 -> decltype(div(expr.lhs()) + div(expr.rhs()))
 {
     return (div(expr.lhs()) + div(expr.rhs()));
@@ -166,8 +188,8 @@ auto div(const AddExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,Ex
 
 // Partial specialization for subtraction
 // ∇•(X - Y) = ∇•X - ∇•Y
-template <typename LhsExpr, typename RhsExpr>
-auto div(const SubtractExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::order,ExpressionTraits<RhsExpr>::order,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space> expr)
+template <typename _LhsExpr, typename _RhsExpr>
+auto div(const SubtractExpression<_LhsExpr,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,_LhsExpr::Space,_RhsExpr::Space> expr)
 -> decltype(div(expr.lhs()) - div(expr.rhs()))
 {
     return (div(expr.lhs()) - div(expr.rhs()));
@@ -175,8 +197,8 @@ auto div(const SubtractExpression<LhsExpr,RhsExpr,ExpressionTraits<LhsExpr>::ord
 
 // Partial specialization for multiplication of a scalar and a vector
 // ∇•(fV) = ∇f • V + f ∇•V
-template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
-auto div(const ProductExpression<LhsExpr,RhsExpr,0,1,LhsSpace,RhsSpace>& expr)
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace>
+auto div(const ProductExpression<_LhsExpr,_RhsExpr,0,1,_LhsSpace,_RhsSpace>& expr)
 -> decltype(dot(grad(expr.lhs()), expr.rhs()) + expr.lhs() * div(expr.rhs()))
 {
     return dot(grad(expr.lhs()), expr.rhs()) + expr.lhs() * div(expr.rhs());
@@ -185,8 +207,8 @@ auto div(const ProductExpression<LhsExpr,RhsExpr,0,1,LhsSpace,RhsSpace>& expr)
 // Partial specialization for cross product
 // ∇•(A×B) = (∇×A)•B - A•(∇×B) = B•(∇×A) - A•(∇×B)
 // For vectors A,B (order 1), result is a scalar (order 0)
-template <typename LhsExpr, typename RhsExpr>
-auto div(const CrossProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+template <typename _LhsExpr, typename _RhsExpr>
+auto div(const CrossProductExpression<_LhsExpr,_RhsExpr,1,1,_LhsExpr::Space,_RhsExpr::Space>& expr)
 -> decltype(dot(expr.rhs(), curl(expr.lhs())) - dot(expr.lhs(), curl(expr.rhs())))
 {
     return dot(expr.rhs(), curl(expr.lhs())) - dot(expr.lhs(), curl(expr.rhs()));
@@ -195,8 +217,8 @@ auto div(const CrossProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsEx
 // Partial specialization for outer product
 // ∇•(A⊗B) = (∇•A)B + (A•∇)B
 // For vectors A,B (order 1), result is a vector (order 1)
-template <typename LhsExpr, typename RhsExpr>
-auto div(const OuterProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsExpr>::space,ExpressionTraits<RhsExpr>::space>& expr)
+template <typename _LhsExpr, typename _RhsExpr>
+auto div(const OuterProductExpression<_LhsExpr,_RhsExpr,1,1,_LhsExpr::Space,_RhsExpr::Space>& expr)
 -> decltype(div(expr.lhs()) * expr.rhs() + expr.lhs() * grad(expr.rhs()))
 {
     GISMO_UNUSED(expr);
@@ -206,11 +228,11 @@ auto div(const OuterProductExpression<LhsExpr,RhsExpr,1,1,ExpressionTraits<LhsEx
 // Partial specialization for gradient (second derivative identity)
 // ∇•(∇ψ) = ∇²ψ (Laplacian)
 // For scalar field ψ (order 0), result is a scalar (order 0)
-template <typename E>
-auto div(const GradExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>& expr)
--> LaplExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>
+template <typename _E>
+auto div(const GradExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant>& expr)
+-> LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant>
 {
-    return LaplExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant>(expr.expr());
+    return LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant>(expr.expr());
 }
 
 // === UNDEFINED OPERATIONS ===
@@ -219,8 +241,8 @@ auto div(const GradExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>
 // Divergence of gradient produces Laplacian, not undefined, but divergence of divergence is undefined
 // ∇•(∇•A) is undefined because divergence of a vector produces a scalar,
 // and divergence of a scalar is not defined
-template <typename E>
-auto div(const DivExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr) -> void
+template <typename _E>
+auto div(const DivExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant> expr) -> void
 {
     GISMO_ERROR("∇•(∇•) is undefined: divergence of divergence is not defined (scalar has no divergence)");
 }
@@ -228,27 +250,27 @@ auto div(const DivExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>:
 // Divergence of curl is always zero (this is a valid identity)
 // ∇•(∇×A) = 0, but for completeness, we could add this as a zero expression
 // This is actually defined and equals zero, so we should implement it properly
-template <typename E>
-auto div(const CurlExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr)
--> ConstantObject<typename ExpressionTraits<E>::Scalar, 0>
+template <typename _E>
+auto div(const CurlExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant> expr)
+-> ConstantObject<typename ExpressionTraits<_E>::Scalar, 0>
 {
     GISMO_UNUSED(expr);
-    return ConstantObject<typename ExpressionTraits<E>::Scalar, 0>(std::array<size_t, 0>{},"0");  // Divergence of curl is always zero scalar
+    return ConstantObject<typename ExpressionTraits<_E>::Scalar, 0>(std::array<size_t, 0>{},"0");  // Divergence of curl is always zero scalar
 }
 
 // Divergence of Laplacian is undefined
 // ∇•(∇²ψ) is undefined because Laplacian of a scalar produces a scalar,
 // and divergence of a scalar is not defined
-template <typename E>
-auto div(const LaplExpression<E, ExpressionTraits<E>::order, ExpressionTraits<E>::space, ExpressionTraits<E>::isConstant> expr) -> void
+template <typename _E>
+auto div(const LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant> expr) -> void
 {
     GISMO_ERROR("∇•(∇²) is undefined: divergence of Laplacian is not defined (scalar has no divergence)");
 }
 
 // Partial specialization for division of a vector by a scalar
 // ∇•(A/φ) = (φ∇•A - ∇φ•A)/φ²
-template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
-auto div(const DivisionExpression<LhsExpr,RhsExpr,1,0,LhsSpace,RhsSpace>& expr)
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace>
+auto div(const DivisionExpression<_LhsExpr,_RhsExpr,1,0,_LhsSpace,_RhsSpace>& expr)
 -> decltype((expr.rhs() * div(expr.lhs()) - dot(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs()))
 {
     return (expr.rhs() * div(expr.lhs()) - dot(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs());
@@ -259,23 +281,23 @@ auto div(const DivisionExpression<LhsExpr,RhsExpr,1,0,LhsSpace,RhsSpace>& expr)
 
 
 // // --- Partial Specialization 1: Addition of two expressions of the SAME ORDER (X + X) ---
-// template <typename LhsExpr, typename RhsExpr>
+// template <typename _LhsExpr, typename _RhsExpr>
 // class AddExpression<ArrayExpression<LhsExpr>, RhsExpr,
-//     typename std::enable_if<0 == (RhsExpr::order)>::type // Simplified condition
+//     typename std::enable_if<0 == (RhsExpr::Order)>::type // Simplified condition
 // > : public BaseObject<LhsExpr,
 //                           typename LhsExpr::Scalar,
-//                           LhsExpr::order,
-//                           LhsExpr::isConstant && RhsExpr::isConstant,
+//                           LhsExpr::Order,
+//                           LhsExpr::IsConstant && RhsExpr::IsConstant,
 //                           0> // Use LhsExpr's Scalar and Order directly
 // {
 // public:
 // // Scalar and Order are directly from LhsExpr/RhsExpr
 //     typedef typename LhsExpr::Scalar Scalar;
-//     static constexpr int order = LhsExpr::order;
+//     static constexpr int Order = LhsExpr::Order;
 
 // public:
 //     AddExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-//         : BaseObject<RhsExpr, typename LhsExpr::Scalar, order, LhsExpr::isConstant && RhsExpr::isConstant, 0>(rhs.sizes()), // Pass RhsExpr as Derived to BaseObject
+//         : BaseObject<RhsExpr, typename LhsExpr::Scalar, Order, LhsExpr::IsConstant && RhsExpr::IsConstant, 0>(rhs.sizes()), // Pass RhsExpr as Derived to BaseObject
 //           lhs_expr_(lhs),
 //           rhs_expr_(rhs)
 //     {
@@ -297,18 +319,18 @@ auto div(const DivisionExpression<LhsExpr,RhsExpr,1,0,LhsSpace,RhsSpace>& expr)
 
 
 // // --- Partial Specialization 2: Scalar (Order 0) + Higher Order (Order N > 0) ---
-// template <typename LhsExpr, typename RhsExpr>
+// template <typename _LhsExpr, typename _RhsExpr>
 // class AddExpression<LhsExpr, RhsExpr,
-//     typename std::enable_if<(LhsExpr::order == 0) && (RhsExpr::order > 0)>::type // Simplified condition
-// > : public BaseObject<RhsExpr, typename LhsExpr::Scalar, RhsExpr::order> // Base on RhsExpr for Scalar and Order
+//     typename std::enable_if<(LhsExpr::Order == 0) && (RhsExpr::Order > 0)>::type // Simplified condition
+// > : public BaseObject<RhsExpr, typename LhsExpr::Scalar, RhsExpr::Order> // Base on RhsExpr for Scalar and Order
 // {
 // public:
 //     typedef typename RhsExpr::Scalar Scalar;
-//     static constexpr int order = RhsExpr::order;
+//     static constexpr int Order = RhsExpr::Order;
 
 // public:
 //     AddExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-//         : BaseObject<RhsExpr, typename LhsExpr::Scalar, order>(rhs.sizes()), // Pass RhsExpr as Derived to BaseObject
+//         : BaseObject<RhsExpr, typename LhsExpr::Scalar, Order>(rhs.sizes()), // Pass RhsExpr as Derived to BaseObject
 //           lhs_expr_(lhs),
 //           rhs_expr_(rhs)
 //     {}
@@ -362,6 +384,78 @@ auto div(const DivisionExpression<LhsExpr,RhsExpr,1,0,LhsSpace,RhsSpace>& expr)
 // {
 //     return AddExpression<ScalarExpression<real_t>, MatrixExpression<real_t>>(rhs, lhs);
 // }
+
+// Variation of DivExpression where the inner expression is a SolutionObject
+template <class T, size_t _Space, size_t _Order, typename _SpaceObject>
+auto variation(const DivExpression<SolutionObject<T,_Space,_Order>,_Order,SpaceType::None,false> & expr,
+          const _SpaceObject & space)
+-> decltype(div(variation(expr.expr(), space)))
+{
+    return div(variation(expr.expr(), space));
+}
+
+// Partial specialization for addition
+template <typename _LhsExpr, typename _RhsExpr, size_t _Order, size_t _SpaceLhs, size_t _SpaceRhs, typename _SpaceObject>
+auto variation(const DivExpression<AddExpression<_LhsExpr,_RhsExpr,_Order,_Order,_SpaceLhs,_SpaceRhs>,_Order, (_SpaceLhs | _SpaceRhs), (_LhsExpr::IsConstant && _RhsExpr::IsConstant)> & expr,
+          const _SpaceObject & space)
+-> decltype(variation(div(expr.lhs()), space) + variation(div(expr.rhs()), space))
+{
+    return variation(div(expr.lhs()), space) + variation(div(expr.rhs()), space);   
+}
+
+// Partial specialization for subtraction
+template <typename _LhsExpr, typename _RhsExpr, size_t _Order, size_t _SpaceLhs, size_t _SpaceRhs, typename _SpaceObject>
+auto variation(const DivExpression<SubtractExpression<_LhsExpr,_RhsExpr,_Order,_Order,_SpaceLhs,_SpaceRhs>,_Order, (_SpaceLhs | _SpaceRhs), (_LhsExpr::IsConstant && _RhsExpr::IsConstant)> & expr,
+          const _SpaceObject & space)
+-> decltype(variation(div(expr.lhs()), space) - variation(div(expr.rhs()), space))
+{
+    return variation(div(expr.lhs()), space) - variation(div(expr.rhs()), space);
+}
+
+// Partial specialization for multiplication 
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace, typename _SpaceObject>
+auto variation(const DivExpression<ProductExpression<_LhsExpr,_RhsExpr,0,1,_LhsSpace,_RhsSpace>,1, (_LhsSpace | _RhsSpace), (_LhsExpr::IsConstant && _RhsExpr::IsConstant)> & expr,
+          const _SpaceObject & space)
+-> decltype(variation(dot(grad(expr.lhs()), expr.rhs()), space) + variation(expr.lhs() * div(expr.rhs()), space))
+{
+    return variation(dot(grad(expr.lhs()), expr.rhs()), space) + variation(expr.lhs() * div(expr.rhs()), space);    
+}
+
+// Partial specialization for cross product
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace, typename _SpaceObject>
+auto variation(const DivExpression<CrossProductExpression<_LhsExpr,_RhsExpr,1,1,_LhsSpace,_RhsSpace>,0, (_LhsSpace | _RhsSpace), (_LhsExpr::IsConstant && _RhsExpr::IsConstant)> & expr,
+          const _SpaceObject & space)
+-> decltype(variation(dot(expr.rhs(), curl(expr.lhs())), space) - variation(dot(expr.lhs(), curl(expr.rhs())), space))
+{
+    return variation(dot(expr.rhs(), curl(expr.lhs())), space) - variation(dot(expr.lhs(), curl(expr.rhs())), space);    
+}
+
+// Partial specialization for outer product
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace, typename _SpaceObject>
+auto variation(const DivExpression<OuterProductExpression<_LhsExpr,_RhsExpr,1,1,_LhsSpace,_RhsSpace>,1, (_LhsSpace | _RhsSpace), (_LhsExpr::IsConstant && _RhsExpr::IsConstant)> & expr,
+          const _SpaceObject & space)
+-> decltype(variation(div(expr.lhs()) * expr.rhs(), space) + variation(expr.lhs() * grad(expr.rhs()), space))
+{
+    return variation(div(expr.lhs()) * expr.rhs(), space) + variation(expr.lhs() * grad(expr.rhs()), space);    
+}
+
+// Partial specialization for gradient
+template <typename _E, size_t _Space, size_t _IsConstant, typename _SpaceObject>
+auto variation(const DivExpression<GradExpression<_E, ExpressionTraits<_E>::Order, _Space, _IsConstant>, ExpressionTraits<_E>::Order - 1, _Space, _IsConstant> & expr,
+          const _SpaceObject & space)
+-> decltype(variation(LaplExpression<_E, ExpressionTraits<_E>::Order, _Space, _IsConstant>(expr.expr().expr()), space))
+{
+    return variation(LaplExpression<_E, ExpressionTraits<_E>::Order, _Space, _IsConstant>(expr.expr().expr()), space);
+}
+
+// Partial specialization for division
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace, typename _SpaceObject>
+auto variation(const DivExpression<DivisionExpression<_LhsExpr,_RhsExpr,1,0,_LhsSpace,_RhsSpace>,1, (_LhsSpace | _RhsSpace), (_LhsExpr::IsConstant && _RhsExpr::IsConstant)> & expr,
+          const _SpaceObject & space)
+-> decltype(variation((expr.rhs() * div(expr.lhs()) - dot(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs()), space))
+{
+    return variation((expr.rhs() * div(expr.lhs()) - dot(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs()), space);
+}
 
 }//namespace Expr
 }//namespace gismo

@@ -23,98 +23,258 @@ namespace gismo
 namespace Expr
 {
 
-// --- ExpressionTraits specializations ---
-// ExpressionTraits for vector cross product (1,1) -> vector (1)
-template <typename LhsExpr, typename RhsExpr>
-struct ExpressionTraits<CrossProductExpression<LhsExpr, RhsExpr, 1, 1, ExpressionTraits<LhsExpr>::space, ExpressionTraits<RhsExpr>::space>>
+// --- Expression Traits for CrossProductExpression ---
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+struct ExpressionTraits<CrossProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
-    typedef LhsExpr LhsType;
-    typedef RhsExpr RhsType;
-
-    typedef typename ExpressionTraits<LhsExpr>::Scalar Scalar;
-    static constexpr size_t order = 1;
-    static constexpr size_t space = Space::None;
-    static constexpr size_t deriv = ExpressionTraits<RhsExpr>::deriv; //TODO
-    static constexpr bool isConstant = ExpressionTraits<LhsExpr>::isConstant && ExpressionTraits<RhsExpr>::isConstant;
+    typedef _LhsExpr LhsType;
+    typedef _RhsExpr RhsType;
+    typedef typename ExpressionTraits<_LhsExpr>::Scalar Scalar;
+    static constexpr size_t Order = ExpressionTraits<_LhsExpr>::Order;
+    static constexpr size_t Space = (SpaceType::None == _LhsSpace && SpaceType::None == _RhsSpace) ? SpaceType::None :
+                                    (SpaceType::None != _LhsSpace) ? _LhsSpace : _RhsSpace;
+    static constexpr size_t Deriv = (ExpressionTraits<_LhsExpr>::Deriv > ExpressionTraits<_RhsExpr>::Deriv) ? 
+                                     ExpressionTraits<_LhsExpr>::Deriv + 1 : ExpressionTraits<_RhsExpr>::Deriv + 1;
+    static constexpr bool IsConstant = ExpressionTraits<_LhsExpr>::IsConstant && ExpressionTraits<_RhsExpr>::IsConstant;
 };
 
-// --- Partial Specialization: Cross product of 3D vectors ---
-template <typename LhsExpr, typename RhsExpr, size_t LhsSpace, size_t RhsSpace>
-class CrossProductExpression<LhsExpr, RhsExpr, 1, 1, LhsSpace, RhsSpace>
- : public BinaryOperator<CrossProductExpression<LhsExpr, RhsExpr, 1, 1, LhsSpace, RhsSpace>>
+// --- CrossProductExpression with unified class using enable_if on eval() ---
+
+// Unified primary template (handles all Space combinations)
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+class CrossProductExpression
+ : public BinaryOperator<CrossProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
-    using Base = BinaryOperator<CrossProductExpression<LhsExpr, RhsExpr, 1, 1, LhsSpace, RhsSpace>>;
-
-protected:
-
+    using Base = BinaryOperator<CrossProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>;
 public:
-    CrossProductExpression(const LhsExpr& lhs, const RhsExpr& rhs)
-        : Base(lhs, rhs)
+    CrossProductExpression(const _LhsExpr& lhs, const _RhsExpr& rhs) : Base(lhs, rhs)
     {
         GISMO_ENSURE(lhs.sizes()[0]==3,"lhs must be a vector of size 3");
         GISMO_ENSURE(rhs.sizes()[0]==3,"rhs must be a vector of size 3");
-        // Fill Base::sizes_ - cross product always produces 3D vector
         this->sizes_[0] = 3;
     }
 
-    size_t domainDim() const
+    size_t domainDim() const { return this->lhs_expr_.domainDim(); }
+
+    // --- eval() specialization 1: Space=None ---
+    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<LS == SpaceType::None && RS == SpaceType::None,
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
     {
-        gsWarn<<"Correct?\n";
-        return this->lhs_expr_.domainDim();
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+
+        GISMO_ASSERT(lhs_val.rowCardinality() == 1 && lhs_val.colCardinality() == 1,
+                    "CrossProductExpression (None,None): Expected scalar cardinality");
+        GISMO_ASSERT(rhs_val.rowCardinality() == 1 && rhs_val.colCardinality() == 1,
+                    "CrossProductExpression (None,None): Expected scalar cardinality");
+
+        ExpressionValue<typename Base::Scalar> result(1, 1);
+        const auto& a = lhs_val(0, 0);
+        const auto& b = rhs_val(0, 0);
+        gsMatrix<typename Base::Scalar> cross_result(3, 1);
+        cross_result(0, 0) = a(1, 0) * b(2, 0) - a(2, 0) * b(1, 0);
+        cross_result(1, 0) = a(2, 0) * b(0, 0) - a(0, 0) * b(2, 0);
+        cross_result(2, 0) = a(0, 0) * b(1, 0) - a(1, 0) * b(0, 0);
+        result(0, 0) = cross_result;
+        return result;
     }
 
-    gsMatrix<typename Base::Scalar> eval(const index_t k) const
+    // --- eval() specialization 2: Space=Test ---
+    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<LS == SpaceType::Test && RS == SpaceType::Test,
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
     {
-        gsMatrix<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        gsMatrix<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        GISMO_ASSERT((lhs_val.rows()==3 && lhs_val.cols()==1) || (lhs_val.cols()==3 && lhs_val.rows()==1),"lhs should be a vector (ncols!=1)");
-        GISMO_ASSERT((rhs_val.rows()==3 && rhs_val.cols()==1) || (rhs_val.cols()==3 && rhs_val.rows()==1),"rhs should be a vector (ncols!=1)");
-        gsVector<typename Base::Scalar,3> lhs_vec = gsVector<typename Base::Scalar,3>::vec(lhs_val.at(0),lhs_val.at(1),lhs_val.at(2));
-        gsVector<typename Base::Scalar,3> rhs_vec = gsVector<typename Base::Scalar,3>::vec(rhs_val.at(0),rhs_val.at(1),rhs_val.at(2));
-        return lhs_vec.cross(rhs_vec);
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+
+        GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
+                    lhs_val.colCardinality() == rhs_val.colCardinality(),
+                    "CrossProductExpression (Test,Test): Cardinality mismatch");
+
+        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+
+        for (index_t i = 0; i < result.rowCardinality(); ++i)
+            for (index_t j = 0; j < result.colCardinality(); ++j)
+            {
+                const auto& a = lhs_val(i, j);
+                const auto& b = rhs_val(i, j);
+                gsMatrix<typename Base::Scalar> cross_result(3, 1);
+                cross_result(0, 0) = a(1, 0) * b(2, 0) - a(2, 0) * b(1, 0);
+                cross_result(1, 0) = a(2, 0) * b(0, 0) - a(0, 0) * b(2, 0);
+                cross_result(2, 0) = a(0, 0) * b(1, 0) - a(1, 0) * b(0, 0);
+                result(i, j) = cross_result;
+            }
+
+        return result;
     }
 
-    void print(std::ostream & os) const
+    // --- eval() specialization 3: Space=Trial ---
+    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
+    typename std::enable_if<LS == SpaceType::Trial && RS == SpaceType::Trial,
+                            ExpressionValue<typename Base::Scalar>>::type
+    eval(const index_t k) const
     {
-        os<<this->lhs_expr_<<"\u00D7"<<this->rhs_expr_;
+        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+
+        GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
+                    lhs_val.colCardinality() == rhs_val.colCardinality(),
+                    "CrossProductExpression (Trial,Trial): Cardinality mismatch");
+
+        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+
+        for (index_t i = 0; i < result.rowCardinality(); ++i)
+            for (index_t j = 0; j < result.colCardinality(); ++j)
+            {
+                const auto& a = lhs_val(i, j);
+                const auto& b = rhs_val(i, j);
+                gsMatrix<typename Base::Scalar> cross_result(3, 1);
+                cross_result(0, 0) = a(1, 0) * b(2, 0) - a(2, 0) * b(1, 0);
+                cross_result(1, 0) = a(2, 0) * b(0, 0) - a(0, 0) * b(2, 0);
+                cross_result(2, 0) = a(0, 0) * b(1, 0) - a(1, 0) * b(0, 0);
+                result(i, j) = cross_result;
+            }
+
+        return result;
     }
 
-private:
-    using Base::lhs_expr_;
-    using Base::rhs_expr_;
+    void print(std::ostream & os) const { os<<this->lhs_expr_<<"×"<<this->rhs_expr_; }
 };
 
 // Generic cross operator to create CrossProductExpression instances using SFINAE
-template <typename LeftExpr, typename RightExpr>
+// None-space variant
+template <typename _LeftExpr, typename _RightExpr>
 typename std::enable_if<
-    ExpressionTraits<LeftExpr>::order == 1 && ExpressionTraits<LeftExpr>::space == Space::None &&
-    ExpressionTraits<RightExpr>::order == 1 && ExpressionTraits<RightExpr>::space == Space::None,
-    CrossProductExpression<LeftExpr, RightExpr, 1, 1, ExpressionTraits<LeftExpr>::space, ExpressionTraits<RightExpr>::space>
+    (ExpressionTraits<_LeftExpr>::Order == 1) && (ExpressionTraits<_LeftExpr>::Space == SpaceType::None) &&
+    (ExpressionTraits<_RightExpr>::Order == 1) && (ExpressionTraits<_RightExpr>::Space == SpaceType::None),
+    CrossProductExpression<_LeftExpr, _RightExpr, 1, 1, SpaceType::None, SpaceType::None>
 >::type
-cross(const LeftExpr& lhs, const RightExpr& rhs)
+cross(const BaseExpression<_LeftExpr>& lhs, const BaseExpression<_RightExpr>& rhs)
 {
-    return CrossProductExpression<LeftExpr, RightExpr, 1, 1, ExpressionTraits<LeftExpr>::space, ExpressionTraits<RightExpr>::space>(lhs, rhs);
+    return CrossProductExpression<_LeftExpr, _RightExpr, 1, 1, SpaceType::None, SpaceType::None>(lhs, rhs);
+}
+
+// Test-space variant
+template <typename _LeftExpr, typename _RightExpr>
+typename std::enable_if<
+    (ExpressionTraits<_LeftExpr>::Order == 1) && (ExpressionTraits<_LeftExpr>::Space == SpaceType::Test) &&
+    (ExpressionTraits<_RightExpr>::Order == 1) && (ExpressionTraits<_RightExpr>::Space == SpaceType::Test),
+    CrossProductExpression<_LeftExpr, _RightExpr, 1, 1, SpaceType::Test, SpaceType::Test>
+>::type
+cross(const BaseExpression<_LeftExpr>& lhs, const BaseExpression<_RightExpr>& rhs)
+{
+    return CrossProductExpression<_LeftExpr, _RightExpr, 1, 1, SpaceType::Test, SpaceType::Test>(lhs, rhs);
+}
+
+// Trial-space variant
+template <typename _LeftExpr, typename _RightExpr>
+typename std::enable_if<
+    (ExpressionTraits<_LeftExpr>::Order == 1) && (ExpressionTraits<_LeftExpr>::Space == SpaceType::Trial) &&
+    (ExpressionTraits<_RightExpr>::Order == 1) && (ExpressionTraits<_RightExpr>::Space == SpaceType::Trial),
+    CrossProductExpression<_LeftExpr, _RightExpr, 1, 1, SpaceType::Trial, SpaceType::Trial>
+>::type
+cross(const BaseExpression<_LeftExpr>& lhs, const BaseExpression<_RightExpr>& rhs)
+{
+    return CrossProductExpression<_LeftExpr, _RightExpr, 1, 1, SpaceType::Trial, SpaceType::Trial>(lhs, rhs);
 }
 
 // Specializations for transpose expressions (these should trigger compile errors)
-template <typename LeftExpr, typename RightExpr>
-void cross(const TransposeExpression<LeftExpr>& lhs, const RightExpr& rhs)
+template <typename _LeftExpr, typename _RightExpr>
+void cross(const TransposeExpression<_LeftExpr>& lhs, const _RightExpr& rhs)
 {
     GISMO_ERROR("Cross product is not defined for vectors with different transposition");
 }
 
-template <typename LeftExpr, typename RightExpr>
-void cross(const LeftExpr& lhs, const TransposeExpression<RightExpr>& rhs)
+template <typename _LeftExpr, typename _RightExpr>
+void cross(const _LeftExpr& lhs, const TransposeExpression<_RightExpr>& rhs)
 {
     GISMO_ERROR("Cross product is not defined for vectors with different transposition");
 }
 
-template <typename LeftExpr, typename RightExpr>
-auto cross(const TransposeExpression<LeftExpr>& lhs, const TransposeExpression<RightExpr>& rhs)
+template <typename _LeftExpr, typename _RightExpr>
+auto cross(const TransposeExpression<_LeftExpr>& lhs, const TransposeExpression<_RightExpr>& rhs)
     -> decltype(cross(lhs.expr(), rhs.expr()).transpose())
 {
     return cross(lhs.expr(), rhs.expr()).transpose();
 }
+
+// Specialization for NullObject 
+template <typename _T, size_t _LhsSpace, size_t _LhsOrder, typename _RhsExpr>
+auto cross(const NullObject<_T, _LhsSpace, _LhsOrder>& /* lhs */, const BaseExpression<_RhsExpr>& /* rhs */)
+-> NullObject<_T, SpaceType::None, 0>
+{
+    return NullObject<_T, SpaceType::None, 0>();
+}
+
+template <typename _LhsExpr, typename _T, size_t _RhsSpace, size_t _RhsOrder>
+auto cross(const BaseExpression<_LhsExpr>& /* lhs */, const NullObject<_T, _RhsSpace, _RhsOrder>& /* rhs */)
+-> NullObject<_T, SpaceType::None, 0>
+{
+    return NullObject<_T, SpaceType::None, 0>();
+}
+
+// Specialization for Expression x Vector primitive
+template <typename _LhsExpr, int _Rows>
+typename std::enable_if<
+    (ExpressionTraits<_LhsExpr>::Order == 1) && (ExpressionTraits<_LhsExpr>::Space == SpaceType::None) &&
+    (_Rows == 3),
+    CrossProductExpression<_LhsExpr, ConstantObject< typename ExpressionTraits<_LhsExpr>::Scalar, 1>, 1, 1, SpaceType::None, SpaceType::None>
+>::type
+cross(const BaseExpression<_LhsExpr>& lhs, const gsVector<typename ExpressionTraits<_LhsExpr>::Scalar, _Rows>& rhs)
+{
+    ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar, 1> rhs_expr(rhs);
+    return CrossProductExpression<_LhsExpr, ConstantObject<typename ExpressionTraits<_LhsExpr>::Scalar, 1>, 1, 1, SpaceType::None, SpaceType::None>(lhs, rhs_expr);
+}
+
+// Specialization for Vector primitive x Expression
+template <typename _RhsExpr, int _Rows>
+typename std::enable_if<
+    (ExpressionTraits<_RhsExpr>::Order == 1) && (ExpressionTraits<_RhsExpr>::Space == SpaceType::None) &&
+    (_Rows == 3),
+    CrossProductExpression<ConstantObject< typename ExpressionTraits<_RhsExpr>::Scalar, 1>, _RhsExpr, 1, 1, SpaceType::None, SpaceType::None>
+>::type
+cross(const gsVector<typename ExpressionTraits<_RhsExpr>::Scalar, _Rows>& lhs, const BaseExpression<_RhsExpr>& rhs)
+{
+    ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar, 1> lhs_expr(lhs);
+    return CrossProductExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar, 1>, _RhsExpr, 1, 1, SpaceType::None, SpaceType::None>(lhs_expr, rhs);
+}
+
+// TODO: Implement variations
+// Variation of CrossProductExpression where LHS is a SolutionObject and RhsExpr is NOT a SolutionObject
+template <typename _LhsExpr, typename _RhsExpr, typename _SpaceObject>
+typename std::enable_if<
+    !std::is_base_of<SolutionObject<typename _LhsExpr::Scalar,_LhsExpr::Space,_LhsExpr::Order>, _RhsExpr>::value,
+    decltype(variation(std::declval<_LhsExpr>(), std::declval<_SpaceObject>()))
+>::type
+variation(const CrossProductExpression<SolutionObject<typename _LhsExpr::Scalar,_LhsExpr::Space,_LhsExpr::Order>,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,SolutionObject<typename _LhsExpr::Scalar,_LhsExpr::Space,_LhsExpr::Order>::Order,_RhsExpr::Space> & expr,
+          const _SpaceObject & space)
+{
+    return cross(variation(expr.lhs(), space), expr.rhs());
+}
+
+// Variation of CrossProductExpression where RHS is a SolutionObject and LhsExpr is NOT a SolutionObject
+template <typename _LhsExpr, typename _RhsExpr, typename _SpaceObject>
+typename std::enable_if<
+    !std::is_base_of<SolutionObject<typename _RhsExpr::Scalar,_RhsExpr::Space,_RhsExpr::Order>, _LhsExpr>::value,
+    decltype(variation(std::declval<_LhsExpr>(), std::declval<_SpaceObject>()))
+>::type
+variation(const CrossProductExpression<_LhsExpr,SolutionObject<typename _RhsExpr::Scalar,_RhsExpr::Space,_RhsExpr::Order>,_LhsExpr::Order,_RhsExpr::Order,_LhsExpr::Space,SolutionObject<typename _RhsExpr::Scalar,_RhsExpr::Space,_RhsExpr::Order>::Order> & expr,
+          const _SpaceObject & space)
+{
+    return cross(expr.lhs(), variation(expr.rhs(), space));
+}
+
+template<typename _LhsExpr, typename _RhsExpr, typename _SpaceObject>
+auto variation(const CrossProductExpression<_LhsExpr,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,_LhsExpr::Space,_RhsExpr::Space> & expr,
+               const _SpaceObject & space)
+-> decltype(cross(variation(expr.lhs(), space), expr.rhs()) + cross(expr.lhs(), variation(expr.rhs(), space)))
+{
+    return cross(variation(expr.lhs(), space), expr.rhs()) + cross(expr.lhs(), variation(expr.rhs(), space));
+}
+
 
 }//namespace Expr
 }//namespace gismo

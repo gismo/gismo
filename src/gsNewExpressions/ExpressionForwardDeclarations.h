@@ -43,21 +43,26 @@ namespace Expr
     class BaseObject;
 
     // Null Object
-    template <class T, size_t _order>
+    template <class T, size_t _Space, size_t _Order>
     class NullObject;
 
     // Constant Objects
-    template <class T, size_t _order>
+    template <class T, size_t _Order>
     class ConstantObject;
 
     // VariableObject Objects
-    template <class T, size_t _order, bool _isConstant>
+    template <class T, size_t _Order, bool _IsConstant>
     class VariableObject;
 
     // Space Objects
-    template <class T, size_t _space, size_t _order>
+    template <class T, size_t _Space, size_t _Order>
     class SpaceObject;
+    template <class E, class SpaceType> 
+    class VariationObject;
 
+    // Solution Objects
+    template <class T, size_t _Space, size_t _Order>
+    class SolutionObject;
 
     ////////////////////////////////////////////////////////////////
     // Binary Operators
@@ -66,25 +71,25 @@ namespace Expr
     template <typename E>
     class BinaryOperator;
 
-    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
     class ProductExpression;
 
-    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
     class InnerProductExpression;
 
-    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
     class OuterProductExpression;
 
-    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
     class CrossProductExpression;
 
-    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
     class DivisionExpression;
 
-    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
     class AddExpression;
 
-    template <typename LhsExpr, typename RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t LhsSpace, size_t RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
     class SubtractExpression;
 
     ////////////////////////////////////////////////////////////////
@@ -100,10 +105,10 @@ namespace Expr
     template <typename E, size_t Order, size_t Space, size_t IsConstant>
     class DivExpression;
 
-    template <typename E, size_t Order, size_t Space, size_t IsConstant>
+    template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
     class CurlExpression;
 
-    template <typename E, size_t Order, size_t Space, size_t IsConstant>
+    template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
     class LaplExpression;
 
     ////////////////////////////////////////////////////////////////

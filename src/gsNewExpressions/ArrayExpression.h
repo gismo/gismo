@@ -24,10 +24,10 @@ struct ExpressionTraits<ArrayExpression<E>>
     typedef E ExprType; // Needed for UnaryOperator
 
     typedef typename ExpressionTraits<E>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<E>::order;
-    static constexpr size_t space = ExpressionTraits<E>::space;
-    static constexpr size_t deriv = ExpressionTraits<E>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
+    static constexpr size_t Order = ExpressionTraits<E>::Order;
+    static constexpr size_t Space = ExpressionTraits<E>::Space;
+    static constexpr size_t Deriv = ExpressionTraits<E>::Deriv;
+    static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
 
 };
 
@@ -44,7 +44,7 @@ public:
     {
     }
 
-    std::array<size_t, Base::order> & sizes() const
+    std::array<size_t, Base::Order> & sizes() const
     {
         return expr_.sizes();
     }
@@ -54,7 +54,7 @@ public:
         return expr_.domainDim();
     }
 
-    gsMatrix<Scalar> eval(const index_t k) const
+    ExpressionValue<Scalar> eval(const index_t k) const
     {
         return expr_.eval(k);
     }

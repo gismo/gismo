@@ -16,6 +16,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 
 #include <gsNewExpressions/ExpressionUtils.h>
+#include <gsNewExpressions/ExpressionValue.h>
 #include <gsNewExpressions/ExpressionForwardDeclarations.h>
 
 #include <gsNewExpressions/BaseExpression.h>
@@ -28,6 +29,8 @@
 #include <gsNewExpressions/ConstantObject.h>
 #include <gsNewExpressions/VariableObject.h>
 #include <gsNewExpressions/SpaceObject.h>
+#include <gsNewExpressions/VariationObject.h>
+#include <gsNewExpressions/SolutionObject.h>
 
 #include <gsNewExpressions/AddExpression.h>
 #include <gsNewExpressions/SubtractExpression.h>
@@ -59,10 +62,10 @@ struct ExpressionTraits
 {
 public:
     typedef real_t Scalar;//todo
-    static constexpr size_t order = 0; // Invalid order by default
-    static constexpr size_t space = Space::None;
-    static constexpr size_t deriv = 0;
-    static constexpr bool isConstant = false;
+    static constexpr size_t Order = 0; // Invalid order by default
+    static constexpr size_t Space = SpaceType::None;
+    static constexpr size_t Deriv = 0;
+    static constexpr bool IsConstant = false;
 };
 
 // Specialization for const types - delegate to non-const version
@@ -70,24 +73,24 @@ template <typename E>
 struct ExpressionTraits<const E>
 {
     typedef typename ExpressionTraits<E>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<E>::order;
-    static constexpr size_t space = ExpressionTraits<E>::space;
-    static constexpr size_t deriv = ExpressionTraits<E>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
+    static constexpr size_t Order = ExpressionTraits<E>::Order;
+    static constexpr size_t Space = ExpressionTraits<E>::Space;
+    static constexpr size_t Deriv = ExpressionTraits<E>::Deriv;
+    static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
 };
 
 
 
 // // Specialization for BaseObject to avoid circular dependency
-// template <class T, size_t _order, bool _isConstant, short_t _space>
-// struct ExpressionTraits<BaseObject<T, _order, _isConstant, _space>>
+// template <class T, size_t _Order, bool _IsConstant, short_t _Space>
+// struct ExpressionTraits<BaseObject<T, _Order, _IsConstant, _Space>>
 // {
 // public:
 //     typedef T Scalar;
-//     typedef const BaseObject<T, _order, _isConstant, _space> Nested_t;
+//     typedef const BaseObject<T, _Order, _IsConstant, _Space> Nested_t;
 
-//     static constexpr size_t order = _order;
-//     static constexpr size_t space = _space;
+//     static constexpr size_t Order = _Order;
+//     static constexpr size_t Space = _Space;
 // };
 
 /**

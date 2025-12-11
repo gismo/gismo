@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsFunctionSet.h>
+#include <gsNewExpressions/SpaceObject.h>
 
 #pragma once
 
@@ -20,51 +21,83 @@ namespace gismo
 namespace Expr
 {
 
-    template <class T, short_t _space, size_t _order>
-    class SolutionObject : public BaseObject<T, _order, false, _space>
+template <class T, size_t _Space, size_t _Order>
+struct ExpressionTraits<SolutionObject<T, _Space, _Order>>
+{
+    typedef T Scalar;
+    static constexpr size_t Order = _Order;
+    static constexpr size_t Space = SpaceType::None; // the solution has SpaceType::None, its underlying space has _Space
+    static constexpr size_t Deriv = 0;
+    static constexpr bool IsConstant = false;
+};
+
+
+template <class T, size_t _Space, size_t _Order>
+class SolutionObject : public BaseObject<SolutionObject<T, _Space, _Order>>
+{
+    using Base = BaseObject<SolutionObject<T, _Space, _Order>>;
+
+public:
+    // Expose the static traits publicly
+    using Base::Order;
+    using Base::Space;
+    using Base::Deriv;
+    using Base::IsConstant;
+    typedef typename Base::Scalar Scalar;
+
+private:
+    const SpaceObject<T,_Space,_Order> * m_Space;
+    gsMatrix<Scalar> * m_solVector;
+public:
+    SolutionObject(const SpaceObject<T,_Space,_Order> & space,
+                gsMatrix<Scalar> & solVector,
+                std::string label="u")
+    :
+    Base(space.domainDim(),space.sizes(), label),
+    m_Space(&space),
+    m_solVector(&solVector)
     {
-        using Base = BaseObject<T, _order, false, _space>;
-    public:
-        typedef T Scalar; // Define Scalar type for this expression
-        static constexpr size_t order = Base::order;
-        static constexpr bool isConstant = Base::isConstant;
-        static constexpr size_t space = Base::space;
+    }
 
-    private:
-        const gsFunctionSet<Scalar> * m_fs;
-        const gsFuncData<Scalar>    * m_fd;
-    public:
-        SpaceObject(const std::array<size_t, order> & input_sizes)
-        :
-        BaseObject<Scalar, _order, false, _space>(input_sizes),
-        m_fs(NULL), m_fd(NULL)
-        {
-        }
+    ExpressionValue<Scalar> eval(const index_t k) const
+    {
+        // TODO: SolutionObject needs proper implementation
+        // For now, return placeholder
+        ExpressionValue<Scalar> result(1, 1);
+        result(0, 0) = gsMatrix<Scalar>();
+        return result;
+    }
 
-        gsMatrix<Scalar> eval(const index_t k) const
-        {
-            return m_fd->values[0].col(k).blockDiag(order);
-        }
+    void parse(gismo::ExpressionHelper<Scalar> & helper) const
+    {
+    }
 
-        const gsFunctionSet<T> & source() const {return *m_fs;}
-        const gsFuncData<T>    & data()   const
-        {
-            GISMO_ASSERT(NULL!=m_fd, "SpaceObject: invalid data "<< m_fs <<","<<m_fd);
-            return *m_fd;
-        }
+    const SpaceObject<T,_Space,_Order> & getSpace() const
+    {
+        // gsInfo<<"m_Space.Space = "<<m_Space->space<<"\n";
+        // gsInfo<<"m_Space.Order = "<<m_Space->order<<"\n";
+        return *m_Space;
+    }
 
-        void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
-        void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
+    void print(std::ostream & os) const
+    {
+        os<<Base::label_;
+    }
+    // void print(std::ostream & os) const
+    // {
+    //     os<<"Solution: "<<Base::label_
+    //       <<", solVector size "<<m_solVector->rows()<<"x"<<m_solVector->cols()<<")"
+    //       <<", space (id="<<m_Space->id()<<"): "<<getSpace();
+    // }
 
-        void parse(gismo::ExpressionHelper<Scalar> & helper) const
-        {
-            helper.add(*this);
-            m_fd->flags |= NEED_VALUE;
-        }
+};
 
-        const SpaceObject<Scalar,_space,_order> & rowVar() const {return (_space==Space::Test  || _space==Space::Both) ? *this : NullObject<T,order>::get();}
-        const SpaceObject<Scalar,_space,_order> & colVar() const {return (_space==Space::Trial || _space==Space::Both) ? *this : NullObject<T,order>::get();}
+template <class T, size_t Sol_Space, size_t Sol_Order, typename SpaceObj>
+auto variation(const SolutionObject<T,Sol_Space,Sol_Order> & sol,const SpaceObj & space)
+-> VariationObject<SolutionObject<T,Sol_Space,Sol_Order>,SpaceObj>
+{
+    return VariationObject<SolutionObject<T,Sol_Space,Sol_Order>,SpaceObj>(sol,space, sol.getSpace().id() == space.id());
+}
 
-    };
 }//namespace Expr
 }//namespace gismo

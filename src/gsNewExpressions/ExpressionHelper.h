@@ -174,54 +174,77 @@ public:
         return expr;
     }
 
-    Expr::SpaceObject<T,Expr::Space::Test,0> getScalarTestSpace(const gsFunctionSet<T> & space, size_t id = 0, std::string label="φ")
+    Expr::SpaceObject<T,Expr::SpaceType::Test,0> getScalarTestSpace(const gsFunctionSet<T> & space, size_t id = 0, std::string label="φ")
     {
+        // TODO: Assert if ID exists already
         GISMO_ASSERT(space.targetDim()==1,"Function is not scalar");
         // Create a new VariableObject scalar expression
-        Expr::SpaceObject<T,Expr::Space::Test,0> expr(space.domainDim(),std::array<size_t,0>{}, id, label);
+        Expr::SpaceObject<T,Expr::SpaceType::Test,0> expr(space.domainDim(),std::array<size_t,0>{}, id, label);
         expr.setSource(space);
         return expr;
     }
 
-    // TODO: replace 3rd template with Expr::Space::Trial
-    Expr::SpaceObject<T,Expr::Space::Trial,0> getScalarTrialSpace(const gsFunctionSet<T> & space, size_t id = 0, std::string label="ψ")
+    // TODO: replace 3rd template with Expr::SpaceType::Trial
+    Expr::SpaceObject<T,Expr::SpaceType::Trial,0> getScalarTrialSpace(const gsFunctionSet<T> & space, size_t id = 0, std::string label="ψ")
     {
+        // TODO: Assert if ID exists already
         GISMO_ASSERT(space.targetDim()==1,"Function is not scalar");
         // Create a new VariableObject scalar expression
-        Expr::SpaceObject<T,Expr::Space::Trial,0> expr(space.domainDim(),std::array<size_t,0>{}, id, label);
+        Expr::SpaceObject<T,Expr::SpaceType::Trial,0> expr(space.domainDim(),std::array<size_t,0>{}, id, label);
         expr.setSource(space);
         return expr;
     }
 
-    Expr::SpaceObject<T,Expr::Space::Test,1> getVectorTestSpace(const gsFunctionSet<T> & space, size_t id = 0, std::string label="φ")
+    Expr::SpaceObject<T,Expr::SpaceType::Test,1> getVectorTestSpace(const gsFunctionSet<T> & space, size_t dim, size_t id = 0, std::string label="φ")
     {
-        GISMO_ASSERT(space.targetDim()!=1,"Function is not scalar");
+        GISMO_ASSERT(dim!=1,"Function is not a vector");
         // Create a new VariableObject scalar expression
-        Expr::SpaceObject<T,Expr::Space::Test,1> expr(space.domainDim(),std::array<size_t,1>{(size_t)space.targetDim()}, id, label);
+        Expr::SpaceObject<T,Expr::SpaceType::Test,1> expr(space.domainDim(),std::array<size_t,1>{(size_t)dim}, id, label);
         expr.setSource(space);
         return expr;
     }
 
-    Expr::SpaceObject<T,Expr::Space::Trial,1> getVectorTrialSpace(const gsFunctionSet<T> & space, size_t id = 0, std::string label="ψ")
+    Expr::SpaceObject<T,Expr::SpaceType::Trial,1> getVectorTrialSpace(const gsFunctionSet<T> & space, size_t dim, size_t id = 0, std::string label="ψ")
     {
-        GISMO_ASSERT(space.targetDim()!=1,"Function is not scalar");
+        GISMO_ASSERT(dim!=1,"Function is not a vector");
         // Create a new VariableObject scalar expression
-        Expr::SpaceObject<T,Expr::Space::Trial,1> expr(space.domainDim(),std::array<size_t,1>{(size_t)space.targetDim()}, id, label);
+        Expr::SpaceObject<T,Expr::SpaceType::Trial,1> expr(space.domainDim(),std::array<size_t,1>{(size_t)dim}, id, label);
         expr.setSource(space);
         return expr;
     }
 
-    template <size_t order, bool _isConstant>
-    void add(const Expr::VariableObject<T,order,_isConstant> & VariableObject)
+    template <size_t _Order>
+    Expr::SolutionObject<T,Expr::SpaceType::Trial,_Order> getSolution(const Expr::SpaceObject<T,Expr::SpaceType::Trial,_Order> & space,
+                                                      gsMatrix<T> & solVector, std::string label="u")
     {
-        const_cast<Expr::VariableObject<T,order,_isConstant>&>(VariableObject)
+        return Expr::SolutionObject<T,Expr::SpaceType::Trial,_Order>(space, solVector, label);
+    }
+
+    template <size_t _Order>
+    Expr::SolutionObject<T,Expr::SpaceType::Trial,_Order> getSolution(const Expr::SpaceObject<T,Expr::SpaceType::Trial,_Order> & space,
+                                                      gsVector<T> & solVector, std::string label="u")
+    {
+        return Expr::SolutionObject<T,Expr::SpaceType::Trial,_Order>(space, solVector, label);
+    }
+
+    template <size_t _Order>
+    Expr::SolutionObject<T,Expr::SpaceType::Test,_Order> getSolution(const Expr::SpaceObject<T,Expr::SpaceType::Test,_Order> & space,
+                                                      gsMatrix<T> & solVector, std::string label)
+    {
+        GISMO_ERROR("Solution can only be constructed from Trial space");
+    }
+
+    template <size_t Order, bool _IsConstant>
+    void add(const Expr::VariableObject<T,Order,_IsConstant> & VariableObject)
+    {
+        const_cast<Expr::VariableObject<T,Order,_IsConstant>&>(VariableObject)
             .setData(this->m_fdata[&VariableObject.source()]);
     }
 
-    template <size_t _space, size_t order>
-    void add(const Expr::SpaceObject<T,_space,order> & space)
+    template <size_t _Space, size_t order>
+    void add(const Expr::SpaceObject<T,_Space,order> & space)
     {
-        const_cast<Expr::SpaceObject<T,_space,order>&>(space)
+        const_cast<Expr::SpaceObject<T,_Space,order>&>(space)
             .setData(this->m_fdata[&space.source()]);
     }
 

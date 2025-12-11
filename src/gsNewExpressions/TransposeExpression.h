@@ -24,29 +24,29 @@ struct ExpressionTraits<TransposeExpression<E>>
     typedef E ExprType; // Needed for UnaryOperator
 
     typedef typename ExpressionTraits<E>::Scalar Scalar;
-    static constexpr size_t order = ExpressionTraits<E>::order;
-    static constexpr size_t space = ExpressionTraits<E>::space;
-    static constexpr size_t deriv = ExpressionTraits<E>::deriv;
-    static constexpr bool isConstant = ExpressionTraits<E>::isConstant;
+    static constexpr size_t Order = ExpressionTraits<E>::Order;
+    static constexpr size_t Space = ExpressionTraits<E>::Space;
+    static constexpr size_t Deriv = ExpressionTraits<E>::Deriv;
+    static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
 };
 
 template<typename E>
 class TransposeExpression : public UnaryOperator< TransposeExpression<E> >
 {
-    static_assert(ExpressionTraits<E>::order == 1 || ExpressionTraits<E>::order == 2,
+    static_assert(ExpressionTraits<E>::Order == 1 || ExpressionTraits<E>::Order == 2,
                     "TransposeExpression: Only vector (order 1) or matrix (order 2) expressions can be transposed.");
 
     using Base = UnaryOperator<TransposeExpression<E>>;
 
 protected:
-    mutable std::array<size_t, Base::order> sizes_;
+    mutable std::array<size_t, Base::Order> sizes_;
 
 public:
     TransposeExpression(const E& expr)
     :
     Base(expr)
     {
-        initializeSizes(expr, std::integral_constant<size_t, Base::order>{});
+        initializeSizes(expr, std::integral_constant<size_t, Base::Order>{});
     }
 
 private:
@@ -66,7 +66,7 @@ private:
 
 public:
 
-    const std::array<size_t, Base::order> & sizes() const
+    const std::array<size_t, Base::Order> & sizes() const
     {
         return sizes_;
     }
@@ -76,9 +76,20 @@ public:
         return expr_.domainDim();
     }
 
-    gsMatrix<typename Base::Scalar> eval(const index_t k) const
+    ExpressionValue<typename Base::Scalar> eval(const index_t k) const
     {
-        return expr_.eval(k).transpose();
+        ExpressionValue<typename Base::Scalar> val = expr_.eval(k);
+        ExpressionValue<typename Base::Scalar> result(val.rowCardinality(), val.colCardinality());
+        
+        for (index_t i = 0; i < result.rowCardinality(); ++i)
+        {
+            for (index_t j = 0; j < result.colCardinality(); ++j)
+            {
+                result(i, j) = val(i, j).transpose();
+            }
+        }
+        
+        return result;
     }
 
     void parse(ExpressionHelper<typename Base::Scalar> & helper) const

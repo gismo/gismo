@@ -21,16 +21,16 @@ using namespace Expr;
 template <typename E>
 void print(const BaseExpression<E> & expr)
 {
-    gsInfo << expr<<" (order=" << expr.order
-       << ", space=" << expr.space
+    gsInfo << expr<<" (order=" << expr.order()
+       << ", space=" << expr.space()
        << ", sizes=";
-    if (expr.order>0)
+    if (expr.order()>0)
     {
         gsInfo<<"[";
-        for (size_t i = 0; i < expr.order; ++i)
+        for (size_t i = 0; i < expr.order(); ++i)
         {
             gsInfo << expr.sizes()[i];
-            if (i < expr.order - 1)
+            if (i < expr.order() - 1)
                 gsInfo << ", ";
         }
         gsInfo << "]";
@@ -38,7 +38,7 @@ void print(const BaseExpression<E> & expr)
     else
         gsInfo<<"none";
     gsInfo<<", deriv=" << expr.getDerivative()
-       << ", isConstant=" << (expr.isConstant ? "true" : "false")
+       << ", isConstant=" << (expr.isConstant() ? "true" : "false")
        << ")\n";
 }
 
@@ -340,5 +340,33 @@ int main(int argc, char *argv[])
     gsInfo << "Type of curl(curl(A)): ";
     print(testCurlCurl);
 
+
+    auto space = helper.getScalarTrialSpace(cfun1,0,"ψ");
+    auto space2 = helper.getVectorTrialSpace(cfun3,1,"ψ");
+    gsDebugVar(space2.space());
+    gsDebugVar(space2.order());
+    /*
+    gsMatrix<> solvector;
+    auto sol = helper.getSolution(space,solvector);
+    auto sol2 = helper.getSolution(space2,solvector);
+    auto dsol= variation(sol,space);
+    // auto variation = variation(grad(sol)*space+div(f)*sol,space);
+
+    print(sol);
+    print(variation(sol,space));
+
+    print(variation(grad(sol),space));
+    print(variation(div(sol2),space));
+    print(variation(curl(sol2),space));
+    print(variation(lapl(sol),space));
+
+
+    // print(variation(α+α,space));
+    print(variation(sol+α,space));
+    // print(variation(sol+sol,space));
+
+    print(variation(sol*α,space));
+    print(variation(α*sol,space));
+*/
     return EXIT_SUCCESS;
 }
