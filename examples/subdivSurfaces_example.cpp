@@ -48,49 +48,28 @@ int main(int argc, char** argv)
     smesh.options().setInt("ds_opt", dsopt);
     smesh.options().setInt("loop_opt", loopopt);
 
-    if (cc)
+    if (cc) // Catmull-Clark
     {
         smesh.options().setInt("scheme", 0);
         gsInfo << "Catmull-Clark subdivision "<<r <<" times.\n";
     }
-    if (ds)
+    if (ds) // Doo-Sabin
     {
         smesh.options().setInt("scheme", 1);
         gsInfo << "Doo-Sabin subdivision "<<r <<" times.\n";
     }
-    if (loop)
+    if (loop) // Loop
     {
         smesh.options().setInt("scheme", 2);
         gsInfo << "Loop subdivision "<<r <<" times.\n";
     }
 
-    for (index_t i = 0; i < r; ++i)
-        smesh.subdivide();
-
-    if (ds==true)
-    { // Doo-Sabin
-
-        for (index_t i = 0; i < r; ++i)
-            smesh.ds_subdivide();
-    }
-    else if (cc==true)
-    {  // Catmull-Clark
-
-        for (index_t i = 0; i < r; ++i)
-            smesh.cc_subdivide();
-    }
-    else if (loop==true)
-    { // Loop
-
-        for (index_t i = 0; i < r; ++i)
-            smesh.loop_subdivide();
-    }
-    
+    smesh.subdivide(r);
+   
     mesh.write("mesh_in.off");
-    if (dm) {
+    if (dm) // Dual mesh
         mesh.dual_mesh(1);
 
-    }
     if (plot)
     {
         gsWriteParaview(mesh,"mesh_in", { });

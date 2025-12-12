@@ -27,7 +27,7 @@
 namespace gismo
 {
 
-/// A class for subdivision schemes in polygonal meshes.
+/// class for subdivision schemes in polygonal meshes.
 class GISMO_EXPORT gsSubdivScheme
 {
 
@@ -60,29 +60,17 @@ public:
     /// Returns the mesh
     const gsSurfMesh & mesh() const { return *m_mesh; }
 
-    void subdivide(index_t numSubs = 0)
-    {
-        const index_t s = m_options.getInt("scheme");
-        switch(s)
-        {
-        case 0:
-            for (index_t i = 0; i != numSubs; ++i)
-                cc_subdivide();
-            return;
-        case 1:
-            for (index_t i = 0; i != numSubs; ++i)
-                ds_subdivide();
-            return;
-        case 2:
-            for (index_t i = 0; i != numSubs; ++i)
-                loop_subdivide();
-            return;
-        }
-        GISMO_ERROR("Unknown scheme.");
-    }
+    /// Generic method for subdivide
+    void subdivide(index_t numSubs = 0);
 
-    //todo: void vertex_limits()
-    //todo: void vertex_tangents()
+    /// Method for calculating vertex in limit of subdivision scheme
+    gsSurfMesh::Vertex_property<Point> vertex_limits();
+    
+    /// Method for calculating tangents on vertices in limit of subdivision scheme
+    gsSurfMesh::Vertex_property<Point> tangent_vertex_limits();
+    
+    /// Method for calculating normals on vertices in limit of subdivision scheme
+    gsSurfMesh::Vertex_property<Point> normals_vertex_limits();
 
 public: // Catmull-Clark functions
     
@@ -124,7 +112,10 @@ public: // Loop subdivision
 
     /** Loop subdvision
      * Options:
-     *  +++ 
+     *
+     * loop_opt:
+     *   0 - Simplified Loop's scheme.
+     *   1 - Original Loop's scheme.
      *
     */
     void loop_subdivide();

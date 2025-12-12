@@ -1681,14 +1681,14 @@ public:
     /// deletes the face \c f from the mesh
     void delete_face(Face f);
 
-    /// creates dual-mesh (dual-graph) (only for non-boundry 2-manifolds)
-     /** Dual mesh (Dual-graph) creation for 2-manifold polygons without boundaries.
+     /** Creates dual mesh (Dual-graph) creation for 2-manifold polygons without boundaries.
      * Options:
      * 
-     * \t 1 - Barycentric Dual graph.
+     * option:
+     *   1 - Barycentric Dual graph.
      * 
      */
-    void dual_mesh(int option);
+    void dual_mesh(int option = 1);
 
     /// calculate barycenter of a face
     Point face_barycenter(Face f);
@@ -1783,11 +1783,11 @@ private:
 
 public: // Extract spline functions
 
+    /// Creates spline representations of mesh in a given degree
     gsMultiPatch<> asSpline(int deg) const;
+    
+    /// Creates a patch of spefic degree from a given halfedge in a mesh
     memory::unique_ptr<gsGeometry<> > asPatch(Halfedge h, int deg) const;
-//private:
-//
-//    memory::unique_ptr<gsGeometry<> > asPatch(Halfedge h, int deg) const;
 
 
     

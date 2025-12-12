@@ -30,6 +30,63 @@ namespace gismo {
     typedef gsSurfMesh::Edge Edge;
 
  
+    void gsSubdivScheme::subdivide(index_t numSubs)
+    {
+        const index_t s = m_options.getInt("scheme");
+        switch (s)
+        {
+        case 0:
+            for (index_t i = 0; i != numSubs; ++i)
+                cc_subdivide();
+            return;
+        case 1:
+            for (index_t i = 0; i != numSubs; ++i)
+                ds_subdivide();
+            return;
+        case 2:
+            for (index_t i = 0; i != numSubs; ++i)
+                loop_subdivide();
+            return;
+        }
+        GISMO_ERROR("Unknown scheme.");
+    }
+
+
+    gsSurfMesh::Vertex_property<Point> gsSubdivScheme::vertex_limits()
+    {
+        const index_t s = m_options.getInt("scheme");
+        switch (s)
+        {
+        case 0:
+            return cc_limit_points();
+        } // TODO: for the rest of subdivision schemes
+        GISMO_ERROR("Unknown scheme.");
+    }
+
+    gsSurfMesh::Vertex_property<Point> gsSubdivScheme::tangent_vertex_limits()
+    {
+        const index_t s = m_options.getInt("scheme");
+        switch (s)
+        {
+        case 0:
+            return cc_limit_tangent_vec();
+        } // TODO: for the rest of subdivision schemes
+        GISMO_ERROR("Unknown scheme.");
+    }
+
+    gsSurfMesh::Vertex_property<Point> gsSubdivScheme::normals_vertex_limits()
+    {
+        const index_t s = m_options.getInt("scheme");
+        switch (s)
+        {
+        case 0:
+            return cc_limit_normals();
+        } // TODO: for the rest of subdivision schemes
+        GISMO_ERROR("Unknown scheme.");
+    }
+
+
+
     void gsSubdivScheme::cc_subdivide()
     {
         gsSurfMesh::Vertex v;
