@@ -1735,8 +1735,8 @@ garbage_collection()
 }
 
 // Returns true if there is a sharp halfedge emenating from vertex \a v
-inline bool gsSurfMesh::has_flag(Vertex v,
-                                 const gsSurfMesh::Halfedge_property<bool> & hflag)
+bool gsSurfMesh::
+has_flag(Vertex v, const gsSurfMesh::Halfedge_property<bool> & hflag) const
 {
     /*//count hflags
       int c = 0;

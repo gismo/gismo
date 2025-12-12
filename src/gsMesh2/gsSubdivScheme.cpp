@@ -88,7 +88,7 @@ namespace gismo {
         {
             v = gsSurfMesh::Vertex(i); //edge points
 
-            if (do_sharp && has_flag(v, sharp))
+            if (do_sharp && m_mesh->has_flag(v, sharp))
                 continue; //remain midpoints
             else if (m_mesh->is_boundary(v))
             {
@@ -106,7 +106,7 @@ namespace gismo {
                     tmp += m_mesh->position(*vit);
                 } while (++vit != vcp);
                 tmp /= 4; // =valence(v);
-                m_mesh->update_vertex(v, tmp);
+                m_mesh->position(v) = tmp;
             }
         }
 
@@ -122,7 +122,7 @@ namespace gismo {
             //original vertex positions are computed using new edge/face points only
             auto& pt = m_mesh->position(v);
 
-            if (do_sharp && has_flag(v, sharp))
+            if (do_sharp && m_mesh->has_flag(v, sharp))
             {
                 unsigned int sd = m_mesh->hcount(v, sharp);
                 if (2 == sd)
@@ -306,7 +306,7 @@ namespace gismo {
     void gsSubdivScheme::ds_subdivide()
     {
        
-        index_t option = s_options.askInt("ds_opt");
+        index_t option = m_options.askInt("ds_opt");
 
         // New Mesh instance
         gsSurfMesh new_mesh;
@@ -497,7 +497,7 @@ namespace gismo {
     void gsSubdivScheme::loop_subdivide()
     {
 
-        index_t mask_option = s_options.askInt("loop_opt");
+        index_t mask_option = m_options.askInt("loop_opt");
 
         gsSurfMesh nm;
         Vertex v;
@@ -646,20 +646,6 @@ namespace gismo {
 
 
         *m_mesh = std::move(nm);
-    }
-
-    // Returns true if there is a sharp halfedge emenating from vertex \a v
-    inline bool gsSubdivScheme::has_flag(Vertex v,
-        const gsSurfMesh::Halfedge_property<bool>& hflag)
-    {
-        /*//count hflags
-          int c = 0;
-          for (auto hh : halfedges(v))
-          c +=  hflag[hh];
-        //*/
-        for (auto hh : m_mesh->halfedges(v))
-            if (hflag[hh]) return true;
-        return false;
     }
 
 } // namespace gismo

@@ -1717,9 +1717,6 @@ public:
     /// vector of vertex positions
     const std::vector<Point>& pointsVec() const { return vpoint_.vector(); }
 
-    /// update vertex position to specified position
-    void update_vertex(Vertex v, Point& pos) { vpoint_[v] = pos; }
-
     /// compute face normals by calling compute_face_normal(Face) for each face.
     void update_face_normals();
 
@@ -1738,7 +1735,7 @@ public: // Operations related to b-splines and mesh
     gsMultiPatch<real_t> linear_patches() const;
 
     // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
-    inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
+    bool has_flag(Vertex v, const Halfedge_property<bool> & hflag) const;
 
     void mergeDoubleVertices();
 

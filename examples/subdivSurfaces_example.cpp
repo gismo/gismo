@@ -1,6 +1,6 @@
-/** @file 
+/** @file subdivSurfaces_example.cpp
 
-    @brief 
+    @brief Tests different subdivision schemes
 
     Author(s): A. Mantzaflaris, M.Marsala, D.Tolis
 */
@@ -21,8 +21,6 @@ int main(int argc, char** argv)
     index_t dsopt(0);
     index_t loopopt(1);
 
-
-
     gsCmdLine cmd("Hi, give me a mesh");
     cmd.addPlainString("filename", "File containing mesh", fn);
     cmd.addSwitch("plot", "Plot the results", plot);
@@ -35,9 +33,11 @@ int main(int argc, char** argv)
     cmd.addInt("r", "ref", "Number of refinement steps", r);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    // Create mesh
-    
+       
+    if (!(ds || cc || loop))
+        cc =true;
 
+    // Read the mesh
     gsSurfMesh mesh;
     gsReadFile<>(fn,mesh);
 
@@ -48,26 +48,44 @@ int main(int argc, char** argv)
     smesh.options().setInt("ds_opt", dsopt);
     smesh.options().setInt("loop_opt", loopopt);
 
-    if (ds==true) { // Doo-Sabin
+    if (cc)
+    {
+        smesh.options().setInt("scheme", 0);
+        gsInfo << "Catmull-Clark subdivision "<<r <<" times.\n";
+    }
+    if (ds)
+    {
+        smesh.options().setInt("scheme", 1);
+        gsInfo << "Doo-Sabin subdivision "<<r <<" times.\n";
+    }
+    if (loop)
+    {
+        smesh.options().setInt("scheme", 2);
+        gsInfo << "Loop subdivision "<<r <<" times.\n";
+    }
+
+    for (index_t i = 0; i < r; ++i)
+        smesh.subdivide();
+
+    if (ds==true)
+    { // Doo-Sabin
+
         for (index_t i = 0; i < r; ++i)
-        {
             smesh.ds_subdivide();
-        }
     }
-    else if (cc==true) {  // Catmull-Clark
+    else if (cc==true)
+    {  // Catmull-Clark
+
         for (index_t i = 0; i < r; ++i)
-        {
             smesh.cc_subdivide();
-        }
     }
-    else if (loop==true) { // Loop
+    else if (loop==true)
+    { // Loop
+
         for (index_t i = 0; i < r; ++i)
-        {
             smesh.loop_subdivide();
-        }
     }
     
-
     mesh.write("mesh_in.off");
     if (dm) {
         mesh.dual_mesh(1);
@@ -78,9 +96,6 @@ int main(int argc, char** argv)
         gsWriteParaview(mesh,"mesh_in", { });
         gsFileManager::open("mesh_in.vtk");
     }
-
-    
-
 
     return EXIT_SUCCESS;
 }

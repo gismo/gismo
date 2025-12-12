@@ -38,23 +38,54 @@ class GISMO_EXPORT gsSubdivScheme
 
     gsSurfMesh* m_mesh;///<pointer to the input mesh
 
-    gsOptionList s_options;
+    gsOptionList m_options;
 
 
-public: // Catmull-Clark functions
+public:
 
+    /// Constructor accepting a reference to a mesh
     explicit gsSubdivScheme(gsSurfMesh& mesh) : m_mesh(&mesh)
-    { 
-    
-       s_options.addInt("ds_opt", "Option for masks in Doo-Sabin subdivision scheme", 0);
-       s_options.addInt("loop_opt", "Option for masks in Loop subdvision scheme", 0);
+    {
+        m_options.addInt("scheme", "0: CC, 1: DS, 2:  Loop", 0);
+        m_options.addInt("ds_opt", "Option for masks in Doo-Sabin subdivision scheme", 0);
+        m_options.addInt("loop_opt", "Option for masks in Loop subdvision scheme", 0);
     }
 
-    gsOptionList& options() { return s_options; }
+    /// Returns the options
+    gsOptionList& options() { return m_options; }
+
+    /// Returns the mesh
+    gsSurfMesh & mesh() { return *m_mesh; }
+
+    /// Returns the mesh
+    const gsSurfMesh & mesh() const { return *m_mesh; }
+
+    void subdivide(index_t numSubs = 0)
+    {
+        const index_t s = m_options.getInt("scheme");
+        switch(s)
+        {
+        case 0:
+            for (index_t i = 0; i != numSubs; ++i)
+                cc_subdivide();
+            return;
+        case 1:
+            for (index_t i = 0; i != numSubs; ++i)
+                ds_subdivide();
+            return;
+        case 2:
+            for (index_t i = 0; i != numSubs; ++i)
+                loop_subdivide();
+            return;
+        }
+        GISMO_ERROR("Unknown scheme.");
+    }
+
+    //todo: void vertex_limits()
+    //todo: void vertex_tangents()
+
+public: // Catmull-Clark functions
     
-    gsSurfMesh mesh() { return *m_mesh; }
-
-
     /// Catmull-Clark subdivision
     void cc_subdivide();
 
@@ -69,37 +100,31 @@ public: // Catmull-Clark functions
     gsSurfMesh::Vertex_property<Point> cc_limit_tangent_vec(std::string label = "v:tanvec",
                                                 bool normalize = true);
 
-    // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
-    inline bool has_flag(Vertex v, const gsSurfMesh::Halfedge_property<bool> & hflag);
-
-
-
 public: // Doo-Sabin functions
 
-    /// Doo-Sabin subdivision
-    /* Doo-Sabin subdvision
+    /** Doo-Sabin subdvision
      * Options:
      *
-     * \t 0 - interpolation in boundary using Chaikin's scheme.
-     * \t 1 - vanila version that leads to trimmed boundaries.
+     * ds_opt:
+     *   0 - Interpolation of the boundary using Chaikin's scheme.
+     *   1 - Vanila version that leads to trimmed boundaries.
      *
     */
     void ds_subdivide();
 
-    /// Doo-Sabin Image point caluculation per vertex in a face (boundary interpolation)
+private:
+    
+    /// Doo-Sabin Image point calculation per vertex in a face (boundary interpolation)
     Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);
 
-    /// Doo-Sabin Image point caluculation per vertex in a face (trimmed)
+    /// Doo-Sabin Image point calculation per vertex in a face (trimmed)
     Point ds_image_point_calc_vanila(Vertex oldv, Face oldf);
 
 public: // Loop subdivision
 
-    ///  Loop subdivision
     /** Loop subdvision
      * Options:
-     *
-     * \t 0 - Simplified Loop's scheme.
-     * \t 1 - Original Loop's scheme.
+     *  +++ 
      *
     */
     void loop_subdivide();
