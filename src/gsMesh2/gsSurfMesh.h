@@ -1732,21 +1732,7 @@ public:
     /// compute normal vector of vertex \c v.
     Normal compute_vertex_normal(Vertex v) const;
 
-public: // Catmull-Clark functions
-
-    /// Catmull-Clark subdivision
-    void cc_subdivide();
-
-    /// Compute CC vertex limit positions
-    Vertex_property<Point> cc_limit_points(std::string label = "v:limit");
-
-    /// Compute CC vertex limit normals
-    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal",
-                                            bool normalize = true);
-
-    /// Compute CC vertex limit tangent
-    Vertex_property<Point> cc_limit_tangent_vec(std::string label = "v:tanvec",
-                                                bool normalize = true);
+public: // Operations related to b-splines and mesh
 
     /// Generate linear tensor-product patches (possibly merging faces)
     gsMultiPatch<real_t> linear_patches() const;
@@ -1806,33 +1792,6 @@ public: // Extract spline functions
 //
 //    memory::unique_ptr<gsGeometry<> > asPatch(Halfedge h, int deg) const;
 
-public: // Doo-Sabin functions
-
-    /// Doo-Sabin subdivision
-    /** Doo-Sabin subdvision
-     * Options:
-     *
-     * \t 0 - interpolation in boundary using Chaikin's scheme.
-     * \t 1 - vanila version that leads to trimmed boundaries.
-     *
-     */
-    void ds_subdivide(index_t option = 0);
-
-    /// Doo-Sabin Image point caluculation per vertex in a face
-    Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);
-    Point ds_image_point_calc_vanila(Vertex oldv, Face oldf);
-
-public: // Loop subdivision
-
-    ///  Loop subdivision
-    /** Loop subdvision
-     * Options:
-     *
-     * \t 0 - Simplified Loop's scheme.
-     * \t 1 - Original Loop's scheme.
-     *
-     */
-    void loop_subdivide(int mask_option);
 
     
 
