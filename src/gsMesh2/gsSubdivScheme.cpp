@@ -58,7 +58,7 @@ namespace gismo {
         switch (s)
         {
         case 0:
-            return cc_limit_points();
+            return cc_vertex_limits();
         } // TODO: for the rest of subdivision schemes
         GISMO_ERROR("Unknown scheme.");
     }
@@ -69,7 +69,7 @@ namespace gismo {
         switch (s)
         {
         case 0:
-            return cc_limit_tangent_vec();
+            return cc_tangent_vertex_limits();
         } // TODO: for the rest of subdivision schemes
         GISMO_ERROR("Unknown scheme.");
     }
@@ -80,7 +80,7 @@ namespace gismo {
         switch (s)
         {
         case 0:
-            return cc_limit_normals();
+            return cc_normals_vertex_limits();
         } // TODO: for the rest of subdivision schemes
         GISMO_ERROR("Unknown scheme.");
     }
@@ -232,7 +232,7 @@ namespace gismo {
     }
 
     gsSurfMesh::Vertex_property<Point>
-        gsSubdivScheme::cc_limit_points(std::string label)
+        gsSubdivScheme::cc_vertex_limits(std::string label)
     {
         auto points = m_mesh->get_vertex_property<Point>("v:point");
         auto limits = m_mesh->add_vertex_property<Point>(
@@ -278,7 +278,7 @@ namespace gismo {
 
 
     gsSurfMesh::Vertex_property<gsSurfMesh::Point>
-    gsSubdivScheme::cc_limit_normals(std::string label, bool normalize)
+    gsSubdivScheme::cc_normals_vertex_limits(std::string label, bool normalize)
     {
         auto points = m_mesh->get_vertex_property<Point>("v:point");
         //todo: check if label exists
@@ -317,7 +317,7 @@ namespace gismo {
     }
 
     gsSurfMesh::Vertex_property<gsSurfMesh::Point>
-    gsSubdivScheme::cc_limit_tangent_vec(std::string label, bool normalize)
+    gsSubdivScheme::cc_tangent_vertex_limits(std::string label, bool normalize)
     {
         gsSurfMesh::Vertex v;
         gsSurfMesh::Halfedge h2;
@@ -363,7 +363,7 @@ namespace gismo {
     void gsSubdivScheme::ds_subdivide()
     {
        
-        index_t option = m_options.askInt("ds_opt");
+        index_t option = m_options.askInt("ds.boundaryMask");
 
         // New Mesh instance
         gsSurfMesh new_mesh;
@@ -554,7 +554,7 @@ namespace gismo {
     void gsSubdivScheme::loop_subdivide()
     {
 
-        index_t mask_option = m_options.askInt("loop_opt");
+        index_t mask_option = m_options.askInt("loop.maskType");
 
         gsSurfMesh nm;
         Vertex v;

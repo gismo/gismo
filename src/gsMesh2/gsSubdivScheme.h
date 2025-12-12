@@ -47,8 +47,8 @@ public:
     explicit gsSubdivScheme(gsSurfMesh& mesh) : m_mesh(&mesh)
     {
         m_options.addInt("scheme", "0: CC, 1: DS, 2:  Loop", 0);
-        m_options.addInt("ds_opt", "Option for masks in Doo-Sabin subdivision scheme", 0);
-        m_options.addInt("loop_opt", "Option for masks in Loop subdvision scheme", 0);
+        m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
+        m_options.addInt("loop.maskType",   "Option for masks in Loop subdvision scheme", 0);
     }
 
     /// Returns the options
@@ -78,14 +78,14 @@ public: // Catmull-Clark functions
     void cc_subdivide();
 
     /// Compute CC vertex limit positions
-    gsSurfMesh::Vertex_property<Point> cc_limit_points(std::string label = "v:limit");
+    gsSurfMesh::Vertex_property<Point> cc_vertex_limits(std::string label = "v:limit");
 
     /// Compute CC vertex limit normals
-    gsSurfMesh::Vertex_property<Point> cc_limit_normals(std::string label = "v:normal",
+    gsSurfMesh::Vertex_property<Point> cc_normals_vertex_limits(std::string label = "v:normal",
                                             bool normalize = true);
 
     /// Compute CC vertex limit tangent
-    gsSurfMesh::Vertex_property<Point> cc_limit_tangent_vec(std::string label = "v:tanvec",
+    gsSurfMesh::Vertex_property<Point> cc_tangent_vertex_limits(std::string label = "v:tanvec",
                                                 bool normalize = true);
 
 public: // Doo-Sabin functions

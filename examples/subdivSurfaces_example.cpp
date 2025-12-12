@@ -28,8 +28,8 @@ int main(int argc, char** argv)
     cmd.addSwitch("cc", "Catmull-Clark Subdivision Scheme", cc);
     cmd.addSwitch("ds", "Doo-Sabin Subdivision Scheme", ds);
     cmd.addSwitch("loop", "Loop Subdivision Scheme", loop);
-    cmd.addInt("d", "ds_opt", "Option for mask in Doo-Sabin subdivision scheme", dsopt);
-    cmd.addInt("l", "loop_opt", "Option for mask in Loop subdivision scheme", loopopt);
+    cmd.addInt("d", "ds.boundaryMask", "Option for mask in Doo-Sabin subdivision scheme", dsopt);
+    cmd.addInt("l", "loop.maskType", "Option for mask in Loop subdivision scheme", loopopt);
     cmd.addInt("r", "ref", "Number of refinement steps", r);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -45,8 +45,8 @@ int main(int argc, char** argv)
         << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
 
     gsSubdivScheme smesh(mesh);
-    smesh.options().setInt("ds_opt", dsopt);
-    smesh.options().setInt("loop_opt", loopopt);
+    smesh.options().setInt("ds.boundaryMask", dsopt);
+    smesh.options().setInt("loop.maskType", loopopt);
 
     if (cc) // Catmull-Clark
     {
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
    
     mesh.write("mesh_in.off");
     if (dm) // Dual mesh
-        mesh.dual_mesh(1);
+        mesh.dual_mesh();
 
     if (plot)
     {

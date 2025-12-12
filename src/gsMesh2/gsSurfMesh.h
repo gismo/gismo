@@ -1681,14 +1681,8 @@ public:
     /// deletes the face \c f from the mesh
     void delete_face(Face f);
 
-     /** Creates dual mesh (Dual-graph) creation for 2-manifold polygons without boundaries.
-     * Options:
-     * 
-     * option:
-     *   1 - Barycentric Dual graph.
-     * 
-     */
-    void dual_mesh(int option = 1);
+    /// creates dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
+    void dual_mesh();
 
     /// calculate barycenter of a face
     Point face_barycenter(Face f);

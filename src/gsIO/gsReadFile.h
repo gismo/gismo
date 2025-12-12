@@ -290,6 +290,13 @@ void gsWrite(const Object& obj, const std::string& fname)
     gsFileData<real_t> fd;
     fd << obj;
     fd.dump(fname);
+    
+    std::string path = gsFileManager::getPath(fname);
+    // If the path does not start with ./ or / , it is assumed to be a relative path
+    if (!gsFileManager::isFullyQualified(path))
+        path = gsFileManager::getCurrentPath() + path;
+
+    gsInfo << "Writen to " << path + gsFileManager::getBasename(fname) + ".xml" <<"\n";
 }
 
 } // namespace gismo
