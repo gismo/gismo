@@ -114,8 +114,8 @@ public: // Loop subdivision
      * Options:
      *
      * loop_opt:
-     *   0 - Simplified Loop's scheme.
-     *   1 - Original Loop's scheme.
+     *   0 - Simplified Loop's scheme. (cf. book Warren, Weimer 2002)
+     *   1 - Original Loop's scheme.  (cf. book Loop 1987)
      *
     */
     void loop_subdivide();
