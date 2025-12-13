@@ -560,13 +560,10 @@ namespace gismo {
         Vertex v;
 
         // Tessalate the current mesh, in order to have pure triangle mesh
-        for (auto fit : m_mesh->faces()) {
-
-            if (m_mesh->valence(fit) > 3) {
+        for (auto fit : m_mesh->faces())
+            if (m_mesh->valence(fit) > 3)
                 m_mesh->triangulate(fit);
-            }
 
-        }
 
         // Export the triangle mesh
         m_mesh->write("mesh_in_triang.off");
@@ -583,16 +580,20 @@ namespace gismo {
         std::map<Edge, Vertex> edgeVerts;
         std::map<Vertex, Vertex> innerVerts;
         // In each edge create the new vertices  (odd rules)
-        for (auto ho : m_mesh->halfedges()) {
+        for (auto ho : m_mesh->halfedges()) 
+        {
 
-            if (m_mesh->touches_boundary(ho)) {
+            if (m_mesh->touches_boundary(ho)) 
+            {
                 tmp = (real_t)1 / 2 * m_mesh->position(m_mesh->from_vertex(ho)) +
                     (real_t)1 / 2 * m_mesh->position(m_mesh->to_vertex(ho));
             }
-            else if (m_mesh->is_boundary(ho)) {
+            else if (m_mesh->is_boundary(ho)) 
+            {
                 continue;
             }
-            else {
+            else 
+            {
                 nh = m_mesh->next_halfedge(ho);
                 ph = m_mesh->prev_halfedge(m_mesh->opposite_halfedge(ho));
                 tmp = (real_t)3 / 8 * m_mesh->position(m_mesh->from_vertex(ho)) +
@@ -600,7 +601,8 @@ namespace gismo {
                     (real_t)1 / 8 * m_mesh->position(m_mesh->to_vertex(nh)) +
                     (real_t)1 / 8 * m_mesh->position(m_mesh->from_vertex(ph));
             }
-            if (edgeVerts.count(m_mesh->edge(ho)) > 0) {
+            if (edgeVerts.count(m_mesh->edge(ho)) > 0) 
+            {
                 continue;
             }
             v = nm.add_vertex(tmp);
@@ -614,16 +616,19 @@ namespace gismo {
         // For each old vertex modify its position (even rules)
         // For boundary we will impose the classic rule which causes cubic spline at the infinity
         // In case of boundary vertices in corner we will leave them in tact (See Hoppe 1994, Bierman 2000, Ling 2008)
-        for (auto it = 0; it < fnv; it++) {
+        for (auto it = 0; it < fnv; it++) 
+        {
             v = Vertex(it);
-            if (m_mesh->is_boundary(v)) {
+            if (m_mesh->is_boundary(v)) 
+            {
 
 
                 he = m_mesh->halfedge(v);
                 hh = he;
 
                 // Find he touching boundary
-                while (!(m_mesh->touches_boundary(hh))) {
+                while (!(m_mesh->touches_boundary(hh))) 
+                {
                     hh = m_mesh->ccw_rotated_halfedge(hh);
                 }
                 he = hh;
@@ -631,25 +636,32 @@ namespace gismo {
                 tmp = (real_t)3 / 4 * m_mesh->position(m_mesh->from_vertex(he)) +
                     (real_t)1 / 8 * m_mesh->position(m_mesh->to_vertex(he));
                 hh = he;
-                do {
+                do 
+                {
                     hh = m_mesh->ccw_rotated_halfedge(hh);
-                    if (m_mesh->is_boundary(m_mesh->to_vertex(hh))) {
+                    if (m_mesh->is_boundary(m_mesh->to_vertex(hh)))
+                    {
                         tmp += (real_t)1 / 8 * m_mesh->position(m_mesh->to_vertex(hh));
                     }
                 } while (m_mesh->ccw_rotated_halfedge(hh) != he);
             }
-            else {
+            else 
+            {
                 n = m_mesh->valence(v);
                 he = m_mesh->halfedge(v);
-                if (mask_option == 0) {  // Simplified averganging mask (Warren,Weimer 2002)
-                    if (n == 3) {
+                if (mask_option == 0) 
+                {  // Simplified averganging mask (Warren,Weimer 2002)
+                    if (n == 3) 
+                    {
                         a = (real_t)3 / 16;
                     }
-                    else {
+                    else 
+                    {
                         a = (real_t)3 / (8 * n);
                     }
                 }
-                else {  // Loop's original mask (1987)
+                else 
+                {  // Loop's original mask (1987)
                     a = (0.625 - (0.375 + 0.25 * cos(2 * 3.14159 / (real_t)n)) * (0.375 + 0.25 * cos(2 * 3.14159 / (real_t)n))) / (real_t)n;
                 }
                 b = a;
@@ -660,7 +672,8 @@ namespace gismo {
                 // Apply inner mask
                 tmp = c * m_mesh->position(v);
                 hh = he;
-                do {
+                do
+                {
                     tmp += b * m_mesh->position(m_mesh->to_vertex(hh));
                     hh = m_mesh->ccw_rotated_halfedge(hh);
                 } while (hh != he);
@@ -669,9 +682,11 @@ namespace gismo {
             innerVerts[v] = nm.add_vertex(tmp);
         }
 
-        for (auto he : m_mesh->halfedges()) {
+        for (auto he : m_mesh->halfedges()) 
+        {
 
-            if (m_mesh->is_boundary(he)) {
+            if (m_mesh->is_boundary(he)) 
+            {
                 continue;
             }
 
@@ -682,10 +697,12 @@ namespace gismo {
         Edge e;
         Face f;
         std::vector<Vertex> edgeVertsFace;
-        for (auto it = 0; it < num_f; it++) {
+        for (auto it = 0; it < num_f; it++) 
+        {
             f = Face(it);
             edgeVertsFace.clear();
-            for (auto hit : m_mesh->halfedges(f)) {
+            for (auto hit : m_mesh->halfedges(f)) 
+            {
                 e = m_mesh->edge(hit);
                 edgeVertsFace.push_back(edgeVerts[e]);
             }
