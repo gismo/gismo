@@ -119,9 +119,6 @@ public:
         explicit Face(int _idx=-1) : Base_handle(_idx) {}
     };
 
-
-
-
 public:
 
     /// This type stores the vertex connectivity
@@ -154,6 +151,7 @@ public:
     {
         /// a halfedge that is part of the face
         Halfedge  halfedge_;
+
     };
 
 
@@ -984,6 +982,9 @@ public:
     /// assign \c rhs to \c *this. performs a deep copy of all properties.
     gsSurfMesh& operator=(const gsSurfMesh& rhs);
 
+    /// move \c rhs to \c *this
+    gsSurfMesh& operator=(gsSurfMesh&& rhs) noexcept;
+
     /// assign \c rhs to \c *this. does not copy custom properties.
     gsSurfMesh& assign(const gsSurfMesh& rhs);
 
@@ -1203,6 +1204,9 @@ public:
 
     inline Halfedge forward_halfedge(gsSurfMesh::Halfedge he) const
     { return next_halfedge(opposite_halfedge(next_halfedge(he))); }
+
+    inline Halfedge backward_halfedge(gsSurfMesh::Halfedge he) const
+    { return prev_halfedge(opposite_halfedge(prev_halfedge(he))); }
 
 public:
 
@@ -1677,6 +1681,12 @@ public:
     /// deletes the face \c f from the mesh
     void delete_face(Face f);
 
+    /// creates dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
+    void dual_mesh();
+
+    /// calculate barycenter of a face
+    Point face_barycenter(Face f);
+
 public:
 
     /// position of a vertex (read only)
@@ -1713,32 +1723,18 @@ public:
     /// compute normal vector of vertex \c v.
     Normal compute_vertex_normal(Vertex v) const;
 
-public: // Catmull-Clark functions
-
-    /// Catmull-Clark subdivision
-    void cc_subdivide();
-
-    /// Compute CC vertex limit positions
-    Vertex_property<Point> cc_limit_points(std::string label = "v:limit");
-
-    /// Compute CC vertex limit normals
-    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal",
-                                            bool normalize = true);
-
-    /// Compute CC vertex limit tangent
-    Vertex_property<Point> cc_limit_tangent_vec(std::string label = "v:tanvec",
-                                                bool normalize = true);
+public: // Operations related to b-splines and mesh
 
     /// Generate linear tensor-product patches (possibly merging faces)
     gsMultiPatch<real_t> linear_patches() const;
 
     // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
-    inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
+    bool has_flag(Vertex v, const Halfedge_property<bool> & hflag) const;
 
     void mergeDoubleVertices();
 
-    private:
-
+private:
+    
     Face new_quad(gsSurfMesh::Halfedge * h, int sz);
 
     /// allocate a new vertex, resize vertex properties accordingly.
@@ -1778,6 +1774,19 @@ public: // Catmull-Clark functions
             " edges and "<<sm.n_faces()<<" faces.\n";
         return os;
     }
+
+public: // Extract spline functions
+
+    /// Creates spline representations of mesh in a given degree
+    gsMultiPatch<> asSpline(int deg) const;
+    
+    /// Creates a patch of spefic degree from a given halfedge in a mesh
+    memory::unique_ptr<gsGeometry<> > asPatch(Halfedge h, int deg) const;
+
+
+    
+
+private: //--------------------------------------------------- helper functions
 
     /** make sure that the outgoing halfedge of vertex v is a boundary halfedge
      if v is a boundary vertex. */

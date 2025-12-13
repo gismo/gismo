@@ -349,8 +349,11 @@ void gsBSpline<T>::degreeElevate(short_t const i, short_t const dir)
     GISMO_UNUSED(dir);
     GISMO_ASSERT( (dir == -1) || (dir == 0),
                   "Invalid basis component "<< dir <<" requested for degree elevation" );
-    
-    bspline::degreeElevateBSpline(this->basis(), this->m_coefs, i);
+
+    if (knots().numLeftGhosts() != 0 || knots().numRightGhosts() != 0)
+        gsGeometry<T>::degreeElevate(i);
+    else
+        bspline::degreeElevateBSpline(this->basis(), this->m_coefs, i);
 }
 
 namespace internal
