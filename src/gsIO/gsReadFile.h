@@ -285,18 +285,14 @@ public:
 
 /// \brief Write an arbitrary Gismo object to an XML file with the given filename.
 template <typename Object>
-void gsWrite(const Object& obj, const std::string& fname)
+void gsWrite(const Object& obj, const std::string& fname, bool verbose = false)
 {
     gsFileData<real_t> fd;
     fd << obj;
     fd.dump(fname);
-    
-    std::string path = gsFileManager::getPath(fname);
-    // If the path does not start with ./ or / , it is assumed to be a relative path
-    if (!gsFileManager::isFullyQualified(path))
-        path = gsFileManager::getCurrentPath() + path;
 
-    gsInfo << "Writen to " << path + gsFileManager::getBasename(fname) + ".xml" <<"\n";
+    if (verbose)
+        gsInfo << "Written to " << fd.lastPath() <<"\n";
 }
 
 } // namespace gismo
