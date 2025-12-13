@@ -24,8 +24,7 @@ inline const BlockTransposeReturnType blockTranspose(Index rowFactor) const;
 template<typename IndicesType>
 const RowSelection<Derived,IndicesType> selectRows(const IndicesType & ind) const;
 
-
-auto pruned(Scalar tol)
+auto pruned(Scalar tol) -> decltype(auto)
 {
     Derived & M = derived();
     using std::abs;
