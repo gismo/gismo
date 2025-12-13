@@ -574,42 +574,38 @@ namespace gismo {
         m_mesh->reserve(m_mesh->n_vertices() + m_mesh->n_edges() + m_mesh->n_faces(),
             2 * m_mesh->n_edges(), 4 * m_mesh->n_faces());
 
-        //auto points = get_vertex_property<Point>("v:point");
-
 
         index_t fnv = m_mesh->n_vertices(); // Number of vertices in the current mesh
         index_t num_f = m_mesh->n_faces(); // Number of faces in the current mesh
 
-        gsSurfMesh::Halfedge he, nh, ph, hh;
+        gsSurfMesh::Halfedge he,nh, ph, hh;
         Point tmp;
         std::map<Edge, Vertex> edgeVerts;
         std::map<Vertex, Vertex> innerVerts;
         // In each edge create the new vertices  (odd rules)
-        for (auto he : m_mesh->halfedges()) {
+        for (auto ho : m_mesh->halfedges()) {
 
-            if (m_mesh->touches_boundary(he)) {
-                tmp = (real_t)1 / 2 * m_mesh->position(m_mesh->from_vertex(he)) +
-                    (real_t)1 / 2 * m_mesh->position(m_mesh->to_vertex(he));
+            if (m_mesh->touches_boundary(ho)) {
+                tmp = (real_t)1 / 2 * m_mesh->position(m_mesh->from_vertex(ho)) +
+                    (real_t)1 / 2 * m_mesh->position(m_mesh->to_vertex(ho));
             }
-            else if (m_mesh->is_boundary(he)) {
+            else if (m_mesh->is_boundary(ho)) {
                 continue;
             }
             else {
-                nh = m_mesh->next_halfedge(he);
-                ph = m_mesh->prev_halfedge(m_mesh->opposite_halfedge(he));
-                tmp = (real_t)3 / 8 * m_mesh->position(m_mesh->from_vertex(he)) +
-                    (real_t)3 / 8 * m_mesh->position(m_mesh->to_vertex(he)) +
+                nh = m_mesh->next_halfedge(ho);
+                ph = m_mesh->prev_halfedge(m_mesh->opposite_halfedge(ho));
+                tmp = (real_t)3 / 8 * m_mesh->position(m_mesh->from_vertex(ho)) +
+                    (real_t)3 / 8 * m_mesh->position(m_mesh->to_vertex(ho)) +
                     (real_t)1 / 8 * m_mesh->position(m_mesh->to_vertex(nh)) +
                     (real_t)1 / 8 * m_mesh->position(m_mesh->from_vertex(ph));
             }
-            if (edgeVerts.count(m_mesh->edge(he)) > 0) {
-                //edgeVertsFace[face(he)].push_back(edgeVerts[edge(he)]);
+            if (edgeVerts.count(m_mesh->edge(ho)) > 0) {
                 continue;
             }
             v = nm.add_vertex(tmp);
 
-            edgeVerts[m_mesh->edge(he)] = v;
-            //edgeVertsFace[face(he)].push_back(v);
+            edgeVerts[m_mesh->edge(ho)] = v;
         }
 
         index_t n;
@@ -622,9 +618,6 @@ namespace gismo {
             v = Vertex(it);
             if (m_mesh->is_boundary(v)) {
 
-                /*    if (valence(v) == 3) {
-                       tmp == position(v);
-                   }*/
 
                 he = m_mesh->halfedge(v);
                 hh = he;
