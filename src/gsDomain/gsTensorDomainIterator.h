@@ -13,8 +13,9 @@
 
 #pragma once
 
+#include <gsCore/gsForwardDeclarations.h> // Centralized forward declarations
 #include <gsDomain/gsDomainIterator.h>
-#include <gsDomain/gsTensorDomain.h>
+#include <gsDomain/gsTensorDomain.h> // Full definition of gsTensorDomain needed
 #include <gsUtils/gsCombinatorics.h>
 
 namespace gismo
@@ -38,8 +39,8 @@ private:
 
 public:
 
-    explicit gsTensorDomainIterator(const gsTensorDomain<T,D> & domain)
-    : gsDomainIterator<T>()
+    explicit gsTensorDomainIterator(const gsTensorDomain<T,D> & domain, index_t patchId = 0)
+    : gsDomainIterator<T>(0, patchId, boundary::none) // Call base constructor with patch ID
     {
         // compute breaks and mesh size
         // meshStart.resize(D);

@@ -20,6 +20,7 @@
 #include <gsCore/gsBoundary.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsCore/gsGeometry.h>
+#include <gsNurbs/gsBSplineBasis.h> // Added for dynamic_cast to gsBSplineBasis
 //#include <gsUtils/gsSortedVector.h>
 
 
@@ -273,7 +274,7 @@ gsMatrix<index_t> gsTensorBasis<d,T>::coefSlice(short_t dir, index_t k) const
     r = 0;
     do {
         res(r++,0) = this->index(v);
-    } while ( nextLexicographic(v, low, upp) );
+    } while (nextLexicographic(v, low, upp) );
 
     return res;
 }
@@ -369,7 +370,7 @@ struct MakeBoundaryBasis<2, BB, B>
     {
         return bases[0];
     }
-};
+    };
 */
 
 template<short_t d, class T>
@@ -553,7 +554,7 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
     for ( index_t j=0; j< u.cols() ; j++ ) // for all points (columns of u)
     { // to try:: all points at once instead
         gsMatrix<T> uu = u.col(j);
-        //gsDebug<< "uu : \n"<< uu <<std::endl;
+        //gsDebug<< "uu : \n"<<uu <<std::endl;
         //gsDebug<< "coefs: \n"<< cc <<std::endl;
 
         m_bases[0]->eval_into(uu.row(0), cc, e0);
@@ -658,17 +659,19 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         nb         *= num_i;
     }
 
+    // initialize result
+    gsMatrix<T> & vals = result[0];
+    vals.resize(nb, u.cols() );
+
     // iterate over all tensor product basis functions
     v.setZero();
-    gsMatrix<T> & vals = result[0];
-    vals.resize(nb, u.cols());
     unsigned r = 0;
     do // for all basis functions
     {
         // Multiply basis functions to get the value of basis function v
-        vals.row( r )=  values[0].front().row( v[0] );
+        vals.row( r )=  values[0].front().row( v(0) );
         for ( short_t i=1; i!=d; ++i) // for all variables
-            vals.row(r).array() *= values[i].front().row( v[i] ).array();
+            vals.row(r).array() *= values[i].front().row( v(i) ).array();
 
         ++r;
     } while (nextLexicographic(v, nb_cwise));
@@ -933,7 +936,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
         #ifndef NDEBUG
         if ( solver.info() != gsEigen::Success )
         {
-            gsWarn<< "Failed LU decomposition for:\n";//<< Cmat.toDense() <<"\n";
+            gsWarn<< "Failed LU decomposition for:\n";
             gsWarn<< "Points:\n"<< grid[i] <<"\n";
             gsWarn<< "Knots:\n"<< m_bases[i]->detail() <<"\n";
             return typename gsGeometry<T>::uPtr();

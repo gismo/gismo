@@ -212,9 +212,9 @@ template <class T=real_t>                class gsGenericAssembler;
 template <class T=real_t>                class gsPoissonAssembler;
 template <class T=real_t>                class gsCDRAssembler;
 template <class T=real_t>                class gsSolverUtils;
-template <class T=real_t, bool symm=false>  class gsSparseSystem;
+template <class T=real_t, bool symm=false>      class gsSparseSystem;
 
-template <class T=real_t>                class gsExprAssembler;
+template <class T=real_t, int Major=0>     class gsExprAssembler;
 template <class T=real_t>                class gsExprEvaluator;
 
 // More

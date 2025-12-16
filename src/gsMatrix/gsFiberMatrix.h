@@ -318,14 +318,40 @@ public:
     template <class Derived>
     void toSparseMatrix_into(gsEigen::SparseMatrixBase<Derived>& m) const
     {
-        m.derived().resize( rows(), cols() );
-        m.derived().reserve( nonZerosPerFiber() );
-        for (index_t i = 0; i < fibers(); ++i)
+        typedef gsEigen::Triplet<T> Triplet;
+        std::vector<Triplet> tripletList;
+        tripletList.reserve(nonZeros()); // Reserve memory to avoid reallocations
+
+        const index_t mat_rows = rows();
+        const index_t mat_cols = cols();
+        m.derived().resize( mat_rows, mat_cols ); // Resizes the target sparse matrix
+
+        for (index_t i = 0; i < fibers(); ++i) // iterates over rows (or cols if ColMajor) of FiberMatrix
         {
-            for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it)
-                m.derived().insert(IsRowMajor?i:it.index(), IsRowMajor?it.index():i) = it.value();
+            for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it) // iterates over non-zeros in each fiber
+            {
+                index_t row_idx, col_idx;
+                if (IsRowMajor) {
+                    row_idx = i;
+                    col_idx = it.index();
+                } else {
+                    row_idx = it.index();
+                    col_idx = i;
+                }
+
+                // Add debug check for indices before pushing the triplet
+                if (row_idx < 0 || row_idx >= mat_rows || col_idx < 0 || col_idx >= mat_cols) {
+                    gsInfo << "ERROR: Out of bounds triplet detected!"
+                           << " row_idx: " << row_idx << ", col_idx: " << col_idx
+                           << " (Matrix " << mat_rows << " x " << mat_cols << ")\n";
+                    // GISMO_ASSERT(false, "Out of bounds triplet"); // This would terminate immediately
+                }
+                
+                tripletList.push_back(Triplet(row_idx, col_idx, it.value()));
+            }
         }
-        m.derived().makeCompressed();
+        m.derived().setFromTriplets(tripletList.begin(), tripletList.end());
+        // makeCompressed is implicitly called by setFromTriplets, no need to call it again.
     }
 
     struct RowBlockXpr

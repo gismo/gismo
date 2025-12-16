@@ -257,8 +257,8 @@ public:
 
 public:
 
-    explicit gsDomainIterator(index_t _id = 0, const boxSide & _bs = boundary::none)
-    : m_id(_id), m_pside(0,_bs)
+    explicit gsDomainIterator(index_t id = 0, index_t patch = 0, const boxSide & _bs = boundary::none)
+    : m_id(id), m_pside(patch, _bs)
     { }
 
     virtual ~gsDomainIterator() { }
@@ -310,7 +310,7 @@ protected:
 public:
 
     /// Returns the element id -- see also patch() for the patch index
-    size_t id() const   { return m_id; }
+    virtual size_t id() const   { return m_id; }
 
     /// Returns the local element id -- e.g. the id inside the patch
     virtual size_t localId() const { return m_id; }
@@ -401,7 +401,7 @@ public:
     { return (upperCorner() - lowerCorner()).prod(); }
 
     inline boxSide side() const {return m_pside.side();}
-    inline index_t patch() const {return m_pside.patch;}
+    inline virtual index_t patch() const {return m_pside.patch;}
     inline index_t & patch() {return m_pside.patch;}
 protected:
 

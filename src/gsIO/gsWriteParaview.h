@@ -143,6 +143,15 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
     gsWriteParaview( Geo.patches(), fn, npts, mesh, ctrlNet, pDelim);
 }
 
+/// \brief Export a multipatch Geometry (without scalar information) to paraview file
+///
+/// \param Geo a multipatch object
+/// \param fn filename where paraview file is written
+/// \param npts_per_element number of points used for sampling each element per direction
+template<class T>
+void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
+                     unsigned npts_per_element, const std::string pDelim);
+
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file using Bezier elements.
 ///
 /// \param Geo a multipatch object
@@ -250,6 +259,23 @@ void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value = 
 /// \param fn filename where paraview file is written
 template<class T>
 void gsWriteParaview(const gsMatrix<T> & box, const gsVector<T> & values, std::string const & fn);
+
+/// \brief Export a gsDomain to a paraview file
+///
+/// \param domain the domain to be plotted
+/// \param fn filename where paraview file is written
+template<class T>
+void gsWriteParaview(const gsDomain<T> & domain, std::string const & fn);
+
+/// \brief Export a gsDomain by evaluating elements on a gsMultiPatch to a paraview file.
+///
+/// \param domain the domain to be plotted
+/// \param mp the gsMultiPatch from which to get the geometry of the elements
+/// \param fn filename where paraview file is written
+/// \param npts_per_element_dir number of points used for sampling each element in each parametric direction
+template<class T>
+void gsWriteParaview(const gsDomain<T> & domain, const gsMultiPatch<T>& mp,
+                     std::string const & fn, unsigned npts_per_element_dir = 2);
 
 /// \brief Export gsHBox to paraview files
 ///
@@ -494,6 +520,4 @@ void plot_errors(const gsMatrix<T> & orig,
 #undef NS
 
 
-#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsWriteParaview.hpp)
-#endif

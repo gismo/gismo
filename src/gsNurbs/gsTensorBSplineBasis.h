@@ -208,6 +208,19 @@ public:
     {
         return static_cast<Basis_t &>(Base::component(dir));
     }
+    
+    // Implementation of domain() to override the pure virtual function in gsTensorBasis
+    memory::shared_ptr<gsDomain<T> > domain() const override
+    {
+        std::vector<typename gsKnotVector<T>::Ptr> knotVectors(d);
+        for (short_t i = 0; i < d; ++i)
+        {
+            // The components of gsTensorBSplineBasis are gsBSplineBasis
+            const gsBSplineBasis<T>* bsplineBasis = static_cast<const gsBSplineBasis<T>*>(this->m_bases[i]);
+            knotVectors[i] = memory::make_shared(bsplineBasis->knots(0).clone());
+        }
+        return memory::make_shared(new gsTensorDomain<T,d>(give(knotVectors)));
+    }
 
     // Look at gsBasis class for a description
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override;

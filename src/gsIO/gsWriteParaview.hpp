@@ -2176,6 +2176,110 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
 
 }
 
+template<class T>
+void gsWriteParaview(const gsDomain<T> & domain, std::string const & fn)
+{
+    gsParaviewCollection collection(fn);
+    std::string fileName, fileName_nopath;
+
+    index_t i = 0;
+    for (auto it = domain.beginAll(); it != domain.endAll(); ++it)
+    {
+        gsMatrix<T> box(domain.dim(), 2);
+        box.col(0) = it.lowerCorner();
+        box.col(1) = it.upperCorner();
+
+        fileName = fn + "_" + util::to_string(i);
+        fileName_nopath = gsFileManager::getFilename(fileName);
+
+        T value = static_cast<T>(it.patch());
+
+        if (auto* comp_it = dynamic_cast<gsCompositeDomainIterator<T>*>(it.get()))
+        {
+            value = static_cast<T>(comp_it->subdomainIndex());
+        }
+
+        writeSingleBox(box, fileName, value);
+
+        collection.addPart(fileName_nopath + ".vts");
+        i++;
+    }
+
+    collection.save();
+}
+
+template<class T>
+void gsWriteParaview(const gsDomain<T> & domain, const gsMultiPatch<T>& mp,
+                     std::string const & fn, unsigned npts_per_element_dir)
+{
+    gsParaviewCollection collection(fn);
+    std::string fileName, fileName_nopath;
+    index_t element_output_counter = 0;
+
+    for (auto it = domain.beginAll(); it != domain.endAll(); ++it)
+    {
+        const index_t patch_id = it.patch();       // Patch ID in the MultiPatch
+
+        if (patch_id >= mp.nPatches()) {
+            gsWarn << "gsWriteParaview(gsDomain, gsMultiPatch): Element " << it.id()
+                   << " refers to non-existent patch " << patch_id << ". Skipping.\n";
+            continue;
+        }
+
+        const gsGeometry<T>& patch_geo = mp.patch(patch_id);
+        const int d = patch_geo.domainDim();
+        
+        // The element's local parametric bounds within its patch
+        gsMatrix<T> element_support(d, 2);
+        element_support.col(0) = it.lowerCorner();
+        element_support.col(1) = it.upperCorner();
+
+        fileName = fn + "_" + util::to_string(element_output_counter);
+        fileName_nopath = gsFileManager::getFilename(fileName);
+
+        gsVector<unsigned> np(d);
+        for(short_t j = 0; j < d; ++j)
+            np[j] = npts_per_element_dir;
+
+        gsMatrix<T> pts = gsPointGrid<T>(element_support.col(0), element_support.col(1), np) ;
+
+        gsMatrix<T> eval_geo = patch_geo.eval(pts);
+        
+        gsMatrix<T> eval_field(3, eval_geo.cols());
+        T value = static_cast<T>(it.patch());
+        if (auto* comp_it = dynamic_cast<gsCompositeDomainIterator<T>*>(it.get()))
+        {
+            value = static_cast<T>(comp_it->subdomainIndex());
+        }
+        eval_field.row(0).setConstant(value);
+        eval_field.row(1).setConstant(static_cast<T>(element_output_counter));
+        eval_field.row(2).setConstant(0.0);
+
+        // --- DEBUG PRINT ---
+        // gsInfo << "Writing element " << element_output_counter 
+        //        << " (Patch: " << patch_id << ", LocalID: " << it.localId() << ") "
+        //        << "to file " << fileName_nopath << ".vts\n";
+        // gsInfo << "  Parametric Corners: Lower: " << element_support.col(0).transpose() 
+        //        << ", Upper: " << element_support.col(1).transpose() << "\n";
+        // gsInfo << "  Physical Corners (eval_geo): Lower: " << eval_geo.col(0).transpose() 
+        //        << ", Upper: " << eval_geo.col(eval_geo.cols()-1).transpose() << "\n";
+        // --- END DEBUG PRINT ---
+
+        gsVector<index_t> np_render = np.template cast<index_t>();
+        if ( 3 - d > 0 )
+        {
+            np_render.conservativeResize(3);
+            np_render.bottomRows(3-d).setOnes();
+        }
+
+        gsWriteParaviewTPgrid(eval_geo, eval_field, np_render, fileName);
+
+        collection.addPart(fileName_nopath + ".vts");
+        element_output_counter++;
+    }
+    collection.save();
+}
+
 } // namespace gismo
 
 

@@ -35,91 +35,106 @@ private:
     typedef gsDomainIteratorWrapper<T> domainIter;
     typedef typename gsKnotVector<T>::const_uiterator knotIter;
 
-public: // constructors
+public:
+    // constructors
 
-    gsTensorDomain(const std::vector<typename gsDomain<T>::Ptr> & KVs)
-    :
-    m_knotVectors(give(KVs))
+    gsTensorDomain(const gsKnotVector<T> & kvU)
     {
-        GISMO_ASSERT(KVs.size() == D, "Number of domains must match the dimension of the domain.");
+        GISMO_ASSERT(D==1, "gsTensorDomain(const gsKnotVector<T> &) can only be used for 1D domains.");
+        m_knotVectors.push_back(memory::make_shared(new gsKnotVector<T>(kvU)));
     }
 
-public: // iterators
+    gsTensorDomain(const gsKnotVector<T> & kvU, const gsKnotVector<T> & kvV)
+    {
+        GISMO_ASSERT(D==2, "gsTensorDomain(const gsKnotVector<T> &, const gsKnotVector<T> &) can only be used for 2D domains.");
+        m_knotVectors.push_back(memory::make_shared(new gsKnotVector<T>(kvU)));
+        m_knotVectors.push_back(memory::make_shared(new gsKnotVector<T>(kvV)));
+    }
+
+    gsTensorDomain(const gsKnotVector<T> & kvU, const gsKnotVector<T> & kvV, const gsKnotVector<T> & kvW)
+    {
+        GISMO_ASSERT(D==3, "gsTensorDomain(const gsKnotVector<T> &, ..., const gsKnotVector<T> &) can only be used for 3D domains.");
+        m_knotVectors.push_back(memory::make_shared(new gsKnotVector<T>(kvU)));
+        m_knotVectors.push_back(memory::make_shared(new gsKnotVector<T>(kvV)));
+        m_knotVectors.push_back(memory::make_shared(new gsKnotVector<T>(kvW)));
+    }
+
+    gsTensorDomain(const std::vector<const gsKnotVector<T>*> & kvs)
+    {
+        GISMO_ASSERT(kvs.size()==D, "Number of knot vectors must equal the dimension of the domain.");
+        m_knotVectors.reserve(D);
+        for (typename std::vector<const gsKnotVector<T>*>::const_iterator
+             it = kvs.begin() ; it != kvs.end(); ++it )
+            m_knotVectors.push_back(memory::make_shared(new gsKnotVector<T>(**it)));
+    }
+
+    gsTensorDomain(const std::vector<typename gsKnotVector<T>::Ptr> & kvs) : m_knotVectors(kvs)
+    {
+        GISMO_ASSERT(kvs.size()==D, "Number of knot vectors must equal the dimension of the domain.");
+    }
+
+    /// Default constructor
+    gsTensorDomain() : m_knotVectors(D) {}
+
+
+    // iterators
 
     virtual domainIter beginAll() const override
     {
-        return domainIter(new gsTensorDomainIterator<T,D>(*this));
+        return domainIter(new gsTensorDomainIterator<T,D>(*this, this->patchId()));
     }
 
-    domainIter beginBdr(const boxSide bs) const override
-    { return domainIter(new gsTensorDomainBoundaryIterator<T,D,knotIter>(*this, bs)); }
+    /// Provides a new iterator which loops over boundary elements only.
+    ///
+    /// The iterator will run over boundary elements of type \a btype. If the
+    /// given side is a corner of the domain, the boundary elements are cells
+    /// of (dim-1)-dimensional boundaries. For an edge, these cells are
+    /// 1-dimensional entities and for a volume they are 2-dimensional.
+    virtual domainIter beginBdr(const boxSide btype = boundary::all) const override
+    {
+        return domainIter(new gsTensorDomainBoundaryIterator<T,D>(*this, btype));
+    }
+
 
 public: // more members
 
-    // Look at gsBasis class for a description
-    size_t numElements() const override
-    {
-        size_t nElem = 1;
-        for (short_t dim = 0; dim < D; ++dim)
-            nElem *= m_knotVectors[dim]->numElements();
-        return nElem;
-    }
-
-        // Look at gsBasis class for a description
-    size_t numElementsBdr(boxSide const & s = boundary::none) const override
-    {
-        if(s==boundary::none)
-        {
-            GISMO_NO_IMPLEMENTATION
-        }
-
-        const short_t dir =  s.direction();
-        size_t nElem = 1;
-        for (short_t dim = 0; dim < D; ++dim)
-        {
-            if(dim == dir)
-                continue;
-            nElem *= m_knotVectors[dim]->numElements();
-        }
-        return nElem;
-    }
-
-    short_t degree(short_t i) const override
-    {
-        return m_knotVectors[i]->degree();
-    }
-
     short_t dim() const override { return D; }
 
-    gsMatrix<T> boundingBox() const override
-    {
-        gsMatrix<T> result(D, 2);
-        for (short_t i = 0; i < D; ++i)
-            result.row(i) = m_knotVectors[i]->boundingBox();
-        return result;
-    }
+    // Look at gsBasis class for a description
 
-    virtual gsMesh<T> mesh() const override
-    {
-        // gsMesh<T> mesh;
-        // mesh.setDimension(d);
-        // mesh.setBasis(m_basis);
-        // return mesh;
-        GISMO_NO_IMPLEMENTATION
-    }
+    virtual size_t numElements() const override;
 
 // Specific for gsTensorDomain
 public:
-
-    typename gsDomain<T>::Ptr component(index_t i) const
+    typename gsKnotVector<T>::Ptr knotVector(index_t i) const
     {
         return m_knotVectors[i];
     }
 
+    typename gsKnotVector<T>::Ptr component(index_t i) const
+    {
+        return m_knotVectors[i];
+    }
+
+
+    /// Specialized domain decomposition for tensor domains.
+    /// Creates a smooth partitioning using axis-aligned boxes (tensor subdomain ranges).
+    /// \param npieces Number of pieces to decompose into
+    /// \return A composite domain made of tensor subdomains
+    virtual typename gsDomain<T>::Ptr decompose(index_t npieces) const override;
+
+    /// \brief Decomposes the domain into a given number of pieces using a specific strategy.
+    /// \param npieces Number of pieces to decompose into.
+    /// \param strategy The decomposition strategy to use.
+    /// \return A shared pointer to the decomposed domain.
+    virtual typename gsDomain<T>::Ptr decompose(index_t npieces, decompositionStrategy strategy) const override;
+
 protected:
     // NOTE: change vector to array?
-    std::vector< typename gsDomain<T>::Ptr> m_knotVectors;
-
-};
+    std::vector< typename gsKnotVector<T>::Ptr > m_knotVectors;
+}; // class gsTensorDomain
 
 } // namespace gismo
+
+
+#include <gsDomain/gsTensorDomain.hpp>

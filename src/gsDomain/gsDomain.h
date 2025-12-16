@@ -16,6 +16,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsDomain/gsDomainIterator.h>
+#include <gsDomain/gsDecompositionStrategy.h>
 #include <gsCore/gsBoundary.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 
@@ -75,18 +76,23 @@ namespace gismo
 template<class T>
 class gsDomain
 {
-    public:
+public:
 
     typedef typename memory::shared_ptr<gsDomain<T> > Ptr;
     typedef typename memory::unique_ptr<gsDomain<T> > uPtr;
 
     typedef gsDomainIteratorWrapper<T> iterator;
 
+protected:
+    index_t m_patchId;
+
+public:
+    gsDomain(index_t patchId = -1) : m_patchId(patchId) {}
+
     virtual ~gsDomain() { }
 
 #if EIGEN_HAS_RVALUE_REFERENCES && EIGEN_GNUC_AT_MOST(4,7) && !EIGEN_COMP_PGI
     // defaulted declaration required at least in Gcc 4.7.2
-    gsDomain() = default;
     gsDomain(const gsDomain&) = default;
     gsDomain(gsDomain&&) = default;
     gsDomain & operator=(const gsDomain&) = default;
@@ -94,14 +100,16 @@ class gsDomain
 #endif
 
 public:
+    index_t patchId() const { return m_patchId; }
+    void setPatchId(index_t id) { m_patchId = id; }
 
     /// Helper class for range-based for loops
     class ElementRange
     {
-        iterator begin_, end_;
+        iterator begin_,end_;
     public:
         ElementRange(iterator _begin, iterator _end)
-        : begin_(give(_begin)), end_(give(_end)) { }
+        : begin_(give(_begin)), end_(give(_end)) { } 
         iterator & begin() { return begin_; }
         iterator & end()   { return end_;   }
     };
@@ -152,6 +160,26 @@ public:
 
     virtual size_t nPieces() const { return 1; }
 
+    /// Default domain decomposition (placeholder for now).
+    /// Derived classes should override this method with specialized implementations.
+    /// \param npieces Number of pieces to decompose into
+    /// \return A shared pointer to a decomposed domain (to be implemented in subclasses)
+    virtual Ptr decompose(index_t npieces) const
+    {
+        // Base implementation - to be overridden in derived classes
+        gsWarn << "Domain decomposition not implemented for this domain type.\n";
+        return Ptr();
+    }
+
+    /// \brief Decomposes the domain into a given number of pieces using a specific strategy.
+    /// \param npieces Number of pieces to decompose into.
+    /// \param strategy The decomposition strategy to use.
+    /// \return A shared pointer to the decomposed domain.
+    virtual Ptr decompose(index_t npieces, decompositionStrategy strategy) const
+    {
+        GISMO_UNUSED(strategy);
+        return this->decompose(npieces);
+    }
 
 public: // Domain element iterators
 
@@ -255,6 +283,7 @@ public: // Domain element iterators
         os<<"Domain of dimension "<<dim()<<", "<< "number of elements: "<< numElements()<<"\n";
         return os;
     }
+
 }; // class gsDomain
 
 /// Print (as string) operator to be used by all derived classes

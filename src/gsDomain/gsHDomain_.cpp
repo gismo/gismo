@@ -1,6 +1,8 @@
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsDomain/gsHDomain.h>
+#include <gsDomain/gsCompositeDomain.h>
+#include <gsDomain/gsHSubDomain.h>
 
 namespace gismo
 {
