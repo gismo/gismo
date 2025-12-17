@@ -236,37 +236,34 @@ void gsWriteParaview(gsBasis<T> const& basis,
                      std::string const & fn,
                      unsigned npts =NS, bool mesh = false);
 
-/// \brief Export an element \a box to paraview files
+/// \brief Export elements \a box to paraview files
 ///
-/// \param box an element represented by a bounding box
+/// \param box an matrix representing boxes, each box is represented by two columns
 /// \param fn filename where paraview file is written
-/// \param value to write
+/// \param values a vector of values, each value corresponds to a box
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value = 0.0);
-
-/// \brief Export an element \a box to paraview files
-///
-/// \param box an element represented by a bounding box
-/// \param fn filename where paraview file is written
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const std::vector<T> & values = {});
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & box, const gsVector<T> & values, std::string const & fn);
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const gsVector<T> & values);
+template<class T>
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value);
 
 /// \brief Export gsHBox to paraview files
 ///
 /// \param box a gsHBox
 /// \param fn filename where paraview file is written
+/// \param mode controls the output format: 0 (colored by level), 1 (colored by error)
 template<short_t d, class T>
-void gsWriteParaview(const gsHBox<d,T> & box, std::string const & fn);
+void gsWriteParaview(const gsHBox<d,T> & box, std::string const & fn, short_t mode = 0);
 
-/// \brief Export gsHBox to paraview files
+/// \brief Export gsHBoxContainer to paraview files
 ///
-/// \param basis a basis object
+/// \param box a gsHBoxContainer
 /// \param fn filename where paraview file is written
-/// \param npts number of points used for sampling each curve
-/// \param mesh if true, the parameter mesh is plotted as well
-template<short_t d, class T>
-void gsWriteParaview(const gsHBoxContainer<d,T> & box, std::string const & fn);
 
+/// \param mode controls the output format: 0 (colored by level), 1 (colored by error)
+template<short_t d, class T>
+void gsWriteParaview(const gsHBoxContainer<d,T> & box, std::string const & fn, short_t mode = 0);
 
 /// \brief Export 2D Point set to Paraview file
 ///
@@ -457,6 +454,7 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          std::string const & fn, unsigned resolution = 8);
 
 /// Export an element \a box
+GISMO_DEPRECATED
 template<class T>
 void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value);
 
