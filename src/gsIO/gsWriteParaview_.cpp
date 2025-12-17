@@ -76,7 +76,7 @@ TEMPLATE_INST
 void gsWriteParaview(const gsHBox<2,T> & hbox, std::string const & fn, short_t mode);
 
 TEMPLATE_INST
-void gsWriteParaview(const gsHBox<3,T> & hbox, std::string const & fn);
+void gsWriteParaview(const gsHBox<3,T> & hbox, std::string const & fn, short_t mode);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsHBoxContainer<2,T> & hbox, std::string const & fn, short_t mode);
