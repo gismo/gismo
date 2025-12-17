@@ -1169,8 +1169,6 @@ void gsAdaptiveMeshing<T>::markCrs_into(const std::vector<T> & elError, const HB
     else
         _markElements<true,false>( elError, m_crsRule, predicates, elMarked);//,flag [coarse]);
 
-    gsDebugVar(m_crsPermutation.size());
-
     for (typename std::vector<gsHBoxCheck<2,T>*>::iterator pred=predicates.begin(); pred!=predicates.end(); pred++)
         delete *pred;
 }
