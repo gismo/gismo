@@ -23,43 +23,18 @@ namespace gismo {
             const gsFunctionSet<real_t> & bases, index_t nComp);
 
     TEMPLATE_INST void gsDofMapper::init(
-            const gsFunctionSet<real_t> & bases, const gsBoxTopology & topology, index_t nComp);
+            const gsFunctionSet<real_t> & bases, 
+            const gsBoxTopology & topology, 
+            index_t nComp, 
+            int unk,
+            bool conforming);
 
     TEMPLATE_INST void gsDofMapper::init(
             std::vector<const gsFunctionSet<real_t> *> const & bases);
 
     TEMPLATE_INST void gsDofMapper::init(
             const gsFunctionSet<real_t>         &basis,
-            const gsBoundaryConditions<real_t>  &bc, int unk
-        );
-
-    // NEW
-    TEMPLATE_INST void gsDofMapper::init(
-            const gsFunctionSet<real_t>         &basis,
             const gsBoxTopology                 &topology,
-            const gsBoundaryConditions<real_t>  &bc,
-            index_t nComp,
-            int unk
-    );
-
-    TEMPLATE_INST void gsDofMapper::init(
-            const gsMultiBasis<real_t>          &basis,
-            const gsBoundaryConditions<real_t>  &bc,
-            index_t nComp,
-            int unk,
-            bool conforming
-    );
-
-    TEMPLATE_INST void gsDofMapper::init(
-            const gsMappedBasis<2,real_t>       &basis,
-            const gsBoundaryConditions<real_t>  &bc,
-            index_t nComp,
-            int unk,
-            bool conforming
-    );
-
-    TEMPLATE_INST void gsDofMapper::init(
-            const gsMultiPatch<real_t>          &geometry,
             const gsBoundaryConditions<real_t>  &bc,
             index_t nComp,
             int unk,
