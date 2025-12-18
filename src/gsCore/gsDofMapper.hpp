@@ -85,6 +85,11 @@ void gsDofMapper::init(const gsBasis<T>         &basis,
 }
 
 template<class T>
+/// Initialize from a (possibly multi-patch) function set.
+/// \param topology Interface topology between patches.
+///        It is valid to pass an empty gsBoxTopology() for single-patch
+///        bases or when no inter-patch conformity is required; in that
+///        case no interface matching is performed.
 void gsDofMapper::init(const gsFunctionSet<T> & bases,
                        const gsBoxTopology & topology,
                        index_t nComp, int unk, bool conforming)

@@ -93,17 +93,6 @@ public:
         init(bases, dirichlet, unk); //obsolete, one component
     }
 
-    // template<class T>
-    // gsDofMapper(
-    //     const gsFunctionSet<T>         &bases,
-    //     const gsBoundaryConditions<T> &dirichlet,
-    //     int nComp,
-    //     int unk = 0
-    //     ) : m_shift(0), m_bshift(0)
-    // {
-    //   init(bases, dirichlet, nComp, unk); //obsolete, one component
-    // }
-
     template<class T>
     gsDofMapper(
         const gsFunctionSet<T>         &bases,

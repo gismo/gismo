@@ -365,7 +365,11 @@ public:
 
 protected:
     typename gsPreconditionerOp<Scalar>::uPtr m_preconditioner;
-    // EigenSparseMatrixType m_stored_matrix; // Stored copy of the matrix for preconditioner initialization
+    // NOTE: Intentionally kept commented-out. When extending gsPreconditionerWrapper
+    // to support matrix-dependent Eigen preconditioners that need access to the
+    // original system matrix, this member can be uncommented and used to store
+    // a copy of that matrix during initialization.
+    // EigenSparseMatrixType m_stored_matrix;
 };
 
 } // namespace gismo

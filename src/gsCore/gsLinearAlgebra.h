@@ -177,7 +177,7 @@ public:
     typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
                             gsEigen::IdentityPreconditioner > BiCGSTABIdentity;
 
-    /// BiCGSTAB without preconditioner (identity as preconditioner)
+    /// BiCGSTAB with custom preconditioner (gsPreconditionerWrapper)
     typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
                             gsPreconditionerWrapper<T> > BiCGSTABCustom;
 

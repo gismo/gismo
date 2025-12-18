@@ -930,14 +930,15 @@ public:
     virtual void refineElements(std::vector<index_t> const & boxes);
 
     /**
-     * @brief Unrefines the cells down to level \a targetLevel.
-     * All cells on levels finer than \a targetLevel are coarsened to level \a targetLevel.
+     * @brief Refines the cells up to level \a targetLevel.
+     * All cells on levels coarser than \a targetLevel are refined so that
+     * all active cells are at level \a targetLevel or finer.
      */
     void refineToLevel(index_t targetLevel);
     void refineToLevel_withTransfer(index_t targetLevel, gsSparseMatrix<T,RowMajor> &transfer);
     void refineToLevel_withCoefs(index_t targetLevel, gsMatrix<T> & coefs);
     /**
-     * @brief Unrefines the cells of the finest level.
+     * @brief Refines the cells of the coarsest level.
      */
     void refineCoarsestLevel();
     void refineCoarsestLevel_withTransfer(gsSparseMatrix<T,RowMajor> &transfer);

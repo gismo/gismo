@@ -174,9 +174,15 @@ void gsMultiBasis<T>::combineTransferMatrices(
         for (size_t dim = 0; dim!=coarseMapper.componentsSize(); ++dim)
         {
             GISMO_ASSERT((index_t)coarseMapper.patchSize(j,dim) == localTransferMatrices[j].cols(),
-                        "Full size of the coarse mapper in direction " + std::to_string(dim) + " does not correspond with number of rows of the full local transfer matrix of patch " + std::to_string(j) + ".");
+                        "Full size of the coarse mapper in direction " + std::to_string(dim)
+                        + " does not correspond with number of rows of the full local transfer matrix of patch " + std::to_string(j)
+                        + " (expected " + std::to_string(coarseMapper.patchSize(j,dim))
+                        + ", actual " + std::to_string(localTransferMatrices[j].cols()) + ").");
             GISMO_ASSERT((index_t)fineMapper.patchSize(j,dim) == localTransferMatrices[j].rows(),
-                        "Full size of the fine mapper in direction " + std::to_string(dim) + " does not correspond with number of columns of the full local transfer matrix of patch " + std::to_string(j) + ".");
+                        "Full size of the fine mapper in direction " + std::to_string(dim)
+                        + " does not correspond with number of columns of the full local transfer matrix of patch " + std::to_string(j)
+                        + " (expected " + std::to_string(fineMapper.patchSize(j,dim))
+                        + ", actual " + std::to_string(localTransferMatrices[j].rows()) + ").");
             for (index_t k=0; k < localTransferMatrices[j].outerSize(); ++k)
             {
                 for (typename gsSparseMatrix<T, RowMajor>::iterator it(localTransferMatrices[j],k); it; ++it)
