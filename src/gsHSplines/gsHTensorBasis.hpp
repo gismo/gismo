@@ -917,12 +917,13 @@ template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineCoarsestLevel()
 {
     index_t targetLevel = 0;
-    for(size_t i = 0; i!= m_xmatrix.size(); i++)
-        if (m_xmatrix[i].size() )
-            {
-                targetLevel = i;
-                break;
-            }
+    // Find the coarsest (lowest-index) level that has any active basis functions
+    for (size_t level = 0; level != m_xmatrix.size(); ++level)
+        if (m_xmatrix[level].size())
+        {
+            targetLevel = static_cast<index_t>(level);
+            break;
+        }
     this->refineToLevel(targetLevel+1);
 }
 
