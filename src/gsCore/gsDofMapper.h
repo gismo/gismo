@@ -82,7 +82,7 @@ public:
      * @param dirichlet
      * @param unk
      */
-    GISMO_DEPRECATED
+    GISMO_DEPRECATED // Assumes one component, use generic constructor instead
     template<class T>
     gsDofMapper(
         const gsFunctionSet<T>         &bases,
@@ -137,7 +137,7 @@ public:
      *
      * @param bases
      */
-    GISMO_DEPRECATED
+    GISMO_DEPRECATED // Use multi-basis instead
     template<class T>
     gsDofMapper(
         std::vector<const gsFunctionSet<T> *> const & bases

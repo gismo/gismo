@@ -172,7 +172,7 @@ public:
                     for (index_t c = 0; c!=dim; c++) // for all components
                     {
                         if (c==cc || cc==-1 )
-                            for (index_t k = 0; k < bnd.size() - 1; ++k)  <<<<<<< the -1 here should not be there
+                            for (index_t k = 0; k < bnd.size() - 1; ++k)  //<<-- the -1 here should not be there
                                 m_sd->mapper.matchDof(  it->ps.patch, (bnd)(k, 0),
                                                         it->ps.patch, (bnd1)(k, 0), c);
                     }

@@ -153,15 +153,15 @@ public:
     // gsEigen::ConjugateGradient because this preconditionner does not
     // preserve symmetry.
 
-    /// Congugate gradient without preconditioner (identity as preconditioner)
+    /// Conjugate gradient without preconditioner (identity as preconditioner)
     typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
             gsEigen::Lower|gsEigen::Upper, gsEigen::IdentityPreconditioner> CGIdentity;
 
-    /// Congugate gradient with diagonal (Jacobi) preconditioner
+    /// Conjugate gradient with diagonal (Jacobi) preconditioner
     typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
             gsEigen::Lower|gsEigen::Upper, gsEigen::DiagonalPreconditioner<T> > CGDiagonal;
 
-    /// Congugate gradient with diagonal (Custom) preconditioner
+    /// Conjugate gradient with diagonal (Custom) preconditioner
     typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
             gsEigen::Lower|gsEigen::Upper, gsPreconditionerWrapper<T> > CGCustom;
 
