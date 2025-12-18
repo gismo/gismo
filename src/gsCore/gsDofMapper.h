@@ -106,15 +106,15 @@ public:
 
     template<class T>
     gsDofMapper(
-        const gsMultiBasis<T>         &bases,
+        const gsFunctionSet<T>         &bases,
         index_t nComp = 1,
         bool conforming = true
         ) : m_shift(0), m_bshift(0)
     {
-        if (conforming)
-            init(bases, bases.topology(), nComp);
+        if (dynamic_cast<const gsBoxTopology*>(&bases) != nullptr)
+            init(bases,dynamic_cast<const gsBoxTopology&>(bases),nComp,conforming);
         else
-            init(bases, gsBoxTopology(),  nComp);
+            init(bases,gsBoxTopology(), nComp);
     }
 
     template<class T>
@@ -129,50 +129,17 @@ public:
 
     template<class T>
     gsDofMapper(
-        const gsMultiBasis<T>         &bases,
+        const gsFunctionSet<T>         &bases,
         const gsBoundaryConditions<T> &dirichlet,
         int nComp,
         int unk = 0,
         bool conforming = true
         ) : m_shift(0), m_bshift(0)
     {
-        init(bases, dirichlet, nComp, unk, conforming);
-    }
-
-    template<short_t d, class T>
-    gsDofMapper(
-        const gsMappedBasis<d,T>      &bases,
-        const gsBoundaryConditions<T> &dirichlet,
-        int nComp,
-        int unk = 0,
-        bool conforming = true
-        ) : m_shift(0), m_bshift(0)
-    {
-        init(bases, dirichlet, nComp, unk, conforming);
-    }
-
-    template<class T>
-    gsDofMapper(
-        const gsMultiPatch<T>         &geometry,
-        const gsBoundaryConditions<T> &dirichlet,
-        int nComp,
-        int unk = 0,
-        bool conforming = true
-        ) : m_shift(0), m_bshift(0)
-    {
-        init(geometry, dirichlet, nComp, unk, conforming);
-    }
-
-    /**
-     * @brief construct a dof mapper that identifies the degrees
-     * of freedom in the multibasis
-     *
-     * @param bases
-     */
-    template<class T>
-    gsDofMapper(const gsFunctionSet<T> & bases, index_t nComp = 1)
-    {
-        init(bases, nComp);
+        if (dynamic_cast<const gsBoxTopology*>(&bases) != nullptr)
+            init(bases,dynamic_cast<const gsBoxTopology&>(bases),dirichlet,nComp,unk,conforming);
+        else
+            init(bases,gsBoxTopology(), dirichlet,nComp,unk);
     }
 
     /**
@@ -181,6 +148,7 @@ public:
      *
      * @param bases
      */
+    GISMO_DEPRECATED
     template<class T>
     gsDofMapper(
         std::vector<const gsFunctionSet<T> *> const & bases
@@ -215,22 +183,18 @@ public:
 
     /// Initialize by a gsFunctionSet
     template <typename T>
-    void init(const gsFunctionSet<T> & bases, index_t nComp = 1);
+    void init(const gsFunctionSet<T> & bases, index_t nComp = 1)
+    {
+        init(bases, gsBoxTopology(), nComp);
+    }
 
     /// Initialize by a gsFunctionSet and a topology (explicitly given)
     template <typename T>
-    void init(const gsFunctionSet<T> & bases, const gsBoxTopology & topology, index_t nComp = 1);
+    void init(const gsFunctionSet<T> & bases, const gsBoxTopology & topology, index_t nComp = 1, int unk = 0, bool conforming = true);
 
     /// Initialize by a vector of gsFunctionSet.
     template <typename T>
     void init( std::vector<const gsFunctionSet<T> *> const & bases);
-
-    /// Initialize by gsFunctionSet, boundary conditions and the index
-    /// of the unknown to be eliminated
-    GISMO_DEPRECATED
-    template<class T>
-    void init(const gsFunctionSet<T>         &basis,
-	          const gsBoundaryConditions<T> &dirichlet, int unk = 0);
 
     /**
      * @brief Initialize by gsFunctionSet, boundary conditions, the number of components and the index
@@ -244,26 +208,6 @@ public:
     template<class T>
     void init(const gsFunctionSet<T>         &basis,
               const gsBoxTopology            &topology,
-	          const gsBoundaryConditions<T>  &dirichlet,
-              index_t nComp,
-              int unk = 0);
-
-    template<class T>
-    void init(const gsMultiBasis<T>          &basis,
-	          const gsBoundaryConditions<T>  &dirichlet,
-              index_t nComp,
-              int unk = 0,
-              bool conforming = true);
-
-    template<class T>
-    void init(const gsMappedBasis<2,T>       &basis,
-	          const gsBoundaryConditions<T>  &dirichlet,
-              index_t nComp,
-              int unk = 0,
-              bool conforming = true);
-
-    template<class T>
-    void init(const gsMultiPatch<T>          &geometry,
 	          const gsBoundaryConditions<T>  &dirichlet,
               index_t nComp,
               int unk = 0,
@@ -669,6 +613,12 @@ private:
 
     void mergeDofsGlobally(index_t dof1, index_t dof2);
     void mergeDofsGlobally(index_t dof1, index_t dof2, index_t comp);
+
+    template <class T>
+    void _addBCs(   const gsFunctionSet<T>         &basis,
+                    const gsBoundaryConditions<T>  &bc,
+                    index_t nComp,
+                    int unk);
 
 // Data members
 private:
