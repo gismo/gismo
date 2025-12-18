@@ -638,7 +638,7 @@ public:
     /**
      * @brief Constructs a gsDofMapper for the multi-basis.
      *
-     * @note Assumes a single-component solution and unk=0.
+     * @note Assumes unk=0; the number of components is specified by \p nComp.
      *
      * See the other overload of getMapper() for details.
      */
