@@ -1042,13 +1042,19 @@ void gsHTensorBasis<d,T>::unrefineToLevel_withCoefs(index_t targetLevel, gsMatri
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::unrefineFinestLevel()
 {
+    // Ensure that at least level 0 exists; unrefinement is defined relative to it.
+    GISMO_ENSURE(!m_xmatrix.empty(), "unrefineFinestLevel expects at least level 0 to exist.");
+
     index_t targetLevel = 0;
-    for(size_t i = m_xmatrix.size(); i > 0; i--)
-        if (m_xmatrix[i-1].size() )
-            {
-                targetLevel = i-1;
-                break;
-            }
+    // Find the finest (highest) non-empty level by iterating backwards over the levels.
+    for (size_t levelIndex = m_xmatrix.size(); levelIndex > 0; --levelIndex)
+    {
+        if (m_xmatrix[levelIndex - 1].size())
+        {
+            targetLevel = static_cast<index_t>(levelIndex - 1);
+            break;
+        }
+    }
     if (targetLevel == 0)
         return; // nothing to do
 
