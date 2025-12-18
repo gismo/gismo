@@ -310,13 +310,13 @@ public:
     StorageIndex rows() const
     {
         return m_preconditioner ? gsEigen::internal::convert_index<StorageIndex>(m_preconditioner->rows())
-                                : -1;
+                                : StorageIndex(0);
     }
 
     StorageIndex cols() const
     {
         return m_preconditioner ? gsEigen::internal::convert_index<StorageIndex>(m_preconditioner->cols())
-                                : -1;
+                                : StorageIndex(0);
     }
 
     template<typename EigenMatType>
