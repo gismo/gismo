@@ -125,10 +125,14 @@ public:
         bool conforming = true
         ) : m_shift(0), m_bshift(0)
     {
-        if (dynamic_cast<const gsBoxTopology*>(&bases) != nullptr)
-            init(bases,dynamic_cast<const gsBoxTopology&>(bases),dirichlet,nComp,unk,conforming);
-        else
+        if      (const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&bases))
+        {
+            init(bases,mb->topology(),dirichlet,nComp,unk,conforming);
+        }
+        else // gsMappedBasis or others
+        {
             init(bases,gsBoxTopology(), dirichlet,nComp,unk);
+        }
     }
 
     /**

@@ -213,8 +213,8 @@ void gsDofMapper::_addBCs(  const gsFunctionSet<T>         &basis,
             if (c==cc || cc==-1)
             {
                 for (index_t k = 0; k < bnd.size() -1; ++k)
-                    this->matchDof(it->ifc.first().patch,  (bnd)(k, 0),
-                                   it->ifc.second().patch, (bnd1)(k + 1, 0), c);
+                    this->matchDof(it->ifc.first() .patch, (bnd)(0, 0),
+                                   it->ifc.first() .patch, (bnd)(k + 1, 0), c);
                 for (index_t k = 0; k < bnd1.size(); ++k)
                     this->matchDof(it->ifc.second().patch, (bnd1)(k, 0),
                                    it->ifc.first().patch,  (bnd)(k, 0), c);
@@ -249,7 +249,7 @@ void gsDofMapper::init(const gsFunctionSet<T>        &basis,
         dynamic_cast<const gsMappedBasis<3,T>*>(&basis) !=nullptr)
             this->setIdentity(basis.nPieces(), basis.size(), nComp);
     else
-        init(basis,topology,nComp,unk);
+        init(basis,topology,nComp,unk,conforming);
     _addBCs(basis,bc,nComp,unk);
 }
 
