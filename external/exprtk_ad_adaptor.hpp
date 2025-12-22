@@ -69,7 +69,8 @@ struct epsilon_type<ad_type_tag>
 
 inline bool is_nan_impl(const DScalar& v, ad_type_tag)
 {
-    return std::isnan(v.getValue());
+    using std::isnan;
+    return isnan(v.getValue());
 }
 
 template <typename T>
@@ -203,7 +204,8 @@ template <typename T>
 inline T modulus_impl(const T& v0, const T& v1, ad_type_tag)
 {
     std::cerr<<"modulus is not derivated\n";
-    return T(std::fmod(v0.getValue(),v1.getValue()));
+    using autodiff::val;
+    return T(std::fmod(val(v0.getValue()),val(v1.getValue())));
 }
 
 template <typename T>
@@ -271,7 +273,8 @@ inline T roundn_impl(const T& v0, const T& v1, ad_type_tag)
 template <typename T>
 inline bool is_integer_impl(const T& v, ad_type_tag)
 {
-    return std::ceil(v.getValue()) == v.getValue();
+    using std::ceil;
+    return ceil(v.getValue()) == v.getValue();
 }
 
 template <typename T>

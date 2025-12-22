@@ -430,8 +430,12 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
                 const index_t s   = static_cast<index_t>(c.parameter());// 0 or 1
 
                 for (index_t i=0; i<m_dim;++i)
-                    coor(i,l) = ( dir==i ?  supp(i,s) :
-                                  (supp(i,1)+supp(i,0))/2.0 );
+                {
+                    if (dir == i)
+                        coor(i,l) = supp(i,s);
+                    else
+                        coor(i,l) = (supp(i,1)+supp(i,0))/T(2.0);
+                }
                 l++;
             }
         }
@@ -655,16 +659,17 @@ gsDofMapper gsMultiPatch<T>::getMapper(T tol) const
     return mapper;
 }
 
+// /*
 template<class T>
-gsSurfMesh gsMultiPatch<T>::toMesh() const
+gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
 {
     GISMO_ASSERT(2==parDim(), "Works for surfaces only.");
     gsDofMapper mapper = getMapper((T)1e-7);
-    gsSurfMesh mesh;
-    auto pid = mesh.add_vertex_property<index_t>("v:patch");
-    auto anchor = mesh.add_vertex_property<index_t>("v:anchor");
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Point pt(0,0,0);
+    gsSurfMesh<T> mesh;
+    auto pid = mesh.template add_vertex_property<index_t>("v:patch");
+    auto anchor = mesh.template add_vertex_property<index_t>("v:anchor");
+    typename gsSurfMesh<T>::Vertex v;
+    typename gsSurfMesh<T>::Point pt(0,0,0);
     const index_t gd = geoDim();
     std::vector<std::pair<index_t,index_t> > pi = mapper.anyPreImages();
     //std::pair<index_t,index_t> pi;
@@ -687,7 +692,7 @@ gsSurfMesh gsMultiPatch<T>::toMesh() const
     static_cast<gsTensorBasis<2>&>(patch(0).basis()).stride_cwise(strides);
     static_cast<gsTensorBasis<2>&>(patch(0).basis()).size_cwise  (csize);
     csize.array() -= 2;
-    gsSurfMesh::Vertex v1, v2, v3, v4;
+    typename gsSurfMesh<T>::Vertex v1, v2, v3, v4;
     for (size_t p=0; p<np; ++p)
     {
         // todo: basis->connectivityAtAnchors  ++  basis->controlPolytope
@@ -696,20 +701,21 @@ gsSurfMesh gsMultiPatch<T>::toMesh() const
         do
         {
             index_t ci = pp.index(cur);
-            v1 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v1 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci += strides[0];
-            v2 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v2 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci += strides[1];
-            v3 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v3 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci -= strides[0];
-            v4 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v4 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             mesh.add_quad(v1,v2,v3,v4);
         } while (nextCubePoint(cur, csize));
 
     }
 
     return mesh;
-}
+} 
+// */
 
 template<class T> // to do: move to boundaryInterface
 gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface &bi, T scaling) const

@@ -369,10 +369,12 @@ template<typename _MatrixType> class FullPivHouseholderQR
     RealScalar threshold() const
     {
       eigen_assert(m_isInitialized || m_usePrescribedThreshold);
-      return m_usePrescribedThreshold ? m_prescribedThreshold
-      // this formula comes from experimenting (see "LU precision tuning" thread on the list)
-      // and turns out to be identical to Higham's formula used already in LDLt.
-                                      : NumTraits<Scalar>::epsilon() * RealScalar(m_qr.diagonalSize());
+      if (m_usePrescribedThreshold)
+        return m_prescribedThreshold;
+      else
+        // this formula comes from experimenting (see "LU precision tuning" thread on the list)
+        // and turns out to be identical to Higham's formula used already in LDLt.
+        return NumTraits<Scalar>::epsilon() * RealScalar(m_qr.diagonalSize());
     }
 
     /** \returns the number of nonzero pivots in the QR decomposition.

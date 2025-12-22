@@ -13,21 +13,43 @@
 
 #pragma once
 
-#include "gsAutoDiff2_fwd.h"
-#include <cmath>
-#include <sstream>
-#include <type_traits>
-#include <utility>
-
 #include <gsCore/gsConfig.h>
-#include <gsCore/gsDebug.h>
 #include <gsCore/gsForwardDeclarations.h>
 
-#include <gsMatrix/gsEigenDeclarations.h>
+// Suppress warnings from autodiff library
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wparentheses"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 
-#include <gsAutoDiff/gsVarAdaptor.h>
-#include <gsAutoDiff/gsAutoDiffEigen.h>
+// Include autodiff compatibility layer
 #include <gsAutoDiff/gsAutoDiffTraits.h>
 #include <gsAutoDiff/gsAutoDiffUtils.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
+namespace gismo {
+    // Forward AD using autodiff::detail::Dual
+    using dual_t = autodiff::detail::Dual<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE>;
+    using autodiff_dual_t = dual_t; // For exprtk
+     // Reverse AD using autodiff::var
+    using var_t = autodiff::var;
+}
+
+// Provide ostream printing for autodiff scalar types so expression printing works
+inline std::ostream & operator<<(std::ostream &os, const autodiff::detail::Dual<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE> &d)
+{
+    using autodiff::val;
+    os << val(d);
+    return os;
+}
+
+inline std::ostream & operator<<(std::ostream &os, const autodiff::var &v)
+{
+    using autodiff::val;
+    os << val(v);
+    return os;
+}

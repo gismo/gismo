@@ -46,7 +46,7 @@ public:
     void print(std::ostream &os) const
     {
         //gsInfo<<"\n Space="<<E::Space<<", ScV="<<E::ScalarValued<<", ColBlocks="<<E::ColBlocks<<"\n";
-        static_cast<E const&>(*this).print(os);
+        operator<<(os,static_cast<E const&>(*this));
         os<<"\n";
         /*
           std::string tmp(__PRETTY_FUNCTION__);

@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsTemplateTools.h>
+#include <vector>
 
 #ifdef __MINGW32__
 //#include <malloc/malloc.h> //xcode
@@ -295,7 +296,9 @@ memory::shared_ptr<T> give(memory::shared_ptr<T> & x)
 // Note: VLAs(following line) can be buggy on some compilers/versions,
 // also not nececarily on the stack
 // #define STACK_ARRAY( T, name, sz )    T name[sz];
-#define STACK_ARRAY( T, name, sz )    T * name = (T*) alloca ( (sz) * sizeof(T) );
+#define STACK_ARRAY( T, name, sz ) \
+    std::vector<T> name##_vec(sz); \
+    T * name = name##_vec.data();
 #endif
 
 

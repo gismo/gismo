@@ -118,7 +118,12 @@ void gsPeriodicOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &
         updateLambdasWithTwins(lambdas, i+1);
 
         for (size_t j = 0; j < N + numTwins; j++)
-            LHS(i, j) = ( i==j ? (T)(1) : -lambdas[j] );
+        {
+            if (i == j)
+                LHS(i, j) = T(1);
+            else
+                LHS(i, j) = -lambdas[j];
+        }
     }
 
     // points on the lower and upper boundary

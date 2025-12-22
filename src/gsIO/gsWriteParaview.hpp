@@ -23,6 +23,8 @@
 
 #include <gsCore/gsMultiPatch.h>
 
+#include <gsMesh2/gsSurfMesh.h>
+
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
 
@@ -1977,6 +1979,98 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
     }
 
     file.close();
+}
+
+
+template <class T>
+void gsWriteParaview(gsSurfMesh<T> const & sm,
+                     std::string const & fn,
+                     std::initializer_list<std::string> props)
+{
+    std::string mfn(fn);
+    mfn.append(".vtk");
+    std::ofstream file(mfn.c_str());
+    if ( ! file.is_open() )
+        gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+
+    //https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf
+    file << "# vtk DataFile Version 4.2\n";
+    file << "vtk output\n";
+    file << "ASCII\n";
+    file << "DATASET POLYDATA\n";
+
+    // Vertices
+    auto vpt = sm.template get_vertex_property<typename gsSurfMesh<T>::Point>("v:point");
+    file << "POINTS " << sm.n_vertices() << " float\n";
+    for (auto v : sm.vertices() )
+        file << vpt[v].transpose() <<"\n";
+    file << "\n";
+
+    // Triangles or quads
+    file << "POLYGONS " << sm.n_faces() << " " <<
+        sm.face_valence_sum() + sm.n_faces() << "\n";
+    for (auto f : sm.faces())
+    {
+        file << sm.valence(f) <<" "; //3: triangles, 4: quads
+        for (auto v : sm.vertices(f))
+            file << v.idx() << " ";
+        file << "\n";
+    }
+    file << "\n";
+
+    //todo: count props starting with v:, f:, e:
+    if (0!=props.size())
+        file << "POINT_DATA " << sm.n_vertices() << "\n";//once
+    for( auto & pr : props )
+    {
+        if (pr == "v:normal")
+        {
+            auto vn = sm.template get_vertex_property<typename gsSurfMesh<T>::Point>(pr);
+            GISMO_ASSERT(vn,"No normals found");
+            file << "NORMALS "<<pr<<" float\n";
+            for (auto v : sm.vertices() )
+                file << vn[v].transpose() <<"\n";
+            file << "\n";
+            continue;
+        }
+
+        auto vp = sm.template get_vertex_property<typename gsSurfMesh<T>::Point>(pr);
+        if (vp)
+        {
+            file << "VECTORS "<<pr<<" float\n";
+            for (auto v : sm.vertices() )
+                file << vp[v].transpose() <<"\n";
+            file << "\n";
+            continue;
+        }
+
+        auto vs = sm.template get_vertex_property<typename gsSurfMesh<T>::Scalar>(pr);
+        if (vs)
+        {
+            file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";
+            for (auto v : sm.vertices() )
+                file << vs[v] <<" ";
+            file << "\n";
+            continue;
+        }
+
+        auto vi = sm.template get_vertex_property<index_t>(pr);
+        if (vi)
+        {
+            file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";
+            for (auto v : sm.vertices() )
+                file << vi[v] <<" ";
+            file << "\n";
+            continue;
+        }
+
+        gsWarn<< "gsWriteParaview: Property "<< pr << " ignored.\n";
+    }
+
+    file.close();
+    //makeCollection(fn, ".vtk"); // legacy inside pvd seems to not work
 }
 
 template <typename T>

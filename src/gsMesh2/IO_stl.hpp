@@ -19,13 +19,20 @@ namespace gismo {
 
 
 // helper function
-template <typename T> void read(FILE* in, T& t)
+static inline void io_stl_read_file_binary(FILE* in, void* t, size_t size)
 {
-    size_t n_items(0);
-    (void)n_items;
-    n_items = fread((char*)&t, 1, sizeof(t), in);
+    size_t n_items = fread((char*)t, 1, size, in);
     assert(n_items > 0);
 }
+
+namespace {
+template <typename T>
+static inline void io_stl_read(FILE* in, T& t)
+{
+    size_t n_items = fread((char*)&t, 1, sizeof(t), in);
+    assert(n_items > 0);
+}
+} // anonymous namespace
 
 
 //-----------------------------------------------------------------------------
@@ -58,20 +65,20 @@ private:
 
 //-----------------------------------------------------------------------------
 
-
-bool read_stl(gsSurfMesh& mesh, const std::string& filename)
+template <class T>
+bool read_stl(gsSurfMesh<T>& mesh, const std::string& filename)
 {
     char                             line[100], *c;
     unsigned int                     i, nT;
     Point                            p;
-    gsSurfMesh::Vertex               v;
-    std::vector<gsSurfMesh::Vertex>  vertices(3);
+    typename gsSurfMesh<T>::Vertex               v;
+    std::vector<typename gsSurfMesh<T>::Vertex>  vertices(3);
     size_t n_items(0);
     (void)n_items;
     
     CmpVec comp(FLT_MIN);
-    std::map<Point, gsSurfMesh::Vertex, CmpVec>            vMap(comp);
-    std::map<Point, gsSurfMesh::Vertex, CmpVec>::iterator  vMapIt;
+             std::map<Point, typename gsSurfMesh<T>::Vertex, CmpVec>            vMap(comp);
+    typename std::map<Point, typename gsSurfMesh<T>::Vertex, CmpVec>::iterator  vMapIt;
 
 
     // clear mesh
@@ -103,7 +110,7 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
         assert(n_items > 0);
 
         // read number of triangles
-        read(in, nT);
+        io_stl_read(in, nT);
 
         // read triangles
         while (nT)
@@ -114,13 +121,13 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
             // triangle's vertices
             for (i=0; i<3; ++i)
             {
-                read(in, p);
+                io_stl_read(in, p);
 
                 // has vector been referenced before?
                 if ((vMapIt=vMap.find(p)) == vMap.end())
                 {
                     // No : add vertex and remember idx/vector mapping
-                    v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
+                    v = mesh.add_vertex(p.cast<typename gsSurfMesh<T>::Scalar>());
                     vertices[i] = v;
                     vMap[p] = v;
                 }
@@ -174,7 +181,7 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
                     if ((vMapIt=vMap.find(p)) == vMap.end())
                     {
                         // No : add vertex and remember idx/vector mapping
-                        v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
+                        v = mesh.add_vertex(p.cast<typename gsSurfMesh<T>::Scalar>());
                         vertices[i] = v;
                         vMap[p] = v;
                     }
@@ -202,8 +209,8 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
 
 //-----------------------------------------------------------------------------
 
-
-bool write_stl(const gsSurfMesh& mesh, const std::string& filename)
+template <class T>
+bool write_stl(const gsSurfMesh<T>& mesh, const std::string& filename)
 {
     if (!mesh.is_triangle_mesh())
     {
@@ -211,7 +218,7 @@ bool write_stl(const gsSurfMesh& mesh, const std::string& filename)
         return false;
     }
 
-    auto fnormals = mesh.get_face_property<Normal>("f:normal");
+    auto fnormals = mesh.template get_face_property<Normal>("f:normal");
     if (!fnormals)
     {
         std::cerr << "write_stl: no a face normals present!" << std::endl;
@@ -219,7 +226,7 @@ bool write_stl(const gsSurfMesh& mesh, const std::string& filename)
     }
 
     std::ofstream ofs(filename.c_str());
-    auto points = mesh.get_vertex_property<Point>("v:point");
+    auto points = mesh.template get_vertex_property<Point>("v:point");
 
     ofs << "solid stl" << std::endl;
     Normal n;

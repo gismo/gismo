@@ -41,84 +41,107 @@ struct epsilon_type<AUTODIFF_TYPE_TAG>
 
 inline bool is_nan_impl(const AUTODIFF_TYPE& v, AUTODIFF_TYPE_TAG)
 {
-    return std::isnan(v.val);
+    return std::isnan(autodiff::val(v));
 }
 
 template <typename T>
 inline int to_int32_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    return static_cast<int>(v.val);
+    return static_cast<int>(autodiff::val(v));
 }
 
 template <typename T>
 inline long long to_int64_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    return static_cast<long long int>(v.val);
+    return static_cast<long long int>(autodiff::val(v));
 }
 
 template <typename T>
 inline unsigned long long to_uint64_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    return static_cast<unsigned long long int>(v.val);
+    return static_cast<unsigned long long int>(autodiff::val(v));
 }
 
-template <typename T> inline T   abs_impl(const T& v, AUTODIFF_TYPE_TAG) { using autodiff::detail::abs; return abs(v); }
-template <typename T> inline T  acos_impl(const T& v, AUTODIFF_TYPE_TAG) { using autodiff::detail::acos; return acos(v); }
+template <typename T> inline T   abs_impl(const T& v, AUTODIFF_TYPE_TAG) { using std::abs; return abs(v); }
+template <typename T> inline T  acos_impl(const T& v, AUTODIFF_TYPE_TAG) { using std::acos; return acos(v); }
 template <typename T> inline T acosh_impl(const T& v, AUTODIFF_TYPE_TAG) {
     // acosh not available for Dual, use the mathematical identity: acosh(x) = log(x + sqrt(x^2 - 1))
-    using autodiff::detail::log;
-    using autodiff::detail::sqrt;
+    using std::log;
+    using std::sqrt;
     return log(v + sqrt(v * v - T(1.0)));
 }
-template <typename T> inline T  asin_impl(const T& v, AUTODIFF_TYPE_TAG) { using autodiff::detail::asin; return asin(v); }
+template <typename T> inline T  asin_impl(const T& v, AUTODIFF_TYPE_TAG) { using std::asin; return asin(v); }
 template <typename T> inline T asinh_impl(const T& v, AUTODIFF_TYPE_TAG) {
     // asinh not available for Dual, use the mathematical identity: asinh(x) = log(x + sqrt(x^2 + 1))
-    using autodiff::detail::log;
-    using autodiff::detail::sqrt;
+    using std::log;
+    using std::sqrt;
     return log(v + sqrt(v * v + T(1.0)));
 }
-template <typename T> inline T  atan_impl(const T& v, AUTODIFF_TYPE_TAG) { using autodiff::detail::atan; return atan(v); }
+template <typename T> inline T  atan_impl(const T& v, AUTODIFF_TYPE_TAG) { using std::atan; return atan(v); }
 template <typename T> inline T atanh_impl(const T& v, AUTODIFF_TYPE_TAG) {
     // atanh not available for Dual, use the mathematical identity: atanh(x) = 0.5 * log((1+x)/(1-x))
-    using autodiff::detail::log;
+    using std::log;
     return T(0.5) * log((T(1.0) + v) / (T(1.0) - v));
 }
 template <typename T> inline T ceil_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    typedef typename autodiff::detail::DualType<T> DualT;
-    DualT evaluated(v);
-    return T(DualT(std::ceil(evaluated.val)));
+    using std::ceil;
+    auto value = autodiff::val(v);
+    return T(ceil(value));
 }
-template <typename T> inline T   cos_impl(const T& v, AUTODIFF_TYPE_TAG) { return autodiff::detail::cos(v); }
+template <typename T> inline T   cos_impl(const T& v, AUTODIFF_TYPE_TAG) { 
+    using std::cos;
+    return cos(v); 
+}
 template <typename T> inline T  cosh_impl(const T& v, AUTODIFF_TYPE_TAG) {
     // cosh not available for Dual, use the identity: cosh(x) = (exp(x) + exp(-x))/2
-    using autodiff::detail::exp;
+    using std::exp;
     return (exp(v) + exp(-v)) * T(0.5);
 }
-template <typename T> inline T   exp_impl(const T& v, AUTODIFF_TYPE_TAG) { return autodiff::detail::exp(v); }
+template <typename T> inline T   exp_impl(const T& v, AUTODIFF_TYPE_TAG) { 
+    using std::exp;
+    return exp(v); 
+}
 template <typename T> inline T floor_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    // For any autodiff type (Dual or expression), extract scalar and return T
-    typedef typename autodiff::detail::DualType<T> DualT;
-    DualT evaluated(v);  // Evaluate expression if needed
-    return T(DualT(std::floor(evaluated.val)));
+    using std::floor;
+    auto value = autodiff::val(v);
+    return T(floor(value));
 }
-template <typename T> inline T   log_impl(const T& v, AUTODIFF_TYPE_TAG) { return autodiff::detail::log(v); }
-template <typename T> inline T log10_impl(const T& v, AUTODIFF_TYPE_TAG) { return autodiff::detail::log10(v); }
-template <typename T> inline T  log2_impl(const T& v, AUTODIFF_TYPE_TAG) { return autodiff::detail::log(v) / autodiff::detail::log(T(2.0)); }
+template <typename T> inline T   log_impl(const T& v, AUTODIFF_TYPE_TAG) { 
+    using std::log;
+    return log(v); 
+}
+template <typename T> inline T log10_impl(const T& v, AUTODIFF_TYPE_TAG) { 
+    using std::log10;
+    return log10(v); 
+}
+template <typename T> inline T  log2_impl(const T& v, AUTODIFF_TYPE_TAG) { 
+    using std::log;
+    return log(v) / log(T(2.0)); 
+}
 template <typename T> inline T   neg_impl(const T& v, AUTODIFF_TYPE_TAG) { return -v; }
 template <typename T> inline T   pos_impl(const T& v, AUTODIFF_TYPE_TAG) { return v; }
-template <typename T> inline T   sin_impl(const T& v, AUTODIFF_TYPE_TAG) { return autodiff::detail::sin(v); }
+template <typename T> inline T   sin_impl(const T& v, AUTODIFF_TYPE_TAG) { 
+    using std::sin;
+    return sin(v); 
+}
 template <typename T> inline T  sinh_impl(const T& v, AUTODIFF_TYPE_TAG) {
     // sinh not available for Dual, use the identity: sinh(x) = (exp(x) - exp(-x))/2
-    using autodiff::detail::exp;
+    using std::exp;
     return (exp(v) - exp(-v)) * T(0.5);
 }
-template <typename T> inline T  sqrt_impl(const T& v, AUTODIFF_TYPE_TAG) { return autodiff::detail::sqrt(v); }
-template <typename T> inline T   tan_impl(const T& v, AUTODIFF_TYPE_TAG) { return autodiff::detail::tan(v); }
+template <typename T> inline T  sqrt_impl(const T& v, AUTODIFF_TYPE_TAG) { 
+    using std::sqrt;
+    return sqrt(v); 
+}
+template <typename T> inline T   tan_impl(const T& v, AUTODIFF_TYPE_TAG) { 
+    using std::tan;
+    return tan(v); 
+}
 template <typename T> inline T  tanh_impl(const T& v, AUTODIFF_TYPE_TAG) {
     // tanh not available for Dual, use the identity: tanh(x) = (exp(2x) - 1)/(exp(2x) + 1)
-    using autodiff::detail::exp;
+    using std::exp;
     const T e2x = exp(T(2.0) * v);
     return (e2x - T(1.0)) / (e2x + T(1.0));
 }
@@ -131,7 +154,7 @@ template <typename T> inline T   d2g_impl(const T& v, AUTODIFF_TYPE_TAG) { retur
 template <typename T> inline T   g2d_impl(const T& v, AUTODIFF_TYPE_TAG) { return (v * T(9.0/10.0)); }
 template <typename T> inline T  notl_impl(const T& v, AUTODIFF_TYPE_TAG) {
     // notl not available for Dual, use without derivative
-    return T(v.val == real_t(0) ? real_t(1) : real_t(0));
+    return T(autodiff::val(v) == real_t(0) ? real_t(1) : real_t(0));
 }
 template <typename T> inline T  frac_impl(const T& v, AUTODIFF_TYPE_TAG) { return v - floor_impl(v, AUTODIFF_TYPE_TAG()); }
 template <typename T> inline T trunc_impl(const T& v, AUTODIFF_TYPE_TAG) {
@@ -145,7 +168,7 @@ template <typename T> inline T const_e_impl (AUTODIFF_TYPE_TAG) { return T(exprt
 template <typename T>
 inline T expm1_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::exp;
+    using std::exp;
     return exp(v) - T(1.0);
 }
 
@@ -164,80 +187,81 @@ inline T max_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 template <typename T>
 inline T nequal_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    return T(v0.val != v1.val ? T(1) : T(0));
+    return T(autodiff::val(v0) != autodiff::val(v1) ? T(1) : T(0));
 }
 
 template <typename T>
 inline T sgn_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    if (v.val > T(0)) return T(+1);
-    else if (v.val < T(0)) return T(-1);
+    if (autodiff::val(v) > T(0)) return T(+1);
+    else if (autodiff::val(v) < T(0)) return T(-1);
     else               return T( 0);
 }
 
 template <typename T>
 inline T log1p_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::log;
+    using std::log;
     return log(T(1.0) + v);
 }
 
 template <typename T>
 inline T erf_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::erf;
+    using std::erf;
     return erf(v);
 }
 
 template <typename T>
 inline T erfc_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::erf;
+    using std::erf;
     return T(1.0) - erf(v);
 }
 
 template <typename T>
 inline T ncdf_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::abs;
-    using autodiff::detail::erf;
+    using std::abs;
+    using std::erf;
     T cnd = T(0.5) * (T(1) + erf(
                           abs(v) /
                           T(exprtk::details::constant_autodiff::sqrt2)));
-    return  (v.val < T(0)) ? (T(1) - cnd) : cnd;
+    // Use if statement to avoid ternary operator type issues
+    if (autodiff::val(v) < 0.0)
+        return T(1) - cnd;
+    else
+        return cnd;
 }
 
 template <typename T>
 inline T modulus_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    typedef typename autodiff::detail::DualType<T> DualT;
-    DualT vv0(v0);
-    DualT vv1(v1);
-    // Evaluate the division to a Dual before accessing .val
-    DualT div_result = vv0 / vv1;
-    const DualT q = DualT(std::floor(div_result.val));
-    return T(vv0 - vv1 * q);
+    // Modulus: v0 - v1 * floor(v0/v1)
+    using std::floor;
+    auto q_val = floor(autodiff::val(v0) / autodiff::val(v1));
+    return v0 - v1 * T(q_val);
 }
 
 template <typename T>
 inline T pow_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::pow;
+    using std::pow;
     return pow(v0, v1);
 }
 
 template <typename T>
 inline T logn_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::log;
+    using std::log;
     return log(v0) / log(v1);
 }
 
 template <typename T>
 inline T sinc_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::abs;
-    using autodiff::detail::sin;
+    using std::abs;
+    using std::sin;
     if (abs(v) >= epsilon_type<AUTODIFF_TYPE_TAG>::value())
         return(sin(v) / v);
     else
@@ -264,8 +288,8 @@ inline T xnor_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 template <typename T>
 inline T equal_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::abs;
-    using autodiff::detail::max;
+    using std::abs;
+    using std::max;
     const T epsilon  = epsilon_type<AUTODIFF_TYPE_TAG>::value();
     const T eps_norm = (max(T(1),max(abs(v0),abs(v1))) * epsilon);
     return (abs(T(v0-v1)) <= eps_norm) ? T(1) : T(0);
@@ -274,15 +298,15 @@ inline T equal_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 template <typename T>
 inline T round_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    typedef typename autodiff::detail::DualType<T> DualT;
-    DualT evaluated(v);
-    return T(DualT(std::round(evaluated.val)));
+    using std::round;
+    auto value = autodiff::val(v);
+    return T(round(value));
 }
 
 template <typename T>
 inline T roundn_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::pow;
+    using std::pow;
     using gismo::math::floor;
     using gismo::math::ceil;
     const T p10 = pow(T(10),floor(v1));
@@ -295,54 +319,48 @@ inline T roundn_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 template <typename T>
 inline bool is_integer_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    typedef typename autodiff::detail::DualType<T> DualT;
-    DualT evaluated(v);
-    return std::ceil(evaluated.val) == evaluated.val;
+    // Use val() which works for both Dual and Variable types
+    auto value = autodiff::val(v);
+    return std::ceil(value) == value;
 }
 
 template <typename T>
 inline T root_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::pow;
-    return pow(v0,T(1) / v1);
+    using std::pow;
+    // For autodiff types, compute v0^(1/v1) = exp(log(v0)/v1)
+    using std::log;
+    using std::exp;
+    return exp(log(v0) / v1);
 }
 
 template <typename T>
 inline T hypot_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
     // hypot(x,y) = sqrt(x^2 + y^2)
-    using autodiff::detail::sqrt;
+    using std::sqrt;
     return sqrt(v0 * v0 + v1 * v1);
 }
 
 template <typename T>
 inline T atan2_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    // Use autodiff's atan2 if available, otherwise implement manually
-    typedef typename autodiff::detail::DualType<T> DualT;
-    DualT vv0(v0);
-    DualT vv1(v1);
-
-    // Compute atan2 using the identity: atan2(y,x) = atan(y/x) with proper quadrant handling
-    using autodiff::detail::atan;
-    using autodiff::detail::sqrt;
-
-    // atan2(y,x) = 2*atan(y/(sqrt(x^2+y^2)+x))
-    const DualT r = sqrt(vv1 * vv1 + vv0 * vv0);
-    return T(DualT(2.0) * atan(vv0 / (r + vv1)));
+    // Use std::atan2 - autodiff types provide their own overloads
+    using std::atan2;
+    return atan2(v0, v1);
 }
 
 template <typename T>
 inline T shr_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::pow;
+    using std::pow;
     return v0 * (T(1) / pow(T(2.0),v1));
 }
 
 template <typename T>
 inline T shl_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    using autodiff::detail::pow;
+    using std::pow;
     return v0 * pow(T(2.0),v1);
 }
 
@@ -393,10 +411,9 @@ namespace helper
 {
 namespace details
 {
-inline void print_type(const std::string&, const AUTODIFF_TYPE& v,
-                       exprtk::details::numeric::details::AUTODIFF_TYPE_TAG)
+inline void print_type(const std::string&, const AUTODIFF_TYPE& v, ::exprtk::details::numeric::details::AUTODIFF_TYPE_TAG)
 {
-    printf("%f",v.val);
+    printf("%f", static_cast<double>(autodiff::val(v)));
 }
 } // namespace details
 } // namespace helper

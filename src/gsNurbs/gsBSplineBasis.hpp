@@ -727,18 +727,34 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
         if ( u(0,s) == m_knots[m_knots.size()-m_p-1] )
         {   // Initialize zeroth-degree functions
             for( int j = 0; j <= m_p; j++ )
-                N[ j*p1 ] = (T)( u(0,s) > m_knots[i+j] && u(0,s) <= m_knots[i+j+1] );
+                // N[ j*p1 ] = (T)( u(0,s) > m_knots[i+j] && u(0,s) <= m_knots[i+j+1] );
+            {
+                if ( u(0,s) > m_knots[i+j] && u(0,s) <= m_knots[i+j+1] )
+                    N[ j*p1 ] = (T)1.0;
+                else
+                    N[ j*p1 ] = (T)0.0;
+            }
         }
         else // not at right boundary
         {
             for( int j = 0; j <= m_p; j++ )
-                N[ j*p1 ] = (T)( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] );
+                // N[ j*p1 ] = (T)( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] );
+            {
+                if ( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
+                    N[ j*p1 ] = (T)1.0;
+                else
+                    N[ j*p1 ] = (T)0.0;
+            }
         }
 
         for( int k = 1; k <= m_p; k++ ) // Compute full triangular table
         {
-            saved = (N[(k-1)] == 0 ? (T)(0) :
-                     ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]) );
+            // saved = (N[(k-1)] == 0 ? (T)(0) :
+            //          ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]) );
+            if ( N[(k-1)] == 0 )
+                saved = (T)0.0;
+            else
+                saved = ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]);
 
             for( int j = 0; j < m_p-k+1; j++)
             {

@@ -137,7 +137,10 @@ void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &
         lambdas = neighbourhood.getLambdas(i);
         for (size_t j = 0; j < n; j++)
         {
-            A(i, j) = ( i==j ? (T)(1) : -lambdas[j] );
+            if (i == j)
+                A(i, j) = T(1);
+            else
+                A(i, j) = -lambdas[j];
         }
 
         for (size_t j = n; j < N; j++)

@@ -27,6 +27,14 @@
 #include <cmath>
 #include <gsCore/gsForwardDeclarations.h>
 
+// Forward declarations for reverse mode
+namespace autodiff { namespace reverse { namespace detail {
+    template <typename T> class Variable;
+    template <typename T> class Expr;
+}}}
+#include <memory>  // for std::shared_ptr
+
+
 namespace gismo
 {
     template<typename T, typename Solver>
@@ -90,8 +98,134 @@ namespace math {
     inline var cosh(const var& x) { using std::cosh; return cosh(x); }
     inline var tanh(const var& x) { using std::tanh; return tanh(x); }
     
-    inline bool isinf(const var& x) { return std::isinf(autodiff::val(x)); }
-    inline bool isnan(const var& x) { return std::isnan(autodiff::val(x)); }
-    inline bool isfinite(const var& x) { return std::isfinite(autodiff::val(x)); }
+    // Note: isinf, isnan, isfinite are now defined in gsAutoDiffTraits.h in std:: namespace
+    
+    // ceil/floor/round for autodiff::detail::Dual directly
+    template<typename T, typename G>
+    inline autodiff::detail::Dual<T, G> ceil(const autodiff::detail::Dual<T, G>& v) {
+        using std::ceil;
+        // ceil is non-differentiable, return value with zero derivative
+        return autodiff::detail::Dual<T, G>(ceil(v.val));
+    }
+    
+    // ceil for var types (reverse mode)
+    template <typename T>
+    inline autodiff::reverse::detail::Variable<T> ceil(const autodiff::reverse::detail::Variable<T>& v) {
+        using std::ceil;
+        // ceil is non-differentiable, return value only with zero derivative
+        return autodiff::reverse::detail::Variable<T>(ceil(autodiff::val(v)));
+    }
+
+    template<typename T, typename G>
+    inline autodiff::detail::Dual<T, G> floor(const autodiff::detail::Dual<T, G>& v) {
+        using std::floor;
+        // floor is non-differentiable, return value with zero derivative
+        return autodiff::detail::Dual<T, G>(floor(v.val));
+    }
+    
+    // floor for var types (reverse mode)
+    template <typename T>
+    inline autodiff::reverse::detail::Variable<T> floor(const autodiff::reverse::detail::Variable<T>& v) {
+        using std::floor;
+        // floor is non-differentiable, return value only with zero derivative
+        return autodiff::reverse::detail::Variable<T>(floor(autodiff::val(v)));
+    }
+    
+    // floor for ExprPtr (reverse mode expression)
+    template <typename T>
+    inline T floor(const std::shared_ptr<autodiff::reverse::detail::Expr<T>>& expr) {
+        using std::floor;
+        // Extract the value directly from the expression pointer
+        return floor(expr->val);
+    }
+    
+    // ceil for ExprPtr (reverse mode expression)
+    template <typename T>
+    inline T ceil(const std::shared_ptr<autodiff::reverse::detail::Expr<T>>& expr) {
+        using std::ceil;
+        // Extract the value directly from the expression pointer
+        return ceil(expr->val);
+    }
+
+} // namespace math
+} // namespace gismo
+
+// Also add ceil/floor to autodiff::reverse::detail namespace for ADL
+namespace autodiff {
+namespace reverse {
+namespace detail {
+    template<typename T>
+    inline T ceil(const ExprPtr<T>& expr) {
+        using std::ceil;
+        return ceil(expr->val);
+    }
+    
+    template<typename T>
+    inline T floor(const ExprPtr<T>& expr) {
+        using std::floor;
+        return floor(expr->val);
+    }
+} // namespace detail
+} // namespace reverse
+} // namespace autodiff
+
+namespace gismo {
+namespace math {
+
+    template<typename T, typename G>
+    inline double round(const autodiff::detail::Dual<T, G>& v) {
+        using std::round;
+        return round(v.val);
+    }
+
+    // ceil for autodiff expression types (UnaryExpr, BinaryExpr, etc.)
+    // These expressions arise from operations like -log10(...)
+    template<typename Op, typename ExprType>
+    inline auto ceil(const autodiff::detail::UnaryExpr<Op, ExprType>& expr)
+        -> decltype(std::ceil(autodiff::val(expr)))
+    {
+        using std::ceil;
+        return ceil(autodiff::val(expr));
+    }
+
+    template<typename Op, typename L, typename R>
+    inline auto ceil(const autodiff::detail::BinaryExpr<Op, L, R>& expr)
+        -> decltype(std::ceil(autodiff::val(expr)))
+    {
+        using std::ceil;
+        return ceil(autodiff::val(expr));
+    }
+
+    template<typename Op, typename ExprType>
+    inline auto floor(const autodiff::detail::UnaryExpr<Op, ExprType>& expr)
+        -> decltype(std::floor(autodiff::val(expr)))
+    {
+        using std::floor;
+        return floor(autodiff::val(expr));
+    }
+
+    template<typename Op, typename L, typename R>
+    inline auto floor(const autodiff::detail::BinaryExpr<Op, L, R>& expr)
+        -> decltype(std::floor(autodiff::val(expr)))
+    {
+        using std::floor;
+        return floor(autodiff::val(expr));
+    }
+
+    template<typename Op, typename ExprType>
+    inline auto round(const autodiff::detail::UnaryExpr<Op, ExprType>& expr)
+        -> decltype(std::round(autodiff::val(expr)))
+    {
+        using std::round;
+        return round(autodiff::val(expr));
+    }
+
+    template<typename Op, typename L, typename R>
+    inline auto round(const autodiff::detail::BinaryExpr<Op, L, R>& expr)
+        -> decltype(std::round(autodiff::val(expr)))
+    {
+        using std::round;
+        return round(autodiff::val(expr));
+    }
 }
 }

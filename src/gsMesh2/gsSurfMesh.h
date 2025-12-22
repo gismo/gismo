@@ -42,7 +42,8 @@ namespace gismo {
 
 
 /// A halfedge data structure for polygonal meshes.
-class GISMO_EXPORT gsSurfMesh
+template <class T>
+class gsSurfMesh
 {
 public:
 /// Scalar type
@@ -104,7 +105,7 @@ public: //------------------------------------------------------ topology types
     {
         /// default constructor (with invalid index)
         explicit Vertex(int _idx=-1) : Base_handle(_idx) {}
-        std::ostream& operator<<(std::ostream& os) const { return os << 'v' << idx(); }
+        std::ostream& operator<<(std::ostream& os) const { return os << 'v' << Base_handle::idx(); }
     };
 
 
@@ -178,120 +179,125 @@ public: //------------------------------------------------------ property types
 
     /// Vertex property of type T
     /// \sa Halfedge_property, Edge_property, Face_property
-    template <class T> class Vertex_property : public gsProperty<T>
+    template <class _T> 
+    class Vertex_property : public gsProperty<_T>
     {
     public:
 
         /// default constructor
         explicit Vertex_property() {}
-        explicit Vertex_property(gsProperty<T> p) : gsProperty<T>(p) {}
+        explicit Vertex_property(gsProperty<_T> p) : gsProperty<_T>(p) {}
 
         /// access the data stored for vertex \c v
-        typename gsProperty<T>::reference operator[](Vertex v)
+        typename gsProperty<_T>::reference operator[](Vertex v)
         {
-            return gsProperty<T>::operator[](v.idx());
+            return gsProperty<_T>::operator[](v.idx());
         }
 
         /// access the data stored for vertex \c v
-        typename gsProperty<T>::const_reference operator[](Vertex v) const
+        typename gsProperty<_T>::const_reference operator[](Vertex v) const
         {
-            return gsProperty<T>::operator[](v.idx());
+            return gsProperty<_T>::operator[](v.idx());
         }
     };
 
 
     /// Halfedge property of type T
     /// \sa Vertex_property, Edge_property, Face_property
-    template <class T> class Halfedge_property : public gsProperty<T>
+    template <class _T> 
+    class Halfedge_property : public gsProperty<_T>
     {
     public:
 
         /// default constructor
         explicit Halfedge_property() {}
-        explicit Halfedge_property(gsProperty<T> p) : gsProperty<T>(p) {}
+        explicit Halfedge_property(gsProperty<_T> p) : gsProperty<_T>(p) {}
 
         /// access the data stored for halfedge \c h
-        typename gsProperty<T>::reference operator[](Halfedge h)
+        typename gsProperty<_T>::reference operator[](Halfedge h)
         {
-            return gsProperty<T>::operator[](h.idx());
+            return gsProperty<_T>::operator[](h.idx());
         }
 
         /// access the data stored for halfedge \c h
-        typename gsProperty<T>::const_reference operator[](Halfedge h) const
+        typename gsProperty<_T>::const_reference operator[](Halfedge h) const
         {
-            return gsProperty<T>::operator[](h.idx());
+            return gsProperty<_T>::operator[](h.idx());
         }
     };
 
 
     /// Edge property of type T
     /// \sa Vertex_property, Halfedge_property, Face_property
-    template <class T> class Edge_property : public gsProperty<T>
+    template <class _T> 
+    class Edge_property : public gsProperty<_T>
     {
     public:
 
         /// default constructor
         explicit Edge_property() {}
-        explicit Edge_property(gsProperty<T> p) : gsProperty<T>(p) {}
+        explicit Edge_property(gsProperty<_T> p) : gsProperty<_T>(p) {}
 
         /// access the data stored for edge \c e
-        typename gsProperty<T>::reference operator[](Edge e)
+        typename gsProperty<_T>::reference operator[](Edge e)
         {
-            return gsProperty<T>::operator[](e.idx());
+            return gsProperty<_T>::operator[](e.idx());
         }
 
         /// access the data stored for edge \c e
-        typename gsProperty<T>::const_reference operator[](Edge e) const
+        typename gsProperty<_T>::const_reference operator[](Edge e) const
         {
-            return gsProperty<T>::operator[](e.idx());
+            return gsProperty<_T>::operator[](e.idx());
         }
     };
 
 
     /// Face property of type T
     /// \sa Vertex_property, Halfedge_property, Edge_property
-    template <class T> class Face_property : public gsProperty<T>
+    template <class _T> 
+    class Face_property : public gsProperty<_T>
     {
     public:
 
         /// default constructor
         explicit Face_property() {}
-        explicit Face_property(gsProperty<T> p) : gsProperty<T>(p) {}
+        explicit Face_property(gsProperty<_T> p) : gsProperty<_T>(p) {}
 
         /// access the data stored for face \c f
-        typename gsProperty<T>::reference operator[](Face f)
+        typename gsProperty<_T>::reference operator[](Face f)
         {
-            return gsProperty<T>::operator[](f.idx());
+            return gsProperty<_T>::operator[](f.idx());
         }
 
         /// access the data stored for face \c f
-        typename gsProperty<T>::const_reference operator[](Face f) const
+        typename gsProperty<_T>::const_reference operator[](Face f) const
         {
-            return gsProperty<T>::operator[](f.idx());
+            return gsProperty<_T>::operator[](f.idx());
         }
     };
 
 
     /// Mesh property of type T
     /// \sa Vertex_property, Halfedge_property, Edge_property
-    template <class T> class Mesh_property : public gsProperty<T>
+    template <class _T> 
+    class Mesh_property : public gsProperty<_T>
     {
     public:
 
         /// default constructor
         explicit Mesh_property() {}
-        explicit Mesh_property(gsProperty<T> p) : gsProperty<T>(p) {}
+        explicit Mesh_property(gsProperty<_T> p) : gsProperty<_T>(p) {}
 
         /// access the data stored for the mesh
-        typename gsProperty<T>::reference operator[](size_t idx)
+        typename gsProperty<_T>::reference operator[](size_t idx)
         {
-            return gsProperty<T>::operator[](idx);
+            return gsProperty<_T>::operator[](idx);
         }
 
         /// access the data stored for the mesh
-        typename gsProperty<T>::const_reference operator[](size_t idx) const
+        typename gsProperty<_T>::const_reference operator[](size_t idx) const
         {
-            return gsProperty<T>::operator[](idx);
+            return gsProperty<_T>::operator[](idx);
         }
     };
 
@@ -1336,108 +1342,124 @@ public: //--------------------------------------------------- property handling
     /// \name gsProperty handling
     //@{
 
-    /** add a vertex property of type \c T with name \c name and default value \c t.
+    /** add a vertex property of type \c _T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
      in this case it returns an invalid property */
-    template <class T> Vertex_property<T> add_vertex_property(const std::string& name, T t=T())
+    template <class _T>
+    Vertex_property<_T> add_vertex_property(const std::string& name, _T t=_T())
     {
-        return Vertex_property<T>(vprops_.add<T>(name, give(t)));
+        return Vertex_property<_T>(vprops_.add<_T>(name, give(t)));
     }
-    /** add a halfedge property of type \c T with name \c name and default value \c t.
+    /** add a halfedge property of type \c _T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
      in this case it returns an invalid property */
-    template <class T> Halfedge_property<T> add_halfedge_property(const std::string& name, T t=T())
+    template <class _T>
+    Halfedge_property<_T> add_halfedge_property(const std::string& name, _T t=_T())
     {
-        return Halfedge_property<T>(hprops_.add<T>(name, give(t)));
+        return Halfedge_property<_T>(hprops_.add<_T>(name, give(t)));
     }
-    /** add a edge property of type \c T with name \c name and default value \c t.
+    /** add a edge property of type \c _T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
      in this case it returns an invalid property */
-    template <class T> Edge_property<T> add_edge_property(const std::string& name, T t=T())
+    template <class _T>
+    Edge_property<_T> add_edge_property(const std::string& name, _T t=_T())
     {
-        return Edge_property<T>(eprops_.add<T>(name, t));
+        return Edge_property<_T>(eprops_.add<_T>(name, t));
     }
-    /** add a face property of type \c T with name \c name and default value \c t.
+    /** add a face property of type \c _T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
      in this case it returns an invalid property */
-    template <class T> Face_property<T> add_face_property(const std::string& name, const T t=T())
+    template <class _T>
+    Face_property<_T> add_face_property(const std::string& name, const _T t=_T())
     {
-        return Face_property<T>(fprops_.add<T>(name, t));
+        return Face_property<_T>(fprops_.add<_T>(name, t));
     }
-    /** add a mesh property of type \c T with name \c name and default value \c t.
+    /** add a mesh property of type \c _T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
      in this case it returns an invalid property */
-    template <class T> Mesh_property<T> add_mesh_property(const std::string& name, const T t=T())
+    template <class _T>
+    Mesh_property<_T> add_mesh_property(const std::string& name, const _T t=_T())
     {
-        return Mesh_property<T>(mprops_.add<T>(name, t));
+        return Mesh_property<_T>(mprops_.add<_T>(name, t));
     }
 
-    /** get the vertex property named \c name of type \c T. returns an invalid
+    /** get the vertex property named \c name of type \c _T. returns an invalid
      Vertex_property if the property does not exist or if the type does not match. */
-    template <class T> Vertex_property<T> get_vertex_property(const std::string& name) const
+    template <class _T>
+    Vertex_property<_T> get_vertex_property(const std::string& name) const
     {
-        return Vertex_property<T>(vprops_.get<T>(name));
+        return Vertex_property<_T>(vprops_.get<_T>(name));
     }
-    /** get the halfedge property named \c name of type \c T. returns an invalid
+    /** get the halfedge property named \c name of type \c _T. returns an invalid
      Vertex_property if the property does not exist or if the type does not match. */
-    template <class T> Halfedge_property<T> get_halfedge_property(const std::string& name) const
+    template <class _T>
+    Halfedge_property<_T> get_halfedge_property(const std::string& name) const
     {
-        return Halfedge_property<T>(hprops_.get<T>(name));
+        return Halfedge_property<_T>(hprops_.get<_T>(name));
     }
-    /** get the edge property named \c name of type \c T. returns an invalid
+    /** get the edge property named \c name of type \c _T. returns an invalid
      Vertex_property if the property does not exist or if the type does not match. */
-    template <class T> Edge_property<T> get_edge_property(const std::string& name) const
+    template <class _T>
+    Edge_property<_T> get_edge_property(const std::string& name) const
     {
-        return Edge_property<T>(eprops_.get<T>(name));
+        return Edge_property<_T>(eprops_.get<_T>(name));
     }
-    /** get the face property named \c name of type \c T. returns an invalid
+    /** get the face property named \c name of type \c _T. returns an invalid
      Vertex_property if the property does not exist or if the type does not match. */
-    template <class T> Face_property<T> get_face_property(const std::string& name) const
+    template <class _T>
+    Face_property<_T> get_face_property(const std::string& name) const
     {
-        return Face_property<T>(fprops_.get<T>(name));
+        return Face_property<_T>(fprops_.get<_T>(name));
     }
-    /** get the mesh property named \c name of type \c T. returns an invalid
+    /** get the mesh property named \c name of type \c _T. returns an invalid
      Mesh_property if the property does not exist or if the type does not match. */
-    template <class T> Mesh_property<T> get_mesh_property(const std::string& name) const
+    template <class _T>
+    Mesh_property<_T> get_mesh_property(const std::string& name) const
     {
-        return Mesh_property<T>(mprops_.get<T>(name));
+        return Mesh_property<_T>(mprops_.get<_T>(name));
     }
 
 
-    /** if a vertex property of type \c T with name \c name exists, it is returned.
+    /** if a vertex property of type \c _T with name \c name exists, it is returned.
      otherwise this property is added (with default value \c t) */
-    template <class T> Vertex_property<T> vertex_property(const std::string& name, const T t=T())
+    template <class _T>
+    Vertex_property<_T> vertex_property(const std::string& name, const _T t=_T())
     {
-        return Vertex_property<T>(vprops_.get_or_add<T>(name, give(t)));
+        return Vertex_property<_T>(vprops_.get_or_add<_T>(name, give(t)));
     }
-    /** if a halfedge property of type \c T with name \c name exists, it is returned.
+    /** if a halfedge property of type \c _T with name \c name exists, it is returned.
      otherwise this property is added (with default value \c t) */
-    template <class T> Halfedge_property<T> halfedge_property(const std::string& name, T t=T())
+    template <class _T>
+    Halfedge_property<_T> halfedge_property(const std::string& name, _T t=_T())
     {
-        return Halfedge_property<T>(hprops_.get_or_add<T>(name, give(t)));
+        return Halfedge_property<_T>(hprops_.get_or_add<_T>(name, give(t)));
     }
-    /** if an edge property of type \c T with name \c name exists, it is returned.
+    /** if an edge property of type \c _T with name \c name exists, it is returned.
      otherwise this property is added (with default value \c t) */
-    template <class T> Edge_property<T> edge_property(const std::string& name, const T t=T())
+    template <class _T>
+    Edge_property<_T> edge_property(const std::string& name, const _T t=_T())
     {
-        return Edge_property<T>(eprops_.get_or_add<T>(name, t));
+        return Edge_property<_T>(eprops_.get_or_add<_T>(name, t));
     }
-    /** if a face property of type \c T with name \c name exists, it is returned.
+    /** if a face property of type \c _T with name \c name exists, it is returned.
      otherwise this property is added (with default value \c t) */
-    template <class T> Face_property<T> face_property(const std::string& name, const T t=T())
+    template <class _T>
+    Face_property<_T> face_property(const std::string& name, const _T t=_T())
     {
-        return Face_property<T>(fprops_.get_or_add<T>(name, t));
+        return Face_property<_T>(fprops_.get_or_add<_T>(name, t));
     }
 
-     /** if a mesh property of type \c T with name \c name exists, it is returned.
+     /** if a mesh property of type \c _T with name \c name exists, it is returned.
      otherwise this property is added (with default value \c t) */
-    template <class T> Mesh_property<T> mesh_property(const std::string& name, const T t=T())
+    template <class _T>
+    Mesh_property<_T> mesh_property(const std::string& name, const _T t=_T())
     {
-        return Mesh_property<T>(mprops_.get_or_add<T>(name, t));
+        return Mesh_property<_T>(mprops_.get_or_add<_T>(name, t));
     }
 
     /// rename the vertex property \c p
-    template <class T> void rename_vertex_property(Vertex_property<T>& p,
+    template <class _T>
+    void rename_vertex_property(Vertex_property<_T>& p,
                                                    std::string newname)
     {
         vprops_.rename(p, give(newname));
@@ -1451,27 +1473,32 @@ public: //--------------------------------------------------- property handling
     }
 
     /// remove the vertex property \c p
-    template <class T> void remove_vertex_property(Vertex_property<T>& p)
+    template <class _T>
+    void remove_vertex_property(Vertex_property<_T>& p)
     {
         vprops_.remove(p);
     }
     /// remove the halfedge property \c p
-    template <class T> void remove_halfedge_property(Halfedge_property<T>& p)
+    template <class _T>
+    void remove_halfedge_property(Halfedge_property<_T>& p)
     {
         hprops_.remove(p);
     }
     /// remove the edge property \c p
-    template <class T> void remove_edge_property(Edge_property<T>& p)
+    template <class _T>
+    void remove_edge_property(Edge_property<_T>& p)
     {
         eprops_.remove(p);
     }
     /// remove the face property \c p
-    template <class T> void remove_face_property(Face_property<T>& p)
+    template <class _T>
+    void remove_face_property(Face_property<_T>& p)
     {
         fprops_.remove(p);
     }
     /// remove the mesh property \c p
-    template <class T> void remove_mesh_property(Mesh_property<T>& p)
+    template <class _T>
+    void remove_mesh_property(Mesh_property<_T>& p)
     {
         mprops_.remove(p);
     }
@@ -1911,10 +1938,10 @@ public: // Catmull-Clark functions
                                                 bool normalize = true);
 
     /// Generate ACC3 biqubic Bezier patches
-    gsMultiPatch<real_t> cc_acc3(bool comp_topology = false) const;
+    gsMultiPatch<T> cc_acc3(bool comp_topology = false) const;
 
     /// Generate linear tensor-product patches (possibly merging faces)
-    gsMultiPatch<real_t> linear_patches() const;
+    gsMultiPatch<T> linear_patches() const;
 
     // Returns true if there is a halfedge with hflag set to true emenating from vertex \a v
     inline bool has_flag(Vertex v, const Halfedge_property<bool> & hflag);
@@ -1936,7 +1963,8 @@ private: //--------------------------------------------------- helper functions
 
 private: //------------------------------------------------------- private data
 
-    friend bool GISMO_EXPORT read_poly(gsSurfMesh& mesh, const std::string& filename);
+    template <class _T>
+    friend bool GISMO_EXPORT read_poly(gsSurfMesh<_T>& mesh, const std::string& filename);
 
     gsProperty_container vprops_;
     gsProperty_container hprops_;
@@ -1974,49 +2002,34 @@ private: //------------------------------------------------------- private data
 
 //------------------------------------------------------------ output operators
 
-
-inline std::ostream& operator<<(std::ostream& os, gsSurfMesh::Vertex v)
+template <class T>
+inline std::ostream& operator<<(std::ostream& os, typename gsSurfMesh<T>::Vertex v)
 {
     return (os << 'v' << v.idx());
 }
 
-inline std::ostream& operator<<(std::ostream& os, gsSurfMesh::Halfedge h)
+template <class T>
+inline std::ostream& operator<<(std::ostream& os, typename gsSurfMesh<T>::Halfedge h)
 {
     return (os << 'h' << h.idx());
 }
 
-inline std::ostream& operator<<(std::ostream& os, gsSurfMesh::Edge e)
+template <class T>
+inline std::ostream& operator<<(std::ostream& os, typename gsSurfMesh<T>::Edge e)
 {
     return (os << 'e' << e.idx());
 }
 
-inline std::ostream& operator<<(std::ostream& os, gsSurfMesh::Face f)
+template <class T>
+inline std::ostream& operator<<(std::ostream& os, typename gsSurfMesh<T>::Face f)
 {
     return (os << 'f' << f.idx());
 }
 
-
-
-namespace internal
-{
-
-template<>
-class GISMO_EXPORT gsXml<gsSurfMesh>
-{
-private:
-    gsXml();
-public:
-    GSXML_COMMON_FUNCTIONS(gsSurfMesh)
-    GSXML_GET_POINTER(gsSurfMesh)
-    static std::string tag () { return "Mesh"; }
-    static std::string type() { return "off"; }
-
-    static void get_into(gsXmlNode * node, gsSurfMesh & result);
-    static gsXmlNode * put (const gsSurfMesh & obj, gsXmlTree & data);
-};
-
-}//namespace internal
-
 //=============================================================================
 } // namespace gismo
 //=============================================================================
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsSurfMesh.hpp)
+#endif

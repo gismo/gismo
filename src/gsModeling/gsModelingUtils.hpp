@@ -186,7 +186,7 @@ template <class T>
 T conditionedAngle(gsVector3d<T> vec1, gsVector3d<T> vec2, gsVector3d<T> normal)
 {
     T ag = conditionedAngle<T>(vec1,vec2);
-    T cag = ( normal.dot( vec1.cross( vec2 ) ) >= 0 ) ? ag : (T)(2*EIGEN_PI)-ag;
+    T cag = ( normal.dot( vec1.cross( vec2 ) ) >= 0 ) ? ag : static_cast<T>((T)(2*EIGEN_PI)-ag);
     return cag;
 }
 

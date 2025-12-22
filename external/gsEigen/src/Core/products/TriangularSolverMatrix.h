@@ -121,7 +121,11 @@ EIGEN_DONT_INLINE void triangular_solve_matrix<Scalar,Index,OnTheLeft,Mode,Conju
             Index s  = TriStorageOrder==RowMajor ? (IsLower ? k2+k1 : i+1)
                                                  :  IsLower ? i+1 : i-rs;
 
-            Scalar a = (Mode & UnitDiag) ? Scalar(1) : Scalar(1)/conj(tri(i,i));
+            Scalar a;
+            if (Mode & UnitDiag)
+              a = Scalar(1);
+            else
+              a = Scalar(1)/conj(tri(i,i));
             for (Index j=j2; j<j2+actual_cols; ++j)
             {
               if (TriStorageOrder==RowMajor)

@@ -1,281 +1,467 @@
-/** @file gsAutoDiffTraits.h
-
-    @brief Traits and helpers for autodiff types
-
-    This file is part of the G+Smo library.
-
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-    Author(s): H.M. Verhelst
-*/
-
 #pragma once
 
+#include <ostream>
+#include <istream>
+#include <string>
+#include <cmath>
+
+// Suppress warnings from autodiff library
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wparentheses"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
+// Include autodiff headers (Eigen integration is handled elsewhere)
 #include <autodiff/forward/dual.hpp>
 #include <autodiff/reverse/var.hpp>
-#include <gsCore/gsForwardDeclarations.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
+// Compatibility traits for autodiff types
+
+
+// ============================================================================
+// ExprTk compatibility for autodiff types
+// ============================================================================
+
+#ifdef GISMO_WITH_EXPRTK
+
+// Include forward declarations
+#include <gsAutoDiff/exprtk_autodiff_forward.h>
+
+namespace exprtk {
+namespace details {
+namespace numeric {
+namespace details {
+
+// Type tag for autodiff::detail::Dual
+template<typename T, typename G>
+struct number_type<autodiff::detail::Dual<T, G>> {
+    typedef gismo::detail::autodiff_type_tag type;
+};
+
+// Epsilon for autodiff types
+template <>
+struct epsilon_type<gismo::detail::autodiff_type_tag> {
+    template<typename T>
+    static inline T value() {
+        return std::numeric_limits<T>::epsilon();
+    }
+};
+
+// is_nan implementation
+template<typename T, typename G>
+inline bool is_nan_impl(const autodiff::detail::Dual<T, G>& v, gismo::detail::autodiff_type_tag) {
+    return std::isnan(v.val);
+}
+
+// Conversion functions
+template<typename T, typename G>
+inline int to_int32_impl(const autodiff::detail::Dual<T, G>& v, gismo::detail::autodiff_type_tag) {
+    return static_cast<int>(v.val);
+}
+
+template<typename T, typename G>
+inline long long to_int64_impl(const autodiff::detail::Dual<T, G>& v, gismo::detail::autodiff_type_tag) {
+    return static_cast<long long>(v.val);
+}
+
+template<typename T, typename G>
+inline unsigned long long to_uint64_impl(const autodiff::detail::Dual<T, G>& v, gismo::detail::autodiff_type_tag) {
+    return static_cast<unsigned long long>(v.val);
+}
+
+// Math functions for exprtk
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> abs_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return abs(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> acos_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return acos(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> acosh_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return acosh(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> asin_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return asin(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> asinh_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return asinh(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> atan_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return atan(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> atanh_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return atanh(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> ceil_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { using std::ceil; return autodiff::detail::Dual<T,G>(ceil(v.val)); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> cos_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return cos(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> cosh_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return cosh(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> exp_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return exp(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> expm1_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return expm1(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> floor_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { using std::floor; return autodiff::detail::Dual<T,G>(floor(v.val)); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> log_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return log(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> log10_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return log10(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> log1p_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return log1p(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> log2_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return log2(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> neg_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return -v; }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> pos_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return v; }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> round_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { using std::round; return autodiff::detail::Dual<T,G>(round(v.val)); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> sin_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return sin(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> sinh_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return sinh(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> sqrt_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return sqrt(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> tan_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return tan(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> tanh_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { return tanh(v); }
+template<typename T, typename G> inline autodiff::detail::Dual<T,G> trunc_impl(const autodiff::detail::Dual<T,G>& v, gismo::detail::autodiff_type_tag) { using std::trunc; return autodiff::detail::Dual<T,G>(trunc(v.val)); }
+
+// Binary operations that exprtk needs
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> mod_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    using std::fmod; 
+    return autodiff::detail::Dual<T,G>(fmod(v0.val, v1.val)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> pow_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return pow(v0, v1); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> atan2_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return atan2(v0, v1); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> min_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return (v0.val < v1.val) ? v0 : v1; 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> max_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return (v0.val > v1.val) ? v0 : v1; 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> equal_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>((v0.val == v1.val) ? T(1) : T(0)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> nequal_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>((v0.val != v1.val) ? T(1) : T(0)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> hypot_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return sqrt(v0*v0 + v1*v1); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> shr_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>(static_cast<T>(static_cast<long long>(v0.val) >> static_cast<long long>(v1.val))); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> shl_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>(static_cast<T>(static_cast<long long>(v0.val) << static_cast<long long>(v1.val))); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> and_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>((v0.val != T(0) && v1.val != T(0)) ? T(1) : T(0)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> nand_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>((v0.val != T(0) && v1.val != T(0)) ? T(0) : T(1)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> or_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>((v0.val != T(0) || v1.val != T(0)) ? T(1) : T(0)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> nor_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>((v0.val != T(0) || v1.val != T(0)) ? T(0) : T(1)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> xor_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>(((v0.val != T(0)) != (v1.val != T(0))) ? T(1) : T(0)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> xnor_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return autodiff::detail::Dual<T,G>(((v0.val != T(0)) == (v1.val != T(0))) ? T(1) : T(0)); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> root_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    return pow(v0, T(1)/v1.val); 
+}
+
+template<typename T, typename G> 
+inline autodiff::detail::Dual<T,G> roundn_impl(const autodiff::detail::Dual<T,G>& v0, const autodiff::detail::Dual<T,G>& v1, gismo::detail::autodiff_type_tag) { 
+    using std::pow; using std::round;
+    T factor = pow(T(10), v1.val);
+    return autodiff::detail::Dual<T,G>(round(v0.val * factor) / factor); 
+}
+
+} // namespace details
+} // namespace numeric
+
+} // namespace details
+} // namespace exprtk
+
+#endif // GISMO_WITH_EXPRTK
+
+// ============================================================================
+// std::to_string support for autodiff types
+// ============================================================================
+
+namespace std {
+
+template<typename T, typename G>
+inline std::string to_string(const autodiff::detail::Dual<T,G>& v) {
+    return std::to_string(autodiff::val(v));
+}
+
+inline std::string to_string(const autodiff::var& v) {
+    return std::to_string(autodiff::val(v));
+}
+
+// std:: namespace overloads for is* functions
+template<typename T, typename G>
+inline bool isnan(const autodiff::detail::Dual<T,G>& v) {
+    using autodiff::val;
+    return std::isnan(val(v));
+}
+
+template<typename T, typename G>
+inline bool isinf(const autodiff::detail::Dual<T,G>& v) {
+    using autodiff::val;
+    return std::isinf(val(v));
+}
+
+template<typename T, typename G>
+inline bool isfinite(const autodiff::detail::Dual<T,G>& v) {
+    using autodiff::val;
+    return std::isfinite(val(v));
+}
+
+inline bool isnan(const autodiff::var& v) {
+    using autodiff::val;
+    return std::isnan(val(v));
+}
+
+inline bool isinf(const autodiff::var& v) {
+    using autodiff::val;
+    return std::isinf(val(v));
+}
+
+inline bool isfinite(const autodiff::var& v) {
+    using autodiff::val;
+    return std::isfinite(val(v));
+}
+
+// Generic overload for any autodiff expression that can be converted to Dual
+// This handles BinaryExpr and other expression templates
+template<typename Expr>
+inline auto isnan(const Expr& expr)
+    -> decltype(std::isnan(autodiff::val(expr)))
+{
+    using autodiff::val;
+    return std::isnan(val(expr));
+}
+
+template<typename Expr>
+inline auto isinf(const Expr& expr)
+    -> decltype(std::isinf(autodiff::val(expr)))
+{
+    using autodiff::val;
+    return std::isinf(val(expr));
+}
+
+template<typename Expr>
+inline auto isfinite(const Expr& expr)
+    -> decltype(std::isfinite(autodiff::val(expr)))
+{
+    using autodiff::val;
+    return std::isfinite(val(expr));
+}
+
+// operator<< for autodiff expression types
+template<typename Op, typename ExprType>
+inline std::ostream& operator<<(std::ostream& os, const autodiff::detail::UnaryExpr<Op, ExprType>& expr) {
+    using autodiff::val;
+    return os << val(expr);
+}
+
+template<typename Op, typename L, typename R>
+inline std::ostream& operator<<(std::ostream& os, const autodiff::detail::BinaryExpr<Op, L, R>& expr) {
+    using autodiff::val;
+    return os << val(expr);
+}
+
+} // namespace std
+
+// ============================================================================
+// gismo::math::ceil support for autodiff expression types
+// ============================================================================
+
+namespace gismo {
+namespace math {
+
+// Overloads for autodiff::detail::Dual
+template<typename T, typename G>
+inline T trunc(const autodiff::detail::Dual<T,G>& v) {
+    using std::trunc;
+    return trunc(autodiff::val(v));
+}
+
+// Overloads for autodiff::var
+inline double trunc(const autodiff::var& v) {
+    using std::trunc;
+    return trunc(autodiff::val(v));
+}
+
+// log10 for autodiff::reverse::detail::Variable
+template<typename T>
+inline autodiff::reverse::detail::ExprPtr<T> log10(const autodiff::reverse::detail::Variable<T>& v) {
+    using std::log10;
+    return log10(v.expr);
+}
+
+// Note: floor, ceil, round for autodiff types are defined in gsAutoDiffUtils.h
+
+// log10 for autodiff expression types
+template<typename Op, typename ExprType>
+inline auto log10(const autodiff::detail::UnaryExpr<Op, ExprType>& expr)
+    -> decltype(std::log10(autodiff::val(expr)))
+{
+    using std::log10;
+    return log10(autodiff::val(expr));
+}
+
+template<typename Op, typename L, typename R>
+inline auto log10(const autodiff::detail::BinaryExpr<Op, L, R>& expr)
+    -> decltype(std::log10(autodiff::val(expr)))
+{
+    using std::log10;
+    return log10(autodiff::val(expr));
+}
+
+// max/min for mixed autodiff types (Dual with expression types)
+template<typename T, typename G, typename Op, typename ExprType>
+inline autodiff::detail::Dual<T,G> max(const autodiff::detail::Dual<T,G>& a, const autodiff::detail::UnaryExpr<Op, ExprType>& b) {
+    using autodiff::val;
+    return (val(a) > val(b)) ? a : autodiff::detail::Dual<T,G>(val(b));
+}
+
+template<typename T, typename G, typename Op, typename ExprType>
+inline autodiff::detail::Dual<T,G> max(const autodiff::detail::UnaryExpr<Op, ExprType>& a, const autodiff::detail::Dual<T,G>& b) {
+    using autodiff::val;
+    return (val(a) > val(b)) ? autodiff::detail::Dual<T,G>(val(a)) : b;
+}
+
+template<typename T, typename G, typename Op, typename L, typename R>
+inline autodiff::detail::Dual<T,G> max(const autodiff::detail::Dual<T,G>& a, const autodiff::detail::BinaryExpr<Op, L, R>& b) {
+    using autodiff::val;
+    return (val(a) > val(b)) ? a : autodiff::detail::Dual<T,G>(val(b));
+}
+
+template<typename T, typename G, typename Op, typename L, typename R>
+inline autodiff::detail::Dual<T,G> max(const autodiff::detail::BinaryExpr<Op, L, R>& a, const autodiff::detail::Dual<T,G>& b) {
+    using autodiff::val;
+    return (val(a) > val(b)) ? autodiff::detail::Dual<T,G>(val(a)) : b;
+}
+
+template<typename T, typename G, typename Op, typename ExprType>
+inline autodiff::detail::Dual<T,G> min(const autodiff::detail::Dual<T,G>& a, const autodiff::detail::UnaryExpr<Op, ExprType>& b) {
+    using autodiff::val;
+    return (val(a) < val(b)) ? a : autodiff::detail::Dual<T,G>(val(b));
+}
+
+template<typename T, typename G, typename Op, typename ExprType>
+inline autodiff::detail::Dual<T,G> min(const autodiff::detail::UnaryExpr<Op, ExprType>& a, const autodiff::detail::Dual<T,G>& b) {
+    using autodiff::val;
+    return (val(a) < val(b)) ? autodiff::detail::Dual<T,G>(val(a)) : b;
+}
+
+template<typename T, typename G, typename Op, typename L, typename R>
+inline autodiff::detail::Dual<T,G> min(const autodiff::detail::Dual<T,G>& a, const autodiff::detail::BinaryExpr<Op, L, R>& b) {
+    using autodiff::val;
+    return (val(a) < val(b)) ? a : autodiff::detail::Dual<T,G>(val(b));
+}
+
+template<typename T, typename G, typename Op, typename L, typename R>
+inline autodiff::detail::Dual<T,G> min(const autodiff::detail::BinaryExpr<Op, L, R>& a, const autodiff::detail::Dual<T,G>& b) {
+    using autodiff::val;
+    return (val(a) < val(b)) ? autodiff::detail::Dual<T,G>(val(a)) : b;
+}
+
+// max/min for Variable and ExprPtr
+template<typename T>
+inline autodiff::reverse::detail::Variable<T> max(const autodiff::reverse::detail::Variable<T>& a, const autodiff::reverse::detail::ExprPtr<T>& b) {
+    using autodiff::val;
+    return (val(a) > val(b)) ? a : autodiff::reverse::detail::Variable<T>(b);
+}
+
+template<typename T>
+inline autodiff::reverse::detail::Variable<T> max(const autodiff::reverse::detail::ExprPtr<T>& a, const autodiff::reverse::detail::Variable<T>& b) {
+    using autodiff::val;
+    return (val(a) > val(b)) ? autodiff::reverse::detail::Variable<T>(a) : b;
+}
+
+template<typename T>
+inline autodiff::reverse::detail::Variable<T> min(const autodiff::reverse::detail::Variable<T>& a, const autodiff::reverse::detail::ExprPtr<T>& b) {
+    using autodiff::val;
+    return (val(a) < val(b)) ? a : autodiff::reverse::detail::Variable<T>(b);
+}
+
+template<typename T>
+inline autodiff::reverse::detail::Variable<T> min(const autodiff::reverse::detail::ExprPtr<T>& a, const autodiff::reverse::detail::Variable<T>& b) {
+    using autodiff::val;
+    return (val(a) < val(b)) ? autodiff::reverse::detail::Variable<T>(a) : b;
+}
+
+} // namespace math
+} // namespace gismo
+
+// Also add ceil in autodiff::detail namespace for ADL (Argument Dependent Lookup)
 namespace autodiff {
 namespace detail {
 
-// Stream operators for forward-mode expressions to allow printing
-template<typename Op, typename L, typename R>
-std::ostream& operator<<(std::ostream& os, const BinaryExpr<Op, L, R>& expr) {
-    return os << val(expr);
-}
-
-template<typename Op, typename R>
-std::ostream& operator<<(std::ostream& os, const UnaryExpr<Op, R>& expr) {
-    return os << val(expr);
-}
-
-// Input stream operator for Dual
-template<typename T, typename G>
-std::istream& operator>>(std::istream& is, Dual<T, G>& x) {
-    return is >> x.val;
-}
-
-// Math function overloads for expressions
-template<typename T, typename G>
-auto floor(const Dual<T, G>& x) {
-    using std::floor;
-    return floor(val(x));
-}
-
-template<typename Op, typename L, typename R>
-auto floor(const BinaryExpr<Op, L, R>& expr) {
-    using std::floor;
-    return floor(val(expr));
-}
-
-template<typename Op, typename R>
-auto floor(const UnaryExpr<Op, R>& expr) {
-    using std::floor;
-    return floor(val(expr));
-}
-
-template<typename T, typename G>
-auto ceil(const Dual<T, G>& x) {
-    using std::ceil;
-    return ceil(val(x));
-}
-
-template<typename Op, typename L, typename R>
-auto ceil(const BinaryExpr<Op, L, R>& expr) {
+template<typename Op, typename ExprType>
+inline auto ceil(const UnaryExpr<Op, ExprType>& expr)
+    -> decltype(std::ceil(val(expr)))
+{
     using std::ceil;
     return ceil(val(expr));
 }
 
-template<typename Op, typename R>
-auto ceil(const UnaryExpr<Op, R>& expr) {
+template<typename Op, typename L, typename R>
+inline auto ceil(const BinaryExpr<Op, L, R>& expr)
+    -> decltype(std::ceil(val(expr)))
+{
     using std::ceil;
     return ceil(val(expr));
-}
-
-template<typename T, typename G>
-auto round(const Dual<T, G>& x) {
-    using std::round;
-    return round(val(x));
-}
-
-template<typename Op, typename L, typename R>
-auto round(const BinaryExpr<Op, L, R>& expr) {
-    using std::round;
-    return round(val(expr));
-}
-
-template<typename Op, typename R>
-auto round(const UnaryExpr<Op, R>& expr) {
-    using std::round;
-    return round(val(expr));
-}
-
-// Check functions
-template<typename T, typename G>
-bool isnan(const Dual<T, G>& x) {
-    using std::isnan;
-    return isnan(val(x));
-}
-
-template<typename T, typename G>
-bool isinf(const Dual<T, G>& x) {
-    using std::isinf;
-    return isinf(val(x));
-}
-
-template<typename T, typename G>
-bool isfinite(const Dual<T, G>& x) {
-    using std::isfinite;
-    return isfinite(val(x));
-}
-
-template<typename Op, typename L, typename R>
-bool isnan(const BinaryExpr<Op, L, R>& expr) {
-    using std::isnan;
-    return isnan(val(expr));
-}
-
-template<typename Op, typename L, typename R>
-bool isinf(const BinaryExpr<Op, L, R>& expr) {
-    using std::isinf;
-    return isinf(val(expr));
-}
-
-template<typename Op, typename L, typename R>
-bool isfinite(const BinaryExpr<Op, L, R>& expr) {
-    using std::isfinite;
-    return isfinite(val(expr));
-}
-
-template<typename Op, typename R>
-bool isnan(const UnaryExpr<Op, R>& expr) {
-    using std::isnan;
-    return isnan(val(expr));
-}
-
-template<typename Op, typename R>
-bool isinf(const UnaryExpr<Op, R>& expr) {
-    using std::isinf;
-    return isinf(val(expr));
-}
-
-template<typename Op, typename R>
-bool isfinite(const UnaryExpr<Op, R>& expr) {
-    using std::isfinite;
-    return isfinite(val(expr));
 }
 
 } // namespace detail
-
-   // Helper to extract the base scalar type from autodiff types
-   template<class T>
-   struct autodiff_real_helper {
-      typedef T type;
-   };
-
-   // Specialization for Dual numbers - recursively extract the value type
-   template<typename T, typename G>
-   struct autodiff_real_helper<autodiff::detail::Dual<T, G>> {
-      typedef typename autodiff_real_helper<T>::type type;
-   };
-
-   template<class T>
-   using autodiff_real = typename autodiff_real_helper<T>::type;
-
 } // namespace autodiff
 
+// ============================================================================
+// Stream operators for autodiff types
+// ============================================================================
+
 namespace std {
-    template<typename T, typename G>
-    std::string to_string(const autodiff::detail::Dual<T, G>& x) {
-        return std::to_string(val(x));
-    }
+
+// Input stream operator for autodiff::detail::Dual
+template<typename T, typename G>
+inline std::istream& operator>>(std::istream& is, autodiff::detail::Dual<T,G>& d) {
+    T val;
+    is >> val;
+    d = autodiff::detail::Dual<T,G>(val);
+    return is;
 }
 
-// Inject into gismo::math to allow math::floor etc. to work
-namespace gismo {
-namespace math {
-    using autodiff::detail::floor;
-    using autodiff::detail::ceil;
-    using autodiff::detail::round;
-    using autodiff::detail::isnan;
-    using autodiff::detail::isinf;
-    using autodiff::detail::isfinite;
-
-    // Add trunc support
-    template<typename T, typename G>
-    auto trunc(const autodiff::detail::Dual<T, G>& x) {
-        using std::trunc;
-        return trunc(val(x));
-    }
-    
-    template<typename Op, typename L, typename R>
-    auto trunc(const autodiff::detail::BinaryExpr<Op, L, R>& expr) {
-        using std::trunc;
-        return trunc(val(expr));
-    }
-    
-    template<typename Op, typename R>
-    auto trunc(const autodiff::detail::UnaryExpr<Op, R>& expr) {
-        using std::trunc;
-        return trunc(val(expr));
-    }
-
-    // Add log10 support
-    template<typename T, typename G>
-    auto log10(const autodiff::detail::Dual<T, G>& x) {
-        using std::log10;
-        return log10(val(x));
-    }
-    
-    template<typename Op, typename L, typename R>
-    auto log10(const autodiff::detail::BinaryExpr<Op, L, R>& expr) {
-        using std::log10;
-        return log10(val(expr));
-    }
-    
-    template<typename Op, typename R>
-    auto log10(const autodiff::detail::UnaryExpr<Op, R>& expr) {
-        using std::log10;
-        return log10(val(expr));
-    }
-
-    // Overloads for max/min with autodiff types to handle expressions
-    // Use enable_if to avoid ambiguity when both arguments are Dual (handled by std::max/min)
-    template<typename T, typename G, typename E,
-             typename std::enable_if<!std::is_same<typename std::decay<E>::type, autodiff::detail::Dual<T, G>>::value, int>::type = 0>
-    auto max(const autodiff::detail::Dual<T, G>& a, const E& b) {
-        return std::max(a, autodiff::detail::Dual<T, G>(b));
-    }
-    
-    template<typename T, typename G, typename E,
-             typename std::enable_if<!std::is_same<typename std::decay<E>::type, autodiff::detail::Dual<T, G>>::value, int>::type = 0>
-    auto max(const E& a, const autodiff::detail::Dual<T, G>& b) {
-        return std::max(autodiff::detail::Dual<T, G>(a), b);
-    }
-
-    template<typename T, typename G, typename E,
-             typename std::enable_if<!std::is_same<typename std::decay<E>::type, autodiff::detail::Dual<T, G>>::value, int>::type = 0>
-    auto min(const autodiff::detail::Dual<T, G>& a, const E& b) {
-        return std::min(a, autodiff::detail::Dual<T, G>(b));
-    }
-    
-    template<typename T, typename G, typename E,
-             typename std::enable_if<!std::is_same<typename std::decay<E>::type, autodiff::detail::Dual<T, G>>::value, int>::type = 0>
-    auto min(const E& a, const autodiff::detail::Dual<T, G>& b) {
-        return std::min(autodiff::detail::Dual<T, G>(a), b);
-    }
-}
+// Input stream operator for autodiff::reverse::detail::Variable
+template<typename T>
+inline std::istream& operator>>(std::istream& is, autodiff::reverse::detail::Variable<T>& v) {
+    T val;
+    is >> val;
+    v = val;
+    return is;
 }
 
-// Avoid duplicate definitions on multiple includes
-#ifndef GISMO_AUTODIFF_TO_STRING_OVERLOADS
-#define GISMO_AUTODIFF_TO_STRING_OVERLOADS
-namespace gismo {
-namespace util {
-
-template <class C, class = void>
-struct has_val : std::false_type {};
-template <class C>
-struct has_val<C, std::void_t<decltype(std::declval<const C&>().val)>> : std::true_type {};
-
-// Convert autodiff expression-like types to a `real_t` and stringify that.
-// Disable for types that are already `real_t` to avoid recursion.
-template <typename E, std::enable_if_t<has_val<E>::value && !std::is_same<std::decay_t<E>, real_t>::value, int> = 0>
-inline std::string to_string(const E &value)
-{
-   return util::to_string(static_cast<real_t>(value.val));
-}
-
-// ExprPtr special-case (reverse-mode expression pointers)
-template <typename T>
-inline std::string to_string(const autodiff::reverse::detail::ExprPtr<T> &expr)
-{
-   if (expr) return util::to_string(static_cast<real_t>(expr->val));
-   return std::string("null");
-}
-
-} // namespace util
-} // namespace gismo
-#endif
+} // namespace std

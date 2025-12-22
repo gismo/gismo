@@ -77,7 +77,6 @@ template<class E1, class E2, bool = E1::ColBlocks && !E1::ScalarValued && !E2::S
 template <typename E> struct expr_traits
 {
 public:
-//    typedef typename E::Scalar Scalar;
     typedef real_t Scalar;//todo
     typedef const E Nested_t;
 };

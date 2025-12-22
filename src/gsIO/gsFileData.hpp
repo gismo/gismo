@@ -50,7 +50,7 @@ gsFileData<T>::gsFileData()
 }
 
 template<class T>
-gsFileData<T>::gsFileData(String const & fn, bool recursive)
+gsFileData<T>::gsFileData(std::string const & fn, bool recursive)
 {
     data = new FileData;
     data->makeRoot();
@@ -90,18 +90,18 @@ gsFileData<T>::dump(std::string const & fname)  const
 template<class T> void
 gsFileData<T>::addComment(std::string const & message)
 {
-    gsXmlNode * comment = internal::makeComment(message, *data);
+    typename gsFileData<T>::gsXmlNode * comment = internal::makeComment(message, *data);
     data->appendToRoot(comment);
 }
 
 template<class T> void
 gsFileData<T>::save(std::string const & fname, bool compress)  const
 {
-    gsXmlNode * comment = internal::makeComment("This file was created by G+Smo "
+    typename gsFileData<T>::gsXmlNode * comment = internal::makeComment("This file was created by G+Smo "
                                                 GISMO_VERSION, *data);
     data->prepend_node(comment);
 
-    gsXmlNode * declNode = data->allocate_node(rapidxml::node_type::node_declaration);
+    typename gsFileData<T>::gsXmlNode * declNode = data->allocate_node(rapidxml::node_type::node_declaration);
     declNode->append_attribute(data->allocate_attribute("version","1.0"));
     declNode->append_attribute(data->allocate_attribute("encoding","UTF-8"));
     data->prepend_node(declNode);
@@ -112,7 +112,7 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
         return;
     }
 
-    String tmp = gsFileManager::getExtension(fname);
+    std::string tmp = gsFileManager::getExtension(fname);
     if (tmp != "xml" )
         tmp = fname + ".xml";
     else
@@ -130,7 +130,7 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
 template<class T> void
 gsFileData<T>::saveCompressed(std::string const & fname)  const
 {
-    String tmp = gsFileManager::getExtension(fname);
+    std::string tmp = gsFileManager::getExtension(fname);
     if (tmp != "gz" )
     {
         if (tmp != "xml" )
@@ -159,7 +159,7 @@ gsFileData<T>::ioError(int lineNumber, const std::string& str)
 }
 
 template<class T>
-bool gsFileData<T>::read(String const & fn, bool recursive)
+bool gsFileData<T>::read(std::string const & fn, bool recursive)
 {
     m_lastPath = gsFileManager::find(fn);
     if ( m_lastPath.empty() )
@@ -170,7 +170,7 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
     }
 
     // Identify filetype by extension
-    String ext = gsFileManager::getExtension(fn);
+    std::string ext = gsFileManager::getExtension(fn);
 
     if (ext== "xml")
         return readXmlFile(m_lastPath, recursive);
@@ -226,7 +226,7 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
 /*---------- Native Gismo format */
 
 template<class T>
-bool gsFileData<T>::readXmlFile( String const & fn, bool recursive)
+bool gsFileData<T>::readXmlFile( std::string const & fn, bool recursive)
 {
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
@@ -237,7 +237,7 @@ bool gsFileData<T>::readXmlFile( String const & fn, bool recursive)
 }
 
 template<class T>
-bool gsFileData<T>::readXmlGzFile( String const & fn, bool recursive)
+bool gsFileData<T>::readXmlGzFile( std::string const & fn, bool recursive)
 {
     // Open file
     igzstream file(fn.c_str(), std::ios::in);
@@ -259,7 +259,7 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
     // Load file contents
     data->parse<0>(&buffer[0], true);
 
-    gsXmlNode * ln = data->last_node("xml");
+    typename gsFileData<T>::gsXmlNode * ln = data->last_node("xml");
     if ( !ln )
     {
         gsWarn<< "gsFileData: Problem with file "<<m_lastPath
@@ -270,7 +270,7 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
     if (recursive)
     {
         std::list<std::string> ifn;
-        for (gsXmlNode * child = ln->first_node("xmlfile") ;
+        for (typename gsFileData<T>::gsXmlNode * child = ln->first_node("xmlfile") ;
             child; child = child->next_sibling("xmlfile") )
         {
             ifn.push_back( child->value() );
@@ -284,7 +284,7 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
         }
     }
 
-    gsXmlNode * root = data->getRoot();
+    typename gsFileData<T>::gsXmlNode * root = data->getRoot();
     root->merge_sibling(ln);
     data->remove_node(ln);
 
@@ -297,7 +297,7 @@ void gsFileData<T>::addInclude( const std::string & filename, const real_t & tim
                                 const index_t & id, const std::string & label)
 {
     GISMO_ASSERT( filename!="", "No filename provided for include!");
-    gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
+    typename gsFileData<T>::gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
     if (-1. != time)
         node->append_attribute(internal::makeAttribute("time", std::to_string( cast<real_t,double >( time ) ), *data));
     data->appendToRoot(node,id, label);
@@ -330,9 +330,9 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
         attr_string = label;
     } 
 
-    gsXmlNode * root = getXmlRoot();
+    typename gsFileData<T>::gsXmlNode * root = getXmlRoot();
 
-    gsXmlNode * nd = internal::searchNode(root, attr_name, attr_string, "xmlfile");
+    typename gsFileData<T>::gsXmlNode * nd = internal::searchNode(root, attr_name, attr_string, "xmlfile");
     if (nd)
     {
         std::string filename = gsFileManager::getPath(m_lastPath) +  nd->value();
@@ -346,7 +346,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
 /*---------- Axl file */
 
 template<class T>
-bool gsFileData<T>::readAxelFile( String const & fn )
+bool gsFileData<T>::readAxelFile( std::string const & fn )
 {
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
@@ -363,11 +363,11 @@ bool gsFileData<T>::readAxelFile( String const & fn )
     axldata.parse<0>(&buffer[0]);
 
     // Look for the root <axl>
-    gsXmlNode * node = axldata.first_node("axl");
-    String s;
+    typename gsFileData<T>::gsXmlNode * node = axldata.first_node("axl");
+    std::string s;
 
     // Translate to Gismo XML
-    for (gsXmlNode * child = node->first_node(); child; child = child->next_sibling())
+    for (typename gsFileData<T>::gsXmlNode * child = node->first_node(); child; child = child->next_sibling())
     {
         s = child->name();
         if ( s == "curve" )
@@ -384,21 +384,21 @@ bool gsFileData<T>::readAxelFile( String const & fn )
 };
 
 template<class T>
-bool gsFileData<T>::readAxelCurve(gsXmlNode * node )
+bool gsFileData<T>::readAxelCurve(typename gsFileData<T>::gsXmlNode * node )
 {
     std::stringstream str;
 
     //bool rational(true);
 
-    gsXmlNode* g = internal::makeNode("Geometry", *data);
+    typename gsFileData<T>::gsXmlNode* g = internal::makeNode("Geometry", *data);
     g->append_attribute( internal::makeAttribute("type", "BSpline", *data) );
     data->appendToRoot(g);
-    gsXmlNode * parent= g;
+    typename gsFileData<T>::gsXmlNode * parent= g;
 
-    gsXmlNode* tmp = node->first_node("dimension");
-    String geoDim = tmp->value();
+    typename gsFileData<T>::gsXmlNode* tmp = node->first_node("dimension");
+    std::string geoDim = tmp->value();
 
-    gsXmlNode* b = internal::makeNode("Basis", *data);
+    typename gsFileData<T>::gsXmlNode* b = internal::makeNode("Basis", *data);
     b->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
     parent->append_node(b);
 
@@ -422,31 +422,31 @@ bool gsFileData<T>::readAxelCurve(gsXmlNode * node )
 };
 
 template<class T>
-bool gsFileData<T>::readAxelSurface(gsXmlNode * node )
+bool gsFileData<T>::readAxelSurface(typename gsFileData<T>::gsXmlNode * node )
 {
     std::stringstream str;
 
-    gsXmlNode* g = internal::makeNode("Geometry", *data);
+    typename gsFileData<T>::gsXmlNode* g = internal::makeNode("Geometry", *data);
     g->append_attribute( internal::makeAttribute("type", "TensorBSpline2", *data) );
     data->appendToRoot(g);
-    gsXmlNode * parent = g;
+    typename gsFileData<T>::gsXmlNode * parent = g;
 
-    //gsXmlNode* tmp = node->first_node("dimension");// dimension is 3
+    //typename gsFileData<T>::gsXmlNode* tmp = node->first_node("dimension");// dimension is 3
 
     unsigned d[2];
-    gsXmlNode * tmp = node->first_node("order");
+    typename gsFileData<T>::gsXmlNode * tmp = node->first_node("order");
     str.clear();
     str.str( tmp->value() );
     str >> d[0] >> d[1];
     d[0]-=1; d[1]-=1;
 
     // Tensor Basis
-    gsXmlNode* tb = internal::makeNode("Basis", *data);
+    typename gsFileData<T>::gsXmlNode* tb = internal::makeNode("Basis", *data);
     tb->append_attribute( internal::makeAttribute("type", "TensorBSplineBasis2", *data) );
     //tb->append_attribute( internal::makeAttribute("parDim", "2", *data ) );
     parent->append_node(tb);
 
-    gsXmlNode* b = internal::makeNode("Basis", *data);
+    typename gsFileData<T>::gsXmlNode* b = internal::makeNode("Basis", *data);
     b->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
     b->append_attribute( internal::makeAttribute("index", "0", *data) );
     tb->append_node(b);
@@ -474,10 +474,10 @@ bool gsFileData<T>::readAxelSurface(gsXmlNode * node )
 };
 
 template<class T>
-bool gsFileData<T>::readAxelMesh(gsXmlNode * node )
+bool gsFileData<T>::readAxelMesh(typename gsFileData<T>::gsXmlNode * node )
 {
     std::ostringstream str;
-    gsXmlNode * tmp = node->first_node("points");
+    typename gsFileData<T>::gsXmlNode * tmp = node->first_node("points");
     GISMO_ASSERT(tmp,"No points in mesh.");
     str<< tmp->value();
     tmp = node->first_node("faces");
@@ -508,7 +508,7 @@ bool gsFileData<T>::readAxelMesh(gsXmlNode * node )
 // ******************************** //
 
 template<class T>
-bool gsFileData<T>::readGoToolsFile( String const & fn )
+bool gsFileData<T>::readGoToolsFile( std::string const & fn )
 {
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
@@ -518,12 +518,12 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws);
 
-    String line;
+    std::string line;
 
     // Node for a Geometry object
-    gsXmlNode * g;
+    typename gsFileData<T>::gsXmlNode * g;
     // Node for a basis object
-    gsXmlNode * src;
+    typename gsFileData<T>::gsXmlNode * src;
 
     // Temporaries
     bool rational;
@@ -794,7 +794,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": RATIONAL GoTools input is not supported/tested/working.\n";
             // Rational tensor basis
-            gsXmlNode* rtb = internal::makeNode("Basis", *data);
+            typename gsFileData<T>::gsXmlNode* rtb = internal::makeNode("Basis", *data);
             rtb->append_attribute( internal::makeAttribute("type",
                                                            (parDim==1 ? "NurbsBasis" : "TensorNurbsBasis"+internal::to_string(parDim)), *data) );
             rtb->append_node(src);
@@ -823,7 +823,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
             while (!file.eof() && line == "") getline(file, line);
             lnstream.clear();
             lnstream.str(line);
-            gsXmlNode* b;
+            typename gsFileData<T>::gsXmlNode* b;
             if (parDim > 1)
             {
                 b = internal::makeNode("Basis", *data);
@@ -833,7 +833,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
                 b = src;
 
             b->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
-            gsXmlNode* k = internal::makeNode("KnotVector", lnstream.str(), *data);
+            typename gsFileData<T>::gsXmlNode* k = internal::makeNode("KnotVector", lnstream.str(), *data);
             k->append_attribute( internal::makeAttribute("degree", deg, *data) ) ;
             b->append_node(k);
             if (parDim > 1)
@@ -870,16 +870,16 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
 }
 
 //template<class T>
-//bool gsFileData<T>::readGoToolsSpline(gsXmlNode * node )
+//bool gsFileData<T>::readGoToolsSpline(typename gsFileData<T>::gsXmlNode * node )
 //{ }
 //template<class T>
-//bool gsFileData<T>::readGoToolsTrimSurf(gsXmlNode * node )
+//bool gsFileData<T>::readGoToolsTrimSurf(typename gsFileData<T>::gsXmlNode * node )
 //{ }
 
 /*---------- GeoPdes txt file */
 
 template<class T>
-bool gsFileData<T>::readGeompFile( String const & fn )
+bool gsFileData<T>::readGeompFile( std::string const & fn )
 {
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
@@ -891,7 +891,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
 
     std::stringstream str;
 
-    String line;
+    std::string line;
     //int patch_count(0);
 
     int N,Np,Ni(0),Ns(0);
@@ -922,13 +922,13 @@ bool gsFileData<T>::readGeompFile( String const & fn )
     // Start id by 1, to match numbering in GeoPDEs file:
     //max_id=0;
 
-    gsXmlNode* g;
+    typename gsFileData<T>::gsXmlNode* g;
 
     //gsDebug<<"Reading N="<<N<<" and Np="<< Np  <<"\n";
     gsVector<int> p(N);
     gsVector<int> ncp(N);
     bool patch(true);
-    String bdr, ifc;
+    std::string bdr, ifc;
 
     while ( !file.eof() ) // Read next line
     {
@@ -948,7 +948,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             continue;
         }
         /* //Note: no need to read topology
-           else if ( line.find("interface")!=String::npos )
+           else if ( line.find("interface")!=std::string::npos )
            {
            while (!file.eof() && getline(file, line))
            if (line[0] != '#') break;
@@ -964,7 +964,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
            ifc.append("\n");
            patch=false;
            }
-           else if ( line.find("boundary")!=String::npos )
+           else if ( line.find("boundary")!=std::string::npos )
            {
            while (!file.eof() && getline(file, line))
            if (line[0] != '#') break;
@@ -983,7 +983,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
            }
            }
         */
-        else if ( ( line.find("patch")!=String::npos ) || patch==true )
+        else if ( ( line.find("patch")!=std::string::npos ) || patch==true )
         {
             // gsDebug <<"Patch "<<  line <<"\n";
             //GISMO_ASSERT( patch_count++ < Np, "Something went wrong while reading GeoPDEs file." );
@@ -1013,12 +1013,12 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             data->appendToRoot(g);
 
             // Rational tensor basis
-            gsXmlNode* rtb = internal::makeNode("Basis", *data);
+            typename gsFileData<T>::gsXmlNode* rtb = internal::makeNode("Basis", *data);
             rtb->append_attribute( internal::makeAttribute("type", "TensorNurbsBasis"+internal::to_string(N), *data) );
             g->append_node(rtb);
 
             // Read source basis
-            gsXmlNode* src = internal::makeNode("Basis", *data);
+            typename gsFileData<T>::gsXmlNode* src = internal::makeNode("Basis", *data);
             rtb->append_node(src);
 
             if (N==1)
@@ -1028,7 +1028,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
                     if (line[0] != '#') break;
                 lnstream.clear();
                 lnstream.str(line);
-                gsXmlNode* k = internal::makeNode("KnotVector", lnstream.str(), *data);
+                typename gsFileData<T>::gsXmlNode* k = internal::makeNode("KnotVector", lnstream.str(), *data);
                 k->append_attribute( internal::makeAttribute("degree", p[0], *data ) ) ;
                 src->append_node(k);
             }
@@ -1042,11 +1042,11 @@ bool gsFileData<T>::readGeompFile( String const & fn )
                         if (line[0] != '#') break;
                     lnstream.clear();
                     lnstream.str(line);
-                    gsXmlNode* b = internal::makeNode("Basis", *data);
+                    typename gsFileData<T>::gsXmlNode* b = internal::makeNode("Basis", *data);
                     b->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
                     b->append_attribute( internal::makeAttribute("index", i, *data) );
                     src->append_node(b);
-                    gsXmlNode* k = internal::makeNode("KnotVector", lnstream.str(), *data);
+                    typename gsFileData<T>::gsXmlNode* k = internal::makeNode("KnotVector", lnstream.str(), *data);
                     k->append_attribute( internal::makeAttribute("degree", p[i], *data) ) ;
                     b->append_node(k);
                 }
@@ -1089,7 +1089,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             // if ( weights == gsMatrix<T>::Ones(sz,1) )
             //      gsDebug<<"gsFileData: In fact weights are all equal to 1.\n";
 
-            gsXmlNode* c = internal::makeNode("weights", weights, *data, true);
+            typename gsFileData<T>::gsXmlNode* c = internal::makeNode("weights", weights, *data, true);
             rtb->append_node(c);
 
             c = internal::makeNode("coefs", coefs, *data, false);
@@ -1107,7 +1107,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
     parent->append_node(g);
     str.clear();
     str << 1 <<" "<< Np;
-    gsXmlNode* c = internal::makeNode("patches", str.str(), *data);
+    typename gsFileData<T>::gsXmlNode* c = internal::makeNode("patches", str.str(), *data);
     c->append_attribute( internal::makeAttribute("type","id_range", *data) );
     g->append_node(c);
 
@@ -1124,7 +1124,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
 
 /*
   template<class T>
-  bool gsFileData<T>::readBezierView( String const & fn )
+  bool gsFileData<T>::readBezierView( std::string const & fn )
   {
   //Input file
   std::ifstream file(fn.c_str(),std::ios::in);
@@ -1134,7 +1134,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   std::istringstream lnstream;
   lnstream.unsetf(std::ios_base::skipws);
 
-  String line;
+  std::string line;
 
   //Note: patch kind/type definitions
   // #define POLY   1        // polyhedron
@@ -1151,18 +1151,18 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   char string[255];
   int degu, degv, num_normals = 0, num_points;
 
-  gsXmlNode* parent = data->first_node("xml") ;
+  typename gsFileData<T>::gsXmlNode* parent = data->first_node("xml") ;
   // Node for a Geometry object
-  gsXmlNode * g;
+  typename gsFileData<T>::gsXmlNode * g;
   // Node for a basis object
-  gsXmlNode * src;
+  typename gsFileData<T>::gsXmlNode * src;
 
   while (!file.eof() )
   {
   // skip group ids
   while (!file.eof() && getline(file, line))
-  if ( line.find("group")!=String::npos ||
-  line.find("Group")!=String::npos )
+  if ( line.find("group")!=std::string::npos ||
+  line.find("Group")!=std::string::npos )
   break;
 
   // get kind/type
@@ -1218,12 +1218,12 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   g = internal::makeNode("Geometry", *data);
   src = internal::makeNode("Basis", *data);
   g->append_node(src);
-  gsXmlNode* b = internal::makeNode("coefs", coefs, *data, true);
+  typename gsFileData<T>::gsXmlNode* b = internal::makeNode("coefs", coefs, *data, true);
   g->append_node(b);
 
   src->append_attribute( internal::makeAttribute("type", "TensorBSplineBasis2", *data) );
 
-  String kv(4*degv+3,' ');
+  std::string kv(4*degv+3,' ');
   for (i=0;i<degv+1;i++)
   [
   kv[2*i] = '0';
@@ -1256,7 +1256,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
 /*---------- OFF mesh from .off file */
 
 template<class T>
-bool gsFileData<T>::readOffFile( String const & fn )
+bool gsFileData<T>::readOffFile( std::string const & fn )
 {
     //https://stackoverflow.com/questions/47125387/stringstream-and-binary-data
     //std::istringstream buffer;
@@ -1267,7 +1267,7 @@ bool gsFileData<T>::readOffFile( String const & fn )
     /* //verb-read
     std::ifstream buffer(fn);
     std::ostringstream bb; bb << buffer.rdbuf();    
-    gsXmlNode* m = internal::makeNode("SurfMesh", *data);
+    typename gsFileData<T>::gsXmlNode* m = internal::makeNode("SurfMesh", *data);
     m->append_attribute( internal::makeAttribute("type", "off", *data) );        
     m->value( internal::makeValue( bb.str(), *data) );
     data->appendToRoot(m);
@@ -1279,11 +1279,11 @@ bool gsFileData<T>::readOffFile( String const & fn )
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    gsXmlNode* g = internal::makeNode("Mesh", *data);
+    typename gsFileData<T>::gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
 
-    String line;
+    std::string line;
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws);
     std::ostringstream tmp;
@@ -1331,7 +1331,7 @@ bool gsFileData<T>::readOffFile( String const & fn )
 /*---------- STL mesh file */
 
 template<class T>
-bool gsFileData<T>::readStlFile( String const & fn )
+bool gsFileData<T>::readStlFile( std::string const & fn )
 {
     bool solid(false),facet(false),loop(false);
     //Input file
@@ -1339,7 +1339,7 @@ bool gsFileData<T>::readStlFile( String const & fn )
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    gsXmlNode* g = internal::makeNode("Mesh", *data);
+    typename gsFileData<T>::gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
 
@@ -1355,32 +1355,32 @@ bool gsFileData<T>::readStlFile( String const & fn )
     while( !file.eof() && getline(file, str) )
     {
         std::transform(str.begin(),str.end(),str.begin(),::tolower);
-        if(str.find("solid")!=String::npos && str.find("endsolid")==String::npos)
+        if(str.find("solid")!=std::string::npos && str.find("endsolid")==std::string::npos)
         {
             if(solid) ioError(lineNumber,"startSolid");
             solid=true;
         }
-        else if(str.find("endsolid")!=String::npos)
+        else if(str.find("endsolid")!=std::string::npos)
         {
             if(!solid || facet || loop) ioError(lineNumber,"endSolid");
             solid=false;
         }
-        else if(str.find("facet")!=String::npos && str.find("endfacet")==String::npos)
+        else if(str.find("facet")!=std::string::npos && str.find("endfacet")==std::string::npos)
         {
             if(!solid || facet || loop) ioError(lineNumber,"startFacet");
             facet=true;
         }
-        else if(str.find("endfacet")!=String::npos)
+        else if(str.find("endfacet")!=std::string::npos)
         {
             if(!solid || !facet || loop) ioError(lineNumber,"endFacet");
             facet=false;
         }
-        else if(str.find("outer")!=String::npos)
+        else if(str.find("outer")!=std::string::npos)
         {
             if(!solid || !facet || loop) ioError(lineNumber,"startLoop");
             loop=true;
         }
-        else if(str.find("endloop")!=String::npos)
+        else if(str.find("endloop")!=std::string::npos)
         {
             if(!solid || !facet || !loop )
                 ioError(lineNumber,"endLoop");
@@ -1392,14 +1392,14 @@ bool gsFileData<T>::readStlFile( String const & fn )
             loop=false;
             tmp = 0;
         }
-        else if(str.find("vertex")!=String::npos)
+        else if(str.find("vertex")!=std::string::npos)
         {
             if(!solid || !facet || !loop )
                 ioError(lineNumber,"vertex");
             tmp++;
             nvert++;
             size_t pos=str.rfind("vertex")+7;
-            assert(pos!=String::npos);
+            assert(pos!=std::string::npos);
             vertices << str.substr(pos, str.size()-pos) <<"\n";
         }
     }
@@ -1414,7 +1414,7 @@ bool gsFileData<T>::readStlFile( String const & fn )
 
 
 template<class T>
-bool gsFileData<T>::readObjFile( String const & fn )
+bool gsFileData<T>::readObjFile( std::string const & fn )
 {
     GISMO_UNUSED(fn);
     //gsWarn<<"Assuming Linux file, please convert dos2unix first.\n";
@@ -1456,7 +1456,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws);
 
-    String token(" "), bdr, ifc;
+    std::string token(" "), bdr, ifc;
 
     //Parsing file
     while (!file.eof() && getline(file, line))
@@ -1698,7 +1698,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
 
 
 template<class T>
-bool gsFileData<T>::readBrepFile( String const & fn )
+bool gsFileData<T>::readBrepFile( std::string const & fn )
 {
 #ifdef gsOpenCascade_ENABLED
     return extensions::gsReadBrep( fn.c_str(), *data);
@@ -2153,7 +2153,7 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
 }//namespace
 
 template<class T>
-bool gsFileData<T>::readIgesFile( String const & fn )
+bool gsFileData<T>::readIgesFile( std::string const & fn )
 {
     //Input file
     FILE * fr = fopen(fn.c_str(), "rb");
@@ -2278,11 +2278,11 @@ bool gsFileData<T>::readIgesFile( String const & fn )
 
             std::getline(ss, token, ',');
             bool rat = (token!="0");
-            gsXmlNode* g = internal::makeNode("Geometry", *data);
+            typename gsFileData<T>::gsXmlNode* g = internal::makeNode("Geometry", *data);
             g->append_attribute( internal::makeAttribute("type",
                                (rat?"TensorNurbs2":"TensorBSpline2"), *data) );
             data->appendToRoot(g);
-            gsXmlNode* rtb(nullptr), * src;
+            typename gsFileData<T>::gsXmlNode* rtb(nullptr), * src;
             src = internal::makeNode("Basis", *data);
             if (rat)
             {
@@ -2294,12 +2294,12 @@ bool gsFileData<T>::readIgesFile( String const & fn )
             else
                 g->append_node(src);
             src->append_attribute( internal::makeAttribute("type","TensorBSplineBasis2", *data) );
-            gsXmlNode* b = internal::makeNode("Basis", *data);
+            typename gsFileData<T>::gsXmlNode* b = internal::makeNode("Basis", *data);
             b->append_attribute( internal::makeAttribute("index", 0, *data) );
             b->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
             src->append_node(b);
             std::getline(ss, token, ',');
-            gsXmlNode* k = internal::makeNode("KnotVector", token, *data);
+            typename gsFileData<T>::gsXmlNode* k = internal::makeNode("KnotVector", token, *data);
             std::getline(ss, token, ',');
             k->append_attribute( internal::makeAttribute("degree", token, *data) ) ;
             b->append_node(k);
@@ -2335,11 +2335,11 @@ bool gsFileData<T>::readIgesFile( String const & fn )
 #undef FIELD_L
 
 template<class T>
-void gsFileData<T>::addX3dShape(gsXmlNode * shape)
+void gsFileData<T>::addX3dShape(typename gsFileData<T>::gsXmlNode * shape)
 {
     // assert shape->name()==Shape
 
-    gsXmlNode * patch;
+    typename gsFileData<T>::gsXmlNode * patch;
 
     //node = node->first_node("NurbsTrimmedSurface");
     //node = node->first_node("NurbsCurve2D");
@@ -2349,11 +2349,11 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
     char * ch = 0;
     std::istringstream str;
 
-    for (gsXmlNode * node = shape->first_node("NurbsPatchSurface");
+    for (typename gsFileData<T>::gsXmlNode * node = shape->first_node("NurbsPatchSurface");
          node; node = node->next_sibling("NurbsPatchSurface") )
     {
         // Read TensorBSplineBasis
-        gsXmlNode* tp_node = internal::makeNode("Basis" , *data);
+        typename gsFileData<T>::gsXmlNode* tp_node = internal::makeNode("Basis" , *data);
         tp_node->append_attribute( internal::makeAttribute("type",
                                                            "TensorBSplineBasis2", *data) );
 
@@ -2372,9 +2372,9 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Setting knots to [0..1] by default not implemented";
         }
-        gsXmlNode * kv_node = internal::makeNode("KnotVector", String(ch), *data);
+        typename gsFileData<T>::gsXmlNode * kv_node = internal::makeNode("KnotVector", std::string(ch), *data);
         kv_node->append_attribute( internal::makeAttribute("degree", p, *data) );
-        gsXmlNode* bs_node = internal::makeNode("Basis" , *data);
+        typename gsFileData<T>::gsXmlNode* bs_node = internal::makeNode("Basis" , *data);
         bs_node->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
         bs_node->append_attribute( internal::makeAttribute("index", 0, *data) );
         bs_node->append_node(kv_node);
@@ -2390,7 +2390,7 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Setting knots to [0..1] by default not implemented";
         }
-        kv_node = internal::makeNode("KnotVector", String(ch), *data);
+        kv_node = internal::makeNode("KnotVector", std::string(ch), *data);
         kv_node->append_attribute( internal::makeAttribute("degree", p, *data) );
         bs_node = internal::makeNode("Basis" , *data);
         bs_node->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
@@ -2407,11 +2407,11 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
             patch->append_attribute(internal::makeAttribute("type",
                                                             "TensorNurbs2", *data));
 
-            gsXmlNode* nurbs_node = internal::makeNode("Basis" , *data);
+            typename gsFileData<T>::gsXmlNode* nurbs_node = internal::makeNode("Basis" , *data);
             nurbs_node->append_attribute( internal::makeAttribute("type",
                                                                   "TensorNurbsBasis2", *data) );
             nurbs_node->append_node(tp_node);
-            gsXmlNode * weights_node = internal::makeNode("weights",String(ch), *data);
+            typename gsFileData<T>::gsXmlNode * weights_node = internal::makeNode("weights",std::string(ch), *data);
             nurbs_node->append_node(weights_node);
             patch->append_node(nurbs_node);
         }
@@ -2425,7 +2425,7 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
 
         // Attach the control points to the patch
         ch = node->first_node("Coordinate")->first_attribute("point")->value();
-        gsXmlNode* cp_node = internal::makeNode("coefs",String(ch), *data);
+        typename gsFileData<T>::gsXmlNode* cp_node = internal::makeNode("coefs",std::string(ch), *data);
         cp_node->append_attribute( internal::makeAttribute("geoDim", 3, *data) );
         patch->append_node( cp_node);
 
@@ -2435,7 +2435,7 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
 }
 
 template<class T>
-void gsFileData<T>::addX3dTransform(gsXmlNode * trans)
+void gsFileData<T>::addX3dTransform(typename gsFileData<T>::gsXmlNode * trans)
 {
 
     gsXmlAttribute * attr = trans->first_attribute("translation");
@@ -2464,7 +2464,7 @@ void gsFileData<T>::addX3dTransform(gsXmlNode * trans)
 
 
 template<class T>
-bool gsFileData<T>::readX3dFile( String const & fn )
+bool gsFileData<T>::readX3dFile( std::string const & fn )
 {
     // http://www.web3d.org/x3d/content/examples/NURBS/
     // Open file
@@ -2482,42 +2482,42 @@ bool gsFileData<T>::readX3dFile( String const & fn )
     x3ddata.parse<0>(&buffer[0]);
 
     // Look for the root <X3D>
-    gsXmlNode * x3d = x3ddata.first_node("X3D");
+    typename gsFileData<T>::gsXmlNode * x3d = x3ddata.first_node("X3D");
 
     // Looking for shapes
-    for (gsXmlNode * scene = x3d->first_node("Scene");
+    for (typename gsFileData<T>::gsXmlNode * scene = x3d->first_node("Scene");
          scene; scene = scene->next_sibling("Scene") )
     {
-        for (gsXmlNode * shape = scene->first_node("Shape");
+        for (typename gsFileData<T>::gsXmlNode * shape = scene->first_node("Shape");
              shape; shape = shape->next_sibling("Shape") )
             addX3dShape( shape );
 
-        for (gsXmlNode * trans = scene->first_node("Transform");
+        for (typename gsFileData<T>::gsXmlNode * trans = scene->first_node("Transform");
              trans; trans = trans->next_sibling("Transform") )
         {
             // Descent to transforms
-            gsXmlNode * trans_rec = trans;
+            typename gsFileData<T>::gsXmlNode * trans_rec = trans;
             while ( true )
             {
                 addX3dTransform( trans_rec );
-                gsXmlNode * tmp = trans_rec->first_node("Transform");
+                typename gsFileData<T>::gsXmlNode * tmp = trans_rec->first_node("Transform");
                 if ( tmp )
                     trans_rec = tmp;
                 else
                     break;
             }
 
-            for (gsXmlNode * shape = trans_rec->first_node("Shape");
+            for (typename gsFileData<T>::gsXmlNode * shape = trans_rec->first_node("Shape");
                  shape; shape = shape->next_sibling("Shape") )
             {
                 addX3dShape( shape );
             }
 
-            for (gsXmlNode * coll  = trans->first_node("Collision");
+            for (typename gsFileData<T>::gsXmlNode * coll  = trans->first_node("Collision");
                  coll; coll = trans->next_sibling("Collision") )
             {
                 gsDebug<<"Reach collision tag.\n";
-                for (gsXmlNode * shape = coll->first_node("Shape");
+                for (typename gsFileData<T>::gsXmlNode * shape = coll->first_node("Shape");
                      shape; shape = shape->next_sibling("Shape") )
                 {
                     gsDebug<<"Reach shape in tag.\n";
@@ -2531,7 +2531,7 @@ bool gsFileData<T>::readX3dFile( String const & fn )
 }
 
 template<class T>
-bool gsFileData<T>::read3dmFile( String const & fn )
+bool gsFileData<T>::read3dmFile( std::string const & fn )
 {
 #ifdef gsOpennurbs_ENABLED
     return extensions::gsReadOpenNurbs( fn.c_str(), *data);
@@ -2543,7 +2543,7 @@ bool gsFileData<T>::read3dmFile( String const & fn )
 
 
 template<class T>
-bool gsFileData<T>::readParasolidFile( String const & fn )
+bool gsFileData<T>::readParasolidFile( std::string const & fn )
 {
     // Remove extension and pass to parasolid
     //int lastindex = fn.find_last_of(".");
@@ -2557,7 +2557,7 @@ bool gsFileData<T>::readParasolidFile( String const & fn )
 }
 
 template<class T>
-bool gsFileData<T>::readCsvFile( String const & fn )
+bool gsFileData<T>::readCsvFile( std::string const & fn )
 {
     std::ifstream indata;
     indata.open(fn.c_str());
@@ -2576,7 +2576,7 @@ bool gsFileData<T>::readCsvFile( String const & fn )
         }
         ++rows;
     }
-    gsXmlNode * nd =  internal::makeNode("Matrix", mstr, *data);
+    typename gsFileData<T>::gsXmlNode * nd =  internal::makeNode("Matrix", mstr, *data);
     nd->append_attribute( internal::makeAttribute("format","ascii",*data) );
     nd->append_attribute( internal::makeAttribute("rows",rows,*data) );
     nd->append_attribute( internal::makeAttribute("cols",nv/rows,*data) );
@@ -2592,7 +2592,7 @@ gsFileData<T>::contents () const
     std::ostringstream os;
     os << "--- \n";
     int i(1);
-    for (gsXmlNode * child = data->first_node("xml")->first_node();
+    for (typename gsFileData<T>::gsXmlNode * child = data->first_node("xml")->first_node();
          child; child = child->next_sibling() )
     {
         os << i++ <<". " << child->name() ;
@@ -2609,7 +2609,7 @@ template<class T> inline
 int gsFileData<T>::numTags() const
 {
     int i(0);
-    for (gsXmlNode * child = data->first_node("xml")->first_node() ;
+    for (typename gsFileData<T>::gsXmlNode * child = data->first_node("xml")->first_node() ;
          child; child = child->next_sibling() )
         ++i;
     return i;
@@ -2623,7 +2623,7 @@ gsFileData<T>::getXmlRoot() const
 }
 
 template<class T> inline
-void gsFileData<T>::deleteXmlSubtree(gsXmlNode * node)
+void gsFileData<T>::deleteXmlSubtree(typename gsFileData<T>::gsXmlNode * node)
 {
     node->parent()->remove_node(node);
     // TO do: delete recursively ?
@@ -2634,7 +2634,7 @@ template<class T> inline
 typename gsFileData<T>::gsXmlNode *
 gsFileData<T>::getFirstNode(const std::string & name, const std::string & type) const
 {
-    gsXmlNode * root = data->first_node("xml");
+    typename gsFileData<T>::gsXmlNode * root = data->first_node("xml");
     if ( ! root )
     {
         gsWarn<< "gsFileData: Problem with file "<<m_lastPath
@@ -2646,7 +2646,7 @@ gsFileData<T>::getFirstNode(const std::string & name, const std::string & type) 
         return root->first_node( name.c_str() );
     else
     {
-        for (gsXmlNode * child = root->first_node( name.c_str() ) ;
+        for (typename gsFileData<T>::gsXmlNode * child = root->first_node( name.c_str() ) ;
              child; child = child->next_sibling( name.c_str() ) )
             if ( !strcmp( child->first_attribute("type")->value(), type.c_str() ) )
                 return child;
@@ -2658,23 +2658,23 @@ template<class T> inline
 typename gsFileData<T>::gsXmlNode *
 gsFileData<T>::getAnyFirstNode(const std::string & name, const std::string & type) const
 {
-    gsXmlNode * root = data->first_node("xml");
+    typename gsFileData<T>::gsXmlNode * root = data->first_node("xml");
     assert( root ) ;
     if ( type == "" )
         // Searching up to third level of the XML tree
-        for (gsXmlNode * child = root->first_node() ;
+        for (typename gsFileData<T>::gsXmlNode * child = root->first_node() ;
              child; child = child->next_sibling() )
         {
             if (!strcmp( child->name(), name.c_str() ) )
                 return child;
             // Level 2
-            for (gsXmlNode * child2 = child->first_node() ;
+            for (typename gsFileData<T>::gsXmlNode * child2 = child->first_node() ;
                  child2; child2 = child2->next_sibling() )
             {
                 if ( !strcmp( child2->name(), name.c_str() ) )
                     return child2;
                 // Level 3
-                for (gsXmlNode * child3 = child2->first_node() ;
+                for (typename gsFileData<T>::gsXmlNode * child3 = child2->first_node() ;
                      child3; child3 = child3->next_sibling() )
                     if ( !strcmp( child3->name(), name.c_str() ) )
                         return child3;
@@ -2682,21 +2682,21 @@ gsFileData<T>::getAnyFirstNode(const std::string & name, const std::string & typ
         }
     else
         // Searching up to third level of the XML tree
-        for (gsXmlNode * child = root->first_node() ;
+        for (typename gsFileData<T>::gsXmlNode * child = root->first_node() ;
              child; child = child->next_sibling() )
         {
             if (!strcmp( child->name(), name.c_str() ) &&
                 !strcmp( child->first_attribute("type")->value(), type.c_str() ) )
                 return child;
             // Level 2
-            for (gsXmlNode * child2 = child->first_node() ;
+            for (typename gsFileData<T>::gsXmlNode * child2 = child->first_node() ;
                  child2; child2 = child2->next_sibling() )
             {
                 if ( !strcmp( child2->name(), name.c_str() ) &&
                      !strcmp( child2->first_attribute("type")->value(), type.c_str() ))
                     return child2;
                 // Level 3
-                for (gsXmlNode * child3 = child2->first_node() ;
+                for (typename gsFileData<T>::gsXmlNode * child3 = child2->first_node() ;
                      child3; child3 = child3->next_sibling() )
                     if ( !strcmp( child3->name(), name.c_str() ) &&
                          !strcmp( child3->first_attribute("type")->value(), type.c_str()))
@@ -2708,14 +2708,14 @@ gsFileData<T>::getAnyFirstNode(const std::string & name, const std::string & typ
 
 template<class T> inline
 typename gsFileData<T>::gsXmlNode *
-gsFileData<T>::getNextSibling(gsXmlNode* const & node, const std::string & name,
+gsFileData<T>::getNextSibling(typename gsFileData<T>::gsXmlNode* const & node, const std::string & name,
                               const std::string & type)
 {
     if ( type == "" )
         return node->next_sibling( name.c_str() );
     else
     {
-        for (gsXmlNode * next = node->next_sibling( name.c_str() );
+        for (typename gsFileData<T>::gsXmlNode * next = node->next_sibling( name.c_str() );
              next; next = next->next_sibling( name.c_str() ) )
             if ( !strcmp( next->first_attribute("type")->value(), type.c_str() ) )
                 return next;

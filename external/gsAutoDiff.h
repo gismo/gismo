@@ -841,7 +841,7 @@ public:
 
     friend DScalar2 sqrt(const DScalar2 &s) 
     {
-        Scalar sqrtVal = std::sqrt(s.value),
+        Scalar sqrtVal = math::sqrt(s.value),
             temp    = (Scalar) 1 / ((Scalar) 2 * sqrtVal);
 
         // vn = sqrt(v)
@@ -860,8 +860,8 @@ public:
 
     friend DScalar2 pow(const DScalar2 &s, const Scalar &a) 
     {
-        Scalar powVal = std::pow(s.value, a),
-            temp   = a * std::pow(s.value, a-1);
+        Scalar powVal = math::pow(s.value, a),
+            temp   = a * math::pow(s.value, a-1);
         // vn = v ^ a
         DScalar2 result(powVal);
 
@@ -871,14 +871,14 @@ public:
         // D^2vn = a*v^(a-1) D^2v - 1/(4 v*sqrt(v)) Dv Dv^T
         result.hess = s.hess * temp;
         result.hess += s.grad * s.grad.transpose()
-            * (a * (a-1) * std::pow(s.value, a-2));
+            * (a * (a-1) * math::pow(s.value, a-2));
 
         return result;
     }
 
     friend DScalar2 exp(const DScalar2 &s) 
     {
-        Scalar expVal = std::exp(s.value);
+        Scalar expVal = math::exp(s.value);
 
         // vn = exp(v)
         DScalar2 result(expVal);

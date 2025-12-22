@@ -519,7 +519,7 @@ T gsKnotVector<T>::maxIntervalLength() const
 {
     T hmax = 0.0;
     for (uiterator it = ubegin(); it + 1 < uend(); ++it)
-        hmax = math::max(hmax, *(it+1) - *it );
+        hmax = math::max(hmax, (T)(*(it+1) - *it) );
     return hmax;
 }
 
@@ -528,7 +528,7 @@ T gsKnotVector<T>::minIntervalLength() const
 {
     T hmin = std::numeric_limits<T>::max();
     for (uiterator it = ubegin(); it + 1 < uend(); ++it)
-        hmin = math::min(hmin, *(it+1) - *it );
+        hmin = math::min(hmin, (T)(*(it+1) - *it) );
     return hmin;
 }
 
@@ -1032,9 +1032,9 @@ T gsKnotVector<T>::greville(int i) const
                  "Index of Greville point is out of range.");
     iterator itr = begin() + 1;
     return ( m_deg==0 ? *(itr+i-1) :
-             std::accumulate( itr+i, itr+i+m_deg, (T)(0.0) ) / (T)(m_deg)
+             (T)(std::accumulate( itr+i, itr+i+m_deg, (T)(0.0) ) / (T)(m_deg)
              // Special case C^{-1}
-             - (*(itr+i) == *(itr+i+m_deg) ? 1e-10 : 0 )
+             - (*(itr+i) == *(itr+i+m_deg) ? 1e-10 : 0 ))
         );
 }
 

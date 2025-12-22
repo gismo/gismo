@@ -179,6 +179,8 @@ public:
     typedef typename gsProperty_array<T>::const_reference const_reference;
 
     friend class gsProperty_container;
+    
+    template <class T_>
     friend class gsSurfMesh;
 
 

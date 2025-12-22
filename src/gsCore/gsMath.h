@@ -23,7 +23,7 @@
 #endif
 
 #ifdef gsAutoDiff_ENABLED
-  #include <gsAutoDiff/gsAutoDiff2.h>
+  #include <gsAutoDiff/gsAutoDiffUtils.h>
 #endif
 
 namespace gismo {
@@ -329,6 +329,7 @@ using ::sinh;
 using ::sqrt;
 using ::tan;
 using ::tanh;
+using ::trunc;
 
 //fixme: min/max duplication with global
 inline mpq_class (max)(const mpq_class & a, const mpq_class & b)

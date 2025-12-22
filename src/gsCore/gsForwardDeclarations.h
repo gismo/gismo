@@ -333,7 +333,7 @@ template <short_t d, class T=real_t>     class gsHBox;
 template <short_t d, class T=real_t>     class gsHBoxContainer;
 
 class gsParaviewDataSet;
-class gsSurfMesh;
+template <class T=real_t>                class gsSurfMesh;
 
 // gsIO
 

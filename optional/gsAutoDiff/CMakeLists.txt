@@ -51,11 +51,10 @@ else()
 endif()
 
 # Add needed instantiations to the precompiled library
-foreach(instance ${GISMO_COEFF_TYPE} ${GISMO_EXTRA_COEFF_TYPE})
-  set(GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE}
-    "autodiff::detail::Dual<${instance},${instance}>"
-    CACHE INTERNAL "Additional instantiations")
-endforeach()
+# Use simple type aliases defined in gsConfig.h to avoid template syntax issues
+set(GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} 
+  "gismo::dual_t;gismo::var_t"
+  CACHE INTERNAL "Additional instantiations")
 
 ## Collect files
 aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_H)

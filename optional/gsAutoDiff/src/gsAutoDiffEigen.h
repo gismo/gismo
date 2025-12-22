@@ -2,9 +2,9 @@
 
     @brief Provides Eigen integration for autodiff types
     
-    This file should be included AFTER gsLinearAlgebra.h to ensure
-    Eigen plugins are properly set up before autodiff's eigen.hpp
-    files include Eigen/Core.
+    This file provides Eigen support for autodiff types.
+    The Eigen library already provides NumTraits specializations for autodiff types
+    when including the appropriate autodiff headers.
 
     This file is part of the G+Smo library.
 
@@ -18,8 +18,9 @@
 
 #pragma once
 
-// This header must be included AFTER gsLinearAlgebra.h
-// It provides Eigen traits for autodiff types
+// This header must be included AFTER gsLinearAlgebra.h to ensure
+// Eigen plugins are properly set up before autodiff's eigen.hpp
+// files include Eigen/Core.
 
 // Ensure Eigen plugins are defined if not already
 #ifndef EIGEN_MATRIXBASE_PLUGIN
@@ -35,37 +36,20 @@
 #endif
 
 #include <Eigen/Core>
+
+// Suppress warnings from autodiff library headers
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
 #include <autodiff/forward/real/eigen.hpp>
 #include <autodiff/forward/dual/eigen.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
 
-#include <gsAutoDiff/gsVarAdaptor.h>
-
-namespace Eigen {
-
-// Delegate NumTraits to the underlying autodiff::var type
-template<typename T>
-struct NumTraits<gismo::VarAdaptor<T>> : NumTraits<typename gismo::VarAdaptor<T>::Variable>
-{
-    typedef gismo::VarAdaptor<T> Real;
-    typedef gismo::VarAdaptor<T> NonInteger;
-    typedef gismo::VarAdaptor<T> Nested;
-    typedef gismo::VarAdaptor<T> Literal;
-    enum { RequireInitialization = 1 };
-};
-
-// Define binary op traits for mixed arithmetic with scalar
-template<typename T, typename BinaryOp>
-struct ScalarBinaryOpTraits<gismo::VarAdaptor<T>, T, BinaryOp> {
-  typedef gismo::VarAdaptor<T> ReturnType;
-};
-
-template<typename T, typename BinaryOp>
-struct ScalarBinaryOpTraits<T, gismo::VarAdaptor<T>, BinaryOp> {
-  typedef gismo::VarAdaptor<T> ReturnType;
-};
-
-} // namespace Eigen
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef GISMO_AUTODIFF_DEFINED_EIGEN
 #undef Eigen

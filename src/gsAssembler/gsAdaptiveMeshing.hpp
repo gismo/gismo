@@ -402,7 +402,7 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std
             _addAndMark(*box,elMarked);
         }
         // return false;
-        return (cummulErrMarked > errorMarkSum);
+        return static_cast<bool>(cummulErrMarked > errorMarkSum);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
@@ -433,7 +433,7 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std
             _addAndMark(*box,elMarked);
         }
         // return false;
-        return (cummulErrMarked > errorMarkSum);
+        return static_cast<bool>(cummulErrMarked > errorMarkSum);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
@@ -482,7 +482,7 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std
             _addAndMark(neighborhood,elMarked);
         }
         // return false;
-        return (cummulErrMarked > errorMarkSum);
+        return static_cast<bool>(cummulErrMarked > errorMarkSum);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
@@ -513,7 +513,7 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std
             cummulErrMarked += box->error();
             _addAndMark(*box,elMarked);
         }
-        return (cummulErrMarked > errorMarkSum);
+        return static_cast<bool>(cummulErrMarked > errorMarkSum);
         // return false;
     };
 
@@ -570,7 +570,7 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
         }
 
         // return false;
-        return (projectedError > targetError);
+        return static_cast<bool>(projectedError > targetError);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
@@ -605,7 +605,7 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType &, const std
     //         _addAndMark(*box,elMarked);
     //     }
     //     // return false;
-    //     return (projectedError > targetError);
+    //     return static_cast<bool>(projectedError > targetError);
     // };
 
     // std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
@@ -658,7 +658,7 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
             _addAndMark(neighborhood,elMarked);
         }
         // return false;
-        return (projectedError < targetError);
+        return static_cast<bool>(projectedError < targetError);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
@@ -696,7 +696,7 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
             projectedError -= box->projectedImprovement();
             _addAndMark(*box,elMarked);
         }
-        return (projectedError < targetError);
+        return static_cast<bool>(projectedError < targetError);
         // return false;
     };
 

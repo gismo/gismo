@@ -14,18 +14,26 @@ namespace gismo {
 
 
 // helper function
-template <typename T> int read(FILE* in, T& t)
+static inline int io_vtk_read_file_type(FILE* in, unsigned char *buf, size_t size)
+{
+    return (int)fread(buf, 1, size, in);
+}
+
+namespace {
+template <typename T>
+static inline int io_vtk_read(FILE* in, T& t)
 {
     int err = 0;
     err = fread(&t, 1, sizeof(t), in);
     return err;
 }
+}
 
 
 //-----------------------------------------------------------------------------
 
-
-bool read_vtk(gsSurfMesh& mesh,
+template <class T>
+bool read_vtk(gsSurfMesh<T>& mesh,
               FILE* in,
               const bool has_normals,
               const bool has_texcoords,
@@ -37,16 +45,16 @@ bool read_vtk(gsSurfMesh& mesh,
     unsigned int         nV, nF, nE;
     Point                p, n, c;
     Vec2f                t;
-    gsSurfMesh::Vertex v;
+    typename gsSurfMesh<T>::Vertex v;
 
 
     // properties
-    gsSurfMesh::Vertex_property<Normal>              normals;
-    gsSurfMesh::Vertex_property<Texture_coordinate>  texcoords;
-    gsSurfMesh::Vertex_property<Color>               colors;
-    if (has_normals)   normals   = mesh.vertex_property<Normal>("v:normal",Point(0,0,0));
-    if (has_texcoords) texcoords = mesh.vertex_property<Texture_coordinate>("v:texcoord",Point(0,0,0));
-    if (has_colors)    colors    = mesh.vertex_property<Color>("v:color",Color(0,0,0));
+    typename gsSurfMesh<T>::Vertex_property<Normal>              normals;
+    typename gsSurfMesh<T>::Vertex_property<Texture_coordinate>  texcoords;
+    typename gsSurfMesh<T>::Vertex_property<Color>               colors;
+    if (has_normals)   normals   = mesh.template vertex_property<Normal>("v:normal",Point(0,0,0));
+    if (has_texcoords) texcoords = mesh.template vertex_property<Texture_coordinate>("v:texcoord",Point(0,0,0));
+    if (has_colors)    colors    = mesh.template vertex_property<Color>("v:color",Color(0,0,0));
 
 
     // #Vertice, #Faces, #Edges
@@ -66,7 +74,7 @@ bool read_vtk(gsSurfMesh& mesh,
         // position
         items = sscanf(lp, "%f %f %f%n", (float*)&p[0], (float*)&p[1], (float*)&p[2], &nc);
         assert(items==3);
-        v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
+        v = mesh.add_vertex(p.cast<typename gsSurfMesh<T>::Scalar>());
         lp += nc;
 
         // normal
@@ -104,7 +112,7 @@ bool read_vtk(gsSurfMesh& mesh,
 
 
     // read faces: #N v[1] v[2] ... v[n-1]
-    std::vector<gsSurfMesh::Vertex> vertices;
+    std::vector<typename gsSurfMesh<T>::Vertex> vertices;
     for (i=0; i<nF; ++i)
     {
         // read line
@@ -122,7 +130,7 @@ bool read_vtk(gsSurfMesh& mesh,
         {
             items = sscanf(lp, "%d%n", (int*)&idx, &nc);
             assert(items == 1);
-            vertices[j] = gsSurfMesh::Vertex(idx);
+            vertices[j] = typename gsSurfMesh<T>::Vertex(idx);
             lp += nc;
         }
         mesh.add_face(vertices);
@@ -134,8 +142,8 @@ bool read_vtk(gsSurfMesh& mesh,
 
 //-----------------------------------------------------------------------------
 
-
-bool write_vtk(const gsSurfMesh& mesh, const std::string& filename)
+template <class T>
+bool write_vtk(const gsSurfMesh<T>& mesh, const std::string& filename)
 {
     FILE* out = fopen(filename.c_str(), "w");
     if (!out)
@@ -145,9 +153,9 @@ bool write_vtk(const gsSurfMesh& mesh, const std::string& filename)
     bool  has_normals   = false;
     bool  has_texcoords = false;
     bool  has_colors = false;
-    gsSurfMesh::Vertex_property<Normal> normals = mesh.get_vertex_property<Normal>("v:normal");
-    gsSurfMesh::Vertex_property<Texture_coordinate>  texcoords = mesh.get_vertex_property<Texture_coordinate>("v:texcoord");
-    gsSurfMesh::Vertex_property<Color> colors = mesh.get_vertex_property<Color>("v:color");
+    typename gsSurfMesh<T>::Vertex_property<Normal> normals = mesh.template get_vertex_property<Normal>("v:normal");
+    typename gsSurfMesh<T>::Vertex_property<Texture_coordinate>  texcoords = mesh.template get_vertex_property<Texture_coordinate>("v:texcoord");
+    typename gsSurfMesh<T>::Vertex_property<Color> colors = mesh.template get_vertex_property<Color>("v:color");
     if (normals)   has_normals = true;
     if (texcoords) has_texcoords = true;
     if (colors) has_colors = true;
@@ -164,8 +172,8 @@ bool write_vtk(const gsSurfMesh& mesh, const std::string& filename)
 
 
     // vertices, and optionally normals and texture coordinates
-    gsSurfMesh::Vertex_property<Point> points = mesh.get_vertex_property<Point>("v:point");
-    for (gsSurfMesh::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
+    typename gsSurfMesh<T>::Vertex_property<Point> points = mesh.template get_vertex_property<Point>("v:point");
+    for (typename gsSurfMesh<T>::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
     {
         const Point& p = points[*vit];
         fprintf(out, "%.10f %.10f %.10f", cast<real_t,double>(p[0]), cast<real_t,double>(p[1]), cast<real_t,double>(p[2]));
@@ -193,11 +201,11 @@ bool write_vtk(const gsSurfMesh& mesh, const std::string& filename)
 
 
     // faces
-    for (gsSurfMesh::Face_iterator fit=mesh.faces_begin(); fit!=mesh.faces_end(); ++fit)
+    for (typename gsSurfMesh<T>::Face_iterator fit=mesh.faces_begin(); fit!=mesh.faces_end(); ++fit)
     {
         int nV = mesh.valence(*fit);
         fprintf(out, "%d", nV);
-        gsSurfMesh::Vertex_around_face_circulator fvit=mesh.vertices(*fit), fvend=fvit;
+        typename gsSurfMesh<T>::Vertex_around_face_circulator fvit=mesh.vertices(*fit), fvend=fvit;
         do
         {
             fprintf(out, " %d", (*fvit).idx());
@@ -208,6 +216,17 @@ bool write_vtk(const gsSurfMesh& mesh, const std::string& filename)
 
     fclose(out);
     return true;
+}
+
+// wrapper that takes a filename and forwards to the FILE* based reader
+template <class T>
+bool read_vtk(gsSurfMesh<T>& mesh, const std::string & filename)
+{
+    FILE* in = fopen(filename.c_str(), "r");
+    if (!in) return false;
+    bool ok = read_vtk(mesh, in, false, false, false);
+    fclose(in);
+    return ok;
 }
 
 

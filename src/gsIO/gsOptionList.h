@@ -62,10 +62,18 @@ public:
     /// @copydoc gsOptionList::askString()
     Real      askReal  (const std::string & label, const Real &      value = 0     ) const;
 #ifdef gsAutoDiff_ENABLED
-    Real      askReal  (const std::string & label, const autodiff::detail::Dual<double,double> & value ) const
+    // Template overload for any autodiff type that can be converted to double
+    template<typename T, typename G>
+    Real      askReal  (const std::string & label, const autodiff::detail::Dual<T,G> & value ) const
     {
         // Extract value part for configuration parameter
         return this->askReal(label, static_cast<double>(value.val));
+    }
+
+    template <class T>
+    Real      askReal  (const std::string & label, const autodiff::reverse::detail::Variable<T> & value ) const
+    {
+        return this->askReal(label, static_cast<double>(autodiff::val(value)));
     }
 #endif
     /// @copydoc gsOptionList::askString()

@@ -13,6 +13,12 @@
 
 #pragma once
 
+// CRITICAL: Include autodiff Eigen support BEFORE gsLinearAlgebra.h
+// to ensure Eigen NumTraits specializations are defined before Eigen is used
+#ifdef gsAutoDiff_ENABLED
+#include <gsAutoDiff/gsAutoDiffEigen.h>
+#endif
+
 #include <gsCore/gsLinearAlgebra.h>
 
 /* ExprTk options */

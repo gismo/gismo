@@ -16,22 +16,43 @@ namespace gismo {
 
 //=============================================================================
 
-bool GISMO_EXPORT read_off_ascii(gsSurfMesh& mesh, char * node);
+template <class T>
+bool GISMO_EXPORT read_off_ascii(gsSurfMesh<T>& mesh, char * node);
 
-bool GISMO_EXPORT read_mesh(gsSurfMesh& mesh, const std::string& filename);
-bool GISMO_EXPORT read_off(gsSurfMesh& mesh, const std::string& filename);
-bool GISMO_EXPORT read_obj(gsSurfMesh& mesh, const std::string& filename);
-bool GISMO_EXPORT read_poly(gsSurfMesh& mesh, const std::string& filename);
-bool GISMO_EXPORT read_stl(gsSurfMesh& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT read_mesh(gsSurfMesh<T>& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT read_off(gsSurfMesh<T>& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT read_obj(gsSurfMesh<T>& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT read_poly(gsSurfMesh<T>& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT read_stl(gsSurfMesh<T>& mesh, const std::string& filename);
 
-bool GISMO_EXPORT write_mesh(const gsSurfMesh& mesh, const std::string& filename);
-bool GISMO_EXPORT write_off(const gsSurfMesh& mesh, const std::string& filename);
-bool GISMO_EXPORT write_obj(const gsSurfMesh& mesh, const std::string& filename);
-bool GISMO_EXPORT write_poly(const gsSurfMesh& mesh, const std::string& filename);
-bool GISMO_EXPORT write_stl(const gsSurfMesh& mesh, const std::string& filename);
-//bool GISMO_EXPORT write_vtk(const gsSurfMesh& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT write_mesh(const gsSurfMesh<T>& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT write_off(const gsSurfMesh<T>& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT write_obj(const gsSurfMesh<T>& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT write_poly(const gsSurfMesh<T>& mesh, const std::string& filename);
+template <class T>
+bool GISMO_EXPORT write_stl(const gsSurfMesh<T>& mesh, const std::string& filename);
+// template <class T>
+//bool GISMO_EXPORT write_vtk(const gsSurfMesh<T>& mesh, const std::string& filename);
 
 
 //=============================================================================
 } // namespace gismo
 //=============================================================================
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(IO.hpp)
+#include GISMO_HPP_HEADER(IO_off.hpp)
+#include GISMO_HPP_HEADER(IO_obj.hpp)
+#include GISMO_HPP_HEADER(IO_poly.hpp)
+#include GISMO_HPP_HEADER(IO_stl.hpp)
+#include GISMO_HPP_HEADER(IO_vtk.hpp)
+#endif

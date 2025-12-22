@@ -43,6 +43,7 @@ namespace internal
 
     //CLASS_TEMPLATE_INST gsXml< gsBezier<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMesh<real_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsSurfMesh<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsCurveFitting<real_t> >;
 
     CLASS_TEMPLATE_INST gsXml< gsPde<real_t>        >;

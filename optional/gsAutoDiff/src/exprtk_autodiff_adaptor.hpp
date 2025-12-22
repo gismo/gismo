@@ -15,9 +15,9 @@
 #pragma once
 
 #include <string>
-#include "gsAutoDiff2.h"
+#include <gsAutoDiff/gsAutoDiff2.h>
 
-#include "exprtk_autodiff_forward.hpp"
+#include <gsAutoDiff/exprtk_autodiff_forward.hpp>
 #include "exprtk.hpp"
 
 namespace exprtk
@@ -42,5 +42,10 @@ static const double sqrt2   =  1.41421356237309504880168872420969807856967187537
 }
 
 #define AUTODIFF_TYPE autodiff_dual_t
+#include "exprtk_autodiff_adaptor.h"
+#undef AUTODIFF_TYPE
+
+// Second inclusion for var type
+#define AUTODIFF_TYPE autodiff_var_t  
 #include "exprtk_autodiff_adaptor.h"
 #undef AUTODIFF_TYPE
