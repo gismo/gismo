@@ -35,15 +35,23 @@ public:
     typedef memory::shared_ptr<gsSubDomain<T>> Ptr;
     typedef memory::unique_ptr<gsSubDomain<T>> uPtr;
 
-    explicit gsSubDomain(index_t patchId = -1) : gsDomain<T>(patchId) {}
+    explicit gsSubDomain(index_t patchId = -1) 
+    : 
+    gsDomain<T>(patchId) 
+    {}
+
+    explicit gsSubDomain(const gsDomain<T>& parent, index_t patchId = -1)
+    : 
+    gsDomain<T>(patchId) 
+    {}
 
     virtual ~gsSubDomain() { }
 
     /// Return the parent domain
-        virtual const gsDomain<T>& parentDomain() const = 0;
-    
-        /// Return number of elements in this subdomain
-        size_t numElements() const override = 0;
+    virtual const gsDomain<T>& parentDomain() const = 0;
+
+    /// Return number of elements in this subdomain
+    size_t numElements() const override = 0;
 
     /// Return begin iterator
     virtual typename gsDomain<T>::iterator beginAll() const = 0;

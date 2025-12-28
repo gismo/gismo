@@ -1,64 +1,66 @@
-/** @file indexSubDomain_example.cpp
-
-    @brief Example of using gsIndexSubDomain to work with a subset of elements.
-
-    This file is part of the G+Smo library.
-
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-    Author(s): H.M. Verhelst
-*/
-
 #include <gismo.h>
 #include <gsDomain/gsIndexSubDomain.h>
+#include <gsCore/gsMemory.h>
+#include <gsNurbs/gsKnotVector.h>      // Explicitly include for KnotVector
+#include <gsDomain/gsTensorDomain.h>   // Explicitly include for TensorDomain
 
 using namespace gismo;
 
 int main(int argc, char* argv[])
 {
-    // Create a simple 2D tensor domain
-    gsInfo << "Creating a 2D tensor domain...\n";
-    
-    // Create knot vectors for [0,1] with 4 elements in each direction
-    auto kvU = memory::make_shared(new gsKnotVector<real_t>(0, 1, 4, 1));
-    auto kvV = memory::make_shared(new gsKnotVector<real_t>(0, 1, 4, 1));
-    
-    std::vector<typename gsKnotVector<real_t>::Ptr> knotVectors = {kvU, kvV};
-    gsTensorDomain<real_t, 2> parentDomain(knotVectors);
-    
-    gsInfo << "Parent domain has " << parentDomain.numElements() << " elements.\n";
-    
-    // Create a subdomain with specific elements: {0, 2, 5, 7}
-    std::vector<index_t> indices = {0, 2, 5, 7};
-    gsIndexSubDomain<real_t> subdomain(parentDomain, indices);
-    
-    gsInfo << "\nIndex subdomain contains " << subdomain.numElements() 
-           << " elements: ";
-    for (auto idx : subdomain.elementIndices())
-        gsInfo << idx << " ";
-    gsInfo << "\n";
-    
-    // Test iteration
-    gsInfo << "\nIterating over subdomain elements:\n";
-    auto it = subdomain.beginAll();
-    auto endIt = subdomain.endAll();
-    for (; it != endIt; ++it)
-    {
-        gsInfo << "  Iteration ID " << it.id() << ": global element index = " 
-               << it.localId() << "\n";
+    gsInfo << "Starting gsIndexSubDomain example..." << std::endl;
+
+    // 1. Create a simple parent domain (e.g., a tensor domain from a single patch)
+    // Degree for the basis
+    short_t p = 1; 
+
+    gsInfo << "Before kv_u construction." << std::endl;
+    // Create knot vectors with explicit values for more elements
+    std::vector<real_t> knots_u = {0.0, 0.0, 0.5, 1.0, 1.0}; // Degree 1, 2 elements
+    gsKnotVector<real_t> kv_u(knots_u, p);
+    gsInfo << "After kv_u construction." << std::endl;
+
+    gsInfo << "Before kv_v construction." << std::endl;
+    std::vector<real_t> knots_v = {0.0, 0.0, 0.5, 1.0, 1.0}; // Degree 1, 2 elements
+    gsKnotVector<real_t> kv_v(knots_v, p);
+    gsInfo << "After kv_v construction." << std::endl;
+
+    gsInfo << "Before parentDomain construction." << std::endl;
+    gsTensorDomain<real_t, 2> parentDomain(kv_u, kv_v); 
+    gsInfo << "After parentDomain construction." << std::endl;
+
+    gsInfo << "Parent domain has " << parentDomain.numElements() << " elements." << std::endl;
+
+    // 2. Define a subset of elements for the index subdomain
+    // Let's take the first half of the elements for the subdomain.
+    std::vector<index_t> sub_indices;
+    size_t num_elements = parentDomain.numElements();
+    for (size_t i = 0; i < num_elements / 2; ++i) {
+        sub_indices.push_back(i);
     }
-    
-    // Test containment
-    gsInfo << "\nTesting containment:\n";
-    for (index_t i = 0; i < 10; ++i)
-    {
-        gsInfo << "  Element " << i << ": " 
-               << (subdomain.contains(i) ? "in subdomain" : "not in subdomain") << "\n";
+
+    gsInfo << "Before indexSubDomain construction." << std::endl;
+    gsIndexSubDomain<real_t> indexSubDomain(parentDomain, std::move(sub_indices));
+    gsInfo << "After indexSubDomain construction." << std::endl;
+
+    gsInfo << "Index subdomain has " << indexSubDomain.numElements() << " elements." << std::endl;
+
+    gsInfo << "Iterating over index subdomain elements:" << std::endl;
+    size_t count = 0;
+    for (auto it = indexSubDomain.beginAll(); it != indexSubDomain.endAll(); ++it) {
+        gsInfo << "  Subdomain Element " << count << ": Local ID = " << it.localId() 
+               << ", Parent Global ID = " << it.id() << std::endl;
+        count++;
     }
-    
-    gsInfo << "\n✓ gsIndexSubDomain example completed successfully.\n";
-    
+
+    gsInfo << "Bounding box of the first element in the index subdomain (if available):" << std::endl;
+    if (indexSubDomain.numElements() > 0) {
+        auto it = indexSubDomain.beginAll();
+        gsInfo << "  Lower Corner: " << it.lowerCorner().transpose() << std::endl;
+        gsInfo << "  Upper Corner: " << it.upperCorner().transpose() << std::endl;
+    }
+
+    gsInfo << "gsIndexSubDomain example finished successfully." << std::endl;
+
     return 0;
 }

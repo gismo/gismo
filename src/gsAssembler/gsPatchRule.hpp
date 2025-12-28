@@ -38,8 +38,8 @@ gsPatchRule<T>::gsPatchRule(const gsDomain<T> & domain,
 {
     GISMO_ENSURE(m_reg<m_deg,"regularity cannot be greater or equal to the order!");
 
-    GISMO_ASSERT((dynamic_cast<const gsTensorDomain<T,2> *>(&domain)), "gsPatchRule only supports tensor domains");
-    m_domain = static_cast<const gsTensorDomain<T,2> *>(&domain);
+    GISMO_ASSERT((dynamic_cast<const gsTensorDomain<2,T> *>(&domain)), "gsPatchRule only supports tensor domains");
+    m_domain = static_cast<const gsTensorDomain<2,T> *>(&domain);
 
     // Initialize some stuff
     m_dim = m_domain->dim();

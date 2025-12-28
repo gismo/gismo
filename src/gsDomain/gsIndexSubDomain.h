@@ -172,7 +172,7 @@ private:
 
     size_t localId() const override 
     { 
-        return (this->m_id < (index_t)m_indices.size()) ? m_indices[this->m_id] : 0; 
+        return (this->m_id < m_indices.size()) ? m_indices[this->m_id] : 0; 
     }
 
     void next() override

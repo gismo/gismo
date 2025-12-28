@@ -2220,7 +2220,8 @@ void gsWriteParaview(const gsDomain<T> & domain, const gsMultiPatch<T>& mp,
     {
         const index_t patch_id = it.patch();       // Patch ID in the MultiPatch
 
-        if (patch_id >= mp.nPatches()) {
+        if (patch_id >= (index_t)mp.nPatches()) 
+        {
             gsWarn << "gsWriteParaview(gsDomain, gsMultiPatch): Element " << it.id()
                    << " refers to non-existent patch " << patch_id << ". Skipping.\n";
             continue;
@@ -2244,7 +2245,6 @@ void gsWriteParaview(const gsDomain<T> & domain, const gsMultiPatch<T>& mp,
         gsMatrix<T> pts = gsPointGrid<T>(element_support.col(0), element_support.col(1), np) ;
 
         gsMatrix<T> eval_geo = patch_geo.eval(pts);
-        
         gsMatrix<T> eval_field(3, eval_geo.cols());
         T value = static_cast<T>(it.patch());
         if (auto* comp_it = dynamic_cast<gsCompositeDomainIterator<T>*>(it.get()))

@@ -126,12 +126,14 @@ template <class T=real_t>                class gsDomainIterator;
 template <class T=real_t>                class gsPointDomain;
 template <class T=real_t>                class gsPointDomainIterator;
 
-template <class T = real_t, int D=-1>    class gsTensorDomainIterator;
-template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainIterator;
+template <class T = real_t, short_t D=-1>class gsTensorDomainIterator;
+template <class T = real_t, short_t D=-1, class Z=index_t>    
+                                         class gsHDomainIterator;
 
-template <class T, int D=-1, class uiter=typename std::vector<T>::const_iterator>
+template <class T = real_t, short_t D=-1, class uiter=typename std::vector<T>::const_iterator>
                                          class gsTensorDomainBoundaryIterator;
-template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainBoundaryIterator;
+template <class T = real_t, short_t D=-1, class Z=index_t>    
+                                         class gsHDomainBoundaryIterator;
 
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;
@@ -192,8 +194,13 @@ template <class T=real_t>                class gsNewtonCotesRule;
 template <class T=real_t>                class gsGalerkinMethod;
 
 // Domains
+template <class T=real_t>                class gsCompositeDomain;
+template <class T=real_t>                class gsSubDomain;
+template <class T=real_t>                class gsIndexSubDomain;
+template <short_t d, class T=real_t>                class gsTensorSubDomain;
 // template <class T=real_t>             class gsTensorDomain;
 template <short_t d, class T=real_t>     class gsHFitting;
+template <short_t d, class T=real_t>     class gsTensorDomain;
 
 template <class Z, int mode, short_t d=-1,
          bool = //std::is_integral<Z>::value>
@@ -212,9 +219,9 @@ template <class T=real_t>                class gsGenericAssembler;
 template <class T=real_t>                class gsPoissonAssembler;
 template <class T=real_t>                class gsCDRAssembler;
 template <class T=real_t>                class gsSolverUtils;
-template <class T=real_t, bool symm=false>      class gsSparseSystem;
+template <class T=real_t, bool symm=false>  class gsSparseSystem;
 
-template <class T=real_t, int Major=0>     class gsExprAssembler;
+template <class T=real_t>                class gsExprAssembler;
 template <class T=real_t>                class gsExprEvaluator;
 
 // More

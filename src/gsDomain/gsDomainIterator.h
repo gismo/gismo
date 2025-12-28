@@ -63,11 +63,10 @@ namespace gismo
 
 template <class T>
 class gsDomainIteratorWrapper
-{
-    typedef memory::unique_ptr< gsDomainIterator<T> > uPtr;
-    uPtr m_domainIter;//change as Ptr
-
+{    
 public:
+    typedef memory::unique_ptr< gsDomainIterator<T> > uPtr;
+    
     explicit gsDomainIteratorWrapper(gsDomainIterator<T> * _itptr = nullptr) : m_domainIter(_itptr)
     { }
 
@@ -240,6 +239,9 @@ public:
     /// Fetches data of integer type based on string label
     const index_t & label(const std::string & _label)
     {return m_domainIter->label(_label); }
+
+protected:
+    uPtr m_domainIter;//change as Ptr
 
 };
 

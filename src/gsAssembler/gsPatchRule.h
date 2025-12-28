@@ -241,7 +241,7 @@ protected:
                                                 const T tol = 1e-10) const;
 
 private:
-    const gsTensorDomain<T,2> * m_domain; // change dimension
+    const gsTensorDomain<2,T> * m_domain; // change dimension
     const index_t m_deg,m_reg;
     const bool m_over;
     const short_t m_fixDir;

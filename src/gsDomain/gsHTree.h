@@ -215,7 +215,7 @@ public:
         }
 
         // If the computed number would be too big we take 13 as we used to.
-        init(upp, std::min( *std::min_element(logUpps.begin(), logUpps.end()), oldMax) );
+        init(upp, math::min( *std::min_element(logUpps.begin(), logUpps.end()), oldMax) );
     }
 
     /// Destructor deletes the whole tree

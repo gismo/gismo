@@ -24,17 +24,13 @@ using namespace gismo;
 // Helper function to test a given decomposition
 void test_decomposition(const gsCompositeDomain<real_t>& parent, 
                         const gsMultiPatch<real_t>& mp,
-                        index_t npieces,
-                        gismo::decompositionStrategy strategy)
+                        index_t npieces)
 {
-    std::string strategy_str = (strategy == gismo::decompositionStrategy::tensor ? "tensor" :
-                                (strategy == gismo::decompositionStrategy::localOptimalBalancing ? "localOptimal" : "optimal"));
-    
     gsInfo << "\n=======================================================\n";
-    gsInfo << "Testing " << strategy_str << " decomposition into " << npieces << " piece(s)...\n";
+    gsInfo << "Testing decomposition into " << npieces << " piece(s)...\n";
     gsInfo << "=======================================================\n";
 
-    auto decomposed = parent.decompose(npieces, strategy);
+    auto decomposed = parent.decompose(npieces);
     gsInfo << "Decomposition resulted in " << decomposed->nPieces() << " subdomains.\n\n";
 
     // 1. Iterate through each subdomain individually
@@ -46,7 +42,7 @@ void test_decomposition(const gsCompositeDomain<real_t>& parent,
     }
 
     // 2. Plot the result
-    std::string filename = "decomposed_" + strategy_str;
+    std::string filename = "decomposed";
     gsWriteParaview(*decomposed, mp, filename, 2);
     gsInfo << "Plot of decomposed domain saved to " << filename << ".pvd\n";
 
@@ -143,9 +139,7 @@ int main(int argc, char* argv[])
     gsInfo << "Parent composite domain created with " << domain.numElements() << " total elements.\n";
 
     // Run the test cases
-    test_decomposition(domain, mp, numDecompositions, decompositionStrategy::tensor);
-    test_decomposition(domain, mp, numDecompositions, decompositionStrategy::localOptimalBalancing);
-    test_decomposition(domain, mp, numDecompositions, decompositionStrategy::optimalBalancing);
+    test_decomposition(domain, mp, numDecompositions);
 
     gsInfo << "\n✓ Composite domain test completed.\n";
 

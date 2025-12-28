@@ -16,7 +16,6 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsDomain/gsDomainIterator.h>
-#include <gsDomain/gsDecompositionStrategy.h>
 #include <gsCore/gsBoundary.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 
@@ -164,22 +163,7 @@ public:
     /// Derived classes should override this method with specialized implementations.
     /// \param npieces Number of pieces to decompose into
     /// \return A shared pointer to a decomposed domain (to be implemented in subclasses)
-    virtual Ptr decompose(index_t npieces) const
-    {
-        // Base implementation - to be overridden in derived classes
-        gsWarn << "Domain decomposition not implemented for this domain type.\n";
-        return Ptr();
-    }
-
-    /// \brief Decomposes the domain into a given number of pieces using a specific strategy.
-    /// \param npieces Number of pieces to decompose into.
-    /// \param strategy The decomposition strategy to use.
-    /// \return A shared pointer to the decomposed domain.
-    virtual Ptr decompose(index_t npieces, decompositionStrategy strategy) const
-    {
-        GISMO_UNUSED(strategy);
-        return this->decompose(npieces);
-    }
+    virtual Ptr decompose(size_t npieces) const;
 
 public: // Domain element iterators
 
@@ -293,3 +277,7 @@ std::ostream &operator<<(std::ostream &os, const gsDomain<T>& b)
 
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsDomain.hpp)
+#endif

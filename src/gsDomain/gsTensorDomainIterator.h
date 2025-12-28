@@ -39,106 +39,33 @@ private:
 
 public:
 
-    explicit gsTensorDomainIterator(const gsTensorDomain<T,D> & domain, index_t patchId = 0)
-    : gsDomainIterator<T>(0, patchId, boundary::none) // Call base constructor with patch ID
-    {
-        // compute breaks and mesh size
-        // meshStart.resize(D);
-        // meshEnd.resize(D);
-        // curElement.resize(D);
+    explicit gsTensorDomainIterator(const gsTensorDomain<D,T> & domain, index_t patchId = 0);
 
-        for (int i=0; i < D; ++i)
-        {
-            meshEnd[i]    = give(domain.component(i)->endAll()  );
-            meshStart[i]  = give(domain.component(i)->beginAll());
-            curElement[i] = give(domain.component(i)->beginAll());
-        }
-    }
-
-    gsTensorDomainIterator(const gsTensorDomainIterator & other) = default;
-    domainIter clone() const override { return domainIter(new gsTensorDomainIterator(*this)); }
+    gsTensorDomainIterator(const gsTensorDomainIterator & other);
+    domainIter clone() const override;
 
     // Documentation in gsDomainIterator.h
-    void next() override
-    {
-        nextLexicographicIter(curElement, meshEnd);
-    }
+    void next() override;
 
     // Documentation in gsDomainIterator.h
-    void next(index_t increment) override
-    {
-        bool isGood(true);
-        for (index_t i = 0; i < increment; i++)
-            isGood = isGood && nextLexicographicIter(curElement, meshEnd);
-    }
+    void next(index_t increment) override;
 
     // Documentation in gsDomainIterator.h
-    void reset() override
-    {
-        for (index_t i = 0; i < D; ++i)
-            curElement[i].reset();
-    }
+    void reset() override;
 
     /// return the tensor index of the current element
-    gsVector<unsigned, D> index() const
-    {
-        gsVector<unsigned, D> curr_index(D);
-        for (int i = 0; i < D; ++i)
-            curr_index[i]  = curElement[i]->index();
-        return curr_index;
-    }
+    gsVector<unsigned, D> index() const;
 
-    void getVertices(gsMatrix<T>& result)
-    {
-        result.resize( D, 1 << D);
+    void getVertices(gsMatrix<T>& result);
 
-        const gsVector<T> lower = lowerCorner();
-        const gsVector<T> upper = upperCorner();
-        gsVector<T,D> v, l, u;
-        l.setZero();
-        u.setOnes();
-        v.setZero();
-        int r = 0;
-        do {
-            for ( int i = 0; i< D; ++i)
-                result(i,r) = ( v[i] ? upper[i] : lower[i] );
-        }
-        while ( nextCubeVertex(v, l, u) );
-    }
+    gsVector<T> lowerCorner() const override;
 
-    gsVector<T> lowerCorner() const override
-    {
-        gsVector<T> lower(D);
-        for (short_t i = 0; i < D ; ++i)
-            lower[i]  = curElement[i].lowerCorner().value();
-        return lower;
-    }
+    gsVector<T> upperCorner() const override;
 
-    gsVector<T> upperCorner() const override
-    {
-        gsVector<T> upper(D);
-        for (short_t i = 0; i < D ; ++i)
-            upper[i]  = curElement[i].upperCorner().value();
-        return upper;
-    }
+    bool isBoundaryElement() const override;
 
-    bool isBoundaryElement() const override
-    {
-        for (int i = 0; i< D; ++i)
-            if ( curElement[i].isBoundaryElement() )
-                return true;
-        return false;
-    }
+    index_t domainDim() const;
 
-    index_t domainDim() const {return D;}
-
-
-//    size_t numElements() const
-//    {
-//
-//    }
-
-// Data members
 private:
     // Extent of the tensor grid and current element as pointers to
     // it's supporting mesh-lines
@@ -151,3 +78,7 @@ public:
 }; // class gsTensorDomainIterator
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsTensorDomainIterator.hpp)
+#endif

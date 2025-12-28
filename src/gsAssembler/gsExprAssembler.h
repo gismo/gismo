@@ -30,7 +30,7 @@ namespace gismo
    Assembler class for generating matrices and right-hand sides based
    on isogeometric expressions
 */
-template<class T, int Major>
+template<class T>
 class gsExprAssembler
 {
 private:
@@ -41,8 +41,8 @@ private:
 
     gsOptionList m_options;
 
-    mutable gsSparseMatrix<T, Major> m_matrix;
-    typedef gsFiberMatrix<T, Major> FiberMatrix;
+    mutable gsSparseMatrix<T> m_matrix;
+    typedef gsFiberMatrix<T,ColMajor> FiberMatrix;
     FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
@@ -57,9 +57,9 @@ private:
 
 public:
 
-    typedef typename gsSparseMatrix<T,Major>::BlockView matBlockView;
+    typedef typename gsSparseMatrix<T>::BlockView matBlockView;
 
-    typedef typename gsSparseMatrix<T,Major>::constBlockView matConstBlockView;
+    typedef typename gsSparseMatrix<T>::constBlockView matConstBlockView;
 
     typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
     typedef gsBoxTopology::bContainer  bContainer;
@@ -128,12 +128,12 @@ public:
     { return m_fmatrix; }
 
     /// @brief Returns the left-hand global matrix
-    const gsSparseMatrix<T,Major> & matrix() const
+    const gsSparseMatrix<T> & matrix() const
     { return m_modified ? makeMatrix() : m_matrix; }
 
     /// When calling assemble, the matrix is not filled (but only stored internally).
     /// Call this function to fill the sparsematrix with all the assemblies so far
-    const gsSparseMatrix<T,Major> & makeMatrix() const
+    const gsSparseMatrix<T> & makeMatrix() const
     {
         m_fmatrix.toSparseMatrix_into(m_matrix);
         m_modified = false;
@@ -141,13 +141,13 @@ public:
     }
 
     /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
-    void matrix_into(gsSparseMatrix<T,Major> & out)
+    void matrix_into(gsSparseMatrix<T> & out)
     {
         matrix();
         out = give(m_matrix);
     }
 
-    EIGEN_STRONG_INLINE gsSparseMatrix<T,Major> giveMatrix()
+    EIGEN_STRONG_INLINE gsSparseMatrix<T> giveMatrix()
     {
         matrix();
         m_modified = true;
@@ -780,7 +780,7 @@ private:
                             {
                                 const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
                                 if ( rowMap.is_free_index(ii) )
-                                    m_fmatrix.coeffRef(ii, jj);
+                                    m_fmatrix.insertExplicitZero(ii, jj);
                             }
 #ifdef _OPENMP
                         omp_unset_lock(&m_lock[jj]);
@@ -792,8 +792,8 @@ private:
 
 }; // gsExprAssembler
 
-template<class T, int Major>
-gsOptionList gsExprAssembler<T,Major>::defaultOptions()
+template<class T>
+gsOptionList gsExprAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
@@ -821,8 +821,8 @@ gsOptionList gsExprAssembler<T,Major>::defaultOptions()
     // mpi assemly. ???
 }
 
-template<class T, int Major>
-void gsExprAssembler<T,Major>::setFixedDofVector(gsMatrix<T> & vals, short_t unk)
+template<class T>
+void gsExprAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, short_t unk)
 {
     gsMatrix<T> & fixedDofs = m_vcol[unk]->fixedDofs;
     fixedDofs.swap(vals);
@@ -832,8 +832,8 @@ void gsExprAssembler<T,Major>::setFixedDofVector(gsMatrix<T> & vals, short_t unk
                      "The Dirichlet DoFs were not provided correctly.");
 }
 
-template<class T, int Major>
-void gsExprAssembler<T,Major>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk, size_t patch)
+template<class T>
+void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk, size_t patch)
 {
     GISMO_ASSERT( m_options.getInt("DirichletValues") == dirichlet::user, "Incorrect options");
 
@@ -880,7 +880,7 @@ void gsExprAssembler<T,Major>::setFixedDofs(const gsMatrix<T> & coefMatrix, shor
 } // setFixedDofs
 
 
-template<class T, int Major> void gsExprAssembler<T,Major>::resetDimensions()
+template<class T> void gsExprAssembler<T>::resetDimensions()
 {
     if (!m_vcol.front()->valid()) m_vcol.front()->init();
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
@@ -911,9 +911,9 @@ template<class op, typename... Ts>
 void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 { op_tuple_impl<0>(_op,tuple); }
 
-template<class T, int Major>
+template<class T>
 template<class... expr>
-void gsExprAssembler<T,Major>::_computePattern(const expr &... args)
+void gsExprAssembler<T>::_computePattern(const expr &... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
@@ -958,9 +958,9 @@ void gsExprAssembler<T,Major>::_computePattern(const expr &... args)
 #endif
 }
 
-template<class T, int Major>
+template<class T>
 template<class... expr>
-void gsExprAssembler<T,Major>::_computePatternBdr(const bcRefList & BCs, const expr &... args)
+void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
@@ -1025,9 +1025,9 @@ void gsExprAssembler<T,Major>::_computePatternBdr(const bcRefList & BCs, const e
 }
 
 
-template<class T, int Major>
+template<class T>
 template<class... expr>
-void gsExprAssembler<T,Major>::_computePatternIfc(const ifContainer & iFaces, expr... args)
+void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
     if ( iFaces.empty() || 0==numDofs() ) return;
@@ -1098,9 +1098,9 @@ void gsExprAssembler<T,Major>::_computePatternIfc(const ifContainer & iFaces, ex
 }
 
 
-template<class T, int Major>
+template<class T>
 template<class... expr>
-void gsExprAssembler<T,Major>::assemble(const expr &... args)
+void gsExprAssembler<T>::assemble(const expr &... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
@@ -1159,9 +1159,9 @@ void gsExprAssembler<T,Major>::assemble(const expr &... args)
 //    GISMO_ENSURE(!failed,"Assembly failed due to an error");
 }
 
-template<class T, int Major>
+template<class T>
 template<class... expr>
-void gsExprAssembler<T,Major>::assembleBdr(const bcRefList & BCs, expr&... args)
+void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
@@ -1225,9 +1225,9 @@ void gsExprAssembler<T,Major>::assembleBdr(const bcRefList & BCs, expr&... args)
 }
 
 
-template<class T, int Major>
+template<class T>
 template<class... expr>
-void gsExprAssembler<T,Major>::assembleBdr(const bContainer & bnd, expr&... args)
+void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
@@ -1277,8 +1277,8 @@ void gsExprAssembler<T,Major>::assembleBdr(const bContainer & bnd, expr&... args
 
 }
 
-template<class T, int Major> template<class... expr>
-void gsExprAssembler<T,Major>::assembleIfc(const ifContainer & iFaces, expr... args)
+template<class T> template<class... expr>
+void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
@@ -1356,8 +1356,8 @@ void gsExprAssembler<T,Major>::assembleIfc(const ifContainer & iFaces, expr... a
 // }//omp parallel
 }
 
-template<class T, int Major> template<class expr>
-void gsExprAssembler<T,Major>::assembleJacobian(const expr residual, solution & u)
+template<class T> template<class expr>
+void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
     GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
@@ -1409,8 +1409,8 @@ void gsExprAssembler<T,Major>::assembleJacobian(const expr residual, solution & 
 }
 
 
-template<class T, int Major> template<class expr>
-void gsExprAssembler<T,Major>::assembleJacobianIfc(const ifContainer & iFaces,
+template<class T> template<class expr>
+void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
                                              const expr residual, solution  u)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
@@ -1533,8 +1533,8 @@ void gsExprAssembler<T,Major>::assembleJacobianIfc(const ifContainer & iFaces,
     }
 }
 
-template<class T, int Major>
-void gsExprAssembler<T,Major>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, std::vector<gsVector<T> > & cWeights)
+template<class T>
+void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, std::vector<gsVector<T> > & cWeights)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 

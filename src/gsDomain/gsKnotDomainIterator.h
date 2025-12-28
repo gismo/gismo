@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsDomain/gsDomainIterator.h>
-#include <gsDomain/gsTensorDomain.h>
 #include <gsUtils/gsCombinatorics.h>
 
 namespace gismo

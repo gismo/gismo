@@ -13,12 +13,14 @@
 
 #pragma once
 
-#include <gsCore/gsLinearAlgebra.h>
-#include <gsDomain/gsDomain.h>
-#include <gsDomain/gsHTree.h>
-#include <gsDomain/gsHDomainLeafIter.h>
-#include <gsDomain/gsHDomainIterator.h>
-#include <gsDomain/gsHDomainBoundaryIterator.h>
+#include <gsCore/gsLinearAlgebra.h> 
+#include <gsDomain/gsDomain.h> 
+#include <gsDomain/gsHTree.h> 
+#include <gsDomain/gsHDomainLeafIter.h> 
+#include <gsDomain/gsHDomainIterator.h> 
+#include <gsDomain/gsHDomainBoundaryIterator.h> 
+#include <gsDomain/gsCompositeDomain.h>
+#include <gsDomain/gsTensorSubDomain.h>
 
 namespace gismo
 {
@@ -70,13 +72,22 @@ Regarding the mentioned technical differences: A binary tree is used instead of 
 Template parameters
 \param d is the dimension
 \param Z is the box-index type
-
 \ingroup HSplines
 */
 
+template <class T>
+struct LeafInfo 
+{
+    gsVector<index_t> lower;
+    gsVector<index_t> upper;
+    index_t global_id; // Keep original global ID for mapping if needed
+    short_t level;     // Keep level for info
+    size_t num_elements; // Number of elements in this leaf
+};
+
 
 template<short_t d, class T, class Z>
-class gsHDomain : public gsDomain<T> // is template correct?
+class gsHDomain : public gsDomain<T>
 {
 public:
 
@@ -88,130 +99,38 @@ public:
     template <class _T, short_t _d, class _Z>
     friend class gsHDomainBoundaryIterator;
 
-public:
-
-    explicit gsHDomain(const gsHTree<d,Z>& tree,
-                       const gsHTensorBasis<d,T>& basis)
-    :
-    m_tree(tree),
-    m_basis(basis)
-    {
-    }
-
-    domainIter beginAll() const override
-    {
-        return domainIter(new gsHDomainIterator<T,d,Z>(m_tree,m_basis));
-    }
-
-    domainIter beginBdr(const boxSide bs) const override
-    {
-        return domainIter(new gsHDomainBoundaryIterator<T,d,Z>(m_tree,m_basis, bs));
-    }
-
-    size_t numElements() const override
-    {
-        leafIterator it = m_tree.beginLeafIterator();
-        size_t nel(0);
-        while (it.good())
-        {
-            if (m_basis.manualLevels() )
-            {
-                index_t ll, uu;
-                size_t nel_local = 1;
-                for (short_t i = 0; i < d; ++i)
-                {
-                    ll = it.lowerCorner()[i];
-                    uu = it.upperCorner()[i];
-                    m_basis._diadicIndexToKnotIndex(it.level(),i,ll);
-                    m_basis._diadicIndexToKnotIndex(it.level(),i,uu);
-                    nel_local *= uu - ll;
-                }
-                nel += nel_local;
-            }
-            else
-                nel += ( it.upperCorner() - it.lowerCorner() ).prod();
-            it.next();
-        }
-        return nel;
-    }
-
-    size_t numElementsBdr(boxSide const & s = boundary::none) const override
-    {
-        GISMO_ASSERT(s != boundary::none, "Not implemented");
-        leafIterator it = m_tree.beginLeafIterator();
-        size_t nel(0);
-        size_t nel_local;
-        while (it.good())
-        {
-            if  (leafOnBoundary(s,it))
-            {
-                nel_local = 1;
-                for (short_t i = 0; i < d; ++i)
-                    if (i != s.direction())
-                    {
-                        if (m_basis.manualLevels() )
-                        {
-                            index_t ll = it.lowerCorner()[i];
-                            index_t uu = it.upperCorner()[i];
-                            m_basis._diadicIndexToKnotIndex(it.level(),s.direction(),ll);
-                            m_basis._diadicIndexToKnotIndex(it.level(),s.direction(),uu);
-                            nel_local *= uu - ll;
-                        }
-                        else
-                            nel_local *= it.upperCorner()[i] - it.lowerCorner()[i];
-                    }
-                nel +=  nel_local;
-            }
-            it.next();
-        }
-        return nel;
-    }
-
-    short_t degree(short_t i) const override
-    {
-        return m_basis.degree(i);
-    }
-
-    short_t dim() const override { return d; }
-
-    gsMatrix<T> boundingBox() const override
-    {
-        return m_basis.support();
-    }
-
-    const gsHTree<d,Z> & tree() const { return m_tree; }
-
-private:
-
-    // WE SHOULD REMOVE THIS
-    bool leafOnBoundary(const boxSide & s, const leafIterator leaf) const
-    {
-        if ( s.parameter() )
-        {
-            // AM: a little ugly for now, to be improved
-            size_t diadicSize;
-            if (m_basis.manualLevels() )
-            {
-                const gsKnotVector<T> & kv = m_basis.tensorLevel(leaf.level()).knots(s.direction());
-                index_t start = 0;
-                index_t end  = kv.uSize()-1;
-                m_basis._knotIndexToDiadicIndex(leaf.level(),s.direction(),start);
-                m_basis._knotIndexToDiadicIndex(leaf.level(),s.direction(),end);
-                diadicSize = end - start;
-            }
-            else
-                diadicSize = m_basis.tensorLevel(leaf.level()).knots(s.direction()).uSize() - 1;
-            return static_cast<size_t>(leaf.upperCorner().at(s.direction()) ) == diadicSize;// todo: more efficient
-        }
-        else
-            return leaf.lowerCorner().at(s.direction()) == 0;
-    }
-
-protected:
+private: 
     const gsHTree<d,Z> & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
+    bool leafOnBoundary(const boxSide & s, const leafIterator leaf) const;
+
+public:
+
+    explicit gsHDomain(const gsHTree<d,Z>& tree,
+                       const gsHTensorBasis<d,T>& basis);
+
+    domainIter beginAll() const override;
+
+    domainIter beginBdr(const boxSide bs) const override;
+
+    size_t numElements() const override;
+
+    size_t numElementsBdr(boxSide const & s = boundary::none) const override;
+
+    short_t degree(short_t i) const override;
+
+    short_t dim() const override;
+
+    gsMatrix<T> boundingBox() const override;
+
+    const gsHTree<d,Z> & tree() const;
+
+    virtual typename gsDomain<T>::Ptr decompose(size_t npieces) const override;
 };
 
-}// end namespace gismo
+} // namespace gismo
 
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsHDomain.hpp)
+#endif

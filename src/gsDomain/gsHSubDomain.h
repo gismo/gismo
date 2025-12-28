@@ -167,8 +167,8 @@ private:
                     
                     // Clamp to range
                     leafRanges[i] = {
-                        std::max(ll, m_ranges[i].first),
-                        std::min(uu, m_ranges[i].second)
+                        math::max(ll, m_ranges[i].first),
+                        math::min(uu, m_ranges[i].second)
                     };
                 }
                 
@@ -189,7 +189,7 @@ private:
         {
             const auto& leaf = leafEntry.first;
             const auto& leafRanges = leafEntry.second;
-            auto subdomain = gismo::memory::make_shared<gsTensorSubDomain<T,d>>(
+            auto subdomain = gismo::memory::make_shared<gsTensorSubDomain<d,T>>(
                 *tensorDomain, leafRanges);
             m_tensorSubDomains.push_back(subdomain);
         }
@@ -227,7 +227,7 @@ private:
                         leafRanges[i] = {ll, uu};
                     }
                     
-                    auto subdomain = gismo::memory::make_shared<gsTensorSubDomain<T,d>>(
+                    auto subdomain = gismo::memory::make_shared<gsTensorSubDomain<d,T>>(
                         *tensorDomain, leafRanges);
                     m_tensorSubDomains.push_back(subdomain);
                 }

@@ -219,7 +219,7 @@ public:
             const gsBSplineBasis<T>* bsplineBasis = static_cast<const gsBSplineBasis<T>*>(this->m_bases[i]);
             knotVectors[i] = memory::make_shared(bsplineBasis->knots(0).clone());
         }
-        return memory::make_shared(new gsTensorDomain<T,d>(give(knotVectors)));
+        return memory::make_shared(new gsTensorDomain<d,T>(give(knotVectors)));
     }
 
     // Look at gsBasis class for a description
