@@ -15,19 +15,29 @@ gsCompositeDomainIterator<T>::gsCompositeDomainIterator(const domainContainer& _
     : Base(), m_domains(_dom)
 {
     GISMO_ASSERT(!m_domains.empty(), "Empty..");
+    m_curDomainIndex = 0;
+    m_curIndex = 0;
     m_curDomain = m_domains.begin();
 
     m_offset.reserve(m_domains.size()+1);
     m_offset.push_back(0);
     for( auto & sd : m_domains )
         m_offset.push_back(m_offset.back()+sd->numElements());
-    m_curOffset = m_offset.begin();
-    m_cur = (*m_curDomain)->beginAll();
+    m_curOffset = m_offset[m_curDomainIndex];
+    m_cur = (m_domains[m_curDomainIndex])->beginAll();
     this->m_pside.patch = m_cur.patch();
 }
 
 template <class T>
-gsCompositeDomainIterator<T>::gsCompositeDomainIterator(const gsCompositeDomainIterator & other) = default;
+gsCompositeDomainIterator<T>::gsCompositeDomainIterator(const gsCompositeDomainIterator & other)
+{
+    m_domains = other.m_domains;
+    m_curDomainIndex = other.m_curDomainIndex;
+    m_offset = other.m_offset;
+    m_curOffset = other.m_curOffset;
+    m_cur = other.m_cur;
+    this->m_pside = other.m_pside;
+}
 
 template <class T>
 typename gsCompositeDomainIterator<T>::domainIter gsCompositeDomainIterator<T>::clone() const { return domainIter(new gsCompositeDomainIterator(*this)); }
@@ -38,7 +48,7 @@ gsCompositeDomainIterator<T>::~gsCompositeDomainIterator() { }
 template <class T>
 index_t gsCompositeDomainIterator<T>::patch() const
 {
-    if (m_curDomain == m_domains.end())
+    if (m_curDomainIndex == m_domains.size())
         return -1;
     return m_cur.patch();
 }
@@ -46,17 +56,17 @@ index_t gsCompositeDomainIterator<T>::patch() const
 template <class T>
 size_t gsCompositeDomainIterator<T>::id() const
 {
-    if (m_curDomain == m_domains.end())
+    if (m_curDomainIndex == m_domains.size())
         return m_offset.back();
-    return *m_curOffset + m_cur.id();
+    return m_curOffset + m_cur.id();
 }
 
 template <class T>
 index_t gsCompositeDomainIterator<T>::subdomainIndex() const
 {
-    if (m_curDomain == m_domains.end())
+    if (m_curDomainIndex == m_domains.size())
         return -1;
-    return std::distance(m_domains.begin(), m_curDomain);
+    return m_curDomainIndex;
 }
 
 template <class T>
@@ -65,25 +75,27 @@ size_t gsCompositeDomainIterator<T>::localId() const { return m_cur.localId(); }
 template <class T>
 void gsCompositeDomainIterator<T>::next()
 {
-    if (m_curDomain == m_domains.end()) return;
+    if (m_curDomainIndex == m_domains.size()) return;
     
     ++m_cur; // Always increment the child iterator first
     
     // Check if the incremented iterator is still within the current child domain
-    if (m_cur != (*m_curDomain)->endAll()) // Using comparison with end()
+    if (m_cur != (m_domains[m_curDomainIndex])->endAll()) // Using comparison with end()
     {
         this->m_pside.patch = m_cur.patch(); // Update patch ID from the current element
     }
     else // m_cur is no longer good, meaning it reached the end of the child domain
     {
         // Advance to the next child domain
-        ++m_curOffset;
-        ++m_curDomain;
-        if (m_curDomain != m_domains.end())
+        ++m_curDomainIndex;
+        if (m_curDomainIndex < m_domains.size())
         {
-            m_cur = (*m_curDomain)->beginAll(); // Reinitialize m_cur for the new child domain
+            m_cur = (m_domains[m_curDomainIndex])->beginAll(); // Reinitialize m_cur for the new child domain
+            m_curOffset = m_offset[m_curDomainIndex];
             this->m_pside.patch = m_cur.patch(); // Update patch ID from the first element of the new child domain
-        } else {
+        } 
+        else 
+        {
             this->m_pside.patch = -1; // End of iteration
         }
     }
@@ -96,16 +108,16 @@ void gsCompositeDomainIterator<T>::next(index_t increment)
     if (increment == 0)
         return;
         
-    if (m_curDomain == m_domains.end()) return;
+    if (m_curDomainIndex == m_domains.size()) return;
 
-    const size_t target_global_pos = (*m_curOffset + m_cur.id()) + increment;
+    const size_t target_global_pos = (m_curOffset + m_cur.id()) + increment;
 
     const size_t total_elements = m_offset.back();
     if (target_global_pos >= total_elements)
     {
         // Move iterator to the end
-        m_curDomain = m_domains.end();
-        m_curOffset = m_offset.end() - 1;
+        m_curDomainIndex = m_domains.size();
+        m_curOffset = *(m_offset.end() - 1);
         this->m_pside.patch = -1; // End of iteration
         return;
     }
@@ -117,12 +129,12 @@ void gsCompositeDomainIterator<T>::next(index_t increment)
     --it_offset; // Decrement to get the start offset of the correct subdomain
 
     // Update current domain and offset
-    m_curOffset = it_offset;
-    m_curDomain = m_domains.begin() + std::distance(m_offset.begin(), it_offset);
+    m_curOffset = *it_offset;
+    m_curDomainIndex = std::distance(m_offset.begin(), it_offset);
     
     // Adjust local position within the current subdomain
-    index_t local_pos = target_global_pos - *m_curOffset;
-    m_cur = (*m_curDomain)->beginAll(); // Reinitialize m_cur for the new child domain
+    index_t local_pos = target_global_pos - m_curOffset;
+    m_cur = (m_domains[m_curDomainIndex])->beginAll(); // Reinitialize m_cur for the new child domain
     m_cur += local_pos; // Advance m_cur to the exact local position
 
     this->m_pside.patch = m_cur.patch(); // Update patch ID after m_cur is fully advanced
@@ -344,11 +356,6 @@ gsCompositeDomain<T>::decompose(size_t npieces) const
             pieces_per_patch[maxIdx]++;
             current_total_pieces++;
         }
-        gsDebug<<gsAsVector<size_t>(pieces_per_patch)<<"\n";
-        gsDebug<<"Total pieces after KK distribution: " << current_total_pieces << "\n";
-        // Sum the pieces_per_patch to verify it matches npieces
-        size_t verify_total = std::accumulate(pieces_per_patch.begin(), pieces_per_patch.end(), 0);
-        gsDebugVar(verify_total);
         // Now decompose each patch accordingly and collect the results
         for (size_t i = 0; i < npatches; ++i)
         {
@@ -365,9 +372,6 @@ gsCompositeDomain<T>::decompose(size_t npieces) const
                 }
                 else
                 {
-                    gsDebugVar(dynamic_cast<gsCompositeDomain<T>*>(decomposed_patch.get())->nPieces());
-                    gsDebugVar(pieces_per_patch[i]);
-
                     gsCompositeDomain<T>* decomposed_composite =
                         dynamic_cast<gsCompositeDomain<T>*>(decomposed_patch.get());
                     for (size_t j = 0; j < decomposed_composite->nPieces(); ++j)

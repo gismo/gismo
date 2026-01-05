@@ -31,11 +31,11 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
                      std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
-void gsWriteParaview(const gsDomain<T> & domain, std::string const & fn);
+void gsWriteParaview(const gsDomain<T> & domain, std::string const & fn, short_t mode);
  
 TEMPLATE_INST
 void gsWriteParaview(const gsDomain<T> & domain, const gsMultiPatch<T>& mp,
-                     std::string const & fn, unsigned npts_per_element_dir);;
+                     std::string const & fn, short_t mode);
  
 TEMPLATE_INST
 void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const & fn, 

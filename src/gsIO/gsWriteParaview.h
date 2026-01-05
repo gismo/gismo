@@ -252,18 +252,19 @@ void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value);
 ///
 /// \param domain the domain to be plotted
 /// \param fn filename where paraview file is written
+/// \param mode controls the output format: 1 (element id), 2 (patch id), 3 (subdomain id)
 template<class T>
-void gsWriteParaview(const gsDomain<T> & domain, std::string const & fn);
+void gsWriteParaview(const gsDomain<T> & domain, std::string const & fn, short_t mode = 1);
 
 /// \brief Export a gsDomain by evaluating elements on a gsMultiPatch to a paraview file.
 ///
 /// \param domain the domain to be plotted
 /// \param mp the gsMultiPatch from which to get the geometry of the elements
 /// \param fn filename where paraview file is written
-/// \param npts_per_element_dir number of points used for sampling each element in each parametric direction
+/// \param mode controls the output format: 1 (element id), 2 (patch id), 3 (subdomain id)
 template<class T>
 void gsWriteParaview(const gsDomain<T> & domain, const gsMultiPatch<T>& mp,
-                     std::string const & fn, unsigned npts_per_element_dir = 2);
+                     std::string const & fn, short_t mode = 1);
 
 /// \brief Export gsHBox to paraview files
 ///

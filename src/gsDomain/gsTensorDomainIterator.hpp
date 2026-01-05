@@ -69,7 +69,8 @@ gsVector<unsigned, D> gsTensorDomainIterator<T,D>::index() const
 template<class T, int D>
 void gsTensorDomainIterator<T,D>::getVertices(gsMatrix<T>& result)
 {
-    result.resize( D, 1 << D);
+    GISMO_ASSERT(D >= 0, "Dimension cannot be negative for bit shift.");
+    result.resize( D, 1U << D);
 
     const gsVector<T> lower = lowerCorner();
     const gsVector<T> upper = upperCorner();

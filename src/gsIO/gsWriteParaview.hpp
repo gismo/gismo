@@ -1342,7 +1342,6 @@ void gsWriteParaview(const gsHBoxContainer<d,T> & boxes, std::string const & fn,
     gsVector<T> boxValues(boxes.totalSize());
     boxCoords.setZero();
     index_t i=0;
-    std::string fileName;
     for (typename gsHBoxContainer<d,T>::cHIterator Hit = boxes.cbegin(); Hit!=boxes.cend(); Hit++)
         for (typename gsHBoxContainer<d,T>::cIterator Cit = Hit->cbegin(); Cit!=Hit->cend(); Cit++, i++)
         {
@@ -2202,107 +2201,98 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
 }
 
 template<class T>
-void gsWriteParaview(const gsDomain<T> & domain, std::string const & fn)
+void gsWriteParaview(const gsDomain<T> & domain, std::string const & fn, short_t mode)
 {
-    gsParaviewCollection collection(fn);
-    std::string fileName, fileName_nopath;
+    gsMatrix<T> boxCoords(domain.dim(), domain.numElements()*2);
+    gsVector<T> values(domain.numElements());
+    boxCoords.setZero();
+    values.setZero();
 
-    index_t i = 0;
-    for (auto it = domain.beginAll(); it != domain.endAll(); ++it)
+    for (auto & elem : domain.allElements())
     {
-        gsMatrix<T> box(domain.dim(), 2);
-        box.col(0) = it.lowerCorner();
-        box.col(1) = it.upperCorner();
+        const index_t elem_id = elem.id();
+        boxCoords.col(2*elem_id)     = elem.lowerCorner();
+        boxCoords.col(2*elem_id + 1) = elem.upperCorner();
 
-        fileName = fn + "_" + util::to_string(i);
-        fileName_nopath = gsFileManager::getFilename(fileName);
-
-        T value = static_cast<T>(it.patch());
-
-        if (auto* comp_it = dynamic_cast<gsCompositeDomainIterator<T>*>(it.get()))
+        switch (mode)
         {
-            value = static_cast<T>(comp_it->subdomainIndex());
+            case 1: // element id
+                values(elem_id) = static_cast<T>(elem_id);
+                break;
+            case 2: // patch id
+                values(elem_id) = static_cast<T>(elem.patch());
+                break;
+            case 3: // subdomain id
+                if (auto* comp_it = dynamic_cast<gsCompositeDomainIterator<T>*>(&elem))
+                {
+                    values(elem_id) = static_cast<T>(comp_it->subdomainIndex());
+                }
+                else 
+                    values(elem_id) = -1.;
+                break;
+            default:
+                break; // do nothing, already zero
         }
-
-        writeSingleBox(box, fileName, value);
-
-        collection.addPart(fileName_nopath + ".vts");
-        i++;
     }
-
-    collection.save();
+    gsWriteParaview(boxCoords, fn, values);
 }
 
 template<class T>
 void gsWriteParaview(const gsDomain<T> & domain, const gsMultiPatch<T>& mp,
-                     std::string const & fn, unsigned npts_per_element_dir)
+                     std::string const & fn, short_t mode)
 {
-    gsParaviewCollection collection(fn);
-    std::string fileName, fileName_nopath;
-    index_t element_output_counter = 0;
+    GISMO_ASSERT(domain.dim() == mp.domainDim(),
+                 "Domain dimension "<< domain.dim() <<" does not match MultiPatch target dimension "<< mp.targetDim());
 
-    for (auto it = domain.beginAll(); it != domain.endAll(); ++it)
+    gsMesh<T> mesh;
+    gsMatrix<T> tmpbox(domain.dim(), 2);
+    gsVector<unsigned> np(domain.dim());
+    np.setConstant(2);
+    gsMatrix<T> corners, phys_corners;
+    for (auto & elem : domain.allElements())
     {
-        const index_t patch_id = it.patch();       // Patch ID in the MultiPatch
-
-        if (patch_id >= (index_t)mp.nPatches()) 
+        const index_t elem_id = elem.id();
+        tmpbox.col(0) = elem.lowerCorner();
+        tmpbox.col(1) = elem.upperCorner();
+        corners = gsPointGrid<T>(tmpbox.col(0), tmpbox.col(1), np);
+        mp.patch(elem.patch()).eval_into(corners,phys_corners);
+        for (index_t i = 0; i < phys_corners.cols(); ++i)
         {
-            gsWarn << "gsWriteParaview(gsDomain, gsMultiPatch): Element " << it.id()
-                   << " refers to non-existent patch " << patch_id << ". Skipping.\n";
-            continue;
-        }
-
-        const gsGeometry<T>& patch_geo = mp.patch(patch_id);
-        const int d = patch_geo.domainDim();
-        
-        // The element's local parametric bounds within its patch
-        gsMatrix<T> element_support(d, 2);
-        element_support.col(0) = it.lowerCorner();
-        element_support.col(1) = it.upperCorner();
-
-        fileName = fn + "_" + util::to_string(element_output_counter);
-        fileName_nopath = gsFileManager::getFilename(fileName);
-
-        gsVector<unsigned> np(d);
-        for(short_t j = 0; j < d; ++j)
-            np[j] = npts_per_element_dir;
-
-        gsMatrix<T> pts = gsPointGrid<T>(element_support.col(0), element_support.col(1), np) ;
-
-        gsMatrix<T> eval_geo = patch_geo.eval(pts);
-        gsMatrix<T> eval_field(3, eval_geo.cols());
-        T value = static_cast<T>(it.patch());
-        if (auto* comp_it = dynamic_cast<gsCompositeDomainIterator<T>*>(it.get()))
-        {
-            value = static_cast<T>(comp_it->subdomainIndex());
-        }
-        eval_field.row(0).setConstant(value);
-        eval_field.row(1).setConstant(static_cast<T>(element_output_counter));
-        eval_field.row(2).setConstant(0.0);
-
-        // --- DEBUG PRINT ---
-        // gsInfo << "Writing element " << element_output_counter 
-        //        << " (Patch: " << patch_id << ", LocalID: " << it.localId() << ") "
-        //        << "to file " << fileName_nopath << ".vts\n";
-        // gsInfo << "  Parametric Corners: Lower: " << element_support.col(0).transpose() 
-        //        << ", Upper: " << element_support.col(1).transpose() << "\n";
-        // gsInfo << "  Physical Corners (eval_geo): Lower: " << eval_geo.col(0).transpose() 
-        //        << ", Upper: " << eval_geo.col(eval_geo.cols()-1).transpose() << "\n";
-        // --- END DEBUG PRINT ---
-
-        gsVector<index_t> np_render = np.template cast<index_t>();
-        if ( 3 - d > 0 )
-        {
-            np_render.conservativeResize(3);
-            np_render.bottomRows(3-d).setOnes();
-        }
-
-        gsWriteParaviewTPgrid(eval_geo, eval_field, np_render, fileName);
-
-        collection.addPart(fileName_nopath + ".vts");
-        element_output_counter++;
+            typename gsMesh<T>::VertexHandle vertex = mesh.addVertex(phys_corners.col(i));
+            switch (mode)
+            {
+                case 1: // element id
+                    vertex->data = static_cast<T>(elem_id);
+                    break;
+                case 2: // patch id
+                    vertex->data = static_cast<T>(elem.patch());
+                    break;
+                case 3: // subdomain id
+                    if (auto* comp_it = dynamic_cast<gsCompositeDomainIterator<T>*>(&elem))
+                    {
+                        vertex->data = static_cast<T>(comp_it->subdomainIndex());
+                    }
+                    else 
+                        vertex->data = -1.;
+                    break;
+                default:
+                    break; // do nothing, already zero
+            }
+        }   
     }
-    collection.save();
+
+    if ( domain.dim() == 3)
+    {
+        writeSingleBasisMesh3D(mesh,fn);
+        makeCollection(fn, ".vtu");
+    }
+    else if ( domain.dim() == 2)
+    {
+        writeSingleBasisMesh2D(mesh,fn);
+        makeCollection(fn, ".vtu");
+    }
+    else
+        gsWriteParaview(mesh, fn, true); 
 }
 
 } // namespace gismo

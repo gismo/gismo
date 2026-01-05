@@ -40,9 +40,12 @@ class gsCompositeDomainIterator : public gsDomainIterator<T>
     typedef typename gsDomainIterator<T>::uPtr domainIter;
 
     domainContainer m_domains;
+    size_t m_curDomainIndex;
+    size_t m_curOffset;
+    index_t m_curIndex;
     typename domainContainer::const_iterator m_curDomain;
     std::vector<size_t> m_offset; //offsets
-    typename std::vector<size_t>::const_iterator m_curOffset;
+    // typename std::vector<size_t>::const_iterator m_curOffset;
     gsDomainIteratorWrapper<T> m_cur;
 
 public:
