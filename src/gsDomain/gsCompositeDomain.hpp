@@ -97,6 +97,8 @@ void gsCompositeDomainIterator<T>::next()
         else 
         {
             this->m_pside.patch = -1; // End of iteration
+            // Also set m_cur to an end iterator to prevent invalid access
+            m_cur = (m_domains.back())->endAll();
         }
     }
 }
@@ -119,6 +121,7 @@ void gsCompositeDomainIterator<T>::next(index_t increment)
         m_curDomainIndex = m_domains.size();
         m_curOffset = *(m_offset.end() - 1);
         this->m_pside.patch = -1; // End of iteration
+        m_cur = (m_domains.back())->endAll(); // Also set m_cur to an end iterator
         return;
     }
 
@@ -295,7 +298,6 @@ gsCompositeDomain<T>::decompose(size_t npieces) const
     // if the number of pieces is smaller than the number of patches, we merge patches
     if (npatches > npieces)
     {
-        gsDebug<<"Merging " << npatches << " patches into " << npieces << " pieces.\n";
         // Karmarkar Karp merging of patches until we reach npieces
         std::vector<std::vector<size_t>> patchIndices_per_piece(npieces);
         std::vector<size_t> piece_sizes(npieces, 0);
@@ -334,7 +336,6 @@ gsCompositeDomain<T>::decompose(size_t npieces) const
     // If the number of pieces is greater than or equal to the number of patches, we decompose each patch individually
     else // if (npatches <= npieces)
     {
-        gsDebug<<"Decomposing " << npatches << " patches into " << npieces << " pieces.\n";
         // Strategy: Decompose each patch into a number of pieces such that every piece has roughly `elementsPerPiece` elements.
         // We use the Karmarkar-Karp (KK) algorithm to distribute the pieces among the patches.
         std::vector<size_t> pieces_per_patch(npatches, 1);

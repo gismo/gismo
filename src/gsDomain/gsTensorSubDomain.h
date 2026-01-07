@@ -49,23 +49,13 @@ public:
     template<class T_, short_t d_>
     friend class gsTensorSubDomainIterator;
     
-    /// Range for a single parametric direction [min_knot_index, max_knot_index)
-    struct Range
-    {
-        index_t start;  ///< Starting knot line index
-        index_t end;    ///< Ending knot line index (exclusive)
-        
-        Range(index_t s = 0, index_t e = 0);
-        
-        index_t size() const;
-    };
-
     /// Constructor
     /// @param parent The parent gsTensorDomain
     /// @param ranges Vector of D ranges, one for each parametric direction
     /// @param patchId The global patch ID this subdomain represents
     gsTensorSubDomain(const gsTensorDomain<d,T>& parent,
-                      const std::vector<Range>& ranges,
+                      const gsVector<index_t> & start,
+                      const gsVector<index_t> & end,
                       index_t patchId,
                       memory::shared_ptr<gsTensorDomain<d,T>> parentPtr = memory::shared_ptr<gsTensorDomain<d,T>>());
 
@@ -93,11 +83,14 @@ public:
     /// Return the tensor parent domain (must exist for tensor-based operations)
     const gsTensorDomain<d,T>* tensorParent() const;
 
-    /// Get the ranges
-    const std::vector<Range>& ranges() const;
+    // Gets the start point
+    const gsVector<index_t> & start() const;
+
+    // Gets the end point
+    const gsVector<index_t> & end() const;
 
     /// Convert tensor index (indices in each direction) to global element index
-    index_t tensorIndexToGlobal(const std::vector<index_t>& tensorIdx) const;
+    index_t tensorIndexToGlobal(const gsVector<index_t>& tensorIdx) const;
 
     /// Check if element (by global index) belongs to this subdomain
     bool contains(index_t elementIndex) const override;
@@ -105,11 +98,12 @@ public:
     /// Get all element indices in this subdomain
     const std::vector<index_t>& elementIndices() const override;
 
-    static typename gismo::gsDomain<T>::Ptr decompose(const gismo::gsTensorDomain<d,T>& domain,
-                                      const std::vector<Range>& ranges,
-                                      size_t npieces,
-                                      index_t patchId,
-                                      memory::shared_ptr<gsTensorDomain<d,T>> parentPtr = memory::shared_ptr<gsTensorDomain<d,T>>());
+    static typename gismo::gsDomain<T>::Ptr decompose(  const gismo::gsTensorDomain<d,T>& domain,
+                                                        const gsVector<index_t> & start,
+                                                        const gsVector<index_t> & end,
+                                                            size_t npieces,
+                                                            index_t patchId,
+                                                            memory::shared_ptr<gsTensorDomain<d,T>> parentPtr = memory::shared_ptr<gsTensorDomain<d,T>>());
 
     typename gismo::gsDomain<T>::Ptr decompose(size_t npieces) const override;
 
@@ -119,7 +113,8 @@ private:
     const gismo::gsTensorDomain<d,T>& m_parent;
     const gsTensorDomain<d,T>* m_tensorParent;
     memory::shared_ptr<gsTensorDomain<d,T>> m_parentPtr;
-    std::vector<Range> m_ranges;
+    const gsVector<index_t> m_start;
+    const gsVector<index_t> m_end;
     size_t m_numElements;
     mutable std::vector<index_t> m_cachedIndices;
 };
@@ -138,7 +133,6 @@ class gsTensorSubDomainIterator : public gsSubDomainIterator<T>
 {
     typedef gsSubDomainIterator<T> Base;
     typedef typename gsDomainIterator<T>::uPtr domainIterUPtr;
-    typedef typename gsTensorSubDomain<d,T>::Range Range;
 
 public:
     explicit gsTensorSubDomainIterator(const gsTensorSubDomain<d,T>& subdomain);
@@ -169,8 +163,9 @@ private:
 
 private:
     const gsTensorSubDomain<d,T>& m_subdomain;
-    const std::vector<Range>& m_ranges;
-    std::vector<index_t> m_tensorIdx;
+    const gsVector<index_t> m_start;
+    const gsVector<index_t> m_end;
+    gsVector<index_t> m_tensorIdx;
     index_t m_currentElement;
 };
 

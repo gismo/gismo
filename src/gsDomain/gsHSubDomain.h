@@ -35,7 +35,7 @@ template<short_t d, class T, class Z> class gsHSubDomainIterator;
     
     \ingroup HSplines
 */
-template<short_t d, class T, class Z = long long>
+template<short_t d, class T, class Z = index_t>
 class gsHSubDomain : public gsSubDomain<T>
 {
 public:

@@ -69,11 +69,15 @@ public:
 
 public: // more members
 
+    short_t degree(short_t i = 0) const override;
+
     short_t dim() const override;
 
     // Look at gsBasis class for a description
-
     virtual size_t numElements() const override;
+
+    // Look at gsBasis class for a description
+    size_t numElementsBdr(boxSide const & s = boundary::none) const override;
 
 // Specific for gsTensorDomain
 public:

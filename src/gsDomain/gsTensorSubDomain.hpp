@@ -22,28 +22,15 @@ namespace gismo
 {
 
 template<short_t d,class T>
-gsTensorSubDomain<d,T>::Range::Range(index_t s, index_t e) : start(s), end(e) { }
-
-template<short_t d,class T>
-index_t gsTensorSubDomain<d,T>::Range::size() const { return end - start; }
-
-template<short_t d,class T>
 gsTensorSubDomain<d,T>::gsTensorSubDomain(const gsTensorDomain<d,T>& parent,
-                      const std::vector<Range>& ranges,
-                      index_t patchId,
-                      memory::shared_ptr<gsTensorDomain<d,T>> parentPtr)
-    : gsSubDomain<T>(patchId), m_parent(parent), m_tensorParent(&parent), m_parentPtr(parentPtr), m_ranges(ranges)
+                        const gsVector<index_t> & start,
+                        const gsVector<index_t> & end,
+                        index_t patchId,
+                        memory::shared_ptr<gsTensorDomain<d,T>> parentPtr)
+    : gsSubDomain<T>(patchId), m_parent(parent), m_tensorParent(&parent), m_parentPtr(parentPtr), m_start(start), m_end(end)
 {
-    GISMO_ASSERT(ranges.size() == d, 
-                 "Number of ranges must match domain dimension");
-    gsInfo<<"Made subdomain with ranges: ";
-    for (const auto& r : m_ranges)
-        gsInfo<<"["<<r.start<<","<<r.end<<") ";
-    gsInfo<<"\n";
-    // Compute number of elements
-    m_numElements = 1;
-    for (const auto& r : m_ranges)
-        m_numElements *= r.size();
+    GISMO_ASSERT(start.rows() == d, "Start vector dimension mismatch");
+    GISMO_ASSERT(end.rows() == d, "End vector dimension mismatch");
 }
 
 template<short_t d,class T>
@@ -55,7 +42,7 @@ typename gsTensorSubDomain<d,T>::domainIter gsTensorSubDomain<d,T>::beginAll() c
 template<short_t d,class T>
 typename gsTensorSubDomain<d,T>::domainIter gsTensorSubDomain<d,T>::endAll() const
 {
-    return domainIter(new gsDomainIteratorEnd<T>(m_numElements));
+    return domainIter(new gsDomainIteratorEnd<T>(this->numElements()));
 }
 
 template<short_t d,class T>
@@ -65,7 +52,19 @@ typename gsTensorSubDomain<d,T>::domainIter gsTensorSubDomain<d,T>::beginBdr(con
 }
 
 template<short_t d,class T>
-size_t gsTensorSubDomain<d,T>::numElements() const { return m_numElements; }
+size_t gsTensorSubDomain<d,T>::numElements() const
+{
+    // Compute number of elements
+    size_t numElements = 1;
+    for (short_t i = 0; i < d; ++i)
+    {
+        GISMO_ASSERT(m_start[i] >= 0 && static_cast<size_t>(m_end[i]) <= m_parent.component(i)->numElements(),
+                     "Subdomain range out of bounds");
+        GISMO_ASSERT(m_start[i] < m_end[i], "Invalid subdomain range");
+        numElements *= (static_cast<size_t>(m_end[i]) - static_cast<size_t>(m_start[i]));
+    }
+    return numElements;
+}
 
 template<short_t d,class T>
 size_t gsTensorSubDomain<d,T>::numElementsBdr(const boxSide& s) const
@@ -104,38 +103,42 @@ template<short_t d,class T>
 const gsTensorDomain<d,T>* gsTensorSubDomain<d,T>::tensorParent() const { return m_tensorParent; }
 
 template<short_t d,class T>
-const std::vector<typename gsTensorSubDomain<d,T>::Range>& gsTensorSubDomain<d,T>::ranges() const { return m_ranges; }
+const gsVector<index_t> & gsTensorSubDomain<d,T>::start() const { return m_start; }
 
 template<short_t d,class T>
-index_t gsTensorSubDomain<d,T>::tensorIndexToGlobal(const std::vector<index_t>& tensorIdx) const
+const gsVector<index_t> & gsTensorSubDomain<d,T>::end() const { return m_end; }
+
+template<short_t d,class T>
+index_t gsTensorSubDomain<d,T>::tensorIndexToGlobal(const gsVector<index_t>& tensorIdx) const
 {
     GISMO_ASSERT(tensorIdx.size() == d, "Tensor index dimension mismatch");
-    index_t result = 0;
+    // Unpack lexicographical index
+    index_t globalIndex = 0;
     index_t stride = 1;
-    
-    for (short_t dim = d - 1; dim >= 0; --dim)
+    for (short_t dim = 0; dim < d; ++dim)
     {
-        result += (m_ranges[dim].start + tensorIdx[dim]) * stride;
-        
-        auto parentSize = m_parent.component(dim)->numElements();
-        stride *= parentSize;
+        index_t idxInDim = tensorIdx[dim];
+        GISMO_ASSERT(idxInDim >= m_start[dim] && idxInDim <= m_end[dim],
+                     "Tensor index out of subdomain range");
+        globalIndex += idxInDim * stride;
+        stride *= m_parent.component(dim)->numElements();
     }
-    return result;
+    return globalIndex;
 }
 
 template<short_t d,class T>
 bool gsTensorSubDomain<d,T>::contains(index_t elementIndex) const
 {
-    std::vector<index_t> tensorIdx(d);
-    index_t remaining = elementIndex;
-    
-    for (short_t dim = d - 1; dim >= 0; --dim)
+    gsVector<index_t> tensorIdx(d);
+    // Convert global index to tensor index (unpack lexicographical index)
+    index_t remainder = elementIndex;
+    for (short_t dim = 0; dim < d; ++dim)
     {
-        auto parentSize = m_parent.component(dim)->numElements();
-        tensorIdx[dim] = remaining % parentSize;
-        remaining /= parentSize;
-        
-        if (tensorIdx[dim] < m_ranges[dim].start || tensorIdx[dim] >= m_ranges[dim].end)
+        index_t dimSize = m_parent.component(dim)->numElements();
+        tensorIdx[dim] = remainder % dimSize;
+        remainder /= dimSize;
+
+        if (tensorIdx[dim] < m_start[dim] || tensorIdx[dim] >= m_end[dim])
             return false;
     }
     return true;
@@ -151,10 +154,11 @@ const std::vector<index_t>& gsTensorSubDomain<d,T>::elementIndices() const
 
 template<short_t d,class T>
 typename gsDomain<T>::Ptr gsTensorSubDomain<d,T>::decompose(const gsTensorDomain<d,T>& domain,
-                                   const std::vector<Range>& ranges,
-                                   size_t npieces,
-                                   index_t patchId,
-                                   memory::shared_ptr<gsTensorDomain<d,T>> parentPtr)
+                                    const gsVector<index_t> & start,
+                                    const gsVector<index_t> & end,
+                                    size_t npieces,
+                                    index_t patchId,
+                                    memory::shared_ptr<gsTensorDomain<d,T>> parentPtr)
 {
     struct CompareNode
     {
@@ -173,9 +177,9 @@ typename gsDomain<T>::Ptr gsTensorSubDomain<d,T>::decompose(const gsTensorDomain
     size_t totalElements = 1;
     for (short_t dim = 0; dim < d; ++dim) 
     {
-        low[dim] = ranges[dim].start;
-        upp[dim] = ranges[dim].end;
-        totalElements *= (ranges[dim].end - ranges[dim].start);
+        low[dim] = start[dim];
+        upp[dim] = end[dim];
+        totalElements *= (end[dim] - start[dim]);
     }
 
     if (npieces <= 0 || totalElements == 0) 
@@ -186,7 +190,7 @@ typename gsDomain<T>::Ptr gsTensorSubDomain<d,T>::decompose(const gsTensorDomain
     if (npieces == 1) 
     {
         composite->addDomain(
-            memory::make_shared(new gsTensorSubDomain<d,T>(domain, ranges, patchId, parentPtr)));
+            memory::make_shared(new gsTensorSubDomain<d,T>(domain, start,end, patchId, parentPtr)));
         return composite;
     }
 
@@ -204,10 +208,13 @@ typename gsDomain<T>::Ptr gsTensorSubDomain<d,T>::decompose(const gsTensorDomain
 
         auto size = currentNode->uppCorner() - currentNode->lowCorner();
         int splitAxis = 0;
-        if (d > 1) {
+        if (d > 1) 
+        {
             splitAxis = (size[0] >= size[1]) ? 0 : 1;
-            for(int i = 2; i < d; ++i) {
-                if (size[i] > size[splitAxis]) {
+            for(int i = 2; i < d; ++i) 
+            {
+                if (size[i] > size[splitAxis]) 
+                {
                     splitAxis = i;
                 }
             }
@@ -236,12 +243,13 @@ typename gsDomain<T>::Ptr gsTensorSubDomain<d,T>::decompose(const gsTensorDomain
 
     for (const auto& leafNode : leafNodes) 
     {
-        std::vector<typename gsTensorSubDomain<d,T>::Range> leafRanges;
-        for (short_t dim = 0; dim < d; ++dim) {
-            leafRanges.push_back(typename gsTensorSubDomain<d,T>::Range(
-                leafNode->lowCorner()[dim], leafNode->uppCorner()[dim]));
+        gsVector<index_t> leaf_low(d), leaf_upp(d);
+        for (short_t dim = 0; dim < d; ++dim) 
+        {
+            leaf_low[dim] = leafNode->lowCorner()[dim];
+            leaf_upp[dim] = leafNode->uppCorner()[dim];
         }
-        auto subdomain = memory::make_shared(new gsTensorSubDomain<d,T>(domain, leafRanges, patchId, parentPtr));
+        auto subdomain = memory::make_shared(new gsTensorSubDomain<d,T>(domain, leaf_low, leaf_upp, patchId, parentPtr));
         composite->addDomain(subdomain);
     }
 
@@ -253,46 +261,45 @@ typename gsDomain<T>::Ptr gsTensorSubDomain<d,T>::decompose(const gsTensorDomain
 template<short_t d,class T>
 typename gsDomain<T>::Ptr gsTensorSubDomain<d,T>::decompose(size_t npieces) const
 {
-    return decompose(m_parent, m_ranges, npieces, this->patchId(), m_parentPtr);
+    return decompose(m_parent, m_start,m_end, npieces, this->patchId(), m_parentPtr);
 }
 
 template<short_t d,class T>
 std::vector<index_t> gsTensorSubDomain<d,T>::computeElementIndices() const
 {
     std::vector<index_t> result;
-    result.reserve(m_numElements);
+    result.reserve(this->numElements());
     
-    std::vector<index_t> indices(d);
-    for (short_t dim = 0; dim < d; ++dim)
-        indices[dim] = m_ranges[dim].start;
+    gsVector<index_t> cur = m_start;
     
-    while (true) 
+    // Compute lexicographical order
+    bool good = true;
+    do
     {
-        index_t globalIdx = tensorIndexToGlobal(indices);
+        index_t globalIdx = tensorIndexToGlobal(cur);
         result.push_back(globalIdx);
-        
-        short_t dim = d - 1;
-        while (dim >= 0) {
-            indices[dim]++;
-            if (indices[dim] < m_ranges[dim].end)
-                break;
-            indices[dim] = m_ranges[dim].start;
-            dim--;
-        }
-        if (dim < 0) break;
-    }
-    
+        good = nextLexicographic(cur, m_start, m_end);
+    } while (good);
+
     return result;
 }
 
 
 template<class T,short_t d>
 gsTensorSubDomainIterator<T,d>::gsTensorSubDomainIterator(const gsTensorSubDomain<d,T>& subdomain)
-    : Base(subdomain), m_subdomain(subdomain), m_ranges(subdomain.ranges()),
-      m_tensorIdx(d, 0), m_currentElement(0)
+: 
+Base(subdomain), 
+m_subdomain(subdomain), 
+m_start(subdomain.start()), 
+m_end(subdomain.end()), 
+m_currentElement(0)
 {
+    // Initialize ranges
+    m_tensorIdx.resize(d);
     for (short_t dim = 0; dim < d; ++dim)
-        m_tensorIdx[dim] = m_ranges[dim].start;
+    {
+        m_tensorIdx[dim] = m_start[dim];
+    }
 }
 
 template<class T,short_t d>
@@ -335,17 +342,10 @@ template<class T,short_t d>
 void gsTensorSubDomainIterator<T,d>::next()
 {
     ++m_currentElement;
-    
-    if (!good())
+    if (!good()) // needed??
         return;
-        
-    for (short_t dim = d - 1; dim >= 0; --dim)
-    {
-        ++m_tensorIdx[dim];
-        if (m_tensorIdx[dim] < m_ranges[dim].end)
-            break;
-        m_tensorIdx[dim] = m_ranges[dim].start;
-    }
+    
+    nextLexicographic(m_tensorIdx, m_start, m_end);
 }
 
 template<class T,short_t d>
@@ -355,17 +355,9 @@ void gsTensorSubDomainIterator<T,d>::next(index_t increment)
     
     if (!good())
         return;
-        
-    index_t remaining = m_currentElement;
-    std::vector<index_t> sizes(d);
-    for (short_t dim = 0; dim < d; ++dim)
-        sizes[dim] = m_ranges[dim].size();
-    
-    for (short_t dim = d - 1; dim >= 0; --dim)
-    {
-        m_tensorIdx[dim] = m_ranges[dim].start + (remaining % sizes[dim]);
-        remaining /= sizes[dim];
-    }
+
+    for (index_t i = 0; i < increment; ++i)
+        nextLexicographic(m_tensorIdx, m_start, m_end);
 }
 
 template<class T,short_t d>
