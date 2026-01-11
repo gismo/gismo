@@ -611,6 +611,9 @@ public:
     /// Returns the boundary basis for side s
     // GISMO_UPTR_FUNCTION_DEC(gsHTensorBasis<d,T>, boundaryBasis, boxSide const &)
 
+    // The corrected declaration:
+    const hdomain_type& getTree() const;
+
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support() const;
 

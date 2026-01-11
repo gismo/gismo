@@ -367,7 +367,14 @@ public:
     {
         return (this->m_is_truncated[i] != -1);
     }
-
+    void setTruncated(unsigned i, index_t clevel)
+    {
+        this->m_is_truncated[i] = clevel;
+    }
+    int getistruncated(unsigned i) const
+    {
+        return (this->m_is_truncated[i]);
+    }
     /// @brief Returns an iterator to the representation of the first truncated basis function
     typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedBegin() const
     { return m_presentation.begin(); }
@@ -394,6 +401,19 @@ public:
     void evalSingle_into(index_t i,
                          const gsMatrix<T>& u,
                          gsMatrix<T>& result) const;
+    /// @brief Computes tensor index of a basis function on a finer level (new_level)
+/// which is presented with tensor index (index) at a coarse level (level).
+///
+/// @param index tensor index of the basis function on a coarse level
+/// @param level coarse level
+/// @param fin_low "low index" of the support of the basis function
+/// @param new_level finer level
+///
+/// @return global tensor index of a basis function on the finer level
+    unsigned _basisFunIndexOnLevel(const gsVector<index_t, d>& index,
+        const unsigned level,
+        const gsVector<index_t, d>& fin_low,
+        const unsigned new_level);
 
 private:
 
@@ -445,19 +465,7 @@ private:
 
 
 
-    /// @brief Computes tensor index of a basis function on a finer level (new_level)
-    /// which is presented with tensor index (index) at a coarse level (level).
-    ///
-    /// @param index tensor index of the basis function on a coarse level
-    /// @param level coarse level
-    /// @param fin_low "low index" of the support of the basis function
-    /// @param new_level finer level
-    ///
-    /// @return global tensor index of a basis function on the finer level
-    unsigned _basisFunIndexOnLevel(const gsVector<index_t, d>& index,
-                                   const unsigned level,
-                                   const gsVector<index_t, d>& fin_low,
-                                   const unsigned new_level);
+
 
 
 

@@ -145,6 +145,11 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
     const gsVector<index_t, d>& finest_low,
     const gsVector<index_t, d>& finest_high)
 {
+    int verbose = 0;
+    /*if (verbose) {
+        gsDebugVar(finest_low);
+        gsDebugVar(finest_high);
+    }*/
     const unsigned cur_level = this->levelOf(j);
 
     // actual size of the coefficients
@@ -209,7 +214,14 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         {
             const gsKnotVector<T>& ckv = m_bases[level  ]->knots(dim);
             const gsKnotVector<T>& fkv = m_bases[level+1]->knots(dim);
-
+            /*if (verbose) {
+                gsDebugVar(ckv);
+                gsDebugVar(fkv);
+                gsDebugVar(clow[dim]);
+                gsDebugVar(flow[dim]);
+                gsDebugVar(chigh[dim]);
+                gsDebugVar(fhigh[dim]);
+            }*/
             if (level == cur_level)
                 vector_of_kv[dim] = ckv;
 
@@ -227,9 +239,17 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
                  cur_size_of_coefs, dim, knots.begin(), knots.end(),
                  true);
         }
-
+        if (verbose) {
+            gsInfo << "before\n";
+            gsDebugVar(coefs);
+        }
         _truncate(coefs, act_size_of_coefs, cur_size_of_coefs,
                   level + 1, bspl_vec_ti, cur_level, finest_low);
+        if (verbose) {
+            gsInfo << "after\n";
+            gsDebugVar(coefs);
+                gsInfo << "------------------------------\n";
+        }
     }
     _saveNewBasisFunPresentation(coefs, act_size_of_coefs,
                                  j, pres_level, finest_low);
@@ -402,14 +422,20 @@ void gsTHBSplineBasis<d,T>::_truncate(
                         // representation should not be truncated
                         return;
                     }
-
+                    auto wurschtl = this->getXmatrix();
                     tensor_active_index =
                         this->m_xmatrix[level][xmatrix_index];
                 }
                 // ten_index <= tensor_active_index holds
             }
             if (ten_index == tensor_active_index) // truncate
+            {
+/*                gsDebugVar(ten_index);
+                gsDebugVar(tensor_active_index);
+                gsDebugVar(coef_index + index);*/
                 coefs(coef_index + index, 0) = 0;
+            }
+                
 
             ten_index++;
         }
@@ -1160,6 +1186,7 @@ void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
                                             const gsMatrix<T>& u,
                                             gsMatrix<T>& result) const
 {
+    int verbose = 0;
     if (this->m_is_truncated[i] == -1)  // basis function not truncated
     {
         unsigned level = this->levelOf(i);
@@ -1172,7 +1199,14 @@ void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
         unsigned level = this->m_is_truncated[i];
 
         const gsSparseVector<T>& coefs = getCoefs(i);
-
+        if (verbose) { 
+            gsInfo << "coefs for i = " << i << ":\n";
+            for (size_t j = 0; j < coefs.size(); j++)
+            {
+                gsInfo << "(" << coefs(j) << "," << j << ")";
+            }
+            gsInfo << "\n";
+        }
         const gsTensorBSplineBasis<d, T>& base =
             *this->m_bases[level];
 

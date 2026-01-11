@@ -19,6 +19,7 @@
 
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
+#include "gsHTensorBasis.h"
 
 namespace gismo
 {
@@ -118,6 +119,12 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
 
     // m_bases.push_back( new gsTensorBSplineBasis<d, T>( give( next_basis ) ));
     m_bases.push_back( next_basis.clone().release() );
+}
+
+// The fix: Add 'typename' before the dependent type
+template<short_t d, class T>
+const typename gsHTensorBasis<d, T>::hdomain_type& gsHTensorBasis<d, T>::getTree() const {
+    return m_tree;
 }
 
 template<short_t d, class T>
@@ -859,6 +866,7 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<index_t> const & boxes)
 
     update_structure();
 }
+
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
@@ -1994,7 +2002,7 @@ public:
     GSXML_COMMON_FUNCTIONS(gsHTensorBasis<TMPLA2(d,T)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return ""; } // tag ?
-
+    //const hdomain_type& getTree() const;
     static gsHTensorBasis<d,T> * get (gsXmlNode * node)
     {
         gsXmlAttribute * btype = node->first_attribute("type");
@@ -2032,6 +2040,9 @@ public:
         return NULL;
     }
 };
+
+
+
 
 } // namespace internal
 
