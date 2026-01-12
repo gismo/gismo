@@ -217,7 +217,7 @@ public:
         {
             // The components of gsTensorBSplineBasis are gsBSplineBasis
             const gsBSplineBasis<T>* bsplineBasis = static_cast<const gsBSplineBasis<T>*>(this->m_bases[i]);
-            knotVectors[i] = memory::make_shared(bsplineBasis->knots(0).clone());
+            knotVectors[i] = memory::make_shared_not_owned(&bsplineBasis->knots(0));
         }
         return memory::make_shared(new gsTensorDomain<d,T>(give(knotVectors)));
     }

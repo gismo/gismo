@@ -196,7 +196,6 @@ typename gsDomain<T>::Ptr gsHDomain<d,T,Z>::decompose(size_t npieces) const
     // if the number of pieces is smaller than the number of leaves, we merge leaves
     if (nleaves > npieces)
     {
-        gsDebug<<"Merging " << nleaves << " leaves into " << npieces << " pieces.\n";
         // Karmarkar Karp merging of patches until we reach npieces
         std::vector<std::vector<index_t>> leafIndices_per_piece(npieces);
         std::vector<size_t> piece_sizes(npieces, 0);
@@ -224,7 +223,8 @@ typename gsDomain<T>::Ptr gsHDomain<d,T,Z>::decompose(size_t npieces) const
                 // We need to create it manually from the knot vectors at this level
                 const auto& tensorBasis = m_basis.tensorLevel(leaf_info.level);
                 // Create ranges for the subdomain
-                std::vector<typename gsTensorSubDomain<d,T>::Range> ranges;
+                gsVector<index_t> ranges_start(d);
+                gsVector<index_t> ranges_end(d);
                 for(short_t i = 0; i < d; ++i)
                 {
                     // For manual levels, convert diadic indices to knot indices
@@ -237,16 +237,14 @@ typename gsDomain<T>::Ptr gsHDomain<d,T,Z>::decompose(size_t npieces) const
                         m_basis._diadicIndexToKnotIndex(leaf_info.level, i, end);
                     }
                     // For non-manual levels, use diadic indices directly as knot indices
-                    ranges.emplace_back(start, end);
+                    ranges_start[i] = start;
+                    ranges_end[i] = end;
                 }
-                gsInfo << "Creating subdomain for leaf " << leaf_info.global_id << " with ranges: ";
-                for(const auto& r : ranges) gsInfo << "[" << r.start << "," << r.end << ") ";
-                gsInfo << "\n";
                 // Create the tensor domain
                 auto parentDomain = std::dynamic_pointer_cast<gsTensorDomain<d,T>>(tensorBasis.domain());
                 GISMO_ASSERT(parentDomain, "Leaf domain is not a tensor domain.");
                 result->keepAlive(parentDomain);
-                auto leaf_domain = memory::make_shared(new gsTensorSubDomain<d,T>(*parentDomain, ranges, this->patchId(), parentDomain));
+                auto leaf_domain = memory::make_shared(new gsTensorSubDomain<d,T>(*parentDomain, ranges_start, ranges_end, this->patchId(), parentDomain));
                 piece_domain.addDomain(leaf_domain);
             }
             result->addDomain(memory::make_shared(new gsCompositeDomain<T>(piece_domain)));
@@ -262,10 +260,10 @@ typename gsDomain<T>::Ptr gsHDomain<d,T,Z>::decompose(size_t npieces) const
         {
             // Find leaf with maximum number of elements per piece
             size_t maxIdx = 0;
-            double max_ratio = -1.0;
+            T max_ratio = -1.0;
             for (size_t i = 0; i < nleaves; ++i)
             {
-                double ratio = (double)all_leaf_infos[i].num_elements / pieces_per_leave[i];
+                T ratio = (T)all_leaf_infos[i].num_elements / pieces_per_leave[i];
                 if (ratio > max_ratio)
                 {
                     max_ratio = ratio;
@@ -276,18 +274,16 @@ typename gsDomain<T>::Ptr gsHDomain<d,T,Z>::decompose(size_t npieces) const
             current_total_pieces++;
         }
 
-        gsDebug<<gsAsVector<size_t>(pieces_per_leave)<<"\n";
-        gsDebug<<"Total pieces after KK distribution: " << current_total_pieces << " \n";
         // Sum the pieces_per_leave to verify it matches npieces
         size_t verify_total = std::accumulate(pieces_per_leave.begin(), pieces_per_leave.end(), 0);
-        gsDebugVar(verify_total);
         // Now decompose each leaf accordingly and add to result
         for (size_t i = 0; i < nleaves; ++i)
         {
             const auto& leaf_info = all_leaf_infos[i];
             const auto& tensorBasis = m_basis.tensorLevel(leaf_info.level);
             // Create ranges for the subdomain
-            std::vector<typename gsTensorSubDomain<d,T>::Range> ranges;
+            gsVector<index_t> ranges_start(d);
+            gsVector<index_t> ranges_end(d);
             for(short_t j = 0; j < d; ++j)
             {
                 // For manual levels, convert diadic indices to knot indices
@@ -300,14 +296,14 @@ typename gsDomain<T>::Ptr gsHDomain<d,T,Z>::decompose(size_t npieces) const
                     m_basis._diadicIndexToKnotIndex(leaf_info.level, j, end);
                 }
                 // For non-manual levels, use diadic indices directly as knot indices
-                ranges.emplace_back(start, end);
+                ranges_start[j] = start;
+                ranges_end[j] = end;
             }
-            // Create the tensor domain
             // Create the tensor domain and decompose it directly
             auto parentDomain = std::dynamic_pointer_cast<gsTensorDomain<d,T>>(tensorBasis.domain());
             GISMO_ASSERT(parentDomain, "Leaf domain is not a tensor domain.");
             result->keepAlive(parentDomain);
-            auto decomposed_leaf = gsTensorSubDomain<d,T>::decompose(*parentDomain, ranges, pieces_per_leave[i], this->patchId(), parentDomain);
+            auto decomposed_leaf = gsTensorSubDomain<d,T>::decompose(*parentDomain, ranges_start, ranges_end, pieces_per_leave[i], this->patchId(), parentDomain);
             // Add to result
             if (auto* decomposed_composite = dynamic_cast<gsCompositeDomain<T>*>(decomposed_leaf.get()))
             {

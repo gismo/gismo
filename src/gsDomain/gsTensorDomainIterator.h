@@ -39,7 +39,7 @@ private:
 
 public:
 
-    explicit gsTensorDomainIterator(const gsTensorDomain<D,T> & domain, index_t patchId = 0);
+    explicit gsTensorDomainIterator(const gsTensorDomain<D,T> & domain, index_t patchId = -1);
 
     gsTensorDomainIterator(const gsTensorDomainIterator & other);
     domainIter clone() const override;

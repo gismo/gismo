@@ -27,7 +27,7 @@ gsTensorSubDomain<d,T>::gsTensorSubDomain(const gsTensorDomain<d,T>& parent,
                         const gsVector<index_t> & end,
                         index_t patchId,
                         memory::shared_ptr<gsTensorDomain<d,T>> parentPtr)
-    : gsSubDomain<T>(patchId), m_parent(parent), m_tensorParent(&parent), m_parentPtr(parentPtr), m_start(start), m_end(end)
+    : gsSubDomain<T>(patchId < 0 ? 0 : patchId), m_parent(parent), m_tensorParent(&parent), m_parentPtr(parentPtr), m_start(start), m_end(end)
 {
     GISMO_ASSERT(start.rows() == d, "Start vector dimension mismatch");
     GISMO_ASSERT(end.rows() == d, "End vector dimension mismatch");
@@ -78,7 +78,6 @@ short_t gsTensorSubDomain<d,T>::dim() const { return d; }
 template<short_t d,class T>
 short_t gsTensorSubDomain<d,T>::degree(short_t i) const
 {
-    gsInfo<<m_parent;
     return m_parent.degree(i);
 }
 

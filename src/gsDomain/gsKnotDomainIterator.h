@@ -33,7 +33,7 @@ public:
 
     gsKnotDomainIterator(const gsKnotVector<T> & _knots, bool start = true)
     :
-    gsDomainIterator<T>(start ? 0 : _knots.numElements()),
+    gsDomainIterator<T>(start ? 0 : _knots.numElements(), 0), // Add patch parameter
     m_it(start ? _knots.domainUBegin() : _knots.domainUEnd()),
     m_itEnd(_knots.domainUEnd())
     {

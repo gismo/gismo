@@ -46,7 +46,8 @@ public:
     /// @param indices Vector of element indices in the parent domain
     gsIndexSubDomain(const gsDomain<T>& parent, 
                      const std::vector<index_t>& indices)
-        : m_parent(parent), m_indices(indices)
+        : gsSubDomain<T>(parent, parent.patchId() < 0 ? 0 : parent.patchId()),
+          m_parent(parent), m_indices(indices)
     {
         // Sort and unique the indices
         std::sort(m_indices.begin(), m_indices.end());
@@ -57,7 +58,8 @@ public:
     /// Constructor with move semantics for indices
     gsIndexSubDomain(const gsDomain<T>& parent, 
                      std::vector<index_t>&& indices)
-        : m_parent(parent), m_indices(give(indices))
+        : gsSubDomain<T>(parent, parent.patchId() < 0 ? 0 : parent.patchId()),
+          m_parent(parent), m_indices(give(indices))
     {
         // Sort and unique the indices
         std::sort(m_indices.begin(), m_indices.end());

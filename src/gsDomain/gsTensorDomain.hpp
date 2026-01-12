@@ -79,6 +79,13 @@ template<short_t d, class T>
 short_t gsTensorDomain<d,T>::dim() const { return d; }
 
 template<short_t d, class T>
+short_t gsTensorDomain<d,T>::degree(short_t i) const
+{
+    GISMO_ASSERT(i>=0 && i<d, "Index out of bounds in gsTensorDomain::degree.");
+    return m_knotVectors[i]->degree();
+}
+
+template<short_t d, class T>
 typename gsKnotVector<T>::Ptr gsTensorDomain<d,T>::knotVector(index_t i) const
 {
     return m_knotVectors[i];
@@ -95,12 +102,13 @@ typename gsDomain<T>::Ptr
 gsTensorDomain<d,T>::decompose(size_t npieces) const
 {
     // Define the parameter ranges
-    std::vector<typename gsTensorSubDomain<d,T>::Range> fullRanges;
-    for (short_t dim = 0; dim < d; ++dim) 
-    {   
-        fullRanges.push_back(typename gsTensorSubDomain<d,T>::Range(0, m_knotVectors[dim]->numElements()));
+    gsVector<index_t> low(d), upp(d);
+    for (short_t dim = 0; dim < d; ++dim)
+    {
+        low[dim] = 0;
+        upp[dim] = m_knotVectors[dim]->numElements();
     }
-    return gsTensorSubDomain<d,T>::decompose(*this, fullRanges, npieces, this->patchId());
+    return gsTensorSubDomain<d,T>::decompose(*this, low,upp, npieces, this->patchId());
 }
 
 template<short_t d, class T>
@@ -109,6 +117,25 @@ size_t gsTensorDomain<d,T>::numElements() const
     size_t nElem = 1;
     for (short_t dim = 0; dim < d; ++dim)
         nElem *= m_knotVectors[dim]->numElements();
+    return nElem;
+}
+
+template<short_t d, class T>
+size_t gsTensorDomain<d,T>::numElementsBdr(boxSide const & s) const
+{
+    if(s==boundary::none)
+    {
+        GISMO_NO_IMPLEMENTATION
+    }
+
+    const short_t dir =  s.direction();
+    size_t nElem = 1;
+    for (short_t dim = 0; dim < d; ++dim)
+    {
+        if(dim == dir)
+            continue;
+        nElem *= m_knotVectors[dim]->numElements();
+    }
     return nElem;
 }
 

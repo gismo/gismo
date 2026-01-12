@@ -86,6 +86,9 @@ protected:
     index_t m_patchId;
 
 public:
+
+    using Base = gsDomain<T>;
+
     gsDomain(index_t patchId = -1) : m_patchId(patchId) {}
 
     virtual ~gsDomain() { }
