@@ -222,7 +222,8 @@ template <class T=real_t>                class gsCDRAssembler;
 template <class T=real_t>                class gsSolverUtils;
 template <class T=real_t, bool symm=false>  class gsSparseSystem;
 
-template <class T=real_t>                class gsExprAssembler;
+template<typename T=real_t, int _Options=0, typename _Index = index_t>                
+                                         class gsExprAssembler;
 template <class T=real_t>                class gsExprEvaluator;
 
 // More

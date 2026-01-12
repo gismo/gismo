@@ -1054,7 +1054,7 @@ template <class T>
 void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
 {
     // See remark about periodic basis in refine_withCoefs, please.
-    gsFiberMatrix<T,RowMajor> trans;
+    gsFiberMatrix<T,RowMajor,index_t> trans;
     trans.setIdentity( this->size() );
     gsBoehmRefine(this->knots(), trans, m_p, knots.begin(), knots.end());
     trans.toSparseMatrix_into( transfer );
