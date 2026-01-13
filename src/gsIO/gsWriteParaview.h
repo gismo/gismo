@@ -356,7 +356,7 @@ void gsWriteParaview(gsCurveLoop<T> const & cloop, std::string const & fn, unsig
 {
     std::vector<gsGeometry<T> *> all_curves;
     for(index_t j =0; j< cloop.numCurves() ; j++)
-        all_curves.push_back( const_cast<gsCurve<T> *>(cloop.curve(j)) );
+        all_curves.push_back( const_cast<gsCurve<T> *>(& cloop.curve(j)) );
 
     gsWriteParaview( all_curves, fn, npts);
 }
