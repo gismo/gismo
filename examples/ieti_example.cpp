@@ -19,6 +19,7 @@
 
 #include <ctime>
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -431,7 +432,9 @@ int main(int argc, char *argv[])
         gsMultiPatch<> mpsol;
         for (index_t k=0; k<nPatches; ++k)
             mpsol.addPatch( mb[k].makeGeometry( ietiMapper.incorporateFixedPart(k, uLocal[k])  ) );
-        gsWriteParaview<>( gsField<>( mp, mpsol ), "ieti_result", 1000);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.write( gsField<>( mp, mpsol ), "ieti_result");
         //gsFileManager::open("ieti_result.pvd");
     }
 

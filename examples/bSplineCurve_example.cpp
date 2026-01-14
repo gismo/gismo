@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -49,10 +50,14 @@ int main(int argc, char *argv[])
     {   
         // Output a paraview file
         coefs.transposeInPlace();
-        gsWriteParaview( curve, "bsplinecurve0", 100);
-        gsWriteParaview( curve, "bsplinecurve", 100, true, true);
-        gsWriteParaviewPoints( coefs, "coefficients");
-        gsFileManager::open("bsplinecurve0.pvd");
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 100);
+        pv.options().setSwitch("show", true);
+        pv.write(curve, "bsplinecurve0");
+        pv.options().setSwitch("plotElements", true);
+        pv.options().setSwitch("plotControlNet", true);
+        pv.write(curve, "bsplinecurve");
+        pv.writePoints(coefs, "coefficients");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
@@ -62,20 +67,22 @@ int main(int argc, char *argv[])
     if (trim)
     {
       gsInfo << "Original BSpline curve: " << curve << "\n";
-      gsWriteParaview( curve, "originalCurve", 100);  // Output the original curve
+      gsParaview<real_t> pv;
+      pv.options().setInt("numPoints", 100);
+      pv.write(curve, "originalCurve");  // Output the original curve
 
       // Segment this BSpline curve between parameters 0.3 and 0.8
       gsBSpline<> segment = curve.segmentFromTo(0.3, 0.8);
       gsInfo << "Curve segment from u0 = 0.3 to u1 = 0.8: " << segment << "\n";
-      gsWriteParaview(segment, "segment", 100);  // Output the curve segment
+      pv.write(segment, "segment");  // Output the curve segment
 
       // Split the curve at parameter 0.4 into two parts
       gsBSpline<> segmentLeft, segmentRight;
       curve.splitAt(0.4, segmentLeft, segmentRight);
       gsInfo << "Curve segment from u0 = 0.0 to u1 = 0.4: " << segmentLeft << "\n";
       gsInfo << "Curve segment from u0 = 0.4 to u1 = 1.0: " << segmentRight << "\n";
-      gsWriteParaview( segmentLeft, "segmentLeft", 100);
-      gsWriteParaview( segmentRight, "segmentRight", 100);
+      pv.write(segmentLeft, "segmentLeft");
+      pv.write(segmentRight, "segmentRight");
 
       // Merge the left and right segments back to the original curve
       // Note: Due to the segmentation, an inner knot value of 0.4 is introduced, while
@@ -83,11 +90,11 @@ int main(int argc, char *argv[])
       gsBSpline<> mergedCurve = segmentLeft;
       mergedCurve.merge(&segmentRight);
       gsInfo << "The merged curve: " << mergedCurve << "\n";
-      gsWriteParaview( mergedCurve, "mergedCurve", 100);
+      pv.write(mergedCurve, "mergedCurve");
 
       // convert it into bezier segments
       gsMultiPatch<> bezSegments = mergedCurve.toBezier();
-      gsWriteParaview(bezSegments, "bezierContainer", 100);
+      pv.write(bezSegments, "bezierContainer");
     }
     else
       gsInfo << "Done. Re-run with --trim to learn basic trim/merge operations\n";
@@ -112,11 +119,14 @@ int main(int argc, char *argv[])
       }
       if (!intersectPts.empty())
       {
-        gsWriteParaviewPoints(iPts, "intersect");
+        gsParaview<real_t> pv;
+        pv.writePoints(iPts, "intersect");
       }
 
-      gsWriteParaview(bsp1, "bsp1", 2000);
-      gsWriteParaview(bsp2, "bsp2", 2000);
+      gsParaview<real_t> pv2;
+      pv2.options().setInt("numPoints", 2000);
+      pv2.write(bsp1, "bsp1");
+      pv2.write(bsp2, "bsp2");
     }
     else
       gsInfo << "Done. Re-run with --intersect to learn intersection operations\n";

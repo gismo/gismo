@@ -6,6 +6,7 @@
 */
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -72,7 +73,8 @@ int main(int argc, char** argv)
 
     if (plot)
     {
-        gsWriteParaview(mesh,"mesh_in", { });
+        gsParaview<real_t> pv;
+        pv.write(mesh, "mesh_in");
         gsFileManager::open("mesh_in.vtk");
     }
 

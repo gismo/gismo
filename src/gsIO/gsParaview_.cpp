@@ -21,6 +21,14 @@ namespace gismo
 
 STRUCT_TEMPLATE_INST gsParaview<real_t>;
 
+// Explicit instantiation of template member functions for gsHBox (d=2,3 only)
+template void gsParaview<real_t>::write<2>(const gsHBox<2,real_t> &, const std::string &) const;
+template void gsParaview<real_t>::write<3>(const gsHBox<3,real_t> &, const std::string &) const;
+
+// Explicit instantiation of template member functions for gsHBoxContainer (d=2,3 only)
+template void gsParaview<real_t>::write<2>(const gsHBoxContainer<2,real_t> &, const std::string &) const;
+template void gsParaview<real_t>::write<3>(const gsHBoxContainer<3,real_t> &, const std::string &) const;
+
 #ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;

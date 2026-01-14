@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -61,6 +62,13 @@ int main(int argc, char *argv[])
 
     gsFileData<>  filedata(fn);
 
+    // Create gsParaview object and configure options
+    gsParaview<real_t> pv;
+    pv.options().setInt("numPoints", numSamples);
+    pv.options().setSwitch("plotElements", plot_mesh);
+    pv.options().setSwitch("plotControlNet", plot_net);
+    pv.options().setSwitch("show", true);
+
     switch ( choice )
     {
     case 3:
@@ -74,7 +82,8 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        gsWriteParaview( *bb , pname, numSamples, true);
+        pv.options().setSwitch("plotElements", true);
+        pv.write(*bb, pname);
 
         break;
     }
@@ -88,7 +97,7 @@ int main(int argc, char *argv[])
             gsInfo<< "Did not find any mesh to plot in "<<fn<<", quitting."<<"\n";
             return 0;
         }
-        gsWriteParaview( *msh, pname);
+        pv.write(*msh, pname);
 
         break;
     }
@@ -103,7 +112,7 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        gsWriteParaview( *geo , pname, numSamples, plot_mesh, plot_net);
+        pv.write(*geo, pname);
         break;
     }
     default:
@@ -116,11 +125,11 @@ int main(int argc, char *argv[])
             if (plot_patchid)
             {
                 gsField<> nfield = gsFieldCreator<>::patchIds(mp);
-                gsWriteParaview(nfield, pname, numSamples);
+                pv.write(nfield, pname);
             }
             else
             {
-                gsWriteParaview(mp, pname, numSamples, plot_mesh, plot_net);
+                pv.write(mp, pname);
             }
 
             break;
@@ -136,7 +145,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaview(memory::get_raw(geo), pname, numSamples, plot_mesh, plot_net);
+            pv.write(memory::get_raw(geo), pname);
             break;
         }
 
@@ -151,10 +160,10 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
+            // gsSurfMesh uses the old free function directly
             gsWriteParaview( *msh, pname);
             gsFileManager::open(pname+".vtk");
             return EXIT_SUCCESS;
-            break;
         }
 
         if ( filedata.has< gsBasis<> >() )
@@ -170,7 +179,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaview( *bb , pname, numSamples, plot_mesh);
+            pv.write(*bb, pname);
 
             break;
         }
@@ -187,8 +196,8 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaviewSolid( *bb, pname, numSamples);
-            //gsWriteParaview( *bb, pname, numSamples, 0, 0.02);
+            pv.write(*bb, pname);
+            //pv.write(*bb, pname); // alternative with different options
 
             break;
         }
@@ -206,7 +215,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaview( *bb, pname, numSamples);
+            pv.write(*bb, pname);
 
             break;
         }
@@ -226,7 +235,7 @@ int main(int argc, char *argv[])
 
             gsMesh<>::uPtr msh = bb->toMesh(numSamples);
 
-            gsWriteParaview( *msh , pname);
+            pv.write(*msh, pname);
 
             break;
         }
@@ -237,14 +246,15 @@ int main(int argc, char *argv[])
             filedata.getFirst(bb);
             gsInfo<< "Got Matrix with "<< bb.cols() <<" points.\n";
             gsInfo<< "Plot "<< bb.rows() <<"D points.\n";
-            gsWriteParaviewPoints<real_t>( bb, pname);
+            pv.writePoints(bb, pname);
             break;
         }
         gsInfo<< "Did not find anything to plot in "<<fn<<", quitting."<<"\n";
         return 0;
     }
 
-    gsFileManager::open(pname+".pvd");
+    // show option is set in gsParaview, so file will be opened automatically
+    // gsFileManager::open(pname+".pvd");
 
     return EXIT_SUCCESS;
 }

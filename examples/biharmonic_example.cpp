@@ -12,6 +12,7 @@
 */
 
 # include <gismo.h>
+# include <gsIO/gsParaview.h>
 # include <gsAssembler/gsBiharmonicAssembler.h>
 
 using namespace gismo;
@@ -100,9 +101,12 @@ int main(int argc, char *argv[])
     {
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in ParaView...\n";
-        gsWriteParaview<>(solField, "Biharmonic2d", 5000);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 5000);
+        pv.options().setSwitch("show", true);
+        pv.write(solField, "Biharmonic2d");
         const gsField<> exact( geo, solution, false );
-        gsWriteParaview<>( exact, "Biharmonic2d_exact", 5000);
+        pv.write(exact, "Biharmonic2d_exact");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "

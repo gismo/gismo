@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 #include <gsAssembler/gsAdaptiveRefUtils.h>
 
 using namespace gismo;
@@ -291,8 +292,12 @@ int main(int argc, char *argv[])
         {
             // Write approximate solution to paraview files
             gsInfo<<"Plotting in Paraview...\n";
-            gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
-            gsWriteParaview<>(pa.multiBasis()[0], "basis", 500, true);
+            gsParaview<real_t> pv;
+            pv.options().setInt("numPoints", 5001);
+            pv.options().setSwitch("plotElements", true);
+            pv.write(sol, "p2d_adaRef_sol");
+            pv.options().setInt("numPoints", 500);
+            pv.write(pa.multiBasis()[0], "basis");
             // Run paraview and plot the last mesh
             gsFileManager::open("p2d_adaRef_sol.pvd");
         }

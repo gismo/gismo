@@ -26,6 +26,8 @@
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
 
+#include <gsMesh2/gsSurfMesh.h>
+
 #include <gsHSplines/gsHBoxContainer.h>
 
 namespace gismo
@@ -196,6 +198,14 @@ void gsParaview<T>::write(const gsMesh<T> & mesh, const std::string & fn) const
 }
 
 template<class T>
+void gsParaview<T>::write(const gsSurfMesh & mesh, const std::string & fn,
+                          std::initializer_list<std::string> props) const
+{
+    gsWriteParaview(mesh, fn, props);
+    openIfRequested(fn);
+}
+
+template<class T>
 void gsParaview<T>::write(const gsMesh<T> & mesh, const gsMatrix<T> & params,
                           const std::string & fn) const
 {
@@ -345,6 +355,14 @@ template<class T>
 void gsParaview<T>::writePoints(const gsMatrix<T> & points, const std::string & fn) const
 {
     gsWriteParaviewPoints(points, fn);
+    openIfRequested(fn);
+}
+
+template<class T>
+void gsParaview<T>::writePoints(const gsMatrix<T> & points, const std::string & fn,
+                                const gsVector<T> & values) const
+{
+    gsWriteParaview(points, fn, values);
     openIfRequested(fn);
 }
 

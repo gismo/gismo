@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -112,9 +113,11 @@ DataOut test(DataIn dataIn)
     if (dataIn.plot)
     {
         auto baseName = "poisson_r" + std::to_string(dataIn.refine) + "_p" + std::to_string(dataIn.degree);
-        gsWriteParaview<>(solField, baseName + "_computed", 5000);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 5000);
+        pv.write(solField, baseName + "_computed");
         const gsField<> exact(geo, solution, false);
-        gsWriteParaview<>(exact, baseName + "_exact", 5000);
+        pv.write(exact, baseName + "_exact");
     }
 
     return dataOut;

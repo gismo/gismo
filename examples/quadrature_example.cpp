@@ -15,6 +15,7 @@
 */
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -46,7 +47,12 @@ int main(int argc, char* argv[])
     gsTensorBSplineBasis<2,real_t> tbsb2(kv1,kv2);
 
     if (plot)
-        gsWriteParaview(tbsb2,"basis",1000,true);
+    {
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("plotElements", true);
+        pv.write(tbsb2, "basis");
+    }
 
     // ======================================================================
     // some properties
@@ -153,9 +159,10 @@ int main(int argc, char* argv[])
 
     if (plot)
     {
-        gsWriteParaviewPoints(GaussRule,"Points_Original");
-        gsWriteParaviewPoints(MixedRule,"Points_Mixed");
-        gsWriteParaviewPoints(TensorPatch,"Points_Patch");
+        gsParaview<real_t> pvPts;
+        pvPts.writePoints(GaussRule, "Points_Original");
+        pvPts.writePoints(MixedRule, "Points_Mixed");
+        pvPts.writePoints(TensorPatch, "Points_Patch");
     }
     else
     {
@@ -231,9 +238,10 @@ int main(int argc, char* argv[])
 
     if (plot)
     {
-        gsWriteParaviewPoints(GaussRule,"BoundaryPoints_Original");
-        gsWriteParaviewPoints(MixedRule,"BoundaryPoints_Mixed");
-        gsWriteParaviewPoints(TensorPatch,"BoundaryPoints_Patch");
+        gsParaview<real_t> pvPts;
+        pvPts.writePoints(GaussRule, "BoundaryPoints_Original");
+        pvPts.writePoints(MixedRule, "BoundaryPoints_Mixed");
+        pvPts.writePoints(TensorPatch, "BoundaryPoints_Patch");
     }
     else
     {

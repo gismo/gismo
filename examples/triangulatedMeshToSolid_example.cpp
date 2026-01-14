@@ -13,6 +13,7 @@
 
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 #include <iostream>
 #include <fstream>
 
@@ -190,7 +191,8 @@ int main(int argc, char *argv[])
         // Write a paraview file
         gsInfo<<"Writing paraview file..." << "\n";
 
-        gsWriteParaview( *m, "output");
+        gsParaview<real_t> pv;
+        pv.write(*m, "output");
     }
     else
     {

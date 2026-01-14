@@ -14,6 +14,7 @@
 
 #include <iostream>
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -78,10 +79,11 @@ int main(int argc, char* argv[])
 
     //! [gsWriteParaview]
     gsMultiBasis<> mBasis(mPatch);
-    gsWriteParaview(mPatch, output+"MultiPatch");
-    gsWriteParaview(mPatch, mBasis, output+"MultiBasis");
+    gsParaview<real_t> pv;
+    pv.write(mPatch, output+"MultiPatch");
+    pv.write(mPatch, mBasis, output+"MultiBasis");
     gsMatrix<> cPoints = mPatch.coefs().transpose();
-    gsWriteParaviewPoints(cPoints, output+"Points");
+    pv.writePoints(cPoints, output+"Points");
     gsInfo << "Wrote " << output+"MultiPatch.pvd, " << output+"MultiPatch_*.vts, "<< output+"MultiBasis.pvd, "<< output+"MultiBasis_*.vts"   << "\n\n";
 
     // Fabricate some data to write to csv file and plot
@@ -164,7 +166,9 @@ int main(int argc, char* argv[])
     //! [Bezier]
     if (bezier) 
     {
-        gsWriteParaviewBezier(mPatch, output+"Bezier");
+        gsParaview<real_t> pvBezier;
+        pvBezier.options().setSwitch("bezier", true);
+        pvBezier.write(mPatch, output+"Bezier");
         gsInfo << "Wrote " << output+"Bezier" << ".vtu" << ", " << output+"Bezier" << ".pvd\n";
     }
     //! [Bezier]

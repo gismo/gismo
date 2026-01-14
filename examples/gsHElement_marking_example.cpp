@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 #include <gsHSplines/gsHElementMarker.h>
 
 // #include <gsUtils/gsCombinatorics.h>
@@ -89,11 +90,12 @@ void run(gsTensorBSpline<d,real_t> & spline, index_t degree, index_t m, index_t 
     gsParaviewCollection refined("markedRef");
     gsParaviewCollection coarsened("markedCrs");
     gsStopwatch timer;
+    gsParaview<real_t> pv;
     for (index_t i = 0; i!=numRef; i++)
     {
         // Plot stuff
         gsMesh<real_t> mesh(mp.basis(0));
-        gsWriteParaview(mesh,"mesh_"+util::to_string(i),false);
+        pv.write(mesh, "mesh_"+util::to_string(i));
         meshes.addPart("mesh_"+util::to_string(i)+".vtp",i,"Mesh");
 
         gsInfo<<"Refinement iteration "<<i<<":\n";
@@ -126,10 +128,10 @@ void run(gsTensorBSpline<d,real_t> & spline, index_t degree, index_t m, index_t 
         gsMatrix<> boxes;
         gsVector<size_t> levels;
         std::tie(boxes,levels) = marker.helper().toBoxesAndLevels(markedRef);
-        gsWriteParaview(boxes,"markedRef_"+util::to_string(i),gsVector<real_t>(levels.cast<real_t>()));
+        pv.writePoints(boxes, "markedRef_"+util::to_string(i), gsVector<real_t>(levels.cast<real_t>()));
         refined.addPart("markedRef_"+util::to_string(i)+".vtu",i,"Solution");
         std::tie(boxes,levels) = marker.helper().toBoxesAndLevels(markedCrs);
-        gsWriteParaview(boxes,"markedCrs_"+util::to_string(i),gsVector<real_t>(levels.cast<real_t>()));
+        pv.writePoints(boxes, "markedCrs_"+util::to_string(i), gsVector<real_t>(levels.cast<real_t>()));
         coarsened.addPart("markedCrs_"+util::to_string(i)+".vtu",i,"Solution");
 
         std::vector<index_t> refBox = marker.toRefBoxes(markedRef);

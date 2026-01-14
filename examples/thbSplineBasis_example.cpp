@@ -16,6 +16,7 @@
 //! [Include namespace]
 #include <string>
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 //! [Include namespace]
 
 using namespace gismo;
@@ -52,7 +53,8 @@ int main(int argc, char *argv[])
     gsInfo << "basis before refinement:\n" << thb << std::endl;
 
     // Export the initial basis to paraview files
-    gsWriteParaview(thb, "thb0_init" );
+    gsParaview<real_t> pv;
+    pv.write(thb, "thb0_init");
 
     //! [refViaStdVec]
     std::vector<index_t> box;
@@ -66,7 +68,7 @@ int main(int argc, char *argv[])
     //! [refViaStdVec]
 
     // Export the refined basis to paraview files
-    gsWriteParaview(thb, "thb_refined_first" );
+    pv.write(thb, "thb_refined_first");
     gsInfo << "after refinement," << std::endl;
 
     //! [stdOpsCout]
@@ -178,7 +180,7 @@ int main(int argc, char *argv[])
     gsInfo << "after 2nd refinement, this basis is:\n" << thb << std::endl;
     //! [refViaStdVec2]
 
-    gsWriteParaview(thb, "thb_refined_second" );
+    pv.write(thb, "thb_refined_second");
 
     boxSide side(1);
     gsMatrix<index_t> result = thb.boundaryOffset(1,0);

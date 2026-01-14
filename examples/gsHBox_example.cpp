@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -103,7 +104,10 @@ int main(int argc, char *argv[])
     boxes[4] = 14;
     mp.patch(0).refineElements(boxes);
 
-    gsWriteParaview(mp,"init",1,true);
+    gsParaview<real_t> pv;
+    pv.options().setInt("numPoints", 1);
+    pv.options().setSwitch("plotElements", true);
+    pv.write(mp, "init");
     gsInfo<<"Initial basis constructed:\n"<<mp.basis(0)<<"\n";
 
     gsHTensorBasis<2,real_t> * basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
@@ -117,11 +121,11 @@ int main(int argc, char *argv[])
     lvl = 4;
     cell = gsHBox<2>(low,upp,lvl,basis);
     markedRef.add(cell);
-    gsWriteParaview(markedRef,"markedRef");
+    pv.write(markedRef, "markedRef");
     gsInfo<<"Added one refinement box (markedRef.pvd):\n"<<markedRef<<"\n";
 
     markedRef.markAdmissible(m);
-    gsWriteParaview(markedRef,"refCell_Admissible");
+    pv.write(markedRef, "refCell_Admissible");
     gsInfo<<"Admissibility region of the refined cell plotted in refCell_Admissible.pvd\n";
 
     low <<4,2;
@@ -129,15 +133,15 @@ int main(int argc, char *argv[])
     lvl = 3;
     cell = gsHBox<2>(low,upp,lvl,basis);
     markedCrs.add(cell);
-    gsWriteParaview(cell,"crsCell");
+    pv.write(cell, "crsCell");
     gsInfo<<"Added one coarsening box (markedCrs.pvd):\n"<<markedCrs<<"\n";
 
     gsHBoxContainer<2> Cextension(cell.getParent().getCextension(m));
-    gsWriteParaview(Cextension,"crsCell_Cextension");
+    pv.write(Cextension, "crsCell_Cextension");
     gsInfo<<"Coarsening extension plotted in crsCell_Cextension.pvd\n";
 
     gsHBoxContainer<2> Cneighborhood(cell.getParent().getCneighborhood(m));
-    gsWriteParaview(Cneighborhood,"crsCell_Cneighborhood");
+    pv.write(Cneighborhood, "crsCell_Cneighborhood");
     gsInfo<<"Coarsening neighborhood plotted in crsCell_Cneighborhood.pvd\n";
     return 0;
 }

@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -168,7 +169,9 @@ int main(int argc, char *argv[])
         // Contains the parametric values of the points
         mp_par.patch(p) = give(*bbasis.makeGeometry(pts.transpose()));
     }
-    if (plot) gsWriteParaview(mp,"mp",npts_plot);
+    gsParaview<real_t> pv;
+    pv.options().setInt("numPoints", npts_plot);
+    if (plot) pv.write(mp, "mp");
     
     // STEP 1: Get curve network with merged linear interfaces
     gsInfo<<"Loading curve network..."<<std::flush;
@@ -192,9 +195,9 @@ int main(int argc, char *argv[])
         crv_net.addPatch((*it->second));
     }
 
-    if (plot) gsWriteParaview(iface_net,"iface_net",npts_plot);
-    if (plot) gsWriteParaview(bnd_net,"bnd_net",npts_plot);
-    if (plot) gsWriteParaview(crv_net,"crv_net",npts_plot);
+    if (plot) pv.write(iface_net, "iface_net");
+    if (plot) pv.write(bnd_net, "bnd_net");
+    if (plot) pv.write(crv_net, "crv_net");
 
     //end outputing
     gsInfo<<"Finished\n";
@@ -281,7 +284,7 @@ int main(int argc, char *argv[])
         crv_net.addPatch( *cfit.result() );
     }
 
-    if (plot) gsWriteParaview(crv_net,"crv_fit",npts_plot);
+    if (plot) pv.write(crv_net, "crv_fit");
     gsInfo<<"Finished\n";
 
     std::vector<gsGeometry<>*> container(mp0->nPatches());
@@ -322,7 +325,9 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsInfo<<"Plotting in Paraview..."<<std::flush;
-        gsWriteParaview(mp_res,"final",npts_plot,mesh,cnet);
+        pv.options().setSwitch("plotElements", mesh);
+        pv.options().setSwitch("plotControlNet", cnet);
+        pv.write(mp_res, "final");
         gsInfo<<"Finished\n";
     }
 
@@ -353,7 +358,8 @@ int main(int argc, char *argv[])
         }
 
         gsInfo<<"Plotting Hausdorff distance..."<<std::flush;
-        gsWriteParaview(*mp0,distances,"distField",100);
+        pv.options().setInt("numPoints", 100);
+        pv.write(*mp0, distances, "distField");
         gsInfo<<"Finished.\n";
 
         gsMatrix<> hausdorff(3,1);

@@ -15,6 +15,7 @@
 */
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -405,6 +406,8 @@ int main(int argc, char *argv[])
 
     if (plot)
     {
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", dim < 3 ? 1000 : 10000);
         for (std::size_t r=0; r<ietiMapper.size(); ++r)
         {
             const char* filenames[] = { "ieti_velocity_x", "ieti_velocity_y", "ieti_velocity_z", "ieti_pressure" };
@@ -413,7 +416,7 @@ int main(int argc, char *argv[])
             gsMultiPatch<> mpsol;
             for (index_t k=0; k<nPatches; ++k)
                 mpsol.addPatch( mb[r][k].makeGeometry( ietiMapper[r].incorporateFixedPart(k, solutionPatches[r][k]) ) );
-            gsWriteParaview<>( gsField<>( mp, mpsol ), filename, dim < 3 ? 1000 : 10000);
+            pv.write( gsField<>( mp, mpsol ), filename);
         }
     }
 
