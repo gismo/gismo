@@ -94,6 +94,7 @@ public:
 
     typedef gsDomainIteratorWrapper<T> domainIter;
 
+    GISMO_DEVICE_FUNCTION
     virtual ~gsBasis();
 
 public:
@@ -584,6 +585,7 @@ public:
     \param[in,out] result gsMatrix of size <em>K</em> x <em>N</em>.
     See above for details.
     */
+    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     /// Evaluate the \a i-th basis function at points \a u into \a result.

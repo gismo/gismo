@@ -103,6 +103,7 @@ public:
     /// Copy Constructor 
     gsTensorNurbsBasis( const gsTensorNurbsBasis & o) : Base(o) { }
 
+    GISMO_DEVICE_FUNCTION
     virtual ~gsTensorNurbsBasis();
 
 public:

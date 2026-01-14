@@ -126,6 +126,15 @@
   #define EIGEN_COMP_NVCC 0
 #endif
 
+// When compiling with NVCC, Eigen's debug checks emit exceptions and use std::cerr,
+// which are not allowed in device code. For device compilation we disable Eigen's
+// debug mode so no exception-throwing assertions are generated.
+#if EIGEN_COMP_NVCC
+  #ifndef EIGEN_NO_DEBUG
+    #define EIGEN_NO_DEBUG
+  #endif
+#endif
+
 // For the record, here is a table summarizing the possible values for EIGEN_COMP_MSVC:
 //  name        ver   MSC_VER
 //  2008         9      1500

@@ -360,6 +360,7 @@ public:
     }
 
     // Look at gsBasis class for documentation
+    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     // Because of overriding one of the "eval_into" functions, all

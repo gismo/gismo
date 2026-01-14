@@ -62,23 +62,28 @@ public:
 public:
 
     /// Default empty constructor
+    GISMO_DEVICE_FUNCTION
     gsFunctionExpr();
 
     ///\brief Constructor taking an expression string and the domain dimension (scalar function in variable)
+    GISMO_DEVICE_FUNCTION
     gsFunctionExpr(const std::string & expression_string, short_t ddim);
 
     ///\brief Constructor taking two expression strings (2D vector valued function)
+    GISMO_DEVICE_FUNCTION
     gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    short_t ddim);
 
     ///\brief Constructor taking three expression strings (3D vector valued function)
+    GISMO_DEVICE_FUNCTION
     gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    const std::string & expression_string3,
                    short_t ddim);
 
     ///\brief Constructor taking four expression strings (4D vector valued function) used for matrix coefficients
+    GISMO_DEVICE_FUNCTION
     gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    const std::string & expression_string3,
@@ -86,6 +91,7 @@ public:
                    short_t ddim);
 
     ///\brief Constructor taking nine expression strings (9D vector valued function) used for (3x3) matrix coefficients
+    GISMO_DEVICE_FUNCTION
     gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    const std::string & expression_string3,
@@ -97,8 +103,10 @@ public:
                    const std::string & expression_string9,
                    short_t ddim);
 
+    GISMO_DEVICE_FUNCTION
     gsFunctionExpr(const std::vector<std::string> & expression_string, short_t ddim);
 
+    GISMO_DEVICE_FUNCTION
     gsFunctionExpr(const gsFunctionExpr& other);
 
     ///\brief Make function taking an expression string and the domain dimension (scalar function)
@@ -138,6 +146,7 @@ public:
     gsFunctionExpr& operator=(gsFunctionExpr other);
 #endif
 
+    GISMO_DEVICE_FUNCTION
     ~gsFunctionExpr();
 
     GISMO_CLONE_FUNCTION(gsFunctionExpr)
@@ -184,6 +193,7 @@ public:
     void set_t (T const & t) const;
 
     // see gsFunction for documentation
+    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // see gsFunction for documentation

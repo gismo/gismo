@@ -232,6 +232,7 @@ private:
     // Avoid warnings for hidden overloads w.r.t gsFunctionSet
     void active_into(const gsMatrix<T> &,gsMatrix<index_t>&) const override
     { GISMO_NO_IMPLEMENTATION; }
+    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T> &,gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION; }
     void deriv_into(const gsMatrix<T> &,gsMatrix<T>&) const override
@@ -290,6 +291,7 @@ public:
     /// \param[in,out] result gsMatrix of size <em>k</em> x <em>n</em>.
     /// See above for details.
     ///
+    GISMO_DEVICE_FUNCTION
     void eval_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
     void deriv_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
     void deriv2_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;

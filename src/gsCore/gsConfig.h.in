@@ -114,3 +114,20 @@
 #cmakedefine EIGEN_DONT_VECTORIZE
 #cmakedefine EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 /**@}*/
+
+// CUDA (NVCC or clang targeting CUDA)
+#if defined(__CUDACC__) || defined(__CUDA_ARCH__)
+  #define GISMO_DEVICE_FUNCTION __host__ __device__
+
+// HIP (HIPCC or clang targeting HIP)
+#elif defined(__HIPCC__) || defined(__HIP_DEVICE_COMPILE__)
+  #define GISMO_DEVICE_FUNCTION __host__ __device__
+
+// SYCL (DPCPP / hipSYCL / ComputeCpp)
+#elif defined(SYCL_LANGUAGE_VERSION) || defined(__SYCL_DEVICE_ONLY__)
+  #define GISMO_DEVICE_FUNCTION
+
+// CPU-only compilers
+#else
+  #define GISMO_DEVICE_FUNCTION
+#endif

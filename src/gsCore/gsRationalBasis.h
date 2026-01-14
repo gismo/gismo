@@ -110,6 +110,7 @@ public:
     }
 
     // Destructor
+    GISMO_DEVICE_FUNCTION
     virtual ~gsRationalBasis()
     {
         delete m_src;
@@ -276,6 +277,7 @@ public:
 
     gsMatrix<T> support(const index_t & i) const {return m_src->support(i); }
 
+    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;

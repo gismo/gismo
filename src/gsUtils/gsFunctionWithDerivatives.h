@@ -56,6 +56,7 @@ public:
         GISMO_ASSERT(checkDimensions(), "Dimensions do not fit");
     }
 
+    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T> &u, gsMatrix<T> &result) const
     {
         GISMO_ASSERT(m_derivs,"Not initialized");

@@ -121,6 +121,7 @@ public:
     // }
 
     /// See \ref gsBasis for documentation
+    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     /// See \ref gsBasis for documentation

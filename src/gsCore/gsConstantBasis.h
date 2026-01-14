@@ -75,6 +75,7 @@ public:
         result.setZero(1,u.cols());
     }
 
+    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()

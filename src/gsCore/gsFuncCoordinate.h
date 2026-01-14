@@ -61,6 +61,7 @@ public:
 
     gsMatrix<T> support() const override;
 
+    GISMO_DEVICE_FUNCTION
     void eval_into (const gsMatrix<T>& u, gsMatrix<T>& result ) const override;
 
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const override;

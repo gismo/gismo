@@ -131,6 +131,7 @@ public:
     { m_coefs = val.transpose(); m_domainDim = domainDim;}
 
     // Documentation in gsFunction class
+    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     // Documentation in gsFunction class

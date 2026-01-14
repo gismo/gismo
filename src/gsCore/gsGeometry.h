@@ -133,6 +133,7 @@ public:
 
     gsGeometry& operator=( const gsGeometry & o);
 
+    GISMO_DEVICE_FUNCTION
     virtual ~gsGeometry();
 
 
@@ -175,6 +176,7 @@ public:
      * respective valuation point.
      */
     // Look at gsFunction class for documentation
+    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     /** \brief Evaluate derivatives of the function
