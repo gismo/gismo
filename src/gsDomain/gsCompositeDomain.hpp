@@ -336,13 +336,49 @@ gsCompositeDomain<T>::decompose(size_t npieces) const
     // If the number of pieces is greater than or equal to the number of patches, we decompose each patch individually
     else // if (npatches <= npieces)
     {
-        // Strategy: Decompose each patch into a number of pieces such that every piece has roughly `elementsPerPiece` elements.
-        // We use the Karmarkar-Karp (KK) algorithm to distribute the pieces among the patches.
-        std::vector<size_t> pieces_per_patch(npatches, 1);
-        size_t current_total_pieces = npatches;
-        while (current_total_pieces < npieces)
+        // Strategy: Distribute pieces to patches proportionally to their element counts
+        // to achieve better load balancing
+        std::vector<size_t> pieces_per_patch(npatches, 0);
+        
+        // Calculate ideal elements per piece
+        real_t ideal_elements_per_piece = (real_t)total_elements / npieces;
+        
+        // First pass: assign pieces proportionally
+        size_t assigned_pieces = 0;
+        for (size_t i = 0; i < npatches; ++i)
         {
-            // Find the patch with the maximum number of elements per assigned piece
+            // Each patch should get pieces proportional to its element count
+            size_t ideal_pieces = std::max((size_t)1, 
+                (size_t)std::round((real_t)elements_per_patch[i] / ideal_elements_per_piece));
+            pieces_per_patch[i] = ideal_pieces;
+            assigned_pieces += ideal_pieces;
+        }
+        
+        // Adjust to match exactly npieces
+        while (assigned_pieces > npieces)
+        {
+            // Find patch with smallest elements per piece (most over-allocated)
+            size_t minIdx = 0;
+            real_t min_ratio = std::numeric_limits<real_t>::max();
+            for (size_t i = 0; i < npatches; ++i)
+            {
+                if (pieces_per_patch[i] > 1)  // Can't reduce below 1
+                {
+                    real_t ratio = (real_t)elements_per_patch[i] / pieces_per_patch[i];
+                    if (ratio < min_ratio)
+                    {
+                        min_ratio = ratio;
+                        minIdx = i;
+                    }
+                }
+            }
+            pieces_per_patch[minIdx]--;
+            assigned_pieces--;
+        }
+        
+        while (assigned_pieces < npieces)
+        {
+            // Find patch with largest elements per piece (most under-allocated)
             size_t maxIdx = 0;
             real_t max_ratio = -1.0;
             for (size_t i = 0; i < npatches; ++i)
@@ -355,7 +391,7 @@ gsCompositeDomain<T>::decompose(size_t npieces) const
                 }
             }
             pieces_per_patch[maxIdx]++;
-            current_total_pieces++;
+            assigned_pieces++;
         }
         // Now decompose each patch accordingly and collect the results
         for (size_t i = 0; i < npatches; ++i)

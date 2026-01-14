@@ -36,6 +36,19 @@
 namespace gismo
 {
 
+///  struct to wrap element with its patch index
+/// Used in parallel assembly to maintain element-to-patch mapping
+template <class DomainIterator>
+struct ElementInfo
+{
+    DomainIterator elem;           ///< The actual element iterator
+    size_t patchIndex;              ///< Index of the patch this element belongs to
+
+    /// Constructor
+    ElementInfo(const DomainIterator& e, size_t p)
+        : elem(e), patchIndex(p) {}
+};
+
 template <class T>
 void transformGradients(const gsMapData<T> & md, index_t k, const gsMatrix<T>& allGrads, gsMatrix<T>& trfGradsK)
 {
@@ -295,9 +308,20 @@ protected: // *** Output data members ***
     /// must fit m_system.colBlocks().
     std::vector<gsMatrix<T> > m_ddof;
 
+    /// Decomposed domain
+    // std::vector<typename gsDomain<T>::Ptr> m_customDomains; //gsDomain<T>::Ptr points to gsDomain
+    // std::vector gives domain to each patch (Only active if the custom domain is used) Could be
+    /// possible that every patch has its own domain
+
+    typename gsDomain<T>::Ptr m_domain;
+
+    /// MPI rank and process count for parallel assembly
+    int m_mpi_rank;
+    int m_mpi_nproc;
+
 public:
 
-    gsAssembler() : m_options(defaultOptions())
+    gsAssembler() : m_options(defaultOptions()), m_mpi_rank(0), m_mpi_nproc(1)
     { }
 
     virtual ~gsAssembler()
@@ -388,6 +412,40 @@ public:
     /// i.e. calls its .makeCompressed() method.
     void finalize() { m_system.matrix().makeCompressed(); }
 
+    /// patchIndex The patch index
+    ///domain The subdomain to use (from decompose()->subdomain(rank)) same as the parallel_example.cpp
+
+    // Remove the patchIndex later
+    // void setIntegrationDomain(size_t patchIndex, typename gsDomain<T>::Ptr domain)
+    // {
+    //     if (m_customDomains.size() <= patchIndex)
+    //         m_customDomains.resize(patchIndex + 1, nullptr);
+    //     m_customDomains[patchIndex] = domain;
+    //     gsInfo << "Custom integration domain set for patch " << patchIndex << "\n";
+    // }
+
+    void setIntegrationDomain(typename gsDomain<T>::Ptr domain)
+    {
+      m_domain = give(domain);
+    }
+
+    /// @brief Set MPI rank and process count for parallel assembly
+    /// @param rank MPI rank of this process
+    /// @param nproc Total number of MPI processes
+    void setMPIInfo(int rank, int nproc)
+    {
+      m_mpi_rank = rank;
+      m_mpi_nproc = nproc;
+    }
+
+    // void setIntegrationDomain(typename gsDomain<T>::Ptr domain)
+    // {
+    //     size_t nPatches = m_pde_ptr->domain().nPatches();
+    //     m_customDomains.clear();
+    //     m_customDomains.resize(nPatches, domain);
+    //     gsInfo << "Custom integration domain set for all patches\n";
+    // }
+
     /** @brief Penalty constant for patch \a k, used for Nitsche and
     / Discontinuous Galerkin methods
     */
@@ -423,16 +481,79 @@ public:  /* Virtual assembly routines*/
 
 public: /* Element visitors */
 
-    /// @brief Iterates over all elements of the domain and applies
+    // /// @brief Iterates over all elements of the domain and applies
+    // /// the \a ElementVisitor
+    // template<class ElementVisitor>
+    // void push()
+    // {
+    //     for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+    //     {
+    //         ElementVisitor visitor(*m_pde_ptr);
+    //         //Assemble (fill m_matrix and m_rhs) on patch np
+    //         apply(visitor, np);
+    //     }
+    // }
+
+        /// @brief Iterates over all elements of the domain and applies
     /// the \a ElementVisitor
     template<class ElementVisitor>
     void push()
     {
-        for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+        // Iterate over all patches
+        for (size_t patchIndex = 0; patchIndex < m_pde_ptr->domain().nPatches(); ++patchIndex)
         {
-            ElementVisitor visitor(*m_pde_ptr);
-            //Assemble (fill m_matrix and m_rhs) on patch np
-            apply(visitor, np);
+            const gsBasisRefs<T> bases(m_bases, patchIndex);
+
+            // Choose the domain for iteration:
+            // - If custom domain is set, use it
+            // - Otherwise use the default basis domain
+            const typename gsDomain<T>::Ptr activeDomain =
+                (m_domain.get() != nullptr)
+                ? m_domain
+                : bases[0].domain();
+
+            #pragma omp parallel
+            {
+                gsQuadRule<T> quRule ; // Quadrature rule
+                gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
+                gsVector<T> quWeights; // Temp variable for mapped weights
+
+                // Thread-private visitor (automatically private in omp parallel region)
+                ElementVisitor visitor_(*m_pde_ptr);
+
+                // Initialize visitor data
+                visitor_.initialize(bases, patchIndex, m_options, quRule);
+
+                const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIndex];
+
+                // Iterate over elements in the active domain
+                typename gsBasis<T>::domainIter domIt    = activeDomain->beginAll();
+                typename gsBasis<T>::domainIter domItEnd = activeDomain->endAll();
+
+                // OpenMP work distribution
+#ifdef _OPENMP
+                const int tid = omp_get_thread_num();
+                const int nt  = omp_get_num_threads();
+                domIt += tid;
+                for (; domIt < domItEnd; domIt += nt)
+#else
+                for (; domIt < domItEnd; ++domIt)
+#endif
+                {
+                    // Map the Quadrature rule to the element
+                    quRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights );
+
+                    // Perform required evaluations on the quadrature nodes
+                    visitor_.evaluate(bases, patch, quNodes);
+
+                    // Assemble on element
+                    visitor_.assemble(domIt, quWeights);
+
+                    // Push to global matrix and right-hand side vector
+#pragma omp critical(localToGlobal)
+                    visitor_.localToGlobal(patchIndex, m_ddof, m_system); // omp_locks inside
+                }
+            }
         }
     }
 
@@ -695,13 +816,22 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 
     const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIndex];
 
+    // Choose the domain for iteration:
+    // - For boundary assembly (side != boundary::none): always use full domain
+    //   because decomposed domains may not support beginBdr()
+    // - For volume assembly (side == boundary::none): use custom domain if set
+    const typename gsDomain<T>::Ptr activeDomain =
+        (side != boundary::none)
+        ? bases[0].domain()  // Always use full domain for boundary assembly
+        : (m_domain.get() != nullptr ? m_domain : bases[0].domain());
+
     // Initialize domain element iterator -- using unknown 0
     typename gsBasis<T>::domainIter domIt    = ( side == boundary::none ?
-                                                 bases[0].domain()->beginAll()  :
-                                                 bases[0].domain()->beginBdr(side)) ;
+                                                 activeDomain->beginAll()  :
+                                                 activeDomain->beginBdr(side)) ;
     typename gsBasis<T>::domainIter domItEnd = ( side == boundary::none ?
-                                                 bases[0].domain()->endAll()  :
-                                                 bases[0].domain()->endBdr(side)) ;
+                                                 activeDomain->endAll()  :
+                                                 activeDomain->endBdr(side)) ;
 
     // Start iteration over elements
 #ifdef _OPENMP
