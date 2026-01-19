@@ -976,118 +976,144 @@ void gsSurfMesh::quad_split()
 
 void gsSurfMesh::quad_split(index_t w)
 {
-    gsSurfMesh::Vertex v, vs, ve;
-    gsSurfMesh::Halfedge he, hh, hb;
-    // reserve vertices, edges, faces
-    reserve(n_vertices() + n_edges() + n_faces(),
-        2 * n_edges(), 4 * n_faces());
 
-
-    index_t env = n_vertices(); // edge vertices start here
-
-    // loop over all edges, add edge points
-    Point tmp, dx, tmpA, tmpB, tmpC;
-
-    Vertex_property<bool> master_verts = add_vertex_property<bool>("v:master",false);
-
-    for (auto eit : edges())
+    
+    if (w==0)
+    {
+        return;
+    }
+    else if (w == 1)
+    {
+        quad_split();
+        return;
+    }
+    else 
     {
 
-        he = halfedge(eit, 0);
-        master_verts[from_vertex(he)] = true;
-        dx = (position(to_vertex(he)) - position(from_vertex(he))) / (real_t)(w + 1);
-        tmp = position(from_vertex(he));
+        GISMO_ASSERT(w > 2, "NOT TESTED!");
 
-        hh = he;
-        for (index_t i = 0; i < w; i++)
+        gsSurfMesh::Vertex v, vs, ve;
+        gsSurfMesh::Halfedge he, hh, hb;
+        // reserve vertices, edges, faces
+        reserve(n_vertices() + n_edges() + n_faces(),
+            2 * n_edges(), 4 * n_faces());
+
+
+        gsSurfMesh nm;
+
+        // loop over all edges, add edge points
+        Point tmp, dx, tmpA, tmpB, tmpC;
+
+        Vertex_property<bool> master_verts;
+
+        for (auto vit : vertices())
+            nm.add_vertex(position(vit));
+
+        if (!vprops_.has("v:master"))
+            master_verts = add_vertex_property<bool>("v:master", false);
+        else
+            master_verts = get_vertex_property<bool>("v:master");
+
+
+        if (!nm.vprops_.has("v:neighval"))
+            Vertex_property<int> neighbor_valence_verts = add_vertex_property<int>("v:neighval", 4);
+
+        for (auto eit : edges())
         {
-            tmp += dx;
-            hh = prev_halfedge(opposite_halfedge(insert_vertex(hh, add_vertex(tmp))));
-            hh = next_halfedge(hh);
+
+            he = halfedge(eit, 0);
+            dx = (position(to_vertex(he)) - position(from_vertex(he))) / (real_t)(w + 1);
+            tmp = position(from_vertex(he));
+            master_verts[from_vertex(he)] = true;
+
+            hh = he;
+            for (index_t i = 0; i < w; i++)
+            {
+                tmp += dx;
+                nm.add_vertex(tmp);
+                hh = prev_halfedge(opposite_halfedge(insert_vertex(hh, add_vertex(tmp))));
+                hh = next_halfedge(hh);
+            }
+
+
         }
 
-
-    }
-
-
-    auto points = get_vertex_property<Point>("v:point");
-    std::vector<Vertex> intverts;
-    index_t n = 0, count = 0;
-    for (auto fit : faces())
-    {
-
-
-        // Find one master vertex in the face
-        for (auto hit : halfedges(fit))
-            if (master_verts[from_vertex(hit)])
-            {
-                he = hit;
-                break;
-            }                         
-
-        // Count the number of initial edges
-        hh = he;
-        count = 0;
-        do
+        auto points = get_vertex_property<Point>("v:point");
+        std::vector<Vertex> intverts;
+        index_t n = 0, count = 0;
+        for (auto fit : faces())
         {
-            count++;
-            hh = next_halfedge(hh);
-        } while (he != hh);
-        
 
-        // Create corner subfaces
 
-        n = count / (w + 1); // # of master edges (initial ones)
-        count = 0;
-        hh = he;
-        hb = prev_halfedge(prev_halfedge(he));
-        intverts.clear();
-        do 
-        {
-            count++;
-            tmpA = points[from_vertex(hh)];
-            tmpB = points[to_vertex(hh)];
-            tmpC = points[from_vertex(prev_halfedge(hh))];
+            // Find one master vertex in the face
+            for (auto hit : halfedges(fit))
+                if (master_verts[from_vertex(hit)])
+                {
+                    he = hit;
+                    break;
+                }
 
-            tmp = (tmpB - tmpA) + (tmpC - tmpA) + tmpA;
-            v = add_vertex(tmp);
-            intverts.push_back(v);
-            add_quad(to_vertex(hh), from_vertex(hh), from_vertex(prev_halfedge(hh)), v);
-            hh = next_halfedge(hh);
-            if (count < n)
+            // Count the number of initial edges
+            hh = he;
+            count = 0;
+            do
             {
+                count++;
+                hh = next_halfedge(hh);
+            } while (he != hh);
+
+            // Create corner subfaces
+
+            n = count / (w + 1); // # of master edges (initial ones)
+            count = 0;
+            hh = he;
+            hb = prev_halfedge(prev_halfedge(he));
+            intverts.clear();
+            do
+            {
+                count++;
+                tmpA = points[from_vertex(hh)];
+                tmpB = points[to_vertex(hh)];
+                tmpC = points[from_vertex(prev_halfedge(hh))];
+                tmp = (tmpB - tmpA) + (tmpC - tmpA) + tmpA;
+                v = nm.add_vertex(tmp);
+                intverts.push_back(v);
+                nm.add_quad(Vertex(to_vertex(hh)), Vertex(from_vertex(hh)), Vertex(from_vertex(prev_halfedge(hh))), v);
+                hh = next_halfedge(hh);
+                if (count < n)
+                {
+                    hh = next_halfedge(hh);
+                    hh = next_halfedge(hh);
+
+                }
+            } while (hb != hh);
+
+            // Create interior face(s)
+            hh = he;
+            count = 0;
+            do
+            {
+
+                hh = next_halfedge(hh);
+                vs = intverts[count];
+                if (count == n - 1)
+                    ve = intverts[0];
+                else
+                    ve = intverts[count + 1];
+                nm.add_quad(Vertex(from_vertex(hh)), vs, ve, Vertex(to_vertex(hh)));
                 hh = next_halfedge(hh);
                 hh = next_halfedge(hh);
-
-            }
-        } while (hb != hh);
-
-        // Create interior face(s)
-        hh = he;
-        count = 0;
-        do
-        {
-
-            hh = next_halfedge(hh);
-            vs = intverts[count];
-            if (count == n - 1)
-                ve = intverts[0];
-            else
-                ve = intverts[count+1];
-            add_quad(from_vertex(hh),vs,ve, to_vertex(hh));
-            hh = next_halfedge(hh);
-            hh = next_halfedge(hh);
-            count++;
-        } while (count != n);
+                count++;
+            } while (count != n);
 
 
 
-        add_quad(intverts[0],intverts[3],intverts[2],intverts[1]);
-        delete_face(fit);
-        //return;
+            nm.add_quad(intverts[0], intverts[3], intverts[2], intverts[1]);
+        }
+
+        *this = std::move(nm);
+
     }
-
-
 }
 
 gsSurfMesh::Halfedge

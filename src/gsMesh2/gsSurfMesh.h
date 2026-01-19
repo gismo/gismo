@@ -1551,12 +1551,7 @@ public:
     void quad_split();
     
 
-    /** Quad-split face \c f by splitting according to a pattern
-    *   0 - Uniform splitting
-    *   1 - Exponetial splitting
-    *   2 - B
-    */
-    ///  at uniform positions on each edge respectively
+    ///  Quad-split at uniform positions on each edge respectively
     void quad_split(index_t w);
 
     /** Split the edge \c e by first adding point \c p to the mesh and then
