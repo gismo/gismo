@@ -119,7 +119,14 @@ public: // Loop subdivision
      *
     */
     void loop_subdivide();
-    
+
+public: // curve subdivision schemes
+
+    // Chaikin scheme
+    void chaikin_scheme();
+
+
+
 
 
 };//namespace internal

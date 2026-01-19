@@ -356,7 +356,48 @@ namespace gismo {
     }
 
 
+    void gsSubdivScheme::chaikin_scheme()
+    {
 
+        // Check if we have only curve (one face)
+        GISMO_ASSERT(m_mesh->n_faces() == 1, "For a curve subdivision scheme we need one face");
+
+        // Splitting phase (adding new vertices at edges midpoints)
+        gsSurfMesh::Point tmp, tmps, tmpe;
+        gsSurfMesh::Halfedge he;
+        for (auto eit : m_mesh->edges())
+        {
+            he = m_mesh->halfedge(eit, 0);
+            tmp = 0.5 * (m_mesh->position(m_mesh->from_vertex(he)) + m_mesh->position(m_mesh->to_vertex(he)));
+            m_mesh->insert_vertex(eit, tmp);
+        }
+
+        he = m_mesh->halfedge(gsSurfMesh::Face(0)); // Face's halfedge
+
+        gsSurfMesh::Halfedge hh = he;
+        gsVector<gsSurfMesh::Point> newverts;
+        newverts.resize(m_mesh->n_vertices());
+        index_t i = 0;
+
+        // Averanging phase (Chaikin's scheme does the averenging in 0.5 of two neighbour vertices)
+        do
+        {
+            tmp = 0.5 * (m_mesh->position(m_mesh->from_vertex(hh)) + m_mesh->position(m_mesh->to_vertex(hh)));
+            newverts(i++) = tmp;
+            hh = m_mesh->next_halfedge(hh);
+        } while (he != hh);
+
+        i = 0;
+        hh = he;
+
+        // Generating new curve
+        do
+        {
+            m_mesh->position(m_mesh->to_vertex(hh)) = newverts(i++);
+            hh = m_mesh->next_halfedge(hh);
+        } while (he != hh);
+
+    }
 
 
 
