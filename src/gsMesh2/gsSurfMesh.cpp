@@ -990,7 +990,7 @@ void gsSurfMesh::quad_split(index_t w)
     else 
     {
 
-        GISMO_ASSERT(w > 2, "NOT TESTED!");
+        GISMO_ASSERT(w < 3, "NOT TESTED!");
 
         gsSurfMesh::Vertex v, vs, ve;
         gsSurfMesh::Halfedge he, hh, hb;
@@ -1010,13 +1010,13 @@ void gsSurfMesh::quad_split(index_t w)
             nm.add_vertex(position(vit));
 
         if (!vprops_.has("v:master"))
-            master_verts = add_vertex_property<bool>("v:master", false);
+            master_verts = nm.add_vertex_property<bool>("v:master", false);
         else
-            master_verts = get_vertex_property<bool>("v:master");
+            master_verts = nm.get_vertex_property<bool>("v:master");
 
 
         if (!nm.vprops_.has("v:neighval"))
-            Vertex_property<int> neighbor_valence_verts = add_vertex_property<int>("v:neighval", 4);
+            Vertex_property<int> neighbor_valence_verts = nm.add_vertex_property<int>("v:neighval", 4);
 
         for (auto eit : edges())
         {

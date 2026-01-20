@@ -31,7 +31,10 @@ namespace gismo
 class GISMO_EXPORT gsSubdivScheme
 {
 
-      // type definitions
+
+protected:
+      
+     // type definitions
     typedef gsSurfMesh::Point Point;
     typedef gsSurfMesh::Vertex Vertex;
     typedef gsSurfMesh::Face Face;
