@@ -6,6 +6,7 @@
 */
 
 #include "gsMesh2/gsCatmullClark.h"
+#include "gsMesh2/gsDooSabin.h"
 #include "gsMesh2/gsSubdivisionScheme.h"
 #include <gismo.h>
 
@@ -17,9 +18,7 @@ int main(int argc, char** argv)
     std::string fn("off/cube.off");
     bool plot = false;
     bool dm = false;
-    bool cc = false;
-    bool ds = false;
-    bool loop = false;
+    std::string scheme_name = "Catmull-Clark";
     index_t r(1);
     index_t dsopt(0);
     index_t loopopt(1);
@@ -29,18 +28,12 @@ int main(int argc, char** argv)
     cmd.addPlainString("filename", "File containing mesh", fn);
     cmd.addSwitch("plot", "Plot the results", plot);
     cmd.addSwitch("dual", "Create the dual mesh (graph)", dm);
-    cmd.addSwitch("cc", "Catmull-Clark Subdivision Scheme", cc);
-    cmd.addSwitch("ds", "Doo-Sabin Subdivision Scheme", ds);
-    cmd.addSwitch("loop", "Loop Subdivision Scheme", loop);
+    cmd.addString("s", "scheme", "Choice of Subdivision Scheme", scheme_name);
     cmd.addInt("d", "ds.boundaryMask", "Option for mask in Doo-Sabin subdivision scheme", dsopt);
     cmd.addInt("l", "loop.maskType", "Option for mask in Loop subdivision scheme", loopopt);
     cmd.addInt("r", "ref", "Number of refinement steps", r);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-
-       
-    // If no scheme was chosen, default to Catmull-Clark.
-    if (!(ds || cc || loop))
-        cc =true;
+      
 
     // Read the mesh
     gsSurfMesh mesh;
@@ -51,7 +44,15 @@ int main(int argc, char** argv)
 
     // Currently, Catmull-Clark is always chosen.
     // TODO: Fit other schemes into this class hierarchy and implement the example properly.
-    gsSubdivisionScheme* scheme = new gsCatmullClark();
+    gsSubdivisionScheme* scheme;
+
+    if (scheme_name == "Catmull-Clark"){
+            scheme = new gsCatmullClark();
+    } else if (scheme_name == "Doo-Sabin"){
+            scheme = new gsDooSabin();
+    } else {
+            scheme = new gsCatmullClark();
+    }
 
     scheme->subdivide(&mesh, r);  
    

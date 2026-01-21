@@ -44,6 +44,9 @@ protected: // Constructors
     /// Constructor with a set of options for child classes to use.
     explicit gsSubdivisionScheme(gsOptionList& options) : m_options(options) {}
 
+public: // Destructors
+    virtual ~gsSubdivisionScheme(){}
+
 public: // Options
 
     /// GsOptions used to customize the subdivision scheme.
