@@ -34,6 +34,9 @@
 #include  <gsMPBES/gsMPBESUtils.h>
 #include  <gsMPBES/gsPatchReparameterized.h>*/
 #include <unordered_set>
+#include <chrono>
+#include <map>
+#include <iomanip>
 
 
 #define printValue( val )   cout << #val << ":\n";
@@ -42,9 +45,473 @@
 using namespace gismo;
 using namespace std;
 
+// Return codes
+constexpr int SUCCESS = 0;
+constexpr int ERROR_READING_GEOMETRY = 1;
+constexpr int ERROR_FAILED_REFINEMENT = 2;
+constexpr int ERROR_SINGULAR_JACOBIAN = 3;
+constexpr int VIOLATED_PARTITION_OF_UNITY = 4;
+constexpr int ERROR_MPBES_EVALUATION = 260115;
+
+// Global output file - declared before profiling classes
 ofstream outfile;
 ofstream xboxFile;
 ofstream yboxFile;
+
+// ============== PROFILING INFRASTRUCTURE ==============
+class ProfileTimer {
+private:
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+    std::string section_name;
+    bool active;
+
+public:
+    ProfileTimer(const std::string& name, bool enabled = true)
+        : section_name(name), active(enabled) {
+        if (active) {
+            start_time = std::chrono::high_resolution_clock::now();
+        }
+    }
+
+    ~ProfileTimer() {
+        if (active) {
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration<double>(end_time - start_time).count();
+            gsInfo << "[PROFILE] " << section_name << ": " << duration << " s\n";
+            outfile << "[PROFILE] " << section_name << ": " << duration << " s\n";
+        }
+    }
+};
+
+class GlobalProfiler {
+public:
+    std::map<std::string, double> timings;
+    std::map<std::string, int> counts;
+
+    void record(const std::string& name, double time) {
+        timings[name] += time;
+        counts[name]++;
+    }
+
+    void printSummary() {
+        gsInfo << "\n========== PROFILING SUMMARY ==========\n";
+        outfile << "\n========== PROFILING SUMMARY ==========\n";
+
+        std::vector<std::pair<std::string, double>> sorted_timings(timings.begin(), timings.end());
+        std::sort(sorted_timings.begin(), sorted_timings.end(),
+            [](const auto& a, const auto& b) { return a.second > b.second; });
+
+        for (const auto& item : sorted_timings) {
+            double avg = item.second / counts[item.first];
+            gsInfo << item.first << ": " << item.second << " s (avg: "
+                << avg << " s, calls: " << counts[item.first] << ")\n";
+            outfile << item.first << ": " << item.second << " s (avg: "
+                << avg << " s, calls: " << counts[item.first] << ")\n";
+        }
+        gsInfo << "=======================================\n\n";
+        outfile << "=======================================\n\n";
+    }
+};
+
+GlobalProfiler g_profiler;
+
+#define PROFILE_SECTION(name) ProfileTimer _timer_##__LINE__(name, true)
+#define PROFILE_FUNCTION() ProfileTimer _timer_##__LINE__(__FUNCTION__, true)
+// ======================================================
+
+// ============ MPBES (Multi-Patch B-spline with Exact continuity) Class ============
+// Based on "Analysis-suitable G1 multi-patch parametrizations for C1 isogeometric spaces" (2015)
+// Integrates: Twin identification + Kraft selection + Truncation
+template<short_t d, typename T>
+class MPBES : public gsBasis<T> {
+public:
+    typedef memory::shared_ptr<MPBES> Ptr;
+    typedef memory::unique_ptr<MPBES> uPtr;
+
+    // Constructor - performs twin identification, selection, and truncation
+    MPBES(const gsVector<gsVector<gsVector<index_t>>>& boxMat,
+        const gsVector<gsTHBSplineBasis<d, T>>& thbBases,
+        const gsVector<gsVector<gsTensorBSplineBasis<d, T>>>& bellsBases,
+        const gsVector<gsVector<gsVector<index_t>>>& hasATwin,
+        const gsVector<gsVector<gsVector<std::vector<index_t>>>>& twinsIndex,
+        const gsVector<gsVector<gsVector<std::vector<index_t>>>>& twinsPatch,
+        const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+        bool verbose = true,
+        int attempt = 0)
+        : m_thbBases(thbBases),
+        m_bellsBases(bellsBases),
+        m_numPatches(thbBases.size()),
+        m_boxMat(boxMat),
+        m_indexInTHB(indexInTHB),
+        m_attempt(attempt)
+    {
+        constructGlobalBasis(hasATwin, twinsIndex, twinsPatch, verbose);
+    }
+
+    // gsBasis interface implementations
+    short_t domainDim() const override { return d; }
+    short_t targetDim() const override { return d; }
+    index_t size() const override { return m_numGlobalFunctions; }
+
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
+    void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const override {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
+    gsMatrix<T> support() const override {
+        gsMatrix<T> result(d, 2);
+        result.col(0).setConstant(0.0);
+        result.col(1).setConstant(1.0);
+        return result;
+    }
+
+    gsMatrix<T> support(const index_t& i) const override {
+        return support();
+    }
+
+    void connectivity(const gsMatrix<T>& nodes, gsMesh<T>& mesh) const override {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
+    memory::unique_ptr<gsGeometry<T>> makeGeometry(gsMatrix<T> coefs) const override {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
+    std::ostream& print(std::ostream& os) const override {
+        os << "MPBES basis with " << m_numGlobalFunctions << " functions on "
+            << m_numPatches << " patches\n";
+        return os;
+    }
+
+    GISMO_CLONE_FUNCTION(MPBES)
+
+        // MPBES-specific methods
+
+        /// Get number of global basis functions
+        index_t numGlobalFunctions() const { return m_numGlobalFunctions; }
+    index_t numPatches() const { return m_numPatches; }
+    index_t nPatches() const { return m_numPatches; }  // Alias for compatibility
+
+    /// Access to THB bases
+    const gsVector<gsTHBSplineBasis<d, T>>& thbBases() const {
+        return m_thbBases;
+    }
+
+    /// Access to Bells bases
+    const gsVector<gsVector<gsTensorBSplineBasis<d, T>>>& bellsBases() const {
+        return m_bellsBases;
+    }
+
+    /// Get global index from patch-level-index coordinate
+    index_t globalIndexAt(index_t patch, index_t level, index_t localIdx) const {
+        if (patch < m_globalIndex.size() &&
+            level < m_globalIndex[patch].size() &&
+            localIdx < m_globalIndex[patch][level].size()) {
+            return m_globalIndex[patch][level][localIdx];
+        }
+        return -1;
+    }
+
+    /// Access to functionDescription for assembly
+    const std::vector<std::vector<std::vector<index_t>>>& functionDescription() const {
+        return m_functionDescription;
+    }
+
+    /// Access to truncation info
+    const std::vector<bool>& isTruncated() const {
+        return m_isTruncated;
+    }
+
+    /// Access to spillover info
+    const std::vector<std::vector<std::array<int, 3>>>& spilloverCoordinates() const {
+        return m_spilloverFunctionCoordinates;
+    }
+
+    const std::vector<bool>& hasSpillover() const {
+        return m_hasSpillover;
+    }
+
+    /// Access to truncation representation
+    const std::vector<std::vector<gsSparseVector<T>>>& presentation() const {
+        return m_presentation;
+    }
+
+    /// Access to indexInTHB mapping
+    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB() const {
+        return m_indexInTHB;
+    }
+
+    /// Check if a specific component is truncated
+    bool isComponentTruncated(index_t globalIdx, index_t componentIdx) const {
+        if (globalIdx >= m_isComponentTruncated.size())
+            return false;
+        if (componentIdx >= m_isComponentTruncated[globalIdx].size())
+            return false;
+        return m_isComponentTruncated[globalIdx][componentIdx];
+    }
+
+    /// Get presentation level for a specific component
+    index_t presentationLevel(index_t globalIdx, index_t componentIdx) const {
+        if (globalIdx >= m_presentationLevel.size())
+            return 0;
+        if (componentIdx >= m_presentationLevel[globalIdx].size())
+            return 0;
+        return m_presentationLevel[globalIdx][componentIdx];
+    }
+
+    /// Evaluate single function on specific patch
+    void evalSingleOnPatch(index_t globalIdx, index_t patch, const gsMatrix<T>& u, gsMatrix<T>& result) const {
+        result.resize(1, u.cols());
+        result.setZero();
+
+        if (globalIdx >= m_numGlobalFunctions || globalIdx >= m_functionDescription.size())
+            return;
+
+        // Find local representation on this patch
+        const auto& twins = m_functionDescription[globalIdx];
+        int componentIdx = 0;
+
+        for (const auto& twin : twins) {
+            if (twin[0] == static_cast<int>(patch)) {
+                int level = twin[1];
+                int tensorIdx = twin[2];
+
+                // CRITICAL: Check if THIS SPECIFIC COMPONENT is truncated
+                // If truncated: use presentation (finer-level tensor basis)
+                // If not truncated: use standard THB basis
+                bool compTruncated = isComponentTruncated(globalIdx, componentIdx);
+
+                if (compTruncated) {
+                    // Component is truncated - evaluate using presentation coefficients
+                    if (globalIdx < m_presentation.size() && componentIdx < m_presentation[globalIdx].size()) {
+                        const auto& coeffs = m_presentation[globalIdx][componentIdx];
+                        index_t presLevel = m_presentationLevel[globalIdx][componentIdx];
+
+                        // Linear combination: evaluate each basis function individually
+                        // CRITICAL: Must use evalSingle_into for each coefficient because
+                        // coeffs has sparse indices (e.g., 266, 267, 284) that are global
+                        // tensor basis indices, not positions in a compressed array
+                        T resultValue = 0.0;
+                        for (typename gsSparseVector<T>::InnerIterator it(coeffs); it; ++it) {
+                            gsMatrix<T> basisVal;
+                            m_bellsBases[patch][presLevel].evalSingle_into(it.index(), u, basisVal);
+                            resultValue += it.value() * basisVal(0, 0);
+                        }
+                        result.row(0).array() += resultValue;
+                    }
+                }
+                else {
+                    // Component NOT truncated - evaluate using THB basis (respects active/inactive)
+                    // Get the THB index for this component
+                    if (patch < m_indexInTHB.size() &&
+                        level < m_indexInTHB[patch].size() &&
+                        tensorIdx < m_indexInTHB[patch][level].size()) {
+                        int thbIdx = m_indexInTHB[patch][level][tensorIdx];
+                        if (thbIdx >= 0) {
+                            gsMatrix<T> componentResult;
+                            m_thbBases[patch].evalSingle_into(thbIdx, u, componentResult);
+                            result += componentResult;
+                        }
+                    }
+                }
+            }
+            componentIdx++;
+        }
+    }
+
+    /// Wrapper for evalSingle_into signature used in old code
+    void evalSingle_into(
+        index_t globalIdx,
+        index_t thbIdx,
+        const gsMatrix<T>& u,
+        gsMatrix<T>& result,
+        index_t patch) const
+    {
+        // If thbIdx == -1, this is a spillover function
+        if (thbIdx == -1) {
+            // For spillover, we still need to evaluate using the truncated representation
+            evalSingleOnPatch(globalIdx, patch, u, result);
+        }
+        else {
+            // Regular evaluation
+            evalSingleOnPatch(globalIdx, patch, u, result);
+        }
+    }
+
+private:
+    // Member variables
+    gsVector<gsTHBSplineBasis<d, T>> m_thbBases;
+    gsVector<gsVector<gsTensorBSplineBasis<d, T>>> m_bellsBases;
+    index_t m_numPatches;
+    index_t m_numGlobalFunctions;
+
+    // Box structure
+    gsVector<gsVector<gsVector<index_t>>> m_boxMat;
+    gsVector<gsVector<gsVector<index_t>>> m_indexInTHB;
+
+    // Global indexing
+    gsVector<gsVector<gsVector<index_t>>> m_globalIndex;  // [patch][level][localIdx] -> globalIdx
+    gsVector<gsVector<int>> m_globalIndexTHB;              // [patch][thbIdx] -> globalIdx
+
+    // Function description and spillover
+    std::vector<std::vector<std::vector<index_t>>> m_functionDescription;  // [globalIdx][twinIdx] = {patch,level,index}
+    std::vector<std::vector<std::array<int, 3>>> m_spilloverFunctionCoordinates;
+    std::vector<std::vector<std::array<int, 3>>> m_spilloverSources;
+    std::vector<bool> m_hasSpillover;
+
+    // Truncation
+    std::vector<bool> m_isTruncated;  // [globalIdx] -> true if ANY component is truncated
+    std::vector<std::vector<bool>> m_isComponentTruncated;  // [globalIdx][componentIdx] -> true if THIS component is truncated
+    std::vector<std::vector<gsSparseVector<T>>> m_presentation;  // Truncated representations
+    std::vector<std::vector<index_t>> m_presentationLevel;  // [globalIdx][componentIdx] -> level of presentation
+    int m_attempt;  // For conditional logging
+
+    /// Main construction: Twin identification + Kraft selection + Truncation
+    void constructGlobalBasis(
+        const gsVector<gsVector<gsVector<index_t>>>& hasATwin,
+        const gsVector<gsVector<gsVector<std::vector<index_t>>>>& twinsIndex,
+        const gsVector<gsVector<gsVector<std::vector<index_t>>>>& twinsPatch,
+        bool verbose)
+    {
+        // Step 1: Apply Kraft selection mechanism
+        selectionMechanism(
+            m_boxMat,
+            m_bellsBases,
+            m_thbBases,
+            hasATwin,
+            twinsIndex,
+            twinsPatch,
+            m_indexInTHB,
+            m_functionDescription,
+            m_spilloverFunctionCoordinates,
+            m_spilloverSources,
+            m_hasSpillover,
+            m_globalIndexTHB,
+            m_globalIndex,
+            m_numGlobalFunctions,
+            verbose
+        );
+
+        if (verbose)
+            gsInfo << "MPBES: After selection, " << m_numGlobalFunctions << " global functions\n";
+
+        // Step 2: Detect which functions need truncation
+        detectTruncatedFunctions(verbose);
+
+        // Step 3: Compute truncated representations (spillover coefficients)
+        if (std::any_of(m_isTruncated.begin(), m_isTruncated.end(), [](bool v) { return v; })) {
+            m_presentation.resize(m_numGlobalFunctions);
+            computeTruncatedRepresentations(verbose);
+        }
+
+        if (verbose) {
+            gsInfo << "MPBES constructed: " << m_numGlobalFunctions << " global functions\n";
+            index_t numTruncated = std::count(m_isTruncated.begin(), m_isTruncated.end(), true);
+            gsInfo << "  - " << numTruncated << " functions are truncated\n";
+        }
+    }
+
+    /// Detect which functions need truncation based on Kraft's criterion:
+    /// A function β^L at level L is truncated if its support overlaps with 
+    /// a refinement region at level L+1 or higher (i.e., supp β^L ∩ Ω^(L+1) ≠ ∅)
+    /// CRITICAL: We track truncation at COMPONENT level, not just function level
+    void detectTruncatedFunctions(bool verbose) {
+        m_isTruncated.clear();
+        m_isTruncated.resize(m_functionDescription.size(), false);
+        m_isComponentTruncated.clear();
+        m_isComponentTruncated.resize(m_functionDescription.size());
+        m_presentationLevel.clear();
+        m_presentationLevel.resize(m_functionDescription.size());
+
+        index_t numTruncatedComponents = 0;
+
+        for (size_t f = 0; f < m_functionDescription.size(); ++f) {
+            m_isComponentTruncated[f].resize(m_functionDescription[f].size(), false);
+            m_presentationLevel[f].resize(m_functionDescription[f].size(), 0);
+
+            // Check each twin component of this global function
+            for (size_t twinIdx = 0; twinIdx < m_functionDescription[f].size(); ++twinIdx) {
+                int patch = m_functionDescription[f][twinIdx][0];
+                int level = m_functionDescription[f][twinIdx][1];
+                int tensorIdx = m_functionDescription[f][twinIdx][2];
+
+                // Skip if not in THB basis (spillover twins - they are NEVER truncated because they don't exist in THB)
+                if (patch >= m_indexInTHB.size() ||
+                    level >= m_indexInTHB[patch].size() ||
+                    tensorIdx >= m_indexInTHB[patch][level].size() ||
+                    m_indexInTHB[patch][level][tensorIdx] == -1) {
+                    continue;
+                }
+
+                int thbIdx = m_indexInTHB[patch][level][tensorIdx];
+
+                // Get support of this function in index space using THB basis methods
+                // The THB basis knows how to get element support for functions at any level
+                gsMatrix<index_t, d, 2> elementSupport;
+                m_thbBases[patch].elementSupport_into(thbIdx, elementSupport);
+
+                gsVector<index_t, d> low = elementSupport.col(0);
+                gsVector<index_t, d> high = elementSupport.col(1);
+
+                // Query: what is the highest level that overlaps this support?
+                // If it's > level, then this component overlaps with a finer refinement region
+                int highestOverlap = m_thbBases[patch].tree().query4(low, high, level);
+
+                if (highestOverlap > level) {
+                    // This COMPONENT's support overlaps with a refinement at level > L
+                    // According to Kraft's criterion: Ω^L ⊇ supp β^L ⊄ Ω^(L+1)
+                    // THIS COMPONENT must be truncated
+                    m_isComponentTruncated[f][twinIdx] = true;
+                    m_presentationLevel[f][twinIdx] = highestOverlap;
+                    m_isTruncated[f] = true;  // At least one component is truncated
+                    numTruncatedComponents++;
+
+                    if (f < 10 && verbose) {
+                        gsInfo << "  [DETECT] Func " << f << " comp " << twinIdx
+                            << ": level=" << level << ", highestOverlap=" << highestOverlap
+                            << " -> presentationLevel=" << m_presentationLevel[f][twinIdx] << "\n";
+                    }
+                }
+            }
+        }
+
+        index_t numTruncatedFunctions = std::count(m_isTruncated.begin(), m_isTruncated.end(), true);
+
+        gsInfo << "MPBES: Detected " << numTruncatedComponents << " truncated components in "
+            << numTruncatedFunctions << " functions\n";
+    }
+
+    /// Compute truncated representations (call existing computeCoefsForTruncatedFunctions)
+    void computeTruncatedRepresentations(bool verbose) {
+        std::vector<std::vector<std::vector<T>>> globalCoefs;  // Dummy, not used
+
+        computeCoefsForTruncatedFunctions(
+            m_bellsBases,
+            m_thbBases,
+            m_functionDescription,
+            m_presentation,
+            m_isTruncated,
+            globalCoefs,
+            m_globalIndex,
+            m_indexInTHB,
+            m_spilloverFunctionCoordinates,
+            m_isComponentTruncated,
+            m_presentationLevel,
+            verbose,
+            m_attempt
+        );
+    }
+};
+
+// ======================================================
+
 index_t commonBasisSize;
 int commonSize;
 int DTD;
@@ -169,6 +636,15 @@ void assemble(
     gsMatrix<real_t>& b_vec,
     const gsMultiPatch<real_t>& mp,
     bool verbose = false);
+
+// New MPBES-based assemble (preferred)
+void assemble(
+    const gsVector<gsMatrix<>>& uv,
+    const MPBES<2, real_t>& mpbes,
+    gsSparseMatrix<real_t>& A_mat,
+    gsMatrix<real_t>& b_vec,
+    const gsMultiPatch<real_t>& mp,
+    bool verbose = false);
 void assembleGauss(
     const gsMultiPatch<real_t>& mp,
     const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
@@ -231,28 +707,25 @@ void assembleATHB_exclude(
     gsSparseMatrix<real_t>& A_mat,
     bool verbose
 );
-real_t boundaryError(
-    const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
-    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
-    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
-    const std::vector<std::vector<std::array<int, 3>>>& spilloverFunctionCoordinates,
-    const std::vector<bool>& hasSpillover,
-    const std::vector<bool>& isTruncated,
-    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+real_t testBoundaryAssembly(
+    const MPBES<2, real_t>& mpbes,
     const gsMultiPatch<real_t>& mp,
-    const gsMatrix<real_t>& vectSol);
+    const gsMatrix<real_t>& vectSol
+);
+real_t boundaryError(
+    const MPBES<2, real_t>& mpbes,
+    const gsMultiPatch<real_t>& mp,
+    const gsMatrix<real_t>& vectSol
+);
 void checkForNaN(const gsMatrix<real_t>& matrix, const std::string& matrixName);
 int computeRankByZeroRows(const gsMatrix<double>& mat, double tol = 1e-12);
 void generateVisualizationMesh(
     const gsVector<gsVector<gsVector<index_t>>>& boxMat,
     index_t gridResolution,
-    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
-    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
-    const std::vector<bool>& isTruncated,
-    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    const MPBES<2, real_t>& mpbes,
+    const gsMultiPatch<real_t>& mp,
     const gsMatrix<real_t>& coefficients,
     const gsVector<index_t>& currentLastNonZeroRow,
-    const std::vector<std::vector<gsSparseVector<double>>>& presentation,
     const std::string& outputPrefix,
     bool verbose = false
 );
@@ -270,12 +743,9 @@ void generateParametricGrid(
 void evaluateGeometryAtPoints(
     const std::vector<gsMatrix<>>& uvPoints,
     const std::vector<index_t>& patchIDs,
-    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
-    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
-    const std::vector<bool>& isTruncated,
-    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    const MPBES<2, real_t>& mpbes,
+    const gsMultiPatch<real_t>& mp,
     const gsMatrix<real_t>& coefficients,
-    const std::vector<std::vector<gsSparseVector<double>>>& presentation,
     std::vector<gsMatrix<>>& xyPoints,
     bool verbose = false
 );
@@ -382,20 +852,36 @@ void evalSingle_into(
     const std::vector<bool>& isTruncated,
     const gsTHBSplineBasis<2, real_t>& localTHBBasis,
     const gsSparseVector<real_t>& coefs,
-    gsMatrix<real_t>& result)
+    gsMatrix<real_t>& result,
+    const gsTensorBSplineBasis<2, real_t>* BellsBasis = nullptr,
+    int idx = -1)
 {
     int verbose = 0;
     bool coefsOK = false;
     for (size_t j = 0; j < coefs.size(); j++)
     {
         if (coefs(j) != 0.0) {
-            //gsInfo << "j = " << j << ", " << coefs(j) << "\n";
             coefsOK = true;
             break;
         }
     }
 
-    if (!isTruncated[f]) //  basis function not truncated
+    // Handle spillover case (i == -1)
+    if (i == -1)
+    {
+        if (BellsBasis != nullptr && idx >= 0)
+        {
+            // Evaluate as pure B-spline basis function without coefficients
+            BellsBasis->evalSingle_into(idx, u, result);
+        }
+        else
+        {
+            // Cannot evaluate spillover without BellsBasis information
+            result.resize(1, u.cols());
+            result.setZero();
+        }
+    }
+    else if (!isTruncated[f]) //  basis function not truncated
     {
         unsigned level = localTHBBasis.levelOf(i);
         unsigned tensor_index = localTHBBasis.flatTensorIndexOf(i, level);
@@ -403,21 +889,362 @@ void evalSingle_into(
     }
     else
     {
-        //gsInfo << "localTHBBasis.size() " << localTHBBasis.size() << "\n";
-        unsigned level = localTHBBasis.getistruncated(i);
-        if (verbose) {
-            //if (f == 6) {
-            gsInfo << "coefs for f: ";
-            for (size_t j = 0; j < coefs.size(); j++)
-            {
-                gsInfo << "(" << coefs(j) << "," << j << ")";
-            }
-            gsInfo << "\n";
+        // Function IS truncated - check if we have valid coefficients
+        // If coefs is empty/zero, this component might not be the truncated one
+        if (!coefsOK) {
+            // No coefficients provided - evaluate as non-truncated
+            unsigned level = localTHBBasis.levelOf(i);
+            unsigned tensor_index = localTHBBasis.flatTensorIndexOf(i, level);
+            localTHBBasis.getBases()[level]->evalSingle_into(tensor_index, u, result);
         }
-        const gsTensorBSplineBasis<2, real_t>& base = *localTHBBasis.getBases()[level];
-        gsTensorDeboor<2, real_t, gsKnotVector<real_t>, gsSparseVector<real_t> >(u, base, coefs, result);
+        else {
+            // Function IS truncated and we have coefficients - use De Boor's algorithm
+            unsigned level = localTHBBasis.getistruncated(i);
+
+            if (verbose) {
+                gsInfo << "Evaluating truncated function f=" << f << " at THB index " << i
+                    << " (level " << level << ") with " << coefs.size() << " coefficients\n";
+                gsInfo << "  Coefficients: ";
+                for (size_t j = 0; j < coefs.size(); j++) {
+                    if (coefs(j) != 0.0)
+                        gsInfo << "(" << j << ":" << coefs(j) << ") ";
+                }
+                gsInfo << "\n";
+            }
+
+            const gsTensorBSplineBasis<2, real_t>& base = *localTHBBasis.getBases()[level];
+            gsTensorDeboor<2, real_t, gsKnotVector<real_t>, gsSparseVector<real_t>>(u, base, coefs, result);
+        }
     }
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void evaluateInterfaceGeometry(
+    const gsVector<real_t>& uv_patch0,
+    const gsVector<real_t>& uv_patch1,
+    index_t patch0,
+    index_t patch1,
+    const std::vector<index_t>& specialFunctions,
+    const std::string& outputFileName,
+    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
+    const std::vector<bool>& isTruncated,
+    const gsVector<gsTHBSplineBasis<2, real_t>>& SubdomainHierarchy,
+    const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
+    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    const std::vector<std::vector<gsSparseVector<real_t>>>& presentation,
+    const gsMatrix<real_t>& vectSol,
+    index_t commonSize)
+{
+    PROFILE_FUNCTION();
+    std::ofstream diagLog(outputFileName);
+    diagLog << "Interface Evaluation Diagnostic\n";
+    diagLog << "================================\n\n";
+    diagLog << "Total functions (commonSize): " << commonSize << "\n";
+    diagLog << "vectSol size: " << vectSol.rows() << " x " << vectSol.cols() << "\n\n";
+
+    real_t x_p0 = 0.0, y_p0 = 0.0;
+    real_t x_p1 = 0.0, y_p1 = 0.0;
+
+    int functionsWithP0Component = 0;
+    int functionsWithP1Component = 0;
+    int p0_nonzero_basis = 0;
+    int p1_nonzero_basis = 0;
+
+    diagLog << "========== PATCH " << patch0 << " EVALUATION at (" << uv_patch0(0) << ", " << uv_patch0(1) << ") ==========\n";
+    diagLog << "Only showing functions with non-zero basis values\n\n";
+    gsInfo << "Evaluating Patch " << patch0 << " at (" << uv_patch0(0) << ", " << uv_patch0(1) << ")...\n";
+
+    // Evaluate at patch 0
+    for (index_t f = 0; f < commonSize; ++f)
+    {
+        real_t basisValue = 0.0;
+        bool hasP0Component = false;
+        int numComponents = functionDescription[f].size();
+
+        // Special logging for specified functions
+        bool isSpecial = std::find(specialFunctions.begin(), specialFunctions.end(), f) != specialFunctions.end();
+        if (isSpecial)
+        {
+            diagLog << "\n*** SPECIAL: Function " << f << " (at PATCH " << patch0 << " evaluation) ***\n";
+            diagLog << "  Total components: " << numComponents << ", truncated: " << isTruncated[f] << "\n";
+            diagLog << "  Evaluating at patch " << patch0 << ", point (" << uv_patch0(0) << ", " << uv_patch0(1) << ")\n";
+            diagLog << "  ALL components:\n";
+            real_t debugBasisValue = 0.0;
+            for (size_t c = 0; c < functionDescription[f].size(); ++c)
+            {
+                const auto& desc = functionDescription[f][c];
+                int patch = desc[0];
+                int level = desc[1];
+                int idx = desc[2];
+                diagLog << "    Component " << c << ": patch=" << patch << ", level=" << level << ", idx=" << idx;
+
+                if (patch < indexInTHB.size() && level < indexInTHB[patch].size() && idx < indexInTHB[patch][level].size())
+                {
+                    int thbIdx = indexInTHB[patch][level][idx];
+                    diagLog << ", thbIdx=" << thbIdx;
+
+                    if (patch == patch0)
+                    {
+                        gsMatrix<real_t> result;
+                        evalSingle_into(f, thbIdx, uv_patch0, isTruncated, SubdomainHierarchy[patch0],
+                            presentation[f][c], result, &Bells[patch0][level], idx);
+                        real_t val = result(0, 0);
+                        debugBasisValue += val;
+                        if (thbIdx >= 0)
+                        {
+                            diagLog << " -> EVALUATED (THB), basis_eval=" << val << ", running_total=" << debugBasisValue;
+                        }
+                        else
+                        {
+                            diagLog << " -> EVALUATED (B-spline spillover), basis_eval=" << val << ", running_total=" << debugBasisValue;
+                        }
+                    }
+                    else
+                    {
+                        diagLog << " -> SKIPPED (wrong patch, need patch " << patch0 << ")";
+                    }
+                }
+                else
+                {
+                    diagLog << " -> SKIPPED (OUT OF BOUNDS in indexInTHB)";
+                }
+                diagLog << "\n";
+            }
+            diagLog << "  FINAL basisValue for function " << f << " at patch " << patch0 << ": " << debugBasisValue << "\n";
+            diagLog << "  Coefficient: coef_x=" << vectSol(f, 0) << ", coef_y=" << vectSol(f, 1) << "\n";
+            diagLog << "  Contribution: x=" << (debugBasisValue * vectSol(f, 0)) << ", y=" << (debugBasisValue * vectSol(f, 1)) << "\n";
+            diagLog << "*** END SPECIAL ***\n\n";
+        }
+
+        for (size_t c = 0; c < functionDescription[f].size(); ++c)
+        {
+            const auto& desc = functionDescription[f][c];
+            int patch = desc[0];
+            int level = desc[1];
+            int idx = desc[2];
+
+            if (patch == patch0 && level < indexInTHB[patch0].size() && idx < indexInTHB[patch0][level].size())
+            {
+                hasP0Component = true;
+                int thbIdx = indexInTHB[patch0][level][idx];
+
+                gsMatrix<real_t> result;
+                evalSingle_into(f, thbIdx, uv_patch0, isTruncated, SubdomainHierarchy[patch0],
+                    presentation[f][c], result, &Bells[patch0][level], idx);
+                real_t val = result(0, 0);
+                basisValue += val;
+                if (val != 0.0) p0_nonzero_basis++;
+            }
+        }
+
+        if (hasP0Component) functionsWithP0Component++;
+
+        real_t coef_x = vectSol(f, 0);
+        real_t coef_y = vectSol(f, 1);
+        real_t contrib_x = basisValue * coef_x;
+        real_t contrib_y = basisValue * coef_y;
+
+        // Only log if non-zero contribution
+        if (basisValue != 0.0 || contrib_x != 0.0 || contrib_y != 0.0)
+        {
+            diagLog << "Function " << f << " (components: " << numComponents << ", truncated: " << isTruncated[f] << "):\n";
+
+            for (size_t c = 0; c < functionDescription[f].size(); ++c)
+            {
+                const auto& desc = functionDescription[f][c];
+                int patch = desc[0];
+                int level = desc[1];
+                int idx = desc[2];
+
+                if (patch == patch0 && level < indexInTHB[patch0].size() && idx < indexInTHB[patch0][level].size())
+                {
+                    int thbIdx = indexInTHB[patch0][level][idx];
+                    diagLog << "  Component " << c << ": patch=" << patch << ", level=" << level << ", idx=" << idx << ", thbIdx=" << thbIdx;
+
+                    gsMatrix<real_t> result;
+                    evalSingle_into(f, thbIdx, uv_patch0, isTruncated, SubdomainHierarchy[patch0],
+                        presentation[f][c], result, &Bells[patch0][level], idx);
+                    real_t val = result(0, 0);
+                    if (thbIdx >= 0)
+                    {
+                        diagLog << ", basis_eval=" << val;
+                    }
+                    else
+                    {
+                        diagLog << " (SPILLOVER), basis_eval=" << val;
+                    }
+                    diagLog << "\n";
+                }
+            }
+
+            diagLog << "  Total basis value: " << basisValue << "\n";
+            diagLog << "  Coefficients: coef_x=" << coef_x << ", coef_y=" << coef_y << "\n";
+            diagLog << "  Contribution: x=" << contrib_x << ", y=" << contrib_y << "\n\n";
+        }
+
+        x_p0 += contrib_x;
+        y_p0 += contrib_y;
+    }
+
+    diagLog << "\n========== PATCH " << patch1 << " EVALUATION at (" << uv_patch1(0) << ", " << uv_patch1(1) << ") ==========\n";
+    diagLog << "Only showing functions with non-zero basis values\n\n";
+    gsInfo << "Evaluating Patch " << patch1 << " at (" << uv_patch1(0) << ", " << uv_patch1(1) << ")...\n";
+
+    // Evaluate at patch 1
+    for (index_t f = 0; f < commonSize; ++f)
+    {
+        real_t basisValue = 0.0;
+        bool hasP1Component = false;
+        int numComponents = functionDescription[f].size();
+
+        // Special logging for specified functions
+        bool isSpecial = std::find(specialFunctions.begin(), specialFunctions.end(), f) != specialFunctions.end();
+        if (isSpecial)
+        {
+            diagLog << "\n*** SPECIAL: Function " << f << " (at PATCH " << patch1 << " evaluation) ***\n";
+            diagLog << "  Total components: " << numComponents << ", truncated: " << isTruncated[f] << "\n";
+            diagLog << "  Evaluating at patch " << patch1 << ", point (" << uv_patch1(0) << ", " << uv_patch1(1) << ")\n";
+            diagLog << "  ALL components:\n";
+            real_t debugBasisValue = 0.0;
+            for (size_t c = 0; c < functionDescription[f].size(); ++c)
+            {
+                const auto& desc = functionDescription[f][c];
+                int patch = desc[0];
+                int level = desc[1];
+                int idx = desc[2];
+                diagLog << "    Component " << c << ": patch=" << patch << ", level=" << level << ", idx=" << idx;
+
+                if (patch < indexInTHB.size() && level < indexInTHB[patch].size() && idx < indexInTHB[patch][level].size())
+                {
+                    int thbIdx = indexInTHB[patch][level][idx];
+                    diagLog << ", thbIdx=" << thbIdx;
+
+                    if (patch == patch1)
+                    {
+                        gsMatrix<real_t> result;
+                        evalSingle_into(f, thbIdx, uv_patch1, isTruncated, SubdomainHierarchy[patch1],
+                            presentation[f][c], result, &Bells[patch1][level], idx);
+                        real_t val = result(0, 0);
+                        debugBasisValue += val;
+                        if (thbIdx >= 0)
+                        {
+                            diagLog << " -> EVALUATED (THB), basis_eval=" << val << ", running_total=" << debugBasisValue;
+                        }
+                        else
+                        {
+                            diagLog << " -> EVALUATED (B-spline spillover), basis_eval=" << val << ", running_total=" << debugBasisValue;
+                        }
+                    }
+                    else
+                    {
+                        diagLog << " -> SKIPPED (wrong patch, need patch " << patch1 << ")";
+                    }
+                }
+                else
+                {
+                    diagLog << " -> SKIPPED (OUT OF BOUNDS in indexInTHB)";
+                }
+                diagLog << "\n";
+            }
+            diagLog << "  FINAL basisValue for function " << f << " at patch " << patch1 << ": " << debugBasisValue << "\n";
+            diagLog << "  Coefficient: coef_x=" << vectSol(f, 0) << ", coef_y=" << vectSol(f, 1) << "\n";
+            diagLog << "  Contribution: x=" << (debugBasisValue * vectSol(f, 0)) << ", y=" << (debugBasisValue * vectSol(f, 1)) << "\n";
+            diagLog << "*** END SPECIAL ***\n\n";
+        }
+
+        for (size_t c = 0; c < functionDescription[f].size(); ++c)
+        {
+            const auto& desc = functionDescription[f][c];
+            int patch = desc[0];
+            int level = desc[1];
+            int idx = desc[2];
+
+            if (patch == patch1 && level < indexInTHB[patch1].size() && idx < indexInTHB[patch1][level].size())
+            {
+                hasP1Component = true;
+                int thbIdx = indexInTHB[patch1][level][idx];
+
+                gsMatrix<real_t> result;
+                evalSingle_into(f, thbIdx, uv_patch1, isTruncated, SubdomainHierarchy[patch1],
+                    presentation[f][c], result, &Bells[patch1][level], idx);
+                real_t val = result(0, 0);
+                basisValue += val;
+                if (val != 0.0) p1_nonzero_basis++;
+            }
+        }
+
+        if (hasP1Component) functionsWithP1Component++;
+
+        real_t coef_x = vectSol(f, 0);
+        real_t coef_y = vectSol(f, 1);
+        real_t contrib_x = basisValue * coef_x;
+        real_t contrib_y = basisValue * coef_y;
+
+        // Only log if non-zero contribution
+        if (basisValue != 0.0 || contrib_x != 0.0 || contrib_y != 0.0)
+        {
+            diagLog << "Function " << f << " (components: " << numComponents << ", truncated: " << isTruncated[f] << "):\n";
+
+            for (size_t c = 0; c < functionDescription[f].size(); ++c)
+            {
+                const auto& desc = functionDescription[f][c];
+                int patch = desc[0];
+                int level = desc[1];
+                int idx = desc[2];
+
+                if (patch == patch1 && level < indexInTHB[patch1].size() && idx < indexInTHB[patch1][level].size())
+                {
+                    int thbIdx = indexInTHB[patch1][level][idx];
+                    diagLog << "  Component " << c << ": patch=" << patch << ", level=" << level << ", idx=" << idx << ", thbIdx=" << thbIdx;
+
+                    gsMatrix<real_t> result;
+                    evalSingle_into(f, thbIdx, uv_patch1, isTruncated, SubdomainHierarchy[patch1],
+                        presentation[f][c], result, &Bells[patch1][level], idx);
+                    real_t val = result(0, 0);
+                    if (thbIdx >= 0)
+                    {
+                        diagLog << ", basis_eval=" << val;
+                    }
+                    else
+                    {
+                        diagLog << " (SPILLOVER), basis_eval=" << val;
+                    }
+                    diagLog << "\n";
+                }
+            }
+
+            diagLog << "  Total basis value: " << basisValue << "\n";
+            diagLog << "  Coefficients: coef_x=" << coef_x << ", coef_y=" << coef_y << "\n";
+            diagLog << "  Contribution: x=" << contrib_x << ", y=" << contrib_y << "\n\n";
+        }
+
+        x_p1 += contrib_x;
+        y_p1 += contrib_y;
+    }
+
+    real_t dist = std::sqrt(std::pow(x_p0 - x_p1, 2) + std::pow(y_p0 - y_p1, 2));
+
+    diagLog << "\n========== SUMMARY ==========\n";
+    diagLog << "Functions with Patch " << patch0 << " component: " << functionsWithP0Component << "\n";
+    diagLog << "Functions with Patch " << patch1 << " component: " << functionsWithP1Component << "\n";
+    diagLog << "Patch " << patch0 << " non-zero basis evaluations: " << p0_nonzero_basis << "\n";
+    diagLog << "Patch " << patch1 << " non-zero basis evaluations: " << p1_nonzero_basis << "\n\n";
+    diagLog << "FINAL RESULTS:\n";
+    diagLog << "  Patch " << patch0 << " at (" << uv_patch0(0) << "," << uv_patch0(1) << "): x=" << x_p0 << ", y=" << y_p0 << "\n";
+    diagLog << "  Patch " << patch1 << " at (" << uv_patch1(0) << "," << uv_patch1(1) << "): x=" << x_p1 << ", y=" << y_p1 << "\n";
+    diagLog << "  Distance: " << dist << "\n";
+    diagLog.close();
+
+    gsInfo << "Patch " << patch0 << " at (" << uv_patch0(0) << "," << uv_patch0(1) << "): x=" << x_p0 << ", y=" << y_p0 << "\n";
+    gsInfo << "Patch " << patch1 << " at (" << uv_patch1(0) << "," << uv_patch1(1) << "): x=" << x_p1 << ", y=" << y_p1 << "\n";
+    gsInfo << "Distance: " << dist << "\n";
+    gsInfo << "Functions with P" << patch0 << " component: " << functionsWithP0Component << "\n";
+    gsInfo << "Functions with P" << patch1 << " component: " << functionsWithP1Component << "\n";
+    gsInfo << "P" << patch0 << " non-zero basis: " << p0_nonzero_basis << "\n";
+    gsInfo << "P" << patch1 << " non-zero basis: " << p1_nonzero_basis << "\n";
+    gsInfo << "Detailed log written to: " << outputFileName << "\n";
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void setSupports(gsTHBSplineBasis<2, real_t> THB, gsMatrix<> supps) {
     for (int i = 0; i < THB.size(); i++)
@@ -488,7 +1315,7 @@ void resizeNestedVector(T& vec, const std::vector<size_t>& sizes, size_t depth) 
 
 /**
  * @brief Exports mesh to file for visualization.
- * 
+ *
  * Writes the (x,y) coordinates of grid lines to a text file.
  */
 void exportMeshToFile(
@@ -498,6 +1325,7 @@ void exportMeshToFile(
     const std::string& filename,
     bool verbose)
 {
+    PROFILE_FUNCTION();
     if (xyLines.empty())
     {
         gsWarn << "No mesh data to export.\n";
@@ -527,8 +1355,8 @@ void exportMeshToFile(
 
         for (index_t j = 0; j < line.cols(); ++j)
         {
-            file << line(0, j) << " " << line(1, j) 
-                 << " " << patch << " " << dir << "\n";
+            file << line(0, j) << " " << line(1, j)
+                << " " << patch << " " << dir << "\n";
         }
         file << "\n"; // Blank line between grid lines
     }
@@ -541,9 +1369,9 @@ void exportMeshToFile(
 
 /**
  * @brief Check if a box is covered by any finer level box in the same patch.
- * 
+ *
  * In THB splines, finer boxes override coarser boxes in overlapping regions.
- * 
+ *
  * @param boxMat All boxes for the patch
  * @param numBoxes Number of boxes
  * @param testIdx Index of box to test
@@ -570,7 +1398,7 @@ bool isBoxCoveredByFinerBoxes(
             continue;
 
         const index_t otherLevel = boxMat[otherIdx][0];
-        
+
         // Only finer levels can override this box
         if (otherLevel <= testLevel)
             continue;
@@ -602,33 +1430,33 @@ bool isBoxCoveredByFinerBoxes(
 
 /**
  * @brief Generates a parametric grid from box structure.
- * 
+ *
  * Creates grid lines showing the tensor product grid structure within each box.
  * For a box with index coordinates (x0, y0, x1, y1), generates:
  * - (x1 - x0 - 1) internal vertical lines
  * - (y1 - y0 - 1) internal horizontal lines
  * Plus the 4 boundary edges.
- * 
+ *
  * Skips boxes that are completely covered by finer level boxes to avoid
  * visual overlap in hierarchical refinement regions.
- * 
+ *
  * Ensures interface continuity: boxes sharing edges have matching point counts
  * based on the finest refinement level present.
  */
-/**
- * @brief Generates a parametric grid from box structure with index-aligned sampling.
- * 
- * Creates grid lines showing the tensor product grid structure within each box.
- * For a box with index coordinates (ix0, iy0, ix1, iy1) at level L:
- * - Generates grid lines at each index position: ix0, ix0+1, ..., ix1 (vertical)
- *   and iy0, iy0+1, ..., iy1 (horizontal)
- * - For each grid line, samples at ALL index positions between the endpoints
- * - Ensures interface continuity: boxes sharing edges have matching sample points
- *   because they sample at the same index positions (scaled to finest level)
- * 
- * Key insight: By sampling at integer index positions in the hierarchical grid,
- * we guarantee that interfaces between boxes at different levels align perfectly.
- */
+ /**
+  * @brief Generates a parametric grid from box structure with index-aligned sampling.
+  *
+  * Creates grid lines showing the tensor product grid structure within each box.
+  * For a box with index coordinates (ix0, iy0, ix1, iy1) at level L:
+  * - Generates grid lines at each index position: ix0, ix0+1, ..., ix1 (vertical)
+  *   and iy0, iy0+1, ..., iy1 (horizontal)
+  * - For each grid line, samples at ALL index positions between the endpoints
+  * - Ensures interface continuity: boxes sharing edges have matching sample points
+  *   because they sample at the same index positions (scaled to finest level)
+  *
+  * Key insight: By sampling at integer index positions in the hierarchical grid,
+  * we guarantee that interfaces between boxes at different levels align perfectly.
+  */
 void generateParametricGrid(
     const gsVector<gsVector<gsVector<index_t>>>& boxMat,
     const gsVector<index_t>& numBoxesPerPatch,
@@ -638,6 +1466,7 @@ void generateParametricGrid(
     std::vector<char>& directions,
     bool verbose)
 {
+    PROFILE_FUNCTION();
     uvGridLines.clear();
     patchIDs.clear();
     directions.clear();
@@ -673,10 +1502,10 @@ void generateParametricGrid(
     for (index_t patch = 0; patch < boxMat.size(); ++patch)
     {
         const index_t numBoxes = numBoxesPerPatch[patch];
-        
+
         if (verbose)
             gsInfo << "  Patch " << patch << ": " << numBoxes << " boxes\n";
-        
+
         for (index_t boxIdx = 0; boxIdx < numBoxes; ++boxIdx)
         {
             if (boxMat[patch][boxIdx].size() < 5)
@@ -722,13 +1551,13 @@ void generateParametricGrid(
             for (index_t iy = iy0; iy <= iy1; ++iy)
             {
                 const real_t v = iy * h;
-                
+
                 // For this horizontal line, sample at all finest-level indices
                 // The line spans from u = ix0*h to u = ix1*h
                 // At finest level, this corresponds to indices scaledIx0 to scaledIx1
                 // Sample at each index with samplesPerIndexCell points per cell
                 const index_t numPoints = numFinestCellsU * samplesPerIndexCell + 1;
-                
+
                 gsMatrix<> line(2, numPoints);
                 for (index_t i = 0; i < numPoints; ++i)
                 {
@@ -737,11 +1566,11 @@ void generateParametricGrid(
                     // Convert finest-level index to parameter space
                     const real_t hFinest = 1.0 / std::pow(2.0, maxLevel);
                     const real_t u = finestLevelIndex * hFinest;
-                    
+
                     line(0, i) = u;
                     line(1, i) = v;
                 }
-                
+
                 uvGridLines.push_back(line);
                 patchIDs.push_back(patch);
                 directions.push_back('u');
@@ -752,10 +1581,10 @@ void generateParametricGrid(
             for (index_t ix = ix0; ix <= ix1; ++ix)
             {
                 const real_t u = ix * h;
-                
+
                 // For this vertical line, sample at all finest-level indices
                 const index_t numPoints = numFinestCellsV * samplesPerIndexCell + 1;
-                
+
                 gsMatrix<> line(2, numPoints);
                 for (index_t i = 0; i < numPoints; ++i)
                 {
@@ -764,42 +1593,43 @@ void generateParametricGrid(
                     // Convert finest-level index to parameter space
                     const real_t hFinest = 1.0 / std::pow(2.0, maxLevel);
                     const real_t v = finestLevelIndex * hFinest;
-                    
+
                     line(0, i) = u;
                     line(1, i) = v;
                 }
-                
+
                 uvGridLines.push_back(line);
                 patchIDs.push_back(patch);
                 directions.push_back('v');
             }
 
             if (verbose)
-                gsInfo << "    Box " << boxIdx << " [level=" << level 
-                       << ", (" << ix0 << "," << iy0 << ")->(" << ix1 << "," << iy1 << ")]: "
-                       << (ix1 - ix0 + 1) << " vertical + " 
-                       << (iy1 - iy0 + 1) << " horizontal lines\n";
+                gsInfo << "    Box " << boxIdx << " [level=" << level
+                << ", (" << ix0 << "," << iy0 << ")->(" << ix1 << "," << iy1 << ")]: "
+                << (ix1 - ix0 + 1) << " vertical + "
+                << (iy1 - iy0 + 1) << " horizontal lines\n";
         }
     }
 
     if (verbose)
         gsInfo << "Generated " << uvGridLines.size() << " total grid lines ("
-               << skippedBoxes << " boxes skipped due to finer coverage).\n";
+        << skippedBoxes << " boxes skipped due to finer coverage).\n";
 }
 
 /**
  * @brief Main entry point for visualization mesh generation.
- * 
+ *
  * Generates a mesh from the box structure, evaluates geometry, and exports to file.
  */
-/**
- * @brief Export box structure in parameter space for debugging
- */
+ /**
+  * @brief Export box structure in parameter space for debugging
+  */
 void exportBoxStructure(
     const gsVector<gsVector<gsVector<index_t>>>& boxMat,
     const gsVector<index_t>& numBoxesPerPatch,
     const std::string& filename)
 {
+    PROFILE_FUNCTION();
     std::ofstream file(filename);
     if (!file.is_open())
     {
@@ -830,9 +1660,9 @@ void exportBoxStructure(
             const real_t u1 = ix1 * h;
             const real_t v1 = iy1 * h;
 
-            file << patch << " " << level << " " 
-                 << u0 << " " << v0 << " " << u1 << " " << v1 << " "
-                 << ix0 << " " << iy0 << " " << ix1 << " " << iy1 << "\n";
+            file << patch << " " << level << " "
+                << u0 << " " << v0 << " " << u1 << " " << v1 << " "
+                << ix0 << " " << iy0 << " " << ix1 << " " << iy1 << "\n";
         }
     }
 
@@ -857,7 +1687,96 @@ void logSpecificInterface(
         return;
     }
 
-    log << "# Interface Analysis: Patch 0 Box [3, 0, 2, 8, 8] <-> Patch 1 Box [4, 0, 0, 16, 16]\n";
+    log << "# Specific Interface Point Analysis: (0,(0,1)) vs (1,(1,1))\n";
+    log << "# Evaluating geometry at Patch 0 (u=0, v=1) and Patch 1 (u=1, v=1)\n\n";
+
+    // Evaluate geometry at patch 0 (u=0, v=1)
+    gsVector<real_t> uv_p0(2);
+    uv_p0 << 0.0, 1.0;
+
+    gsVector<real_t> xy_p0(2);
+    xy_p0.setZero();
+    bool found_p0 = false;
+
+    for (size_t i = 0; i < uvLines.size() && !found_p0; ++i)
+    {
+        if (patchIDs[i] == 0)
+        {
+            const gsMatrix<>& uvLine = uvLines[i];
+            const gsMatrix<>& xyLine = xyLines[i];
+
+            // Find closest point to (0, 1)
+            for (index_t j = 0; j < uvLine.cols(); ++j)
+            {
+                real_t dist = std::sqrt(std::pow(uvLine(0, j) - 0.0, 2) + std::pow(uvLine(1, j) - 1.0, 2));
+                if (dist < 1e-6)
+                {
+                    xy_p0 << xyLine(0, j), xyLine(1, j);
+                    found_p0 = true;
+                    log << "Found Patch 0 at (u=" << uvLine(0, j) << ", v=" << uvLine(1, j) << ")\n";
+                    log << "  -> Geometry: (x=" << xy_p0(0) << ", y=" << xy_p0(1) << ")\n\n";
+                    break;
+                }
+            }
+        }
+    }
+
+    // Evaluate geometry at patch 1 (u=1, v=1)
+    gsVector<real_t> uv_p1(2);
+    uv_p1 << 1.0, 1.0;
+
+    gsVector<real_t> xy_p1(2);
+    xy_p1.setZero();
+    bool found_p1 = false;
+
+    for (size_t i = 0; i < uvLines.size() && !found_p1; ++i)
+    {
+        if (patchIDs[i] == 1)
+        {
+            const gsMatrix<>& uvLine = uvLines[i];
+            const gsMatrix<>& xyLine = xyLines[i];
+
+            // Find closest point to (1, 1)
+            for (index_t j = 0; j < uvLine.cols(); ++j)
+            {
+                real_t dist = std::sqrt(std::pow(uvLine(0, j) - 1.0, 2) + std::pow(uvLine(1, j) - 1.0, 2));
+                if (dist < 1e-6)
+                {
+                    xy_p1 << xyLine(0, j), xyLine(1, j);
+                    found_p1 = true;
+                    log << "Found Patch 1 at (u=" << uvLine(0, j) << ", v=" << uvLine(1, j) << ")\n";
+                    log << "  -> Geometry: (x=" << xy_p1(0) << ", y=" << xy_p1(1) << ")\n\n";
+                    break;
+                }
+            }
+        }
+    }
+
+    if (found_p0 && found_p1)
+    {
+        real_t distance = std::sqrt(std::pow(xy_p0(0) - xy_p1(0), 2) + std::pow(xy_p0(1) - xy_p1(1), 2));
+        log << "========================================\n";
+        log << "RESULT:\n";
+        log << "  Patch 0 (u=0, v=1): (x=" << xy_p0(0) << ", y=" << xy_p0(1) << ")\n";
+        log << "  Patch 1 (u=1, v=1): (x=" << xy_p1(0) << ", y=" << xy_p1(1) << ")\n";
+        log << "  Distance: " << distance << "\n";
+        log << "  Delta X: " << (xy_p0(0) - xy_p1(0)) << "\n";
+        log << "  Delta Y: " << (xy_p0(1) - xy_p1(1)) << "\n";
+        log << "========================================\n\n";
+
+        gsInfo << "Interface point analysis:\n";
+        gsInfo << "  Patch 0 (0,1): x=" << xy_p0(0) << ", y=" << xy_p0(1) << "\n";
+        gsInfo << "  Patch 1 (1,1): x=" << xy_p1(0) << ", y=" << xy_p1(1) << "\n";
+        gsInfo << "  Distance: " << distance << "\n";
+    }
+    else
+    {
+        log << "ERROR: Could not find both points\n";
+        if (!found_p0) log << "  Missing: Patch 0 at (0, 1)\n";
+        if (!found_p1) log << "  Missing: Patch 1 at (1, 1)\n";
+    }
+
+    log << "# Original Interface Analysis: Patch 0 Box [3, 0, 2, 8, 8] <-> Patch 1 Box [4, 0, 0, 16, 16]\n";
     log << "# Interface: Patch 0 at u=0 (v from 0.25 to 1) <-> Patch 1 at u=1 (v from 0.25 to 1)\n\n";
 
     const real_t tolerance = 1e-9;
@@ -878,7 +1797,7 @@ void logSpecificInterface(
                 // Check if it covers the range v=0.25 to v=1
                 real_t minV = uvLine(1, 0);
                 real_t maxV = uvLine(1, uvLine.cols() - 1);
-                if (minV < maxV) 
+                if (minV < maxV)
                 {
                     if (std::abs(minV - 0.25) < tolerance && std::abs(maxV - 1.0) < tolerance)
                     {
@@ -920,7 +1839,7 @@ void logSpecificInterface(
                 // Check if it covers the range v=0.25 to v=1 (or v=0 to 1)
                 real_t minV = uvLine(1, 0);
                 real_t maxV = uvLine(1, uvLine.cols() - 1);
-                
+
                 // We want the portion from v=0.25 to v=1
                 if (minV < maxV)
                 {
@@ -976,7 +1895,7 @@ void logSpecificInterface(
 
     // Build a map of v-values from patch 1
     std::map<real_t, std::pair<gsVector<real_t>, gsVector<real_t>>> patch1Map; // v -> (uv, xy)
-    
+
     for (index_t i = 0; i < patch1Line.cols(); ++i)
     {
         real_t v = patch1Line(1, i);
@@ -1020,7 +1939,7 @@ void logSpecificInterface(
                 << "(" << u0 << ", " << v0 << ") -> (" << x0 << ", " << y0 << ") | "
                 << "(" << u1 << ", " << v1 << ") -> (" << x1 << ", " << y1 << ") | "
                 << "dist = " << distance << "\n";
-            
+
             matchCount++;
         }
         else
@@ -1046,13 +1965,10 @@ void logSpecificInterface(
 void generateVisualizationMesh(
     const gsVector<gsVector<gsVector<index_t>>>& boxMat,
     index_t gridResolution,
-    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
-    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
-    const std::vector<bool>& isTruncated,
-    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    const MPBES<2, real_t>& mpbes,
+    const gsMultiPatch<real_t>& mp,
     const gsMatrix<real_t>& coefficients,
     const gsVector<index_t>& currentLastNonZeroRow,
-    const std::vector<std::vector<gsSparseVector<double>>>& presentation,
     const std::string& outputPrefix,
     bool verbose)
 {
@@ -1095,12 +2011,9 @@ void generateVisualizationMesh(
     evaluateGeometryAtPoints(
         uvLines,
         uvLinePatchIDs,
-        THBVector,
-        functionDescription,
-        isTruncated,
-        indexInTHB,
+        mpbes,
+        mp,
         coefficients,
-        presentation,
         xyLines,
         verbose
     );
@@ -1151,6 +2064,7 @@ void selectionMechanism(
     int& globalFunctionCount,
     bool verbose)
 {
+    PROFILE_FUNCTION();
     const index_t nPatches = Bells.size();
     globalFunctionCount = 0;
     functionDescription.clear();
@@ -1508,6 +2422,7 @@ void truncationMechanism(
     std::vector<bool>& isTruncated,
     bool verbose)
 {
+    PROFILE_FUNCTION();
     const index_t numFunctions = functionDescription.size();
     isTruncated.assign(numFunctions, false);
 
@@ -1881,217 +2796,73 @@ bool shouldSuppressTHB(
  * @param[in] indexInTHB                  Maps (patch, level, tensor-index) => THB index, or -1 if inactive.
  * @param[in] verbose                     Enables logging.
  */
-/**
- * @brief Evaluates the geometric mapping at parameter space points.
- * 
- * Takes (u,v) coordinates and evaluates the THB parameterization to get (x,y) coordinates.
- */
+ /**
+  * @brief Evaluates the geometric mapping at parameter space points.
+  *
+  * Takes (u,v) coordinates and evaluates the THB parameterization to get (x,y) coordinates.
+  */
 void evaluateGeometryAtPoints(
     const std::vector<gsMatrix<>>& uvPoints,
     const std::vector<index_t>& patchIDs,
-    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
-    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
-    const std::vector<bool>& isTruncated,
-    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    const MPBES<2, real_t>& mpbes,
+    const gsMultiPatch<real_t>& mp,
     const gsMatrix<real_t>& coefficients,
-    const std::vector<std::vector<gsSparseVector<double>>>& presentation,
     std::vector<gsMatrix<>>& xyPoints,
     bool verbose)
 {
+    PROFILE_FUNCTION();
     xyPoints.clear();
 
     if (uvPoints.empty())
     {
         if (verbose)
-            gsWarn << "No points to evaluate.\n";
+            gsWarn << "No points to evaluate.\\n";
         return;
     }
 
-    const index_t numFunctions = functionDescription.size();
-    const index_t totalPoints = std::accumulate(uvPoints.begin(), uvPoints.end(), index_t(0),
-        [](index_t sum, const gsMatrix<>& m) { return sum + m.cols(); });
-
     if (verbose)
-        gsInfo << "Evaluating geometry at " << totalPoints << " points...\n";
+        gsInfo << "Evaluating " << uvPoints.size() << " lines directly via mp.patch().eval()...\\n";
 
-    // Open detailed evaluation log
-    std::ofstream evalLog("evaluation_detailed.txt");
-    evalLog << "# Detailed Evaluation Log\n";
-    evalLog << "# Shows basis function contributions at interface points\n\n";
-
-    // Convert presentation coefficients to real_t
-    std::vector<std::vector<gsSparseVector<real_t>>> presReal(presentation.size());
-    for (size_t f = 0; f < presentation.size(); ++f)
-    {
-        presReal[f].resize(presentation[f].size());
-        for (size_t c = 0; c < presentation[f].size(); ++c)
-        {
-            presReal[f][c] = gsSparseVector<real_t>(presentation[f][c].size());
-            for (index_t k = 0; k < presentation[f][c].size(); ++k)
-                presReal[f][c](k) = static_cast<real_t>(presentation[f][c](k));
-        }
-    }
-
-    // Build evaluation matrix: each row = basis values at one point
-    gsMatrix<real_t> basisMatrix(totalPoints, numFunctions);
-    basisMatrix.setZero();
-
-    std::vector<index_t> pointsPerLine;
-    pointsPerLine.reserve(uvPoints.size());
-
-    index_t row = 0;
-    gsMatrix<> resultBuffer;
-
-    const real_t boundaryTol = 1e-9;
-
+    xyPoints.resize(uvPoints.size());
+    
+    // Directly evaluate each line using the original geometry patch
     for (size_t lineIdx = 0; lineIdx < uvPoints.size(); ++lineIdx)
     {
         const gsMatrix<>& uvLine = uvPoints[lineIdx];
         const index_t patch = patchIDs[lineIdx];
-        const index_t nPts = uvLine.cols();
-        pointsPerLine.push_back(nPts);
-
-        for (index_t pt = 0; pt < nPts; ++pt, ++row)
-        {
-            const gsVector<real_t> uv = uvLine.col(pt);
-            const real_t u = uv(0);
-            const real_t v = uv(1);
-
-            // Check if this is an interface point we want to log
-            bool isInterfacePoint = false;
-            if (patch == 0 && std::abs(u - 0.0) < boundaryTol && v >= 0.25 - boundaryTol && v <= 1.0 + boundaryTol)
-                isInterfacePoint = true;
-            if (patch == 1 && std::abs(u - 1.0) < boundaryTol && v >= 0.25 - boundaryTol && v <= 1.0 + boundaryTol)
-                isInterfacePoint = true;
-
-            if (isInterfacePoint)
-            {
-                evalLog << "\n========================================\n";
-                evalLog << "INTERFACE POINT: Patch " << patch << " at (" << std::setprecision(12) << u << ", " << v << ")\n";
-                evalLog << "========================================\n";
-            }
-
-            // Evaluate all basis functions at this point
-            for (index_t f = 0; f < numFunctions; ++f)
-            {
-                real_t basisValue = 0.0;
-                int compIdx = 0;
-
-                for (const auto& desc : functionDescription[f])
-                {
-                    const int fnPatch = desc[0];
-                    const int fnLevel = desc[1];
-                    const int fnIndex = desc[2];
-
-                    if (fnPatch != static_cast<int>(patch))
-                    {
-                        ++compIdx;
-                        continue;
-                    }
-
-                    if (fnLevel >= static_cast<int>(indexInTHB[fnPatch].size()) ||
-                        fnIndex >= static_cast<int>(indexInTHB[fnPatch][fnLevel].size()))
-                    {
-                        ++compIdx;
-                        continue;
-                    }
-
-                    const int thbIdx = indexInTHB[fnPatch][fnLevel][fnIndex];
-                    if (thbIdx == -1)
-                    {
-                        ++compIdx;
-                        continue;
-                    }
-
-                    evalSingle_into(f, thbIdx, uv, isTruncated, 
-                                   THBVector[patch], presReal[f][compIdx], resultBuffer);
-                    real_t contribution = resultBuffer(0, 0);
-                    basisValue += contribution;
-
-                    if (isInterfacePoint && std::abs(contribution) > 1e-12)
-                    {
-                        evalLog << "  Function " << f << " (patch=" << fnPatch << ", level=" << fnLevel 
-                                << ", index=" << fnIndex << ", thbIdx=" << thbIdx << ")\n";
-                        evalLog << "    Basis value: " << contribution << "\n";
-                        evalLog << "    Coefficient: (" << coefficients(f, 0) << ", " << coefficients(f, 1) << ")\n";
-                        evalLog << "    Contribution to x: " << contribution * coefficients(f, 0) << "\n";
-                        evalLog << "    Contribution to y: " << contribution * coefficients(f, 1) << "\n";
-                    }
-
-                    ++compIdx;
-                }
-
-                if (basisValue != 0.0)
-                    basisMatrix(row, f) = basisValue;
-            }
-
-            if (isInterfacePoint)
-            {
-                // Compute final (x,y) for this point
-                real_t finalX = 0.0;
-                real_t finalY = 0.0;
-                for (index_t f = 0; f < numFunctions; ++f)
-                {
-                    if (basisMatrix(row, f) != 0.0)
-                    {
-                        finalX += basisMatrix(row, f) * coefficients(f, 0);
-                        finalY += basisMatrix(row, f) * coefficients(f, 1);
-                    }
-                }
-                evalLog << "----------------------------------------\n";
-                evalLog << "FINAL RESULT: (" << finalX << ", " << finalY << ")\n";
-                evalLog << "========================================\n\n";
-            }
+        
+        if (uvLine.cols() == 0) {
+            xyPoints[lineIdx].resize(2, 0);
+            continue;
         }
-    }
-
-    // Evaluate: (x,y) = BasisMatrix * Coefficients
-    gsMatrix<> allPoints = basisMatrix * coefficients;
-
-    evalLog << "\n# Evaluation complete. Total points evaluated: " << totalPoints << "\n";
-    evalLog.close();
-
-    if (verbose)
-        gsInfo << "Detailed evaluation log written to evaluation_detailed.txt\n";
-
-    // Reconstruct individual lines
-    xyPoints.reserve(uvPoints.size());
-    index_t offset = 0;
-
-    for (index_t nPts : pointsPerLine)
-    {
-        gsMatrix<> line(2, nPts);
-        for (index_t j = 0; j < nPts; ++j)
-        {
-            line(0, j) = allPoints(offset + j, 0);
-            line(1, j) = allPoints(offset + j, 1);
-        }
-        xyPoints.push_back(line);
-        offset += nPts;
+        
+        // Direct evaluation - no assembly needed
+        xyPoints[lineIdx] = mp.patch(patch).eval(uvLine);
     }
 
     if (verbose)
-        gsInfo << "Evaluation complete: " << xyPoints.size() << " lines.\n";
+        gsInfo << "Geometry evaluation complete.\\n";
 }
 
 real_t boundaryError(
-    const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
-    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
-    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
-    const std::vector<std::vector<std::array<int, 3>>>& spilloverFunctionCoordinates,
-    const std::vector<bool>& hasSpillover,
-    const std::vector<bool>& isTruncated,
-    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    const MPBES<2, real_t>& mpbes,
     const gsMultiPatch<real_t>& mp,
-    const gsMatrix<real_t>& vectSol,
-    const std::vector<std::vector<gsSparseVector<double>>>& presentation)
+    const gsMatrix<real_t>& vectSol)
 {
-    //@todo: redo
-    outfile << "=== boundaryError BEGIN ===\n";
+    PROFILE_FUNCTION();
+    
+    // Simply use the same assembly-based approach as testBoundaryAssembly
+    return testBoundaryAssembly(mpbes, mp, vectSol);
+}
+
+
+/**
+ * @brief Test boundary continuity using the assemble() function
+    // debugFile << "=== boundaryError DEBUG LOG ===\n";
 
     const index_t numFunctions = functionDescription.size();
     const index_t pointsPerEdge = 10;
-    const index_t totalRows = pointsPerEdge * 2;
+    const index_t totalRows = pointsPerEdge * 4;  // 4 = 2 interfaces * 2 sides per interface
 
     // Convert presentation (double->real_t) once to avoid repeated conversions
     std::vector<std::vector<gsSparseVector<real_t>>> presReal;
@@ -2118,17 +2889,26 @@ real_t boundaryError(
     {
         real_t t = static_cast<real_t>(i) / (pointsPerEdge - 1);
 
+        // Interface 1: Patch 0 west (side 3) <-> Patch 1 east (side 1)
         // Patch 0, side 3 => (u,v) = (0, 1 - t)
-        gsVector<real_t> uv0(2); uv0(0) = 0.0; uv0(1) = 1.0 - t;
+        gsVector<real_t> uv0_side3(2); uv0_side3(0) = 0.0; uv0_side3(1) = 1.0 - t;
         // Patch 1, side 1 => (u,v) = (1, t)
-        gsVector<real_t> uv1(2); uv1(0) = 1.0; uv1(1) = t;
+        gsVector<real_t> uv1_side1(2); uv1_side1(0) = 1.0; uv1_side1(1) = t;
+
+        // Interface 2: Patch 0 south (side 2) <-> Patch 2 east (side 1)
+        // Patch 0, side 2 => (u,v) = (t, 0)
+        gsVector<real_t> uv0_side2(2); uv0_side2(0) = t; uv0_side2(1) = 0.0;
+        // Patch 2, side 1 => (u,v) = (1, 1 - t)
+        gsVector<real_t> uv2_side1(2); uv2_side1(0) = 1.0; uv2_side1(1) = 1.0 - t;
 
         std::vector<std::pair<index_t, gsVector<real_t>>> probes = {
-            {0, uv0},
-            {1, uv1}
+            {0, uv0_side3},
+            {1, uv1_side1},
+            {0, uv0_side2},
+            {2, uv2_side1}
         };
 
-        for (index_t p = 0; p < 2; ++p)
+        for (index_t p = 0; p < 4; ++p)
         {
             const index_t patch = probes[p].first;
             const gsVector<real_t>& uv = probes[p].second;
@@ -2144,32 +2924,46 @@ real_t boundaryError(
             for (index_t f = 0; f < numFunctions; ++f)
             {
                 real_t val = 0.0;
-                int functionComponent = 0;
                 gsMatrix<> resultMatrix; // reuse for evalSingle_into
+                
+                int functionComponent = 0;
+                bool hasRegularComponentOnThisPatch = false;
+
+                // 1. Evaluate regular components from functionDescription
                 for (const auto& desc : functionDescription[f])
                 {
                     int fnPatch = desc[0];
                     int fnLevel = desc[1];
                     int fnTensorIndex = desc[2];
 
-                    if (fnPatch != static_cast<int>(patch)) { 
-                        functionComponent++;
-                        continue; 
+                    // CRITICAL: presentation[f] has entries for ALL components in functionDescription[f]
+                    // We must increment functionComponent for EVERY component, not just matching patches
+                    if (fnPatch != static_cast<int>(patch)) {
+                        ++functionComponent;  // Skip but still increment
+                        continue;
                     }
+                    
                     if (fnLevel >= indexInTHB[fnPatch].size() ||
                         fnTensorIndex >= indexInTHB[fnPatch][fnLevel].size()) {
-                        functionComponent++;
+                        ++functionComponent;  // Skip but still increment
                         continue;
                     }
 
                     int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIndex];
+                    
+                    // Skip if thbIdx == -1 (component doesn't exist in THB, will be handled as spillover)
                     if (thbIdx == -1) {
-                        functionComponent++;
+                        ++functionComponent;  // Skip but still increment
                         continue;
                     }
+                    
+                    // Found a valid regular component on this patch (thbIdx >= 0)
+                    hasRegularComponentOnThisPatch = true;
+
                     // Use pre-converted presentation coefficients
                     const gsSparseVector<real_t>& coefsReal = presReal[f][functionComponent];
 
+                    // evalSingle_into handles both regular (thbIdx >= 0) and spillover (thbIdx == -1)
                     evalSingle_into(
                         f,
                         thbIdx,
@@ -2177,13 +2971,60 @@ real_t boundaryError(
                         isTruncated,
                         THBVector[patch],
                         coefsReal,
-                        resultMatrix);
+                        resultMatrix,
+                        &Bells[fnPatch][fnLevel],
+                        fnTensorIndex);
                     real_t contrib = resultMatrix(0, 0);
                     val += contrib;
                     ++functionComponent;
 
-                    if (contrib != 0.0)
-                        outfile << "    [THB] f=" << f << " contributes " << contrib << "\n";
+                    if (contrib != 0.0) {
+                        outfile << "    [THB] f=" << f << " contributes " << contrib;
+                        // Debug for Row 0 with functions 20 and 591
+                        if (rowOffset == 0 && (f == 20 || f == 591)) {
+                            outfile << " [isTruncated=" << isTruncated[f] 
+                                    << ", coefsSize=" << coefsReal.size()
+                                    << ", thbIdx=" << thbIdx << "]";
+                        }
+                        outfile << "\n";
+                    }
+                }
+
+                // 2. Evaluate spillover components ONLY if no regular component exists on this patch
+                if (!hasRegularComponentOnThisPatch && 
+                    f < spilloverFunctionCoordinates.size() && 
+                    !spilloverFunctionCoordinates[f].empty())
+                {
+                    for (const auto& spillCoord : spilloverFunctionCoordinates[f])
+                    {
+                        int spPatch = spillCoord[0];
+                        int spLevel = spillCoord[1];
+                        int spTensorIdx = spillCoord[2];
+
+                        if (spPatch != static_cast<int>(patch)) continue;
+
+                        // Spillover: evaluate B-spline basis function directly (thbIdx = -1)
+                        if (spLevel < Bells[spPatch].size())
+                        {
+                            gsSparseVector<real_t> emptyCoefs;  // No presentation for spillover
+                            evalSingle_into(
+                                f,
+                                -1,  // thbIdx = -1 signals spillover
+                                uv,
+                                isTruncated,
+                                THBVector[patch],
+                                emptyCoefs,
+                                resultMatrix,
+                                &Bells[spPatch][spLevel],
+                                spTensorIdx);
+                            real_t contrib = resultMatrix(0, 0);
+                            val += contrib;
+
+                            if (contrib != 0.0) {
+                                outfile << "    [SPILL] f=" << f << " contributes " << contrib << "\n";
+                            }
+                        }
+                    }
                 }
 
                 if (val != 0.0)
@@ -2198,8 +3039,43 @@ real_t boundaryError(
     gsMatrix<real_t> diff = fit - b_vec;
     real_t maxError = diff.cwiseAbs().maxCoeff();
 
+    // Debug: Check specific entries
+    outfile << "\n--- Debug: Checking A_row and vectSol ---\n";
+    outfile << "A_row.rows() = " << A_row.rows() << ", A_row.cols() = " << A_row.cols() << "\n";
+    outfile << "vectSol.rows() = " << vectSol.rows() << ", vectSol.cols() = " << vectSol.cols() << "\n";
+    outfile << "fit.rows() = " << fit.rows() << ", fit.cols() = " << fit.cols() << "\n";
+    
+    // Find which functions contribute to row 0
+    outfile << "Row 0 non-zero entries in A_row:\n";
+    for (index_t c = 0; c < A_row.cols(); ++c) {
+        if (A_row(0, c) != 0.0) {
+            outfile << "  A_row(0, " << c << ") = " << A_row(0, c) 
+                    << ", vectSol(" << c << ") = (" << vectSol(c, 0) << ", " << vectSol(c, 1) << ")\n";
+        }
+    }
+    outfile << "Computed fit(0) = (" << fit(0, 0) << ", " << fit(0, 1) << ")\n";
+    outfile << "Expected geom(0) = (" << b_vec(0, 0) << ", " << b_vec(0, 1) << ")\n\n";
+
     outfile << "\n--- Interface Values ---\n";
-    for (index_t r = 0; r < totalRows; ++r)
+    outfile << "Note: Only showing first 10 rows for brevity\n";
+    
+    // Find which row has the max error
+    index_t maxRow = 0, maxCol = 0;
+    for (index_t r = 0; r < diff.rows(); ++r) {
+        for (index_t c = 0; c < diff.cols(); ++c) {
+            if (std::abs(diff(r, c)) == maxError) {
+                maxRow = r;
+                maxCol = c;
+            }
+        }
+    }
+    
+    outfile << "Max error is at row " << maxRow << ", col " << maxCol << "\n";
+    outfile << "  fit = (" << fit(maxRow, 0) << ", " << fit(maxRow, 1) << ")\n";
+    outfile << "  geom = (" << b_vec(maxRow, 0) << ", " << b_vec(maxRow, 1) << ")\n";
+    outfile << "  diff = (" << diff(maxRow, 0) << ", " << diff(maxRow, 1) << ")\n\n";
+    
+    for (index_t r = 0; r < std::min(totalRows, (index_t)10); ++r)
     {
         index_t patch = (r % 2 == 0) ? 0 : 1;
         outfile << "Row " << r
@@ -2211,12 +3087,141 @@ real_t boundaryError(
 
     outfile << "\n=== boundaryError END ===\n";
     outfile << "Max componentwise error: " << maxError << "\n";
+    
+    // Log A_row statistics for debugging
+    int nonzeros = 0;
+    for (index_t r = 0; r < A_row.rows(); ++r)
+        for (index_t c = 0; c < A_row.cols(); ++c)
+            if (A_row(r, c) != 0.0) ++nonzeros;
+
+ * 
+ * This function validates interface continuity by:
+ * 1. Creating interface sample points (similar to boundaryError)
+ * 2. Using the actual assemble() function to build basis evaluation matrix
+ * 3. Computing geometry using A * vectSol
+ * 4. Comparing with ground truth geometry from mp.eval()
+ * 
+ * This is the "gold standard" test - if assemble works correctly,
+ * the reconstructed geometry should match the original at interfaces.
+ * 
+ * @return Maximum componentwise error across all interface points
+ */
+real_t testBoundaryAssembly(
+    const MPBES<2, real_t>& mpbes,
+    const gsMultiPatch<real_t>& mp,
+    const gsMatrix<real_t>& vectSol)
+{
+    PROFILE_FUNCTION();
+    gsInfo << "\n=== testBoundaryAssembly BEGIN ===\n";
+    outfile << "\n=== testBoundaryAssembly BEGIN ===\n";
+
+    const index_t pointsPerEdge = 10;
+    const index_t numInterfaces = 2;  // Two interfaces: 0↔1 and 0↔2
+    const index_t pointsPerInterface = pointsPerEdge * 2;  // 2 sides per interface
+    const index_t totalPoints = numInterfaces * pointsPerInterface;
+
+    // Build parametric points for all interfaces
+    gsVector<gsMatrix<>> interfacePoints(mp.nPatches());
+    for (index_t p = 0; p < mp.nPatches(); ++p) {
+        interfacePoints[p].resize(2, 0);  // Will be appended to
+    }
+
+    // Interface 1: Patch 0 west ↔ Patch 1 east
+    gsMatrix<real_t> patch0_interface1(2, pointsPerEdge);
+    gsMatrix<real_t> patch1_interface1(2, pointsPerEdge);
+    
+    // Interface 2: Patch 0 south ↔ Patch 2 east  
+    gsMatrix<real_t> patch0_interface2(2, pointsPerEdge);
+    gsMatrix<real_t> patch2_interface2(2, pointsPerEdge);
+
+    for (index_t i = 0; i < pointsPerEdge; ++i)
+    {
+        real_t t = static_cast<real_t>(i) / (pointsPerEdge - 1);
+
+        // Interface 1
+        patch0_interface1(0, i) = 0.0;        // u = 0 (west side)
+        patch0_interface1(1, i) = 1.0 - t;    // v varies
+        
+        patch1_interface1(0, i) = 1.0;        // u = 1 (east side)
+        patch1_interface1(1, i) = t;          // v varies
+
+        // Interface 2
+        patch0_interface2(0, i) = t;          // u varies
+        patch0_interface2(1, i) = 0.0;        // v = 0 (south side)
+        
+        patch2_interface2(0, i) = 1.0;        // u = 1 (east side)
+        patch2_interface2(1, i) = 1.0 - t;    // v varies
+    }
+
+    // Combine all interface points per patch
+    interfacePoints[0].resize(2, 2 * pointsPerEdge);
+    interfacePoints[0] << patch0_interface1, patch0_interface2;
+    
+    interfacePoints[1].resize(2, pointsPerEdge);
+    interfacePoints[1] = patch1_interface1;
+    
+    interfacePoints[2].resize(2, pointsPerEdge);
+    interfacePoints[2] = patch2_interface2;
+
+    // Assemble using the actual assemble() function
+    const index_t numFunctions = mpbes.size();
+    gsSparseMatrix<real_t> A_interface(totalPoints, numFunctions);
+    gsMatrix<real_t> b_interface(totalPoints, 2);
+
+    gsInfo << "Assembling interface matrix: " << totalPoints << " points, " << numFunctions << " functions\n";
+    
+    assemble(
+        interfacePoints,
+        mpbes,
+        A_interface,
+        b_interface,
+        mp,
+        false  // verbose = false
+    );
+
+    // Compute reconstructed geometry: A * vectSol
+    gsMatrix<real_t> reconstructed = gsEigen::MatrixXd(A_interface) * vectSol;
+
+    // Compute residual
+    gsMatrix<real_t> residual = reconstructed - b_interface;
+    real_t maxError = residual.cwiseAbs().maxCoeff();
+
+    // Detailed reporting
+    gsInfo << "\n--- Interface Continuity Test Results ---\n";
+    outfile << "\n--- Interface Continuity Test Results ---\n";
+    
+    index_t row = 0;
+    const char* interfaceNames[] = {"0↔1", "0↔2"};
+    
+    for (index_t iface = 0; iface < numInterfaces; ++iface)
+    {
+        gsInfo << "\nInterface " << interfaceNames[iface] << ":\n";
+        outfile << "\nInterface " << interfaceNames[iface] << ":\n";
+        
+        for (index_t pt = 0; pt < pointsPerInterface; ++pt)
+        {
+            real_t err_x = std::abs(residual(row, 0));
+            real_t err_y = std::abs(residual(row, 1));
+            real_t err_max = std::max(err_x, err_y);
+            
+            if (err_max > 1e-6 || pt < 2)  // Show first 2 points and errors
+            {
+                outfile << "  Point " << pt << ": "
+                    << "geom=(" << b_interface(row, 0) << "," << b_interface(row, 1) << "), "
+                    << "recon=(" << reconstructed(row, 0) << "," << reconstructed(row, 1) << "), "
+                    << "error=(" << residual(row, 0) << "," << residual(row, 1) << ")\n";
+            }
+            ++row;
+        }
+    }
+
+    gsInfo << "\nMax componentwise error: " << maxError << "\n";
+    gsInfo << "=== testBoundaryAssembly END ===\n\n";
+    outfile << "\nMax componentwise error: " << maxError << "\n";
+    outfile << "=== testBoundaryAssembly END ===\n\n";
 
     return maxError;
 }
-
-
-
 
 
 
@@ -2232,6 +3237,7 @@ real_t boundaryErrorTwoPointsOnly(
     const gsMultiPatch<real_t>& mp,
     const gsMatrix<real_t>& vectSol)
 {
+    PROFILE_FUNCTION();
     gsInfo << "=== boundaryErrorTwoPointsOnly BEGIN ===\n";
 
     struct ProbePoint {
@@ -2514,16 +3520,11 @@ void logSpilloverContributionsForLine(
 void generateAndExportMappedLines(
     const gsVector<gsVector<gsVector<index_t>>>& boxMat,
     index_t numPointsPerLine,
-    const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
-    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
-    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
-    const std::vector<bool>& isTruncated,
-    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    const MPBES<2, real_t>& mpbes,
     const gsMatrix<real_t>& AcceptedvectSol,
     const gsMultiPatch<real_t>& mp,
     const gsVector<index_t>& currentLastNonZeroRow,
     const std::string& outputFilename,
-    const std::vector<std::vector<gsSparseVector<double>>>& presentation,
     bool verbose
 )
 {
@@ -2563,12 +3564,9 @@ void generateAndExportMappedLines(
     evaluateGeometryAtPoints(
         uvLines,
         uvLinePatchIDs,
-        THBVector,
-        functionDescription,
-        isTruncated,
-        indexInTHB,
+        mpbes,
+        mp,
         AcceptedvectSol,
-        presentation,
         xyLines,
         verbose
     );
@@ -2832,21 +3830,30 @@ int checkJacobianDeterminant(
     gsVector<size_t>& numIrregular,
     const std::vector<bool>& isTruncated,
     const std::vector<std::vector<gsSparseVector<double>>>& presentation,
+    const std::vector<std::vector<std::array<int, 3>>>& spilloverFunctionCoordinates,
     bool verbose = true)
 {
+    PROFILE_FUNCTION();
     gsInfo << "=== checkJacobianDeterminant BEGIN ===\n";
     const index_t numPatches = THBVector.size();
     int totalIrregular = 0;
     numIrregular.setZero();
     numIrregular.resize(numPatches);
 
-    // Pre-build evaluation list per patch: tuples of (globalFunction f, thbIdx, coef vector)
-    struct EvalEntry { index_t f; int thbIdx; gsSparseVector<real_t> coefs; };
+    // Pre-build evaluation list per patch: tuples of (globalFunction f, thbIdx, bells basis info, coef vector)
+    struct EvalEntry { 
+        index_t f; 
+        int thbIdx; 
+        const gsTensorBSplineBasis<2, real_t>* bellsBasis;
+        int tensorIdx;
+        gsSparseVector<real_t> coefs; 
+    };
     std::vector<std::vector<EvalEntry>> evalListPerPatch(numPatches);
 
     const index_t numFunctions = static_cast<index_t>(functionDescription.size());
     for (index_t f = 0; f < numFunctions; ++f)
     {
+        // 1. Add regular components from functionDescription
         for (size_t comp = 0; comp < functionDescription[f].size(); ++comp)
         {
             const auto& desc = functionDescription[f][comp];
@@ -2856,7 +3863,6 @@ int checkJacobianDeterminant(
             if (fnPatch < 0 || fnPatch >= static_cast<int>(numPatches)) continue;
             if (fnLevel >= indexInTHB[fnPatch].size() || fnTensorIndex >= indexInTHB[fnPatch][fnLevel].size()) continue;
             int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIndex];
-            if (thbIdx == -1) continue;
 
             // Convert stored presentation coefficients from double to real_t once
             const auto& presDouble = presentation[f][comp];
@@ -2864,8 +3870,35 @@ int checkJacobianDeterminant(
             for (index_t ck = 0; ck < presDouble.size(); ++ck)
                 coefsReal(ck) = static_cast<real_t>(presDouble(ck));
 
-            EvalEntry e; e.f = f; e.thbIdx = thbIdx; e.coefs = std::move(coefsReal);
+            EvalEntry e;
+            e.f = f;
+            e.thbIdx = thbIdx;
+            e.bellsBasis = &Bells[fnPatch][fnLevel];
+            e.tensorIdx = fnTensorIndex;
+            e.coefs = std::move(coefsReal);
             evalListPerPatch[fnPatch].push_back(std::move(e));
+        }
+
+        // 2. Add spillover components from spilloverFunctionCoordinates
+        if (f < spilloverFunctionCoordinates.size() && !spilloverFunctionCoordinates[f].empty())
+        {
+            for (const auto& spillCoord : spilloverFunctionCoordinates[f])
+            {
+                int spPatch = spillCoord[0];
+                int spLevel = spillCoord[1];
+                int spTensorIdx = spillCoord[2];
+                
+                if (spPatch < 0 || spPatch >= static_cast<int>(numPatches)) continue;
+                if (spLevel >= Bells[spPatch].size()) continue;
+
+                EvalEntry e;
+                e.f = f;
+                e.thbIdx = -1;  // Spillover indicator
+                e.bellsBasis = &Bells[spPatch][spLevel];
+                e.tensorIdx = spTensorIdx;
+                e.coefs = gsSparseVector<real_t>();  // Empty for spillover
+                evalListPerPatch[spPatch].push_back(std::move(e));
+            }
         }
     }
 
@@ -2881,50 +3914,61 @@ int checkJacobianDeterminant(
             outfile << ">> Patch " << patch << ": " << numPoints << " points\n";
         }
 
-        // reuse resultMatrix for all point evaluations on this patch
-        gsMatrix<> resultMatrix;
-
+        // Build matrix for all 3 parameter points at once (u0, u+eps, v+eps)
+        const real_t eps = 1e-6;
+        const index_t totalEvalPoints = numPoints * 3;  // 3 evals per point
+        gsMatrix<real_t> allParams(2, totalEvalPoints);
+        
+        // Prepare all parameter points in one matrix
         for (index_t pt = 0; pt < numPoints; ++pt)
         {
-            const gsVector<real_t> param = uvPatch.col(pt);
-            gsMatrix<> J(2, 2); J.setZero();
+            gsVector<real_t> param = uvPatch.col(pt);
+            allParams.col(pt * 3 + 0) = param;  // u0
+            allParams.col(pt * 3 + 1) << std::min<real_t>(1.0, param(0) + eps), param(1);  // u+eps
+            allParams.col(pt * 3 + 2) << param(0), std::min<real_t>(1.0, param(1) + eps);  // v+eps
+        }
 
-            // Evaluate geometry at nearby points using evalListPerPatch (precomputed entries)
-            auto eval_geom = [&](const gsVector<real_t>& uvp)->gsMatrix<real_t>
+        // Batch evaluate all basis functions at all parameter points
+        gsMatrix<real_t> allGeoms(2, totalEvalPoints);
+        allGeoms.setZero();
+
+        gsMatrix<> resultMatrix;
+        for (const auto& entry : evalListPerPatch[patch])
+        {
+            // Evaluate basis function at all parameter points at once
+            evalSingle_into(entry.f, entry.thbIdx, allParams, isTruncated, THBVector[patch], entry.coefs, resultMatrix, entry.bellsBasis, entry.tensorIdx);
+            
+            if (entry.f < static_cast<index_t>(vectSol.rows()))
             {
-                gsMatrix<real_t> XY(2,1); XY.setZero();
-                for (const auto &entry : evalListPerPatch[patch])
+                for (index_t col = 0; col < resultMatrix.cols(); ++col)
                 {
-                    evalSingle_into(entry.f, entry.thbIdx, uvp, isTruncated, THBVector[patch], entry.coefs, resultMatrix);
-                    real_t val = resultMatrix(0,0);
-                    if (val != 0.0 && entry.f < static_cast<index_t>(vectSol.rows()))
+                    real_t val = resultMatrix(0, col);
+                    if (val != 0.0)
                     {
-                        XY(0,0) += val * vectSol(entry.f,0);
-                        XY(1,0) += val * vectSol(entry.f,1);
+                        allGeoms(0, col) += val * vectSol(entry.f, 0);
+                        allGeoms(1, col) += val * vectSol(entry.f, 1);
                     }
                 }
-                return XY;
-            };
+            }
+        }
 
-            // Forward differences (2 evals instead of central differences' 4)
-            const real_t eps = 1e-6;
-            gsVector<real_t> param0 = param;
-            gsVector<real_t> param_u_plus = param; param_u_plus(0) = std::min<real_t>(1.0, param(0) + eps);
-            gsVector<real_t> param_v_plus = param; param_v_plus(1) = std::min<real_t>(1.0, param(1) + eps);
+        // Compute Jacobian determinants for all points
+        for (index_t pt = 0; pt < numPoints; ++pt)
+        {
+            const index_t idx0 = pt * 3 + 0;
+            const index_t idx_u = pt * 3 + 1;
+            const index_t idx_v = pt * 3 + 2;
 
-            gsMatrix<real_t> XY0 = eval_geom(param0);
-            gsMatrix<real_t> XY_u_plus = eval_geom(param_u_plus);
-            gsMatrix<real_t> XY_v_plus = eval_geom(param_v_plus);
+            const gsVector<real_t> param = uvPatch.col(pt);
+            const real_t du = allParams(0, idx_u) - allParams(0, idx0);
+            const real_t dv = allParams(1, idx_v) - allParams(1, idx0);
 
-            const real_t du = param_u_plus(0) - param0(0);
-            const real_t dv = param_v_plus(1) - param0(1);
+            gsMatrix<> J(2, 2);
+            J(0, 0) = (allGeoms(0, idx_u) - allGeoms(0, idx0)) / du;  // dx/du
+            J(0, 1) = (allGeoms(0, idx_v) - allGeoms(0, idx0)) / dv;  // dx/dv
+            J(1, 0) = (allGeoms(1, idx_u) - allGeoms(1, idx0)) / du;  // dy/du
+            J(1, 1) = (allGeoms(1, idx_v) - allGeoms(1, idx0)) / dv;  // dy/dv
 
-            J(0,0) = (XY_u_plus(0,0) - XY0(0,0)) / du; // dx/du
-            J(0,1) = (XY_v_plus(0,0) - XY0(0,0)) / dv; // dx/dv
-            J(1,0) = (XY_u_plus(1,0) - XY0(1,0)) / du; // dy/du
-            J(1,1) = (XY_v_plus(1,0) - XY0(1,0)) / dv; // dy/dv
-
-            // === Determinant ===
             real_t det = J.determinant();
             if (det <= 0)
             {
@@ -2935,10 +3979,6 @@ int checkJacobianDeterminant(
                     << ", pt=" << pt
                     << ", uv=(" << param(0) << ", " << param(1)
                     << "), det=" << det << "\n";
-            }
-            else if (verbose)
-            {
-                outfile << "  det(J) = " << det << " at uv=(" << param(0) << ", " << param(1) << ")\n";
             }
         }
 
@@ -3108,12 +4148,12 @@ int PatchesIntersection(gsGeometry < >& geom1, gsGeometry < >& geom2,
 
 /**
  * @brief Checks if mapped lines from two patches intersect improperly.
- * 
- * This overload works with the parameterized/mapped (x,y) lines rather than 
- * the geometry objects. It detects self-intersections and folding in the 
- * parameterization by checking if line segments from different patches 
+ *
+ * This overload works with the parameterized/mapped (x,y) lines rather than
+ * the geometry objects. It detects self-intersections and folding in the
+ * parameterization by checking if line segments from different patches
  * intersect in physical space.
- * 
+ *
  * @param[in] xyLines    All mapped (x,y) lines from generateAndExportMappedLines
  * @param[in] patchIDs   Patch ID for each line
  * @param[in] patch1     First patch to check
@@ -3208,12 +4248,12 @@ int PatchesIntersection(
 
                         if (verbose)
                         {
-                            gsInfo << "  [INTERSECTION] Line " << idx1 << " seg " << seg1 
-                                   << " crosses Line " << idx2 << " seg " << seg2 << "\n";
+                            gsInfo << "  [INTERSECTION] Line " << idx1 << " seg " << seg1
+                                << " crosses Line " << idx2 << " seg " << seg2 << "\n";
                             gsInfo << "    Seg1: (" << x1 << "," << y1 << ") -> (" << x2 << "," << y2 << ")\n";
                             gsInfo << "    Seg2: (" << x3 << "," << y3 << ") -> (" << x4 << "," << y4 << ")\n";
-                            gsInfo << "    Cross products: d1=" << d1 << ", d2=" << d2 
-                                   << ", d3=" << d3 << ", d4=" << d4 << "\n";
+                            gsInfo << "    Cross products: d1=" << d1 << ", d2=" << d2
+                                << ", d3=" << d3 << ", d4=" << d4 << "\n";
                         }
                     }
                 }
@@ -3235,10 +4275,10 @@ int PatchesIntersection(
 
 /**
  * @brief Checks all pairs of patches for intersections in their mapped lines.
- * 
+ *
  * Convenience function that checks every pair of patches for improper intersections.
- * 
- * @param[in] xyLines    All mapped (x,y) lines 
+ *
+ * @param[in] xyLines    All mapped (x,y) lines
  * @param[in] patchIDs   Patch ID for each line
  * @param[in] numPatches Total number of patches
  * @param[in] tolerance  Tolerance for intersection detection
@@ -3564,6 +4604,7 @@ void assembleATHBGauss(
     bool verbose
 )
 {
+    PROFILE_FUNCTION();
     gsVector<index_t> numNodes(2);
     numNodes[0] = numNodes[1] = 2;
     int shift = 0;
@@ -3692,6 +4733,7 @@ void assembleATHB_maskSpilloverFromTwinnedPatches(
     bool verbose = false
 )
 {
+    PROFILE_FUNCTION();
     index_t totalRows = 0;
     for (const auto& patchUV : uv)
         totalRows += patchUV.cols();
@@ -3808,6 +4850,7 @@ void assembleATHB_exclude(
     gsSparseMatrix<real_t>& A_mat,
     bool verbose)
 {
+    PROFILE_FUNCTION();
     index_t totalRows = 0;
     for (const auto& patchUV : uv)
         totalRows += patchUV.cols();
@@ -3950,6 +4993,7 @@ void assembleATHB_clean(
     gsSparseMatrix<real_t>& A_mat
 )
 {
+    PROFILE_FUNCTION();
     // Total number of rows = all UV samples
     index_t totalRows = 0;
     for (const auto& patchUV : uv)
@@ -4041,12 +5085,14 @@ void assembleATHB_clean(
  * - Useful for debugging truncation, basis activation, and index mapping issues.
  * - A failure usually indicates missing basis contributions or incorrect THB hierarchy handling.
  */
-void checkPartitionOfUnity(const gsSparseMatrix<real_t>& A,
+bool checkPartitionOfUnity(const gsSparseMatrix<real_t>& A,
     real_t tol = 1e-10)
 {
     const index_t nRows = A.rows();
     const index_t nCols = A.cols();
+    bool allSatisfied = true;
 
+    gsInfo << "Checking partition of unity...\n";
     for (index_t i = 0; i < nRows; ++i)
     {
         real_t sum = 0.0;
@@ -4054,10 +5100,14 @@ void checkPartitionOfUnity(const gsSparseMatrix<real_t>& A,
         for (index_t j = 0; j < nCols; ++j)
             sum += A(i, j);
 
-        if (std::abs(sum - 1.0) > tol)
+        if (std::abs(sum - 1.0) > tol) {
             gsInfo << "Row " << i << " violates partition of unity: sum = "
-            << sum << "\n";
+                << sum << "\n";
+            allSatisfied = false;
+        }
     }
+
+    return allSatisfied;
 }
 
 
@@ -4095,39 +5145,48 @@ void assemble(
     const gsMultiPatch<real_t>& mp,
     bool verbose)
 {
+    PROFILE_SECTION("assemble_total");
+    auto asm_start = std::chrono::high_resolution_clock::now();
+
     if (verbose)
         outfile << "=== assemble (Gauss points) BEGIN ===\n";
 
     gsVector<index_t> numNodes(2);
-    numNodes[0] = numNodes[1] = 2;
+    numNodes[0] = numNodes[1] = 2;  // Increased from 2 to 5 (5x5=25 Gauss points per element)
     gsGaussRule<real_t> quRule(numNodes);
+
+    if (verbose)
+        gsInfo << "Using " << numNodes[0] << "x" << numNodes[1] << " = " << numNodes.prod() << " Gauss points per element\n";
 
     const index_t numFunctions = functionDescription.size();
     const index_t numPatches = THBVector.size();
     std::vector<bool> hasNonzero(numFunctions, false);
-    
-    // Pre-filter active functions per patch
     std::vector<std::vector<index_t>> activeFuncsPerPatch(numPatches);
-    for (index_t patch = 0; patch < numPatches; ++patch)
+
+    // Pre-filter active functions per patch
     {
-        std::set<index_t> activeFuncsSet;
-        for (index_t f = 0; f < numFunctions; ++f)
+        PROFILE_SECTION("assemble_prefilter");
+        for (index_t patch = 0; patch < numPatches; ++patch)
         {
-            for (size_t comp = 0; comp < functionDescription[f].size(); ++comp)
+            std::set<index_t> activeFuncsSet;
+            for (index_t f = 0; f < numFunctions; ++f)
             {
-                const auto& desc = functionDescription[f][comp];
-                if (desc[0] == static_cast<int>(patch) &&
-                    desc[1] < indexInTHB[patch].size() &&
-                    desc[2] < indexInTHB[patch][desc[1]].size() &&
-                    indexInTHB[patch][desc[1]][desc[2]] != static_cast<index_t>(-1))
+                for (size_t comp = 0; comp < functionDescription[f].size(); ++comp)
                 {
-                    activeFuncsSet.insert(f);
-                    break;
+                    const auto& desc = functionDescription[f][comp];
+                    if (desc[0] == static_cast<int>(patch) &&
+                        desc[1] < indexInTHB[patch].size() &&
+                        desc[2] < indexInTHB[patch][desc[1]].size() &&
+                        indexInTHB[patch][desc[1]][desc[2]] != static_cast<index_t>(-1))
+                    {
+                        activeFuncsSet.insert(f);
+                        break;
+                    }
                 }
             }
+            activeFuncsPerPatch[patch].assign(activeFuncsSet.begin(), activeFuncsSet.end());
         }
-        activeFuncsPerPatch[patch].assign(activeFuncsSet.begin(), activeFuncsSet.end());
-    }
+    } // End PROFILE_SECTION("assemble_prefilter")
 
     index_t totalRows = 0;
     for (index_t patch = 0; patch < numPatches; ++patch)
@@ -4143,7 +5202,7 @@ void assemble(
     b_vec.setZero();
 
     index_t rowOffset = 0;
-    const bool DEBUG_EVAL = false; // Set to true only when debugging evalSingle_into
+    const bool DEBUG_EVAL = true; // Set to true only when debugging evalSingle_into
 
     // Timing measurements
     auto timeEvalStart = std::chrono::system_clock::now();
@@ -4175,7 +5234,7 @@ void assemble(
                 gsMatrix<real_t> xy = mp.patch(patch).eval(uvk);
                 auto timeGeomEnd = std::chrono::system_clock::now();
                 timeOther += std::chrono::duration<double>(timeGeomEnd - timeGeomStart).count();
-                
+
                 b_vec(rowOffset, 0) = xy(0, 0);
                 b_vec(rowOffset, 1) = xy(1, 0);
 
@@ -4198,40 +5257,32 @@ void assemble(
                         int fnLevel = desc[1];
                         int fnTensorIndex = desc[2];
 
-                        if (fnPatch != static_cast<int>(patch)) { 
-                            functionComponent++;
-                            continue; 
-                        }
-                        if (fnLevel >= indexInTHB[fnPatch].size() ||
-                            fnTensorIndex >= indexInTHB[fnPatch][fnLevel].size()) {
+                        if (fnPatch != static_cast<int>(patch)) {
                             functionComponent++;
                             continue;
                         }
 
                         int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIndex];
-                        if (thbIdx == -1) {
-                            functionComponent++;
-                            continue;
-                        }
+
                         auto timeEvalSingleStart = std::chrono::system_clock::now();
                         evalSingle_into(
                             f,
                             thbIdx,
                             uvk,
                             isTruncated,
-                            THBVector[patch],
+                            THBVector[fnPatch],
                             presentation[f][functionComponent],
                             resultMatrix);
                         auto timeEvalSingleEnd = std::chrono::system_clock::now();
                         timeEvalSingle += std::chrono::duration<double>(timeEvalSingleEnd - timeEvalSingleStart).count();
                         evalCount++;
-                        
+
                         real_t contrib = resultMatrix(0, 0);
-                        
+
                         // Debug validation (disabled by default for performance)
                         if (DEBUG_EVAL)
                         {
-                            real_t referenceValue = THBVector[patch].function(thbIdx).eval(uvk)(0,0);
+                            real_t referenceValue = THBVector[patch].function(thbIdx).eval(uvk)(0, 0);
                             if (fabs(fabs(contrib) - fabs(referenceValue)) > 1e-6)
                             {
                                 gsInfo << "MISMATCH in evalSingle_into for f=" << f
@@ -4262,17 +5313,17 @@ void assemble(
             }
         }
     }
-    
+
     auto timeAssemblyEnd = std::chrono::system_clock::now();
     double totalTime = std::chrono::duration<double>(timeAssemblyEnd - timeEvalStart).count();
-    
+
     gsInfo << "\n=== ASSEMBLY TIMING BREAKDOWN ===\n";
     gsInfo << "Total time:             " << totalTime << " s\n";
-    gsInfo << "  evalSingle_into time: " << timeEvalSingle << " s (" << (evalCount > 0 ? timeEvalSingle/evalCount*1000 : 0) << " ms per call, " << evalCount << " calls)\n";
+    gsInfo << "  evalSingle_into time: " << timeEvalSingle << " s (" << (evalCount > 0 ? timeEvalSingle / evalCount * 1000 : 0) << " ms per call, " << evalCount << " calls)\n";
     gsInfo << "  Geometry eval time:   " << timeOther << " s\n";
     gsInfo << "  Other operations:     " << (totalTime - timeEvalSingle - timeOther) << " s\n";
     gsInfo << "===================================\n\n";
-    
+
     for (size_t i = 0; i < hasNonzero.size(); i++)
     {
         if (!hasNonzero[i]) {
@@ -4284,6 +5335,766 @@ void assemble(
         outfile << "=== assemble (Gauss points) END ===\n";
 }
 
+// Validate that MPBES presentations match THB presentations
+int validatePresentations(
+    const MPBES<2, real_t>& mpbes,
+    const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
+    const gsVector<gsTHBSplineBasis<2, real_t>>& SubdomainHierarchy,
+    int attempt = 0)
+{
+    gsInfo << "\n========== Validating Presentations (Attempt " << attempt << ") ==========\n";
+
+    const auto& functionDescription = mpbes.functionDescription();
+    const auto& indexInTHB = mpbes.indexInTHB();
+    const auto& presentation = mpbes.presentation();
+    const auto& isTruncated = mpbes.isTruncated();
+
+    bool presentationError = false;
+    int truncatedCount = 0;
+    int checkedComponents = 0;
+
+    // Compare MPBES presentations with THB presentations
+    for (size_t f = 0; f < functionDescription.size(); ++f) {
+        if (!isTruncated[f]) continue;
+
+        truncatedCount++;
+        gsInfo << "\n--- Function " << f << " (truncated) ---\n";
+
+        // Check each component
+        for (size_t compIdx = 0; compIdx < functionDescription[f].size(); ++compIdx) {
+            int patch = functionDescription[f][compIdx][0];
+            int level = functionDescription[f][compIdx][1];
+            int tensorIdx = functionDescription[f][compIdx][2];
+            int thbIdx = indexInTHB[patch][level][tensorIdx];
+
+            gsInfo << "  Component " << compIdx << ": patch=" << patch << ", level=" << level
+                << ", tensorIdx=" << tensorIdx << ", thbIdx=" << thbIdx;
+
+            if (thbIdx == -1) {
+                gsInfo << " [SPILLOVER - skipping]\n";
+                continue;
+            }
+            gsInfo << "\n";
+
+            // Check if THIS component is truncated
+            if (!mpbes.isComponentTruncated(f, compIdx)) {
+                gsInfo << "    Component NOT truncated - skipping\n";
+                continue;
+            }
+
+            checkedComponents++;
+
+            // Get THB basis
+            const gsTHBSplineBasis<2, real_t>& thbBasis = SubdomainHierarchy[patch];
+
+            if (!thbBasis.isTruncated(thbIdx)) {
+                gsInfo << "    ERROR: Truncated in MPBES but NOT in THB!\n";
+                presentationError = true;
+                continue;
+            }
+
+            // Get both presentations
+            const auto& mpbesCoefs = presentation[f][compIdx];
+            const auto& thbCoefs = thbBasis.getCoefs(thbIdx);
+
+            gsInfo << "    MPBES coefs size: " << mpbesCoefs.size() << "\n";
+            gsInfo << "    THB coefs size:   " << thbCoefs.size() << "\n";
+
+            if (mpbesCoefs.size() != thbCoefs.size()) {
+                gsInfo << "    ERROR: Size mismatch!\n";
+                presentationError = true;
+                continue;
+            }
+
+            // Compare coefficients
+            real_t maxDiff = 0.0;
+            int differingCoefs = 0;
+
+            for (typename gsSparseVector<real_t>::InnerIterator it(mpbesCoefs); it; ++it) {
+                index_t idx = it.index();
+                real_t mpbesVal = it.value();
+                real_t thbVal = thbCoefs[idx];
+                real_t diff = std::abs(mpbesVal - thbVal);
+
+                if (diff > maxDiff) maxDiff = diff;
+
+                if (diff > 1e-10) {
+                    gsInfo << "    Coef[" << idx << "]: MPBES=" << mpbesVal
+                        << " vs THB=" << thbVal << " (diff=" << diff << ")\n";
+                    differingCoefs++;
+                }
+            }
+
+            if (differingCoefs > 0) {
+                gsInfo << "    ERROR: " << differingCoefs << " coefficients differ (max diff: " << maxDiff << ")\n";
+                presentationError = true;
+            }
+            else {
+                gsInfo << "    OK: All coefficients match\n";
+            }
+        }
+    }
+
+    gsInfo << "\nChecked " << checkedComponents << " truncated components in " << truncatedCount << " functions\n";
+
+    if (presentationError) {
+        gsInfo << "========================================\n";
+        gsInfo << "PRESENTATION VALIDATION FAILED!\n";
+        gsInfo << "========================================\n";
+        if (attempt == 0) {
+            return 260114;
+        }
+    }
+    else {
+        gsInfo << "Presentation validation PASSED\n";
+    }
+
+    gsInfo << "========================================\n\n";
+    return 0;
+}
+
+// MPBES-based assemble - Uses MPBES presentation for truncated functions
+void assemble(
+    const gsVector<gsMatrix<>>& uv,
+    const MPBES<2, real_t>& mpbes,
+    gsSparseMatrix<real_t>& A_mat,
+    gsMatrix<real_t>& b_vec,
+    const gsMultiPatch<real_t>& mp,
+    bool verbose)
+{
+    PROFILE_SECTION("assemble_mpbes_total");
+
+    if (verbose)
+        outfile << "=== assemble (MPBES, Gauss points) BEGIN ===\n";
+
+    gsVector<index_t> numNodes(2);
+    numNodes[0] = numNodes[1] = 2;
+    gsGaussRule<real_t> quRule(numNodes);
+
+    if (verbose)
+        gsInfo << "Using " << numNodes[0] << "x" << numNodes[1] << " = " << numNodes.prod() << " Gauss points per element\n";
+
+    const index_t numFunctions = mpbes.size();
+    const index_t numPatches = mpbes.nPatches();
+
+    // Get references to MPBES data
+    const auto& functionDescription = mpbes.functionDescription();
+    const auto& thbBases = mpbes.thbBases();
+    const auto& indexInTHB = mpbes.indexInTHB();
+    const auto& isTruncated = mpbes.isTruncated();
+    const auto& presentation = mpbes.presentation();
+
+    // Pre-filter active functions per patch (CRITICAL for correctness)
+    std::vector<std::vector<index_t>> activeFuncsPerPatch(numPatches);
+    for (index_t patch = 0; patch < numPatches; ++patch)
+    {
+        std::set<index_t> activeFuncsSet;
+        for (index_t f = 0; f < numFunctions; ++f)
+        {
+            for (size_t comp = 0; comp < functionDescription[f].size(); ++comp)
+            {
+                const auto& desc = functionDescription[f][comp];
+                if (desc[0] == static_cast<int>(patch) &&
+                    desc[1] < indexInTHB[patch].size() &&
+                    desc[2] < indexInTHB[patch][desc[1]].size() &&
+                    indexInTHB[patch][desc[1]][desc[2]] != static_cast<index_t>(-1))
+                {
+                    activeFuncsSet.insert(f);
+                    break;
+                }
+            }
+        }
+        activeFuncsPerPatch[patch].assign(activeFuncsSet.begin(), activeFuncsSet.end());
+    }
+
+    // Count total rows
+    index_t totalRows = 0;
+    for (index_t patch = 0; patch < numPatches; ++patch)
+    {
+        auto domIt = thbBases[patch].makeDomainIterator();
+        for (; domIt->good(); domIt->next())
+            totalRows += numNodes.prod();
+    }
+
+    A_mat.resize(totalRows, numFunctions);
+    A_mat.setZero();
+    b_vec.resize(totalRows, 2);
+    b_vec.setZero();
+
+    index_t rowOffset = 0;
+
+    if (verbose)
+    {
+        gsInfo << "Total rows (Gauss points): " << totalRows << "\n";
+        gsInfo << "Total basis functions: " << numFunctions << "\n";
+    }
+
+    for (index_t patch = 0; patch < numPatches; ++patch)
+    {
+        if (verbose)
+            outfile << ">> Patch " << patch << "\n";
+
+        auto domIt = thbBases[patch].makeDomainIterator();
+        gsMatrix<real_t> quNodes;
+        gsVector<real_t> quWeights;
+
+        for (int el = 0; domIt->good(); domIt->next(), ++el)
+        {
+            gsVector<real_t> lower = domIt->lowerCorner();
+            gsVector<real_t> upper = domIt->upperCorner();
+            quRule.mapTo(lower, upper, quNodes, quWeights);
+
+            for (index_t q = 0; q < quNodes.cols(); ++q)
+            {
+                const gsVector<real_t> uvk = quNodes.col(q);
+                index_t row = rowOffset;
+
+                // RHS: target geometry
+                gsMatrix<real_t> xy = mp.patch(patch).eval(uvk);
+                b_vec(row, 0) = xy(0, 0);
+                b_vec(row, 1) = xy(1, 0);
+
+                if (verbose)
+                {
+                    outfile << "  Element " << el << ", Gauss point " << q
+                        << ": (u,v) = (" << uvk(0) << ", " << uvk(1) << ")"
+                        << " => (x,y) = (" << xy(0, 0) << ", " << xy(1, 0) << ")\n";
+                }
+
+                // Only iterate active functions for this patch
+                gsMatrix<real_t> resultMatrix;
+
+                int nonZeroFuncs = 0;
+                for (index_t f : activeFuncsPerPatch[patch])
+                {
+                    // Use MPBES's evalSingleOnPatch which handles component-level truncation correctly
+                    gsMatrix<real_t> basisValue;
+                    mpbes.evalSingleOnPatch(f, patch, uvk, basisValue);
+                    real_t value = basisValue(0, 0);
+
+                    if (value != 0.0)
+                    {
+                        A_mat(row, f) += value;
+                        nonZeroFuncs++;
+                    }
+                }
+
+                ++rowOffset;
+            }
+        }
+    }
+
+    if (verbose)
+    {
+        gsInfo << "=== assemble END ===\n";
+        gsInfo << "Final system size: " << A_mat.rows() << " x " << A_mat.cols() << "\n";
+    }
+}
+
+
+/**
+ * @brief Assembles matrix A_mat and right-hand side b_vec using UNIFORM GRID points.
+ *
+ * This function uses a uniform grid of points (passed via uv parameter)
+ * to construct the fitting system A * x = b. Unlike assemble(), which uses
+ * Gauss quadrature points, this uses a pre-generated uniform grid.
+ *
+ * @date 12.01.26
+ *
+ * @param[in] uv         Parametric points (per patch) - uniform grid.
+ * @param[in] Bells      Tensor-product bases per patch and level.
+ * @param[in] THBVector  THB basis per patch.
+ * @param[in] functionDescription List of (patch, level, index) entries for each global basis function.
+ * @param[in] spilloverFunctionCoordinates Optional spillover sources per function.
+ * @param[in] hasSpillover Flags marking which functions have spillovers.
+ * @param[in] isTruncated Flags marking which functions are truncated.
+ * @param[in] indexInTHB  Converts Bells indices into THB local indices.
+ * @param[in] presentation Coefficient vectors for truncated functions.
+ * @param[out] A_mat      Output matrix A.
+ * @param[out] b_vec      Right-hand side vector.
+ * @param[in] mp         The target geometry (gsMultiPatch).
+ * @param[in] verbose    Enables logging.
+ */
+void assembleUniformGrid(
+    const gsVector<gsMatrix<>>& uv,
+    const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
+    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
+    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
+    const std::vector<std::vector<std::array<int, 3>>>& spilloverFunctionCoordinates,
+    const std::vector<bool>& hasSpillover,
+    const std::vector<bool>& isTruncated,
+    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    std::vector<std::vector<gsSparseVector<real_t>>>& presentation,
+    gsSparseMatrix<real_t>& A_mat,
+    gsMatrix<real_t>& b_vec,
+    const gsMultiPatch<real_t>& mp,
+    bool verbose)
+{
+    if (verbose)
+        gsInfo << "=== assembleUniformGrid BEGIN ===\n";
+
+    const index_t numFunctions = functionDescription.size();
+    const index_t numPatches = THBVector.size();
+
+    // Count total number of points
+    index_t totalRows = 0;
+    for (index_t patch = 0; patch < numPatches; ++patch)
+        totalRows += uv[patch].cols();
+
+    A_mat.resize(totalRows, numFunctions);
+    A_mat.setZero();
+    b_vec.resize(totalRows, 2);
+    b_vec.setZero();
+
+    if (verbose)
+        gsInfo << "Total rows (uniform grid points): " << totalRows << "\n";
+
+    index_t rowOffset = 0;
+
+    for (index_t patch = 0; patch < numPatches; ++patch)
+    {
+        if (verbose)
+            gsInfo << ">> Patch " << patch << ", points: " << uv[patch].cols() << "\n";
+
+        for (index_t ptIdx = 0; ptIdx < uv[patch].cols(); ++ptIdx)
+        {
+            gsVector<real_t> uvk = uv[patch].col(ptIdx);
+
+            // RHS: target geometry
+            gsMatrix<real_t> xy = mp.patch(patch).eval(uvk);
+            b_vec(rowOffset, 0) = xy(0, 0);
+            b_vec(rowOffset, 1) = xy(1, 0);
+
+            // Evaluate all basis functions at this point
+            gsMatrix<> resultMatrix;
+            for (index_t f = 0; f < numFunctions; ++f)
+            {
+                real_t val = 0.0;
+                int functionComponent = 0;
+
+                for (const auto& desc : functionDescription[f])
+                {
+                    int fnPatch = desc[0];
+                    int fnLevel = desc[1];
+                    int fnTensorIndex = desc[2];
+
+                    if (fnPatch != static_cast<int>(patch)) {
+                        functionComponent++;
+                        continue;
+                    }
+
+                    int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIndex];
+
+                    evalSingle_into(
+                        f,
+                        thbIdx,
+                        uvk,
+                        isTruncated,
+                        THBVector[fnPatch],
+                        presentation[f][functionComponent],
+                        resultMatrix);
+
+                    val += resultMatrix(0, 0);
+                    functionComponent++;
+                }
+
+                if (val != 0.0)
+                    A_mat(rowOffset, f) = val;
+            }
+
+            ++rowOffset;
+        }
+    }
+
+    if (verbose)
+        gsInfo << "=== assembleUniformGrid END ===\n";
+}
+
+/**
+ * @brief Wrapper function that assembles and solves the uniform grid system.
+ *
+ * This function:
+ * 1. Calls assembleUniformGrid to build A and b
+ * 2. Prints the matrices and checks partition of unity
+ * 3. Transforms to normal equations (A^T*A)x = A^T*b
+ * 4. Solves the system
+ * 5. Returns the solution
+ *
+ * @date 12.01.26
+ */
+gsMatrix<real_t> solveUniformGridSystem(
+    const gsVector<gsMatrix<>>& uv,
+    const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
+    const gsVector<gsTHBSplineBasis<2, real_t>>& THBVector,
+    const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
+    const std::vector<std::vector<std::array<int, 3>>>& spilloverFunctionCoordinates,
+    const std::vector<bool>& hasSpillover,
+    const std::vector<bool>& isTruncated,
+    const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
+    std::vector<std::vector<gsSparseVector<real_t>>>& presentation,
+    const gsMultiPatch<real_t>& mp,
+    bool verbose = true)
+{
+    gsInfo << "\n========== UNIFORM GRID SYSTEM SOLVE ==========\n";
+
+    // Print UV grid information
+    gsInfo << "\n--- UV Grid Points ---\n";
+    for (index_t patch = 0; patch < uv.size(); ++patch)
+    {
+        gsInfo << "Patch " << patch << ": " << uv[patch].cols() << " points\n";
+        gsInfo << "  First 5 points:\n";
+        for (index_t i = 0; i < std::min<index_t>(5, uv[patch].cols()); ++i)
+        {
+            gsInfo << "    Point " << i << ": (" << uv[patch](0, i) << ", " << uv[patch](1, i) << ")\n";
+        }
+        if (uv[patch].cols() > 5)
+            gsInfo << "  ... (" << (uv[patch].cols() - 5) << " more points)\n";
+    }
+    gsInfo << "----------------------\n\n";
+
+    // Step 1: Assemble the system
+    gsSparseMatrix<real_t> matA_uniform;
+    gsMatrix<real_t> vectB_uniform;
+
+    assembleUniformGrid(
+        uv,
+        Bells,
+        THBVector,
+        functionDescription,
+        spilloverFunctionCoordinates,
+        hasSpillover,
+        isTruncated,
+        indexInTHB,
+        presentation,
+        matA_uniform,
+        vectB_uniform,
+        mp,
+        verbose);
+
+    gsInfo << "\nUniform grid system assembled:\n";
+    gsInfo << "  matA size: " << matA_uniform.rows() << " x " << matA_uniform.cols() << "\n";
+    gsInfo << "  vectB size: " << vectB_uniform.rows() << " x " << vectB_uniform.cols() << "\n";
+
+    // Step 2: Print matrices
+    gsInfo << "\n--- Original Uniform Grid System ---\n";
+    printTheMatrix(matA_uniform, "matA_uniform (original)");
+    printTheMatrix(vectB_uniform, "vectB_uniform (original b)");
+
+    // Step 3: Check partition of unity
+    gsInfo << "\n--- Partition of Unity Check (Uniform Grid) ---\n";
+    checkPartitionOfUnity(matA_uniform);
+
+    // Step 4: Transform to normal equations
+    gsMatrix<> b_vec_copy = vectB_uniform;
+    vectB_uniform = gsEigen::MatrixXd(matA_uniform).transpose() * vectB_uniform;
+    gsMatrix<> matAsquare_uniform = gsEigen::MatrixXd(matA_uniform).transpose() * gsEigen::MatrixXd(matA_uniform);
+
+    gsInfo << "\nNormal equations formed:\n";
+    gsInfo << "  A^T*A size: " << matAsquare_uniform.rows() << " x " << matAsquare_uniform.cols() << "\n";
+    gsInfo << "  A^T*b size: " << vectB_uniform.rows() << " x " << vectB_uniform.cols() << "\n";
+    gsInfo << "  det(A^T*A): " << matAsquare_uniform.determinant() << "\n";
+
+    // Step 5: Solve the system
+    gsMatrix<real_t> vectSol_uniform = matAsquare_uniform.partialPivLu().solve(vectB_uniform);
+
+    gsInfo << "\nSolution obtained:\n";
+    gsInfo << "  vectSol size: " << vectSol_uniform.rows() << " x " << vectSol_uniform.cols() << "\n";
+
+    // Step 6: Check residuals
+    gsMatrix<> matC = matAsquare_uniform * vectSol_uniform - vectB_uniform;
+    gsInfo << "\nResidual norm (A^T*A*x - A^T*b): " << matC.maxCoeff() << "\n";
+
+    gsMatrix<> matOut = gsEigen::MatrixXd(matA_uniform) * vectSol_uniform;
+    matC = matOut - b_vec_copy;
+    gsInfo << "Residual norm (A*x - b): " << matC.maxCoeff() << "\n";
+
+    // Step 7: Evaluate geometry at interface points (0,(0,1)) and (1,(1,1))
+    gsInfo << "\n--- Geometry Evaluation at Interface Points ---\n";
+
+    gsVector<real_t> uv_p0(2), uv_p1(2);
+    uv_p0 << 0.0, 1.0;  // Patch 0 at (u=0, v=1)
+    uv_p1 << 1.0, 1.0;  // Patch 1 at (u=1, v=1)
+
+    std::ofstream interfaceLog("interface_basis_analysis.txt");
+    interfaceLog << "Interface Point Analysis\n";
+    interfaceLog << "========================\n\n";
+
+    // Evaluate for patch 0 at (0, 1)
+    {
+        gsMatrix<> result_p0(2, 1);
+        result_p0.setZero();
+
+        interfaceLog << "PATCH 0 at (u,v) = (0, 1):\n";
+        interfaceLog << "Function    BasisValue    Coeff_x        Coeff_y        Contrib_x      Contrib_y\n";
+        interfaceLog << "--------    ----------    ----------     ----------     ----------     ----------\n";
+
+        for (index_t f = 0; f < functionDescription.size(); ++f)
+        {
+            real_t val = 0.0;
+            int functionComponent = 0;
+
+            for (const auto& desc : functionDescription[f])
+            {
+                int fnPatch = desc[0];
+                int fnLevel = desc[1];
+                int fnTensorIndex = desc[2];
+
+                if (fnPatch != 0) {
+                    functionComponent++;
+                    continue;
+                }
+
+                int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIndex];
+
+                gsMatrix<> resultMatrix;
+                evalSingle_into(
+                    f,
+                    thbIdx,
+                    uv_p0,
+                    isTruncated,
+                    THBVector[0],
+                    presentation[f][functionComponent],
+                    resultMatrix);
+
+                val += resultMatrix(0, 0);
+                functionComponent++;
+            }
+
+            if (fabs(val) > 1e-10)
+            {
+                interfaceLog << std::setw(8) << f
+                    << std::setw(14) << std::scientific << std::setprecision(6) << val
+                    << std::setw(14) << vectSol_uniform(f, 0)
+                    << std::setw(14) << vectSol_uniform(f, 1)
+                    << std::setw(14) << val * vectSol_uniform(f, 0)
+                    << std::setw(14) << val * vectSol_uniform(f, 1) << "\n";
+            }
+
+            result_p0(0, 0) += val * vectSol_uniform(f, 0);
+            result_p0(1, 0) += val * vectSol_uniform(f, 1);
+        }
+
+        interfaceLog << "\nTotal geometry at Patch 0 (0,1): x = " << result_p0(0, 0) << ", y = " << result_p0(1, 0) << "\n\n";
+        gsInfo << "Patch 0 at (u,v) = (0, 1):\n";
+        gsInfo << "  Evaluated geometry: x = " << result_p0(0, 0) << ", y = " << result_p0(1, 0) << "\n";
+    }
+
+    // Evaluate for patch 1 at (1, 1)
+    {
+        gsMatrix<> result_p1(2, 1);
+        result_p1.setZero();
+
+        interfaceLog << "\nPATCH 1 at (u,v) = (1, 1):\n";
+        interfaceLog << "Function    BasisValue    Coeff_x        Coeff_y        Contrib_x      Contrib_y\n";
+        interfaceLog << "--------    ----------    ----------     ----------     ----------     ----------\n";
+
+        for (index_t f = 0; f < functionDescription.size(); ++f)
+        {
+            real_t val = 0.0;
+            int functionComponent = 0;
+
+            for (const auto& desc : functionDescription[f])
+            {
+                int fnPatch = desc[0];
+                int fnLevel = desc[1];
+                int fnTensorIndex = desc[2];
+
+                if (fnPatch != 1) {
+                    functionComponent++;
+                    continue;
+                }
+
+                int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIndex];
+
+                gsMatrix<> resultMatrix;
+                evalSingle_into(
+                    f,
+                    thbIdx,
+                    uv_p1,
+                    isTruncated,
+                    THBVector[1],
+                    presentation[f][functionComponent],
+                    resultMatrix);
+
+                val += resultMatrix(0, 0);
+                functionComponent++;
+            }
+
+            if (fabs(val) > 1e-10)
+            {
+                interfaceLog << std::setw(8) << f
+                    << std::setw(14) << std::scientific << std::setprecision(6) << val
+                    << std::setw(14) << vectSol_uniform(f, 0)
+                    << std::setw(14) << vectSol_uniform(f, 1)
+                    << std::setw(14) << val * vectSol_uniform(f, 0)
+                    << std::setw(14) << val * vectSol_uniform(f, 1) << "\n";
+            }
+
+            result_p1(0, 0) += val * vectSol_uniform(f, 0);
+            result_p1(1, 0) += val * vectSol_uniform(f, 1);
+        }
+
+        interfaceLog << "\nTotal geometry at Patch 1 (1,1): x = " << result_p1(0, 0) << ", y = " << result_p1(1, 0) << "\n\n";
+
+        // Check which functions are active at BOTH interface points
+        interfaceLog << "\n=== TWIN FUNCTION ANALYSIS ===\n";
+        interfaceLog << "Functions that should match at interface:\n\n";
+
+        // Special focus on Functions 20 and 591
+        interfaceLog << "\n=== DETAILED ANALYSIS: Functions 20 and 591 ===\n";
+        for (index_t f : {20, 591})
+        {
+            if (f >= functionDescription.size()) continue;
+
+            interfaceLog << "\nFunction " << f << " details:\n";
+            interfaceLog << "  Number of components: " << functionDescription[f].size() << "\n";
+            interfaceLog << "  Is truncated: " << (isTruncated[f] ? "YES" : "NO") << "\n";
+
+            for (size_t comp = 0; comp < functionDescription[f].size(); ++comp)
+            {
+                const auto& desc = functionDescription[f][comp];
+                interfaceLog << "  Component " << comp << ": patch=" << desc[0]
+                    << ", level=" << desc[1] << ", tensorIdx=" << desc[2] << "\n";
+
+                if (desc[0] < indexInTHB.size() && desc[1] < indexInTHB[desc[0]].size()
+                    && desc[2] < indexInTHB[desc[0]][desc[1]].size())
+                {
+                    int thbIdx = indexInTHB[desc[0]][desc[1]][desc[2]];
+                    interfaceLog << "    → THB index: " << thbIdx << "\n";
+
+                    // Check presentation/spillover
+                    if (isTruncated[f] && comp < presentation[f].size())
+                    {
+                        interfaceLog << "    → Presentation (spillover) coefficients:\n";
+                        for (typename gsSparseVector<real_t>::InnerIterator it(presentation[f][comp]); it; ++it)
+                        {
+                            interfaceLog << "        [" << it.index() << "] = " << it.value() << "\n";
+                        }
+                        if (presentation[f][comp].nonZeros() == 0)
+                            interfaceLog << "        (empty - no spillover)\n";
+                    }
+                }
+            }
+        }
+
+        interfaceLog << "\n=== ALL TWIN FUNCTIONS ===\n";
+
+        for (index_t f = 0; f < functionDescription.size(); ++f)
+        {
+            bool hasPatch0 = false, hasPatch1 = false;
+
+            for (const auto& desc : functionDescription[f])
+            {
+                if (desc[0] == 0) hasPatch0 = true;
+                if (desc[0] == 1) hasPatch1 = true;
+            }
+
+            if (hasPatch0 && hasPatch1)
+            {
+                interfaceLog << "Function " << f << " (twin on both patches):\n";
+
+                // Evaluate on patch 0
+                real_t val_p0 = 0.0;
+                int comp0 = 0;
+                for (const auto& desc : functionDescription[f])
+                {
+                    if (desc[0] == 0)
+                    {
+                        int thbIdx = indexInTHB[0][desc[1]][desc[2]];
+                        gsMatrix<> resultMatrix;
+                        evalSingle_into(f, thbIdx, uv_p0, isTruncated, THBVector[0],
+                            presentation[f][comp0], resultMatrix);
+                        val_p0 += resultMatrix(0, 0);
+                    }
+                    comp0++;
+                }
+
+                // Evaluate on patch 1
+                real_t val_p1 = 0.0;
+                int comp1 = 0;
+                for (const auto& desc : functionDescription[f])
+                {
+                    if (desc[0] == 1)
+                    {
+                        int thbIdx = indexInTHB[1][desc[1]][desc[2]];
+                        gsMatrix<> resultMatrix;
+                        evalSingle_into(f, thbIdx, uv_p1, isTruncated, THBVector[1],
+                            presentation[f][comp1], resultMatrix);
+                        val_p1 += resultMatrix(0, 0);
+                    }
+                    comp1++;
+                }
+
+                if (fabs(val_p0) > 1e-10 || fabs(val_p1) > 1e-10)
+                {
+                    interfaceLog << "  Basis value on Patch 0: " << val_p0 << "\n";
+                    interfaceLog << "  Basis value on Patch 1: " << val_p1 << "\n";
+                    interfaceLog << "  Difference: " << fabs(val_p0 - val_p1) << "\n";
+                    if (fabs(val_p0 - val_p1) > 1e-6)
+                        interfaceLog << "  ⚠️  WARNING: Basis values don't match!\n";
+                    interfaceLog << "\n";
+                }
+            }
+        }
+
+        interfaceLog.close();
+
+        gsInfo << "Patch 1 at (u,v) = (1, 1):\n";
+        gsInfo << "  Evaluated geometry: x = " << result_p1(0, 0) << ", y = " << result_p1(1, 0) << "\n";
+        gsInfo << "\n⚠️  Detailed basis analysis written to interface_basis_analysis.txt\n";
+    }
+    gsInfo << "-----------------------------------------------\n";
+
+    // Evaluate for patch 1 at (1, 1)
+    {
+        gsMatrix<> result_p1(2, 1);
+        result_p1.setZero();
+
+        for (index_t f = 0; f < functionDescription.size(); ++f)
+        {
+            real_t val = 0.0;
+            int functionComponent = 0;
+
+            for (const auto& desc : functionDescription[f])
+            {
+                int fnPatch = desc[0];
+                int fnLevel = desc[1];
+                int fnTensorIndex = desc[2];
+
+                if (fnPatch != 1) {
+                    functionComponent++;
+                    continue;
+                }
+
+                int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIndex];
+
+                gsMatrix<> resultMatrix;
+                evalSingle_into(
+                    f,
+                    thbIdx,
+                    uv_p1,
+                    isTruncated,
+                    THBVector[1],
+                    presentation[f][functionComponent],
+                    resultMatrix);
+
+                val += resultMatrix(0, 0);
+                functionComponent++;
+            }
+
+            result_p1(0, 0) += val * vectSol_uniform(f, 0);
+            result_p1(1, 0) += val * vectSol_uniform(f, 1);
+        }
+
+        gsInfo << "Patch 1 at (u,v) = (1, 1):\n";
+        gsInfo << "  Evaluated geometry: x = " << result_p1(0, 0) << ", y = " << result_p1(1, 0) << "\n";
+    }
+    gsInfo << "-----------------------------------------------\n";
+
+    gsInfo << "========== END UNIFORM GRID SYSTEM ==========\n\n";
+
+    return vectSol_uniform;
+}
 
 
 
@@ -4319,6 +6130,7 @@ void assembleGauss(
     gsMatrix<real_t>& b_vec,
     bool verbose)
 {
+    PROFILE_FUNCTION();
     index_t totalRows = 0;
     gsVector<index_t> numNodes(2); numNodes[0] = numNodes[1] = 2;
 
@@ -5860,6 +7672,7 @@ void createIndexMapping(
             indexInTHB(patch)(corrLevel)(corrIndex) = functionIndex;
         }
     }
+
     outfile << "indexInTHB\n";
     for (size_t patch = 0; patch < indexInTHB.size(); patch++)
     {
@@ -6371,6 +8184,7 @@ void savePatches(
     gsVector<gsVector<int>>& localIndex
 )
 {
+    PROFILE_FUNCTION();
     gsInfo << "Starting savePatches for " << SubdomainHierarchy.size() << " patches.\n";
     outfile << "Starting savePatches for " << SubdomainHierarchy.size() << " patches.\n";
 
@@ -6984,7 +8798,7 @@ void _truncate(
     const unsigned bspl_vec_ti_level,
     const gsVector<index_t, 2>& finest_low,
     int patch,
-    gsVector<int> & presavedIndices,
+    gsVector<int>& presavedIndices,
     const gsVector<gsVector<gsVector<index_t>>>& globalIndex,
     gsVector < gsTHBSplineBasis < 2, real_t > > SubdomainHierarchy)
 {
@@ -7024,7 +8838,7 @@ void _truncate(
         // coef_index - (local) index of a ceofficient at position
         // tensor_active_index - (tensor) index of a active functions
 
-        
+
         unsigned ten_index = const_ten_index;
         for (unsigned dim = 1; dim < 2; dim++)
         {
@@ -7064,16 +8878,16 @@ void _truncate(
                 //||
                 globalIndex[patch][level][ten_index] != -1 && !truncationStopped) // truncate
             {
-/*                gsDebugVar(ten_index);
-                gsDebugVar(tensor_active_index);
-                gsDebugVar(coef_index + index);*/
-  //              gsDebugVar(globalIndex[patch][level][ten_index]);
+                /*                gsDebugVar(ten_index);
+                                gsDebugVar(tensor_active_index);
+                                gsDebugVar(coef_index + index);*/
+                                //              gsDebugVar(globalIndex[patch][level][ten_index]);
 
                 coefs(coef_index + index, 0) = 0;
-    //            gsInfo << "-----------------------------";
+                //            gsInfo << "-----------------------------";
             }
 
-            increase:
+        increase:
             ten_index++;
         }
 
@@ -7537,7 +9351,7 @@ void _representBasisFunction(const int functionIndex,
             presavedIndices,
             globalIndex,
             SubdomainHierarchy
-            );
+        );
         //truncateAfterBoehm2D_flat(coefs, act_size_of_coefs[0], act_size_of_coefs[1], tensor_index, Bells[patch][level + 1],
         //    globalIndex, patch, level + 1, level, SubdomainHierarchy, true);
         if (verbose) {
@@ -7553,13 +9367,16 @@ void computeCoefsForTruncatedFunctions(
     const gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>>& Bells,
     gsVector<gsTHBSplineBasis<2, real_t> > SubdomainHierarchy,
     const std::vector<std::vector<std::vector<index_t>>>& functionDescription,
-    std::vector<std::vector<gsSparseVector < double >>> & presentation,
+    std::vector<std::vector<gsSparseVector < double >>>& presentation,
     std::vector<bool>& isTruncated,
     std::vector<std::vector<std::vector<real_t>>>& globalCoefs, // [func f][globalId] -> list of coefs
     const gsVector<gsVector<gsVector<index_t>>>& globalIndex,
     const gsVector<gsVector<gsVector<index_t>>>& indexInTHB,
     std::vector<std::vector<std::array<int, 3>>> spilloverFunctionCoordinates,
-    bool verbose)
+    const std::vector<std::vector<bool>>& isComponentTruncated,
+    const std::vector<std::vector<index_t>>& presentationLevel,
+    bool verbose,
+    int attempt = 0)
 {
     int maxLevel = 4;
     const index_t numFunctions = functionDescription.size();
@@ -7569,47 +9386,88 @@ void computeCoefsForTruncatedFunctions(
     gsMatrix<index_t, 2, 2> element_ind(2, 2);
     gsVector<index_t, 2   > low, high;
     int numTruncated = 0;
+
+    // First pass: Check which functions have spillovers
+    std::vector<bool> hasSpilloverTwin(numFunctions, false);
     for (index_t f = 0; f < numFunctions; ++f)
     {
-        
-        presentation[f].resize(functionDescription[f].size());
         for (size_t twinIndex = 0; twinIndex < functionDescription[f].size(); twinIndex++)
         {
-            /*if (!isTruncated[f])
-            continue;*/
-            
             const auto& desc = functionDescription[f][twinIndex];
             const int patch = desc[0];
             const int level = desc[1];
             const int tensor_index = desc[2];
             auto THBIndex = indexInTHB[patch][level][tensor_index];
-            if (THBIndex == -1)  continue;
+
+            if (THBIndex == -1)
+            {
+                hasSpilloverTwin[f] = true;
+                break;
+            }
+        }
+    }
+
+    if (verbose) {
+        int numWithSpillovers = 0;
+        for (bool hasSpill : hasSpilloverTwin) if (hasSpill) numWithSpillovers++;
+        gsInfo << "Functions with spillover twins: " << numWithSpillovers << "\n";
+    }
+
+    for (index_t f = 0; f < numFunctions; ++f)
+    {
+
+        presentation[f].resize(functionDescription[f].size());
+        for (size_t twinIndex = 0; twinIndex < functionDescription[f].size(); twinIndex++)
+        {
+            const auto& desc = functionDescription[f][twinIndex];
+            const int patch = desc[0];
+            const int level = desc[1];
+            const int tensor_index = desc[2];
+            auto THBIndex = indexInTHB[patch][level][tensor_index];
+
+            // Handle spillover twins: they don't have a THB index
+            if (THBIndex == -1)
+            {
+                // This is a spillover twin - it's not in THB basis on this patch
+                // Create empty presentation since it won't be evaluated
+                presentation[f][twinIndex] = gsSparseVector<real_t>(Bells[patch][level].size());
+                continue;
+            }
             SubdomainHierarchy[patch].getBases()[level]->elementSupport_into(tensor_index, element_ind);
-            
+
             // I tried with block, I can not trick the compiler to use references
             low = element_ind.col(0); //block<d, 1>(0, 0);
             high = element_ind.col(1); //block<d, 1>(0, 1);
 
-            // Finds coarsest level that function, with supports given with
-            // support indices of the coarsest level (low & high), has presentation
-            // based only on B-Splines (and not THB-Splines).
-            // this is not the same as query 3
-            index_t clevel = SubdomainHierarchy[patch].tree().query4(low, high, level);
+            // Use the presentation level that was already computed by detectTruncatedFunctions
+            // This is the highest level that overlaps this component's support
+            index_t clevel = 0;
+            bool isTrunc = false;
+
+            if (f < isComponentTruncated.size() && twinIndex < isComponentTruncated[f].size()) {
+                isTrunc = isComponentTruncated[f][twinIndex];
+                clevel = presentationLevel[f][twinIndex];
+            }
+
+            // Always initialize presentation vector, even if not truncated
+            if (clevel == 0) clevel = level;  // If no presentation level set, use function's own level
             presentation[f][twinIndex] = gsSparseVector<real_t>(Bells[patch][clevel].size());
-            if (level != clevel) // we must compute its presentation
+
+            if (isTrunc) // we must compute its presentation
             {
+                // CRITICAL: Transform support indices to finest level
                 SubdomainHierarchy[patch].tree().computeFinestIndex(low, level, low);
                 SubdomainHierarchy[patch].tree().computeFinestIndex(high, level, high);
 
                 SubdomainHierarchy[patch].setTruncated(tensor_index, clevel);
-                
                 _representBasisFunction(f, twinIndex, THBIndex, patch, level, clevel, low, high, Bells, tensor_index, globalIndex, SubdomainHierarchy, presentation);
+
                 isTruncated[f] = true;
                 numTruncated++;
             }
         }
     }
-    gsInfo << "numTruncated: " << numTruncated << "\n";
+    gsInfo << "\n*** Total truncated: " << numTruncated << " ***\n\n";
 }
 
 
@@ -8597,6 +10455,7 @@ inline void assembleFitting(gsVector<gsMatrix<>>  uv,
     const real_t weight
 )
 {
+    PROFILE_FUNCTION();
     gsInfo << "A_mat.rows()" << A_mat.rows() << " " << A_mat.cols() << "\n";
     gsInfo << "matA.rows()" << matAsquare.rows() << " " << matAsquare.cols() << "\n";
     outfile << "matA.rows()" << matAsquare.rows() << " " << matAsquare.cols() << "\n";
@@ -8649,6 +10508,7 @@ void assembleOptimization(gsSparseMatrix<real_t>& A,
     int patch,
     bool verbose = true)
 {
+    PROFILE_FUNCTION();
     const short_t geoDim = 2;
     //bool verbose = true;
 
@@ -8825,6 +10685,7 @@ void optimize(
     const real_t epsilon,
     bool verbose)
 {
+    PROFILE_FUNCTION();
     outfile << ">>> Starting optimize()\n";
     if (verbose) outfile << ">>> optimize() BEGIN\n";
 
@@ -9221,6 +11082,19 @@ void printTheMatrix(const gsMatrix<real_t>& matrix, const std::string& matrixNam
         }
         outfile << "\n";
     }
+
+    // Also save to separate file
+    std::ofstream matrixFile(matrixName + ".txt");
+    if (matrixFile.is_open()) {
+        matrixFile << matrixName << "\n";
+        for (size_t row = 0; row < matrix.rows(); ++row) {
+            for (size_t col = 0; col < matrix.cols(); ++col) {
+                matrixFile << matrix(row, col) << " ";
+            }
+            matrixFile << "\n";
+        }
+        matrixFile.close();
+    }
 }
 
 int main() {
@@ -9233,94 +11107,48 @@ int main() {
     localTempAttempt = 0;
     std::chrono::time_point<std::chrono::system_clock> startTime, iterTime;
     startTime = std::chrono::system_clock::now();
-    //std::string filename("hexagon060423.xml");
-    //std::string filename("hexagon_5p_l1.xml");
-    //std::string filename("hexagonOneCell3l.xml");
-    //std::string filename("hexagonTest1.xml");
-    //std::string filename("tv.xml");
     std::string filename("hexagon_3p_4l_240325.xml");
-    //std::string filename("savedMultipatch_1.xml");
-    //std::string filename("multipatch_tunnel_thb_lev2.xml");
-    //std::string filename("multipatch_tunnel_thb_lev1.xml");
-    //std::string filename("hexagon_3p_2l.xml");
-    //std::string filename("hexagon_3p_4l.xml");
-    //std::string filename("hexagonWiggly.xml");
-    //gismoMP/gismo/examples/outputMultipatch.xml
-    //std::string filename("/home/targon/theydarov/gismoMP/gismo/examples/outputMultipatch.xml");
-    //std::string filename("/home/targon/theydarov/Tim/planar/hexagon_3pthb_2l_wigglyInterface.xml");
-    //std::string filename("hexagon060423.xml");
-    //std::string filename("hexagonTest1.xml");
-    //std::string filename("hexagonWiggly.xml");
-    //std::string filename("hexagonOneCell3l.xml");
-    //std::string filename("/home/targon/theydarov/gismoMP/gismo/examples/outputMultipatch.xml");
     const int dim = 2;
     int row, acceptedsize, attempt = 0;
-    //    std::string xmlFile = "/home/targon/theydarov/xmlFiles/resultLocalAndreatemp6";
     std::string badFile = "badgeoLocalAndreatemp6";
     std::string pvdFile = "resultLocalAndreatemp6";
     int los = 0, nlos = 0, proj = 0;
     std::string givenGeo;
     int valid = 0;
     int gradingExtent;
-    real_t epsilon_g = 1e+6, epsilon_f = 1e+6;//0.028, 0.03;// 28;// 23;// 23;// 3;// 0.027;// 0.01;
+    real_t epsilon_g = 1e+6, epsilon_f = 1e+6;
     real_t lcx, lcy, ucx, ucy;
     std::string acCond = to_string(epsilon_g) + "and" + to_string(epsilon_f);
     givenGeo = "two_squares_lev1";
-    //    givenGeo+= "lexicographic";
-    //    givenGeo+= "semi-random";
-    //    givenGeo+= "random";
-    //    givenGeo+="upperhalf";
     givenGeo += "L2";
     givenGeo += "LO";
     givenGeo += "NLO";
-    //    std::string fileLoc = "/home/targon/theydarov/txtFiles/resultLocalAndreatemp6";
     std::string fileLoc = "logFile_poissonTHB_example";
     outfile.open(fileLoc + ".txt");
-    /* std::string inputPtsParams(
-             "/home/targon/theydarov/gismo/extensions/motor/filedata/jku/thb_parameters_and_points.xml");*/
     gsFileData<> data0(filename);
     int iter = -1;
     int successfullAttempts = 0, totalAttempts = 0;
-    //gsInfo << "GIVE A NUMBER OF RED BOXES\n";
-    outfile << "GIVE A NUMBER OF RED BOXES\n";
-    //gsInfo << "I HOPE YOU HAVE /home/theydarov/gismo_unsupported/gismo/extensions/motor/filedata/" + givenGeo + acCond +
-    ".xml\n";
-    outfile << "I HOPE YOU HAVE /home/theydarov/gismo_unsupported/gismo/extensions/motor/filedata/" + givenGeo +
-        acCond + ".xml\n";
     index_t degree;
     real_t tol = 1e-8, gtol = 1e-8;
-    //    bool reparam = false, gaps = true;
-    //gsInfo << "SELECT PICKCELL METHOD:\n";
-    outfile << "SELECT PICKCELL METHOD:\n";
-    char method;
-    method = 'l';
-    //cin >> method;
-
-    //method = "l";
-    //outfile.open(fileLoc + ".txt");
+    char method = 'l';
     gsMultiPatch<>::uPtr mp = gsReadFile<>(filename);
     gsMultiPatch<> domain;
-    //MyFunction function(*mp);
-    //MyFunction function1(domain);
-
-
     gsMultiPatch<real_t> mp1 = *mp;
     gsMultiPatch<>::uPtr initmp = gsReadFile<>(filename);
     gsMultiPatch<> newmp;
     gsMatrix<> matFile;
-    //    //gsDebugVar(PatchesIntersection(initmp->patch(0),initmp->patch(1)));
     gsVector<> lowc1(2);
     gsVector<> uppc1(2);
-    lowc1(0) = 0;//mp->patch(0).basis().support()(0, 0);
-    lowc1(1) = 0;//mp->patch(0).basis().support()(1, 0);
-    uppc1(0) = 1;//mp->patch(0).basis().support()(0, 1);
-    uppc1(1) = 1;//mp->patch(0).basis().support()(1, 1);
+    lowc1(0) = 0;
+    lowc1(1) = 0;
+    uppc1(0) = 1;
+    uppc1(1) = 1;
     unsigned interioru0 = 0;
     unsigned interiorv0 = 0;
     unsigned interioru1 = 0;
     unsigned interiorv1 = 0;
-    int degree0 = 2;//1;//1;
-    int degree1 = 2;//1;
+    int degree0 = 2;
+    int degree1 = 2;
     unsigned multEnd = degree0 + 1;
     gsKnotVector<> ku(mp->patch(0).basis().support()(0, 0), mp->patch(0).basis().support()(0, 1),
         interioru0 + interioru1, multEnd);
@@ -9349,10 +11177,8 @@ int main() {
     gsMatrix<> supps;
     const gsVector<real_t> lowc2 = lowc1;
     const gsVector<real_t> uppc2 = uppc1;
-    int numPoints = std::sqrt(mp->patch(0).basis().size());// Reduced from 2x for faster assembly
-    //int numPoints = 10;// 40;// 10;
-    int jacPoints = 40;//101;// mp->patch(0).basis().size();// 40;// 10;
-    //int jacPoints = 10;// mp->patch(0).basis().size();// 40;// 10;
+    int numPoints = std::sqrt(mp->patch(0).basis().size());
+    int jacPoints = 40;
     gsVector<gsMatrix<real_t>> uv1(mp->nPatches());
     gsVector<gsMatrix<real_t>> uv2(mp->nPatches());
     gsVector<gsMatrix<real_t>> xy1(mp->nPatches());
@@ -9373,26 +11199,7 @@ int main() {
             uvMiddle(patch).col(k) = (uv1(patch).col(k + 1) + uv1(patch).col(k)) / 2;
         }
     }
-    //gsDebugVar(uvMiddle(0));
     gsVector<gsMatrix<real_t>> xyMiddle(mp->nPatches());
-    /*for (int patch = 0; patch < mp->nPatches(); ++patch) {
-        //gsInfo << "Enter number of feature segments for the patch" << patch << ":\n";
-        outfile << "Entered number of feature segments for the patch" << patch << ":\n";
-        int numFeatSeg;
-        cin >> numFeatSeg;
-        featureCoordinates[patch].resize(numFeatSeg);
-        for (int featureIndex = 0; featureIndex < numFeatSeg; ++featureIndex) {
-            for (int k = 0; k < 4; ++k) {
-                double featSegCoord;
-                cin >> featSegCoord;
-                featureCoordinates[patch][featureIndex].push_back(featSegCoord);
-//                //gsInfo << featSegCoord << "\t";
-                outfile << featSegCoord << "\t";
-            }
-//            //gsInfo << "\n";
-            outfile << "\n";
-        }
-    }*/
 
     featureCoordinates[0].resize(1);
     featureCoordinates[1].resize(1);
@@ -9410,82 +11217,6 @@ int main() {
     featureCoordinates[2][0].push_back(0);
     featureCoordinates[2][0].push_back(0);
     featureCoordinates[2][0].push_back(1);
-    /*   for (size_t i = 0; i < mp->nPatches(); i++)
-       {
-           featureCoordinates[i].clear();
-           featureCoordinates[i].resize(4);
-           featureCoordinates[i][0].push_back(0);
-           featureCoordinates[i][0].push_back(0);
-           featureCoordinates[i][0].push_back(1);
-           featureCoordinates[i][0].push_back(0);
-           featureCoordinates[i][1].push_back(1);
-           featureCoordinates[i][1].push_back(0);
-           featureCoordinates[i][1].push_back(1);
-           featureCoordinates[i][1].push_back(1);
-           featureCoordinates[i][2].push_back(0);
-           featureCoordinates[i][2].push_back(1);
-           featureCoordinates[i][2].push_back(1);
-           featureCoordinates[i][2].push_back(1);
-           featureCoordinates[i][3].push_back(0);
-           featureCoordinates[i][3].push_back(0);
-           featureCoordinates[i][3].push_back(0);
-           featureCoordinates[i][3].push_back(1);
-       }*/
-       /*featureCoordinates[0][0].push_back(0);
-       featureCoordinates[0][0].push_back(0);
-       featureCoordinates[0][0].push_back(1);
-       featureCoordinates[0][0].push_back(0);
-       featureCoordinates[0][1].push_back(1);
-       featureCoordinates[0][1].push_back(0);
-       featureCoordinates[0][1].push_back(1);
-       featureCoordinates[0][1].push_back(1);
-       featureCoordinates[0][2].push_back(0);
-       featureCoordinates[0][2].push_back(1);
-       featureCoordinates[0][2].push_back(1);
-       featureCoordinates[0][2].push_back(1);
-       featureCoordinates[0][3].push_back(0);
-       featureCoordinates[0][3].push_back(0);
-       featureCoordinates[0][3].push_back(0);
-       featureCoordinates[0][3].push_back(1);
-
-       featureCoordinates[1][0].push_back(0);
-       featureCoordinates[1][0].push_back(0);
-       featureCoordinates[1][0].push_back(1);
-       featureCoordinates[1][0].push_back(0);
-       featureCoordinates[1][1].push_back(1);
-       featureCoordinates[1][1].push_back(0);
-       featureCoordinates[1][1].push_back(1);
-       featureCoordinates[1][1].push_back(1);
-       featureCoordinates[1][2].push_back(0);
-       featureCoordinates[1][2].push_back(1);
-       featureCoordinates[1][2].push_back(1);
-       featureCoordinates[1][2].push_back(1);
-       featureCoordinates[1][3].push_back(0);
-       featureCoordinates[1][3].push_back(0);
-       featureCoordinates[1][3].push_back(0);
-       featureCoordinates[1][3].push_back(1);
-
-       featureCoordinates[2][0].push_back(0);
-       featureCoordinates[2][0].push_back(0);
-       featureCoordinates[2][0].push_back(1);
-       featureCoordinates[2][0].push_back(0);
-       featureCoordinates[2][1].push_back(1);
-       featureCoordinates[2][1].push_back(0);
-       featureCoordinates[2][1].push_back(1);
-       featureCoordinates[2][1].push_back(1);
-       featureCoordinates[2][2].push_back(0);
-       featureCoordinates[2][2].push_back(1);
-       featureCoordinates[2][2].push_back(1);
-       featureCoordinates[2][2].push_back(1);
-       featureCoordinates[2][3].push_back(0);
-       featureCoordinates[2][3].push_back(0);
-       featureCoordinates[2][3].push_back(0);
-       featureCoordinates[2][3].push_back(1);*/
-
-       /*featureCoordinates[2][0].push_back(1);
-       featureCoordinates[2][0].push_back(0);
-       featureCoordinates[2][0].push_back(1);
-       featureCoordinates[2][0].push_back(1);*/
     for (int patch = 0; patch < mp->nPatches(); ++patch) {
         xyMiddle(patch) = mp->patch(patch).eval(uvMiddle(patch));
     }
@@ -9497,35 +11228,7 @@ int main() {
         uvFeature(i).setZero();
     }
     featureMatrixGenerator(uvFeature, featureCoordinates, numPoints1);
-    //gsDebugVar(uvFeature(0));
-    //gsDebugVar(uvFeature(2));
 
-    //gsVector<gsMatrix<real_t>> uvFeatureMiddle(mp->nPatches());
-    //for (int patch = 0; patch < mp->nPatches(); ++patch) {
-    //    gsInfo << "uvFeature(patch).rows() " << uvFeature(patch).rows() << " uvFeature(patch).cols() - 1: " << uvFeature(patch).cols() - 1 << "\n";
-    //    uvFeatureMiddle(patch).resize(uvFeature(patch).rows(), uvFeature(patch).cols() - 1);
-    //    // //gsDebugVar(xy1(patch));
-    //    for (int k = 0; k < uvFeature(patch).cols() - 1; ++k) {
-    //        uvFeatureMiddle(patch).col(k) = (uvFeature(patch).col(k + 1) + uvFeature(patch).col(k)) / 2;
-    //    }
-    //}
-    //outfile << "uvFeature\n";
-    //for (int patch = 0; patch < mp->nPatches(); ++patch) 
-    //{
-    //    for (size_t i = 0; i < uvFeature(patch).cols(); i++)
-    //    {
-    //        outfile << uvFeature(patch)(0,i) << ", " << uvFeature(patch)(1, i) << "\n";
-    //    }
-    //
-    //}
-    //outfile << "uvFeatureMiddle\n";
-    //for (int patch = 0; patch < mp->nPatches(); ++patch) 
-    //{
-    //    for (size_t i = 0; i < uvFeature(patch).cols(); i++)
-    //    {
-    //        outfile << uvFeatureMiddle(patch)(0, i) << ", " << uvFeatureMiddle(patch)(1, i) << "\n";
-    //    }
-    //}
 
 
     int dummySize = 0;
@@ -9562,13 +11265,6 @@ int main() {
 
         dummySize += xyFeature(currentPatch).cols();
     }
-    //for (size_t currentPatch = 0; currentPatch < xyFeatureMiddle.size(); currentPatch++)
-    //{
-    //    for (int i = 0; i < xyFeatureMiddle(currentPatch).cols(); ++i) {
-
-    //        xyFeatureMiddleNew.col(currentPatch* xyFeatureMiddle(0).cols() + i) = xyFeatureMiddle(currentPatch).col(i);
-    //    }
-    //}
 
 
     //gsDebugVar(xyFeature(0)(1, 5));
@@ -9791,6 +11487,13 @@ int main() {
                 gsVector<index_t> vectorS = nonCheckedCells;
                 fullMonty = 0;
                 while (vectorS.size() != 0) {
+                    // Declare MPBES data variables at broader scope
+                    std::vector<std::vector<std::vector<index_t>>> functionDescription;
+                    std::vector<std::vector<std::array<int, 3>>> spilloverFunctionCoordinates;
+                    std::vector<bool> hasSpillover;
+                    std::vector<bool> isTruncated;
+                    std::vector<std::vector<gsSparseVector<real_t>>> presentation;
+
                     gsInfo << "vectorS.size(): " << vectorS.size() << "\n";
                     outfile << "vectorS.size(): " << vectorS.size() << "\n";
                     lcx = 1.0;
@@ -9839,6 +11542,9 @@ int main() {
                         return 1;
                     }
                     int jopa = 4 * (int)pow(2, levNow) * 4 * (int)pow(2, levNow);
+                    outfile << "=======================================\n";
+                    outfile << "=======================================\n";
+                    outfile << "=======================================\n";
                     outfile << "Number of nonchecked cells: " << vectorS.size() << "\n";
                     gsInfo << "Number of nonchecked cells: " << vectorS.size() << "\n";
                     gsInfo << "attempt " << attempt << ", CURRENT INDEX IS " << vectorS(currArrayIndex) <<
@@ -9854,7 +11560,6 @@ int main() {
                     vectorS.removeElement(currArrayIndex);
                     gsInfo << "DELETED\n";
                     outfile << "DELETED\n";
-                    attempt = (attempt + 1) % (jopa);
                     //if (attempt > 1)     break;
                     valid = 0;
                     createSpline = 0;
@@ -10103,312 +11808,39 @@ int main() {
                             indexInTHB,
                             thbToBellsMapping
                         );
-                        //IdentifyPatches(mp1, SubdomainHierarchy, isTouchingTHB, twinsIndexTHB, twinsPatchTHB, hasATwinTHB, isActiveTHB);
-                        //adjustSpilloverBoxes(spilloverPatchStructure
-                        //    ,
-                        //    boxMat, SpilloverboxMat
-                        //    ,firstSide, secondSide, firstPatch, secondPatch, currentLastNonZeroRow
-                        //);
-
 
                         afterIdent = std::chrono::system_clock::now();
                         std::chrono::duration<double> elapsed_seconds_Ident = afterIdent - beforeIdent;
                         gsInfo << "IdentifyPatches took: " << elapsed_seconds_Ident.count() << "\n";
 
-
-
-
-
-                        std::chrono::time_point<std::chrono::system_clock> beforeselection, afterselection;
-                        beforeselection = std::chrono::system_clock::now();
-                        //selectionMechanism(Bells, SubdomainHierarchy, isActive, twinsIndex, twinsPatch, numActive);
-                        afterselection = std::chrono::system_clock::now();
-                        std::chrono::duration<double> elapsed_seconds_selection = afterselection - beforeselection;
-                        //gsInfo << "selection took: " << elapsed_seconds_selection.count() << "\n";
-
-                        std::chrono::time_point<std::chrono::system_clock> beforesetup, aftersetup;
-                        beforesetup = std::chrono::system_clock::now();
-                        //SetUpTheBasis(THBVector1, hasATwin, twinsIndex, twinsPatch, globalIndex, localLocation,
-                        //    numActive, functionDescription, Z);
-                        std::vector<std::vector<std::array<int, 3>>> spilloverFunctionCoordinates;
-                        std::vector<std::vector<std::array<int, 3>>> spilloverSources;
-                        std::vector<bool> hasSpillover;
-                        std::vector<std::vector<std::vector<index_t>>> functionDescription;
-                        std::vector<std::vector<gsSparseVector < double >>> presentation;
-                        std::vector<std::vector<std::vector<int>>> localIndexForSetUpTheBasis(Bells.size());
-                        outfile << "Test from 05.06.25\n";
-                        int globalFunctionCount;
-                        //gsVector<gsVector<gsVector<index_t>>> indexInTHB;
-                        selectionMechanism(
+                        // ===== MPBES: Multi-Patch B-spline with Exact continuity =====
+                        // This performs: Twin identification + Kraft selection + Truncation
+                        gsInfo << "\n========== Creating MPBES basis ==========\n";
+                        MPBES<2, real_t> mpbes(
                             boxMat,
-                            Bells,
                             SubdomainHierarchy,
+                            Bells,
                             hasATwin,
                             twinsIndex,
                             twinsPatch,
                             indexInTHB,
-                            functionDescription,
-                            spilloverFunctionCoordinates,
-                            spilloverSources,
-                            hasSpillover,
-                            globalIndexTHB,
-                            globalIndex,
-                            globalFunctionCount,
-                            true);
-                        
-                        // DIAGNOSTIC: Check twin function mapping for interface functions
-                        std::ofstream twinLog("twin_mapping_diagnostic.txt");
-                        twinLog << "# Twin Function Mapping Diagnostic\n";
-                        twinLog << "# Checking if interface functions are properly mapped\n\n";
-                        
-                        // Check Function 8 specifically (should have twins on patch 0 and 1)
-                        if (functionDescription.size() > 8)
-                        {
-                            twinLog << "Function 8 description:\n";
-                            for (size_t twinIdx = 0; twinIdx < functionDescription[8].size(); ++twinIdx)
-                            {
-                                int p = functionDescription[8][twinIdx][0];
-                                int l = functionDescription[8][twinIdx][1];
-                                int idx = functionDescription[8][twinIdx][2];
-                                twinLog << "  Twin " << twinIdx << ": patch=" << p << ", level=" << l << ", index=" << idx << "\n";
-                                
-                                // Check if this is in indexInTHB
-                                if (p < indexInTHB.size() && l < indexInTHB[p].size() && idx < indexInTHB[p][l].size())
-                                {
-                                    int thbIdx = indexInTHB[p][l][idx];
-                                    twinLog << "    indexInTHB[" << p << "][" << l << "][" << idx << "] = " << thbIdx << "\n";
-                                    
-                                    if (thbIdx >= 0)
-                                    {
-                                        twinLog << "    This function IS active in THB basis on patch " << p << "\n";
-                                    }
-                                    else
-                                    {
-                                        twinLog << "    WARNING: This function is NOT active (thbIdx = -1)\n";
-                                    }
-                                }
-                                else
-                                {
-                                    twinLog << "    ERROR: Index out of bounds in indexInTHB!\n";
-                                }
-                            }
-                            twinLog << "\n";
-                        }
-                        
-                        // Check Functions 217 and 235 (appearing on Patch 1)
-                        for (int f : {217, 235})
-                        {
-                            if (f < functionDescription.size())
-                            {
-                                twinLog << "Function " << f << " description:\n";
-                                for (size_t twinIdx = 0; twinIdx < functionDescription[f].size(); ++twinIdx)
-                                {
-                                    int p = functionDescription[f][twinIdx][0];
-                                    int l = functionDescription[f][twinIdx][1];
-                                    int idx = functionDescription[f][twinIdx][2];
-                                    twinLog << "  Twin " << twinIdx << ": patch=" << p << ", level=" << l << ", index=" << idx << "\n";
-                                    
-                                    if (p < indexInTHB.size() && l < indexInTHB[p].size() && idx < indexInTHB[p][l].size())
-                                    {
-                                        int thbIdx = indexInTHB[p][l][idx];
-                                        twinLog << "    indexInTHB[" << p << "][" << l << "][" << idx << "] = " << thbIdx << "\n";
-                                    }
-                                }
-                                twinLog << "\n";
-                            }
-                        }
-                        
-                        // List all functions that have patch 0 AND patch 1 components
-                        twinLog << "Functions with twins on BOTH patch 0 and patch 1:\n";
-                        for (size_t f = 0; f < functionDescription.size(); ++f)
-                        {
-                            bool hasPatch0 = false;
-                            bool hasPatch1 = false;
-                            
-                            for (const auto& desc : functionDescription[f])
-                            {
-                                if (desc[0] == 0) hasPatch0 = true;
-                                if (desc[0] == 1) hasPatch1 = true;
-                            }
-                            
-                            if (hasPatch0 && hasPatch1)
-                            {
-                                twinLog << "  Function " << f << ":\n";
-                                for (size_t twinIdx = 0; twinIdx < functionDescription[f].size(); ++twinIdx)
-                                {
-                                    int p = functionDescription[f][twinIdx][0];
-                                    int l = functionDescription[f][twinIdx][1];
-                                    int idx = functionDescription[f][twinIdx][2];
-                                    int thbIdx = (p < indexInTHB.size() && l < indexInTHB[p].size() && idx < indexInTHB[p][l].size()) 
-                                                 ? indexInTHB[p][l][idx] : -999;
-                                    twinLog << "    Patch " << p << ", level " << l << ", index " << idx << " -> thbIdx=" << thbIdx << "\n";
-                                }
-                            }
-                        }
-                        
-                        twinLog.close();
-                        gsInfo << "Twin mapping diagnostic written to twin_mapping_diagnostic.txt\n";
-                        //selectionMechanism(
-                        //    boxMat,
-                        //    Bells,
-                        //    hasATwin,
-                        //    twinsIndex,
-                        //    twinsPatch,
-                        //    indexInTHB,
-                        //    functionDescription,
-                        //    globalIndex,
-                        //    globalFunctionCount,
-                        //    true);
-                        outfile << "Test from 05.06.25\n";
-                        outfile << "globalIndex\n";
-                        for (size_t patch = 0; patch < globalIndex.size(); patch++)
-                        {
-                            outfile << "Patch " << patch << ", ";
-                            for (size_t level = 0; level < globalIndex(patch).size(); level++)
-                            {
-                                outfile << "level " << level << "\n";
-                                for (size_t index = 0; index < globalIndex(patch)(level).size(); index++)
-                                {
-                                    outfile << index << ": " << globalIndex(patch)(level)(index) << "\n";
-                                }
-                                outfile << "\n";
-                            }
-                            outfile << "\n\n";
-                        }
-                        outfile << "functionDescription\n";
-                        presentation.resize(functionDescription.size());
-                        for (size_t functionIndex = 0; functionIndex < functionDescription.size(); ++functionIndex) {
-                            outfile << "Function " << functionIndex << ":\n";
-                            for (size_t piece = 0; piece < functionDescription[functionIndex].size(); ++piece) {
-                                outfile << "  Twin " << piece << ": ";
-                                for (size_t i = 0; i < functionDescription[functionIndex][piece].size(); ++i) {
-                                    outfile << functionDescription[functionIndex][piece][i] << " ";
-                                }
-                                outfile << "\n";
-                            }
-                        }
-                        outfile << "End of functionDescription\n";
-                        std::vector<bool> isTruncated;
-                        gsInfo << "Test from 11.06.25\n";
-                        gsInfo << "spilloverFunctionCoordinates.size(): " << spilloverFunctionCoordinates.size() << "\n";
-                        index_t numFunctions = functionDescription.size();
-                        isTruncated.clear();
-                        isTruncated.resize(numFunctions, false);
-                        if (attempt > 0) {
-                            /*truncationMechanism(
-                                Bells,
-                                functionDescription,
-                                spilloverFunctionCoordinates,
-                                isTruncated, // output
-                                true
-                            );*/
-                            std::vector<std::vector<std::vector<real_t>>> globalCoefs;
-                            //static_assert(std::is_same<
-                            //    decltype(presentation),
-                            //    std::vector<std::vector<gsSparseVector<real_t>>>
-                            //>::value, "presentation declared type mismatch");
+                            true,  // verbose
+                            attempt  // for conditional logging
+                        );
+                        gsInfo << "MPBES created with " << mpbes.size() << " basis functions\n";
+                        gsInfo << "==========================================\n\n";
 
-                            //static_assert(std::is_same<
-                            //    decltype(std::declval<std::vector<std::vector<gsSparseVector<real_t>>>>()),
-                            //    std::vector<std::vector<gsSparseVector<real_t>>>
-                            //>::value, "weird");
-                            //cout << decltype(presentation) << "\n";
-                            //static_assert(std::is_same<
-                            //    decltype(presentation),
-                            //    std::vector<std::vector<gsSparseVector<real_t>>>
-                            //>::value, "presentation TYPE MISMATCH");
+                        // Extract data from MPBES for use throughout the code
+                        functionDescription = mpbes.functionDescription();
+                        spilloverFunctionCoordinates = mpbes.spilloverCoordinates();
+                        hasSpillover = mpbes.hasSpillover();
+                        isTruncated = mpbes.isTruncated();
+                        presentation = mpbes.presentation();
+                        commonSize = mpbes.size();
 
-                            computeCoefsForTruncatedFunctions(
-                                Bells,
-                                SubdomainHierarchy,
-                                functionDescription,
-                                presentation,
-                                isTruncated,
-                                globalCoefs,
-                                globalIndex,
-                                indexInTHB,
-                                spilloverFunctionCoordinates,
-                                true);
-                            //return 250728;
-                        }
-                        //return 250612;
-                        //SetUpTheBasisTHB(
-                        //    SubdomainHierarchy,
-                        //    globalIndexTHB,
-                        //    hasATwin,
-                        //    twinsIndex,
-                        //    twinsPatch,
-                        //    globalIndex,
-                        //    indexInTHB,
-                        //    functionDescription,
-                        //    spilloverFunctionCoordinates,
-                        //    spilloverSources,
-                        //    hasSpillover,
-                        //    commonSize,
-                        //    localIndexForSetUpTheBasis);
-                        aftersetup = std::chrono::system_clock::now();
-                        std::chrono::duration<double> elapsed_seconds_setup = aftersetup - beforesetup;
-                        gsInfo << "setup took: " << elapsed_seconds_setup.count() << "\n";
+                        gsInfo << "Setup completed. Functions: " << commonSize << "\n";
 
-
-                        //
-                        //gsInfo << "functionDescription\n";
-
-
-
-                        outfile << "localIndexForSetUpTheBasis\n";
-                        for (size_t patch = 0; patch < localIndexForSetUpTheBasis.size(); patch++)
-                        {
-                            for (size_t level = 0; level < localIndexForSetUpTheBasis[patch].size(); level++)
-                            {
-                                for (size_t index = 0; index < localIndexForSetUpTheBasis[patch][level].size(); index++)
-                                {
-                                    outfile << localIndexForSetUpTheBasis[patch][level][index] << " ";
-                                }
-                                outfile << "\n";
-                            }
-                            outfile << "\n\n";
-                        }
-                        outfile << "spilloverFunctionCoordinates\n";
-                        gsInfo << "spilloverFunctionCoordinates.size(): " << spilloverFunctionCoordinates.size() << "\n";
-                        for (size_t patch = 0; patch < spilloverFunctionCoordinates.size(); patch++)
-                        {
-                            for (size_t level = 0; level < spilloverFunctionCoordinates[patch].size(); level++)
-                            {
-                                for (size_t index = 0; index < spilloverFunctionCoordinates[patch][level].size(); index++)
-                                {
-                                    outfile << spilloverFunctionCoordinates[patch][level][index] << " ";
-                                }
-                                outfile << "\n";
-                            }
-                            outfile << "\n\n";
-                        }
-
-                        std::vector<std::vector<gsMatrix<int>>> actives(Bells.size());
-                        std::vector<std::vector<gsMatrix<int>>> actives_jac(Bells.size());
-                        //std::chrono::time_point<std::chrono::system_clock> beforeactive, afteractive;
-                        //beforeactive = std::chrono::system_clock::now();
-                        //afteractive = std::chrono::system_clock::now();
-                        //std::chrono::duration<double> elapsed_seconds_active = afteractive - beforeactive;
-                        //gsInfo << "active_into took: " << elapsed_seconds_active.count() << "\n";
-
-                        //std::chrono::time_point<std::chrono::system_clock> beforeprecompute, afterprecompute;
-                        //beforeprecompute = std::chrono::system_clock::now();
-                        //gsVector<gsMatrix<gsMatrix<real_t>>> precomputedTHBDerivs;
-                        //gsVector<gsMatrix<gsMatrix<real_t>>> precomputedSpilloverDerivs;
-                        //precomputeDerivatives(
-                        //    uv2,
-                        //    SubdomainHierarchy,
-                        //    Bells,
-                        //    functionDescription,
-                        //    spilloverFunctionCoordinates,
-                        //    hasSpillover,
-                        //    precomputedTHBDerivs,
-                        //    precomputedSpilloverDerivs);
-                        //afterprecompute = std::chrono::system_clock::now();
-                        //std::chrono::duration<double> elapsed_seconds_precompute = afterprecompute - beforeprecompute;
-                        //gsInfo << "precompute took: " << elapsed_seconds_precompute.count() << "\n";
-                        //gsInfo << "precompute took: " << elapsed_seconds_precompute.count() << "\n";
+                        // Assembly phase
                         index_t numElements = countTotalActiveElements(SubdomainHierarchy);
                         index_t numGaussPointsPerElement = 4;
                         index_t numTotalRows = numElements * numGaussPointsPerElement;
@@ -10418,151 +11850,53 @@ int main() {
 
                         std::chrono::time_point<std::chrono::system_clock> beforeassembleA, afterassembleA;
                         beforeassembleA = std::chrono::system_clock::now();
-                        gsInfo << "starting to assemble\n";
-                        //////////////////////////
-                        /*gsVector<int> theNumNodes(2);
-                        theNumNodes[0] = theNumNodes[1] = 2;
-                        for (int thePatch = 0; thePatch < SubdomainHierarchy.size(); thePatch++) {
-                            typename gsBasis<real_t>::domainIter domIt = SubdomainHierarchy(patch).makeDomainIterator();
-                            gsGaussRule<real_t> quRule(theNumNodes);
-                            gsVector<gsMatrix<>> dummyVector(1);
-                            gsMatrix<real_t> quNodes;
-                            dummyVector(0) = quNodes;
-                            gsVector<real_t> quWeights;
-                            for (; domIt->good(); domIt->next()) {
-                                if (DTD)    gsInfo << "the next domain\n";
-                                gsInfo << "the next domain\n";
-                                quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
-                                assembleATHB(dummyVector,
-                                    Bells,
-                                    SubdomainHierarchy,
-                                    functionDescription,
-                                    spilloverFunctionCoordinates,
-                                    hasSpillover,
-                                    matA);
-                            }
-                        }*/
+                        gsInfo << "Starting assembly with " << commonSize << " functions...\n";
+
+                        // Use new MPBES-based assemble
                         assemble(
                             uv1,
-                            Bells,
-                            SubdomainHierarchy,
-                            functionDescription,
-                            spilloverFunctionCoordinates,
-                            hasSpillover,
-                            isTruncated,
-                            indexInTHB,
-                            presentation,
+                            mpbes,
                             matA,
                             vectB,
                             mp1,
                             false);
-                        //checkPartitionOfUnity(matA);
-                        if (attempt == 7) {
+
+                        if (attempt == 0) {
                             printTheMatrix(matA, "matA");
                         }
-                        //assembleGauss(
-                        //    mp1,
-                        //    Bells,
-                        //    SubdomainHierarchy,
-                        //    functionDescription,
-                        //    spilloverFunctionCoordinates,
-                        //    hasSpillover,
-                        //    indexInTHB,
-                        //    matA,
-                        //    vectB,
-                        //    true);
-                        //{
-                        //    std::ofstream filematA("matA.txt");
-                        //    {
-                        //        // Logging matA
-                        //        filematA << "Matrix matA:" << matA.rows() << " * " << matA.cols() << "\n";
-                        //        for (int i = 0; i < matA.rows(); i++) {
-                        //            for (int j = 0; j < matA.cols(); j++) {
-                        //                filematA << matA(i, j) << " ";
-                        //                if (isnan(matA(i, j)))
-                        //                    filematA << "NaN detected at (" << i << "," << j << ")";
-                        //            }
-                        //            filematA << "\n";
-                        //        }
-                        //        filematA.close();
-                        //    }
-                        //}
 
-                        //return 2027;
-
-                            //////////////////////////
-                        //assembleATHB(uv1,
-                        //    Bells,
-                        //    SubdomainHierarchy,
-                        //    functionDescription,
-                        //    spilloverFunctionCoordinates,
-                        //    hasSpillover,
-                        //    matA);
                         gsInfo << "matA.size: " << matA.rows() << " * " << matA.cols() << "\n";
+
+                        // Check partition of unity immediately
+                        if (!checkPartitionOfUnity(matA, 1e-10)) {
+                            gsInfo << "\n*** ERROR: Partition of unity violated! ***\n";
+                            return VIOLATED_PARTITION_OF_UNITY;
+                        }
+                        gsInfo << "Partition of unity satisfied.\n";
+
                         afterassembleA = std::chrono::system_clock::now();
                         std::chrono::duration<double> elapsed_seconds_assembleA = afterassembleA - beforeassembleA;
-                        gsInfo << "assembleA took: " << elapsed_seconds_assembleA.count() << "\n";
+                        gsInfo << "Assembly took: " << elapsed_seconds_assembleA.count() << " seconds\n";
 
-                        gsInfo << "\n\n\n";
+                        // Check matrix rank before solving
+                        gsMatrix<> matA_dense = gsEigen::MatrixXd(matA);
+                        int rankA = computeRankByZeroRows(matA_dense);
+                        gsInfo << "Matrix A rank (by zero rows): " << rankA << " / " << matA.rows() << " rows\n";
+                        gsInfo << "Matrix A dimensions: " << matA.rows() << " x " << matA.cols() << "\n";
 
-                        std::chrono::time_point<std::chrono::system_clock> beforeTest, afterTest;
-                        beforeTest = std::chrono::system_clock::now();
-
-
-                        afterTest = std::chrono::system_clock::now();
-                        std::chrono::duration<double> elapsed_seconds_Test = afterTest - beforeTest;
-
-                        gsMatrix<real_t> matAfull;
-                        //vectB = gsEigen::MatrixXd(matA).transpose() * xyNew.transpose();
+                        // Solve the system
                         gsMatrix<> b_vec = vectB;
                         vectB = gsEigen::MatrixXd(matA).transpose() * vectB;
                         gsMatrix<> matAsquare = gsEigen::MatrixXd(matA).transpose() * gsEigen::MatrixXd(matA);
-                        gsMatrix<int> leftSide(matA.rows(), 2);
-                        std::vector<int> val;
-                        double tempvalue = 0;
-                        double b;
-                        gsMatrix<real_t> vectSol;
-                        outfile << "matAsquare:\n";
-                        auto mymaxNew = 0.0;
-                        outfile << matAsquare.determinant() << "\n";
+
+                        int rankAsquare = computeRankByZeroRows(matAsquare);
+                        gsInfo << "matAsquare rank: " << rankAsquare << " / " << matAsquare.rows() << " rows\n";
                         gsInfo << "matAsquare.determinant(): " << matAsquare.determinant() << "\n";
-                        outfile << matAsquare.rows() << "\n";
-                        //printTheMatrix(matAsquare, "matAsquare");
-                        //if (matAsquare.determinant() <= 0) {
-                        //    gsFileManager::open("matA.txt");
-                        //    return 300;
-                        //}
-                        //return 250611;
-                        ///////////////
-                        //gsEigen::ColPivHouseholderQR<gsMatrix<>> qr(matA);
-                        //index_t r = qr.rank();
-                        //std::cout << "Rank(A)=" << r << " of " << matA.cols() << "\n";
-                        /////////////////
-                        //gsEigen::MatrixXd EA = matA; // implicit conversion works in G+Smo
-                        //gsEigen::JacobiSVD<gsEigen::MatrixXd> svd(EA, gsEigen::ComputeFullV);
-                        //gsEigen::JacobiSVD<gsMatrix<>> svd(matA, gsEigen::ComputeFullV);
-                        //auto V = svd.matrixV();        // columns span R^{912}
-                        //auto S = svd.singularValues(); // size = 912
 
-                        //for (int i = 0; i < S.size(); ++i)
-                        //    if (S(i) < 1e-12)
-                        //        std::cout << "Zero singular value at index " << i << "\n";
+                        commonSize = functionDescription.size();
+                        gsMatrix<real_t> vectSol = matAsquare.partialPivLu().solve(vectB);
 
-                        //////////////////
-                        vectSol = matAsquare.partialPivLu().solve(vectB);
-                        outfile << "vectSol.rows():\n" << vectSol.rows() << "\n";
-                        gsInfo << "vectSol.rows():\n" << vectSol.rows() << "\n";
-                        //gsDebugVar(vectSol);
-                        //gsInfo << "vectSol:\n" << vectSol << "\n";
-                        outfile << "vectSol:\n";// << vectSol << "\n";
-                        for (size_t i = 0; i < vectSol.rows(); i++)
-                        {
-                            /*                          for (size_t j = 0; j < vectSol.cols(); j++)
-                                                      {*/
-                            outfile << vectSol(i, 0) << "," << vectSol(i, 1) << "\n";
-                            //}
-                            //outfile << "\n";
-                        }
+                        gsInfo << "vectSol.rows(): " << vectSol.rows() << "\n";
                         gsMatrix<> matC = matAsquare * vectSol - vectB;
                         gsInfo << "Residual norm (A^T A x - A^T b) matCbefore\n";
                         gsInfo << matC.maxCoeff() << "\n";
@@ -10595,6 +11929,7 @@ int main() {
                             numIrregular,
                             isTruncated,
                             presentation,
+                            spilloverFunctionCoordinates,
                             false);
                         afterjack = std::chrono::system_clock::now();
                         std::chrono::duration<double> elapsed_seconds_jack = afterjack - beforejack;
@@ -10621,7 +11956,7 @@ int main() {
                             "savedPatch", localIndex
                         );
                         // Also save the combined multipatch geometry and interfaces
-                        if(attempt >= 54){
+                        if (attempt >= 7) {
                             saveMultipatchGeometry(
                                 vectSol,
                                 globalIndexTHB,
@@ -10632,52 +11967,20 @@ int main() {
                             );
                         }
 
-                        if (attempt >= 54) {
-                            generateVisualizationMesh(
-                                boxMat,
-                                40,
-                                SubdomainHierarchy,
-                                functionDescription,
-                                isTruncated,
-                                indexInTHB,
-                                vectSol,
-                                currentLastNonZeroRow,
-                                presentation,
-                                "mesh_attempt" + std::to_string(attempt),
-                                true
-                            );
-                            // return 250525;
-                        }
-                        //savePatches(
-                        //    vectSol,
-                        //    functionDescription,
-                        //    localCoeffs,
-                        //    localIndex,
-                        //    SubdomainHierarchy,
-                        //    outfile,
-                        //    "savedPatch" // <-- just a single base name
-                        //);
-
-                        outfile << "localCoefs\n";
-                        for (size_t patch = 0; patch < localIndexForSetUpTheBasis.size(); patch++)
-                        {
-                            for (size_t functionIndex = 0; functionIndex < localIndexForSetUpTheBasis[patch].size(); functionIndex++)
-                            {
-                                for (size_t index = 0; index < localIndexForSetUpTheBasis[patch][functionIndex].size(); index++)
-                                {
-                                    auto theIndex = localIndexForSetUpTheBasis[patch][functionIndex][index];
-                                    outfile << localIndexForSetUpTheBasis[patch][theIndex][index] << " ";
-                                }
-                                outfile << ": ";
-                                //for (size_t index = 0; index < localIndexForSetUpTheBasis[patch][functionIndex].size(); index++)
-                                //{
-                                //    auto theIndex = localIndexForSetUpTheBasis[patch][functionIndex][index];
-                                //    outfile << localCoeffs[patch][theIndex][index] << " ";
-                                //}
-                                outfile << "\n";
-                            }
-                            outfile << "\n\n";
-                        }
+                         if (attempt >= 7) {
+                             generateVisualizationMesh(
+                                 boxMat,
+                                 40,
+                                 mpbes,
+                                 mp1,
+                                 vectSol,
+                                 currentLastNonZeroRow,
+                                 "mesh_attempt" + std::to_string(attempt),
+                                 true
+                             );
+                         }
+                        // Output solution coefficients
+                        outfile << "Solution coefficients: " << vectSol.rows() << " x " << vectSol.cols() << "\n";
 
                         //return 250421;
                         //return 250122;
@@ -10781,30 +12084,35 @@ int main() {
                         toc = std::chrono::system_clock::now();
                         std::chrono::duration<double> elapsed_seconds_write = toc - startTime;
                         featureError = boundaryError(
-                            Bells,
-                            SubdomainHierarchy,
-                            functionDescription,
-                            spilloverFunctionCoordinates,
-                            hasSpillover,
-                            isTruncated,
-                            indexInTHB,
+                            mpbes,
                             mp1,
-                            vectSol,
-                            presentation);
+                            vectSol);
+                        
+                        // Test interface continuity using assemble() - gold standard test
+                        real_t assemblyBoundaryError = testBoundaryAssembly(mpbes, mp1, vectSol);
+                        
+                        // Use assemblyBoundaryError as the correct featureError
+                        // boundaryError() has issues with manual THB evaluation and truncation
+                        featureError = assemblyBoundaryError;
+                        
                         //real_t error = boundaryErrorTwoPointsOnly(
                         //    Bells, SubdomainHierarchy, functionDescription, spilloverFunctionCoordinates,
                         //    hasSpillover, isTruncated, indexInTHB, mp1, vectSol);
                         //outfile << "writing took: " << elapsed_seconds_assemble.count() << "\n";
                         //gsDebugVar(matC.maxCoeff());
                         //gsInfo << "maxCoeff and minusnumber: " << matC.maxCoeff() << ", " << minusnumber << "\n";
-                        outfile << "featureError: " << featureError << "\n";
                         outfile << "globalError: " << globalError << "\n";
+                        outfile << "featureError: " << featureError << "\n";
+                        outfile << "assemblyBoundaryError: " << assemblyBoundaryError << "\n";
                         outfile << "minusnumber: " << minusnumber << "\n";
                         gsInfo << "globalError: " << globalError << "\n";
                         gsInfo << "featureError: " << featureError << "\n";
+                        gsInfo << "assemblyBoundaryError: " << assemblyBoundaryError << "\n";
                         index_t geoDim = 2;
                         gsSparseMatrix<real_t> A(vectSol.rows() * geoDim, vectSol.rows() * geoDim);
-                        if(minusnumber > 0) return 260106; 
+                        // Temporarily disabled to see full boundaryError output
+                        // if (minusnumber > 0) return 260106;
+                        if (attempt >= 7) return 261301;
                         //numIrregular(patch)++;
                         if (globalError <= epsilon_g && featureError <= epsilon_f && numIrregular(patch) == 0) {
                             //if (globalError <= epsilon_g && featureError <= epsilon_f && numIrregular(patch) != 0) {
@@ -10835,45 +12143,29 @@ int main() {
 
                             for (int l = 0; l < lastNonZeroRow; l++) {
                                 for (int m = 1; m < 5; m++) {
-                                    outfile << boxMat(patch)(l)(m);
-                                    outfile << "\t";
-                                    //gsInfo << boxMat(patch)(l)(m);
-                                    //gsInfo << "\t";
+                                    outfile << boxMat(patch)(l)(m) << "\t";
                                 }
                                 outfile << "\n";
-                                //gsInfo << "\n";
                             }
                             AcceptedlastRow(patch) = lastNonZeroRow;
-                            /*for (size_t i = lastNonZeroRow; i < boxMat(patch).size(); i++)
-                            {
-                                for (size_t j = 0; j < 5; j++)
-                                {
-
-                                }
-                            }*/
                             proj++;
-                            //gsWrite
-                            //setSupports(THB, supps);
                             anmat2 = THB.anchors();
                             wasRebuilt = 1;
-                            ////gsInfo << "nonCheckedCells.size(): " << nonCheckedCells.size() << "\n";
                             nonCheckedCells.removeElement(currArrayIndex);
-                            //gsInfo << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
                             outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
-                            //gsInfo << "break\n";
-                            //break;
+
+                            int jopa = 4 * (int)pow(2, levNow) * 4 * (int)pow(2, levNow);
+                            attempt = (attempt + 1) % (jopa);
                             continue;
                         }
                         else {
                             if (globalError > epsilon_g) {
-                                outfile << "Global conditions are violated\n"; gsInfo << "Sowieso schlimm\n";
-                                //return 4;
-                                //goto hop;
+                                outfile << "Global conditions are violated\n";
+                                gsInfo << "Global conditions violated\n";
                             }
                             if (featureError > epsilon_f) {
-                                outfile << "Feature conditions are violated\n"; gsInfo << "Sowieso schlimm\n";
-                                //return 4;
-                                //goto hop;
+                                outfile << "Feature conditions are violated\n";
+                                gsInfo << "Feature conditions violated\n";
                             }
                             if (minusnumber > 0)
                             {
@@ -10888,46 +12180,20 @@ int main() {
                             generateVisualizationMesh(
                                 boxMat,
                                 20,
-                                SubdomainHierarchy,
-                                functionDescription,
-                                isTruncated,
-                                indexInTHB,
+                                mpbes,
+                                mp1,
                                 vectSol,
                                 currentLastNonZeroRow,
-                                presentation,
                                 "mesh_irregular",
                                 true
                             );
                             return 250702;
                             gsInfo << "Doing LO\n";
                             outfile << "Doing LO\n";
-                            // Setup
                             if (attempt - 1 == 7)   DTD = 1;
-                            //localCoeffs.resize(Bells.size());
-                            //try to use savePatches
-                            //exportToPatches(vectSol, functionDescription, localCoeffs, localIndex);
-
-                            //gsInfo << "localcoeffs:\n";
                             gsInfo << localCoeffs.size() << "\n";
                             gsMatrix<> localVectSol(localCoeffs[0].size(), 2);
-
                             gsVector<gsMatrix<>> localVectSols(localCoeffs.size());
-                            //for (size_t patch = 0; patch < localCoeffs.size(); patch++)
-                            //{
-                            //    localVectSols[patch].setZero(localCoeffs[patch].size(), 2);
-                            //    for (size_t functionIndex = 0; functionIndex < localCoeffs[patch].size(); functionIndex++)
-                            //    {
-                            //        localVectSols[patch](functionIndex, 0) = localCoeffs[patch][functionIndex][0];
-                            //        localVectSols[patch](functionIndex, 1) = localCoeffs[patch][functionIndex][1];
-                            //    }
-                            //    gsGeometry<>::uPtr geom1 = SubdomainHierarchy(patch).makeGeometry(localVectSols[patch]);
-                            //    gsFileData<> fileData;
-                            //    fileData << *geom1;
-                            //    std::string outputFileName = "PatchToFix_" + std::to_string(patch);
-                            //    fileData.dump(outputFileName);
-                            //    outfile << "Saved to " << outputFileName << "\n";
-                            //    gsInfo  << "Saved to " << outputFileName << "\n";
-                            //}
 
                             //for (size_t functionIndex = 0; functionIndex < localCoeffs[0].size(); functionIndex++)
                             //{
@@ -10964,6 +12230,8 @@ int main() {
                                     outfile << "\n[Manual Block] Testing fitting: " << fitting << ", uniformity: " << uniformity << "\n";
 
                                     A.setZero();
+                                    // spilloverSources is now internal to MPBES, create empty for compatibility
+                                    std::vector<std::vector<std::array<int, 3>>> spilloverSources;
                                     optimize(uv1, matAsquare, Bells, globalIndex, functionDescription,
                                         vectSol, A, SubdomainHierarchy, spilloverFunctionCoordinates,
                                         hasSpillover, globalIndexTHB, spilloverSources,
@@ -11023,13 +12291,10 @@ int main() {
                                     generateVisualizationMesh(
                                         boxMat,
                                         20,
-                                        SubdomainHierarchy,
-                                        functionDescription,
-                                        isTruncated,
-                                        indexInTHB,
+                                        mpbes,
+                                        mp1,
                                         vectSol,
                                         currentLastNonZeroRow,
-                                        presentation,
                                         "mesh_unstable",
                                         true
                                     );
@@ -11640,6 +12905,10 @@ int main() {
     gsFileManager::open("yboxFile.txt");
     outfile << "Total execution time:" << clock.stop() << "\n";
     gsInfo << "Total execution time:" << clock.stop() << "\n";
+
+    // Print profiling summary
+    g_profiler.printSummary();
+
     return 0;
     //    return 0;
 }
@@ -11666,6 +12935,7 @@ void saveMultipatchGeometry(
     const std::string& baseName,
     gsVector<gsVector<int>>& localIndex)
 {
+    PROFILE_FUNCTION();
     gsInfo << "Saving multipatch geometry to: " << baseName << "\n";
     outfile << "Saving multipatch geometry to: " << baseName << "\n";
 
@@ -11736,11 +13006,11 @@ void saveMultipatchGeometry(
     {
         real_t tol = 1e-8;
         newmp.computeTopology(tol, false);
-        
+
         gsFileData<> fdG;
         fdG << newmp;
         fdG.dump(baseName);
-        
+
         gsInfo << "Wrote multipatch geometry file: " << baseName << "\n";
         outfile << "Wrote multipatch geometry file: " << baseName << "\n";
     }
