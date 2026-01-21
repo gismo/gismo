@@ -28,13 +28,13 @@ namespace gismo
 class GISMO_EXPORT gsSubdivisionScheme
 {
 
+protected: // Types
+
     /// Type definitions for mesh components.
     typedef gsSurfMesh::Point Point;
     typedef gsSurfMesh::Vertex Vertex;
     typedef gsSurfMesh::Face Face;
 
-    /// GsOptions used to customize the subdivision scheme.
-    gsOptionList m_options;
 
 protected: // Constructors
 
@@ -44,7 +44,10 @@ protected: // Constructors
     /// Constructor with a set of options for child classes to use.
     explicit gsSubdivisionScheme(gsOptionList& options) : m_options(options) {}
 
-public: // Helpers
+public: // Options
+
+    /// GsOptions used to customize the subdivision scheme.
+    gsOptionList m_options;
     /// Returns possible options for the chosen subdivision Scheme.
     gsOptionList& options() { return m_options; }
 
@@ -58,9 +61,8 @@ public: // Subdivision method
     /// Runs subdivision multiple times.
     void subdivide(gsSurfMesh* mesh, unsigned int repetitions)
     {
-      for (int _i = 0; _i < repetitions; ++_i) {
+      for (unsigned int _i = 0; _i < repetitions; ++_i) 
         this->subdivide(mesh);
-      }
     }
 
     /// Returns a subdivided copy of the given mesh without mutating the original.
@@ -84,7 +86,7 @@ public: // Validity
       VALID,
       INVALID,
       UNDETERMINED
-    }
+    };
 
 
     /// Checks if the given mesh is valid for this subdivision scheme.
