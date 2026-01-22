@@ -13,12 +13,9 @@
 
 #pragma once
 
+#include "gsCore/gsExport.h"
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsIO/gsOptionList.h>
-
-//#define Eigen gsEigen
-//EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Point)
-//#undef Eigen
 
 namespace gismo
 {
@@ -44,8 +41,8 @@ protected: // Constructors
     /// Constructor with a set of options for child classes to use.
     explicit gsSubdivisionScheme(gsOptionList& options) : m_options(options) {}
 
-public: // Destructors
-    virtual ~gsSubdivisionScheme(){}
+public: // Destructor
+    virtual ~gsSubdivisionScheme(){} 
 
 public: // Options
 
@@ -101,5 +98,14 @@ public: // Validity
     }
 
 };//namespace internal
+
+/// An 'identity subdivision' that leaves the passed mesh untouched.
+/// Potentially useful for chaining.
+class GISMO_EXPORT gsIdentityScheme : gsSubdivisionScheme {
+public:
+    gsIdentityScheme() : gsSubdivisionScheme() {}
+public:
+    void subdivide(gsSurfMesh* mesh) {}
+};
 
 } // namespace gismo

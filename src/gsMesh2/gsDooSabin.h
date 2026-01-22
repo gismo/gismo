@@ -14,16 +14,6 @@
 #pragma once
 
 #include <gsMesh2/gsSubdivisionScheme.h>
-#include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsXml.h>
-
-//#define Eigen gsEigen
-//EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Point)
-//#undef Eigen
-
-#include <gsMesh2/gsProperty.h>
-#include <gsMesh2/gsSurfMesh.h>
-#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {

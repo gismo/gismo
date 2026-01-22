@@ -12,9 +12,8 @@
 */
 
 
-#include "gsMesh2/gsSurfMesh.h"
+#include <gsMesh2/gsSurfMesh.h>
 #include <gsMesh2/gsDooSabin.h>
-#include <gsMesh2/gsSubdivScheme.h>
 
 namespace gismo {
 
