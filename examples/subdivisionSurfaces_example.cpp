@@ -56,14 +56,14 @@ int main(int argc, char** argv)
 
     scheme->subdivide(&mesh, r);  
    
-    mesh.write("mesh_in.off");
+    mesh.write("mesh_out.off");
     if (dm) // Dual mesh
         mesh.dual_mesh();
 
     if (plot)
     {
-        gsWriteParaview(mesh,"mesh_in", { });
-        gsFileManager::open("mesh_in.vtk");
+        gsWriteParaview(mesh,"mesh_out", { });
+        gsFileManager::open("mesh_out.vtk");
     }
 
     delete scheme;
