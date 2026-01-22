@@ -59,6 +59,7 @@ namespace gismo
         options.addInt("Admissibility","Admissibility region, 0=T-admissibility (default), 1=H-admissibility",0);
         options.addSwitch("Admissible","Mark the admissible region",true);
         options.addInt("Jump","Jump parameter m",2);
+        options.addSwitch("Extension", "Extend marked elements regions", true);
         // options.addInt("Verbose","Verbosity level",0);
         return options;
     }
@@ -126,7 +127,7 @@ namespace gismo
     template <short_t d, class T>
     std::vector<index_t> gsHElementMarker<d,T>::toRefBoxes(const HElementContainer & elements) const
     {
-        return m_helper.toRefBoxes(elements);
+        return m_helper.toRefBoxes(elements, m_options.askSwitch("Extension", true));
     }
 
     template <short_t d, class T>

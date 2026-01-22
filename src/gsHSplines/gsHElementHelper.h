@@ -185,14 +185,16 @@ public:
     /// Convert an element to refinement box indices
     /// @param element The element to convert.
     /// @param targetLevel The target level for the refinement box.
+    /// @param extension If true, element is extended.
     /// @return A vector of indices representing the refinement box at the target level.
-    std::vector<index_t> toRefBox(const element_t & element, level_t targetLevel) const;
-    std::vector<index_t> toRefBox(const element_t & element) const;
+    std::vector<index_t> toRefBox(const element_t & element, level_t targetLevel, bool extension = true) const;
+    std::vector<index_t> toRefBox(const element_t & element, bool extension = true) const;
 
     /// Convert a set of elements to refinement box indices
     /// @param elements The set of elements to convert.
+    /// @param extension If true, elements are extended.
     /// @return A vector of indices representing the refinement boxes of the elements.
-    std::vector<index_t> toRefBoxes(const HElementContainer & elements) const;
+    std::vector<index_t> toRefBoxes(const HElementContainer & elements, bool extension = true) const;
 
     /// Convert an element to coarsen box indices
     /// @param element The element to convert.
