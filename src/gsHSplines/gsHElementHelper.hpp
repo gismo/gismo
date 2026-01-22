@@ -324,8 +324,9 @@ namespace gismo
     {
         if (dynamic_cast<const gsTHBSplineBasis<d,T> *>(&m_basis))
         {
-            // If the basis is a tensor basis, use the TNeighborhood
-            return this->getTNeighborhood(element, m);
+            // If the basis is a THBSpline basis, use the TNeighborhood
+            // TODO Restore TNeighborhood
+            return this->getHNeighborhood(element, m);
         }
         else if (dynamic_cast<const gsHBSplineBasis<d,T> *>(&m_basis))
         {
@@ -484,10 +485,10 @@ namespace gismo
             degree = m_basis.degree(i);
             lowerIndex = element.lowerCorner()(i)*math::pow(2, diff);
             upperIndex = element.upperCorner()(i)*math::pow(2, diff);
-            if (degree % 2 == 1 && degree > 1)
-                ( (lowerIndex < (degree-1)/2-1) ? lowerIndex = 0 : lowerIndex -= (degree-1)/2-1);
-            else
-                ( (lowerIndex < (degree-1)/2)   ? lowerIndex = 0 : lowerIndex -= (degree-1)/2  );
+            // if (degree % 2 == 1 && degree > 1)
+            //     ( (lowerIndex < (degree-1)/2-1) ? lowerIndex = 0 : lowerIndex -= (degree-1)/2-1);
+            // else
+            //     ( (lowerIndex < (degree-1)/2)   ? lowerIndex = 0 : lowerIndex -= (degree-1)/2  );
 
             result[i+1] = lowerIndex;
             result[d+i+1] = upperIndex;
