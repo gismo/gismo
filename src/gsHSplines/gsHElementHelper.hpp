@@ -467,7 +467,7 @@ namespace gismo
     }
 
     template <short_t d, class T>
-    std::vector<index_t> gsHElementHelper<d,T>::toRefBox(const element_t & element, level_t targetLevel) const
+    std::vector<index_t> gsHElementHelper<d,T>::toRefBox(const element_t & element, level_t targetLevel, bool extension) const
     {
         GISMO_ASSERT(targetLevel > element.level(),
                      "Target level must be larger than the element level. "
@@ -485,11 +485,13 @@ namespace gismo
             degree = m_basis.degree(i);
             lowerIndex = element.lowerCorner()(i)*math::pow(2, diff);
             upperIndex = element.upperCorner()(i)*math::pow(2, diff);
-            // if (degree % 2 == 1 && degree > 1)
-            //     ( (lowerIndex < (degree-1)/2-1) ? lowerIndex = 0 : lowerIndex -= (degree-1)/2-1);
-            // else
-            //     ( (lowerIndex < (degree-1)/2)   ? lowerIndex = 0 : lowerIndex -= (degree-1)/2  );
-
+            if (extension)
+            {
+                if (degree % 2 == 1 && degree > 1)
+                    ( (lowerIndex < (degree-1)/2-1) ? lowerIndex = 0 : lowerIndex -= (degree-1)/2-1);
+                else
+                    ( (lowerIndex < (degree-1)/2)   ? lowerIndex = 0 : lowerIndex -= (degree-1)/2  );
+            }
             result[i+1] = lowerIndex;
             result[d+i+1] = upperIndex;
         }
@@ -498,19 +500,19 @@ namespace gismo
     }
 
     template <short_t d, class T>
-    std::vector<index_t> gsHElementHelper<d,T>::toRefBox(const element_t & element) const
+    std::vector<index_t> gsHElementHelper<d,T>::toRefBox(const element_t & element, bool extension) const
     {
-        return this->toRefBox(element, element.level() + 1);
+        return this->toRefBox(element, element.level() + 1, extension);
     }
 
     template <short_t d, class T>
-    std::vector<index_t> gsHElementHelper<d,T>::toRefBoxes(const HElementContainer & elements) const
+    std::vector<index_t> gsHElementHelper<d,T>::toRefBoxes(const HElementContainer & elements, bool extension) const
     {
         std::vector<index_t> refBoxes;
         refBoxes.reserve(elements.size() * (2 * d + 1));
         for (const auto & elem : elements)
         {
-            std::vector<index_t> refBox = this->toRefBox(elem);
+            std::vector<index_t> refBox = this->toRefBox(elem, extension);
             refBoxes.insert(refBoxes.end(), refBox.begin(), refBox.end());
         }
         return refBoxes;
