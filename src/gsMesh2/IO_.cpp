@@ -7,8 +7,6 @@
 #include <gsMesh2/IO_stl.hpp>
 #include <gsMesh2/IO_vtk.hpp>
 
-#include <gsAutoDiff/gsAutoDiff2.h>
-
 namespace gismo 
 {
     TEMPLATE_INST

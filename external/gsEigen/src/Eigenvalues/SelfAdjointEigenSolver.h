@@ -853,19 +853,9 @@ static void tridiagonal_qr_step(RealScalar* diag, RealScalar* subdiag, Index sta
     const RealScalar e2 = numext::abs2(e);
     const RealScalar h = numext::hypot(td,e);
     if(e2 == RealScalar(0)) {
-      RealScalar h_signed;
-      if (td>RealScalar(0))
-        h_signed = h;
-      else
-        h_signed = -h;
-      mu -= e / ((td + h_signed) / e);
+      mu -= e / ((td + (td>RealScalar(0) ? h : -h)) / e);
     } else {
-      RealScalar h_signed;
-      if (td>RealScalar(0))
-        h_signed = h;
-      else
-        h_signed = -h;
-      mu -= e2 / (td + h_signed); 
+      mu -= e2 / (td + (td>RealScalar(0) ? h : -h)); 
     }
   }
 

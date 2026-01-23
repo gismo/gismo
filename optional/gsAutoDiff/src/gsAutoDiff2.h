@@ -35,7 +35,8 @@ namespace gismo {
     // Forward AD using autodiff::detail::Dual
     using dual_t = autodiff::detail::Dual<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE>;
     using autodiff_dual_t = dual_t; // For exprtk
-     // Reverse AD using autodiff::var
+    
+    // Reverse AD using autodiff::var
     using var_t = autodiff::var;
 }
 

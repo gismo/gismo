@@ -67,7 +67,9 @@
 // adaptor files "exprtk_X_adaptor.hpp" have to be included AFTER the
 // file "exprtk.hpp".
 
-#if defined(GISMO_WITH_ADIFF)
+// gsAutoDiff_ENABLED uses dual_t/var_t from the autodiff library
+// GISMO_WITH_ADIFF uses the old DScalar from external/gsAutoDiff.h (deprecated)
+#if defined(GISMO_WITH_ADIFF) && !defined(gsAutoDiff_ENABLED)
 #define DScalar gismo::ad::DScalar2<real_t,-1>
 #include <exprtk_ad_forward.hpp>
 #endif
@@ -93,7 +95,8 @@
 #endif
 #include <exprtk.hpp>
 
-#if defined(GISMO_WITH_ADIFF)
+// Only use old DScalar adaptor when GISMO_WITH_ADIFF is set without gsAutoDiff_ENABLED
+#if defined(GISMO_WITH_ADIFF) && !defined(gsAutoDiff_ENABLED)
 #include <exprtk_ad_adaptor.hpp>
 #endif
 
@@ -191,7 +194,21 @@ template<typename T> class gsFunctionExpr<T>::gsFunctionExprPrivate
 {
 public:
 
-#ifdef GISMO_WITH_ADIFF
+// Type trait to check if T is already an autodiff type
+template<typename U> struct is_autodiff_type : std::false_type {};
+#if defined(gsAutoDiff_ENABLED)
+template<typename U, typename V> struct is_autodiff_type<autodiff::detail::Dual<U, V>> : std::true_type {};
+template<typename U> struct is_autodiff_type<autodiff::reverse::detail::Variable<U>> : std::true_type {};
+#endif
+
+// Numeric_t selection:
+// - If T is already autodiff type (dual_t or var_t): use T
+// - If gsAutoDiff_ENABLED and T is real_t: use dual_t for automatic differentiation
+// - If GISMO_WITH_ADIFF: use old DScalar
+// - Otherwise: use T directly
+#if defined(gsAutoDiff_ENABLED)
+    typedef typename std::conditional<is_autodiff_type<T>::value, T, dual_t>::type Numeric_t;
+#elif defined(GISMO_WITH_ADIFF)
     typedef DScalar Numeric_t;
 #else
     typedef T Numeric_t;
@@ -536,11 +553,13 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
         copy_n(u.col(p).data(), my->dim, my->vars);
 
         for (short_t c = 0; c!= n; ++c) // for all components
-#           ifdef GISMO_WITH_ADIFF
+#       if defined(gsAutoDiff_ENABLED)
+            result(c,p) = gismo::gismo_val(my->expression[c].value());
+#       elif defined(GISMO_WITH_ADIFF)
             result(c,p) = my->expression[c].value().getValue();
-#           else
+#       else
             result(c,p) = my->expression[c].value();
-#           endif
+#       endif
     }
 }
 
@@ -559,11 +578,13 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
     {
         copy_n(u.col(p).data(), my->dim, my->vars);
 
-#           ifdef GISMO_WITH_ADIFF
+#       if defined(gsAutoDiff_ENABLED)
+            result(0,p) = gismo::gismo_val(my->expression[comp].value());
+#       elif defined(GISMO_WITH_ADIFF)
             result(0,p) = my->expression[comp].value().getValue();
-#           else
+#       else
             result(0,p) = my->expression[comp].value();
-#           endif
+#       endif
     }
 }
 
@@ -580,7 +601,38 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
 #   pragma omp critical (gsFunctionExpr_run)
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
-#       ifdef GISMO_WITH_ADIFF
+#       if defined(gsAutoDiff_ENABLED)
+        // When Numeric_t is dual_t, use automatic differentiation
+        // When Numeric_t is var_t or T (already autodiff), use finite differences
+        if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+        {
+            // Using dual_t: seed each variable and extract derivative from grad member
+            for (short_t c = 0; c!= n; ++c) // for all components
+            {
+                for (short_t j = 0; j!=d; ++j) // for all variables
+                {
+                    // Set all variables to their values
+                    for (short_t k = 0; k!=d; ++k)
+                    {
+                        my->vars[k].val = gismo::gismo_val(u(k,p));
+                        my->vars[k].grad = (k==j ? 1.0 : 0.0);  // Seed only variable j
+                    }
+                    // Evaluate and extract derivative from grad member
+                    dual_t expr_val = my->expression[c].value();
+                    result(c*d + j, p) = expr_val.grad;
+                }
+            }
+        }
+        else
+        {
+            // T is already autodiff type, use finite differences
+            copy_n(u.col(p).data(), my->dim, my->vars);
+            for (short_t c = 0; c!= n; ++c) // for all components
+                for ( short_t j = 0; j!=d; j++ ) // for all variables
+                    result(c*d + j, p) =
+                        exprtk::derivative<T>(my->expression[c], my->vars[j], 0.00001 ) ;
+        }
+#       elif defined(GISMO_WITH_ADIFF)
         for (short_t k = 0; k!=d; ++k)
             my->vars[k].setVariable(k,d,u(k,p));
         for (short_t c = 0; c!= n; ++c) // for all components
@@ -609,13 +661,51 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 #   pragma omp critical (gsFunctionExpr_run)
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
-#       ifndef GISMO_WITH_ADIFF
-        copy_n(u.col(p).data(), my->dim, my->vars);
-#       endif
-
         for (short_t c = 0; c!= n; ++c) // for all components
         {
-#           ifdef GISMO_WITH_ADIFF
+#           if defined(gsAutoDiff_ENABLED)
+            if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+            {
+                // For dual_t, use finite differences for second derivatives
+                // Extract .val since result is gsMatrix<T> not gsMatrix<dual_t>
+                copy_n(u.col(p).data(), my->dim, my->vars);
+                for (short_t k = 0; k!=d; ++k)
+                {
+                    // H_{k,k}
+                    result(c*stride + k,p) = exprtk::
+                        second_derivative<dual_t>(my->expression[c], my->vars[k], 0.00001).val;
+
+                    short_t m = d;
+                    for (short_t l=k+1; l<d; ++l)
+                    {
+                        // H_{k,l}
+                        result(c*stride + m++,p) =
+                            mixed_derivative<dual_t>( my->expression[c], my->vars[k],
+                                                 my->vars[l], 0.00001 ).val;
+                    }
+                }
+            }
+            else
+            {
+                // T is already autodiff type, use finite differences directly
+                copy_n(u.col(p).data(), my->dim, my->vars);
+                for (short_t k = 0; k!=d; ++k)
+                {
+                    // H_{k,k}
+                    result(c*stride + k,p) = exprtk::
+                        second_derivative<T>(my->expression[c], my->vars[k], 0.00001);
+
+                    short_t m = d;
+                    for (short_t l=k+1; l<d; ++l)
+                    {
+                        // H_{k,l}
+                        result(c*stride + m++,p) =
+                            mixed_derivative<T>( my->expression[c], my->vars[k],
+                                                 my->vars[l], 0.00001 );
+                    }
+                }
+            }
+#           elif defined(GISMO_WITH_ADIFF)
             for (index_t v = 0; v!=d; ++v)
                 my->vars[v].setVariable(v,d,u(v,p));
             const DScalar &            ads  = my->expression[c].value();
@@ -629,6 +719,7 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
                     result(c*stride + m++,p) = Hmat(k,l);
             }
 #           else
+            copy_n(u.col(p).data(), my->dim, my->vars);
             for (short_t k = 0; k!=d; ++k)
             {
                 // H_{k,k}
@@ -664,7 +755,38 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 
 #   pragma omp critical (gsFunctionExpr_run)
 {
-#   ifdef GISMO_WITH_ADIFF
+#   if defined(gsAutoDiff_ENABLED)
+    if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+    {
+        // Use finite differences for dual_t, extract .val for result
+        copy_n(u.data(), my->dim, my->vars);
+        for( index_t j=0; j!=d; ++j )
+        {
+            res(j,j) = exprtk::
+                second_derivative<dual_t>( my->expression[coord], my->vars[j], 0.00001).val;
+
+            for( index_t k = 0; k!=j; ++k )
+                res(k,j) = res(j,k) =
+                    mixed_derivative<dual_t>( my->expression[coord], my->vars[k],
+                                         my->vars[j], 0.00001 ).val;
+        }
+    }
+    else
+    {
+        // T is already autodiff type
+        copy_n(u.data(), my->dim, my->vars);
+        for( index_t j=0; j!=d; ++j )
+        {
+            res(j,j) = exprtk::
+                second_derivative<T>( my->expression[coord], my->vars[j], 0.00001);
+
+            for( index_t k = 0; k!=j; ++k )
+                res(k,j) = res(j,k) =
+                    mixed_derivative<T>( my->expression[coord], my->vars[k],
+                                         my->vars[j], 0.00001 );
+        }
+    }
+#   elif defined(GISMO_WITH_ADIFF)
     for (index_t v = 0; v!=d; ++v)
         my->vars[v].setVariable(v, d, u(v,0) );
     my->expression[coord].value().hessian_into(res);
@@ -697,17 +819,27 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
 #   pragma omp critical (gsFunctionExpr_run)
     for( index_t p=0; p!=res->cols(); ++p )
     {
-#       ifndef GISMO_WITH_ADIFF
-        copy_n(u.col(p).data(), my->dim, my->vars);
-#       endif
-
         for (short_t c = 0; c!= n; ++c) // for all components
         {
-#           ifdef GISMO_WITH_ADIFF
+#           if defined(gsAutoDiff_ENABLED)
+            if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+            {
+                copy_n(u.col(p).data(), my->dim, my->vars);
+                (*res)(c,p) =
+                    mixed_derivative<dual_t>( my->expression[c], my->vars[k], my->vars[j], 0.00001 ).val;
+            }
+            else
+            {
+                copy_n(u.col(p).data(), my->dim, my->vars);
+                (*res)(c,p) =
+                    mixed_derivative<T>( my->expression[c], my->vars[k], my->vars[j], 0.00001 );
+            }
+#           elif defined(GISMO_WITH_ADIFF)
             for (index_t v = 0; v!=my->dim; ++v)
                 my->vars[v].setVariable(v, my->dim, u(v,p) );
             (*res)(c,p) = my->expression[c].value().getHessian()(k,j); //note: can fail
 #           else
+            copy_n(u.col(p).data(), my->dim, my->vars);
             (*res)(c,p) =
                 mixed_derivative<T>( my->expression[c], my->vars[k], my->vars[j], 0.00001 ) ;
 #           endif
@@ -727,17 +859,31 @@ gsMatrix<T> gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
     #   pragma omp critical (gsFunctionExpr_run)
     for( index_t p = 0; p != res.cols(); ++p )
     {
-#       ifndef GISMO_WITH_ADIFF
-        copy_n(u.col(p).data(), my->dim, my->vars);
-#       endif
-
         for (short_t c = 0; c!= n; ++c) // for all components
         {
-#           ifdef GISMO_WITH_ADIFF
+#           if defined(gsAutoDiff_ENABLED)
+            if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+            {
+                copy_n(u.col(p).data(), my->dim, my->vars);
+                T & val = res(c,p);
+                for ( index_t j = 0; j!=my->dim; ++j )
+                    val += exprtk::
+                        second_derivative<dual_t>( my->expression[c], my->vars[j], 0.00001 ).val;
+            }
+            else
+            {
+                copy_n(u.col(p).data(), my->dim, my->vars);
+                T & val = res(c,p);
+                for ( index_t j = 0; j!=my->dim; ++j )
+                    val += exprtk::
+                        second_derivative<T>( my->expression[c], my->vars[j], 0.00001 );
+            }
+#           elif defined(GISMO_WITH_ADIFF)
             for (index_t v = 0; v!=my->dim; ++v)
                 my->vars[v].setVariable(v, my->dim, u(v,p) );
             res(c,p) = my->expression[c].value().getHessian().trace();
 #           else
+            copy_n(u.col(p).data(), my->dim, my->vars);
             T & val = res(c,p);
             for ( index_t j = 0; j!=my->dim; ++j )
                 val += exprtk::

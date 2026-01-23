@@ -215,7 +215,8 @@ inline std::string to_string(const autodiff::detail::Dual<T,G>& v) {
     return std::to_string(autodiff::val(v));
 }
 
-inline std::string to_string(const autodiff::var& v) {
+template<typename T>
+inline std::string to_string(const autodiff::reverse::detail::Variable<T>& v) {
     return std::to_string(autodiff::val(v));
 }
 
@@ -238,24 +239,77 @@ inline bool isfinite(const autodiff::detail::Dual<T,G>& v) {
     return std::isfinite(val(v));
 }
 
-inline bool isnan(const autodiff::var& v) {
+template<typename T>
+inline bool isnan(const autodiff::reverse::detail::Variable<T>& v) {
     using autodiff::val;
     return std::isnan(val(v));
 }
 
-inline bool isinf(const autodiff::var& v) {
+template<typename T>
+inline bool isinf(const autodiff::reverse::detail::Variable<T>& v) {
     using autodiff::val;
     return std::isinf(val(v));
 }
 
-inline bool isfinite(const autodiff::var& v) {
+template<typename T>
+inline bool isfinite(const autodiff::reverse::detail::Variable<T>& v) {
     using autodiff::val;
     return std::isfinite(val(v));
 }
 
+} // namespace std - close before ExprPtrWrapper definition
+
+// ExprPtrWrapper definition - must be in autodiff namespace, not std
+namespace autodiff {
+namespace reverse {
+namespace detail {
+    
+    // Use the ExprPtr and Variable types that are already defined in var.hpp
+    // ExprPtr<T> = std::shared_ptr<Expr<T>>
+    
+    /// Wrapper for ExprPtr that converts ONLY to Variable (not to ExprPtr)
+    /// This resolves ternary ambiguity and avoids STL assignment issues
+    template<typename T>
+    struct ExprPtrWrapper {
+        ExprPtr<T> ptr;
+        
+        ExprPtrWrapper(const ExprPtr<T>& p) : ptr(p) {}
+        
+        // Implicit conversion to Variable ONLY (for ternary and initialization)
+        operator Variable<T>() const { return Variable<T>(ptr); }
+    };
+    
+} // namespace detail
+} // namespace reverse
+} // namespace autodiff
+
+// Reopen std namespace for ExprPtrWrapper overloads
+namespace std {
+
+// Specific overloads for ExprPtrWrapper (must be before generic templates)
+template<typename T>
+inline bool isnan(const autodiff::reverse::detail::ExprPtrWrapper<T>& w) {
+    return std::isnan(w.ptr->val);
+}
+
+template<typename T>
+inline bool isinf(const autodiff::reverse::detail::ExprPtrWrapper<T>& w) {
+    return std::isinf(w.ptr->val);
+}
+
+template<typename T>
+inline bool isfinite(const autodiff::reverse::detail::ExprPtrWrapper<T>& w) {
+    return std::isfinite(w.ptr->val);
+}
+
+// Type trait to detect ExprPtrWrapper
+template<typename T> struct is_expr_ptr_wrapper : std::false_type {};
+template<typename T> struct is_expr_ptr_wrapper<autodiff::reverse::detail::ExprPtrWrapper<T>> : std::true_type {};
+
 // Generic overload for any autodiff expression that can be converted to Dual
 // This handles BinaryExpr and other expression templates
-template<typename Expr>
+// SFINAE: disabled for ExprPtrWrapper (has specific overload above)
+template<typename Expr, typename = std::enable_if_t<!is_expr_ptr_wrapper<std::decay_t<Expr>>::value>>
 inline auto isnan(const Expr& expr)
     -> decltype(std::isnan(autodiff::val(expr)))
 {
@@ -263,7 +317,7 @@ inline auto isnan(const Expr& expr)
     return std::isnan(val(expr));
 }
 
-template<typename Expr>
+template<typename Expr, typename = std::enable_if_t<!is_expr_ptr_wrapper<std::decay_t<Expr>>::value>>
 inline auto isinf(const Expr& expr)
     -> decltype(std::isinf(autodiff::val(expr)))
 {
@@ -271,7 +325,7 @@ inline auto isinf(const Expr& expr)
     return std::isinf(val(expr));
 }
 
-template<typename Expr>
+template<typename Expr, typename = std::enable_if_t<!is_expr_ptr_wrapper<std::decay_t<Expr>>::value>>
 inline auto isfinite(const Expr& expr)
     -> decltype(std::isfinite(autodiff::val(expr)))
 {
@@ -308,8 +362,9 @@ inline T trunc(const autodiff::detail::Dual<T,G>& v) {
     return trunc(autodiff::val(v));
 }
 
-// Overloads for autodiff::var
-inline double trunc(const autodiff::var& v) {
+// Overloads for autodiff::reverse::detail::Variable
+template<typename T>
+inline T trunc(const autodiff::reverse::detail::Variable<T>& v) {
     using std::trunc;
     return trunc(autodiff::val(v));
 }

@@ -315,12 +315,10 @@ template<typename _MatrixType> class FullPivLU
     RealScalar threshold() const
     {
       eigen_assert(m_isInitialized || m_usePrescribedThreshold);
-      if (m_usePrescribedThreshold)
-        return m_prescribedThreshold;
-      else
-        // this formula comes from experimenting (see "LU precision tuning" thread on the list)
-        // and turns out to be identical to Higham's formula used already in 
-        return NumTraits<Scalar>::epsilon() * RealScalar(m_lu.diagonalSize());
+      return m_usePrescribedThreshold ? m_prescribedThreshold
+      // this formula comes from experimenting (see "LU precision tuning" thread on the list)
+      // and turns out to be identical to Higham's formula used already in 
+          : NumTraits<Scalar>::epsilon() * RealScalar(m_lu.diagonalSize());
     }
 
     /** \returns the rank of the matrix of which *this is the LU decomposition.
