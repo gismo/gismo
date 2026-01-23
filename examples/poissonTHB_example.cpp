@@ -2824,18 +2824,18 @@ void evaluateGeometryAtPoints(
         gsInfo << "Evaluating " << uvPoints.size() << " lines directly via mp.patch().eval()...\\n";
 
     xyPoints.resize(uvPoints.size());
-    
+
     // Directly evaluate each line using the original geometry patch
     for (size_t lineIdx = 0; lineIdx < uvPoints.size(); ++lineIdx)
     {
         const gsMatrix<>& uvLine = uvPoints[lineIdx];
         const index_t patch = patchIDs[lineIdx];
-        
+
         if (uvLine.cols() == 0) {
             xyPoints[lineIdx].resize(2, 0);
             continue;
         }
-        
+
         // Direct evaluation - no assembly needed
         xyPoints[lineIdx] = mp.patch(patch).eval(uvLine);
     }
@@ -2850,7 +2850,7 @@ real_t boundaryError(
     const gsMatrix<real_t>& vectSol)
 {
     PROFILE_FUNCTION();
-    
+
     // Simply use the same assembly-based approach as testBoundaryAssembly
     return testBoundaryAssembly(mpbes, mp, vectSol);
 }
@@ -2925,7 +2925,7 @@ real_t boundaryError(
             {
                 real_t val = 0.0;
                 gsMatrix<> resultMatrix; // reuse for evalSingle_into
-                
+
                 int functionComponent = 0;
                 bool hasRegularComponentOnThisPatch = false;
 
@@ -2942,7 +2942,7 @@ real_t boundaryError(
                         ++functionComponent;  // Skip but still increment
                         continue;
                     }
-                    
+
                     if (fnLevel >= indexInTHB[fnPatch].size() ||
                         fnTensorIndex >= indexInTHB[fnPatch][fnLevel].size()) {
                         ++functionComponent;  // Skip but still increment
@@ -2950,13 +2950,13 @@ real_t boundaryError(
                     }
 
                     int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIndex];
-                    
+
                     // Skip if thbIdx == -1 (component doesn't exist in THB, will be handled as spillover)
                     if (thbIdx == -1) {
                         ++functionComponent;  // Skip but still increment
                         continue;
                     }
-                    
+
                     // Found a valid regular component on this patch (thbIdx >= 0)
                     hasRegularComponentOnThisPatch = true;
 
@@ -2982,7 +2982,7 @@ real_t boundaryError(
                         outfile << "    [THB] f=" << f << " contributes " << contrib;
                         // Debug for Row 0 with functions 20 and 591
                         if (rowOffset == 0 && (f == 20 || f == 591)) {
-                            outfile << " [isTruncated=" << isTruncated[f] 
+                            outfile << " [isTruncated=" << isTruncated[f]
                                     << ", coefsSize=" << coefsReal.size()
                                     << ", thbIdx=" << thbIdx << "]";
                         }
@@ -2991,8 +2991,8 @@ real_t boundaryError(
                 }
 
                 // 2. Evaluate spillover components ONLY if no regular component exists on this patch
-                if (!hasRegularComponentOnThisPatch && 
-                    f < spilloverFunctionCoordinates.size() && 
+                if (!hasRegularComponentOnThisPatch &&
+                    f < spilloverFunctionCoordinates.size() &&
                     !spilloverFunctionCoordinates[f].empty())
                 {
                     for (const auto& spillCoord : spilloverFunctionCoordinates[f])
@@ -3044,12 +3044,12 @@ real_t boundaryError(
     outfile << "A_row.rows() = " << A_row.rows() << ", A_row.cols() = " << A_row.cols() << "\n";
     outfile << "vectSol.rows() = " << vectSol.rows() << ", vectSol.cols() = " << vectSol.cols() << "\n";
     outfile << "fit.rows() = " << fit.rows() << ", fit.cols() = " << fit.cols() << "\n";
-    
+
     // Find which functions contribute to row 0
     outfile << "Row 0 non-zero entries in A_row:\n";
     for (index_t c = 0; c < A_row.cols(); ++c) {
         if (A_row(0, c) != 0.0) {
-            outfile << "  A_row(0, " << c << ") = " << A_row(0, c) 
+            outfile << "  A_row(0, " << c << ") = " << A_row(0, c)
                     << ", vectSol(" << c << ") = (" << vectSol(c, 0) << ", " << vectSol(c, 1) << ")\n";
         }
     }
@@ -3058,7 +3058,7 @@ real_t boundaryError(
 
     outfile << "\n--- Interface Values ---\n";
     outfile << "Note: Only showing first 10 rows for brevity\n";
-    
+
     // Find which row has the max error
     index_t maxRow = 0, maxCol = 0;
     for (index_t r = 0; r < diff.rows(); ++r) {
@@ -3069,12 +3069,12 @@ real_t boundaryError(
             }
         }
     }
-    
+
     outfile << "Max error is at row " << maxRow << ", col " << maxCol << "\n";
     outfile << "  fit = (" << fit(maxRow, 0) << ", " << fit(maxRow, 1) << ")\n";
     outfile << "  geom = (" << b_vec(maxRow, 0) << ", " << b_vec(maxRow, 1) << ")\n";
     outfile << "  diff = (" << diff(maxRow, 0) << ", " << diff(maxRow, 1) << ")\n\n";
-    
+
     for (index_t r = 0; r < std::min(totalRows, (index_t)10); ++r)
     {
         index_t patch = (r % 2 == 0) ? 0 : 1;
@@ -3087,23 +3087,23 @@ real_t boundaryError(
 
     outfile << "\n=== boundaryError END ===\n";
     outfile << "Max componentwise error: " << maxError << "\n";
-    
+
     // Log A_row statistics for debugging
     int nonzeros = 0;
     for (index_t r = 0; r < A_row.rows(); ++r)
         for (index_t c = 0; c < A_row.cols(); ++c)
             if (A_row(r, c) != 0.0) ++nonzeros;
 
- * 
+ *
  * This function validates interface continuity by:
  * 1. Creating interface sample points (similar to boundaryError)
  * 2. Using the actual assemble() function to build basis evaluation matrix
  * 3. Computing geometry using A * vectSol
  * 4. Comparing with ground truth geometry from mp.eval()
- * 
+ *
  * This is the "gold standard" test - if assemble works correctly,
  * the reconstructed geometry should match the original at interfaces.
- * 
+ *
  * @return Maximum componentwise error across all interface points
  */
 real_t testBoundaryAssembly(
@@ -3129,7 +3129,7 @@ real_t testBoundaryAssembly(
     // Interface 1: Patch 0 west ↔ Patch 1 east
     gsMatrix<real_t> patch0_interface1(2, pointsPerEdge);
     gsMatrix<real_t> patch1_interface1(2, pointsPerEdge);
-    
+
     // Interface 2: Patch 0 south ↔ Patch 2 east  
     gsMatrix<real_t> patch0_interface2(2, pointsPerEdge);
     gsMatrix<real_t> patch2_interface2(2, pointsPerEdge);
@@ -3141,14 +3141,14 @@ real_t testBoundaryAssembly(
         // Interface 1
         patch0_interface1(0, i) = 0.0;        // u = 0 (west side)
         patch0_interface1(1, i) = 1.0 - t;    // v varies
-        
+
         patch1_interface1(0, i) = 1.0;        // u = 1 (east side)
         patch1_interface1(1, i) = t;          // v varies
 
         // Interface 2
         patch0_interface2(0, i) = t;          // u varies
         patch0_interface2(1, i) = 0.0;        // v = 0 (south side)
-        
+
         patch2_interface2(0, i) = 1.0;        // u = 1 (east side)
         patch2_interface2(1, i) = 1.0 - t;    // v varies
     }
@@ -3156,10 +3156,10 @@ real_t testBoundaryAssembly(
     // Combine all interface points per patch
     interfacePoints[0].resize(2, 2 * pointsPerEdge);
     interfacePoints[0] << patch0_interface1, patch0_interface2;
-    
+
     interfacePoints[1].resize(2, pointsPerEdge);
     interfacePoints[1] = patch1_interface1;
-    
+
     interfacePoints[2].resize(2, pointsPerEdge);
     interfacePoints[2] = patch2_interface2;
 
@@ -3169,7 +3169,7 @@ real_t testBoundaryAssembly(
     gsMatrix<real_t> b_interface(totalPoints, 2);
 
     gsInfo << "Assembling interface matrix: " << totalPoints << " points, " << numFunctions << " functions\n";
-    
+
     assemble(
         interfacePoints,
         mpbes,
@@ -3189,21 +3189,21 @@ real_t testBoundaryAssembly(
     // Detailed reporting
     gsInfo << "\n--- Interface Continuity Test Results ---\n";
     outfile << "\n--- Interface Continuity Test Results ---\n";
-    
+
     index_t row = 0;
-    const char* interfaceNames[] = {"0↔1", "0↔2"};
-    
+    const char* interfaceNames[] = { "0↔1", "0↔2" };
+
     for (index_t iface = 0; iface < numInterfaces; ++iface)
     {
         gsInfo << "\nInterface " << interfaceNames[iface] << ":\n";
         outfile << "\nInterface " << interfaceNames[iface] << ":\n";
-        
+
         for (index_t pt = 0; pt < pointsPerInterface; ++pt)
         {
             real_t err_x = std::abs(residual(row, 0));
             real_t err_y = std::abs(residual(row, 1));
             real_t err_max = std::max(err_x, err_y);
-            
+
             if (err_max > 1e-6 || pt < 2)  // Show first 2 points and errors
             {
                 outfile << "  Point " << pt << ": "
@@ -3841,12 +3841,12 @@ int checkJacobianDeterminant(
     numIrregular.resize(numPatches);
 
     // Pre-build evaluation list per patch: tuples of (globalFunction f, thbIdx, bells basis info, coef vector)
-    struct EvalEntry { 
-        index_t f; 
-        int thbIdx; 
+    struct EvalEntry {
+        index_t f;
+        int thbIdx;
         const gsTensorBSplineBasis<2, real_t>* bellsBasis;
         int tensorIdx;
-        gsSparseVector<real_t> coefs; 
+        gsSparseVector<real_t> coefs;
     };
     std::vector<std::vector<EvalEntry>> evalListPerPatch(numPatches);
 
@@ -3887,7 +3887,7 @@ int checkJacobianDeterminant(
                 int spPatch = spillCoord[0];
                 int spLevel = spillCoord[1];
                 int spTensorIdx = spillCoord[2];
-                
+
                 if (spPatch < 0 || spPatch >= static_cast<int>(numPatches)) continue;
                 if (spLevel >= Bells[spPatch].size()) continue;
 
@@ -3918,7 +3918,7 @@ int checkJacobianDeterminant(
         const real_t eps = 1e-6;
         const index_t totalEvalPoints = numPoints * 3;  // 3 evals per point
         gsMatrix<real_t> allParams(2, totalEvalPoints);
-        
+
         // Prepare all parameter points in one matrix
         for (index_t pt = 0; pt < numPoints; ++pt)
         {
@@ -3937,7 +3937,7 @@ int checkJacobianDeterminant(
         {
             // Evaluate basis function at all parameter points at once
             evalSingle_into(entry.f, entry.thbIdx, allParams, isTruncated, THBVector[patch], entry.coefs, resultMatrix, entry.bellsBasis, entry.tensorIdx);
-            
+
             if (entry.f < static_cast<index_t>(vectSol.rows()))
             {
                 for (index_t col = 0; col < resultMatrix.cols(); ++col)
@@ -11097,40 +11097,52 @@ void printTheMatrix(const gsMatrix<real_t>& matrix, const std::string& matrixNam
     }
 }
 
-int main() {
-    gsInfo << "Y\n";
-    xboxFile.open("xboxFile.txt");
-    yboxFile.open("yboxFile.txt");
-    gsStopwatch clock;
-    DTD = 0;
-    printAB = 0;
-    localTempAttempt = 0;
+// Struct to hold all data computed by the algorithm
+struct AlgorithmResult {
+    gsMultiPatch<>::uPtr mp;
+    gsVector<gsVector<gsTensorBSplineBasis<2, real_t>>> Bells;
+    gsVector<gsVector<gsVector<index_t>>> boxMat;
+    std::vector<std::vector<std::vector<double>>> acceptedCoefs;
+    gsMatrix<real_t> AcceptedvectSol;
+    gsVector<int> AcceptedlastRow;
+    gsMatrix<> acceptedMatOut;
+    std::vector<std::vector<std::vector<real_t>>> featureCoordinates;
+    gsVector<gsMatrix<real_t>> uvFeature;
+    gsVector<gsMatrix<real_t>> xyFeature;
+    gsVector<gsVector<gsVector<index_t>>> AcceptedisActive;
+    gsVector<gsVector<gsVector<index_t>>> AcceptedglobalIndex;
+    gsVector<gsVector<std::vector<index_t>>> AcceptedfunctionDescription;
+    gsVector<gsMatrix<real_t>> uv1;
+    gsVector<real_t> lowc2;
+    gsVector<real_t> uppc2;
+    gsVector<index_t> maxLevel;
+    std::chrono::time_point<std::chrono::system_clock> toc;
+    int successfullAttempts;
+    int totalAttempts;
+    gsMatrix<> matFile;
+    unsigned interioru0;
+    unsigned interiorv0;
+    int proj;
+};
+
+AlgorithmResult unrefinementAlgorithmHBJ(
+    const std::string& filename,
+    real_t epsilon_g,
+    real_t epsilon_f,
+    char method,
+    const std::string& givenGeo,
+    const std::string& acCond) {
+    
+    // Initialize variables that were in main()
     std::chrono::time_point<std::chrono::system_clock> startTime, iterTime;
     startTime = std::chrono::system_clock::now();
-    std::string filename("hexagon_3p_4l_240325.xml");
-    const int dim = 2;
     int row, acceptedsize, attempt = 0;
-    std::string badFile = "badgeoLocalAndreatemp6";
-    std::string pvdFile = "resultLocalAndreatemp6";
-    int los = 0, nlos = 0, proj = 0;
-    std::string givenGeo;
     int valid = 0;
-    int gradingExtent;
-    real_t epsilon_g = 1e+6, epsilon_f = 1e+6;
     real_t lcx, lcy, ucx, ucy;
-    std::string acCond = to_string(epsilon_g) + "and" + to_string(epsilon_f);
-    givenGeo = "two_squares_lev1";
-    givenGeo += "L2";
-    givenGeo += "LO";
-    givenGeo += "NLO";
-    std::string fileLoc = "logFile_poissonTHB_example";
-    outfile.open(fileLoc + ".txt");
-    gsFileData<> data0(filename);
-    int iter = -1;
     int successfullAttempts = 0, totalAttempts = 0;
-    index_t degree;
-    real_t tol = 1e-8, gtol = 1e-8;
-    char method = 'l';
+    int projections = 0;  // Use different name to avoid conflict with proj() function
+    std::string xmlFile = "/home/targon/theydarov/output/" + givenGeo + acCond;
+    
     gsMultiPatch<>::uPtr mp = gsReadFile<>(filename);
     gsMultiPatch<> domain;
     gsMultiPatch<real_t> mp1 = *mp;
@@ -11383,7 +11395,6 @@ int main() {
     gsMatrix<> Z;
     index_t iteration, theLev, wasRebuilt, failed, createdBoxNum, currCellIndex, currArrayIndex, x1U, y1U, x2U, y2U, x1Bi, y1Bi, x2Bi, y2Bi, createSpline, RTH, needToEscape, centerInd;
     int ourBox[5];
-    std::string xmlFile = "/home/targon/theydarov/output/" + givenGeo + acCond;
 
 
     IdentifyPatches(mp1,
@@ -11538,8 +11549,8 @@ int main() {
                         pickedCells(0, currCellIndex) = 1;
                     }
                     else {
-                        //gsInfo << "UNKNOWN METHOD.\n";
-                        return 1;
+                        gsInfo << "UNKNOWN METHOD.\n";
+                        throw std::runtime_error("Unknown method specified");
                     }
                     int jopa = 4 * (int)pow(2, levNow) * 4 * (int)pow(2, levNow);
                     outfile << "=======================================\n";
@@ -11870,7 +11881,7 @@ int main() {
                         // Check partition of unity immediately
                         if (!checkPartitionOfUnity(matA, 1e-10)) {
                             gsInfo << "\n*** ERROR: Partition of unity violated! ***\n";
-                            return VIOLATED_PARTITION_OF_UNITY;
+                            throw std::runtime_error("Partition of unity violated");
                         }
                         gsInfo << "Partition of unity satisfied.\n";
 
@@ -11967,18 +11978,18 @@ int main() {
                             );
                         }
 
-                         if (attempt >= 7) {
-                             generateVisualizationMesh(
-                                 boxMat,
-                                 40,
-                                 mpbes,
-                                 mp1,
-                                 vectSol,
-                                 currentLastNonZeroRow,
-                                 "mesh_attempt" + std::to_string(attempt),
-                                 true
-                             );
-                         }
+                        if (attempt >= 7) {
+                            generateVisualizationMesh(
+                                boxMat,
+                                40,
+                                mpbes,
+                                mp1,
+                                vectSol,
+                                currentLastNonZeroRow,
+                                "mesh_attempt" + std::to_string(attempt),
+                                true
+                            );
+                        }
                         // Output solution coefficients
                         outfile << "Solution coefficients: " << vectSol.rows() << " x " << vectSol.cols() << "\n";
 
@@ -12087,14 +12098,14 @@ int main() {
                             mpbes,
                             mp1,
                             vectSol);
-                        
+
                         // Test interface continuity using assemble() - gold standard test
                         real_t assemblyBoundaryError = testBoundaryAssembly(mpbes, mp1, vectSol);
-                        
+
                         // Use assemblyBoundaryError as the correct featureError
                         // boundaryError() has issues with manual THB evaluation and truncation
                         featureError = assemblyBoundaryError;
-                        
+
                         //real_t error = boundaryErrorTwoPointsOnly(
                         //    Bells, SubdomainHierarchy, functionDescription, spilloverFunctionCoordinates,
                         //    hasSpillover, isTruncated, indexInTHB, mp1, vectSol);
@@ -12112,7 +12123,36 @@ int main() {
                         gsSparseMatrix<real_t> A(vectSol.rows() * geoDim, vectSol.rows() * geoDim);
                         // Temporarily disabled to see full boundaryError output
                         // if (minusnumber > 0) return 260106;
-                        if (attempt >= 7) return 261301;
+                        if (attempt >= 7) {
+                            gsInfo << "Reached attempt 7, returning early\n";
+                            // Prepare and return current state
+                            toc = std::chrono::system_clock::now();
+                            AlgorithmResult result;
+                            result.mp = std::move(mp);
+                            result.Bells = Bells;
+                            result.boxMat = boxMat;
+                            result.acceptedCoefs = acceptedCoefs;
+                            result.AcceptedvectSol = AcceptedvectSol;
+                            result.AcceptedlastRow = AcceptedlastRow;
+                            result.acceptedMatOut = acceptedMatOut;
+                            result.featureCoordinates = featureCoordinates;
+                            result.uvFeature = uvFeature;
+                            result.xyFeature = xyFeature;
+                            result.AcceptedisActive = AcceptedisActive;
+                            result.AcceptedglobalIndex = AcceptedglobalIndex;
+                            result.AcceptedfunctionDescription = AcceptedfunctionDescription;
+                            result.uv1 = uv1;
+                            result.lowc2 = lowc2;
+                            result.uppc2 = uppc2;
+                            result.maxLevel = maxLevel;
+                            result.toc = toc;
+                            result.successfullAttempts = successfullAttempts;
+                            result.totalAttempts = totalAttempts;
+                            result.matFile = matFile;
+                            result.interioru0 = interioru0;
+                            result.interiorv0 = interiorv0;
+                            return result;
+                        }
                         //numIrregular(patch)++;
                         if (globalError <= epsilon_g && featureError <= epsilon_f && numIrregular(patch) == 0) {
                             //if (globalError <= epsilon_g && featureError <= epsilon_f && numIrregular(patch) != 0) {
@@ -12148,7 +12188,7 @@ int main() {
                                 outfile << "\n";
                             }
                             AcceptedlastRow(patch) = lastNonZeroRow;
-                            proj++;
+                            projections++;
                             anmat2 = THB.anchors();
                             wasRebuilt = 1;
                             nonCheckedCells.removeElement(currArrayIndex);
@@ -12187,7 +12227,7 @@ int main() {
                                 "mesh_irregular",
                                 true
                             );
-                            return 250702;
+                            throw std::runtime_error("Found irregular parameterization - mesh saved");
                             gsInfo << "Doing LO\n";
                             outfile << "Doing LO\n";
                             if (attempt - 1 == 7)   DTD = 1;
@@ -12305,7 +12345,7 @@ int main() {
                                     //    outfile,
                                     //    "savedPatch", localIndex
                                     //);
-                                    return 250518;
+                                    // Skip this attempt and continue
                                     //return 250419;
                                     //savePatches(
                                     //    vectSol,
@@ -12366,7 +12406,7 @@ int main() {
                                     gsFileData<> fileData2;
                                     fileData2 << *geom2;
                                     fileData2.dump("geom2_patch.xml");
-                                    return 250512;
+                                    // Skip and continue
                                     numAt++;
                                 }
                             }
@@ -12470,7 +12510,7 @@ int main() {
 
                                     }
                                 }*/
-                                proj++;
+                                projections++;
                                 //gsWrite
                                 //setSupports(THB, supps);
                                 anmat2 = THB.anchors();
@@ -12501,12 +12541,13 @@ int main() {
                                     gsInfo << "The parameterization is not regular\n";
                                     //gsInfo << "minusnumber: " << minusnumber << "\n";
                                     gsFileManager::open("logFile_poissonTHB_example.txt");
-                                    return 4;
+                                    attempt = (attempt + 1) % (jopa);
+                                    continue;
                                 }
                                 gsInfo << "minusnumber: " << minusnumber << "\n";
                                 //goto success;
                                 gsFileManager::open("logFile_poissonTHB_example.txt");
-                                return 4;
+                                goto hop;
                             hop:
                                 gsInfo << "WITHDRAW\n\n\n";
                                 outfile << "WITHDRAW\n\n\n";
@@ -12567,8 +12608,102 @@ int main() {
             }
         }
     }
+    
+    // Prepare return values
+    AlgorithmResult result;
+    result.mp = std::move(mp);
+    result.Bells = Bells;
+    result.boxMat = boxMat;
+    result.acceptedCoefs = acceptedCoefs;
+    result.AcceptedvectSol = AcceptedvectSol;
+    result.AcceptedlastRow = AcceptedlastRow;
+    result.acceptedMatOut = acceptedMatOut;
+    result.featureCoordinates = featureCoordinates;
+    result.uvFeature = uvFeature;
+    result.xyFeature = xyFeature;
+    result.AcceptedisActive = AcceptedisActive;
+    result.AcceptedglobalIndex = AcceptedglobalIndex;
+    result.AcceptedfunctionDescription = AcceptedfunctionDescription;
+    result.uv1 = uv1;
+    result.lowc2 = lowc2;
+    result.uppc2 = uppc2;
+    result.maxLevel = maxLevel;
+    result.toc = toc;
+    result.successfullAttempts = successfullAttempts;
+    result.totalAttempts = totalAttempts;
+    result.matFile = matFile;
+    result.interioru0 = interioru0;
+    result.interiorv0 = interiorv0;
+    result.proj = projections;
+    
+    return result;
+}
 
-    toc = std::chrono::system_clock::now();
+int main() {
+    gsInfo << "Y\n";
+    xboxFile.open("xboxFile.txt");
+    yboxFile.open("yboxFile.txt");
+    gsStopwatch clock;
+    DTD = 0;
+    printAB = 0;
+    localTempAttempt = 0;
+    std::chrono::time_point<std::chrono::system_clock> startTime, iterTime;
+    startTime = std::chrono::system_clock::now();
+    std::string filename("hexagon_3p_4l_240325.xml");
+    const int dim = 2;
+    int row, acceptedsize, attempt = 0;
+    std::string badFile = "badgeoLocalAndreatemp6";
+    std::string pvdFile = "resultLocalAndreatemp6";
+    int los = 0, nlos = 0, proj = 0;
+    std::string givenGeo;
+    int valid = 0;
+    int gradingExtent;
+    real_t epsilon_g = 1e+6, epsilon_f = 1e+6;
+    real_t lcx, lcy, ucx, ucy;
+    std::string acCond = to_string(epsilon_g) + "and" + to_string(epsilon_f);
+    givenGeo = "two_squares_lev1";
+    givenGeo += "L2";
+    givenGeo += "LO";
+    givenGeo += "NLO";
+    std::string fileLoc = "logFile_poissonTHB_example";
+    outfile.open(fileLoc + ".txt");
+    gsFileData<> data0(filename);
+    int iter = -1;
+    int successfullAttempts = 0, totalAttempts = 0;
+    index_t degree;
+    real_t tol = 1e-8, gtol = 1e-8;
+    char method = 'l';
+
+    // Run the main algorithm
+    AlgorithmResult result = unrefinementAlgorithmHBJ(filename, epsilon_g, epsilon_f, method, givenGeo, acCond);
+    
+    // Extract results
+    gsMultiPatch<>::uPtr mp = std::move(result.mp);
+    auto& Bells = result.Bells;
+    auto& boxMat = result.boxMat;
+    auto& acceptedCoefs = result.acceptedCoefs;
+    auto& AcceptedvectSol = result.AcceptedvectSol;
+    auto& AcceptedlastRow = result.AcceptedlastRow;
+    auto& acceptedMatOut = result.acceptedMatOut;
+    auto& featureCoordinates = result.featureCoordinates;
+    auto& uvFeature = result.uvFeature;
+    auto& xyFeature = result.xyFeature;
+    auto& AcceptedisActive = result.AcceptedisActive;
+    auto& AcceptedglobalIndex = result.AcceptedglobalIndex;
+    auto& AcceptedfunctionDescription = result.AcceptedfunctionDescription;
+    auto& uv1 = result.uv1;
+    auto& lowc2 = result.lowc2;
+    auto& uppc2 = result.uppc2;
+    auto& maxLevel = result.maxLevel;
+    successfullAttempts = result.successfullAttempts;
+    totalAttempts = result.totalAttempts;
+    gsMatrix<> matFile = result.matFile;
+    unsigned interioru0 = result.interioru0;
+    unsigned interiorv0 = result.interiorv0;
+    auto numPoints1 = 100;  // Used for feature matrix generation
+    proj = result.proj;
+    
+    std::chrono::time_point<std::chrono::system_clock> toc = result.toc;
     std::chrono::duration<double> elapsed_finished = toc - startTime;
     outfile << "FINISHED took: " << elapsed_finished.count() << "\n";
     gsInfo << "FINISHED\n";
@@ -12579,6 +12714,7 @@ int main() {
     {
         for (size_t boxIndex = 0; boxIndex < boxMat(patch).size(); boxIndex++)
         {
+            if (boxMat(patch)(boxIndex).size() == 0) continue;
             for (size_t coord = 0; coord < boxMat(patch)(boxIndex).size(); coord++)
             {
                 outfile << boxMat(patch)(boxIndex)(coord) << " ";
@@ -12688,6 +12824,10 @@ int main() {
         gsInfo << "AcceptedlastRow(patch): " << AcceptedlastRow(patch) << "\n";
         for (size_t ind = 0; ind < AcceptedlastRow(patch); ind++)
         {
+            if (ind >= boxMat(patch).size() || boxMat(patch)(ind).size() < 5) {
+                gsInfo << "Warning: boxMat index out of range at patch " << patch << ", ind " << ind << "\n";
+                break;
+            }
             for (size_t i = 0; i < 5; i++)
             {
                 outfile << boxMat(patch)(ind)(i) << " ";
@@ -12749,6 +12889,11 @@ int main() {
         for (size_t ind = 0; ind < AcceptedlastRow(patch); ind++)
         {
             /*boxCoords[patch][ind].resize(5);*/
+            if (ind >= boxMat[patch].size() || boxMat[patch][ind].size() < 5) {
+                gsInfo << "Warning: Skipping invalid box at patch " << patch << ", ind " << ind << "\n";
+                outfile << "Warning: Skipping invalid box at patch " << patch << ", ind " << ind << "\n";
+                continue;
+            }
             gsInfo << "patch " << patch << ", ind " << ind << "\n";
             outfile << "patch " << patch << ", ind " << ind << "\n";
             outfile << boxMat[patch][ind][0] << " " << boxMat[patch][ind][1] << " " << boxMat[patch][ind][2] << " " << boxMat[patch][ind][3] << " " << boxMat[patch][ind][4] << "\n";
@@ -12770,8 +12915,17 @@ int main() {
                 for (size_t j = patch * uv1(0).cols() + std::pow(2, maxLevel(patch) - segment(0)) * (numPointsPerIndex * numpointsBox + 1) * numPointsPerIndex * segment(2) + std::pow(2, maxLevel(patch) - segment(0)) * segment(1) * numPointsPerIndex;
                     j < patch * uv1(0).cols() + std::pow(2, maxLevel(patch) - segment(0)) * (numPointsPerIndex * numpointsBox + 1) * numPointsPerIndex * segment(4) + std::pow(2, maxLevel(patch) - segment(0)) * segment(3) * numPointsPerIndex + 1; j++)
                 {
+                    if (j >= matOutmesh.rows()) {
+                        gsInfo << "Warning: Index j=" << j << " exceeds matOutmesh bounds (" << matOutmesh.rows() << ")\n";
+                        break;
+                    }
+                    size_t localIdx = j - patch * uv1(0).cols();
+                    if (localIdx >= uv1(patch).cols()) {
+                        gsInfo << "Warning: localIdx=" << localIdx << " exceeds uv1 bounds\n";
+                        break;
+                    }
                     outfile << "for " << j << "\n";
-                    outfile << uv1(patch)(0, j - patch * uv1(0).cols()) << " " << uv1(patch)(1, j - patch * uv1(0).cols()) << "\n";
+                    outfile << uv1(patch)(0, localIdx) << " " << uv1(patch)(1, localIdx) << "\n";
                     xboxFile << matOutmesh(j, 0) << "\n";
                     yboxFile << matOutmesh(j, 1) << "\n";
                 }
@@ -12802,8 +12956,17 @@ int main() {
                     j < patch * uv1(0).cols() + std::pow(2, maxLevel(patch) - segment(0)) * (numPointsPerIndex * numpointsBox + 1) * numPointsPerIndex * segment(4) + std::pow(2, maxLevel(patch) - segment(0)) * segment(3) * numPointsPerIndex + 1;
                     j += (numPointsPerIndex * numpointsBox + 1))
                 {
+                    if (j >= matOutmesh.rows()) {
+                        gsInfo << "Warning: Index j=" << j << " exceeds matOutmesh bounds (" << matOutmesh.rows() << ")\n";
+                        break;
+                    }
+                    size_t localIdx = j - patch * uv1(0).cols();
+                    if (localIdx >= uv1(patch).cols()) {
+                        gsInfo << "Warning: localIdx=" << localIdx << " exceeds uv1 bounds\n";
+                        break;
+                    }
                     outfile << "for " << j << "\n";
-                    outfile << uv1(patch)(j - patch * uv1(0).cols(), 0) << " " << uv1(patch)(j - patch * uv1(0).cols(), 1) << "\n";
+                    outfile << uv1(patch)(localIdx, 0) << " " << uv1(patch)(localIdx, 1) << "\n";
                     xboxFile << matOutmesh(j, 0) << "\n";
                     yboxFile << matOutmesh(j, 1) << "\n";
                 }
