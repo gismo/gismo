@@ -39,6 +39,10 @@ if(NOT autodiff_FOUND)
   return()
 endif()
 
+# AutoDiff mode options (only available when gsAutoDiff is enabled)
+option(GISMO_AUTODIFF_FORWARD "Enable forward mode automatic differentiation (dual_t)" ON)
+option(GISMO_AUTODIFF_BACKWARD "Enable backward/reverse mode automatic differentiation (var_t)" OFF)
+
 # Get autodiff include directories from the target
 get_target_property(AUTODIFF_INCLUDE_DIRS autodiff::autodiff INTERFACE_INCLUDE_DIRECTORIES)
 if(AUTODIFF_INCLUDE_DIRS)
@@ -50,11 +54,26 @@ else()
   message(WARNING "Could not get autodiff include directories")
 endif()
 
-# Add needed instantiations to the precompiled library
-# Use simple type aliases defined in gsConfig.h to avoid template syntax issues
-set(GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} 
-  "gismo::dual_t;gismo::var_t"
-  CACHE INTERNAL "Additional instantiations")
+# Add needed instantiations to the precompiled library based on enabled modes
+set(AUTODIFF_INSTANCES "")
+if(GISMO_AUTODIFF_FORWARD)
+  set(AUTODIFF_INSTANCES "gismo::dual_t")
+  message(STATUS "gsAutoDiff: Forward mode (dual_t) enabled")
+endif()
+if(GISMO_AUTODIFF_BACKWARD)
+  if(AUTODIFF_INSTANCES)
+    set(AUTODIFF_INSTANCES "${AUTODIFF_INSTANCES};gismo::var_t")
+  else()
+    set(AUTODIFF_INSTANCES "gismo::var_t")
+  endif()
+  message(STATUS "gsAutoDiff: Backward mode (var_t) enabled")
+endif()
+
+if(AUTODIFF_INSTANCES)
+  set(GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} 
+    "${AUTODIFF_INSTANCES}"
+    CACHE INTERNAL "Additional instantiations")
+endif()
 
 ## Collect files
 aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_H)

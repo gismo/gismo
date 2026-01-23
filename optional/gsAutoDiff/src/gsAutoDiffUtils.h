@@ -38,17 +38,28 @@ namespace autodiff { namespace reverse { namespace detail {
 namespace gismo
 {
     // Unified val() accessor that works for both forward and reverse autodiff types
-    // For forward mode (dual_t): returns .val member
+    // For forward mode (dual_t): returns .val member (recursively for nested duals)
     // For reverse mode (var_t): returns expr->val
     // For arithmetic types: returns the value itself
-    template<typename T, typename G>
-    inline T gismo_val(const autodiff::detail::Dual<T, G>& v) { return v.val; }
     
+    // Primary template for arithmetic types
+    template<typename T>
+    inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type
+    gismo_val(const T& v) { return v; }
+    
+    // Forward mode dual with arithmetic inner type (base case)
+    template<typename G>
+    inline GISMO_COEFF_TYPE gismo_val(const autodiff::detail::Dual<GISMO_COEFF_TYPE, G>& v)
+    { return v.val; }
+    
+    // Forward mode dual with dual inner type (recursive case - dual2nd_t)
+    template<typename T, typename G1, typename G2>
+    inline GISMO_COEFF_TYPE gismo_val(const autodiff::detail::Dual<autodiff::detail::Dual<T, G1>, G2>& v)
+    { return gismo_val(v.val); }
+    
+    // Reverse mode variable
     template<typename T>
     inline T gismo_val(const autodiff::reverse::detail::Variable<T>& v) { return v.expr->val; }
-    
-    template<typename T, typename = std::enable_if_t<std::is_arithmetic<T>::value>>
-    inline T gismo_val(const T& v) { return v; }
 
     template<typename T, typename Solver>
     struct SolveExpr : autodiff::reverse::detail::BinaryExpr<T> {
@@ -299,12 +310,36 @@ namespace math {
     
     // Note: isinf, isnan, isfinite are now defined in gsAutoDiffTraits.h in std:: namespace
     
-    // ceil/floor/round for autodiff::detail::Dual directly
+    // Helper to recursively extract innermost real value for floor/ceil
+    template<typename T>
+    inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type
+    floor_val(const T& v) { using std::floor; return floor(v); }
+    
     template<typename T, typename G>
-    inline autodiff::detail::Dual<T, G> ceil(const autodiff::detail::Dual<T, G>& v) {
+    inline GISMO_COEFF_TYPE floor_val(const autodiff::detail::Dual<T, G>& v)
+    { return floor_val(v.val); }
+    
+    template<typename T>
+    inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type
+    ceil_val(const T& v) { using std::ceil; return ceil(v); }
+    
+    template<typename T, typename G>
+    inline GISMO_COEFF_TYPE ceil_val(const autodiff::detail::Dual<T, G>& v)
+    { return ceil_val(v.val); }
+    
+    // ceil/floor/round for autodiff::detail::Dual directly (base case: arithmetic T)
+    template<typename G>
+    inline autodiff::detail::Dual<GISMO_COEFF_TYPE, G> ceil(const autodiff::detail::Dual<GISMO_COEFF_TYPE, G>& v) {
         using std::ceil;
         // ceil is non-differentiable, return value with zero derivative
-        return autodiff::detail::Dual<T, G>(ceil(v.val));
+        return autodiff::detail::Dual<GISMO_COEFF_TYPE, G>(ceil(v.val));
+    }
+    
+    // ceil for nested dual (dual2nd_t)
+    template<typename T, typename G1, typename G2>
+    inline autodiff::detail::Dual<autodiff::detail::Dual<T, G1>, G2> ceil(const autodiff::detail::Dual<autodiff::detail::Dual<T, G1>, G2>& v) {
+        // ceil is non-differentiable, return value with zero derivative
+        return autodiff::detail::Dual<autodiff::detail::Dual<T, G1>, G2>(ceil_val(v));
     }
     
     // ceil for var types (reverse mode)
@@ -315,11 +350,19 @@ namespace math {
         return autodiff::reverse::detail::Variable<T>(ceil(autodiff::val(v)));
     }
 
-    template<typename T, typename G>
-    inline autodiff::detail::Dual<T, G> floor(const autodiff::detail::Dual<T, G>& v) {
+    // floor for dual (base case: arithmetic T)
+    template<typename G>
+    inline autodiff::detail::Dual<GISMO_COEFF_TYPE, G> floor(const autodiff::detail::Dual<GISMO_COEFF_TYPE, G>& v) {
         using std::floor;
         // floor is non-differentiable, return value with zero derivative
-        return autodiff::detail::Dual<T, G>(floor(v.val));
+        return autodiff::detail::Dual<GISMO_COEFF_TYPE, G>(floor(v.val));
+    }
+    
+    // floor for nested dual (dual2nd_t)
+    template<typename T, typename G1, typename G2>
+    inline autodiff::detail::Dual<autodiff::detail::Dual<T, G1>, G2> floor(const autodiff::detail::Dual<autodiff::detail::Dual<T, G1>, G2>& v) {
+        // floor is non-differentiable, return value with zero derivative
+        return autodiff::detail::Dual<autodiff::detail::Dual<T, G1>, G2>(floor_val(v));
     }
     
     // floor for var types (reverse mode)

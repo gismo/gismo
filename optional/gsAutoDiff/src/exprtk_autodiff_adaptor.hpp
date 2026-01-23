@@ -45,7 +45,10 @@ static const double sqrt2   =  1.41421356237309504880168872420969807856967187537
 #include "exprtk_autodiff_adaptor.h"
 #undef AUTODIFF_TYPE
 
-// Second inclusion for var type
+#define AUTODIFF_TYPE autodiff_dual2nd_t
+#include "exprtk_autodiff_adaptor.h"
+#undef AUTODIFF_TYPE
+
 #define AUTODIFF_TYPE autodiff_var_t  
 #include "exprtk_autodiff_adaptor.h"
 #undef AUTODIFF_TYPE

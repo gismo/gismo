@@ -202,12 +202,11 @@ template<typename U> struct is_autodiff_type<autodiff::reverse::detail::Variable
 #endif
 
 // Numeric_t selection:
-// - If T is already autodiff type (dual_t or var_t): use T
-// - If gsAutoDiff_ENABLED and T is real_t: use dual_t for automatic differentiation
+// - If gsAutoDiff_ENABLED: use dual2nd_t for computing first AND second derivatives via AD
 // - If GISMO_WITH_ADIFF: use old DScalar
 // - Otherwise: use T directly
 #if defined(gsAutoDiff_ENABLED)
-    typedef typename std::conditional<is_autodiff_type<T>::value, T, dual_t>::type Numeric_t;
+    typedef dual2nd_t Numeric_t;
 #elif defined(GISMO_WITH_ADIFF)
     typedef DScalar Numeric_t;
 #else
@@ -591,7 +590,6 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
 template<typename T>
 void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    //gsDebug<< "Using finite differences (gsFunctionExpr::deriv_into) for derivatives.\n";
     const short_t d = domainDim();
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
                    << my->dim <<", got "<< u.rows() <<")");
@@ -602,42 +600,32 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
 #       if defined(gsAutoDiff_ENABLED)
-        // When Numeric_t is dual_t, use automatic differentiation
-        // When Numeric_t is var_t or T (already autodiff), use finite differences
-        if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+        // Using dual2nd_t: seed each variable and extract first derivative
+        // dual2nd_t.val is dual_t, dual2nd_t.grad is dual_t
+        // First derivative: d f / d x_j = result.grad.val when x_j is seeded
+        for (short_t c = 0; c!= n; ++c) // for all components
         {
-            // Using dual_t: seed each variable and extract derivative from grad member
-            for (short_t c = 0; c!= n; ++c) // for all components
+            for (short_t j = 0; j!=d; ++j) // for all variables
             {
-                for (short_t j = 0; j!=d; ++j) // for all variables
+                // Set all variables to their values (seed for first derivative)
+                for (short_t k = 0; k!=d; ++k)
                 {
-                    // Set all variables to their values
-                    for (short_t k = 0; k!=d; ++k)
-                    {
-                        my->vars[k].val = gismo::gismo_val(u(k,p));
-                        my->vars[k].grad = (k==j ? 1.0 : 0.0);  // Seed only variable j
-                    }
-                    // Evaluate and extract derivative from grad member
-                    dual_t expr_val = my->expression[c].value();
-                    result(c*d + j, p) = expr_val.grad;
+                    // val is dual_t, grad is dual_t
+                    my->vars[k].val.val = gismo::gismo_val(u(k,p));
+                    my->vars[k].val.grad = 0.0;
+                    my->vars[k].grad.val = (k==j ? 1.0 : 0.0);  // Seed only variable j
+                    my->vars[k].grad.grad = 0.0;
                 }
+                // Evaluate and extract first derivative
+                dual2nd_t expr_val = my->expression[c].value();
+                result(c*d + j, p) = expr_val.grad.val;
             }
-        }
-        else
-        {
-            // T is already autodiff type, use finite differences
-            copy_n(u.col(p).data(), my->dim, my->vars);
-            for (short_t c = 0; c!= n; ++c) // for all components
-                for ( short_t j = 0; j!=d; j++ ) // for all variables
-                    result(c*d + j, p) =
-                        exprtk::derivative<T>(my->expression[c], my->vars[j], 0.00001 ) ;
         }
 #       elif defined(GISMO_WITH_ADIFF)
         for (short_t k = 0; k!=d; ++k)
             my->vars[k].setVariable(k,d,u(k,p));
         for (short_t c = 0; c!= n; ++c) // for all components
             my->expression[c].value().gradient_into(result.block(c*d,p,d,1));
-            //result.block(c*d,p,d,1) = my->expression[c].value().getGradient(); //fails on constants
 #       else
         copy_n(u.col(p).data(), my->dim, my->vars);
         for (short_t c = 0; c!= n; ++c) // for all components
@@ -664,45 +652,34 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
         for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           if defined(gsAutoDiff_ENABLED)
-            if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+            // Using dual2nd_t for second derivatives via AD
+            // For H_{k,l}, we need to seed x_k in grad and x_l in grad.grad
+            for (short_t k = 0; k!=d; ++k)
             {
-                // For dual_t, use finite differences for second derivatives
-                // Extract .val since result is gsMatrix<T> not gsMatrix<dual_t>
-                copy_n(u.col(p).data(), my->dim, my->vars);
-                for (short_t k = 0; k!=d; ++k)
+                // H_{k,k} - second derivative d²f/dx_k²
+                for (short_t v = 0; v!=d; ++v)
                 {
-                    // H_{k,k}
-                    result(c*stride + k,p) = exprtk::
-                        second_derivative<dual_t>(my->expression[c], my->vars[k], 0.00001).val;
-
-                    short_t m = d;
-                    for (short_t l=k+1; l<d; ++l)
-                    {
-                        // H_{k,l}
-                        result(c*stride + m++,p) =
-                            mixed_derivative<dual_t>( my->expression[c], my->vars[k],
-                                                 my->vars[l], 0.00001 ).val;
-                    }
+                    my->vars[v].val.val = gismo::gismo_val(u(v,p));
+                    my->vars[v].val.grad = (v==k ? 1.0 : 0.0);  // seed for inner derivative
+                    my->vars[v].grad.val = (v==k ? 1.0 : 0.0);  // seed for outer derivative  
+                    my->vars[v].grad.grad = 0.0;
                 }
-            }
-            else
-            {
-                // T is already autodiff type, use finite differences directly
-                copy_n(u.col(p).data(), my->dim, my->vars);
-                for (short_t k = 0; k!=d; ++k)
-                {
-                    // H_{k,k}
-                    result(c*stride + k,p) = exprtk::
-                        second_derivative<T>(my->expression[c], my->vars[k], 0.00001);
+                dual2nd_t expr_val = my->expression[c].value();
+                result(c*stride + k, p) = expr_val.grad.grad;
 
-                    short_t m = d;
-                    for (short_t l=k+1; l<d; ++l)
+                short_t m = d;
+                for (short_t l=k+1; l<d; ++l)
+                {
+                    // H_{k,l} - mixed derivative d²f/(dx_k dx_l)
+                    for (short_t v = 0; v!=d; ++v)
                     {
-                        // H_{k,l}
-                        result(c*stride + m++,p) =
-                            mixed_derivative<T>( my->expression[c], my->vars[k],
-                                                 my->vars[l], 0.00001 );
+                        my->vars[v].val.val = gismo::gismo_val(u(v,p));
+                        my->vars[v].val.grad = (v==l ? 1.0 : 0.0);  // seed x_l for inner
+                        my->vars[v].grad.val = (v==k ? 1.0 : 0.0);  // seed x_k for outer
+                        my->vars[v].grad.grad = 0.0;
                     }
+                    expr_val = my->expression[c].value();
+                    result(c*stride + m++, p) = expr_val.grad.grad;
                 }
             }
 #           elif defined(GISMO_WITH_ADIFF)
@@ -744,7 +721,6 @@ template<typename T>
 gsMatrix<T>
 gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 {
-    //gsDebug<< "Using finite differences (gsFunctionExpr::hess) for Hessian.\n";
     GISMO_ENSURE(coord == 0, "Error, function is real");
     GISMO_ASSERT ( u.cols() == 1, "Need a single evaluation point." );
     const index_t d = u.rows();
@@ -756,34 +732,32 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 #   pragma omp critical (gsFunctionExpr_run)
 {
 #   if defined(gsAutoDiff_ENABLED)
-    if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+    // Using dual2nd_t for Hessian via AD
+    for( index_t j=0; j!=d; ++j )
     {
-        // Use finite differences for dual_t, extract .val for result
-        copy_n(u.data(), my->dim, my->vars);
-        for( index_t j=0; j!=d; ++j )
+        // H_{j,j}
+        for (index_t v = 0; v!=d; ++v)
         {
-            res(j,j) = exprtk::
-                second_derivative<dual_t>( my->expression[coord], my->vars[j], 0.00001).val;
-
-            for( index_t k = 0; k!=j; ++k )
-                res(k,j) = res(j,k) =
-                    mixed_derivative<dual_t>( my->expression[coord], my->vars[k],
-                                         my->vars[j], 0.00001 ).val;
+            my->vars[v].val.val = gismo::gismo_val(u(v,0));
+            my->vars[v].val.grad = (v==j ? 1.0 : 0.0);
+            my->vars[v].grad.val = (v==j ? 1.0 : 0.0);
+            my->vars[v].grad.grad = 0.0;
         }
-    }
-    else
-    {
-        // T is already autodiff type
-        copy_n(u.data(), my->dim, my->vars);
-        for( index_t j=0; j!=d; ++j )
-        {
-            res(j,j) = exprtk::
-                second_derivative<T>( my->expression[coord], my->vars[j], 0.00001);
+        dual2nd_t expr_val = my->expression[coord].value();
+        res(j,j) = expr_val.grad.grad;
 
-            for( index_t k = 0; k!=j; ++k )
-                res(k,j) = res(j,k) =
-                    mixed_derivative<T>( my->expression[coord], my->vars[k],
-                                         my->vars[j], 0.00001 );
+        for( index_t k = 0; k!=j; ++k )
+        {
+            // H_{k,j} = H_{j,k}
+            for (index_t v = 0; v!=d; ++v)
+            {
+                my->vars[v].val.val = gismo::gismo_val(u(v,0));
+                my->vars[v].val.grad = (v==j ? 1.0 : 0.0);
+                my->vars[v].grad.val = (v==k ? 1.0 : 0.0);
+                my->vars[v].grad.grad = 0.0;
+            }
+            expr_val = my->expression[coord].value();
+            res(k,j) = res(j,k) = expr_val.grad.grad;
         }
     }
 #   elif defined(GISMO_WITH_ADIFF)
@@ -822,18 +796,16 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
         for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           if defined(gsAutoDiff_ENABLED)
-            if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+            // Mixed derivative d²f/(dx_k dx_j) via dual2nd_t
+            for (index_t v = 0; v!=my->dim; ++v)
             {
-                copy_n(u.col(p).data(), my->dim, my->vars);
-                (*res)(c,p) =
-                    mixed_derivative<dual_t>( my->expression[c], my->vars[k], my->vars[j], 0.00001 ).val;
+                my->vars[v].val.val = gismo::gismo_val(u(v,p));
+                my->vars[v].val.grad = (v==j ? 1.0 : 0.0);
+                my->vars[v].grad.val = (v==k ? 1.0 : 0.0);
+                my->vars[v].grad.grad = 0.0;
             }
-            else
-            {
-                copy_n(u.col(p).data(), my->dim, my->vars);
-                (*res)(c,p) =
-                    mixed_derivative<T>( my->expression[c], my->vars[k], my->vars[j], 0.00001 );
-            }
+            dual2nd_t expr_val = my->expression[c].value();
+            (*res)(c,p) = expr_val.grad.grad;
 #           elif defined(GISMO_WITH_ADIFF)
             for (index_t v = 0; v!=my->dim; ++v)
                 my->vars[v].setVariable(v, my->dim, u(v,p) );
@@ -851,10 +823,10 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
 template<typename T>
 gsMatrix<T> gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 {
-    //gsDebug<< "Using finite differences (gsFunction::laplacian) for Laplacian.\n";
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
     const short_t n = targetDim();
     gsMatrix<T> res(n,u.cols());
+    res.setZero();
 
     #   pragma omp critical (gsFunctionExpr_run)
     for( index_t p = 0; p != res.cols(); ++p )
@@ -862,21 +834,19 @@ gsMatrix<T> gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
         for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           if defined(gsAutoDiff_ENABLED)
-            if constexpr (std::is_same<typename gsFunctionExprPrivate::Numeric_t, dual_t>::value)
+            // Laplacian = sum of d²f/dx_j² via dual2nd_t
+            T & val = res(c,p);
+            for ( index_t j = 0; j!=my->dim; ++j )
             {
-                copy_n(u.col(p).data(), my->dim, my->vars);
-                T & val = res(c,p);
-                for ( index_t j = 0; j!=my->dim; ++j )
-                    val += exprtk::
-                        second_derivative<dual_t>( my->expression[c], my->vars[j], 0.00001 ).val;
-            }
-            else
-            {
-                copy_n(u.col(p).data(), my->dim, my->vars);
-                T & val = res(c,p);
-                for ( index_t j = 0; j!=my->dim; ++j )
-                    val += exprtk::
-                        second_derivative<T>( my->expression[c], my->vars[j], 0.00001 );
+                for (index_t v = 0; v!=my->dim; ++v)
+                {
+                    my->vars[v].val.val = gismo::gismo_val(u(v,p));
+                    my->vars[v].val.grad = (v==j ? 1.0 : 0.0);
+                    my->vars[v].grad.val = (v==j ? 1.0 : 0.0);
+                    my->vars[v].grad.grad = 0.0;
+                }
+                dual2nd_t expr_val = my->expression[c].value();
+                val += expr_val.grad.grad;
             }
 #           elif defined(GISMO_WITH_ADIFF)
             for (index_t v = 0; v!=my->dim; ++v)

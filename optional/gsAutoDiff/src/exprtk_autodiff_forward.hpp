@@ -22,9 +22,14 @@
 
 typedef GISMO_COEFF_TYPE                                            autodiff_real_t;
 typedef autodiff::detail::Dual<autodiff_real_t,autodiff_real_t>     autodiff_dual_t;
+typedef autodiff::detail::Dual<autodiff_dual_t,autodiff_dual_t>     autodiff_dual2nd_t;
 typedef autodiff::reverse::detail::Variable<autodiff_real_t>        autodiff_var_t;
 
 #define AUTODIFF_TYPE autodiff_dual_t
+#include <gsAutoDiff/exprtk_autodiff_forward.h>
+#undef AUTODIFF_TYPE
+
+#define AUTODIFF_TYPE autodiff_dual2nd_t
 #include <gsAutoDiff/exprtk_autodiff_forward.h>
 #undef AUTODIFF_TYPE
 

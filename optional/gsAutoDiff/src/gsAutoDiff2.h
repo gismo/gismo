@@ -32,9 +32,12 @@
 #endif
 
 namespace gismo {
-    // Forward AD using autodiff::detail::Dual
+    // Forward AD using autodiff::detail::Dual (first-order)
     using dual_t = autodiff::detail::Dual<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE>;
     using autodiff_dual_t = dual_t; // For exprtk
+    
+    // Forward AD second-order (for Hessians in gsFunctionExpr)
+    using dual2nd_t = autodiff::detail::Dual<dual_t, dual_t>;
     
     // Reverse AD using autodiff::var
     using var_t = autodiff::var;
@@ -42,6 +45,13 @@ namespace gismo {
 
 // Provide ostream printing for autodiff scalar types so expression printing works
 inline std::ostream & operator<<(std::ostream &os, const autodiff::detail::Dual<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE> &d)
+{
+    using autodiff::val;
+    os << val(d);
+    return os;
+}
+
+inline std::ostream & operator<<(std::ostream &os, const gismo::dual2nd_t &d)
 {
     using autodiff::val;
     os << val(d);
