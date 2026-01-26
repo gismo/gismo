@@ -11,12 +11,7 @@
 #include "gsIO/gsWriteParaview.h"
 #include "gsMesh2/gsSurfMesh.h"
 #include "gsNurbs/gsTensorBSpline.h"
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <cmath>
 #include <gismo.h>
-#include <iterator>
 
 using namespace gismo;
 
@@ -33,6 +28,7 @@ class FreeformFaceData{
         for (auto v : mesh.vertices(face)){
             points.emplace_back(mesh.position(v));
         }
+        gsInfo << "Size: " << points.size() << "\n";
         assert(points.size() == 4);
 
         for(size_t i = 0; i<9; ++i){
@@ -87,66 +83,110 @@ class FreeformFaceData{
         return result;
     }
 
+    gismo::gsVector3d<real_t> corresponding_point(const gsSurfMesh& mesh, gsSurfMesh::Face face, gsSurfMesh::Vertex vertex)
+    {
+        gismo::gsVector3d<real_t> result;
+
+        size_t vertex_position(0);
+
+        for(auto v : mesh.vertices(face)){
+            if(v == vertex) break;
+            ++vertex_position;
+        }
+
+        switch(vertex_position)
+        {
+            case 0:
+                result = data[0];
+                break;
+            case 1:
+                result = data[2];
+                break;
+            case 2:
+                result = data[8];
+                break;
+            case 3:
+                result = data[6];
+                break;
+            default:
+                gsInfo << "Oh no\n";
+        }        
+
+        return result;
+    }
+
     std::array<gismo::gsVector3d<real_t>, 25> full_patch(const gsSurfMesh& mesh, gsSurfMesh::Face face)
     {
+        // Create an array to hold the 5x5 control points for the full patch
         std::array<gismo::gsVector3d<real_t>, 25> result;
         result.fill(gismo::gsVector3d<real_t>(0., 0., 0.));
 
-        // TEMPORARY
-        std::vector<gismo::gsVector3d<real_t>> points;
+        // Prepare data of other patches
+        auto patch_data = mesh.get_face_property<FreeformFaceData>("bezier_points");
 
-        for (auto v : mesh.vertices(face)){
-            points.emplace_back(mesh.position(v));
-        }
-        assert(points.size() == 4);
 
-        for(size_t i = 0; i<25; ++i){
-            real_t ih(i % 5);
-            real_t iv(std::floor(i / 5));
-          
-            result[i] =
-                points[0] * (4-ih) * (4-iv)/16. +
-                points[1] * ih * (4-iv)/16. +
-                points[3] * (4-ih) * iv/16. +
-                points[2] * ih * iv/16.;
-        }
-        // TEMPORARY END
-
-        // inner
+        // === INNER ===
+        // These are directly saved in the data structure.
         for(size_t i = 0; i<9;++i){
             size_t ih((i%3)+1);
             size_t iv((i/3)+1);
             result[5 * iv + ih] = this->data[i];
         }
 
-       
-        // get halfedges
-        std::vector<gsSurfMesh::Halfedge> hedges;
-        for(auto he : mesh.halfedges(face)){
-            hedges.push_back(he);
+   
+        // === EDGES ===
+
+        // Prepare indices.
+        std::vector<std::array<size_t, 3>> hedge_result = {
+            {15,10,5},
+            {1,2,3},
+            {9,14,19},
+            {23,22,21},
+        };
+
+        // Iterator over all half edges adjacent to this one.
+        size_t hedge_counter(0);
+        for(auto hedge : mesh.halfedges(face)){
+            // Get the two half-edges and then faces for this half-edge.
+            auto hedge1 (hedge);
+            auto hedge2(mesh.opposite_halfedge(hedge));
+            auto face1 (mesh.face(hedge1)); // this should be the current face.
+            auto face2 (mesh.face(hedge2));
+
+            // Get the two 3-sets of corresponding points.
+            auto points1 = patch_data.vector()[face1.idx()].corresponding_points(mesh, face1, hedge1);
+            auto points2 = patch_data.vector()[face2.idx()].corresponding_points(mesh, face2,hedge2);
+            
+            // Calculate the average of each control point with its partner on the other side and store it in the appropriate control point in the result.
+            for(int i = 0; i<3; ++i){
+                result[hedge_result[hedge_counter][i]] = points1[i] * 0.5 + points2[2-i] * 0.5;
+            }
+
+            ++hedge_counter;
         }
-        // get other data
-        auto patch_data = mesh.get_face_property<FreeformFaceData>("bezier_points");
 
-        // 'upper'
-{        auto hedge = hedges[1];
-        auto opp = mesh.opposite_halfedge(hedge);
-        auto opp_face = mesh.face(opp);
-        auto other_points = patch_data.vector()[opp_face.idx()].corresponding_points(mesh, opp_face, opp);
+        // === CORNERS ===
 
-        result[1] = other_points[2] * 0.5 + this->data[0] * 0.5;
-        result[2] = other_points[1] * 0.5 + this->data[1] * 0.5;
-        result[3] = other_points[0] * 0.5 + this->data[2] * 0.5;
-}
-{        auto hedge = hedges[3];
-        auto opp = mesh.opposite_halfedge(hedge);
-        auto opp_face = mesh.face(opp);
-        auto other_points = patch_data.vector()[opp_face.idx()].corresponding_points(mesh, opp_face, opp);
+        // Prepare indices.
+        std::vector<size_t> vertex_result = {
+            0, 4, 24, 20
+        };
 
-        result[23] = other_points[0] * 0.5 + this->data[8] * 0.5;
-        result[22] = other_points[1] * 0.5 + this->data[7] * 0.5;
-        result[21] = other_points[2] * 0.5 + this->data[6] * 0.5;
-}
+        // Iterate over all faces adjacent to this vertex.
+        size_t vertex_counter(0);
+        for(auto v : mesh.vertices(face)){
+            // Sum over the inner control point neares to this corner for each face.
+            gsVector3d<real_t> sum(gismo::gsVector3d<real_t>(0., 0., 0.));
+            real_t count(0.0);
+            for(auto extra_face : mesh.faces(v)) {
+                sum += patch_data.vector()[extra_face.idx()].corresponding_point(mesh, extra_face, v);
+                count += 1.0;
+            }
+            // Store this as the corner control point of the result.
+            result[vertex_result[vertex_counter]] = sum / count;
+            ++vertex_counter;
+        }
+
         return result;
     }
 };
@@ -155,7 +195,7 @@ int main(int argc, char** argv)
 {
     gsSurfMesh mesh = gsSurfMesh();
 
-    auto _readFile = gsReadFile<>(std::string("off/octtorus.off"), mesh);
+    auto _readFile = gsReadFile<>(std::string("off/bitorus.off"), mesh);
     mesh.add_face_property(std::string("bezier_points"), FreeformFaceData());
     gsProperty<FreeformFaceData> patch_data = mesh.get_face_property<FreeformFaceData>("bezier_points");
     for (auto f : mesh.faces()){
