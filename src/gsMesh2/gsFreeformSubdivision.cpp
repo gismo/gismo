@@ -11,6 +11,7 @@
     Author(s): L. Mussmaecher
 */
 
+#include "gsCore/gsDebug.h"
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
@@ -163,27 +164,28 @@ namespace gismo
     
     void gsFreeformSubdivision::subdivide(gsSurfMesh &mesh)
     {
+      // Split each face into 4 and get info about the way they were split.
       std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> x = mesh.quad_split();
 
+      // Get patch data
+      gsProperty<gsFreeformFaceData> patch_data(mesh.get_face_property<gsFreeformFaceData>("bezier_points"));
+
       for(auto e : x){
+        // print some info
         gsInfo << e.first << " -> ";
         for(auto f : e.second){
           gsInfo << f << ", ";
         }
         gsInfo << "\n";
-      }
-      // For each face
-      // for(auto f : mesh.faces()){
-      //   // get the average of the 4 corners.
-      //   gismo::gsVector3d<> center(0., 0., 0.);
-      //   for (auto v : mesh.vertices(f)){
-      //     center += mesh.position(v);
-      //   }
-      //   center /= 4.;
 
-      //   // Now split the face into 4
-      //   mesh.split(f, center + gismo::gsVector3d<>(0., 0., 0.1));
-      // }
+        // Correct back references of patch data
+        for(auto f : e.second){
+          patch_data.vector()[f.idx()].face = f;
+        }
+
+        //TODO: insert correct patch data
+
+      }
     };
 
     void gsFreeformSubdivision::make_c1(gsSurfMesh &mesh)

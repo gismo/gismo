@@ -5,6 +5,7 @@
     Author(s): L. Mussmaecher
 */
 
+#include "gsCore/gsDebug.h"
 #include <gsCore/gsMultiPatch.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsMesh2/gsSurfMesh.h>
@@ -25,17 +26,17 @@ int main(int argc, char** argv)
     }
 
     auto subdiv = gsFreeformSubdivision();
-    // subdiv.make_c1(mesh);
-
-    // gsMultiPatch<> patch;
-
-    // for(auto face : mesh.faces()) {
-    //     patch.addPatch(patch_data.vector()[face.idx()].patch());
-    // }
-
-    // gsWriteParaview(patch, "results/beziers");
-
     subdiv.subdivide(mesh);
+    subdiv.make_c1(mesh);
+
+    gsMultiPatch<> patch;
+
+    for(auto face : mesh.faces()) {
+        patch.addPatch(patch_data.vector()[face.idx()].patch());
+    }
+
+    gsWriteParaview(patch, "results/beziers");
+
 
     mesh.write("results/mesh_out.off");
     gsWriteParaview(mesh, "results/mesh_out", { });
