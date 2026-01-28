@@ -25,15 +25,17 @@ int main(int argc, char** argv)
     }
 
     auto subdiv = gsFreeformSubdivision();
-    subdiv.make_c1(mesh);
+    // subdiv.make_c1(mesh);
 
-    gsMultiPatch<> patch;
+    // gsMultiPatch<> patch;
 
-    for(auto face : mesh.faces()) {
-        patch.addPatch(patch_data.vector()[face.idx()].patch());
-    }
+    // for(auto face : mesh.faces()) {
+    //     patch.addPatch(patch_data.vector()[face.idx()].patch());
+    // }
 
-    gsWriteParaview(patch, "results/beziers");
+    // gsWriteParaview(patch, "results/beziers");
+
+    subdiv.subdivide(mesh);
 
     mesh.write("results/mesh_out.off");
     gsWriteParaview(mesh, "results/mesh_out", { });

@@ -56,10 +56,10 @@ public: // Subdivision method
     /// The main subdivision method.
     /// Takes in a pointer to a mesh and mutates that mesh by sudividing it.
     /// Has to be overriden by implementors.
-    virtual void subdivide(gsSurfMesh* mesh) = 0;
+    virtual void subdivide(gsSurfMesh& mesh) = 0;
 
     /// Runs subdivision multiple times.
-    void subdivide(gsSurfMesh* mesh, unsigned int repetitions)
+    void subdivide(gsSurfMesh& mesh, unsigned int repetitions)
     {
       for (unsigned int _i = 0; _i < repetitions; ++_i) 
         this->subdivide(mesh);
@@ -75,7 +75,7 @@ public: // Subdivision method
     gsSurfMesh subdivided(const gsSurfMesh& mesh, unsigned int repetitions)
     {
       auto mesh_copy = gsSurfMesh(mesh);
-      this->subdivide(&mesh_copy, repetitions);
+      this->subdivide(mesh_copy, repetitions);
       return mesh_copy;
     }
 
@@ -105,7 +105,7 @@ class GISMO_EXPORT gsIdentityScheme : gsSubdivisionScheme {
 public:
     gsIdentityScheme() : gsSubdivisionScheme() {}
 public:
-    void subdivide(gsSurfMesh* mesh) {}
+    void subdivide(gsSurfMesh& mesh) {}
 };
 
 } // namespace gismo

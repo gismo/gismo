@@ -30,7 +30,7 @@ public: // Constructors
   }
 
 public:
-  void subdivide(gsSurfMesh *mesh) override;
+  void subdivide(gsSurfMesh &mesh) override;
 
 private: // Helper functions
     

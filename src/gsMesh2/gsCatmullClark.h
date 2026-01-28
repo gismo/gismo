@@ -28,7 +28,7 @@ public: // Constructors
   gsCatmullClark() : gsSubdivisionScheme() {}
 
 public:
-  void subdivide(gsSurfMesh *mesh) override;
+  void subdivide(gsSurfMesh &mesh) override;
   
 };//namespace internal
 

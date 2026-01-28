@@ -859,7 +859,7 @@ split(Face f, Vertex v)
 }
 
 
-void
+std::vector<gsSurfMesh::Face>
 gsSurfMesh::
 quad_split(Face f, Vertex v, Halfedge s)
 {
@@ -897,11 +897,16 @@ quad_split(Face f, Vertex v, Halfedge s)
     h = hnext;
     hnext  = next_halfedge(next_halfedge(hnext));
 
+    std::vector<Face> res;
+    res.emplace_back(f);
+
     while (h != s) // face containing h2
     {
         //std::cout<< "e0: "<< from_vertex(e0) <<"->"<<to_vertex(e0) <<std::endl;
         //std::cout<< "h: "<< from_vertex(h) <<"->"<<to_vertex(h) <<std::endl;
         f = new_face();
+        // Remember the newly created face.
+        res.emplace_back(f);
         e = ( hnext!=s ? new_edge(from_vertex(hnext),v) :
               opposite_halfedge(halfedge(v)) );
         //std::cout<< "e: "<< from_vertex(e) <<"->"<<to_vertex(e) <<std::endl;
@@ -923,9 +928,11 @@ quad_split(Face f, Vertex v, Halfedge s)
         h = hnext;
         hnext  = next_halfedge(next_halfedge(hnext));
     }
+
+    return res;
 }
 
-void gsSurfMesh::quad_split()
+std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> gsSurfMesh::quad_split()
 {
     gsSurfMesh::Vertex v;
     gsSurfMesh::Halfedge he;
@@ -961,6 +968,8 @@ void gsSurfMesh::quad_split()
         add_vertex(tmp);  // vertex gets shifted face id
     }
 
+    std::map<Face, std::vector<Face>> res;
+
     int i = 0;
     for (auto fit : faces())
     {
@@ -969,9 +978,10 @@ void gsSurfMesh::quad_split()
         auto fv = vertices(fit).begin();
         if ((*fv).idx() >= env) ++fv; //todo: add -> operator
         //assert ( (*fv).idx() < nv )
-        quad_split(fit, v, fv.he());
+        res.emplace(fit, quad_split(fit, v, fv.he()));
     }
 
+    return res;
 }
 
 gsSurfMesh::Halfedge

@@ -23,8 +23,8 @@ namespace gismo {
     typedef gsSurfMesh::Halfedge Halfedge;
     typedef gsSurfMesh::Edge Edge;
 
-    void gsDooSabin::subdivide(gsSurfMesh* mesh) {
-        gsSurfMesh* m_mesh = mesh;   
+    void gsDooSabin::subdivide(gsSurfMesh &mesh) {
+        gsSurfMesh* m_mesh = &mesh;   
        
         index_t option = m_options.askInt("ds.boundaryMask");
 

@@ -14,24 +14,23 @@
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
-#include <iterator>
 
 namespace gismo
 {
 
-    const std::vector<std::array<size_t, 5>> gsFreeformFaceData::gs_FREEFORMDATA_EDGES = {
+    const std::vector<std::array<size_t, 5>> gsFreeformFaceData::gs_FREEFORMDATA_EDGES({
       {20, 15, 10, 5, 0},
       {0, 1, 2, 3, 4},
       {4, 9, 14, 19, 24},
       {24, 23, 22, 21, 20},
-    };
+    });
 
-    const std::vector<std::array<size_t, 3>> gsFreeformFaceData::gs_FREEFORMDATA_INNEREDGES = {
+    const std::vector<std::array<size_t, 3>> gsFreeformFaceData::gs_FREEFORMDATA_INNEREDGES({
       {16,11,6},
       {6,7,8},
       {8,13,18},
       {18,17,16},
-    };
+    });
 
     gsFreeformFaceData::gsFreeformFaceData(const gsSurfMesh& mesh, gsSurfMesh::Face face)
     : control_points(),
@@ -162,15 +161,35 @@ namespace gismo
 
 
     
-    void gsFreeformSubdivision::subdivide(gsSurfMesh *mesh)
+    void gsFreeformSubdivision::subdivide(gsSurfMesh &mesh)
     {
-      //TODO
+      std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> x = mesh.quad_split();
+
+      for(auto e : x){
+        gsInfo << e.first << " -> ";
+        for(auto f : e.second){
+          gsInfo << f << ", ";
+        }
+        gsInfo << "\n";
+      }
+      // For each face
+      // for(auto f : mesh.faces()){
+      //   // get the average of the 4 corners.
+      //   gismo::gsVector3d<> center(0., 0., 0.);
+      //   for (auto v : mesh.vertices(f)){
+      //     center += mesh.position(v);
+      //   }
+      //   center /= 4.;
+
+      //   // Now split the face into 4
+      //   mesh.split(f, center + gismo::gsVector3d<>(0., 0., 0.1));
+      // }
     };
 
     void gsFreeformSubdivision::make_c1(gsSurfMesh &mesh)
     {
       //Get Patch data
-      gsProperty<gsFreeformFaceData> patch_data = mesh.get_face_property<gsFreeformFaceData>("bezier_points");
+      gsProperty<gsFreeformFaceData> patch_data(mesh.get_face_property<gsFreeformFaceData>("bezier_points"));
       // Now correct each face.
       for(Face f : mesh.faces()){
         auto patch = &patch_data.vector()[f.idx()];
@@ -189,8 +208,8 @@ namespace gismo
             auto face2 (mesh.face(hedge2));
 
             // Get the two 3-sets of corresponding points.
-            auto points1 = patch_data.vector()[face1.idx()].edge_inner_control_points(mesh, hedge1);
-            auto points2 = patch_data.vector()[face2.idx()].edge_inner_control_points(mesh, hedge2);
+            auto points1(patch_data.vector()[face1.idx()].edge_inner_control_points(mesh, hedge1));
+            auto points2(patch_data.vector()[face2.idx()].edge_inner_control_points(mesh, hedge2));
           
             // Calculate the average of each control point with its partner on the other side and store it in the appropriate control point in the result.
             for(int i = 0; i<3; ++i){
@@ -201,16 +220,11 @@ namespace gismo
         }
 
         // === CORNERS ===
-        // Prepare indices.
-        std::vector<size_t> vertex_result = {
-            0, 4, 24, 20
-        };
-
         // Iterate over all faces adjacent to this vertex.
         size_t vertex_counter(0);
         for(auto v : mesh.vertices(f)){
             // Sum over the inner control point neares to this corner for each face.
-            gsVector3d<real_t> sum(gismo::gsVector3d<real_t>(0., 0., 0.));
+            gsVector3d<real_t> sum(0.,0.,0.);
             real_t count(0.0);
             for(auto extra_face : mesh.faces(v)) {
                 sum += patch_data.vector()[extra_face.idx()].vertex_inner_control_point(mesh, v);

@@ -123,7 +123,7 @@ public: // Constructors
   gsFreeformSubdivision() : gsSubdivisionScheme() {}
 
 public:
-  void subdivide(gsSurfMesh *mesh) override;
+  void subdivide(gsSurfMesh &mesh) override;
   // gsSubdivisionMeshValidity valid_mesh(const gsSurfMesh &mesh) override;
 
   /// Takes a given mesh with free form data and makes it C1 by adjusting the outer 16 control points of each bezier patch.

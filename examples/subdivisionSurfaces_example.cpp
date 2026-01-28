@@ -54,7 +54,7 @@ int main(int argc, char** argv)
             scheme = new gsCatmullClark();
     }
 
-    scheme->subdivide(&mesh, r);  
+    scheme->subdivide(mesh, r);  
    
     mesh.write("mesh_out.off");
     if (dm) // Dual mesh
