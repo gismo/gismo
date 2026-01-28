@@ -472,11 +472,9 @@ int main(int argc, char *argv[])
     
     index_t iter1;
     real_t cond1;
+    gsInfo << "Setup of somewhat exact preconder... " << std::flush;
     if (0)
     {
-
-        gsInfo << "Setup of somewhat exact preconder... " << std::flush;
-    
         const index_t primalDim = time_stiff1.rows() * space_stiff.rows();
     
         gsSparseMatrix<> preconderMatrix(2*primalDim,2*primalDim);
