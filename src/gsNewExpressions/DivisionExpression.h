@@ -22,7 +22,7 @@ namespace Expr
 
 
 // ExpressionTraits for DivisionExpression
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 struct ExpressionTraits<DivisionExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
     typedef _LhsExpr LhsType;
@@ -30,8 +30,8 @@ struct ExpressionTraits<DivisionExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOr
     typedef typename ExpressionTraits<_LhsExpr>::Scalar Scalar;
     static constexpr size_t Order = _LhsOrder;
     // Space logic: prefer non-None space; if both different non-None, use Both
-    static constexpr size_t Space = (_LhsSpace != SpaceType::None && _RhsSpace != SpaceType::None && _LhsSpace != _RhsSpace) 
-                                   ? static_cast<size_t>(SpaceType::Both)
+    static constexpr SpaceType Space = (_LhsSpace != SpaceType::None && _RhsSpace != SpaceType::None && _LhsSpace != _RhsSpace) 
+                                   ? SpaceType::Both
                                    : ((_LhsSpace != SpaceType::None) ? _LhsSpace : _RhsSpace);
     
     static constexpr size_t Deriv = (ExpressionTraits<_LhsExpr>::Deriv > ExpressionTraits<_RhsExpr>::Deriv) ? ExpressionTraits<_LhsExpr>::Deriv + 1 : ExpressionTraits<_RhsExpr>::Deriv + 1;
@@ -39,14 +39,34 @@ struct ExpressionTraits<DivisionExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOr
 };
 
 // Unified primary template (handles all Space combinations)
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 class DivisionExpression
  : public BinaryOperator<DivisionExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
     using Base = BinaryOperator<DivisionExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>;
+
+    static_assert(_LhsSpace == _RhsSpace || 
+                  _LhsSpace == SpaceType::None || 
+                  _RhsSpace == SpaceType::None || 
+                  "DivisionExpression requires the same space (None, Test, Trial or Both) or one of the spaces to be None.");
 public:
     DivisionExpression(const _LhsExpr& lhs, const _RhsExpr& rhs) : Base(lhs, rhs)
     {
+        // Space consistency checks (runtime to check space ID)
+        // If two spaces of the same type are used, they must be identical
+        if (_LhsSpace==_RhsSpace)
+        {
+            if (_LhsSpace == SpaceType::Trial)
+                GISMO_ASSERT(lhs.trial()==rhs.trial(),"DivisionExpression requires both operands to have the same trial space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+            else if (_LhsSpace == SpaceType::Test)
+                GISMO_ASSERT(lhs.test()==rhs.test(),"DivisionExpression requires both operands to have the same test space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+        }
+        else if (_LhsSpace==SpaceType::Both && _RhsSpace==SpaceType::Both)
+        {
+            GISMO_ASSERT(lhs.test()==rhs.test(),"DivisionExpression requires both operands to have the same test space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+            GISMO_ASSERT(lhs.trial()==rhs.trial(),"DivisionExpression requires both operands to have the same trial space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+        }
+
         // Division: result has same size as left operand
         for (size_t d = 0; d < Base::Order; ++d) {
             this->sizes_[d] = lhs.sizes()[d];
@@ -58,15 +78,15 @@ public:
     // --- eval() specialization 1: LhsSpace==None ---
     template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
     typename std::enable_if<LS == SpaceType::None && RS == SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
+                            ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
         
         // Both have Space=None, cardinality is (1,1) - no loop needed
         typename Base::Scalar divisor = rhs_val(0, 0)(0, 0);
-        ExpressionValue<typename Base::Scalar> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         result(0, 0) = lhs_val(0, 0).array() / divisor;
         return result;
     }
@@ -74,17 +94,17 @@ public:
     // --- eval() specialization 2: LhsSpace!=None ---
     template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
     typename std::enable_if<LS != SpaceType::None && RS == SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
+                            ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
         
         // RHS must be scalar (Space=None), extract divisor
         typename Base::Scalar divisor = rhs_val(0, 0)(0, 0);
         
         // LHS has space dependency: loop over all basis functions (no runtime branching on cardinality)
-        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+        ExpressionResult<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
         for (index_t i = 0; i < result.rowCardinality(); ++i)
         {
             for (index_t j = 0; j < result.colCardinality(); ++j)
@@ -99,17 +119,17 @@ public:
     // --- eval() specialization 3: RHS Space!=None ---
     template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
     typename std::enable_if<RS != SpaceType::None && LS == SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
+                            ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
 
         // LHS can be scalar or vector/matrix, but space-independent (Space=None)
         typename Base::Scalar numerator = lhs_val(0, 0);
 
         // RHS has space dependency: loop over all basis functions (no runtime branching on cardinality)
-        ExpressionValue<typename Base::Scalar> result(rhs_val.rowCardinality(), rhs_val.colCardinality());
+        ExpressionResult<typename Base::Scalar> result(rhs_val.rowCardinality(), rhs_val.colCardinality());
         for (index_t i = 0; i < result.rowCardinality(); ++i)
         {
             for (index_t j = 0; j < result.colCardinality(); ++j)
@@ -125,18 +145,18 @@ public:
     // --- eval() specialization 4: Both LHS and RHS Space!=None ---
     template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
     typename std::enable_if<LS != SpaceType::None && RS != SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
+                            ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
 
         GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
                     lhs_val.colCardinality() == rhs_val.colCardinality(),
                     "DivisionExpression (Both,Both): Cardinality mismatch");
 
         // Both LHS and RHS have space dependency: loop over all basis functions (no runtime branching on cardinality)
-        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+        ExpressionResult<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
         for (index_t i = 0; i < result.rowCardinality(); ++i)
         {
             for (index_t j = 0; j < result.colCardinality(); ++j)
@@ -150,6 +170,68 @@ public:
     }
 
     void print(std::ostream & os) const { os<<this->lhs_expr_<<"/"<<this->rhs_expr_; }
+
+    const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>& trial() const
+    {
+        // Options:
+        // Both Trial: return either lhs or rhs trial space (they are the same, asserted in constructor)
+        // Only Lhs Trial: return lhs trial space
+        // Only Rhs Trial: return rhs trial space
+        // At least one is Both: return the one that is Trial (Both treated as Trial here)
+        // Else: 
+
+        if (_LhsSpace==SpaceType::Trial && _RhsSpace==SpaceType::Trial)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
+        else if (_LhsSpace==SpaceType::Trial)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
+        else if (_RhsSpace==SpaceType::Trial)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->rhs_expr_.trial());
+        else if (_LhsSpace==SpaceType::Both)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
+        else if (_RhsSpace==SpaceType::Both)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->rhs_expr_.trial());
+        else 
+        {
+            // Space flag is not trial or both
+            static_assert(Base::Space!=SpaceType::Trial && Base::Space!=SpaceType::Both, "DivisionExpression::trial() called on non-Trial space");
+            return static_cast<const SpaceObject<typename Base::Scalar, Base::Space, Base::Order>&>(this->lhs_expr_.trial());
+        }
+    }
+    const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>& test() const
+    {
+        // If the space is Both, we have 3 options: 
+        // - lhs and rhs are Both
+        // - lhs is Both, rhs is None
+        // - rhs is Both, lhs is None
+        // - lhs is Trial, rhs is Test
+        // - lhs is Test, rhs is Trial
+        if (Base::Space==SpaceType::Both)
+        {
+            if (_LhsSpace==SpaceType::Both && _RhsSpace==SpaceType::Both)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+            else if (_LhsSpace==SpaceType::Both)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+            else if (_RhsSpace==SpaceType::Both)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
+            else if (_LhsSpace==SpaceType::Trial && _RhsSpace==SpaceType::Test)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
+            else if (_LhsSpace==SpaceType::Test && _RhsSpace==SpaceType::Trial)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+        }
+        // Else:
+        // - Only Lhs Test: return lhs test space
+        // - Only Rhs Test: return rhs test space
+        // - Both are Test or None: return either lhs or rhs test space (they are the same, asserted in constructor)
+        else 
+        {
+            if (_LhsSpace==SpaceType::Test)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+            else if (_RhsSpace==SpaceType::Test)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
+            else if (_LhsSpace==SpaceType::Test && _RhsSpace==SpaceType::Test)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+        }
+    }
 
 private:
     using Base::lhs_expr_;
@@ -166,14 +248,14 @@ operator/(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& r
 }
 
 // Specialization for NullObject
-template <typename _T, size_t _LhsSpace, size_t _LhsOrder, typename _RhsExpr>
+template <typename _T, enum SpaceType _LhsSpace, size_t _LhsOrder, typename _RhsExpr>
 auto operator/(const NullObject<_T, _LhsSpace, _LhsOrder>& /* lhs */, const BaseExpression<_RhsExpr>& /* rhs */)
 -> NullObject<_T,SpaceType::None,0>
 {
     return NullObject<_T,SpaceType::None,0>::get();
 }
 
-template <typename _LhsExpr, typename _T, size_t _RhsSpace, size_t _RhsOrder>
+template <typename _LhsExpr, typename _T, enum SpaceType _RhsSpace, size_t _RhsOrder>
 auto operator/(const BaseExpression<_LhsExpr>& /* lhs */, const NullObject<_T, _RhsSpace, _RhsOrder>& /* rhs */)
 -> NullObject<typename _LhsExpr::Scalar,SpaceType::None,0>
 {

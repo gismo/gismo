@@ -18,7 +18,7 @@ namespace gismo
 namespace Expr
 {
 
-template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
 struct ExpressionTraits<CurlExpression<_E, _Order, _Space, _IsConstant>>
 {
     // Static assertions to ensure compatibility
@@ -34,13 +34,13 @@ struct ExpressionTraits<CurlExpression<_E, _Order, _Space, _IsConstant>>
 
     typedef typename ExpressionTraits<_E>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<_E>::Order; // Divergence results in a vector (order 1)
-    static constexpr size_t Space = ExpressionTraits<_E>::Space;
+    static constexpr SpaceType Space = ExpressionTraits<_E>::Space;
     static constexpr size_t Deriv = ExpressionTraits<_E>::Deriv + 1; // Increment derivative order
     static constexpr bool IsConstant = ExpressionTraits<_E>::IsConstant;
 };
 
 // --- Unified CurlExpression using enable_if for Space-aware eval ---
-template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
 class CurlExpression : public UnaryOperator<CurlExpression<_E, _Order, _Space, _IsConstant>>
 {
     static_assert(_Order == 1,
@@ -50,35 +50,34 @@ class CurlExpression : public UnaryOperator<CurlExpression<_E, _Order, _Space, _
 
 private:
     mutable gsMatrix<typename Base::Scalar> tmp;
-    using Base::expr_;
 
 public:
     CurlExpression(const _E& expr)
     :
     Base(expr)
     {
-        GISMO_ENSURE(expr_.domainDim() == 3, "The domain dimension must be equal to 3 for the curl operator");
+        GISMO_ENSURE(this->expr_.domainDim() == 3, "The domain dimension must be equal to 3 for the curl operator");
         for (short_t d = 0; d != _Order; d++)
-            GISMO_ENSURE(expr_.sizes()[d] == 3, "All sizes must equal 3 for the curl operator");
+            GISMO_ENSURE(this->expr_.sizes()[d] == 3, "All sizes must equal 3 for the curl operator");
     }
 
     const std::array<size_t, Base::Order> & sizes() const
     {
-        return expr_.sizes();
+        return this->expr_.sizes();
     }
 
     size_t domainDim() const
     {
-        return expr_.domainDim();
+        return this->expr_.domainDim();
     }
 
     // Eval for Space = None (constant)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<S == SpaceType::None && C == 1, ExpressionValue<typename Base::Scalar>>::type
+    typename std::enable_if<S == SpaceType::None && C == 1, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         GISMO_UNUSED(k);
-        ExpressionValue<typename Base::Scalar> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         tmp.resize(3, 1);
         tmp.setZero();
         result(0, 0) = tmp;
@@ -87,32 +86,32 @@ public:
 
     // Eval for Space = None (variable)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<S == SpaceType::None && C == 0, ExpressionValue<typename Base::Scalar>>::type
+    typename std::enable_if<S == SpaceType::None && C == 0, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         // Curl computation for 3D vector field: curl = ∇ × V
         // Result is a 3D vector
-        const index_t numActive = expr_.data().values[0].rows();
+        const index_t numActive = this->expr_.data().values[0].rows();
         gsAsConstMatrix<typename Base::Scalar, Dynamic, Dynamic> pd =
-            expr_.data().values[1].reshapeCol(k, 3, numActive);
+            this->expr_.data().values[1].reshapeCol(k, 3, numActive);
         
         tmp.resize(3, 1);
         tmp(0) = pd.row(2).sum();  // ∂V_z/∂y - ∂V_y/∂z
         tmp(1) = pd.row(0).sum();  // ∂V_x/∂z - ∂V_z/∂x
         tmp(2) = pd.row(1).sum();  // ∂V_y/∂x - ∂V_x/∂y
         
-        ExpressionValue<typename Base::Scalar> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         result(0, 0) = tmp;
         return result;
     }
 
     // Eval for Space = Test or Trial (constant)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 1, ExpressionValue<typename Base::Scalar>>::type
+    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 1, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         GISMO_UNUSED(k);
-        ExpressionValue<typename Base::Scalar> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         tmp.resize(3, 1);
         tmp.setZero();
         result(0, 0) = tmp;
@@ -121,17 +120,17 @@ public:
 
     // Eval for Space = Test or Trial (variable)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 0, ExpressionValue<typename Base::Scalar>>::type
+    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 0, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         // Curl for basis functions: compute curl for each basis function
-        const index_t numActive = expr_.data().values[0].rows();
+        const index_t numActive = this->expr_.data().values[0].rows();
         gsAsConstMatrix<typename Base::Scalar, Dynamic, Dynamic> pd =
-            expr_.data().values[1].reshapeCol(k, 3, numActive);
+            this->expr_.data().values[1].reshapeCol(k, 3, numActive);
         
         // Compute curl components for each basis function
         // curl(V) = (∂V_z/∂y - ∂V_y/∂z, ∂V_x/∂z - ∂V_z/∂x, ∂V_y/∂x - ∂V_x/∂y)
-        ExpressionValue<typename Base::Scalar> result(
+        ExpressionResult<typename Base::Scalar> result(
             S == SpaceType::Test ? numActive : 1,
             S == SpaceType::Trial ? numActive : 1
         );
@@ -157,13 +156,13 @@ public:
 
     void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
     {
-        helper.add(expr_);
-        expr_.data().flags |= NEED_GRAD;
+        helper.add(this->expr_);
+        this->expr_.data().flags |= NEED_GRAD;
     }
 
     void print(std::ostream & os) const
     {
-        os<<"\u2207\u00D7("<<expr_<<")";
+        os<<"\u2207\u00D7("<<this->expr_<<")";
     }
 
 };
@@ -180,7 +179,7 @@ CurlExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, Exp
 // Curl of curl identity: ∇×(∇×A) = ∇(∇•A) - ∇²A
 // Specialized for Space=0
 template <typename _E>
-auto curl(const CurlExpression<_E, 1, 0, true>& expr)
+auto curl(const CurlExpression<_E, 1, SpaceType::None, true>& expr)
 -> decltype(/* grad(div(expr.expr())) -  */lapl(expr.expr()))
 {
     gsWarn<<"Warning: Curl of curl identity is not fully implemented (missing grad(div))!\n";
@@ -207,7 +206,7 @@ auto curl(const SubtractExpression<_LhsExpr,_RhsExpr,_LhsExpr::Order,_RhsExpr::O
 // Partial specialization for multiplication by a scalar
 // ∇×(ψA) = ψ(∇×A) + (∇ψ)×A
 // For scalar ψ (order 0) and vector A (order 1)
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 auto curl(const ProductExpression<_LhsExpr,_RhsExpr,0,1,_LhsSpace,_RhsSpace>& expr)
 -> decltype(expr.lhs() * curl(expr.rhs()) + cross(grad(expr.lhs()), expr.rhs()))
 {
@@ -217,7 +216,7 @@ auto curl(const ProductExpression<_LhsExpr,_RhsExpr,0,1,_LhsSpace,_RhsSpace>& ex
 // Partial specialization for vector × scalar
 // ∇×(Aψ) = ψ(∇×A) + A×(∇ψ)
 // For vector A (order 1) and scalar ψ (order 0)
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 auto curl(const ProductExpression<_LhsExpr,_RhsExpr,1,0,_LhsSpace,_RhsSpace>& expr)
 -> decltype(expr.rhs() * curl(expr.lhs()) + cross(expr.lhs(), grad(expr.rhs())))
 {
@@ -257,7 +256,7 @@ auto curl(const OuterProductExpression<_LhsExpr,_RhsExpr,1,1,_LhsExpr::Space,_Rh
 
 // Partial specialization for division of a vector by a scalar
 // ∇×(A/φ) = (φ∇×A - ∇φ×A)/φ²
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 auto curl(const DivisionExpression<_LhsExpr,_RhsExpr,1,0,_LhsSpace,_RhsSpace>& expr)
 -> decltype((expr.rhs() * curl(expr.lhs()) - cross(grad(expr.rhs()), expr.lhs())) / (expr.rhs() * expr.rhs()))
 {
@@ -288,7 +287,7 @@ auto curl(const LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits
     GISMO_ERROR("∇×(∇²) is undefined: curl of Laplacian is not defined (scalar has no curl)");
 }
 
-template <class T, size_t _Space, size_t _Order, typename _SpaceObject>
+template <class T, enum SpaceType _Space, size_t _Order, typename _SpaceObject>
 auto variation(const CurlExpression<SolutionObject<T,_Space,_Order>,_Order,SpaceType::None,false> & expr,
           const _SpaceObject & space)
 -> decltype(curl(variation(expr.expr(), space)))

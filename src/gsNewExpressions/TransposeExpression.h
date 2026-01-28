@@ -25,7 +25,7 @@ struct ExpressionTraits<TransposeExpression<E>>
 
     typedef typename ExpressionTraits<E>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<E>::Order;
-    static constexpr size_t Space = ExpressionTraits<E>::Space;
+    static constexpr SpaceType Space = ExpressionTraits<E>::Space;
     static constexpr size_t Deriv = ExpressionTraits<E>::Deriv;
     static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
 };
@@ -76,10 +76,10 @@ public:
         return expr_.domainDim();
     }
 
-    ExpressionValue<typename Base::Scalar> eval(const index_t k) const
+    ExpressionResult<typename Base::Scalar> eval(const index_t k) const
     {
-        ExpressionValue<typename Base::Scalar> val = expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> result(val.rowCardinality(), val.colCardinality());
+        ExpressionResult<typename Base::Scalar> val = expr_.eval(k);
+        ExpressionResult<typename Base::Scalar> result(val.rowCardinality(), val.colCardinality());
         
         for (index_t i = 0; i < result.rowCardinality(); ++i)
         {

@@ -15,10 +15,10 @@
 
 #include <gsNewExpressions/NewExpressions.h>
 #include <gsNewExpressions/ExpressionHelper.h>
-#include <gsNewExpressions/ExpressionValue.h>
+#include <gsNewExpressions/ExpressionResult.h>
 
 template <typename E>
-Expr::ExpressionValue<typename E::Scalar> eval(ExpressionHelper<typename E::Scalar> & helper,
+Expr::ExpressionResult<typename E::Scalar> eval(ExpressionHelper<typename E::Scalar> & helper,
                                   const E & expr,
                                   const gsVector<typename E::Scalar> & pt)
 {
@@ -256,23 +256,22 @@ SUITE(gsNewExpressions_test)
     {
         // Expected Laplacian from bare evaluation (deriv2)
         // For scalar function f1D = x^2 + y^2: lapl = ∂²/∂x² + ∂²/∂y² = 2 + 2 = 4
-        // deriv2 format for 2D: [∂₁∂₁, ∂₂∂₂, ∂₁∂₂]^T per component
-        // For vector [f1, f2]^T: rows are [∂₁∂₁f1, ∂₂∂₂f1, ∂₁∂₂f1, ∂₁∂₁f2, ∂₂∂₂f2, ∂₁∂₂f2]^T
+        // deriv2 format for 2D: [∂²/∂x², ∂²/∂x∂y, ∂²/∂y²]^T per component (shape: 3 x nComponents)
         
-        // Scalar function: 3 rows x 1 column (one evaluation point)
+        // Check dimensions to understand deriv2 format
         CHECK_EQUAL(der2_func1D.rows(), 3);  // [d²/dx², d²/dy², d²/dxdy]
-        CHECK_EQUAL(der2_func1D.cols(), 1);  // 1 evaluation point
+        CHECK_EQUAL(der2_func1D.cols(), 1);  // 1 component (scalar)
         
         real_t lapl_func1D = der2_func1D(0,0) + der2_func1D(1,0);  // d²/dx² + d²/dy²
         
-        // Vector function: 6 rows x 1 column (3 per component, 1 evaluation point)
-        CHECK_EQUAL(der2_func2D.rows(), 6);  // 3 derivatives * 2 components
-        CHECK_EQUAL(der2_func2D.cols(), 1);  // 1 evaluation point
+        // For vector function f2D = [x^2, y^2]^T: lapl of each component, then trace
+        der2_func2D.resize(3,2); // Ensure correct size for 2 components
+        CHECK_EQUAL(der2_func2D.rows(), 3);  // [d²/dx², d²/dy², d²/dxdy]
+        CHECK_EQUAL(der2_func2D.cols(), 2);  // 2 components (vector)
         
-        // Component 0 (x²): rows 0,1,2 = [d²/dx², d²/dy², d²/dxdy] = [2, 0, 0]
-        real_t lapl_func2D_comp0 = der2_func2D(0,0) + der2_func2D(1,0);  // lapl(x²) = 2 + 0 = 2
-        // Component 1 (y²): rows 3,4,5 = [d²/dx², d²/dy², d²/dxdy] = [0, 2, 0]  
-        real_t lapl_func2D_comp1 = der2_func2D(3,0) + der2_func2D(4,0);  // lapl(y²) = 0 + 2 = 2
+        real_t lapl_func2D_comp0 = der2_func2D(0,0) + der2_func2D(1,0);  // lapl(x²) = 2
+        real_t lapl_func2D_comp1 = der2_func2D(0,1) + der2_func2D(1,1);  // lapl(y²) = 2
+        real_t lapl_func2D = lapl_func2D_comp0 + lapl_func2D_comp1;  // trace = 4
 
         // Scalar Laplacian - compare against bare deriv2
         CHECK_EQUAL(eval(helper, Expr::lapl(f1D), pt)(0,0).value(), lapl_func1D);
@@ -283,9 +282,10 @@ SUITE(gsNewExpressions_test)
         // TODO: lapl(2*f1D) - not yet working with constant multiplication
         // TODO: lapl(f1D*2) - not yet working with constant multiplication
 
-        // Vector Laplacian - returns Laplacian of first component only
-        // NOTE: For vector [x², y²], lapl returns only lapl(x²) = 2 (not the trace)
-        CHECK_EQUAL(eval(helper, Expr::lapl(f2D), pt)(0,0).value(), lapl_func2D_comp0);
+        // Vector Laplacian (trace of component-wise Laplacians) - compare against bare deriv2
+        CHECK_EQUAL(eval(helper, Expr::lapl(f2D), pt)(0,0).value(), lapl_func2D);
+        
+        gsDebugVar(eval(helper, Expr::lapl(f2D), pt)(0,0));
         
         // Linearity tests for vector Laplacian
         // TODO: lapl(f2D+f2D) - not yet working with expression composition

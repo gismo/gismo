@@ -18,7 +18,7 @@ namespace gismo
 namespace Expr
 {
 
-template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
 struct ExpressionTraits<GradExpression<_E, _Order, _Space, _IsConstant>>
 {
     // Static assertions to ensure compatibility
@@ -31,13 +31,13 @@ struct ExpressionTraits<GradExpression<_E, _Order, _Space, _IsConstant>>
 
     typedef typename ExpressionTraits<_E>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<_E>::Order + 1; // Gradient increases order by 1
-    static constexpr size_t Space = ExpressionTraits<_E>::Space;
+    static constexpr SpaceType Space = ExpressionTraits<_E>::Space;
     static constexpr size_t Deriv = ExpressionTraits<_E>::Deriv + 1; // Increment derivative order
     static constexpr bool IsConstant = _IsConstant;
 };
 
 // --- Generic GradExpression using SFINAE-based eval functions ---
-template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
 class GradExpression : public UnaryOperator<GradExpression<_E, _Order, _Space, _IsConstant>>
 {
     using Base = UnaryOperator<GradExpression<_E, _Order, _Space, _IsConstant>>;
@@ -66,12 +66,12 @@ public:
 
     // Eval for Space = None
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<S == SpaceType::None && C == 1, ExpressionValue<typename Base::Scalar>>::type
+    typename std::enable_if<S == SpaceType::None && C == 1, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         GISMO_UNUSED(k);
         // Constant expression with no space: return zero gradient
-        ExpressionValue<typename Base::Scalar> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         tmp.resize(this->expr_.domainDim(), 1);
         tmp.setZero();
         result(0, 0) = tmp;
@@ -80,7 +80,7 @@ public:
 
     // Eval for Space = None (variable)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<S == SpaceType::None && C == 0, ExpressionValue<typename Base::Scalar>>::type
+    typename std::enable_if<S == SpaceType::None && C == 0, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         // Variable expression with no space: compute gradient from derivatives
@@ -88,19 +88,19 @@ public:
         const index_t numActive = this->expr_.data().values[0].rows();
         tmp = this->expr_.data().values[1].reshapeCol(k, this->domainDim(), numActive).transpose();
         
-        ExpressionValue<typename Base::Scalar> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         result(0, 0) = tmp;
         return result;
     }
 
     // Eval for Space = Test or Trial (constant - rare case)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 1, ExpressionValue<typename Base::Scalar>>::type
+    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 1, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         GISMO_UNUSED(k);
         // Constant expression with space: return zero gradient
-        ExpressionValue<typename Base::Scalar> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         tmp.resize(this->expr_.domainDim(), 1);
         tmp.setZero();
         result(0, 0) = tmp;
@@ -109,7 +109,7 @@ public:
 
     // Eval for Space = Test or Trial (variable - main case for basis functions)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 0, ExpressionValue<typename Base::Scalar>>::type
+    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 0, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         // Variable expression with space: compute gradient for each basis function
@@ -118,7 +118,7 @@ public:
         tmp = this->expr_.data().values[1].reshapeCol(k, this->domainDim(), numActive).transpose();
         
         // For Space = Test/Trial, cardinality affects result organization
-        ExpressionValue<typename Base::Scalar> result(
+        ExpressionResult<typename Base::Scalar> result(
             S == SpaceType::Test ? numActive : 1,
             S == SpaceType::Trial ? numActive : 1
         );
@@ -151,7 +151,7 @@ public:
 // ∇(A·B) = (A·∇)B + (B·∇)A + A×(∇×B) + B×(∇×A)
 // For vectors A,B (order 1), result is a vector (order 1)
 template <typename _LhsExpr, typename _RhsExpr>
-auto grad(const InnerProductExpression<_LhsExpr,_RhsExpr,1,1,0,0>& expr)
+auto grad(const InnerProductExpression<_LhsExpr,_RhsExpr,1,1,SpaceType::None,SpaceType::None>& expr)
 -> decltype(dot(expr.lhs(), grad(expr.rhs())) + dot(expr.rhs(), grad(expr.lhs())) + cross(expr.lhs(), curl(expr.rhs())) + cross(expr.rhs(), curl(expr.lhs())))
 {
     return (dot(expr.lhs(), grad(expr.rhs())) + dot(expr.rhs(), grad(expr.lhs())) + cross(expr.lhs(), curl(expr.rhs())) + cross(expr.rhs(), curl(expr.lhs())));
@@ -298,7 +298,7 @@ auto grad(const LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits
 }
 
 // Variation of GradExpression where the inner expression is a SolutionObject
-template <class T, size_t _Space, size_t _Order, typename _SpaceObject>
+template <class T, enum SpaceType _Space, size_t _Order, typename _SpaceObject>
 auto variation(const GradExpression<SolutionObject<T,_Space,_Order>,_Order,SpaceType::None,false> & expr,
           const _SpaceObject & space)
 -> decltype(grad(variation(expr.expr(), space)))
@@ -307,7 +307,7 @@ auto variation(const GradExpression<SolutionObject<T,_Space,_Order>,_Order,Space
 }
 
 // Partial specialization for addition
-template <typename _LhsExpr, typename _RhsExpr, size_t _Order, size_t _Space, size_t _IsConstant, typename _SpaceObject>
+template <typename _LhsExpr, typename _RhsExpr, size_t _Order, enum SpaceType _Space, size_t _IsConstant, typename _SpaceObject>
 auto variation(const GradExpression<AddExpression<_LhsExpr,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,_LhsExpr::Space,_RhsExpr::Space>,_Order,_Space,_IsConstant> expr,
             const _SpaceObject & space)
 -> decltype(grad(variation(expr.expr().lhs(), space)) + grad(variation(expr.expr().rhs(), space)))
@@ -316,7 +316,7 @@ auto variation(const GradExpression<AddExpression<_LhsExpr,_RhsExpr,_LhsExpr::Or
 }
 
 // Partial specialization for subtraction
-template <typename _LhsExpr, typename _RhsExpr, size_t _Order, size_t _Space, size_t _IsConstant, typename _SpaceObject>
+template <typename _LhsExpr, typename _RhsExpr, size_t _Order, enum SpaceType _Space, size_t _IsConstant, typename _SpaceObject>
 auto variation(const GradExpression<SubtractExpression<_LhsExpr,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,_LhsExpr::Space,_RhsExpr::Space>,_Order,_Space,_IsConstant> expr,
             const _SpaceObject & space)
 -> decltype(grad(variation(expr.expr().lhs(), space)) - grad(variation(expr.expr().rhs(), space)))
@@ -325,7 +325,7 @@ auto variation(const GradExpression<SubtractExpression<_LhsExpr,_RhsExpr,_LhsExp
 }
 
 // Partial specialization for multiplication
-template <typename _LhsExpr, typename _RhsExpr, size_t _Order, size_t _Space, size_t _IsConstant, typename _SpaceObject>
+template <typename _LhsExpr, typename _RhsExpr, size_t _Order, enum SpaceType _Space, size_t _IsConstant, typename _SpaceObject>
 auto variation(const GradExpression<ProductExpression<_LhsExpr,_RhsExpr,
                                         _LhsExpr::Order,
                                         _RhsExpr::Order,
@@ -338,7 +338,7 @@ auto variation(const GradExpression<ProductExpression<_LhsExpr,_RhsExpr,
 }
 
 // Partial specialization for division
-template <typename _LhsExpr, typename _RhsExpr, size_t _Order, size_t _Space, size_t _IsConstant, typename _SpaceObject>
+template <typename _LhsExpr, typename _RhsExpr, size_t _Order, enum SpaceType _Space, size_t _IsConstant, typename _SpaceObject>
 auto variation(const GradExpression<DivisionExpression<_LhsExpr,_RhsExpr,
                                         _LhsExpr::Order,
                                         _RhsExpr::Order,
@@ -348,6 +348,101 @@ auto variation(const GradExpression<DivisionExpression<_LhsExpr,_RhsExpr,
 -> decltype(grad(variation(expr.expr().lhs(), space)) * expr.expr().rhs() - expr.expr().lhs() * grad(variation(expr.expr().rhs(), space)) / (expr.expr().rhs() * expr.expr().rhs()))
 {
     return (grad(variation(expr.expr().lhs(), space)) * expr.expr().rhs() - expr.expr().lhs() * grad(variation(expr.expr().rhs(), space))) / (expr.expr().rhs() * expr.expr().rhs());
+}
+
+// ============================================================
+// Specialization of ComponentExpression for GradExpression
+// ============================================================
+
+/**
+ * @brief Specialization of ComponentExpression for accessing gradient components
+ * 
+ * This provides an optimized eval() for grad(f)[i] that directly extracts
+ * the i-th component of the gradient without computing the full gradient.
+ */
+template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
+class ComponentExpression<GradExpression<_E, _Order, _Space, _IsConstant>, 1>
+    : public BaseExpression<ComponentExpression<GradExpression<_E, _Order, _Space, _IsConstant>, 1>>
+{
+    using GradExpr = GradExpression<_E, _Order, _Space, _IsConstant>;
+    using Base = BaseExpression<ComponentExpression<GradExpr, 1>>;
+    typedef typename Base::Scalar T;
+
+public:
+    static constexpr size_t Order = 0; // Returns scalar
+    static constexpr SpaceType Space = _Space;
+    static constexpr size_t Deriv = ExpressionTraits<GradExpr>::Deriv;
+    static constexpr bool IsConstant = _IsConstant;
+    typedef T Scalar;
+
+    typedef GradExpr ExprType;
+
+    const ExprType& expr() const { return expr_; }
+
+    ComponentExpression(const ExprType& expr, index_t i)
+    : Base(), expr_(expr), i_(i)
+    {
+    }
+
+    void parse(gismo::ExpressionHelper<T> & helper) const
+    {
+        expr_.parse(helper);
+        expr_.setDerivative(Deriv);
+    }
+
+    void print(std::ostream & os) const
+    {
+        os << "grad(" << expr_.expr() << ")[" << i_ << "]";
+    }
+
+    std::array<size_t, 0> sizes() const 
+    { 
+        return std::array<size_t, 0>();
+    }
+
+    size_t domainDim() const { return expr_.domainDim(); }
+
+    // Optimized eval: extract only the i-th gradient component
+    ExpressionResult<T> eval(const index_t k) const
+    {
+        auto gradResult = expr_.eval(k);
+        GISMO_ASSERT(i_ >= 0 && i_ < gradResult.rows(), "Gradient component index out of bounds");
+        return gradResult.row(i_);
+    }
+
+    // Forward test/trial to parent expression
+    auto test() const -> decltype(std::declval<const ComponentExpression&>().expr().test())
+    {
+        return expr().test();
+    }
+
+    auto trial() const -> decltype(std::declval<const ComponentExpression&>().expr().trial())
+    {
+        return expr().trial();
+    }
+
+protected:
+    const ExprType expr_;
+    const index_t i_;
+};
+
+// ============================================================
+// Specialization: grad(GeometryMap) returns JacobianExpression
+// ============================================================
+
+/**
+ * @brief Gradient of a geometry map returns its Jacobian
+ * 
+ * For a GeometryMap G: Ω̂ → Ω, grad(G) = DG = Jacobian matrix
+ * This is an alias for jac(G) for consistency with mathematical notation.
+ * 
+ * @param G The geometry map
+ * @return JacobianExpression
+ */
+template<class T>
+JacobianExpression<T> grad(const GeometryMap<T> & G)
+{
+    return JacobianExpression<T>(G);
 }
 
 } // namespace Expr

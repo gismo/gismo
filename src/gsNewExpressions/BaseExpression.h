@@ -18,6 +18,10 @@ namespace gismo
 {
 namespace Expr
 {
+    // Forward declarations
+    template <class T, enum SpaceType _Space, size_t _Order> class NullObject;
+    template <class T, enum SpaceType _Space, size_t _Order> class SpaceObject;
+
 // IsConstant: Flag that indicates if the expression is constant, e.g., its derivatives are zero
 // Space: Flag that indicates whether the expression is a Space
 template <typename E>
@@ -33,13 +37,13 @@ public:
 
     typedef typename ExpressionTraits<E>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<E>::Order;
-    static constexpr size_t Space = ExpressionTraits<E>::Space;
+    static constexpr SpaceType Space = ExpressionTraits<E>::Space;
     static constexpr size_t Deriv = ExpressionTraits<E>::Deriv;
     static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
 
     // Getters of static members
     static size_t order() {return Order;};
-    static size_t space() {return Space;};
+    static SpaceType space() {return Space;};
     static size_t deriv() {return Deriv;};
     static size_t isConstant() {return IsConstant;};
 
@@ -49,18 +53,18 @@ public:
 
     void print(std::ostream & os) const { static_cast<const E&>(*this).print(os); }
 
-    ExpressionValue<Scalar> eval(const index_t k) const { return static_cast<const E&>(*this).eval(k); }
+    ExpressionResult<Scalar> eval(const index_t k) const { return static_cast<const E&>(*this).eval(k); }
 
     bool isZero() const { return false; }
 
-    void parse(gismo::ExpressionHelper<Scalar> &) const
+    void parse(gismo::ExpressionHelper<Scalar> & helper) const
     {
-        GISMO_NO_IMPLEMENTATION;
-        // static_cast<E const&>(*this).parse(helper);
+        static_cast<E const&>(*this).parse(helper);
     }
 
-    const SpaceObject<Scalar, Space, Order> & test () const { return Space==SpaceType::Both ? static_cast<E const&>(*this).test() : NullObject<Scalar,Space,Order>::get(); }
-    const SpaceObject<Scalar, Space, Order> & trial() const { return Space==SpaceType::Both ? static_cast<E const&>(*this).trial() : NullObject<Scalar,Space,Order>::get(); }
+    // Note: test() and trial() are NOT defined in BaseExpression
+    // Each expression class implements them with appropriate return types
+    // This avoids incomplete type issues with decltype and allows flexible return types
 
 public:
 
@@ -82,6 +86,21 @@ public:
         return ArrayExpression<E>(static_cast<E const&>(*this));
     }
 
+    // Component access for vector expressions (Order 1)
+    template<typename Expr = E>
+    typename std::enable_if<Expr::Order == 1, ComponentExpression<E, 1>>::type
+    operator[](index_t i) const
+    {
+        return ComponentExpression<E, 1>(static_cast<const E&>(*this), i);
+    }
+
+    // Component access for matrix expressions (Order 2)
+    template<typename Expr = E>
+    typename std::enable_if<Expr::Order == 2, ComponentExpression<E, 2>>::type
+    operator()(index_t i, index_t j) const
+    {
+        return ComponentExpression<E, 2>(static_cast<const E&>(*this), i, j);
+    }
 
     // Overload conversions
     operator E&()             { return static_cast<      E&>(*this); }

@@ -25,7 +25,7 @@ struct ExpressionTraits<ArrayExpression<E>>
 
     typedef typename ExpressionTraits<E>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<E>::Order;
-    static constexpr size_t Space = ExpressionTraits<E>::Space;
+    static constexpr SpaceType Space = ExpressionTraits<E>::Space;
     static constexpr size_t Deriv = ExpressionTraits<E>::Deriv;
     static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
 
@@ -54,7 +54,7 @@ public:
         return expr_.domainDim();
     }
 
-    ExpressionValue<Scalar> eval(const index_t k) const
+    ExpressionResult<Scalar> eval(const index_t k) const
     {
         return expr_.eval(k);
     }

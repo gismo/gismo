@@ -20,7 +20,7 @@ namespace Expr
 
 
 // --- Generic ExpressionTraits for AddExpression ---
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 struct ExpressionTraits<AddExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
     typedef _LhsExpr LhsType;
@@ -28,8 +28,8 @@ struct ExpressionTraits<AddExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, 
 
     typedef typename ExpressionTraits<_LhsExpr>::Scalar Scalar;
     static constexpr size_t Order = (_LhsOrder > _RhsOrder) ? _LhsOrder : _RhsOrder; // Max order
-    static constexpr size_t Space = (_LhsSpace != SpaceType::None && _RhsSpace != SpaceType::None && _LhsSpace != _RhsSpace) 
-                                   ? static_cast<size_t>(SpaceType::Both)
+    static constexpr SpaceType Space = (_LhsSpace != SpaceType::None && _RhsSpace != SpaceType::None && _LhsSpace != _RhsSpace) 
+                                   ? SpaceType::Both
                                    : ((_LhsSpace != SpaceType::None) ? _LhsSpace : _RhsSpace); // Both if different non-None spaces
     static constexpr size_t Deriv = (ExpressionTraits<_LhsExpr>::Deriv > ExpressionTraits<_RhsExpr>::Deriv)
                                    ? ExpressionTraits<_LhsExpr>::Deriv : ExpressionTraits<_RhsExpr>::Deriv;
@@ -37,35 +37,22 @@ struct ExpressionTraits<AddExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, 
 };
 
 // --- Unified AddExpression class with enable_if specializations for eval() ---
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 class AddExpression : public BinaryOperator<AddExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
     using Base = BinaryOperator<AddExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>;
 
-private:
-    // Helper to emit warning for Test + Trial case
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<(LS == SpaceType::Test && RS == SpaceType::Trial) || 
-                            (LS == SpaceType::Trial && RS == SpaceType::Test)>::type
-    check_bilinear_warning() const
-    {
-        gsWarn << "AddExpression: Test + Trial spaces broadcast to bilinear form. Consider using specialized bilinear operators.\n";
-    }
+    static_assert(_LhsSpace == _RhsSpace, "AddExpression requires both operands to have the same space.");
+    static_assert(_LhsOrder == _RhsOrder, "AddExpression requires both operands to have the same order.");
 
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<!(( LS == SpaceType::Test && RS == SpaceType::Trial) || 
-                             (LS == SpaceType::Trial && RS == SpaceType::Test))>::type
-    check_bilinear_warning() const
-    {
-        // No warning for other cases
-    }
 
 public:
     AddExpression(const _LhsExpr& lhs, const _RhsExpr& rhs)
         : Base(lhs, rhs)
     {
-        check_bilinear_warning();
-        
+        GISMO_ASSERT(_LhsSpace!=SpaceType::Trial || lhs.trial()==rhs.trial(),"AddExpression requires both operands to have the same trial space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+        GISMO_ASSERT(_LhsSpace!=SpaceType::Test  || lhs.test()==rhs.test(),"AddExpression requires both operands to have the same test space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+
         if (_LhsOrder == _RhsOrder && _LhsOrder > 0) {
             for (size_t d = 0; d != _LhsOrder; ++d) {
                 GISMO_ENSURE(this->lhs_expr_.sizes()[d] == this->rhs_expr_.sizes()[d],
@@ -88,273 +75,9 @@ public:
         return (_LhsOrder >= _RhsOrder) ? this->lhs_expr_.domainDim() : this->rhs_expr_.domainDim();
     }
 
-    // --- eval() specialization 1: None + None ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS == SpaceType::None && RS == SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
+    ExpressionResult<typename Base::Scalar> eval(const index_t k) const
     {
-        gsDebug<<"AddExpression: eval None + None at k="<<k<<"\n";
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        // Both are scalar (1,1) - no loop needed
-        ExpressionValue<typename Base::Scalar> result(1, 1);
-        const auto& lhs_mat = lhs_val(0, 0);
-        const auto& rhs_mat = rhs_val(0, 0);
-        
-        if (lhs_mat.rows() == rhs_mat.rows() && lhs_mat.cols() == rhs_mat.cols())
-        {
-            result(0, 0) = lhs_mat + rhs_mat;
-        }
-        else if (lhs_mat.rows() == 1 && lhs_mat.cols() == 1)
-        {
-            result(0, 0) = rhs_mat.array() + lhs_mat(0, 0);
-        }
-        else if (rhs_mat.rows() == 1 && rhs_mat.cols() == 1)
-        {
-            result(0, 0) = lhs_mat.array() + rhs_mat(0, 0);
-        }
-        else
-        {
-            GISMO_ERROR("AddExpression: Incompatible matrix dimensions. LHS=(" 
-                       << lhs_mat.rows() << "," << lhs_mat.cols() << "), RHS=(" 
-                       << rhs_mat.rows() << "," << rhs_mat.cols() << ")");
-        }
-        return result;
-    }
-
-    // --- eval() specialization 2: None + Space ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS == SpaceType::None && RS != SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        gsDebug<<"AddExpression: eval None + Space at k="<<k<<"\n";
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        // LHS is scalar (1,1), RHS has space dependencies
-        ExpressionValue<typename Base::Scalar> result(rhs_val.rowCardinality(), rhs_val.colCardinality());
-        const auto& lhs_mat = lhs_val(0, 0);
-        
-        for (index_t i = 0; i < result.rowCardinality(); ++i)
-        {
-            for (index_t j = 0; j < result.colCardinality(); ++j)
-            {
-                const auto& rhs_mat = rhs_val(i, j);
-                
-                if (lhs_mat.rows() == rhs_mat.rows() && lhs_mat.cols() == rhs_mat.cols())
-                {
-                    result(i, j) = lhs_mat + rhs_mat;
-                }
-                else if (lhs_mat.rows() == 1 && lhs_mat.cols() == 1)
-                {
-                    result(i, j) = rhs_mat.array() + lhs_mat(0, 0);
-                }
-                else if (rhs_mat.rows() == 1 && rhs_mat.cols() == 1)
-                {
-                    result(i, j) = lhs_mat.array() + rhs_mat(0, 0);
-                }
-                else
-                {
-                    GISMO_ERROR("AddExpression: Incompatible matrix dimensions at (" << i << "," << j << ")");
-                }
-            }
-        }
-        return result;
-    }
-
-    // --- eval() specialization 3: Space + None ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS != SpaceType::None && RS == SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        gsDebug<<"AddExpression: eval Space + None at k="<<k<<"\n";
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        // LHS has space dependencies, RHS is scalar (1,1)
-        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
-        const auto& rhs_mat = rhs_val(0, 0);
-        
-        for (index_t i = 0; i < result.rowCardinality(); ++i)
-        {
-            for (index_t j = 0; j < result.colCardinality(); ++j)
-            {
-                const auto& lhs_mat = lhs_val(i, j);
-                
-                if (lhs_mat.rows() == rhs_mat.rows() && lhs_mat.cols() == rhs_mat.cols())
-                {
-                    result(i, j) = lhs_mat + rhs_mat;
-                }
-                else if (lhs_mat.rows() == 1 && lhs_mat.cols() == 1)
-                {
-                    result(i, j) = rhs_mat.array() + lhs_mat(0, 0);
-                }
-                else if (rhs_mat.rows() == 1 && rhs_mat.cols() == 1)
-                {
-                    result(i, j) = lhs_mat.array() + rhs_mat(0, 0);
-                }
-                else
-                {
-                    GISMO_ERROR("AddExpression: Incompatible matrix dimensions at (" << i << "," << j << ")");
-                }
-            }
-        }
-        return result;
-    }
-
-    // --- eval() specialization 4: Same Space + Same Space ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS != SpaceType::None && RS != SpaceType::None && LS == RS,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        gsDebug<<"AddExpression: eval Same Space + Same Space at k="<<k<<"\n";
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        // Both have same non-None space: require exact cardinality match
-        GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
-                    lhs_val.colCardinality() == rhs_val.colCardinality(),
-                    "AddExpression: Cardinality mismatch. LHS=(" << lhs_val.rowCardinality() << "," << lhs_val.colCardinality() <<
-                    "), RHS=(" << rhs_val.rowCardinality() << "," << rhs_val.colCardinality() << ")");
-        
-        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
-        
-        for (index_t i = 0; i < result.rowCardinality(); ++i)
-        {
-            for (index_t j = 0; j < result.colCardinality(); ++j)
-            {
-                const auto& lhs_mat = lhs_val(i, j);
-                const auto& rhs_mat = rhs_val(i, j);
-                
-                if (lhs_mat.rows() == rhs_mat.rows() && lhs_mat.cols() == rhs_mat.cols())
-                {
-                    result(i, j) = lhs_mat + rhs_mat;
-                }
-                else if (lhs_mat.rows() == 1 && lhs_mat.cols() == 1)
-                {
-                    result(i, j) = rhs_mat.array() + lhs_mat(0, 0);
-                }
-                else if (rhs_mat.rows() == 1 && rhs_mat.cols() == 1)
-                {
-                    result(i, j) = lhs_mat.array() + rhs_mat(0, 0);
-                }
-                else
-                {
-                    GISMO_ERROR("AddExpression: Incompatible matrix dimensions at (" << i << "," << j << ")");
-                }
-            }
-        }
-        
-        return result;
-    }
-
-    // --- eval() specialization 5: Test + Trial ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS == SpaceType::Test && RS == SpaceType::Trial,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        // TODO: Check more efficient implementation (assuming constant size of matrix per test/trial combination).
-        // TODO: Consider re-using this for specialization 6 with swapped roles.
-        gsDebug<<"AddExpression: eval Test + Trial at k="<<k<<"\n";
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        // Bilinear broadcast: (N,1) + (1,M) -> (N,M)
-        index_t result_rows = std::max(lhs_val.rowCardinality(), rhs_val.rowCardinality());
-        index_t result_cols = std::max(lhs_val.colCardinality(), rhs_val.colCardinality());
-        ExpressionValue<typename Base::Scalar> result(result_rows, result_cols);
-        
-        for (index_t i = 0; i < result_rows; ++i)
-        {
-            for (index_t j = 0; j < result_cols; ++j)
-            {
-                index_t lhs_i = (lhs_val.rowCardinality() > 1) ? i : 0;
-                index_t lhs_j = (lhs_val.colCardinality() > 1) ? j : 0;
-                index_t rhs_i = (rhs_val.rowCardinality() > 1) ? i : 0;
-                index_t rhs_j = (rhs_val.colCardinality() > 1) ? j : 0;
-                
-                const auto& lhs_mat = lhs_val(lhs_i, lhs_j);
-                const auto& rhs_mat = rhs_val(rhs_i, rhs_j);
-                
-                if (lhs_mat.rows() == rhs_mat.rows() && lhs_mat.cols() == rhs_mat.cols())
-                {
-                    result(i, j) = lhs_mat + rhs_mat;
-                }
-                else if (lhs_mat.rows() == 1 && lhs_mat.cols() == 1)
-                {
-                    result(i, j) = rhs_mat.array() + lhs_mat(0, 0);
-                }
-                else if (rhs_mat.rows() == 1 && rhs_mat.cols() == 1)
-                {
-                    result(i, j) = lhs_mat.array() + rhs_mat(0, 0);
-                }
-                else
-                {
-                    GISMO_ERROR("AddExpression: Incompatible matrix dimensions at (" << i << "," << j << "). LHS=(" 
-                               << lhs_mat.rows() << "," << lhs_mat.cols() << "), RHS=(" 
-                               << rhs_mat.rows() << "," << rhs_mat.cols() << ")");
-                }
-            }
-        }
-        
-        return result;
-    }
-
-    // --- eval() specialization 6: Trial + Test ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS == SpaceType::Trial && RS == SpaceType::Test,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        gsDebug<<"AddExpression: eval Trial + Test at k="<<k<<"\n";
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        // Bilinear broadcast: (1,M) + (N,1) -> (N,M)
-        index_t result_rows = std::max(lhs_val.rowCardinality(), rhs_val.rowCardinality());
-        index_t result_cols = std::max(lhs_val.colCardinality(), rhs_val.colCardinality());
-        ExpressionValue<typename Base::Scalar> result(result_rows, result_cols);
-        
-        for (index_t i = 0; i < result_rows; ++i)
-        {
-            for (index_t j = 0; j < result_cols; ++j)
-            {
-                index_t lhs_i = (lhs_val.rowCardinality() > 1) ? i : 0;
-                index_t lhs_j = (lhs_val.colCardinality() > 1) ? j : 0;
-                index_t rhs_i = (rhs_val.rowCardinality() > 1) ? i : 0;
-                index_t rhs_j = (rhs_val.colCardinality() > 1) ? j : 0;
-                
-                const auto& lhs_mat = lhs_val(lhs_i, lhs_j);
-                const auto& rhs_mat = rhs_val(rhs_i, rhs_j);
-                
-                if (lhs_mat.rows() == rhs_mat.rows() && lhs_mat.cols() == rhs_mat.cols())
-                {
-                    result(i, j) = lhs_mat + rhs_mat;
-                }
-                else if (lhs_mat.rows() == 1 && lhs_mat.cols() == 1)
-                {
-                    result(i, j) = rhs_mat.array() + lhs_mat(0, 0);
-                }
-                else if (rhs_mat.rows() == 1 && rhs_mat.cols() == 1)
-                {
-                    result(i, j) = lhs_mat.array() + rhs_mat(0, 0);
-                }
-                else
-                {
-                    GISMO_ERROR("AddExpression: Incompatible matrix dimensions at (" << i << "," << j << "). LHS=(" 
-                               << lhs_mat.rows() << "," << lhs_mat.cols() << "), RHS=(" 
-                               << rhs_mat.rows() << "," << rhs_mat.cols() << ")");
-                }
-            }
-        }
-        
-        return result;
+        return this->lhs_expr_.eval(k) + this->rhs_expr_.eval(k);
     }
 
     void print(std::ostream & os) const
@@ -363,7 +86,18 @@ public:
     }
 
     std::string label() const { return this->lhs_expr_.label() + " + " + this->rhs_expr_.label(); }
-    
+  
+    // We can take the test space of the LHS expression since both sides must match
+    auto test() const -> decltype(std::declval<_LhsExpr>().test())
+    {
+        return this->lhs_expr_.test();
+    }
+    // We can take the trial space of the LHS expression since both sides must match
+    auto trial() const -> decltype(std::declval<_LhsExpr>().trial())
+    {
+        return this->lhs_expr_.trial();
+    }
+
 };
 
 // Generic operator+ to create AddExpression instances using SFINAE
@@ -502,6 +236,7 @@ typename std::enable_if<
 variation(const AddExpression<SolutionObject<typename _LhsExpr::Scalar,_LhsExpr::Space,_LhsExpr::Order>,_RhsExpr,_LhsExpr::Order,_RhsExpr::Order,SolutionObject<typename _LhsExpr::Scalar,_LhsExpr::Space,_LhsExpr::Order>::Order,_RhsExpr::Space> & expr,
           const _SpaceObject & space)
 {
+    // HUGO: lhs?
     return variation(expr.rhs(), space);
 }
 

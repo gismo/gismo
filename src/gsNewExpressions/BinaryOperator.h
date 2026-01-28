@@ -29,7 +29,7 @@ struct ExpressionTraits<BinaryOperator<Operator>>
 
     typedef typename ExpressionTraits<Operator>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<Operator>::Order;
-    static constexpr size_t Space = ExpressionTraits<Operator>::Space;
+    static constexpr SpaceType Space = ExpressionTraits<Operator>::Space;
     static constexpr size_t Deriv = ExpressionTraits<Operator>::Deriv;
     static constexpr bool IsConstant = ExpressionTraits<Operator>::IsConstant;
 };
@@ -40,9 +40,9 @@ struct ExpressionTraits<BinaryOperator<Operator>>
  *
  */
 template <typename Operator>
-class BinaryOperator : public BaseExpression<BinaryOperator<Operator>>
+class BinaryOperator : public BaseExpression<Operator>
 {
-    using Base = BaseExpression<BinaryOperator<Operator>>;
+    using Base = BaseExpression<Operator>;
 protected:
     typedef typename Base::Scalar T;
 
@@ -59,22 +59,6 @@ public:
 
     const LhsType& lhs() const {return lhs_expr_;}
     const RhsType& rhs() const {return rhs_expr_;}
-
-    const SpaceObject<T, Base::Space, Base::Order> & test () const
-    {
-        if (this->lhs().Space == SpaceType::Test || this->lhs().Space == SpaceType::Both)
-            return this->lhs().test();
-        else if (this->rhs().Space == SpaceType::Test || this->rhs().Space == SpaceType::Both)
-            return this->rhs().test();
-    }
-
-    const SpaceObject<T, Base::Space, Base::Order> & trial() const
-    {
-        if (this->lhs().Space == SpaceType::Trial || this->lhs().Space == SpaceType::Both)
-            return this->lhs().trial();
-        else if (this->rhs().Space == SpaceType::Trial || this->rhs().Space == SpaceType::Both)
-            return this->rhs().trial();
-    }
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
@@ -97,14 +81,20 @@ public:
         return static_cast<const Operator&>(*this).domainDim();
     }
 
+    ExpressionResult<T> eval(const index_t k) const
+    {
+        return static_cast<const Operator&>(*this).eval(k);
+    }
+
+
     // Copy constructor
     BinaryOperator(const BinaryOperator& other)
-        : BaseExpression<BinaryOperator<Operator>>(), lhs_expr_(other.lhs_expr_), rhs_expr_(other.rhs_expr_), sizes_(other.sizes_) {
+        : BaseExpression<Operator>(), lhs_expr_(other.lhs_expr_), rhs_expr_(other.rhs_expr_), sizes_(other.sizes_) {
     }
 
     // Move constructor
     BinaryOperator(BinaryOperator&& other) noexcept
-    : BaseExpression<BinaryOperator<Operator>>(), lhs_expr_(give(other.lhs_expr_)), rhs_expr_(give(other.rhs_expr_)), sizes_(other.sizes_)
+    : BaseExpression<Operator>(), lhs_expr_(give(other.lhs_expr_)), rhs_expr_(give(other.rhs_expr_)), sizes_(other.sizes_)
     {
     }
 
@@ -128,6 +118,18 @@ public:
             sizes_ = other.sizes_;
         }
         return *this;
+    }
+
+    // Forward test()/trial() to the derived Operator class (ProductExpression, AddExpression, etc.)
+    // This breaks the recursion loop from BaseExpression
+    const SpaceObject<T, SpaceType::Test, Order> & test() const
+    {
+        return static_cast<const Operator&>(*this).test();
+    }
+    
+    const SpaceObject<T, SpaceType::Trial, Order> & trial() const
+    {
+        return static_cast<const Operator&>(*this).trial();
     }
 
 protected:

@@ -15,9 +15,10 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 
-#include <gsNewExpressions/ExpressionUtils.h>
-#include <gsNewExpressions/ExpressionValue.h>
 #include <gsNewExpressions/ExpressionForwardDeclarations.h>
+#include <gsNewExpressions/ExpressionUtils.h>
+#include <gsNewExpressions/ExpressionResult.h>
+#include <gsNewExpressions/ExpressionTraits.h>
 
 #include <gsNewExpressions/BaseExpression.h>
 #include <gsNewExpressions/UnaryOperator.h>
@@ -48,72 +49,17 @@
 #include <gsNewExpressions/LaplExpression.h>
 
 #include <gsNewExpressions/TransposeExpression.h>
+#include <gsNewExpressions/ComponentExpression.h>
+#include <gsNewExpressions/GeometryMap.h>
+#include <gsNewExpressions/MeasureExpression.h>
+#include <gsNewExpressions/NormalExpressions.h>
+#include <gsNewExpressions/JacobianExpressions.h>
+#include <gsNewExpressions/ExpressionVisitor.h>
 
 namespace gismo
 {
 namespace Expr
 {
-
-/*
-  Traits class for expressions
-*/
-template <typename E>
-struct ExpressionTraits
-{
-public:
-    typedef real_t Scalar;//todo
-    static constexpr size_t Order = 0; // Invalid order by default
-    static constexpr size_t Space = SpaceType::None;
-    static constexpr size_t Deriv = 0;
-    static constexpr bool IsConstant = false;
-};
-
-// Specialization for const types - delegate to non-const version
-template <typename E>
-struct ExpressionTraits<const E>
-{
-    typedef typename ExpressionTraits<E>::Scalar Scalar;
-    static constexpr size_t Order = ExpressionTraits<E>::Order;
-    static constexpr size_t Space = ExpressionTraits<E>::Space;
-    static constexpr size_t Deriv = ExpressionTraits<E>::Deriv;
-    static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
-};
-
-
-
-// // Specialization for BaseObject to avoid circular dependency
-// template <class T, size_t _Order, bool _IsConstant, short_t _Space>
-// struct ExpressionTraits<BaseObject<T, _Order, _IsConstant, _Space>>
-// {
-// public:
-//     typedef T Scalar;
-//     typedef const BaseObject<T, _Order, _IsConstant, _Space> Nested_t;
-
-//     static constexpr size_t Order = _Order;
-//     static constexpr size_t Space = _Space;
-// };
-
-/**
- * The new expressions module has the following key components:
- * - BaseObject: Provides the base declaration of an expression
- * - {Scalar,Vector,Matrix}Expression: represent a {Scalar,Vector,Matrix} defined by constant types (e.g., T, gsVector<T>, gsMatrix<T>)
- * - {Scalar,Vector}VariableObject: represent a VariableObject defined as a {Scalar,Vector} based on a gsFunction --> gsFeVariableObject
- * - {Scalar,Vector}SpaceObject: represent a space defined as a {Scalar,Vector} based on a gsFunction --> gsFeSpace
- *
- *
- * Design questions:
- * - Would there be a way to avoid {Scalar,Vector,Matrix} classes and have just one?
- * - Should we implement a parser or evaluation class keeping track of the derivatives requested per function? Can we keep a maxDeriv member keeping track of this?
- * -
- */
-
-    // template <class T>
-    // ScalarExpression<T,>
-
-
-
-
-
 
 }//namespace Expr
 }//namespace gismo

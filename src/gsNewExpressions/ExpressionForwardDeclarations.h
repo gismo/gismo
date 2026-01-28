@@ -17,6 +17,18 @@
 
 namespace gismo
 {
+
+namespace Expr
+{
+    enum SpaceType
+    {
+        None = 0,
+        Test = 1,
+        Trial = 2,
+        Both = 3
+    };
+}
+
     // Forward declaration for ExpressionHelper
     template <class T> class ExpressionHelper;
 
@@ -42,10 +54,6 @@ namespace Expr
     template <typename E>
     class BaseObject;
 
-    // Null Object
-    template <class T, size_t _Space, size_t _Order>
-    class NullObject;
-
     // Constant Objects
     template <class T, size_t _Order>
     class ConstantObject;
@@ -55,13 +63,16 @@ namespace Expr
     class VariableObject;
 
     // Space Objects
-    template <class T, size_t _Space, size_t _Order>
+    template <class T, enum SpaceType _Space, size_t _Order>
     class SpaceObject;
+    // Null Object
+    template <class T, enum SpaceType _Space, size_t _Order>
+    class NullObject;
     template <class E, class SpaceType> 
     class VariationObject;
 
     // Solution Objects
-    template <class T, size_t _Space, size_t _Order>
+    template <class T, enum SpaceType _Space, size_t _Order>
     class SolutionObject;
 
     ////////////////////////////////////////////////////////////////
@@ -71,25 +82,25 @@ namespace Expr
     template <typename E>
     class BinaryOperator;
 
-    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
     class ProductExpression;
 
-    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
     class InnerProductExpression;
 
-    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
     class OuterProductExpression;
 
-    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
     class CrossProductExpression;
 
-    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
     class DivisionExpression;
 
-    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
     class AddExpression;
 
-    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+    template <typename _LhsExpr, typename _RhsExpr, size_t LhsOrder, size_t RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
     class SubtractExpression;
 
     ////////////////////////////////////////////////////////////////
@@ -99,16 +110,16 @@ namespace Expr
     template <typename E>
     class UnaryOperator;
 
-    template <typename E, size_t Order, size_t Space, size_t IsConstant>
+    template <typename E, size_t Order, enum SpaceType _Space, size_t IsConstant>
     class GradExpression;
 
-    template <typename E, size_t Order, size_t Space, size_t IsConstant>
+    template <typename E, size_t Order, enum SpaceType _Space, size_t IsConstant>
     class DivExpression;
 
-    template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+    template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
     class CurlExpression;
 
-    template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+    template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
     class LaplExpression;
 
     ////////////////////////////////////////////////////////////////
@@ -121,6 +132,29 @@ namespace Expr
     template <typename E>
     class ArrayExpression;
 
+    template <typename E, size_t _Order>
+    class ComponentExpression;
+
+    template <class T>
+    class GeometryMap;
+
+    template <class T>
+    class MeasureExpression;
+
+    template <class T>
+    class SurfaceNormalExpression;
+
+    template <class T>
+    class BoundaryNormalExpression;
+
+    template <class T>
+    class BoundaryTangentExpression;
+
+    template <class T>
+    class JacobianExpression;
+
+    template <class T>
+    class InverseJacobianExpression;
 
 }//namespace Expr
 }//namespace gismo

@@ -26,7 +26,7 @@ struct ExpressionTraits<UnaryOperator<Operator>>
 
     typedef typename ExpressionTraits<Operator>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<Operator>::Order;
-    static constexpr size_t Space = ExpressionTraits<Operator>::Space;
+    static constexpr SpaceType Space = ExpressionTraits<Operator>::Space;
     static constexpr size_t Deriv = ExpressionTraits<Operator>::Deriv;
     static constexpr bool IsConstant = ExpressionTraits<Operator>::IsConstant;
 };
@@ -66,6 +66,18 @@ public:
 
     // Note: sizes() and domainDim() are NOT defined here - derived classes must implement them
     // This allows each derived class to define its own order and sizes behavior
+
+    template<class Op = Operator>
+    auto test() const -> decltype(std::declval<const UnaryOperator&>().expr().test()) 
+    { 
+        return expr().test();  
+    } 
+    template<class Op = Operator>
+    auto trial() const -> decltype(std::declval<const UnaryOperator&>().expr().trial()) 
+    { 
+        return expr().trial(); 
+    }
+
 
 protected:
     UnaryOperator(const ExprType& expr)

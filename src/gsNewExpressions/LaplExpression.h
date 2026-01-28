@@ -20,28 +20,26 @@ namespace Expr
 
 // --- LaplExpression ---
 // Primary template: Catches all unsupported combinations with a compile-time error
-template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
 struct ExpressionTraits<LaplExpression<_E, _Order, _Space, _IsConstant>>
 {
     typedef _E ExprType; // Needed for UnaryOperator
 
     typedef typename ExpressionTraits<_E>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<_E>::Order; // Laplacian decreases order by 2
-    static constexpr size_t Space = ExpressionTraits<_E>::Space;
+    static constexpr SpaceType Space = ExpressionTraits<_E>::Space;
     static constexpr size_t Deriv = ExpressionTraits<_E>::Deriv + 2; // Increment derivative order
     static constexpr bool IsConstant = ExpressionTraits<_E>::IsConstant;
 };
 
 // --- Unified LaplExpression using enable_if for Space-aware eval ---
-template <typename _E, size_t _Order, size_t _Space, size_t _IsConstant>
+template <typename _E, size_t _Order, enum SpaceType _Space, size_t _IsConstant>
 class LaplExpression : public UnaryOperator<LaplExpression<_E, _Order, _Space, _IsConstant>>
 {
     using Base = UnaryOperator<LaplExpression<_E, _Order, _Space, _IsConstant>>;
-    typedef typename Base::Scalar T;
-    using Base::Order;
 private:
-    mutable gsMatrix<T> tmp;
-    using Base::expr_;
+    mutable gsMatrix<typename Base::Scalar> tmp;
+
 public:
     LaplExpression(const _E& expr)
     :
@@ -49,23 +47,23 @@ public:
     {
     }
 
-    const std::array<size_t, Order> & sizes() const
+    const std::array<size_t, _Order> & sizes() const
     {
-        return expr_.sizes();
+        return this->expr_.sizes();
     }
 
     size_t domainDim() const
     {
-        return expr_.domainDim();
+        return this->expr_.domainDim();
     }
 
     // Eval for Space = None (constant)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<S == SpaceType::None && C == 1, ExpressionValue<T>>::type
+    typename std::enable_if<S == SpaceType::None && C == 1, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         GISMO_UNUSED(k);
-        ExpressionValue<T> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         tmp.resize(1, 1);
         tmp.setZero();
         result(0, 0) = tmp;
@@ -74,23 +72,23 @@ public:
 
     // Eval for Space = None (variable)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<S == SpaceType::None && C == 0, ExpressionValue<T>>::type
+    typename std::enable_if<S == SpaceType::None && C == 0, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         // Laplacian of variable expression: sum of second derivatives
         // Return: laplacians.col(k)
-        ExpressionValue<T> result(1, 1);
-        result(0, 0) = expr_.data().laplacians.col(k);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
+        result(0, 0) = this->expr_.data().laplacians.col(k);
         return result;
     }
 
     // Eval for Space = Test or Trial (constant)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 1, ExpressionValue<T>>::type
+    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 1, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         GISMO_UNUSED(k);
-        ExpressionValue<T> result(1, 1);
+        ExpressionResult<typename Base::Scalar> result(1, 1);
         tmp.resize(1, 1);
         tmp.setZero();
         result(0, 0) = tmp;
@@ -99,13 +97,13 @@ public:
 
     // Eval for Space = Test or Trial (variable)
     template <size_t S = _Space, size_t C = _IsConstant>
-    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 0, ExpressionValue<T>>::type
+    typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 0, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
         // Laplacian for basis functions: returns laplacians per basis function
-        const index_t numActive = expr_.data().laplacians.rows();
+        const index_t numActive = this->expr_.data().laplacians.rows();
         
-        ExpressionValue<T> result(
+        ExpressionResult<typename Base::Scalar> result(
             S == SpaceType::Test ? numActive : 1,
             S == SpaceType::Trial ? numActive : 1
         );
@@ -114,34 +112,85 @@ public:
         for (index_t i = 0; i < numActive; ++i)
         {
             if (S == SpaceType::Test)
-                result(i, 0) = expr_.data().laplacians.col(k).row(i);
+                result(i, 0) = this->expr_.data().laplacians.col(k).row(i);
             else // Trial
-                result(0, i) = expr_.data().laplacians.col(k).row(i);
+                result(0, i) = this->expr_.data().laplacians.col(k).row(i);
         }
         
         return result;
     }
 
-    void parse(gismo::ExpressionHelper<T> & helper) const
+    // Helper to detect whether ExprType has expr() method
+    template <typename U>
+    static auto has_expr_test(int) -> decltype(std::declval<const U>().expr(), char(0));
+    template <typename U>
+    static int has_expr_test(...);
+    static constexpr bool has_expr = std::is_same<decltype(has_expr_test<typename std::remove_reference<decltype(this->expr_)>::type>(0)), char>::value;
+
+    // parse implementation for expressions that expose .expr()
+    void parse_impl(gismo::ExpressionHelper<typename Base::Scalar> & helper, std::true_type) const
     {
-        helper.add(expr_);
-        expr_.data().flags |= NEED_LAPLACIAN;
+        helper.add(this->expr_.expr());
+        this->expr_.expr().data().flags |= NEED_LAPLACIAN;
+    }
+
+    // parse implementation for expressions that are variable objects directly
+    void parse_impl(gismo::ExpressionHelper<typename Base::Scalar> & helper, std::false_type) const
+    {
+        helper.add(this->expr_);
+        this->expr_.data().flags |= NEED_LAPLACIAN;
+    }
+
+    void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
+    {
+        parse_impl(helper, std::integral_constant<bool, has_expr>());
     }
 
     void print(std::ostream & os) const
     {
-        os<<"\u0394("<<expr_<<")";
+        os<<"\u0394("<<this->expr_<<")";
     }
 };
 
 // Old specializations removed - now using unified class with enable_if
 
 // Generic factory function for easy creation
+// template <typename _E>
+// LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant> lapl(const _E& expr)
+// {
+//     return LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant>(expr);
+// }
+
+// Partial specialization for scalars
 template <typename _E>
-LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant> lapl(const _E& expr)
+typename std::enable_if<ExpressionTraits<_E>::Order == 0, LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant> >::type
+lapl(const _E& expr)
 {
+    gsDebug<<"Using scalar Laplacian\n";
     return LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant>(expr);
 }
+
+template <typename _E>
+typename std::enable_if<ExpressionTraits<_E>::Order == 2, LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant> >::type
+lapl(const _E& expr)
+{
+    gsDebug<<"Using MATRIX Laplacian\n";
+    return LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant>(expr);
+}
+
+// Partial specialization for vectors
+// Safer implementation for VariableObject vector fields: sum component-wise Laplacians
+// This avoids complex curl/grad identities and return-type SFINAE issues
+template <typename T, bool _IsConstant>
+auto lapl(const VariableObject<T, 1, _IsConstant> & expr)
+{
+    gsDebug<<"Using vector Laplacian (component-wise sum)\n";
+    // Build component expressions and sum their scalar laplacians
+    auto c0 = ComponentExpression<VariableObject<T,1,_IsConstant>,1>(expr,0);
+    auto c1 = ComponentExpression<VariableObject<T,1,_IsConstant>,1>(expr,1);
+    return lapl(c0) + lapl(c1);
+}
+
 
 // Partial specialization for addition
 template <typename _LhsExpr, typename _RhsExpr>
@@ -199,6 +248,10 @@ auto lapl(const GradExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits
 // === UNDEFINED OPERATIONS ===
 // These operations are mathematically undefined and will produce compile-time errors
 
+// Helper to make static_assert dependent so overload resolution can proceed
+template <typename T>
+struct dependent_false { static constexpr bool value = false; };
+
 // Laplacian of divergence is undefined for vector fields
 // ∇²(∇•A) is undefined because divergence of a vector produces a scalar,
 // and we already have ∇²(scalar), so this would be valid if the input expression is appropriate
@@ -206,7 +259,7 @@ template <typename _E>
 auto lapl(const DivExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits<_E>::Space, ExpressionTraits<_E>::IsConstant> expr)
 -> void
 {
-    static_assert(false, "∇²(∇•A) is undefined for vector fields.");
+    static_assert(dependent_false<_E>::value, "∇²(∇•A) is undefined for vector fields.");
 }
 
 // Laplacian of curl is defined: ∇²(∇×A) = ∇×(∇²A)
@@ -226,11 +279,11 @@ auto lapl(const LaplExpression<_E, ExpressionTraits<_E>::Order, ExpressionTraits
 -> void
 {
     // TODO: Take care of 4th order derivative in gsFuncData
-    static_assert(false,"∇²(∇²ψ) = ∇⁴ψ is not implemented as a separate expression type.");
+    static_assert(dependent_false<_E>::value,"∇²(∇²ψ) = ∇⁴ψ is not implemented as a separate expression type.");
     // return lapl(lapl(expr.expr()));
 }
 
-template <class T, size_t _Space, size_t _Order, typename _SpaceObject>
+template <class T, enum SpaceType _Space, size_t _Order, typename _SpaceObject>
 auto variation(const LaplExpression<SolutionObject<T,_Space,_Order>,_Order,SpaceType::None,false> & expr,
           const _SpaceObject & space)
 -> decltype(lapl(variation(expr.expr(), space)))

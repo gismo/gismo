@@ -23,7 +23,7 @@ struct ExpressionTraits<VariableObject<T, _Order, _IsConstant>>
 {
     typedef T Scalar;
     static constexpr size_t Order = _Order;
-    static constexpr size_t Space = SpaceType::None;
+    static constexpr SpaceType Space = SpaceType::None;
     static constexpr size_t Deriv = 0;
     static constexpr bool IsConstant = _IsConstant;
 };
@@ -55,9 +55,9 @@ public:
     {
     }
 
-    ExpressionValue<Scalar> eval(const index_t k) const
+    ExpressionResult<Scalar> eval(const index_t k) const
     {
-        ExpressionValue<Scalar> result(1, 1);
+        ExpressionResult<Scalar> result(1, 1);
         result(0, 0) = m_fd->values[0].col(k)/* .blockDiag(Order+1) */;
         return result;
     }

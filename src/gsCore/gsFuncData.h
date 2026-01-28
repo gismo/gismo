@@ -372,7 +372,7 @@ public:
     gsMatrix<T> points;     ///< input (parametric) points
 
     gsMatrix<T> measures;
-    gsMatrix<T> fundForms;  ///< Second fundumental forms
+    gsMatrix<T> fundForms;  ///< Second fundamental forms
     gsMatrix<T> jacInvTr;   ///< Inverse of the Jacobian matrix (transposed)
     gsMatrix<T> normals;
     gsMatrix<T> outNormals; // only for the boundary

@@ -13,27 +13,28 @@
 
 #pragma once
 
+#include <gsNewExpressions/ExpressionTraits.h>
 #include <gsNewExpressions/SpaceObject.h>
 
 namespace gismo
 {
 namespace Expr
 {
-
-    template<class T, size_t _Space, size_t _Order>
+    // Need to define ExpressionTraits for NullObject
+    template<class T, enum SpaceType _Space, size_t _Order>
     struct ExpressionTraits<NullObject<T, _Space, _Order>>
     {
         typedef T Scalar;
         static constexpr size_t Order = _Order;
-        static constexpr size_t Space = _Space;
+        static constexpr SpaceType Space = _Space;
         static constexpr size_t Deriv = 0;
         static constexpr bool IsConstant = true;
     };
 
-    template <class T, size_t _Space, size_t _Order>
-    class NullObject : public BaseObject<NullObject<T, _Space, _Order>>
+    template <class T, enum SpaceType _Space, size_t _Order>
+    class NullObject : public SpaceObject<T, _Space, _Order>
     {
-        using Base = BaseObject<NullObject<T, _Space, _Order>>;
+        using Base = SpaceObject<T, _Space, _Order>;
 
     public:
         // Expose the static traits publicly
@@ -46,7 +47,13 @@ namespace Expr
 
     public:
 
-        ExpressionValue<Scalar> eval(const index_t) const
+        operator const SpaceObject<T,SpaceType::None,_Order> & () const
+        {
+            static SpaceObject<T,SpaceType::None,_Order> vv(0,{}, 0);
+            return vv;
+        }
+
+        ExpressionResult<Scalar> eval(const index_t) const
         {
             GISMO_ERROR("The null expression should not be evaluated");
         }
@@ -56,15 +63,9 @@ namespace Expr
             GISMO_NO_IMPLEMENTATION;
         }
 
-        // operator const NullSpaceObject<T,_Space,_Order> & () const
-        // {
-        //     static NullSpaceObject<T,_Space,_Order> vv(0,{}, 0);
-        //     return vv;
-        // }
-
         explicit NullObject()
         :
-        Base(0,{})
+        Base(0,{}, -1)
         {}
 
         NullObject(const NullObject&) = default;

@@ -21,18 +21,18 @@ namespace gismo
 namespace Expr
 {
 
-template <class T, size_t _Space, size_t _Order>
+template <class T, enum SpaceType _Space, size_t _Order>
 struct ExpressionTraits<SolutionObject<T, _Space, _Order>>
 {
     typedef T Scalar;
     static constexpr size_t Order = _Order;
-    static constexpr size_t Space = SpaceType::None; // the solution has SpaceType::None, its underlying space has _Space
+    static constexpr SpaceType Space = SpaceType::None; // the solution has SpaceType::None, its underlying space has _Space
     static constexpr size_t Deriv = 0;
     static constexpr bool IsConstant = false;
 };
 
 
-template <class T, size_t _Space, size_t _Order>
+template <class T, enum SpaceType _Space, size_t _Order>
 class SolutionObject : public BaseObject<SolutionObject<T, _Space, _Order>>
 {
     using Base = BaseObject<SolutionObject<T, _Space, _Order>>;
@@ -59,11 +59,11 @@ public:
     {
     }
 
-    ExpressionValue<Scalar> eval(const index_t k) const
+    ExpressionResult<Scalar> eval(const index_t k) const
     {
         // TODO: SolutionObject needs proper implementation
         // For now, return placeholder
-        ExpressionValue<Scalar> result(1, 1);
+        ExpressionResult<Scalar> result(1, 1);
         result(0, 0) = gsMatrix<Scalar>();
         return result;
     }
@@ -92,7 +92,7 @@ public:
 
 };
 
-template <class T, size_t Sol_Space, size_t Sol_Order, typename SpaceObj>
+template <class T, enum SpaceType Sol_Space, size_t Sol_Order, typename SpaceObj>
 auto variation(const SolutionObject<T,Sol_Space,Sol_Order> & sol,const SpaceObj & space)
 -> VariationObject<SolutionObject<T,Sol_Space,Sol_Order>,SpaceObj>
 {

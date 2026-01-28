@@ -1,8 +1,8 @@
-/** @file ExpressionValue.h
+/** @file ExpressionResult.h
 
     @brief Container for expression values with test/trial space cardinalities
 
-    This file provides the ExpressionValue class, which handles the storage of evaluated
+    This file provides the ExpressionResult class, which handles the storage of evaluated
     expression results with proper support for test and trial space cardinalities.
 
     ## Motivation
@@ -14,7 +14,7 @@
     - **Bilinear expressions**: Depend on both test and trial basis functions (φ_i, ψ_j pairs)
 
     Each expression evaluation produces results for all relevant basis function combinations.
-    ExpressionValue provides a unified container for these cases.
+    ExpressionResult provides a unified container for these cases.
 
     ## Cardinality Mapping
 
@@ -29,16 +29,16 @@
 
     ```cpp
     // Scalar expression: value(0,0) contains the result at all quadrature points
-    ExpressionValue<real_t> scalar_val = makeExpressionValue<real_t>(SpaceType::None);
+    ExpressionResult<real_t> scalar_val = makeExpressionResult<real_t>(SpaceType::None);
     scalar_val(0, 0) = evaluateScalarExpression();
 
     // Test space: value(i,0) contains result for test basis function i
-    ExpressionValue<real_t> test_val = makeExpressionValue<real_t>(SpaceType::Test, N);
+    ExpressionResult<real_t> test_val = makeExpressionResult<real_t>(SpaceType::Test, N);
     for (index_t i = 0; i < N; ++i)
         test_val(i, 0) = evaluateTestBasis(i);
 
     // Bilinear form: value(i,j) contains result for basis pair (φ_i, ψ_j)
-    ExpressionValue<real_t> bilinear_val = makeExpressionValue<real_t>(SpaceType::Both, N, M);
+    ExpressionResult<real_t> bilinear_val = makeExpressionResult<real_t>(SpaceType::Both, N, M);
     for (index_t i = 0; i < N; ++i)
         for (index_t j = 0; j < M; ++j)
             bilinear_val(i, j) = evaluateBilinearForm(i, j);
@@ -76,7 +76,7 @@ namespace Expr
  * @tparam T Scalar type (e.g., real_t, double)
  */
 template <typename T>
-class ExpressionValue
+class ExpressionResult
 {
 public:
     typedef gsMatrix<T> MatrixType;
@@ -84,7 +84,7 @@ public:
     /**
      * @brief Default constructor - creates empty value with cardinality (1,1)
      */
-    ExpressionValue()
+    ExpressionResult()
         : row_cardinality_(1), col_cardinality_(1)
     {
         data_.resize(1);
@@ -95,7 +95,7 @@ public:
      * @param row_card Row cardinality (number of test basis functions, or 1 for none)
      * @param col_card Column cardinality (number of trial basis functions, or 1 for none)
      */
-    ExpressionValue(index_t row_card, index_t col_card)
+    ExpressionResult(index_t row_card, index_t col_card)
         : row_cardinality_(row_card), col_cardinality_(col_card)
     {
         GISMO_ASSERT(row_card > 0 && col_card > 0, "Cardinalities must be positive");
@@ -109,7 +109,7 @@ public:
      * @param rows Number of rows in each matrix
      * @param cols Number of columns in each matrix
      */
-    ExpressionValue(index_t row_card, index_t col_card, index_t rows, index_t cols)
+    ExpressionResult(index_t row_card, index_t col_card, index_t rows, index_t cols)
         : row_cardinality_(row_card), col_cardinality_(col_card)
     {
         GISMO_ASSERT(row_card > 0 && col_card > 0, "Cardinalities must be positive");
@@ -118,7 +118,7 @@ public:
             mat.resize(rows, cols);
     }
 
-    explicit ExpressionValue(const T & value)
+    explicit ExpressionResult(const T & value)
         : row_cardinality_(1), col_cardinality_(1)
     {
         data_.resize(1);
@@ -127,7 +127,7 @@ public:
     }
 
     template <int _Rows>
-    explicit ExpressionValue(const gsVector<T, _Rows> & value)
+    explicit ExpressionResult(const gsVector<T, _Rows> & value)
         : row_cardinality_(1), col_cardinality_(1)
     {
         data_.resize(1);
@@ -135,7 +135,7 @@ public:
     }
 
     template <int _Rows, int _Cols>
-    explicit ExpressionValue(const gsMatrix<T, _Rows, _Cols> & value)
+    explicit ExpressionResult(const gsMatrix<T, _Rows, _Cols> & value)
         : row_cardinality_(1), col_cardinality_(1)
     {
         data_.resize(1);
@@ -314,61 +314,240 @@ public:
     typename std::vector<MatrixType>::const_iterator begin() const { return data_.begin(); }
     typename std::vector<MatrixType>::const_iterator end() const { return data_.end(); }
 
+    std::ostream &print(std::ostream &os) const
+    {
+        os << "ExpressionResult with cardinality (" << row_cardinality_ << ", " << col_cardinality_ << "):\n";
+        for (index_t i = 0; i < row_cardinality_; ++i)
+        {
+            for (index_t j = 0; j < col_cardinality_; ++j)
+            {
+                os << "Matrix (" << i << ", " << j << "):\n" << data_[i * col_cardinality_ + j] << "\n";
+            }
+        }
+        return os;
+    }
+
 private:
     index_t row_cardinality_;    ///< Number of test basis functions (or 1 for scalar/trial-only)
     index_t col_cardinality_;    ///< Number of trial basis functions (or 1 for scalar/test-only)
     std::vector<MatrixType> data_; ///< Flattened array of matrices (row-major storage)
 };
 
+/// Helper class for scalar ExpressionResult. 
+/// It can still have cardinality > 1, but each entry must be a scalar matrix (1x1).
+template <typename T>
+class ScalarExpressionResult : public ExpressionResult<T>
+{
+public:
+    ScalarExpressionResult(const ExpressionResult<T>& expr_val)
+        : ExpressionResult<T>(expr_val)
+    {
+        // Ensure all matrices are scalar (1x1)
+        for (index_t i = 0; i < this->size(); ++i)
+        {
+            GISMO_ASSERT(this->operator[](i).rows() == 1 && this->operator[](i).cols() == 1,
+                        "ScalarExpressionResult: All matrices must be scalar (1x1)");
+        }
+    }
+};
+
+
+template <typename T>
+ExpressionResult<T> operator*(const T& scalar, const ExpressionResult<T>& expr)
+{
+    ExpressionResult<T> result = expr;
+    for (index_t i = 0; i < result.size(); ++i)
+        result[i] *= scalar;
+    return result;
+}
+
+template <typename T>
+ExpressionResult<T> operator*(const ExpressionResult<T>& expr, const T& scalar)
+{
+    ExpressionResult<T> result = expr;
+    for (index_t i = 0; i < result.size(); ++i)
+        result[i] *= scalar;
+    return result;
+}
+
+template <typename T>
+ExpressionResult<T> operator*(const ScalarExpressionResult<T>& lhs, const ExpressionResult<T>& rhs)
+{
+    ExpressionResult<T> result(math::max(lhs.rowCardinality(), rhs.rowCardinality()),
+                              math::max(lhs.colCardinality(), rhs.colCardinality()));
+
+    for (index_t i = 0; i < result.rowCardinality(); ++i)
+        for (index_t j = 0; j < result.colCardinality(); ++j)
+        {
+            if (lhs.rowCardinality() == 1 && lhs.colCardinality() == 1)
+                result(i, j) = lhs(0, 0)(0,0) * rhs(i, j);
+            else if (rhs.rowCardinality() == 1 && rhs.colCardinality() == 1)
+                result(i, j) = lhs(i, j)(0,0) * rhs(0, 0);
+            else
+                result(i, j) = lhs(i, j)(0,0) * rhs(i, j);
+        }
+    return result;
+}
+
+template <typename T>
+ExpressionResult<T> operator*(const ExpressionResult<T>& lhs, const ScalarExpressionResult<T>& rhs)
+{
+    ExpressionResult<T> result(math::max(lhs.rowCardinality(), rhs.rowCardinality()),
+                              math::max(lhs.colCardinality(), rhs.colCardinality()));
+    for (index_t i = 0; i < result.rowCardinality(); ++i)
+        for (index_t j = 0; j < result.colCardinality(); ++j)
+        {
+            if (lhs.rowCardinality() == 1 && lhs.colCardinality() == 1)
+                result(i, j) = lhs(0, 0) * rhs(i, j)(0,0);
+            else if (rhs.rowCardinality() == 1 && rhs.colCardinality() == 1)
+                result(i, j) = lhs(i, j) * rhs(0, 0)(0,0);
+            else
+                result(i, j) = lhs(i, j) * rhs(i, j)(0,0);
+        }
+    return result;
+}
+
+template <typename T>
+ExpressionResult<T> operator*(const ExpressionResult<T>& lhs, const ExpressionResult<T>& rhs)
+{
+    // This product is defined for:
+    // - lhs.rowCardinality() == rhs.rowCardinality() && lhs.colCardinality() == rhs.colCardinality()
+    // - (lhs.rowCardinality() == 1 && lhs.colCardinality() == 1) && rhs arbitrary
+    // - lhs arbitrary && (rhs.rowCardinality() == 1 && rhs.colCardinality() == 1)
+    // - lhs.rowCardinality() == rhs.rowCardinality() && (lhs.colCardinality() == 1 || rhs.colCardinality() == 1)
+    // - lhs.colCardinality() == rhs.colCardinality() && (lhs.rowCardinality() == 1 || rhs.rowCardinality() == 1)
+    // - lhs.rowCardinality() == 1 && rhs.colCardinality() == 1
+    // - lhs.colCardinality() == 1 && rhs.rowCardinality() == 1
+
+    ExpressionResult<T> result(math::max(lhs.rowCardinality(), rhs.rowCardinality()),
+                              math::max(lhs.colCardinality(), rhs.colCardinality()));
+    for (index_t i = 0; i < result.rowCardinality(); ++i)
+        for (index_t j = 0; j < result.colCardinality(); ++j)
+        {
+            index_t lhs_i = (lhs.rowCardinality() == 1) ? 0 : i;
+            index_t lhs_j = (lhs.colCardinality() == 1) ? 0 : j;
+            index_t rhs_i = (rhs.rowCardinality() == 1) ? 0 : i;
+            index_t rhs_j = (rhs.colCardinality() == 1) ? 0 : j;
+            result(i, j) = lhs(lhs_i, lhs_j) * rhs(rhs_i, rhs_j);
+        }
+    return result;
+}
+
+template <typename T>
+ExpressionResult<T> operator+(const ExpressionResult<T>& lhs, const ExpressionResult<T>& rhs)
+{
+    ExpressionResult<T> result(math::max(lhs.rowCardinality(), rhs.rowCardinality()),
+                              math::max(lhs.colCardinality(), rhs.colCardinality()));
+    for (index_t i = 0; i < result.rowCardinality(); ++i)
+        for (index_t j = 0; j < result.colCardinality(); ++j)
+        {
+            if (lhs.rowCardinality() == 1 && lhs.colCardinality() == 1)
+                result(i, j) = lhs(0, 0) + rhs(i, j);
+            else if (rhs.rowCardinality() == 1 && rhs.colCardinality() == 1)
+                result(i, j) = lhs(i, j) + rhs(0, 0);
+            else
+                result(i, j) = lhs(i, j) + rhs(i, j); 
+        }
+    return result;
+}
+
+template <typename T>
+ExpressionResult<T> operator-(const ExpressionResult<T>& lhs, const ExpressionResult<T>& rhs)
+{
+    ExpressionResult<T> result(math::max(lhs.rowCardinality(), rhs.rowCardinality()),
+                              math::max(lhs.colCardinality(), rhs.colCardinality()));
+    for (index_t i = 0; i < result.rowCardinality(); ++i)
+        for (index_t j = 0; j < result.colCardinality(); ++j)
+        {
+            if (lhs.rowCardinality() == 1 && lhs.colCardinality() == 1)
+                result(i, j) = lhs(0, 0) - rhs(i, j);
+            else if (rhs.rowCardinality() == 1 && rhs.colCardinality() == 1)
+                result(i, j) = lhs(i, j) - rhs(0, 0);
+            else
+                result(i, j) = lhs(i, j) - rhs(i, j);
+        }
+    return result;
+}
+
+template <typename T>
+ExpressionResult<T> operator/(const ExpressionResult<T>& expr, const T& scalar)
+{
+    ExpressionResult<T> result = expr;
+    for (index_t i = 0; i < result.size(); ++i)
+        result[i] /= scalar;
+    return result;
+}
+
+template <typename T>  
+ExpressionResult<T> operator/(const ExpressionResult<T>& expr, const ScalarExpressionResult<T>& scalar_expr)
+{
+    ExpressionResult<T> result(expr.rowCardinality(), expr.colCardinality());
+    for (index_t i = 0; i < result.rowCardinality(); ++i)
+        for (index_t j = 0; j < result.colCardinality(); ++j)
+        {
+            if (scalar_expr.rowCardinality() == 1 && scalar_expr.colCardinality() == 1)
+                result(i, j) = expr(i, j) / scalar_expr(0, 0)(0,0);
+            else
+                result(i, j) = expr(i, j) / scalar_expr(i, j)(0,0);
+        }
+    return result;
+}
 
 /**
- * @brief Helper function to create ExpressionValue with appropriate cardinality based on space type
+ * @brief Helper function to create ExpressionResult with appropriate cardinality based on space type
  * 
  * @tparam T Scalar type
  * @param space_type The space type (None, Test, Trial, Both)
  * @param test_card Number of test basis functions (ignored if not Test or Both)
  * @param trial_card Number of trial basis functions (ignored if not Trial or Both)
- * @return ExpressionValue with appropriate cardinality
+ * @return ExpressionResult with appropriate cardinality
  */
 template <typename T>
-ExpressionValue<T> makeExpressionValue(size_t space_type, index_t test_card = 1, index_t trial_card = 1)
+ExpressionResult<T> makeExpressionResult(SpaceType space_type, index_t test_card = 1, index_t trial_card = 1)
 {
     switch (space_type)
     {
         case SpaceType::None:
-            return ExpressionValue<T>(1, 1);
+            return ExpressionResult<T>(1, 1);
         case SpaceType::Test:
-            return ExpressionValue<T>(test_card, 1);
+            return ExpressionResult<T>(test_card, 1);
         case SpaceType::Trial:
-            return ExpressionValue<T>(1, trial_card);
+            return ExpressionResult<T>(1, trial_card);
         case SpaceType::Both:
-            return ExpressionValue<T>(test_card, trial_card);
+            return ExpressionResult<T>(test_card, trial_card);
         default:
             GISMO_ERROR("Unknown space type");
     }
 }
 
 /**
- * @brief Helper function to create ExpressionValue with matrix dimensions
+ * @brief Helper function to create ExpressionResult with matrix dimensions
  */
 template <typename T>
-ExpressionValue<T> makeExpressionValue(size_t space_type, index_t test_card, index_t trial_card, 
+ExpressionResult<T> makeExpressionResult(SpaceType space_type, index_t test_card, index_t trial_card, 
                                        index_t rows, index_t cols)
 {
     switch (space_type)
     {
         case SpaceType::None:
-            return ExpressionValue<T>(1, 1, rows, cols);
+            return ExpressionResult<T>(1, 1, rows, cols);
         case SpaceType::Test:
-            return ExpressionValue<T>(test_card, 1, rows, cols);
+            return ExpressionResult<T>(test_card, 1, rows, cols);
         case SpaceType::Trial:
-            return ExpressionValue<T>(1, trial_card, rows, cols);
+            return ExpressionResult<T>(1, trial_card, rows, cols);
         case SpaceType::Both:
-            return ExpressionValue<T>(test_card, trial_card, rows, cols);
+            return ExpressionResult<T>(test_card, trial_card, rows, cols);
         default:
             GISMO_ERROR("Unknown space type");
     }
 }
 
 } // namespace Expr
+
+template<class T>
+std::ostream &operator<<(std::ostream &os, const Expr::ExpressionResult<T> &result)
+{
+    return result.print(os);
+}
+
 } // namespace gismo

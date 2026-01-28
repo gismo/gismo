@@ -24,7 +24,7 @@ struct ExpressionTraits<ConstantObject<T, _Order>>
 {
     typedef T Scalar;
     static constexpr size_t Order = _Order;
-    static constexpr size_t Space = SpaceType::None;
+    static constexpr SpaceType Space = SpaceType::None;
     static constexpr size_t Deriv = 0;
     static constexpr bool IsConstant = true;
 };
@@ -66,7 +66,7 @@ public:
     template <int _Rows>
     explicit ConstantObject(const gsVector<T, _Rows> & value)
     :
-    Base(0, std::array<size_t, 1>{value.rows()}, "c")
+    Base(0, std::array<size_t, 1>{static_cast<size_t>(value.rows())}, "c")
     {
         m_value = value;
     }
@@ -74,7 +74,7 @@ public:
     template <int _Rows, int _Cols>
     explicit ConstantObject(const gsMatrix<T, _Rows, _Cols> & value)
     :
-    Base(0, std::array<size_t, 2>{value.rows(), value.cols()}, "C")
+    Base(0, std::array<size_t, 2>{static_cast<size_t>(value.rows()), static_cast<size_t>(value.cols())}, "C")
     {
         m_value = value;
     }
@@ -83,9 +83,9 @@ public:
     void setConstant(const T value) { m_value.setConstant(value);}
     void parse(gismo::ExpressionHelper<Scalar> &) const {}
 
-    ExpressionValue<Scalar> eval(const index_t) const
+    ExpressionResult<Scalar> eval(const index_t) const
     {
-        return ExpressionValue<Scalar>(m_value);
+        return ExpressionResult<Scalar>(m_value);
     }
 
     void print(std::ostream & os) const

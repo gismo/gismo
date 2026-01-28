@@ -47,7 +47,7 @@ public:
 
 public:
 
-    ExpressionValue<T> eval(const index_t) const
+    ExpressionResult<T> eval(const index_t) const
     {
         GISMO_NO_IMPLEMENTATION;
     }
@@ -81,6 +81,15 @@ public:
     }
 
     std::string label() const { return label_; }
+
+    const SpaceObject<T,Space,Order> & test () const
+    {
+        return NullObject<T,SpaceType::Test,Order>::get();
+    }
+    const SpaceObject<T,Space,Order> & trial() const
+    {
+        return NullObject<T,SpaceType::Trial,Order>::get();
+    }
 
 protected:
 

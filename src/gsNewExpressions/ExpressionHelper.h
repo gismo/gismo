@@ -13,14 +13,23 @@
 
 #pragma once
 
+#include <gsNewExpressions/ExpressionUtils.h>
 #include <gsNewExpressions/ExpressionForwardDeclarations.h>
 
 namespace gismo
 {
 
+// Forward declarations
+template<class T>
+class ExprAssembler;
+template<class T>
+class ExprEvaluator;
+
 template <class T>
 class ExpressionHelper
 {
+    friend class ExprAssembler<T>;
+    friend class ExprEvaluator<T>;
     typedef T Scalar;
 private:
 
@@ -174,6 +183,18 @@ public:
         return expr;
     }
 
+    /**
+     * @brief Create a geometry map expression
+     * @param geom The geometry (typically gsMultiPatch)
+     * @return GeometryMap expression
+     */
+    Expr::GeometryMap<T> getMap(const gsFunctionSet<T> & geom)
+    {
+        // Create geometry map expression
+        Expr::GeometryMap<T> gmap(geom);
+        return gmap;
+    }
+
     Expr::SpaceObject<T,Expr::SpaceType::Test,0> getScalarTestSpace(const gsFunctionSet<T> & space, size_t id = 0, std::string label="φ")
     {
         // TODO: Assert if ID exists already
@@ -234,6 +255,16 @@ public:
         GISMO_ERROR("Solution can only be constructed from Trial space");
     }
 
+    gsFuncData<T>& funcData(const gsFunctionSet<T>* fs)
+    {
+        return m_fdata.at(fs).mine();
+    }
+
+    const gsFuncData<T>& funcData(const gsFunctionSet<T>* fs) const
+    {
+        return m_fdata.at(fs).mine();
+    }
+
     template <size_t Order, bool _IsConstant>
     void add(const Expr::VariableObject<T,Order,_IsConstant> & VariableObject)
     {
@@ -241,7 +272,7 @@ public:
             .setData(this->m_fdata[&VariableObject.source()]);
     }
 
-    template <size_t _Space, size_t order>
+    template <Expr::SpaceType _Space, size_t order>
     void add(const Expr::SpaceObject<T,_Space,order> & space)
     {
         const_cast<Expr::SpaceObject<T,_Space,order>&>(space)

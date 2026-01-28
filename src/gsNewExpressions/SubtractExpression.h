@@ -19,15 +19,15 @@ namespace Expr
 {
 
 // --- Generic ExpressionTraits for SubtractExpression ---
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 struct ExpressionTraits<SubtractExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
     typedef _LhsExpr LhsType;
     typedef _RhsExpr RhsType;
     typedef typename ExpressionTraits<_LhsExpr>::Scalar Scalar;
     static constexpr size_t Order = (_LhsOrder > _RhsOrder) ? _LhsOrder : _RhsOrder;
-    static constexpr size_t Space = (_LhsSpace != SpaceType::None && _RhsSpace != SpaceType::None && _LhsSpace != _RhsSpace) 
-                                   ? static_cast<size_t>(SpaceType::Both)
+    static constexpr SpaceType Space = (_LhsSpace != SpaceType::None && _RhsSpace != SpaceType::None && _LhsSpace != _RhsSpace) 
+                                   ? SpaceType::Both
                                    : ((_LhsSpace != SpaceType::None) ? _LhsSpace : _RhsSpace);
     static constexpr size_t Deriv = (ExpressionTraits<_LhsExpr>::Deriv > ExpressionTraits<_RhsExpr>::Deriv)
                                    ? ExpressionTraits<_LhsExpr>::Deriv : ExpressionTraits<_RhsExpr>::Deriv;
@@ -35,33 +35,19 @@ struct ExpressionTraits<SubtractExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOr
 };
 
 // --- Unified SubtractExpression class with enable_if specializations for eval() ---
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 class SubtractExpression : public BinaryOperator<SubtractExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
     using Base = BinaryOperator<SubtractExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>;
 
-private:
-    // Helper to emit warning for Test - Trial case
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<(LS == SpaceType::Test && RS == SpaceType::Trial) || 
-                            (LS == SpaceType::Trial && RS == SpaceType::Test)>::type
-    check_bilinear_warning() const
-    {
-        gsWarn << "SubtractExpression: Test - Trial spaces broadcast to bilinear form. Consider using specialized bilinear operators.\n";
-    }
-
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<!(( LS == SpaceType::Test && RS == SpaceType::Trial) || 
-                             (LS == SpaceType::Trial && RS == SpaceType::Test))>::type
-    check_bilinear_warning() const
-    {
-        // No warning for other cases
-    }
+    static_assert(_LhsSpace == _RhsSpace, "SubtractExpression requires both operands to have the same space.");
+    static_assert(_LhsOrder == _RhsOrder, "SubtractExpression requires both operands to have the same order.");
 
 public:
     SubtractExpression(const _LhsExpr& lhs, const _RhsExpr& rhs) : Base(lhs, rhs)
     {
-        check_bilinear_warning();
+        GISMO_ASSERT(_LhsSpace!=SpaceType::Trial || lhs.trial()==rhs.trial(),"SubtractExpression requires both operands to have the same trial space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+        GISMO_ASSERT(_LhsSpace!=SpaceType::Test  || lhs.test()==rhs.test(),"SubtractExpression requires both operands to have the same test space. Probably lhs and rhs are different spaces (e.g., with different ID).");
         
         if (_LhsOrder == _RhsOrder && _LhsOrder > 0) {
             for (size_t d = 0; d != _LhsOrder; ++d) {
@@ -77,137 +63,23 @@ public:
 
     size_t domainDim() const { return (_LhsOrder >= _RhsOrder) ? this->lhs_expr_.domainDim() : this->rhs_expr_.domainDim(); }
 
-    // --- eval() specialization 1: None - None ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS == SpaceType::None && RS == SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
+    ExpressionResult<typename Base::Scalar> eval(const index_t k) const
     {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> result(1, 1);
-        result(0, 0) = lhs_val(0, 0) - rhs_val(0, 0);
-        return result;
-    }
-
-    // --- eval() specialization 2: None - Space ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS == SpaceType::None && RS != SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> result(rhs_val.rowCardinality(), rhs_val.colCardinality());
-        const auto& lhs_mat = lhs_val(0, 0);
-        
-        for (index_t i = 0; i < result.rowCardinality(); ++i)
-            for (index_t j = 0; j < result.colCardinality(); ++j)
-                result(i, j) = lhs_mat - rhs_val(i, j);
-        return result;
-    }
-
-    // --- eval() specialization 3: Space - None ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS != SpaceType::None && RS == SpaceType::None,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
-        const auto& rhs_mat = rhs_val(0, 0);
-        
-        for (index_t i = 0; i < result.rowCardinality(); ++i)
-            for (index_t j = 0; j < result.colCardinality(); ++j)
-                result(i, j) = lhs_val(i, j) - rhs_mat;
-        return result;
-    }
-
-    // --- eval() specialization 4: Same Space - Same Space ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS != SpaceType::None && RS != SpaceType::None && LS == RS,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
-                    lhs_val.colCardinality() == rhs_val.colCardinality(),
-                    "SubtractExpression: Cardinality mismatch. LHS=(" << lhs_val.rowCardinality() << "," << lhs_val.colCardinality() <<
-                    "), RHS=(" << rhs_val.rowCardinality() << "," << rhs_val.colCardinality() << ")");
-        
-        ExpressionValue<typename Base::Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
-        
-        for (index_t i = 0; i < result.rowCardinality(); ++i)
-            for (index_t j = 0; j < result.colCardinality(); ++j)
-                result(i, j) = lhs_val(i, j) - rhs_val(i, j);
-        
-        return result;
-    }
-
-    // --- eval() specialization 5: Test - Trial ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS == SpaceType::Test && RS == SpaceType::Trial,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        // Bilinear broadcast: (N,1) - (1,M) -> (N,M)
-        index_t result_rows = std::max(lhs_val.rowCardinality(), rhs_val.rowCardinality());
-        index_t result_cols = std::max(lhs_val.colCardinality(), rhs_val.colCardinality());
-        ExpressionValue<typename Base::Scalar> result(result_rows, result_cols);
-        
-        for (index_t i = 0; i < result_rows; ++i)
-        {
-            for (index_t j = 0; j < result_cols; ++j)
-            {
-                index_t lhs_i = (lhs_val.rowCardinality() > 1) ? i : 0;
-                index_t lhs_j = (lhs_val.colCardinality() > 1) ? j : 0;
-                index_t rhs_i = (rhs_val.rowCardinality() > 1) ? i : 0;
-                index_t rhs_j = (rhs_val.colCardinality() > 1) ? j : 0;
-                
-                result(i, j) = lhs_val(lhs_i, lhs_j)(0, 0) - rhs_val(rhs_i, rhs_j)(0, 0);
-            }
-        }
-        
-        return result;
-    }
-
-    // --- eval() specialization 6: Trial - Test ---
-    template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
-    typename std::enable_if<LS == SpaceType::Trial && RS == SpaceType::Test,
-                            ExpressionValue<typename Base::Scalar>>::type
-    eval(const index_t k) const
-    {
-        ExpressionValue<typename Base::Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<typename Base::Scalar> rhs_val = this->rhs_expr_.eval(k);
-        
-        // Bilinear broadcast: (1,M) - (N,1) -> (N,M)
-        index_t result_rows = std::max(lhs_val.rowCardinality(), rhs_val.rowCardinality());
-        index_t result_cols = std::max(lhs_val.colCardinality(), rhs_val.colCardinality());
-        ExpressionValue<typename Base::Scalar> result(result_rows, result_cols);
-        
-        for (index_t i = 0; i < result_rows; ++i)
-        {
-            for (index_t j = 0; j < result_cols; ++j)
-            {
-                index_t lhs_i = (lhs_val.rowCardinality() > 1) ? i : 0;
-                index_t lhs_j = (lhs_val.colCardinality() > 1) ? j : 0;
-                index_t rhs_i = (rhs_val.rowCardinality() > 1) ? i : 0;
-                index_t rhs_j = (rhs_val.colCardinality() > 1) ? j : 0;
-                
-                result(i, j) = lhs_val(lhs_i, lhs_j)(0, 0) - rhs_val(rhs_i, rhs_j)(0, 0);
-            }
-        }
-        
-        return result;
+        return this->lhs_expr_.eval(k) - this->rhs_expr_.eval(k);
     }
 
     void print(std::ostream & os) const { os<<this->lhs_expr_<<"-"<<this->rhs_expr_; }
+
+    // We can take the test space of the LHS expression since both sides must match
+    auto test() const -> decltype(std::declval<_LhsExpr>().test())
+    {
+        return this->lhs_expr_.test();
+    }
+    // We can take the trial space of the LHS expression since both sides must match
+    auto trial() const -> decltype(std::declval<_LhsExpr>().trial())
+    {
+        return this->lhs_expr_.trial();
+    }
 };
 
 // Generic operator- to create SubtractExpression instances
@@ -285,14 +157,14 @@ operator-(const gsMatrix<typename ExpressionTraits<_RhsExpr>::Scalar,_Rows,_Cols
     return SubtractExpression<ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,_RhsExpr::Order>, _RhsExpr, _RhsExpr::Order, _RhsExpr::Order, _RhsExpr::Space, _RhsExpr::Space>(ConstantObject<typename ExpressionTraits<_RhsExpr>::Scalar,2>(lhs), rhs);
 }
 
-template <typename _T, size_t _LhsSpace, size_t _LhsOrder, typename _RhsExpr>
+template <typename _T, enum SpaceType _LhsSpace, size_t _LhsOrder, typename _RhsExpr>
 auto operator-(const NullObject<_T, _LhsSpace, _LhsOrder>& /* lhs */, const BaseExpression<_RhsExpr>& rhs)
 -> decltype(-rhs)
 {
     return -rhs;
 }
 
-template <typename _LhsExpr, typename _T, size_t _RhsSpace, size_t _RhsOrder>
+template <typename _LhsExpr, typename _T, enum SpaceType _RhsSpace, size_t _RhsOrder>
 auto operator-(const BaseExpression<_LhsExpr>& lhs, const NullObject<_T, _RhsSpace, _RhsOrder>& /* rhs */)
 -> BaseExpression<_LhsExpr>
 {

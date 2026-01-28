@@ -26,7 +26,7 @@ struct ExpressionTraits<VariationObject<Expr, SpaceObj>>
     // Passthrough traits from the wrapped SpaceObj
     typedef typename SpaceObj::Scalar Scalar;
     static constexpr size_t Order = SpaceObj::Order;
-    static constexpr size_t Space = SpaceObj::Space; 
+    static constexpr SpaceType Space = SpaceObj::Space; 
     
     // It is not constant because it depends on the basis functions
     static constexpr bool IsConstant = false;
@@ -67,7 +67,7 @@ public:
     }
 
     template <size_t S = Space>
-    typename std::enable_if<S == SpaceType::Test || S == SpaceType::Trial || S == SpaceType::None, ExpressionValue<Scalar>>::type
+    typename std::enable_if<S == SpaceType::Test || S == SpaceType::Trial || S == SpaceType::None, ExpressionResult<Scalar>>::type
     eval(const index_t k) const
     {
         if (m_matches) {
@@ -76,8 +76,8 @@ public:
         
         // STRUCTURAL ZERO
         // If IDs don't match, we return a Zero.
-        // Assuming ExpressionValue has a constructor for scalar zero or default constructor:
-        return ExpressionValue<Scalar>(0); 
+        // Assuming ExpressionResult has a constructor for scalar zero or default constructor:
+        return ExpressionResult<Scalar>(0); 
     }
 
 /*     // 3. STRUCTURAL INFO

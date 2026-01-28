@@ -19,15 +19,16 @@ namespace Expr
 {
 
 // --- Expression Traits for OuterProductExpression ---
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 struct ExpressionTraits<OuterProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
     typedef _LhsExpr LhsType;
     typedef _RhsExpr RhsType;
     typedef typename ExpressionTraits<_LhsExpr>::Scalar Scalar;
     static constexpr size_t Order = ExpressionTraits<_LhsExpr>::Order + 1;
-    static constexpr size_t Space = (SpaceType::None == _LhsSpace && SpaceType::None == _RhsSpace) ? SpaceType::None :
-                                    (SpaceType::None != _LhsSpace) ? _LhsSpace : _RhsSpace;
+    static constexpr SpaceType Space = (_LhsSpace != SpaceType::None && _RhsSpace != SpaceType::None && _LhsSpace != _RhsSpace) 
+                                   ? SpaceType::Both
+                                   : ((_LhsSpace != SpaceType::None) ? _LhsSpace : _RhsSpace);
     static constexpr size_t Deriv = (ExpressionTraits<_LhsExpr>::Deriv > ExpressionTraits<_RhsExpr>::Deriv) ? 
                                      ExpressionTraits<_LhsExpr>::Deriv : ExpressionTraits<_RhsExpr>::Deriv;
     static constexpr bool IsConstant = ExpressionTraits<_LhsExpr>::IsConstant && ExpressionTraits<_RhsExpr>::IsConstant;
@@ -36,15 +37,37 @@ struct ExpressionTraits<OuterProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _R
 // --- OuterProductExpression with unified class using enable_if on eval() ---
 
 // Unified primary template (handles all Space combinations)
-template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, size_t _LhsSpace, size_t _RhsSpace>
+template <typename _LhsExpr, typename _RhsExpr, size_t _LhsOrder, size_t _RhsOrder, enum SpaceType _LhsSpace, enum SpaceType _RhsSpace>
 class OuterProductExpression
  : public BinaryOperator<OuterProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>
 {
     using Base = BinaryOperator<OuterProductExpression<_LhsExpr, _RhsExpr, _LhsOrder, _RhsOrder, _LhsSpace, _RhsSpace>>;
+
+    static_assert(_LhsSpace == _RhsSpace || 
+                  _LhsSpace == SpaceType::None || 
+                  _RhsSpace == SpaceType::None ||
+                  (_LhsSpace == SpaceType::Test && _RhsSpace == SpaceType::Trial) ||
+                  (_LhsSpace == SpaceType::Trial && _RhsSpace == SpaceType::Test),
+                  "OuterProductExpression requires compatible spaces: same space, one None, or Test×Trial combination.");
 public:
     using Scalar = typename Base::Scalar;
     OuterProductExpression(const _LhsExpr& lhs, const _RhsExpr& rhs) : Base(lhs, rhs)
     {
+        // Space consistency checks (runtime to check space ID)
+        // If two spaces of the same type are used, they must be identical
+        if (_LhsSpace==_RhsSpace)
+        {
+            if (_LhsSpace == SpaceType::Trial)
+                GISMO_ASSERT(lhs.trial()==rhs.trial(),"OuterProductExpression requires both operands to have the same trial space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+            else if (_LhsSpace == SpaceType::Test)
+                GISMO_ASSERT(lhs.test()==rhs.test(),"OuterProductExpression requires both operands to have the same test space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+        }
+        else if (_LhsSpace==SpaceType::Both && _RhsSpace==SpaceType::Both)
+        {
+            GISMO_ASSERT(lhs.test()==rhs.test(),"OuterProductExpression requires both operands to have the same test space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+            GISMO_ASSERT(lhs.trial()==rhs.trial(),"OuterProductExpression requires both operands to have the same trial space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+        }
+
         this->sizes_[0] = lhs.sizes()[0];
         this->sizes_[1] = rhs.sizes()[0];
     }
@@ -54,18 +77,18 @@ public:
     // --- eval() specialization 1: Space=None ---
     template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
     typename std::enable_if<LS == SpaceType::None && RS == SpaceType::None,
-                            ExpressionValue<Scalar>>::type
+                            ExpressionResult<Scalar>>::type
     eval(const index_t k) const
     {
-        ExpressionValue<Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<Scalar> rhs_val = this->rhs_expr_.eval(k);
+        ExpressionResult<Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionResult<Scalar> rhs_val = this->rhs_expr_.eval(k);
 
         GISMO_ASSERT(lhs_val.rowCardinality() == 1 && lhs_val.colCardinality() == 1,
                     "OuterProductExpression (None,None): Expected scalar cardinality");
         GISMO_ASSERT(rhs_val.rowCardinality() == 1 && rhs_val.colCardinality() == 1,
                     "OuterProductExpression (None,None): Expected scalar cardinality");
         
-        ExpressionValue<Scalar> result(1, 1);
+        ExpressionResult<Scalar> result(1, 1);
         gsMatrix<Scalar> lhs_mat = lhs_val(0, 0);
         gsMatrix<Scalar> rhs_mat = rhs_val(0, 0);
         GISMO_ASSERT(lhs_mat.rows()==1 || lhs_mat.cols()==1,"lhs should be a vector");
@@ -79,17 +102,17 @@ public:
     // --- eval() specialization 2: Space=Test ---
     template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
     typename std::enable_if<LS == SpaceType::Test && RS == SpaceType::Test,
-                            ExpressionValue<Scalar>>::type
+                            ExpressionResult<Scalar>>::type
     eval(const index_t k) const
     {
-        ExpressionValue<Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<Scalar> rhs_val = this->rhs_expr_.eval(k);
+        ExpressionResult<Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionResult<Scalar> rhs_val = this->rhs_expr_.eval(k);
 
         GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
                     lhs_val.colCardinality() == rhs_val.colCardinality(),
                     "OuterProductExpression (Test,Test): Cardinality mismatch");
         
-        ExpressionValue<Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+        ExpressionResult<Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
 
         for (index_t i = 0; i < result.rowCardinality(); ++i)
             for (index_t j = 0; j < result.colCardinality(); ++j)
@@ -109,17 +132,17 @@ public:
     // --- eval() specialization 3: Space=Trial ---
     template <size_t LS = _LhsSpace, size_t RS = _RhsSpace>
     typename std::enable_if<LS == SpaceType::Trial && RS == SpaceType::Trial,
-                            ExpressionValue<Scalar>>::type
+                            ExpressionResult<Scalar>>::type
     eval(const index_t k) const
     {
-        ExpressionValue<Scalar> lhs_val = this->lhs_expr_.eval(k);
-        ExpressionValue<Scalar> rhs_val = this->rhs_expr_.eval(k);
+        ExpressionResult<Scalar> lhs_val = this->lhs_expr_.eval(k);
+        ExpressionResult<Scalar> rhs_val = this->rhs_expr_.eval(k);
 
         GISMO_ENSURE(lhs_val.rowCardinality() == rhs_val.rowCardinality() &&
                     lhs_val.colCardinality() == rhs_val.colCardinality(),
                     "OuterProductExpression (Trial,Trial): Cardinality mismatch");
         
-        ExpressionValue<Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
+        ExpressionResult<Scalar> result(lhs_val.rowCardinality(), lhs_val.colCardinality());
 
         for (index_t i = 0; i < result.rowCardinality(); ++i)
             for (index_t j = 0; j < result.colCardinality(); ++j)
@@ -137,6 +160,68 @@ public:
     }
 
     void print(std::ostream & os) const { os<<this->lhs_expr_<<"\u2297"<<this->rhs_expr_; }
+
+    const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>& trial() const
+    {
+        // Options:
+        // Both Trial: return either lhs or rhs trial space (they are the same, asserted in constructor)
+        // Only Lhs Trial: return lhs trial space
+        // Only Rhs Trial: return rhs trial space
+        // At least one is Both: return the one that is Trial (Both treated as Trial here)
+        // Else: 
+
+        if (_LhsSpace==SpaceType::Trial && _RhsSpace==SpaceType::Trial)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
+        else if (_LhsSpace==SpaceType::Trial)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
+        else if (_RhsSpace==SpaceType::Trial)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->rhs_expr_.trial());
+        else if (_LhsSpace==SpaceType::Both)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
+        else if (_RhsSpace==SpaceType::Both)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->rhs_expr_.trial());
+        else 
+        {
+            // Space flag is not trial or both
+            static_assert(Base::Space!=SpaceType::Trial && Base::Space!=SpaceType::Both, "OuterProductExpression::trial() called on non-Trial space");
+            return static_cast<const SpaceObject<typename Base::Scalar, Base::Space, Base::Order>&>(this->lhs_expr_.trial());
+        }
+    }
+    const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>& test() const
+    {
+        // If the space is Both, we have 3 options: 
+        // - lhs and rhs are Both
+        // - lhs is Both, rhs is None
+        // - rhs is Both, lhs is None
+        // - lhs is Trial, rhs is Test
+        // - lhs is Test, rhs is Trial
+        if (Base::Space==SpaceType::Both)
+        {
+            if (_LhsSpace==SpaceType::Both && _RhsSpace==SpaceType::Both)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+            else if (_LhsSpace==SpaceType::Both)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+            else if (_RhsSpace==SpaceType::Both)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
+            else if (_LhsSpace==SpaceType::Trial && _RhsSpace==SpaceType::Test)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
+            else if (_LhsSpace==SpaceType::Test && _RhsSpace==SpaceType::Trial)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+        }
+        // Else:
+        // - Only Lhs Test: return lhs test space
+        // - Only Rhs Test: return rhs test space
+        // - Both are Test or None: return either lhs or rhs test space (they are the same, asserted in constructor)
+        else 
+        {
+            if (_LhsSpace==SpaceType::Test)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+            else if (_RhsSpace==SpaceType::Test)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
+            else if (_LhsSpace==SpaceType::Test && _RhsSpace==SpaceType::Test)
+                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+        }
+    }
 };
 
 // --- Function overloads
@@ -181,14 +266,14 @@ outer(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 
 
 // Specialization for NullObject 
-template <typename _T, size_t _LhsSpace, size_t _LhsOrder, typename _RhsExpr>
+template <typename _T, enum SpaceType _LhsSpace, size_t _LhsOrder, typename _RhsExpr>
 auto outer(const NullObject<_T, _LhsSpace, _LhsOrder>& /* lhs */, const BaseExpression<_RhsExpr>& /* rhs */)
 -> NullObject<_T, SpaceType::None, 0>
 {
     return NullObject<_T, SpaceType::None, 0>();
 }
 
-template <typename _LhsExpr, typename _T, size_t _RhsSpace, size_t _RhsOrder>
+template <typename _LhsExpr, typename _T, enum SpaceType _RhsSpace, size_t _RhsOrder>
 auto outer(const BaseExpression<_LhsExpr>& /* lhs */, const NullObject<_T, _RhsSpace, _RhsOrder>& /* rhs */)
 -> NullObject<_T, SpaceType::None, 0>
 {
