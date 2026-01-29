@@ -96,7 +96,6 @@ public:
 
 
     /// See \ref gsFunction for more documentation
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
 
     /// See \ref gsFunction for more documentation
@@ -196,7 +195,6 @@ public:
 
 
 
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsDebugVar(m_functions.front());

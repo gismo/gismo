@@ -112,7 +112,6 @@ public:
      * column of \em u represents the result of the function at the
      * respective valuation point.
      */
-    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const = 0;
 
     /// Evaluate the function for component \a comp in the target dimension at points \a u into \a result.

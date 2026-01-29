@@ -308,7 +308,7 @@ public:
         return result;
     }
 
-    gsSparseMatrix<T> toSparseMatrix() const
+gsSparseMatrix<T> toSparseMatrix() const
     {
         gsSparseMatrix<T> rvo;
         toSparseMatrix_into(rvo);

@@ -49,7 +49,6 @@ public:
 
     GISMO_CLONE_FUNCTION(gsAbsError)
 
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> tmp;
@@ -104,7 +103,6 @@ public:
 
     GISMO_CLONE_FUNCTION(gsGradientField)
 
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> tmp;
@@ -148,7 +146,6 @@ public:
 
     GISMO_CLONE_FUNCTION(gsJacDetField)
 
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         result.resize(1, u.cols() );
@@ -192,7 +189,6 @@ public:
 
     GISMO_CLONE_FUNCTION(gsNormalField)
 
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         const short_t ParDim = m_geo.parDim();
@@ -253,7 +249,6 @@ public:
 
     GISMO_CLONE_FUNCTION(gsParamField)
 
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { result = u; }
 
@@ -294,7 +289,6 @@ public:
 
     GISMO_CLONE_FUNCTION(gsPatchIdField)
 
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     { 
         result.setZero(2, u.cols() );

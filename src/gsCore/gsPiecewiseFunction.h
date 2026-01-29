@@ -151,7 +151,6 @@ public:
         m_funcs.clear();
     }
 
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>&, gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION }
 

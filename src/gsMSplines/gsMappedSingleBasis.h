@@ -155,7 +155,6 @@ public:
     }
 
     /// Evaluates the non-zero basis functions at value u.
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override
     {
         // m_basis->evalGlobal_into(m_index,u,result);

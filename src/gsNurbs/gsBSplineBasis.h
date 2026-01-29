@@ -332,7 +332,6 @@ public:
     index_t twin(index_t i) const ;
 
     // Look at gsBasis class for a description
-    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description

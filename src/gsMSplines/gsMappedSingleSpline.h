@@ -82,7 +82,6 @@ public:
     { return m_spline->m_global.cols(); }
 
     /// Evaluates the non-zero spline functions at value u.
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override
     {
         // m_spline->evalGlobal_into(m_index,u,result);

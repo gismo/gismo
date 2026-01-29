@@ -36,7 +36,6 @@ class gsMobiusMap : public gsFunction<T>
 
   short_t targetDim() const override { return 2; }
 
-  GISMO_DEVICE_FUNCTION
   void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
   {
     result.resize(2, u.cols());

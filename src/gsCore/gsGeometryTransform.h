@@ -63,7 +63,6 @@ public:
 
     gsMatrix<T> support() const { return m_geo->support(); }
 
-    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;

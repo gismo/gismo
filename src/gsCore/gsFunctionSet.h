@@ -220,7 +220,6 @@ public:
 
 public:
 
-    GISMO_DEVICE_FUNCTION
     virtual ~gsFunctionSet();
 
 #ifdef __DOXYGEN__
@@ -301,7 +300,6 @@ public:
        @param u
        @param result
     */
-    GISMO_DEVICE_FUNCTION
     virtual void eval_into      (const gsMatrix<T>  & u, gsMatrix<T> &result) const;
 
     /**

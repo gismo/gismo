@@ -136,6 +136,7 @@ public:  // Solvers related to gsMatrix
 
 public:
 
+    GISMO_DEVICE_FUNCTION
     gsMatrix() { }
 
     gsMatrix(const Base& a) ;

@@ -68,7 +68,6 @@ public:
     GISMO_CLONE_FUNCTION(gsGeometrySlice)
 
     /// \brief Gives back the values of this slice at points \a u in \a result
-    GISMO_DEVICE_FUNCTION
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         gsMatrix<T> fullU;

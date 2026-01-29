@@ -91,7 +91,6 @@ public:
     
     virtual short_t domainDim() const override;
     virtual short_t targetDim() const override;
-    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
     virtual void eval_component_into(const gsMatrix<T>& u,
                                      const index_t comp,

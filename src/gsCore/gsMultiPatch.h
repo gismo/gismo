@@ -158,7 +158,6 @@ public:
                   const std::vector<boundaryInterface>& interfaces );
 
     /// Destructor
-    GISMO_DEVICE_FUNCTION
     ~gsMultiPatch();
 
     GISMO_CLONE_FUNCTION(gsMultiPatch)

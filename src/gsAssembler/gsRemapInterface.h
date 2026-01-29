@@ -121,7 +121,6 @@ public:
     ///
     /// Interfaces map \f$ \widehat \Gamma_1 \rightarrow \widehat \Gamma_2 \f$ that represents
     /// \f$ G_2^{-1} \circ G_1 \f$
-    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
 
     /// Returns parameter dimension of the domains

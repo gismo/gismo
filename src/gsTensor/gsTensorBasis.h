@@ -59,7 +59,6 @@ public:
 
     gsTensorBasis() : m_bases() { }
 
-    GISMO_DEVICE_FUNCTION
     virtual ~gsTensorBasis() { freeAll(m_bases, m_bases+d); }
 
     gsTensorBasis( const gsTensorBasis & o);
@@ -245,7 +244,6 @@ public:
     // see gsBasis for doxygen documentation
     // Evaluates the non-zero basis functions (and optionally their
     // first k derivatives) at value u into result
-    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     // see gsBasis for doxygen documentation
@@ -254,7 +252,6 @@ public:
     virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     /// Evaluate an element of the space given by coefs at points u
-    GISMO_DEVICE_FUNCTION
     virtual void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
 
     // see gsBasis for doxygen documentation
@@ -691,7 +688,6 @@ public:
     }
 
     // Destructor
-    GISMO_DEVICE_FUNCTION
     virtual ~gsTensorBasis()
     {
         m_address = NULL;
