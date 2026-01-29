@@ -25,8 +25,8 @@ int main(int argc, char** argv)
     }
 
     auto subdiv = gsFreeformSubdivision();
-    // subdiv.subdivide(mesh);
     subdiv.make_c1(mesh);
+    subdiv.subdivide(mesh);
 
     gsMultiPatch<> patch;
 

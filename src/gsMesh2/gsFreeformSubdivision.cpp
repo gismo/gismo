@@ -11,8 +11,6 @@
     Author(s): L. Mussmaecher
 */
 
-#include "gsCore/gsDebug.h"
-#include <cstddef>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
@@ -32,14 +30,16 @@ namespace gismo
         }
         assert(points.size() == 4);
 
-        // Choose the control points (25 total) as appropriate linear combinations of the corners.
+        size_t n = control_points.cols();
+
+        // Choose the control points (n*n=25 total) as appropriate linear combinations of the corners.
         for(int i = 0; i<control_points.rows(); i++){
           for(int j = 0; j<control_points.cols(); j++){
             this->control_points(i,j) = 
-                points[0] * (4-j) * (4-i)/16. +
-                points[1] * j * (4-i)/16. +
-                points[3] * (4-j) * i/16. +
-                points[2] * j * i/16.;
+                points[0] * ((n-1)-j) * ((n-1)-i)/(n-1)/(n-1) +
+                points[1] * j * ((n-1)-i)/(n-1)/(n-1) +
+                points[3] * ((n-1)-j) * i/(n-1)/(n-1) +
+                points[2] * j * i/(n-1)/(n-1);
           }
         }
       
@@ -89,16 +89,17 @@ namespace gismo
  
     gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData::patch()
     {
+      size_t n = control_points.cols();
       // Create a spline basis for a normal bezier patch.
-      gsKnotVector<> kv1(0, 1, 0, 5);
-      gsKnotVector<> kv2(0, 1, 0, 5);
+      gsKnotVector<> kv1(0, 1, 0, n);
+      gsKnotVector<> kv2(0, 1, 0, n);
       gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
       // Create a coefficient matrix out of the control points.
-      gsMatrix<> coeffs(25,3);
+      gsMatrix<> coeffs(n * n,3);
       for(int i = 0; i < control_points.size(); ++i){
           //Technically, you could use just [i] here since the elements of a matrix are layed out row-wise, but this might be clearer to read.
-          size_t i_row = i % 5;
-          size_t i_col = i / 5;
+          size_t i_row = i % n;
+          size_t i_col = i / n;
           coeffs(i, 0) = control_points(i_row, i_col).x();
           coeffs(i, 1) = control_points(i_row, i_col).y();
           coeffs(i, 2) = control_points(i_row, i_col).z();
@@ -112,29 +113,94 @@ namespace gismo
     void gsFreeformSubdivision::subdivide(gsSurfMesh &mesh)
     {
       // Split each face into 4 and get info about the way they were split.
-      std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> x = mesh.quad_split();
+      std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> face_map = mesh.quad_split();
 
       // Get patch data
       gsProperty<gsFreeformFaceData> patch_data(mesh.get_face_property<gsFreeformFaceData>("bezier_points"));
 
-      // size_t degree(4);
-      // size_t degree_target(degree * 2);
+      // degree
+      size_t n = patch_data[0].control_points.cols() - 1;
 
-      for(auto e : x){
-        // print some info
-        gsInfo << e.first << " -> ";
-        for(auto f : e.second){
-          gsInfo << f << ", ";
+      for(auto e : face_map){
+
+        // DeCasteljau
+        auto patch = patch_data.vector()[e.first.idx()];
+
+        // Create two temporary holders for deCasteljau
+        std::vector<std::vector<gsVector3d<>>> patch_vec;
+        std::vector<std::vector<gsVector3d<>>> patch_vec_2;
+
+        // copy patch data
+        for(int i = 0; i < patch.control_points.rows(); ++i){
+          patch_vec.emplace_back();
+          for(int j = 0; j < patch.control_points.cols(); ++j){
+            patch_vec[i].emplace_back(patch.control_points(i,j));
+          }          
         }
-        gsInfo << "\n";
+
+        // de Casteljau (vertical, n times)
+        for(size_t k = 0; k<n; ++k){
+          // 0th row
+          patch_vec_2.push_back(patch_vec[0]);
+
+          // all the other rows
+          for(size_t i = 0; i+1 < patch_vec.size(); ++i){
+            patch_vec_2.emplace_back();
+            // for each column
+            for(size_t j = 0; j < patch_vec[i].size(); ++j){
+              patch_vec_2[i+1].emplace_back(patch_vec[i][j] * 0.5 + patch_vec[i+1][j] * 0.5);
+            }          
+          }
+
+          // last row
+          patch_vec_2.push_back(patch_vec[patch_vec.size()-1]);
+
+          // put the new vector into the old one, then delete the new one
+          patch_vec = patch_vec_2;
+          patch_vec_2 = std::vector<std::vector<gsVector3d<>>>();
+        }
+
+
+        // de Casteljau (horizontal, n times)
+        for(size_t k = 0; k<n; ++k){
+
+          // for each row
+          for(size_t i = 0; i < patch_vec.size(); ++i){
+            patch_vec_2.emplace_back();
+            // first column
+            patch_vec_2[i].emplace_back(patch_vec[i][0]);
+            // middle columns
+            for(size_t j = 0; j+1 < patch_vec[i].size(); ++j){
+              patch_vec_2[i].emplace_back(patch_vec[i][j] * 0.5 + patch_vec[i][j+1] * 0.5);
+            }          
+            // last column
+            patch_vec_2[i].emplace_back(patch_vec[i][patch_vec[i].size() - 1]);
+          }
+
+          // put the new vector into the old one, then delete the new one
+          patch_vec = patch_vec_2;
+          patch_vec_2 = std::vector<std::vector<gsVector3d<>>>();
+        }
+
+        // now patch_vec is a (2n+1)*(2n+1) matrix of control points
 
         // Correct back references of patch data
+        size_t face_counter(0);
         for(auto f : e.second){
-          patch_data.vector()[f.idx()].face = f;
+          auto data = &patch_data.vector()[f.idx()];
+          data->face = f;
+          for(int i =0; i<data->control_points.rows(); ++i){
+            for(int j =0; j<data->control_points.cols(); ++j){
+              data->control_points(i,j) = patch_vec[
+                i + n * (face_counter % 2)
+              ][
+                j + n * (face_counter / 2) 
+              ];
+            }
+          }
+
+          ++face_counter;
         }
-
-
-        //TODO: insert correct patch data
 
       }
     };
@@ -190,7 +256,6 @@ namespace gismo
             // Store this as the corner control point of the result.
             // To find the correct control point, we take all control points along the halfedge and take the first, since the vertex in question is the from_vertex of the current halfedge.
             *patch->edge_control_points(mesh, v_hedge, 0)[0] = sum/count;
-                gsInfo<<"all down here\n";
         }
         
       } // end for over faces
