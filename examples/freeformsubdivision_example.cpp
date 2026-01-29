@@ -5,7 +5,6 @@
     Author(s): L. Mussmaecher
 */
 
-#include "gsCore/gsDebug.h"
 #include <gsCore/gsMultiPatch.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsMesh2/gsSurfMesh.h>
@@ -26,7 +25,7 @@ int main(int argc, char** argv)
     }
 
     auto subdiv = gsFreeformSubdivision();
-    subdiv.subdivide(mesh);
+    // subdiv.subdivide(mesh);
     subdiv.make_c1(mesh);
 
     gsMultiPatch<> patch;

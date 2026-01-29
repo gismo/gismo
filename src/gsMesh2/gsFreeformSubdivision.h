@@ -16,6 +16,7 @@
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
+#include <vector>
 
 namespace gismo
 {
@@ -26,15 +27,15 @@ namespace gismo
 ///
 ///    V0        E1         V1
 ///      +-----------------+
-///      |  0  1  2  3  4  |
+///      | 00 01 02 03 04  |
 ///      |                 |
-///      |  5  6  7  8  9  |
-///  E0  |                 |  E2
 ///      | 10 11 12 13 14  |
-///      |                 |
-///      | 15 16 17 18 19  |
-///      |                 |
+///  E0  |                 |  E2
 ///      | 20 21 22 23 24  |
+///      |                 |
+///      | 30 31 32 33 34  |
+///      |                 |
+///      | 40 41 42 43 44  |
 ///      +-----------------+
 ///    V3         E3        V2
 ///
@@ -50,16 +51,9 @@ typedef gsSurfMesh::Face Face;
 typedef gsSurfMesh::Halfedge Halfedge;
 typedef gsSurfMesh::Edge Edge;
 
-private: // consts that tell us about the orientation of the data
-    // The control points for each (half)edge.
-    const static std::vector<std::array<size_t, 5>> gs_FREEFORMDATA_EDGES;
-
-    // The control points for each (half)edge, one layer farther in.
-    const static std::vector<std::array<size_t, 3>> gs_FREEFORMDATA_INNEREDGES;
-
 private: // members
     // The 25 bezier control points.
-    std::array<gismo::gsVector3d<real_t>, 25> control_points;
+    gsMatrix<gismo::gsVector3d<real_t>, 5, 5> control_points;
     // A back reference to the face this data belongs to.
     Face face;
 
@@ -79,32 +73,16 @@ public: // Contructors
 
 public: // Control point accessors
 
-    /// Returns an array containing the 5 points on the given edge of this face, ordered in the direction of the half edge.
-    /// If the given half-edge does not belong to this face, this will fail in debug mode and return an array of zero vectors.
-    std::array<gismo::gsVector3d<>, 5> edge_control_points(
+    /// Returns a vector containing the control points along to a halfedge, `inset` rows of control points offset to the middle, and always in the same direction as the halfedge.
+    /// I.e. with insert 0, returns the entire row or column on this halfedge.
+    /// I.e. with insert 1, one row/column farther in and without the first and last element.
+    /// I.e. with insert 2, two rows/columns farther in and without the first, second, second-to-last and last element.
+    /// If the given half edge does not belong to this face, this will fail in debug mode and return an empty vector.
+    /// If the inset is to large, this will return an empty vector.
+    std::vector<gsVector3d<>*> edge_control_points(
       const gsSurfMesh& mesh,
-      Halfedge hedge
-    );
-
-    /// Returns an array containing the 3 points on the given edge one layer in on this face, ordered in the direction of the half edge.
-    /// If the given half-edge does not belong to this face, this will fail in debug mode and return an array of zero vectors.
-    std::array<gismo::gsVector3d<>, 3> edge_inner_control_points(
-      const gsSurfMesh& mesh,
-      Halfedge hedge
-    );
-
-    /// Returns the corner point on the given vertex of this face.
-    /// If the given vertex does not belong to this face, this will fail in debug mode and return an array of zero vectors.
-    gismo::gsVector3d<> vertex_control_point(
-      const gsSurfMesh& mesh,
-      Vertex v
-    );
-
-    /// Returns the corner point on the given vertex of this face, one layer in.
-    /// If the given vertex does not belong to this face, this will fail in debug mode and return an array of zero vectors.
-    gismo::gsVector3d<> vertex_inner_control_point(
-      const gsSurfMesh& mesh,
-      Vertex v
+      Halfedge hedge,
+      size_t inset
     );
 
 public: // Conversions
