@@ -883,6 +883,8 @@ quad_split(Face f, Vertex v, Halfedge s)
     set_halfedge(v, e0);
     set_face(e0, f);
     set_next_halfedge(e0, h);//sets next(e0) and also prev(h)
+    // set this to the halfedge of f. This ensures that the first halfedge of each resulting face is always the one facing outwards from the central vertex.
+    set_halfedge(f, e0);
 
     Halfedge e = new_edge(from_vertex(hnext),v);
     set_face(e, f);
@@ -907,6 +909,7 @@ quad_split(Face f, Vertex v, Halfedge s)
         f = new_face();
         // Remember the newly created face.
         res.emplace_back(f);
+
         e = ( hnext!=s ? new_edge(from_vertex(hnext),v) :
               opposite_halfedge(halfedge(v)) );
         //std::cout<< "e: "<< from_vertex(e) <<"->"<<to_vertex(e) <<std::endl;
@@ -976,6 +979,7 @@ std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> gsSurfMesh::quad_split
         v = gsSurfMesh::Vertex(fnv + (i++));//face vertex id ?
         //Start from an original vertex
         auto fv = vertices(fit).begin();
+        // ensure that the halfedge passed in starts at a previously existing vertex, not one of the edge-halfing ones
         if ((*fv).idx() >= env) ++fv; //todo: add -> operator
         //assert ( (*fv).idx() < nv )
         res.emplace(fit, quad_split(fit, v, fv.he()));

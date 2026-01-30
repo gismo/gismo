@@ -1548,6 +1548,7 @@ public:
     /// \a s of the face
     /// \a f is assumed to have 8 vertices, and contains halfedge \a s
     /// Returns a map showing which 4 new faces each old face was split into.
+    /// The first half-edge of each will be the one pointing outwards from the v.
     std::vector<Face> quad_split(Face f, Vertex v, Halfedge s);
     std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> quad_split();
     
