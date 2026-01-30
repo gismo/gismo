@@ -85,6 +85,12 @@ public: // Control point accessors
       size_t inset
     );
 
+    gsVector3d<>* vertex_control_point(
+      const gsSurfMesh& mesh,
+      Vertex v,
+      size_t inset
+    );
+
 public: // Conversions
     /// Returns a Bezier patch corresponding to these control points.
     gismo::gsTensorBSpline<2, real_t> patch();
@@ -100,6 +106,13 @@ public: // Constructors
   /// Catmull-Clark has no special options.
   gsFreeformSubdivision() : gsSubdivisionScheme() {}
 
+private:
+  /// Helper function
+  /// Splits the given matrix, interpreted as a control net of a Bezier patch, into two control nets of Bezier patches of equal degree that in their union again form the original net.
+  /// This is done using the algorithm of deCasteljau.
+  /// The net is split horizontally, in the 'row' direction of the matrix.
+  std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 2> deCasteljau(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& patch_vec);
+
 public:
   void subdivide(gsSurfMesh &mesh) override;
   // gsSubdivisionMeshValidity valid_mesh(const gsSurfMesh &mesh) override;
@@ -108,6 +121,8 @@ public:
   void make_c1(gsSurfMesh &mesh);
   
 };//namespace internal
+
+gsMatrix<gsVector3d<>, Dynamic, Dynamic> rotate(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat);
 
 } // namespace gismo
 

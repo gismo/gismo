@@ -11,6 +11,7 @@
     Author(s): L. Mussmaecher
 */
 
+#include "gsCore/gsDebug.h"
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
@@ -43,6 +44,19 @@ namespace gismo
           }
         }
       
+    }
+
+    gsVector3d<>* gsFreeformFaceData::vertex_control_point(
+      const gsSurfMesh& mesh,
+      Vertex v,
+      size_t inset
+    ){
+      // find a halfedge on the face starting on this vertex
+      Halfedge hedge;
+      for(auto he : mesh.halfedges(face)){
+          if(mesh.from_vertex(he) == v) hedge = he;
+      }
+      return gsFreeformFaceData::edge_control_points(mesh, hedge, inset)[0];
     }
 
     std::vector<gsVector3d<>*> gsFreeformFaceData::edge_control_points(
@@ -109,101 +123,126 @@ namespace gismo
     }
 
 
+    std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 2> gsFreeformSubdivision::deCasteljau(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& patch_vec){
+
+      int n = patch_vec.cols();
+
+      // Create the 3d data vector and ensure it has the right size.
+      std::vector<gsMatrix<gsVector3d<>, Dynamic, Dynamic>> points;
+      points.resize(n);
+      // The first layer is just the starting points
+      points[0] = patch_vec;
+      // each further layer is one shorter than the previous, but just as wide.
+      for(int k = 1; k < n; ++k){
+        points[k].resize(n-k, n);
+      }
+
+      // now construct each layer from the previous one by linear combination of adjacent points into the next layer.
+      for(int k = 1; k <= n; ++k){
+        for(int i = 0; i < n-k; ++i){
+          for(int j = 0; j < n; ++j){
+            points[k](i,j) = (points[k-1](i,j) + points[k-1](i+1,j)) * 0.5;
+          }
+        }
+      }
+
+      // finally collect the first vertical layer and last-in-each-row diagonal layer into two result matrices.
+      gsMatrix<gsVector3d<>, Dynamic, Dynamic> result1;
+      gsMatrix<gsVector3d<>, Dynamic, Dynamic> result2;
+      result1.resize(n,n);
+      result2.resize(n,n);
+
+      for(int i = 0; i<n; ++i){
+        for(int j = 0; j<n; ++j){
+          result1(i,j) = points[i](0,j);
+          result2(i,j) = points[(n-1)-i](i,j);
+        }
+      }
+
+      return {result1, result2};
+    }
     
     void gsFreeformSubdivision::subdivide(gsSurfMesh &mesh)
     {
+      // Remember the first vertex of each face (this is where the patches are oriented on).
+      std::vector<Vertex> first_vertices;
+      for(Face f : mesh.faces()){
+        first_vertices.emplace_back(mesh.to_vertex(mesh.halfedge(f)));
+      }
+
       // Split each face into 4 and get info about the way they were split.
       std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> face_map = mesh.quad_split();
 
       // Get patch data
       gsProperty<gsFreeformFaceData> patch_data(mesh.get_face_property<gsFreeformFaceData>("bezier_points"));
 
-      // degree
-      size_t n = patch_data[0].control_points.cols() - 1;
+      // Now fix the data on each face.
+      for(auto parent_to_children_faces : face_map){
+        // Get the patch data and store it in a temporary dynamic 2d array.
+        gsMatrix<gsVector3d<>, Dynamic, Dynamic> patch(patch_data.vector()[parent_to_children_faces.first.idx()].control_points);
 
-      for(auto e : face_map){
+        // now patch is a (n+1)*(n+1) matrix of control points (degree n)
+        // Perform deCasteljau once to divide into two (n+1)*(n+1) matrices of control points.
+        auto cjtemp = this->deCasteljau(patch);
 
-        // DeCasteljau
-        auto patch = patch_data.vector()[e.first.idx()];
+        // Perform deCasteljau again on both of them, to get 4 (n+1)*(n+1) matrices of control points
+        // In between, we need to transpose so we now divide in the other direction.
+        auto cj12 = this->deCasteljau(cjtemp[0].transpose());
+        auto cj34 = this->deCasteljau(cjtemp[1].transpose());
 
-        // Create two temporary holders for deCasteljau
-        std::vector<std::vector<gsVector3d<>>> patch_vec;
-        std::vector<std::vector<gsVector3d<>>> patch_vec_2;
+        // re-transpose
+        cj12[0] = cj12[0].transpose().eval();
+        cj12[1] = cj12[1].transpose().eval();
+        cj34[0] = cj34[0].transpose().eval();
+        cj34[1] = cj34[1].transpose().eval();
 
-        // copy patch data
-        for(int i = 0; i < patch.control_points.rows(); ++i){
-          patch_vec.emplace_back();
-          for(int j = 0; j < patch.control_points.cols(); ++j){
-            patch_vec[i].emplace_back(patch.control_points(i,j));
-          }          
-        }
+        // rotate
+        cj34[1] = rotate(cj34[1]);
+        cj34[0] = rotate(rotate(cj34[0]));
+        cj12[0] = rotate(rotate(rotate(cj12[0])));
 
-        // de Casteljau (vertical, n times)
-        for(size_t k = 0; k<n; ++k){
-          // 0th row
-          patch_vec_2.push_back(patch_vec[0]);
+        // Collate all these matrices in the correct order into an array.
+        std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 4> arr = {cj12[0], cj12[1], cj34[1], cj34[0]};
 
-          // all the other rows
-          for(size_t i = 0; i+1 < patch_vec.size(); ++i){
-            patch_vec_2.emplace_back();
-            // for each column
-            for(size_t j = 0; j < patch_vec[i].size(); ++j){
-              patch_vec_2[i+1].emplace_back(patch_vec[i][j] * 0.5 + patch_vec[i+1][j] * 0.5);
-            }          
-          }
-
-          // last row
-          patch_vec_2.push_back(patch_vec[patch_vec.size()-1]);
-
-          // put the new vector into the old one, then delete the new one
-          patch_vec = patch_vec_2;
-          patch_vec_2 = std::vector<std::vector<gsVector3d<>>>();
-        }
-
-
-        // de Casteljau (horizontal, n times)
-        for(size_t k = 0; k<n; ++k){
-
-          // for each row
-          for(size_t i = 0; i < patch_vec.size(); ++i){
-            patch_vec_2.emplace_back();
-            // first column
-            patch_vec_2[i].emplace_back(patch_vec[i][0]);
-            // middle columns
-            for(size_t j = 0; j+1 < patch_vec[i].size(); ++j){
-              patch_vec_2[i].emplace_back(patch_vec[i][j] * 0.5 + patch_vec[i][j+1] * 0.5);
-            }          
-            // last column
-            patch_vec_2[i].emplace_back(patch_vec[i][patch_vec[i].size() - 1]);
-          }
-
-          // put the new vector into the old one, then delete the new one
-          patch_vec = patch_vec_2;
-          patch_vec_2 = std::vector<std::vector<gsVector3d<>>>();
-        }
-
-        // now patch_vec is a (2n+1)*(2n+1) matrix of control points
-
-        // Correct back references of patch data
-        size_t face_counter(0);
-        for(auto f : e.second){
-          auto data = &patch_data.vector()[f.idx()];
-          data->face = f;
-          for(int i =0; i<data->control_points.rows(); ++i){
-            for(int j =0; j<data->control_points.cols(); ++j){
-              data->control_points(i,j) = patch_vec[
-                i + n * (face_counter % 2)
-              ][
-                j + n * (face_counter / 2) 
-              ];
+        // find the new face that contains the top_left vertex
+        Vertex first_vertex = first_vertices[parent_to_children_faces.first.idx()];
+        size_t first_face(0);
+        for(size_t i = 0; i < 4; ++i){
+          Face f(parent_to_children_faces.second[i]);
+          for(Vertex v : mesh.vertices(f)){
+            if(v == first_vertex){
+              first_face = i;
             }
           }
+        }
 
-          ++face_counter;
+        // Collate the faces into a correctly ordered array as well.
+        std::array<Face, 4> children_faces_ordered;
+        for(int i = 0; i < 4; ++i){
+          children_faces_ordered[i] = parent_to_children_faces.second[(i + first_face)%4];
+        }
+
+        // Correct back references of patch data and give them the correct control points.
+        for(size_t f = 0; f < 4; ++f){
+          auto data = &patch_data.vector()[children_faces_ordered[f].idx()];
+          data->face = children_faces_ordered[f];
+          data->control_points = arr[f];
         }
 
       }
+
     };
+
+    gsMatrix<gsVector3d<>, Dynamic, Dynamic> rotate(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat){
+      gsMatrix<gsVector3d<>, Dynamic, Dynamic> res;
+      res.resize(mat.cols(), mat.rows());
+      for(int i = 0; i<res.rows(); ++i){
+        for(int j = 0; j<res.cols(); ++j){
+          res(i,j) = mat(j, mat.cols()-1-i);
+        }
+      }
+      return res;
+    }
 
     void gsFreeformSubdivision::make_c1(gsSurfMesh &mesh)
     {
