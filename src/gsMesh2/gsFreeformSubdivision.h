@@ -45,11 +45,11 @@ class GISMO_EXPORT gsFreeformFaceData {
 
 friend class gsFreeformSubdivision;
 
-typedef gsSurfMesh::Point Point;
-typedef gsSurfMesh::Vertex Vertex;
-typedef gsSurfMesh::Face Face;
-typedef gsSurfMesh::Halfedge Halfedge;
-typedef gsSurfMesh::Edge Edge;
+using Point = gsSurfMesh::Point;
+using Vertex = gsSurfMesh::Vertex;
+using Face = gsSurfMesh::Face;
+using Halfedge = gsSurfMesh::Halfedge;
+using Edge = gsSurfMesh::Edge;
 
 private: // members
     // The 25 bezier control points.
@@ -74,26 +74,33 @@ public: // Contructors
 public: // Control point accessors
 
     /// Returns a vector containing the control points along to a halfedge, `inset` rows of control points offset to the middle, and always in the same direction as the halfedge.
-    /// I.e. with insert 0, returns the entire row or column on this halfedge.
-    /// I.e. with insert 1, one row/column farther in and without the first and last element.
-    /// I.e. with insert 2, two rows/columns farther in and without the first, second, second-to-last and last element.
+    /// I.e. with inset 0, returns the entire row or column on this halfedge.
+    /// I.e. with inset 1, one row/column farther in and without the first and last element.
+    /// I.e. with inset 2, two rows/columns farther in and without the first, second, second-to-last and last element.
     /// If the given half edge does not belong to this face, this will fail in debug mode and return an empty vector.
-    /// If the inset is to large, this will return an empty vector.
+    /// If the inset is to large (greater than half the size of the control net), this will return an empty vector.
+    /// Pointers returned by this function are valid as long as the underlying mesh remains unchanged and should be regenerated after.
     std::vector<gsVector3d<>*> edge_control_points(
-      const gsSurfMesh& mesh,
+      gsSurfMesh& mesh,
       Halfedge hedge,
       size_t inset
     );
 
+    /// Returns a the control point closest to the given vertex, in the `inset`th outer most layer of the control net.
+    /// I.e. with inset 0, return the correct corner of the control net associated to this vertex.
+    /// I.e. with inset 1, one row & column farther in.
+    /// If the given vertex does not belong to this face, this will fail in debug mode or return a nullpointer.
+    /// If the inset is to large (greater than half the size of the control net), this will return an empty vector.
+    /// Pointers returned by this function are valid as long as the underlying mesh remains unchanged and should be regenerated after.
     gsVector3d<>* vertex_control_point(
-      const gsSurfMesh& mesh,
+      gsSurfMesh& mesh,
       Vertex v,
       size_t inset
-    );
+    ) ;
 
 public: // Conversions
     /// Returns a Bezier patch corresponding to these control points.
-    gismo::gsTensorBSpline<2, real_t> patch();
+    const gismo::gsTensorBSpline<2, real_t> patch() const;
   
 };//namespace internal
 
@@ -110,9 +117,12 @@ private:
   /// Helper function
   /// Splits the given matrix, interpreted as a control net of a Bezier patch, into two control nets of Bezier patches of equal degree that in their union again form the original net.
   /// This is done using the algorithm of deCasteljau.
+  /// The net is assumed to be quadratic in size.
   /// The net is split horizontally, in the 'row' direction of the matrix.
-  std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 2> deCasteljau(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& patch_vec);
+  static std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 2> deCasteljau(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& control_net);
 
+  /// Rotates a matrix around its center, returning the rotated matrix.
+  static gsMatrix<gsVector3d<>, Dynamic, Dynamic> rotate(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat);
 public:
   void subdivide(gsSurfMesh &mesh) override;
   // gsSubdivisionMeshValidity valid_mesh(const gsSurfMesh &mesh) override;
@@ -122,7 +132,6 @@ public:
   
 };//namespace internal
 
-gsMatrix<gsVector3d<>, Dynamic, Dynamic> rotate(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat);
 
 } // namespace gismo
 
