@@ -3,7 +3,7 @@
     @brief Provides declaration of THBSplineBasis class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -19,7 +19,7 @@
 
 
 namespace gismo
-{  
+{
 
 /**
  * \brief
@@ -35,14 +35,16 @@ namespace gismo
 template<short_t d, class T, bool Trunc>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
+    template<short_t D, class U> friend class gsTHBSplineBasisOpposite;
+
 public:
     /// @brief Associated geometry type.
     typedef typename util::conditional<Trunc, gsTHBSpline<d,T>, gsHBSpline<d,T>>::type GeometryType;
-    
+
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
 
     typedef typename gsHTensorBasis<d,T>::cmatIterator cmatIterator;
-    
+
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
 
     typedef typename gsHTensorBasis<d,T>::point point;
@@ -68,7 +70,7 @@ public:
 
     // axis aligned bounding boxes in parameter domain
     // the structure is [levels [ boxes [ low_x low_y upp_x upp_y] ] ]
-    // where the box is define by lower left corner (low_x, low_y) and upper right 
+    // where the box is define by lower left corner (low_x, low_y) and upper right
     // corner (upp_x, upp_y)
     typedef typename std::vector< std::vector< std::vector<index_t> > > AxisAlignedBoundingBox;
 
@@ -76,7 +78,7 @@ public:
 
     // trimming curves in parameter domain
     // the stucture is [level [connected componenet [ line [ segments [ x y z w ] ] ] ] ],
-    // where x y z w describes segment from (x, y) to (z, w), and first line 
+    // where x y z w describes segment from (x, y) to (z, w), and first line
     // indicates outer loop and next line describes holes
     typedef typename std::vector< std::vector< std::vector< std::vector< std::vector<T> > > > > TrimmingCurves;
 
@@ -85,18 +87,18 @@ public:
     gsTHBSplineBasis()
     { if (Trunc) representBasis(); }
 
-    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
-                     const std::vector<index_t> & boxes) 
+    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis,
+                     const std::vector<index_t> & boxes)
     : gsHTensorBasis<d,T>(tbasis, boxes)
     { if (Trunc) representBasis(); }
 
-    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
+    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis,
                      gsMatrix<T> const & boxes)
-    : gsHTensorBasis<d,T>(tbasis, boxes) 
+    : gsHTensorBasis<d,T>(tbasis, boxes)
     { if (Trunc) representBasis(); }
 
-    gsTHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
-                      gsMatrix<T> const & boxes, 
+    gsTHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
+                      gsMatrix<T> const & boxes,
                       const std::vector<index_t> & levels)
     : gsHTensorBasis<d,T>(tbasis, boxes, levels)
     { if (Trunc) representBasis(); }
@@ -145,7 +147,7 @@ public:
 
     // Look at gsBasis class for documentation
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
- 
+
     // Look at gsBasis class for documentation
     void derivSingle_into(index_t i,
                              const gsMatrix<T> & u,
@@ -372,22 +374,22 @@ public:
     using gsBasis<T>::eval_into;
 
     /// @brief Returns the number of truncated basis functions
-    unsigned numTruncated() const
+    virtual unsigned numTruncated() const
     { return m_presentation.size(); }
 
     inline bool isTruncated(unsigned i) const
     { return Trunc && (this->m_is_truncated[i] != -1); }
 
     /// @brief Returns an iterator to the representation of the first truncated basis function
-    typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedBegin() const
+    virtual typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedBegin() const
     { return m_presentation.begin(); }
 
     /// @brief Returns an iterator past the last truncated basis function
-    typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedEnd() const
+    virtual typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedEnd() const
     { return m_presentation.end(); }
 
     /// @brief Returns sparse representation of the i-th basis function.
-    const gsSparseVector<T>& getCoefs(unsigned i) const
+    virtual const gsSparseVector<T>& getCoefs(unsigned i) const
     {
         if (!isTruncated(i))
         {
@@ -418,7 +420,6 @@ private:
     /// @brief Computes and saves representation of all basis functions.
     void representBasis(); // rename: precompute coeffs
 
-
     /// @brief Computes representation of j-th basis function on pres_level and
     /// saves it.
     ///
@@ -426,12 +427,10 @@ private:
     /// @param pres_level levet at which we want to present j-th basis function
     /// @param finest_low "low index" of support of j-th basis function (finest grid)
     /// @param finest_high "high index" of support of j-th basis function (finest grid)
-    void _representBasisFunction(const unsigned j,
+    virtual void _representBasisFunction(const unsigned j,
                                 const unsigned pres_level,
                                 const gsVector<index_t, d>& finest_low,
                                 const gsVector<index_t, d>& finest_high);
-
-
 
     /// @brief Saves a presentation of the j-th basis function. Presentation is given
     /// by the coefficients coefs. The coefficients corresponds to the
@@ -443,12 +442,13 @@ private:
     /// @param pres_level presentation level
     /// @param finest_low "low index" of support of j-th basis function
     ///        (at the finest grid)
-    void _saveNewBasisFunPresentation(const gsMatrix<T>& coefs,
+    virtual void _saveNewBasisFunPresentation(const gsMatrix<T>& coefs,
                                       const gsVector<index_t, d>& act_size_of_coefs,
                                       const unsigned j,
                                       const unsigned pres_level,
                                       const gsVector<index_t, d>& finest_low);
 
+private:
 
 
     /// @brief Computes tensor index of a basis function on a finer level (new_level)
@@ -595,7 +595,7 @@ public:
 
     /// @brief Decomposes domain of the THB-Spline-Basis into partitions.
     ///
-    /// Each partiotion describes an area of the same level, this area is contained in 
+    /// Each partiotion describes an area of the same level, this area is contained in
     /// a bounding box (boundaryAABB) and has its own trimming curves (trimmCurves).
     /// Look above for the definition of types (AxisAlignedBoundingBox, TrimmingCurves).
     ///
@@ -619,7 +619,7 @@ private:
     **/
     void update_structure() override
     {
-        gsHTensorBasis<d,T>::update_structure(); 
+        gsHTensorBasis<d,T>::update_structure();
         if (Trunc) representBasis();
     }
 
@@ -635,7 +635,7 @@ private:
       @param[out] lvlCoefs coefficients in tensor-product basis of level \a level
      */
     // todo: rename as: representAtLevel
-    void globalRefinement(const gsMatrix<T> & thbCoefs, int level, 
+    void globalRefinement(const gsMatrix<T> & thbCoefs, int level,
                           gsMatrix<T> & lvlCoefs) const;
 
     gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<index_t> >& old,
@@ -643,26 +643,26 @@ private:
                            const gsSparseMatrix<T,RowMajor> & transfer) const override;
 
     gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
-                                   const std::vector<gsSortedVector<index_t> >& n, 
+                                   const std::vector<gsSortedVector<index_t> >& n,
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const override;
 
     gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
                                    const std::vector<gsSortedVector<index_t> >& n,
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const override;
-    
+
 
     // ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     // Utility functions for decomposeDomain
     // ......................................................................
-    
+
     /// @brief Checks if the first box is completely inside second box.
-    /// 
+    ///
     /// Utility function for the decomposeDomain member function.
     bool isFirstBoxCompletelyInsideSecond(const std::vector<index_t>& firstBox,
 					  const std::vector<index_t>& secondBox) const
     {
 	return secondBox[0] < firstBox[0] && secondBox[1] < firstBox[1] &&
-	       firstBox[2] < secondBox[2] && firstBox[3] < secondBox[3];   
+	       firstBox[2] < secondBox[2] && firstBox[3] < secondBox[3];
     }
 
     /// @brief Checks if the boxes are the same
@@ -674,11 +674,11 @@ private:
 	return firstBox[0] == secondBox[0] && firstBox[1] == secondBox[1] &&
   	       firstBox[2] == secondBox[2] && firstBox[3] == secondBox[3];
     }
-    
+
     /// @brief Breaks the cycles of polylines and returns updated polylines.
     ///
-    /// domainBoundaryParams can return polylines with cycles, this function 
-    /// decomposes the cycles and returns polylines without cycles. Look 
+    /// domainBoundaryParams can return polylines with cycles, this function
+    /// decomposes the cycles and returns polylines without cycles. Look
     /// above for the definition of types (AxisAlignedBoundingBox, TrimmingCurves).
     ///
     /// @param aabb axis aligned bounding boxes each polyline has it own box
@@ -691,15 +691,15 @@ private:
     ///
     /// @param[in] polyline description of polyline
     /// @param[out] pt the point where two cycles meet (if there are two cycles)
-    /// @return the index of the segment with the point 
+    /// @return the index of the segment with the point
     index_t identifyCycle(const std::vector< std::vector< T> >& polyline,
 			  std::pair<T, T>& pt) const;
 
-    
+
     /// @brief Breaks polyline into two parts.
     ///
-    /// Function splits input polyline (with al least two cycles) at given point 
-    /// into two cycles (part1 and part2). 
+    /// Function splits input polyline (with al least two cycles) at given point
+    /// into two cycles (part1 and part2).
     ///
     /// @param[in] polyline input polyline with at least two cycles
     /// @param[in] segment the index of the segment of the polyline where the point is
@@ -707,7 +707,7 @@ private:
     /// @param[out] part1 first cycle of polyline
     /// @param[out] part2 second cycle of polyline
     void breakPolylineIntoTwoParts(const std::vector< std::vector<T> >& polyline,
-				   const index_t segment, 
+				   const index_t segment,
 				   const std::pair<T, T>& pt,
 				   std::vector< std::vector<T> >& part1,
 				   std::vector< std::vector<T> >& part2) const;
@@ -750,7 +750,7 @@ private:
                     const unsigned,
                     const gsMatrix<T>&) const { GISMO_NO_IMPLEMENTATION }
 
-    
+
 protected:
 
     // m_is_truncated(j)

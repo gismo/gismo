@@ -229,15 +229,9 @@ void gsTHBSplineBasis<d,T, Trunc>::_representBasisFunction(
                  true);
         }
 
-        // gsInfo << coefs.asRowVector() << "\n";
-        gsMatrix<T> reverse = coefs;
-
         _truncate(coefs, act_size_of_coefs, cur_size_of_coefs,
                   level + 1, bspl_vec_ti, cur_level, finest_low);
 
-        // gsInfo << coefs.asRowVector() << "\n";
-        coefs -= reverse;
-        // gsInfo << coefs.asRowVector() << "\n\n";
     }
     _saveNewBasisFunPresentation(coefs, act_size_of_coefs,
                                  j, pres_level, finest_low);
