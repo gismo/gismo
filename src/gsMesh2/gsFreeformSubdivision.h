@@ -21,7 +21,8 @@
 namespace gismo
 {
 
-/// class for subdivision schemes in polygonal meshes.
+/// Class for subdivision schemes based on freeform spline control nets on quadrangular meshes.
+/// Also provides other support functions for working with such meshes.
 template<size_t N>
 class GISMO_EXPORT gsFreeformSubdivision : public gsSubdivisionScheme
 {
@@ -43,13 +44,16 @@ private:
   static gsMatrix<gsVector3d<>, Dynamic, Dynamic> rotate(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat);
 public:
   void subdivide(gsSurfMesh &mesh) override;
-  // gsSubdivisionMeshValidity valid_mesh(const gsSurfMesh &mesh) override;
-
-  /// Takes a given mesh with free form data and makes it C1 by adjusting the outer 16 control points of each bezier patch.
-  void make_c1(gsSurfMesh &mesh);
-  
   /// Takes a given mesh without freeform data and initializes a freeform data control net on each face.
   void initialize_data(gsSurfMesh &mesh);
+
+  // gsSubdivisionMeshValidity valid_mesh(const gsSurfMesh &mesh) override;
+
+  /// Takes a given mesh with freeform data and makes it C1 by adjusting the outer layer of control points of each bezier patch.
+  void make_c1(gsSurfMesh &mesh);  
+
+  /// Converts a given mesh with freeform data into a multipatch that can be easily displayed by e.g. Paraview.
+  gsMultiPatch<> multipatch(const gsSurfMesh &mesh);
   
 };//namespace internal
 

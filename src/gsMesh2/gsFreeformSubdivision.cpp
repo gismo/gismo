@@ -11,6 +11,7 @@
     Author(s): L. Mussmaecher
 */
 
+#include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
@@ -32,8 +33,10 @@ namespace gismo
         assert(points.size() == 4);
 
         // Choose the control points (N*N total) as appropriate linear combinations of the corners.
-        for(size_t i = 0; i<N; i++){
-          for(size_t j = 0; j<N; j++){
+        for(size_t i = 0; i<N; i++)
+        {
+          for(size_t j = 0; j<N; j++)
+          {
             real_t denom = real_t((N-1)*(N-1));
             real_t n_r = real_t(N);
             real_t i_r = real_t(i);
@@ -57,11 +60,13 @@ namespace gismo
     {
       // find a halfedge on the face starting on this vertex
       Halfedge hedge;
-      for(auto const & he : mesh.halfedges(face)){
+      for(auto const & he : mesh.halfedges(face))
+      {
           if(mesh.from_vertex(he) == v) hedge = he;
       }
       auto ecp = edge_control_points(mesh, hedge, inset);
-      if(ecp.size() > 0){
+      if(ecp.size() > 0)
+      {
         return ecp[0];
       } else {
         return nullptr;
@@ -77,7 +82,8 @@ namespace gismo
     {
       // find the edge on the face
       size_t hedge_index(0);
-      for(auto const & he : mesh.halfedges(face)){
+      for(auto const & he : mesh.halfedges(face))
+      {
           if(he == hedge) break;
           ++hedge_index;
       }
@@ -87,8 +93,10 @@ namespace gismo
       std::vector<gsVector3d<>*> result;
 
       // We need to collect a total of `n - 2 inset` points, skipping the first and last `inset` points.
-      for(size_t i = inset; i < N - inset; i++){
-        switch (hedge_index) {
+      for(size_t i = inset; i < N - inset; i++)
+      {
+        switch (hedge_index)
+        {
           case 1:
             // Edge 3: A row on the top, left to right
             result.emplace_back(&control_points(inset,i));
@@ -121,8 +129,10 @@ namespace gismo
       // Create a coefficient matrix out of the control points.
       //Technically, you could use just [i] and one loop here since the elements of a matrix are layed out row-wise, but this might be clearer to read.
       gsMatrix<> coeffs(N * N,3);
-      for(size_t i = 0; i < N; ++i){
-        for(size_t j = 0; j < N; ++j){
+      for(size_t i = 0; i < N; ++i)
+      {
+        for(size_t j = 0; j < N; ++j)
+        {
           int total_index = i * N + j;
           coeffs(total_index, 0) = control_points(i, j).x();
           coeffs(total_index, 1) = control_points(i, j).y();
@@ -143,14 +153,18 @@ namespace gismo
       // The first layer is just the starting points
       points[0] = control_net;
       // each further layer is one shorter than the previous, but just as wide.
-      for(size_t k = 1; k < N; ++k){
+      for(size_t k = 1; k < N; ++k)
+      {
         points[k].resize(N-k, N);
       }
 
       // now construct each layer from the previous one by linear combination of adjacent points into the next layer.
-      for(size_t k = 1; k < N; ++k){
-        for(size_t i = 0; i < N-k; ++i){
-          for(size_t j = 0; j < N; ++j){
+      for(size_t k = 1; k < N; ++k)
+      {
+        for(size_t i = 0; i < N-k; ++i)
+        {
+          for(size_t j = 0; j < N; ++j)
+          {
             points[k](i,j) = (points[k-1](i,j) + points[k-1](i+1,j)) * 0.5;
           }
         }
@@ -162,8 +176,10 @@ namespace gismo
       result1.resize(N,N);
       result2.resize(N,N);
 
-      for(size_t i = 0; i<N; ++i){
-        for(size_t j = 0; j<N; ++j){
+      for(size_t i = 0; i<N; ++i)
+      {
+        for(size_t j = 0; j<N; ++j)
+        {
           result1(i,j) = points[i](0,j);
           result2(i,j) = points[(N-1)-i](i,j);
         }
@@ -177,7 +193,8 @@ namespace gismo
     {
       // Remember the first vertex of each face (this is where the control nets of each face data are oriented on).
       std::vector<Vertex> first_vertices;
-      for(Face f : mesh.faces()){
+      for(Face f : mesh.faces())
+      {
         first_vertices.emplace_back(mesh.to_vertex(mesh.halfedge(f)));
       }
 
@@ -188,7 +205,8 @@ namespace gismo
       gsProperty<gsFreeformFaceData<N>> face_data_vec(mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
       // Now fix the data on each face.
-      for(auto const & parent_to_children_faces : face_map){
+      for(auto const & parent_to_children_faces : face_map)
+      {
         // Get the face data and store it in a temporary dynamic 2d array.
         gsMatrix<gsVector3d<>, Dynamic, Dynamic> control_net(face_data_vec.vector()[parent_to_children_faces.first.idx()].control_points);
 
@@ -218,23 +236,27 @@ namespace gismo
         // find the new face that contains the top_left vertex
         Vertex first_vertex = first_vertices[parent_to_children_faces.first.idx()];
         size_t first_face(0);
-        for(size_t i = 0; i < 4; ++i){
+        for(size_t i = 0; i < 4; ++i)
+        {
+          // get the face
           Face f(parent_to_children_faces.second[i]);
-          for(auto const & v : mesh.vertices(f)){
-            if(v == first_vertex){
-              first_face = i;
-            }
+          // go through the vertices of this face and check if it has the searched-for vertex
+          for(auto const & v : mesh.vertices(f))
+          {
+            if(v == first_vertex) first_face = i;
           }
         }
 
         // Collate the faces into a correctly ordered array as well.
         std::array<Face, 4> children_faces_ordered;
-        for(int i = 0; i < 4; ++i){
+        for(int i = 0; i < 4; ++i)
+        {
           children_faces_ordered[i] = parent_to_children_faces.second[(i + first_face)%4];
         }
 
         // Correct back references of face data and give them the correct control points.
-        for(size_t f = 0; f < 4; ++f){
+        for(size_t f = 0; f < 4; ++f)
+        {
           auto data = &face_data_vec.vector()[children_faces_ordered[f].idx()];
           data->face = children_faces_ordered[f];
           data->control_points = arr[f];
@@ -248,8 +270,10 @@ namespace gismo
     gsMatrix<gsVector3d<>, Dynamic, Dynamic> gsFreeformSubdivision<N>::rotate(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat){
       gsMatrix<gsVector3d<>, Dynamic, Dynamic> res;
       res.resize(mat.cols(), mat.rows());
-      for(int i = 0; i<res.rows(); ++i){
-        for(int j = 0; j<res.cols(); ++j){
+      for(int i = 0; i<res.rows(); ++i)
+      {
+        for(int j = 0; j<res.cols(); ++j)
+        {
           res(i,j) = mat(j, mat.cols()-1-i);
         }
       }
@@ -262,7 +286,8 @@ namespace gismo
       //Get face data
       gsProperty<gsFreeformFaceData<N>> face_data_vec(mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
       // Now correct each face.
-      for(Face f : mesh.faces()){
+      for(Face f : mesh.faces())
+      {
         auto * const face_data = &face_data_vec.vector()[f.idx()];
 
         // === INNER ===
@@ -270,7 +295,8 @@ namespace gismo
 
         // === EDGES ===
         // Iterator over all half edges adjacent to this one.
-        for(auto const & hedge : mesh.halfedges(f)){
+        for(auto const & hedge : mesh.halfedges(f))
+        {
             // Get the two half-edges and then faces for this half-edge.
             auto hedge1 (hedge);
             auto hedge2(mesh.opposite_halfedge(hedge));
@@ -284,7 +310,8 @@ namespace gismo
             auto points_to_be_set = face_data->edge_control_points(mesh, hedge, 0);
       
             // Calculate the average of each control point with its partner on the other side and store it in the appropriate control point in the result.
-            for(size_t i = 0; i<N-2; ++i){
+            for(size_t i = 0; i<N-2; ++i)
+            {
                 *points_to_be_set[i+1] = 
                 *points1[i] * 0.5 + *points2[N-3-i] * 0.5;
             }
@@ -292,7 +319,8 @@ namespace gismo
 
         // === CORNERS ===
         // Iterate over all halfedges on this face.
-        for(auto const & v_hedge : mesh.halfedges(f)){
+        for(auto const & v_hedge : mesh.halfedges(f))
+        {
             // Get all the vertices of this face as the starting points of such halfedges.
             auto v = mesh.from_vertex(v_hedge);
 
@@ -301,7 +329,8 @@ namespace gismo
             real_t count(0.0);
 
             // Iterate over all halfedges leaving this vertex, one per face.
-            for(auto const & out_hedge : mesh.halfedges(v)) {
+            for(auto const & out_hedge : mesh.halfedges(v))
+            {
                 auto out_face = mesh.face(out_hedge);
                 // For each of these other faces (represented by halfedges moving into v), sum over the closest inner control point. To find this one, we take all control points along the halfedge (with inset 1) and take the first, since this halfedge is outgoing with respect to v.
                 sum += *face_data_vec.vector()[out_face.idx()].edge_control_points(mesh, out_hedge, 1)[0];
@@ -324,6 +353,23 @@ namespace gismo
       for (auto f : mesh.faces()){
           patch_data.vector()[f.idx()] = gsFreeformFaceData<N>(mesh, f);
       }
+    }
+
+    template<size_t N>
+    gsMultiPatch<> gsFreeformSubdivision<N>::multipatch(const gsSurfMesh &mesh)
+    {
+      gsMultiPatch<> patch;
+
+      // get the vector containing all the face data
+      gsProperty<gsFreeformFaceData<9>> face_data_vec = mesh.get_face_property<gsFreeformFaceData<9>>("bezier_points");
+
+      // for each face, convert its control net to a patch and add it to the multipatch. Order doesn't matter.
+      for(auto face : mesh.faces())
+      {
+          patch.addPatch(face_data_vec.vector()[face.idx()].patch());
+      }
+
+      return patch;
     }
 
   template class gsFreeformSubdivision<5>;
