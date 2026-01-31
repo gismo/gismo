@@ -18,18 +18,16 @@ int main(int argc, char** argv)
     gsSurfMesh mesh = gsSurfMesh();
 
     auto _readFile = gsReadFile<>(std::string("off/octtorus.off"), mesh);
-    mesh.add_face_property(std::string("bezier_points"), gsFreeformFaceData());
-    gsProperty<gsFreeformFaceData> patch_data = mesh.get_face_property<gsFreeformFaceData>("bezier_points");
-    for (auto f : mesh.faces()){
-        patch_data.vector()[f.idx()] = gsFreeformFaceData(mesh, f);
-    }
 
-    auto subdiv = gsFreeformSubdivision();
+    auto subdiv = gsFreeformSubdivision<9>();
+
+    subdiv.initialize_data(mesh);
     subdiv.subdivide(mesh);
     subdiv.make_c1(mesh);
 
     gsMultiPatch<> patch;
 
+    gsProperty<gsFreeformFaceData<9>> patch_data = mesh.get_face_property<gsFreeformFaceData<9>>("bezier_points");
     for(auto face : mesh.faces()) {
         patch.addPatch(patch_data.vector()[face.idx()].patch());
     }
