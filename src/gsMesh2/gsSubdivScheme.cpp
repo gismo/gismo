@@ -181,7 +181,7 @@ namespace gismo {
 
             if (do_sharp && m_mesh->has_flag(v, sharp))
             {
-                unsigned int sd = m_mesh->hcount(v, sharp);
+                size_t sd = m_mesh->hcount(v, sharp);
                 if (2 == sd)
                 {
                     auto h1 = m_mesh->halfedge(v);
@@ -431,7 +431,7 @@ namespace gismo {
     gsSurfMesh::Point
     gsSubdivScheme::ds_image_point_calc_interpolation(Vertex oldv, Face oldf)
     {
-        unsigned int face_valence{ m_mesh->valence(oldf) };
+        size_t face_valence{ m_mesh->valence(oldf) };
 
         // Find the halfedge of the vertex I am looking in case the IDs of mesh
         // are not sequencial (i.e. Quad ID: 1,23,3,5)
@@ -504,7 +504,7 @@ namespace gismo {
     gsSurfMesh::Point
     gsSubdivScheme::ds_image_point_calc_vanila(Vertex oldv, Face oldf)
     {
-        unsigned int face_valence{ m_mesh->valence(oldf) };
+        size_t face_valence{ m_mesh->valence(oldf) };
 
         // Find the halfedge of the vertex I am looking in case the IDs of mesh
         // are not sequencial (i.e. Quad ID: 1,23,3,5)
