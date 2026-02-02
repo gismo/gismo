@@ -16,13 +16,12 @@ int main(int argc, char** argv)
 {
     gsSurfMesh mesh = gsSurfMesh();
 
-    auto _readFile = gsReadFile<>(std::string("off/octtorus_hole.off"), mesh);
+    auto _readFile = gsReadFile<>(std::string("off/polycube.off"), mesh);
 
     auto subdiv = gsFreeformSubdivision<5>();
 
     subdiv.initialize_data(mesh);
     subdiv.make_c1(mesh);
-    subdiv.subdivide(mesh);
     subdiv.subdivide(mesh);
 
     gsWriteParaview(subdiv.multipatch(mesh), "results/beziers");
@@ -30,4 +29,31 @@ int main(int argc, char** argv)
     mesh.write("results/mesh_out.off");
     gsWriteParaview(mesh, "results/mesh_out", { });
 
+}
+
+void minimal_bug_example(){
+    gsSurfMesh mesh = gsSurfMesh();
+
+    auto _readFile = gsReadFile<>(std::string("off/octtorus.off"), mesh);
+
+    for(gsSurfMesh::Face f : mesh.faces()){
+
+        bool has_ev1 =
+            std::any_of(mesh.vertices(f).begin(), mesh.vertices(f).end(),
+                        [](gsSurfMesh::Vertex v) {return v.idx() == 0;
+                        });
+
+        bool has_ev2(false);
+        for (gsSurfMesh::Vertex v : mesh.vertices(f))
+        {
+            has_ev2 = has_ev2 || v.idx() == 0;// !is_ordinary(mesh, v);
+        }
+
+        if(has_ev1 != has_ev2){
+            gsInfo << "Discrepancy!\n";
+            gsInfo << "First vertex: " << *mesh.vertices(f).begin() << "\n";
+            gsInfo << "Last vertex: " << *mesh.vertices(f).end() << "\n";
+        }
+
+    }
 }

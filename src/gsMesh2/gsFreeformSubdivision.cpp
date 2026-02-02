@@ -11,6 +11,7 @@
     Author(s): L. Mussmaecher
 */
 
+#include "gsCore/gsDebug.h"
 #include <gsCore/gsMultiPatch.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
@@ -201,9 +202,25 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide(gsSurfMesh& mesh)
     // Remember the first vertex of each face (this is where the control nets of
     // each face data are oriented on).
     std::vector<Vertex> first_vertices;
+    // List to keep track of extraordinary vertices on each face.
+    // An invalid vertex with idx -1 is used to signify no EV on a face.
+    // Multiple EVs on a face should not happen, use a better mesh.
+    std::vector<Vertex> extraordinary_vertices;
     for (Face f : mesh.faces())
     {
+        // remember the first vertex
         first_vertices.emplace_back(mesh.to_vertex(mesh.halfedge(f)));
+
+        // put an invalid vertex
+        extraordinary_vertices.emplace_back(-1);
+        // check if there is an EV
+        for (const Vertex& v : mesh.vertices(f))
+        {
+            // if an EV is found, replace the invalid vertex with it
+            if(!is_ordinary(mesh, v)){
+                extraordinary_vertices.back() = v;
+            }
+        }
     }
 
     // Split each face into 4 and get info about the way they were split.
@@ -217,70 +234,81 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide(gsSurfMesh& mesh)
     // Now fix the data on each face.
     for (auto const& parent_to_children_faces : face_map)
     {
-        // Get the face data and store it in a temporary dynamic 2d array.
-        gsMatrix<gsVector3d<>, Dynamic, Dynamic> control_net(
-            face_data_vec.vector()[parent_to_children_faces.first.idx()]
-                .control_points);
-
-        // now control_net is a (n+1)*(n+1) matrix of control points (degree n)
-        // Perform deCasteljau once to divide into two (n+1)*(n+1) matrices of
-        // control points.
-        auto const first_split = this->deCasteljau(control_net);
-
-        // Perform deCasteljau again on both of them, to get 4 (n+1)*(n+1)
-        // matrices of control points In between, we need to transpose so we now
-        // divide in the other direction.
-        auto top_split = this->deCasteljau(first_split[0].transpose());
-        auto bot_split = this->deCasteljau(first_split[1].transpose());
-
-        // re-transpose
-        top_split[0] = top_split[0].transpose().eval();
-        top_split[1] = top_split[1].transpose().eval();
-        bot_split[0] = bot_split[0].transpose().eval();
-        bot_split[1] = bot_split[1].transpose().eval();
-
-        // rotate
-        bot_split[1] = rotate(bot_split[1]);
-        bot_split[0] = rotate(rotate(bot_split[0]));
-        top_split[0] = rotate(rotate(rotate(top_split[0])));
-
-        // Collate all these matrices in the correct order into an array.
-        std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 4> arr = {
-            top_split[0], top_split[1], bot_split[1], bot_split[0]};
-
-        // find the new face that contains the top_left vertex
-        Vertex first_vertex =
-            first_vertices[parent_to_children_faces.first.idx()];
-        size_t first_face(0);
-        for (size_t i = 0; i < 4; ++i)
+        if (extraordinary_vertices[parent_to_children_faces.first.idx()].is_valid())
         {
-            // get the face
-            Face f(parent_to_children_faces.second[i]);
-            // go through the vertices of this face and check if it has the
-            // searched-for vertex
-            for (auto const& v : mesh.vertices(f))
+            Vertex ev = extraordinary_vertices[parent_to_children_faces.first.idx()];
+            gsInfo << parent_to_children_faces.first << " has an EV: " << ev << ".\n";
+        }
+        // else //un-comment this once ev subdivision is done
+        {
+            // === ORDINARY VERTICES ===
+            // via deCasteljau
+
+            // Get the face data and store it in a temporary dynamic 2d array.
+            gsMatrix<gsVector3d<>, Dynamic, Dynamic> control_net(
+                face_data_vec.vector()[parent_to_children_faces.first.idx()]
+                    .control_points);
+
+            // now control_net is a (n+1)*(n+1) matrix of control points (degree
+            // n) Perform deCasteljau once to divide into two (n+1)*(n+1)
+            // matrices of control points.
+            auto const first_split = this->deCasteljau(control_net);
+
+            // Perform deCasteljau again on both of them, to get 4 (n+1)*(n+1)
+            // matrices of control points In between, we need to transpose so we
+            // now divide in the other direction.
+            auto top_split = this->deCasteljau(first_split[0].transpose());
+            auto bot_split = this->deCasteljau(first_split[1].transpose());
+
+            // re-transpose
+            top_split[0] = top_split[0].transpose().eval();
+            top_split[1] = top_split[1].transpose().eval();
+            bot_split[0] = bot_split[0].transpose().eval();
+            bot_split[1] = bot_split[1].transpose().eval();
+
+            // rotate
+            bot_split[1] = rotate(bot_split[1]);
+            bot_split[0] = rotate(rotate(bot_split[0]));
+            top_split[0] = rotate(rotate(rotate(top_split[0])));
+
+            // Collate all these matrices in the correct order into an array.
+            std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 4> arr = {
+                top_split[0], top_split[1], bot_split[1], bot_split[0]};
+
+            // find the new face that contains the top_left vertex
+            Vertex first_vertex =
+                first_vertices[parent_to_children_faces.first.idx()];
+            size_t first_face(0);
+            for (size_t i = 0; i < 4; ++i)
             {
-                if (v == first_vertex)
-                    first_face = i;
+                // get the face
+                Face f(parent_to_children_faces.second[i]);
+                // go through the vertices of this face and check if it has the
+                // searched-for vertex
+                for (auto const& v : mesh.vertices(f))
+                {
+                    if (v == first_vertex)
+                        first_face = i;
+                }
             }
-        }
 
-        // Collate the faces into a correctly ordered array as well.
-        std::array<Face, 4> children_faces_ordered;
-        for (int i = 0; i < 4; ++i)
-        {
-            children_faces_ordered[i] =
-                parent_to_children_faces.second[(i + first_face) % 4];
-        }
+            // Collate the faces into a correctly ordered array as well.
+            std::array<Face, 4> children_faces_ordered;
+            for (int i = 0; i < 4; ++i)
+            {
+                children_faces_ordered[i] =
+                    parent_to_children_faces.second[(i + first_face) % 4];
+            }
 
-        // Correct back references of face data and give them the correct
-        // control points.
-        for (size_t f = 0; f < 4; ++f)
-        {
-            auto data =
-                &face_data_vec.vector()[children_faces_ordered[f].idx()];
-            data->face = children_faces_ordered[f];
-            data->control_points = arr[f];
+            // Correct back references of face data and give them the correct
+            // control points.
+            for (size_t f = 0; f < 4; ++f)
+            {
+                auto data =
+                    &face_data_vec.vector()[children_faces_ordered[f].idx()];
+                data->face = children_faces_ordered[f];
+                data->control_points = arr[f];
+            }
         }
     }
 };
@@ -299,6 +327,18 @@ gsMatrix<gsVector3d<>, Dynamic, Dynamic> gsFreeformSubdivision<N>::rotate(
         }
     }
     return res;
+}
+
+template <size_t N>
+bool gsFreeformSubdivision<N>::is_ordinary(const gsSurfMesh& mesh,
+                                           const Vertex& v)
+{
+    auto count(0);
+    for ([[maybe_unused]] const auto he : mesh.halfedges(v))
+    {
+        ++count;
+    }
+    return count == 4 || mesh.is_boundary(v);
 }
 
 template <size_t N> void gsFreeformSubdivision<N>::make_c1(gsSurfMesh& mesh)
@@ -386,8 +426,8 @@ template <size_t N> void gsFreeformSubdivision<N>::make_c1(gsSurfMesh& mesh)
             // To find the correct control point, we take all control points
             // along the halfedge and take the first, since the vertex in
             // question is the from_vertex of the current halfedge.
-            // For now, only do this if all 4 faces were valid.
-            if (count == 4)
+            // For now, only do this if the vertex is not on the boundary.
+            if (!mesh.is_boundary(v))
                 *face_data->edge_control_points(mesh, v_hedge, 0)[0] =
                     sum / real_t(count);
         }
@@ -425,6 +465,28 @@ gsMultiPatch<> gsFreeformSubdivision<N>::multipatch(const gsSurfMesh& mesh)
     }
 
     return patch;
+}
+
+template <size_t N>
+gsSubdivisionScheme::gsSubdivisionMeshValidity
+gsFreeformSubdivision<N>::valid_mesh(const gsSurfMesh& mesh)
+{
+    for (Face f : mesh.faces())
+    {
+        size_t count(0);
+        for ([[maybe_unused]] Vertex v : mesh.vertices(f))
+        {
+            ++count;
+        }
+        if (count != 4)
+        {
+            gsWarn << "This mesh has at least one non-quadrangular face "
+                      "(Vertex count "
+                   << count << ").";
+            return gsSubdivisionScheme::gsSubdivisionMeshValidity::INVALID;
+        }
+    }
+    return gsSubdivisionScheme::gsSubdivisionMeshValidity::UNDETERMINED;
 }
 
 template class gsFreeformSubdivision<5>;

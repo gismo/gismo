@@ -33,8 +33,7 @@ public: // Constructors
     /// Catmull-Clark has no special options.
     gsFreeformSubdivision() : gsSubdivisionScheme() {}
 
-private:
-    /// Helper function
+private: // Helper functions
     /// Splits the given matrix, interpreted as a control net of a Bezier patch,
     /// into two control nets of Bezier patches of equal degree that in their
     /// union again form the original net. This is done using the algorithm of
@@ -47,7 +46,11 @@ private:
     static gsMatrix<gsVector3d<>, Dynamic, Dynamic>
     rotate(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat);
 
+    /// Checks if the given vertex has exactly 4 neighbors or lies on the boundary of the mesh.
+    static bool is_ordinary(const gsSurfMesh&, const Vertex&);
+
 public:
+    gsSubdivisionScheme::gsSubdivisionMeshValidity valid_mesh(const gsSurfMesh&) override;
     void subdivide(gsSurfMesh& mesh) override;
     /// Takes a given mesh without freeform data and initializes a freeform data
     /// control net on each face.
