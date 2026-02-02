@@ -21,13 +21,18 @@ int main(int argc, char** argv)
     auto subdiv = gsFreeformSubdivision<5>();
 
     subdiv.initialize_data(mesh);
+    gsWriteParaview(subdiv.multipatch(mesh), "results/initial_data");
     subdiv.make_c1(mesh);
+    gsWriteParaview(subdiv.multipatch(mesh), "results/c1");
     subdiv.subdivide(mesh);
+    gsWriteParaview(subdiv.multipatch(mesh), "results/subdiv");
+    subdiv.subdivide(mesh);
+    gsWriteParaview(subdiv.multipatch(mesh), "results/subdiv2");
 
-    gsWriteParaview(subdiv.multipatch(mesh), "results/beziers");
+    // gsWriteParaview(subdiv.multipatch(mesh), "results/beziers");
 
-    mesh.write("results/mesh_out.off");
-    gsWriteParaview(mesh, "results/mesh_out", { });
+    // mesh.write("results/mesh_out.off");
+    // gsWriteParaview(mesh, "results/mesh_out", { });
 
 }
 
