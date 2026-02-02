@@ -418,7 +418,7 @@ public:
 private:
 
     /// @brief Computes and saves representation of all basis functions.
-    void representBasis(); // rename: precompute coeffs
+    virtual void representBasis(); // rename: precompute coeffs
 
     /// @brief Computes representation of j-th basis function on pres_level and
     /// saves it.
