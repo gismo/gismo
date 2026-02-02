@@ -16,13 +16,14 @@ int main(int argc, char** argv)
 {
     gsSurfMesh mesh = gsSurfMesh();
 
-    auto _readFile = gsReadFile<>(std::string("off/octtorus.off"), mesh);
+    auto _readFile = gsReadFile<>(std::string("off/octtorus_hole.off"), mesh);
 
-    auto subdiv = gsFreeformSubdivision<9>();
+    auto subdiv = gsFreeformSubdivision<5>();
 
     subdiv.initialize_data(mesh);
-    subdiv.subdivide(mesh);
     subdiv.make_c1(mesh);
+    subdiv.subdivide(mesh);
+    subdiv.subdivide(mesh);
 
     gsWriteParaview(subdiv.multipatch(mesh), "results/beziers");
 

@@ -318,9 +318,17 @@ template <size_t N> void gsFreeformSubdivision<N>::make_c1(gsSurfMesh& mesh)
         // Iterator over all half edges adjacent to this one.
         for (auto const& hedge : mesh.halfedges(f))
         {
-            // Get the two half-edges and then faces for this half-edge.
+            // Get the two half-edges
             auto hedge1(hedge);
             auto hedge2(mesh.opposite_halfedge(hedge));
+
+            // Check if the opposite edge is a boundary edge.
+            // If this is the case, the edge points of the control net don't
+            // need to be adjusted at all (just like inner points).
+            if (mesh.is_boundary(hedge2))
+                continue;
+
+            // Get the the faces for these half-edges.
             auto face1(mesh.face(hedge1)); // this should be the current face.
             auto face2(mesh.face(hedge2));
 
@@ -355,12 +363,15 @@ template <size_t N> void gsFreeformSubdivision<N>::make_c1(gsSurfMesh& mesh)
 
             // Prepare sum
             gsVector3d<real_t> sum(0., 0., 0.);
-            real_t count(0.0);
+            real_t count(0);
 
             // Iterate over all halfedges leaving this vertex, one per face.
             for (auto const& out_hedge : mesh.halfedges(v))
             {
                 auto out_face = mesh.face(out_hedge);
+                // if this face is invalid, skip the entire sum
+                if (!mesh.is_valid(out_face))
+                    continue;
                 // For each of these other faces (represented by halfedges
                 // moving into v), sum over the closest inner control point. To
                 // find this one, we take all control points along the halfedge
@@ -369,13 +380,16 @@ template <size_t N> void gsFreeformSubdivision<N>::make_c1(gsSurfMesh& mesh)
                 sum +=
                     *face_data_vec.vector()[out_face.idx()].edge_control_points(
                         mesh, out_hedge, 1)[0];
-                count += 1.0;
+                count += 1;
             }
             // Store this as the corner control point of the result.
             // To find the correct control point, we take all control points
             // along the halfedge and take the first, since the vertex in
             // question is the from_vertex of the current halfedge.
-            *face_data->edge_control_points(mesh, v_hedge, 0)[0] = sum / count;
+            // For now, only do this if all 4 faces were valid.
+            if (count == 4)
+                *face_data->edge_control_points(mesh, v_hedge, 0)[0] =
+                    sum / real_t(count);
         }
 
     } // end for over faces
@@ -400,8 +414,8 @@ gsMultiPatch<> gsFreeformSubdivision<N>::multipatch(const gsSurfMesh& mesh)
     gsMultiPatch<> patch;
 
     // get the vector containing all the face data
-    gsProperty<gsFreeformFaceData<9>> face_data_vec =
-        mesh.get_face_property<gsFreeformFaceData<9>>("bezier_points");
+    gsProperty<gsFreeformFaceData<N>> face_data_vec =
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points");
 
     // for each face, convert its control net to a patch and add it to the
     // multipatch. Order doesn't matter.
