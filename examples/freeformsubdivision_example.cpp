@@ -14,25 +14,35 @@ using namespace gismo;
 
 int main(int argc, char** argv)
 {
+    // Command line
+    std::string filedata("off/polycube.off");
+    bool no_smooth(false);
+    size_t steps(1);
+
+    // Inputs
+    gsCmdLine cmd("Freeform subdivision");
+    cmd.addPlainString("filename", "File containing mesh.", filedata);
+    cmd.addSwitch("no_smooth", "C1 smoothing before subdivision.", no_smooth);
+    cmd.addInt("steps", "Number of subdivision steps.", steps);
+    try { cmd.getValues(argc,argv); } catch (int errorcode) { return errorcode; }
+
     gsSurfMesh mesh = gsSurfMesh();
 
-    auto _readFile = gsReadFile<>(std::string("off/polycube.off"), mesh);
+    auto _readFile = gsReadFile<>(filedata, mesh);
 
     auto subdiv = gsFreeformSubdivision<5>();
 
     subdiv.initialize_data(mesh);
-    gsWriteParaview(subdiv.multipatch(mesh), "results/initial_data");
-    subdiv.make_c1(mesh);
-    gsWriteParaview(subdiv.multipatch(mesh), "results/c1");
-    subdiv.subdivide(mesh);
-    gsWriteParaview(subdiv.multipatch(mesh), "results/subdiv");
-    subdiv.subdivide(mesh);
-    gsWriteParaview(subdiv.multipatch(mesh), "results/subdiv2");
+        gsWriteParaview(subdiv.multipatch(mesh), "results/initial_data");
 
-    // gsWriteParaview(subdiv.multipatch(mesh), "results/beziers");
-
-    // mesh.write("results/mesh_out.off");
-    // gsWriteParaview(mesh, "results/mesh_out", { });
+    if(!no_smooth){
+        subdiv.make_c1(mesh);
+        gsWriteParaview(subdiv.multipatch(mesh), "results/c1");
+    }
+    for(size_t i=0; i<steps; ++i){
+        subdiv.subdivide(mesh);
+        gsWriteParaview(subdiv.multipatch(mesh), "results/subdiv" + std::to_string(i));
+    }
 
 }
 
