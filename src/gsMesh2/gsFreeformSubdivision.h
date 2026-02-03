@@ -208,7 +208,39 @@ public: // Control point accessors
     /// \param hedge The halfedge the returned control points follow.
     /// \param inset How many layers inside the control net we are looking.
     std::vector<gsVector<real_t, D>*>
-    edge_control_points(gsSurfMesh& mesh, Halfedge hedge, size_t inset);
+    side_control_points(gsSurfMesh& mesh, Halfedge hedge, size_t inset);
+
+    /// \brief Returns control points along and edge of the face.
+    ///
+    /// Returns a vector containing the control points along to a halfedge,
+    /// ordered in the same direction as the halfedge.
+    /// If the given half edge does not belong to this face, this
+    /// will fail in debug mode and return an empty vector. If the inset is to
+    /// large (`>=N` compared to the size of the control net), this will
+    /// return an empty vector. Pointers returned by this function are valid as
+    /// long as the underlying mesh remains unchanged and should be regenerated
+    /// after.
+    /// The `offset` determines how far we move parallel to the halfedge before returnign points.
+    /// An example of the returned points of the 0th edge of a 5x5 grid, for offsets `0`,`1`,`2` (marked with `*`, `X`, `O` respectively):
+    /// ```
+    ///  +-----------------+
+    ///  |  *  X  O 03 04  |
+    ///  |                 |
+    ///  |  *  X  O 13 14  |
+    ///  |                 |
+    ///  |  *  X  O 23 24  |
+    ///  |                 |
+    ///  |  *  X  O 33 34  |
+    ///  |                 |
+    ///  |  *  X  O 43 44  |
+    ///  +-----------------+
+    /// ```
+    ///
+    /// \param mesh The mesh this data belongs to.
+    /// \param hedge The halfedge the returned control points follow.
+    /// \param offset How many layers inside the control net we are looking.
+    std::vector<gsVector<real_t, D>*>
+    edge_control_points(gsSurfMesh& mesh, Halfedge hedge, size_t offset);
 
     /// \brief Returns a control point at the corner of a face.
     ///

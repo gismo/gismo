@@ -65,7 +65,7 @@ gsFreeformFaceData<N, D>::vertex_control_point(gsSurfMesh& mesh, Vertex v,
         if (mesh.from_vertex(he) == v)
             hedge = he;
     }
-    auto ecp = edge_control_points(mesh, hedge, inset);
+    auto ecp = side_control_points(mesh, hedge, inset);
     if (ecp.size() > 0)
     {
         return ecp[0];
@@ -78,7 +78,7 @@ gsFreeformFaceData<N, D>::vertex_control_point(gsSurfMesh& mesh, Vertex v,
 
 template <size_t N, size_t D>
 std::vector<gsVector<real_t, D>*>
-gsFreeformFaceData<N, D>::edge_control_points(gsSurfMesh& mesh, Halfedge hedge,
+gsFreeformFaceData<N, D>::side_control_points(gsSurfMesh& mesh, Halfedge hedge,
                                               size_t inset)
 {
     // find the edge on the face
@@ -115,6 +115,51 @@ gsFreeformFaceData<N, D>::edge_control_points(gsSurfMesh& mesh, Halfedge hedge,
         case 0:
             // Edge 0: A column on the left, bottom to top
             result.emplace_back(&control_points((N - 1) - i, inset));
+            break;
+        }
+    }
+
+    return result;
+}
+
+template <size_t N, size_t D>
+std::vector<gsVector<real_t, D>*>
+gsFreeformFaceData<N, D>::edge_control_points(gsSurfMesh& mesh, Halfedge hedge,
+                                              size_t offset)
+{
+    // find the edge on the face
+    size_t hedge_index(0);
+    for (auto const& he : mesh.halfedges(face))
+    {
+        if (he == hedge)
+            break;
+        ++hedge_index;
+    }
+    // make sure it was found (does nothing in release mode)
+    assert(hedge_index < 4);
+
+    std::vector<gsVector<real_t, D>*> result;
+
+    // We need to collect a total of N points
+    for (size_t i = 0; i < N; i++)
+    {
+        switch (hedge_index)
+        {
+        case 1:
+            // Edge 3: A row on the top, left to right
+            result.emplace_back(&control_points(offset, i));
+            break;
+        case 2:
+            // Edge 2: A column on the right, top to bottom
+            result.emplace_back(&control_points(i, (N - 1) - offset));
+            break;
+        case 3:
+            // Edge 3: A row on the bottom, right to left
+            result.emplace_back(&control_points((N - 1) - offset, (N - 1) - i));
+            break;
+        case 0:
+            // Edge 0: A column on the left, bottom to top
+            result.emplace_back(&control_points((N - 1) - i, offset));
             break;
         }
     }
@@ -353,93 +398,222 @@ void gsFreeformSubdivision<N, D>::make_c1(gsSurfMesh& mesh)
     // Get face data
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
-    // Now correct each face.
-    for (Face f : mesh.faces())
+
+    // First, correct each vertex
+    for (const Vertex& v : mesh.vertices())
     {
-        auto* const face_data = &face_data_vec.vector()[f.idx()];
-
-        // === INNER ===
-        // stay the same
-
-        // === EDGES ===
-        // Iterator over all half edges adjacent to this one.
-        for (auto const& hedge : mesh.halfedges(f))
+        // first, collect all the control points we are considering into two
+        // vectors
+        std::vector<std::vector<gsVector<real_t, D>*>> inner;
+        std::vector<std::vector<gsVector<real_t, D>*>> outer;
+        // TODO: Rework all of this
+        for (Halfedge h : mesh.halfedges(v))
         {
-            // Get the two half-edges
-            auto hedge1(hedge);
-            auto hedge2(mesh.opposite_halfedge(hedge));
-
-            // Check if the opposite edge is a boundary edge.
-            // If this is the case, the edge points of the control net don't
-            // need to be adjusted at all (just like inner points).
-            if (mesh.is_boundary(hedge2))
-                continue;
-
-            // Get the the faces for these half-edges.
-            auto face1(mesh.face(hedge1)); // this should be the current face.
-            auto face2(mesh.face(hedge2));
-
-            // Get the two N-2 sets of corresponding points.
-            auto points1(
-                face_data_vec.vector()[face1.idx()].edge_control_points(
-                    mesh, hedge1, 1));
-            auto points2(
-                face_data_vec.vector()[face2.idx()].edge_control_points(
-                    mesh, hedge2, 1));
-
-            auto points_to_be_set =
-                face_data->edge_control_points(mesh, hedge, 0);
-
-            // Calculate the average of each control point with its partner on
-            // the other side and store it in the appropriate control point in
-            // the result.
-            for (size_t i = 0; i < N - 2; ++i)
-            {
-                *points_to_be_set[i + 1] =
-                    *points1[i] * 0.5 + *points2[N - 3 - i] * 0.5;
-            }
+            inner.emplace_back(
+                face_data_vec[mesh.face(h).idx()].edge_control_points(mesh, h,
+                                                                      1));
+            outer.emplace_back(
+                face_data_vec[mesh.face(h).idx()].edge_control_points(mesh, h,
+                                                                      0));
         }
 
-        // === CORNERS ===
-        // Iterate over all halfedges on this face.
-        for (auto const& v_hedge : mesh.halfedges(f))
-        {
-            // Get all the vertices of this face as the starting points of such
-            // halfedges.
-            auto v = mesh.from_vertex(v_hedge);
-
-            // Prepare sum
-            gsVector<real_t, D> sum(gsVector<real_t, D>::Zero(D));
-            real_t count(0);
-
-            // Iterate over all halfedges leaving this vertex, one per face.
-            for (auto const& out_hedge : mesh.halfedges(v))
-            {
-                auto out_face = mesh.face(out_hedge);
-                // if this face is invalid, skip the entire sum
-                if (!mesh.is_valid(out_face))
-                    continue;
-                // For each of these other faces (represented by halfedges
-                // moving into v), sum over the closest inner control point. To
-                // find this one, we take all control points along the halfedge
-                // (with inset 1) and take the first, since this halfedge is
-                // outgoing with respect to v.
-                sum +=
-                    *face_data_vec.vector()[out_face.idx()].edge_control_points(
-                        mesh, out_hedge, 1)[0];
-                count += 1;
-            }
-            // Store this as the corner control point of the result.
-            // To find the correct control point, we take all control points
-            // along the halfedge and take the first, since the vertex in
-            // question is the from_vertex of the current halfedge.
-            // For now, only do this if the vertex is not on the boundary.
-            if (!mesh.is_boundary(v))
-                *face_data->edge_control_points(mesh, v_hedge, 0)[0] =
-                    sum / real_t(count);
+        for(int i = 0; i < 4; ++i){
+            gsInfo << "(" << outer[i][0]->x() <<", "<<outer[i][0]->y()<<", "<<outer[i][0]->z() << "\n";
+            gsInfo << "(" << outer[i][1]->x() <<", "<<outer[i][1]->y()<<", "<<outer[i][1]->z() << "\n";
+            gsInfo << "(" << inner[i][0]->x() <<", "<<inner[i][0]->y()<<", "<<inner[i][0]->z() << "\n";
+            gsInfo << "(" << inner[i][1]->x() <<", "<<inner[i][1]->y()<<", "<<inner[i][1]->z() << "\n";
+            gsInfo << "\n";
         }
 
-    } // end for over faces
+        auto matrix = gsMatrix<real_t, 9, 4>({
+            0.25, 1., 0., 0., 0., 0.5, 0., 0., 0.5, //
+            0.25, 0., 1., 0., 0., 0.5, 0.5, 0., 0., //
+            0.25, 0., 0., 1., 0., 0., 0.5, 0.5, 0., //
+            0.25, 0., 0., 0., 1., 0., 0., 0.5, 0.5, //
+        });
+
+        for(size_t d = 0; d < D; ++d){
+            gsVector<real_t, 9> target_vector;
+            target_vector << (*(outer[0][0]))(d), (*(inner[0][1]))(d), (*(inner[1][1]))(d), (*(inner[2][1]))(d), (*(inner[3][1]))(d), (*(outer[0][1]))(d), (*(outer[1][1]))(d), (*(outer[2][1]))(d), (*(outer[3][1]))(d);
+
+            auto solution = matrix.colPivHouseholderQr().solve(target_vector);
+
+            auto middle = solution(0) * 0.25 + solution(1) * 0.25 + solution(2) * 0.25 + solution(3) * 0.25;
+            (*(outer[0][0]))(d) = middle;
+            (*(outer[1][0]))(d) = middle;
+            (*(outer[2][0]))(d) = middle;
+            (*(outer[3][0]))(d) = middle;
+
+            (*(inner[0][1]))(d) = solution(0);
+            (*(inner[1][1]))(d) = solution(1);
+            (*(inner[2][1]))(d) = solution(2);
+            (*(inner[3][1]))(d) = solution(3);
+
+            (*(outer[0][1]))(d) = solution(0) * 0.5 + solution(1) * 0.5;
+            (*(outer[1][1]))(d) = solution(1) * 0.5 + solution(2) * 0.5;
+            (*(outer[2][1]))(d) = solution(2) * 0.5 + solution(3) * 0.5;
+            (*(outer[3][1]))(d) = solution(3) * 0.5 + solution(0) * 0.5;
+
+            (*(inner[3][0]))(d) = solution(0) * 0.5 + solution(1) * 0.5;
+            (*(inner[0][0]))(d) = solution(1) * 0.5 + solution(2) * 0.5;
+            (*(inner[1][0]))(d) = solution(2) * 0.5 + solution(3) * 0.5;
+            (*(inner[2][0]))(d) = solution(3) * 0.5 + solution(0) * 0.5;
+        }
+    }
+
+    // Now, correct the remaining part of each edge that isn't surrounding a
+    // vertex.
+    for (const Edge& e : mesh.edges())
+    {
+        auto halfedge0 = mesh.halfedge(e, 0);
+        auto halfedge1 = mesh.halfedge(e, 1);
+
+        // if we are on the boundary of the mesh, nothing needs to be done
+        if (mesh.is_boundary(halfedge0) || mesh.is_boundary(halfedge1))
+            continue;
+
+        // Get the faces. These must be valid or else we would have continued
+        // above.
+        auto face0 = mesh.face(halfedge0);
+        auto face1 = mesh.face(halfedge1);
+
+        // Get the control points along these edges, each of these three vectors
+        // is N elements long.
+        auto cp0 =
+            face_data_vec[face0.idx()].edge_control_points(mesh, halfedge0, 1);
+        auto cpmid0 =
+            face_data_vec[face0.idx()].edge_control_points(mesh, halfedge0, 0);
+        auto cpmid1 =
+            face_data_vec[face1.idx()].edge_control_points(mesh, halfedge1, 0);
+        auto cp1 =
+            face_data_vec[face1.idx()].edge_control_points(mesh, halfedge1, 1);
+
+        // correct all points but the first and last two
+        for (size_t i = 2; i < N - 2; ++i)
+        {
+            // get the points we are currently looking at
+            gsVector<real_t, D>* i0 = cp0[i];
+            gsVector<real_t, D>* m0 = cpmid0[i];
+            gsVector<real_t, D>* m1 = cpmid1[N - 1 - i];
+            gsVector<real_t, D>* i1 = cp1[N - 1 - i];
+
+            // make sure the user already put in a C0 mesh
+            if (*m0 != *m1)
+                gsWarn << "Points along an edge are not equal, mesh might be "
+                          "corrupted.\n";
+
+            // generate the matrix that describes the C1 equation for these
+            // points
+            auto matrix = gsMatrix<real_t, 3, 2>({1., 0.5, 0., 0., 0.5, 1.});
+
+            // do a least squares for all dimensions
+            for (size_t d = 0; d < D; ++d)
+            {
+                gsVector<real_t, 3> target_vector;
+                target_vector << (*i0)(d), (*m0)(d), (*i1)(d);
+
+                auto solution = matrix.colPivHouseholderQr().solve(target_vector);
+
+                (*i0)(d) = solution[0];
+                (*m0)(d) = solution[0] * 0.5 + solution[1] * 0.5;
+                (*m1)(d) = solution[0] * 0.5 + solution[1] * 0.5;
+                (*i1)(d) = solution[1];
+            }
+        }
+    }
+
+    // Now correct each face.
+    // for (Face f : mesh.faces())
+    // {
+    //     auto* const face_data = &face_data_vec.vector()[f.idx()];
+
+    //     // === INNER ===
+    //     // stay the same
+
+    //     // === EDGES ===
+    //     // Iterator over all half edges adjacent to this one.
+    //     for (auto const& hedge : mesh.halfedges(f))
+    //     {
+    //         // Get the two half-edges
+    //         auto hedge1(hedge);
+    //         auto hedge2(mesh.opposite_halfedge(hedge));
+
+    //         // Check if the opposite edge is a boundary edge.
+    //         // If this is the case, the edge points of the control net don't
+    //         // need to be adjusted at all (just like inner points).
+    //         if (mesh.is_boundary(hedge2))
+    //             continue;
+
+    //         // Get the the faces for these half-edges.
+    //         auto face1(mesh.face(hedge1)); // this should be the current
+    //         face. auto face2(mesh.face(hedge2));
+
+    //         // Get the two N-2 sets of corresponding points.
+    //         auto points1(
+    //             face_data_vec.vector()[face1.idx()].edge_control_points(
+    //                 mesh, hedge1, 1));
+    //         auto points2(
+    //             face_data_vec.vector()[face2.idx()].edge_control_points(
+    //                 mesh, hedge2, 1));
+
+    //         auto points_to_be_set =
+    //             face_data->edge_control_points(mesh, hedge, 0);
+
+    //         // Calculate the average of each control point with its partner
+    //         on
+    //         // the other side and store it in the appropriate control point
+    //         in
+    //         // the result.
+    //         for (size_t i = 0; i < N - 2; ++i)
+    //         {
+    //             *points_to_be_set[i + 1] =
+    //                 *points1[i] * 0.5 + *points2[N - 3 - i] * 0.5;
+    //         }
+    //     }
+
+    //     // === CORNERS ===
+    //     // Iterate over all halfedges on this face.
+    //     for (auto const& v_hedge : mesh.halfedges(f))
+    //     {
+    //         // Get all the vertices of this face as the starting points of
+    //         such
+    //         // halfedges.
+    //         auto v = mesh.from_vertex(v_hedge);
+
+    //         // Prepare sum
+    //         gsVector<real_t, D> sum(gsVector<real_t, D>::Zero(D));
+    //         real_t count(0);
+
+    //         // Iterate over all halfedges leaving this vertex, one per face.
+    //         for (auto const& out_hedge : mesh.halfedges(v))
+    //         {
+    //             auto out_face = mesh.face(out_hedge);
+    //             // if this face is invalid, skip the entire sum
+    //             if (!mesh.is_valid(out_face))
+    //                 continue;
+    //             // For each of these other faces (represented by halfedges
+    //             // moving into v), sum over the closest inner control point.
+    //             To
+    //             // find this one, we take all control points along the
+    //             halfedge
+    //             // (with inset 1) and take the first, since this halfedge is
+    //             // outgoing with respect to v.
+    //             sum +=
+    //                 *face_data_vec.vector()[out_face.idx()].edge_control_points(
+    //                     mesh, out_hedge, 1)[0];
+    //             count += 1;
+    //         }
+    //         // Store this as the corner control point of the result.
+    //         // To find the correct control point, we take all control points
+    //         // along the halfedge and take the first, since the vertex in
+    //         // question is the from_vertex of the current halfedge.
+    //         // For now, only do this if the vertex is not on the boundary.
+    //         if (!mesh.is_boundary(v))
+    //             *face_data->edge_control_points(mesh, v_hedge, 0)[0] =
+    //                 sum / real_t(count);
+    //     }
+    //
+    // } // end for over faces
 }
 
 template <size_t N, size_t D>
@@ -498,6 +672,8 @@ gsFreeformSubdivision<N, D>::valid_mesh(const gsSurfMesh& mesh)
 
 template class gsFreeformSubdivision<5, 3>;
 template class gsFreeformFaceData<5, 3>;
+template class gsFreeformSubdivision<5, 4>;
+template class gsFreeformFaceData<5, 4>;
 template class gsFreeformSubdivision<6, 3>;
 template class gsFreeformFaceData<6, 3>;
 template class gsFreeformSubdivision<9, 3>;

@@ -15,15 +15,15 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // Command line
-    std::string filedata("off/polycube.off");
+    std::string filedata("off/octtorus.off");
     bool no_smooth(false);
-    size_t steps(1);
+    index_t steps(1);
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
     cmd.addPlainString("filename", "File containing mesh.", filedata);
     cmd.addSwitch("no_smooth", "C1 smoothing before subdivision.", no_smooth);
-    cmd.addInt("steps", "Number of subdivision steps.", steps);
+    cmd.addInt("s", "steps", "Number of subdivision steps.", steps);
     try
     {
         cmd.getValues(argc, argv);
@@ -47,7 +47,7 @@ int main(int argc, char** argv)
         subdiv.make_c1(mesh);
         gsWriteParaview(subdiv.multipatch(mesh), "results/c1");
     }
-    for (size_t i = 0; i < steps; ++i)
+    for (index_t i = 0; i < steps; ++i)
     {
         subdiv.subdivide(mesh);
         gsWriteParaview(subdiv.multipatch(mesh),
