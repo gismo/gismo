@@ -20,9 +20,9 @@
 namespace gismo
 {
 
-template <size_t N>
-gsFreeformFaceData<N>::gsFreeformFaceData(const gsSurfMesh& mesh,
-                                          gsSurfMesh::Face face)
+template <size_t N, size_t D>
+gsFreeformFaceData<N, D>::gsFreeformFaceData(const gsSurfMesh& mesh,
+                                             gsSurfMesh::Face face)
     : control_points(), face(face)
 {
     // Create a vector of the 4 corners.
@@ -53,10 +53,10 @@ gsFreeformFaceData<N>::gsFreeformFaceData(const gsSurfMesh& mesh,
     }
 }
 
-template <size_t N>
-gsVector3d<>* gsFreeformFaceData<N>::vertex_control_point(gsSurfMesh& mesh,
-                                                          Vertex v,
-                                                          size_t inset)
+template <size_t N, size_t D>
+gsVector<real_t, D>*
+gsFreeformFaceData<N, D>::vertex_control_point(gsSurfMesh& mesh, Vertex v,
+                                               size_t inset)
 {
     // find a halfedge on the face starting on this vertex
     Halfedge hedge;
@@ -76,10 +76,10 @@ gsVector3d<>* gsFreeformFaceData<N>::vertex_control_point(gsSurfMesh& mesh,
     }
 }
 
-template <size_t N>
-std::vector<gsVector3d<>*>
-gsFreeformFaceData<N>::edge_control_points(gsSurfMesh& mesh, Halfedge hedge,
-                                           size_t inset)
+template <size_t N, size_t D>
+std::vector<gsVector<real_t, D>*>
+gsFreeformFaceData<N, D>::edge_control_points(gsSurfMesh& mesh, Halfedge hedge,
+                                              size_t inset)
 {
     // find the edge on the face
     size_t hedge_index(0);
@@ -92,7 +92,7 @@ gsFreeformFaceData<N>::edge_control_points(gsSurfMesh& mesh, Halfedge hedge,
     // make sure it was found (does nothing in release mode)
     assert(hedge_index < 4);
 
-    std::vector<gsVector3d<>*> result;
+    std::vector<gsVector<real_t, D>*> result;
 
     // We need to collect a total of `n - 2 inset` points, skipping the first
     // and last `inset` points.
@@ -122,8 +122,8 @@ gsFreeformFaceData<N>::edge_control_points(gsSurfMesh& mesh, Halfedge hedge,
     return result;
 }
 
-template <size_t N>
-const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N>::patch() const
+template <size_t N, size_t D>
+const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
 {
     // Create a spline basis for a normal bezier patch.
     gsKnotVector<> kv1(0, 1, 0, N);
@@ -139,22 +139,22 @@ const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N>::patch() const
         {
             int total_index = i * N + j;
             coeffs(total_index, 0) = control_points(i, j).x();
-            coeffs(total_index, 1) = control_points(i, j).y();
-            coeffs(total_index, 2) = control_points(i, j).z();
+            coeffs(total_index, 1) = D >= 2 ? control_points(i, j).y() : 0.0;
+            coeffs(total_index, 2) = D >= 3 ? control_points(i, j).z() : 0.0;
         }
     }
 
     return gsTensorBSpline<2>(basis, coeffs);
 }
 
-template <size_t N>
-std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 2>
-gsFreeformSubdivision<N>::deCasteljau(
-    const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& control_net)
+template <size_t N, size_t D>
+std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 2>
+gsFreeformSubdivision<N, D>::deCasteljau(
+    const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& control_net)
 {
 
     // Create the 3d data vector and ensure it has the right size.
-    std::vector<gsMatrix<gsVector3d<>, Dynamic, Dynamic>> points;
+    std::vector<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>> points;
     points.resize(N);
     // The first layer is just the starting points
     points[0] = control_net;
@@ -180,8 +180,8 @@ gsFreeformSubdivision<N>::deCasteljau(
 
     // finally collect the first vertical layer and last-in-each-row diagonal
     // layer into two result matrices.
-    gsMatrix<gsVector3d<>, Dynamic, Dynamic> result1;
-    gsMatrix<gsVector3d<>, Dynamic, Dynamic> result2;
+    gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> result1;
+    gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> result2;
     result1.resize(N, N);
     result2.resize(N, N);
 
@@ -197,7 +197,8 @@ gsFreeformSubdivision<N>::deCasteljau(
     return {result1, result2};
 }
 
-template <size_t N> void gsFreeformSubdivision<N>::subdivide(gsSurfMesh& mesh)
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 {
     // Remember the first vertex of each face (this is where the control nets of
     // each face data are oriented on).
@@ -217,7 +218,8 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide(gsSurfMesh& mesh)
         for (const Vertex& v : mesh.vertices(f))
         {
             // if an EV is found, replace the invalid vertex with it
-            if(!is_ordinary(mesh, v)){
+            if (!is_ordinary(mesh, v))
+            {
                 extraordinary_vertices.back() = v;
             }
         }
@@ -228,16 +230,19 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide(gsSurfMesh& mesh)
         mesh.quad_split();
 
     // Get face data
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
     // Now fix the data on each face.
     for (auto const& parent_to_children_faces : face_map)
     {
-        if (extraordinary_vertices[parent_to_children_faces.first.idx()].is_valid())
+        if (extraordinary_vertices[parent_to_children_faces.first.idx()]
+                .is_valid())
         {
-            Vertex ev = extraordinary_vertices[parent_to_children_faces.first.idx()];
-            gsInfo << parent_to_children_faces.first << " has an EV: " << ev << ".\n";
+            Vertex ev =
+                extraordinary_vertices[parent_to_children_faces.first.idx()];
+            gsInfo << parent_to_children_faces.first << " has an EV: " << ev
+                   << ".\n";
         }
         // else //un-comment this once ev subdivision is done
         {
@@ -245,7 +250,7 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide(gsSurfMesh& mesh)
             // via deCasteljau
 
             // Get the face data and store it in a temporary dynamic 2d array.
-            gsMatrix<gsVector3d<>, Dynamic, Dynamic> control_net(
+            gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> control_net(
                 face_data_vec.vector()[parent_to_children_faces.first.idx()]
                     .control_points);
 
@@ -272,8 +277,8 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide(gsSurfMesh& mesh)
             top_split[0] = rotate(rotate(rotate(top_split[0])));
 
             // Collate all these matrices in the correct order into an array.
-            std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 4> arr = {
-                top_split[0], top_split[1], bot_split[1], bot_split[0]};
+            std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 4> arr =
+                {top_split[0], top_split[1], bot_split[1], bot_split[0]};
 
             // find the new face that contains the top_left vertex
             Vertex first_vertex =
@@ -313,11 +318,12 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide(gsSurfMesh& mesh)
     }
 };
 
-template <size_t N>
-gsMatrix<gsVector3d<>, Dynamic, Dynamic> gsFreeformSubdivision<N>::rotate(
-    const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat)
+template <size_t N, size_t D>
+gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>
+gsFreeformSubdivision<N, D>::rotate(
+    const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& mat)
 {
-    gsMatrix<gsVector3d<>, Dynamic, Dynamic> res;
+    gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> res;
     res.resize(mat.cols(), mat.rows());
     for (int i = 0; i < res.rows(); ++i)
     {
@@ -329,9 +335,9 @@ gsMatrix<gsVector3d<>, Dynamic, Dynamic> gsFreeformSubdivision<N>::rotate(
     return res;
 }
 
-template <size_t N>
-bool gsFreeformSubdivision<N>::is_ordinary(const gsSurfMesh& mesh,
-                                           const Vertex& v)
+template <size_t N, size_t D>
+bool gsFreeformSubdivision<N, D>::is_ordinary(const gsSurfMesh& mesh,
+                                              const Vertex& v)
 {
     auto count(0);
     for ([[maybe_unused]] const auto he : mesh.halfedges(v))
@@ -341,11 +347,12 @@ bool gsFreeformSubdivision<N>::is_ordinary(const gsSurfMesh& mesh,
     return count == 4 || mesh.is_boundary(v);
 }
 
-template <size_t N> void gsFreeformSubdivision<N>::make_c1(gsSurfMesh& mesh)
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::make_c1(gsSurfMesh& mesh)
 {
     // Get face data
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
     // Now correct each face.
     for (Face f : mesh.faces())
     {
@@ -402,7 +409,7 @@ template <size_t N> void gsFreeformSubdivision<N>::make_c1(gsSurfMesh& mesh)
             auto v = mesh.from_vertex(v_hedge);
 
             // Prepare sum
-            gsVector3d<real_t> sum(0., 0., 0.);
+            gsVector<real_t, D> sum(gsVector<real_t, D>::Zero(D));
             real_t count(0);
 
             // Iterate over all halfedges leaving this vertex, one per face.
@@ -435,27 +442,27 @@ template <size_t N> void gsFreeformSubdivision<N>::make_c1(gsSurfMesh& mesh)
     } // end for over faces
 }
 
-template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data(gsSurfMesh& mesh)
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::initialize_data(gsSurfMesh& mesh)
 {
     mesh.add_face_property(std::string("bezier_points"),
-                           gsFreeformFaceData<N>());
-    gsProperty<gsFreeformFaceData<N>> patch_data =
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points");
+                           gsFreeformFaceData<N, D>());
+    gsProperty<gsFreeformFaceData<N, D>> patch_data =
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
     for (auto f : mesh.faces())
     {
-        patch_data.vector()[f.idx()] = gsFreeformFaceData<N>(mesh, f);
+        patch_data.vector()[f.idx()] = gsFreeformFaceData<N, D>(mesh, f);
     }
 }
 
-template <size_t N>
-gsMultiPatch<> gsFreeformSubdivision<N>::multipatch(const gsSurfMesh& mesh)
+template <size_t N, size_t D>
+gsMultiPatch<> gsFreeformSubdivision<N, D>::multipatch(const gsSurfMesh& mesh)
 {
     gsMultiPatch<> patch;
 
     // get the vector containing all the face data
-    gsProperty<gsFreeformFaceData<N>> face_data_vec =
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points");
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec =
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
 
     // for each face, convert its control net to a patch and add it to the
     // multipatch. Order doesn't matter.
@@ -467,9 +474,9 @@ gsMultiPatch<> gsFreeformSubdivision<N>::multipatch(const gsSurfMesh& mesh)
     return patch;
 }
 
-template <size_t N>
+template <size_t N, size_t D>
 gsSubdivisionScheme::gsSubdivisionMeshValidity
-gsFreeformSubdivision<N>::valid_mesh(const gsSurfMesh& mesh)
+gsFreeformSubdivision<N, D>::valid_mesh(const gsSurfMesh& mesh)
 {
     for (Face f : mesh.faces())
     {
@@ -489,11 +496,11 @@ gsFreeformSubdivision<N>::valid_mesh(const gsSurfMesh& mesh)
     return gsSubdivisionScheme::gsSubdivisionMeshValidity::UNDETERMINED;
 }
 
-template class gsFreeformSubdivision<5>;
-template class gsFreeformFaceData<5>;
-template class gsFreeformSubdivision<6>;
-template class gsFreeformFaceData<6>;
-template class gsFreeformSubdivision<9>;
-template class gsFreeformFaceData<9>;
+template class gsFreeformSubdivision<5, 3>;
+template class gsFreeformFaceData<5, 3>;
+template class gsFreeformSubdivision<6, 3>;
+template class gsFreeformFaceData<6, 3>;
+template class gsFreeformSubdivision<9, 3>;
+template class gsFreeformFaceData<9, 3>;
 
 } // namespace gismo

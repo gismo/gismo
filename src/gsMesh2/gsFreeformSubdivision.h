@@ -26,7 +26,7 @@ namespace gismo
 /// Class for subdivision schemes based on freeform spline control nets on
 /// quadrangular meshes. Also provides other support functions for working with
 /// such meshes.
-template <size_t N>
+template <size_t N, size_t D>
 class GISMO_EXPORT gsFreeformSubdivision : public gsSubdivisionScheme
 {
 
@@ -47,8 +47,9 @@ private: // Helper functions
     /// split horizontally, in the 'row' direction of the matrix.
     ///
     /// \param control_net The original matrix to be split.
-    static std::array<gsMatrix<gsVector3d<>, Dynamic, Dynamic>, 2>
-    deCasteljau(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& control_net);
+    static std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 2>
+    deCasteljau(
+        const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& control_net);
 
     /// \brief Matrix rotation.
     ///
@@ -56,8 +57,8 @@ private: // Helper functions
     /// changing the original.
     ///
     /// \param mat The matrix to be rotated.
-    static gsMatrix<gsVector3d<>, Dynamic, Dynamic>
-    rotate(const gsMatrix<gsVector3d<>, Dynamic, Dynamic>& mat);
+    static gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>
+    rotate(const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& mat);
 
     /// \brief Checks if a vertex is ordinary.
     ///
@@ -125,9 +126,9 @@ public:
 /// `mesh.halfedges(face)` traverses them. In particular, the position of
 /// control points `00`, `04`, `40`, `44` should correspond to the position of
 /// the vertices (if present).
-template <size_t N> class GISMO_EXPORT gsFreeformFaceData
+template <size_t N, size_t D> class GISMO_EXPORT gsFreeformFaceData
 {
-    template <size_t M> friend class gsFreeformSubdivision;
+    template <size_t M, size_t E> friend class gsFreeformSubdivision;
 
     using Point = gsSurfMesh::Point;
     using Vertex = gsSurfMesh::Vertex;
@@ -137,7 +138,7 @@ template <size_t N> class GISMO_EXPORT gsFreeformFaceData
 
 private: // members
     // The 25 bezier control points.
-    gsMatrix<gismo::gsVector3d<real_t>, N, N> control_points;
+    gsMatrix<gismo::gsVector<real_t, D>, N, N> control_points;
     // A back reference to the face this data belongs to.
     Face face;
 
@@ -193,7 +194,7 @@ public: // Control point accessors
     /// \param mesh The mesh this data belongs to.
     /// \param hedge The halfedge the returned control points follow.
     /// \param inset How many layers inside the control net we are looking.
-    std::vector<gsVector3d<>*>
+    std::vector<gsVector<real_t, D>*>
     edge_control_points(gsSurfMesh& mesh, Halfedge hedge, size_t inset);
 
     /// \brief Returns a control point at the corner of a face.
@@ -225,8 +226,8 @@ public: // Control point accessors
     /// \param mesh The mesh this data belongs to.
     /// \param v The vertex for whose control point we are looking.
     /// \param inset How many layers inside the control net we are looking.
-    gsVector3d<>* vertex_control_point(gsSurfMesh& mesh, Vertex v,
-                                       size_t inset);
+    gsVector<real_t, D>* vertex_control_point(gsSurfMesh& mesh, Vertex v,
+                                              size_t inset);
 
 public: // Conversions
     /// Returns a Bezier patch corresponding to these control points.
