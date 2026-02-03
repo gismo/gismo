@@ -21,6 +21,9 @@
 namespace gismo
 {
 
+// Forward declaration to use in return types without including full header
+template<class> class gsSurfMesh;
+
 namespace internal
 {
 
@@ -213,7 +216,10 @@ public:
     index_t nPieces() const override { return static_cast<index_t>(m_patches.size()); }
 
     index_t size() const override { return 1; }
-
+     
+    /// for use together with resize and setPatch
+    bool isValid(index_t pid) { return (nullptr != m_patches[pid]); }
+    
     /// Return the number of coefficients (control points)
     index_t coefsSize() const
     {
@@ -586,4 +592,3 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsMultiPatch.hpp)
 #endif
-

@@ -1,24 +1,14 @@
 #pragma once
 
-//== INCLUDES =================================================================
-
 
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <typeinfo>
 
-
-//== NAMESPACE ================================================================
-
-
 namespace gismo {
 
-
-//== CLASS DEFINITION =========================================================
-
-
-class Base_property_array
+class Base_property_array //gsArrayBase
 {
 public:
 
@@ -61,13 +51,8 @@ protected:
     std::string name_;
 };
 
-
-
-//== CLASS DEFINITION =========================================================
-
-
 template <class T>
-class gsProperty_array : public Base_property_array
+class gsProperty_array : public Base_property_array //gsArray
 {
 public:
 
@@ -133,6 +118,11 @@ public:
         return data_;
     }
 
+    /// Get reference to the underlying vector
+    const std::vector<T>& vector() const
+    {
+        return data_;
+    }
 
     /// Access the i'th element. No range check is performed!
     reference operator[](int _idx)
@@ -147,8 +137,6 @@ public:
         assert( size_t(_idx) < data_.size());
         return data_[_idx];
     }
-
-
 
 private:
     vector_type data_;
@@ -165,13 +153,8 @@ gsProperty_array<bool>::data() const
     return NULL;
 }
 
-
-
-//== CLASS DEFINITION =========================================================
-
-
 template <class T>
-class gsProperty
+class gsProperty //gsArrayHandle
 {
 public:
 
@@ -223,6 +206,11 @@ public:
         return parray_->vector();
     }
 
+    const std::vector<T>& vector() const
+    {
+        assert(parray_ != NULL);
+        return parray_->vector();
+    }
 
 private:
 
@@ -244,11 +232,7 @@ private:
 };
 
 
-
-//== CLASS DEFINITION =========================================================
-
-
-class gsProperty_container
+class gsProperty_container //gsArrayContainer
 {
 public:
 
@@ -448,6 +432,4 @@ private:
     size_t  size_;
 };
 
-
-//=============================================================================
 } // namespace gismo

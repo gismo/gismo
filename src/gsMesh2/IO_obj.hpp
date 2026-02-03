@@ -2,25 +2,27 @@
 #include <gsMesh2/IO.h>
 
 #include <cstdio>
-
-
-//== NAMESPACES ===============================================================
-
+#include <cstring>
+#include <cctype>
+#include <cstdlib>
+#include <vector>
+#include <string>
 
 namespace gismo {
 
 
 //== IMPLEMENTATION ===========================================================
 
-template <class T>
-bool read_obj(gsSurfMesh<T>& mesh, const std::string& filename)
+template <class Scalar>
+bool read_obj(gsSurfMesh<Scalar>& mesh, const std::string& filename)
 {
     char   s[200];
     float  x, y, z;
-    std::vector<typename gsSurfMesh<T>::Vertex>  vertices;
-    std::vector<Texture_coordinate> all_tex_coords;   //individual texture coordinates
+    std::vector<typename gsSurfMesh<Scalar>::Vertex>  vertices;
+    std::vector<typename gsSurfMesh<Scalar>::Point> all_tex_coords;   //individual texture coordinates
     std::vector<int> halfedge_tex_idx; //texture coordinates sorted for halfedges
-    typename gsSurfMesh<T>::Halfedge_property <Texture_coordinate> tex_coords = mesh.template halfedge_property<Texture_coordinate>("h:texcoord", Texture_coordinate(0,0,0));
+    typename gsSurfMesh<Scalar>::Halfedge_property <typename gsSurfMesh<Scalar>::Point> tex_coords =
+        mesh.template halfedge_property<typename gsSurfMesh<Scalar>::Point>("h:texcoord", typename gsSurfMesh<Scalar>::Point(0,0,0));
     bool with_tex_coord=false;
 
     // clear mesh
@@ -47,7 +49,7 @@ bool read_obj(gsSurfMesh<T>& mesh, const std::string& filename)
         {
             if (sscanf(s, "v %f %f %f", &x, &y, &z))
             {
-                mesh.add_vertex(Point(x,y,z));
+                mesh.add_vertex(typename gsSurfMesh<Scalar>::Point(x,y,z));
             }
         }
         // normal
@@ -66,7 +68,7 @@ bool read_obj(gsSurfMesh<T>& mesh, const std::string& filename)
           if (sscanf(s, "vt %f %f", &x, &y))
           {
             z=1;
-            all_tex_coords.push_back(Texture_coordinate(x,y,z));
+            all_tex_coords.push_back(typename gsSurfMesh<Scalar>::Point(x,y,z));
           }
         }
 
@@ -118,7 +120,7 @@ bool read_obj(gsSurfMesh<T>& mesh, const std::string& filename)
               {
                 case 0: // vertex
                 {
-                  vertices.push_back( typename gsSurfMesh<T>::Vertex(atoi(p0) - 1) );
+                  vertices.push_back( typename gsSurfMesh<Scalar>::Vertex(atoi(p0) - 1) );
                   break;
                 }
                 case 1: // texture coord
@@ -143,14 +145,14 @@ bool read_obj(gsSurfMesh<T>& mesh, const std::string& filename)
             }
           }
 
-          typename gsSurfMesh<T>::Face f=mesh.add_face(vertices);
+          typename gsSurfMesh<Scalar>::Face f=mesh.add_face(vertices);
 
 
           // add texture coordinates
           if(with_tex_coord)
           {
-              typename gsSurfMesh<T>::Halfedge_around_face_circulator h_fit = mesh.halfedges(f);
-              typename gsSurfMesh<T>::Halfedge_around_face_circulator h_end = h_fit;
+              typename gsSurfMesh<Scalar>::Halfedge_around_face_circulator h_fit = mesh.halfedges(f);
+              typename gsSurfMesh<Scalar>::Halfedge_around_face_circulator h_end = h_fit;
               unsigned v_idx =0;
               do
               {
@@ -173,9 +175,10 @@ bool read_obj(gsSurfMesh<T>& mesh, const std::string& filename)
 //-----------------------------------------------------------------------------
 
 
-template <class T>
-bool write_obj(const gsSurfMesh<T>& mesh, const std::string& filename)
+template <class Scalar>
+bool write_obj(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
 {
+    typedef typename gsSurfMesh<Scalar>::Point Point;
     FILE* out = fopen(filename.c_str(), "w");
     if (!out)
         return false;
@@ -184,18 +187,19 @@ bool write_obj(const gsSurfMesh<T>& mesh, const std::string& filename)
     fprintf(out, "# OBJ export from gsSurfMesh\n");
 
     //vertices
-    typename gsSurfMesh<T>::Vertex_property<Point> points = mesh.template get_vertex_property<Point>("v:point");
-    for (typename gsSurfMesh<T>::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
+    typename gsSurfMesh<Scalar>::Vertex_property<Point> points =
+        mesh.template get_vertex_property<Point>("v:point");
+    for (typename gsSurfMesh<Scalar>::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
     {
         const Point& p = points[*vit];
         fprintf(out, "v %.10f %.10f %.10f\n", cast<real_t,double>(p[0]), cast<real_t,double>(p[1]), cast<real_t,double>(p[2]) );
     }
 
     //normals
-    typename gsSurfMesh<T>::Vertex_property<Point> normals = mesh.template get_vertex_property<Point>("v:normal");
+    typename gsSurfMesh<Scalar>::Vertex_property<Point> normals = mesh.template get_vertex_property<Point>("v:normal");
     if(normals)
     {
-        for (typename gsSurfMesh<T>::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
+        for (typename gsSurfMesh<Scalar>::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
         {
             const Point& p = normals[*vit];
             fprintf(out, "vn %.10f %.10f %.10f\n", cast<real_t,double>(p[0]), cast<real_t,double>(p[1]), cast<real_t,double>(p[2]) );
@@ -220,20 +224,20 @@ bool write_obj(const gsSurfMesh<T>& mesh, const std::string& filename)
     //if so then add
     if(with_tex_coord)
     {
-        typename gsSurfMesh<T>::Halfedge_property<Texture_coordinate> tex_coord = mesh.template get_halfedge_property<Texture_coordinate>("h:texcoord");
-        for (typename gsSurfMesh<T>::Halfedge_iterator hit=mesh.halfedges_begin(); hit!=mesh.halfedges_end(); ++hit)
+        typename gsSurfMesh<Scalar>::Halfedge_property<Point> tex_coord = mesh.template get_halfedge_property<Point>("h:texcoord");
+        for (typename gsSurfMesh<Scalar>::Halfedge_iterator hit=mesh.halfedges_begin(); hit!=mesh.halfedges_end(); ++hit)
         {
-            const Texture_coordinate& pt = tex_coord[*hit];
+            const Point& pt = tex_coord[*hit];
             fprintf(out, "vt %.10f %.10f %.10f\n", cast<real_t,double>(pt[0]), cast<real_t,double>(pt[1]), cast<real_t,double>(pt[2]) );
         }
     }
 
     //faces
-    for (typename gsSurfMesh<T>::Face_iterator fit=mesh.faces_begin(); fit!=mesh.faces_end(); ++fit)
+    for (typename gsSurfMesh<Scalar>::Face_iterator fit=mesh.faces_begin(); fit!=mesh.faces_end(); ++fit)
     {
         fprintf(out, "f");
-        typename gsSurfMesh<T>::Vertex_around_face_circulator fvit=mesh.vertices(*fit), fvend=fvit;
-        typename gsSurfMesh<T>::Halfedge_around_face_circulator fhit=mesh.halfedges(*fit);
+        typename gsSurfMesh<Scalar>::Vertex_around_face_circulator fvit=mesh.vertices(*fit), fvend=fvit;
+        typename gsSurfMesh<Scalar>::Halfedge_around_face_circulator fhit=mesh.halfedges(*fit);
         do
         {
             if(with_tex_coord)
@@ -256,7 +260,5 @@ bool write_obj(const gsSurfMesh<T>& mesh, const std::string& filename)
     return true;
 }
 
-
-//=============================================================================
 } // namespace gismo
 //=============================================================================

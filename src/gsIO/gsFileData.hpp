@@ -119,6 +119,9 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
         tmp = fname;
 
     m_lastPath = tmp;
+    // If the path does not start with ./ or / , it is assumed to be a relative path
+    if (!gsFileManager::isFullyQualified(m_lastPath))
+        m_lastPath = gsFileManager::getCurrentPath() + m_lastPath;
 
     std::ofstream fn( tmp.c_str() );
     //rapidxml::print_no_indenting
@@ -142,6 +145,9 @@ gsFileData<T>::saveCompressed(std::string const & fname)  const
         tmp = fname;
 
     m_lastPath = tmp;
+    // If the path does not start with ./ or / , it is assumed to be a relative path
+    if (!gsFileManager::isFullyQualified(m_lastPath))
+        m_lastPath = gsFileManager::getCurrentPath() + m_lastPath;
 
     ogzstream fn( tmp.c_str() );
     fn << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";

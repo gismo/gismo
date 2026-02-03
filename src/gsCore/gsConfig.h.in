@@ -54,7 +54,6 @@
 #cmakedefine GISMO_WITH_TAUCS
 #cmakedefine GISMO_WITH_UMFPACK
 
-
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
@@ -65,6 +64,7 @@
 /* Debug settings. */
 #cmakedefine GISMO_WITH_XDEBUG
 #cmakedefine GISMO_WITH_WARNINGS
+#cmakedefine GISMO_WITH_COLORS
 
 /**
  * @name Eigen options - MUST be defined before Eigen is included

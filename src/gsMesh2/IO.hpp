@@ -2,6 +2,7 @@
 #include <gsMesh2/IO.h>
 
 #include <clocale>
+#include <algorithm>
 
 
 //== NAMESPACE ================================================================
@@ -13,8 +14,8 @@ namespace gismo {
 //== IMPLEMENTATION ===========================================================
 
 
-template <class T>
-bool read_mesh(gsSurfMesh<T>& mesh, const std::string& filename)
+template <class Scalar>
+bool read_mesh(gsSurfMesh<Scalar>& mesh, const std::string& filename)
 {
     std::setlocale(LC_NUMERIC, "C");
 
@@ -30,19 +31,19 @@ bool read_mesh(gsSurfMesh<T>& mesh, const std::string& filename)
     // extension determines reader
     if (ext == "off")
     {
-        return read_off(mesh, filename);
+        return read_off<Scalar>(mesh, filename);
     }
     else if (ext == "obj")
     {
-        return read_obj(mesh, filename);
+        return read_obj<Scalar>(mesh, filename);
     }
     else if (ext == "stl")
     {
-        return read_stl(mesh, filename);
+        return read_stl<Scalar>(mesh, filename);
     }
     else if (ext == "poly")
     {
-        return read_poly(mesh, filename);
+        return read_poly<Scalar>(mesh, filename);
     }
 
     // we didn't find a reader module
@@ -52,8 +53,8 @@ bool read_mesh(gsSurfMesh<T>& mesh, const std::string& filename)
 
 //-----------------------------------------------------------------------------
 
-template <class T>
-bool write_mesh(const gsSurfMesh<T>& mesh, const std::string& filename)
+template <class Scalar>
+bool write_mesh(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
 {
     // extract file extension
     std::string::size_type dot(filename.rfind("."));
@@ -65,19 +66,19 @@ bool write_mesh(const gsSurfMesh<T>& mesh, const std::string& filename)
     // extension determines reader
     if (ext == "off")
     {
-        return write_off(mesh, filename);
+        return write_off<Scalar>(mesh, filename);
     }
     else if (ext=="obj")
     {
-        return write_obj(mesh, filename);
+        return write_obj<Scalar>(mesh, filename);
     }
     else if (ext=="poly")
     {
-        return write_poly(mesh, filename);
+        return write_poly<Scalar>(mesh, filename);
     }
     else if (ext=="stl")
     {
-        return write_stl(mesh, filename);
+        return write_stl<Scalar>(mesh, filename);
     }
 
     // we didn't find a writer module

@@ -1,22 +1,48 @@
-#pragma once
+/** @file gsSurfMesh.cpp
+
+    @brief Half edge mesh structure
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris, H.M. Verhelst
+*/
 
 #include <gsCore/gsTemplateTools.h>
+
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsMesh2/IO.h>
+
 #include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsIO/gsXml.h>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <iostream>
+// Needed by some utilities below
+#include <map>
+#include <list>
+#include <sstream>
+#include <cstring>
+#include <cstdlib>
+#include <limits>
 
 namespace gismo {
 
-template<class T>
-gsSurfMesh<T>::gsSurfMesh()
+template <class Scalar>
+gsSurfMesh<Scalar>::
+gsSurfMesh()
 {
     // allocate standard properties
-    vconn_    = add_vertex_property<typename gsSurfMesh<T>::Vertex_connectivity>("v:connectivity");
-    hconn_    = add_halfedge_property<typename gsSurfMesh<T>::Halfedge_connectivity>("h:connectivity");
-    fconn_    = add_face_property<typename gsSurfMesh<T>::Face_connectivity>("f:connectivity");
-    vpoint_   = add_vertex_property<typename gsSurfMesh<T>::Point>("v:point",Point(0,0,0));
+    // same list is used in operator=() and assign()
+    vconn_    = add_vertex_property<Vertex_connectivity>("v:connectivity");
+    hconn_    = add_halfedge_property<Halfedge_connectivity>("h:connectivity");
+    fconn_    = add_face_property<Face_connectivity>("f:connectivity");
+    vpoint_   = add_vertex_property<Point>("v:point",Point(0,0,0));
     vdeleted_ = add_vertex_property<bool>("v:deleted", false);
     edeleted_ = add_edge_property<bool>("e:deleted", false);
     fdeleted_ = add_face_property<bool>("f:deleted", false);
@@ -26,31 +52,33 @@ gsSurfMesh<T>::gsSurfMesh()
     deleted_vertices_ = deleted_edges_ = deleted_faces_ = 0;
     garbage_ = false;
 }
-
-template<class T>
-gsSurfMesh<T>::gsSurfMesh(const gsMatrix<Scalar> & pts)
+template <class Scalar>
+gsSurfMesh<Scalar>::
+gsSurfMesh(const gsMatrix<Scalar> & pts)
 {
     for( auto & col : pts.colwise() )
         this->add_vertex(col);
 }
-
-template<class T>
-gsSurfMesh<T>::~gsSurfMesh()
+template <class Scalar>
+gsSurfMesh<Scalar>::
+~gsSurfMesh()
 {
 }
-
-template<class T>
-gsSurfMesh<T>&
-gsSurfMesh<T>::operator=(const gsSurfMesh& rhs)
+template <class Scalar>
+gsSurfMesh<Scalar>&
+gsSurfMesh<Scalar>::
+operator=(const gsSurfMesh<Scalar>& rhs)
 {
     if (this != &rhs)
     {
+        // deep copy of property containers
         vprops_ = rhs.vprops_;
         hprops_ = rhs.hprops_;
         eprops_ = rhs.eprops_;
         fprops_ = rhs.fprops_;
         mprops_ = rhs.mprops_;
 
+        // property handles contain pointers, have to be reassigned
         vconn_    = vertex_property<Vertex_connectivity>("v:connectivity");
         hconn_    = halfedge_property<Halfedge_connectivity>("h:connectivity");
         fconn_    = face_property<Face_connectivity>("f:connectivity");
@@ -59,9 +87,11 @@ gsSurfMesh<T>::operator=(const gsSurfMesh& rhs)
         fdeleted_ = face_property<bool>("f:deleted");
         vpoint_   = get_vertex_property<Point>("v:point");
 
+        // normals might be there, therefore use get_property
         vnormal_  = get_vertex_property<Point>("v:normal");
         fnormal_  = get_face_property<Point>("f:normal");
 
+        // how many elements are deleted?
         deleted_vertices_ = rhs.deleted_vertices_;
         deleted_edges_    = rhs.deleted_edges_;
         deleted_faces_    = rhs.deleted_faces_;
@@ -70,19 +100,21 @@ gsSurfMesh<T>::operator=(const gsSurfMesh& rhs)
 
     return *this;
 }
-
-template<class T>
-gsSurfMesh<T>&
-gsSurfMesh<T>::assign(const gsSurfMesh& rhs)
+template <class Scalar>
+gsSurfMesh<Scalar>&
+gsSurfMesh<Scalar>::
+assign(const gsSurfMesh<Scalar>& rhs)
 {
     if (this != &rhs)
     {
+        // clear properties
         vprops_.clear();
         hprops_.clear();
         eprops_.clear();
         fprops_.clear();
         mprops_.clear();
 
+        // allocate standard properties
         vconn_    = add_vertex_property<Vertex_connectivity>("v:connectivity");
         hconn_    = add_halfedge_property<Halfedge_connectivity>("h:connectivity");
         fconn_    = add_face_property<Face_connectivity>("f:connectivity");
@@ -91,9 +123,11 @@ gsSurfMesh<T>::assign(const gsSurfMesh& rhs)
         edeleted_ = add_edge_property<bool>("e:deleted", false);
         fdeleted_ = add_face_property<bool>("f:deleted", false);
 
+        // normals might be there, therefore use get_property
         vnormal_  = get_vertex_property<Point>("v:normal");
         fnormal_  = get_face_property<Point>("f:normal");
 
+        // copy properties from other mesh
         vconn_.array()     = rhs.vconn_.array();
         hconn_.array()     = rhs.hconn_.array();
         fconn_.array()     = rhs.fconn_.array();
@@ -102,12 +136,14 @@ gsSurfMesh<T>::assign(const gsSurfMesh& rhs)
         edeleted_.array()  = rhs.edeleted_.array();
         fdeleted_.array()  = rhs.fdeleted_.array();
 
+        // resize (needed by property containers)
         vprops_.resize(rhs.vertices_size());
         hprops_.resize(rhs.halfedges_size());
         eprops_.resize(rhs.edges_size());
         fprops_.resize(rhs.faces_size());
         mprops_.resize(1);
 
+        // how many elements are deleted?
         deleted_vertices_ = rhs.deleted_vertices_;
         deleted_edges_    = rhs.deleted_edges_;
         deleted_faces_    = rhs.deleted_faces_;
@@ -117,21 +153,65 @@ gsSurfMesh<T>::assign(const gsSurfMesh& rhs)
     return *this;
 }
 
-template<class T>
-bool gsSurfMesh<T>::read(const std::string& filename)
+template <class Scalar>
+gsSurfMesh<Scalar>& gsSurfMesh<Scalar>::operator=(gsSurfMesh<Scalar>&& rhs) noexcept
+{
+    if (this != &rhs)
+    {
+        
+        // deep copy of property containers
+        vprops_ = rhs.vprops_;
+        hprops_ = rhs.hprops_;
+        eprops_ = rhs.eprops_;
+        fprops_ = rhs.fprops_;
+        mprops_ = rhs.mprops_;
+
+        // property handles contain pointers, have to be reassigned
+        vconn_ = vertex_property<Vertex_connectivity>("v:connectivity");
+        hconn_ = halfedge_property<Halfedge_connectivity>("h:connectivity");
+        fconn_ = face_property<Face_connectivity>("f:connectivity");
+        vdeleted_ = vertex_property<bool>("v:deleted");
+        edeleted_ = edge_property<bool>("e:deleted");
+        fdeleted_ = face_property<bool>("f:deleted");
+        vpoint_ = get_vertex_property<Point>("v:point");
+
+        // normals might be there, therefore use get_property
+        vnormal_ = get_vertex_property<Point>("v:normal");
+        fnormal_ = get_face_property<Point>("f:normal");
+
+        // how many elements are deleted?
+        deleted_vertices_ = rhs.deleted_vertices_;
+        deleted_edges_ = rhs.deleted_edges_;
+        deleted_faces_ = rhs.deleted_faces_;
+        garbage_ = rhs.garbage_;
+
+        rhs.clear();
+
+    }
+    return *this;
+    
+}
+
+template <class Scalar>
+bool
+gsSurfMesh<Scalar>::
+read(const std::string& filename)
 {
     return read_mesh(*this, filename);
 }
 
-template<class T>
-bool gsSurfMesh<T>::write(const std::string& filename) const
+template <class Scalar>
+bool
+gsSurfMesh<Scalar>::
+write(const std::string& filename) const
 {
     return write_mesh(*this, filename);
 }
 
-template<class T>
+template <class Scalar>
 void
-gsSurfMesh<T>::clear()
+gsSurfMesh<Scalar>::
+clear()
 {
     vprops_.resize(0);
     hprops_.resize(0);
@@ -145,9 +225,10 @@ gsSurfMesh<T>::clear()
     garbage_ = false;
 }
 
-template<class T>
+template <class Scalar>
 void
-gsSurfMesh<T>::free_memory()
+gsSurfMesh<Scalar>::
+free_memory()
 {
     vprops_.free_memory();
     hprops_.free_memory();
@@ -156,8 +237,10 @@ gsSurfMesh<T>::free_memory()
     mprops_.free_memory();
 }
 
-template <class T>
-void gsSurfMesh<T>::reserve(unsigned int nvertices,
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+reserve(unsigned int nvertices,
         unsigned int nedges,
         unsigned int nfaces )
 {
@@ -168,9 +251,10 @@ void gsSurfMesh<T>::reserve(unsigned int nvertices,
     mprops_.reserve(1);
 }
 
-
-template <class T>
-void gsSurfMesh<T>::property_stats() const
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+property_stats() const
 {
     std::vector<std::string> props;
 
@@ -195,17 +279,20 @@ void gsSurfMesh<T>::property_stats() const
         std::cout << "\t" << props[i] << std::endl;
 }
 
-
-template <class T>
-typename gsSurfMesh<T>::Vertex gsSurfMesh<T>::add_vertex(const Point& p)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Vertex
+gsSurfMesh<Scalar>::
+add_vertex(const Point& p)
 {
     Vertex v = new_vertex();
     vpoint_[v] = p;
     return v;
 }
 
-template <class T>
-typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::find_halfedge(Vertex start, Vertex end) const
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Halfedge
+gsSurfMesh<Scalar>::
+find_halfedge(Vertex start, Vertex end) const
 {
     assert(is_valid(start) && is_valid(end));
 
@@ -226,20 +313,24 @@ typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::find_halfedge(Vertex start, Vert
     return Halfedge();
 }
 
-template <class T>
-typename gsSurfMesh<T>::Edge gsSurfMesh<T>::find_edge(Vertex a, Vertex b) const
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Edge
+gsSurfMesh<Scalar>::
+find_edge(Vertex a, Vertex b) const
 {
     Halfedge h = find_halfedge(a,b);
     return h.is_valid() ? edge(h) : Edge();
 }
 
-template <class T>
-void gsSurfMesh<T>::adjust_outgoing_halfedge(Vertex v)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+adjust_outgoing_halfedge(Vertex v)
 {
     Halfedge h  = halfedge(v);
     const Halfedge hh = h;
 
-    if (h.is_valid())
+    if (h.is_valid() && (h != cw_rotated_halfedge(h)) )
     {
         do
         {
@@ -254,8 +345,10 @@ void gsSurfMesh<T>::adjust_outgoing_halfedge(Vertex v)
     }
 }
 
-template <class T>
-typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_triangle(Vertex v0, Vertex v1, Vertex v2)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Face
+gsSurfMesh<Scalar>::
+add_triangle(Vertex v0, Vertex v1, Vertex v2)
 {
     add_face_vertices_.resize(3);
     add_face_vertices_[0] = v0;
@@ -264,8 +357,10 @@ typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_triangle(Vertex v0, Vertex v1, V
     return add_face(add_face_vertices_);
 }
 
-template <class T>
-typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_quad(Vertex v0, Vertex v1, Vertex v2, Vertex v3)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Face
+gsSurfMesh<Scalar>::
+add_quad(Vertex v0, Vertex v1, Vertex v2, Vertex v3)
 {
     add_face_vertices_.resize(4);
     add_face_vertices_[0] = v0;
@@ -276,10 +371,10 @@ typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_quad(Vertex v0, Vertex v1, Verte
 }
 
 
-//-----------------------------------------------------------------------------
-
-template <class T>
-typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_face(const typename std::vector<Vertex>& vertices)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Face
+gsSurfMesh<Scalar>::
+add_face(const std::vector<Vertex>& vertices)
 {
     const unsigned int n(vertices.size());
     assert (n > 2);
@@ -303,13 +398,12 @@ typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_face(const typename std::vector<
     next_cache.clear();
     next_cache.reserve(3*n);
 
-
     // test for topological errors
     for (i=0, ii=1; i<n; ++i, ++ii, ii%=n)
     {
         if ( !is_boundary(vertices[i]) )
         {
-            std::cerr << "gsSurfMesh<T>::add_face: complex vertex\n";
+            std::cerr << "gsSurfMesh<Scalar>::add_face: complex vertex v"<<vertices[i].idx()<<".\n";
             return Face();
         }
 
@@ -318,11 +412,10 @@ typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_face(const typename std::vector<
 
         if (!is_new[i] && !is_boundary(halfedges[i]))
         {
-            std::cerr << "gsSurfMesh<T>::add_face: complex edge\n";
+            std::cerr << "gsSurfMesh<Scalar>::add_face: complex edge at v"<<from_vertex(halfedges[i]).idx()<<" -- v"<<to_vertex(halfedges[i]).idx()<<".\n";
             return Face();
         }
     }
-
 
     // re-link patches if necessary
     for (i=0, ii=1; i<n; ++i, ++ii, ii%=n)
@@ -354,7 +447,7 @@ typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_face(const typename std::vector<
                 // ok ?
                 if (boundary_next == inner_next)
                 {
-                    std::cerr << "gsSurfMeshT::add_face: patch re-linking failed\n";
+                    std::cerr << "gsSurfMesh<Scalar>::add_face: patch re-linking failed\n";
                     return Face();
                 }
 
@@ -470,21 +563,30 @@ typename gsSurfMesh<T>::Face gsSurfMesh<T>::add_face(const typename std::vector<
     return f;
 }
 
-template <class T>
-unsigned int gsSurfMesh<T>::valence(Vertex v) const
+template <class Scalar>
+unsigned int
+gsSurfMesh<Scalar>::
+valence(Vertex v) const
 {
     unsigned int count(0);
-    for (auto u : vertices(v))
+    Halfedge h  = halfedge(v);
+    if (h.is_valid())
     {
-        std::ignore = u;
-        ++count;
+        const Halfedge hh = h;
+        do
+        {
+            ++count;
+            h = cw_rotated_halfedge(h);
+        }
+        while (h != hh);
     }
     return count;
 }
 
-template <class T>
+template <class Scalar>
 unsigned int
-gsSurfMesh<T>::hcount(Vertex v, const Halfedge_property<bool>  & prop) const
+gsSurfMesh<Scalar>::
+hcount(Vertex v, const Halfedge_property<bool>  & prop) const
 {
     unsigned int count(0);
     for (auto h : halfedges(v))
@@ -495,22 +597,29 @@ gsSurfMesh<T>::hcount(Vertex v, const Halfedge_property<bool>  & prop) const
     return count;
 }
 
-template <class T>
-unsigned int gsSurfMesh<T>::valence(Face f) const
+template <class Scalar>
+unsigned int
+gsSurfMesh<Scalar>::
+valence(Face f) const
 {
     unsigned int count(0);
-
-    Vertex_around_face_circulator fvit = vertices(f);
-    Vertex_around_face_circulator fvend = fvit;
-    do {
+    Halfedge h  = halfedge(f);
+    const Halfedge hh = h;
+    do
+    {
         ++count;
-    } while (++fvit != fvend);
+        h = next_halfedge(h);
+    }
+    while (h != hh);
 
     return count;
 }
 
-template <class T>
-unsigned int gsSurfMesh<T>::face_valence_sum() const
+
+template <class Scalar>
+unsigned int
+gsSurfMesh<Scalar>::
+face_valence_sum() const
 {
     unsigned int count = 0;
 #   pragma omp parallel for reduction(+:count)
@@ -519,8 +628,10 @@ unsigned int gsSurfMesh<T>::face_valence_sum() const
     return count;
 }
 
-template <class T>
-bool gsSurfMesh<T>::is_triangle_mesh() const
+template <class Scalar>
+bool
+gsSurfMesh<Scalar>::
+is_triangle_mesh() const
 {
     Face_iterator fit=faces_begin(), fend=faces_end();
     for (; fit!=fend; ++fit)
@@ -530,8 +641,10 @@ bool gsSurfMesh<T>::is_triangle_mesh() const
     return true;
 }
 
-template <class T>
-bool gsSurfMesh<T>::is_quad_mesh() const
+template <class Scalar>
+bool
+gsSurfMesh<Scalar>::
+is_quad_mesh() const
 {
     Face_iterator fit=faces_begin(), fend=faces_end();
     for (; fit!=fend; ++fit)
@@ -541,9 +654,10 @@ bool gsSurfMesh<T>::is_quad_mesh() const
     return true;
 }
 
-
-template <class T>
-void gsSurfMesh<T>::triangulate()
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+triangulate()
 {
     /* The iterators will stay valid, even though new faces are added,
        because they are now implemented index-based instead of
@@ -554,9 +668,10 @@ void gsSurfMesh<T>::triangulate()
         triangulate(*fit);
 }
 
-
-template <class T>
-void gsSurfMesh<T>::triangulate(Face f)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+triangulate(Face f)
 {
     /*
       Split an arbitrary face into triangles by connecting
@@ -600,9 +715,10 @@ void gsSurfMesh<T>::triangulate(Face f)
     set_face(base_h, f);
 }
 
-
-template <class T>
-void gsSurfMesh<T>::update_face_normals()
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+update_face_normals()
 {
     if (!fnormal_)
         fnormal_ = face_property<Point>("f:normal",Point(0,0,0));
@@ -613,9 +729,9 @@ void gsSurfMesh<T>::update_face_normals()
         fnormal_[*fit] = compute_face_normal(*fit);
 }
 
-
-template <class T>
-Normal gsSurfMesh<T>::compute_face_normal(Face f) const
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Normal
+gsSurfMesh<Scalar>::compute_face_normal(Face f) const
 {
     Halfedge h = halfedge(f);
     Halfedge hend = h;
@@ -651,9 +767,10 @@ Normal gsSurfMesh<T>::compute_face_normal(Face f) const
     }
 }
 
-
-template <class T>
-void gsSurfMesh<T>::update_vertex_normals()
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+update_vertex_normals()
 {
     if (!vnormal_)
         vnormal_ = vertex_property<Point>("v:normal",Point(0,0,0));
@@ -665,8 +782,9 @@ void gsSurfMesh<T>::update_vertex_normals()
 }
 
 
-template <class T>
-Normal gsSurfMesh<T>::compute_vertex_normal(Vertex v) const
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Normal
+gsSurfMesh<Scalar>::compute_vertex_normal(Vertex v) const
 {
     Point     nn(0,0,0);
     Halfedge  h = halfedge(v);
@@ -720,17 +838,18 @@ Normal gsSurfMesh<T>::compute_vertex_normal(Vertex v) const
     return nn;
 }
 
-
-
-template <class T>
-typename gsSurfMesh<T>::Scalar gsSurfMesh<T>::edge_length(Edge e) const
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Scalar
+gsSurfMesh<Scalar>::
+edge_length(Edge e) const
 {
     return (vpoint_[vertex(e,0)] - vpoint_[vertex(e,1)]).norm();
 }
 
-
-template <class T>
-void gsSurfMesh<T>::split(Face f, Vertex v)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+split(Face f, Vertex v)
 {
     /*
       Split an arbitrary face into triangles by connecting each vertex of fh to vh.
@@ -779,8 +898,10 @@ void gsSurfMesh<T>::split(Face f, Vertex v)
 }
 
 
-template <class T>
-void gsSurfMesh<T>::quad_split(Face f, Vertex v, Halfedge s)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+quad_split(Face f, Vertex v, Halfedge s)
 {
     /*
       Split an arbitrary face into quads by connecting each vertex of fh to vh.
@@ -803,7 +924,6 @@ void gsSurfMesh<T>::quad_split(Face f, Vertex v, Halfedge s)
     set_face(e0, f);
     set_next_halfedge(e0, h);//sets next(e0) and also prev(h)
 
-    // ---------------
     Halfedge e = new_edge(from_vertex(hnext),v);
     set_face(e, f);
 
@@ -845,11 +965,11 @@ void gsSurfMesh<T>::quad_split(Face f, Vertex v, Halfedge s)
     }
 }
 
-template <class T>
-void gsSurfMesh<T>::quad_split()
+template <class Scalar>
+void gsSurfMesh<Scalar>::quad_split()
 {
-    gsSurfMesh<T>::Vertex v;
-    gsSurfMesh<T>::Halfedge he;
+    typename gsSurfMesh<Scalar>::Vertex v;
+    typename gsSurfMesh<Scalar>::Halfedge he;
 
     // reserve vertices, edges, faces
     reserve(n_vertices() + n_edges() + n_faces(),
@@ -885,7 +1005,7 @@ void gsSurfMesh<T>::quad_split()
     int i = 0;
     for (auto fit : faces())
     {
-        v = gsSurfMesh<T>::Vertex(fnv + (i++));//face vertex id ?
+        v = typename gsSurfMesh<Scalar>::Vertex(fnv + (i++));//face vertex id ?
         //Start from an original vertex
         auto fv = vertices(fit).begin();
         if ((*fv).idx() >= env) ++fv; //todo: add -> operator
@@ -895,9 +1015,10 @@ void gsSurfMesh<T>::quad_split()
 
 }
 
-
-template <class T>
-typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::split(Edge e, Vertex v)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Halfedge
+gsSurfMesh<Scalar>::
+split(Edge e, Vertex v)
 {
     Halfedge h0 = halfedge(e, 0);
     Halfedge o0 = halfedge(e, 1);
@@ -994,9 +1115,10 @@ typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::split(Edge e, Vertex v)
     return t1;
 }
 
-
-template <class T>
-typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::insert_vertex(Halfedge h0, Vertex v)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Halfedge
+gsSurfMesh<Scalar>::
+insert_vertex(Halfedge h0, Vertex v)
 {
     // before:
     //
@@ -1020,7 +1142,7 @@ typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::insert_vertex(Halfedge h0, Verte
     Face     fo = face(o0);
 
     Halfedge h1 = new_edge(v, v2);
-    Halfedge o1 = opposite_halfedge(h1);
+    Halfedge o1 = opposite_halfedge(h1);    
 
     // adjust halfedge connectivity
     set_next_halfedge(h1, h2);
@@ -1058,8 +1180,10 @@ typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::insert_vertex(Halfedge h0, Verte
 }
 
 
-template <class T>
-typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::insert_edge(Halfedge h0, Halfedge h1)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Halfedge
+gsSurfMesh<Scalar>::
+insert_edge(Halfedge h0, Halfedge h1)
 {
     assert(face(h0) == face(h1));
     assert(face(h0).is_valid());
@@ -1096,9 +1220,10 @@ typename gsSurfMesh<T>::Halfedge gsSurfMesh<T>::insert_edge(Halfedge h0, Halfedg
     return h4;
 }
 
-
-template <class T>
-bool gsSurfMesh<T>::is_flip_ok(Edge e) const
+template <class Scalar>
+bool
+gsSurfMesh<Scalar>::
+is_flip_ok(Edge e) const
 {
     // boundary edges cannot be flipped
     if (is_boundary(e)) return false;
@@ -1120,9 +1245,10 @@ bool gsSurfMesh<T>::is_flip_ok(Edge e) const
     return true;
 }
 
-
-template <class T>
-void gsSurfMesh<T>::flip(Edge e)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+flip(Edge e)
 {
     // CAUTION : Flipping a halfedge may result in
     // a non-manifold mesh, hence check for yourself
@@ -1172,10 +1298,10 @@ void gsSurfMesh<T>::flip(Edge e)
         set_halfedge(vb0, b1);
 }
 
-
-
-template <class T>
-bool gsSurfMesh<T>::is_collapse_ok(Halfedge v0v1)
+template <class Scalar>
+bool
+gsSurfMesh<Scalar>::
+is_collapse_ok(Halfedge v0v1)
 {
     Halfedge  v1v0(opposite_halfedge(v0v1));
     Vertex    v0(to_vertex(v1v0));
@@ -1233,8 +1359,10 @@ bool gsSurfMesh<T>::is_collapse_ok(Halfedge v0v1)
     return true;
 }
 
-template <class T>
-void gsSurfMesh<T>::collapse(Halfedge h)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+collapse(Halfedge h)
 {
     Halfedge h0 = h;
     Halfedge h1 = prev_halfedge(h0);
@@ -1251,8 +1379,10 @@ void gsSurfMesh<T>::collapse(Halfedge h)
         remove_loop(o1);
 }
 
-template <class T>
-void gsSurfMesh<T>::remove_edge(Halfedge h)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+remove_edge(Halfedge h)
 {
     Halfedge  hn = next_halfedge(h);
     Halfedge  hp = prev_halfedge(h);
@@ -1303,8 +1433,10 @@ void gsSurfMesh<T>::remove_edge(Halfedge h)
     garbage_ = true;
 }
 
-template <class T>
-void gsSurfMesh<T>::remove_loop(Halfedge h)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+remove_loop(Halfedge h)
 {
     Halfedge  h0 = h;
     Halfedge  h1 = next_halfedge(h0);
@@ -1351,8 +1483,10 @@ void gsSurfMesh<T>::remove_loop(Halfedge h)
     garbage_ = true;
 }
 
-template <class T>
-void gsSurfMesh<T>::delete_vertex(Vertex v)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+delete_vertex(Vertex v)
 {
     if (vdeleted_[v])  return;
 
@@ -1385,8 +1519,10 @@ void gsSurfMesh<T>::delete_vertex(Vertex v)
     }
 }
 
-template <class T>
-void gsSurfMesh<T>::delete_edge(Edge e)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+delete_edge(Edge e)
 {
     if (edeleted_[e])  return;
 
@@ -1397,8 +1533,10 @@ void gsSurfMesh<T>::delete_edge(Edge e)
     if (f1.is_valid()) delete_face(f1);
 }
 
-template <class T>
-void gsSurfMesh<T>::delete_face(Face f)
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+delete_face(Face f)
 {
     if (fdeleted_[f])  return;
 
@@ -1410,12 +1548,12 @@ void gsSurfMesh<T>::delete_face(Face f)
     }
 
     // boundary edges of face f to be deleted
-    typename std::vector<Edge> deleted_edges;
+    std::vector<Edge> deleted_edges;
     deleted_edges.reserve(3);
 
 
     // vertices of face f for updating their outgoing halfedge
-    typename std::vector<Vertex> vertices;
+    std::vector<Vertex> vertices;
     vertices.reserve(3);
 
 
@@ -1511,8 +1649,10 @@ void gsSurfMesh<T>::delete_face(Face f)
     garbage_ = true;
 }
 
-template <class T>
-void gsSurfMesh<T>::garbage_collection()
+template <class Scalar>
+void
+gsSurfMesh<Scalar>::
+garbage_collection()
 {
     int  i, i0, i1,
         nV(vertices_size()),
@@ -1649,9 +1789,9 @@ void gsSurfMesh<T>::garbage_collection()
 }
 
 // Returns true if there is a sharp halfedge emenating from vertex \a v
-template <class T>
-inline bool gsSurfMesh<T>::has_flag(Vertex v,
-                                 const gsSurfMesh<T>::Halfedge_property<bool> & hflag)
+template <class Scalar>
+bool gsSurfMesh<Scalar>::
+has_flag(Vertex v, const typename gsSurfMesh<Scalar>::Halfedge_property<bool> & hflag) const
 {
     /*//count hflags
       int c = 0;
@@ -1663,272 +1803,125 @@ inline bool gsSurfMesh<T>::has_flag(Vertex v,
     return false;
 }
 
-template <class T>
-void gsSurfMesh<T>::cc_subdivide()
+template <class Scalar>
+inline memory::unique_ptr<gsGeometry<> > gsSurfMesh<Scalar>::asPatch(typename gsSurfMesh<Scalar>::Halfedge h, int deg) const
 {
-    gsSurfMesh<T>::Vertex v;
-    gsSurfMesh<T>::Halfedge he;
+    static gsKnotVector<> kv;
+    kv.initUniform(0, 1, 0, 1, 1, deg);
+    static gsTensorBSplineBasis<2> bs;
+    bs = { kv,kv };
+    static gsMatrix<> coefs;
+    coefs.resize( (deg+1)*(deg+1), 3);
 
-    // reserve vertices, edges, faces
-    reserve( n_vertices()+n_edges()+n_faces(),
-             2*n_edges(), 4*n_faces() );
+    Halfedge hh;
+    index_t c = 0;
 
-    auto points = get_vertex_property<Point>("v:point");
-
-    const bool do_sharp = hprops_.has("h:sharp");
-    Halfedge_property<bool> sharp;
-    if (do_sharp)
-        sharp = get_halfedge_property<bool>("h:sharp");
-
-    index_t env = n_vertices(); // edge vertices start here
-
-    // loop over all edges, add edge points
-    Point tmp;
-    for (auto eit : edges())
+    // Finding the first point and take its halfedge
+    for (index_t i = 0; i<(deg/2); ++i)
     {
-        he  = halfedge(eit,0);
-        tmp = (points[from_vertex(he)]+points[to_vertex(he)]) / 2;
-        v   = add_vertex(tmp);// edge points initialized as midpoints
-        insert_vertex(he,v);
+        h = backward_halfedge(h);
+        h = next_halfedge(next_halfedge(opposite_halfedge(h)));
     }
 
-    index_t fnv = n_vertices(); // face vertices start here
-
-    // loop over all faces, add face points
-    for (auto fit : faces())
+    // Going through the control points for each row
+    for (int j = 0; j<deg; ++j)
     {
-        auto fv = vertices(fit);
-        tmp.setZero();
-        for (auto vc = fv.begin(); vc!=fv.end(); ++vc, ++vc)
-            tmp += points[*vc];
-        tmp /= 4;
-        add_vertex(tmp);  // vertex gets shifted face id
-    }
-
-    int i = 0;
-    for (auto fit : faces())
-    {
-        v = gsSurfMesh<T>::Vertex(fnv+(i++));//face vertex id ?
-        //Start from an original vertex
-        auto fv = vertices(fit).begin();
-        if ( (*fv).idx() >= env) ++fv; //todo: add -> operator
-        //assert ( (*fv).idx() < nv )
-        quad_split(fit,v,fv.he());
-    }
-
-#   pragma omp parallel for default(shared) private(v,tmp)
-    for (i = env; i<fnv;++i)
-    {
-        v = gsSurfMesh<T>::Vertex(i); //edge points
-
-        if (do_sharp && has_flag(v,sharp))
-            continue; //remain midpoints
-        else if (is_boundary(v))
+        coefs.row(c++) = vpoint_[from_vertex(h)];
+        coefs.row(c++) = vpoint_[  to_vertex(h)];
+        hh = h;
+        for (int i = 1; i<deg; ++i)
         {
-            //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
-            continue;
+            hh = forward_halfedge(hh);
+            coefs.row(c++) = vpoint_[to_vertex(hh)];
         }
-        else
-        {
-            //Interior edge points finalized here
-            auto vit = vertices(v);
-            auto vcp = vit;
-            tmp.setZero();
-            if (vit) do
-                     {
-                         tmp += points[*vit];
-                     } while (++vit != vcp);
-            tmp /= 4 ; // =valence(v);
-            points[v] = tmp;
-        }
+        h = ccw_rotated_halfedge((prev_halfedge(h)));
     }
-
-#   pragma omp parallel for default(shared) private(v)
-    for (i = 0; i<env;++i)
+    //last row
+    coefs.row(c++) = vpoint_[from_vertex(h)];
+    coefs.row(c++) = vpoint_[  to_vertex(h)];
+    hh = h;
+    for (int i = 1; i<deg; ++i)
     {
-        v = gsSurfMesh<T>::Vertex(i); // original vertices
-        auto n = valence(v);
-        if (0==n) continue;
+        hh = opposite_halfedge( prev_halfedge( opposite_halfedge(
+             prev_halfedge( opposite_halfedge(hh) ))));
+        coefs.row(c++) = vpoint_[to_vertex(hh)];
+    }
+    return bs.makeGeometry(coefs);
+}
 
-        // Rigid corner ?
-        if (2==n) continue;
-
-        //original vertex positions are computed using new edge/face points only
-        auto & pt = points[v];
-
-        if (do_sharp && has_flag(v,sharp))
+template <class Scalar>
+gsMultiPatch<> gsSurfMesh<Scalar>::asSpline(int deg) const
+{
+    gsMultiPatch<> res;
+    int n;
+    Halfedge he, hh;
+    Vertex ve;
+    bool evface;
+    if ( 0 == deg%2 )
+        for (auto v : vertices())
         {
-            unsigned int sd = hcount(v,sharp);
-            if (2==sd)
+            if (is_boundary(v)) continue; // handling boundaries
+            n = valence(v);
+
+            he = halfedge(v);
+            
+            evface = false;
+            hh = he;
+            // exluding ev faces
+            do
             {
-                auto h1 = halfedge(v);
-                while(!sharp[h1] || touches_boundary(h1))
-                    h1 = cw_rotated_halfedge(h1);
-                Halfedge h2 = h1;
-                h1 = ccw_rotated_halfedge(halfedge(v));
-                while(!sharp[h1] || is_boundary(h1))
-                    h1 = ccw_rotated_halfedge(h1);
+                if (valence(face(hh)) != 4)
+                {
+                    evface = true;
+                    break;
+                }
+                hh = ccw_rotated_halfedge(hh);
+            } while (hh != he);
 
-                pt *= 2; //2~6
-                pt += points[to_vertex(h2)]; // first flagged neighbor
-                pt += points[to_vertex(h1)]; // second flagged neighbor
-                pt /= 4; // /4~8
-            }
-
-            if (sd!=1) // dart: use smooth rule, else  no relocation
+            if (evface)
                 continue;
-        }
 
-        if (is_boundary(v))
-        {
-            pt *= 2;
-            auto hh = halfedge(v);
-            while(!touches_boundary(hh))
-                hh = cw_rotated_halfedge(hh);
-            //GISMO_ASSERT(touches_boundary(hh), "Did not find a boundary halfedge.");
-            pt += points[to_vertex(hh)]; //  right boundary neighbor
-            hh = next_halfedge(opposite_halfedge(hh));
-            pt += points[to_vertex(hh)]; // left boundary neighbor
-            pt /= 4;
+            if (4==n)  // exluding ev points
+                res.addPatch( asPatch(he, deg) );
         }
-        else
+    else // 1 == deg%2
+        for (auto f : faces())
         {
-            auto vit = halfedges(v);
-            auto vcp = vit;
-            //formula: pt = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
-            pt *= n*(n-3);
-            if (vit)
+            if (valence(f) != 4) continue;
+
+            evface = false;
+            if (is_boundary(f)) continue; // handling boundaries
+
+            for ( auto v : vertices(f) )
+            {
+                n = valence(v);
+                                
+                if ( n!=4 ) break;
+
+                he = halfedge(v);
+                hh = he;
+
+                // exluding ev faces
                 do
-                { //pt += 4*E-F
-                    pt += 4*points[ to_vertex(*vit) ]
-                        - points[ to_vertex(next_halfedge(*vit)) ];
-                } while (++vit != vcp);
-            pt /= n*n;
-        }
-    }
-}
+                {
+                    if (valence(face(hh)) != 4)
+                    {
+                        evface = true;
+                        break;
+                    }
+                    hh = ccw_rotated_halfedge(hh);
+                } while (hh != he);
 
-template <class T>
-typename gsSurfMesh<T>::Vertex_property<Point> gsSurfMesh<T>::cc_limit_points(std::string label)
-{
-    auto points = get_vertex_property<Point>("v:point");
-    auto limits = add_vertex_property<Point>(
-        (label == "v:point" ? "v:limit_points_2022" : label),Point(0,0,0));
-    T n;
-#   pragma omp parallel for default(shared) private(n)
-    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
-    {
-        n = valence(*vit);
-        if (is_boundary(*vit))
-        {
-            gsWarn<< "Boundary vertex is ignored.\n";
-
-            if (2>n)
-            {
-
-            }
-            continue;
-        }
-
-        auto & pt = limits[*vit];
-        pt = n*n*points[*vit];
-        for ( auto he : halfedges(*vit) )
-        {
-            if (is_boundary(he))
-            {
-                gsWarn<< "Boundary halfedge is ignored.\n";
+                if (evface) break;
             }
 
-            pt += 4 * points[ to_vertex(he) ] +
-                points[ to_vertex(next_halfedge(he)) ];
+            if (evface) continue;
+
+            if (4==n)
+                res.addPatch( asPatch(halfedge(f), deg) );
         }
-        pt /= (n*(n+5));
-    }
 
-    if (label == "v:point") //vertices are replaced by their limit positions
-    {
-        rename_vertex_property(points,"v:point_original");
-        rename_vertex_property(limits,"v:point");
-    }
-    return limits;
-}
-
-template <class T>
-typename gsSurfMesh<T>::Vertex_property<Point> gsSurfMesh<T>::cc_limit_normals(std::string label, bool normalize)
-{
-    auto points = get_vertex_property<Point>("v:point");
-    //todo: check if label exists
-    auto limits = add_vertex_property<Point>(label,Point(0,0,0));
-    Point t1, t2;
-    T c1, c2, cc1, cc2;
-    index_t i;
-    gsSurfMesh<T>::Halfedge h2;
-#   pragma omp parallel for default(shared) private(h2,t1,t2,c1,c2,cc1,cc2,i)
-    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
-    {
-        const T n = valence(*vit);
-        const T cospin = math::cos(EIGEN_PI/n);
-        cc2 = 1 / ( n * math::sqrt(4+cospin*cospin) );
-        cc1 = 1/n + cospin*cc2;
-        t1.setZero();
-        t2.setZero();
-        i = 0;
-        for ( auto he : halfedges(*vit) )
-        {
-            h2 = ccw_rotated_halfedge(he);
-            c1  = math::cos( 2*i   *EIGEN_PI/n)*cc1;
-            c2  = math::cos((2*i+1)*EIGEN_PI/n)*cc2;
-            t1 += c1 * points[ to_vertex(he ) ]
-                + c2 * points[ to_vertex(next_halfedge(he)) ];
-            t2 += c1 * points[ to_vertex(h2 ) ]
-                + c2 * points[ to_vertex(next_halfedge(h2)) ];
-            ++i;
-        }
-        if (normalize)
-            limits[*vit] = t1.cross(t2).normalized();
-        else
-            limits[*vit] = t1.cross(t2);
-    }
-    return limits;
-}
-
-template <class T>
-typename gsSurfMesh<T>::Vertex_property<Point> gsSurfMesh<T>::cc_limit_tangent_vec(std::string label, bool normalize)
-{
-    gsSurfMesh<T>::Vertex v;
-    gsSurfMesh<T>::Halfedge h2;
-
-    auto points = get_vertex_property<Point>("v:point");
-    //todo: check if label exists
-    auto limits = add_vertex_property<Point>(label,Point(0,0,0));
-    Point t1, t2;
-    T c1, c2, cc1, cc2;
-    index_t i;
-#   pragma omp parallel for default(shared) private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
-    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
-    {
-        const T n = valence(*vit);
-        const T cospin = math::cos(EIGEN_PI/n);
-        cc2 = 1 / ( n * math::sqrt(4+cospin*cospin) );
-        cc1 = 1/n + cospin*cc2;
-        t1.setZero();
-        t2.setZero();
-        i = 0;
-        for ( auto he : halfedges(*vit) )
-        {
-            h2 = ccw_rotated_halfedge(he);
-            c1  = math::cos( 2*i   *EIGEN_PI/n)*cc1;
-            c2  = math::cos((2*i+1)*EIGEN_PI/n)*cc2;
-            t1 += c1 * points[ to_vertex(he ) ]
-                + c2 * points[ to_vertex(next_halfedge(he)) ];
-            ++i;
-        }
-        if (normalize)
-            limits[*vit] = t1.normalized();
-        else
-            limits[*vit] = t1;
-    }
-    return limits;
+    return res;
 }
 
 
@@ -1954,147 +1947,21 @@ inline index_t face_pt_idx(index_t i, index_t j, index_t s, index_t sz)
 }
 }
 
-template <class T>
-gsMultiPatch<T> gsSurfMesh<T>::cc_acc3(bool comp_topology) const
+template <class Scalar>
+gsMultiPatch<Scalar> gsSurfMesh<Scalar>::linear_patches() const
 {
-    auto points = get_vertex_property<Point>("v:point");
-    gsMultiPatch<T> mp;
-    gsKnotVector<> kv(0,1,0,4);//cubic degree
-    gsTensorBSplineBasis<2> bb(kv,kv);
-    gsMatrix<T> coefs;
-    gsSurfMesh<T>::Halfedge h2;
-    gsSurfMesh<T>::Vertex v;
-    T n;
-#   pragma omp parallel for default(shared) private(n,v,h2,coefs) shared(mp)
-    for (auto fit = faces_begin(); fit < faces_end(); ++fit)
-    {
-        //gsInfo << "face id: "<< fit->idx() <<"\n";
-        coefs.resize(16,3);//thread privates must be initialized for each thread
-        index_t s = 0;
-
-        for ( auto he : halfedges(*fit) )
-        {
-            v = from_vertex(he);
-            n = valence(v);
-            auto c00 = coefs.row(face_pt_idx(0,0,s,4)).transpose();
-            auto c11 = coefs.row(face_pt_idx(1,1,s,4)).transpose();
-            auto c10 = coefs.row(face_pt_idx(1,0,s,4)).transpose();
-            auto c01 = coefs.row(face_pt_idx(0,1,s,4)).transpose();
-            h2 = opposite_halfedge(prev_halfedge(he));
-            if (is_boundary(v))
-            {
-                c10 = ( 2*points[v] + points[to_vertex(he)] ) / 3;
-                c01 = ( 2*points[v] + points[to_vertex(h2)] ) / 3;
-
-                if (n>2)
-                {
-                    h2 = he; //find boundary edge
-                    while ( !is_boundary(opposite_halfedge(h2)) )
-                        h2 = cw_rotated_halfedge(h2);
-                    c00 = (4*points[v] + points[to_vertex(h2)] +
-                           points[to_vertex(next_halfedge((opposite_halfedge(h2))))] )/6;
-                }
-                else//single face at corner
-                {
-                    c00 = points[v];
-                    n=3; // for c11
-                }
-
-                c11 = 2*(n-1) * points[v] +
-                    2 * points[to_vertex(he)] +
-                    points[to_vertex(next_halfedge(he))] +
-                    2 * points[to_vertex(ccw_rotated_halfedge(he))];
-                c11 /= 2*n+3;
-            }
-            else // interior vertex
-            {
-                c00 = n*n*points[v];
-                for (auto h : halfedges(v))
-                    c00 += 4 * points[ to_vertex(h) ] +
-                        points[ to_vertex(next_halfedge(h)) ] ;
-                c00 /= n*(n+5);
-                c11 = n * points[v] +
-                    2 * points[to_vertex(he)] +
-                    points[to_vertex(next_halfedge(he))] +
-                    2 * points[to_vertex(ccw_rotated_halfedge(he))];
-                c11 /= n+5;
-                c10 = n * points[v]
-                    + 2 * points[to_vertex(he)]+
-                    points[to_vertex(ccw_rotated_halfedge(he))]+
-                    points[to_vertex(cw_rotated_halfedge(he)) ]+
-                    0.5 * points[to_vertex(next_halfedge(he))] +
-                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(he))) ];
-                c10 /= n+5;
-                c01 = n * points[v]
-                    + 2 * points[to_vertex(h2)]+
-                    points[to_vertex(ccw_rotated_halfedge(h2))]+
-                    points[to_vertex(cw_rotated_halfedge(h2)) ]+
-                    0.5 * points[to_vertex(next_halfedge(h2))] +
-                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
-                c01 /= n+5;
-            }
-
-            /*
-            h2 = opposite_halfedge(prev_halfedge(he));
-            n = valence(v);
-            if ( is_boundary( opposite_halfedge(he) ) )
-            {
-                c10 = ( 2*points[v] + points[to_vertex(he)] ) / 3;
-            }
-            else //interior edge
-            {
-                c10 = n * points[v] + 2 * points[to_vertex(he)] +
-                    points[to_vertex(ccw_rotated_halfedge(he))]+
-                    points[to_vertex(cw_rotated_halfedge(he)) ]+
-                    0.5 * points[to_vertex(next_halfedge(he))] +
-                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(he))) ];
-                c10 /= n+5;
-            }
-
-            h2 = opposite_halfedge(prev_halfedge(he));
-            //if ( is_boundary(h2) )
-            if (is_boundary(v))
-            {
-                c01 = ( 2 * points[v] + points[to_vertex(h2)] ) / 3;
-            }
-            else //interior edge
-            {
-                c01 = n * points[v] + 2 * points[to_vertex(h2)] +
-                    points[to_vertex(ccw_rotated_halfedge(h2))]+
-                    points[to_vertex(cw_rotated_halfedge(h2)) ]+
-                    0.5 * points[to_vertex(next_halfedge(h2))] +
-                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
-                c01 /= n+5;
-            }
-            */
-
-            ++s;//next halfedge
-        }
-
-#       pragma omp critical (mp_addPatch)
-        mp.addPatch( bb.makeGeometry(give(coefs)) );
-    }
-    if (comp_topology)
-        mp.computeTopology();
-    return mp;
-}
-
-
-template <class T>
-gsMultiPatch<T> gsSurfMesh<T>::linear_patches() const
-{
-    gsMultiPatch<> mp;
-    gsSurfMesh HEmesh(*this);
+    gsMultiPatch<Scalar> mp;
+    gsSurfMesh<Scalar> HEmesh(*this);
 
     // Counts for each vertex the number of passes
-    auto vpassed = HEmesh.vertex_property<gsSurfMesh<T>::Scalar>("v:passed", 0 );
+    auto vpassed = HEmesh.vertex_property<typename gsSurfMesh<Scalar>::Scalar>("v:passed", 0 );
     // Index of the curve loop (negative) or of the patch (positive)
     auto hindex = HEmesh.halfedge_property<int>("h:index", 0 );
     // Patch index of each face (seems unused)
     //auto findex = HEmesh.face_property<int>("f:index", -1 );
 
     // Create a stack of EVs and boundary EVs
-    std::list<gsSurfMesh<T>::Vertex> EVs;
+    std::list<typename gsSurfMesh<Scalar>::Vertex> EVs;
     for (auto v : HEmesh.vertices())
     {
         if (HEmesh.valence(v) != 4 && !HEmesh.is_boundary(v))//interior
@@ -2109,7 +1976,7 @@ gsMultiPatch<T> gsSurfMesh<T>::linear_patches() const
     index_t curveloopIdx = -1;
     for (auto EV = EVs.begin(); EV!=EVs.end(); EV++)
     {
-        // std::list<gsSurfMesh<T>::Vertex>::iterator EV = EVs.begin();
+        // std::list<typename gsSurfMesh<Scalar>::Vertex>::iterator EV = EVs.begin();
         for ( auto he : HEmesh.halfedges(*EV) ) // iterate over all HE that come from a EV
         {
             auto h = he;
@@ -2252,10 +2119,10 @@ gsMultiPatch<T> gsSurfMesh<T>::linear_patches() const
             }
 
             // Make a linear tensor basis of size dir.first,dir.second
-            gsKnotVector<T> KV0(0,dirSize.first -1,dirSize.first -2,2,1,1);
-            gsKnotVector<T> KV1(0,dirSize.second-1,dirSize.second-2,2,1,1);
-            gsTensorBSplineBasis<2,T> tbasis(KV0,KV1);
-            gsMatrix<> coefs(dirSize.first*dirSize.second,3);
+            gsKnotVector<Scalar> KV0(0,dirSize.first -1,dirSize.first -2,2,1,1);
+            gsKnotVector<Scalar> KV1(0,dirSize.second-1,dirSize.second-2,2,1,1);
+            gsTensorBSplineBasis<2,Scalar> tbasis(KV0,KV1);
+            gsMatrix<Scalar> coefs(dirSize.first*dirSize.second,3);
             coefs.setZero();
 
             // Start from the EV again. We start in dirsize
@@ -2269,12 +2136,12 @@ gsMultiPatch<T> gsSurfMesh<T>::linear_patches() const
             if (HEmesh.is_boundary(h0))
                 gsWarn<<"Edge is already a boundary...\n";
             bool flip = false;
-            gsMatrix<> tmpcoefs(dirSize.first,3);
+            gsMatrix<Scalar> tmpcoefs(dirSize.first,3);
             for (index_t i=0; i!=dirSize.second; i++)
             {
                 for (index_t j=0; j!=dirSize.first-2; j++) //
                 {
-                    tmpcoefs.row(j) = HEmesh.position(HEmesh.from_vertex(h)).transpose();
+                    tmpcoefs.row(j) = HEmesh.position(HEmesh.from_vertex(h)).transpose().template cast<Scalar>();
 
                     h = HEmesh.next_halfedge(h);
                     if (!HEmesh.is_boundary(h))
@@ -2283,8 +2150,8 @@ gsMultiPatch<T> gsSurfMesh<T>::linear_patches() const
                         h = HEmesh.next_halfedge(h);
                     }
                 }
-                tmpcoefs.row(dirSize.first-2) = HEmesh.position(HEmesh.from_vertex(h)).transpose();
-                tmpcoefs.row(dirSize.first-1) = HEmesh.position(HEmesh.to_vertex(h)).transpose();
+                tmpcoefs.row(dirSize.first-2) = HEmesh.position(HEmesh.from_vertex(h)).transpose().template cast<Scalar>();
+                tmpcoefs.row(dirSize.first-1) = HEmesh.position(HEmesh.to_vertex(h)).transpose().template cast<Scalar>();
 
                 if (flip)
                     h = HEmesh.opposite_halfedge(h);
@@ -2313,100 +2180,291 @@ gsMultiPatch<T> gsSurfMesh<T>::linear_patches() const
     return mp;
 }
 
-namespace internal {
 
-template <class T>
-class gsXml<gsSurfMesh<T>>
+template <class Scalar>
+void gsSurfMesh<Scalar>::dual_mesh()
 {
-private:
-    gsXml() { }
-    typedef gsSurfMesh<T> Object;
-public:
-    GSXML_COMMON_FUNCTIONS(gsSurfMesh<T>)
-    GSXML_GET_POINTER(gsSurfMesh<T>)
-    static std::string tag () { return "Mesh"; }
-    static std::string type() { return "off"; }
+    // Dual-mesh instance
+    gsSurfMesh<Scalar> dm;
 
-    static void get_into(gsXmlNode * node, gsSurfMesh<T> & result)
+    //Instances of the original mesh
+    typename gsSurfMesh<Scalar>::Vertex v;
+    typename gsSurfMesh<Scalar>::Face f;
+    typename gsSurfMesh<Scalar>::Face fop;
+    typename gsSurfMesh<Scalar>::Edge e;
+
+
+    // Calculate the dual vertices (from barycenter of original faces)
+
+    std::map<Face, Vertex> FVMap;
+
+    for (auto fit : faces()) {
+        v = dm.add_vertex(face_barycenter(fit));
+        FVMap[fit] = v;
+    }
+
+    std::vector<Vertex> df;
+    for (auto vit : vertices()) {
+        if (is_boundary(vit)) { continue; }
+        df.clear();
+        for (auto fit : faces(vit)) {
+            df.push_back(FVMap[fit]);
+        }
+        dm.add_face(df);
+
+
+    }
+
+    
+                
+    *this = std::move(dm);
+
+}
+
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Point
+gsSurfMesh<Scalar>::face_barycenter(Face f)
+{
+    unsigned int f_val{ 0 };
+    gsEigen::Matrix<Scalar, 3, 1, 0, 3, 1> coords;
+    Point tmp;
+
+    f_val = valence(f);
+    coords.setZero();
+    for (auto vit : vertices(f)) {
+        coords += position(vit);
+    }
+    coords = coords / static_cast<Scalar>(f_val);
+    tmp[0] = coords(0);
+    tmp[1] = coords(1);
+    tmp[2] = coords(2);
+
+    return tmp;
+
+}
+
+
+
+// e(v1,v0): h0(v1->v0) and h1(v0->v1)
+// v0 = vertex(e,0) ==   to_vertex(h0)  == from_vertex(h1)
+// v1 = vertex(e,1) == from_vertex (h0) ==  to_vertex(h1)
+// Insert a new quad by four consecutive border edges
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Face gsSurfMesh<Scalar>::add_quad(Edge e0, Edge e1,
+                                      Edge e2, Edge e3)
+{
+    Halfedge h[4];
+    for (int i : {0,1})
+        for (int j : {0,1})
+        {
+            if ( vertex(e0,i) == vertex(e1,j) )
+            {
+                h[0] = halfedge(e0, i);
+                h[1] = halfedge(e1,!j);
+                break;
+            }
+        }
+
+    GISMO_ASSERT( is_valid(h[0]) && is_valid(h[1]), "Error in gsSurfMesh::add_quad");
+    h[2] = ( to_vertex(h[1]) == vertex(e2,0) ? halfedge(e2,1) : halfedge(e2,0) );
+    h[3] = ( to_vertex(h[2]) == vertex(e3,0) ? halfedge(e3,1) : halfedge(e3,0) );
+    GISMO_ASSERT( to_vertex(h[1]) == from_vertex(h[2]), "Error in gsSurfMesh::add_quad");
+    GISMO_ASSERT( to_vertex(h[2]) == from_vertex(h[3]), "Error in gsSurfMesh::add_quad");
+    GISMO_ASSERT( to_vertex(h[3]) == from_vertex(h[0]), "Error in gsSurfMesh::add_quad");
+
+    for(int i = 0; i!=4; ++i)
     {
-        assert( ( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh") )
-                &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
-
-        result = gsSurfMesh();
-
-        /*
-        if ( !strcmp(node->first_attribute("type")->value(),"off") )
+        if (is_valid(face(h[i])))
         {
-        read_off_ascii(result,node->value());
-        return;
-        }
-        */
+            std::cerr << "gsSurfMesh::add_face: discovered a complex edge f"
+                      << face(h[i]).idx()<<": "
+                      << from_vertex(h[i]).idx()<<"~"<<to_vertex(h[i]).idx()<<".\n";
 
-        // !strcmp(node->first_attribute("type")->value(),"poly")
-        // !strcmp(node->first_attribute("type")->value(),"stl")
-        //!strcmp(node->first_attribute("type")->value(),"obj")
-        //!strcmp(node->first_attribute("type")->value(),"vtk")
+            // Try to add new twin edges for the extra faces
+            auto start = from_vertex(h[i]);
+            auto  end  = to_vertex(h[i]);
+            for( Halfedge hh : halfedges() )
+                if ( from_vertex(hh) == start && to_vertex(hh)== end
+                     && hh !=h[i] && !is_valid(face(hh)) )
+                {
+                    h[i] = hh;
+                    return add_quad(edge(h[0]),edge(h[1]),edge(h[2]),edge(h[3]));
+                }
 
-
-        std::istringstream str;
-        str.str( node->value() );
-
-        unsigned nv  = atoi ( node->first_attribute("vertices")->value() ) ;
-        unsigned nf  = atoi ( node->first_attribute("faces")->value() ) ;
-        unsigned ne  = atoi ( node->first_attribute("edges")->value() ) ;
-        result.reserve(nv, std::max(3*nv, ne), nf);
-        T x(0), y(0), z(0); // T?
-        for (unsigned i=0; i<nv; ++i)
-        {
-            gsGetReal(str, x);
-            gsGetReal(str, y);
-            gsGetReal(str, z);
-            result.add_vertex(Point(x,y,z));
+            Edge e = add_edge( from_vertex(h[i]), to_vertex(h[i]) );
+            h[i] = halfedge(e, 0);
+            return add_quad(edge(h[0]),edge(h[1]),edge(h[2]),edge(h[3]));
         }
 
-        unsigned k, c = 0;
-        std::vector<typename gsSurfMesh<T>::Vertex> face;
-        for (unsigned i=0; i<nf; ++i)
+        if ( !is_boundary( from_vertex(h[i]) ) )
         {
-            gsGetInt(str, c);
-            face.resize(c);
-            for (unsigned j=0; j<c; ++j)
-            {
-                gsGetInt(str, k);
-                face[j] = typename gsSurfMesh<T>::Vertex(k);
-            }
-            result.add_face(face);
-        }
-
-        if (0!=ne)
-        {
-            typename gsSurfMesh<T>::Halfedge_property<bool> sharp = result.template add_halfedge_property<bool>("h:sharp");
-            face.resize(2);
-            typename gsSurfMesh<T>::Halfedge he;
-            for(unsigned i = 0; i!=ne; ++i)
-            {
-                gsGetInt(str, k);
-                face[0] = typename gsSurfMesh<T>::Vertex(k);
-                gsGetInt(str, k);
-                face[1] = typename gsSurfMesh<T>::Vertex(k);
-                he = result.find_halfedge(face[0], face[1]);
-                sharp[he] = true;
-                he = result.opposite_halfedge(he);
-                sharp[he] = true;
-            }
+            std::cerr << "gsSurfMesh::add_face: discovered a complex vertex v"
+                      <<from_vertex(h[i]).idx()<<".\n";
+            return Face();
         }
     }
 
-    static gsXmlNode * put (const gsSurfMesh<T> & obj, gsXmlTree & data)
+    return new_quad(h,4);
+}
+
+template <class Scalar>
+typename gsSurfMesh<Scalar>::Face gsSurfMesh<Scalar>::new_quad(Halfedge * h, int sz)
+{
+    GISMO_UNUSED(sz);
+    Face f = new_face();
+    set_halfedge(f, h[0]);
+    for (index_t i = 0; i!=4; ++i)
     {
-        GISMO_UNUSED(obj);
-        GISMO_UNUSED(data);
-        return nullptr;
-    };
+        set_face(h[i], f);
+        set_next_halfedge(h[i], h[(i+1)%4]);
+    }
+
+    Halfedge ho, hl, hr; // relink boundary
+    for (index_t i = 0; i!=4; ++i)
+    {
+        ho = opposite_halfedge(h[i]);
+        hr = ho;
+        do //CW
+        {
+            if (is_boundary(hr))
+            {
+                hl = h[i];
+                do //CCW
+                {
+                    hl = prev_halfedge(hl);
+                    hl = opposite_halfedge(hl);
+                    if (is_boundary(hl))
+                    {
+                        set_next_halfedge(hr,hl);
+                        break;
+                    }
+                }
+                while (hl!=h[i]);                
+            }
+            hr = next_halfedge(hr);
+            hr = opposite_halfedge(hr);
+        }
+        while ( hr!=ho );
+    }
+
+    for (index_t i = 0; i!=4; ++i)
+    {
+        set_halfedge(from_vertex(h[i]), h[i]);
+        adjust_outgoing_halfedge(from_vertex(h[i]));
+    }
+
+    return f;
+}
+
+    
+template <class Scalar>
+void gsSurfMesh<Scalar>::mergeDoubleVertices()
+{
+    GISMO_NO_IMPLEMENTATION
+}
+  
+namespace internal
+{
+
+template <class Scalar>
+void gsXml< gsSurfMesh<Scalar> >::get_into(gsXmlNode * node, gsSurfMesh<Scalar> & result)
+{
+    assert( ( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh") )
+            &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
+
+    result = gsSurfMesh<Scalar>();
+
+    /*
+      if ( !strcmp(node->first_attribute("type")->value(),"off") )
+      {
+      read_off_ascii(result,node->value());
+      return;
+      }
+    */
+
+    // !strcmp(node->first_attribute("type")->value(),"poly")
+    // !strcmp(node->first_attribute("type")->value(),"stl")
+    //!strcmp(node->first_attribute("type")->value(),"obj")
+    //!strcmp(node->first_attribute("type")->value(),"vtk")
+
+
+    std::istringstream str;
+    str.str( node->value() );
+
+    unsigned nv  = atoi ( node->first_attribute("vertices")->value() ) ;
+    unsigned nf  = atoi ( node->first_attribute("faces")->value() ) ;
+    unsigned ne  = atoi ( node->first_attribute("edges")->value() ) ;
+    result.reserve(nv, std::max(3*nv, ne), nf);
+    real_t x(0), y(0), z(0); // reading as real_t, cast to Scalar below if needed
+    for (unsigned i=0; i<nv; ++i)
+    {
+        gsGetReal(str, x);
+        gsGetReal(str, y);
+        gsGetReal(str, z);
+        result.add_vertex(typename gsSurfMesh<Scalar>::Point(static_cast<Scalar>(x),static_cast<Scalar>(y),static_cast<Scalar>(z)));
+    }
+
+    /* //Alternative for reading quads only (with complex topolog)
+   unsigned k, c = 0;
+    std::vector<typename gsSurfMesh<Scalar>::Vertex> face(4);
+    std::vector<typename gsSurfMesh<Scalar>::Edge> e(4);
+    for (unsigned i=0; i<nf; ++i)
+    {
+        gsGetInt(str, c);
+        GISMO_ASSERT(4==c, "quads?");
+        for (unsigned j=0; j<c; ++j)
+        {
+            gsGetInt(str, k);
+            face[j] = typename gsSurfMesh<Scalar>::Vertex(k);
+        }
+        for (unsigned j=0; j<c; ++j)
+            e[j] = result.find_or_add_edge(face[j],face[(j+1)%c]);
+        result.add_quad(e[0], e[1], e[2], e[3]);
+    }
+    //*/
+
+    unsigned k, c = 0;
+    std::vector<typename gsSurfMesh<Scalar>::Vertex> face;
+    for (unsigned i=0; i<nf; ++i)
+    {
+        gsGetInt(str, c);
+        face.resize(c);
+        for (unsigned j=0; j<c; ++j)
+        {
+            gsGetInt(str, k);
+            face[j] = typename gsSurfMesh<Scalar>::Vertex(k);
+        }
+        result.add_face(face);
+    }
+
+    if (0!=ne)
+    {
+        typename gsSurfMesh<Scalar>::Halfedge_property<bool> sharp = result.template add_halfedge_property<bool>("h:sharp");
+        face.resize(2);
+        typename gsSurfMesh<Scalar>::Halfedge he;
+        for(unsigned i = 0; i!=ne; ++i)
+        {
+            gsGetInt(str, k);
+            face[0] = typename gsSurfMesh<Scalar>::Vertex(k);
+            gsGetInt(str, k);
+            face[1] = typename gsSurfMesh<Scalar>::Vertex(k);
+            he = result.find_halfedge(face[0], face[1]);
+            sharp[he] = true;
+            he = result.opposite_halfedge(he);
+            sharp[he] = true;
+        }
+    }
+}
+
+template <class Scalar>
+gsXmlNode *
+gsXml< gsSurfMesh<Scalar> >::put (const gsSurfMesh<Scalar> & obj, gsXmlTree & data)
+{
+    GISMO_UNUSED(obj);
+    GISMO_UNUSED(data);
+    return nullptr;
 };
 
 }//namespace internal
 
-//=============================================================================
 } // namespace gismo
-//=============================================================================

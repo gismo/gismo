@@ -659,7 +659,6 @@ gsDofMapper gsMultiPatch<T>::getMapper(T tol) const
     return mapper;
 }
 
-// /*
 template<class T>
 gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
 {
@@ -677,7 +676,7 @@ gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
     for (index_t j = 0; j!= mapper.size(); ++j)
     {
         //pi = mapper.anyPreImage(j);
-        gsGeometry<> &  pp = patch(pi[j].first);
+        gsGeometry<T> &  pp = patch(pi[j].first);
         pt.topRows(gd) = pp.eval( pp.basis().anchor(pi[j].second) );
         v = mesh.add_vertex( pt );
         pid[v]  = pi[j].first;
@@ -685,7 +684,7 @@ gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
     }
 
     size_t np = nPatches();
-    gsMatrix<> supp, coor;
+    gsMatrix<T> supp, coor;
     gsVector<bool> boxPar(m_dim);
     gsVector<index_t,2>  cur, csize, strides;
     GISMO_ENSURE( dynamic_cast<gsTensorBasis<2>*>(&patch(0).basis()), "Not a tensor basis");
@@ -714,8 +713,7 @@ gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
     }
 
     return mesh;
-} 
-// */
+}
 
 template<class T> // to do: move to boundaryInterface
 gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface &bi, T scaling) const
