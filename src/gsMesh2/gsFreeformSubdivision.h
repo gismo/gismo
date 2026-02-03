@@ -147,13 +147,26 @@ public: // Contructors
     ///
     /// Default constructor. All control points are the zero vector, and the
     /// back reference to the face is empty.
-    gsFreeformFaceData() : control_points(), face(0) {}
+    gsFreeformFaceData()
+        : control_points(), face(0)
+    {
+        for(size_t i = 0; i < N * N; ++i){
+            control_points(i) = gsVector<real_t, D>::Zero(D);
+        }
+    }
 
     /// \brief Zero constructor with a back reference.
     ///
     /// Basic constructor. All control points are the zero vector, and the
     /// back reference points to the given face.
-    gsFreeformFaceData(Face face) : control_points(), face(face) {}
+    gsFreeformFaceData(Face face)
+        : control_points(),
+          face(face)
+    {
+        for(size_t i = 0; i < N * N; ++i){
+            control_points(i) = gsVector<real_t, D>::Zero(D);
+        }
+    }
 
     /// \brief Basic constructor that creates a C0 mesh.
     ///
