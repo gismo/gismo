@@ -168,64 +168,20 @@ public:
 
     const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>& trial() const
     {
-        // Options:
-        // Both Trial: return either lhs or rhs trial space (they are the same, asserted in constructor)
-        // Only Lhs Trial: return lhs trial space
-        // Only Rhs Trial: return rhs trial space
-        // At least one is Both: return the one that is Trial (Both treated as Trial here)
-        // Else: 
-
-        if (_LhsSpace==SpaceType::Trial && _RhsSpace==SpaceType::Trial)
+        // Return trial from whichever operand has it, or NullObject if neither
+        if (_LhsSpace==SpaceType::Trial || _LhsSpace==SpaceType::Both)
             return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
-        else if (_LhsSpace==SpaceType::Trial)
-            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
-        else if (_RhsSpace==SpaceType::Trial)
+        else
             return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->rhs_expr_.trial());
-        else if (_LhsSpace==SpaceType::Both)
-            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->lhs_expr_.trial());
-        else if (_RhsSpace==SpaceType::Both)
-            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Trial, Base::Order>&>(this->rhs_expr_.trial());
-        else 
-        {
-            // Space flag is not trial or both
-            static_assert(Base::Space!=SpaceType::Trial && Base::Space!=SpaceType::Both, "CrossProductExpression::trial() called on non-Trial space");
-            return static_cast<const SpaceObject<typename Base::Scalar, Base::Space, Base::Order>&>(this->lhs_expr_.trial());
-        }
     }
+
     const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>& test() const
     {
-        // If the space is Both, we have 3 options: 
-        // - lhs and rhs are Both
-        // - lhs is Both, rhs is None
-        // - rhs is Both, lhs is None
-        // - lhs is Trial, rhs is Test
-        // - lhs is Test, rhs is Trial
-        if (Base::Space==SpaceType::Both)
-        {
-            if (_LhsSpace==SpaceType::Both && _RhsSpace==SpaceType::Both)
-                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
-            else if (_LhsSpace==SpaceType::Both)
-                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
-            else if (_RhsSpace==SpaceType::Both)
-                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
-            else if (_LhsSpace==SpaceType::Trial && _RhsSpace==SpaceType::Test)
-                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
-            else if (_LhsSpace==SpaceType::Test && _RhsSpace==SpaceType::Trial)
-                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
-        }
-        // Else:
-        // - Only Lhs Test: return lhs test space
-        // - Only Rhs Test: return rhs test space
-        // - Both are Test or None: return either lhs or rhs test space (they are the same, asserted in constructor)
-        else 
-        {
-            if (_LhsSpace==SpaceType::Test)
-                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
-            else if (_RhsSpace==SpaceType::Test)
-                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
-            else if (_LhsSpace==SpaceType::Test && _RhsSpace==SpaceType::Test)
-                return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
-        }
+        // Return test from whichever operand has it, or NullObject if neither
+        if (_LhsSpace==SpaceType::Test || _LhsSpace==SpaceType::Both)
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->lhs_expr_.test());
+        else
+            return static_cast<const SpaceObject<typename Base::Scalar, SpaceType::Test, Base::Order>&>(this->rhs_expr_.test());
     }
 };
 

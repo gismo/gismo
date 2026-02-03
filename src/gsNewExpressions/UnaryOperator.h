@@ -55,8 +55,9 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
-        expr_.parse(helper);
+        // Set derivative order BEFORE parsing so that parse() knows what flags to set
         expr_.setDerivative(Deriv);
+        expr_.parse(helper);
     }
 
     void print(std::ostream & os) const

@@ -2,6 +2,16 @@
 
     @brief Gradient expression class
 
+    Computes the gradient (first derivative) of an expression with respect to
+    spatial coordinates. For a scalar field f(x), grad(f) returns a vector of
+    partial derivatives. For a vector field u(x), grad(u) returns the Jacobian matrix.
+
+    Key features:
+    - Increases tensor order by 1 (scalar → vector, vector → matrix)
+    - Increments derivative requirement by 1
+    - Preserves Space type (Test/Trial/None) from operand
+    - Uses setDerivative/getDerivative for proper derivative propagation
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -137,7 +147,11 @@ public:
 
     void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
     {
-        helper.add(this->expr_);
+        // Set derivative order first so child expression knows what to request
+        this->expr_.setDerivative(Base::Deriv);
+        // Parse the underlying expression (this will call helper.add and set appropriate flags)
+        this->expr_.parse(helper);
+        // Additionally ensure gradient flag is set
         this->expr_.data().flags |= NEED_GRAD;
     }
 
@@ -386,8 +400,9 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
-        expr_.parse(helper);
+        // Set derivative order BEFORE parsing so that parse() knows what flags to set
         expr_.setDerivative(Deriv);
+        expr_.parse(helper);
     }
 
     void print(std::ostream & os) const
@@ -403,11 +418,25 @@ public:
     size_t domainDim() const { return expr_.domainDim(); }
 
     // Optimized eval: extract only the i-th gradient component
+    // The gradient produces a vector per basis function. We extract column i_ from each row vector.
+    // GradExpression stores gradients as (1 × domainDim) row vectors, so column i_ gives component i_.
     ExpressionResult<T> eval(const index_t k) const
     {
-        auto gradResult = expr_.eval(k);
-        GISMO_ASSERT(i_ >= 0 && i_ < gradResult.rows(), "Gradient component index out of bounds");
-        return gradResult.row(i_);
+        ExpressionResult<T> gradResult = expr_.eval(k);
+        // Create result with same cardinality but scalar (extract column i_ from each gradient vector)
+        ExpressionResult<T> result(gradResult.rowCardinality(), gradResult.colCardinality());
+        
+        for (index_t r = 0; r < gradResult.rowCardinality(); ++r)
+        {
+            for (index_t c = 0; c < gradResult.colCardinality(); ++c)
+            {
+                const auto& mat = gradResult(r, c);
+                GISMO_ASSERT(i_ >= 0 && i_ < mat.cols(), 
+                            "Gradient component index " << i_ << " out of bounds [0, " << mat.cols() << ")");
+                result(r, c) = mat.col(i_);
+            }
+        }
+        return result;
     }
 
     // Forward test/trial to parent expression

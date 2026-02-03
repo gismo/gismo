@@ -62,6 +62,9 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
+        // Set derivative order BEFORE parsing so that parse() knows what flags to set
+        lhs_expr_.setDerivative(Deriv);
+        rhs_expr_.setDerivative(Deriv);
         lhs_expr_.parse(helper);
         rhs_expr_.parse(helper);
     }

@@ -27,6 +27,18 @@ namespace Expr
         Trial = 2,
         Both = 3
     };
+
+    // Tag dispatch types for C++11 compatibility
+    // Use these instead of std::integral_constant for cleaner code
+    struct TrueTag {};
+    struct FalseTag {};
+
+    // Helper to convert bool to tag type
+    template <bool B> struct BoolToTag { typedef FalseTag type; };
+    template <> struct BoolToTag<true> { typedef TrueTag type; };
+
+    // Size tag for dispatching on tensor order
+    template <size_t N> struct SizeTag { static const size_t value = N; };
 }
 
     // Forward declaration for ExpressionHelper
@@ -74,6 +86,10 @@ namespace Expr
     // Solution Objects
     template <class T, enum SpaceType _Space, size_t _Order>
     class SolutionObject;
+
+    // Component Space Objects
+    template <class T, enum SpaceType _Space>
+    class ComponentSpaceObject;
 
     ////////////////////////////////////////////////////////////////
     // Binary Operators

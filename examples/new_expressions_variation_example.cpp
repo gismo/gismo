@@ -68,7 +68,7 @@ void printEval(ExpressionHelper<typename E::Scalar> & helper,
     for (index_t k=0; k<pts.cols(); ++k)
     {
         gsInfo<<"At point "<<pts.col(k).transpose()<<":\n";
-        ExpressionValue<typename E::Scalar> ev = expr.eval(k);
+        ExpressionResult<typename E::Scalar> ev = expr.eval(k);
         for (index_t i=0; i!=ev.rowCardinality(); ++i)
         {
             for (index_t j=0; j!=ev.colCardinality(); ++j)

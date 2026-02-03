@@ -275,8 +275,37 @@ public:
     template <Expr::SpaceType _Space, size_t order>
     void add(const Expr::SpaceObject<T,_Space,order> & space)
     {
+        // Register the space's function set and set the data pointer
+        auto& fd = this->m_fdata[&space.source()];
         const_cast<Expr::SpaceObject<T,_Space,order>&>(space)
-            .setData(this->m_fdata[&space.source()]);
+            .setData(fd);
+        // Always need active indices for basis function spaces
+        fd.mine().flags |= NEED_ACTIVE | NEED_VALUE;
+    }
+
+    template <Expr::SpaceType _Space>
+    void add(const Expr::ComponentSpaceObject<T,_Space> & compSpace)
+    {
+        // ComponentSpaceObject delegates to its parent space
+        // Register the parent's function set and set the data pointer
+        auto& fd = this->m_fdata[&compSpace.source()];
+        const_cast<Expr::SpaceObject<T,_Space,1>&>(compSpace.parent())
+            .setData(fd);
+        // Always need active indices for basis function spaces
+        fd.mine().flags |= NEED_ACTIVE | NEED_VALUE;
+    }
+
+    /**
+     * @brief Parse/register a GeometryMap expression
+     * @param gmap The geometry map to register
+     */
+    void parse(const Expr::GeometryMap<T> & gmap)
+    {
+        // Register the geometry in m_mdata and set data pointer
+        auto& md = this->m_mdata[&gmap.source()];
+        const_cast<Expr::GeometryMap<T>&>(gmap).setData(&md.mine());
+        // Set flags for what geometry data we need
+        md.mine().flags |= NEED_VALUE | NEED_DERIV | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
     void precompute(const index_t patchIndex = 0,

@@ -1,13 +1,16 @@
-/** @file BaseObject.h
-@brief
+/** @file BaseExpression.h
+    @brief Base class for all expressions in the new expression system
 
-This file is part of the G+Smo library.
+    This file defines the CRTP base class for all expressions. All expression
+    types (variables, operators, spaces, etc.) inherit from BaseExpression.
 
-This Source Code Form is subject to the terms of the Mozilla Public
-License, v. 2.0. If a copy of the MPL was not distributed with this
-file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    This file is part of the G+Smo library.
 
-Author(s): H.M.Verhelst
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): H.M.Verhelst
 */
 
 #pragma once
@@ -22,8 +25,23 @@ namespace Expr
     template <class T, enum SpaceType _Space, size_t _Order> class NullObject;
     template <class T, enum SpaceType _Space, size_t _Order> class SpaceObject;
 
-// IsConstant: Flag that indicates if the expression is constant, e.g., its derivatives are zero
-// Space: Flag that indicates whether the expression is a Space
+/**
+ * @brief Base class for all expressions using CRTP (Curiously Recurring Template Pattern)
+ * 
+ * This is the foundation of the expression system. All expressions inherit from this class
+ * and provide their own implementation of key methods like parse(), eval(), etc.
+ * 
+ * @tparam E The derived expression type (CRTP parameter)
+ * 
+ * Key concepts:
+ * - Order: The polynomial order of the expression (0 for constants, 1 for linear, etc.)
+ * - Space: Indicates if expression belongs to a test/trial space (Test, Trial, or None)
+ * - Deriv_: Tracks required derivative order for evaluation
+ * 
+ * The expression system uses a two-phase evaluation:
+ * 1. parse() - Set up required data flags and propagate derivative requirements
+ * 2. eval() - Evaluate the expression at quadrature points
+ */
 template <typename E>
 class BaseExpression
 {

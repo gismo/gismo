@@ -72,18 +72,27 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
-        expr_.parse(helper);
+        // Set derivative order BEFORE parsing so that parse() knows what flags to set
         expr_.setDerivative(Deriv);
+        expr_.parse(helper);
     }
 
     void print(std::ostream & os) const
     {
-        if constexpr (_Order == 1)
-            os << "(" << expr_ << ")[" << i_ << "]";
-        else
-            os << "(" << expr_ << ")(" << i_ << "," << j_ << ")";
+        print_impl(os, SizeTag<_Order>());
     }
 
+private:
+    void print_impl(std::ostream & os, SizeTag<1>) const
+    {
+        os << "(" << expr_ << ")[" << i_ << "]";
+    }
+    void print_impl(std::ostream & os, SizeTag<2>) const
+    {
+        os << "(" << expr_ << ")(" << i_ << "," << j_ << ")";
+    }
+
+public:
     std::array<size_t, 0> sizes() const 
     { 
         return std::array<size_t, 0>(); // Scalar result
@@ -94,23 +103,33 @@ public:
     // Default implementation: extract component from evaluated expression
     ExpressionResult<T> eval(const index_t k) const
     {
-        auto result = expr_.eval(k);
-        
-        if constexpr (_Order == 1)
-        {
-            // Vector component
-            GISMO_ASSERT(i_ >= 0 && i_ < result.rows(), "Component index out of bounds");
-            return result(i_, 0);
-        }
-        else // _Order == 2
-        {
-            // Matrix component
-            GISMO_ASSERT(i_ >= 0 && i_ < result.rows(), "Row index out of bounds");
-            GISMO_ASSERT(j_ >= 0 && j_ < result.cols(), "Col index out of bounds");
-            return result(i_, j_);
-        }
+        return eval_impl(k, SizeTag<_Order>());
     }
 
+private:
+    ExpressionResult<T> eval_impl(const index_t k, SizeTag<1>) const
+    {
+        auto result = expr_.eval(k);
+        // Vector component - extract single value
+        const auto& mat = result();
+        GISMO_ASSERT(i_ >= 0 && i_ < mat.rows(), "Component index out of bounds");
+        gsMatrix<T> component(1, 1);
+        component(0, 0) = mat(i_, 0);
+        return ExpressionResult<T>(component);
+    }
+    ExpressionResult<T> eval_impl(const index_t k, SizeTag<2>) const
+    {
+        auto result = expr_.eval(k);
+        // Matrix component - extract single value
+        const auto& mat = result();
+        GISMO_ASSERT(i_ >= 0 && i_ < mat.rows(), "Row index out of bounds");
+        GISMO_ASSERT(j_ >= 0 && j_ < mat.cols(), "Col index out of bounds");
+        gsMatrix<T> component(1, 1);
+        component(0, 0) = mat(i_, j_);
+        return ExpressionResult<T>(component);
+    }
+
+public:
     // Forward test/trial to parent expression
     auto test() const -> decltype(std::declval<const ComponentExpression&>().expr().test())
     {
@@ -121,6 +140,15 @@ public:
     {
         return expr().trial();
     }
+    
+    // Forward data() to parent expression
+    auto data() const -> decltype(std::declval<const ComponentExpression&>().expr().data())
+    {
+        return expr().data();
+    }
+    
+    // Get component index (for use by derivative expressions)
+    index_t component() const { return i_; }
 
 protected:
     const ExprType expr_;

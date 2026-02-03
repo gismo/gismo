@@ -30,6 +30,7 @@
 #include <gsNewExpressions/ConstantObject.h>
 #include <gsNewExpressions/VariableObject.h>
 #include <gsNewExpressions/SpaceObject.h>
+#include <gsNewExpressions/ComponentSpaceObject.h>
 #include <gsNewExpressions/VariationObject.h>
 #include <gsNewExpressions/SolutionObject.h>
 
@@ -43,13 +44,14 @@
 
 #include <gsNewExpressions/DivisionExpression.h>
 
+#include <gsNewExpressions/TransposeExpression.h>
+#include <gsNewExpressions/ComponentExpression.h>
+
 #include <gsNewExpressions/GradExpression.h>
 #include <gsNewExpressions/DivExpression.h>
 #include <gsNewExpressions/CurlExpression.h>
 #include <gsNewExpressions/LaplExpression.h>
 
-#include <gsNewExpressions/TransposeExpression.h>
-#include <gsNewExpressions/ComponentExpression.h>
 #include <gsNewExpressions/GeometryMap.h>
 #include <gsNewExpressions/MeasureExpression.h>
 #include <gsNewExpressions/NormalExpressions.h>

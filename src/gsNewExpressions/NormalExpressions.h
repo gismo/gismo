@@ -80,6 +80,8 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
+        // Set derivative order first
+        this->expr().setDerivative(Base::Deriv);
         this->expr().parse(helper);
         // TODO: Set flag for computing normals
         // helper.setFlag(NEED_NORMAL);
@@ -170,6 +172,8 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
+        // Set derivative order first
+        this->expr().setDerivative(Base::Deriv);
         this->expr().parse(helper);
         // TODO: Set flag for computing outer normals
         // helper.setFlag(NEED_OUTER_NORMAL);
@@ -261,6 +265,8 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
+        // Set derivative order first
+        this->expr().setDerivative(Base::Deriv);
         this->expr().parse(helper);
         // TODO: Set flags for computing both normals
         // helper.setFlag(NEED_NORMAL | NEED_OUTER_NORMAL);

@@ -1,6 +1,23 @@
 /** @file ProductExpression.h
 
-    @brief Product expression class
+    @brief Product expression class for element-wise multiplication
+
+    Implements element-wise (Hadamard) product of expressions. The product
+    operation has special meaning for space types:
+    - Test × Trial: Creates a bilinear form (e.g., mass matrix u*v)
+    - None × None: Element-wise multiplication of fields
+    - Test × None or Trial × None: Linear form
+
+    Space type rules:
+    - If either operand is Test or Trial, result inherits that space
+    - Test × Trial → checks for consistency, used in bilinear forms
+    - None × None → None
+
+    Order behavior:
+    - Product of Order 0 × Order 0 → Order 0 (scalar × scalar → scalar)
+    - Product of Order 1 × Order 0 → Order 1 (vector × scalar → vector)
+    - Product of Order 0 × Order 1 → Order 1 (scalar × vector → vector)
+    - Order 1 × Order 1 requires inner product (use dot() instead)
 
     This file is part of the G+Smo library.
 
@@ -73,19 +90,16 @@ public:
     ProductExpression(const _LhsExpr& lhs, const _RhsExpr& rhs)
         : Base(lhs, rhs)
     {
-        // Space consistency checks (runtime to check space ID)
-        // If two spaces of the same type are used, they must be identical
-        if (_LhsSpace==_RhsSpace)
+        // Space consistency checks - conditions are compile-time constants, 
+        // compiler will optimize away dead branches
+        if (_LhsSpace == _RhsSpace && _LhsSpace == SpaceType::Trial)
+            GISMO_ASSERT(lhs.trial()==rhs.trial(),"ProductExpression requires both operands to have the same trial space.");
+        if (_LhsSpace == _RhsSpace && _LhsSpace == SpaceType::Test)
+            GISMO_ASSERT(lhs.test()==rhs.test(),"ProductExpression requires both operands to have the same test space.");
+        if (_LhsSpace == SpaceType::Both && _RhsSpace == SpaceType::Both)
         {
-            if (_LhsSpace == SpaceType::Trial)
-                GISMO_ASSERT(lhs.trial()==rhs.trial(),"ProductExpression requires both operands to have the same trial space. Probably lhs and rhs are different spaces (e.g., with different ID).");
-            else if (_LhsSpace == SpaceType::Test)
-                GISMO_ASSERT(lhs.test()==rhs.test(),"ProductExpression requires both operands to have the same test space. Probably lhs and rhs are different spaces (e.g., with different ID).");
-        }
-        else if (_LhsSpace==SpaceType::Both && _RhsSpace==SpaceType::Both)
-        {
-            GISMO_ASSERT(lhs.test()==rhs.test(),"ProductExpression requires both operands to have the same test space. Probably lhs and rhs are different spaces (e.g., with different ID).");
-            GISMO_ASSERT(lhs.trial()==rhs.trial(),"ProductExpression requires both operands to have the same trial space. Probably lhs and rhs are different spaces (e.g., with different ID).");
+            GISMO_ASSERT(lhs.test()==rhs.test(),"ProductExpression requires both operands to have the same test space.");
+            GISMO_ASSERT(lhs.trial()==rhs.trial(),"ProductExpression requires both operands to have the same trial space.");
         }
 
         // Set sizes based on the product operation type
@@ -161,53 +175,69 @@ public:
     }
 
 private:
-    // SFINAE helpers for trial()
+    // Helper to get trial space - returns actual trial if available, otherwise from operand's trial()
     template <SpaceType S1, SpaceType S2>
-    auto get_trial_impl() const -> typename std::enable_if<S1 == SpaceType::Trial || S1 == SpaceType::Both, decltype(this->lhs_expr_.trial())>::type
+    auto get_trial_impl(TrueTag /* lhs has trial */, FalseTag) const 
+        -> decltype(this->lhs_expr_.trial())
     {
         return this->lhs_expr_.trial();
     }
-
+    
     template <SpaceType S1, SpaceType S2>
-    auto get_trial_impl() const -> typename std::enable_if<S1 != SpaceType::Trial && S1 != SpaceType::Both && (S2 == SpaceType::Trial || S2 == SpaceType::Both), decltype(this->rhs_expr_.trial())>::type
+    auto get_trial_impl(FalseTag, TrueTag /* rhs has trial */) const 
+        -> decltype(this->rhs_expr_.trial())
     {
         return this->rhs_expr_.trial();
     }
-
+    
     template <SpaceType S1, SpaceType S2>
-    auto get_trial_impl() const -> typename std::enable_if<S1 != SpaceType::Trial && S1 != SpaceType::Both && S2 != SpaceType::Trial && S2 != SpaceType::Both, decltype(Base::trial())>::type
+    auto get_trial_impl(FalseTag, FalseTag) const 
+        -> decltype(this->lhs_expr_.trial())
     {
-        return Base::trial();
+        // Neither has trial, but we still need to return something - delegate to lhs which will return NullObject
+        return this->lhs_expr_.trial();
     }
 
-    // SFINAE helpers for test()
+    // Helper to get test space - returns actual test if available, otherwise from operand's test()
     template <SpaceType S1, SpaceType S2>
-    auto get_test_impl() const -> typename std::enable_if<S1 == SpaceType::Test || S1 == SpaceType::Both, decltype(this->lhs_expr_.test())>::type
+    auto get_test_impl(TrueTag /* lhs has test */, FalseTag) const 
+        -> decltype(this->lhs_expr_.test())
     {
         return this->lhs_expr_.test();
     }
-
+    
     template <SpaceType S1, SpaceType S2>
-    auto get_test_impl() const -> typename std::enable_if<S1 != SpaceType::Test && S1 != SpaceType::Both && (S2 == SpaceType::Test || S2 == SpaceType::Both), decltype(this->rhs_expr_.test())>::type
+    auto get_test_impl(FalseTag, TrueTag /* rhs has test */) const 
+        -> decltype(this->rhs_expr_.test())
     {
         return this->rhs_expr_.test();
     }
-
+    
     template <SpaceType S1, SpaceType S2>
-    auto get_test_impl() const -> typename std::enable_if<S1 != SpaceType::Test && S1 != SpaceType::Both && S2 != SpaceType::Test && S2 != SpaceType::Both, decltype(Base::test())>::type
+    auto get_test_impl(FalseTag, FalseTag) const 
+        -> decltype(this->lhs_expr_.test())
     {
-        return Base::test();
+        // Neither has test, but we still need to return something - delegate to lhs which will return NullObject
+        return this->lhs_expr_.test();
     }
 
 public:
-    auto trial() const -> decltype(this->get_trial_impl<_LhsSpace, _RhsSpace>())
+    auto trial() const -> decltype(this->get_trial_impl<_LhsSpace, _RhsSpace>(
+        typename BoolToTag<_LhsSpace == SpaceType::Trial || _LhsSpace == SpaceType::Both>::type(),
+        typename BoolToTag<_RhsSpace == SpaceType::Trial || _RhsSpace == SpaceType::Both>::type()))
     {
-        return this->get_trial_impl<_LhsSpace, _RhsSpace>();
+        return this->get_trial_impl<_LhsSpace, _RhsSpace>(
+            typename BoolToTag<_LhsSpace == SpaceType::Trial || _LhsSpace == SpaceType::Both>::type(),
+            typename BoolToTag<_RhsSpace == SpaceType::Trial || _RhsSpace == SpaceType::Both>::type());
     }
 
-    auto test() const -> decltype(this->get_test_impl<_LhsSpace, _RhsSpace>())
+    auto test() const -> decltype(this->get_test_impl<_LhsSpace, _RhsSpace>(
+        typename BoolToTag<_LhsSpace == SpaceType::Test || _LhsSpace == SpaceType::Both>::type(),
+        typename BoolToTag<_RhsSpace == SpaceType::Test || _RhsSpace == SpaceType::Both>::type()))
     {
-        return this->get_test_impl<_LhsSpace, _RhsSpace>();
+        return this->get_test_impl<_LhsSpace, _RhsSpace>(
+            typename BoolToTag<_LhsSpace == SpaceType::Test || _LhsSpace == SpaceType::Both>::type(),
+            typename BoolToTag<_RhsSpace == SpaceType::Test || _RhsSpace == SpaceType::Both>::type());
     }
 
 };
@@ -281,6 +311,17 @@ typename std::enable_if<
 operator*(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
     return ProductExpression<_LhsExpr, _RhsExpr, 2, 1, _LhsExpr::Space, _RhsExpr::Space>(lhs, rhs);
+}
+
+// Specialization for vector-matrix product (row vector × matrix = row vector)
+template <typename _LhsExpr, typename _RhsExpr>
+typename std::enable_if<
+    _LhsExpr::Order == 1 && _RhsExpr::Order == 2,
+    ProductExpression<_LhsExpr, _RhsExpr, 1, 2, _LhsExpr::Space, _RhsExpr::Space>
+>::type
+operator*(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
+{
+    return ProductExpression<_LhsExpr, _RhsExpr, 1, 2, _LhsExpr::Space, _RhsExpr::Space>(lhs, rhs);
 }
 
 // Specialization for matrix-vector product (vector primitive)

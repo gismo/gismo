@@ -47,8 +47,10 @@ class InnerProductExpression
     
     static_assert(_LhsSpace == _RhsSpace || 
                   (_LhsSpace == SpaceType::Test && _RhsSpace == SpaceType::Trial) ||
-                  (_LhsSpace == SpaceType::Trial && _RhsSpace == SpaceType::Test),
-                  "InnerProductExpression requires same space or Test×Trial combination.");
+                  (_LhsSpace == SpaceType::Trial && _RhsSpace == SpaceType::Test) ||
+                  _LhsSpace == SpaceType::None ||
+                  _RhsSpace == SpaceType::None,
+                  "InnerProductExpression requires same space, Test×Trial combination, or one operand with None space.");
 
 public:
     InnerProductExpression(const _LhsExpr& lhs, const _RhsExpr& rhs) : Base(lhs, rhs)
@@ -68,18 +70,18 @@ public:
     // The returned SpaceObject should have the order of the base space (e.g., 0 for scalar spaces)
     auto test() const -> decltype(std::declval<_LhsExpr>().test())
     {
-        if (_LhsSpace == SpaceType::Test)
+        if (_LhsSpace == SpaceType::Test || _LhsSpace == SpaceType::Both)
             return this->lhs_expr_.test();
         else
-            return this->rhs_expr_.test();
+            return this->rhs_expr_.test();  // Will return NullObject if rhs doesn't have Test
     }
 
-    auto trial() const -> decltype(std::declval<_RhsExpr>().trial())
+    auto trial() const -> decltype(std::declval<_LhsExpr>().trial())
     {
-        if (_LhsSpace == SpaceType::Trial)
+        if (_LhsSpace == SpaceType::Trial || _LhsSpace == SpaceType::Both)
             return this->lhs_expr_.trial();
         else
-            return this->rhs_expr_.trial();
+            return this->rhs_expr_.trial();  // Will return NullObject if rhs doesn't have Trial
     }
 
     // --- eval() specialization 1: Vector dot (Order=1), Space=None ---
@@ -99,9 +101,8 @@ public:
         ExpressionResult<typename Base::Scalar> result_val(1, 1);
         const auto& lhs_mat = lhs_eval(0, 0);
         const auto& rhs_mat = rhs_eval(0, 0);
-        typename Base::Scalar dot_result = 0;
-        for (index_t r = 0; r < lhs_mat.rows(); ++r)
-            dot_result += lhs_mat(r, 0) * rhs_mat(r, 0);
+        // Use Frobenius inner product (sum of element-wise products)
+        typename Base::Scalar dot_result = (lhs_mat.cwiseProduct(rhs_mat)).sum();
         gsMatrix<typename Base::Scalar> res(1, 1);
         res(0, 0) = dot_result;
         result_val(0, 0) = res;
@@ -129,9 +130,8 @@ public:
             {
                 const auto& lhs_mat = lhs_eval(i, j);
                 const auto& rhs_mat = rhs_eval(i, j);
-                typename Base::Scalar dot_result = 0;
-                for (index_t r = 0; r < lhs_mat.rows(); ++r)
-                    dot_result += lhs_mat(r, 0) * rhs_mat(r, 0);
+                // Use Frobenius inner product (sum of element-wise products)
+                typename Base::Scalar dot_result = (lhs_mat.cwiseProduct(rhs_mat)).sum();
                 gsMatrix<typename Base::Scalar> res(1, 1);
                 res(0, 0) = dot_result;
                 result_val(i, j) = res;
@@ -161,9 +161,8 @@ public:
             {
                 const auto& lhs_mat = lhs_eval(i, j);
                 const auto& rhs_mat = rhs_eval(i, j);
-                typename Base::Scalar dot_result = 0;
-                for (index_t r = 0; r < lhs_mat.rows(); ++r)
-                    dot_result += lhs_mat(r, 0) * rhs_mat(r, 0);
+                // Use Frobenius inner product (sum of element-wise products)
+                typename Base::Scalar dot_result = (lhs_mat.cwiseProduct(rhs_mat)).sum();
                 gsMatrix<typename Base::Scalar> res(1, 1);
                 res(0, 0) = dot_result;
                 result_val(i, j) = res;
@@ -190,9 +189,9 @@ public:
             {
                 const auto& lhs_mat = lhs_eval(i, 0);
                 const auto& rhs_mat = rhs_eval(0, j);
-                typename Base::Scalar dot_result = 0;
-                for (index_t r = 0; r < lhs_mat.rows(); ++r)
-                    dot_result += lhs_mat(r, 0) * rhs_mat(r, 0);
+                // Use Frobenius inner product (sum of element-wise products)
+                // Works for both row vectors and column vectors
+                typename Base::Scalar dot_result = (lhs_mat.cwiseProduct(rhs_mat)).sum();
                 gsMatrix<typename Base::Scalar> res(1, 1);
                 res(0, 0) = dot_result;
                 result_val(i, j) = res;
@@ -219,9 +218,8 @@ public:
             {
                 const auto& lhs_mat = lhs_eval(0, j);
                 const auto& rhs_mat = rhs_eval(i, 0);
-                typename Base::Scalar dot_result = 0;
-                for (index_t r = 0; r < lhs_mat.rows(); ++r)
-                    dot_result += lhs_mat(r, 0) * rhs_mat(r, 0);
+                // Use Frobenius inner product (sum of element-wise products)
+                typename Base::Scalar dot_result = (lhs_mat.cwiseProduct(rhs_mat)).sum();
                 gsMatrix<typename Base::Scalar> res(1, 1);
                 res(0, 0) = dot_result;
                 result_val(i, j) = res;
@@ -360,70 +358,22 @@ public:
     }
 };
 
-// Generic dot operator to create InnerProductExpression instances using SFINAE
-// Vector-vector inner product (None space)
+// Generic dot operator to create InnerProductExpression instances
+// Consolidated version for all Space combinations (C++11 compatible via SFINAE)
+// Note: With C++17, this could use if constexpr to consolidate eval() logic within a single function,
+//       avoiding the need for multiple enable_if overloads inside the class.
 template <typename _LhsExpr, typename _RhsExpr>
 typename std::enable_if<
-    ((_LhsExpr::Order == 1) &&
-    (_RhsExpr::Order == 1)) &&
-    ((_LhsExpr::Space == SpaceType::None) && (_RhsExpr::Space == SpaceType::None)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::None, SpaceType::None>
+    (_LhsExpr::Order == 1) && (_RhsExpr::Order == 1),
+    InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, 
+                          static_cast<enum SpaceType>(_LhsExpr::Space), 
+                          static_cast<enum SpaceType>(_RhsExpr::Space)>
 >::type
 dot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::None, SpaceType::None>(lhs, rhs);
-}
-
-// Vector-vector inner product (Test space)
-template <typename _LhsExpr, typename _RhsExpr>
-typename std::enable_if<
-    ((_LhsExpr::Order == 1) &&
-    (_RhsExpr::Order == 1)) &&
-    ((_LhsExpr::Space == SpaceType::Test) && (_RhsExpr::Space == SpaceType::Test)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::Test, SpaceType::Test>
->::type
-dot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
-{
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::Test, SpaceType::Test>(lhs, rhs);
-}
-
-// Vector-vector inner product (Trial space)
-template <typename _LhsExpr, typename _RhsExpr>
-typename std::enable_if<
-    ((_LhsExpr::Order == 1) &&
-    (_RhsExpr::Order == 1)) &&
-    ((_LhsExpr::Space == SpaceType::Trial) && (_RhsExpr::Space == SpaceType::Trial)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::Trial, SpaceType::Trial>
->::type
-dot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
-{
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::Trial, SpaceType::Trial>(lhs, rhs);
-}
-
-// Vector-vector inner product (Test × Trial)
-template <typename _LhsExpr, typename _RhsExpr>
-typename std::enable_if<
-    ((_LhsExpr::Order == 1) &&
-    (_RhsExpr::Order == 1)) &&
-    ((_LhsExpr::Space == SpaceType::Test) && (_RhsExpr::Space == SpaceType::Trial)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::Test, SpaceType::Trial>
->::type
-dot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
-{
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::Test, SpaceType::Trial>(lhs, rhs);
-}
-
-// Vector-vector inner product (Trial × Test)
-template <typename _LhsExpr, typename _RhsExpr>
-typename std::enable_if<
-    ((_LhsExpr::Order == 1) &&
-    (_RhsExpr::Order == 1)) &&
-    ((_LhsExpr::Space == SpaceType::Trial) && (_RhsExpr::Space == SpaceType::Test)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::Trial, SpaceType::Test>
->::type
-dot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
-{
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, SpaceType::Trial, SpaceType::Test>(lhs, rhs);
+    return InnerProductExpression<_LhsExpr, _RhsExpr, 1, 1, 
+                                 static_cast<enum SpaceType>(_LhsExpr::Space), 
+                                 static_cast<enum SpaceType>(_RhsExpr::Space)>(lhs, rhs);
 }
 
 // `inner` alias for `dot` (vector-vector)
@@ -437,69 +387,22 @@ auto inner(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& 
     return dot(lhs, rhs);
 }
 
-// Matrix-matrix inner product (None space)
+// Generic ddot operator for matrix-matrix inner product (all Space combinations)
+// Consolidated version (C++11 compatible via SFINAE)
+// Note: With C++17, this could use if constexpr to consolidate eval() logic within a single function,
+//       avoiding the need for multiple enable_if overloads inside the class.
 template <typename _LhsExpr, typename _RhsExpr>
 typename std::enable_if<
-    (_LhsExpr::Order == 2) &&
-    (_RhsExpr::Order == 2) &&
-    ((_LhsExpr::Space == SpaceType::None) && (_RhsExpr::Space == SpaceType::None)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::None, SpaceType::None>
+    (_LhsExpr::Order == 2) && (_RhsExpr::Order == 2),
+    InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, 
+                          static_cast<enum SpaceType>(_LhsExpr::Space), 
+                          static_cast<enum SpaceType>(_RhsExpr::Space)>
 >::type
 ddot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
 {
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::None, SpaceType::None>(lhs, rhs);
-}
-
-// Matrix-matrix inner product (Test space)
-template <typename _LhsExpr, typename _RhsExpr>
-typename std::enable_if<
-    (_LhsExpr::Order == 2) &&
-    (_RhsExpr::Order == 2) &&
-    ((_LhsExpr::Space == SpaceType::Test) && (_RhsExpr::Space == SpaceType::Test)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::Test, SpaceType::Test>
->::type
-ddot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
-{
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::Test, SpaceType::Test>(lhs, rhs);
-}
-
-// Matrix-matrix inner product (Trial space)
-template <typename _LhsExpr, typename _RhsExpr>
-typename std::enable_if<
-    (_LhsExpr::Order == 2) &&
-    (_RhsExpr::Order == 2) &&
-    ((_LhsExpr::Space == SpaceType::Trial) && (_RhsExpr::Space == SpaceType::Trial)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::Trial, SpaceType::Trial>
->::type
-ddot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
-{
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::Trial, SpaceType::Trial>(lhs, rhs);
-}
-
-// Matrix-matrix inner product (Test × Trial)
-template <typename _LhsExpr, typename _RhsExpr>
-typename std::enable_if<
-    (_LhsExpr::Order == 2) &&
-    (_RhsExpr::Order == 2) &&
-    ((_LhsExpr::Space == SpaceType::Test) && (_RhsExpr::Space == SpaceType::Trial)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::Test, SpaceType::Trial>
->::type
-ddot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
-{
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::Test, SpaceType::Trial>(lhs, rhs);
-}
-
-// Matrix-matrix inner product (Trial × Test)
-template <typename _LhsExpr, typename _RhsExpr>
-typename std::enable_if<
-    (_LhsExpr::Order == 2) &&
-    (_RhsExpr::Order == 2) &&
-    ((_LhsExpr::Space == SpaceType::Trial) && (_RhsExpr::Space == SpaceType::Test)),
-    InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::Trial, SpaceType::Test>
->::type
-ddot(const BaseExpression<_LhsExpr>& lhs, const BaseExpression<_RhsExpr>& rhs)
-{
-    return InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, SpaceType::Trial, SpaceType::Test>(lhs, rhs);
+    return InnerProductExpression<_LhsExpr, _RhsExpr, 2, 2, 
+                                 static_cast<enum SpaceType>(_LhsExpr::Space), 
+                                 static_cast<enum SpaceType>(_RhsExpr::Space)>(lhs, rhs);
 }
 
 // `inner` alias for `ddot` (matrix-matrix)

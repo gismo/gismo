@@ -156,7 +156,11 @@ public:
 
     void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
     {
-        helper.add(this->expr_);
+        // Set derivative order first so child expression knows what to request
+        this->expr_.setDerivative(Base::Deriv);
+        // Parse the underlying expression
+        this->expr_.parse(helper);
+        // Additionally ensure gradient flag is set (curl uses gradients)
         this->expr_.data().flags |= NEED_GRAD;
     }
 

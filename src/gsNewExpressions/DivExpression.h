@@ -125,9 +125,23 @@ public:
     typename std::enable_if<(S == SpaceType::Test || S == SpaceType::Trial) && C == 0, ExpressionResult<typename Base::Scalar>>::type
     eval(const index_t k) const
     {
-        // Divergence for basis functions: compute divergence for each basis function
+        // Divergence for basis functions (vector space)
+        // For a vector space with `dim` components, each component uses the same scalar basis.
+        // The derivative data `values[1]` contains derivatives of the scalar basis functions.
+        // Shape: (domainDim * numActive, numPts) where numActive = number of scalar basis functions
+        //
+        // For a vector-valued basis function [0, ..., N_i, ..., 0]^T with N_i in component c:
+        //   div([0, ..., N_i, ..., 0]) = ∂N_i/∂x_c
+        //
+        // The divergence is scalar-valued, so we return one value per scalar basis function.
+        // The value is the sum of all diagonal derivatives: div(N_i * e_c) for c = 0..dim-1
+        // which equals ∑_c ∂N_i/∂x_c = ∑_d ∂N_i/∂x_d (trace of the gradient)
+        
         const index_t numActive = this->expr_.data().values[0].rows();
         const index_t dim = this->expr_.domainDim();
+        
+        // Reshape: values[1] has shape (domainDim * numActive, numPts)
+        // We want to access it as (domainDim, numActive) for a single point
         gsAsConstMatrix<Scalar, Dynamic, Dynamic> deriv = 
             this->expr_.data().values[1].reshapeCol(k, dim, numActive);
         
@@ -136,12 +150,13 @@ public:
             S == SpaceType::Trial ? numActive : 1
         );
         
-        // Compute divergence for each basis function
+        // Compute divergence for each scalar basis function
+        // div(N_i) = ∂N_i/∂x_0 + ∂N_i/∂x_1 + ... (sum over all spatial dimensions)
         for (index_t i = 0; i < numActive; ++i)
         {
             Scalar divVal = 0;
             for (index_t d = 0; d < dim; ++d)
-                divVal += deriv(d, i * dim + d);
+                divVal += deriv(d, i);  // deriv(d, i) = ∂N_i/∂x_d
             
             tmp.resize(1, 1);
             tmp(0, 0) = divVal;
@@ -157,7 +172,11 @@ public:
 
     void parse(ExpressionHelper<typename Base::Scalar> & helper) const
     {
-        helper.add(this->expr_);
+        // Set derivative order first so child expression knows what to request
+        this->expr_.setDerivative(Base::Deriv);
+        // Parse the underlying expression
+        this->expr_.parse(helper);
+        // Additionally ensure derivative flag is set
         this->expr_.data().flags |= NEED_DERIV;
     }
 

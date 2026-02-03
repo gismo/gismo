@@ -6,6 +6,7 @@
 ######################################################################
 
 project(examples)
+include_directories(${CMAKE_SOURCE_DIR}/src)
 
 set(CMAKE_DIRECTORY_LABELS "${PROJECT_NAME}") #CMake 3.10
 #set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
@@ -21,6 +22,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER
 #include( ${GISMO_USE_FILE})
 
 # Collect source file names
+
 aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 #message("found files: ${FILES}")
 
@@ -49,4 +51,3 @@ endforeach(file ${FILES})
 
 list(LENGTH FILES len)
 message(STATUS "Number of examples to compile: ${len}")
-

@@ -82,11 +82,11 @@ public:
 
     std::string label() const { return label_; }
 
-    const SpaceObject<T,Space,Order> & test () const
+    const SpaceObject<T,SpaceType::Test,Order> & test () const
     {
         return NullObject<T,SpaceType::Test,Order>::get();
     }
-    const SpaceObject<T,Space,Order> & trial() const
+    const SpaceObject<T,SpaceType::Trial,Order> & trial() const
     {
         return NullObject<T,SpaceType::Trial,Order>::get();
     }

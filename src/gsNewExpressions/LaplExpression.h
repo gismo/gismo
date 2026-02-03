@@ -1,6 +1,22 @@
 /** @file LaplExpression.h
 
-    @brief
+    @brief Laplacian expression class
+
+    Computes the Laplacian (trace of Hessian) of an expression. For a scalar
+    field f(x), lapl(f) = ∇²f = ∂²f/∂x² + ∂²f/∂y² + ... 
+    For a vector field u(x), lapl(u) applies Laplacian component-wise.
+
+    Key features:
+    - Preserves tensor order (scalar → scalar, vector → vector)
+    - Requires second derivatives (Deriv + 2)
+    - Preserves Space type from operand
+    - For vectors, requires ComponentLaplExpression to handle each component
+
+    Why ComponentLaplExpression is needed:
+    The Laplacian of a vector field [u1, u2, ...] must be computed as
+    [lapl(u1), lapl(u2), ...]. We cannot directly compute the trace of the
+    Jacobian's Hessian. ComponentLaplExpression extracts each component,
+    applies Laplacian, then recombines them.
 
     This file is part of the G+Smo library.
 
@@ -26,7 +42,7 @@ struct ExpressionTraits<LaplExpression<_E, _Order, _Space, _IsConstant>>
     typedef _E ExprType; // Needed for UnaryOperator
 
     typedef typename ExpressionTraits<_E>::Scalar Scalar;
-    static constexpr size_t Order = ExpressionTraits<_E>::Order; // Laplacian decreases order by 2
+    static constexpr size_t Order = ExpressionTraits<_E>::Order; // Laplacian preserves order (scalar->scalar, handled by specializations for vectors)
     static constexpr SpaceType Space = ExpressionTraits<_E>::Space;
     static constexpr size_t Deriv = ExpressionTraits<_E>::Deriv + 2; // Increment derivative order
     static constexpr bool IsConstant = ExpressionTraits<_E>::IsConstant;
@@ -38,6 +54,7 @@ class LaplExpression : public UnaryOperator<LaplExpression<_E, _Order, _Space, _
 {
     using Base = UnaryOperator<LaplExpression<_E, _Order, _Space, _IsConstant>>;
 private:
+    std::array<size_t, _Order> sizes_;
     mutable gsMatrix<typename Base::Scalar> tmp;
 
 public:
@@ -45,11 +62,14 @@ public:
     :
     Base(expr)
     {
+        // Copy sizes from the underlying expression (Laplacian preserves tensor structure)
+        for (size_t d = 0; d < _Order; ++d)
+            sizes_[d] = this->expr_.sizes()[d];
     }
 
     const std::array<size_t, _Order> & sizes() const
     {
-        return this->expr_.sizes();
+        return sizes_;
     }
 
     size_t domainDim() const
@@ -125,25 +145,33 @@ public:
     static auto has_expr_test(int) -> decltype(std::declval<const U>().expr(), char(0));
     template <typename U>
     static int has_expr_test(...);
-    static constexpr bool has_expr = std::is_same<decltype(has_expr_test<typename std::remove_reference<decltype(this->expr_)>::type>(0)), char>::value;
+    static constexpr bool has_expr = std::is_same<decltype(has_expr_test<_E>(0)), char>::value;
 
     // parse implementation for expressions that expose .expr()
-    void parse_impl(gismo::ExpressionHelper<typename Base::Scalar> & helper, std::true_type) const
+    void parse_impl(gismo::ExpressionHelper<typename Base::Scalar> & helper, TrueTag) const
     {
-        helper.add(this->expr_.expr());
+        // Set derivative order first
+        this->expr_.expr().setDerivative(Base::Deriv);
+        // Parse the underlying expression
+        this->expr_.expr().parse(helper);
+        // Ensure laplacian flag is set
         this->expr_.expr().data().flags |= NEED_LAPLACIAN;
     }
 
     // parse implementation for expressions that are variable objects directly
-    void parse_impl(gismo::ExpressionHelper<typename Base::Scalar> & helper, std::false_type) const
+    void parse_impl(gismo::ExpressionHelper<typename Base::Scalar> & helper, FalseTag) const
     {
-        helper.add(this->expr_);
+        // Set derivative order first
+        this->expr_.setDerivative(Base::Deriv);
+        // Parse the underlying expression
+        this->expr_.parse(helper);
+        // Ensure laplacian flag is set
         this->expr_.data().flags |= NEED_LAPLACIAN;
     }
 
     void parse(gismo::ExpressionHelper<typename Base::Scalar> & helper) const
     {
-        parse_impl(helper, std::integral_constant<bool, has_expr>());
+        parse_impl(helper, typename BoolToTag<has_expr>::type());
     }
 
     void print(std::ostream & os) const
@@ -189,6 +217,136 @@ auto lapl(const VariableObject<T, 1, _IsConstant> & expr)
     auto c0 = ComponentExpression<VariableObject<T,1,_IsConstant>,1>(expr,0);
     auto c1 = ComponentExpression<VariableObject<T,1,_IsConstant>,1>(expr,1);
     return lapl(c0) + lapl(c1);
+}
+
+// Forward declaration for ComponentLaplExpression
+template <typename E, size_t _Order> class ComponentLaplExpression;
+
+// ExpressionTraits for ComponentLaplExpression
+template <typename E, size_t _Order>
+struct ExpressionTraits<ComponentLaplExpression<E, _Order>>
+{
+    typedef E ExprType;
+    typedef typename ExpressionTraits<E>::Scalar Scalar;
+    static constexpr size_t Order = 0; // Laplacian of component is scalar
+    static constexpr SpaceType Space = ExpressionTraits<E>::Space;
+    static constexpr size_t Deriv = ExpressionTraits<E>::Deriv + 2;
+    static constexpr bool IsConstant = ExpressionTraits<E>::IsConstant;
+};
+
+/**
+ * \brief Laplacian of a component of a vector expression
+ * 
+ * This specialized expression is needed because computing lapl(u[i]) where u
+ * is a vector field requires extracting the i-th component's laplacian from
+ * the parent vector field's second derivative data (values[2]).
+ * 
+ * Why we need a separate class:
+ * - The generic LaplExpression works on the expression's laplacians member
+ * - For ComponentExpression<E,1>, there is no direct laplacians data
+ * - Instead, we must access the parent's values[2] and extract the relevant
+ *   second derivatives for the specific component
+ * 
+ * Memory layout in values[2] for a 2D vector field in 2D domain:
+ * [d²f₀/dx², d²f₀/dy², d²f₀/dxdy, d²f₁/dx², d²f₁/dy², d²f₁/dxdy]
+ * 
+ * The laplacian of component i is: Σⱼ d²fᵢ/dxⱼ² (sum of diagonal second derivs)
+ */
+template <typename E, size_t _Order>
+class ComponentLaplExpression : public BaseExpression<ComponentLaplExpression<E, _Order>>
+{
+    using Base = BaseExpression<ComponentLaplExpression<E, _Order>>;
+    typedef typename Base::Scalar T;
+    
+public:
+    using Base::Order;
+    using Base::Space;
+    using Base::Deriv;
+    using Base::IsConstant;
+    using Base::Scalar;
+    
+    typedef typename ExpressionTraits<ComponentLaplExpression<E, _Order>>::ExprType ExprType;
+    
+    const ExprType& expr() const { return expr_; }
+    
+    ComponentLaplExpression(const ComponentExpression<E, _Order>& compExpr)
+    : BaseExpression<ComponentLaplExpression<E, _Order>>(),
+      expr_(compExpr.expr()),
+      component_(compExpr.component())
+    {
+        static_assert(_Order == 1, "ComponentLaplExpression only for vector components");
+    }
+    
+    void parse(gismo::ExpressionHelper<T> & helper) const
+    {
+        // Set derivative order first (Deriv = parent's Deriv + 2)
+        expr_.setDerivative(Base::Deriv);
+        // Parse the underlying expression
+        expr_.parse(helper);
+        // Request second derivatives - we compute component laplacian from values[2]
+        expr_.data().flags |= NEED_DERIV2;
+    }
+    
+    void print(std::ostream & os) const
+    {
+        os << "\u0394(" << expr_ << "[" << component_ << "])";
+    }
+    
+    std::array<size_t, 0> sizes() const { return std::array<size_t, 0>(); }
+    
+    size_t domainDim() const { return expr_.domainDim(); }
+    
+    ExpressionResult<T> eval(const index_t k) const
+    {
+        // Compute component-wise laplacian from second derivatives
+        // For a 2D domain with 2D target (vector field), values[2] has 6 rows per point:
+        // [d²f₀/dx², d²f₀/dy², d²f₀/dxdy, d²f₁/dx², d²f₁/dy², d²f₁/dxdy]
+        // The laplacian of component i is: d²fᵢ/dx² + d²fᵢ/dy² (sum of first dim.first diagonal entries)
+        
+        const auto& data = expr_.data();
+        const index_t d = data.dim.first;  // domain dimension
+        
+        // deriv2Size per component (number of unique second derivatives)
+        // For 2D: 3 entries (d²/dx², d²/dy², d²/dxdy)
+        const index_t d2sz = d * (d + 1) / 2;
+        
+        // Starting row for component in values[2]
+        const index_t start = component_ * d2sz;
+        
+        // Sum the diagonal second derivatives (first d entries for this component)
+        T lapl_val = 0;
+        for (index_t i = 0; i < d; ++i)
+            lapl_val += data.values[2](start + i, k);
+        
+        ExpressionResult<T> result(1, 1);
+        gsMatrix<T> tmp(1, 1);
+        tmp(0, 0) = lapl_val;
+        result(0, 0) = tmp;
+        return result;
+    }
+    
+    // Forward test/trial to parent expression
+    auto test() const -> decltype(std::declval<const ComponentLaplExpression&>().expr().test())
+    {
+        return expr_.test();
+    }
+    
+    auto trial() const -> decltype(std::declval<const ComponentLaplExpression&>().expr().trial())
+    {
+        return expr_.trial();
+    }
+    
+protected:
+    const ExprType expr_;
+    const index_t component_;
+};
+
+// Specialized lapl() for ComponentExpression - extracts the component's laplacian from parent
+template <typename E>
+ComponentLaplExpression<E, 1> lapl(const ComponentExpression<E, 1>& expr)
+{
+    gsDebug << "Using ComponentExpression Laplacian\n";
+    return ComponentLaplExpression<E, 1>(expr);
 }
 
 

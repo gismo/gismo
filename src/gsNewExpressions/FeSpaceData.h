@@ -30,7 +30,7 @@ template<class T>
 struct FeSpaceData
 {
     FeSpaceData(const gsFunctionSet<T>& basis, index_t dimension, index_t space_id)
-        : fs(&basis), dim(dimension), id(space_id) {}
+        : fs(&basis), dim(dimension), id(space_id), cont(-1), initialized(false) {}
 
     void init()
     {
@@ -49,16 +49,19 @@ struct FeSpaceData
         }
         mapper.finalize();
         fixedDofs.setZero(mapper.boundarySize(), 1); // Initialize fixedDofs vector
+        initialized = true;
     }
 
     bool isInitialized() const
     {
-        return mapper.isFinalized();
+        return initialized && mapper.isFinalized();
     }
 
     const gsFunctionSet<T>* fs;
     index_t dim;
     index_t id;
+    index_t cont;           // Interface continuity (-1: default, 0: C0 conforming)
+    bool initialized;       // Whether space has been set up
     gsDofMapper mapper;
     gsMatrix<T> fixedDofs;
 };

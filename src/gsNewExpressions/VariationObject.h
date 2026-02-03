@@ -62,6 +62,8 @@ public:
     void parse(gismo::ExpressionHelper<Scalar> & helper) const
     {
         if (m_matches) {
+            // Set derivative order first
+            m_space.setDerivative(Base::Deriv_);
             m_space.parse(helper);
         }
     }

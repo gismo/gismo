@@ -84,6 +84,8 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
+        // Set derivative order first
+        this->expr().setDerivative(Base::Deriv);
         this->expr().parse(helper);
         // Jacobian is already computed in gsMapData
     }
@@ -106,7 +108,7 @@ public:
     /// Returns targetDim × domainDim matrix
     ExpressionResult<T> eval(const index_t k) const
     {
-        return geomMap().jacobian(k);
+        return ExpressionResult<T>(geomMap().jacobian(k));
     }
 
     std::string label() const
@@ -174,6 +176,8 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
+        // Set derivative order first
+        this->expr().setDerivative(Base::Deriv);
         this->expr().parse(helper);
         // TODO: Set flag for computing inverse Jacobian
         // helper.setFlag(NEED_GRAD_TRANSFORM);
@@ -203,7 +207,7 @@ public:
         tmp.resize(sizes_[0], sizes_[1]);
         tmp = jacInvTr.reshapeCol(k, sizes_[1], sizes_[0]).transpose();
         
-        return tmp;
+        return ExpressionResult<T>(tmp);
     }
 
     /**
@@ -275,7 +279,7 @@ InverseJacobianExpression<T> jacInv(const GeometryMap<T> & G)
  * @return Gradient in physical coordinates
  */
 template<typename E>
-auto igrad(const BaseExpression<E> & u, const GeometryMap<typename E::Scalar> & G)
+auto igrad(const E & u, const GeometryMap<typename E::Scalar> & G)
     -> decltype(grad(u) * jacInv(G))
 {
     return grad(u) * jacInv(G);
@@ -294,7 +298,7 @@ auto igrad(const BaseExpression<E> & u, const GeometryMap<typename E::Scalar> & 
  * @return Divergence in physical coordinates
  */
 template<typename E>
-auto idiv(const BaseExpression<E> & u, const GeometryMap<typename E::Scalar> & G)
+auto idiv(const E & u, const GeometryMap<typename E::Scalar> & G)
     -> decltype(ijac(u, G))  // TODO: Add .trace() when implemented
 {
     // TODO: Implement trace operation
@@ -315,7 +319,7 @@ auto idiv(const BaseExpression<E> & u, const GeometryMap<typename E::Scalar> & G
  * @return Physical Jacobian
  */
 template<typename E>
-auto ijac(const BaseExpression<E> & u, const GeometryMap<typename E::Scalar> & G)
+auto ijac(const E & u, const GeometryMap<typename E::Scalar> & G)
     -> decltype(grad(u) * jacInv(G))
 {
     // TODO: This should work for any expression with a Jacobian

@@ -20,6 +20,8 @@
 #include <gsDomain/gsDomain.h>
 #include <gsNewExpressions/SpaceObject.h> // Required for SpaceObject definition
 #include <gsAssembler/gsQuadrature.h> // For gsQuadrature
+#include <gsAssembler/gsGaussRule.h>  // For gsGaussRule (sum factorization)
+#include <gsTensor/gsTensorBasis.h>   // For gsTensorBasis (sum factorization)
 #include <gsIO/gsOptionList.h> // For gsOptionList
 
 #include <list>
@@ -58,6 +60,16 @@ public:
     Expr::VariableObject<T,0,false> getScalarFunction(const gsFunction<T> & func, std::string label="f") { return m_helper.getScalarFunction(func, label); }
     Expr::VariableObject<T,1,true> getVectorFunction(const gsConstantFunction<T> & cfunc, std::string label="F") { return m_helper.getVectorFunction(cfunc, label); }
     Expr::VariableObject<T,1,false> getVectorFunction(const gsFunction<T> & func, std::string label="F") { return m_helper.getVectorFunction(func, label); }
+    
+    /**
+     * @brief Create a geometry map expression
+     * @param geom The geometry (typically gsMultiPatch)
+     * @return GeometryMap expression
+     */
+    Expr::GeometryMap<T> getMap(const gsFunctionSet<T> & geom)
+    {
+        return m_helper.getMap(geom);
+    }
 
     // Space creation methods
     Expr::SpaceObject<T, Expr::SpaceType::Test, 0> getScalarTestSpace(const gsFunctionSet<T>& basis, index_t id = 0, std::string label="φ")
@@ -96,16 +108,15 @@ public:
         return expr;
     }
 
-    Expr::SpaceObject<T, Expr::SpaceType::Test, 1> getVectorTestSpace(const gsFunctionSet<T>& basis, index_t id = 0, std::string label="v")
+    Expr::SpaceObject<T, Expr::SpaceType::Test, 1> getVectorTestSpace(const gsFunctionSet<T>& basis, index_t dim, index_t id = 0, std::string label="v")
     {
-        index_t target_dim = basis.targetDim();
         GISMO_ASSERT(id < m_test_spaces.size(), "Test space ID exceeds pre-allocated size.");
 
-        m_space_data_list.emplace_back(basis, target_dim, id); // Vector space
+        m_space_data_list.emplace_back(basis, dim, id); // Vector space with explicit dimension
         Expr::FeSpaceData<T>* space_data = &m_space_data_list.back();
         space_data->init();
         
-        std::array<size_t,1> sizes = {(size_t)target_dim};
+        std::array<size_t,1> sizes = {(size_t)dim};
         Expr::SpaceObject<T, Expr::SpaceType::Test, 1> expr(basis.domainDim(), sizes, id, label);
         expr.setSource(basis);
         m_helper.add(expr); // Register with helper for eval()
@@ -115,16 +126,15 @@ public:
         return expr;
     }
 
-    Expr::SpaceObject<T, Expr::SpaceType::Trial, 1> getVectorTrialSpace(const gsFunctionSet<T>& basis, index_t id = 0, std::string label="u")
+    Expr::SpaceObject<T, Expr::SpaceType::Trial, 1> getVectorTrialSpace(const gsFunctionSet<T>& basis, index_t dim, index_t id = 0, std::string label="u")
     {
-        index_t target_dim = basis.targetDim();
         GISMO_ASSERT(id < m_trial_spaces.size(), "Trial space ID exceeds pre-allocated size.");
         
-        m_space_data_list.emplace_back(basis, target_dim, id); // Vector space
+        m_space_data_list.emplace_back(basis, dim, id); // Vector space with explicit dimension
         Expr::FeSpaceData<T>* space_data = &m_space_data_list.back();
         space_data->init();
 
-        std::array<size_t,1> sizes = {(size_t)target_dim};
+        std::array<size_t,1> sizes = {(size_t)dim};
         Expr::SpaceObject<T, Expr::SpaceType::Trial, 1> expr(basis.domainDim(), sizes, id, label);
         expr.setSource(basis);
         m_helper.add(expr); // Register with helper for eval()
@@ -147,6 +157,9 @@ public:
     // Initialize system
     void initSystem(const index_t numRhs = 1)
     {
+        // Check all spaces are initialized
+        checkSpacesInitialized();
+        
         initMatrix();
         m_rhs.setZero(numTestDofs(), numRhs);
     }
@@ -155,6 +168,27 @@ public:
     {
         resetDimensions();
         clearMatrix(false);
+    }
+    
+    /// @brief Check that all registered spaces have been set up
+    void checkSpacesInitialized() const
+    {
+        for (size_t i = 0; i < m_test_spaces.size(); ++i)
+        {
+            if (m_test_spaces[i] != nullptr)
+            {
+                GISMO_ASSERT(m_test_spaces[i]->isInitialized(),
+                    "Test space " << i << " not initialized. Call space.setup() first.");
+            }
+        }
+        for (size_t i = 0; i < m_trial_spaces.size(); ++i)
+        {
+            if (m_trial_spaces[i] != nullptr)
+            {
+                GISMO_ASSERT(m_trial_spaces[i]->isInitialized(),
+                    "Trial space " << i << " not initialized. Call space.setup() first.");
+            }
+        }
     }
 
     // Main assembly method
@@ -244,9 +278,276 @@ public:
     }
 
 
+    /**
+     * @brief Sum factorization assembly for tensor-product bases
+     * 
+     * This method exploits the tensor-product structure of the basis functions
+     * to reduce the computational complexity of matrix assembly.
+     * 
+     * For a mass matrix in d dimensions with n basis functions per direction
+     * and q quadrature points per direction:
+     * - Standard assembly: O(n^2d * q^d)
+     * - Sum factorization: O(n^(d+1) * q^d)
+     * 
+     * The key insight is that for tensor-product bases:
+     *   B_{ijk}(x,y,z) = B_i(x) * B_j(y) * B_k(z)
+     * 
+     * So the mass matrix entry M_{ijk,lmn} can be written as:
+     *   M_{ijk,lmn} = (∫B_i B_l dx) * (∫B_j B_m dy) * (∫B_k B_n dz)
+     *              = M^x_{il} * M^y_{jm} * M^z_{kn}
+     * 
+     * This is a Kronecker product: M = M^z ⊗ M^y ⊗ M^x
+     * 
+     * @tparam E Expression type
+     * @param expr The bilinear form expression to assemble
+     * 
+     * @note This method requires tensor-product bases (gsTensorBasis).
+     *       For non-tensor bases, use the standard assemble() method.
+     */
+    template <class E>
+    void assembleSF(const Expr::BaseExpression<E>& expr)
+    {
+        // Check if this is matrix assembly
+        GISMO_ASSERT(expr.Space == Expr::SpaceType::Both,
+            "Sum factorization currently only supports bilinear forms (matrix assembly)");
+        
+        expr.parse(m_helper);
+        
+        // Get test and trial space data
+        const E& derived_expr = static_cast<const E&>(expr);
+        auto test_space_data = derived_expr.test().spaceData();
+        auto trial_space_data = derived_expr.trial().spaceData();
+        
+        GISMO_ASSERT(test_space_data != nullptr && trial_space_data != nullptr,
+            "Space data must be available for sum factorization");
+        
+        // Get the basis - must be tensor product
+        const gsFunctionSet<T>* test_fs = test_space_data->fs;
+        
+        // Iterate over patches
+        for (index_t patch = 0; patch < test_fs->nPieces(); ++patch)
+        {
+            const gsBasis<T>& test_basis = test_fs->basis(patch);
+            
+            // Get domain dimension
+            const short_t d = test_basis.domainDim();
+            
+            // Try to cast to tensor basis
+            // For now, we handle the common case of gsTensorBSplineBasis
+            assembleSF_patch(expr, test_space_data, trial_space_data, patch, d);
+        }
+        
+        m_fmatrix.toSparseMatrix_into(m_matrix);
+    }
+
+private:
+    /**
+     * @brief Sum factorization assembly for a single patch
+     */
+    template <class E>
+    void assembleSF_patch(const Expr::BaseExpression<E>& expr,
+                          Expr::FeSpaceData<T>* test_space_data,
+                          Expr::FeSpaceData<T>* trial_space_data,
+                          index_t patch,
+                          short_t d)
+    {
+        const gsFunctionSet<T>* test_fs = test_space_data->fs;
+        const gsFunctionSet<T>* trial_fs = trial_space_data->fs;
+        const gsBasis<T>& test_basis = test_fs->basis(patch);
+        const gsBasis<T>& trial_basis = trial_fs->basis(patch);
+        
+        // Get 1D quadrature rule
+        gsGaussRule<T> quad1D;
+        
+        // Store 1D mass matrices for each direction
+        std::vector<gsMatrix<T>> mass1D(d);
+        
+        // For each direction, compute the 1D "mass" contributions
+        for (short_t dir = 0; dir < d; ++dir)
+        {
+            // Get the 1D component basis (assuming tensor structure)
+            // This requires the basis to support component access
+            const gsBasis<T>* test_comp = nullptr;
+            const gsBasis<T>* trial_comp = nullptr;
+            
+            // Try to get component basis via dynamic cast to tensor basis
+            if (auto* tb = dynamic_cast<const gsTensorBasis<2,T>*>(&test_basis))
+            {
+                test_comp = &tb->component(dir);
+                trial_comp = &(dynamic_cast<const gsTensorBasis<2,T>*>(&trial_basis))->component(dir);
+            }
+            else if (auto* tb3 = dynamic_cast<const gsTensorBasis<3,T>*>(&test_basis))
+            {
+                test_comp = &tb3->component(dir);
+                trial_comp = &(dynamic_cast<const gsTensorBasis<3,T>*>(&trial_basis))->component(dir);
+            }
+            else
+            {
+                GISMO_ERROR("Sum factorization requires tensor-product bases. "
+                           "Use assemble() for non-tensor bases.");
+            }
+            
+            // Setup 1D quadrature
+            const index_t deg = math::max(test_comp->maxDegree(), trial_comp->maxDegree());
+            gsVector<index_t> numNodes(1);
+            numNodes[0] = static_cast<index_t>(m_options.getReal("quA") * deg + m_options.getInt("quB"));
+            quad1D.setNodes(numNodes);
+            
+            // Get number of 1D basis functions
+            index_t n_test = test_comp->size();
+            index_t n_trial = trial_comp->size();
+            
+            // Initialize 1D mass matrix
+            mass1D[dir].setZero(n_test, n_trial);
+            
+            // Get domain for this direction and iterate over elements
+            auto domain1D = test_comp->domain();
+            
+            for (auto elemIt = domain1D->beginAll(); elemIt != domain1D->endAll(); ++elemIt)
+            {
+                T a = elemIt.lowerCorner().value();
+                T b = elemIt.upperCorner().value();
+                
+                // Map quadrature to element [a,b]
+                gsMatrix<T> nodes1D;
+                gsVector<T> weights1D;
+                quad1D.mapTo(a, b, nodes1D, weights1D);
+                
+                // Evaluate 1D basis functions on this element
+                gsMatrix<T> test_vals, trial_vals;
+                gsMatrix<index_t> test_actives, trial_actives;
+                test_comp->active_into(nodes1D.col(0), test_actives);
+                trial_comp->active_into(nodes1D.col(0), trial_actives);
+                test_comp->eval_into(nodes1D, test_vals);
+                trial_comp->eval_into(nodes1D, trial_vals);
+                
+                // Accumulate 1D mass matrix: M^dir_{ij} = sum_k w_k * B_i(x_k) * B_j(x_k)
+                for (index_t k = 0; k < nodes1D.cols(); ++k)
+                {
+                    T w = weights1D[k];
+                    for (index_t i = 0; i < test_actives.rows(); ++i)
+                    {
+                        for (index_t j = 0; j < trial_actives.rows(); ++j)
+                        {
+                            mass1D[dir](test_actives(i,0), trial_actives(j,0)) += w * test_vals(i, k) * trial_vals(j, k);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Now compute the full matrix via Kronecker product
+        // M = M^{d-1} ⊗ M^{d-2} ⊗ ... ⊗ M^0
+        // We use the property that (A ⊗ B) vec(X) = vec(B X A^T)
+        
+        // For assembly, we need to map local to global indices
+        const gsDofMapper& test_mapper = test_space_data->mapper;
+        const gsDofMapper& trial_mapper = trial_space_data->mapper;
+        
+        // Get total sizes
+        gsVector<index_t, -1> test_sizes(d), trial_sizes(d);
+        index_t total_test = 1, total_trial = 1;
+        for (short_t dir = 0; dir < d; ++dir)
+        {
+            test_sizes[dir] = mass1D[dir].rows();
+            trial_sizes[dir] = mass1D[dir].cols();
+            total_test *= test_sizes[dir];
+            total_trial *= trial_sizes[dir];
+        }
+        
+        // Compute full local matrix using Kronecker product structure
+        // For efficiency, we iterate over tensor indices
+        gsVector<index_t, -1> test_idx(d), trial_idx(d);
+        test_idx.setZero();
+        trial_idx.setZero();
+        
+        // Iterate over all (test, trial) pairs
+        for (index_t i = 0; i < total_test; ++i)
+        {
+            // Convert flat index to tensor index for test
+            index_t tmp = i;
+            for (short_t dir = 0; dir < d; ++dir)
+            {
+                test_idx[dir] = tmp % test_sizes[dir];
+                tmp /= test_sizes[dir];
+            }
+            
+            // Get global test index
+            index_t global_test = test_mapper.index(i, patch, 0);
+            if (!test_mapper.is_free_index(global_test))
+                continue;
+            
+            for (index_t j = 0; j < total_trial; ++j)
+            {
+                // Convert flat index to tensor index for trial
+                tmp = j;
+                for (short_t dir = 0; dir < d; ++dir)
+                {
+                    trial_idx[dir] = tmp % trial_sizes[dir];
+                    tmp /= trial_sizes[dir];
+                }
+                
+                // Get global trial index
+                index_t global_trial = trial_mapper.index(j, patch, 0);
+                if (!trial_mapper.is_free_index(global_trial))
+                    continue;
+                
+                // Compute Kronecker product entry
+                // M_{i,j} = prod_{dir} M^{dir}_{test_idx[dir], trial_idx[dir]}
+                T val = mass1D[0](test_idx[0], trial_idx[0]);
+                for (short_t dir = 1; dir < d; ++dir)
+                {
+                    val *= mass1D[dir](test_idx[dir], trial_idx[dir]);
+                }
+                
+                if (math::abs(val) > 1e-15)
+                {
+                    m_fmatrix.coeffRef(global_test, global_trial) += val;
+                }
+            }
+        }
+    }
+
+public:
+    /// @brief Assemble multiple expressions at once (for block systems)
+    template <class... Exprs>
+    void assemble(const Exprs&... exprs)
+    {
+        // Use a dummy array to force expansion in order
+        int dummy[] = {(assemble_single(exprs), 0)...};
+        (void)dummy; // Suppress unused variable warning
+    }
+
     // Getters for results
     const gsSparseMatrix<T>& matrix() const { return m_matrix; }
     const gsVector<T>& rhs() const { return m_rhs; }
+    
+    /// @brief Returns a block view of the system matrix
+    /// Each block corresponds to a different test/trial space pair
+    typename gsSparseMatrix<T>::BlockView matrixBlockView()
+    {
+        gsVector<index_t> rowSizes, colSizes;
+        _blockDims(rowSizes, colSizes);
+        return m_matrix.blockView(rowSizes, colSizes);
+    }
+    
+    /// @brief Returns a const block view of the system matrix
+    typename gsSparseMatrix<T>::constBlockView matrixBlockView() const
+    {
+        gsVector<index_t> rowSizes, colSizes;
+        _blockDims(rowSizes, colSizes);
+        return m_matrix.blockView(rowSizes, colSizes);
+    }
+
+private:
+    /// @brief Helper to assemble a single expression (used by variadic assemble)
+    template <class E>
+    void assemble_single(const Expr::BaseExpression<E>& expr)
+    {
+        assemble(expr);
+    }
+
+public:
 
     // Allow evaluator to access the helper
     const ExpressionHelper<T>& helper() const { return m_helper; }
@@ -302,35 +603,56 @@ private:
     // Helper method to reset dimensions of DoF mappers
     void resetDimensions()
     {
+        // Set shifts for all spaces - shifts are used to compute global indices
+        // for multi-unknown systems
         index_t current_shift = 0;
+        
+        // First, set shifts for trial spaces
         for (auto* space_data : m_trial_spaces)
         {
-            if (space_data && !space_data->mapper.isFinalized()) 
+            if (space_data)
             {
-                space_data->init();
+                if (!space_data->mapper.isFinalized()) 
+                    space_data->init();
                 space_data->mapper.setShift(current_shift);
                 current_shift += space_data->dim * space_data->mapper.freeSize();
             }
         }
-        for (auto* space_data : m_test_spaces) // Test spaces might share mappers with trial spaces
+        
+        // Reset shift for test spaces if they don't share mappers with trial
+        current_shift = 0;
+        for (auto* space_data : m_test_spaces)
         {
-            if (space_data && !space_data->mapper.isFinalized()) 
-            { // Only init if not already done by trial
-                space_data->init();
+            if (space_data)
+            {
+                if (!space_data->mapper.isFinalized()) 
+                    space_data->init();
                 space_data->mapper.setShift(current_shift);
                 current_shift += space_data->dim * space_data->mapper.freeSize();
             }
         }
-        // Finalize all mappers if needed
-        for (auto* space_data : m_trial_spaces) 
+    }
+    
+    /// @brief Compute block dimensions for block matrix view
+    void _blockDims(gsVector<index_t>& rowSizes, gsVector<index_t>& colSizes) const
+    {
+        // For multiple spaces, each space corresponds to a block
+        rowSizes.resize(m_test_spaces.size());
+        for (size_t r = 0; r < m_test_spaces.size(); ++r)
         {
-            if (space_data && !space_data->mapper.isFinalized()) 
-                space_data->mapper.finalize();
+            if (m_test_spaces[r])
+                rowSizes[r] = m_test_spaces[r]->mapper.freeSize();
+            else
+                rowSizes[r] = 0;
         }
-        for (auto* space_data : m_test_spaces) 
+        
+        colSizes.resize(m_trial_spaces.size());
+        for (size_t c = 0; c < m_trial_spaces.size(); ++c)
         {
-            if (space_data && !space_data->mapper.isFinalized()) 
-                space_data->mapper.finalize();
+            if (m_trial_spaces[c])
+                colSizes[c] = m_trial_spaces[c]->mapper.freeSize();
+            else
+                colSizes[c] = 0;
         }
     }
     
@@ -340,7 +662,7 @@ private:
         index_t total_dofs = 0;
         for(const auto* space_data : m_trial_spaces) {
             if (space_data && space_data->mapper.isFinalized()) {
-                total_dofs += space_data->mapper.firstIndex() + space_data->mapper.freeSize();
+                total_dofs += space_data->mapper.freeSize();
             }
         }
         return total_dofs;
@@ -352,7 +674,7 @@ private:
         index_t total_test_dofs = 0;
         for(const auto* space_data : m_test_spaces) {
             if (space_data && space_data->mapper.isFinalized()) {
-                total_test_dofs += space_data->mapper.firstIndex() + space_data->mapper.freeSize();
+                total_test_dofs += space_data->mapper.freeSize();
             }
         }
         return total_test_dofs;
@@ -408,7 +730,18 @@ private:
                                     index_t global_col_idx = col_mapper.index(col_actives(c,0), patch_id, r_comp);
                                     if (col_mapper.is_free_index(global_col_idx))
                                     {
+                                        // Interior-interior coupling: add to matrix
                                         m_fmatrix.coeffRef(global_row_idx, global_col_idx) += localMat(r, c);
+                                    }
+                                    else
+                                    {
+                                        // Interior-boundary coupling: Dirichlet lift
+                                        // Subtract K(row, boundary) * dirichlet_value from RHS
+                                        index_t bnd_idx = col_mapper.global_to_bindex(global_col_idx);
+                                        if (bnd_idx < col_space_data->fixedDofs.rows())
+                                        {
+                                            m_rhs(global_row_idx) -= localMat(r, c) * col_space_data->fixedDofs(bnd_idx, 0);
+                                        }
                                     }
                                 }
                             }

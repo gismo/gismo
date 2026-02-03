@@ -52,7 +52,7 @@ gsMatrix<typename E::Scalar> eval(ExpressionHelper<typename E::Scalar> & helper,
     expr.parse(helper);
     gsInfo<<expr<<", max derivative = "<<expr.getDerivative()<<"\n";
     helper.precompute();
-    return expr.eval(0);
+    return expr.eval(0)(0,0);
 }
 
 
@@ -342,7 +342,7 @@ int main(int argc, char *argv[])
 
 
     auto space = helper.getScalarTrialSpace(cfun1,0,"ψ");
-    auto space2 = helper.getVectorTrialSpace(cfun3,1,"ψ");
+    auto space2 = helper.getVectorTrialSpace(cfun3,1,2,"ψ");
     gsDebugVar(space2.space());
     gsDebugVar(space2.order());
     /*

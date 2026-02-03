@@ -72,6 +72,8 @@ public:
 
     void parse(gismo::ExpressionHelper<T> & helper) const
     {
+        // Set derivative order first
+        this->expr().setDerivative(Base::Deriv);
         // Parse the geometry map
         this->expr().parse(helper);
         
@@ -98,7 +100,7 @@ public:
     ExpressionResult<T> eval(const index_t k) const
     {
         // Get the Jacobian determinant from the geometry map data
-        return geomMap().jacobianDet(k);
+        return ScalarExpressionResult<T>(geomMap().jacobianDet(k));
     }
 
     std::string label() const

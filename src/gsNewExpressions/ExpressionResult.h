@@ -339,6 +339,12 @@ template <typename T>
 class ScalarExpressionResult : public ExpressionResult<T>
 {
 public:
+    /// Constructor from scalar value (creates single-element result)
+    explicit ScalarExpressionResult(T scalar_val)
+        : ExpressionResult<T>(scalar_val)  // Use base class scalar constructor
+    {
+    }
+    
     ScalarExpressionResult(const ExpressionResult<T>& expr_val)
         : ExpressionResult<T>(expr_val)
     {

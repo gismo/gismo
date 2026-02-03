@@ -46,17 +46,17 @@ public:
     :
     Base(expr)
     {
-        initializeSizes(expr, std::integral_constant<size_t, Base::Order>{});
+        initializeSizes(expr, SizeTag<Base::Order>());
     }
 
 private:
-    void initializeSizes(const E& expr, std::integral_constant<size_t, 1>)
+    void initializeSizes(const E& expr, SizeTag<1>)
     {
         // Vector transpose: sizes remain the same
         sizes_ = expr.sizes();
     }
 
-    void initializeSizes(const E& expr, std::integral_constant<size_t, 2>)
+    void initializeSizes(const E& expr, SizeTag<2>)
     {
         // Matrix transpose: swap dimensions
         auto orig_sizes = expr.sizes();
@@ -94,6 +94,8 @@ public:
 
     void parse(ExpressionHelper<typename Base::Scalar> & helper) const
     {
+        // Set derivative order first so child expression knows what to request
+        expr_.setDerivative(Base::Deriv);
         expr_.parse(helper);
     }
 

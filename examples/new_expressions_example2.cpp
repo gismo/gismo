@@ -67,7 +67,7 @@ void printEval(ExpressionHelper<typename E::Scalar> & helper,
     for (index_t k=0; k<pts.cols(); ++k)
     {
         gsInfo<<"At point "<<pts.col(k).transpose()<<":\n";
-        ExpressionValue<typename E::Scalar> ev = expr.eval(k);
+        ExpressionResult<typename E::Scalar> ev = expr.eval(k);
         for (index_t i=0; i!=ev.rowCardinality(); ++i)
         {
             for (index_t j=0; j!=ev.colCardinality(); ++j)
@@ -144,13 +144,13 @@ int main(int argc, char *argv[])
     printEval(helper, φ + φ, points);
     printEval(helper, ψ + ψ, points);
     printEval(helper, η + η, points);
-    printEval(helper, φ + η, points);
+    // printEval(helper, φ + η, points); //INVALID
     printEval(helper, Φ + Φ, points);
     printEval(helper, Ψ + Ψ, points);
 
     
-    printEval(helper, φ + ψ, points);
-    printEval(helper, Φ + Ψ, points);
+    // printEval(helper, φ + ψ, points); // INVALID
+    // printEval(helper, Φ + Ψ, points); // INVALID
     
     printEval(helper, α * φ, points);
     printEval(helper, α * ψ, points);
@@ -196,6 +196,19 @@ int main(int argc, char *argv[])
     gsInfo<<oldEval.eval(expr::jac(Φold), points.col(1))<<"\n";
     gsInfo<<"jac(Φold) at point 2: "<<points.col(2).transpose()<<"\n";
     gsInfo<<oldEval.eval(expr::jac(Φold), points.col(2))<<"\n";
+
+    print(φ.test());
+    print(φ.trial());
+    print(ψ.test());
+    print(ψ.trial());
+    // print((φ+η).test()); // INVALID BECAUSE TWO DIFFERENT SPACES
+    // print((φ*η).test()); // INVALID BECAUSE TWO DIFFERENT SPACES
+    
+    gsDebugVar(φ.Space);
+    gsDebugVar(ψ.Space);
+    gsDebugVar((φ*ψ).Space);
+    print((φ*ψ).test()); 
+    
 
     return EXIT_SUCCESS;
 }

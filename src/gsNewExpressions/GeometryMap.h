@@ -79,7 +79,7 @@ public:
      * @brief Sets the evaluation data
      * @param data Pointer to gsMapData containing Jacobians, etc.
      */
-    void setData(const gsMapData<T> * data) const
+    void setData(const gsMapData<T> * data)
     {
         m_data = data;
     }

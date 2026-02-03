@@ -61,6 +61,8 @@ public:
 
     void parse(gismo::ExpressionHelper<Scalar> & helper) const
     {
+        // Set derivative order first so child expression knows what to request
+        expr_.setDerivative(Base::Deriv);
         expr_.parse(helper);
     }
 
