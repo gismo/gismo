@@ -478,7 +478,7 @@ private:
     /// @param bspl_vec_ti_level level of the basis function given with vector
     ///                          bspl_vec_ti
     /// @param finest_low "low index" of the support of the basis function
-    void _truncate(gsMatrix<T>& coefs,
+    virtual void _truncate(gsMatrix<T>& coefs,
                    const gsVector<index_t, d>& act_size_of_coefs,
                    const gsVector<index_t, d>& size_of_coefs,
                    const unsigned level,

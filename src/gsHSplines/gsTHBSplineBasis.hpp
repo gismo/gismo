@@ -356,7 +356,6 @@ void gsTHBSplineBasis<d,T, Trunc>::_truncate(
     gsVector<index_t, d> act_coefs_strides(d);
     bspline::buildCoeffsStrides<d>(act_size_of_coefs, act_coefs_strides);
 
-
     gsVector<index_t, d> last_point(d);
     bspline::getLastIndexLocal<d>(size_of_coefs, last_point);
     last_point(0) = 0;
@@ -369,6 +368,7 @@ void gsTHBSplineBasis<d,T, Trunc>::_truncate(
 
     unsigned xmatrix_index = 0;
     unsigned tensor_active_index = this->m_xmatrix[level][0];
+
 
     unsigned numb_of_point = size_of_coefs[0];
 
