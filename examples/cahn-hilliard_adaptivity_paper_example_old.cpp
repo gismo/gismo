@@ -259,11 +259,10 @@ void solve( gsMultiPatch<T> & mp,
     gsExprEvaluator<> ev(A);
     ev.options().update(A.options(),gsOptionList::addIfUnknown); //?? do I have to do this?
     A.options().update(ev.options(),gsOptionList::addIfUnknown); 
-    // ev.setIntegrationElements(dbasis);
-    ev.setIntegrationElements(dbasis);
+    ev.options().setSwitch("SameElement",false);
 
-    gsDebugVar(dbasis.basis(0).maxDegree());
-    gsDebugVar(ibasis.basis(0));
+    // gsDebugVar(dbasis.basis(0).maxDegree());
+    // gsDebugVar(ibasis.basis(0));
 
     // Set the geometry map
     // geometryMap G = A.getMap(surface);
@@ -966,6 +965,7 @@ gsSparseSolver<>::uPtr solver;
             {
                 // -------------REFINEMENT-------------------
                 // Compute the integral of c over each element
+                ev.setIntegrationElements(dbasis);
                 ev.integralElWise(meas(G) * cnew_sol);
                 std::vector<real_t> cInt = ev.elementwise();
                 gsAsVector<real_t> cvec(cInt.data(),cInt.size());  // Temporary Eigen::Map
@@ -973,6 +973,7 @@ gsSparseSolver<>::uPtr solver;
                 ev.integralElWise(meas(G));
                 std::vector<real_t> areas = ev.elementwise();
                 gsAsVector<real_t> avec(areas.data(),areas.size()); // Temporary Eigen::Map
+                ev.setIntegrationElements(ibasis); //reset basis
 
                 // Invert and normalize the element-wise average (c/area), as:
                 // err = 1-|c|/a;
@@ -1115,6 +1116,7 @@ gsSparseSolver<>::uPtr solver;
             mesher.rebuild();
 
             // Compute the integral of c over each element
+            ev.setIntegrationElements(dbasis);
             ev.integralElWise(meas(G) * cnew);
             std::vector<real_t> cInt = ev.elementwise();
             gsAsVector<real_t> cvec(cInt.data(),cInt.size());  // Temporary Eigen::Map
@@ -1122,6 +1124,7 @@ gsSparseSolver<>::uPtr solver;
             ev.integralElWise(meas(G));
             std::vector<real_t> areas = ev.elementwise();
             gsAsVector<real_t> avec(areas.data(),areas.size()); // Temporary Eigen::Map
+            ev.setIntegrationElements(ibasis);
 
             // Invert and normalize the element-wise average (c/area), as:
             // err = 1-|c|/a;

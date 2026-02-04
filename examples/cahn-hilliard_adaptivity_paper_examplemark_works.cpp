@@ -735,12 +735,15 @@ gsSparseSolver<>::uPtr solver;
             // ===============================================================================
 
             gsInfo<< "Number of Elements: " << dbasis.basis(0).numElements() << "\n";
-            
-            // if (step>=102)
-            // {
-            //     gsMesh<> mesh0(dbasis.basis(0));
-            //     gsWriteParaview(mesh0, out+"/initial_mesh_"+std::to_string(step));
-            // }
+
+            if (step==203)
+            {
+                gsMesh<> mesh0(dbasis.basis(0));
+                gsMesh<> mesh1(ibasis.basis(0));
+                gsInfo<<"Exporting mesh to" <<out+"/trial_dbasis_mesh_"+std::to_string(step)<<"\n";
+                gsWriteParaview(mesh0, out+"/works_dbasis_mesh_"+std::to_string(step));
+                gsWriteParaview(mesh1, out+"/works_ibasis_mesh_"+std::to_string(step));
+            }
 
             for (index_t dt_it = 0; dt_it != lmax; dt_it++)
             {
@@ -1058,6 +1061,13 @@ gsSparseSolver<>::uPtr solver;
                 break; // break the refinement loop
         }// mesh adaptivity
 
+                  
+        // if (step>=128)
+        // {
+        //     gsMesh<> mesh0(dbasis.basis(0));
+        //     gsWriteParaview(mesh0, out+"/fine_mesh_step"+std::to_string(step)+"_refit_"+std::to_string(refIt));
+        // }
+
         // Update cold and dcold
         // mp_cold.clear();
         // mp_dcold.clear();
@@ -1138,6 +1148,12 @@ gsSparseSolver<>::uPtr solver;
             csvFile << markCrsTimeStep   << ","
                     << crsTimeStep       << "\n";
             csvFile.flush();
+            
+            // if (step>=128)
+            // {
+            //     gsMesh<> mesh0(dbasis.basis(0));
+            //     gsWriteParaview(mesh0, out+"/coarse_mesh_step"+std::to_string(step)+"_refit_"+std::to_string(refIt));
+            // }
         } // coarsening switch
 
         // Update time and old solutions

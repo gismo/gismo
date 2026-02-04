@@ -43,9 +43,14 @@ T computeNorm(const gsMultiBasis<T>  & integrationBasis,
     // For the evaluator to use the options of the assembler (SameElement assumption!)
     ev.options().update(A.options(),gsOptionList::addIfUnknown);
 
+    // ev.options().setSwitch("SameElement",0);
+
     auto sol_before = ev.getVariable(sourceFunction1,G); // solution before projection      
     gsGeometry<>::uPtr sol_after_ptr  = currentBasis.basis(0).makeGeometry(coefs);
     auto sol_after = ev.getVariable(*sol_after_ptr,G);
+
+    // gsInfo<<ev.options()<<"\n";
+
 
     // gsInfo<<currentBasis.basis(0)<<"\n";
     // gsInfo << ev.options() << "\n";
@@ -66,6 +71,8 @@ T basisUnion(const gsMultiBasis<T> & mb1,
 
 int main(int argc, char *argv[])
 {
+
+    
     bool plot_error = true;
 
     gsMultiPatch<> mp;
@@ -105,10 +112,8 @@ int main(int argc, char *argv[])
 
 
     gsGeometry<>::uPtr Ccrs_ = dbasis_coarse.basis(0).makeGeometry(ccoarse);
-    // gsInfo<<ccoarse.size()<<"\n";
-    // gsInfo<<dbasis_coarse.basis(0)<<"\n";
-    // gsInfo<<dbasis_fine.basis(0)<<"\n";
 
+    // ================= REFINEMENT! =================
 
     clock.restart();
     gsQuasiInterpolate<real_t>::localIntpl(dbasis_fine.basis(0),*Ccrs_,Cfine);
@@ -120,11 +125,6 @@ int main(int argc, char *argv[])
     // gsGeometry<>::uPtr Cfine_l2_ = dbasis_fine.basis(0).makeGeometry(give(Cfine_l2));
     // l2time += clock.stop();
     // gsInfo << "L2 error: " << errorl2 << "\n";
-
-
-    // gsDebugVar(l2time);
-    // gsDebugVar(taytime);
-    // gsDebugVar(localqi);
     
     gsExprAssembler<> A(1,1);
     A.setIntegrationElements(dbasis_fine); // para hacer plot en coarse o en fine mesh!!!!! importantisimo
@@ -138,20 +138,11 @@ int main(int argc, char *argv[])
     // auto ccoarse_sch = ev.getVariable(*Ccoarse_sch_,G); // quasi interpolation schoenberg
 
 
-    // gsInfo<<"Integral of the difference of the coefficients\n";
-    // gsInfo<<"QI:  "<<(ev.integral(meas(G) * (ccrs-cfine).sqNorm()))<<"\n";
-
     // gsInfo<<"==================== ERRORS ====================\n";
     real_t error_1 = computeNorm(dbasis_tensor, dbasis_fine, mp, *Ccrs_, Cfine, A.options());
     real_t error_2 = computeNorm(dbasis_fine,   dbasis_fine, mp, *Ccrs_, Cfine, A.options());
     real_t error_3 = computeNorm(dbasis_coarse, dbasis_fine, mp, *Ccrs_, Cfine, A.options());
 
-    // T computeNorm(const gsMultiBasis<T>  & integrationBasis,
-    //             const gsFunctionSet<T> & currentBasis,
-    //             const gsFunctionSet<T> & geometryMap,
-    //             const gsFunctionSet<T> & sourceFunction1,
-    //             const gsMatrix<T> & coefs,
-    //             const gsOptionList     & options)
 
     gsInfo << "SameElement flag is: " 
        << (A.options().getSwitch("SameElement") ? "ON" : "OFF") << "\n";
@@ -179,13 +170,70 @@ int main(int argc, char *argv[])
     gsInfo<< "Error with integration on fine basis (SE=OFF): "<< error_5<<"\n";
     gsInfo<< "Error with integration on crs basis (SE=OFF): "<< error_6<<"\n";
 
+    // ================= Coarsening! =================
+    gsMatrix<> cfine = gsMatrix<>::Random(dbasis_fine.size(),1);
+
+    gsGeometry<>::uPtr Cfine_ = dbasis_fine.basis(0).makeGeometry(cfine);
+    gsQuasiInterpolate<real_t>::localIntpl(dbasis_coarse.basis(0),*Cfine_,Ccrs_coefs);
+    gsGeometry<>::uPtr Ccoarse_ = dbasis_coarse.basis(0).makeGeometry(Ccrs_coefs);
+
+    auto ccrs2 = ev.getVariable(*Ccoarse_,G);
+    auto cfine2 = ev.getVariable(*Cfine_,G); 
+
+    // gsInfo<<"==================== ERRORS ====================\n";
+    real_t error_1 = computeNorm(dbasis_tensor, dbasis_fine, mp, *Ccrs_, Cfine, A.options());
+    real_t error_2 = computeNorm(dbasis_fine,   dbasis_fine, mp, *Ccrs_, Cfine, A.options());
+    real_t error_3 = computeNorm(dbasis_coarse, dbasis_fine, mp, *Ccrs_, Cfine, A.options());
+
+
+    gsInfo << "SameElement flag is: " 
+       << (A.options().getSwitch("SameElement") ? "ON" : "OFF") << "\n";
+
+    gsInfo<< "Error with integration on TPr basis (SE=ON): "<< error_1<<"\n";
+    gsInfo<< "Error with integration on fine basis (SE=ON): "<< error_2<<"\n";
+    gsInfo<< "Error with integration on crs basis (SE=ON): "<< error_3<<"\n";
+
+
+    A.options().setSwitch("SameElement",false);
+
+    gsInfo << "SameElement flag is: " 
+       << (A.options().getSwitch("SameElement") ? "ON" : "OFF") << "\n";
+
+    gsInfo<<"Fine basis:\n";
+    gsInfo<<dbasis_fine.basis(0)<<"\n";
+    gsInfo<<"Coarse basis:\n";
+    gsInfo<<dbasis_coarse.basis(0)<<"\n";
+    
+    real_t error_4 = computeNorm(dbasis_tensor, dbasis_fine, mp, *Ccrs_, Cfine, A.options());
+    real_t error_5 = computeNorm(dbasis_fine,   dbasis_fine, mp, *Ccrs_, Cfine, A.options());
+    real_t error_6 = computeNorm(dbasis_coarse, dbasis_fine, mp, *Ccrs_, Cfine, A.options());
+
+    gsInfo<< "Error with integration on TPr basis (SE=OFF): "<< error_4<<"\n";
+    gsInfo<< "Error with integration on fine basis (SE=OFF): "<< error_5<<"\n";
+    gsInfo<< "Error with integration on crs basis (SE=OFF): "<< error_6<<"\n";
+    
+
+    
     // gsWriteParaview(dbasis_fine.basis(0), "basis_hugo_fine");
     // gsWriteParaview(dbasis_coarse.basis(0), "basis_hugo_crs");
 
-    gsMesh<> mesh_fine(dbasis_fine.basis(0));
-    gsMesh<> mesh_crs(dbasis_coarse.basis(0));
+    // gsMesh<> mesh_fine(dbasis_fine.basis(0));
+    // gsMesh<> mesh_crs(dbasis_coarse.basis(0));
 
-    gsWriteParaview(mesh_fine, "mesh_hugo_fine");
-    gsWriteParaview(mesh_crs, "mesh_hugo_crs");
+    // gsWriteParaview(mesh_fine, "mesh_hugo_fine");
+    // gsWriteParaview(mesh_crs, "mesh_hugo_crs");
+
+    // dbasis_tensor = dbasis_coarse; // copy the coarse basis to the tensor basis
+    // GISMO_ASSERT((dynamic_cast<gsHTensorBasis<2,real_t>*>(&dbasis_tensor.basis(0))), "Basis is not a gsHTensorBasis");
+    // GISMO_ASSERT((dynamic_cast<gsHTensorBasis<2,real_t>*>(&dbasis_fine.basis(0))), "Basis is not a gsHTensorBasis");
+   
+    // static_cast<gsHTensorBasis<2,real_t> &>(dbasis_tensor.basis(0)).merge(
+    //     static_cast<gsHTensorBasis<2,real_t> &>(dbasis_fine.basis(0))
+    //     );
+
+    // gsDebugVar(dbasis_tensor.basis(0));
+
+    // static_cast<gsHTensorBasis<2,real_t> &>(dbasis_fine.basis(0)).tree().printLeaves();
+    // static_cast<gsHTensorBasis<2,real_t> &>(dbasis_coarse.basis(0)).tree().printLeaves();
 
 }// end main

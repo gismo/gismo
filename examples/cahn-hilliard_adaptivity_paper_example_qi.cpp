@@ -436,8 +436,8 @@ gsSparseSolver<>::uPtr solver;
         GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
-        real_t error = gsL2Projection<real_t>::project(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
-        if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
+        gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0), source, tmp);
+        if (verbose>0) gsInfo << "Quasi-interpolation of initial condition done\n";
         mp_cold.addPatch(dbasis.basis(0).makeGeometry(tmp));
         tmp.setZero();
         mp_dcold.addPatch(dbasis.basis(0).makeGeometry(tmp));

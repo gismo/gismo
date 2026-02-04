@@ -62,7 +62,8 @@ int main(int argc, char *argv[])
     //     gsVector<> coefs = thb.getCoefs(i);
     //     gsInfo << "  Coefficients: " << coefs.transpose() << "\n";
     // }
-    
+    gsTHBSplineBasis<1,real_t> *thb_crs = dynamic_cast<gsTHBSplineBasis<1,real_t> *>(&thb);
+
 
     std::vector<index_t> box, box2;
     box.push_back(1); // level to refine
@@ -79,8 +80,26 @@ int main(int argc, char *argv[])
     gsInfo << "THB spline basis size: " << thb.size() << "\n";
 
     gsFunctionExpr<real_t> myFunction("exp(-100*((x-0.5)^2))", 1);
+    
+    gsMultiBasis<> dbasis_crs;
+    gsMatrix<> C_coarse_QI;
+    dbasis_crs.addBasis(thb_crs->clone());
+    gsQuasiInterpolate<real_t>::localIntpl(dbasis_crs.basis(0), myFunction,C_coarse_QI); 
+    gsTHBSpline<1,real_t> thb_coar_exp(*thb_crs,C_coarse_QI); 
+    gsVector<> pt1(1,1);
+    gsVector<> pt2(1,1);
+    gsVector<> pt3(1,1);
 
-    gsMatrix<> C_fine_QI, C_coarse_QI;
+    pt1<< 0.365187;
+    pt2<< 0.392857;
+    pt3<< 0.420527;
+
+    gsInfo << "thb_coar_exp at pt " << pt1.transpose() << ": " << thb_coar_exp.eval(pt1) << "\n";
+    gsInfo << "thb_coar_exp at pt " << pt2.transpose() << ": " << thb_coar_exp.eval(pt2) << "\n";
+    gsInfo << "thb_coar_exp at pt " << pt3.transpose() << ": " << thb_coar_exp.eval(pt3) << "\n";
+
+
+    gsMatrix<> C_fine_QI;
 
     gsMultiBasis<> dbasis_fine;
 

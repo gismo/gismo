@@ -124,6 +124,7 @@ void solve( gsMultiPatch<T> & mp,
             index_t & plotmod,
             bool & plot,
             bool & plot_error,
+            bool & plot_mesh,
             index_t & numRefine,
             index_t & numElevate,
             index_t & verbose,
@@ -609,13 +610,6 @@ gsSparseSolver<>::uPtr solver;
         gsL2Projection<real_t>::project(dbasis,ibasis,mp,mp_dcold.patch(0),dCnewF,A.options());
     }
 
-    // Expression assembler for L2 projection
-    gsExprAssembler<> A_proj(1,1);
-    A_proj.options().update(A.options(),gsOptionList::addIfUnknown); 
-    A_proj.setIntegrationElements(ibasis);
-    space u = A_proj.getSpace(ibasis,mp_cold.patch(0).targetDim());
-    u.setup(A_proj.options().askInt("Continuity",-1));
-
     for (index_t step = 0; step!=maxSteps; step++)
     {
         assemblyTimestep = 0;
@@ -627,10 +621,10 @@ gsSparseSolver<>::uPtr solver;
         markCrsTimeStep = 0;
         crsTimeStep     = 0;
  
-        if ((step >= 80 && step <= 200) || (step >= 320 && step <= 460) || (step >= 700 && step <= 800))
+        // if ((step >= 80 && step <= 200) || (step >= 320 && step <= 460) || (step >= 700 && step <= 800))
             maxRefIt = MESHopt.askInt("RefIt",5);
-        else
-            maxRefIt = 1;
+        // else
+        //     maxRefIt = 1;
 
         for (index_t refIt = 0; refIt!=maxRefIt; refIt++)
         {
@@ -672,48 +666,6 @@ gsSparseSolver<>::uPtr solver;
             }
             // ================================================================================
 
-            // =========================Assemble the mass matrix ===============================
-            // // Initialize the system
-            // A_proj.initSystem();
-
-            // // Assemble the mass matrix
-            // A_proj.assemble(u*u.tr() * meas(G));
-            // K_mass_full = A_proj.giveMatrix();
-
-            // // K_mass.resize(w.mapper().freeSize(), w.mapper().freeSize());
-            // gsInfo<< K_mass_full.size() << "\n";
-            // K_mass.setZero();
-            // gsInfo<<K_mass.size()<<"\n";
-
-            // index_t row_reduced = 0;
-            // for (index_t i = 0; i < dbasis.basis(0).size(); ++i)
-            // {
-            //     if (w.mapper().is_free(i))
-            //     {
-            //         index_t col_reduced = 0;
-            //         for (index_t j = 0; j < dbasis.basis(0).size(); ++j)
-            //         {
-            //             if (w.mapper().is_free(j))
-            //             {
-            //                 K_mass(row_reduced, col_reduced) = K_mass_full(w.mapper().index(i), w.mapper().index(j));
-            //                 ++col_reduced;
-            //             }
-            //         }
-            //         ++row_reduced;
-            //     }
-            // }
-            // // // ================================================================================
-
-            // if (step==106)
-            // {
-            //     gsFileData<> fdbas;
-            //     fdbas.add(dbasis,0);
-            //     fdbas.add(Cnew,1);
-
-            //     fdbas.save("basis_step_" + std::to_string(step) + "_refit_" + std::to_string(refIt) + "_prjcrs_" + std::to_string(projection_Crs) + ".xml");
-            //     gsInfo << "Exported to "<<  "basis_step_" + std::to_string(step) + "_refit_" + std::to_string(refIt) + "_prjcrs_" + std::to_string(projection_Crs) + ".xml" <<"\n";
-            // }
-            
             clock.restart();
             if (MESHopt.askSwitch("Adaptive",true))
             {
@@ -767,8 +719,21 @@ gsSparseSolver<>::uPtr solver;
             }
             projTimeRefIt += clock.stop();
 
-    
-            // // =========== Compute error of the projection of both variables ===========
+            real_t error_proj_c  = computeNorm(evbasis, dbasis, mp, mp_cold.patch(0), CnewF, A.options());
+            real_t error_proj_dc = computeNorm(evbasis, dbasis, mp, mp_dcold.patch(0), dCnewF, A.options());
+
+            if (step>=128)
+            {
+                gsInfo<< "error_proj_c: " << error_proj_c << "\n";
+                gsInfo<< "error_proj_dc: " << error_proj_dc << "\n";
+                gsInfo<< "Norm cold: " << CnewF.norm() << "\n";
+                gsInfo<< "Norm cold: " << dCnewF.norm() << "\n";
+                gsInfo << "Cnew head: " << Cnew.topRows(10).transpose() << "\n";
+                gsInfo << "dCnew head: " << dCnew.topRows(10).transpose() << "\n";
+                gsInfo << "w.mapper() mapSize: " << w.mapper().mapSize() << "\n";
+                gsInfo << "w.mapper() freeSize: " << w.mapper().freeSize() << "\n";
+            }
+                      // // =========== Compute error of the projection of both variables ===========
             // if (step >= 102)
             // { 
             //     real_t error_proj_c  = computeNorm(ibasis, dbasis, mp, mp_cold.patch(0), CnewF, A.options());
@@ -812,10 +777,18 @@ gsSparseSolver<>::uPtr solver;
 
             gsInfo<< "Number of Elements: " << dbasis.basis(0).numElements() << "\n";
             
-            // if (step>=102)
+        
+            // if (step==203)
             // {
+            //     gsInfo<< "ibasis size: " << ibasis.basis(0).size() << "\n";
+            //     gsInfo<< "dbasis size: " << dbasis.basis(0).size() << "\n";
+            //     gsInfo<< "ibasis size: " << ibasis.basis(0).numElements() << "\n";
+            //     gsInfo<< "dbasis size: " << dbasis.basis(0).numElements()  << "\n";
             //     gsMesh<> mesh0(dbasis.basis(0));
-            //     gsWriteParaview(mesh0, out+"/initial_mesh_"+std::to_string(step));
+            //     gsMesh<> mesh1(ibasis.basis(0));
+            //     gsInfo<<"Exporting mesh to" <<out+"/trial_dbasis_mesh_"+std::to_string(step)<<"\n";
+            //     gsWriteParaview(mesh0, out+"/trial_dbasis_mesh_"+std::to_string(step));
+            //     gsWriteParaview(mesh1, out+"/trial_ibasis_mesh_"+std::to_string(step));
             // }
 
             for (index_t dt_it = 0; dt_it != lmax; dt_it++)
@@ -1096,6 +1069,7 @@ gsSparseSolver<>::uPtr solver;
                     if (verbose>1) gsInfo<<"Basis before refinement:\n "<<dbasis.basis(0)<<"\n";
                     clock.restart();
                     dbasis.basis(0).refineElements(refBox);
+                    ibasis.basis(0).refineElements(refBox);
                     w.setup(bc, dirichlet::l2Projection, 0);
                     refTimeRefIt += clock.stop();
                     if (verbose>1) gsInfo<<"Basis after refinement:\n "<<dbasis.basis(0)<<"\n";
@@ -1113,6 +1087,12 @@ gsSparseSolver<>::uPtr solver;
                         csvFile << refTimeRefIt << "\n";
                         csvFile.flush();  // Forces the file to write immediately
                     }
+                    // Add fine basis in ibasis for integration (assembler)
+                    // gsInfo<<"Ibasis before: "<<ibasis.basis(0).numElements()<<"\n";
+                    // ibasis.clear();
+                    // for (size_t p=0; p!=dbasis.nBases(); p++)
+                    //     ibasis.addBasis(dbasis.basis(p).clone());
+                    // gsInfo<<"Ibasis after: "<<ibasis.basis(0).numElements()<<"\n";
                 }// refine
                 else
                 {
@@ -1134,41 +1114,37 @@ gsSparseSolver<>::uPtr solver;
                 break; // break the refinement loop
         }// mesh adaptivity
 
-        // Update cold and dcold
-        // mp_cold.clear();
-        // mp_dcold.clear();
-        // mp_cold.addPatch(mp_cnew.patch(0));
-        // mp_dcold.addPatch(mp_dcnew.patch(0));
+        ibasis.clear();
+        // ibasis = gsMultiBasis<>(mp_cnew); // mp_cnew has the basis from the converged RefIt
+        ibasis.addBasis(dbasis.basis(0).clone()); // add the fine basis for integration
 
-        // gsInfo<< "Value at mid-point :" << ev.eval(cnew, pt) <<"\n";
-        // gsInfo<< "Value at mid-point :" << ev.eval(cnew_sol, pt) <<"\n";
+        gsInfo<< "ibasis size: "<< ibasis.totalSize() << "\n";
+        gsInfo<< "dbasis size: "<< dbasis.totalSize() << "\n";
+
 
         // //! [Export visualization in ParaView]
         if (plot && step % plotmod==0)
         {
-            // Export the mesh
+            // Export the mdesh
             collection.newTimeStep(&mp);
             collection.addField(cnew,"numerical solution");
             gsInfo << "Number of degrees of freedom:\t" << A.numDofs()  << std::endl;
             collection.saveTimeStep();
             
-            gsMesh<> mesh(dbasis.basis(0)); // mesh refIt
-            // gsMesh<> mesh_int(ibasis.basis(0)); // integration mesh
-            // gsMesh<> mesh_coarse(dbasis.basis(0)); // mesh after coarsening
-            gsWriteParaview(mesh, out+"/mesh_pvd/mesh_"+std::to_string(plotID),false);
-            meshcollection.addPart("mesh_pvd/mesh_"+std::to_string(plotID)+".vtp",plotID,"Mesh"); //last flag is to say its a mesh
-            // gsWriteParaview(mesh,"mesh_"+util::to_string(i),false);
-            // meshes.addPart("mesh_"+util::to_string(i)+".vtp",i,"Mesh");
+            if (plot_mesh)
+            {
+                gsMesh<> mesh(dbasis.basis(0)); // mesh refIt
+                // gsMesh<> mesh_int(ibasis.basis(0)); // integration mesh
+                // gsMesh<> mesh_coarse(dbasis.basis(0)); // mesh after coarsening
+                gsWriteParaview(mesh, out+"/mesh_pvd/mesh_"+std::to_string(plotID),false);
+                meshcollection.addPart("mesh_pvd/mesh_"+std::to_string(plotID)+".vtp",plotID,"Mesh"); //last flag is to say its a mesh
+                // gsWriteParaview(mesh,"mesh_"+util::to_string(i),false);
+                // meshes.addPart("mesh_"+util::to_string(i)+".vtp",i,"Mesh");
+            }
+
             plotID++;
         }
 
-        // gsInfo<<"Ibasis before: "<<ibasis.basis(0).numElements()<<"\n";
-        // ibasis.clear();
-        // for (size_t p=0; p!=dbasis.nBases(); p++)
-        // {
-        //     ibasis.addBasis(dbasis.basis(p).clone());
-        // }
-        // gsInfo<<"Ibasis after: "<<ibasis.basis(0).numElements()<<"\n";
 
         if (MESHopt.askSwitch("Adaptive",true))
         {
@@ -1176,20 +1152,16 @@ gsSparseSolver<>::uPtr solver;
             // ==================== COARSENING ====================
             index_t numEl = dbasis.basis(0).numElements();
             ev.setIntegrationElements(dbasis);
-                gsInfo<<"Space size = "<<w.source().size()*w.dim()<<"\n";
-                gsInfo<<"Map size   = "<<w.mapper().mapSize()<<"\n";
-            gsInfo<< "A.numDofs() " << A.numDofs() <<"\n";
+            //     gsInfo<<"Space size = "<<w.source().size()*w.dim()<<"\n";
+            //     gsInfo<<"Map size   = "<<w.mapper().mapSize()<<"\n";
+            // gsInfo<< "A.numDofs() " << A.numDofs() <<"\n";
             ev.integralElWise(meas(G) * cnew);
             std::vector<real_t> cInt = ev.elementwise();
             gsAsVector<real_t> cvec(cInt.data(),cInt.size());  // Temporary Eigen::Map
             // Compute the area of each element
-
             ev.integralElWise(meas(G));
-
             std::vector<real_t> areas = ev.elementwise();
-
             gsAsVector<real_t> avec(areas.data(),areas.size()); // Temporary Eigen::Map
-
             ev.setIntegrationElements(ibasis); //reset basis
 
             // Invert and normalize the element-wise average (c/area), as:
@@ -1210,6 +1182,7 @@ gsSparseSolver<>::uPtr solver;
                 // Refine dbasis
                 if (verbose>1) gsInfo<<"Basis before coarsening:\n "<<dbasis.basis(0)<<"\n";
                 clock.restart();
+                // ibasis.basis(0).unrefineElements(crsBox);
                 dbasis.basis(0).unrefineElements(crsBox);
                 w.setup(bc, dirichlet::l2Projection, 0);
                 crsTimeStep += clock.stop();
@@ -1283,6 +1256,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     bool plot_error = false;
+    bool plot_mesh = false;
     index_t numRefine  = 1;
     index_t numElevate = 1;
     index_t verbose = 1;
@@ -1304,6 +1278,7 @@ int main(int argc, char *argv[])
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("ploterror", "Create a ParaView visualization file with the projection errors", plot_error);
+    cmd.addSwitch("plotmesh", "Create a ParaView visualization file with the projection errors", plot_mesh);
     cmd.addSwitch("random", "Random initial condition of the CH problem", random);
     cmd.addInt("c", "projcoars", "Projection method for coarsening", projection_Crs);
     cmd.addInt("s", "pattern", "Phase separation pattern", pattern);
@@ -1348,9 +1323,9 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     if (mp.geoDim()==2)
-        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs, pattern, timemethod, out);
+        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, plot_mesh, numRefine, numElevate, verbose, random, projection_Crs, pattern, timemethod, out);
     else if (mp.geoDim()==3)
-        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, numRefine, numElevate, verbose, random, projection_Crs, pattern, timemethod, out);
+        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, plot_error, plot_mesh, numRefine, numElevate, verbose, random, projection_Crs, pattern, timemethod, out);
     else
         GISMO_ERROR("Only 2D and 3D problems are supported.");
 
