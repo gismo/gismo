@@ -137,22 +137,20 @@ public:
     /// @return The support extension of the element at the specified jump level as a box in
     box_t getMultiLevelSupportExtension(const element_t & element, level_t jump) const;
 
-    /// Get the HNeighborhood of the element at a specific level
-    /// @param element The element for which the HNeighborhood is requested.
-    /// @param m The level of the neighborhood.
-    /// @return A set of elements representing the HNeighborhood of the element at the specified level
-    HElementContainer getHNeighborhood(const element_t & element, level_t m) const;
-
     /// Get the TNeighborhood of the element at a specific level
     /// @param element The element for which the TNeighborhood is requested.
-    /// @param m The level of the neighborhood.
-    /// @return A set of elements representing the TNeighborhood of the element at the specified level
+    /// @param m The jump/offset parameter indicating how many levels to go back in the hierarchy.
+    /// @return A set of elements representing the HNeighborhood of the element at the specified jump level
+    HElementContainer getHNeighborhood(const element_t & element, level_t m) const;
+    /// Get the TNeighborhood of the element at a specific jump level
+    /// @param element The element for which the TNeighborhood is requested.
+    /// @param m The jump/offset parameter indicating how many levels to go back in the hierarchy.
+    /// @return A set of elements representing the TNeighborhood of the element at the specified jump level
     HElementContainer getTNeighborhood(const element_t & element, level_t m) const;
-
-    /// Get the neighborhood of the element at a specific level
+    /// Get the neighborhood of the element at a specific jump level
     /// @param element The element for which the neighborhood is requested.
-    /// @param m The level of the neighborhood.
-    /// @return A set of elements representing the neighborhood of the element at the specified level
+    /// @param m The jump/offset parameter indicating how many levels to go back in the hierarchy.
+    /// @return A set of elements representing the neighborhood of the element at the specified jump level
     /// @note If the basis is a tensor basis, the TNeighborhood is returned.
     ///       If the basis is a HBSpline basis, the HNeighborhood is returned.
     ///       If the basis is neither, an error is thrown.
@@ -187,14 +185,16 @@ public:
     /// Convert an element to refinement box indices
     /// @param element The element to convert.
     /// @param targetLevel The target level for the refinement box.
+    /// @param extension If true, element is extended.
     /// @return A vector of indices representing the refinement box at the target level.
-    std::vector<index_t> toRefBox(const element_t & element, level_t targetLevel) const;
-    std::vector<index_t> toRefBox(const element_t & element) const;
+    std::vector<index_t> toRefBox(const element_t & element, level_t targetLevel, bool extension = true) const;
+    std::vector<index_t> toRefBox(const element_t & element, bool extension = true) const;
 
     /// Convert a set of elements to refinement box indices
     /// @param elements The set of elements to convert.
+    /// @param extension If true, elements are extended.
     /// @return A vector of indices representing the refinement boxes of the elements.
-    std::vector<index_t> toRefBoxes(const HElementContainer & elements) const;
+    std::vector<index_t> toRefBoxes(const HElementContainer & elements, bool extension = true) const;
 
     /// Convert an element to coarsen box indices
     /// @param element The element to convert.

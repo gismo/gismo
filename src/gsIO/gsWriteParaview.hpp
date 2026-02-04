@@ -291,6 +291,7 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
 
     index_t np1 = (np.size()>1 ? np(1)-1 : 0);
     index_t np2 = (np.size()>2 ? np(2)-1 : 0);
+    index_t dd = eval_field.rows();
 
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
@@ -298,18 +299,19 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
          << np2 <<"\">\n";
     file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np1<<" 0 "
          << np2 <<"\">\n";
-    file <<"<PointData "<< ( eval_field.rows()==1 ?"Scalars":(eval_field.rows()>3?"Tensors":"Vectors"))<<"=\"SolutionField\">\n";
-    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< eval_field.rows() <<"\">\n";
-    if ( eval_field.rows()==1 )
+    file <<"<PointData "<< ( dd==1 ?"Scalars":(dd>3?"Tensors":"Vectors"))<<"=\"SolutionField\">\n";
+    index_t ncomp = (dd!=1) ? math::max(3,dd) : dd;
+    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< ncomp <<"\">\n";
+    if ( dd==1 )
         for ( index_t j=0; j<eval_field.cols(); ++j)
             file<< eval_field.at(j) <<" ";
     else
     {
         for ( index_t j=0; j<eval_field.cols(); ++j)
         {
-            for ( index_t i=0; i!=eval_field.rows(); ++i)
+            for ( index_t i=0; i!=dd; ++i)
                 file<< eval_field(i,j) <<" ";
-            for ( index_t i=eval_field.rows(); i<3; ++i)
+            for ( index_t i=dd; i<3; ++i)
                 file<<"0 ";
         }
     }
@@ -1253,7 +1255,11 @@ void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value)
 template<class T>
 void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const std::vector<T> & values)
 {
-    GISMO_ASSERT(boxes.cols()/2==(index_t)values.size() || values.size()==0,"Values should have size 0 or equal to the number of boxes (i.e., boxes.cols()/2)");
+    GISMO_ASSERT(boxes.cols()/2==(index_t)values.size() || values.size()==0,
+        "Values should have size 0 or equal to the number of boxes (i.e., boxes.cols()/2 = " +
+        std::to_string(boxes.cols()/2) + "), but got values.size() = " +
+        std::to_string(values.size()));
+
     const short_t d = boxes.rows();
     gsMesh<T> mesh; // only needs vertices
     gsMatrix<> tmpbox;
@@ -1295,22 +1301,24 @@ void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const T 
 }
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
-template<class T>
-void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn)
+template<short_t d, class T>
+void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn)
 {
-    gsMatrix<T> points, values(3,4),corners(2,2);
-    gsVector<index_t> np(2);
-    np<<2,2;
     box.computeCoordinates();
-    points = gsPointGrid<T>(box.getCoordinates(),4);
+    gsVector<index_t,d> np;
+    np.setConstant(2);
+    gsGridIterator<T,CUBE,d> grid(box.getCoordinates(),np);
+    gsMatrix<T> points = grid.toMatrix();
+    gsMatrix<T> values(3,points.cols());
     values.row(0).setConstant(box.level());
     values.row(1).setConstant(box.error());
     values.row(2).setConstant(box.projectedErrorRef());
     gsWriteParaviewTPgrid(points,values,np,fn);
 }
 
-template<class T>
-void gsWriteParaview(const gsHBox<2,T> & box, std::string const & fn, short_t mode)
+/// Writes a single \ref gsHBox \a box to a file with name \a fn
+template<short_t d, class T>
+void gsWriteParaview(const gsHBox<d,T> & box, std::string const & fn, short_t mode)
 {
     box.computeCoordinates();
     switch (mode)
@@ -1327,16 +1335,16 @@ void gsWriteParaview(const gsHBox<2,T> & box, std::string const & fn, short_t mo
     }
 }
 
-template<class T>
-void gsWriteParaview(const gsHBoxContainer<2,T> & boxes, std::string const & fn, short_t mode)
+template<short_t d, class T>
+void gsWriteParaview(const gsHBoxContainer<d,T> & boxes, std::string const & fn, short_t mode)
 {
-    gsMatrix<T> boxCoords(2,boxes.totalSize()*2);
+    gsMatrix<T> boxCoords(d,boxes.totalSize()*2);
     gsVector<T> boxValues(boxes.totalSize());
     boxCoords.setZero();
     index_t i=0;
     std::string fileName;
-    for (typename gsHBoxContainer<2,T>::cHIterator Hit = boxes.cbegin(); Hit!=boxes.cend(); Hit++)
-        for (typename gsHBoxContainer<2,T>::cIterator Cit = Hit->cbegin(); Cit!=Hit->cend(); Cit++, i++)
+    for (typename gsHBoxContainer<d,T>::cHIterator Hit = boxes.cbegin(); Hit!=boxes.cend(); Hit++)
+        for (typename gsHBoxContainer<d,T>::cIterator Cit = Hit->cbegin(); Cit!=Hit->cend(); Cit++, i++)
         {
             Cit->computeCoordinates();
             boxCoords.middleCols(i*2,2) = Cit->getCoordinates();

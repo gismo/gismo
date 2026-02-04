@@ -60,6 +60,7 @@ namespace gismo
         options.addSwitch("Admissible","Mark the admissible region",true);
         options.addInt("Jump","Jump parameter m",2);
         options.addSwitch("Absolute","(For GARU marking) Compute threshold based on solution values without error scaling",false); // Computed threshold based on the actual values of the solution --> true if marking is done with absolute error, false if relative error is used
+        options.addSwitch("Extension", "Extend marked elements regions", true);
         // options.addInt("Verbose","Verbosity level",0);
         return options;
     }
@@ -127,7 +128,7 @@ namespace gismo
     template <short_t d, class T>
     std::vector<index_t> gsHElementMarker<d,T>::toRefBoxes(const HElementContainer & elements) const
     {
-        return m_helper.toRefBoxes(elements);
+        return m_helper.toRefBoxes(elements, m_options.askSwitch("Extension", true));
     }
 
     template <short_t d, class T>
@@ -243,7 +244,7 @@ namespace gismo
                 if (std::any_of(siblings.begin(), siblings.end(),[&refined](const element_t & elem) { return refined.find(elem) != refined.end(); }))
                     continue;
                 // If any of the siblings is not active, skip it
-                if (std::any_of(siblings.begin(), siblings.end(),[&it](const element_t & elem) { return it->first.level() < elem.level(); }))
+                if (std::any_of(siblings.begin(), siblings.end(),[&it](const element_t & elem) { return it->first.level() != elem.level(); }))
                     continue;
             }
 

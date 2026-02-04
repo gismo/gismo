@@ -110,8 +110,8 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& f
 
 /// \brief Write a file containing a solution field (as color on its geometry) to paraview file
 ///
-/// \param field a field object
 /// \param fn filename where paraview file is written
+/// \param field a field object
 /// \param npts number of points used for sampling each patch
 /// \param mesh if true, the parameter mesh is plotted as well
 /// \param pDelim is the delimiter that is used to separate fn from the patch index
@@ -253,17 +253,17 @@ void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value);
 /// \param box a gsHBox
 /// \param fn filename where paraview file is written
 /// \param mode controls the output format: 0 (colored by level), 1 (colored by error)
-template<class T>
-void gsWriteParaview(const gsHBox<2,T> & box, std::string const & fn, short_t mode = 0);
+template<short_t d, class T>
+void gsWriteParaview(const gsHBox<d,T> & box, std::string const & fn, short_t mode = 0);
 
 /// \brief Export gsHBoxContainer to paraview files
 ///
 /// \param box a gsHBoxContainer
 /// \param fn filename where paraview file is written
-/// \param mode controls the output format: 0 (colored by level), 1 (colored by error)
-template<class T>
-void gsWriteParaview(const gsHBoxContainer<2,T> & box, std::string const & fn, short_t mode = 0);
 
+/// \param mode controls the output format: 0 (colored by level), 1 (colored by error)
+template<short_t d, class T>
+void gsWriteParaview(const gsHBoxContainer<d,T> & box, std::string const & fn, short_t mode = 0);
 
 /// \brief Export 2D Point set to Paraview file
 ///
@@ -459,9 +459,8 @@ template<class T>
 void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value);
 
 /// Export a gsHBox
-GISMO_DEPRECATED
-template<class T>
-void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn);
+template<short_t d, class T>
+void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn);
 
 /// Export a control net
 template<class T>

@@ -807,7 +807,7 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox(index_t targetLevel) const
         else
         {
             lowerIndex = this->lowerIndex()[i]*std::pow(2,diff);
-            ( lowerIndex < (degree-1)/2 ? lowerIndex=0 : lowerIndex-=(degree-1)/2 );
+            ( lowerIndex < (degree-1)/2 ? lowerIndex=0 : lowerIndex-=(degree-1)/2-1 );
             result[i+1] = lowerIndex;
             upperIndex = this->upperIndex()[i]*std::pow(2,diff);
             // ( upperIndex + (degree)/2 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2);

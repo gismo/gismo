@@ -1,6 +1,6 @@
-/** @file cahn-hilliard_example.cpp
+/** @file gsCahnHilliardAssembler_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve the Cahn-Hilliard equation
+    @brief Tutorial on how to the gsCahnHilliardAssembler class
 
     This file is part of the G+Smo library.
 
@@ -9,28 +9,13 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s): M. Marsala (UniFi)
-               H.M. Verhelst (UniPv)
+               H.M. Verhelst (UniFi)
                L. Venta Viñuela (UniPv)
-
-
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Strong enforcement) (Gomez et al., 2014)
-    ./bin/cahn-hilliard_example --plot -N 80 --plot
-
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) (Bracco et al., 2023)
-    ./bin/cahn-hilliard_example --plot -N 80 --nitsche --plot
-
-    Run a simple Cahn-Hilliard example with a random normal initial concentration distribution of mean 0.0 until (almost) equilibrium (Nitsche)
-    ./bin/cahn-hilliard_example --plot -N 1000 --nitsche --initial --plot
-
-    -----------------------------------------------------------------------
-    TODO;
-    - Change hmax to a gsExprAssembler<>::element el; el.diam();
-    -----------------------------------------------------------------------
-
 */
 
 //! [Include namespace]
 #include <gismo.h>
+#include <gsAssembler/gsCahnHilliardAssembler.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -49,6 +34,13 @@ int main(int argc, char *argv[])
 
     index_t verbose = 1;
     bool random = false;
+
+    /* TIME INTEGRATION OPTIONS */
+    // Generalized-alpha method parameters
+
+    // time stepping options
+    /* NONLINEAR SOLVER OPTIONS */
+    index_t maxIt = 50;
 
     std::string fn("pde/cahn_hilliard_bvp.xml");
 
@@ -86,22 +78,24 @@ int main(int argc, char *argv[])
     gsOptionList CHopt;
     fd.getId(3, CHopt); // id=3: reference solution
 
-    // real_t theta    = CHopt.askReal("theta",1.5);
+    real_t theta    = CHopt.askReal("theta",1.5);
     real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
-    // real_t M0       = CHopt.askReal("M0",0.005);
+    real_t M0       = CHopt.askReal("M0",0.005);
     real_t penalty  = 1e4*lambda;
 
     gsOptionList TIMEopt;
     fd.getId(4, TIMEopt); // id=4: time integrator options
 
+    real_t rho_inf = TIMEopt.askReal("rho_inf",0.5);
+    real_t tol = TIMEopt.askReal("tol",1e-4);
+    real_t t_rho = TIMEopt.askReal("t_rho",0.9);
+    real_t alpha_m = 0.5*(3-rho_inf) / (1+rho_inf);
+    real_t alpha_f = 1 / (1+rho_inf);
+    real_t gamma   = 0.5 + alpha_m - alpha_f;
+
     gsOptionList Aopt;
     fd.getId(5, Aopt); // id=5: assembler options
     //! [Read input file]
-
-    // Determine maximum mesh size
-    real_t hmax = 0;
-    for (size_t p=0; p!=mp.nPatches(); p++)
-        hmax = math::max(hmax, mp.basis(p).getMaxCellLength());
 
     //! [Refinement]
     gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
@@ -114,77 +108,32 @@ int main(int argc, char *argv[])
     for (int r =0; r < numRefine; ++r)
         dbasis.uniformRefine();
 
+    gsCahnHilliardAssembler<real_t> assembler(mp, dbasis, bc);
+    assembler.options().setReal("Lambda",lambda);
+    assembler.options().setReal("Penalty",penalty);
+    assembler.options().setSwitch("AssembleWeakBCs",false);
+    // assembler.options().setReal("M0",M0);
+    assembler.initialize();
+
+    gsSparseMatrix<> K_nitsche, M;
+    if (bc.get("Weak Clamped").size()!=0 && !assembler.options().getSwitch("AssembleWeakBCs"))
+    {
+        assembler.assembleNitscheMatrix();
+        assembler.matrix_into(K_nitsche); // .matrix_into() moves the matrix A into K_nitsche (avoids having two matrices A and K_nitsche)
+    }
+    assembler.assembleMassMatrix();
+    assembler.matrix_into(M);
+
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    //! [Problem setup]
-    gsExprAssembler<> A(1,1);
-
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
-    // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
-
-    // Set the geometry map
-    // geometryMap G = A.getMap(surface);
-    geometryMap G = A.getMap(mp);
-
-    // Set the discretization space
-    space w = A.getSpace(dbasis);
-
-    // basis.init(dbasis, cf);
-
-    // Solution vector and solution variable
-    gsMatrix<> Cnew, Calpha, Cold;
-    gsMatrix<> dCnew,dCalpha,dCold, dCupdate;
-
-    solution c = A.getSolution(w, Calpha); // C
-    solution dc = A.getSolution(w, dCalpha); // \dot{C}
-
-    gsSparseMatrix<> K_nitsche; // empty variable
-
-    // Assemble the Nitsche BC on the sides with Neumann condition
-    A.initSystem();
-    A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                  penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
-                  lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-    K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
-
-    // Derivatives of the double well potential (Gomez et al., 2008)
-    auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
-    auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
-
-    // Mobility
-    auto M_c  = 1.0 + 0.0*c.val(); // replace with const_expr(1.0) instead of using 0*c
-    auto dM_c = 0.0 * igrad(c,G); // replace with const_expr(1.0) instead of using 0*c!!
-
-    auto residual = w*dc + // M
-                    M_c.val() * igrad(w,G)  * dmu_c * igrad(c,G).tr() + // F_bar
-                    M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
-                    // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
-
-    //! [Problem setup]
-
-    // Define linear solver (install SuperLUMT-devel)
-#ifdef GISMO_WITH_PARDISO   
-    gsSparseSolver<>::PardisoLU solver;
-#   else
-    gsSparseSolver<>::LU solver;
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver;
+#else
+    gsSparseSolver<>::CGDiagonal solver;
 #endif
 
-    // Generalized-alpha method parameters
-    real_t rho_inf = TIMEopt.askReal("rho_inf",0.5);
-    real_t alpha_m = 0.5*(3-rho_inf) / (1+rho_inf);
-    real_t alpha_f = 1 / (1+rho_inf);
-    real_t gamma   = 0.5 + alpha_m - alpha_f;
-    // time stepping options
-    index_t maxIt = 50;
 
-    gsMatrix<> Q, Q1, Q2;
-    gsSparseMatrix<> K, K_m, K_f;
+    gsMatrix<> Q, Qnitsche;
+    gsSparseMatrix<> K;
 
     // Legend:
     // C_old   = C_n
@@ -193,47 +142,49 @@ int main(int argc, char *argv[])
     // dC
 
     gsInfo<<"Starting.."<<"\n";
-
-    // Setup the space (compute Dirichlet BCs)
-    w.setup(bc, dirichlet::l2Projection, 0);
-
     gsInfo<<"Initial condition.."<<"\n";
 
+    // Solution vector and solution variable
+    gsMatrix<> Cnew, Calpha, Cold;
+    gsMatrix<> dCnew,dCalpha,dCold, dCupdate;
+    gsMultiPatch<> cnew, dcnew;
     if (random)
     {
         // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
-        gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
+        gsMatrix<> tmp = gsMatrix<>::Random(assembler.numDofs(),1);
         Cold = tmp.array()*CHopt.askReal("ampl",0.005); //random uniform variable in [-0.05,0.05]
         Cold.array() += CHopt.askReal("mean",0.0); // 0.45
     }
     else
     {
-        // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
+        // // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
         GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
         gsMatrix<> tmp;
         gsQuasiInterpolate<real_t>::localIntpl(dbasis.basis(0),source,tmp);
-        // real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
+        // real_t error = gsL2Projection<real_t>::project(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
         // if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
-        Cold.setZero(A.numDofs(),1);
-        for (index_t i = 0; i < dbasis.basis(0).size(); i++)
-            if (w.mapper().is_free(i))
-                Cold(w.mapper().index(i),0) = tmp(i,0);
+
+        gsMultiPatch<> cold;
+        cold.addPatch(*dbasis.basis(0).makeGeometry(give(tmp)));
+        assembler.constructSolution(cold,Cold);
     }
 
     Calpha = Cold;
-    dCold.setZero(A.numDofs(),1);
+    dCold.setZero(assembler.numDofs(),1);
 
     real_t Q0norm = 1, Qnorm = 10;
-    real_t tol = TIMEopt.askReal("tol",1e-4);
 
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+
+    gsExprEvaluator<> ev;
+    ev.setIntegrationElements(dbasis);
+    auto c = ev.getVariable(cnew);
+    gsParaviewCollection collection("ParaviewOutput/solution",&ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
     collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
 
     real_t dt_old = dt;
-    // real_t t_rho = TIMEopt.askReal("t_rho",0.9);
-    // real_t t_err = 1;
+    real_t t_err = 1;
     index_t lmax = 1;
     std::vector<gsMatrix<>> Csols(2);
 
@@ -244,7 +195,7 @@ int main(int argc, char *argv[])
     real_t time = 0;
     bool converged = false;
 
-    A.initSystem(); // Initialize the system (outside the loops)
+    assembler.initialize(); // Initialize the system (outside the loops)
 
     for (index_t step = 0; step!=maxSteps; step++)
     {
@@ -267,20 +218,19 @@ int main(int argc, char *argv[])
 
                 for (index_t it = 0; it!= maxIt; it++)
                 {
-                    A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
                     Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
                     dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
 
-                    A.assemble(residual * meas(G));
-                    Q = A.rhs();
+                    assembler.constructSolution(Calpha,  cnew);
+                    assembler.constructSolution(dCalpha,dcnew);
+                    assembler.assembleResidual(cnew, dcnew);
+                    assembler.rhs_into(Q);
 
-                    if (bc.get("Neumann").size()!=0)
+                    if (bc.get("Weak Clamped").size()!=0 && !assembler.options().getSwitch("AssembleWeakBCs"))
                     {
-                        Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
-                        // Old code lines:
-                        // A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G) * lambda * ilapl(c,G).val()); // consistency term
-                        // A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * penalty * (igrad(c,G) * nv(G)) ); // penalty term
-                        // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
+                        assembler.assembleNitscheVector(cnew,dcnew);
+                        assembler.rhs_into(Qnitsche);
+                        Q.noalias() += Qnitsche; // add the residual term from Nitche (using the matrix )
                     }
 
                     if (it == 0) Q0norm = Q.norm();
@@ -301,34 +251,14 @@ int main(int argc, char *argv[])
                         break;
                     }
 
-                    // // gsInfo<<"Assembly K_m\n";
-                    // A.assembleJacobian( residual * meas(G), dc );
-                    // K_m = tmp_alpha_m * A.matrix();
 
-                    // // gsInfo<<"Assembly K_f\n";
-                    // A.assembleJacobian( residual * meas(G), c );
-                    // K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
+                    // Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
+                    assembler.assembleJacobian(cnew, dcnew);
+                    assembler.matrix_into(K);
+                    K *= (tmp_alpha_f * tmp_gamma * dt);
+                    K += tmp_alpha_m * M;
 
-                    // A.assemble(M_c.val() * igrad(w,G).tr() * igrad(w,G) * (- 1.0 + 3.0 * (c*c).val()) +
-                    //             lambda*ilapl(w,G).tr()*igrad(w,G)*dM_c.tr() +
-                    //             M_c.val() * ilapl(w,G)*lambda*ilapl(w,G).tr());
-
-                    // A.assemble(meas(G) * (igrad(w,G) * (- 1.0 + 3.0 * (c*c).val())* igrad(w,G).tr()  + // K_f1
-                    //                     igrad(w,G) * ((6.0 * c.val()) * igrad(c,G).tr() * w.tr()) + // K_f2
-                    //                     // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-                    //                     lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian
-
-                    //%% Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
-                    A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-                    A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
-                                        (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
-                                        ddmu_c * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
-                                        lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
-                                        // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-
-                    K = A.matrix();
-
-                    if (bc.get("Neumann").size()!=0)
+                    if (bc.get("Weak Clamped").size()!=0 && !assembler.options().getSwitch("AssembleWeakBCs"))
                         K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
 
                     solver.compute(K);
@@ -372,8 +302,7 @@ int main(int argc, char *argv[])
         //! [Export visualization in ParaView]
         if (plot && step % plotmod==0)
         {
-            Calpha = Cnew;
-            // collection.newTimeStep(&mp);
+            assembler.constructSolution(Cnew,  cnew);
             collection.newTimeStep(&mp);
             collection.addField(c,"numerical solution");
             collection.saveTimeStep();

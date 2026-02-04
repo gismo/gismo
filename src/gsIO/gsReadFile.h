@@ -285,11 +285,14 @@ public:
 
 /// \brief Write an arbitrary Gismo object to an XML file with the given filename.
 template <typename Object>
-void gsWrite(const Object& obj, const std::string& fname)
+void gsWrite(const Object& obj, const std::string& fname, bool verbose = false)
 {
     gsFileData<real_t> fd;
     fd << obj;
     fd.dump(fname);
+
+    if (verbose)
+        gsInfo << "Written to " << fd.lastPath() <<"\n";
 }
 
 } // namespace gismo

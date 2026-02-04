@@ -292,6 +292,12 @@ void gsTensorBSpline<d,T>::degreeElevate(short_t const i, short_t const dir)
         return;
     }
 
+    if (knots(dir).numLeftGhosts() != 0 || knots(dir).numRightGhosts() != 0)
+    {
+        gsGeometry<T>::degreeElevate(i, dir);
+        return;
+    }
+
     GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
                   "Invalid basis component "<< dir <<" requested for degree elevation" );
 

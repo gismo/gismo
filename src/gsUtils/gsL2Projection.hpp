@@ -28,7 +28,7 @@ T gsL2Projection<T>::_project(  const gsMultiBasis<T>  & integrationBasis,
                                 const gsOptionList     & options)
 {
     // Clear the result
-    coefs.clear();    
+    coefs.clear();
 
     // Create an assembler
     gsExprAssembler<T> A(1,1);
@@ -53,13 +53,26 @@ T gsL2Projection<T>::_project(  const gsMultiBasis<T>  & integrationBasis,
     // Initialize the system
     A.initSystem();
 
-    // Assemble the system
-    A.assemble(u*u.tr() * meas(G),u * f * meas(G));
-
-    // Solve the system
-    typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<T>::get( options.askString("LinearSolver","SimplicialLDLT") );
-    solver->compute(A.matrix());
-    coefs = solver->solve(A.rhs());
+    // assemble system
+    if (!options.askSwitch("Lumped",false))
+    {
+        A.assemble(u*u.tr() * meas(G),u * f * meas(G));
+        // Solve the system
+        typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<T>::get( options.askString("LinearSolver","SimplicialLDLT") );
+        solver->compute(A.matrix());
+        coefs = solver->solve(A.rhs());
+    }
+    else
+    {
+        A.assemble(u*u.tr() * meas(G),u * f * meas(G));
+        gsMatrix<> LHS = A.matrix() * gsMatrix<>::Ones(A.matrix().rows(),1);
+        // A.assemble((u.rowSum())*meas(G));
+        // gsMatrix<> LHS = A.rhs();
+        A.clearRhs();
+        A.assemble(u * f * meas(G));
+        gsMatrix<> RHS = A.rhs();
+        coefs = LHS.cwiseInverse().cwiseProduct(RHS);
+    }
 
     if (options.askSwitch("ComputeError",true))
     {

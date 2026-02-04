@@ -76,7 +76,13 @@ TEMPLATE_INST
 void gsWriteParaview(const gsHBox<2,T> & hbox, std::string const & fn, short_t mode);
 
 TEMPLATE_INST
+void gsWriteParaview(const gsHBox<3,T> & hbox, std::string const & fn, short_t mode);
+
+TEMPLATE_INST
 void gsWriteParaview(const gsHBoxContainer<2,T> & hbox, std::string const & fn, short_t mode);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsHBoxContainer<3,T> & hbox, std::string const & fn, short_t mode);
 
 TEMPLATE_INST
 void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn);
@@ -172,6 +178,9 @@ void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value);
 
 TEMPLATE_INST
 void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn);
+
+TEMPLATE_INST
+void writeSingleHBox(const gsHBox<3,T> & box, std::string const & fn);
 
 TEMPLATE_INST
 void writeSingleControlNet(const gsGeometry<T> & Geo, std::string const & fn);

@@ -1,6 +1,6 @@
-/** @file gsHBox_example
+/** @file gsHElement_marking_example
 
-    @brief Demonstrates functionality of the gsHBox
+    @brief Demonstrates functionality of the gsHElement
 
     This file is part of the G+Smo library.
 
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     index_t m         = 2;
     index_t numRef    = 5;
     short_t d         = 2;
-    gsCmdLine cmd("Example of gsHBox.");
+    gsCmdLine cmd("Example of gsHElementMarker.");
     cmd.addInt("m","jump",
                "parameter m", m);
     cmd.addInt("p","degree",
