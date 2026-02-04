@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 
     if (!no_smooth)
     {
-        subdiv.make_c1(mesh);
+        subdiv.smooth(mesh, 1);
         gsWriteParaview(subdiv.multipatch(mesh), "results/c1");
     }
     for (index_t i = 0; i < steps; ++i)

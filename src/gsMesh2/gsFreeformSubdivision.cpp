@@ -54,116 +54,29 @@ gsFreeformFaceData<N, D>::gsFreeformFaceData(const gsSurfMesh& mesh,
 }
 
 template <size_t N, size_t D>
-gsVector<real_t, D>*
-gsFreeformFaceData<N, D>::vertex_control_point(gsSurfMesh& mesh, Vertex v,
-                                               size_t inset)
+gsMatrix<gsVector<real_t, D>*>
+gsFreeformFaceData<N, D>::control_points_oriented(gsSurfMesh& mesh,
+                                                  Halfedge hedge)
 {
-    // find a halfedge on the face starting on this vertex
-    Halfedge hedge;
-    for (auto const& he : mesh.halfedges(face))
-    {
-        if (mesh.from_vertex(he) == v)
-            hedge = he;
-    }
-    auto ecp = side_control_points(mesh, hedge, inset);
-    if (ecp.size() > 0)
-    {
-        return ecp[0];
-    }
-    else
-    {
-        return nullptr;
-    }
-}
 
-template <size_t N, size_t D>
-std::vector<gsVector<real_t, D>*>
-gsFreeformFaceData<N, D>::side_control_points(gsSurfMesh& mesh, Halfedge hedge,
-                                              size_t inset)
-{
+    gsMatrix<gsVector<real_t, D>*> result;
+    result.resize(control_points.rows(), control_points.cols());
+    for (int i = 0; i < control_points.rows(); ++i)
+    {
+        for (int j = 0; j < control_points.cols(); ++j)
+        {
+            result(i, j) = &control_points(i, j);
+        }
+    }
+    result = rotate_r(result);
     // find the edge on the face
-    size_t hedge_index(0);
     for (auto const& he : mesh.halfedges(face))
     {
         if (he == hedge)
             break;
-        ++hedge_index;
+
+        result = rotate_l(result);
     }
-    // make sure it was found (does nothing in release mode)
-    assert(hedge_index < 4);
-
-    std::vector<gsVector<real_t, D>*> result;
-
-    // We need to collect a total of `n - 2 inset` points, skipping the first
-    // and last `inset` points.
-    for (size_t i = inset; i < N - inset; i++)
-    {
-        switch (hedge_index)
-        {
-        case 1:
-            // Edge 3: A row on the top, left to right
-            result.emplace_back(&control_points(inset, i));
-            break;
-        case 2:
-            // Edge 2: A column on the right, top to bottom
-            result.emplace_back(&control_points(i, (N - 1) - inset));
-            break;
-        case 3:
-            // Edge 3: A row on the bottom, right to left
-            result.emplace_back(&control_points((N - 1) - inset, (N - 1) - i));
-            break;
-        case 0:
-            // Edge 0: A column on the left, bottom to top
-            result.emplace_back(&control_points((N - 1) - i, inset));
-            break;
-        }
-    }
-
-    return result;
-}
-
-template <size_t N, size_t D>
-std::vector<gsVector<real_t, D>*>
-gsFreeformFaceData<N, D>::edge_control_points(gsSurfMesh& mesh, Halfedge hedge,
-                                              size_t offset)
-{
-    // find the edge on the face
-    size_t hedge_index(0);
-    for (auto const& he : mesh.halfedges(face))
-    {
-        if (he == hedge)
-            break;
-        ++hedge_index;
-    }
-    // make sure it was found (does nothing in release mode)
-    assert(hedge_index < 4);
-
-    std::vector<gsVector<real_t, D>*> result;
-
-    // We need to collect a total of N points
-    for (size_t i = 0; i < N; i++)
-    {
-        switch (hedge_index)
-        {
-        case 1:
-            // Edge 3: A row on the top, left to right
-            result.emplace_back(&control_points(offset, i));
-            break;
-        case 2:
-            // Edge 2: A column on the right, top to bottom
-            result.emplace_back(&control_points(i, (N - 1) - offset));
-            break;
-        case 3:
-            // Edge 3: A row on the bottom, right to left
-            result.emplace_back(&control_points((N - 1) - offset, (N - 1) - i));
-            break;
-        case 0:
-            // Edge 0: A column on the left, bottom to top
-            result.emplace_back(&control_points((N - 1) - i, offset));
-            break;
-        }
-    }
-
     return result;
 }
 
@@ -317,9 +230,9 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
             bot_split[1] = bot_split[1].transpose().eval();
 
             // rotate
-            bot_split[1] = rotate(bot_split[1]);
-            bot_split[0] = rotate(rotate(bot_split[0]));
-            top_split[0] = rotate(rotate(rotate(top_split[0])));
+            bot_split[1] = rotate_l(bot_split[1]);
+            bot_split[0] = rotate_l(rotate_l(bot_split[0]));
+            top_split[0] = rotate_l(rotate_l(rotate_l(top_split[0])));
 
             // Collate all these matrices in the correct order into an array.
             std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 4> arr =
@@ -364,23 +277,6 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 };
 
 template <size_t N, size_t D>
-gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>
-gsFreeformSubdivision<N, D>::rotate(
-    const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& mat)
-{
-    gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> res;
-    res.resize(mat.cols(), mat.rows());
-    for (int i = 0; i < res.rows(); ++i)
-    {
-        for (int j = 0; j < res.cols(); ++j)
-        {
-            res(i, j) = mat(j, mat.cols() - 1 - i);
-        }
-    }
-    return res;
-}
-
-template <size_t N, size_t D>
 bool gsFreeformSubdivision<N, D>::is_ordinary(const gsSurfMesh& mesh,
                                               const Vertex& v)
 {
@@ -393,8 +289,23 @@ bool gsFreeformSubdivision<N, D>::is_ordinary(const gsSurfMesh& mesh,
 }
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::make_c1(gsSurfMesh& mesh)
+void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
 {
+    // Ensure we have enough degree
+    if (degree + 1 > N / 2)
+    {
+        gsWarn
+            << "Degree of Bezier control net to small for this smoothness.\n";
+        return;
+    }
+
+    // Currently, only C^1 is supported.
+    if (degree != 1)
+    {
+        gsWarn << "Currently, only C^1 smoothing is supported.\n";
+        return;
+    }
+
     // Get face data
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
@@ -402,62 +313,115 @@ void gsFreeformSubdivision<N, D>::make_c1(gsSurfMesh& mesh)
     // First, correct each vertex
     for (const Vertex& v : mesh.vertices())
     {
-        // first, collect all the control points we are considering into two
-        // vectors
-        std::vector<std::vector<gsVector<real_t, D>*>> inner;
-        std::vector<std::vector<gsVector<real_t, D>*>> outer;
-        // TODO: Rework all of this
+        // ignore EVs and (for now) boundary vertices
+        if (!is_ordinary(mesh, v))
+            continue;
+
+        // first, collect all the control points we are considering
+        std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
         for (Halfedge h : mesh.halfedges(v))
         {
-            inner.emplace_back(
-                face_data_vec[mesh.face(h).idx()].edge_control_points(mesh, h,
-                                                                      1));
-            outer.emplace_back(
-                face_data_vec[mesh.face(h).idx()].edge_control_points(mesh, h,
-                                                                      0));
+            if (mesh.is_boundary(h))
+                continue;
+            control_points_faces.emplace_back(
+                face_data_vec[mesh.face(h).idx()].control_points_oriented(mesh,
+                                                                          h));
         }
 
-        for(int i = 0; i < 4; ++i){
-            gsInfo << "(" << outer[i][0]->x() <<", "<<outer[i][0]->y()<<", "<<outer[i][0]->z() << "\n";
-            gsInfo << "(" << outer[i][1]->x() <<", "<<outer[i][1]->y()<<", "<<outer[i][1]->z() << "\n";
-            gsInfo << "(" << inner[i][0]->x() <<", "<<inner[i][0]->y()<<", "<<inner[i][0]->z() << "\n";
-            gsInfo << "(" << inner[i][1]->x() <<", "<<inner[i][1]->y()<<", "<<inner[i][1]->z() << "\n";
-            gsInfo << "\n";
+        // we have 4 base equations at 1 face, then two more per face, except
+        // only 1 more for the last face.
+        size_t eqs(2 + 2 * control_points_faces.size() +
+                   (control_points_faces.size() == 4 ? -1 : 0));
+
+        // create a matrix
+        auto matrix = gsMatrix<real_t>(eqs, 4);
+        matrix.row(0) << 1., 0., 0., 0.;
+        matrix.row(1) << 0., 1., 0., 0.;
+        matrix.row(2) << 0., 0., 1., 0.;
+        matrix.row(3) << 0., 0., 0., 1.;
+
+        if (control_points_faces.size() >= 2)
+        {
+            matrix.row(4) << -1., 2., 0., 0.;
+            matrix.row(5) << 0., 0., -1., 2.;
         }
 
-        auto matrix = gsMatrix<real_t, 9, 4>({
-            0.25, 1., 0., 0., 0., 0.5, 0., 0., 0.5, //
-            0.25, 0., 1., 0., 0., 0.5, 0.5, 0., 0., //
-            0.25, 0., 0., 1., 0., 0., 0.5, 0.5, 0., //
-            0.25, 0., 0., 0., 1., 0., 0., 0.5, 0.5, //
-        });
+        if (control_points_faces.size() >= 3)
+        {
+            matrix.row(6) << 1., -2., -2., 4.;
+            matrix.row(7) << 0., -1., 0., 2.;
+        }
 
-        for(size_t d = 0; d < D; ++d){
-            gsVector<real_t, 9> target_vector;
-            target_vector << (*(outer[0][0]))(d), (*(inner[0][1]))(d), (*(inner[1][1]))(d), (*(inner[2][1]))(d), (*(inner[3][1]))(d), (*(outer[0][1]))(d), (*(outer[1][1]))(d), (*(outer[2][1]))(d), (*(outer[3][1]))(d);
+        if (control_points_faces.size() >= 4)
+        {
+            matrix.row(8) << -1., 0., 2., 0.;
+        }
 
-            auto solution = matrix.colPivHouseholderQr().solve(target_vector);
+        for (size_t d = 0; d < D; ++d)
+        {
+            gsVector<real_t> target(eqs);
+            target(0) = (*(control_points_faces[0](1, 1)))(d);
+            target(1) = (*(control_points_faces[0](1, 0)))(d);
+            target(2) = (*(control_points_faces[0](0, 1)))(d);
+            target(3) = (*(control_points_faces[0](0, 0)))(d);
 
-            auto middle = solution(0) * 0.25 + solution(1) * 0.25 + solution(2) * 0.25 + solution(3) * 0.25;
-            (*(outer[0][0]))(d) = middle;
-            (*(outer[1][0]))(d) = middle;
-            (*(outer[2][0]))(d) = middle;
-            (*(outer[3][0]))(d) = middle;
+            if (control_points_faces.size() >= 2)
+            {
+                target(4) = (*(control_points_faces[1](1, 1)))(d);
+                target(5) = (*(control_points_faces[1](1, 0)))(d);
+            }
 
-            (*(inner[0][1]))(d) = solution(0);
-            (*(inner[1][1]))(d) = solution(1);
-            (*(inner[2][1]))(d) = solution(2);
-            (*(inner[3][1]))(d) = solution(3);
+            if (control_points_faces.size() >= 3)
+            {
+                target(6) = (*(control_points_faces[2](1, 1)))(d);
+                target(7) = (*(control_points_faces[2](1, 0)))(d);
+            }
 
-            (*(outer[0][1]))(d) = solution(0) * 0.5 + solution(1) * 0.5;
-            (*(outer[1][1]))(d) = solution(1) * 0.5 + solution(2) * 0.5;
-            (*(outer[2][1]))(d) = solution(2) * 0.5 + solution(3) * 0.5;
-            (*(outer[3][1]))(d) = solution(3) * 0.5 + solution(0) * 0.5;
+            if (control_points_faces.size() >= 4)
+            {
+                target(8) = (*(control_points_faces[3](1, 1)))(d);
+            }
 
-            (*(inner[3][0]))(d) = solution(0) * 0.5 + solution(1) * 0.5;
-            (*(inner[0][0]))(d) = solution(1) * 0.5 + solution(2) * 0.5;
-            (*(inner[1][0]))(d) = solution(2) * 0.5 + solution(3) * 0.5;
-            (*(inner[2][0]))(d) = solution(3) * 0.5 + solution(0) * 0.5;
+            auto dec = matrix.colPivHouseholderQr();
+            auto solution = dec.solve(target);
+
+            // assign the solutions
+            (*(control_points_faces[0](1, 1)))(d) = solution(0);
+            (*(control_points_faces[0](1, 0)))(d) = solution(1);
+            (*(control_points_faces[0](0, 1)))(d) = solution(2);
+            (*(control_points_faces[0](0, 0)))(d) = solution(3);
+
+            if (control_points_faces.size() >= 2)
+            {
+                (*(control_points_faces[1](0, 0)))(d) = solution(3);
+                (*(control_points_faces[1](0, 1)))(d) = solution(1);
+                (*(control_points_faces[1](1, 0)))(d) =
+                    2. * solution(3) - solution(2);
+                (*(control_points_faces[1](1, 1)))(d) =
+                    2. * solution(1) - solution(0);
+            }
+
+            if (control_points_faces.size() >= 3)
+            {
+                (*(control_points_faces[2](0, 0)))(d) = solution(3);
+                (*(control_points_faces[2](0, 1)))(d) =
+                    2. * solution(3) - solution(2);
+                (*(control_points_faces[2](1, 0)))(d) =
+                    2. * solution(3) - solution(1);
+                (*(control_points_faces[2](1, 1)))(d) =
+                    4. * solution(3) - 2. * solution(2) - 2. * solution(1) +
+                    solution(0);
+            }
+
+            if (control_points_faces.size() >= 4)
+            {
+                (*(control_points_faces[3](0, 0)))(d) = solution(3);
+                (*(control_points_faces[3](0, 1)))(d) =
+                    2. * solution(3) - solution(1);
+                (*(control_points_faces[3](1, 0)))(d) = solution(2);
+                (*(control_points_faces[3](1, 1)))(d) =
+                    2. * solution(2) - solution(0);
+            }
         }
     }
 
@@ -477,25 +441,21 @@ void gsFreeformSubdivision<N, D>::make_c1(gsSurfMesh& mesh)
         auto face0 = mesh.face(halfedge0);
         auto face1 = mesh.face(halfedge1);
 
-        // Get the control points along these edges, each of these three vectors
-        // is N elements long.
+        // Get the control points correctly oriented with respect to these
+        // halfedges.
         auto cp0 =
-            face_data_vec[face0.idx()].edge_control_points(mesh, halfedge0, 1);
-        auto cpmid0 =
-            face_data_vec[face0.idx()].edge_control_points(mesh, halfedge0, 0);
-        auto cpmid1 =
-            face_data_vec[face1.idx()].edge_control_points(mesh, halfedge1, 0);
+            face_data_vec[face0.idx()].control_points_oriented(mesh, halfedge0);
         auto cp1 =
-            face_data_vec[face1.idx()].edge_control_points(mesh, halfedge1, 1);
+            face_data_vec[face1.idx()].control_points_oriented(mesh, halfedge1);
 
         // correct all points but the first and last two
         for (size_t i = 2; i < N - 2; ++i)
         {
             // get the points we are currently looking at
-            gsVector<real_t, D>* i0 = cp0[i];
-            gsVector<real_t, D>* m0 = cpmid0[i];
-            gsVector<real_t, D>* m1 = cpmid1[N - 1 - i];
-            gsVector<real_t, D>* i1 = cp1[N - 1 - i];
+            gsVector<real_t, D>* i0 = cp0(1, i);
+            gsVector<real_t, D>* m0 = cp0(0, i);
+            gsVector<real_t, D>* m1 = cp1(0, N - 1 - i);
+            gsVector<real_t, D>* i1 = cp1(1, N - 1 - i);
 
             // make sure the user already put in a C0 mesh
             if (*m0 != *m1)
@@ -512,7 +472,8 @@ void gsFreeformSubdivision<N, D>::make_c1(gsSurfMesh& mesh)
                 gsVector<real_t, 3> target_vector;
                 target_vector << (*i0)(d), (*m0)(d), (*i1)(d);
 
-                auto solution = matrix.colPivHouseholderQr().solve(target_vector);
+                auto solution =
+                    matrix.colPivHouseholderQr().solve(target_vector);
 
                 (*i0)(d) = solution[0];
                 (*m0)(d) = solution[0] * 0.5 + solution[1] * 0.5;

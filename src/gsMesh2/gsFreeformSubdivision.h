@@ -51,15 +51,6 @@ private: // Helper functions
     deCasteljau(
         const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& control_net);
 
-    /// \brief Matrix rotation.
-    ///
-    /// Rotates a matrix around its center, returning the rotated matrix without
-    /// changing the original.
-    ///
-    /// \param mat The matrix to be rotated.
-    static gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>
-    rotate(const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& mat);
-
     /// \brief Checks if a vertex is ordinary.
     ///
     /// Checks if the given vertex has is ordinary, i.e.
@@ -82,13 +73,15 @@ public:
     /// control net with C0 continuity on each face.
     void initialize_data(gsSurfMesh& mesh);
 
-    /// \brief Turns a C0 set of control nets into a C1 set.
+    /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
     ///
-    /// Takes a given mesh with freeform data and makes it C1 by adjusting the
-    /// outer layer of control points of each bezier patch. This only causes C1
+    /// Takes a given mesh with freeform data and makes it $C^s$ by adjusting the
+    /// outer layer of control points of each bezier patch. This only causes $C^s$
     /// at edges and ordinary vertices. No guarantee is made for extraordinary
     /// vertices.
-    void make_c1(gsSurfMesh& mesh);
+    ///
+    /// \param degree The degree of smoothness desired. As of now, only $C^1$ is supported.
+    void smooth(gsSurfMesh& mesh, size_t degree);
 
     /// \brief Converts to a Gismo multipatch object.
     ///
@@ -142,15 +135,16 @@ private: // members
     // A back reference to the face this data belongs to.
     Face face;
 
-public: // Contructors
+private: // helpers
+public:  // Contructors
     /// \brief Default constructor with everything empty.
     ///
     /// Default constructor. All control points are the zero vector, and the
     /// back reference to the face is empty.
-    gsFreeformFaceData()
-        : control_points(), face(0)
+    gsFreeformFaceData() : control_points(), face(0)
     {
-        for(size_t i = 0; i < N * N; ++i){
+        for (size_t i = 0; i < N * N; ++i)
+        {
             control_points(i) = gsVector<real_t, D>::Zero(D);
         }
     }
@@ -159,11 +153,10 @@ public: // Contructors
     ///
     /// Basic constructor. All control points are the zero vector, and the
     /// back reference points to the given face.
-    gsFreeformFaceData(Face face)
-        : control_points(),
-          face(face)
+    gsFreeformFaceData(Face face) : control_points(), face(face)
     {
-        for(size_t i = 0; i < N * N; ++i){
+        for (size_t i = 0; i < N * N; ++i)
+        {
             control_points(i) = gsVector<real_t, D>::Zero(D);
         }
     }
@@ -175,109 +168,65 @@ public: // Contructors
     gsFreeformFaceData(const gsSurfMesh& mesh, gsSurfMesh::Face face);
 
 public: // Control point accessors
-    /// \brief Returns control points along and edge of the face.
+    /// \brief Returns control points along the edge of the face.
     ///
-    /// Returns a vector containing the control points along to a halfedge,
-    /// `inset` rows of control points offset to the middle, and always in the
-    /// same direction as the halfedge. I.e. with inset 0, returns the entire
-    /// row or column on this halfedge (marked with `*` below), with inset 1,
-    /// one row/column farther in and without the first and last element (marked
-    /// with `X` below) and with inset 2, two rows/columns farther in and
-    /// without the first, second, second-to-last and last element (marked with
-    /// `O` below). If the given half edge does not belong to this face, this
-    /// will fail in debug mode and return an empty vector. If the inset is to
-    /// large (greater than half the size `N` of the control net), this will
-    /// return an empty vector. Pointers returned by this function are valid as
-    /// long as the underlying mesh remains unchanged and should be regenerated
-    /// after. An example of the returned points of the 0th edge of a 5x5 grid:
-    /// ```
-    ///  +-----------------+
-    ///  |  * 01 02 03 04  |
-    ///  |                 |
-    ///  |  *  X 12 13 14  |
-    ///  |                 |
-    ///  |  *  X  O 23 24  |
-    ///  |                 |
-    ///  |  *  X 32 33 34  |
-    ///  |                 |
-    ///  |  * 41 42 43 44  |
-    ///  +-----------------+
-    /// ```
+    /// Returns a matrix with pointers to all vectors in the control net.
+    /// The matrix is oriented in such a way that the control point with indices
+    /// `(0,0)` is right at the from-vertex of the given halfedge and the first
+    /// row `(0,0)` to `(N-1,0)` follows in the direction of that halfedge,
+    /// ending at its to-vertex with indices `(N-1,0)`.
     ///
-    /// \param mesh The mesh this data belongs to.
-    /// \param hedge The halfedge the returned control points follow.
-    /// \param inset How many layers inside the control net we are looking.
-    std::vector<gsVector<real_t, D>*>
-    side_control_points(gsSurfMesh& mesh, Halfedge hedge, size_t inset);
-
-    /// \brief Returns control points along and edge of the face.
-    ///
-    /// Returns a vector containing the control points along to a halfedge,
-    /// ordered in the same direction as the halfedge.
-    /// If the given half edge does not belong to this face, this
-    /// will fail in debug mode and return an empty vector. If the inset is to
-    /// large (`>=N` compared to the size of the control net), this will
-    /// return an empty vector. Pointers returned by this function are valid as
-    /// long as the underlying mesh remains unchanged and should be regenerated
-    /// after.
-    /// The `offset` determines how far we move parallel to the halfedge before returnign points.
-    /// An example of the returned points of the 0th edge of a 5x5 grid, for offsets `0`,`1`,`2` (marked with `*`, `X`, `O` respectively):
-    /// ```
-    ///  +-----------------+
-    ///  |  *  X  O 03 04  |
-    ///  |                 |
-    ///  |  *  X  O 13 14  |
-    ///  |                 |
-    ///  |  *  X  O 23 24  |
-    ///  |                 |
-    ///  |  *  X  O 33 34  |
-    ///  |                 |
-    ///  |  *  X  O 43 44  |
-    ///  +-----------------+
-    /// ```
-    ///
-    /// \param mesh The mesh this data belongs to.
-    /// \param hedge The halfedge the returned control points follow.
-    /// \param offset How many layers inside the control net we are looking.
-    std::vector<gsVector<real_t, D>*>
-    edge_control_points(gsSurfMesh& mesh, Halfedge hedge, size_t offset);
-
-    /// \brief Returns a control point at the corner of a face.
-    ///
-    /// Returns a the control point closest to the given vertex, in the
-    /// `inset`th outer most layer of the control net. I.e. with inset 0, return
-    /// the correct corner of the control net associated to this vertex;
-    /// with inset 1, one row & column farther in. If the given vertex does not
-    /// belong to this face, this will fail in debug mode or return a
-    /// nullpointer. If the inset is to large (greater than half the size `N` of
-    /// the control net), this will return an empty vector. Pointers returned by
-    /// this function are valid as long as the underlying mesh remains unchanged
-    /// and should be regenerated after.
-    /// An example of the returned points for the 0th vertex of a 5x5 grid:
-    /// ```
-    ///  +-----------------+
-    ///  |  * 01 02 03 04  |
-    ///  |                 |
-    ///  | 10  X 12 13 14  |
-    ///  |                 |
-    ///  | 20 21  O 23 24  |
-    ///  |                 |
-    ///  | 30 31 32 33 34  |
-    ///  |                 |
-    ///  | 40 41 42 43 44  |
-    ///  +-----------------+
-    /// ```
-    ///
-    /// \param mesh The mesh this data belongs to.
-    /// \param v The vertex for whose control point we are looking.
-    /// \param inset How many layers inside the control net we are looking.
-    gsVector<real_t, D>* vertex_control_point(gsSurfMesh& mesh, Vertex v,
-                                              size_t inset);
+    /// \param mesh The mesh this control net lives in.
+    /// \param hedge The halfedge we orient this net on.
+    gsMatrix<gsVector<real_t, D>*> control_points_oriented(gsSurfMesh& mesh,
+                                                           Halfedge hedge);
 
 public: // Conversions
     /// Returns a Bezier patch corresponding to these control points.
     const gismo::gsTensorBSpline<2, real_t> patch() const;
 
 }; // namespace internal
+
+/// \brief Matrix rotation.
+///
+/// Rotates a leftwise matrix around its center, returning the rotated matrix
+/// without changing the original.
+///
+/// \param mat The matrix to be rotated.
+template <class T>
+gsMatrix<T, Dynamic, Dynamic> rotate_l(const gsMatrix<T, Dynamic, Dynamic>& mat)
+{
+    gsMatrix<T, Dynamic, Dynamic> res;
+    res.resize(mat.cols(), mat.rows());
+    for (int i = 0; i < res.rows(); ++i)
+    {
+        for (int j = 0; j < res.cols(); ++j)
+        {
+            res(i, j) = mat(j, mat.cols() - 1 - i);
+        }
+    }
+    return res;
+}
+
+/// \brief Matrix rotation.
+///
+/// Rotates a matrix rightwise around its center, returning the rotated matrix
+/// without changing the original.
+///
+/// \param mat The matrix to be rotated.
+template <class T>
+gsMatrix<T, Dynamic, Dynamic> rotate_r(const gsMatrix<T, Dynamic, Dynamic>& mat)
+{
+    gsMatrix<T, Dynamic, Dynamic> res;
+    res.resize(mat.cols(), mat.rows());
+    for (int i = 0; i < res.rows(); ++i)
+    {
+        for (int j = 0; j < res.cols(); ++j)
+        {
+            res(i, j) = mat(mat.rows() - 1 - j, i);
+        }
+    }
+    return res;
+}
 
 } // namespace gismo
