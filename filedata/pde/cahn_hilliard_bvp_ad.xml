@@ -70,6 +70,9 @@
   <bool label="Adaptive" desc="Switch to enable adaptive meshing (1: ON, 0: OFF)" value="1"/>
   <bool label="THB" desc="Use THB basis" value="1"/>
   <bool label="Verbose" desc="Print debug information 0: off, 1: full" value="1"/>
+  <int label="MaxLevel" desc="Maximum level of refinement" value="7"/>
+  <real label="SizeRatio" desc="Mesh size ratio threshold to activate refinement iterations" value="1.05"/>
+  <int label="MaxRefIterations" desc="Maximum number of refinement iterations" value="10"/>
  </OptionList>
   <!-- other options -->
 
