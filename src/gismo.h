@@ -92,6 +92,9 @@ namespace internal
 #include <gsTensor/gsGridIterator.h>
 #include <gsTensor/gsGenericTensorBasis.h>
 
+// Implicit domain
+#include <gsDomain/gsTrimmedDomainIterator.h>
+
 /* ----------- Nurbs ----------- */
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>

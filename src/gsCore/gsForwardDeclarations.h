@@ -115,6 +115,7 @@ struct boxComponent;
 struct patchComponent;
 struct boundaryInterface;
 
+
 template <class T=real_t>                class gsCurve;
 template <class T=real_t>                class gsSurface;
 template <class T=real_t>                class gsVolume;
@@ -126,8 +127,14 @@ template <class T=real_t>                class gsDomainIterator;
 template <class T=real_t>                class gsPointDomain;
 template <class T=real_t>                class gsPointDomainIterator;
 
+template<short_t d, class T, class Z>    class gsTrimmedDomain;
+template<short_t d, class T, class Z>    class gsImplicitTrimmedDomain;
+
+
 template <class T = real_t, int D=-1>    class gsTensorDomainIterator;
 template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainIterator;
+template<typename SignOp, short_t d, class T, class Z = size_t> class gsTrimmedDomainIterator;
+
 
 template <class T, int D=-1, class uiter=typename std::vector<T>::const_iterator>
                                          class gsTensorDomainBoundaryIterator;
