@@ -422,3 +422,12 @@ unset(GISMO_PASS CACHE)
 unset(RESTORE_SUBMODULES CACHE)
 
 #message("GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}")
+
+# --- Agents Configuration ---
+
+# Defaults: If you have an agent named 'gismo', it will now be found automatically
+set(GISMO_AGENT_PROVIDERS "claude;cursor" CACHE STRING "Providers to fetch")
+set(GISMO_AGENTS "all" CACHE STRING "Specific agents or 'all'")
+
+include(cmake/FetchAgents.cmake)
+fetch_gismo_agents()
