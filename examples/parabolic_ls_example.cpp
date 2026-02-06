@@ -18,185 +18,37 @@ using namespace gismo;
 
 //#define printMat(m) gsInfo << #m << " (" << m.rows() << "x" << m.cols() << "):\n\n"; for (int i=0; i<m.rows(); ++i) {for (int j=0; j<m.cols(); ++j) gsInfo << m(i,j) << "\t"; gsInfo << "\n";} gsInfo << "\n\n";
 #define printMat(m)
-/*
 
-struct makeMultiGridSolver {
-    const gsMultiBasis<>& mbY;
-    const gsBoundaryConditions<>& bcY;
-    const index_t nTimeDofs;
-    const gsOptionList& opt;
-    gsLinearOperator<>::Ptr operator()( const gsSparseMatrix<>& m ) const
+template<typename S>
+gsLinearOperator<>::Ptr fastDiagnonalization(const gsSparseMatrix<>& A1, const gsSparseMatrix<>& B1, const gsSparseMatrix<>& A2, const gsSparseMatrix<>& B2, const S& makeSolver)
+{
+    GISMO_ASSERT(A1.rows() == A1.cols() && A1.rows() == A2.rows() && A2.rows() == A2.cols(), "");
+    GISMO_ASSERT(B1.rows() == B1.cols() && B1.rows() == B2.rows() && B2.rows() == B2.cols(), "");
+
+    typedef gsMatrix<>::GenSelfAdjEigenSolver EVSolver;
+    EVSolver ges;
+    ges.compute(A2, A1, gsEigen::ComputeEigenvectors);
+    gsSparseMatrix<> D1(A1.rows(), A1.rows()), D2(A1.rows(), A1.rows());
+    GISMO_ASSERT (ges.eigenvalues().rows() == A1.rows() && ges.eigenvalues().cols() == 1, "");
+    GISMO_ASSERT (ges.eigenvectors().rows() == A1.rows() && ges.eigenvectors().cols() == A1.rows(), "");
+    for (index_t i=0; i<A1.rows(); ++i)
     {
-        gsInfo << "Setup multigrid solver... " << std::flush;
-        gsOptionList cmd;
-        cmd.addInt( "InterfaceStrategy", "", iFace::conforming      );
-        cmd.addInt( "DirichletStrategy", "", dirichlet::elimination );
-        gsGridHierarchy<> gh = gsGridHierarchy<>::buildByCoarsening(mbY, bcY, cmd, 10000, 10);
-        const index_t lv = gh.getTransferMatrices().size()+1;
-
-        std::vector<gsSparseMatrix<real_t,RowMajor>> transferMatrices;
-        transferMatrices.reserve(lv-1);
-        gsSparseMatrix<> id(nTimeDofs,nTimeDofs);
-        id.setIdentity();
-        // consider using gsKroneckerOp<>
-        for (index_t i=0; i<lv-1; ++i)
-            transferMatrices.push_back( id.kron(gh.getTransferMatrices()[i]) );
-
-        gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( m, transferMatrices );
-        mg->setOptions(opt);
-
-        for (index_t i = 1; i < mg->numLevels(); ++i)
-            mg->setSmoother(i, makeGaussSeidelOp(mg->matrix(i)));
-
-        gsInfo << "done (" << lv << " grid levels).\n";
-
-        return mg;
+        D1(i,i) = 1;
+        D2(i,i) = ges.eigenvalues()(i,0);
     }
-};
+    gsSparseMatrix<> system = D1.kron(B1)+D2.kron(B2); //TODO: is this orderd such that a direct solver would do this efficiently?
+    gsLinearOperator<>::Ptr systemSolver = makeSolver(system);
+    gsMatrix<> eigs = ges.eigenvectors();
+    gsMatrix<> eigsT = ges.eigenvectors().transpose();
 
-gsSparseMatrix<> embeddingMatrix( const gsVector<index_t>& vec, index_t rows, index_t cols )
-{
-    gsSparseEntries<> se;
-    se.reserve(cols);
-    GISMO_ASSERT (vec.rows()>=cols, "not having "<<vec.rows()<<">="<<cols);
-    for (index_t i=0; i<cols; ++i)
-    {
-        GISMO_ASSERT (vec(i,0)<rows, "not having "<<vec(i,0)<<"<"<<rows);
-        se.add(vec(i,0),i,1);
-    }
-    gsSparseMatrix<> result(rows, cols);
-    result.setFrom(se);
-    return result;
-}
-
-gsMatrix<> tensorCoefs( const gsMatrix<>& A, const gsMatrix<>& B)
-{
-    gsMatrix<> result(A.rows()*B.rows(),A.cols()+B.cols());
-
-    for (index_t i=0; i<B.rows(); ++i)
-    {
-        result.block( i*A.rows(), 0, A.rows(), A.cols() ) = A;
-        for (index_t j=0; j<A.rows(); ++j)
-            for (index_t k=0; k<B.cols(); ++k)
-                result( i*A.rows()+j, A.cols()+k ) = B(i,k);
-    }
-    return result;
-}
-
-gsTensorBSplineBasis<3> tensorBasis(const gsMultiBasis<>& A, const gsMultiBasis<>& B)
-{
-    GISMO_ENSURE (A.dim()==1&&B.dim()==2,"Only implemented for 1D x 2D.");
-    return gsTensorBSplineBasis<3>(
-            dynamic_cast<gsBSplineBasis<>*>(A[0].component(0).clone().release()),
-            dynamic_cast<gsBSplineBasis<>*>(B[0].component(0).clone().release()),
-            dynamic_cast<gsBSplineBasis<>*>(B[0].component(1).clone().release())
-        );
-}
-
-real_t getOpNorm(const gsSparseMatrix<>& mat)
-{
-    real_t max = 0;
-    for (index_t i=0; i<mat.rows(); ++i)
-       if (mat(i,i)>max) max = mat(i,i);
-    return max;
-}
-
-gsSparseMatrix<real_t, RowMajor> mkTimeEmbedding(const gsSparseMatrix<real_t, RowMajor>& mat)
-{
-    // Compensate for initial conditions
-    const index_t sz1 = mat.rows();
-    gsSparseMatrix<> timeEmbedding1(sz1-1,sz1);
-    for (index_t j=0; j<sz1-1; ++j)
-        timeEmbedding1(j,j+1)=1;
-
-    const index_t sz2 = mat.cols();
-    gsSparseMatrix<> timeEmbedding2(sz2, sz2-1);
-    for (index_t j=0; j<sz2-1; ++j)
-        timeEmbedding2(j+1,j)=1;
-
-    return timeEmbedding1 * mat * timeEmbedding2;
-}
-
-gsLinearOperator<>::Ptr makeSpaceTimeMultiGridSolver(
-        gsSparseMatrix<> matrixA, gsSparseMatrix<> matrixB, gsSparseMatrix<> matrixC,
-        const gsMultiBasis<>& mbY, const gsBoundaryConditions<>& bcY,
-        const gsMultiBasis<>& tiY, const gsBoundaryConditions<>& icY,
-        gsOptionList opt,
-        std::string& info)
-{
-
-    const gsSparseMatrix<> fineMatrix = matrixA + matrixB + matrixC;
-    gsInfo << "Setup space-time multigrid solver...\n" << std::flush;
-    gsOptionList cmd;
-    cmd.addInt( "InterfaceStrategy", "", iFace::conforming      );
-    cmd.addInt( "DirichletStrategy", "", dirichlet::elimination );
-    gsGridHierarchy<> ghSpace = gsGridHierarchy<>::buildByCoarsening(mbY, bcY, cmd);
-    gsGridHierarchy<> ghTime  = gsGridHierarchy<>::buildByCoarsening(tiY, icY, cmd);
-    index_t szGhSpace = ghSpace.getTransferMatrices().size();
-    index_t szGhTime = ghTime.getTransferMatrices().size();
-
-    std::vector<gsSparseMatrix<real_t, RowMajor>> transfers;
-
-    GISMO_ENSURE( ghSpace.getTransferMatrices().size() > 0, "Need at least one transfer." );
-    GISMO_ENSURE( ghTime.getTransferMatrices().size() > 0, "Need at least one transfer." );
-
-    while (true)
-    {
-        const real_t B_norm = getOpNorm(matrixB);
-        const real_t C_norm = getOpNorm(matrixC);
-        gsInfo << "  B_norm: " << B_norm << ", C_norm: " << C_norm << ", ratio: " << B_norm/C_norm << "; ";
-        if (B_norm < C_norm)
-        {
-            if (szGhTime<1) {
-                gsInfo << "cannot coarsen in time.\n";
-                break;
-            }
-            else
-                gsInfo << "coarsen in time... " << std::flush;
-            info.append("t");
-            const index_t sz = szGhSpace>0 ? ghSpace.getTransferMatrices()[szGhSpace-1].rows() : ghSpace.getTransferMatrices()[szGhSpace].cols();
-            gsSparseMatrix<real_t,RowMajor> transferSpace(sz,sz); transferSpace.setIdentity();
-            gsSparseMatrix<real_t,RowMajor> transferTime = mkTimeEmbedding(ghTime.getTransferMatrices()[szGhTime-1]);
-            transfers.push_back( transferTime.kron(transferSpace) );
-            szGhTime -= 1;
-        }
-        else
-        {
-            if (szGhSpace<1) {
-                gsInfo << "cannot coarsen in space.\n";
-                break;
-            }
-            else
-                gsInfo << "coarsen in space... " << std::flush;
-            info.append("s");
-            gsSparseMatrix<real_t,RowMajor> transferSpace = ghSpace.getTransferMatrices()[szGhSpace-1];
-            const index_t sz = szGhTime>0 ? ghTime.getTransferMatrices()[szGhTime-1].rows() : ghTime.getTransferMatrices()[szGhTime].cols();
-            gsSparseMatrix<real_t,RowMajor> transferTime(sz-1,sz-1); transferTime.setIdentity();
-            transfers.push_back( transferTime.kron(transferSpace) );
-            szGhSpace -= 1;
-        }
-        // update
-        matrixB = transfers.back().transpose() * matrixB * transfers.back();
-        matrixC = transfers.back().transpose() * matrixC * transfers.back();
-        gsInfo << "done.\n";
-    }
-
-    std::reverse(transfers.begin(), transfers.end());
-
-    gsInfo << "  Have " << transfers.size() << " transfer matrices.\n";
-    GISMO_ENSURE( transfers.size() > 0, "Need at least one transfer." );
-
-    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( fineMatrix, transfers );
-    mg->setOptions(opt);
-    for (index_t i=1; i<mg->numLevels(); ++i)
-        mg->setSmoother(i, makeGaussSeidelOp(mg->matrix(i)));
-    gsInfo << "done.\n";
-
-    return mg;
+    gsLinearOperator<>::Ptr transform  = gsKroneckerOp<>::make( makeMatrixOp(eigs.moveToPtr()), gsIdentityOp<>::make(B1.rows()) );
+    gsLinearOperator<>::Ptr transformT = gsKroneckerOp<>::make( makeMatrixOp(eigsT.moveToPtr()), gsIdentityOp<>::make(B1.rows()) );
+    return gsProductOp<>::make( transformT, systemSolver, transform );
 
 }
 
-*/
+gsLinearOperator<>::Ptr mkSparseLUSolver(const gsSparseMatrix<>& m) { return makeSparseLUSolver(m); }
+
 
 int main(int argc, char *argv[])
 {
@@ -213,7 +65,10 @@ int main(int argc, char *argv[])
     real_t tolerance = 1.e-6;
     index_t preSmooth = 1;
     index_t postSmooth = 1;
-    index_t cycles = 1;    
+    index_t cycles = 1;
+    index_t exactPreconder = 1;
+    index_t fdPreconder = 1;
+    index_t mgPreconder = 0;
     std::string out;
     bool plot = false;
 
@@ -230,6 +85,9 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre smoothing steps (only for mg)", preSmooth);
     cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post smoothing steps (only for mg)", postSmooth);
     cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
+    cmd.addInt   ("",  "ExactPreconder",        "Use that scheme", exactPreconder);
+    cmd.addInt   ("",  "FdPreconder",           "Use that scheme", fdPreconder);
+    cmd.addInt   ("",  "MgPreconder",           "Use that scheme", mgPreconder);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -296,7 +154,7 @@ int main(int argc, char *argv[])
 
     for ( index_t i = 0; i < refinementsT; ++i )
         tb1.uniformRefine();
-    
+
     for ( index_t i = 0; i < refinementsT; ++i )
         tb2.uniformRefine();
 
@@ -306,14 +164,14 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n";
     gsInfo << "Knots in tb1: " << dynamic_cast<gsTensorBSplineBasis<1,real_t>&>(tb1[0]).component(0).knots() << "\n";
     gsInfo << "Knots in tb2: " << dynamic_cast<gsTensorBSplineBasis<1,real_t>&>(tb2[0]).component(0).knots() << "\n";
-    
+
 
 
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrices... " << std::flush;
 
-    
+
     // Assemble space matrices
     gsSparseMatrix<> space_mass;
     {
@@ -328,7 +186,7 @@ int main(int argc, char *argv[])
         assembler.assemble( u * u.tr() * meas(G) );
         space_mass = assembler.matrix();
     }
-        
+
     gsSparseMatrix<> space_stiff;
     {
         gsExprAssembler<> assembler(1,1);
@@ -344,7 +202,7 @@ int main(int argc, char *argv[])
     }
 
     // Assemble in time
-    
+
     gsSparseMatrix<> time_stiff1;
     {
         gsExprAssembler<> assembler(1,1);
@@ -360,9 +218,9 @@ int main(int argc, char *argv[])
         const index_t n = time_stiff1.rows();
         time_stiff1 = time_stiff1.block(1, 1, n-1, n-1);
     }
-    
 
-    
+
+
     gsSparseMatrix<> time_mass1;
     {
         gsExprAssembler<> assembler(1,1);
@@ -378,7 +236,7 @@ int main(int argc, char *argv[])
         const index_t n = time_mass1.rows();
         time_mass1 = time_mass1.block(1, 1, n-1, n-1);
     }
-    
+
 
     gsSparseMatrix<> time_mass2;
     {
@@ -408,14 +266,14 @@ int main(int argc, char *argv[])
         assembler.initSystem();
         assembler.assemble( u * v.tr() * meas(G) );
         time_massL = assembler.matrix();
-        
+
         const index_t n1 = time_mass1.rows()+1;
         const index_t n2 = time_mass2.rows();
         GISMO_ENSURE(time_massL.rows() == n1+n2, time_massL.rows()<<"=="<<n1<<"+"<<n2);
         time_massL = time_massL.block(1, n1, n1-1, n2).transpose(); //TODO
     }
-    
-    
+
+
     gsSparseMatrix<> time_gradL;
     {
         gsExprAssembler<> assembler(2,2);
@@ -430,15 +288,15 @@ int main(int argc, char *argv[])
         assembler.initSystem();
         assembler.assemble( igrad(u,G) * v.tr() * meas(G) );
         time_gradL = assembler.matrix();
-    
+
         const index_t n1 = time_mass1.rows()+1;
         const index_t n2 = time_mass2.rows();
         GISMO_ENSURE(time_gradL.rows() == n1+n2, "");
         time_gradL = time_gradL.block(1, n1, n1-1, n2).transpose(); //TODO
 
     }
-    
-    
+
+
     if (0)
     {
         gsInfo << "\nspace_mass=\n" << space_mass << "\n";
@@ -467,53 +325,63 @@ int main(int argc, char *argv[])
         = gsKroneckerOp<>::make( makeSparseCholeskySolver(time_mass2), makeSparseCholeskySolver(space_stiff) );
 
     gsLinearOperator<>::Ptr leastSquares = gsProductOp<>::make( Lh, dualPc, LhT );
-    
+
     gsInfo << "done; " << leastSquares->rows() << " dofs.\n";
-    
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  Somewhat exact preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     index_t iter1;
     real_t cond1;
     gsInfo << "Setup of somewhat exact preconder... " << std::flush;
-    if (0)
+    if (exactPreconder)
     {
         const index_t primalDim = time_stiff1.rows() * space_stiff.rows();
-    
-        gsSparseMatrix<> preconderMatrix(2*primalDim,2*primalDim);
+
         gsSparseMatrix<> preconderSelector(primalDim,2*primalDim);
         for (index_t i=0; i<primalDim; ++i)
             preconderSelector(i,i) = 1;
+
+        gsSparseMatrix<> preconderMatrix(2*primalDim,2*primalDim);
         {
             gsSparseMatrix<> preconderBlock11 =  time_mass1.kron(space_stiff);
             gsSparseMatrix<> preconderBlock12 =  time_stiff1.kron(space_mass);
             gsSparseMatrix<> preconderBlock22 = -time_stiff1.kron(space_stiff);
-        
+
+            gsSparseEntries<> se;
+            se.reserve( preconderBlock11.nonZeros() + 2*preconderBlock12.nonZeros() + preconderBlock22.nonZeros() );
+
             for (index_t i = 0; i < preconderBlock11.outerSize(); ++i)
                 for (gsSparseMatrix<>::InnerIterator it(preconderBlock11,i); it; ++it)
-                    preconderMatrix(it.row(), it.col()) = it.value();
-    
+                    se.add(it.row(), it.col(), it.value());
+
             for (index_t i = 0; i < preconderBlock12.outerSize(); ++i)
                 for (gsSparseMatrix<>::InnerIterator it(preconderBlock12,i); it; ++it)
                 {
-                    preconderMatrix(it.row(), primalDim+it.col()) = it.value();
-                    preconderMatrix(primalDim+it.col(), it.row()) = it.value();
+                    se.add(it.row(), primalDim+it.col(), it.value());
+                    se.add(primalDim+it.col(), it.row(), it.value());
                 }
 
             for (index_t i = 0; i < preconderBlock22.outerSize(); ++i)
                 for (gsSparseMatrix<>::InnerIterator it(preconderBlock22,i); it; ++it)
-                    preconderMatrix(primalDim+it.row(), primalDim+it.col()) = it.value();
-            
+                    se.add(primalDim+it.row(), primalDim+it.col(), it.value());
+
+            preconderMatrix.setFrom(se);
+
         }
 
         //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
 
-    
+
         gsLinearOperator<>::Ptr preconder
             = gsProductOp<>::make( makeMatrixOp(preconderSelector.transpose()), makeSparseLUSolver(preconderMatrix), makeMatrixOp(preconderSelector) );
 
-    
-        gsInfo << "done.\n";
-    
+
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
         gsInfo << "Setup cg solver and solve... " << std::flush;
-        
+
         gsMatrix<> x;
         x.setRandom( leastSquares->rows(), 1 );
         gsMatrix<> rhs;
@@ -545,137 +413,238 @@ int main(int argc, char *argv[])
         gsInfo << "skip.\n";
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FD preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::vector<gsSparseMatrix<real_t, RowMajor>> embeddingSpace;
-    std::vector<gsSparseMatrix<>> massesSpace;
+
+    index_t iter2;
+    real_t cond2;
+    gsInfo << "Setup of FD preconder... " << std::flush;
+    if (fdPreconder)
     {
-        gsGridHierarchy<> ghSpace = gsGridHierarchy<>::buildByCoarsening(mb, bc, cmd);
-        index_t szGhSpace = ghSpace.getTransferMatrices().size();
-        
-        embeddingSpace.reserve(szGhSpace+1);
-        massesSpace.reserve(szGhSpace+1);
+        const index_t primalDim = space_stiff.rows();
+        const index_t primalDimTime = time_stiff1.rows();
+        gsSparseMatrix<> preconderSelector(primalDim*primalDimTime,2*primalDim*primalDimTime);
+        for (index_t i=0; i<primalDimTime; ++i)
+            for (index_t j=0; j<primalDim; ++j)
+                preconderSelector(primalDim*i+j,2*primalDim*i+j) = 1;
 
-        gsSparseMatrix<real_t, RowMajor> id(space_mass.rows(), space_mass.cols());
-        id.setIdentity();
-        embeddingSpace.push_back(id);
-        massesSpace.push_back(space_mass);
-        
-        for (index_t i=0; i<szGhSpace; ++i)
+        gsLinearOperator<>::Ptr preconder;
         {
-            gsSparseMatrix<real_t, RowMajor> e = ghSpace.getTransferMatrices()[szGhSpace-1-i];
-            if (e.cols() < 2) break;
-            id = id * e;
-            embeddingSpace.push_back(id);
-            massesSpace.push_back(id.transpose()*space_mass*id);
-        }
-    }
-    
-    std::vector<gsSparseMatrix<real_t, RowMajor>> embeddingTime;
-    std::vector<gsSparseMatrix<>> massesTime;
-    {
-        gsGridHierarchy<> ghTime  = gsGridHierarchy<>::buildByCoarsening(tb1, ic, cmd);
-        index_t szGhTime = ghTime.getTransferMatrices().size();
+            gsSparseMatrix<> preconderMatrix1(2*primalDim,2*primalDim);
+            gsSparseMatrix<> preconderMatrix2(2*primalDim,2*primalDim);
+            gsSparseEntries<> se1;
+            gsSparseEntries<> se2;
+            se1.reserve( 2*space_mass.nonZeros() + space_stiff.nonZeros() );
+            se2.reserve( space_stiff.nonZeros() );
 
-        embeddingTime.reserve(szGhTime+1);
-        massesTime.reserve(szGhTime+1);
+            for (index_t i = 0; i < space_stiff.outerSize(); ++i)
+                for (gsSparseMatrix<>::InnerIterator it(space_stiff,i); it; ++it)
+                    se2.add(it.row(), it.col(), it.value());
 
-        gsSparseMatrix<real_t, RowMajor> id(time_mass1.rows(), time_mass1.cols());
-        id.setIdentity();
-        embeddingTime.push_back(id);
-        massesTime.push_back(time_mass1);
+            for (index_t i = 0; i < space_mass.outerSize(); ++i)
+                for (gsSparseMatrix<>::InnerIterator it(space_mass,i); it; ++it)
+                {
+                    se1.add(it.row(), primalDim+it.col(), it.value());
+                    se1.add(primalDim+it.col(), it.row(), it.value());
+                }
 
-        for (index_t i=0; i<szGhTime; ++i)
-        {
-            gsSparseMatrix<real_t, RowMajor> e = ghTime.getTransferMatrices()[szGhTime-1-i];
-            // incorporate initial condition
-            const index_t rr = e.rows(), cc = e.cols();
-            if (cc < 3) break;
-            id = id * e.block(1,1,rr-1,cc-1);
-            embeddingTime.push_back(id);
-            massesTime.push_back(id.transpose()*time_mass1*id);
-        }
-    }
+            for (index_t i = 0; i < space_stiff.outerSize(); ++i)
+                for (gsSparseMatrix<>::InnerIterator it(space_stiff,i); it; ++it)
+                    se1.add(primalDim+it.row(), primalDim+it.col(), -it.value());
 
-    {
-        gsInfo << "Space embedding matrices:";
-        for (size_t i=0; i<embeddingSpace.size(); ++i)
-            gsInfo << " " << embeddingSpace[i].rows() << "x" << embeddingSpace[i].cols();
-        gsInfo << "\n";
-        gsInfo << "Space mass matrices:";
-        for (size_t i=0; i<massesSpace.size(); ++i)
-            gsInfo << " " << massesSpace[i].rows() << "x" << massesSpace[i].cols();
-        gsInfo << "\n";
-        gsInfo << "Time embedding matrices:";
-        for (size_t i=0; i<embeddingTime.size(); ++i)
-            gsInfo << " " << embeddingTime[i].rows() << "x" << embeddingTime[i].cols();
-        gsInfo << "\n";
-        gsInfo << "Time mass matrices:";
-        for (size_t i=0; i<massesTime.size(); ++i)
-            gsInfo << " " << massesTime[i].rows() << "x" << massesTime[i].cols();
-        gsInfo << "\n";        
-    }
-    
-    gsMatrix<> scaling(embeddingSpace.size()+1,embeddingTime.size()+1);
-    scaling.setZero();
-    for (size_t i=0; i<embeddingSpace.size(); ++i)
-    {
-        const real_t h = h0 * pow(0.5, embeddingSpace.size()-i);
-        for (size_t j=0; j<embeddingTime.size(); ++j)
-        {
-            const real_t tau = tau0 * pow(0.5, embeddingTime.size()-j);
-            scaling(i+1,j+1) = 1./( 1./(h*h) + h*h/(tau*tau) );
-            gsInfo << "i=" << i << "; j=" << j << "; h=" << h << "; tau=" << tau << "; scaling=" << scaling(i,j) << "\n";
+            preconderMatrix1.setFrom(se1);
+            preconderMatrix2.setFrom(se2);
+
+            preconder = gsProductOp<>::make(
+                makeMatrixOp(preconderSelector.transpose()),
+                fastDiagnonalization(time_stiff1, preconderMatrix1, time_mass1, preconderMatrix2, mkSparseLUSolver),
+                makeMatrixOp(preconderSelector)
+            );
+
         }
-    }
-    
-    gsInfo << "Actual scaling: ";
-    gsAdditiveOp<>::Ptr mlPreconder = gsAdditiveOp<>::make();
-    for (size_t i=0; i<embeddingSpace.size(); ++i)
-        for (size_t j=0; j<embeddingTime.size(); ++j)
-        {
-            gsSparseMatrix<real_t,RowMajor> transfer = embeddingTime[j].kron(embeddingSpace[i]);
-            gsLinearOperator<>::Ptr op = gsKroneckerOp<>::make( makeSparseCholeskySolver(massesTime[j]), makeSparseCholeskySolver(massesSpace[i]) );
-            
-            real_t sc = scaling(i+1,j+1) - scaling(i,j+1) - scaling(i+1,j) + scaling(i,j);
-            gsInfo << sc << " ";
-            
-            op = gsScaledOp<>::make(give(op), sc);
-            mlPreconder->addOperator(give(transfer), give(op));
-        }
-    gsInfo << "\n";
-    
-    gsInfo << "Setup cg solver and solve... " << std::flush;
-    {
+
+        //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
         gsMatrix<> x;
         x.setRandom( leastSquares->rows(), 1 );
         gsMatrix<> rhs;
         rhs.setRandom( leastSquares->rows(), 1 ); // TODO
         gsMatrix<> errorHistory;
-        gsConjugateGradient<> solver( leastSquares, mlPreconder );
+        gsConjugateGradient<> solver( leastSquares, preconder );
         solver.setCalcEigenvalues(true);
         solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
 
         gsInfo << "done.\n\n";
 
-        iter1 = errorHistory.rows()-1;
-        const bool success = errorHistory(iter1,0) < tolerance;
+        iter2 = errorHistory.rows()-1;
+        const bool success = errorHistory(iter2,0) < tolerance;
         if (success)
-            gsInfo << "Reached desired tolerance after " << iter1 << " iterations:\n";
+            gsInfo << "Reached desired tolerance after " << iter2 << " iterations:\n";
         else
-            gsInfo << "Did not reach desired tolerance after " << iter1 << " iterations:\n";
+            gsInfo << "Did not reach desired tolerance after " << iter2 << " iterations:\n";
 
         if (errorHistory.rows() < 20)
             gsInfo << errorHistory.transpose() << "\n\n";
         else
             gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-        cond1 = solver.getConditionNumber();
-        gsInfo << "Estimated condition number: " << cond1 << "\n";
+        cond2 = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond2 << "\n";
     }
-    
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  Multigrid preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    gsInfo << "Setup of multigrid preconder... " << std::flush;
+    if (mgPreconder)
+    {
+
+        std::vector<gsSparseMatrix<real_t, RowMajor>> embeddingSpace;
+        std::vector<gsSparseMatrix<>> massesSpace;
+        {
+            gsGridHierarchy<> ghSpace = gsGridHierarchy<>::buildByCoarsening(mb, bc, cmd);
+            index_t szGhSpace = ghSpace.getTransferMatrices().size();
+
+            embeddingSpace.reserve(szGhSpace+1);
+            massesSpace.reserve(szGhSpace+1);
+
+            gsSparseMatrix<real_t, RowMajor> id(space_mass.rows(), space_mass.cols());
+            id.setIdentity();
+            embeddingSpace.push_back(id);
+            massesSpace.push_back(space_mass);
+
+            for (index_t i=0; i<szGhSpace; ++i)
+            {
+                gsSparseMatrix<real_t, RowMajor> e = ghSpace.getTransferMatrices()[szGhSpace-1-i];
+                if (e.cols() < 2) break;
+                id = id * e;
+                embeddingSpace.push_back(id);
+                massesSpace.push_back(id.transpose()*space_mass*id);
+            }
+        }
+
+        std::vector<gsSparseMatrix<real_t, RowMajor>> embeddingTime;
+        std::vector<gsSparseMatrix<>> massesTime;
+        {
+            gsGridHierarchy<> ghTime  = gsGridHierarchy<>::buildByCoarsening(tb1, ic, cmd);
+            index_t szGhTime = ghTime.getTransferMatrices().size();
+
+            embeddingTime.reserve(szGhTime+1);
+            massesTime.reserve(szGhTime+1);
+
+            gsSparseMatrix<real_t, RowMajor> id(time_mass1.rows(), time_mass1.cols());
+            id.setIdentity();
+            embeddingTime.push_back(id);
+            massesTime.push_back(time_mass1);
+
+            for (index_t i=0; i<szGhTime; ++i)
+            {
+                gsSparseMatrix<real_t, RowMajor> e = ghTime.getTransferMatrices()[szGhTime-1-i];
+                // incorporate initial condition
+                const index_t rr = e.rows(), cc = e.cols();
+                if (cc < 3) break;
+                id = id * e.block(1,1,rr-1,cc-1);
+                embeddingTime.push_back(id);
+                massesTime.push_back(id.transpose()*time_mass1*id);
+            }
+        }
+
+        {
+            gsInfo << "Space embedding matrices:";
+            for (size_t i=0; i<embeddingSpace.size(); ++i)
+                gsInfo << " " << embeddingSpace[i].rows() << "x" << embeddingSpace[i].cols();
+            gsInfo << "\n";
+            gsInfo << "Space mass matrices:";
+            for (size_t i=0; i<massesSpace.size(); ++i)
+                gsInfo << " " << massesSpace[i].rows() << "x" << massesSpace[i].cols();
+            gsInfo << "\n";
+            gsInfo << "Time embedding matrices:";
+            for (size_t i=0; i<embeddingTime.size(); ++i)
+                gsInfo << " " << embeddingTime[i].rows() << "x" << embeddingTime[i].cols();
+            gsInfo << "\n";
+            gsInfo << "Time mass matrices:";
+            for (size_t i=0; i<massesTime.size(); ++i)
+                gsInfo << " " << massesTime[i].rows() << "x" << massesTime[i].cols();
+            gsInfo << "\n";
+        }
+
+        gsMatrix<> scaling(embeddingSpace.size()+1,embeddingTime.size()+1);
+        scaling.setZero();
+        for (size_t i=0; i<embeddingSpace.size(); ++i)
+        {
+            const real_t h = h0 * pow(0.5, embeddingSpace.size()-i);
+            for (size_t j=0; j<embeddingTime.size(); ++j)
+            {
+                const real_t tau = tau0 * pow(0.5, embeddingTime.size()-j);
+                scaling(i+1,j+1) = 1./( 1./(h*h) + h*h/(tau*tau) );
+                gsInfo << "i=" << i << "; j=" << j << "; h=" << h << "; tau=" << tau << "; scaling=" << scaling(i,j) << "\n";
+            }
+        }
+
+        gsInfo << "Actual scaling: ";
+        gsAdditiveOp<>::Ptr mlPreconder = gsAdditiveOp<>::make();
+        for (size_t i=0; i<embeddingSpace.size(); ++i)
+            for (size_t j=0; j<embeddingTime.size(); ++j)
+            {
+                gsSparseMatrix<real_t,RowMajor> transfer = embeddingTime[j].kron(embeddingSpace[i]);
+                gsLinearOperator<>::Ptr op = gsKroneckerOp<>::make( makeSparseCholeskySolver(massesTime[j]), makeSparseCholeskySolver(massesSpace[i]) );
+
+                real_t sc = scaling(i+1,j+1) - scaling(i,j+1) - scaling(i+1,j) + scaling(i,j);
+                gsInfo << sc << " ";
+
+                op = gsScaledOp<>::make(give(op), sc);
+                mlPreconder->addOperator(give(transfer), give(op));
+            }
+        gsInfo << "\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+        {
+            gsMatrix<> x;
+            x.setRandom( leastSquares->rows(), 1 );
+            gsMatrix<> rhs;
+            rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+            gsMatrix<> errorHistory;
+            gsConjugateGradient<> solver( leastSquares, mlPreconder );
+            solver.setCalcEigenvalues(true);
+            solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+            gsInfo << "done.\n\n";
+
+            iter1 = errorHistory.rows()-1;
+            const bool success = errorHistory(iter1,0) < tolerance;
+            if (success)
+                gsInfo << "Reached desired tolerance after " << iter1 << " iterations:\n";
+            else
+                gsInfo << "Did not reach desired tolerance after " << iter1 << " iterations:\n";
+
+            if (errorHistory.rows() < 20)
+                gsInfo << errorHistory.transpose() << "\n\n";
+            else
+                gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+            cond1 = solver.getConditionNumber();
+            gsInfo << "Estimated condition number: " << cond1 << "\n";
+        }
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
 
     gsInfo << "fin.\n";
-    
+
     return 0;
 
 }
