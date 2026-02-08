@@ -425,9 +425,9 @@ unset(RESTORE_SUBMODULES CACHE)
 
 # --- Agents Configuration ---
 
-# Defaults: If you have an agent named 'gismo', it will now be found automatically
-set(GISMO_AGENT_PROVIDERS "claude;cursor" CACHE STRING "Providers to fetch")
-set(GISMO_AGENTS "all" CACHE STRING "Specific agents or 'all'")
+# Agent providers to set up (creates symlinks or downloads instruction files)
+# Supported: claude, gemini, opencode, cursor, copilot, windsurf, cline
+set(GISMO_AGENT_PROVIDERS "claude" CACHE STRING "Agent providers to configure")
 
 include(cmake/FetchAgents.cmake)
 fetch_gismo_agents()

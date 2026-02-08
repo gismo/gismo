@@ -42,3 +42,14 @@ CMakeFiles/
 
 #Symbolic link Eigen library
 external/Eigen
+
+# files from agents (generated symlinks)
+CLAUDE.md
+GEMINI.md
+.claude/commands
+.claude/agents
+.claude/rules
+.opencode/
+.cursorrules
+.windsurfrules
+.clinerules
