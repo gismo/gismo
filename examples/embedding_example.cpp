@@ -1,4 +1,4 @@
-/** @file basis_example.cpp
+/** @file embedding_example.cpp
 
     @brief Tutorial on gsBasis class.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Speh
+    Author(s): F. Hasanova, S. Takacs
 */
 
 #include <iostream>
@@ -167,8 +167,8 @@ int main(int argc, char* argv[])
     // ======================================================================
     // checking if the fine basis is a refined coarse basis
     // ======================================================================
-    gsBSplineBasis<> & coarseBasis = *pCoarseBasis;
-    gsBSplineBasis<> & fineBasis = *pFineBasis;
+    gsBSplineBasis<>& coarseBasis = *pCoarseBasis;
+    gsBSplineBasis<>& fineBasis = *pFineBasis;
 
 
     if(!isNested(coarseBasis,fineBasis)){
