@@ -299,10 +299,13 @@ int main(int argc, char* argv[])
     using T = double;
 
     std::string Filename("bspbasis/tpBSpline2_06.xml");
+
    // std::string output("");
 
+    std::string inputSide="south";
     gsCmdLine cmd("Example for 2D embedding matrix.");
     cmd.addString("f", "file", "G+Smo input tensor basis file.", Filename);
+    cmd.addString("s", "side", "Side of the boundary (south, north, east, west).", inputSide);
   //  cmd.addString("o", "output", "Name of the output file.", output);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -339,34 +342,31 @@ int main(int argc, char* argv[])
 
     gsTensorBSplineBasis<2,T>& tensorBasis = *pTensorBasis;
 
-    
-    // Extract boundary bases for all sides
-    //gsBSplineBasis<T> leftBasis = *tensorBasis.boundaryBasis(boundary::west);    // LEFT
-    //gsBSplineBasis<T>  rightBasis = *tensorBasis.boundaryBasis(boundary::east);   // RIGHT
-    gsBSplineBasis<T> bottomBasis = *tensorBasis.boundaryBasis(boundary::south); // BOTTOM
-    //gsBSplineBasis<T> topBasis = *tensorBasis.boundaryBasis(boundary::north);    // TOP
+    boundary::side side = inputSide == "south" ? boundary::south :
+                         inputSide == "north" ? boundary::north :
+                         inputSide == "east"  ? boundary::east  :
+                         inputSide == "west"  ? boundary::west  : boundary::south; // default to south if invalid
+   
+    gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side); 
+   
+    gsInfo << "Side boundary basis size: " << sideBasis.size() << "\n";
+   
 
-    // Print information about the boundary bases
-    //gsInfo << "Left boundary basis size: " << leftBasis.size() << "\n";
-    //gsInfo << "Right boundary basis size: " << rightBasis.size() << "\n";
-    gsInfo << "Bottom boundary basis size: " << bottomBasis.size() << "\n";
-    //gsInfo << "Top boundary basis size: " << topBasis.size() << "\n";
-
-    if( bottomBasis.knots().minInteriorMultiplicity()<2){
+    if( sideBasis.knots().minInteriorMultiplicity()<2){
         gsInfo<<"incorrect multiplicity\n";
         return -1;
     }
     
    
-    gsBSplineBasis<T> bottomSmootherBasis = bottomBasis;
-    bottomSmootherBasis.elevateContinuity(1);
+    gsBSplineBasis<T> sideSmootherBasis = sideBasis;
+    sideSmootherBasis.elevateContinuity(1);
 
 
     // ======================================================================
     // checking if the fine basis is a refined coarse basis
     // ======================================================================
 
-    if(!isNested(bottomSmootherBasis,bottomBasis)){
+    if(!isNested(sideSmootherBasis,sideBasis)){
 
         gsInfo << "spaces are not nested\n";
         return -1;
@@ -379,20 +379,21 @@ int main(int argc, char* argv[])
     // embedding matrix computation
     // ======================================================================
 
+
     using T = double;
-    gsSparseMatrix<T> embedding = embeddingMatrix(bottomSmootherBasis, bottomBasis);
+    gsSparseMatrix<T> embedding = embeddingMatrix(sideSmootherBasis, sideBasis);
     gsInfo << "embedding\n"<< embedding << "\n";
 
-    gsMatrix<index_t> bottomDOFs = tensorBasis.boundary(boundary::south);
+    gsMatrix<index_t> sideDOFs = tensorBasis.boundary(side);
 
-    gsInfo << "Bottom boundary DOFs: " << bottomDOFs.rows() << " functions\n";
+    gsInfo << "Side boundary DOFs: " << sideDOFs.rows() << " functions\n";
 
     // Print the indices
-    for (index_t i = 0; i < bottomDOFs.rows(); ++i) {
-        gsInfo << "DOF " << i << ": " << bottomDOFs(i, 0) << "\n";
+    for (index_t i = 0; i < sideDOFs.rows(); ++i) {
+        gsInfo << "DOF " << i << ": " << sideDOFs(i, 0) << "\n";
     }
 
-    gsSparseMatrix<T> tensorEmbedding = createTensorEmbedding(tensorBasis, bottomSmootherBasis, bottomBasis, boundary::south);
+    gsSparseMatrix<T> tensorEmbedding = createTensorEmbedding(tensorBasis, sideSmootherBasis, sideBasis, side);
 
     
    
@@ -405,11 +406,11 @@ int main(int argc, char* argv[])
     gsInfo << "\n=== Tensor Embedding Verification ===\n";
     gsInfo << "1D embedding matrix size: " << embedding.rows() << " x " << embedding.cols() << "\n";
     gsInfo << "1D embedding non-zeros: " << embedding.nonZeros() << "\n";
-    gsInfo << "Boundary DOFs count: " << bottomDOFs.rows() << "\n";
+    gsInfo << "Boundary DOFs count: " << sideDOFs.rows() << "\n";
     gsInfo << "Total tensor basis functions: " << numTensorBasisFuncs << "\n";
     gsInfo << "Tensor embedding matrix size: " << tensorEmbedding.rows() << " x " << tensorEmbedding.cols() << "\n";
     gsInfo << "Tensor embedding non-zeros: " << tensorEmbedding.nonZeros() << "\n";
-    gsInfo << "Expected non-zeros: " << embedding.nonZeros() + (numTensorBasisFuncs - bottomDOFs.rows()) << "\n";
+    gsInfo << "Expected non-zeros: " << embedding.nonZeros() + (numTensorBasisFuncs - sideDOFs.rows()) << "\n";
     
     gsInfo << "\nTensor embedding matrix:\n" << tensorEmbedding << "\n";
 
@@ -418,10 +419,10 @@ int main(int argc, char* argv[])
         tensorEmbedding,
         embedding,
         tensorBasis,
-        bottomSmootherBasis,
-        bottomBasis,
-        bottomDOFs,
-        boundary::south);
+        sideSmootherBasis,
+        sideBasis,
+        sideDOFs,
+        side);
 
     return 0;
 }
