@@ -431,7 +431,7 @@ set(GISMO_AGENT_PROVIDERS "claude" CACHE STRING "Agent providers to configure")
 
 # Force downloading agent files from remote even when local copies exist.
 # When ON, existing agent files (and AGENTS.md) will be re-downloaded/overwritten.
-option(GISMO_FORCE_AGENT_DOWNLOAD "Force download of agent files from remote even if local copies exist" OFF)
+option(GISMO_AGENTS_FORCE_DOWNLOAD "Force download of agent files from remote even if local copies exist" OFF)
 
 include(cmake/FetchAgents.cmake)
 fetch_gismo_agents()
