@@ -158,6 +158,28 @@ gsFreeformSubdivision<N, D>::deCasteljau(
 template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 {
+    // As a pre-step, we make sure that for each face, if it has an
+    // extraordinary vertex, that vertex is the top left one
+    for (Face f : mesh.faces())
+    {
+        // first, check if this face has an EV at all
+        bool has_ev(false);
+        for (Vertex v : mesh.vertices(f))
+        {
+            has_ev = has_ev || !is_ordinary(mesh, v);
+        }
+
+        // if it does, rotate its first halfedge around until it points to the
+        // EV
+        if (has_ev)
+        {
+            while (is_ordinary(mesh, mesh.to_vertex(mesh.halfedge(f))))
+            {
+                mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
+            }
+        }
+    }
+
     // Remember the first vertex of each face (this is where the control nets of
     // each face data are oriented on).
     std::vector<Vertex> first_vertices;
@@ -201,8 +223,11 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
         {
             Vertex ev =
                 extraordinary_vertices[parent_to_children_faces.first.idx()];
+            Vertex fv = first_vertices[parent_to_children_faces.first.idx()];
             gsInfo << parent_to_children_faces.first << " has an EV: " << ev
                    << ".\n";
+            gsInfo << parent_to_children_faces.first
+                   << " has first vertex: " << fv << ".\n";
         }
         // else //un-comment this once ev subdivision is done
         {
@@ -411,12 +436,9 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
             target_matrix.row(8) = control_points_faces[3](1, 1)->transpose();
         }
 
-        gsInfo << target_matrix.rows() <<", " << target_matrix.cols() << "\n";
-
-        auto lsq = matrix.colPivHouseholderQr();
-        auto solution = lsq.solve(target_matrix);
-
-        gsInfo << solution.rows() <<", " << solution.cols() << "\n";
+        // actually perform the least squares
+        gsMatrix<real_t> solution =
+            matrix.colPivHouseholderQr().solve(target_matrix);
 
         // assign the solutions, again depending on faces present
         *(control_points_faces[0](1, 1)) = solution.row(0);
@@ -442,8 +464,8 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
             *(control_points_faces[2](1, 0)) =
                 2. * solution.row(3) - solution.row(1);
             *(control_points_faces[2](1, 1)) =
-                4. * solution.row(3) - 2. * solution.row(2) - 2. * solution.row(1) +
-                solution.row(0);
+                4. * solution.row(3) - 2. * solution.row(2) -
+                2. * solution.row(1) + solution.row(0);
         }
 
         if (control_points_faces.size() >= 4)
@@ -455,7 +477,6 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
             *(control_points_faces[3](1, 1)) =
                 2. * solution.row(2) - solution.row(0);
         }
-        
     }
     // End of edge correction
 
@@ -512,8 +533,8 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
             target_matrix.row(1) = m0->transpose();
             target_matrix.row(2) = i1->transpose();
 
-            auto lsq = matrix.colPivHouseholderQr();
-            auto solution = lsq.solve(target_matrix);
+            gsMatrix<real_t> solution =
+                matrix.colPivHouseholderQr().solve(target_matrix);
 
             *i0 = solution.row(0);
             *m0 = (solution.row(0) + solution.row(1)) * 0.5;
