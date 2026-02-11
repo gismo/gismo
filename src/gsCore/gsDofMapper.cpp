@@ -567,15 +567,15 @@ gsDofMapper::inverseOnPatch(const index_t k) const
     typedef std::vector<index_t>::const_iterator citer;
 
     for(size_t i = 0; i!= m_dofs.size(); ++i)
-      {
-	citer it = m_dofs[i].begin()+m_offset[k];
-	for(size_t j = 0; j!= m_dofs[i].size(); ++j,++it)
-	  inv[*it]=j;
-      }
+    {
+        citer it = m_dofs[i].begin()+m_offset[k];
+        for(size_t j = 0; j!= m_dofs[i].size(); ++j,++it)
+            inv[*it]=j;
+    }
     return inv;
 }
 
-bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k) const
+bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k, index_t & local) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
@@ -583,7 +583,10 @@ bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k) const
     const std::vector<index_t> & dofs = m_dofs[componentOf(gl)];
     const citer istart = dofs.begin()+m_offset[k];
     const citer iend   = istart + patchSize(k);
-    return (std::find(istart, iend, gl)!=iend);
+    auto it = std::find(istart, iend, gl);
+    if (iend==it) return false;
+    local = std::distance(istart,it);
+    return true;
 }
 
 index_t gsDofMapper::boundarySizeWithDuplicates() const

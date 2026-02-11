@@ -488,7 +488,7 @@ namespace gismo {
 
         real_t val{ 0 };
 
-        gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
+        gsSurfMesh::Point coords;
         coords.setZero();
 
 
@@ -561,7 +561,7 @@ namespace gismo {
 
         real_t val{ 0 };
 
-        gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
+        gsSurfMesh::Point coords;
         coords.setZero();
 
         int tempj{ 0 };
