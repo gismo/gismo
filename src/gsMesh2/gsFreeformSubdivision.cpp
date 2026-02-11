@@ -11,8 +11,12 @@
     Author(s): L. Mussmaecher
 */
 
-#include "gsCore/gsDebug.h"
+#include "gsModeling/gsFitting.h"
+#include "gsNurbs/gsKnotVector.h"
+#include "gsNurbs/gsTensorBSplineBasis.h"
+#include <gsCore/gsDebug.h>
 #include <gsCore/gsMultiPatch.h>
+#include <gsIO/gsFileData.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsNurbs/gsTensorBSpline.h>
@@ -156,6 +160,28 @@ gsFreeformSubdivision<N, D>::deCasteljau(
 }
 
 template <size_t N, size_t D>
+gismo::gsTensorBSpline<2, real_t>
+gsFreeformSubdivision<N, D>::load_patch(int valence, std::string subtype)
+{
+    // build the filepath
+    auto path = "freeformSubdivision/control_net_d" + std::to_string(N) + "_v" +
+                std::to_string(valence) + "_" + subtype + ".xml";
+
+    gsInfo << "Loading `" << path << "`.\n";
+
+    // load the file containing the correct matrix of control points
+    gsFileData<real_t> filedata(path);
+    auto mat = filedata.getFirst<gsMatrix<real_t>>();
+
+    // create a basis vector etc.
+    gsKnotVector<> kv1(0, 1, 0, N);
+    gsKnotVector<> kv2(0, 1, 0, N);
+    gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
+
+    return gsTensorBSpline<2>(basis, *mat);
+}
+
+template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 {
     // As a pre-step, we make sure that for each face, if it has an
@@ -183,28 +209,10 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
     // Remember the first vertex of each face (this is where the control nets of
     // each face data are oriented on).
     std::vector<Vertex> first_vertices;
-    // List to keep track of extraordinary vertices on each face.
-    // An invalid vertex with idx -1 is used to signify no EV on a face.
-    // Multiple EVs on a face should not happen, use a better mesh.
-    std::vector<Vertex> extraordinary_vertices;
     for (Face f : mesh.faces())
     {
         // remember the first vertex
         first_vertices.emplace_back(mesh.to_vertex(mesh.halfedge(f)));
-
-        // reserve a spot for possible EVs by placing an invalid vertex that
-        // will also serve as a marker for faces without EVs.
-        extraordinary_vertices.emplace_back(-1);
-
-        // check if there is an EV
-        for (const Vertex& v : mesh.vertices(f))
-        {
-            // if an EV is found, replace the invalid vertex with it
-            if (!is_ordinary(mesh, v))
-            {
-                extraordinary_vertices.back() = v;
-            }
-        }
     }
 
     // Split each face into 4 and get info about the way they were split.
@@ -218,18 +226,130 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
     // Now fix the data on each face.
     for (auto const& parent_to_children_faces : face_map)
     {
-        if (extraordinary_vertices[parent_to_children_faces.first.idx()]
-                .is_valid())
+        Vertex fv = first_vertices[parent_to_children_faces.first.idx()];
+
+        // Check if we have an EV. If there is, it must be the first vertex
+        // thanks to our preprocessing.
+        if (!is_ordinary(mesh, fv))
         {
-            Vertex ev =
-                extraordinary_vertices[parent_to_children_faces.first.idx()];
-            Vertex fv = first_vertices[parent_to_children_faces.first.idx()];
-            gsInfo << parent_to_children_faces.first << " has an EV: " << ev
-                   << ".\n";
-            gsInfo << parent_to_children_faces.first
-                   << " has first vertex: " << fv << ".\n";
+            // determine the valence of the extraordinary vertex
+            size_t valence(0);
+            for ([[maybe_unused]] Halfedge f : mesh.halfedges(fv))
+            {
+                ++valence;
+            }
+
+            // load coarse matrix
+            auto coarse_model = load_patch(valence, "coarse");
+            // and remember the associated face data
+            auto coarse_face_data = face_data_vec
+                                            .vector()[parent_to_children_faces.first.idx()];
+
+            // find the new face that contains the top_left vertex
+            Vertex first_vertex =
+                first_vertices[parent_to_children_faces.first.idx()];
+            size_t first_face(0);
+            for (size_t i = 0; i < 4; ++i)
+            {
+                // get the face
+                Face f(parent_to_children_faces.second[i]);
+                // go through the vertices of this face and check if it has the
+                // searched-for vertex
+                for (auto const& v : mesh.vertices(f))
+                {
+                    if (v == first_vertex)
+                        first_face = i;
+                }
+            }
+
+            // Collate the faces into a correctly ordered array as well.
+            std::array<Face, 4> children_faces_ordered;
+            for (int i = 0; i < 4; ++i)
+            {
+                children_faces_ordered[i] =
+                    parent_to_children_faces.second[(i + first_face) % 4];
+            }
+
+            // Correct back references of face data and give them the correct
+            // control points.
+            for (size_t f = 0; f < 4; ++f)
+            {
+                // first, load the appropriate fine model control points
+                auto fine_model =
+                    load_patch(valence, "fine_" + std::to_string(f + 1));
+
+                // get sample points
+                gsMatrix<> samples(D, N * N);
+                gsMatrix<> params(2, N * N);
+                size_t i(0);
+
+                for (real_t u = 0.0; u <= 1.0; u += 1.0 / real_t(N - 1))
+                {
+                    for (real_t v = 0.0; v <= 1.0; v += 1.0 / real_t(N - 1))
+                    {
+                        // The parameter of the sample point
+                        gsVector<real_t, 2> param =
+                            gsVector<real_t, 2>::vec(u, v);
+                        params.col(i) = param;
+                        // The point in the geometry on the fine model patch.
+                        gsVector<real_t, 2> point = fine_model.eval(param);
+
+                        // The closest parameters of the closest point
+                        // initialized in the middle, these are on the coarse
+                        // model patch.
+                        gsVector<real_t> closest_point =
+                            gsVector<real_t, 2>::vec(0.5, 0.5);
+                        // Get the actual parameters via Newton-Raphson.
+                        coarse_model.closestPointTo(point, closest_point, 1e-6,
+                                                    true);
+
+                        // The actual sampled point on the freeform control net.
+                        gsVector<real_t, D> val =
+                            coarse_face_data
+                                .patch()
+                                .eval(closest_point);
+
+                        // save them in the sample point
+                        samples.col(i) = val;
+
+                        ++i;
+                    }
+                }
+                // Finished sampling
+
+                // Prepare fitter
+                gsKnotVector<> kv1(0, 1, 0, N);
+                gsKnotVector<> kv2(0, 1, 0, N);
+                gsTensorBSplineBasis<2> basis(kv1, kv2);
+                gsFitting<> fitter(params, samples, basis);
+                fitter.compute(0.0);
+
+                // Fit a NxN Bezier patch to these samples
+                gsGeometry<>* result = fitter.result();
+                // // Extract control points
+                const gsMatrix<>& coeffs = result->coefs();
+
+                // Reshape the control points
+                gsMatrix<gsVector<real_t, D>, N, N> control_points;
+                control_points.resize(N, N);
+
+                // Fill it: coeffs stores points row-wise (lexicographic order)
+                for (size_t i = 0; i < N; ++i)
+                {
+                    for (size_t j = 0; j < N; ++j)
+                    {
+                        int idx = i * N + j; // Row-major indexing
+                        control_points(i, j) = coeffs.row(idx);
+                    }
+                }
+
+                auto data =
+                    &face_data_vec.vector()[children_faces_ordered[f].idx()];
+                data->face = children_faces_ordered[f];
+                data->control_points = control_points;
+            }
         }
-        // else //un-comment this once ev subdivision is done
+        else // un-comment this once ev subdivision is done
         {
             // === ORDINARY VERTICES ===
             // via deCasteljau

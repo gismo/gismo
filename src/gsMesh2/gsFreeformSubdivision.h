@@ -61,6 +61,11 @@ private: // Helper functions
     /// \param v The vertex to be analyzed.
     static bool is_ordinary(const gsSurfMesh& mesh, const Vertex& v);
 
+    static gismo::gsTensorBSpline<2, real_t> load_patch(int valence,
+                                             std::string subtype);
+
+
+
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity
     valid_mesh(const gsSurfMesh&) override;
