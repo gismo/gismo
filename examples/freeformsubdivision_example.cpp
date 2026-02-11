@@ -52,5 +52,10 @@ int main(int argc, char** argv)
         subdiv.subdivide(mesh);
         gsWriteParaview(subdiv.multipatch(mesh),
                         "results/subdiv" + std::to_string(i));
+        // gsWriteParaview(subdiv.multipatch(mesh),
+        //                 "results/subdiv" + std::to_string(i), 1000, false,
+        //                 true);
     }
+    // subdiv.smooth(mesh, 1);
+    // gsWriteParaview(subdiv.multipatch(mesh), "results/postsmooth");
 }

@@ -94,15 +94,13 @@ const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
     // Create a coefficient matrix out of the control points.
     // Technically, you could use just [i] and one loop here since the elements
     // of a matrix are layed out row-wise, but this might be clearer to read.
-    gsMatrix<> coeffs(N * N, 3);
+    gsMatrix<> coeffs(N * N, D);
     for (size_t i = 0; i < N; ++i)
     {
         for (size_t j = 0; j < N; ++j)
         {
             int total_index = i * N + j;
-            coeffs(total_index, 0) = control_points(i, j).x();
-            coeffs(total_index, 1) = D >= 2 ? control_points(i, j).y() : 0.0;
-            coeffs(total_index, 2) = D >= 3 ? control_points(i, j).z() : 0.0;
+            coeffs.row(total_index) = control_points(i,j);
         }
     }
 
@@ -232,6 +230,9 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
         // thanks to our preprocessing.
         if (!is_ordinary(mesh, fv))
         {
+            // === EXTRAORDINARY VERTICES ===
+            // via lots of fitting
+
             // determine the valence of the extraordinary vertex
             size_t valence(0);
             for ([[maybe_unused]] Halfedge f : mesh.halfedges(fv))
@@ -242,8 +243,8 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
             // load coarse matrix
             auto coarse_model = load_patch(valence, "coarse");
             // and remember the associated face data
-            auto coarse_face_data = face_data_vec
-                                            .vector()[parent_to_children_faces.first.idx()];
+            auto coarse_patch =
+                face_data_vec.vector()[parent_to_children_faces.first.idx()].patch();
 
             // find the new face that contains the top_left vertex
             Vertex first_vertex =
@@ -305,9 +306,7 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 
                         // The actual sampled point on the freeform control net.
                         gsVector<real_t, D> val =
-                            coarse_face_data
-                                .patch()
-                                .eval(closest_point);
+                            coarse_patch.eval(closest_point);
 
                         // save them in the sample point
                         samples.col(i) = val;
@@ -326,7 +325,7 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 
                 // Fit a NxN Bezier patch to these samples
                 gsGeometry<>* result = fitter.result();
-                // // Extract control points
+                // Extract control points
                 const gsMatrix<>& coeffs = result->coefs();
 
                 // Reshape the control points
@@ -338,18 +337,23 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                 {
                     for (size_t j = 0; j < N; ++j)
                     {
-                        int idx = i * N + j; // Row-major indexing
+                        int idx = i * N + j; 
+                        if(valence == 3 && (i == 0 || i == N-1) && (j == 0 || j== N-1)){
+                            gsInfo << i << ", " << j << ": " << coeffs.row(idx) << ".\n";
+                        }
                         control_points(i, j) = coeffs.row(idx);
                     }
                 }
 
+                // Now that we have the new control net, update the face data
+                // with the correct face and that net.
                 auto data =
                     &face_data_vec.vector()[children_faces_ordered[f].idx()];
                 data->face = children_faces_ordered[f];
                 data->control_points = control_points;
             }
         }
-        else // un-comment this once ev subdivision is done
+        else
         {
             // === ORDINARY VERTICES ===
             // via deCasteljau
