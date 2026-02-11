@@ -349,103 +349,115 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         // In the end, we will have four free points and all others should be
         // dependent.
         auto matrix = gsMatrix<real_t>(eqs, 4);
-        // The first four equations just say that the first four points are equal to themselves.
+        // The first four equations just say that the first four points are
+        // equal to themselves.
         matrix.row(0) << 1., 0., 0., 0.;
         matrix.row(1) << 0., 1., 0., 0.;
         matrix.row(2) << 0., 0., 1., 0.;
         matrix.row(3) << 0., 0., 0., 1.;
 
-        // if a second face is present, its points must be colinear with the first face
+        // if a second face is present, its points must be colinear with the
+        // first face
         if (control_points_faces.size() >= 2)
         {
             matrix.row(4) << -1., 2., 0., 0.;
             matrix.row(5) << 0., 0., -1., 2.;
         }
 
-        // if a third face is present, its points must be colinear with the second face, which are in turn expressed via the first face.
+        // if a third face is present, its points must be colinear with the
+        // second face, which are in turn expressed via the first face.
         if (control_points_faces.size() >= 3)
         {
             matrix.row(6) << 1., -2., -2., 4.;
             matrix.row(7) << 0., -1., 0., 2.;
         }
 
-        // if a fourth face is present, its points must be colinear with the first and third face.
+        // if a fourth face is present, its points must be colinear with the
+        // first and third face.
         if (control_points_faces.size() >= 4)
         {
             matrix.row(8) << -1., 0., 2., 0.;
         }
 
-        // Now do a least squares fit for each dimension.
-        // I.e. we are searching for the set of 9 points (or rather 4 points determining 9) that have the minimum distance to the original 9 points while fulfilling all equations (this latter part is achieved by only searching for 4 points).
-        for (size_t d = 0; d < D; ++d)
+        // Now do a least squares fit.
+        // I.e. we are searching for the set of 9 points (or rather 4 points
+        // determining 9) that have the minimum distance to the original 9
+        // points while fulfilling all equations (this latter part is achieved
+        // by only searching for 4 points).
+
+        // Set the target points as row vectors of a matrix.
+        // The number of rows depends on the faces present.
+        gsMatrix<real_t> target_matrix(eqs, D);
+        target_matrix.setZero();
+        target_matrix.row(0) = control_points_faces[0](1, 1)->transpose();
+        target_matrix.row(1) = control_points_faces[0](1, 0)->transpose();
+        target_matrix.row(2) = control_points_faces[0](0, 1)->transpose();
+        target_matrix.row(3) = control_points_faces[0](0, 0)->transpose();
+
+        if (control_points_faces.size() >= 2)
         {
-            gsVector<real_t> target(eqs);
-            // set the target points depending on the faces present 
-            target(0) = (*(control_points_faces[0](1, 1)))(d);
-            target(1) = (*(control_points_faces[0](1, 0)))(d);
-            target(2) = (*(control_points_faces[0](0, 1)))(d);
-            target(3) = (*(control_points_faces[0](0, 0)))(d);
-
-            if (control_points_faces.size() >= 2)
-            {
-                target(4) = (*(control_points_faces[1](1, 1)))(d);
-                target(5) = (*(control_points_faces[1](1, 0)))(d);
-            }
-
-            if (control_points_faces.size() >= 3)
-            {
-                target(6) = (*(control_points_faces[2](1, 1)))(d);
-                target(7) = (*(control_points_faces[2](1, 0)))(d);
-            }
-
-            if (control_points_faces.size() >= 4)
-            {
-                target(8) = (*(control_points_faces[3](1, 1)))(d);
-            }
-
-            // do the least squares fit
-            auto dec = matrix.colPivHouseholderQr();
-            auto solution = dec.solve(target);
-
-            // assign the solutions, again depending on faces present
-            (*(control_points_faces[0](1, 1)))(d) = solution(0);
-            (*(control_points_faces[0](1, 0)))(d) = solution(1);
-            (*(control_points_faces[0](0, 1)))(d) = solution(2);
-            (*(control_points_faces[0](0, 0)))(d) = solution(3);
-
-            if (control_points_faces.size() >= 2)
-            {
-                (*(control_points_faces[1](0, 0)))(d) = solution(3);
-                (*(control_points_faces[1](0, 1)))(d) = solution(1);
-                (*(control_points_faces[1](1, 0)))(d) =
-                    2. * solution(3) - solution(2);
-                (*(control_points_faces[1](1, 1)))(d) =
-                    2. * solution(1) - solution(0);
-            }
-
-            if (control_points_faces.size() >= 3)
-            {
-                (*(control_points_faces[2](0, 0)))(d) = solution(3);
-                (*(control_points_faces[2](0, 1)))(d) =
-                    2. * solution(3) - solution(2);
-                (*(control_points_faces[2](1, 0)))(d) =
-                    2. * solution(3) - solution(1);
-                (*(control_points_faces[2](1, 1)))(d) =
-                    4. * solution(3) - 2. * solution(2) - 2. * solution(1) +
-                    solution(0);
-            }
-
-            if (control_points_faces.size() >= 4)
-            {
-                (*(control_points_faces[3](0, 0)))(d) = solution(3);
-                (*(control_points_faces[3](0, 1)))(d) =
-                    2. * solution(3) - solution(1);
-                (*(control_points_faces[3](1, 0)))(d) = solution(2);
-                (*(control_points_faces[3](1, 1)))(d) =
-                    2. * solution(2) - solution(0);
-            }
+            target_matrix.row(4) = control_points_faces[1](1, 1)->transpose();
+            target_matrix.row(5) = control_points_faces[1](1, 0)->transpose();
         }
+
+        if (control_points_faces.size() >= 3)
+        {
+            target_matrix.row(6) = control_points_faces[2](1, 1)->transpose();
+            target_matrix.row(7) = control_points_faces[2](1, 0)->transpose();
+        }
+
+        if (control_points_faces.size() >= 4)
+        {
+            target_matrix.row(8) = control_points_faces[3](1, 1)->transpose();
+        }
+
+        gsInfo << target_matrix.rows() <<", " << target_matrix.cols() << "\n";
+
+        auto lsq = matrix.colPivHouseholderQr();
+        auto solution = lsq.solve(target_matrix);
+
+        gsInfo << solution.rows() <<", " << solution.cols() << "\n";
+
+        // assign the solutions, again depending on faces present
+        *(control_points_faces[0](1, 1)) = solution.row(0);
+        *(control_points_faces[0](1, 0)) = solution.row(1);
+        *(control_points_faces[0](0, 1)) = solution.row(2);
+        *(control_points_faces[0](0, 0)) = solution.row(3);
+
+        if (control_points_faces.size() >= 2)
+        {
+            *(control_points_faces[1](0, 0)) = solution.row(3);
+            *(control_points_faces[1](0, 1)) = solution.row(1);
+            *(control_points_faces[1](1, 0)) =
+                2. * solution.row(3) - solution.row(2);
+            *(control_points_faces[1](1, 1)) =
+                2. * solution.row(1) - solution.row(0);
+        }
+
+        if (control_points_faces.size() >= 3)
+        {
+            *(control_points_faces[2](0, 0)) = solution.row(3);
+            *(control_points_faces[2](0, 1)) =
+                2. * solution.row(3) - solution.row(2);
+            *(control_points_faces[2](1, 0)) =
+                2. * solution.row(3) - solution.row(1);
+            *(control_points_faces[2](1, 1)) =
+                4. * solution.row(3) - 2. * solution.row(2) - 2. * solution.row(1) +
+                solution.row(0);
+        }
+
+        if (control_points_faces.size() >= 4)
+        {
+            *(control_points_faces[3](0, 0)) = solution.row(3);
+            *(control_points_faces[3](0, 1)) =
+                2. * solution.row(3) - solution.row(1);
+            *(control_points_faces[3](1, 0)) = solution.row(2);
+            *(control_points_faces[3](1, 1)) =
+                2. * solution.row(2) - solution.row(0);
+        }
+        
     }
+    // End of edge correction
 
     // Now, correct the remaining part of each edge that isn't surrounding a
     // vertex.
@@ -491,116 +503,25 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
 
             // We now do a least squares fit, i.e. search for three points as
             // close as possible to the original three that are colinear. We do
-            // this separately for each coordinate.
-            for (size_t d = 0; d < D; ++d)
-            {
-                gsVector<real_t, 3> target_vector;
-                target_vector << (*i0)(d), (*m0)(d), (*i1)(d);
+            // this by putting the target vectors as row of a matrix, getting
+            // our solutions back as rows as well.
 
-                // do a least squares approximation
-                auto solution =
-                    matrix.colPivHouseholderQr().solve(target_vector);
+            gsMatrix<real_t> target_matrix(3, D);
+            target_matrix.setZero();
+            target_matrix.row(0) = i0->transpose();
+            target_matrix.row(1) = m0->transpose();
+            target_matrix.row(2) = i1->transpose();
 
-                (*i0)(d) = solution[0];
-                (*m0)(d) = solution[0] * 0.5 + solution[1] * 0.5;
-                (*m1)(d) = solution[0] * 0.5 + solution[1] * 0.5;
-                (*i1)(d) = solution[1];
-            }
+            auto lsq = matrix.colPivHouseholderQr();
+            auto solution = lsq.solve(target_matrix);
+
+            *i0 = solution.row(0);
+            *m0 = (solution.row(0) + solution.row(1)) * 0.5;
+            *m1 = (solution.row(0) + solution.row(1)) * 0.5;
+            *i1 = solution.row(1);
         }
     }
-
-    // Now correct each face.
-    // for (Face f : mesh.faces())
-    // {
-    //     auto* const face_data = &face_data_vec.vector()[f.idx()];
-
-    //     // === INNER ===
-    //     // stay the same
-
-    //     // === EDGES ===
-    //     // Iterator over all half edges adjacent to this one.
-    //     for (auto const& hedge : mesh.halfedges(f))
-    //     {
-    //         // Get the two half-edges
-    //         auto hedge1(hedge);
-    //         auto hedge2(mesh.opposite_halfedge(hedge));
-
-    //         // Check if the opposite edge is a boundary edge.
-    //         // If this is the case, the edge points of the control net don't
-    //         // need to be adjusted at all (just like inner points).
-    //         if (mesh.is_boundary(hedge2))
-    //             continue;
-
-    //         // Get the the faces for these half-edges.
-    //         auto face1(mesh.face(hedge1)); // this should be the current
-    //         face. auto face2(mesh.face(hedge2));
-
-    //         // Get the two N-2 sets of corresponding points.
-    //         auto points1(
-    //             face_data_vec.vector()[face1.idx()].edge_control_points(
-    //                 mesh, hedge1, 1));
-    //         auto points2(
-    //             face_data_vec.vector()[face2.idx()].edge_control_points(
-    //                 mesh, hedge2, 1));
-
-    //         auto points_to_be_set =
-    //             face_data->edge_control_points(mesh, hedge, 0);
-
-    //         // Calculate the average of each control point with its partner
-    //         on
-    //         // the other side and store it in the appropriate control point
-    //         in
-    //         // the result.
-    //         for (size_t i = 0; i < N - 2; ++i)
-    //         {
-    //             *points_to_be_set[i + 1] =
-    //                 *points1[i] * 0.5 + *points2[N - 3 - i] * 0.5;
-    //         }
-    //     }
-
-    //     // === CORNERS ===
-    //     // Iterate over all halfedges on this face.
-    //     for (auto const& v_hedge : mesh.halfedges(f))
-    //     {
-    //         // Get all the vertices of this face as the starting points of
-    //         such
-    //         // halfedges.
-    //         auto v = mesh.from_vertex(v_hedge);
-
-    //         // Prepare sum
-    //         gsVector<real_t, D> sum(gsVector<real_t, D>::Zero(D));
-    //         real_t count(0);
-
-    //         // Iterate over all halfedges leaving this vertex, one per face.
-    //         for (auto const& out_hedge : mesh.halfedges(v))
-    //         {
-    //             auto out_face = mesh.face(out_hedge);
-    //             // if this face is invalid, skip the entire sum
-    //             if (!mesh.is_valid(out_face))
-    //                 continue;
-    //             // For each of these other faces (represented by halfedges
-    //             // moving into v), sum over the closest inner control point.
-    //             To
-    //             // find this one, we take all control points along the
-    //             halfedge
-    //             // (with inset 1) and take the first, since this halfedge is
-    //             // outgoing with respect to v.
-    //             sum +=
-    //                 *face_data_vec.vector()[out_face.idx()].edge_control_points(
-    //                     mesh, out_hedge, 1)[0];
-    //             count += 1;
-    //         }
-    //         // Store this as the corner control point of the result.
-    //         // To find the correct control point, we take all control points
-    //         // along the halfedge and take the first, since the vertex in
-    //         // question is the from_vertex of the current halfedge.
-    //         // For now, only do this if the vertex is not on the boundary.
-    //         if (!mesh.is_boundary(v))
-    //             *face_data->edge_control_points(mesh, v_hedge, 0)[0] =
-    //                 sum / real_t(count);
-    //     }
-    //
-    // } // end for over faces
+    // End of vertex correction
 }
 
 template <size_t N, size_t D>
