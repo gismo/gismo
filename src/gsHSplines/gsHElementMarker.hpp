@@ -59,6 +59,7 @@ namespace gismo
         options.addInt("Admissibility","Admissibility region, 0=T-admissibility (default), 1=H-admissibility",0);
         options.addSwitch("Admissible","Mark the admissible region",true);
         options.addInt("Jump","Jump parameter m",2);
+        options.addSwitch("Extension", "Extend marked elements regions", true);
         // options.addInt("Verbose","Verbosity level",0);
         return options;
     }
@@ -126,7 +127,7 @@ namespace gismo
     template <short_t d, class T>
     std::vector<index_t> gsHElementMarker<d,T>::toRefBoxes(const HElementContainer & elements) const
     {
-        return m_helper.toRefBoxes(elements);
+        return m_helper.toRefBoxes(elements, m_options.askSwitch("Extension", true));
     }
 
     template <short_t d, class T>
@@ -256,7 +257,7 @@ namespace gismo
         HElementContainer result;
         T percentage = m_options.askReal("RefineParam",0.1);
         index_t numElements = m_elementErrors.size();
-        index_t numToMark = static_cast<index_t>(math::floor(percentage * numElements));
+        index_t numToMark = cast<T,index_t>(math::floor(percentage * numElements));
         index_t numMarked = 0;
         for (typename std::vector<std::pair<element_t, error_t>>::const_reverse_iterator it = m_elementErrors.rbegin(); it != m_elementErrors.rend(); ++it, ++numMarked)
         {
@@ -280,7 +281,7 @@ namespace gismo
         HElementContainer result;
         T percentage = m_options.askReal("CoarsenParam",0.1);
         index_t numElements = m_elementErrors.size();
-        index_t numToMark = static_cast<index_t>(math::floor(percentage * numElements));
+        index_t numToMark = cast<T,index_t>(math::floor(percentage * numElements));
         index_t numMarked = 0;
         for (typename std::vector<std::pair<element_t, error_t>>::const_iterator it = m_elementErrors.begin(); it != m_elementErrors.end(); ++it, ++numMarked)
         {

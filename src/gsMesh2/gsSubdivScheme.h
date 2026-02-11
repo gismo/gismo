@@ -30,16 +30,17 @@ namespace gismo
 /// class for subdivision schemes in polygonal meshes.
 class GISMO_EXPORT gsSubdivScheme
 {
-
-      // type definitions
-    typedef gsSurfMesh::Point Point;
-    typedef gsSurfMesh::Vertex Vertex;
-    typedef gsSurfMesh::Face Face;
-
+protected:
     gsSurfMesh* m_mesh;///<pointer to the input mesh
 
     gsOptionList m_options;
 
+public:
+
+    // type definitions
+    typedef gsSurfMesh::Point Point;
+    typedef gsSurfMesh::Vertex Vertex;
+    typedef gsSurfMesh::Face Face;
 
 public:
 

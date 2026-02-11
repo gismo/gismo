@@ -664,12 +664,12 @@ gsDofMapper gsMultiPatch<T>::getBoxMapper() const
     {
         // Grab corner points in matching configuration
         const index_t d1 = it->first() .direction();
-        const index_t d2 = it->second().direction();
-        const gsVector<bool>    & dirOr = it->dirOrientation();
-        const gsVector<index_t> & bMap  = it->dirMap();
+        //const index_t d2 = it->second().direction();
+        //const gsVector<bool>    & dirOr = it->dirOrientation();
+        //const gsVector<index_t> & bMap  = it->dirMap();
 
-        const index_t s1 = it->first() .side();
-        const index_t s2 = it->second().side();
+        //const index_t s1 = it->first() .side();
+        //const index_t s2 = it->second().side();
         // 1 -- 2 -- 3 -- 4
         // 0,2 -- 1,3 -- 0,1 -- 3,4
         bdr1.at(0) = 0;
@@ -1122,5 +1122,147 @@ void gsMultiPatch<T>::constructSides()
     }//end for
 }
 
+template<class T>
+std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() const
+{
+    GISMO_ENSURE( 2==domainDim(), "Anything other than bivariate splines is not yet supported!");
+
+    // Loop over all the elements of the given multipatch and collect all relevant
+    // information in ElementBlocks. These will be grouped in a std::map
+    // with respect to the number of active basis functions ( = NN/NCV )
+    // of each Bezier element
+    std::map<std::array<size_t, 4>, internal::ElementBlock> ElementBlocks;
+
+    gsMatrix<index_t> localActives, globalActives; // Active basis functions
+    gsDofMapper mapper = getMapper((T)1e-7);
+
+    gsMatrix<T> quPoints, values;
+    gsVector<T> quWeights;
+    gsVector<index_t> numNodes(2);
+    gsMatrix<T> Bd;
+    std::array<size_t, 4> key;
+    std::vector<gsKnotVector<T> >  kv(domainDim());
+
+    for (size_t p=0; p<nPatches(); ++p)
+    {
+        gsBasis<T> * basis = & patch(p).basis();
+        // index_t NN; // Number of control points of the Bezier element // @hverhelst this is not used anywhere
+
+        // Create the Bezier Basis
+        kv[0].initClamped(basis->degree(0));
+        kv[1].initClamped(basis->degree(1));
+        typename gsBasis<T>::uPtr bezBasis = gsBSplineBasis<T>::create(give(kv));
+
+        // Initialize the quadrature rule that will be used for fitting
+        // the given basis with the Bezier basis
+        numNodes << basis->degree(0)+1, basis->degree(1)+1 ;
+        typename gsNewtonCotesRule<T>::uPtr QuRule;
+        QuRule = gsNewtonCotesRule<T>::make(numNodes);
+
+        // Initialize an iterator over all the elements of the given basis
+        typename gsBasis<T>::domainIter domIt    = basis->domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = basis->domain()->endAll();
+
+        // Calculate the collocation matrix of the Bezier Basis
+        // It will be used to fit the Bez. Basis to the original basis' elements.
+        Bd = bezBasis->collocationMatrix(bezBasis->anchors());
+        auto solver = Bd.fullPivLu();
+
+        for (; domIt<domItEnd; ++domIt)
+        {
+            localActives = basis->active( domIt.centerPoint() );
+            globalActives.resizeLike(localActives);
+            // Map every local active basis function to the global numbering
+            for (index_t i=0; i<localActives.rows(); ++i)
+                globalActives.at(i) = mapper.index(localActives.at(i), p);
+
+            key[0]     = globalActives.rows();
+            key[1] = basis->degree(0);
+            key[2] = basis->degree(1);
+            key[3] = 0; // TODO: if implemented for trivariates fix this
+
+            ElementBlocks[key].numElements += 1;                  // Increment the Number of Elements contained in the ElementBlock
+            ElementBlocks[key].actives.push_back(globalActives);  // Append the active basis functions ( = the Node IDs ) for this element.
+            ElementBlocks[key].PR = basis->degree(0);
+            ElementBlocks[key].PS = basis->degree(1);
+            ElementBlocks[key].PT = 0;                            // TODO: if implemented for trivariates fix this
+
+            // Map the quadrature points to the current element.
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(), quPoints, quWeights);
+            basis->source().eval_into(quPoints, values); // Evaluate given basis at the mapped quadrature points
+            // Append the local Bezier Extraction matrix to the ElementBlock.coefVectors
+            ElementBlocks[key].coefVectors.push_back(solver.solve(values.transpose()).transpose());
+        }
+    }
+
+    return ElementBlocks;
+}
+
+
+template<class T>
+gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
+{
+    GISMO_ENSURE( 2==domainDim(), "Anything other than bivariate splines is not yet supported!");
+    std::map<std::array<size_t, 4>, internal::ElementBlock> ElementBlocks = BezierOperator();
+    gsMultiPatch<T> result;
+
+    // Get the map from patch-local to global indexing for the multi-patch
+    gsDofMapper mapper = this->getMapper((T)1e-4);
+
+    // Get global coefficients of the multi patch. (i.e. without duplicates on the interfaces)
+    gsMatrix<T> globalCoefs(mapper.size(), this->coefs().cols());
+    globalCoefs.setZero();
+    gsMatrix<T> globalWeights(mapper.size(), 1);
+    globalWeights.setOnes();
+
+    // Loop over all patches
+    for (size_t p = 0; p != this->nPatches(); p++)
+    {
+        for (index_t i=0; i != this->patch(p).coefs().rows(); ++i) // For every control point
+        {
+            globalCoefs.row(mapper.index(i,p)).leftCols(this->geoDim()) = this->patch(p).coefs().row(i);
+            if (this->basis(p).isRational())
+                globalWeights(mapper.index(i,p)) = this->basis(p).weights().at(i);
+        }
+    }
+
+    std::vector<gsKnotVector<T> >  kv(domainDim());
+    gsMatrix<> newCoefs, newWeights;
+    for (auto const& pair : ElementBlocks)
+    {
+        internal::ElementBlock ElBlock = pair.second;
+
+        kv[0] = gsKnotVector<T>(0,1,0,ElBlock.PR+1);
+        kv[1] = gsKnotVector<T>(0,1,0,ElBlock.PS+1);
+        // coefs.setZero( (ElBlock.PR+1)*(ElBlock.PS+1), controlPoints.cols()-1 );
+
+        // Loop over all elements of the Element Block
+        auto Ait = ElBlock.actives.begin();        // Actives Iterator
+        auto Cit = ElBlock.coefVectors.begin();    // Coefficients Iteratos
+
+        for(; Ait != ElBlock.actives.end() && Cit != ElBlock.coefVectors.end(); ++Ait, ++Cit)
+        {
+            // If the weights are not all equal (Rational)
+            if ( (globalWeights(Ait->asVector(),0).array() != globalWeights(Ait->asVector()(0),0)).any())
+            {
+                // As per Borden et al. 2010 "Isogeometric finite element data structures
+                // based on Bézier extraction of NURBS", eq (79);
+                newWeights = Cit->transpose() * globalWeights(Ait->asVector(),0);
+                newCoefs = Cit->transpose() * globalWeights(Ait->asVector(),0).asDiagonal() * globalCoefs(Ait->asVector(),gsEigen::all);
+                newCoefs = newCoefs.array().colwise() / newWeights.col(0).array();
+                result.addPatch( gsNurbsBasis<T>::create(kv,newWeights)->makeGeometry(give(newCoefs)) );
+            }
+            else // If all weights are equal (Polynomial)
+            {
+                result.addPatch( gsBSplineBasis<T>::create(kv)->makeGeometry(
+                       Cit->transpose() * globalCoefs(Ait->asVector(),gsEigen::all) ) );
+            }
+            // bezier extraction operator * original control points
+        }
+    }
+
+    // result.computeTopology();
+    return result;
+}
 
 } // namespace gismo

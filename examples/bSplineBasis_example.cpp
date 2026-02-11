@@ -29,72 +29,31 @@ int main(int argc, char* argv[])
     // different construction of a knot vector
     // ======================================================================
 
+    /*
+    std::vector<real_t> uu {-1, -1,  0,  0, 0,  1,  1, 1,  2,  2};
+    gsKnotVector<> kv2(uu,4);
+    gsDebugVar(kv2);
+    gsBSplineBasis<> b2(kv2);
+    gsMatrix<> trans;
+    trans.setIdentity(b2.size(), b2.size());
+    auto g2 = b2.makeGeometry(give(trans));
+    b2.uniformRefine(1,3);
+    auto g3 = b2.interpolateAtAnchors( g2->eval(b2.anchors()) );
+    gsDebugVar(g3->basis());
+    gsDebugVar(g3->coefs());
+    //gsDebugVar(g3->coefs().pruned(1e-9));
+    */
 
-    real_t a = 0; // starting knot
-    real_t b = 1; // ending knot
-    index_t interior = 4; // number of interior knots
-    index_t multEnd = 3; // multiplicity at the two end knots
-    bool paraview = false;
-
-    gsCmdLine cmd("This is a tutorial on the gsBSplineBasis class.");
-    cmd.addReal("","starting","Starting knot",a);
-    cmd.addReal("","ending","Ending knot",b);
-    cmd.addInt("n","interior","Number of interior knots",interior);
-    cmd.addInt("m","mult","Multiplicity at the two end knots",multEnd);
-    cmd.addSwitch("plot","Plot with paraview",paraview);
-    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-
-    gsInfo << "------------- Constructions -------------\n";
-
-    int degree = multEnd - 1;
-    gsKnotVector<> kv(a, b, interior, multEnd);
-
-    gsBSplineBasis<> bsb0(kv);
-    print(bsb0, "bsb0");
-
-    gsBSplineBasis<> bsb1(a, b, interior, degree);
-    print(bsb1, "bsb1");
-
-
-    // ======================================================================
-    // some properties
-    // ======================================================================
-
-
-    gsInfo << "------------- Some properties -------------\n\n";
-
-    gsInfo << "bsb0.size(): " << bsb0.size() << "\n\n"
-              << "bsb0.numElements(): " << bsb0.numElements() << "\n\n"
-              << "bsb0.degree(): " << bsb0.degree() << "\n\n";
-
-
-    // ======================================================================
-    // some operations
-    // ======================================================================
-
-    gsInfo << "------------- Some operations -------------\n\n";
-
-    const gsKnotVector<>& knots = bsb0.knots();
-    gsInfo << "Knots: \n";
-    knots.print(gsInfo);
-    gsInfo << "\n\n";
-
-    if (paraview)
-        printToParaview(bsb0, "basis");
-
-    gsInfo << "bsb0.uniformRefine()\n";
-    bsb0.uniformRefine();
-    if (paraview)
-        printToParaview(bsb0, "basisRefined");
-
-    gsInfo << "bsb0.degreeElevate()\n";
-    bsb0.degreeElevate();
-    if (paraview)
-        printToParaview(bsb0, "basisElevated");
-    else
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "files containing the solution.\n";
-
+        gsKnotVector<> kv(0,1,0,1,1,2);
+    gsTensorBSplineBasis<2> b(kv,kv);
+    gsDebugVar(b);
+    gsMatrix<real_t> trans;
+    trans.setIdentity(b.size(), b.size());
+    auto g = b.makeGeometry(give(trans));
+    g->degreeElevate(2);
+    gsDebugVar(g->basis());
+    gsDebugVar(g->coefs().pruned(1e-9));
+    
     return 0;
 }
 

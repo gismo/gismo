@@ -136,6 +136,7 @@ namespace gismo
             } else if (std::is_same<T, unsigned long long int>::value) {
                 return std::string("UInt64");
             }
+            else { GISMO_ERROR("vtk typename error"); }
         }();
 
 
@@ -203,7 +204,7 @@ namespace gismo
         << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n"
         << "<UnstructuredGrid>\n";
 
-        const gsMultiPatch<T> bezierExt = mPatch.extractBezier();
+        const gsMultiPatch<T> bezierExt ;//= mPatch.extractBezier();
         index_t totalPoints = bezierExt.coefsSize();
 
         // Set up matrices with cell data
