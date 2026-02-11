@@ -40,6 +40,49 @@ class gsTensorDomainBoundaryIterator : public gsDomainIterator<T>
     using typename  gsDomainIterator<T>::Ptr;
 public:
 
+    gsTensorDomainBoundaryIterator(const std::vector<std::vector<T>> & breaks,
+                                            const boxSide & s)
+    : 
+    gsDomainIterator<T>(0, s),
+      d( breaks.size() )
+    {
+        par = s.parameter();
+        dir = s.direction();
+        meshStart.resize(d);
+        meshEnd.resize(d);
+        curElement.resize(d);
+
+        for (int i=0; i < dir; ++i)
+        {
+            meshEnd[i]    = give(gsBreaksIterator<T>::make(breaks[i], true));
+            meshStart[i]  = give(gsBreaksIterator<T>::make(breaks[i], true));
+            curElement[i] = give(gsBreaksIterator<T>::make(breaks[i], true));
+        }
+
+        // Fixed direction
+        if (par)
+        {
+            meshEnd[dir]    = give(gsBreaksIterator<T>::make(breaks[dir], true));
+            curElement[dir] = give(gsBreaksIterator<T>::make(breaks[dir], true));
+            curElement[dir]-=1;
+            meshStart[dir]  = give(gsBreaksIterator<T>::make(breaks[dir], true));
+            meshStart[dir] -=1; //note: ending value
+        }
+        else
+        {
+            meshEnd[dir]    = give(gsBreaksIterator<T>::make(breaks[dir], false));
+            curElement[dir] = give(gsBreaksIterator<T>::make(breaks[dir], false));
+            meshStart[dir]  = give(gsBreaksIterator<T>::make(breaks[dir], false));
+        }
+
+        for (int i=dir+1; i < d; ++i)
+        {
+            meshEnd[i]    = give(gsBreaksIterator<T>::make(breaks[i], true));
+            meshStart[i]  = give(gsBreaksIterator<T>::make(breaks[i], true));
+            curElement[i] = give(gsBreaksIterator<T>::make(breaks[i], true));
+        }
+    }
+
     explicit gsTensorDomainBoundaryIterator(const gsTensorDomain<T,D> & domain,
                                             const boxSide & s)
     : gsDomainIterator<T>(0, s),
@@ -166,18 +209,6 @@ public:
         //     other_.breaks[a2].begin(), other_.breaks[a2].end(),
         //     orient[0] ? *curElement[a1] : *(curElement[a1]+1) );
         // other_.update();
-    }
-
-    /// Function to set the breakpoints in direction \a i manually
-    void setBreaks(const std::vector<T> & newBreaks, index_t i) // i: direction
-    {
-        GISMO_ASSERT(i!=dir, "Changing non-boundary breakpoints is not supported.");
-        meshStart[i] = give(gsBreaksIterator<T>::make(newBreaks, true));
-        curElement[i] = give(gsBreaksIterator<T>::make(newBreaks, true));
-        meshEnd[i]   = give(gsBreaksIterator<T>::make(newBreaks, false));
-
-        // Note: reset() has a bug, therefore we do not call it at all
-        //reset();
     }
 
 
