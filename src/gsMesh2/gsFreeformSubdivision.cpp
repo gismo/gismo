@@ -170,8 +170,10 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
         // remember the first vertex
         first_vertices.emplace_back(mesh.to_vertex(mesh.halfedge(f)));
 
-        // put an invalid vertex
+        // reserve a spot for possible EVs by placing an invalid vertex that
+        // will also serve as a marker for faces without EVs.
         extraordinary_vertices.emplace_back(-1);
+
         // check if there is an EV
         for (const Vertex& v : mesh.vertices(f))
         {
@@ -313,14 +315,22 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
     // First, correct each vertex
     for (const Vertex& v : mesh.vertices())
     {
-        // ignore EVs and (for now) boundary vertices
+        // ignore EVs
         if (!is_ordinary(mesh, v))
             continue;
 
-        // first, collect all the control points we are considering
+        // first, collect all the control points in a square of side length 1
+        // around this vertex. Note that each control point on a boundary is
+        // represented up to twice, the one in the center even up to four times.
+        // In the end we get up to 9 distinct points
+        // Points are arranged like this:
+        // 0 1 4
+        // 2 3 5
+        // 8 7 6
         std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
         for (Halfedge h : mesh.halfedges(v))
         {
+            // we do skip non-existent faces
             if (mesh.is_boundary(h))
                 continue;
             control_points_faces.emplace_back(
@@ -333,33 +343,44 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         size_t eqs(2 + 2 * control_points_faces.size() +
                    (control_points_faces.size() == 4 ? -1 : 0));
 
-        // create a matrix
+        // create a matrix that represents the C1 equations, i.e. each point on
+        // a boundary is colinear with the ones on either side. This results in
+        // multiple equations for the center point.
+        // In the end, we will have four free points and all others should be
+        // dependent.
         auto matrix = gsMatrix<real_t>(eqs, 4);
+        // The first four equations just say that the first four points are equal to themselves.
         matrix.row(0) << 1., 0., 0., 0.;
         matrix.row(1) << 0., 1., 0., 0.;
         matrix.row(2) << 0., 0., 1., 0.;
         matrix.row(3) << 0., 0., 0., 1.;
 
+        // if a second face is present, its points must be colinear with the first face
         if (control_points_faces.size() >= 2)
         {
             matrix.row(4) << -1., 2., 0., 0.;
             matrix.row(5) << 0., 0., -1., 2.;
         }
 
+        // if a third face is present, its points must be colinear with the second face, which are in turn expressed via the first face.
         if (control_points_faces.size() >= 3)
         {
             matrix.row(6) << 1., -2., -2., 4.;
             matrix.row(7) << 0., -1., 0., 2.;
         }
 
+        // if a fourth face is present, its points must be colinear with the first and third face.
         if (control_points_faces.size() >= 4)
         {
             matrix.row(8) << -1., 0., 2., 0.;
         }
 
+        // Now do a least squares fit for each dimension.
+        // I.e. we are searching for the set of 9 points (or rather 4 points determining 9) that have the minimum distance to the original 9 points while fulfilling all equations (this latter part is achieved by only searching for 4 points).
         for (size_t d = 0; d < D; ++d)
         {
             gsVector<real_t> target(eqs);
+            // set the target points depending on the faces present 
             target(0) = (*(control_points_faces[0](1, 1)))(d);
             target(1) = (*(control_points_faces[0](1, 0)))(d);
             target(2) = (*(control_points_faces[0](0, 1)))(d);
@@ -382,10 +403,11 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
                 target(8) = (*(control_points_faces[3](1, 1)))(d);
             }
 
+            // do the least squares fit
             auto dec = matrix.colPivHouseholderQr();
             auto solution = dec.solve(target);
 
-            // assign the solutions
+            // assign the solutions, again depending on faces present
             (*(control_points_faces[0](1, 1)))(d) = solution(0);
             (*(control_points_faces[0](1, 0)))(d) = solution(1);
             (*(control_points_faces[0](0, 1)))(d) = solution(2);
@@ -451,7 +473,8 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         // correct all points but the first and last two
         for (size_t i = 2; i < N - 2; ++i)
         {
-            // get the points we are currently looking at
+            // we get a triple of points across boundary. The cetner point is of
+            // course represented in both meshes.
             gsVector<real_t, D>* i0 = cp0(1, i);
             gsVector<real_t, D>* m0 = cp0(0, i);
             gsVector<real_t, D>* m1 = cp1(0, N - 1 - i);
@@ -463,15 +486,18 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
                           "corrupted.\n";
 
             // generate the matrix that describes the C1 equation for these
-            // points
+            // points, i.e. the center point is colinear with the outer two
             auto matrix = gsMatrix<real_t, 3, 2>({1., 0.5, 0., 0., 0.5, 1.});
 
-            // do a least squares for all dimensions
+            // We now do a least squares fit, i.e. search for three points as
+            // close as possible to the original three that are colinear. We do
+            // this separately for each coordinate.
             for (size_t d = 0; d < D; ++d)
             {
                 gsVector<real_t, 3> target_vector;
                 target_vector << (*i0)(d), (*m0)(d), (*i1)(d);
 
+                // do a least squares approximation
                 auto solution =
                     matrix.colPivHouseholderQr().solve(target_vector);
 

@@ -54,31 +54,3 @@ int main(int argc, char** argv)
                         "results/subdiv" + std::to_string(i));
     }
 }
-
-void minimal_bug_example()
-{
-    gsSurfMesh mesh = gsSurfMesh();
-
-    auto _readFile = gsReadFile<>(std::string("off/octtorus.off"), mesh);
-
-    for (gsSurfMesh::Face f : mesh.faces())
-    {
-
-        bool has_ev1 =
-            std::any_of(mesh.vertices(f).begin(), mesh.vertices(f).end(),
-                        [](gsSurfMesh::Vertex v) { return v.idx() == 0; });
-
-        bool has_ev2(false);
-        for (gsSurfMesh::Vertex v : mesh.vertices(f))
-        {
-            has_ev2 = has_ev2 || v.idx() == 0; // !is_ordinary(mesh, v);
-        }
-
-        if (has_ev1 != has_ev2)
-        {
-            gsInfo << "Discrepancy!\n";
-            gsInfo << "First vertex: " << *mesh.vertices(f).begin() << "\n";
-            gsInfo << "Last vertex: " << *mesh.vertices(f).end() << "\n";
-        }
-    }
-}
