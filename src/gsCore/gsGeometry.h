@@ -585,8 +585,37 @@ public:
     /// \a par in direction \a dim_fixed as an gsGeometrySlice object.
     gsGeometrySlice<T> getIsoParametricSlice(index_t dir_fixed, T par) const;
 
-    /// Returns the parameters of closest point to \a pt as an argument, and the
-    /// Euclidean distance as a return value
+    /// \brief Finds the point on the geometry closest to a given point in physical space.
+    ///
+    /// This method solves the inverse problem: given a point in physical space,
+    /// it finds the parameter values that correspond to the closest point on the geometry.
+    /// The closest point is found by minimizing the Euclidean distance using a
+    /// Newton-Raphson iterative method.
+    ///
+    /// \param[in] pt The target point in physical space (dimension must match the geometry's target dimension)
+    /// \param[out] result The parameter values of the closest point on the geometry.
+    ///                   The dimension of \a result must match the parameter domain dimension.
+    ///                   If \a useInitialPoint is true, this should be initialized with a starting guess.
+    /// \param[in] accuracy The desired tolerance for convergence of the Newton-Raphson iteration.
+    ///                    The iteration stops when the relative change in parameters is below this value.
+    ///                    Default: 1e-6
+    /// \param[in] useInitialPoint If true, uses the values in \a result as the starting point for
+    ///                           the Newton-Raphson iteration. If false, starts from the center
+    ///                           of the parameter domain. Default: false
+    /// \return The Euclidean distance between \a pt and the closest point on the geometry.
+    ///
+    /// \note The Newton-Raphson method may converge to a local minimum rather than the global minimum.
+    ///       For better results, consider using \a useInitialPoint with a good initial guess.
+    /// \note The computation requires evaluation of the geometry and its derivatives.
+    ///
+    /// \example
+    /// \code
+    /// gsVector<real_t, 2> targetPoint(0.5, 0.7);
+    /// gsVector<real_t, 2> params;
+    /// real_t distance = geometry.closestPointTo(targetPoint, params);
+    /// gsInfo << "Closest point at parameters: " << params.transpose() << "\n";
+    /// gsInfo << "Distance: " << distance << "\n";
+    /// \endcode
     T closestPointTo(const gsVector<T> & pt,
                         gsVector<T> & result,
                         const T accuracy = 1e-6,
