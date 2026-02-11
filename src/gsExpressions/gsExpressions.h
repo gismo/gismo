@@ -30,7 +30,8 @@ template<class T> class gsExprHelper;
 */
 namespace expr
 {
-template <typename E, bool = util::is_arithmetic<E>::value >
+//template <typename E, bool = util::is_arithmetic<E>::value >
+template <typename E, bool = util::is_same<E,real_t>::value  >
 class _expr {using E::GISMO_ERROR_expr;};
 
 template<class E> class symbol_expr;
