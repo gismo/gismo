@@ -47,7 +47,82 @@ gsLinearOperator<>::Ptr fastDiagnonalization(const gsSparseMatrix<>& A1, const g
 
 }
 
+template<typename S>
+gsLinearOperator<>::Ptr mkFdpfPreconder(
+    const gsSparseMatrix<>& time_stiff, const gsSparseMatrix<>& space_stiff,
+    const gsSparseMatrix<>& time_mass, const gsSparseMatrix<>& space_mass, const S& makeSolver)
+{
+    GISMO_ASSERT(time_mass.rows() == time_mass.cols() && time_mass.rows() == time_stiff.rows() && time_stiff.rows() == time_stiff.cols(), "");
+    GISMO_ASSERT(space_stiff.rows() == space_stiff.cols() && space_stiff.rows() == space_mass.rows() && space_mass.rows() == space_mass.cols(), "");
+
+    typedef gsMatrix<>::GenSelfAdjEigenSolver EVSolver;
+    EVSolver ges;
+    ges.compute(time_stiff, time_mass, gsEigen::ComputeEigenvectors);
+    gsSparseMatrix<> D1(time_mass.rows(), time_mass.rows()), D2(time_mass.rows(), time_mass.rows());
+    GISMO_ASSERT (ges.eigenvalues().rows() == time_mass.rows() && ges.eigenvalues().cols() == 1, "");
+    GISMO_ASSERT (ges.eigenvectors().rows() == time_mass.rows() && ges.eigenvectors().cols() == time_mass.rows(), "");
+    for (index_t i=0; i<time_mass.rows(); ++i)
+    {
+        D1(i,i) = 1;
+        D2(i,i) = sqrt(ges.eigenvalues()(i,0));
+    }
+    gsSparseMatrix<> system = D1.kron(space_stiff)+D2.kron(space_mass); //TODO: is this orderd such that a direct solver would do this efficiently?
+    gsLinearOperator<>::Ptr systemSolver = makeSolver(system);
+    gsMatrix<> eigs = ges.eigenvectors();
+    gsMatrix<> eigsT = ges.eigenvectors().transpose();
+
+    gsSparseMatrix<> multiplierMatrix = D1.kron(space_stiff);
+    gsLinearOperator<>::Ptr multiplier = makeMatrixOp(multiplierMatrix.moveToPtr());
+
+    gsLinearOperator<>::Ptr transform  = gsKroneckerOp<>::make( makeMatrixOp(eigs.moveToPtr()), gsIdentityOp<>::make(space_stiff.rows()) );
+    gsLinearOperator<>::Ptr transformT = gsKroneckerOp<>::make( makeMatrixOp(eigsT.moveToPtr()), gsIdentityOp<>::make(space_stiff.rows()) );
+    gsProductOp<>::Ptr result = gsProductOp<>::make();
+    result->addOperator(transformT);
+    result->addOperator(systemSolver);
+    result->addOperator(multiplier);
+    result->addOperator(systemSolver);
+    result->addOperator(transform);
+    return result;
+}
+
+
+
 gsLinearOperator<>::Ptr mkSparseLUSolver(const gsSparseMatrix<>& m) { return makeSparseLUSolver(m); }
+
+
+struct mkMultiGridSolver {
+    const gsMultiBasis<>& mb_space;
+    const gsBoundaryConditions<>& bc_space;
+    const index_t nTimeDofs;
+    const gsOptionList& opt;
+    gsLinearOperator<>::Ptr operator()( const gsSparseMatrix<>& m ) const
+    {
+        gsInfo << "Setup multigrid solver... " << std::flush;
+        gsOptionList cmd;
+        cmd.addInt( "InterfaceStrategy", "", iFace::conforming      );
+        cmd.addInt( "DirichletStrategy", "", dirichlet::elimination );
+        gsGridHierarchy<> gh = gsGridHierarchy<>::buildByCoarsening(mb_space, bc_space, cmd, 10000, 10);
+        const index_t lv = gh.getTransferMatrices().size()+1;
+
+        std::vector<gsSparseMatrix<real_t,RowMajor>> transferMatrices;
+        transferMatrices.reserve(lv-1);
+        gsSparseMatrix<> id(nTimeDofs,nTimeDofs);
+        id.setIdentity();
+        // consider using gsKroneckerOp<>
+        for (index_t i=0; i<lv-1; ++i)
+            transferMatrices.push_back( id.kron(gh.getTransferMatrices()[i]) );
+
+        gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( m, transferMatrices );
+        mg->setOptions(opt);
+
+        for (index_t i = 1; i < mg->numLevels(); ++i)
+            mg->setSmoother(i, makeGaussSeidelOp(mg->matrix(i)));
+
+        gsInfo << "done (" << lv << " grid levels).\n";
+
+        return mg;
+    }
+};
 
 
 int main(int argc, char *argv[])
@@ -68,6 +143,8 @@ int main(int argc, char *argv[])
     index_t cycles = 1;
     index_t exactPreconder = 1;
     index_t fdPreconder = 1;
+    index_t fdpfPreconder = 1;
+    index_t fdmgPreconder = 1;
     index_t mgPreconder = 0;
     std::string out;
     bool plot = false;
@@ -87,6 +164,8 @@ int main(int argc, char *argv[])
     cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
     cmd.addInt   ("",  "ExactPreconder",        "Use that scheme", exactPreconder);
     cmd.addInt   ("",  "FdPreconder",           "Use that scheme", fdPreconder);
+    cmd.addInt   ("",  "FdPfPreconder",         "Use that scheme", fdpfPreconder);
+    cmd.addInt   ("",  "FdMgPreconder",         "Use that scheme", fdmgPreconder);
     cmd.addInt   ("",  "MgPreconder",           "Use that scheme", mgPreconder);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
@@ -420,7 +499,7 @@ int main(int argc, char *argv[])
 
     index_t iter2;
     real_t cond2;
-    gsInfo << "Setup of FD preconder... " << std::flush;
+    gsInfo << "Setup of FD preconder... " << std::flush; // FD in time, not in space
     if (fdPreconder)
     {
         const index_t primalDim = space_stiff.rows();
@@ -500,6 +579,110 @@ int main(int argc, char *argv[])
     {
         gsInfo << "skip.\n";
     }
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FD+PF preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    index_t iter3;
+    real_t cond3;
+    gsInfo << "Setup of FD+PF preconder... " << std::flush; // FD in time, Pearson factorzation in space
+    if (fdpfPreconder)
+    {
+        gsLinearOperator<>::Ptr preconder = mkFdpfPreconder(time_stiff1, space_stiff, time_mass1, space_mass, mkSparseLUSolver);
+
+        //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter3 = errorHistory.rows()-1;
+        const bool success = errorHistory(iter3,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter3 << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter3 << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond3 = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond3 << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FD+MG preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    index_t iter4;
+    real_t cond4;
+    gsInfo << "Setup of FD+MG preconder... " << std::flush; // FD in time, mg (using Pearson factorzation) in space
+    if (fdmgPreconder)
+    {
+        const index_t primalDimTime = time_stiff1.rows();
+
+        // Todo: make multigrid configurable
+
+        gsLinearOperator<>::Ptr preconder = mkFdpfPreconder(time_stiff1, space_stiff, time_mass1, space_mass, mkMultiGridSolver{mb,bc,primalDimTime,cmd} );
+
+        //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter4 = errorHistory.rows()-1;
+        const bool success = errorHistory(iter4,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter4 << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter4 << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond4 = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond4 << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+
+
 
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
