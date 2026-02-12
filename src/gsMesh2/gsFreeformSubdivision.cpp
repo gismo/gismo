@@ -305,7 +305,8 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                         gsVector<real_t> closest_point =
                             gsVector<real_t>::vec(0.5, 0.5);
                         // Get the actual parameters via Newton-Raphson.
-                        coarse_model.closestPointTo(point, closest_point, 1e-3,
+                        // Note that internally, the tolerance is actually squared, so this is actually a tolerance of 1e-4.
+                        coarse_model.closestPointTo(point, closest_point, 1e-2,
                                                     true);
 
                         // The actual sampled point on the freeform control net.
