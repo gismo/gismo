@@ -215,8 +215,6 @@ int main(int argc, char *argv[])
     index_t refinementsT = 2;
     index_t degree = 1;
     real_t kappa = 1.;
-    real_t h0 = 1.;
-    real_t tau0 = 1.;
     real_t sigma = 1.;
     index_t maxIterations = 100;
     real_t tolerance = 1.e-6;
@@ -228,7 +226,6 @@ int main(int argc, char *argv[])
     index_t fdpfPreconder = 1;
     index_t fdmgPreconder = 1;
     index_t mlluPreconder = 1;
-    index_t mgPreconder = 0;
     std::string out;
     bool plot = false;
 
@@ -238,8 +235,6 @@ int main(int argc, char *argv[])
     cmd.addInt   ("s", "RefinementsT",          "Number of uniform tau-refinement steps to perform before solving", refinementsT);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addReal  ("k", "Kappa",                 "Diffusion parameter", kappa);
-    cmd.addReal  ("",  "HNull",                 "h0 for multilevel", h0);
-    cmd.addReal  ("",  "TauNull",               "tau0 for multilevel", tau0);
     cmd.addReal  ("",  "Sigma",                 "Sigma for time-multilevel", sigma);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
@@ -251,7 +246,6 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "FdPfPreconder",         "Use that scheme", fdpfPreconder);
     cmd.addInt   ("",  "FdMgPreconder",         "Use that scheme", fdmgPreconder);
     cmd.addInt   ("",  "MlLuPreconder",         "Use that scheme", mlluPreconder);
-    cmd.addInt   ("",  "MgPreconder",           "Use that scheme", mgPreconder);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -817,148 +811,6 @@ int main(int argc, char *argv[])
         gsInfo << "skip.\n";
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  Multigrid preconder
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    gsInfo << "Setup of multigrid preconder... " << std::flush;
-    if (mgPreconder)
-    {
-
-        std::vector<gsSparseMatrix<real_t, RowMajor>> embeddingSpace;
-        std::vector<gsSparseMatrix<>> massesSpace;
-        {
-            gsGridHierarchy<> ghSpace = gsGridHierarchy<>::buildByCoarsening(mb, bc, cmd);
-            index_t szGhSpace = ghSpace.getTransferMatrices().size();
-
-            embeddingSpace.reserve(szGhSpace+1);
-            massesSpace.reserve(szGhSpace+1);
-
-            gsSparseMatrix<real_t, RowMajor> id(space_mass.rows(), space_mass.cols());
-            id.setIdentity();
-            embeddingSpace.push_back(id);
-            massesSpace.push_back(space_mass);
-
-            for (index_t i=0; i<szGhSpace; ++i)
-            {
-                gsSparseMatrix<real_t, RowMajor> e = ghSpace.getTransferMatrices()[szGhSpace-1-i];
-                if (e.cols() < 2) break;
-                id = id * e;
-                embeddingSpace.push_back(id);
-                massesSpace.push_back(id.transpose()*space_mass*id);
-            }
-        }
-
-        std::vector<gsSparseMatrix<real_t, RowMajor>> embeddingTime;
-        std::vector<gsSparseMatrix<>> massesTime;
-        {
-            gsGridHierarchy<> ghTime  = gsGridHierarchy<>::buildByCoarsening(tb1, ic, cmd);
-            index_t szGhTime = ghTime.getTransferMatrices().size();
-
-            embeddingTime.reserve(szGhTime+1);
-            massesTime.reserve(szGhTime+1);
-
-            gsSparseMatrix<real_t, RowMajor> id(time_mass1.rows(), time_mass1.cols());
-            id.setIdentity();
-            embeddingTime.push_back(id);
-            massesTime.push_back(time_mass1);
-
-            for (index_t i=0; i<szGhTime; ++i)
-            {
-                gsSparseMatrix<real_t, RowMajor> e = ghTime.getTransferMatrices()[szGhTime-1-i];
-                // incorporate initial condition
-                const index_t rr = e.rows(), cc = e.cols();
-                if (cc < 3) break;
-                id = id * e.block(1,1,rr-1,cc-1);
-                embeddingTime.push_back(id);
-                massesTime.push_back(id.transpose()*time_mass1*id);
-            }
-        }
-
-        {
-            gsInfo << "Space embedding matrices:";
-            for (size_t i=0; i<embeddingSpace.size(); ++i)
-                gsInfo << " " << embeddingSpace[i].rows() << "x" << embeddingSpace[i].cols();
-            gsInfo << "\n";
-            gsInfo << "Space mass matrices:";
-            for (size_t i=0; i<massesSpace.size(); ++i)
-                gsInfo << " " << massesSpace[i].rows() << "x" << massesSpace[i].cols();
-            gsInfo << "\n";
-            gsInfo << "Time embedding matrices:";
-            for (size_t i=0; i<embeddingTime.size(); ++i)
-                gsInfo << " " << embeddingTime[i].rows() << "x" << embeddingTime[i].cols();
-            gsInfo << "\n";
-            gsInfo << "Time mass matrices:";
-            for (size_t i=0; i<massesTime.size(); ++i)
-                gsInfo << " " << massesTime[i].rows() << "x" << massesTime[i].cols();
-            gsInfo << "\n";
-        }
-
-        gsMatrix<> scaling(embeddingSpace.size()+1,embeddingTime.size()+1);
-        scaling.setZero();
-        for (size_t i=0; i<embeddingSpace.size(); ++i)
-        {
-            const real_t h = h0 * pow(0.5, embeddingSpace.size()-i);
-            for (size_t j=0; j<embeddingTime.size(); ++j)
-            {
-                const real_t tau = tau0 * pow(0.5, embeddingTime.size()-j);
-                scaling(i+1,j+1) = 1./( 1./(h*h) + h*h/(tau*tau) );
-                gsInfo << "i=" << i << "; j=" << j << "; h=" << h << "; tau=" << tau << "; scaling=" << scaling(i,j) << "\n";
-            }
-        }
-
-        gsInfo << "Actual scaling: ";
-        gsAdditiveOp<>::Ptr mlPreconder = gsAdditiveOp<>::make();
-        for (size_t i=0; i<embeddingSpace.size(); ++i)
-            for (size_t j=0; j<embeddingTime.size(); ++j)
-            {
-                gsSparseMatrix<real_t,RowMajor> transfer = embeddingTime[j].kron(embeddingSpace[i]);
-                gsLinearOperator<>::Ptr op = gsKroneckerOp<>::make( makeSparseCholeskySolver(massesTime[j]), makeSparseCholeskySolver(massesSpace[i]) );
-
-                real_t sc = scaling(i+1,j+1) - scaling(i,j+1) - scaling(i+1,j) + scaling(i,j);
-                gsInfo << sc << " ";
-
-                op = gsScaledOp<>::make(give(op), sc);
-                mlPreconder->addOperator(give(transfer), give(op));
-            }
-        gsInfo << "\n";
-
-        gsInfo << "Setup cg solver and solve... " << std::flush;
-        {
-            gsMatrix<> x;
-            x.setRandom( leastSquares->rows(), 1 );
-            gsMatrix<> rhs;
-            rhs.setRandom( leastSquares->rows(), 1 ); // TODO
-            gsMatrix<> errorHistory;
-            gsConjugateGradient<> solver( leastSquares, mlPreconder );
-            solver.setCalcEigenvalues(true);
-            solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
-
-            gsInfo << "done.\n\n";
-
-            iter1 = errorHistory.rows()-1;
-            const bool success = errorHistory(iter1,0) < tolerance;
-            if (success)
-                gsInfo << "Reached desired tolerance after " << iter1 << " iterations:\n";
-            else
-                gsInfo << "Did not reach desired tolerance after " << iter1 << " iterations:\n";
-
-            if (errorHistory.rows() < 20)
-                gsInfo << errorHistory.transpose() << "\n\n";
-            else
-                gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
-
-            cond1 = solver.getConditionNumber();
-            gsInfo << "Estimated condition number: " << cond1 << "\n";
-        }
-    }
-    else
-    {
-        gsInfo << "skip.\n";
-    }
-
-    gsInfo << "fin.\n";
 
     return 0;
 
