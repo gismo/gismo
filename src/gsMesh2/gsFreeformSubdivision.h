@@ -178,8 +178,8 @@ public: // Control point accessors
     /// Returns a matrix with pointers to all vectors in the control net.
     /// The matrix is oriented in such a way that the control point with indices
     /// `(0,0)` is right at the from-vertex of the given halfedge and the first
-    /// row `(0,0)` to `(N-1,0)` follows in the direction of that halfedge,
-    /// ending at its to-vertex with indices `(N-1,0)`.
+    /// row `(0,0)` to `(0, N-1)` follows in the direction of that halfedge,
+    /// ending at its to-vertex with indices `(0, N-1)`.
     ///
     /// \param mesh The mesh this control net lives in.
     /// \param hedge The halfedge we orient this net on.

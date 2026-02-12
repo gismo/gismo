@@ -42,15 +42,17 @@ int main(int argc, char** argv)
     subdiv.initialize_data(mesh);
     gsWriteParaview(subdiv.multipatch(mesh), "results/initial_data");
 
-
     if (!no_smooth)
     {
         subdiv.smooth(mesh, 1);
         gsWriteParaview(subdiv.multipatch(mesh), "results/c1");
     }
+
     for (index_t i = 0; i < steps; ++i)
     {
         subdiv.subdivide(mesh);
+        subdiv.smooth(mesh, 1);
+
         gsWriteParaview(subdiv.multipatch(mesh),
                         "results/subdiv" + std::string(i, 'a'));
     }

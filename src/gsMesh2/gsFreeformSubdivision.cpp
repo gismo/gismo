@@ -180,6 +180,10 @@ gsFreeformSubdivision<N, D>::load_patch(int valence, std::string subtype)
 template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 {
+    // Get face data
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+
     // As a pre-step, we make sure that for each face, if it has an
     // extraordinary vertex, that vertex is the top left one
     for (Face f : mesh.faces())
@@ -197,7 +201,11 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
         {
             while (is_ordinary(mesh, mesh.to_vertex(mesh.halfedge(f))))
             {
+                // rotate the edge
                 mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
+                // also rotate the control points
+                gsMatrix<gsVector<real_t,D>, Dynamic, Dynamic> old_points(face_data_vec.vector()[f.idx()].control_points);
+                face_data_vec.vector()[f.idx()].control_points = rotate_l(old_points);
             }
         }
     }
@@ -215,9 +223,9 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
     std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> face_map =
         mesh.quad_split();
 
-    // Get face data
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    // Re-cache face data
+    face_data_vec =
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
 
     // Now fix the data on each face.
     for (auto const& parent_to_children_faces : face_map)
@@ -297,7 +305,7 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                         gsVector<real_t> closest_point =
                             gsVector<real_t>::vec(0.5, 0.5);
                         // Get the actual parameters via Newton-Raphson.
-                        coarse_model.closestPointTo(point, closest_point, 1e-6,
+                        coarse_model.closestPointTo(point, closest_point, 1e-3,
                                                     true);
 
                         // The actual sampled point on the freeform control net.
@@ -337,24 +345,8 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                         control_points(i, j) = coeffs.row(idx);
                     }
                 }
-
-                // rotation
-                // TODO: Write why and how this has to be done
-                switch (f)
-                {
-                case 0:
-                    control_points = rotate_r(control_points).eval();
-                    break;
-                case 1:
-                    // control_points = control_points;
-                    break;
-                case 2:
-                    control_points = rotate_l(control_points).eval();
-                    break;
-                case 3:
-                    control_points = rotate_l(rotate_l(control_points)).eval();
-                    break;
-                }
+                // rotate the control points correctly.
+                control_points = rotate_l(control_points).eval();
 
                 // Now that we have the new control net, update the face data
                 // with the correct face and that net.
@@ -477,7 +469,9 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
     {
         // ignore EVs
         if (!is_ordinary(mesh, v))
+        {
             continue;
+        }
 
         // first, collect all the control points in a square of side length 1
         // around this vertex. Note that each control point on a boundary is
@@ -558,6 +552,22 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         {
             target_matrix.row(4) = control_points_faces[1](1, 1)->transpose();
             target_matrix.row(5) = control_points_faces[1](1, 0)->transpose();
+
+            if ((*control_points_faces[0](0, 0) -
+                 *control_points_faces[1](0, 0))
+                    .squaredNorm() > 1e-5)
+            {
+                gsWarn << "Some faces have values "
+                       << control_points_faces[0](0, 0)->x() << " and "
+                       << control_points_faces[1](0, 0)->x() << ".\n";
+                gsWarn << "Second face also has values"
+                       << control_points_faces[1](0, 0)->x() << ", "
+                       << control_points_faces[1](0, 1)->x() << ", "
+                       << control_points_faces[1](1, 0)->x() << ", "
+                       << control_points_faces[1](1, 1)->x() << ".\n";
+
+                continue;
+            }
         }
 
         if (control_points_faces.size() >= 3)
@@ -649,10 +659,16 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
             gsVector<real_t, D>* i1 = cp1(1, N - 1 - i);
 
             // make sure the user already put in a C0 mesh
-            if (*m0 != *m1)
-                gsWarn << "Points along an edge are not equal, mesh might be "
-                          "corrupted.\n";
+            if ((*m0 - *m1).squaredNorm() > 1e-5)
+            {
+                gsWarn << face0 << " and " << face1 << " along edges "
+                       << halfedge0 << " and " << halfedge1 << " have values "
+                       << m0->x() << " and " << m1->x() << ".\n";
+                continue;
+            }
 
+            // gsWarn << "Points along an edge are not equal, mesh might be "
+            // "corrupted"
             // generate the matrix that describes the C1 equation for these
             // points, i.e. the center point is colinear with the outer two
             auto matrix = gsMatrix<real_t, 3, 2>({1., 0.5, 0., 0., 0.5, 1.});

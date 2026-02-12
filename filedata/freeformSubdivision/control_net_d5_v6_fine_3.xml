@@ -1,9 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <xml>
-  <!-- 
-    Example: 5x5 matrix of 2D vectors
-    Stored as a 25x2 matrix
-  -->
+  
   <Matrix rows="25" cols="2" format="ascii">
     1.02067 0.589286
     1.098 0.758929
@@ -30,4 +27,4 @@
     1.89959 0.846726
     1.96402 1.00893
     2.04135 1.17857
-</Matrix></xml>
+  </Matrix></xml>
