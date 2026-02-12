@@ -100,7 +100,7 @@ const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
         for (size_t j = 0; j < N; ++j)
         {
             int total_index = i * N + j;
-            coeffs.row(total_index) = control_points(i,j);
+            coeffs.row(total_index) = control_points(i, j);
         }
     }
 
@@ -164,8 +164,6 @@ gsFreeformSubdivision<N, D>::load_patch(int valence, std::string subtype)
     // build the filepath
     auto path = "freeformSubdivision/control_net_d" + std::to_string(N) + "_v" +
                 std::to_string(valence) + "_" + subtype + ".xml";
-
-    gsInfo << "Loading `" << path << "`.\n";
 
     // load the file containing the correct matrix of control points
     gsFileData<real_t> filedata(path);
@@ -244,7 +242,8 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
             auto coarse_model = load_patch(valence, "coarse");
             // and remember the associated face data
             auto coarse_patch =
-                face_data_vec.vector()[parent_to_children_faces.first.idx()].patch();
+                face_data_vec.vector()[parent_to_children_faces.first.idx()]
+                    .patch();
 
             // find the new face that contains the top_left vertex
             Vertex first_vertex =
@@ -295,11 +294,8 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                         // The point in the geometry on the fine model patch.
                         gsVector<real_t, 2> point = fine_model.eval(param);
 
-                        // The closest parameters of the closest point
-                        // initialized in the middle, these are on the coarse
-                        // model patch.
                         gsVector<real_t> closest_point =
-                            gsVector<real_t, 2>::vec(0.5, 0.5);
+                            gsVector<real_t>::vec(0.5, 0.5);
                         // Get the actual parameters via Newton-Raphson.
                         coarse_model.closestPointTo(point, closest_point, 1e-6,
                                                     true);
@@ -329,7 +325,7 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                 const gsMatrix<>& coeffs = result->coefs();
 
                 // Reshape the control points
-                gsMatrix<gsVector<real_t, D>, N, N> control_points;
+                gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> control_points;
                 control_points.resize(N, N);
 
                 // Fill it: coeffs stores points row-wise (lexicographic order)
@@ -337,12 +333,27 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                 {
                     for (size_t j = 0; j < N; ++j)
                     {
-                        int idx = i * N + j; 
-                        if(valence == 3 && (i == 0 || i == N-1) && (j == 0 || j== N-1)){
-                            gsInfo << i << ", " << j << ": " << coeffs.row(idx) << ".\n";
-                        }
+                        int idx = i * N + j;
                         control_points(i, j) = coeffs.row(idx);
                     }
+                }
+
+                // rotation
+                // TODO: Write why and how this has to be done
+                switch (f)
+                {
+                case 0:
+                    control_points = rotate_r(control_points).eval();
+                    break;
+                case 1:
+                    // control_points = control_points;
+                    break;
+                case 2:
+                    control_points = rotate_l(control_points).eval();
+                    break;
+                case 3:
+                    control_points = rotate_l(rotate_l(control_points)).eval();
+                    break;
                 }
 
                 // Now that we have the new control net, update the face data
