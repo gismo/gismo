@@ -124,6 +124,87 @@ struct mkMultiGridSolver {
     }
 };
 
+template<typename S>
+gsLinearOperator<>::Ptr mkTimeMultiLevelPreconder(
+    const gsSparseMatrix<>& time_stiff, const gsSparseMatrix<>& space_stiff,
+    const gsSparseMatrix<>& time_mass, const gsSparseMatrix<>& space_mass,
+    const gsMultiBasis<>& mb_time, const gsBoundaryConditions<>& bc_time, const gsOptionList& opt,
+    const S& makeSolver)
+{
+        gsInfo << "Setup multilevel solver... " << std::flush;
+        gsOptionList cmd;
+        cmd.addInt( "InterfaceStrategy", "", iFace::conforming      );
+        cmd.addInt( "DirichletStrategy", "", dirichlet::elimination );
+        gsGridHierarchy<> gh = gsGridHierarchy<>::buildByCoarsening(mb_time, bc_time, cmd, 10000, 2);
+        const index_t lv = gh.getTransferMatrices().size()+1;
+
+        // consider using gsKroneckerOp<>
+        std::vector<gsSparseMatrix<real_t,RowMajor>> transferMatrices;
+        {
+            transferMatrices.reserve(lv-1);
+            const index_t nSpaceDofs = space_stiff.rows();
+            gsSparseMatrix<> id(nSpaceDofs,nSpaceDofs);
+            id.setIdentity();
+            for (index_t i=0; i<lv-1; ++i)
+            {
+                gsSparseMatrix<real_t,RowMajor> tmp = gh.getTransferMatrices()[i];
+                gsSparseMatrix<real_t,RowMajor> tmp2 = tmp.block(1, 1, tmp.rows()-1, tmp.cols()-1);
+                transferMatrices.push_back( tmp2.kron(id) );
+            }
+        }
+
+        // accumulated transfer matrices
+        std::vector<gsSparseMatrix<real_t,RowMajor>> accumulatedTransferMatrices;
+        {
+            gsSparseMatrix<real_t,RowMajor> tr(time_stiff.rows() * space_stiff.rows(), time_stiff.rows() * space_stiff.rows());
+            tr.setIdentity();
+            accumulatedTransferMatrices.push_back(tr);
+            for (index_t i=0; i<lv-1; ++i)
+            {
+                tr = tr*transferMatrices[lv-2-i];
+                accumulatedTransferMatrices.push_back( tr );
+            }
+            //for (index_t i=0; i<lv; ++i)
+            //    gsInfo << "accumulatedTransferMatrices["<<i<<"] = "<<accumulatedTransferMatrices[i].rows()<<" x "<<accumulatedTransferMatrices[i].cols() << std::endl;
+        }
+
+        gsSumOp<>::Ptr preconder = gsSumOp<>::make();
+        real_t tau = pow(.5,lv) * opt.askReal("Sigma", 1); // TODO
+        for (index_t i=0; i<lv; ++i)
+        {
+
+            const index_t nSpaceDofs = space_stiff.rows();
+            const index_t nTimeDofs = accumulatedTransferMatrices[i].cols() / nSpaceDofs;
+            gsSparseMatrix<> id(nTimeDofs, nTimeDofs); id.setIdentity();
+
+            gsSparseMatrix<> system = ( gsSparseMatrix<>(sqrt(tau)*id).kron(space_stiff) ) + ( gsSparseMatrix<>(sqrt(1/tau)*id).kron(space_mass) );
+            gsLinearOperator<>::Ptr systemSolver = makeSolver(system);
+
+            gsSparseMatrix<> multiplierMatrix = id.kron(space_stiff);
+            gsLinearOperator<>::Ptr multiplier = makeMatrixOp(multiplierMatrix.moveToPtr());
+
+
+            gsSparseMatrix<real_t,RowMajor> transformMatrix  = accumulatedTransferMatrices[i];
+            gsSparseMatrix<real_t>          transformTMatrix = accumulatedTransferMatrices[i].transpose();
+            gsLinearOperator<>::Ptr transform  = makeMatrixOp( transformMatrix .moveToPtr() );
+            gsLinearOperator<>::Ptr transformT = makeMatrixOp( transformTMatrix.moveToPtr() );
+
+            gsProductOp<>::Ptr lvPreconder = gsProductOp<>::make();
+            lvPreconder->addOperator(transformT);
+            lvPreconder->addOperator(systemSolver);
+            lvPreconder->addOperator(multiplier);
+            lvPreconder->addOperator(systemSolver);
+            lvPreconder->addOperator(transform);
+            preconder->addOperator(lvPreconder);
+
+            tau *= 2; // time grid size
+        }
+
+        gsInfo << "done (" << lv << " grid levels).\n";
+
+        return preconder;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -136,6 +217,7 @@ int main(int argc, char *argv[])
     real_t kappa = 1.;
     real_t h0 = 1.;
     real_t tau0 = 1.;
+    real_t sigma = 1.;
     index_t maxIterations = 100;
     real_t tolerance = 1.e-6;
     index_t preSmooth = 1;
@@ -145,6 +227,7 @@ int main(int argc, char *argv[])
     index_t fdPreconder = 1;
     index_t fdpfPreconder = 1;
     index_t fdmgPreconder = 1;
+    index_t mlluPreconder = 1;
     index_t mgPreconder = 0;
     std::string out;
     bool plot = false;
@@ -157,6 +240,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("k", "Kappa",                 "Diffusion parameter", kappa);
     cmd.addReal  ("",  "HNull",                 "h0 for multilevel", h0);
     cmd.addReal  ("",  "TauNull",               "tau0 for multilevel", tau0);
+    cmd.addReal  ("",  "Sigma",                 "Sigma for time-multilevel", sigma);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre smoothing steps (only for mg)", preSmooth);
@@ -166,6 +250,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "FdPreconder",           "Use that scheme", fdPreconder);
     cmd.addInt   ("",  "FdPfPreconder",         "Use that scheme", fdpfPreconder);
     cmd.addInt   ("",  "FdMgPreconder",         "Use that scheme", fdmgPreconder);
+    cmd.addInt   ("",  "MlLuPreconder",         "Use that scheme", mlluPreconder);
     cmd.addInt   ("",  "MgPreconder",           "Use that scheme", mgPreconder);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
@@ -684,6 +769,53 @@ int main(int argc, char *argv[])
 
 
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  ML+LU preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    index_t iter5;
+    real_t cond5;
+    gsInfo << "Setup of ML+LU preconder... " << std::flush; // ML in time, mg (using Pearson factorzation) in space
+    if (mlluPreconder)
+    {
+
+        gsLinearOperator<>::Ptr preconder = mkTimeMultiLevelPreconder(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, cmd, mkSparseLUSolver /**mg**/);
+
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter5 = errorHistory.rows()-1;
+        const bool success = errorHistory(iter5,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter5 << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter5 << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond5 = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond5 << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  Multigrid preconder
