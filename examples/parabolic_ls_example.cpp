@@ -93,7 +93,6 @@ gsLinearOperator<>::Ptr mkSparseLUSolver(const gsSparseMatrix<>& m) { return mak
 struct mkMultiGridSolver {
     const gsMultiBasis<>& mb_space;
     const gsBoundaryConditions<>& bc_space;
-    const index_t nTimeDofs;
     const gsOptionList& opt;
     gsLinearOperator<>::Ptr operator()( const gsSparseMatrix<>& m ) const
     {
@@ -105,12 +104,16 @@ struct mkMultiGridSolver {
         const index_t lv = gh.getTransferMatrices().size()+1;
 
         std::vector<gsSparseMatrix<real_t,RowMajor>> transferMatrices;
-        transferMatrices.reserve(lv-1);
-        gsSparseMatrix<> id(nTimeDofs,nTimeDofs);
-        id.setIdentity();
-        // consider using gsKroneckerOp<>
-        for (index_t i=0; i<lv-1; ++i)
-            transferMatrices.push_back( id.kron(gh.getTransferMatrices()[i]) );
+        if (lv>1)
+        {
+            transferMatrices.reserve(lv-1);
+            index_t nTimeDofs = m.rows() / gh.getTransferMatrices()[lv-2].rows();
+            gsSparseMatrix<> id(nTimeDofs,nTimeDofs);
+            id.setIdentity();
+            // consider using gsKroneckerOp<>
+            for (index_t i=0; i<lv-1; ++i)
+                transferMatrices.push_back( id.kron(gh.getTransferMatrices()[i]) );
+        }
 
         gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( m, transferMatrices );
         mg->setOptions(opt);
@@ -123,6 +126,7 @@ struct mkMultiGridSolver {
         return mg;
     }
 };
+
 
 template<typename S>
 gsLinearOperator<>::Ptr mkTimeMultiLevelPreconder(
@@ -206,6 +210,8 @@ gsLinearOperator<>::Ptr mkTimeMultiLevelPreconder(
 }
 
 
+
+
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
@@ -226,8 +232,8 @@ int main(int argc, char *argv[])
     index_t fdpfPreconder = 1;
     index_t fdmgPreconder = 1;
     index_t mlluPreconder = 1;
+    index_t mlmgPreconder = 1;
     std::string out;
-    bool plot = false;
 
     gsCmdLine cmd("parabolic_ls_example");
     cmd.addInt   ("g", "Geometry",              "0=Rectangle, 1=Quarter Annulus", geoIdx);
@@ -235,19 +241,19 @@ int main(int argc, char *argv[])
     cmd.addInt   ("s", "RefinementsT",          "Number of uniform tau-refinement steps to perform before solving", refinementsT);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addReal  ("k", "Kappa",                 "Diffusion parameter", kappa);
-    cmd.addReal  ("",  "Sigma",                 "Sigma for time-multilevel", sigma);
+    cmd.addReal  ("",  "ML.Sigma",              "Sigma for time-multilevel", sigma);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre smoothing steps (only for mg)", preSmooth);
     cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post smoothing steps (only for mg)", postSmooth);
-    cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
-    cmd.addInt   ("",  "ExactPreconder",        "Use that scheme", exactPreconder);
-    cmd.addInt   ("",  "FdPreconder",           "Use that scheme", fdPreconder);
-    cmd.addInt   ("",  "FdPfPreconder",         "Use that scheme", fdpfPreconder);
-    cmd.addInt   ("",  "FdMgPreconder",         "Use that scheme", fdmgPreconder);
-    cmd.addInt   ("",  "MlLuPreconder",         "Use that scheme", mlluPreconder);
+    cmd.addInt   ("",  "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
+    cmd.addInt   ("",  "useExactPreconder",     "Use that scheme", exactPreconder);
+    cmd.addInt   ("",  "useFdPreconder",        "Use that scheme", fdPreconder);
+    cmd.addInt   ("",  "useFdPfPreconder",      "Use that scheme", fdpfPreconder);
+    cmd.addInt   ("",  "useFdMgPreconder",      "Use that scheme", fdmgPreconder);
+    cmd.addInt   ("",  "useMlLuPreconder",      "Use that scheme", mlluPreconder);
+    cmd.addInt   ("",  "useMlMgPreconder",      "Use that scheme", mlmgPreconder);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
-    cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     bool ok = true;
@@ -490,8 +496,8 @@ int main(int argc, char *argv[])
     //  Somewhat exact preconder
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    index_t iter1;
-    real_t cond1;
+    index_t iter1 = -1;
+    real_t cond1  = -1;
     gsInfo << "Setup of somewhat exact preconder... " << std::flush;
     if (exactPreconder)
     {
@@ -576,8 +582,8 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    index_t iter2;
-    real_t cond2;
+    index_t iter2 = -1;
+    real_t cond2  = -1;
     gsInfo << "Setup of FD preconder... " << std::flush; // FD in time, not in space
     if (fdPreconder)
     {
@@ -665,8 +671,8 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    index_t iter3;
-    real_t cond3;
+    index_t iter3 = -1;
+    real_t cond3  = -1;
     gsInfo << "Setup of FD+PF preconder... " << std::flush; // FD in time, Pearson factorzation in space
     if (fdpfPreconder)
     {
@@ -714,16 +720,15 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    index_t iter4;
-    real_t cond4;
+    index_t iter4 = -1;
+    real_t cond4  = -1;
     gsInfo << "Setup of FD+MG preconder... " << std::flush; // FD in time, mg (using Pearson factorzation) in space
     if (fdmgPreconder)
     {
-        const index_t primalDimTime = time_stiff1.rows();
 
         // Todo: make multigrid configurable
 
-        gsLinearOperator<>::Ptr preconder = mkFdpfPreconder(time_stiff1, space_stiff, time_mass1, space_mass, mkMultiGridSolver{mb,bc,primalDimTime,cmd} );
+        gsLinearOperator<>::Ptr preconder = mkFdpfPreconder(time_stiff1, space_stiff, time_mass1, space_mass, mkMultiGridSolver{mb,bc,cmd.getGroup("MG")} );
 
         //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
         gsInfo << "done: " << preconder->rows() << " dofs.\n";
@@ -768,13 +773,13 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    index_t iter5;
-    real_t cond5;
-    gsInfo << "Setup of ML+LU preconder... " << std::flush; // ML in time, mg (using Pearson factorzation) in space
+    index_t iter5 = -1;
+    real_t cond5  = -1;
+    gsInfo << "Setup of ML+LU preconder... " << std::flush; // ML in time, lu (using Pearson factorzation) in space
     if (mlluPreconder)
     {
 
-        gsLinearOperator<>::Ptr preconder = mkTimeMultiLevelPreconder(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, cmd, mkSparseLUSolver /**mg**/);
+        gsLinearOperator<>::Ptr preconder = mkTimeMultiLevelPreconder(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, cmd, mkSparseLUSolver /** TODO Cholesky **/);
 
         gsInfo << "done: " << preconder->rows() << " dofs.\n";
 
@@ -809,6 +814,109 @@ int main(int argc, char *argv[])
     else
     {
         gsInfo << "skip.\n";
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  ML+MG preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    index_t iter6 = -1;
+    real_t cond6  = -1;
+    gsInfo << "Setup of ML+MG preconder... " << std::flush; // ML in time, mg (using Pearson factorzation) in space
+    if (mlluPreconder)
+    {
+        gsLinearOperator<>::Ptr preconder = mkTimeMultiLevelPreconder(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, cmd.getGroup("ML"), mkMultiGridSolver{mb,bc,cmd.getGroup("MG")});
+
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter6 = errorHistory.rows()-1;
+        const bool success = errorHistory(iter6,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter6 << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter6 << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond6 = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond6 << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+
+
+    if (!out.empty())
+    {
+        const bool exists = gsFileManager::fileExists(out);
+        std::ofstream outfile;
+        outfile.open(out.c_str(), std::ios_base::app);
+
+
+        if (!exists)
+            outfile << "parabolic_ls_example\t"
+                "geoIdx\t"
+                "refinementsX\t"
+                "refinementsT\t"
+                "degree\t"
+                "kappa\t"
+                "sigma\t"
+                "preSmooth\t"
+                "postSmooth\t"
+                "cycles\t"
+                "iter1\t"
+                "cond1\t"
+                "iter2\t"
+                "cond2\t"
+                "iter3\t"
+                "cond3\t"
+                "iter4\t"
+                "cond4\t"
+                "iter5\t"
+                "cond5\t"
+                "iter6\t"
+                "cond6\n";
+
+        outfile << "parabolic_ls_example\t"
+            << geoIdx << "\t"
+            << refinementsX << "\t"
+            << refinementsT << "\t"
+            << degree << "\t"
+            << kappa << "\t"
+            << sigma << "\t"
+            << preSmooth << "\t"
+            << postSmooth << "\t"
+            << cycles << "\t"
+            << iter1 << "\t"
+            << cond1 << "\t"
+            << iter2 << "\t"
+            << cond2 << "\t"
+            << iter3 << "\t"
+            << cond3 << "\t"
+            << iter4 << "\t"
+            << cond4 << "\t"
+            << iter5 << "\t"
+            << cond5 << "\t"
+            << iter6 << "\t"
+            << cond6 << "\n";
     }
 
 
