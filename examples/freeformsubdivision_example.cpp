@@ -16,14 +16,12 @@ int main(int argc, char** argv)
 {
     // Command line
     std::string filedata("off/octtorus.off");
-    bool no_smooth(false);
-    index_t steps(1);
+    std::string operations("sd");
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
     cmd.addPlainString("filename", "File containing mesh.", filedata);
-    cmd.addSwitch("no_smooth", "C1 smoothing before subdivision.", no_smooth);
-    cmd.addInt("s", "steps", "Number of subdivision steps.", steps);
+    cmd.addString("o", "operations", "Operations to perform on the mesh. Use d for subdivision and s for (c1) smoothing", operations);
     try
     {
         cmd.getValues(argc, argv);
@@ -42,18 +40,22 @@ int main(int argc, char** argv)
     subdiv.initialize_data(mesh);
     gsWriteParaview(subdiv.multipatch(mesh), "results/initial_data");
 
-    if (!no_smooth)
-    {
-        subdiv.smooth(mesh, 1);
-        gsWriteParaview(subdiv.multipatch(mesh), "results/c1");
-    }
 
-    for (index_t i = 0; i < steps; ++i)
-    {
-        subdiv.subdivide(mesh);
-        subdiv.smooth(mesh, 1);
-
+    size_t i(1);
+    for(char c : operations){
+        switch (c) {
+            case 'd':
+                gsInfo << "Step " << std::string(i, 'I') << ": Subdividing.\n";
+                subdiv.subdivide(mesh);
+                break;
+            case 's':
+                gsInfo << "Step " << std::string(i, 'I') << ": Smoothing.\n";
+                subdiv.smooth(mesh, 1);
+                break;
+            default:
+                break;
+       }
         gsWriteParaview(subdiv.multipatch(mesh),
-                        "results/subdiv" + std::string(i, 'a'));
+                        "results/step" + std::string(i++, 'I'));
     }
 }
