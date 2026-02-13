@@ -11,15 +11,16 @@
     Author(s): L. Mussmaecher
 */
 
-#include "gsModeling/gsFitting.h"
-#include "gsNurbs/gsKnotVector.h"
-#include "gsNurbs/gsTensorBSplineBasis.h"
+#include <cmath>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsIO/gsFileData.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
+#include <gsModeling/gsFitting.h>
+#include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsTensorBSpline.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo
 {
@@ -178,7 +179,35 @@ gsFreeformSubdivision<N, D>::load_patch(int valence, std::string subtype)
 }
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
+std::array<gsSurfMesh::Face, 4> gsFreeformSubdivision<N, D>::order_faces(
+    Vertex first_vertex, std::vector<gsSurfMesh::Face> faces, gsSurfMesh& mesh)
+{
+    size_t first_face(0);
+    for (size_t i = 0; i < 4; ++i)
+    {
+        // get the face
+        Face f(faces[i]);
+        // go through the vertices of this face and check if it has the
+        // searched-for vertex
+        for (auto const& v : mesh.vertices(f))
+        {
+            if (v == first_vertex)
+                first_face = i;
+        }
+    }
+
+    // Collate the faces into a correctly ordered array as well.
+    std::array<Face, 4> children_faces_ordered;
+    for (int i = 0; i < 4; ++i)
+    {
+        children_faces_ordered[i] = faces[(i + first_face) % 4];
+    }
+
+    return children_faces_ordered;
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::orient_faces(gsSurfMesh& mesh)
 {
     // Get face data
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
@@ -192,7 +221,7 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
         bool has_ev(false);
         for (Vertex v : mesh.vertices(f))
         {
-            has_ev = has_ev || !is_ordinary(mesh, v);
+            has_ev |= !is_ordinary(mesh, v);
         }
 
         // if it does, rotate its first halfedge around until it points to the
@@ -204,11 +233,22 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                 // rotate the edge
                 mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
                 // also rotate the control points
-                gsMatrix<gsVector<real_t,D>, Dynamic, Dynamic> old_points(face_data_vec.vector()[f.idx()].control_points);
-                face_data_vec.vector()[f.idx()].control_points = rotate_l(old_points);
+                gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> old_points(
+                    face_data_vec.vector()[f.idx()].control_points);
+                face_data_vec.vector()[f.idx()].control_points =
+                    rotate_l(old_points);
             }
         }
     }
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
+{
+
+    // First, make sure all faces are correctly oriented with the EV as their
+    // first vertex.
+    orient_faces(mesh);
 
     // Remember the first vertex of each face (this is where the control nets of
     // each face data are oriented on).
@@ -223,9 +263,9 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
     std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> face_map =
         mesh.quad_split();
 
-    // Re-cache face data
-    face_data_vec =
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
+    // Get face data
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
     // Now fix the data on each face.
     for (auto const& parent_to_children_faces : face_map)
@@ -241,7 +281,7 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 
             // determine the valence of the extraordinary vertex
             size_t valence(0);
-            for ([[maybe_unused]] Halfedge f : mesh.halfedges(fv))
+            for ([[maybe_unused]] Halfedge e : mesh.halfedges(fv))
             {
                 ++valence;
             }
@@ -253,108 +293,74 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
                 face_data_vec.vector()[parent_to_children_faces.first.idx()]
                     .patch();
 
-            // find the new face that contains the top_left vertex
-            Vertex first_vertex =
-                first_vertices[parent_to_children_faces.first.idx()];
-            size_t first_face(0);
-            for (size_t i = 0; i < 4; ++i)
-            {
-                // get the face
-                Face f(parent_to_children_faces.second[i]);
-                // go through the vertices of this face and check if it has the
-                // searched-for vertex
-                for (auto const& v : mesh.vertices(f))
-                {
-                    if (v == first_vertex)
-                        first_face = i;
-                }
-            }
+            // Collate the faces into a correctly ordered array.
+            auto children_ordered = order_faces(
+                first_vertices[parent_to_children_faces.first.idx()],
+                parent_to_children_faces.second, mesh);
 
-            // Collate the faces into a correctly ordered array as well.
-            std::array<Face, 4> children_faces_ordered;
-            for (int i = 0; i < 4; ++i)
-            {
-                children_faces_ordered[i] =
-                    parent_to_children_faces.second[(i + first_face) % 4];
-            }
-
-            // Correct back references of face data and give them the correct
-            // control points.
-            for (size_t f = 0; f < 4; ++f)
+            // Now fit each face with a new control net.
+            for (size_t f_idx = 0; f_idx < 4; ++f_idx)
             {
                 // first, load the appropriate fine model control points
                 auto fine_model =
-                    load_patch(valence, "fine_" + std::to_string(f + 1));
+                    load_patch(valence, "fine_" + std::to_string(f_idx + 1));
 
                 // get sample points
                 gsMatrix<> samples(D, N * N);
                 gsMatrix<> params(2, N * N);
-                size_t i(0);
 
-                for (real_t u = 0.0; u <= 1.0; u += 1.0 / real_t(N - 1))
+                for (size_t i = 0; i < N * N; ++i)
                 {
-                    for (real_t v = 0.0; v <= 1.0; v += 1.0 / real_t(N - 1))
-                    {
-                        // The parameter of the sample point
-                        gsVector<real_t, 2> param =
-                            gsVector<real_t, 2>::vec(u, v);
-                        params.col(i) = param;
-                        // The point in the geometry on the fine model patch.
-                        gsVector<real_t, 2> point = fine_model.eval(param);
 
-                        gsVector<real_t> closest_point =
-                            gsVector<real_t>::vec(0.5, 0.5);
-                        // Get the actual parameters via Newton-Raphson.
-                        // Note that internally, the tolerance is actually squared, so this is actually a tolerance of 1e-4.
-                        coarse_model.closestPointTo(point, closest_point, 1e-2,
-                                                    true);
+                    // The parameter of the sample point.
+                    params.col(i) = gsVector<real_t, 2>::vec(
+                        real_t(std::floor(i % N)) / real_t(N - 1),
+                        real_t(std::floor(i / N)) / real_t(N - 1));
+                    // The point in the geometry on the fine model patch.
+                    gsVector<real_t, 2> point = fine_model.eval(params.col(i));
 
-                        // The actual sampled point on the freeform control net.
-                        gsVector<real_t, D> val =
-                            coarse_patch.eval(closest_point);
+                    gsVector<real_t> closest_point =
+                        gsVector<real_t>::vec(0.5, 0.5);
+                    // Get the parameters of the same point in the coarse
+                    // geometry model via Newton-Raphson. Note that internally,
+                    // the tolerance is squared, so this is a tolerance of 1e-4.
+                    coarse_model.closestPointTo(point, closest_point, 1e-2,
+                                                true);
 
-                        // save them in the sample point
-                        samples.col(i) = val;
-
-                        ++i;
-                    }
+                    // Sample the old control net.
+                    samples.col(i) = coarse_patch.eval(closest_point);
                 }
-                // Finished sampling
 
-                // Prepare fitter
+                // Fit a NxN Bezier patch to these samples
                 gsKnotVector<> kv1(0, 1, 0, N);
                 gsKnotVector<> kv2(0, 1, 0, N);
                 gsTensorBSplineBasis<2> basis(kv1, kv2);
                 gsFitting<> fitter(params, samples, basis);
                 fitter.compute(0.0);
-
-                // Fit a NxN Bezier patch to these samples
                 gsGeometry<>* result = fitter.result();
+
                 // Extract control points
                 const gsMatrix<>& coeffs = result->coefs();
 
                 // Reshape the control points
                 gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> control_points;
                 control_points.resize(N, N);
-
-                // Fill it: coeffs stores points row-wise (lexicographic order)
-                for (size_t i = 0; i < N; ++i)
+                for (size_t i = 0; i < N * N; ++i)
                 {
-                    for (size_t j = 0; j < N; ++j)
-                    {
-                        int idx = i * N + j;
-                        control_points(i, j) = coeffs.row(idx);
-                    }
+                    control_points(i / N, i % N) = coeffs.row(i);
                 }
-                // rotate the control points correctly.
+
+                // The fine patches have their u direction pointing outwards
+                // (first point is the center) while our system has the first
+                // halfedge pointing outwards, so the first point is on the
+                // edge. So we do a rotation here.
                 control_points = rotate_l(control_points).eval();
 
                 // Now that we have the new control net, update the face data
                 // with the correct face and that net.
-                auto data =
-                    &face_data_vec.vector()[children_faces_ordered[f].idx()];
-                data->face = children_faces_ordered[f];
-                data->control_points = control_points;
+                auto& data = face_data_vec.vector()[children_ordered[f_idx].idx()];
+                data.face = children_ordered[f_idx];
+                data.control_points = control_points;
             }
         }
         else
@@ -370,21 +376,21 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
             // now control_net is a (n+1)*(n+1) matrix of control points (degree
             // n) Perform deCasteljau once to divide into two (n+1)*(n+1)
             // matrices of control points.
-            auto const first_split = this->deCasteljau(control_net);
+            auto const first_split = deCasteljau(control_net);
 
             // Perform deCasteljau again on both of them, to get 4 (n+1)*(n+1)
             // matrices of control points In between, we need to transpose so we
             // now divide in the other direction.
-            auto top_split = this->deCasteljau(first_split[0].transpose());
-            auto bot_split = this->deCasteljau(first_split[1].transpose());
+            auto top_split = deCasteljau(first_split[0].transpose());
+            auto bot_split = deCasteljau(first_split[1].transpose());
 
-            // re-transpose
+            // Re-transpose
             top_split[0] = top_split[0].transpose().eval();
             top_split[1] = top_split[1].transpose().eval();
             bot_split[0] = bot_split[0].transpose().eval();
             bot_split[1] = bot_split[1].transpose().eval();
 
-            // rotate
+            // Rotate based on position 0, 1, 2, and 3 times.
             bot_split[1] = rotate_l(bot_split[1]);
             bot_split[0] = rotate_l(rotate_l(bot_split[0]));
             top_split[0] = rotate_l(rotate_l(rotate_l(top_split[0])));
@@ -393,39 +399,18 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
             std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 4> arr =
                 {top_split[0], top_split[1], bot_split[1], bot_split[0]};
 
-            // find the new face that contains the top_left vertex
-            Vertex first_vertex =
-                first_vertices[parent_to_children_faces.first.idx()];
-            size_t first_face(0);
-            for (size_t i = 0; i < 4; ++i)
-            {
-                // get the face
-                Face f(parent_to_children_faces.second[i]);
-                // go through the vertices of this face and check if it has the
-                // searched-for vertex
-                for (auto const& v : mesh.vertices(f))
-                {
-                    if (v == first_vertex)
-                        first_face = i;
-                }
-            }
-
-            // Collate the faces into a correctly ordered array as well.
-            std::array<Face, 4> children_faces_ordered;
-            for (int i = 0; i < 4; ++i)
-            {
-                children_faces_ordered[i] =
-                    parent_to_children_faces.second[(i + first_face) % 4];
-            }
+            // Collate the faces into a correctly ordered array.
+            auto children_ordered = order_faces(
+                first_vertices[parent_to_children_faces.first.idx()],
+                parent_to_children_faces.second, mesh);
 
             // Correct back references of face data and give them the correct
             // control points.
             for (size_t f = 0; f < 4; ++f)
             {
-                auto data =
-                    &face_data_vec.vector()[children_faces_ordered[f].idx()];
-                data->face = children_faces_ordered[f];
-                data->control_points = arr[f];
+                auto& data = face_data_vec.vector()[children_ordered[f].idx()];
+                data.face = children_ordered[f];
+                data.control_points = arr[f];
             }
         }
     }
@@ -435,18 +420,18 @@ template <size_t N, size_t D>
 bool gsFreeformSubdivision<N, D>::is_ordinary(const gsSurfMesh& mesh,
                                               const Vertex& v)
 {
-    auto count(0);
+    size_t valence(0);
     for ([[maybe_unused]] const auto he : mesh.halfedges(v))
     {
-        ++count;
+        ++valence;
     }
-    return count == 4 || mesh.is_boundary(v);
+    return valence == 4 || mesh.is_boundary(v);
 }
 
 template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
 {
-    // Ensure we have enough degree
+    // Ensure we have a high enough degree
     if (degree + 1 > N / 2)
     {
         gsWarn
@@ -461,49 +446,80 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         return;
     }
 
-    // Get face data
+    // Cache face data
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
     // First, correct each vertex
     for (const Vertex& v : mesh.vertices())
     {
-        // ignore EVs
-        if (!is_ordinary(mesh, v))
+        // Check for EVs on any face adjacent to this vertex.
+        bool has_ev(false);
+        for (Face f : mesh.faces(v))
+        {
+            for (Vertex v_face : mesh.vertices(f))
+            {
+                has_ev |= !is_ordinary(mesh, v_face);
+            }
+        }
+
+        // for now: Just skip.
+        if (has_ev)
         {
             continue;
         }
 
-        // first, collect all the control points in a square of side length 1
-        // around this vertex. Note that each control point on a boundary is
-        // represented up to twice, the one in the center even up to four times.
-        // In the end we get up to 9 distinct points
-        // Points are arranged like this:
-        // 0 1 4
-        // 2 3 5
-        // 8 7 6
+        // first, collect all the control points around this vertex. They will
+        // be arrayed like this:
+        // ```
+        //      ...   ...     ...   ...
+        // ... (1,1) (1,0)   (0,1) (1,1) ...
+        // ... (0,1) (0,0)   (0,0) (1,0) ...
+        // ...             V
+        // ... (1,0) (0,0)   (0,0) (0,1) ...
+        // ... (1,1) (0,1)   (1,0) (1,1) ...
+        //      ...   ...     ...   ...
+        // ```
+        // The points directly neighboring another across different patches
+        // should be equal (i.e. top left (1,0) and bottom left (0,1)) as the C0
+        // condition.
         std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
         for (Halfedge h : mesh.halfedges(v))
         {
             // we do skip non-existent faces
+            // TODO: How do we ensure the skip isn't in the middle?
             if (mesh.is_boundary(h))
                 continue;
             control_points_faces.emplace_back(
                 face_data_vec[mesh.face(h).idx()].control_points_oriented(mesh,
                                                                           h));
         }
+        // Now, each different point needs a row in the matrix. Note that, on
+        // the boundary of the multipatch, some of these four patches might not
+        // exist, so the number of rows is not always the same. We have 4 base
+        // points with one patch in the top left. The top right and bottom right
+        // patch each add two new points and the bottom left patch would add
+        // one last remaining point.
+        size_t rows(4);
+        if (control_points_faces.size() >= 2)
+            rows += 2;
+        if (control_points_faces.size() >= 3)
+            rows += 2;
+        if (control_points_faces.size() >= 4)
+            rows += 1;
 
-        // we have 4 base equations at 1 face, then two more per face, except
-        // only 1 more for the last face.
-        size_t eqs(2 + 2 * control_points_faces.size() +
-                   (control_points_faces.size() == 4 ? -1 : 0));
-
-        // create a matrix that represents the C1 equations, i.e. each point on
-        // a boundary is colinear with the ones on either side. This results in
-        // multiple equations for the center point.
-        // In the end, we will have four free points and all others should be
-        // dependent.
-        auto matrix = gsMatrix<real_t>(eqs, 4);
+        // Now create a matrix that represents these C1 equations, i.e. each
+        // point on a boundary is colinear with the ones on either side. This
+        // results one row for each point, writing it as a linear combination of
+        // the 4 free points in the top left patch.
+        // The indices of the points above in the matrix are as follows:
+        // ```
+        // 0 1 1 4
+        // 2 3 3 5
+        // 2 3 3 5
+        // 8 7 6 6
+        // ```
+        auto matrix = gsMatrix<real_t>(rows, 4);
         // The first four equations just say that the first four points are
         // equal to themselves.
         matrix.row(0) << 1., 0., 0., 0.;
@@ -511,38 +527,33 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         matrix.row(2) << 0., 0., 1., 0.;
         matrix.row(3) << 0., 0., 0., 1.;
 
-        // if a second face is present, its points must be colinear with the
-        // first face
+        // If a second face is present, its two new points must be colinear with
+        // the first face.
         if (control_points_faces.size() >= 2)
         {
             matrix.row(4) << -1., 2., 0., 0.;
             matrix.row(5) << 0., 0., -1., 2.;
         }
 
-        // if a third face is present, its points must be colinear with the
-        // second face, which are in turn expressed via the first face.
+        // If a second face is present, its two new points must be colinear with
+        // the second face (one of whose points is already written in terms of
+        // points of the first face).
         if (control_points_faces.size() >= 3)
         {
             matrix.row(6) << 1., -2., -2., 4.;
             matrix.row(7) << 0., -1., 0., 2.;
         }
 
-        // if a fourth face is present, its points must be colinear with the
-        // first and third face.
+        // If a fourth face is present, its points must be colinear with the
+        // first (and, automatically, third) face.
         if (control_points_faces.size() >= 4)
         {
             matrix.row(8) << -1., 0., 2., 0.;
         }
 
-        // Now do a least squares fit.
-        // I.e. we are searching for the set of 9 points (or rather 4 points
-        // determining 9) that have the minimum distance to the original 9
-        // points while fulfilling all equations (this latter part is achieved
-        // by only searching for 4 points).
-
-        // Set the target points as row vectors of a matrix.
-        // The number of rows depends on the faces present.
-        gsMatrix<real_t> target_matrix(eqs, D);
+        // Now, for each of these 9 points, we want to find its desired value by
+        // looking at the respective value of the old (non-smooth) control net.
+        gsMatrix<real_t> target_matrix(rows, D);
         target_matrix.setZero();
         target_matrix.row(0) = control_points_faces[0](1, 1)->transpose();
         target_matrix.row(1) = control_points_faces[0](1, 0)->transpose();
@@ -553,22 +564,6 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         {
             target_matrix.row(4) = control_points_faces[1](1, 1)->transpose();
             target_matrix.row(5) = control_points_faces[1](1, 0)->transpose();
-
-            if ((*control_points_faces[0](0, 0) -
-                 *control_points_faces[1](0, 0))
-                    .squaredNorm() > 1e-5)
-            {
-                gsWarn << "Some faces have values "
-                       << control_points_faces[0](0, 0)->x() << " and "
-                       << control_points_faces[1](0, 0)->x() << ".\n";
-                gsWarn << "Second face also has values"
-                       << control_points_faces[1](0, 0)->x() << ", "
-                       << control_points_faces[1](0, 1)->x() << ", "
-                       << control_points_faces[1](1, 0)->x() << ", "
-                       << control_points_faces[1](1, 1)->x() << ".\n";
-
-                continue;
-            }
         }
 
         if (control_points_faces.size() >= 3)
@@ -582,11 +577,17 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
             target_matrix.row(8) = control_points_faces[3](1, 1)->transpose();
         }
 
-        // actually perform the least squares
+        // Now do a least squares fit.
+        // I.e. we are searching for values for the 4 free points (transformed
+        // into 9 points via `matrix` that are thus C1 smooth) such that the
+        // squared distance of all 9 points to their previous values (given in
+        // `target_matrix`) is minimal.
         gsMatrix<real_t> solution =
             matrix.colPivHouseholderQr().solve(target_matrix);
 
-        // assign the solutions, again depending on faces present
+        // Now re-assign the correct solution rows back to the points.
+        // The linear combinations are the same as above, so the result will be
+        // C1 smooth.
         *(control_points_faces[0](1, 1)) = solution.row(0);
         *(control_points_faces[0](1, 0)) = solution.row(1);
         *(control_points_faces[0](0, 1)) = solution.row(2);
@@ -630,64 +631,90 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
     // vertex.
     for (const Edge& e : mesh.edges())
     {
-        auto halfedge0 = mesh.halfedge(e, 0);
-        auto halfedge1 = mesh.halfedge(e, 1);
+        Halfedge halfedge0 = mesh.halfedge(e, 0);
+        Halfedge halfedge1 = mesh.halfedge(e, 1);
 
-        // if we are on the boundary of the mesh, nothing needs to be done
+        // If we are on the boundary of the mesh, nothing needs to be done.
         if (mesh.is_boundary(halfedge0) || mesh.is_boundary(halfedge1))
             continue;
 
-        // Get the faces. These must be valid or else we would have continued
-        // above.
-        auto face0 = mesh.face(halfedge0);
-        auto face1 = mesh.face(halfedge1);
+        // Get the faces. These must be valid by the checks above.
+        Face face0 = mesh.face(halfedge0);
+        Face face1 = mesh.face(halfedge1);
 
-        // Get the control points correctly oriented with respect to these
-        // halfedges.
+        // Skip this edge if either of these faces has an EV.
+        bool has_ev(false);
+        for (Vertex v : mesh.vertices(face0))
+        {
+            has_ev |= !is_ordinary(mesh, v);
+        }
+        for (Vertex v : mesh.vertices(face1))
+        {
+            has_ev |= !is_ordinary(mesh, v);
+        }
+
+        if (has_ev)
+            continue;
+
+        // Get the control points. They will be arrayed like this:
+        // ```
+        // (1,0) (1,1) ... (1,i)... (1,N-2) (1,N-1)
+        // (0,0) (0,1) ... (0,i)... (0,N-2) (0,N-1)
+        // -------------- halfedge0 -------------->
+        // <------------- halfedge1 ---------------
+        // (0,N-1) (0,N-2) ... (0,i) ... (0,1) (0,0)
+        // (1,N-1) (1,N-2) ... (1,i) ... (1,1) (1,0)
+        //
+        // ```
+        // Note that in each column, the middle points should be equal by C0
+        // conditions.
         auto cp0 =
             face_data_vec[face0.idx()].control_points_oriented(mesh, halfedge0);
         auto cp1 =
             face_data_vec[face1.idx()].control_points_oriented(mesh, halfedge1);
 
-        // correct all points but the first and last two
+        // Now, for each column above, we need to ensure the three points are
+        // colinear.
         for (size_t i = 2; i < N - 2; ++i)
         {
-            // we get a triple of points across boundary. The cetner point is of
-            // course represented in both meshes.
+            // Extract the column.
             gsVector<real_t, D>* i0 = cp0(1, i);
             gsVector<real_t, D>* m0 = cp0(0, i);
             gsVector<real_t, D>* m1 = cp1(0, N - 1 - i);
             gsVector<real_t, D>* i1 = cp1(1, N - 1 - i);
 
-            // make sure the user already put in a C0 mesh
+            // Ensure the mesh was at least C0 and warn the user if it is not.
             if ((*m0 - *m1).squaredNorm() > 1e-5)
             {
                 gsWarn << face0 << " and " << face1 << " along edges "
-                       << halfedge0 << " and " << halfedge1 << " have values "
-                       << m0->x() << " and " << m1->x() << ".\n";
+                       << halfedge0 << " and " << halfedge1 << " have values ("
+                       << m0->transpose() << ") and (" << m1->transpose()
+                       << ").\n";
                 continue;
             }
 
-            // gsWarn << "Points along an edge are not equal, mesh might be "
-            // "corrupted"
-            // generate the matrix that describes the C1 equation for these
-            // points, i.e. the center point is colinear with the outer two
-            auto matrix = gsMatrix<real_t, 3, 2>({1., 0.5, 0., 0., 0.5, 1.});
+            // Now, of these three points, two will be 'free' and the last will
+            // be determined. The following matrix generates all three points
+            // from the free ones.
+            gsMatrix<real_t, 3, 2> matrix;
+            matrix.row(0) << 1., 0.;
+            matrix.row(1) << 0.5, 0.5;
+            matrix.row(2) << 0., 1.;
 
-            // We now do a least squares fit, i.e. search for three points as
-            // close as possible to the original three that are colinear. We do
-            // this by putting the target vectors as row of a matrix, getting
-            // our solutions back as rows as well.
-
+            // As a target matrix, use the old values of the points.
             gsMatrix<real_t> target_matrix(3, D);
             target_matrix.setZero();
             target_matrix.row(0) = i0->transpose();
             target_matrix.row(1) = m0->transpose();
             target_matrix.row(2) = i1->transpose();
 
+            // We now do a least squares fit, i.e. search for two free points
+            // such that the three generated ( and thus colinear) points wil lbe
+            // as close as possible to the original three.
             gsMatrix<real_t> solution =
                 matrix.colPivHouseholderQr().solve(target_matrix);
 
+            // And finally re-assign all four values.
             *i0 = solution.row(0);
             *m0 = (solution.row(0) + solution.row(1)) * 0.5;
             *m1 = (solution.row(0) + solution.row(1)) * 0.5;
@@ -700,10 +727,15 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
 template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::initialize_data(gsSurfMesh& mesh)
 {
+    // Initialize the property.
     mesh.add_face_property(std::string("bezier_points"),
                            gsFreeformFaceData<N, D>());
+
+    // Get the data. It will be empty and non-valid at this point.
     gsProperty<gsFreeformFaceData<N, D>> patch_data =
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
+
+    // Each patch is now initalized with basic face data.
     for (auto f : mesh.faces())
     {
         patch_data.vector()[f.idx()] = gsFreeformFaceData<N, D>(mesh, f);
@@ -715,11 +747,11 @@ gsMultiPatch<> gsFreeformSubdivision<N, D>::multipatch(const gsSurfMesh& mesh)
 {
     gsMultiPatch<> patch;
 
-    // get the vector containing all the face data
+    // Get the vector containing all the face data.
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec =
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
 
-    // for each face, convert its control net to a patch and add it to the
+    // For each face, convert its control net to a patch and add it to the
     // multipatch. Order doesn't matter.
     for (auto face : mesh.faces())
     {

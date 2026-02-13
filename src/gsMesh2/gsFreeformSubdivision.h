@@ -16,7 +16,6 @@
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsNurbs/gsTensorBSpline.h>
-#include <vector>
 
 namespace gismo
 {
@@ -61,10 +60,54 @@ private: // Helper functions
     /// \param v The vertex to be analyzed.
     static bool is_ordinary(const gsSurfMesh& mesh, const Vertex& v);
 
+    /// \brief Loads a model patch of the given valence and type.
+    ///
+    /// Looks in the `filedata/freeformsubdivision` folder for model patches for
+    /// the EV subdivision and loads them to a gismo Bezier patch. The patches
+    /// will combine in such a way that the patches `fine_1` to `fine_4` form a
+    /// perfect partition of patch `coarse` as follows:
+    /// ```
+    /// fine_4   fine_3
+    /// fine_1   fine_2
+    /// ```
+    /// With the u/v-Direction of `coarse` pointing left/up from the bottom left
+    /// and the u direction of each `fine_v` pointing outward from the central
+    /// shared point and having the same orientation (e.g. `fine_1` points u
+    /// leftwards and v downwards).
+    ///
+    /// \param valence The valence of the desired patch. Valid values are 3, 5,
+    /// 6, 7, 8, 9, 10.
+    /// \param v The subtype of the patch. Valid values are "coarse", "fine_1",
+    /// "fine_2", "fine_3", "fine_4".
     static gismo::gsTensorBSpline<2, real_t> load_patch(int valence,
-                                             std::string subtype);
+                                                        std::string subtype);
 
+    /// \brief Re-orients the faces of the given mesh.
+    ///
+    /// This method changes the assigned halfedge of each face in the given mesh
+    /// in such a way that, if the face has an extraordinary vertex, the
+    /// halfedge of that face is the one pointing to that vertex. This will
+    /// cause the first vertex of that face to be the EV. If any faces in the
+    /// mesh have multiple EVs, there is no guarantee on which one will be
+    /// chosen and it is suggested you change your mesh so that EVs have a
+    /// larger distance between them.
+    ///
+    /// \param mesh The mesh to be re-oriented.
+    void orient_faces(gsSurfMesh& mesh);
 
+    /// \brief Orders a vector of 4 faces such that the face with a given vertex
+    /// is first.
+    ///
+    /// This method accepts a vector of four elements and a vertex. It will
+    /// search each of the faces for the given vertex and then rotate the 4
+    /// elements until a face containing that vertex is first.
+    ///
+    /// \param first_vertex The target vertex that determines the face order.
+    /// Should be contained in at least one of the faces.
+    /// \param faces The faces to be ordered. Should have exactly 4 elements or
+    /// unexpected results may occur.
+    static std::array<Face, 4>
+    order_faces(Vertex first_vertex, std::vector<Face> faces, gsSurfMesh& mesh);
 
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity
@@ -80,12 +123,13 @@ public:
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
     ///
-    /// Takes a given mesh with freeform data and makes it $C^s$ by adjusting the
-    /// outer layer of control points of each bezier patch. This only causes $C^s$
-    /// at edges and ordinary vertices. No guarantee is made for extraordinary
-    /// vertices.
+    /// Takes a given mesh with freeform data and makes it $C^s$ by adjusting
+    /// the outer layer of control points of each bezier patch. This only causes
+    /// $C^s$ at edges and ordinary vertices. No guarantee is made for
+    /// extraordinary vertices.
     ///
-    /// \param degree The degree of smoothness desired. As of now, only $C^1$ is supported.
+    /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
+    /// supported.
     void smooth(gsSurfMesh& mesh, size_t degree);
 
     /// \brief Converts to a Gismo multipatch object.
