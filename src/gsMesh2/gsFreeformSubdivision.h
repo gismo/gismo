@@ -50,16 +50,6 @@ private: // Helper functions
     deCasteljau(
         const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& control_net);
 
-    /// \brief Checks if a vertex is ordinary.
-    ///
-    /// Checks if the given vertex has is ordinary, i.e.
-    ///  - has exactly 4 neighbors OR
-    ///  - lies on the boundary of the mesh.
-    ///
-    /// \param mesh The surrounding mesh this vertex belongs to.
-    /// \param v The vertex to be analyzed.
-    static bool is_ordinary(const gsSurfMesh& mesh, const Vertex& v);
-
     /// \brief Loads a model patch of the given valence and type.
     ///
     /// Looks in the `filedata/freeformsubdivision` folder for model patches for
@@ -240,42 +230,26 @@ public: // Conversions
 ///
 /// Rotates a leftwise matrix around its center, returning the rotated matrix
 /// without changing the original.
+/// This function is implicitly `inline`.
 ///
 /// \param mat The matrix to be rotated.
 template <class T>
 gsMatrix<T, Dynamic, Dynamic> rotate_l(const gsMatrix<T, Dynamic, Dynamic>& mat)
 {
-    gsMatrix<T, Dynamic, Dynamic> res;
-    res.resize(mat.cols(), mat.rows());
-    for (int i = 0; i < res.rows(); ++i)
-    {
-        for (int j = 0; j < res.cols(); ++j)
-        {
-            res(i, j) = mat(j, mat.cols() - 1 - i);
-        }
-    }
-    return res;
+    return mat.transpose().colwise().reverse().eval();
 }
 
 /// \brief Matrix rotation.
 ///
 /// Rotates a matrix rightwise around its center, returning the rotated matrix
 /// without changing the original.
+/// This function is implicitly `inline`.
 ///
 /// \param mat The matrix to be rotated.
 template <class T>
 gsMatrix<T, Dynamic, Dynamic> rotate_r(const gsMatrix<T, Dynamic, Dynamic>& mat)
 {
-    gsMatrix<T, Dynamic, Dynamic> res;
-    res.resize(mat.cols(), mat.rows());
-    for (int i = 0; i < res.rows(); ++i)
-    {
-        for (int j = 0; j < res.cols(); ++j)
-        {
-            res(i, j) = mat(mat.rows() - 1 - j, i);
-        }
-    }
-    return res;
+    return mat.transpose().rowwise().reverse().eval();
 }
 
 } // namespace gismo

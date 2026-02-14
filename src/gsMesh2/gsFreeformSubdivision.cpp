@@ -41,11 +41,11 @@ gsFreeformFaceData<N, D>::gsFreeformFaceData(const gsSurfMesh& mesh,
 
     // Choose the control points (N*N total) as appropriate linear combinations
     // of the corners.
+    real_t denom = real_t((N - 1) * (N - 1));
     for (size_t i = 0; i < N; i++)
     {
         for (size_t j = 0; j < N; j++)
         {
-            real_t denom = real_t((N - 1) * (N - 1));
             real_t n_r = real_t(N);
             real_t i_r = real_t(i);
             real_t j_r = real_t(j);
@@ -191,8 +191,10 @@ std::array<gsSurfMesh::Face, 4> gsFreeformSubdivision<N, D>::order_faces(
         // searched-for vertex
         for (auto const& v : mesh.vertices(f))
         {
-            if (v == first_vertex)
+            if (v == first_vertex){
                 first_face = i;
+                break;
+            }
         }
     }
 
@@ -221,14 +223,14 @@ void gsFreeformSubdivision<N, D>::orient_faces(gsSurfMesh& mesh)
         bool has_ev(false);
         for (Vertex v : mesh.vertices(f))
         {
-            has_ev |= !is_ordinary(mesh, v);
+            has_ev |= !mesh.is_ordinary(v);
         }
 
         // if it does, rotate its first halfedge around until it points to the
         // EV
         if (has_ev)
         {
-            while (is_ordinary(mesh, mesh.to_vertex(mesh.halfedge(f))))
+            while (mesh.is_ordinary(mesh.to_vertex(mesh.halfedge(f))))
             {
                 // rotate the edge
                 mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
@@ -274,19 +276,13 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 
         // Check if we have an EV. If there is, it must be the first vertex
         // thanks to our preprocessing.
-        if (!is_ordinary(mesh, fv))
+        if (!mesh.is_ordinary(fv))
         {
             // === EXTRAORDINARY VERTICES ===
             // via lots of fitting
 
-            // determine the valence of the extraordinary vertex
-            size_t valence(0);
-            for ([[maybe_unused]] Halfedge e : mesh.halfedges(fv))
-            {
-                ++valence;
-            }
-
             // load coarse matrix
+            auto valence = mesh.valence(fv);
             auto coarse_model = load_patch(valence, "coarse");
             // and remember the associated face data
             auto coarse_patch =
@@ -417,18 +413,6 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 };
 
 template <size_t N, size_t D>
-bool gsFreeformSubdivision<N, D>::is_ordinary(const gsSurfMesh& mesh,
-                                              const Vertex& v)
-{
-    size_t valence(0);
-    for ([[maybe_unused]] const auto he : mesh.halfedges(v))
-    {
-        ++valence;
-    }
-    return valence == 4 || mesh.is_boundary(v);
-}
-
-template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
 {
     // Ensure we have a high enough degree
@@ -459,7 +443,7 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         {
             for (Vertex v_face : mesh.vertices(f))
             {
-                has_ev |= !is_ordinary(mesh, v_face);
+                has_ev |= !mesh.is_ordinary(v_face);
             }
         }
 
@@ -646,11 +630,11 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         bool has_ev(false);
         for (Vertex v : mesh.vertices(face0))
         {
-            has_ev |= !is_ordinary(mesh, v);
+            has_ev |= !mesh.is_ordinary(v);
         }
         for (Vertex v : mesh.vertices(face1))
         {
-            has_ev |= !is_ordinary(mesh, v);
+            has_ev |= !mesh.is_ordinary(v);
         }
 
         if (has_ev)
