@@ -191,7 +191,8 @@ std::array<gsSurfMesh::Face, 4> gsFreeformSubdivision<N, D>::order_faces(
         // searched-for vertex
         for (auto const& v : mesh.vertices(f))
         {
-            if (v == first_vertex){
+            if (v == first_vertex)
+            {
                 first_face = i;
                 break;
             }
@@ -354,7 +355,8 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 
                 // Now that we have the new control net, update the face data
                 // with the correct face and that net.
-                auto& data = face_data_vec.vector()[children_ordered[f_idx].idx()];
+                auto& data =
+                    face_data_vec.vector()[children_ordered[f_idx].idx()];
                 data.face = children_ordered[f_idx];
                 data.control_points = control_points;
             }
@@ -438,175 +440,249 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
     for (const Vertex& v : mesh.vertices())
     {
         // Check for EVs on any face adjacent to this vertex.
-        bool has_ev(false);
-        for (Face f : mesh.faces(v))
-        {
-            for (Vertex v_face : mesh.vertices(f))
-            {
-                has_ev |= !mesh.is_ordinary(v_face);
-            }
-        }
+        // bool has_ev(false);
+        // for (Face f : mesh.faces(v))
+        // {
+        //     for (Vertex v_face : mesh.vertices(f))
+        //     {
+        //         has_ev |= !mesh.is_ordinary(v_face);
+        //     }
+        // }
 
         // for now: Just skip.
-        if (has_ev)
+        if (!mesh.is_ordinary(v))
         {
-            continue;
+            // size_t valence = mesh.valence(v);
+            // // first, collect all the control points around this vertex. They
+            // // will be arrayed like this for a 3-valence vertex:
+            // // ```
+            // //      ...   ...     ...   ...
+            // // ... (1,1) (1,0)   (0,1) (1,1) ...
+            // // ... (0,1) (0,0)   (0,0) (1,0) ...
+            // //                 V
+            // //               (0,0)
+            // //           (1,0)   (0,1)
+            // //         ...   (1,1)   ...
+            // //            ...    ...
+            // // ```
+            // // The points directly neighboring another across different
+            // patches
+            // // should be equal.
+            // std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
+            // for (Halfedge h : mesh.halfedges(v))
+            // {
+            //     // unlike with OVs, there will be no boundary problems here
+            //     control_points_faces.emplace_back(
+            //         face_data_vec[mesh.face(h).idx()].control_points_oriented(
+            //             mesh, h));
+            // }
+            // // Now, each different point needs a row in the matrix. We have 4
+            // // base points with one patch in the top left. Each additional
+            // patch
+            // // adds another 2 points. Technically, the last patch adds
+            // only 1.
+            // // TODO: Is this a problem?
+            // size_t rows(2 + 2 * control_points_faces.size());
+
+            // // Now create a matrix that represents these C1 equations:
+            // // TODO: Explain them here in the comments.
+            // // ```
+            // // 2 3   3 4
+            // // 1 0   0 5
+            // //     0
+            // //    7 6
+            // //     8
+            // // ```
+            // // where 7 has to be equal to 1, but this will happen
+            // automatically. auto matrix = gsMatrix<real_t>(rows, 4);
+            // // The first four equations just say that the first four points
+            // are
+            // // equal to themselves.
+            // matrix.row(0) << 1., 0., 0., 0.;
+            // matrix.row(1) << 0., 1., 0., 0.;
+            // matrix.row(2) << 0., 0., 1., 0.;
+            // matrix.row(3) << 0., 0., 0., 1.;
+
+            // // For each new face, its first vertex (with an even index e.g. 4
+            // or
+            // // 8 above) depends on the two previous vertices.
+            // // Its second vertex is more complicated.
+            // // If the valence is even, e.g. 6 or 8, it is dependent on the
+            // // center an the opposite edge. If the valence is odd, it is
+            // // dependent on the center and the two outer vertices of the
+            // // oppositve face.
+            // for (size_t i = 4; i < rows; ++i)
+            // {
+            //     if (i % 2 == 0)
+            //         matrix.row(i) = 2. * matrix.row(i - 1) - matrix.row(i -
+            //         2);
+            //     else if (valence % 2 == 0)
+            //         // go back 2 vertices for valence/2 faces - halfway
+            //         around
+            //         // the circle
+            //         matrix.row(i) =
+            //             2. * matrix.row(0) - matrix.row(i - valence);
+            //     else
+            //         matrix.row(i) =
+            //             (1. + 2. * sqrt(2.)) * matrix.row(0) - sqrt(2.) *
+            //             matrix.row(i - valence - 1) - sqrt(2.) * matrix.row(i
+            //             - valence + 1);
+            // }
+
+            // // Now, for each of these points, we want to find its desired
+            // // value by looking at the respective value of the old
+            // (non-smooth)
+            // // control net.
+            // gsMatrix<real_t> target_matrix(rows, D);
+            // target_matrix.setZero();
+            // target_matrix.row(0) = control_points_faces[0](0,
+            // 0)->transpose(); target_matrix.row(1) =
+            // control_points_faces[0](0, 1)->transpose();
+
+            // for (size_t i = 0; i < control_points_faces.size(); ++i)
+            // {
+            //     target_matrix.row(2 * i + 2) =
+            //         control_points_faces[i](1, 1)->transpose();
+            //     target_matrix.row(2 * i + 3) =
+            //         control_points_faces[i](1, 0)->transpose();
+            // }
+
+            // // Now do a least squares fit.
+            // // I.e. we are searching for values for the 4 free points
+            // // (transformed into 9 points via `matrix` that are thus C1
+            // smooth)
+            // // such that the squared distance of all 9 points to their
+            // previous
+            // // values (given in `target_matrix`) is minimal.
+            // gsMatrix<real_t> solution =
+            //     matrix.colPivHouseholderQr().solve(target_matrix);
+
+            // auto new_points = matrix * solution;
+
+            // // Now re-assign the correct solution rows back to the points.
+            // // The linear combinations are the same as above, so the result
+            // will
+            // // be C1 smooth.
+            // for (size_t i = 0; i < control_points_faces.size(); ++i)
+            // {
+            //     *(control_points_faces[i](0, 0)) = new_points.row(0);
+            //     *(control_points_faces[i](0, 1)) = new_points.row(2 * i + 1);
+            //     *(control_points_faces[i](1, 1)) = new_points.row(2 * i + 2);
+            //     *(control_points_faces[i](1, 0)) = new_points.row(2 * i + 3);
+            // }
         }
-
-        // first, collect all the control points around this vertex. They will
-        // be arrayed like this:
-        // ```
-        //      ...   ...     ...   ...
-        // ... (1,1) (1,0)   (0,1) (1,1) ...
-        // ... (0,1) (0,0)   (0,0) (1,0) ...
-        // ...             V
-        // ... (1,0) (0,0)   (0,0) (0,1) ...
-        // ... (1,1) (0,1)   (1,0) (1,1) ...
-        //      ...   ...     ...   ...
-        // ```
-        // The points directly neighboring another across different patches
-        // should be equal (i.e. top left (1,0) and bottom left (0,1)) as the C0
-        // condition.
-        std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
-        for (Halfedge h : mesh.halfedges(v))
+        else
         {
-            // we do skip non-existent faces
-            // TODO: How do we ensure the skip isn't in the middle?
-            if (mesh.is_boundary(h))
-                continue;
-            control_points_faces.emplace_back(
-                face_data_vec[mesh.face(h).idx()].control_points_oriented(mesh,
-                                                                          h));
-        }
-        // Now, each different point needs a row in the matrix. Note that, on
-        // the boundary of the multipatch, some of these four patches might not
-        // exist, so the number of rows is not always the same. We have 4 base
-        // points with one patch in the top left. The top right and bottom right
-        // patch each add two new points and the bottom left patch would add
-        // one last remaining point.
-        size_t rows(4);
-        if (control_points_faces.size() >= 2)
-            rows += 2;
-        if (control_points_faces.size() >= 3)
-            rows += 2;
-        if (control_points_faces.size() >= 4)
-            rows += 1;
 
-        // Now create a matrix that represents these C1 equations, i.e. each
-        // point on a boundary is colinear with the ones on either side. This
-        // results one row for each point, writing it as a linear combination of
-        // the 4 free points in the top left patch.
-        // The indices of the points above in the matrix are as follows:
-        // ```
-        // 0 1 1 4
-        // 2 3 3 5
-        // 2 3 3 5
-        // 8 7 6 6
-        // ```
-        auto matrix = gsMatrix<real_t>(rows, 4);
-        // The first four equations just say that the first four points are
-        // equal to themselves.
-        matrix.row(0) << 1., 0., 0., 0.;
-        matrix.row(1) << 0., 1., 0., 0.;
-        matrix.row(2) << 0., 0., 1., 0.;
-        matrix.row(3) << 0., 0., 0., 1.;
+            // first, collect all the control points around this vertex. They
+            // will be arrayed like this:
+            // ```
+            //      ...   ...     ...   ...
+            // ... (1,1) (1,0)   (0,1) (1,1) ...
+            // ... (0,1) (0,0)   (0,0) (1,0) ...
+            // ...             V
+            // ... (1,0) (0,0)   (0,0) (0,1) ...
+            // ... (1,1) (0,1)   (1,0) (1,1) ...
+            //      ...   ...     ...   ...
+            // ```
+            // The points directly neighboring another across different patches
+            // should be equal (e.g. top left (1,0) and bottom left (0,1)) as
+            // the C0 condition.
+            std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
+            size_t insert_index(0);
+            for (Halfedge h : mesh.halfedges(v))
+            {
+                // we do skip non-existent faces
+                if (mesh.is_boundary(h))
+                {
+                    // When a boundary is found, reset the insert-index.
+                    // This ensures that, if we are on the boundary we still
+                    // have a continuous series of faces.
+                    insert_index = 0;
+                    continue;
+                }
+                // Insert the face into our list at the appropriate position.
+                control_points_faces.insert(
+                    control_points_faces.begin() + insert_index++,
+                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
+                        mesh, h));
+            }
+            // Now, each different point needs a row in the matrix. We have 4
+            // base points with one patch in the top left. Each additional patch
+            // adds another 2 points. Technically, the last patch (if connected)
+            // adds only 1, but we can simply overdetermine the system a bit
+            // since we use least squares anyways.
+            size_t rows(2 + 2 * control_points_faces.size());
 
-        // If a second face is present, its two new points must be colinear with
-        // the first face.
-        if (control_points_faces.size() >= 2)
-        {
-            matrix.row(4) << -1., 2., 0., 0.;
-            matrix.row(5) << 0., 0., -1., 2.;
-        }
+            // Now create a matrix that represents these C1 equations, i.e. each
+            // point on a boundary is colinear with the ones on either side.
+            // This results one row for each point, writing it as a linear
+            // combination of the 4 free points in the top left patch. The
+            // indices of the points above in the matrix are as follows:
+            // ```
+            // 2 3 3 4
+            // 1 0 0 5
+            // 9 0 0 5
+            // 8 7 7 6
+            // ```
+            // where 9 has to be equal to 1, but this will happen automatically.
+            auto matrix = gsMatrix<real_t>(rows, 4);
+            // The first four equations just say that the first four points are
+            // equal to themselves.
+            matrix.row(0) << 1., 0., 0., 0.;
+            matrix.row(1) << 0., 1., 0., 0.;
+            matrix.row(2) << 0., 0., 1., 0.;
+            matrix.row(3) << 0., 0., 0., 1.;
 
-        // If a second face is present, its two new points must be colinear with
-        // the second face (one of whose points is already written in terms of
-        // points of the first face).
-        if (control_points_faces.size() >= 3)
-        {
-            matrix.row(6) << 1., -2., -2., 4.;
-            matrix.row(7) << 0., -1., 0., 2.;
-        }
+            // For each new face, its first vertex (with an even index e.g. 4 or
+            // 8 above) depends on the two previous vertices and its second
+            // vertex (with an odd index, e.g. 5 or 7 above) depends on the
+            // center 0 and the second vertex of the preprevious face.
+            for (size_t i = 4; i < rows; ++i)
+            {
+                if (i % 2 == 0)
+                    matrix.row(i) = 2. * matrix.row(i - 1) - matrix.row(i - 2);
+                else
+                    matrix.row(i) = 2. * matrix.row(0) - matrix.row(i - 4);
+            }
 
-        // If a fourth face is present, its points must be colinear with the
-        // first (and, automatically, third) face.
-        if (control_points_faces.size() >= 4)
-        {
-            matrix.row(8) << -1., 0., 2., 0.;
-        }
+            // Now, for each of these 9 points, we want to find its desired
+            // value by looking at the respective value of the old (non-smooth)
+            // control net.
+            // TODO: Does this overvalue the 0/9 point?
+            gsMatrix<real_t> target_matrix(rows, D);
+            target_matrix.setZero();
+            target_matrix.row(0) = control_points_faces[0](0, 0)->transpose();
+            target_matrix.row(1) = control_points_faces[0](0, 1)->transpose();
 
-        // Now, for each of these 9 points, we want to find its desired value by
-        // looking at the respective value of the old (non-smooth) control net.
-        gsMatrix<real_t> target_matrix(rows, D);
-        target_matrix.setZero();
-        target_matrix.row(0) = control_points_faces[0](1, 1)->transpose();
-        target_matrix.row(1) = control_points_faces[0](1, 0)->transpose();
-        target_matrix.row(2) = control_points_faces[0](0, 1)->transpose();
-        target_matrix.row(3) = control_points_faces[0](0, 0)->transpose();
+            for (size_t i = 0; i < control_points_faces.size(); ++i)
+            {
+                target_matrix.row(2 * i + 2) =
+                    control_points_faces[i](1, 1)->transpose();
+                target_matrix.row(2 * i + 3) =
+                    control_points_faces[i](1, 0)->transpose();
+            }
 
-        if (control_points_faces.size() >= 2)
-        {
-            target_matrix.row(4) = control_points_faces[1](1, 1)->transpose();
-            target_matrix.row(5) = control_points_faces[1](1, 0)->transpose();
-        }
+            // Now do a least squares fit.
+            // I.e. we are searching for values for the 4 free points
+            // (transformed into 9 points via `matrix` that are thus C1 smooth)
+            // such that the squared distance of all 9 points to their previous
+            // values (given in `target_matrix`) is minimal.
+            gsMatrix<real_t> solution =
+                matrix.colPivHouseholderQr().solve(target_matrix);
 
-        if (control_points_faces.size() >= 3)
-        {
-            target_matrix.row(6) = control_points_faces[2](1, 1)->transpose();
-            target_matrix.row(7) = control_points_faces[2](1, 0)->transpose();
-        }
+            auto new_points = matrix * solution;
 
-        if (control_points_faces.size() >= 4)
-        {
-            target_matrix.row(8) = control_points_faces[3](1, 1)->transpose();
-        }
-
-        // Now do a least squares fit.
-        // I.e. we are searching for values for the 4 free points (transformed
-        // into 9 points via `matrix` that are thus C1 smooth) such that the
-        // squared distance of all 9 points to their previous values (given in
-        // `target_matrix`) is minimal.
-        gsMatrix<real_t> solution =
-            matrix.colPivHouseholderQr().solve(target_matrix);
-
-        // Now re-assign the correct solution rows back to the points.
-        // The linear combinations are the same as above, so the result will be
-        // C1 smooth.
-        *(control_points_faces[0](1, 1)) = solution.row(0);
-        *(control_points_faces[0](1, 0)) = solution.row(1);
-        *(control_points_faces[0](0, 1)) = solution.row(2);
-        *(control_points_faces[0](0, 0)) = solution.row(3);
-
-        if (control_points_faces.size() >= 2)
-        {
-            *(control_points_faces[1](0, 0)) = solution.row(3);
-            *(control_points_faces[1](0, 1)) = solution.row(1);
-            *(control_points_faces[1](1, 0)) =
-                2. * solution.row(3) - solution.row(2);
-            *(control_points_faces[1](1, 1)) =
-                2. * solution.row(1) - solution.row(0);
-        }
-
-        if (control_points_faces.size() >= 3)
-        {
-            *(control_points_faces[2](0, 0)) = solution.row(3);
-            *(control_points_faces[2](0, 1)) =
-                2. * solution.row(3) - solution.row(2);
-            *(control_points_faces[2](1, 0)) =
-                2. * solution.row(3) - solution.row(1);
-            *(control_points_faces[2](1, 1)) =
-                4. * solution.row(3) - 2. * solution.row(2) -
-                2. * solution.row(1) + solution.row(0);
-        }
-
-        if (control_points_faces.size() >= 4)
-        {
-            *(control_points_faces[3](0, 0)) = solution.row(3);
-            *(control_points_faces[3](0, 1)) =
-                2. * solution.row(3) - solution.row(1);
-            *(control_points_faces[3](1, 0)) = solution.row(2);
-            *(control_points_faces[3](1, 1)) =
-                2. * solution.row(2) - solution.row(0);
+            // Now re-assign the correct solution rows back to the points.
+            // The linear combinations are the same as above, so the result will
+            // be C1 smooth.
+            for (size_t i = 0; i < control_points_faces.size(); ++i)
+            {
+                *(control_points_faces[i](0, 0)) = new_points.row(0);
+                *(control_points_faces[i](0, 1)) = new_points.row(2 * i + 1);
+                *(control_points_faces[i](1, 1)) = new_points.row(2 * i + 2);
+                *(control_points_faces[i](1, 0)) = new_points.row(2 * i + 3);
+            }
         }
     }
     // End of edge correction
@@ -627,18 +703,18 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
         Face face1 = mesh.face(halfedge1);
 
         // Skip this edge if either of these faces has an EV.
-        bool has_ev(false);
-        for (Vertex v : mesh.vertices(face0))
-        {
-            has_ev |= !mesh.is_ordinary(v);
-        }
-        for (Vertex v : mesh.vertices(face1))
-        {
-            has_ev |= !mesh.is_ordinary(v);
-        }
+        // bool has_ev(false);
+        // for (Vertex v : mesh.vertices(face0))
+        // {
+        //     has_ev |= !mesh.is_ordinary(v);
+        // }
+        // for (Vertex v : mesh.vertices(face1))
+        // {
+        //     has_ev |= !mesh.is_ordinary(v);
+        // }
 
-        if (has_ev)
-            continue;
+        // if (has_ev)
+        //     continue;
 
         // Get the control points. They will be arrayed like this:
         // ```
