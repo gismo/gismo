@@ -4,72 +4,171 @@
  <Basis type="THBSplineBasis2" levels="6">
   <Basis type="TensorBSplineBasis2">
    <Basis type="BSplineBasis" index="0">
-    <KnotVector degree="1">0 0 1 1 </KnotVector>
+    <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
    </Basis>
    <Basis type="BSplineBasis" index="1">
-    <KnotVector degree="1">0 0 1 1 </KnotVector>
+    <KnotVector degree="2">0 0 0 0.5 1 1 1 </KnotVector>
    </Basis>
   </Basis>
  </Basis>
 <coefs geoDim="2">
-0 -1 
-1 -1 
-0 0 
-1 0 
+   1.0488 -0 
+   1.0488 0.009945000000000001 
+   1.0415 0.028319 
+   1.028 0.042386 
+   1.0099 0.049991 
+   1 0.05 
+   1.09499 0 
+   1.094975 0.021958 
+   1.078901 0.062611 
+   1.048172 0.09379999999999999 
+   1.005762 0.11056 
+   0.981332 0.110487 
+   1.254368 0 
+   1.254356 0.059818 
+   1.215097 0.171406 
+   1.138881 0.256609 
+   1.029121 0.303458 
+   0.962042 0.303925 
+   1.4142 -0 
+   1.4142 0.099451 
+   1.3599 0.28319 
+   1.2533 0.42386 
+   1.0985 0.49991 
+   1 0.5 
 </coefs>
 </Geometry>
 <Geometry type="THBSpline2" id="1">
  <Basis type="THBSplineBasis2" levels="6">
   <Basis type="TensorBSplineBasis2">
    <Basis type="BSplineBasis" index="0">
-    <KnotVector degree="1">0 0 1 1 </KnotVector>
+    <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
    </Basis>
    <Basis type="BSplineBasis" index="1">
-    <KnotVector degree="1">0 0 1 1 </KnotVector>
+    <KnotVector degree="2">0 0 0 0.5 1 1 1 </KnotVector>
    </Basis>
   </Basis>
  </Basis>
 <coefs geoDim="2">
--1 -1
-0 -1
--1 0
-0 0
+   1 0.05 
+   0.99005 0.049991 
+   0.97131 0.042386 
+   0.95669 0.028319 
+   0.9487 0.009945000000000001 
+   0.94868 0 
+   0.981332 0.110487 
+   0.956943 0.110654 
+   0.908145 0.09413000000000001 
+   0.86981 0.062949 
+   0.838661 0.022066 
+   0.837603 0 
+   0.962042 0.303925 
+   0.894711 0.303822 
+   0.745762 0.257494 
+   0.6044040000000001 0.17227 
+   0.53462 0.060189 
+   0.536174 0 
+   1 0.5 
+   0.9015 0.49991 
+   0.66988 0.42386 
+   0.41251 0.28319 
+   0.13929 0.099451 
+   0.13 0 
 </coefs>
 </Geometry>
 <Geometry type="THBSpline2" id="2">
  <Basis type="THBSplineBasis2" levels="6">
   <Basis type="TensorBSplineBasis2">
    <Basis type="BSplineBasis" index="0">
-    <KnotVector degree="1">0 0 1 1 </KnotVector>
+    <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
    </Basis>
    <Basis type="BSplineBasis" index="1">
-    <KnotVector degree="1">0 0 1 1 </KnotVector>
+    <KnotVector degree="2">0 0 0 0.5 1 1 1 </KnotVector>
    </Basis>
   </Basis>
  </Basis>
 <coefs geoDim="2">
--1 0 
-0 0 
--1 1 
-0 1 
+   0.94868 0 
+   0.9487 -0.009945000000000001 
+   0.95669 -0.028319 
+   0.97131 -0.042386 
+   0.99005 -0.049991 
+   1 -0.05 
+   0.837603 0 
+   0.838661 -0.022066 
+   0.86981 -0.062949 
+   0.908145 -0.09413000000000001 
+   0.956943 -0.110654 
+   0.981332 -0.110487 
+   0.536174 0 
+   0.53462 -0.060189 
+   0.6044040000000001 -0.17227 
+   0.745762 -0.257494 
+   0.894711 -0.303822 
+   0.962042 -0.303925 
+   0.13 0 
+   0.13929 -0.099451 
+   0.41251 -0.28319 
+   0.66988 -0.42386 
+   0.9015 -0.49991 
+   1 -0.5 
 </coefs>
-</Geometry>
-<MultiPatch parDim="2" id="0">
- <patches type="id_range">0 2</patches>
-<interfaces>
-2 3 1 4 0 1 1 1
-1 2 0 1 0 1 1 1
-</interfaces>
-<boundary>
-2 1
-2 2
-2 4
-1 1
-1 3
-0 2
-0 3
-0 4
-</boundary>
+</Geometry> 
+
+<Geometry type="THBSpline2" id="3">
+ <Basis type="THBSplineBasis2" levels="6">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="2">0 0 0 0.5 1 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+ </Basis>
+<coefs geoDim="2">
+   1 -0.05 
+   1.0099 -0.049991 
+   1.028 -0.042386 
+   1.0415 -0.028319 
+   1.0488 -0.009945000000000001 
+   1.0488 -0 
+   0.981332 -0.110487 
+   1.005762 -0.11056 
+   1.048172 -0.09379999999999999 
+   1.078901 -0.062611 
+   1.094975 -0.021958 
+   1.09499 0 
+   0.962042 -0.303925 
+   1.029121 -0.303458 
+   1.138881 -0.256609 
+   1.215097 -0.171406 
+   1.254356 -0.059818 
+   1.254368 0 
+   1 -0.5 
+   1.0985 -0.49991 
+   1.2533 -0.42386 
+   1.3599 -0.28319 
+   1.4142 -0.099451 
+   1.4142 -0 
+</coefs>
+</Geometry> 
+<MultiPatch parDim="2" id="4">
+  <patches type="id_range">0 3</patches>
+  <interfaces>0 1 3 2 0 1 0 1
+   0 2 1 1 0 1 0 1
+   1 2 2 1 0 1 0 1
+   2 2 3 1 0 1 0 1
+  </interfaces>
+  <boundary>0 3
+   0 4
+   1 3
+   1 4
+   2 3
+   2 4
+   3 3
+   3 4
+  </boundary>
  </MultiPatch>
 </xml>
 

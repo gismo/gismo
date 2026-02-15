@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot           = false; // plot solution or not
     index_t numRefine   = 4;     // number of uniform refinement
-    index_t numIRefine  = 3;     // number for initial refinement
+    index_t numIRefine  = 4;     // number for initial refinement
     index_t numElevate  = 1;     // number of degree elevation
     index_t maxIter     = 50;    // maximum number of Picard iterations
     double eps          = 1e-6;  // pinalization coefficient

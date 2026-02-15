@@ -83,7 +83,6 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     gsInfo<<this->DoFs <<"<> \n";
 }
 
-
 // Uniform refinement 
 void gsAdaptiveMultiPatchBuilder::uniformRefine(const index_t numRefine)
 {
@@ -176,14 +175,14 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
 }
 
 // Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const index_t setRhogrid, const index_t setRhoZero) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hbasis, const  std::vector<bool> elMarked, const index_t setRhogrid, const index_t setRhoZero) const 
 {   
     //.. setRhoLevel: if 0 set the density to zero before adding the error distribution
     gsInfo<<"<>density function";
     // ... error as a piecewise constant function
     gsMultiBasis<> basis_0 (mp, true); // make a copy of basis before adaptive refinement
     basis_0.uniformRefine(setRhogrid);
-    while (basis_0.size() < this->m_basis.size()) // refine until having enough resolution for error representation
+    while (basis_0.size() <= std::min( this->m_basis.size(), Hbasis.size())) // refine until having enough resolution for error representation
         basis_0.uniformRefine(); // refine to have enough resolution for error representation
 
     // ... We want each element to be reprensted by one basis for all patches
@@ -226,9 +225,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Gi
     {
         // for all elements in patch pn
         typename gsBasis<>::domainIter domIt =  // add patchInd to domainiter ?
-            Givbasis.basis(pn).domain()->beginAll();
+            Hbasis.basis(pn).domain()->beginAll();
         typename gsBasis<>::domainIter domItEnd =  // add patchInd to domainiter ?
-            Givbasis.basis(pn).domain()->endAll();
+            Hbasis.basis(pn).domain()->endAll();
         #pragma omp parallel for
         for (; domIt<domItEnd; ++domIt )
         {

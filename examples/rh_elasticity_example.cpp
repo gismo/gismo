@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot             = false;
-    index_t numRefine     = 3;
+    index_t numRefine     = 2;
     index_t numLRefine    = 0;
     index_t numElevate    = 0;
     index_t maxIter       = 100;
@@ -166,16 +166,6 @@ int main(int argc, char *argv[])
         geometryRef.uniformRefine();
     }
     gsMultiBasis<> Cbasis(geometryRef, false); // make a copy of basis before adaptive refinement
-    if (IntensityMAE >1.){
-        // std::vector<bool> eldensityMarked( eltErrs.size() );
-        // gsMarkElementsForRef( eltErrs, adaptRefCrit, MAERefParam, eldensityMarked);
-        // auto density   = MAE.buildDensity( basis, eldensityMarked,2);// false: do not set rho to zero
-        auto density   = MAE.buildAnalyticDensity(f);// false: do not set rho to zero
-        MAE.buildMultiPatch(density,1e-8);// compute adaptive mapping
-        geometry       = MAE.buildColCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o Psitp
-        CorrecNormalCPoints(geometryRef, geometry);
-        // gsRefineMarkedElements(geometryRef, elMarked, NumArMarEl);
-    }
 
     gsInfo << "Patches: "<< geometry.basis(0).size() <<", degree: "<< basis.basis(0).size() <<"\n";
 
@@ -270,7 +260,16 @@ int main(int argc, char *argv[])
             gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
 
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
-
+            if (IntensityMAE >1.){
+                std::vector<bool> eldensityMarked( eltErrs.size() );
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, MAERefParam, eldensityMarked);
+                auto density   = MAE.buildDensity( basis, eldensityMarked,0);
+                // auto density   = MAE.buildAnalyticDensity(f);// false: do not set rho to zero
+                MAE.buildMultiPatch(density,1e-8);// compute adaptive mapping
+                geometry       = MAE.buildColCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o Psitp
+                CorrecNormalCPoints(geometryRef, geometry);
+                // gsRefineMarkedElements(geometryRef, elMarked, NumArMarEl);
+            }
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( basis, elMarked, NumArMarEl);
             // gsRefineMarkedElements(geometry, elMarked, NumArMarEl);

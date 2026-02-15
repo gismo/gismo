@@ -29,7 +29,7 @@ public:
     * @param IntensityMAE intensity of the density function for the Monge-Ampere problem
     * @param numReduce number of degree reduction steps to perform on the basis before solving
     */
-    // Constructor
+    // Constructor for one patch compoistion mapping
     gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,
                                 index_t numRefine   = 0,
                                 index_t maxIter     = 30,
@@ -58,7 +58,7 @@ public:
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
     // Build and return a density as a MultiPatch object from marked elements using local h-refinement strategies
-    gsMultiPatch<> buildDensity(const gsMultiBasis<> Givbasis, const  std::vector<bool> elMarked, const index_t setRhogrid = 0, const  index_t setRhoZero = 0) const;
+    gsMultiPatch<> buildDensity(const gsMultiBasis<> Hbasis, const  std::vector<bool> elMarked, const index_t setRhogrid = 0, const  index_t setRhoZero = 0) const;
     
     //-----------------------------------------
     //  functions to build mapping from density
