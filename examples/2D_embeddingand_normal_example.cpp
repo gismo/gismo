@@ -80,7 +80,7 @@ template<typename T>
 gsSparseMatrix<T> collocationMatrix(const gsBSplineBasis<T>& basis, const gsMatrix<T>& collocationPoints)
 {
     gsMatrix<T> values = basis.eval(collocationPoints);
-    gsMatrix<size_t> indices = basis.active(collocationPoints);
+    gsMatrix<index_t> indices = basis.active(collocationPoints);
 
     gsSparseEntries<T> entries;
     entries.reserve(values.rows() * values.cols());
@@ -123,8 +123,7 @@ gsSparseMatrix<T> createTensorEmbedding(
 
     gsMatrix<index_t> boundaryDOFs = tensorBasis.boundary(side);
 
-    // Build a sorted set of boundary indices for O(log n) lookup
-    std::set<index_t> bdrySet(boundaryDOFs.data(),
+    std::vector<index_t> bdrySet(boundaryDOFs.data(),
                               boundaryDOFs.data() + boundaryDOFs.rows());
 
     // Compute interior DOFs via set difference: allDOFs \ bdrySet
@@ -147,10 +146,10 @@ gsSparseMatrix<T> createTensorEmbedding(
     index_t coarseIdx = 0;
     for (const index_t i : interiorDOFs)
     {
-        result.coeffRef(i, coarseIdx) = 1.0;
+        result(i, coarseIdx) = 1.0;
         ++coarseIdx;
     }
-
+    
     // Insert the 1D embedding for boundary functions
     // Iterate only over nonzero entries of embedding1D (column-major)
     for (index_t j = 0; j < embedding1D.outerSize(); ++j)
@@ -159,8 +158,8 @@ gsSparseMatrix<T> createTensorEmbedding(
         {
             // it.row() = fine 1D index, j = coarse 1D index
             const index_t row2D = boundaryDOFs(it.row(), 0);
-            const index_t col2D = coarseIdx + j;
-            result.coeffRef(row2D, col2D) = it.value();
+            const index_t col2D = coarseIdx + it.col();
+            result(row2D, col2D) = it.value();
         }
     }
 
@@ -173,13 +172,17 @@ gsSparseMatrix<T> enforceZeroNormalDerivative(
     const gsTensorBSplineBasis<2,T>& tensorBasis,
     const gsSparseMatrix<T>& tensorEmbedding,
     const gsMatrix<index_t>& boundaryDOFs,
-    boundary::side side,
+    boxSide side,
     T eps = 1e-12)
 {
     // Determine direction properties once
-    const bool isLow = (side == boundary::south || side == boundary::west);
-    const int dir = (side == boundary::south || side == boundary::north) ? 1 : 0;
-
+    const bool isLow = ! side.parameter();
+    GISMO_ASSERT ( isLow == (side == boundary::south || side == boundary::west), "");
+    
+    const int dir = side.direction();
+    GISMO_ASSERT ( dir == ((side == boundary::south || side == boundary::north) ? 1 : 0), "");
+    
+    
     // Get the 1D basis in the normal direction
     const gsBSplineBasis<T>& normalBasis =
         dynamic_cast<const gsBSplineBasis<T>&>(tensorBasis.component(dir));
@@ -189,17 +192,15 @@ gsSparseMatrix<T> enforceZeroNormalDerivative(
     const index_t neighIdx1D = isLow ? 1 : nNormal - 2;
 
     // Evaluate 1D derivatives at the boundary parameter
-    gsMatrix<T> bdryPt(1, 1);
-    bdryPt(0, 0) = isLow ? T(0) : T(1);
+    
+    gsMatrix<T> bdryPt = normalBasis.support().col(isLow ? 0 : 1);
+    //  gsMatrix<T> bdryPt(1, 1);
+    //  bdryPt(0, 0) = isLow ? T(0) : T(1);
 
     const T dBdry  = normalBasis.derivSingle(bdryIdx1D, bdryPt)(0, 0);
     const T dNeigh = normalBasis.derivSingle(neighIdx1D, bdryPt)(0, 0);
 
-    if (std::abs(dNeigh) < eps)
-    {
-        gsInfo << "WARNING: neighbor derivative is zero, cannot enforce zero normal derivative\n";
-        return tensorEmbedding;
-    }
+    GISMO_ENSURE (std::abs(dNeigh) > eps, "Neighbor derivative is zero, cannot enforce zero normal derivative");
 
     const T ratio = -dBdry / dNeigh;
     gsInfo << "  Correction ratio: " << ratio << "\n";
@@ -222,7 +223,7 @@ gsSparseMatrix<T> enforceZeroNormalDerivative(
             const T val = result.coeff(fineRow, col);
             if (std::abs(val) < eps) continue;
 
-            result.coeffRef(neighbor, col) = ratio * val;
+            result(neighbor, col) = ratio * val;
         }
     }
 
