@@ -228,7 +228,7 @@ public: // Conversions
 
 /// \brief Matrix rotation.
 ///
-/// Rotates a leftwise matrix around its center, returning the rotated matrix
+/// Rotates a matrix leftwise around its center, returning the rotated matrix
 /// without changing the original.
 /// This function is implicitly `inline`.
 ///

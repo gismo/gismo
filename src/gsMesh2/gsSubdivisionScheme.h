@@ -109,14 +109,14 @@ public: // Validity
     /// algorithm to a given mesh.
     enum gsSubdivisionMeshValidity
     {
-        /// The scheme can be applied to the mesh without problems.
-        VALID,
         /// Applying the algorithm to the mesh will yield meaningless results or
         /// cause an error.
-        INVALID,
+        INVALID = 0,
+        /// The scheme can be applied to the mesh without problems.
+        VALID = 1,
         /// No statement about the validity of applying the algorithm to the
         /// mesh is made.
-        UNDETERMINED
+        UNDETERMINED = 2,
     };
 
     /// \brief Checks if the given mesh is valid for this subdivision scheme.
