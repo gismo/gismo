@@ -180,8 +180,9 @@ gsFreeformSubdivision<N, D>::load_patch(int valence, std::string subtype)
 
 template <size_t N, size_t D>
 std::array<gsSurfMesh::Face, 4> gsFreeformSubdivision<N, D>::order_faces(
-    Vertex first_vertex, std::vector<gsSurfMesh::Face> faces, gsSurfMesh& mesh)
+    Vertex first_vertex, std::vector<gsSurfMesh::Face> faces)
 {
+    auto& mesh = *m_mesh;
     size_t first_face(0);
     for (size_t i = 0; i < 4; ++i)
     {
@@ -210,9 +211,10 @@ std::array<gsSurfMesh::Face, 4> gsFreeformSubdivision<N, D>::order_faces(
 }
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::orient_faces(gsSurfMesh& mesh)
+void gsFreeformSubdivision<N, D>::orient_faces()
 {
-    // Get face data
+    // Get data
+    auto mesh = *m_mesh;
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
@@ -246,12 +248,12 @@ void gsFreeformSubdivision<N, D>::orient_faces(gsSurfMesh& mesh)
 }
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
+void gsFreeformSubdivision<N, D>::subdivide()
 {
-
+    auto& mesh = *m_mesh;
     // First, make sure all faces are correctly oriented with the EV as their
     // first vertex.
-    orient_faces(mesh);
+    orient_faces();
 
     // Remember the first vertex of each face (this is where the control nets of
     // each face data are oriented on).
@@ -293,7 +295,7 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
             // Collate the faces into a correctly ordered array.
             auto children_ordered = order_faces(
                 first_vertices[parent_to_children_faces.first.idx()],
-                parent_to_children_faces.second, mesh);
+                parent_to_children_faces.second);
 
             // Now fit each face with a new control net.
             for (size_t f_idx = 0; f_idx < 4; ++f_idx)
@@ -400,7 +402,7 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
             // Collate the faces into a correctly ordered array.
             auto children_ordered = order_faces(
                 first_vertices[parent_to_children_faces.first.idx()],
-                parent_to_children_faces.second, mesh);
+                parent_to_children_faces.second);
 
             // Correct back references of face data and give them the correct
             // control points.
@@ -415,8 +417,9 @@ void gsFreeformSubdivision<N, D>::subdivide(gsSurfMesh& mesh)
 };
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
+void gsFreeformSubdivision<N, D>::smooth(size_t degree)
 {
+    auto& mesh = *m_mesh;
     // Ensure we have a high enough degree
     if (degree + 1 > N / 2)
     {
@@ -728,8 +731,9 @@ void gsFreeformSubdivision<N, D>::smooth(gsSurfMesh& mesh, size_t degree)
 }
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::initialize_data(gsSurfMesh& mesh)
+void gsFreeformSubdivision<N, D>::initialize_data()
 {
+    auto& mesh = *m_mesh;
     // Initialize the property.
     mesh.add_face_property(std::string("bezier_points"),
                            gsFreeformFaceData<N, D>());
@@ -746,8 +750,9 @@ void gsFreeformSubdivision<N, D>::initialize_data(gsSurfMesh& mesh)
 }
 
 template <size_t N, size_t D>
-gsMultiPatch<> gsFreeformSubdivision<N, D>::multipatch(const gsSurfMesh& mesh)
+gsMultiPatch<> gsFreeformSubdivision<N, D>::multipatch()
 {
+    auto& mesh = *m_mesh;
     gsMultiPatch<> patch;
 
     // Get the vector containing all the face data.
@@ -766,8 +771,9 @@ gsMultiPatch<> gsFreeformSubdivision<N, D>::multipatch(const gsSurfMesh& mesh)
 
 template <size_t N, size_t D>
 gsSubdivisionScheme::gsSubdivisionMeshValidity
-gsFreeformSubdivision<N, D>::valid_mesh(const gsSurfMesh& mesh)
+gsFreeformSubdivision<N, D>::check_mesh()
 {
+    auto& mesh = *m_mesh;
     for (Face f : mesh.faces())
     {
         size_t count(0);

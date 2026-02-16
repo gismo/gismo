@@ -23,8 +23,7 @@ namespace gismo {
     typedef gsSurfMesh::Halfedge Halfedge;
     typedef gsSurfMesh::Edge Edge;
 
-    void gsCatmullClark::subdivide(gsSurfMesh& mesh) {
-        gsSurfMesh* m_mesh = &mesh;
+    void gsCatmullClark::subdivide() {
       
         gsSurfMesh::Vertex v;
         gsSurfMesh::Halfedge he;

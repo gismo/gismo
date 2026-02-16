@@ -23,22 +23,32 @@ class GISMO_EXPORT gsDooSabin : public gsSubdivisionScheme
 {
 
 public: // Constructors
+  /// \brief Default constructor.
+  ///
   /// Default constructor.
-  /// Catmull-Clark has no special options.
+  /// Creates the 'ds.BoundaryMask' optionw and initializes it with value `0`.
   gsDooSabin() : gsSubdivisionScheme() {
     m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
   }
 
+  /// \brief Constructor with a mesh to target.
+  ///
+  /// Constructor that accepts a mesh to be targeted by this constructor.
+  /// Creates the 'ds.BoundaryMask' optionw and initializes it with value `0`.
+  gsDooSabin(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh) {
+    m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
+  }
+
 public:
-  void subdivide(gsSurfMesh &mesh) override;
+  void subdivide() override;
 
 private: // Helper functions
     
     /// Doo-Sabin Image point calculation per vertex in a face (boundary interpolation)
-    Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf, const gsSurfMesh& mesh);
+    Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);
 
     /// Doo-Sabin Image point calculation per vertex in a face (trimmed)
-    Point ds_image_point_calc_vanila(Vertex oldv, Face oldf, const gsSurfMesh& mesh);
+    Point ds_image_point_calc_vanila(Vertex oldv, Face oldf);
   
 };//namespace internal
 

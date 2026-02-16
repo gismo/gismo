@@ -23,12 +23,20 @@ class GISMO_EXPORT gsCatmullClark : public gsSubdivisionScheme
 {
 
 public: // Constructors
+  /// \brief Default constructor.
+  ///
   /// Default constructor.
   /// Catmull-Clark has no special options.
   gsCatmullClark() : gsSubdivisionScheme() {}
 
+  /// \brief Constructor with a mesh to target.
+  ///
+  /// Constructor that accepts a mesh to be targeted by this constructor.
+  /// Catmull-Clark has no special options.
+  gsCatmullClark(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh) {}
+
 public:
-  void subdivide(gsSurfMesh &mesh) override;
+  void subdivide() override;
   
 };//namespace internal
 

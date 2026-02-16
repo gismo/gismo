@@ -32,9 +32,15 @@ class GISMO_EXPORT gsFreeformSubdivision : public gsSubdivisionScheme
 public: // Constructors
     /// \brief Default constructor.
     ///
-    /// Default constructor. Only constructor, as this scheme has no special
-    /// options.
+    /// Default constructor. Sets no options and leaves the targeted mesh as a
+    /// nullpointer.
     gsFreeformSubdivision() : gsSubdivisionScheme() {}
+
+    /// \brief Constructor with a mesh to target.
+    ///
+    /// Constructor that accepts a mesh to be targeted by this constructor.
+    /// Sets no options.
+    gsFreeformSubdivision(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh) {}
 
 private: // Helper functions
     /// \brief Performs deCasteljau algorithm to split a matrix into two.
@@ -83,7 +89,7 @@ private: // Helper functions
     /// larger distance between them.
     ///
     /// \param mesh The mesh to be re-oriented.
-    void orient_faces(gsSurfMesh& mesh);
+    void orient_faces();
 
     /// \brief Orders a vector of 4 faces such that the face with a given vertex
     /// is first.
@@ -96,20 +102,20 @@ private: // Helper functions
     /// Should be contained in at least one of the faces.
     /// \param faces The faces to be ordered. Should have exactly 4 elements or
     /// unexpected results may occur.
-    static std::array<Face, 4>
-    order_faces(Vertex first_vertex, std::vector<Face> faces, gsSurfMesh& mesh);
+    std::array<Face, 4>
+    order_faces(Vertex first_vertex, std::vector<Face> faces);
 
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity
-    valid_mesh(const gsSurfMesh&) override;
+    check_mesh() override;
 
-    void subdivide(gsSurfMesh& mesh) override;
+    void subdivide() override;
 
     /// \brief Initializes C0 control nets on all faces.
     ///
     /// Takes a given mesh without freeform data and initializes a freeform data
     /// control net with C0 continuity on each face.
-    void initialize_data(gsSurfMesh& mesh);
+    void initialize_data();
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
     ///
@@ -120,14 +126,14 @@ public:
     ///
     /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
     /// supported.
-    void smooth(gsSurfMesh& mesh, size_t degree);
+    void smooth(size_t degree);
 
     /// \brief Converts to a Gismo multipatch object.
     ///
     /// Converts a given mesh with freeform data into a multipatch that can be
     /// easily displayed by e.g. Paraview. Each face and its control net are
     /// converted to one appropriately sized patch.
-    gsMultiPatch<> multipatch(const gsSurfMesh& mesh);
+    gsMultiPatch<> multipatch();
 
 }; // namespace internal
 

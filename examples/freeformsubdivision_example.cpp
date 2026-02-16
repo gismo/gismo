@@ -35,10 +35,10 @@ int main(int argc, char** argv)
 
     auto _readFile = gsReadFile<>(filedata, mesh);
 
-    auto subdiv = gsFreeformSubdivision<5, 3>();
+    auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
 
-    subdiv.initialize_data(mesh);
-    gsWriteParaview(subdiv.multipatch(mesh), "results/initial_data");
+    subdiv.initialize_data();
+    gsWriteParaview(subdiv.multipatch(), "results/initial_data");
 
 
     size_t i(1);
@@ -46,16 +46,16 @@ int main(int argc, char** argv)
         switch (c) {
             case 'd':
                 gsInfo << "Step " << std::string(i, 'I') << ": Subdividing.\n";
-                subdiv.subdivide(mesh);
+                subdiv.subdivide();
                 break;
             case 's':
                 gsInfo << "Step " << std::string(i, 'I') << ": Smoothing.\n";
-                subdiv.smooth(mesh, 1);
+                subdiv.smooth(1);
                 break;
             default:
                 break;
        }
-        gsWriteParaview(subdiv.multipatch(mesh),
+        gsWriteParaview(subdiv.multipatch(),
                         "results/step" + std::string(i++, 'I'));
     }
 }
