@@ -103,7 +103,7 @@ private: // Helper functions
     /// \param faces The faces to be ordered. Should have exactly 4 elements or
     /// unexpected results may occur.
     std::array<Face, 4>
-    order_faces(Vertex first_vertex, std::vector<Face> faces);
+    order_faces(Vertex first_vertex, std::array<Face, 4> faces);
 
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity

@@ -179,8 +179,9 @@ gsFreeformSubdivision<N, D>::load_patch(int valence, std::string subtype)
 }
 
 template <size_t N, size_t D>
-std::array<gsSurfMesh::Face, 4> gsFreeformSubdivision<N, D>::order_faces(
-    Vertex first_vertex, std::vector<gsSurfMesh::Face> faces)
+std::array<gsSurfMesh::Face, 4>
+gsFreeformSubdivision<N, D>::order_faces(Vertex first_vertex,
+                                         std::array<gsSurfMesh::Face, 4> faces)
 {
     auto& mesh = *m_mesh;
     size_t first_face(0);
@@ -210,8 +211,7 @@ std::array<gsSurfMesh::Face, 4> gsFreeformSubdivision<N, D>::order_faces(
     return children_faces_ordered;
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::orient_faces()
+template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::orient_faces()
 {
     // Get data
     auto mesh = *m_mesh;
@@ -247,8 +247,7 @@ void gsFreeformSubdivision<N, D>::orient_faces()
     }
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::subdivide()
+template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
 {
     auto& mesh = *m_mesh;
     // First, make sure all faces are correctly oriented with the EV as their
@@ -263,19 +262,26 @@ void gsFreeformSubdivision<N, D>::subdivide()
         // remember the first vertex
         first_vertices.emplace_back(mesh.to_vertex(mesh.halfedge(f)));
     }
+    // Remember the number of faces before the subdivision.
+    size_t n(first_vertices.size());
 
-    // Split each face into 4 and get info about the way they were split.
-    std::map<gsSurfMesh::Face, std::vector<gsSurfMesh::Face>> face_map =
-        mesh.quad_split();
+    // Do the quad split of the (abstract) base faces.
+    mesh.quad_split();
 
     // Get face data
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
     // Now fix the data on each face.
-    for (auto const& parent_to_children_faces : face_map)
+    for (size_t initial_face = 0; initial_face < n; ++initial_face)
     {
-        Vertex fv = first_vertices[parent_to_children_faces.first.idx()];
+        Vertex fv = first_vertices[initial_face];
+
+        // The indices of the child faces can be calculated from the guarantees
+        // made by `quad_split`.
+        std::array<Face, 4> child_faces = {
+            Face(initial_face), Face(n + initial_face * 3),
+            Face(n + initial_face * 3 + 1), Face(n + initial_face * 3 + 2)};
 
         // Check if we have an EV. If there is, it must be the first vertex
         // thanks to our preprocessing.
@@ -288,14 +294,11 @@ void gsFreeformSubdivision<N, D>::subdivide()
             auto valence = mesh.valence(fv);
             auto coarse_model = load_patch(valence, "coarse");
             // and remember the associated face data
-            auto coarse_patch =
-                face_data_vec.vector()[parent_to_children_faces.first.idx()]
-                    .patch();
+            auto coarse_patch = face_data_vec.vector()[initial_face].patch();
 
             // Collate the faces into a correctly ordered array.
-            auto children_ordered = order_faces(
-                first_vertices[parent_to_children_faces.first.idx()],
-                parent_to_children_faces.second);
+            auto children_ordered =
+                order_faces(first_vertices[initial_face], child_faces);
 
             // Now fit each face with a new control net.
             for (size_t f_idx = 0; f_idx < 4; ++f_idx)
@@ -370,8 +373,7 @@ void gsFreeformSubdivision<N, D>::subdivide()
 
             // Get the face data and store it in a temporary dynamic 2d array.
             gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> control_net(
-                face_data_vec.vector()[parent_to_children_faces.first.idx()]
-                    .control_points);
+                face_data_vec.vector()[initial_face].control_points);
 
             // now control_net is a (n+1)*(n+1) matrix of control points (degree
             // n) Perform deCasteljau once to divide into two (n+1)*(n+1)
@@ -400,9 +402,8 @@ void gsFreeformSubdivision<N, D>::subdivide()
                 {top_split[0], top_split[1], bot_split[1], bot_split[0]};
 
             // Collate the faces into a correctly ordered array.
-            auto children_ordered = order_faces(
-                first_vertices[parent_to_children_faces.first.idx()],
-                parent_to_children_faces.second);
+            auto children_ordered =
+                order_faces(first_vertices[initial_face], child_faces);
 
             // Correct back references of face data and give them the correct
             // control points.
@@ -457,7 +458,8 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             size_t valence = mesh.valence(v);
 
             // Collect all the control points.
-            // The `4 * valence` faces will be ordered as follows, with the `o` indicating its (0,0) control point:
+            // The `4 * valence` faces will be ordered as follows, with the `o`
+            // indicating its (0,0) control point:
             // ```
             //    +-----+  +-----+  +-----+  +-----+
             //    |     |  |     |  |     |  |^    |
@@ -479,34 +481,46 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             //    |  5 ||  |  6  |  |  7  |  |  8  |
             //    |    v|  |     |  |     |  |     |
             //    +-----+  +-----+  +-----+  +-----+
-            // 
+            //
             // ```
             std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
 
-            for(Halfedge h : mesh.halfedges(v)){
-                control_points_faces.emplace_back(face_data_vec[mesh.face(h).idx()].control_points_oriented(mesh, h));
+            for (Halfedge h : mesh.halfedges(v))
+            {
+                control_points_faces.emplace_back(
+                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
+                        mesh, h));
             }
 
-            for(Halfedge h : mesh.halfedges(v)){
+            for (Halfedge h : mesh.halfedges(v))
+            {
                 // get the new halfedge
                 h = mesh.next_halfedge(h);
                 h = mesh.opposite_halfedge(h);
-                control_points_faces.emplace_back(face_data_vec[mesh.face(h).idx()].control_points_oriented(mesh, h));
+                control_points_faces.emplace_back(
+                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
+                        mesh, h));
 
                 h = mesh.prev_halfedge(h);
                 h = mesh.opposite_halfedge(h);
                 h = mesh.next_halfedge(h);
-                control_points_faces.emplace_back(face_data_vec[mesh.face(h).idx()].control_points_oriented(mesh, h));
+                control_points_faces.emplace_back(
+                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
+                        mesh, h));
 
                 h = mesh.opposite_halfedge(h);
                 h = mesh.next_halfedge(h);
-                control_points_faces.emplace_back(face_data_vec[mesh.face(h).idx()].control_points_oriented(mesh, h));
+                control_points_faces.emplace_back(
+                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
+                        mesh, h));
             }
 
             // This is the number of total points we are fitting to.
-            // The inner patches are fully determined, so D * D * valence minus the overlap, for a total of D * (D-1) * valence.
-            // For the outer patches, each sector has another (D-1) + 2 + (D-1) = 2 * D points.
-            size_t rows(D * (D+1) * valence);
+            // The inner patches are fully determined, so D * D * valence minus
+            // the overlap, for a total of D * (D-1) * valence. For the outer
+            // patches, each sector has another (D-1) + 2 + (D-1) = 2 * D
+            // points.
+            size_t rows(D * (D + 1) * valence);
 
             // The number of columns is the number of independent functions
             size_t cols(2 * valence + 1);
