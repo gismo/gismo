@@ -232,30 +232,4 @@ public: // Conversions
 
 }; // namespace internal
 
-/// \brief Matrix rotation.
-///
-/// Rotates a matrix leftwise around its center, returning the rotated matrix
-/// without changing the original.
-/// This function is implicitly `inline`.
-///
-/// \param mat The matrix to be rotated.
-template <class T>
-gsMatrix<T, Dynamic, Dynamic> rotate_l(const gsMatrix<T, Dynamic, Dynamic>& mat)
-{
-    return mat.transpose().colwise().reverse().eval();
-}
-
-/// \brief Matrix rotation.
-///
-/// Rotates a matrix rightwise around its center, returning the rotated matrix
-/// without changing the original.
-/// This function is implicitly `inline`.
-///
-/// \param mat The matrix to be rotated.
-template <class T>
-gsMatrix<T, Dynamic, Dynamic> rotate_r(const gsMatrix<T, Dynamic, Dynamic>& mat)
-{
-    return mat.transpose().rowwise().reverse().eval();
-}
-
 } // namespace gismo

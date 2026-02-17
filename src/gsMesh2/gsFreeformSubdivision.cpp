@@ -73,14 +73,14 @@ gsFreeformFaceData<N, D>::control_points_oriented(gsSurfMesh& mesh,
             result(i, j) = &control_points(i, j);
         }
     }
-    result = rotate_r(result);
+    result = result.rotate_ccw();
     // find the edge on the face
     for (auto const& he : mesh.halfedges(face))
     {
         if (he == hedge)
             break;
 
-        result = rotate_l(result);
+        result = result.rotate_cw();
     }
     return result;
 }
@@ -241,7 +241,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::orient_faces()
                 gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> old_points(
                     face_data_vec.vector()[f.idx()].control_points);
                 face_data_vec.vector()[f.idx()].control_points =
-                    rotate_l(old_points);
+                    old_points.rotate_cw();
             }
         }
     }
@@ -356,7 +356,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
                 // (first point is the center) while our system has the first
                 // halfedge pointing outwards, so the first point is on the
                 // edge. So we do a rotation here.
-                control_points = rotate_l(control_points).eval();
+                control_points = control_points.rotate_cw();
 
                 // Now that we have the new control net, update the face data
                 // with the correct face and that net.
@@ -393,9 +393,9 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
             bot_split[1] = bot_split[1].transpose().eval();
 
             // Rotate based on position 0, 1, 2, and 3 times.
-            bot_split[1] = rotate_l(bot_split[1]);
-            bot_split[0] = rotate_l(rotate_l(bot_split[0]));
-            top_split[0] = rotate_l(rotate_l(rotate_l(top_split[0])));
+            bot_split[1] = bot_split[1].rotate_cw();
+            bot_split[0] = bot_split[0].rotate_cw().rotate_cw();
+            top_split[0] = top_split[0].rotate_ccw();
 
             // Collate all these matrices in the correct order into an array.
             std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 4> arr =
