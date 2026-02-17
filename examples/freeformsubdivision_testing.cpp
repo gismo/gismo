@@ -14,8 +14,8 @@ using namespace gismo;
 gismo::gsTensorBSpline<2, real_t> load_patch(int degree, int valence,
                                              std::string subtype);
 
-int main(int argc, char** argv)
-{
+void show_patches(){
+    
     auto coarse = load_patch(5, 3, "coarse");
     auto fine_1 = load_patch(5, 3, "fine_1");
     auto fine_2 = load_patch(5, 3, "fine_2");
@@ -70,30 +70,9 @@ gismo::gsTensorBSpline<2, real_t> load_patch(int degree, int valence,
     return gsTensorBSpline<2>(basis, *mat);
 }
 
-void minimal_bug_example()
+
+int main(int argc, char** argv)
 {
-    gsSurfMesh mesh = gsSurfMesh();
-
-    auto _readFile = gsReadFile<>(std::string("off/octtorus.off"), mesh);
-
-    for (gsSurfMesh::Face f : mesh.faces())
-    {
-
-        bool has_ev1 =
-            std::any_of(mesh.vertices(f).begin(), mesh.vertices(f).end(),
-                        [](gsSurfMesh::Vertex v) { return v.idx() == 0; });
-
-        bool has_ev2(false);
-        for (gsSurfMesh::Vertex v : mesh.vertices(f))
-        {
-            has_ev2 = has_ev2 || v.idx() == 0; // !is_ordinary(mesh, v);
-        }
-
-        if (has_ev1 != has_ev2)
-        {
-            gsInfo << "Discrepancy!\n";
-            gsInfo << "First vertex: " << *mesh.vertices(f).begin() << "\n";
-            gsInfo << "Last vertex: " << *mesh.vertices(f).end() << "\n";
-        }
-    }
+    show_patches();
 }
+
