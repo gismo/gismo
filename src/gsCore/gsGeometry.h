@@ -597,7 +597,7 @@ public:
     ///                   The dimension of \a result must match the parameter domain dimension.
     ///                   If \a useInitialPoint is true, this should be initialized with a starting guess.
     /// \param[in] accuracy The desired tolerance for convergence of the Newton-Raphson iteration.
-    ///                    The iteration stops when the relative change in parameters is below this value.
+    ///                    The iteration stops when the relative change in parameters is below the _square_ of this value.
     ///                    Default: 1e-6
     /// \param[in] useInitialPoint If true, uses the values in \a result as the starting point for
     ///                           the Newton-Raphson iteration. If false, starts from the center
