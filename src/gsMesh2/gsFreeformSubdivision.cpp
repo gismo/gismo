@@ -11,6 +11,7 @@
     Author(s): L. Mussmaecher
 */
 
+#include "gsNurbs/gsBSpline.h"
 #include <cmath>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMultiPatch.h>
@@ -84,6 +85,8 @@ gsFreeformFaceData<N, D>::control_points_oriented(gsSurfMesh& mesh,
     }
     return result;
 }
+
+
 
 template <size_t N, size_t D>
 const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
@@ -160,7 +163,7 @@ gsFreeformSubdivision<N, D>::deCasteljau(
 
 template <size_t N, size_t D>
 gismo::gsTensorBSpline<2, real_t>
-gsFreeformSubdivision<N, D>::load_patch(int valence, std::string subtype)
+gsFreeformSubdivision<N, D>::load_model_patch(int valence, std::string subtype)
 {
     // build the filepath
     auto path = "freeformSubdivision/control_net_d" + std::to_string(N) + "_v" +
@@ -292,7 +295,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
 
             // load coarse matrix
             auto valence = mesh.valence(fv);
-            auto coarse_model = load_patch(valence, "coarse");
+            auto coarse_model = load_model_patch(valence, "coarse");
             // and remember the associated face data
             auto coarse_patch = face_data_vec.vector()[initial_face].patch();
 
@@ -305,7 +308,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
             {
                 // first, load the appropriate fine model control points
                 auto fine_model =
-                    load_patch(valence, "fine_" + std::to_string(f_idx + 1));
+                    load_model_patch(valence, "fine_" + std::to_string(f_idx + 1));
 
                 // get sample points
                 gsMatrix<> samples(D, N * N);
@@ -456,30 +459,31 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
         if (!mesh.is_ordinary(v))
         {
             size_t valence = mesh.valence(v);
+            size_t patches = 4 * valence;
 
             // Collect all the control points.
             // The `4 * valence` faces will be ordered as follows, with the `o`
             // indicating its (0,0) control point:
             // ```
             //    +-----+  +-----+  +-----+  +-----+
-            //    |     |  |     |  |     |  |^    |
-            //    |  2  |  |  1  |  |  12 |  || 11 |
-            //    | <--o|  | <--o|  | <--o|  |o    |
+            //    |    ^|  |    ^|  |     |  |     |
+            //    |  5 ||  |  4 ||  |  15 |  |  14 |
+            //    |    o|  |    o|  | <--o|  |o--> |
             //    +-----+  +-----+  +-----+  +-----+
             //    +-----+  +-----+  +-----+  +-----+
-            //    |    o|  |    ^|  |     |  |^    |
-            //    |  3 ||  |  0 ||  |  3  |  || 10 |
-            //    |    v|  |    o|  |o--> |  |o    |
+            //    |    o|  |    ^|  |     |  |     |
+            //    |  6 ||  |  0 ||  |  3  |  |  13 |
+            //    |    v|  |    o|  |o--> |  |o--> |
             //    +-----+  +-----+  +-----+  +-----+
             //    +-----+  +-----+  +-----+  +-----+
-            //    |    o|  | <--o|  |o    |  |^    |
-            //    |  4 ||  |  1  |  || 2  |  || 9  |
-            //    |    v|  |     |  |v    |  |o    |
+            //    | <--o|  | <--o|  |o    |  |^    |
+            //    |  7  |  |  1  |  || 2  |  || 12 |
+            //    |     |  |     |  |v    |  |o    |
             //    +-----+  +-----+  +-----+  +-----+
             //    +-----+  +-----+  +-----+  +-----+
-            //    |    o|  |o--> |  |o--> |  |o--> |
-            //    |  5 ||  |  6  |  |  7  |  |  8  |
-            //    |    v|  |     |  |     |  |     |
+            //    | <--o|  |o--> |  |o    |  |o    |
+            //    |  8  |  |  9  |  || 10 |  || 11 |
+            //    |     |  |     |  |v    |  |v    |
             //    +-----+  +-----+  +-----+  +-----+
             //
             // ```
@@ -497,22 +501,36 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 // get the new halfedge
                 h = mesh.next_halfedge(h);
                 h = mesh.opposite_halfedge(h);
-                control_points_faces.emplace_back(
-                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h));
-
                 h = mesh.prev_halfedge(h);
-                h = mesh.opposite_halfedge(h);
-                h = mesh.next_halfedge(h);
                 control_points_faces.emplace_back(
-                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h));
+                    face_data_vec[mesh.face(h).idx()]
+                        .control_points_oriented(mesh, h)
+                        .colwise()
+                        .reverse());
 
+                h = mesh.next_halfedge(h);
+                h = mesh.next_halfedge(h);
+                h = mesh.opposite_halfedge(h);
+                control_points_faces.emplace_back(
+                    face_data_vec[mesh.face(h).idx()]
+                        .control_points_oriented(mesh, h)
+                        .colwise()
+                        .reverse());
+
+                h = mesh.next_halfedge(h);
                 h = mesh.opposite_halfedge(h);
                 h = mesh.next_halfedge(h);
                 control_points_faces.emplace_back(
-                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h));
+                    face_data_vec[mesh.face(h).idx()]
+                        .control_points_oriented(mesh, h)
+                        .colwise()
+                        .reverse());
+            }
+
+            // Now, use this data to construct patches that we can sample
+            std::vector<gsTensorBSpline<2, real_t>> target_patches;
+            for(size_t i = 0; i < patches; ++i){
+                //TODO
             }
 
             // This is the number of total points we are fitting to.
@@ -522,11 +540,44 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             // points.
             size_t rows(D * (D + 1) * valence);
 
-            // The number of columns is the number of independent functions
+            // The number of columns is the number of fitting functions we use.
             size_t cols(2 * valence + 1);
 
             // We now load the basis patches
-            // TODO
+            std::vector<gsTensorBSpline<2, real_t>> fitting_functions;
+            fitting_functions.reserve(2 * valence + 1);
+
+            for (size_t i = 1; i <= 2 * valence + 1; ++i)
+            {
+                // Construct the filepath for the ith basis function and
+                // load it with gismo utilities
+                fitting_functions.emplace_back(
+                    *gsFileData<real_t>(
+                         "freeformSubdivision/fitting_functions/Val" +
+                         std::to_string(valence) + "Fct" + std::to_string(i) +
+                         ".xml")
+                         .getFirst<gsTensorBSpline<2, real_t>>());
+            }
+
+            gsInfo << "Successfully loaded " << fitting_functions.size()
+                   << " functions for valence " << valence << ".\n";
+
+            // Build the least-squares matrix A
+            // A(i, j) = j-th fitting function evaluated at i-th parameter point
+            gsMatrix<real_t> A(rows, cols);
+            gsMatrix<real_t> b(rows, D);
+
+            //TODO: Build A and b as follows:
+            // Choose some order of samples (D*D*4*valence)
+            // A(i,j) is the 1-dimensional value of the ith sample from the jth basis function
+            // b(i) is the 3-dimensional value of the ith sample from the target patches
+
+            // Solve the least-squares system A * coeffs = b
+            gsMatrix<real_t> coeffs = A.colPivHouseholderQr().solve(b);
+
+            // Now we have a cols * 3 matrix of coefficients
+            // Multiply coeffs by A to get a samples * 3 matrix.
+            // TODO: Re-assign this to the control_point_faces in the same order as the sampling.
         }
         else
         {

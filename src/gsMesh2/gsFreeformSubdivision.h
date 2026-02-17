@@ -75,7 +75,7 @@ private: // Helper functions
     /// 6, 7, 8, 9, 10.
     /// \param v The subtype of the patch. Valid values are "coarse", "fine_1",
     /// "fine_2", "fine_3", "fine_4".
-    static gismo::gsTensorBSpline<2, real_t> load_patch(int valence,
+    static gismo::gsTensorBSpline<2, real_t> load_model_patch(int valence,
                                                         std::string subtype);
 
     /// \brief Re-orients the faces of the given mesh.
