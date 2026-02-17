@@ -587,6 +587,9 @@ int main(int argc, char* argv[])
     gsInfo << "\nFinal embedding matrix size: "
            << finalEmbedding.rows() << " x " << finalEmbedding.cols() << "\n";
 
+    gsInfo << "\nFinal embedding matrix: \n"
+           << finalEmbedding<< "\n";
+
     // ======================================================================
     // TEST: Verify derivative constraints of the embedding matrix
     // ======================================================================
