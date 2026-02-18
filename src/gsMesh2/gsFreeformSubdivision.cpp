@@ -22,6 +22,7 @@
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <memory>
 
 namespace gismo
 {
@@ -85,8 +86,6 @@ gsFreeformFaceData<N, D>::control_points_oriented(gsSurfMesh& mesh,
     }
     return result;
 }
-
-
 
 template <size_t N, size_t D>
 const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
@@ -307,8 +306,8 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
             for (size_t f_idx = 0; f_idx < 4; ++f_idx)
             {
                 // first, load the appropriate fine model control points
-                auto fine_model =
-                    load_model_patch(valence, "fine_" + std::to_string(f_idx + 1));
+                auto fine_model = load_model_patch(
+                    valence, "fine_" + std::to_string(f_idx + 1));
 
                 // get sample points
                 gsMatrix<> samples(D, N * N);
@@ -463,25 +462,26 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
 
             // Collect all the control points.
             // The `4 * valence` faces will be ordered as follows, with the `o`
-            // indicating its (0,0) control point:
+            // indicating its (0,0) control point and the arrow its primary
+            // u-direction towards the (0,N-1) control point:
             // ```
             //    +-----+  +-----+  +-----+  +-----+
             //    |    ^|  |    ^|  |     |  |     |
             //    |  5 ||  |  4 ||  |  15 |  |  14 |
-            //    |    o|  |    o|  | <--o|  |o--> |
+            //    |    o|  |    o|  |o--> |  |o--> |
             //    +-----+  +-----+  +-----+  +-----+
             //    +-----+  +-----+  +-----+  +-----+
-            //    |    o|  |    ^|  |     |  |     |
+            //    |    ^|  |    ^|  |     |  |     |
             //    |  6 ||  |  0 ||  |  3  |  |  13 |
-            //    |    v|  |    o|  |o--> |  |o--> |
+            //    |    o|  |    o|  |o--> |  |o--> |
             //    +-----+  +-----+  +-----+  +-----+
             //    +-----+  +-----+  +-----+  +-----+
-            //    | <--o|  | <--o|  |o    |  |^    |
+            //    | <--o|  | <--o|  |o    |  |o    |
             //    |  7  |  |  1  |  || 2  |  || 12 |
-            //    |     |  |     |  |v    |  |o    |
+            //    |     |  |     |  |v    |  |v    |
             //    +-----+  +-----+  +-----+  +-----+
             //    +-----+  +-----+  +-----+  +-----+
-            //    | <--o|  |o--> |  |o    |  |o    |
+            //    | <--o|  | <--o|  |o    |  |o    |
             //    |  8  |  |  9  |  || 10 |  || 11 |
             //    |     |  |     |  |v    |  |v    |
             //    +-----+  +-----+  +-----+  +-----+
@@ -491,9 +491,10 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
 
             for (Halfedge h : mesh.halfedges(v))
             {
-                control_points_faces.emplace_back(
+                gsMatrix<gsVector<real_t, D>*> cp =
                     face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h));
+                        mesh, h);
+                control_points_faces.emplace_back(cp);
             }
 
             for (Halfedge h : mesh.halfedges(v))
@@ -501,62 +502,77 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 // get the new halfedge
                 h = mesh.next_halfedge(h);
                 h = mesh.opposite_halfedge(h);
+                h = mesh.next_halfedge(h);
+                gsMatrix<gsVector<real_t, D>*> cp1 =
+                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
+                        mesh, h);
+                control_points_faces.emplace_back(cp1);
+
+                h = mesh.next_halfedge(h);
+                h = mesh.next_halfedge(h);
+                h = mesh.opposite_halfedge(h);
+                gsMatrix<gsVector<real_t, D>*> cp2 =
+                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
+                        mesh, h);
+                control_points_faces.emplace_back(cp2);
+
                 h = mesh.prev_halfedge(h);
-                control_points_faces.emplace_back(
-                    face_data_vec[mesh.face(h).idx()]
-                        .control_points_oriented(mesh, h)
-                        .colwise()
-                        .reverse());
-
-                h = mesh.next_halfedge(h);
-                h = mesh.next_halfedge(h);
                 h = mesh.opposite_halfedge(h);
-                control_points_faces.emplace_back(
-                    face_data_vec[mesh.face(h).idx()]
-                        .control_points_oriented(mesh, h)
-                        .colwise()
-                        .reverse());
-
-                h = mesh.next_halfedge(h);
-                h = mesh.opposite_halfedge(h);
-                h = mesh.next_halfedge(h);
-                control_points_faces.emplace_back(
-                    face_data_vec[mesh.face(h).idx()]
-                        .control_points_oriented(mesh, h)
-                        .colwise()
-                        .reverse());
+                h = mesh.prev_halfedge(h);
+                gsMatrix<gsVector<real_t, D>*> cp3 =
+                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
+                        mesh, h);
+                control_points_faces.emplace_back(cp3);
             }
 
             // Now, use this data to construct patches that we can sample
             std::vector<gsTensorBSpline<2, real_t>> target_patches;
-            for(size_t i = 0; i < patches; ++i){
-                //TODO
+            for (size_t p = 0; p < patches; ++p)
+            {
+                gsKnotVector<> kv1(0, 1, 0, N);
+                gsKnotVector<> kv2(0, 1, 0, N);
+                gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
+                // Create a coefficient matrix out of the control points.
+                gsMatrix<> coeffs(N * N, D);
+                for (size_t i = 0; i < N; ++i)
+                {
+                    for (size_t j = 0; j < N; ++j)
+                    {
+                        size_t total_index = i * N + j;
+                        coeffs.row(total_index) =
+                            *control_points_faces[p](i, j);
+                    }
+                }
+
+                target_patches.emplace_back(basis, coeffs);
             }
 
+            gsInfo << "Patch conversion complete. " << target_patches.size()
+                   << " patches created.\n";
+
             // This is the number of total points we are fitting to.
-            // The inner patches are fully determined, so D * D * valence minus
-            // the overlap, for a total of D * (D-1) * valence. For the outer
-            // patches, each sector has another (D-1) + 2 + (D-1) = 2 * D
-            // points.
-            size_t rows(D * (D + 1) * valence);
+            // TODO: Explanation
+            size_t sample_count(N * N * patches);
 
             // The number of columns is the number of fitting functions we use.
-            size_t cols(2 * valence + 1);
+            size_t fit_functions(2 * valence + 1);
 
             // We now load the basis patches
-            std::vector<gsTensorBSpline<2, real_t>> fitting_functions;
+            std::vector<
+                std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>>>
+                fitting_functions;
             fitting_functions.reserve(2 * valence + 1);
 
-            for (size_t i = 1; i <= 2 * valence + 1; ++i)
+            for (size_t i = 1; i <= fit_functions; ++i)
             {
                 // Construct the filepath for the ith basis function and
                 // load it with gismo utilities
                 fitting_functions.emplace_back(
-                    *gsFileData<real_t>(
-                         "freeformSubdivision/fitting_functions/Val" +
-                         std::to_string(valence) + "Fct" + std::to_string(i) +
-                         ".xml")
-                         .getFirst<gsTensorBSpline<2, real_t>>());
+                    gsFileData<real_t>(
+                        "freeformSubdivision/fitting_functions/Val" +
+                        std::to_string(valence) + "Fct" + std::to_string(i) +
+                        ".xml")
+                        .getAll<gsTensorBSpline<2, real_t>>());
             }
 
             gsInfo << "Successfully loaded " << fitting_functions.size()
@@ -564,20 +580,86 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
 
             // Build the least-squares matrix A
             // A(i, j) = j-th fitting function evaluated at i-th parameter point
-            gsMatrix<real_t> A(rows, cols);
-            gsMatrix<real_t> b(rows, D);
+            gsMatrix<real_t> A(sample_count, fit_functions);
+            gsMatrix<real_t> b(sample_count, D);
+            gsMatrix<real_t> A_star(sample_count, fit_functions);
 
-            //TODO: Build A and b as follows:
-            // Choose some order of samples (D*D*4*valence)
-            // A(i,j) is the 1-dimensional value of the ith sample from the jth basis function
-            // b(i) is the 3-dimensional value of the ith sample from the target patches
+            size_t i(0);
+            for (size_t p = 0; p < patches; ++p)
+            {
+                for (size_t ux = 0; ux < N; ++ux)
+                {
+                    for (size_t vx = 0; vx < N; ++vx)
+                    {
+                        real_t u = real_t(ux) / real_t(N - 1);
+                        real_t v = real_t(vx) / real_t(N - 1);
+
+                        for (size_t j = 0; j < fit_functions; ++j)
+                        {
+                            gsVector<real_t, 3> val =
+                                fitting_functions[j][p]->eval(
+                                    gsVector<real_t>::vec(u, v));
+                            A(i, j) = val.z();
+
+                            A_star(i, j) =
+                                fitting_functions[j][p]->coef(vx * N + ux, 2);
+
+                            gsInfo << "Sample: (" << val.transpose() << ") at cp(" << j << "/" << p <<"/" << ux << "/" << vx << ") -> " << ux * N + vx << " " << fitting_functions[j][p]->coef(vx * N + ux) <<"\n";
+                        }
+
+                        gsVector<real_t, 3> val =
+                            target_patches[p].eval(gsVector<real_t>::vec(u, v));
+                        b.row(i) = val;
+
+                        i++;
+                    }
+                }
+            }
+
+            gsInfo << "Sampling complete.\n";
+
+            // gsInfo << "A: " << A.rows() << "x" << A.cols() << "\n";
+
+            // for (int u = 0; u < A.rows(); ++u)
+            // {
+            //     for (int v = 0; v < A.cols(); ++v)
+            //     {
+            //         gsInfo << A(u, v) << "\t";
+            //     }
+            //     gsInfo << "\n";
+            // }
 
             // Solve the least-squares system A * coeffs = b
             gsMatrix<real_t> coeffs = A.colPivHouseholderQr().solve(b);
 
-            // Now we have a cols * 3 matrix of coefficients
-            // Multiply coeffs by A to get a samples * 3 matrix.
-            // TODO: Re-assign this to the control_point_faces in the same order as the sampling.
+            gsInfo << "coeffs: " << coeffs.rows() << "x" << coeffs.cols()
+                   << "\n";
+
+            for (int u = 0; u < coeffs.rows(); ++u)
+            {
+                for (int v = 0; v < coeffs.cols(); ++v)
+                {
+                    gsInfo << coeffs(u, v) << "\t";
+                }
+                gsInfo << "\n";
+            }
+
+            auto new_values = A_star * coeffs;
+            gsInfo << new_values.rows() << "x" << new_values.cols() << "\n";
+
+            i = 0;
+            for (size_t p = 0; p < patches; ++p)
+            {
+                for (size_t ux = 0; ux < N; ++ux)
+                {
+                    for (size_t vx = 0; vx < N; ++vx)
+                    {
+                        *control_points_faces[p](vx, ux) = new_values.row(i);
+
+                        i++;
+                    }
+                }
+            }
         }
         else
         {
