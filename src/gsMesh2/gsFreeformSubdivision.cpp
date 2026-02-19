@@ -11,13 +11,15 @@
     Author(s): L. Mussmaecher
 */
 
-#include "gsNurbs/gsBSpline.h"
 #include <cmath>
+#include <gismo.h>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsIO/gsFileData.h>
+#include <gsIO/gsFileData.hpp>
 #include <gsMesh2/gsFreeformSubdivision.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
+#include <gsMesh2/gsSurfMesh.h>
 #include <gsModeling/gsFitting.h>
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsTensorBSpline.h>
@@ -623,6 +625,9 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                         for (size_t vx = 0; vx < N; ++vx)
                         {
                             // control point of fitting function at this point
+                            // If this is zero, we want to skip it since we only
+                            // fit within the support of the fitting functions.
+                            // TODO: Check all, not just 1.
                             real_t cp =
                                 fitting_functions[0][p]->coef(vx * N + ux, 2);
 
@@ -659,14 +664,14 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                             for (size_t j = 0; j < fit_functions; ++j)
                             {
                                 // sample
-                                gsVector<real_t, 3> val =
+                                gsVector<real_t, D> val =
                                     fitting_functions[j][p]->eval(
                                         gsVector<real_t>::vec(u, v));
                                 A(i_s, j) = val.z();
                             }
 
                             // Lastly, save the sample value of the target patch
-                            gsVector<real_t, 3> val = target_patches[p].eval(
+                            gsVector<real_t, D> val = target_patches[p].eval(
                                 gsVector<real_t>::vec(u, v));
                             target.row(i_s) = val;
 
@@ -674,8 +679,8 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                         }
                     }
                 }
-                gsInfo << "Total samples: " << i_s << "\n";
-                gsInfo << "Total points: " << i_p << "\n";
+                // gsInfo << "Total samples: " << i_s << "\n";
+                // gsInfo << "Total points: " << i_p << "\n";
             }
 
             // Solve the least-squares system A * solution = target
@@ -689,7 +694,14 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             gsMatrix<real_t> solution =
                 regularized.colPivHouseholderQr().solve(A.transpose() * target);
 
-            gsInfo << "Total norm: " << (A * solution - target).norm() << "\n";
+            gsInfo << "Total fiting error: " << (A * solution - target).norm()
+                   << "\n";
+
+            gsInfo << "Fitting coefficients: \n";
+            for(int i = 0; i < solution.rows(); ++i){
+                gsInfo << solution.row(i) << "\n";
+            }
+ 
 
             // Now, the coefficients in `solution` give a linear combination of
             // the fitting functions that approximates the original target
@@ -698,14 +710,6 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             // resulting in a collection of control points that we can write
             // back into the control nets.
             auto new_values = A_star * solution;
-
-            gsInfo << "A:      " << A.rows() << "x" << A.cols() << "\n";
-            gsInfo << "A_star: " << A_star.rows() << "x" << A_star.cols()
-                   << "\n";
-            gsInfo << "target: " << target.rows() << "x" << target.cols()
-                   << "\n";
-            gsInfo << "new_values: " << new_values.rows() << "x"
-                   << new_values.cols() << "\n";
 
             // We need to make sure to use the same ordering as we did when
             // sampling.
@@ -720,13 +724,12 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                             real_t cp =
                                 fitting_functions[0][p]->coef(vx * N + ux, 2);
 
+                            // Makre sure to skip all points that we skipped
+                            // when collecting A_star, those that lie outside of
+                            // the support of the fitting functions.
                             if (cp == 0.0)
                                 continue;
-                            // This makes sure the outer points are not
-                            // overwritten - since we only fit in the areas
-                            // where the fitting functions are not truncated.
-                            // TODO: Improve this with index math in case
-                            // somethign is 0.
+
                             *control_nets[p](vx, ux) = new_values.row(i);
 
                             i++;
@@ -923,7 +926,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             // Now, of these three points, two will be 'free' and the last will
             // be determined. The following matrix generates all three points
             // from the free ones.
-            gsMatrix<real_t, 3, 2> matrix;
+            gsMatrix<real_t, D, 2> matrix;
             matrix.row(0) << 1., 0.;
             matrix.row(1) << 0.5, 0.5;
             matrix.row(2) << 0., 1.;
@@ -952,9 +955,13 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
 }
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::initialize_data()
+void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
 {
     auto& mesh = *m_mesh;
+    // Clear the mesh
+    mesh = gsSurfMesh();
+
+    auto _readFile = gsReadFile<>(filepath, mesh);
     // Initialize the property.
     mesh.add_face_property(std::string("bezier_points"),
                            gsFreeformFaceData<N, D>());
@@ -967,6 +974,99 @@ void gsFreeformSubdivision<N, D>::initialize_data()
     for (auto f : mesh.faces())
     {
         patch_data.vector()[f.idx()] = gsFreeformFaceData<N, D>(mesh, f);
+    }
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
+{
+    auto& mesh = *m_mesh;
+    // Clear the mesh
+    mesh = gsSurfMesh();
+
+    // Load the TensorBSplinePatches
+    std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>> patches =
+        gsFileData<real_t>(filepath).getAll<gsTensorBSpline<2, real_t>>();
+
+    // Initialize the property.
+    auto bezier_points = mesh.add_face_property(std::string("bezier_points"),
+                                                gsFreeformFaceData<N, D>());
+
+    // Map from corner positions to vertex indices for detecting shared vertices
+    // We use a tolerance-based comparison for floating point coordinates
+    std::map<std::tuple<real_t, real_t, real_t>, gsSurfMesh::Vertex> cornerMap;
+    const real_t tol = 1e-10;
+
+    auto findOrCreateVertex =
+        [&](const gsMatrix<real_t>& point) -> gsSurfMesh::Vertex
+    {
+        // Round coordinates for map lookup
+        auto key = std::make_tuple(std::round(point(0) / tol) * tol,
+                                   std::round(point(1) / tol) * tol,
+                                   std::round(point(2) / tol) * tol);
+
+        auto it = cornerMap.find(key);
+        if (it != cornerMap.end())
+        {
+            return it->second;
+        }
+        else
+        {
+            gsSurfMesh::Vertex v = mesh.add_vertex(gsSurfMesh::Point(point));
+            cornerMap[key] = v;
+            return v;
+        }
+    };
+
+    // Process each patch
+    for (size_t patchIdx = 0; patchIdx < patches.size(); ++patchIdx)
+    {
+        const auto& patch = patches[patchIdx];
+
+        // Get control points and dimensions
+        const gsMatrix<real_t>& coefs = patch->coefs();
+
+        // Extract corner control points (lexicographic indexing: i + j*n_u)
+        // BSpline corners: (0,0), (N-1,0), (N-1,N-1), (0,N-1) in (u,v)
+        // coordinates Map to mesh vertices based on their physical positions
+        std::vector<gsSurfMesh::Vertex> corners(4);
+        corners[0] =
+            findOrCreateVertex(coefs.row(0 + 0 * N)); // BSpline (0,0) → v0
+        corners[1] = findOrCreateVertex(
+            coefs.row((N - 1) + 0 * N)); // BSpline (N-1,0) → v1
+        corners[2] = findOrCreateVertex(
+            coefs.row((N - 1) + (N - 1) * N)); // BSpline (N-1,N-1) → v2
+        corners[3] = findOrCreateVertex(
+            coefs.row(0 + (N - 1) * N)); // BSpline (0,N-1) → v3
+
+        // Add face
+        gsSurfMesh::Face f =
+            mesh.add_quad(corners[0], corners[1], corners[2], corners[3]);
+
+        // Build control points matrix for gsFreeformFaceData
+        // The first halfedge goes from v3→v0 (corners[3]→corners[0])
+        // Control point layout should be:
+        //   faceControlPoints(0,0) near v0 = BSpline (0,0)
+        //   faceControlPoints(0,N-1) near v1 = BSpline (N-1,0)
+        //   faceControlPoints(N-1,0) near v3 = BSpline (0,N-1)
+        //   faceControlPoints(N-1,N-1) near v2 = BSpline (N-1,N-1)
+        // So the mapping is: faceControlPoints(i,j) = BSpline(j, i)
+        gsMatrix<gsVector<real_t, D>, N, N> faceControlPoints;
+
+        for (size_t i = 0; i < N; ++i)
+        {
+            for (size_t j = 0; j < N; ++j)
+            {
+                // Map face matrix (i,j) to BSpline (u,v) = (j,i)
+                index_t linearIdx = j + i * N;
+                // Extract the row as a 3D point and assign it
+                auto point = coefs.row(linearIdx);
+                faceControlPoints(i, j) = point;
+            }
+        }
+
+        // Create gsFreeformFaceData with control points and face back reference
+        bezier_points[f] = gsFreeformFaceData<N, D>(faceControlPoints, f);
     }
 }
 

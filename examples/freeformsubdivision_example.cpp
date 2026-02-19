@@ -98,7 +98,7 @@ gsSurfMesh bsplinesToSurfMesh(const std::vector<std::unique_ptr<gsTensorBSpline<
                 index_t linearIdx = j + i * N;
                 // Extract the row as a 3D point and assign it
                 auto point = coefs.row(linearIdx);
-                faceControlPoints(i, j) << point(0), point(1), point(2);
+                faceControlPoints(i, j) = point;
             }
         }
         
@@ -112,13 +112,13 @@ gsSurfMesh bsplinesToSurfMesh(const std::vector<std::unique_ptr<gsTensorBSpline<
 int main(int argc, char** argv)
 {
     // Command line
-    std::string filedata("off/octtorus.off");
+    std::string filepath("off/octtorus.off");
     std::string operations("sd");
     bool control_net(false);
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
-    cmd.addPlainString("filename", "File containing mesh.", filedata);
+    cmd.addPlainString("filepath", "File containing mesh.", filepath);
     cmd.addString("o", "operations", "Operations to perform on the mesh. Use d for subdivision and s for (c1) smoothing", operations);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
     try
@@ -137,17 +137,12 @@ int main(int argc, char** argv)
     std::string xml(".xml");
     std::string off(".off");
     // Check the filetype to be loaded.
-    if(std::equal(filedata.begin() + filedata.size() - xml.size(), filedata.end(), xml.begin())){
+    if(std::equal(filepath.begin() + filepath.size() - xml.size(), filepath.end(), xml.begin())){
         gsInfo << "Loading xml\n";
-        // An XML is assumed to be a collection of TensorBSplines that form a mesh.
-        mesh = bsplinesToSurfMesh<5>(gsFileData<real_t>(
-                            filedata)
-                            .getAll<gsTensorBSpline<2, real_t>>());
-    } else if (std::equal(filedata.begin() + filedata.size() - off.size(), filedata.end(), off.begin())){
+        subdiv.initialize_data_xml(filepath);
+    } else if (std::equal(filepath.begin() + filepath.size() - off.size(), filepath.end(), off.begin())){
         gsInfo << "Loading off\n";
-        // An off is directly loaded
-        auto _readFile = gsReadFile<>(filedata, mesh);
-        subdiv.initialize_data();
+        subdiv.initialize_data_off(filepath);
     } else {
         gsWarn << "Unsupported Filetype!\n";
         return 1;

@@ -110,11 +110,18 @@ public:
 
     void subdivide() override;
 
-    /// \brief Initializes C0 control nets on all faces.
+    /// \brief Initializes the targeted mesh from an off file.
     ///
-    /// Takes a given mesh without freeform data and initializes a freeform data
-    /// control net with C0 continuity on each face.
-    void initialize_data();
+    /// Loads the `.off`-File at the given filepath and saves it in the targeted mesh, which is assumed to contain D-dimensional point data.
+    /// Then adds the `bezier_points` face property, initializing it with an equally distributed control net of `NxN` points.
+    void initialize_data_off(std::string filepath);
+
+    /// \brief Initializes the targeted mesh from an xml file.
+    ///
+    /// Loads the `.xml`-File at the given filepath, which is assumed to contain a number of gsGeometry objects of type `TensorBSpline2` which have control nets of `NxN` vectors of dimension `D`. 
+    /// For each such TensorBSpline2, a face is created in the targeted mesh.
+    /// Then adds the `bezier_points` face property, initializing it with that control net.
+    void initialize_data_xml(std::string filepath);
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
     ///
