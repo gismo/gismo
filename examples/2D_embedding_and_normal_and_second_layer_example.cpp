@@ -348,11 +348,13 @@ int main(int argc, char* argv[])
     using T = double;
 
     std::string Filename("bspbasis/tpBSpline2_06.xml");
-
-    std::string inputSide="south";
+    std::string inputSide("south");
+    index_t refinements = 0;
+    
     gsCmdLine cmd("Example for 2D embedding matrix.");
     cmd.addString("f", "file", "G+Smo input tensor basis file.", Filename);
     cmd.addString("s", "side", "Side of the boundary (south, north, east, west).", inputSide);
+    cmd.addInt("r", "refinements", "Refine basis before proceeding", refinements);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -393,6 +395,9 @@ int main(int argc, char* argv[])
                           inputSide == "east"  ? boundary::east  :
                           inputSide == "west"  ? boundary::west  : boundary::south; // default to south if invalid
    
+    
+    for ( index_t i = 0; i < refinements; ++i )
+        tensorBasis.uniformRefine(1, 2);
     
     // ======================================================================
     // Build tensor embedding with both layers and derivative constraints
