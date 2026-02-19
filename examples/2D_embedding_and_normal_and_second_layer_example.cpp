@@ -350,11 +350,13 @@ int main(int argc, char* argv[])
     std::string Filename("bspbasis/tpBSpline2_06.xml");
     std::string inputSide("south");
     index_t refinements = 0;
+    index_t plot = -1;
     
     gsCmdLine cmd("Example for 2D embedding matrix.");
     cmd.addString("f", "file", "G+Smo input tensor basis file.", Filename);
     cmd.addString("s", "side", "Side of the boundary (south, north, east, west).", inputSide);
     cmd.addInt("r", "refinements", "Refine basis before proceeding", refinements);
+    cmd.addInt("p", "plot", "Plot basis function with that index", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -411,6 +413,21 @@ int main(int argc, char* argv[])
 
     gsInfo << "\nFinal embedding matrix: \n"
            << finalEmbedding<< "\n";
+           
+    
+           
+    if (plot>-1)
+    {
+        if (plot>=finalEmbedding.cols())
+        {
+            gsInfo << "Wrong index.\n";
+            return -1;
+        }
+        gsMultiPatch<> mp, mpsol;
+        mp.addPatch( *gsNurbsCreator<>::BSplineRectangle() );
+        mpsol.addPatch( tensorBasis.makeGeometry( finalEmbedding.col(plot)  ) );
+        gsWriteParaview<>( gsField<>(mp,mpsol), "basis_result", 1000);
+    }
 
     // ======================================================================
     // TEST: Verify derivative constraints of the embedding matrix
