@@ -994,16 +994,18 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
 
     // Map from corner positions to vertex indices for detecting shared vertices
     // We use a tolerance-based comparison for floating point coordinates
-    std::map<std::tuple<real_t, real_t, real_t>, gsSurfMesh::Vertex> cornerMap;
-    const real_t tol = 1e-10;
+    std::map<std::array<real_t, D>, gsSurfMesh::Vertex> cornerMap;
+    const real_t tolerance = 1e-10;
 
     auto findOrCreateVertex =
         [&](const gsMatrix<real_t>& point) -> gsSurfMesh::Vertex
     {
         // Round coordinates for map lookup
-        auto key = std::make_tuple(std::round(point(0) / tol) * tol,
-                                   std::round(point(1) / tol) * tol,
-                                   std::round(point(2) / tol) * tol);
+        std::array<real_t, D> key;
+        for(size_t i = 0; i < D; ++i){
+            key[i] = std::round(point(i) / tolerance) * tolerance; 
+        }
+
 
         auto it = cornerMap.find(key);
         if (it != cornerMap.end())
