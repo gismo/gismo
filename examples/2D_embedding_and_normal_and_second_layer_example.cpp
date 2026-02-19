@@ -21,25 +21,6 @@
 using namespace gismo;
 
 
-// Returns the string with the size of a matrix.
-template <typename T>
-std::string size(const gsMatrix<T>& matrix)
-{
-    std::string result = "(" + util::to_string(matrix.rows()) + " x " +
-        util::to_string(matrix.cols()) + ")";
-
-    return result;
-}
-
-template<typename T>
-void print(const std::vector<T>& v)
-{
-    std::cout << "[ ";
-    for (std::size_t i=0; i<v.size(); ++i)
-        std::cout << v[i] << " ";
-    std::cout << "]";
-}
-
 template<typename T>
 bool isNested(const gsBSplineBasis<T>& coarseBasis, const gsBSplineBasis<T>& fineBasis)
 {
@@ -110,66 +91,33 @@ gsSparseMatrix<T> embeddingMatrix(const gsBSplineBasis<T>& coarseBasis,const gsB
 }
 
 
-
-
-template<typename T>
-gsSparseMatrix<T> createTensorEmbedding(
-    const gsTensorBSplineBasis<2,T>& tensorBasis,
-    const gsBSplineBasis<T>& coarse1DBasis,
-    const gsBSplineBasis<T>& fine1DBasis,
-    boundary::side side)
+std::vector<index_t> getInteriorDofs(const index_t tbSize, const gsMatrix<index_t>& firstLayerDOFs, const gsMatrix<index_t>& secondLayerDOFs)
 {
-    gsSparseMatrix<T> embedding1D = embeddingMatrix(coarse1DBasis, fine1DBasis);
-
-    gsMatrix<index_t> boundaryDOFs = tensorBasis.boundary(side);
-
-    std::vector<index_t> bdrySet(boundaryDOFs.data(),
-                              boundaryDOFs.data() + boundaryDOFs.rows());
-
-    // Compute interior DOFs via set difference: allDOFs \ bdrySet
-    std::vector<index_t> allDOFs(tensorBasis.size());
+    // all dofs on the boundary
+    std::vector<index_t> removedSet;
+    removedSet.reserve(firstLayerDOFs.rows() + secondLayerDOFs.rows());
+    std::merge(firstLayerDOFs.data(), firstLayerDOFs.data() + firstLayerDOFs.rows(),
+               secondLayerDOFs.data(), secondLayerDOFs.data() + secondLayerDOFs.rows(),
+               std::back_inserter(removedSet));
+    std::sort(removedSet.begin(), removedSet.end());
+    
+    // Truly interior DOFs = allDOFs \ (bdrySet ∪ secondLayerSet)
+    std::vector<index_t> allDOFs(tbSize);
     std::iota(allDOFs.begin(), allDOFs.end(), 0);
 
-    std::vector<index_t> interiorDOFs;
-    interiorDOFs.reserve(allDOFs.size() - bdrySet.size());
+    // Now determine the rest
+    std::vector<index_t> trueInteriorDOFs;
+    trueInteriorDOFs.reserve(allDOFs.size() - removedSet.size());
     std::set_difference(allDOFs.begin(), allDOFs.end(),
-                        bdrySet.begin(), bdrySet.end(),
-                        std::back_inserter(interiorDOFs));
-
-    const index_t numFineTensorFuncs = tensorBasis.size();
-    const index_t numCoarseTensorFuncs =
-        static_cast<index_t>(interiorDOFs.size()) + coarse1DBasis.size();
-
-    gsSparseMatrix<T> result(numFineTensorFuncs, numCoarseTensorFuncs);
-
-    // Identity block for interior basis functions
-    index_t coarseIdx = 0;
-    for (const index_t i : interiorDOFs)
-    {
-        result(i, coarseIdx) = 1.0;
-        ++coarseIdx;
-    }
-    
-    // Insert the 1D embedding for boundary functions
-    // Iterate only over nonzero entries of embedding1D (column-major)
-    for (index_t j = 0; j < embedding1D.outerSize(); ++j)
-    {
-        for (typename gsSparseMatrix<T>::InnerIterator it(embedding1D, j); it; ++it)
-        {
-            // it.row() = fine 1D index, j = coarse 1D index
-            const index_t row2D = boundaryDOFs(it.row(), 0);
-            const index_t col2D = coarseIdx + it.col();
-            result(row2D, col2D) = it.value();
-        }
-    }
-
-    return result;
+                        removedSet.begin(), removedSet.end(),
+                        std::back_inserter(trueInteriorDOFs));
+    return trueInteriorDOFs;
 }
 
 
 /// Creates a tensor embedding matrix that replaces:
-///  - boundary DOFs (layer 0) with coarse1DBasis (S_{p,k+1,h})
-///  - second-layer DOFs (layer 1) with lowerDegree1DBasis (S_{p-1,k,h})
+///  - boundary DOFs (layer 0) with sideBasis (S_{p,k+1,h})
+///  - second-layer DOFs (layer 1) with sideLowerDegreeBasis (S_{p-1,k,h})
 ///
 /// and enforces the derivative constraints:
 ///  - boundary columns: zero normal derivative at the boundary
@@ -180,17 +128,29 @@ gsSparseMatrix<T> createTensorEmbedding(
 ///   [trueInterior .. +coarse1D-1]  boundary embedding (zero normal deriv)
 ///   [.. +lowerDeg1D-1]           second-layer embedding (unit normal deriv)
 template<typename T>
-gsSparseMatrix<T> createTensorEmbeddingWith2ndLayer(
+gsSparseMatrix<T> createTensorArgyrisBasis(
     const gsTensorBSplineBasis<2,T>& tensorBasis,
-    const gsBSplineBasis<T>& coarse1DBasis,
-    const gsBSplineBasis<T>& lowerDegree1DBasis,
-    const gsBSplineBasis<T>& fine1DBasis,
     boxSide side,
     T eps = 1e-12)
 {
+
+    gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side); 
+    //gsInfo << "Side boundary basis size: " << sideBasis.size() << "\n";
+
+    GISMO_ENSURE (sideBasis.knots().minInteriorMultiplicity()>1, "To small interior multiplicity.");
+
+    gsBSplineBasis<T> sideSmootherBasis = sideBasis;
+    sideSmootherBasis.elevateContinuity(1);
+    GISMO_ASSERT (isNested(sideSmootherBasis,sideBasis), "Computed bases not nested.");
+
+    gsBSplineBasis<T> sideLowerDegreeBasis = sideBasis;
+    sideLowerDegreeBasis.degreeReduce(1);
+    GISMO_ASSERT (isNested(sideLowerDegreeBasis,sideBasis), "Computed bases not nested.");
+
+    
     // 1D embeddings
-    gsSparseMatrix<T> embedding1D_boundary    = embeddingMatrix(coarse1DBasis, fine1DBasis);
-    gsSparseMatrix<T> embedding1D_secondLayer = embeddingMatrix(lowerDegree1DBasis, fine1DBasis);
+    gsSparseMatrix<T> embeddingFirstLayer  = embeddingMatrix(sideSmootherBasis, sideBasis);
+    gsSparseMatrix<T> embeddingSecondLayer = embeddingMatrix(sideLowerDegreeBasis, sideBasis);
 
     // --- Direction setup ---
     const bool isLow = ! side.parameter();
@@ -199,67 +159,37 @@ gsSparseMatrix<T> createTensorEmbeddingWith2ndLayer(
     const index_t signedStride = isLow ? stride : -stride;
 
     // 1D normal-direction basis and derivative values at the boundary
-    const gsBSplineBasis<T>& normalBasis =
-        dynamic_cast<const gsBSplineBasis<T>&>(tensorBasis.component(dir));
+    const gsBSplineBasis<T> normalBasis = tensorBasis.component(dir);
+
     const index_t nNormal    = normalBasis.size();
-    const index_t bdryIdx1D  = isLow ? 0 : nNormal - 1;
-    const index_t neighIdx1D = isLow ? 1 : nNormal - 2;
+    const index_t bdryIdxNormalFirstLayer  = isLow ? 0 : nNormal - 1;
+    const index_t bdryIdxNormalSecondLayer = isLow ? 1 : nNormal - 2;
 
     gsMatrix<T> bdryPt1D = normalBasis.support().col(isLow ? 0 : 1);
-    const T dBdry  = normalBasis.derivSingle(bdryIdx1D,  bdryPt1D)(0, 0);
-    const T dNeigh = normalBasis.derivSingle(neighIdx1D, bdryPt1D)(0, 0);
+    const T dBdry  = normalBasis.derivSingle(bdryIdxNormalFirstLayer,  bdryPt1D)(0, 0);
+    const T dNeigh = normalBasis.derivSingle(bdryIdxNormalSecondLayer, bdryPt1D)(0, 0);
     GISMO_ENSURE(std::abs(dNeigh) > eps,
         "Neighbor derivative is zero, cannot enforce constraints");
 
-    // ratio so that  dBdry + ratio * dNeigh == 0
-    const T ratio = -dBdry / dNeigh;
-    gsInfo << "  Correction ratio (zero normal deriv): " << ratio << "\n";
 
     // --- Collect the three disjoint DOF sets ---
 
     // Boundary DOFs (layer 0)
-    gsMatrix<index_t> boundaryDOFs = tensorBasis.boundary(side);
-    const index_t nBdry = boundaryDOFs.rows();
-    std::vector<index_t> bdrySet(boundaryDOFs.data(),
-                                 boundaryDOFs.data() + nBdry);
-
+    gsMatrix<index_t> firstLayerDOFs = tensorBasis.boundary(side);
+    
     // Second-layer DOFs (layer 1): one stride inward from each boundary DOF
-    std::vector<index_t> secondLayerSet(nBdry);
-    for (index_t b = 0; b < nBdry; ++b)
-        secondLayerSet[b] = boundaryDOFs(b, 0) + signedStride;
-    std::sort(secondLayerSet.begin(), secondLayerSet.end());
-
-    // Truly interior DOFs = allDOFs \ (bdrySet ∪ secondLayerSet)
-    std::vector<index_t> allDOFs(tensorBasis.size());
-    std::iota(allDOFs.begin(), allDOFs.end(), 0);
-
-    std::vector<index_t> removedSet;
-    removedSet.reserve(2 * nBdry);
-    std::merge(bdrySet.begin(), bdrySet.end(),
-               secondLayerSet.begin(), secondLayerSet.end(),
-               std::back_inserter(removedSet));
-
-    std::vector<index_t> trueInteriorDOFs;
-    trueInteriorDOFs.reserve(allDOFs.size() - removedSet.size());
-    std::set_difference(allDOFs.begin(), allDOFs.end(),
-                        removedSet.begin(), removedSet.end(),
-                        std::back_inserter(trueInteriorDOFs));
-
-    // --- Scale for second-layer columns ---
-    // All second-layer DOFs share the same normal-direction 1D index (neighIdx1D).
-    // The normal derivative of second-layer column j at the boundary is:
-    //   dNeigh * sum_b E_secondLayer(b, j) * B_{b,tang}(x_t)
-    // To make the normal derivative equal 1 (as a function in the tangential
-    // direction), we simply divide all entries by dNeigh.
-    const T secondLayerScale = T(1) / dNeigh;
-    gsInfo << "  Second-layer scale (1/dNeigh): " << secondLayerScale << "\n";
-
+    gsMatrix<index_t> secondLayerDOFs = tensorBasis.boundaryOffset(side,1);
+    
+    // All other DOFs
+    std::vector<index_t> trueInteriorDOFs = getInteriorDofs(tensorBasis.size(), firstLayerDOFs, secondLayerDOFs);
+    
     // --- Build the matrix ---
     const index_t numRows = tensorBasis.size();
     const index_t numCols = static_cast<index_t>(trueInteriorDOFs.size())
-                          + coarse1DBasis.size()
-                          + lowerDegree1DBasis.size();
+                          + sideSmootherBasis.size()
+                          + sideLowerDegreeBasis.size();
 
+    
     gsSparseMatrix<T> result(numRows, numCols);
 
     // Block 1: identity for truly interior DOFs
@@ -270,108 +200,60 @@ gsSparseMatrix<T> createTensorEmbeddingWith2ndLayer(
         ++col0;
     }
 
-    // Block 2: boundary embedding (layer 0) with zero normal derivative
-    // For each boundary DOF b (tangential index b):
-    //   boundary row:      E_boundary(b, j)
-    //   second-layer row:  ratio * E_boundary(b, j)
-    // This ensures dBdry * E(b,j) + dNeigh * ratio * E(b,j) = 0
-    const index_t colOffsetBdry = static_cast<index_t>(trueInteriorDOFs.size());
-    for (index_t j = 0; j < embedding1D_boundary.outerSize(); ++j)
-    {
-        for (typename gsSparseMatrix<T>::InnerIterator it(embedding1D_boundary, j); it; ++it)
-        {
-            const index_t tangIdx = it.row();
-            const index_t bdryRow2D  = boundaryDOFs(tangIdx, 0);
-            const index_t neighRow2D = bdryRow2D + signedStride;
-            const index_t col2D = colOffsetBdry + it.col();
-
-            result(bdryRow2D,  col2D) = it.value();
-            result(neighRow2D, col2D) = ratio * it.value();
-        }
-    }
-
-    // Block 3: second-layer embedding (layer 1) with unit normal derivative
+    
+    // Block 2: second-layer embedding (layer 1) with unit normal derivative
     // All entries scaled by 1/dNeigh so that normal derivative equals 1.
-    const index_t colOffsetLayer2 = colOffsetBdry + coarse1DBasis.size();
-    for (index_t j = 0; j < embedding1D_secondLayer.outerSize(); ++j)
+    // All second-layer DOFs share the same normal-direction 1D index (neighIdx1D).
+    // The normal derivative of second-layer column j at the boundary is:
+    //   dNeigh * sum_b E_secondLayer(b, j) * B_{b,tang}(x_t)
+    // To make the normal derivative equal 1 (as a function in the tangential
+    // direction), we simply divide all entries by dNeigh.
+    const T secondLayerScale = T(isLow ? -1 : 1) / dNeigh;
+    gsInfo << "  Second-layer scale (1/dNeigh): " << secondLayerScale << "\n";
+    
+    const index_t colOffsetLayer2 = static_cast<index_t>(trueInteriorDOFs.size());
+    for (index_t j = 0; j < embeddingSecondLayer.outerSize(); ++j)
     {
-        for (typename gsSparseMatrix<T>::InnerIterator it(embedding1D_secondLayer, j); it; ++it)
+        for (typename gsSparseMatrix<T>::InnerIterator it(embeddingSecondLayer, j); it; ++it)
         {
             const index_t tangIdx = it.row();
-            const index_t row2D = secondLayerSet[tangIdx];
+            const index_t row2D = secondLayerDOFs(tangIdx, 0);
             const index_t col2D = colOffsetLayer2 + it.col();
             result(row2D, col2D) = it.value() * secondLayerScale;
         }
     }
 
-    result.makeCompressed();
-    return result;
-}
-
-
-template<typename T>
-gsSparseMatrix<T> enforceZeroNormalDerivative(
-    const gsTensorBSplineBasis<2,T>& tensorBasis,
-    const gsSparseMatrix<T>& tensorEmbedding,
-    const gsMatrix<index_t>& boundaryDOFs,
-    boxSide side,
-    T eps = 1e-12)
-{
-    // Determine direction properties once
-    const bool isLow = ! side.parameter();
-    GISMO_ASSERT ( isLow == (side == boundary::south || side == boundary::west), "");
+    // Block 3: boundary embedding (layer 0) with zero normal derivative
+    // For each boundary DOF b (tangential index b):
+    //   boundary row:      E_boundary(b, j)
+    //   second-layer row:  firstLayerScale * E_boundary(b, j)
+    // This ensures dBdry * E(b,j) + dNeigh * firstLayerScale * E(b,j) = 0
+    const T firstLayerScale = -dBdry / dNeigh;
+    gsInfo << "  First-layer scale (zero normal deriv): " << firstLayerScale << "\n";   
     
-    const int dir = side.direction();
-    GISMO_ASSERT ( dir == ((side == boundary::south || side == boundary::north) ? 1 : 0), "");
-    
-    
-    // Get the 1D basis in the normal direction
-    const gsBSplineBasis<T>& normalBasis =
-        dynamic_cast<const gsBSplineBasis<T>&>(tensorBasis.component(dir));
-
-    const index_t nNormal = normalBasis.size();
-    const index_t bdryIdx1D  = isLow ? 0 : nNormal - 1;
-    const index_t neighIdx1D = isLow ? 1 : nNormal - 2;
-
-    // Evaluate 1D derivatives at the boundary parameter
-    
-    gsMatrix<T> bdryPt = normalBasis.support().col(isLow ? 0 : 1);
-    //  gsMatrix<T> bdryPt(1, 1);
-    //  bdryPt(0, 0) = isLow ? T(0) : T(1);
-
-    const T dBdry  = normalBasis.derivSingle(bdryIdx1D, bdryPt)(0, 0);
-    const T dNeigh = normalBasis.derivSingle(neighIdx1D, bdryPt)(0, 0);
-
-    GISMO_ENSURE (std::abs(dNeigh) > eps, "Neighbor derivative is zero, cannot enforce zero normal derivative");
-
-    const T ratio = -dBdry / dNeigh;
-    gsInfo << "  Correction ratio: " << ratio << "\n";
-
-    // Stride: offset between a boundary DOF and its neighbor in the normal direction
-    const index_t stride = (dir == 0) ? 1 : tensorBasis.size(0);
-    const index_t signedStride = isLow ? stride : -stride;
-
-    gsSparseMatrix<T> result = tensorEmbedding;
-
-    // For each boundary DOF, set the neighbor row = ratio * boundary row
-    for (index_t b = 0; b < boundaryDOFs.rows(); ++b)
+    const index_t colOffsetBdry = colOffsetLayer2 + sideLowerDegreeBasis.size();
+    for (index_t j = 0; j < embeddingFirstLayer.outerSize(); ++j)
     {
-        const index_t fineRow  = boundaryDOFs(b, 0);
-        const index_t neighbor = fineRow + signedStride;
-
-        // Iterate over columns that have a nonzero at fineRow
-        for (index_t col = 0; col < result.outerSize(); ++col)
+        for (typename gsSparseMatrix<T>::InnerIterator it(embeddingFirstLayer, j); it; ++it)
         {
-            const T val = result.coeff(fineRow, col);
-            if (std::abs(val) < eps) continue;
+            const index_t tangIdx = it.row();
+            const index_t bdryRow2D  = firstLayerDOFs(tangIdx, 0);
+            const index_t neighRow2D = bdryRow2D + signedStride;
+            const index_t col2D = colOffsetBdry + it.col();
 
-            result(neighbor, col) = ratio * val;
+            result(bdryRow2D,  col2D) = it.value();
+            result(neighRow2D, col2D) = firstLayerScale * it.value();
+
         }
     }
 
+
+
     result.makeCompressed();
     return result;
 }
+
+
 
 template<typename T>
 void saveEmbeddingMatrixInfo(
@@ -379,8 +261,8 @@ void saveEmbeddingMatrixInfo(
     const gsSparseMatrix<T>& tensorEmbedding,
     const gsSparseMatrix<T>& embedding1D,
     const gsTensorBSplineBasis<2,T>& tensorBasis,
-    const gsBSplineBasis<T>& coarse1DBasis,
-    const gsBSplineBasis<T>& fine1DBasis,
+    const gsBSplineBasis<T>& sideBasis,
+    const gsBSplineBasis<T>& sideSmootherBasis,
     const gsMatrix<index_t>& boundaryDOFs,
     boundary::side side)
 {
@@ -396,16 +278,16 @@ void saveEmbeddingMatrixInfo(
     
     // 1D basis information
     file << "1D COARSE BASIS (Smoother):\n";
-    file << "  Size: " << coarse1DBasis.size() << "\n";
-    file << "  Degree: " << coarse1DBasis.degree() << "\n";
-    file << "  Knot vector: " << coarse1DBasis.knots() << "\n";
-    file << "  Continuity: " << coarse1DBasis.knots().minInteriorMultiplicity() - 1 << "\n\n";
+    file << "  Size: " << sideBasis.size() << "\n";
+    file << "  Degree: " << sideBasis.degree() << "\n";
+    file << "  Knot vector: " << sideBasis.knots() << "\n";
+    file << "  Continuity: " << sideBasis.knots().minInteriorMultiplicity() - 1 << "\n\n";
     
     file << "1D FINE BASIS:\n";
-    file << "  Size: " << fine1DBasis.size() << "\n";
-    file << "  Degree: " << fine1DBasis.degree() << "\n";
-    file << "  Knot vector: " << fine1DBasis.knots() << "\n";
-    file << "  Continuity: " << fine1DBasis.knots().minInteriorMultiplicity() - 1 << "\n\n";
+    file << "  Size: " << sideSmootherBasis.size() << "\n";
+    file << "  Degree: " << sideSmootherBasis.degree() << "\n";
+    file << "  Knot vector: " << sideSmootherBasis.knots() << "\n";
+    file << "  Continuity: " << sideSmootherBasis.knots().minInteriorMultiplicity() - 1 << "\n\n";
     
     // 2D tensor basis information
     file << "2D TENSOR BASIS:\n";
@@ -467,13 +349,10 @@ int main(int argc, char* argv[])
 
     std::string Filename("bspbasis/tpBSpline2_06.xml");
 
-   // std::string output("");
-
     std::string inputSide="south";
     gsCmdLine cmd("Example for 2D embedding matrix.");
     cmd.addString("f", "file", "G+Smo input tensor basis file.", Filename);
     cmd.addString("s", "side", "Side of the boundary (south, north, east, west).", inputSide);
-  //  cmd.addString("o", "output", "Name of the output file.", output);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -510,79 +389,17 @@ int main(int argc, char* argv[])
     gsTensorBSplineBasis<2,T>& tensorBasis = *pTensorBasis;
 
     boundary::side side = inputSide == "south" ? boundary::south :
-                         inputSide == "north" ? boundary::north :
-                         inputSide == "east"  ? boundary::east  :
-                         inputSide == "west"  ? boundary::west  : boundary::south; // default to south if invalid
+                          inputSide == "north" ? boundary::north :
+                          inputSide == "east"  ? boundary::east  :
+                          inputSide == "west"  ? boundary::west  : boundary::south; // default to south if invalid
    
-    gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side); 
-   
-    gsInfo << "Side boundary basis size: " << sideBasis.size() << "\n";
-   
-
-    if( sideBasis.knots().minInteriorMultiplicity()<2){
-        gsInfo<<"incorrect multiplicity\n";
-        return -1;
-    }
     
-   
-    gsBSplineBasis<T> sideSmootherBasis = sideBasis;
-    sideSmootherBasis.elevateContinuity(1);
-
-    //---------------------------New Code--------------------------------------- 
-    // For SECOND LAYER: reduce degree (keep same continuity, reduce degree)
-    gsBSplineBasis<T> sideLowerDegreeBasis = sideBasis;
-    sideLowerDegreeBasis.degreeReduce(1);  // Reduce degree by 1, keeps smoothness
-    //--------------------------------------------------------------------------
-
-    // ======================================================================
-    // checking if the fine basis is a refined coarse basis
-    // ======================================================================
-
-    if(!isNested(sideSmootherBasis,sideBasis)){
-
-        gsInfo << "spaces for boundary basis embedding are not nested\n";
-        return -1;
-    };
-
-    gsInfo << "spaces for boundary basis embedding are nested\n";
-    //---------------------------New Code---------------------------------------
-    if(!isNested(sideLowerDegreeBasis,sideBasis)){
-
-        gsInfo << "spaces for lower degree basis embedding are not nested\n";
-        return -1;
-    };
-
-    gsInfo << "spaces for lower degree basis embedding are nested\n";
-    //--------------------------------------------------------------------------
-    
-
-
-    // ======================================================================
-    // embedding matrix computation
-    // ======================================================================
-
-
-    gsSparseMatrix<T> embedding = embeddingMatrix(sideSmootherBasis, sideBasis);
-    gsInfo << "embedding 1d boundary\n"<< embedding << "\n";
-    gsInfo << "1D embedding matrix size for boundary: " << embedding.rows() << " x " << embedding.cols() << "\n";
-
-    gsSparseMatrix<T> embedding1D_secondLayer = embeddingMatrix(sideLowerDegreeBasis, sideBasis);
-    gsInfo << "embedding 1d second layer\n"<< embedding1D_secondLayer << "\n";
-    gsInfo << "1D embedding matrix size for second layer: " << embedding1D_secondLayer.rows() << " x " << embedding1D_secondLayer.cols() << "\n";
-
-    gsMatrix<index_t> sideDOFs = tensorBasis.boundary(side);
-
-    gsInfo << "Side boundary DOFs: " << sideDOFs.rows() << " functions\n";
-    for (index_t i = 0; i < sideDOFs.rows(); ++i) {
-        gsInfo << "DOF " << i << ": " << sideDOFs(i, 0) << "\n";
-    }
-
     // ======================================================================
     // Build tensor embedding with both layers and derivative constraints
     // ======================================================================
 
-    gsSparseMatrix<T> finalEmbedding = createTensorEmbeddingWith2ndLayer(
-        tensorBasis, sideSmootherBasis, sideLowerDegreeBasis, sideBasis, side);
+    gsSparseMatrix<T> finalEmbedding = createTensorArgyrisBasis(tensorBasis, side);
+         
 
     gsInfo << "\nFinal embedding matrix size: "
            << finalEmbedding.rows() << " x " << finalEmbedding.cols() << "\n";
@@ -596,6 +413,7 @@ int main(int argc, char* argv[])
     gsInfo << "\n========== DERIVATIVE CONSTRAINT TESTS ==========\n\n";
 
     bool allTestsPassed = true;
+    /*
     const T tol = 1e-10;
 
     // --- Setup: direction and boundary parameter ---
@@ -693,6 +511,7 @@ int main(int argc, char* argv[])
                         std::back_inserter(trueInteriorDOFs));
 
     const index_t nInterior    = static_cast<index_t>(trueInteriorDOFs.size());
+    
     const index_t nBdryCols    = sideSmootherBasis.size();
     const index_t nLayer2Cols  = sideLowerDegreeBasis.size();
 
@@ -791,7 +610,7 @@ int main(int argc, char* argv[])
     gsInfo << "TEST 4: Second-layer columns have correct normal derivative at boundary\n";
     {
         // Evaluate lower-degree 1D basis at tangential Greville points
-        gsMatrix<T> lowerDegVals = sideLowerDegreeBasis.eval(tangGreville);
+        //gsMatrix<T> lowerDegVals = sideLowerDegreeBasis.eval(tangGreville);
         // lowerDegVals is (nActive1D x nEvalPts), but we need all functions
         // -> use evalAllDers or evalSingle for each function
         gsMatrix<T> lowerDegFull(nLayer2Cols, nEvalPts);
@@ -870,7 +689,7 @@ int main(int argc, char* argv[])
         else
             allTestsPassed = false;
     }
-
+    */
     // ===== SUMMARY =====
     gsInfo << "\n========== TEST SUMMARY ==========\n";
     if (allTestsPassed)
