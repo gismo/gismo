@@ -75,8 +75,8 @@ private: // Helper functions
     /// 6, 7, 8, 9, 10.
     /// \param v The subtype of the patch. Valid values are "coarse", "fine_1",
     /// "fine_2", "fine_3", "fine_4".
-    static gismo::gsTensorBSpline<2, real_t> load_model_patch(int valence,
-                                                        std::string subtype);
+    static gismo::gsTensorBSpline<2, real_t>
+    load_model_patch(int valence, std::string subtype);
 
     /// \brief Re-orients the faces of the given mesh.
     ///
@@ -102,12 +102,11 @@ private: // Helper functions
     /// Should be contained in at least one of the faces.
     /// \param faces The faces to be ordered. Should have exactly 4 elements or
     /// unexpected results may occur.
-    std::array<Face, 4>
-    order_faces(Vertex first_vertex, std::array<Face, 4> faces);
+    std::array<Face, 4> order_faces(Vertex first_vertex,
+                                    std::array<Face, 4> faces);
 
 public:
-    gsSubdivisionScheme::gsSubdivisionMeshValidity
-    check_mesh() override;
+    gsSubdivisionScheme::gsSubdivisionMeshValidity check_mesh() override;
 
     void subdivide() override;
 
@@ -204,6 +203,16 @@ public:  // Contructors
         {
             control_points(i) = gsVector<real_t, D>::Zero(D);
         }
+    }
+
+    /// \brief Full constructor with back reference and control net.
+    ///
+    /// Basic constructor. All control points are the zero vector, and the
+    /// back reference points to the given face.
+    gsFreeformFaceData(
+        gsMatrix<gismo::gsVector<real_t, D>, N, N> control_points, Face face)
+        : control_points(control_points), face(face)
+    {
     }
 
     /// \brief Basic constructor that creates a C0 mesh.

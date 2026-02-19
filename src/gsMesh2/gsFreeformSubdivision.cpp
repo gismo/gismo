@@ -487,48 +487,59 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             //    +-----+  +-----+  +-----+  +-----+
             //
             // ```
-            std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
+            // TODO: And then we transpose
+            std::vector<gsMatrix<gsVector<real_t, D>*>> control_nets;
 
+            // First, collect the inner nets.
             for (Halfedge h : mesh.halfedges(v))
             {
                 gsMatrix<gsVector<real_t, D>*> cp =
-                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h);
-                control_points_faces.emplace_back(cp);
+                    face_data_vec[mesh.face(h).idx()]
+                        .control_points_oriented(mesh, h)
+                        .transpose();
+                control_nets.emplace_back(cp);
             }
 
+            // Then, go through the halfedges again to get the outer nets.
             for (Halfedge h : mesh.halfedges(v))
             {
-                // get the new halfedge
+                // Follow halfedges to the next patch
                 h = mesh.next_halfedge(h);
                 h = mesh.opposite_halfedge(h);
                 h = mesh.next_halfedge(h);
+                // Get its oriented control net
                 gsMatrix<gsVector<real_t, D>*> cp1 =
-                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h);
-                control_points_faces.emplace_back(cp1);
+                    face_data_vec[mesh.face(h).idx()]
+                        .control_points_oriented(mesh, h)
+                        .transpose();
+                // Place it in the matrix.
+                control_nets.emplace_back(cp1);
 
+                // Repeat two more times.
                 h = mesh.next_halfedge(h);
                 h = mesh.next_halfedge(h);
                 h = mesh.opposite_halfedge(h);
                 gsMatrix<gsVector<real_t, D>*> cp2 =
-                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h);
-                control_points_faces.emplace_back(cp2);
+                    face_data_vec[mesh.face(h).idx()]
+                        .control_points_oriented(mesh, h)
+                        .transpose();
+                control_nets.emplace_back(cp2);
 
                 h = mesh.prev_halfedge(h);
                 h = mesh.opposite_halfedge(h);
                 h = mesh.prev_halfedge(h);
                 gsMatrix<gsVector<real_t, D>*> cp3 =
-                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h);
-                control_points_faces.emplace_back(cp3);
+                    face_data_vec[mesh.face(h).idx()]
+                        .control_points_oriented(mesh, h)
+                        .transpose();
+                control_nets.emplace_back(cp3);
             }
 
-            // Now, use this data to construct patches that we can sample
+            // Now, use this data to construct patches that we can sample.
             std::vector<gsTensorBSpline<2, real_t>> target_patches;
             for (size_t p = 0; p < patches; ++p)
             {
+                // Knot vectors for a tensor product bezier patch
                 gsKnotVector<> kv1(0, 1, 0, N);
                 gsKnotVector<> kv2(0, 1, 0, N);
                 gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
@@ -539,25 +550,28 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                     for (size_t j = 0; j < N; ++j)
                     {
                         size_t total_index = i * N + j;
-                        coeffs.row(total_index) =
-                            *control_points_faces[p](i, j);
+                        coeffs.row(total_index) = *control_nets[p](i, j);
                     }
                 }
 
+                // Create the patch and place it in the vector.
                 target_patches.emplace_back(basis, coeffs);
             }
 
-            gsInfo << "Patch conversion complete. " << target_patches.size()
-                   << " patches created.\n";
+            // This is the number of total points that need to be moved.
+            size_t point_count(valence * (N * N + 2 * N + 2 * 2 + N * 2));
+            // This is the number of total points we are fitting to, excluding
+            // doubles.
+            // size_t sample_count(1 + valence * (N-1) * (N-1) + valence * 2 *
+            // (N-1) + valence * 2 + valence * (N-1));
+            size_t sample_count(1 + 3 * valence);
 
-            // This is the number of total points we are fitting to.
-            // TODO: Explanation
-            size_t sample_count(N * N * patches);
-
-            // The number of columns is the number of fitting functions we use.
+            // The number of fitting functions.
+            // Note these are linearly dependent and actually the dimension of
+            // this space is only valence + 3.
             size_t fit_functions(2 * valence + 1);
 
-            // We now load the basis patches
+            // We now load the patches of these fitting functions.
             std::vector<
                 std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>>>
                 fitting_functions;
@@ -575,88 +589,148 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                         .getAll<gsTensorBSpline<2, real_t>>());
             }
 
-            gsInfo << "Successfully loaded " << fitting_functions.size()
-                   << " functions for valence " << valence << ".\n";
-
-            // Build the least-squares matrix A
-            // A(i, j) = j-th fitting function evaluated at i-th parameter point
+            // For the least-squares fit we now build:
+            // - The matrix `A` of dimension `sample_count x fit_functions`, in
+            // which the entry A(i,j) is the value of the j-th fitting function
+            // at the ith sample point. . The matrix `A_star` of dimension
+            // `sample_count x fit_functions`, in which the entry A(i,j) is the
+            // ith control point of meshes from the jth fitting function.
+            // - The matrix `target` of dimension `sample_count x D`, in which
+            // the row b(i,-) is the value of the target patch at fitting point
+            // i
+            //
+            // The control points and sampling points are arranged in the same
+            // way.
             gsMatrix<real_t> A(sample_count, fit_functions);
-            gsMatrix<real_t> b(sample_count, D);
-            gsMatrix<real_t> A_star(sample_count, fit_functions);
+            gsMatrix<real_t> A_star(point_count, fit_functions);
+            gsMatrix<real_t> target(sample_count, D);
 
-            size_t i(0);
-            for (size_t p = 0; p < patches; ++p)
             {
-                for (size_t ux = 0; ux < N; ++ux)
+                // the sampling index - this is incremented whenever we sample a
+                // point
+                size_t i_s(0);
+                // The point index
+                size_t i_p(0);
+                // Iterating over patches
+                for (size_t p = 0; p < patches; ++p)
                 {
-                    for (size_t vx = 0; vx < N; ++vx)
+                    // Iterating over the N * N sample points on that patch by
+                    // index, u dimension.
+                    for (size_t ux = 0; ux < N; ++ux)
                     {
-                        real_t u = real_t(ux) / real_t(N - 1);
-                        real_t v = real_t(vx) / real_t(N - 1);
-
-                        for (size_t j = 0; j < fit_functions; ++j)
+                        // Iterating over the N * N sample points on that patch
+                        // by index, v dimension.
+                        for (size_t vx = 0; vx < N; ++vx)
                         {
-                            gsVector<real_t, 3> val =
-                                fitting_functions[j][p]->eval(
-                                    gsVector<real_t>::vec(u, v));
-                            A(i, j) = val.z();
+                            // control point of fitting function at this point
+                            real_t cp =
+                                fitting_functions[0][p]->coef(vx * N + ux, 2);
 
-                            A_star(i, j) =
-                                fitting_functions[j][p]->coef(vx * N + ux, 2);
+                            if (cp == 0.0)
+                                continue;
 
-                            gsInfo << "Sample: (" << val.transpose() << ") at cp(" << j << "/" << p <<"/" << ux << "/" << vx << ") -> " << ux * N + vx << " " << fitting_functions[j][p]->coef(vx * N + ux) <<"\n";
+                            // First, log the z-coordinate of the control points
+                            // into A_star.
+                            for (size_t j = 0; j < fit_functions; ++j)
+                            {
+                                A_star(i_p, j) = fitting_functions[j][p]->coef(
+                                    vx * N + ux, 2);
+                            }
+                            i_p++;
+
+                            // Then, check if this is a sample point
+                            if (!((p == 0 && vx == 0 &&
+                                   ux == 0) || //
+                                               // (ux > 0 && vx < N-1)
+                                  (p < valence && ux == N - 1 &&
+                                   (vx == 0 || vx == N - 1)) || //
+                                  (p < valence && ux == 2 && vx == 2)))
+                            {
+                                continue;
+                            }
+
+                            // Transform the indices into real coordinates for
+                            // the sampling points.
+                            real_t u = real_t(ux) / real_t(N - 1);
+                            real_t v = real_t(vx) / real_t(N - 1);
+
+                            // For each function, save its z-value into A as
+                            // described above
+                            for (size_t j = 0; j < fit_functions; ++j)
+                            {
+                                // sample
+                                gsVector<real_t, 3> val =
+                                    fitting_functions[j][p]->eval(
+                                        gsVector<real_t>::vec(u, v));
+                                A(i_s, j) = val.z();
+                            }
+
+                            // Lastly, save the sample value of the target patch
+                            gsVector<real_t, 3> val = target_patches[p].eval(
+                                gsVector<real_t>::vec(u, v));
+                            target.row(i_s) = val;
+
+                            i_s++;
                         }
-
-                        gsVector<real_t, 3> val =
-                            target_patches[p].eval(gsVector<real_t>::vec(u, v));
-                        b.row(i) = val;
-
-                        i++;
                     }
                 }
+                gsInfo << "Total samples: " << i_s << "\n";
+                gsInfo << "Total points: " << i_p << "\n";
             }
 
-            gsInfo << "Sampling complete.\n";
+            // Solve the least-squares system A * solution = target
+            // with Tikhonov regularization to also minimize the norm of
+            // solution This solves: minimize ||A * solution - target||^2 +
+            // λ||solution||^2 Solution: (A^T * A + λ*I)^(-1) * A^T * target
+            real_t lambda = 1e-8; // Regularization parameter
+            gsMatrix<real_t> regularized =
+                A.transpose() * A +
+                lambda * gsMatrix<real_t>::Identity(A.cols(), A.cols());
+            gsMatrix<real_t> solution =
+                regularized.colPivHouseholderQr().solve(A.transpose() * target);
 
-            // gsInfo << "A: " << A.rows() << "x" << A.cols() << "\n";
+            gsInfo << "Total norm: " << (A * solution - target).norm() << "\n";
 
-            // for (int u = 0; u < A.rows(); ++u)
-            // {
-            //     for (int v = 0; v < A.cols(); ++v)
-            //     {
-            //         gsInfo << A(u, v) << "\t";
-            //     }
-            //     gsInfo << "\n";
-            // }
+            // Now, the coefficients in `solution` give a linear combination of
+            // the fitting functions that approximates the original target
+            // patches. By multiplying with A_star, we get the same linear
+            // combination of the control points of the fitting functions,
+            // resulting in a collection of control points that we can write
+            // back into the control nets.
+            auto new_values = A_star * solution;
 
-            // Solve the least-squares system A * coeffs = b
-            gsMatrix<real_t> coeffs = A.colPivHouseholderQr().solve(b);
-
-            gsInfo << "coeffs: " << coeffs.rows() << "x" << coeffs.cols()
+            gsInfo << "A:      " << A.rows() << "x" << A.cols() << "\n";
+            gsInfo << "A_star: " << A_star.rows() << "x" << A_star.cols()
                    << "\n";
+            gsInfo << "target: " << target.rows() << "x" << target.cols()
+                   << "\n";
+            gsInfo << "new_values: " << new_values.rows() << "x"
+                   << new_values.cols() << "\n";
 
-            for (int u = 0; u < coeffs.rows(); ++u)
+            // We need to make sure to use the same ordering as we did when
+            // sampling.
             {
-                for (int v = 0; v < coeffs.cols(); ++v)
+                size_t i(0);
+                for (size_t p = 0; p < patches; ++p)
                 {
-                    gsInfo << coeffs(u, v) << "\t";
-                }
-                gsInfo << "\n";
-            }
-
-            auto new_values = A_star * coeffs;
-            gsInfo << new_values.rows() << "x" << new_values.cols() << "\n";
-
-            i = 0;
-            for (size_t p = 0; p < patches; ++p)
-            {
-                for (size_t ux = 0; ux < N; ++ux)
-                {
-                    for (size_t vx = 0; vx < N; ++vx)
+                    for (size_t ux = 0; ux < N; ++ux)
                     {
-                        *control_points_faces[p](vx, ux) = new_values.row(i);
+                        for (size_t vx = 0; vx < N; ++vx)
+                        {
+                            real_t cp =
+                                fitting_functions[0][p]->coef(vx * N + ux, 2);
 
-                        i++;
+                            if (cp == 0.0)
+                                continue;
+                            // This makes sure the outer points are not
+                            // overwritten - since we only fit in the areas
+                            // where the fitting functions are not truncated.
+                            // TODO: Improve this with index math in case
+                            // somethign is 0.
+                            *control_nets[p](vx, ux) = new_values.row(i);
+
+                            i++;
+                        }
                     }
                 }
             }
