@@ -1286,12 +1286,6 @@ public:
         return false;
     }
 
-    /// returns whether \c v is ordinary (valence 4 or on boundary)
-    inline bool is_ordinary(Vertex v) const
-    {
-        return valence(v) == 4 || is_boundary(v);
-    }
-
 public:
 
     /** add a vertex property of type \c T with name \c name and default value \c t.

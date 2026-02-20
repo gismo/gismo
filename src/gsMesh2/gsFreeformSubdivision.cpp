@@ -230,14 +230,14 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::orient_faces()
         bool has_ev(false);
         for (Vertex v : mesh.vertices(f))
         {
-            has_ev |= !mesh.is_ordinary(v);
+            has_ev |= !is_ordinary(mesh, v);
         }
 
         // if it does, rotate its first halfedge around until it points to the
         // EV
         if (has_ev)
         {
-            while (mesh.is_ordinary(mesh.to_vertex(mesh.halfedge(f))))
+            while (is_ordinary(mesh, mesh.to_vertex(mesh.halfedge(f))))
             {
                 // rotate the edge
                 mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
@@ -289,7 +289,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
 
         // Check if we have an EV. If there is, it must be the first vertex
         // thanks to our preprocessing.
-        if (!mesh.is_ordinary(fv))
+        if (!is_ordinary(mesh, fv))
         {
             // === EXTRAORDINARY VERTICES ===
             // via lots of fitting
@@ -453,11 +453,11 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
         {
             for (Vertex v_face : mesh.vertices(f))
             {
-                has_ev |= !mesh.is_ordinary(v_face);
+                has_ev |= !is_ordinary(mesh, v_face);
             }
         }
 
-        if (!mesh.is_ordinary(v))
+        if (!is_ordinary(mesh, v))
         {
             size_t valence = mesh.valence(v);
             size_t patches = 4 * valence;
@@ -560,14 +560,6 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 target_patches.emplace_back(basis, coeffs);
             }
 
-            // This is the number of total points that need to be moved.
-            size_t point_count(valence * (N * N + 2 * N + 2 * 2 + N * 2));
-            // This is the number of total points we are fitting to, excluding
-            // doubles.
-            // size_t sample_count(1 + valence * (N-1) * (N-1) + valence * 2 *
-            // (N-1) + valence * 2 + valence * (N-1));
-            size_t sample_count(1 + 3 * valence);
-
             // The number of fitting functions.
             // Note these are linearly dependent and actually the dimension of
             // this space is only valence + 3.
@@ -577,7 +569,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             std::vector<
                 std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>>>
                 fitting_functions;
-            fitting_functions.reserve(2 * valence + 1);
+            fitting_functions.reserve(function_count);
 
             for (size_t i = 1; i <= function_count; ++i)
             {
@@ -590,6 +582,14 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                         ".xml")
                         .getAll<gsTensorBSpline<2, real_t>>());
             }
+
+            // This is the number of total points that need to be moved.
+            size_t point_count(valence * (N * N + 2 * N + 2 * 2 + N * 2));
+            // This is the number of total points we are fitting to, excluding
+            // doubles.
+            // size_t sample_count(1 + valence * (N-1) * (N-1) + valence * 2 *
+            // (N-1) + valence * 2 + valence * (N-1));
+            size_t sample_count(1 + 20 * valence + valence);
 
             // For the least-squares fit we now build:
             // - The matrix `A` of dimension `sample_count x fit_functions`, in
@@ -606,11 +606,14 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             gsMatrix<real_t> A(sample_count, function_count);
             gsMatrix<real_t> A_cp(point_count, function_count);
             gsMatrix<real_t> target(sample_count, D);
+            gsMatrix<real_t> full_A(patches * N * N, function_count);
+            gsMatrix<real_t> full_target(patches * N * N, D);
 
             {
                 // the sampling index - this is incremented whenever we sample a
                 // point
                 size_t i_s(0);
+                size_t full_i_s(0);
                 // The point index
                 size_t i_p(0);
                 // Iterating over patches
@@ -624,6 +627,29 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                         // by index, v dimension.
                         for (size_t vx = 0; vx < N; ++vx)
                         {
+                            // Transform the indices into real coordinates for
+                            // the sampling points.
+                            real_t u = real_t(ux) / real_t(N - 1);
+                            real_t v = real_t(vx) / real_t(N - 1);
+
+                            // === TESTING
+                            for (size_t j = 0; j < function_count; ++j)
+                            {
+                                // sample
+                                gsVector<real_t, D> val =
+                                    fitting_functions[j][p]->eval(
+                                        gsVector<real_t>::vec(u, v));
+                                full_A(full_i_s, j) = val.z();
+                            }
+                            gsVector<real_t, D> full_val =
+                                target_patches[p].eval(
+                                    gsVector<real_t>::vec(u, v));
+                            full_target.row(full_i_s) = full_val;
+
+                            full_i_s++;
+
+                            // === TESTING
+
                             // control point of fitting function at this point
                             // If this is zero, we want to skip it since we only
                             // fit within the support of the fitting functions.
@@ -644,20 +670,14 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                             i_p++;
 
                             // Then, check if this is a sample point
-                            if (!((p == 0 && vx == 0 &&
-                                   ux == 0) || //
-                                               // (ux > 0 && vx < N-1)
-                                  (p < valence && ux == N - 1 &&
-                                   (vx == 0 || vx == N - 1)) || //
-                                  (p < valence && ux == 2 && vx == 2)))
+                            if (!((p == 0 && vx == 0 && ux == 0) || //
+                                  (p < valence && ux > 0) ||        //
+                                  ((p - valence) % 3 == 1 && ux == 1 &&
+                                   vx == 1) //
+                                  ))
                             {
                                 continue;
                             }
-
-                            // Transform the indices into real coordinates for
-                            // the sampling points.
-                            real_t u = real_t(ux) / real_t(N - 1);
-                            real_t v = real_t(vx) / real_t(N - 1);
 
                             // For each function, save its z-value into A as
                             // described above
@@ -725,11 +745,13 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 constraints;
 
             // Bottom left: Zero
-            augmented_A.bottomRightCorner(constraint_count, constraint_count).setZero();
+            augmented_A.bottomRightCorner(constraint_count, constraint_count)
+                .setZero();
 
             // Top of augmented target: target via Tikhonov
             augmented_target.topRows(function_count) = A.transpose() * target;
-            // Bottom of augmented target: zero, to ensure constraints are fulfilled
+            // Bottom of augmented target: zero, to ensure constraints are
+            // fulfilled
             augmented_target.bottomRows(constraint_count).setZero();
 
             // Acutally solve the system
@@ -737,10 +759,25 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 augmented_A.colPivHouseholderQr().solve(augmented_target);
 
             // Extract the solution without the zeroes from the augmented system
-            gsMatrix<real_t> solution = augmented_solution.topRows(function_count);
+            gsMatrix<real_t> solution =
+                augmented_solution.topRows(function_count);
 
             gsInfo << "Total fiting error: " << (A * solution - target).norm()
                    << "\n";
+
+            auto full_test = full_A * solution;
+            size_t idx(0);
+            for (size_t p = 0; p < patches; ++p)
+            {
+                for (size_t ux = 0; ux < N; ++ux)
+                {
+                    for (size_t vx = 0; vx < N; ++vx)
+                    {
+                        gsInfo << p << "(" << ux << ", " << vx << "): " << full_test(idx, 0) << "  <--->  " << full_target(idx, 0) << "\n";
+                        idx++;
+                    }
+                }
+            }
 
             // Print the coefficients
             gsInfo << "Fitting coefficients: \n";
@@ -922,11 +959,11 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
         bool has_ev(false);
         for (Vertex v : mesh.vertices(face0))
         {
-            has_ev |= !mesh.is_ordinary(v);
+            has_ev |= !is_ordinary(mesh, v);
         }
         for (Vertex v : mesh.vertices(face1))
         {
-            has_ev |= !mesh.is_ordinary(v);
+            has_ev |= !is_ordinary(mesh, v);
         }
 
         if (has_ev)

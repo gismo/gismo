@@ -105,6 +105,13 @@ private: // Helper functions
     std::array<Face, 4> order_faces(Vertex first_vertex,
                                     std::array<Face, 4> faces);
 
+    /// returns whether \c v is ordinary (valence 4 or on boundary)
+    inline bool is_ordinary(const gsSurfMesh& mesh, const Vertex& v) const
+    {
+        return mesh.valence(v) == 4 || mesh.is_boundary(v);
+    }
+
+
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity check_mesh() override;
 
