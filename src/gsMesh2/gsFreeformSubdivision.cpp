@@ -571,7 +571,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             // The number of fitting functions.
             // Note these are linearly dependent and actually the dimension of
             // this space is only valence + 3.
-            size_t fit_functions(2 * valence + 1);
+            size_t function_count(2 * valence + 1);
 
             // We now load the patches of these fitting functions.
             std::vector<
@@ -579,7 +579,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 fitting_functions;
             fitting_functions.reserve(2 * valence + 1);
 
-            for (size_t i = 1; i <= fit_functions; ++i)
+            for (size_t i = 1; i <= function_count; ++i)
             {
                 // Construct the filepath for the ith basis function and
                 // load it with gismo utilities
@@ -594,7 +594,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             // For the least-squares fit we now build:
             // - The matrix `A` of dimension `sample_count x fit_functions`, in
             // which the entry A(i,j) is the value of the j-th fitting function
-            // at the ith sample point. . The matrix `A_star` of dimension
+            // at the ith sample point. . The matrix `A_cp` of dimension
             // `sample_count x fit_functions`, in which the entry A(i,j) is the
             // ith control point of meshes from the jth fitting function.
             // - The matrix `target` of dimension `sample_count x D`, in which
@@ -603,8 +603,8 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             //
             // The control points and sampling points are arranged in the same
             // way.
-            gsMatrix<real_t> A(sample_count, fit_functions);
-            gsMatrix<real_t> A_star(point_count, fit_functions);
+            gsMatrix<real_t> A(sample_count, function_count);
+            gsMatrix<real_t> A_cp(point_count, function_count);
             gsMatrix<real_t> target(sample_count, D);
 
             {
@@ -635,10 +635,10 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                                 continue;
 
                             // First, log the z-coordinate of the control points
-                            // into A_star.
-                            for (size_t j = 0; j < fit_functions; ++j)
+                            // into A_cp.
+                            for (size_t j = 0; j < function_count; ++j)
                             {
-                                A_star(i_p, j) = fitting_functions[j][p]->coef(
+                                A_cp(i_p, j) = fitting_functions[j][p]->coef(
                                     vx * N + ux, 2);
                             }
                             i_p++;
@@ -661,7 +661,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
 
                             // For each function, save its z-value into A as
                             // described above
-                            for (size_t j = 0; j < fit_functions; ++j)
+                            for (size_t j = 0; j < function_count; ++j)
                             {
                                 // sample
                                 gsVector<real_t, D> val =
@@ -684,32 +684,80 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             }
 
             // Solve the least-squares system A * solution = target
-            // with Tikhonov regularization to also minimize the norm of
-            // solution This solves: minimize ||A * solution - target||^2 +
-            // λ||solution||^2 Solution: (A^T * A + λ*I)^(-1) * A^T * target
-            real_t lambda = 1e-8; // Regularization parameter
-            gsMatrix<real_t> regularized =
+            // with Tikhonov regularization and additional constraints by
+            // building the augmented system:
+            //```
+            //`   /                         \  /  \    /           \
+            //`  | A^T*A + lambda*I     C^T | | x | = | A^T*target |
+            //`  |     C                0   | | y |   |     0      |
+            //`  \                         /  \  /    \            /
+            //```
+            //  and solving
+
+            // Regularization parameter
+            real_t lambda = 1e-8;
+            // Load the constraints into a matrix
+            // Number of constraints should be the number of fitting functions
+            // (`function_count = 2 * valence + 1`) minus the dimension of the
+            // space (`v + 3`), i.e. `v-2`.
+            gsMatrix<real_t> constraints;
+            auto _readFile =
+                gsReadFile<>("freeformSubdivision/fitting_functions/Val" +
+                                 std::to_string(valence) + "Constraints.xml",
+                             constraints);
+            size_t constraint_count = constraints.rows();
+
+            // Build the matrix & target
+            gsMatrix<real_t> augmented_A(function_count + constraint_count,
+                                         function_count + constraint_count);
+            gsMatrix<real_t> augmented_target(function_count + constraint_count,
+                                              target.cols());
+            // Zero it first
+            augmented_A.setZero();
+            // Top left: Tikhonov system
+            augmented_A.topLeftCorner(function_count, function_count) =
                 A.transpose() * A +
-                lambda * gsMatrix<real_t>::Identity(A.cols(), A.cols());
-            gsMatrix<real_t> solution =
-                regularized.colPivHouseholderQr().solve(A.transpose() * target);
+                lambda *
+                    gsMatrix<real_t>::Identity(function_count, function_count);
+
+            // Top right & Bottom right: Constraints
+            augmented_A.topRightCorner(function_count, constraint_count) =
+                constraints.transpose();
+            augmented_A.bottomLeftCorner(constraint_count, function_count) =
+                constraints;
+
+            // Bottom left: Zero
+            augmented_A.bottomRightCorner(constraint_count, constraint_count).setZero();
+
+            // Top of augmented target: target via Tikhonov
+            augmented_target.topRows(function_count) = A.transpose() * target;
+            // Bottom of augmented target: zero, to ensure constraints are fulfilled
+            augmented_target.bottomRows(constraint_count).setZero();
+
+            // Acutally solve the system
+            gsMatrix<real_t> augmented_solution =
+                augmented_A.colPivHouseholderQr().solve(augmented_target);
+
+            // Extract the solution without the zeroes from the augmented system
+            gsMatrix<real_t> solution = augmented_solution.topRows(function_count);
 
             gsInfo << "Total fiting error: " << (A * solution - target).norm()
                    << "\n";
 
+            // Print the coefficients
             gsInfo << "Fitting coefficients: \n";
-            for(int i = 0; i < solution.rows(); ++i){
+            for (int i = 0; i < solution.rows(); ++i)
+            {
                 gsInfo << solution.row(i) << "\n";
             }
- 
 
             // Now, the coefficients in `solution` give a linear combination of
             // the fitting functions that approximates the original target
-            // patches. By multiplying with A_star, we get the same linear
+            // patches. By multiplying with A_cp, we get the same linear
             // combination of the control points of the fitting functions,
             // resulting in a collection of control points that we can write
             // back into the control nets.
-            auto new_values = A_star * solution;
+            auto new_values = A_cp * solution;
 
             // We need to make sure to use the same ordering as we did when
             // sampling.
@@ -725,7 +773,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                                 fitting_functions[0][p]->coef(vx * N + ux, 2);
 
                             // Makre sure to skip all points that we skipped
-                            // when collecting A_star, those that lie outside of
+                            // when collecting A_cp, those that lie outside of
                             // the support of the fitting functions.
                             if (cp == 0.0)
                                 continue;
@@ -1002,10 +1050,10 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
     {
         // Round coordinates for map lookup
         std::array<real_t, D> key;
-        for(size_t i = 0; i < D; ++i){
-            key[i] = std::round(point(i) / tolerance) * tolerance; 
+        for (size_t i = 0; i < D; ++i)
+        {
+            key[i] = std::round(point(i) / tolerance) * tolerance;
         }
-
 
         auto it = cornerMap.find(key);
         if (it != cornerMap.end())
