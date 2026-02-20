@@ -687,10 +687,8 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             // with Tikhonov regularization and additional constraints by
             // building the augmented system:
             //```
-            //`   /                         \  /  \    /           \
-            //`  | A^T*A + lambda*I     C^T | | x | = | A^T*target |
-            //`  |     C                0   | | y |   |     0      |
-            //`  \                         /  \  /    \            /
+            //`  [ A^T*A + lambda*I     C^T ] [ x ] = [ A^T*target ]
+            //`  [     C                0   ] [ y ]   [     0      ]
             //```
             //  and solving
 
