@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "gsCore/gsFunctionExpr.h"
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsNurbs/gsTensorBSpline.h>
@@ -122,6 +123,13 @@ public:
     /// Loads the `.off`-File at the given filepath and saves it in the targeted mesh, which is assumed to contain D-dimensional point data.
     /// Then adds the `bezier_points` face property, initializing it with an equally distributed control net of `NxN` points.
     void initialize_data_off(std::string filepath);
+
+    /// \brief Replaces the value of the last coordinate with a function of the first few.
+    ///
+    /// Goes through all data points in the FreeformFaceData of the targeted mesh and replaces the value of the last (Dth) coordinate with a function of the first D-1 coordinates.
+    ///
+    /// \param function A real-valued function in D-1 real variables.
+    void replace_last_coordinate_with_function(gsFunctionExpr<> function);
 
     /// \brief Initializes the targeted mesh from an xml file.
     ///

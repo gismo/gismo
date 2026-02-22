@@ -11,6 +11,7 @@
     Author(s): L. Mussmaecher
 */
 
+#include "gsCore/gsFunctionExpr.h"
 #include <cmath>
 #include <gismo.h>
 #include <gsCore/gsDebug.h>
@@ -1005,6 +1006,24 @@ void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
     for (auto f : mesh.faces())
     {
         patch_data.vector()[f.idx()] = gsFreeformFaceData<N, D>(mesh, f);
+    }
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::replace_last_coordinate_with_function(gsFunctionExpr<real_t> function)
+{
+    auto& mesh = *m_mesh;
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+
+    for (auto f : mesh.faces())
+    {
+        auto& data = face_data_vec[f.idx()].control_points;
+
+        for(gsVector<real_t, D>& v : data.asVector()){
+            real_t a = function.eval(gsVector<real_t, 2>(v.topRows(D-1)))(0);
+            v(D-1) = a;
+        }
     }
 }
 
