@@ -126,10 +126,31 @@ int main(int argc, char* argv[])
     
         gsMatrix<T>& derivatives2 = result2.second;
         gsInfo << "derivatives2:\n" << derivatives2 << "\n";
-        
 
         // TODO: C. Check if vaules1 == values2 *or* if they are the same after flipping the columns
         //          In the second case, flip also the columns of derivatives2
+        
+        const T tol = 1e-10;
+        if ((values1 - values2).norm() < tol)
+        {
+            gsInfo << "Boundary values match directly.\n";
+        }
+        else if ((values1 - values2.rowwise().reverse()).norm() < tol)
+        {
+            gsInfo << "Boundary values match after flipping. Reversing values2 and derivatives2.\n";
+            values2 = values2.rowwise().reverse().eval();
+            derivatives2 = derivatives2.rowwise().reverse().eval();
+        }
+        else
+        {
+            gsInfo << "Boundary values do NOT match. Something is wrong!\n";
+            return -1;
+        }
+        
+     
+        // TODO: C. Check if vaules1 == values2 *or* if they are the same after flipping the columns
+        //          In the second case, flip also the columns of derivatives2
+        //DONE ABOVE
         
         // TODO: D, Compute gluing data
         // ...

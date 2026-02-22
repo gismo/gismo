@@ -1,4 +1,4 @@
-/** @file 2D_embeddingand_normal_example.cpp
+/** @file 2D_embedding_and_normal_and_second_layer_example.cpp
 
     @brief Tutorial on gsBasis class.
 
@@ -122,11 +122,6 @@ std::vector<index_t> getInteriorDofs(const index_t tbSize, const gsMatrix<index_
 /// and enforces the derivative constraints:
 ///  - boundary columns: zero normal derivative at the boundary
 ///  - second-layer columns: unit normal derivative at the boundary
-///
-/// Column layout (sorted):
-///   [0 .. trueInterior-1]        identity for truly interior DOFs
-///   [trueInterior .. +coarse1D-1]  boundary embedding (zero normal deriv)
-///   [.. +lowerDeg1D-1]           second-layer embedding (unit normal deriv)
 template<typename T>
 gsSparseMatrix<T> createTensorArgyrisBasis(
     const gsTensorBSplineBasis<2,T>& tensorBasis,
