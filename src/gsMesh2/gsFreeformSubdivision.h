@@ -112,7 +112,6 @@ private: // Helper functions
         return mesh.valence(v) == 4 || mesh.is_boundary(v);
     }
 
-
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity check_mesh() override;
 
@@ -120,22 +119,29 @@ public:
 
     /// \brief Initializes the targeted mesh from an off file.
     ///
-    /// Loads the `.off`-File at the given filepath and saves it in the targeted mesh, which is assumed to contain D-dimensional point data.
-    /// Then adds the `bezier_points` face property, initializing it with an equally distributed control net of `NxN` points.
+    /// Loads the `.off`-File at the given filepath and saves it in the targeted
+    /// mesh, which is assumed to contain D-dimensional point data. Then adds
+    /// the `bezier_points` face property, initializing it with an equally
+    /// distributed control net of `NxN` points.
     void initialize_data_off(std::string filepath);
 
-    /// \brief Replaces the value of the last coordinate with a function of the first few.
+    /// \brief Replaces the value of the last coordinate with a function of the
+    /// first few.
     ///
-    /// Goes through all data points in the FreeformFaceData of the targeted mesh and replaces the value of the last (Dth) coordinate with a function of the first D-1 coordinates.
+    /// Goes through all data points in the FreeformFaceData of the targeted
+    /// mesh and replaces the value of the last (Dth) coordinate with a function
+    /// of the first D-1 coordinates.
     ///
     /// \param function A real-valued function in D-1 real variables.
     void replace_last_coordinate_with_function(gsFunctionExpr<> function);
 
     /// \brief Initializes the targeted mesh from an xml file.
     ///
-    /// Loads the `.xml`-File at the given filepath, which is assumed to contain a number of gsGeometry objects of type `TensorBSpline2` which have control nets of `NxN` vectors of dimension `D`. 
-    /// For each such TensorBSpline2, a face is created in the targeted mesh.
-    /// Then adds the `bezier_points` face property, initializing it with that control net.
+    /// Loads the `.xml`-File at the given filepath, which is assumed to contain
+    /// a number of gsGeometry objects of type `TensorBSpline2` which have
+    /// control nets of `NxN` vectors of dimension `D`. For each such
+    /// TensorBSpline2, a face is created in the targeted mesh. Then adds the
+    /// `bezier_points` face property, initializing it with that control net.
     void initialize_data_xml(std::string filepath);
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
@@ -144,10 +150,12 @@ public:
     /// the outer layer of control points of each bezier patch. This only causes
     /// $C^s$ at edges and ordinary vertices. No guarantee is made for
     /// extraordinary vertices.
+    /// Returs a vector containing the coefficient matrix of the fitting for
+    /// each extraordinary vertex.
     ///
     /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
     /// supported.
-    void smooth(size_t degree);
+    std::vector<gsMatrix<real_t>> smooth(size_t degree);
 
     /// \brief Converts to a Gismo multipatch object.
     ///

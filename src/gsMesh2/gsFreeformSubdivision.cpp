@@ -423,22 +423,24 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
 };
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::smooth(size_t degree)
+std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
 {
     auto& mesh = *m_mesh;
+
+    std::vector<gsMatrix<real_t>> res;
     // Ensure we have a high enough degree
     if (degree + 1 > N / 2)
     {
         gsWarn
             << "Degree of Bezier control net to small for this smoothness.\n";
-        return;
+        return res;
     }
 
     // Currently, only C^1 is supported.
     if (degree != 1)
     {
         gsWarn << "Currently, only C^1 smoothing is supported.\n";
-        return;
+        return res;
     }
 
     // Cache face data
@@ -681,7 +683,6 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                              constraints);
             size_t constraint_count = constraints.rows();
 
-
             // Default threshold is based on machine epsilon
             gsEigen::FullPivLU<gsMatrix<real_t>> lu(A_sample);
             lu.setThreshold(1e-8);
@@ -692,9 +693,8 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             gsMatrix<> K = constraints.fullPivLu().kernel();
             gsEigen::FullPivLU<gsMatrix<real_t>> lu2(A_sample * K);
             lu2.setThreshold(1e-8);
-            gsInfo << "Rank of constrained A_sample: " << lu2.rank() << " (should be "
-                   << (valence + 3) << ")\n";
-
+            gsInfo << "Rank of constrained A_sample: " << lu2.rank()
+                   << " (should be " << (valence + 3) << ")\n";
 
             // Build the matrix & target
             gsMatrix<real_t> augmented_A(function_count + constraint_count,
@@ -743,32 +743,13 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                     .colPivHouseholderQr()
                     .solve(A_sample.transpose() * target);
 
-            gsInfo << "Total fitting error (no constraints): "
-                   << (A_sample * other_solution - target).norm() << "\n";
             gsInfo << "Total fitting error: "
                    << (A_sample * solution - target).norm() << "\n";
-            gsInfo << "Total fitting error (no constraints, with A^T): "
-                   << (A_sample.transpose() * A_sample * other_solution -
-                       A_sample.transpose() * target)
-                          .norm()
-                   << "\n";
-            gsInfo << "Total fitting error (with A^T): "
-                   << (A_sample.transpose() * A_sample * solution -
-                       A_sample.transpose() * target)
-                          .norm()
+            gsInfo << "Constraint error: " << (constraints * solution).norm()
                    << "\n";
 
-            gsInfo << "Constraint norm: " << (constraints * solution).norm()
-                   << "\n";
-            gsInfo << "Constraint norm (no constraints): "
-                   << (constraints * other_solution).norm() << "\n";
-
-            // Print the coefficients
-            gsInfo << "Fitting coefficients: \n";
-            for (int i = 0; i < solution.rows(); ++i)
-            {
-                gsInfo << solution.row(i) << "\n";
-            }
+            // Remember the fitting coefficients and return them later.
+            res.emplace_back(solution);
 
             // Now, the coefficients in `solution` give a linear combination of
             // the fitting functions that approximates the original target
@@ -804,7 +785,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                     }
                 }
             }
-        }
+        } // end of EV vertex correction
         else
         {
 
@@ -920,9 +901,9 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 *(control_points_faces[i](1, 1)) = new_points.row(2 * i + 2);
                 *(control_points_faces[i](1, 0)) = new_points.row(2 * i + 3);
             }
-        }
+        } // End of OV vertex correction
     }
-    // End of edge correction
+    // End of vertex correction
 
     // Now, correct the remaining part of each edge that isn't surrounding a
     // vertex.
@@ -1016,9 +997,11 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             *m0 = (solution.row(0) + solution.row(1)) * 0.5;
             *m1 = (solution.row(0) + solution.row(1)) * 0.5;
             *i1 = solution.row(1);
-        }
+        } // End of this edge
     }
-    // End of vertex correction
+    // End of edge correction
+
+    return res;
 }
 
 template <size_t N, size_t D>
