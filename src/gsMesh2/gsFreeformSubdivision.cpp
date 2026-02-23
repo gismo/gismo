@@ -669,7 +669,7 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
             //  and solving
 
             // Regularization parameter
-            real_t lambda = 1e-6;
+            real_t lambda = 1e-4;
             // Load the constraints into a matrix
             // Number of constraints should be the number of fitting functions
             // (`function_count = 2 * valence + 1`) minus the dimension of the
@@ -680,6 +680,21 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
                                  std::to_string(valence) + "Constraints.xml",
                              constraints);
             size_t constraint_count = constraints.rows();
+
+
+            // Default threshold is based on machine epsilon
+            gsEigen::FullPivLU<gsMatrix<real_t>> lu(A_sample);
+            lu.setThreshold(1e-8);
+            gsInfo << "Rank of A_sample (" << A_sample.rows() << "x"
+                   << A_sample.cols() << "): " << lu.rank() << " (should be "
+                   << (valence + 3) << ")\n";
+
+            gsMatrix<> K = constraints.fullPivLu().kernel();
+            gsEigen::FullPivLU<gsMatrix<real_t>> lu2(A_sample * K);
+            lu2.setThreshold(1e-8);
+            gsInfo << "Rank of constrained A_sample: " << lu2.rank() << " (should be "
+                   << (valence + 3) << ")\n";
+
 
             // Build the matrix & target
             gsMatrix<real_t> augmented_A(function_count + constraint_count,
@@ -696,9 +711,9 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
 
             // Top right & Bottom right: Constraints
             augmented_A.topRightCorner(function_count, constraint_count) =
-                constraints.transpose();
+                lambda * constraints.transpose();
             augmented_A.bottomLeftCorner(constraint_count, function_count) =
-                constraints;
+                lambda * constraints;
 
             // Bottom left: Zero
             augmented_A.bottomRightCorner(constraint_count, constraint_count)
@@ -713,20 +728,40 @@ void gsFreeformSubdivision<N, D>::smooth(size_t degree)
 
             // Acutally solve the system
             gsMatrix<real_t> augmented_solution =
-                augmented_A.colPivHouseholderQr().solve(augmented_target);
+                augmented_A.fullPivHouseholderQr().solve(augmented_target);
 
             // Extract the solution without the zeroes from the augmented system
             gsMatrix<real_t> solution =
                 augmented_solution.topRows(function_count);
 
-            // solution = (A_sample.transpose() * A_sample +
-            //             lambda * gsMatrix<real_t>::Identity(function_count,
-            //                                                 function_count))
-            //                .colPivHouseholderQr()
-            //                .solve(A_sample.transpose() * target);
+            // now replace all this with a constraint-free least-squares fit,
+            // because the constraints seem to be wrong
+            gsMatrix<real_t> other_solution =
+                (A_sample.transpose() * A_sample +
+                 lambda *
+                     gsMatrix<real_t>::Identity(function_count, function_count))
+                    .colPivHouseholderQr()
+                    .solve(A_sample.transpose() * target);
 
+            gsInfo << "Total fitting error (no constraints): "
+                   << (A_sample * other_solution - target).norm() << "\n";
             gsInfo << "Total fitting error: "
                    << (A_sample * solution - target).norm() << "\n";
+            gsInfo << "Total fitting error (no constraints, with A^T): "
+                   << (A_sample.transpose() * A_sample * other_solution -
+                       A_sample.transpose() * target)
+                          .norm()
+                   << "\n";
+            gsInfo << "Total fitting error (with A^T): "
+                   << (A_sample.transpose() * A_sample * solution -
+                       A_sample.transpose() * target)
+                          .norm()
+                   << "\n";
+
+            gsInfo << "Constraint norm: " << (constraints * solution).norm()
+                   << "\n";
+            gsInfo << "Constraint norm (no constraints): "
+                   << (constraints * other_solution).norm() << "\n";
 
             // Print the coefficients
             gsInfo << "Fitting coefficients: \n";
@@ -1010,7 +1045,8 @@ void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
 }
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::replace_last_coordinate_with_function(gsFunctionExpr<real_t> function)
+void gsFreeformSubdivision<N, D>::replace_last_coordinate_with_function(
+    gsFunctionExpr<real_t> function)
 {
     auto& mesh = *m_mesh;
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
@@ -1020,9 +1056,10 @@ void gsFreeformSubdivision<N, D>::replace_last_coordinate_with_function(gsFuncti
     {
         auto& data = face_data_vec[f.idx()].control_points;
 
-        for(gsVector<real_t, D>& v : data.asVector()){
-            real_t a = function.eval(gsVector<real_t, 2>(v.topRows(D-1)))(0);
-            v(D-1) = a;
+        for (gsVector<real_t, D>& v : data.asVector())
+        {
+            real_t a = function.eval(gsVector<real_t, 2>(v.topRows(D - 1)))(0);
+            v(D - 1) = a;
         }
     }
 }
