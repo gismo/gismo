@@ -2,7 +2,7 @@ name: build_python_wheels
 
 on:
   push:
-    branches: ["stable"]
+    branches: ["dev"]
   pull_request:
 
     
@@ -121,8 +121,8 @@ jobs:
   upload_pypi:
     needs: [macos_wheel, linux_wheel, linux_wheel_qemu, source_dist]
     runs-on: ubuntu-latest
-    # try to publish only if this is a push to stable branch
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stable' }}
+    # try to publish only if this is a push to dev branch
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
     steps:
       - uses: actions/download-artifact@v4
         with:

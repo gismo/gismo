@@ -260,7 +260,7 @@ namespace gismo
         HElementContainer result;
         T percentage = m_options.askReal("RefineParam",0.1);
         index_t numElements = m_elementErrors.size();
-        index_t numToMark = static_cast<index_t>(math::floor(percentage * numElements));
+        index_t numToMark = cast<T,index_t>(math::floor(percentage * numElements));
         index_t numMarked = 0;
         for (typename std::vector<std::pair<element_t, error_t>>::const_reverse_iterator it = m_elementErrors.rbegin(); it != m_elementErrors.rend(); ++it, ++numMarked)
         {
@@ -284,7 +284,7 @@ namespace gismo
         HElementContainer result;
         T percentage = m_options.askReal("CoarsenParam",0.1);
         index_t numElements = m_elementErrors.size();
-        index_t numToMark = static_cast<index_t>(math::floor(percentage * numElements));
+        index_t numToMark = cast<T,index_t>(math::floor(percentage * numElements));
         index_t numMarked = 0;
         for (typename std::vector<std::pair<element_t, error_t>>::const_iterator it = m_elementErrors.begin(); it != m_elementErrors.end(); ++it, ++numMarked)
         {
