@@ -24,10 +24,13 @@ int main(int argc, char** argv)
         if (valence == 4)
             continue;
 
+        gsInfo <<"=================\n    Valence " << valence << "\n=================\n\n";
+
         gsMatrix<real_t> coeffs(2 * valence + 1, 2 * valence + 1);
 
         for (size_t function = 1; function <= 2 * valence + 1; ++function)
         {
+            gsInfo <<"Function " << function  << "\n";
             subdiv.initialize_data_xml(
                 "freeformSubdivision/fitting_functions/Val" +
                 std::to_string(valence) + "Fct" + std::to_string(function) +
@@ -36,6 +39,7 @@ int main(int argc, char** argv)
             auto res = subdiv.smooth(1);
 
             coeffs.row(function - 1) = res[0].transpose().row(2);
+        gsInfo <<"\n";
         }
 
         // save all coefficients to file

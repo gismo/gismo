@@ -693,7 +693,7 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
             gsMatrix<> K = constraints.fullPivLu().kernel();
             gsEigen::FullPivLU<gsMatrix<real_t>> lu2(A_sample * K);
             lu2.setThreshold(1e-8);
-            gsInfo << "Rank of constrained A_sample: " << lu2.rank()
+            gsInfo << "Rank of constrained A_sample (" << constraint_count << " constraints): " << lu2.rank()
                    << " (should be " << (valence + 3) << ")\n";
 
             // Build the matrix & target
