@@ -12,7 +12,7 @@
 */
 
 #pragma once
-
+#include <gsSolver/gsPreconditioner.h>
 namespace gismo {
 
 // forward declarations
@@ -99,11 +99,13 @@ public:
 public:
     virtual ~gsSparseSolver(){}
 
-    virtual gsSparseSolver& compute (const MatrixT &matrix) = 0;
+    virtual gsSparseSolver& compute (const MatrixT &matrix)                           = 0;
 
-    virtual VectorT   solve   (const VectorT &rhs)    const = 0;
+    virtual VectorT   solve         (const VectorT &rhs)                        const = 0;
 
-    virtual bool      succeed ()                      const = 0;
+    virtual VectorT   solveWithGuess(const VectorT &rhs, const VectorT &guess)  const { GISMO_NO_IMPLEMENTATION;}
+
+    virtual bool      succeed       ()                                          const = 0;
 
     virtual int info() const = 0;
 
@@ -126,8 +128,9 @@ public:
     {
         if (slv=="CGDiagonal")       return uPtr(new CGDiagonal());
         if (slv=="CGIdentity")       return uPtr(new CGIdentity());
+        if (slv=="CGCustom")         return uPtr(new CGCustom());
         if (slv=="SimplicialLDLT")   return uPtr(new SimplicialLDLT());
-        if (slv=="SimplicialLLT")   return uPtr(new SimplicialLLT());
+        if (slv=="SimplicialLLT")    return uPtr(new SimplicialLLT());
 #       ifdef GISMO_WITH_PARDISO
         if (slv=="PardisoLU")        return uPtr(new PardisoLU());
         if (slv=="PardisoLDLT")      return uPtr(new PardisoLDLT());
@@ -136,8 +139,14 @@ public:
 #       ifdef GISMO_WITH_SUPERLU
         if (slv=="SuperLU")          return uPtr(new SuperLU());
 #       endif
+// #       ifdef gsMUMPS_ENABLED
+//         if (slv=="MUMPSLDLT")        return uPtr(new MUMPSLDLDT());
+//         if (slv=="MUMPSLU")          return uPtr(new MUMPSLDLDT());
+// #       endif
         if (slv=="BiCGSTABILUT")     return uPtr(new BiCGSTABILUT());
         if (slv=="BiCGSTABDiagonal") return uPtr(new BiCGSTABDiagonal());
+        if (slv=="BiCGSTABIdentity") return uPtr(new BiCGSTABIdentity());
+        if (slv=="BiCGSTABCustom")   return uPtr(new BiCGSTABCustom());
         if (slv=="QR")               return uPtr(new QR());
         if (slv=="LU")               return uPtr(new LU());
         if (slv=="CGIdentity")       return uPtr(new CGIdentity());
