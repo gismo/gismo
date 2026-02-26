@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine();
         mp.uniformRefine();
-        // newLeft.clear();
+        newLeft.clear();
         for (size_t n_patch = 0; n_patch < mpLeft.nPatches(); ++n_patch){
             gsInfo << "patch number = "<< n_patch<< "----------------\n";
 
@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
             gsMatrix<> fValues             = mpLeft.patch(n_patch).eval(intfavlues);
             gsGeometry<>::uPtr interpolant = dbasis.basis(0).interpolateData(fValues, intGrid);
             // extract the mapping
-            newLeft.addPatch(give(interpolant));        
+            newLeft.addPatch(give(interpolant));   
         }
     } //for loop
     //! [Solver loop]    
