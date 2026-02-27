@@ -421,6 +421,140 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
         }
     }
 };
+template <size_t N, size_t D>
+gsMatrix<real_t>
+gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
+                                        gsMatrix<real_t> target, size_t valence)
+{
+    // Just a straight up solution, no regularization.
+    gsMatrix<real_t> solution = A.colPivHouseholderQr().solve(target);
+
+    auto Apv = A.fullPivLu();
+    Apv.setThreshold(1e-8);
+    gsMatrix<> K = Apv.kernel();
+
+    gsInfo << "Kernel size: " << K.rows() << "x" << K.cols() << "\n";
+
+    gsMatrix<> diff(2 * valence, 2 * valence + 1);
+    diff.setZero();
+    for (index_t i = 0; i < 2 * valence; i++)
+    {
+        diff(i, 2 * valence) = 1.0;
+        diff(i, i) = -1.0;
+    }
+    gsInfo << "diff*K size: " << (diff * K).rows() << "x" << (diff * K).cols()
+           << "\n";
+    gsInfo << "diff*s size: " << (diff * solution).rows() << "x"
+           << (diff * solution).cols() << "\n";
+
+    gsMatrix<> w = (diff * K).colPivHouseholderQr().solve(-diff * solution);
+
+    gsInfo << "w size: " << w.rows() << "x" << w.cols() << "\n";
+
+    gsInfo << "\nTotal fitting error (pre ): " << (A * solution - target).norm()
+           << "\n";
+    gsInfo << "Total fitting error (post): "
+           << (A * (solution + K * w) - target).norm() << "\n";
+
+    gsInfo << "w:\n";
+    for (index_t i = 0; i < w.rows(); ++i)
+    {
+        gsInfo << w.row(i) << "\n";
+    }
+
+    gsInfo << "Solution pre change:\n";
+    for (index_t i = 0; i < solution.rows(); ++i)
+    {
+        gsInfo << solution.row(i) << "\n";
+    }
+
+    gsInfo << "\nSolution post change:\n";
+    for (index_t i = 0; i < (solution + K * w).rows(); ++i)
+    {
+        gsInfo << (solution + K * w).row(i) << "\n";
+    }
+
+    return solution + K * w;
+}
+
+template <size_t N, size_t D>
+gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
+                                                     gsMatrix<real_t> target,
+                                                     size_t valence)
+{
+    // Solve the least-squares system A * solution = target
+    // with Tikhonov regularization and additional constraints by
+    // building the augmented system:
+    //```
+    //`  [ A^T*A + lambda*I     C^T ] [ x ] = [ A^T*target ]
+    //`  [     C                0   ] [ y ]   [     0      ]
+    //```
+    //  and solving
+    size_t function_count(2 * valence + 1);
+    // Regularization parameter
+    real_t lambda = 1e-4;
+    // Load the constraints into a matrix
+    // Number of constraints should be the number of fitting functions
+    // (`function_count = 2 * valence + 1`) minus the dimension of the
+    // space (`v + 3`), i.e. `v-2`.
+    gsMatrix<real_t> constraints;
+    auto _readFile =
+        gsReadFile<>("freeformSubdivision/fitting_functions/Val" +
+                         std::to_string(valence) + "Constraints.xml",
+                     constraints);
+    size_t constraint_count = constraints.rows();
+
+    // Default threshold is based on machine epsilon
+    gsEigen::FullPivLU<gsMatrix<real_t>> lu(A);
+    lu.setThreshold(1e-8);
+    gsInfo << "Rank of A_sample (" << A.rows() << "x" << A.cols()
+           << "): " << lu.rank() << " (should be " << (valence + 3) << ")\n";
+
+    gsMatrix<> K = constraints.fullPivLu().kernel();
+    gsEigen::FullPivLU<gsMatrix<real_t>> lu2(A * K);
+    lu2.setThreshold(1e-8);
+    gsInfo << "Rank of constrained A_sample (" << constraint_count
+           << " constraints): " << lu2.rank() << " (should be " << (valence + 3)
+           << ")\n";
+
+    // Build the matrix & target
+    gsMatrix<real_t> augmented_A(function_count + constraint_count,
+                                 function_count + constraint_count);
+    gsMatrix<real_t> augmented_target(function_count + constraint_count, D);
+    // Zero it first
+    augmented_A.setZero();
+    // Top left: Tikhonov system
+    augmented_A.topLeftCorner(function_count, function_count) =
+        A.transpose() * A +
+        lambda * gsMatrix<real_t>::Identity(function_count, function_count);
+
+    // Top right & Bottom right: Constraints
+    augmented_A.topRightCorner(function_count, constraint_count) =
+        lambda * constraints.transpose();
+    augmented_A.bottomLeftCorner(constraint_count, function_count) =
+        lambda * constraints;
+
+    // Bottom left: Zero
+    augmented_A.bottomRightCorner(constraint_count, constraint_count).setZero();
+
+    // Top of augmented target: target via Tikhonov
+    augmented_target.topRows(function_count) = A.transpose() * target;
+    // Bottom of augmented target: zero, to ensure constraints are
+    // fulfilled
+    augmented_target.bottomRows(constraint_count).setZero();
+
+    // Acutally solve the system
+    gsMatrix<real_t> augmented_solution =
+        augmented_A.fullPivHouseholderQr().solve(augmented_target);
+
+    // Extract the solution without the zeroes from the augmented system
+    gsMatrix<real_t> solution = augmented_solution.topRows(function_count);
+
+    gsInfo << "Total fitting error: " << (A * solution - target).norm() << "\n";
+    gsInfo << "Constraint error: " << (constraints * solution).norm() << "\n";
+
+    return solution;
+}
 
 template <size_t N, size_t D>
 std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
@@ -661,92 +795,7 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 // gsInfo << "Total points: " << i_p << "\n";
             }
 
-            // Solve the least-squares system A * solution = target
-            // with Tikhonov regularization and additional constraints by
-            // building the augmented system:
-            //```
-            //`  [ A^T*A + lambda*I     C^T ] [ x ] = [ A^T*target ]
-            //`  [     C                0   ] [ y ]   [     0      ]
-            //```
-            //  and solving
-
-            // Regularization parameter
-            real_t lambda = 1e-4;
-            // Load the constraints into a matrix
-            // Number of constraints should be the number of fitting functions
-            // (`function_count = 2 * valence + 1`) minus the dimension of the
-            // space (`v + 3`), i.e. `v-2`.
-            gsMatrix<real_t> constraints;
-            auto _readFile =
-                gsReadFile<>("freeformSubdivision/fitting_functions/Val" +
-                                 std::to_string(valence) + "Constraints.xml",
-                             constraints);
-            size_t constraint_count = constraints.rows();
-
-            // Default threshold is based on machine epsilon
-            gsEigen::FullPivLU<gsMatrix<real_t>> lu(A_sample);
-            lu.setThreshold(1e-8);
-            gsInfo << "Rank of A_sample (" << A_sample.rows() << "x"
-                   << A_sample.cols() << "): " << lu.rank() << " (should be "
-                   << (valence + 3) << ")\n";
-
-            gsMatrix<> K = constraints.fullPivLu().kernel();
-            gsEigen::FullPivLU<gsMatrix<real_t>> lu2(A_sample * K);
-            lu2.setThreshold(1e-8);
-            gsInfo << "Rank of constrained A_sample (" << constraint_count << " constraints): " << lu2.rank()
-                   << " (should be " << (valence + 3) << ")\n";
-
-            // Build the matrix & target
-            gsMatrix<real_t> augmented_A(function_count + constraint_count,
-                                         function_count + constraint_count);
-            gsMatrix<real_t> augmented_target(function_count + constraint_count,
-                                              D);
-            // Zero it first
-            augmented_A.setZero();
-            // Top left: Tikhonov system
-            augmented_A.topLeftCorner(function_count, function_count) =
-                A_sample.transpose() * A_sample +
-                lambda *
-                    gsMatrix<real_t>::Identity(function_count, function_count);
-
-            // Top right & Bottom right: Constraints
-            augmented_A.topRightCorner(function_count, constraint_count) =
-                lambda * constraints.transpose();
-            augmented_A.bottomLeftCorner(constraint_count, function_count) =
-                lambda * constraints;
-
-            // Bottom left: Zero
-            augmented_A.bottomRightCorner(constraint_count, constraint_count)
-                .setZero();
-
-            // Top of augmented target: target via Tikhonov
-            augmented_target.topRows(function_count) =
-                A_sample.transpose() * target;
-            // Bottom of augmented target: zero, to ensure constraints are
-            // fulfilled
-            augmented_target.bottomRows(constraint_count).setZero();
-
-            // Acutally solve the system
-            gsMatrix<real_t> augmented_solution =
-                augmented_A.fullPivHouseholderQr().solve(augmented_target);
-
-            // Extract the solution without the zeroes from the augmented system
-            gsMatrix<real_t> solution =
-                augmented_solution.topRows(function_count);
-
-            // now replace all this with a constraint-free least-squares fit,
-            // because the constraints seem to be wrong
-            gsMatrix<real_t> other_solution =
-                (A_sample.transpose() * A_sample +
-                 lambda *
-                     gsMatrix<real_t>::Identity(function_count, function_count))
-                    .colPivHouseholderQr()
-                    .solve(A_sample.transpose() * target);
-
-            gsInfo << "Total fitting error: "
-                   << (A_sample * solution - target).norm() << "\n";
-            gsInfo << "Constraint error: " << (constraints * solution).norm()
-                   << "\n";
+            auto solution = fit_ev_opt(A_sample, target, valence);
 
             // Remember the fitting coefficients and return them later.
             res.emplace_back(solution);

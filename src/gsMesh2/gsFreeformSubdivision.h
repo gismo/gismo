@@ -112,6 +112,9 @@ private: // Helper functions
         return mesh.valence(v) == 4 || mesh.is_boundary(v);
     }
 
+    gsMatrix<real_t> fit_ev(gsMatrix<real_t> A, gsMatrix<real_t> target,size_t valence);
+    gsMatrix<real_t> fit_ev_opt(gsMatrix<real_t> A, gsMatrix<real_t> target,size_t valence);
+
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity check_mesh() override;
 
