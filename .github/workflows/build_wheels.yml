@@ -33,7 +33,7 @@ jobs:
         CIBW_ARCHS: ${{ matrix.arch }}
         CIBW_BUILD: ${{ matrix.cw_build }}
         CIBW_TEST_SKIP: "*-macosx_arm64"
-        CIBW_SKIP: ["cp3??t-*"]
+        CIBW_SKIP: "cp3??t-*"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -53,7 +53,7 @@ jobs:
         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
         CIBW_ARCHS: "x86_64"
         CIBW_BUILD: "cp*manylinux*"
-        CIBW_SKIP: ["cp3??t-*"]
+        CIBW_SKIP: "cp3??t-*"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -88,7 +88,6 @@ jobs:
         CIBW_ARCHS: ${{ matrix.arch }}
         CIBW_BUILD: ${{ matrix.cw_build }}
         CIBW_TEST_SKIP: "*-*linux_{aarch64,ppc64le,s390x}"
-        #CIBW_SKIP: ["cp3??t-*"]
 
     - uses: actions/upload-artifact@v4
       with:
