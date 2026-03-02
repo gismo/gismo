@@ -437,42 +437,31 @@ gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
 
     gsMatrix<> diff(2 * valence, 2 * valence + 1);
     diff.setZero();
-    for (index_t i = 0; i < 2 * valence; i++)
+    for (size_t i = 0; i < 2 * valence; i++)
     {
         diff(i, 2 * valence) = 1.0;
         diff(i, i) = -1.0;
     }
-    gsInfo << "diff*K size: " << (diff * K).rows() << "x" << (diff * K).cols()
-           << "\n";
-    gsInfo << "diff*s size: " << (diff * solution).rows() << "x"
-           << (diff * solution).cols() << "\n";
 
     gsMatrix<> w = (diff * K).colPivHouseholderQr().solve(-diff * solution);
 
-    gsInfo << "w size: " << w.rows() << "x" << w.cols() << "\n";
-
-    gsInfo << "\nTotal fitting error (pre ): " << (A * solution - target).norm()
+    gsInfo << "Initial fitting error: " << (A * solution - target).norm()
            << "\n";
-    gsInfo << "Total fitting error (post): "
+    gsInfo << "Final fitting error: "
            << (A * (solution + K * w) - target).norm() << "\n";
 
-    gsInfo << "w:\n";
-    for (index_t i = 0; i < w.rows(); ++i)
-    {
-        gsInfo << w.row(i) << "\n";
-    }
+    // gsInfo << "Solution pre change:\n";
+    // for (index_t i = 0; i < solution.rows(); ++i)
+    // {
+    //     gsInfo << solution.row(i) << "\n";
+    // }
 
-    gsInfo << "Solution pre change:\n";
-    for (index_t i = 0; i < solution.rows(); ++i)
-    {
-        gsInfo << solution.row(i) << "\n";
-    }
-
-    gsInfo << "\nSolution post change:\n";
+    gsInfo << "\nSolution:\n";
     for (index_t i = 0; i < (solution + K * w).rows(); ++i)
     {
-        gsInfo << (solution + K * w).row(i) << "\n";
+        gsInfo << (solution + K * w)(i,2) << ", ";
     }
+    gsInfo << "\n";
 
     return solution + K * w;
 }
@@ -795,7 +784,7 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 // gsInfo << "Total points: " << i_p << "\n";
             }
 
-            auto solution = fit_ev_opt(A_sample, target, valence);
+            auto solution = fit_ev(A_sample, target, valence);
 
             // Remember the fitting coefficients and return them later.
             res.emplace_back(solution);
