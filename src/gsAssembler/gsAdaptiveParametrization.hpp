@@ -660,264 +660,61 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
     result.resize(m_comp->nControls());
     result.setZero();
 
-    typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
-    gsExprEvaluator<T> evaluator;
-
-    evaluator.setIntegrationElements(m_mb); // does not work when in constructor
+    typedef typename gsExprHelper<T>::geometryMap geometryMap;
     m_comp->setControls(u);
 
-    // Penalty constant
-    gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
-    geometryMap G = evaluator.getMap(m_mp);
-//    auto fform = jac(G).tr()*jac(G);
-//    auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
-    auto dJdxi  = hess(G)[0];
-    auto dJdeta = hess(G)[1];
-//    auto M = 1/detG;
-
-    gsMatrix<T> rhs(m_comp->nControls(),1);
-
-    typename gsBasis<T>::domainIter domIt;
-    gsQuadRule<T> QuRule;  // Quadrature rule
-    gsMatrix<T> uvPoints; // Quadrature points in (u,v) space
-    gsMatrix<T> xietaPoints; // Quadrature points in (xi,eta) space
-    gsVector<T> tmpWeights;
-    // Derivative of sigma w.r.t. alpha
-    gsMatrix<T> dSigmadAlpha;
-    gsMatrix<T> dEdSigma_val;
-    gsMatrix<T> dEdAlpha;
-    //
-
-    // for test purposes
     gsExprEvaluator<T> evaluator_geom;
     gsMultiBasis<T> mmbasis(*m_geom);
     evaluator_geom.setIntegrationElements(mmbasis);
     geometryMap G_geom = evaluator_geom.getMap(*m_geom);
-    auto fform = jac(G_geom).tr()*jac(G_geom);
-    auto detG = pow(fform.det().val(), 0.5).val(); //jacobian determinant for a surface, i.e. the measure
 
-    gsVector<T> dmeasGdAlpha(2); // derivative of the measure w.r.t. alpha
+    const gsSquareDomain<T> * sqDomain = static_cast<const gsSquareDomain<T>*>(m_comp);
+
+    typename gsBasis<T>::domainIter domIt;
+    gsQuadRule<T> QuRule;
+    gsMatrix<T> uvPoints, xietaPoints;
+    gsVector<T> tmpWeights;
+    gsMatrix<T> dSigmadAlpha, dDetJsigmadAlpha;
+
     for (unsigned patchInd=0; patchInd < m_mb.nBases(); ++patchInd)
     {
-        // Quadrature rule
+        gsExprEvaluator<T> evaluator;
         evaluator.options().setReal("quA",0.0);
         evaluator.options().setInt("quB",1);
-        QuRule =  gsQuadrature::get(m_mb.basis(patchInd), evaluator.options());
+        evaluator.setIntegrationElements(m_mb);
+        QuRule = gsQuadrature::get(m_mb.basis(patchInd), evaluator.options());
 
-        // Initialize domain element iterator
         domIt = m_mb.piece(patchInd).makeDomainIterator();
         for (; domIt->good(); domIt->next() )
         {
-            // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-            uvPoints, tmpWeights);
-            gsDebugVar(tmpWeights);
+                         uvPoints, tmpWeights);
 
-            // Evaluate the geometry map at the quadrature points
             m_comp->eval_into(uvPoints, xietaPoints);
+            m_comp->control_deriv_into(uvPoints, dSigmadAlpha);
+            sqDomain->control_jacobian_deriv_into(uvPoints, dDetJsigmadAlpha);
+
             for (index_t p = 0; p!=uvPoints.cols(); ++p)
             {
+                gsAsMatrix<T> dSigmadAlphaMatrix(dSigmadAlpha.col(p).data(), m_comp->nControls(), 2);
 
-                // Compute dSigmadAlpha
-                m_comp->control_deriv_into(uvPoints.col(p), dSigmadAlpha);
-                gsAsMatrix<T> dSigmadAlphaMatrix(dSigmadAlpha.data(), m_comp->nControls(), 2);
-                gsMatrix<T> jacobianSigma = m_comp->deriv( uvPoints.col(p) );
+                gsMatrix<T> jacobianSigma = m_comp->deriv(uvPoints.col(p));
+                T detJsigma = jacobianSigma(0) * jacobianSigma(3) - jacobianSigma(1) * jacobianSigma(2);
+                T absDetJsigma = math::abs(detJsigma);
+                T signDetJsigma = (detJsigma > 0) ? T(1) : T(-1);
 
-                gsDebugVar(uvPoints);
-//                uvPoints.col(p)*= 0.5; // scale down the points for debugging
-                gsDebugVar(m_comp->eval(uvPoints.col(p)));
-                gsDebugVar(m_comp->deriv(uvPoints.col(p)));
-                m_comp->deriv_into(uvPoints.col(p), jacobianSigma);
-                gsDebugVar(jacobianSigma);
-                gsDebugVar(m_comp->getControls());
-                gsDebugVar(static_cast<const gsSquareDomain<T>*>(m_comp)->domain().coefs());
+                gsMatrix<T> dEdSigma_val = evaluator_geom.eval(dEdSigma(G_geom), xietaPoints.col(p));
 
-                gsDebugVar(jacobianSigma);
-                T measSigma = jacobianSigma(0) * jacobianSigma(3) - jacobianSigma(1) * jacobianSigma(2); // determinant of the Jacobian of sigma
-                gsDebugVar(uvPoints.col(p));
-                gsDebugVar(measSigma);
+                T measG_at_sigma = evaluator_geom.eval(meas(G_geom), xietaPoints.col(p))(0);
 
-                // Compute dEdSigma
-//                dEdSigma_val = evaluator.eval(dEdSigma(G), xietaPoints.col(p));
-                dEdSigma_val = evaluator.eval(dEdSigma(G_geom), xietaPoints.col(p));
-                gsMatrix<T> measG = evaluator.eval(meas(G), uvPoints.col(p));
+                gsMatrix<T> term1 = dSigmadAlphaMatrix * dEdSigma_val * absDetJsigma;
 
-                ////////////////////////////////////////////////////////////
-//                T eps = 1e-6;
-//                gsVector<T> uv = uvPoints.col(p);
-//
-//                // perturb geometry control (e.g. m_controls(0) += eps) and recompute measG
-//                gsMatrix<T> controlPert = m_controls;
-//                controlPert(0) += eps;
-//                m_comp->setControls(controlPert);
-//                gsMatrix<T> xietaPlus = m_comp->eval(uv);
-//                gsMatrix<T> Jplus = evaluator.eval(jac(G_geom), xietaPlus);
-//                gsMatrix<T> Gplus = Jplus.transpose() * Jplus;
-//                T measGplus = std::sqrt(Gplus.determinant());
-//
-//                // reset, perturb other control
-//                controlPert = m_controls;
-//                controlPert(1) += eps;
-//                m_comp->setControls(controlPert);
-//                gsMatrix<T> xietaPlus2 = m_comp->eval(uv);
-//                gsMatrix<T> Jplus2 = evaluator.eval(jac(G_geom), xietaPlus2);
-//                gsMatrix<T> Gplus2 = Jplus2.transpose() * Jplus2;
-//                T measGplus2 = std::sqrt(Gplus2.determinant());
-//
-//                // reset controls
-//                m_comp->setControls(m_controls);
-//
-//                // finite diff for dmeasGdAlpha
-//                dmeasGdAlpha(0) = (measGplus - measG(0)) / eps;
-//                dmeasGdAlpha(1) = (measGplus2 - measG(0)) / eps;
-//                gsDebugVar(dmeasGdAlpha);
-                // 1. 计算 measG0 = meas(G)(xieta)
-                T measG0 = evaluator.eval(meas(G), xietaPoints.col(p))(0); // scalar
+                gsVector<T> term2 = measG_at_sigma * signDetJsigma * dDetJsigmadAlpha.col(p);
 
-                // 2. 数值差分方式计算 measG 对 xieta 的梯度
-                T eps = 1e-6;
-                gsVector<T> xieta = xietaPoints.col(p);
-                gsVector<T> gradMeasGxieta(2);
-
-                for (int i = 0; i < 2; ++i)
-                {
-                  gsVector<T> xietaPert = xieta;
-                  xietaPert(i) += eps;
-                  T measG_plus = evaluator.eval(meas(G), xietaPert)(0);
-                  gradMeasGxieta(i) = (measG_plus - measG0) / eps;
-                }
-
-                // 3. 链式法则：dmeasGdAlpha = dmeasG/dxieta * dxieta/dalpha
-                // 后者就是你已有的 dSigmadAlphaMatrix（n_controls × 2）
-                // 所以如果你只取前两个控制点的方向（control 0 和 1）导数：
-
-                dmeasGdAlpha = dSigmadAlphaMatrix.topRows(2) * gradMeasGxieta;
-                ////////////////////////////////////////////////
-
-                gsDebugVar( xietaPoints.col(p) );
-                gsDebugVar( dEdSigma_val );
-
-                // Debugging: Check the evaluation of dEdSigma
-                gsVector<> testPt{xietaPoints.col(p)};
-//                gsMatrix<> testObj = evaluator.eval(fform.trace() / meas(G_geom), testPt);
-                gsMatrix<> testObj = evaluator.eval(meas(G_geom), testPt);
-                gsVector<> testPt1{xietaPoints.col(p)}; testPt1(0) += 1e-6;
-//                gsMatrix<> testObjPlus = evaluator.eval(fform.trace() / meas(G_geom), testPt1);
-                gsMatrix<> testObjPlus = evaluator.eval(meas(G_geom), testPt1);
-                testPt1(0) -= 2e-6; // reset the perturbation
-//                gsMatrix<> testObjMinus = evaluator.eval(fform.trace() / meas(G_geom), testPt1);
-                gsMatrix<> testObjMinus = evaluator.eval(meas(G_geom), testPt1);
-                T testObjDiff = (testObjPlus(0) - testObjMinus(0)) / 2e-6;
-//                testPt(0) -= 1e-6; // reset the perturbation
-                testPt(1) += 1e-6; // perturb the second coordinate
-//                testObjPlus = evaluator.eval(fform.trace() / meas(G_geom), testPt);
-                testObjPlus = evaluator.eval(meas(G_geom), testPt);
-                T testObjDiff2 = (testObjPlus(0) - testObj(0)) / 1e-6;
-                gsDebugVar(testObjDiff);
-                gsDebugVar(testObjDiff2);
-
-                // Debugging: Check the evaluation of dsigmadAlpha
-//                testPt = xietaPoints.col(p); // reset the perturbation
-//                gsMatrix<T> testxxObj = m_comp->eval(testPt);
-//                gsMatrix<T> testcontrols = m_controls;
-//                gsDebugVar(m_controls);
-//                testcontrols(0) += 1e-6; // perturb the first control
-//                m_comp->setControls(testcontrols);
-//                gsMatrix<T> testxxPlus = m_comp->eval(testPt);
-//                gsMatrix<T> dSigmadAlpha_num2 = (testxxPlus - testxxObj) / 1e-6;
-//                gsDebugVar( dSigmadAlpha_num2 );
-////                testPt(0) += 1e-6; // reset the perturbation
-//                testcontrols(0) -= 1e-6; // reset the perturbation
-//                testcontrols(1) += 1e-6; // perturb the second control
-//                m_comp->setControls(testcontrols);
-//                testxxPlus = m_comp->eval(testPt);
-//                gsMatrix<T> dSigmadAlpha_num1 = (testxxPlus - testxxObj) / 1e-6;
-//                gsDebugVar( dSigmadAlpha_num1 );
-//
-//                gsDebugVar(dSigmadAlphaMatrix);
-////                T dEdalpha1 = dSigmadAlpha_num1(0) * testObjDiff + dSigmadAlpha_num1(1) * testObjDiff2;
-//                T dEdalpha1 = dSigmadAlphaMatrix(0,0) * testObjDiff + dSigmadAlphaMatrix(0,1) * testObjDiff2;
-//                gsDebugVar(dEdalpha1);
-////                T dEdalpha2 = dSigmadAlpha_num2(0) * testObjDiff + dSigmadAlpha_num2(1) * testObjDiff2;
-//                T dEdalpha2 = dSigmadAlphaMatrix(1,0) * testObjDiff + dSigmadAlphaMatrix(1,1) * testObjDiff2;
-//                gsDebugVar(dEdalpha2);
-                //////////////////////////////////////////////////////////////
-
-
-                ///////////////////
-
-//                for (int k = 0; k < u.rows(); ++k)
-//                {
-//                    gsMatrix<T> dc, c_min, c_max;
-//                    gsVector<T> u_tmp = u;
-//                    u_tmp[k] -= eps;
-//                    m_comp->setControls(u_tmp);
-//                    m_comp->eval_into(uvPoints.col(p), c_min);
-//                    u_tmp = u;
-//                    u_tmp[k] += eps;
-//                    m_comp->setControls(u_tmp);
-//                    m_comp->eval_into(uvPoints.col(p), c_max);
-//                    dc = (c_max - c_min) / (2 * eps);
-//                    gsDebug<<"Control "<<k<<": "<<dc.transpose()<<"\n";
-//                }
-//                m_comp->setControls(u); // reset controls
-
-                // Compute dEdAlpha
-                dEdAlpha = dSigmadAlphaMatrix * dEdSigma_val;
-
-                gsDebugVar( dSigmadAlphaMatrix );
-
-                // Add to the result
-                result += tmpWeights[p] * dEdAlpha;
-//                result += tmpWeights[p] * dEdAlpha * measSigma;
-//                result += tmpWeights[p] * (dEdAlpha * measG + testObj(0) * dmeasGdAlpha);
-                // TODO consider measG and its gradient contribution
+                result += tmpWeights[p] * (term1 + term2);
             }
         }
     }
-
-    // if (m_cgeom.domainDim()==m_cgeom.targetDim())
-    // {
-    //     GISMO_NO_IMPLEMENTATION;
-    //     // auto detG = jac(G).det();
-    //     // auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
-    //     // auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
-
-    //     // if (m_fun==nullptr)
-    //     // {
-    //     //     auto M = 1/detG;
-    //     //     return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
-    //     // }
-    //     // else
-    //     // {
-    //     //     // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
-    //     //     m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
-    //     //     auto eta = evaluator.getVariable(m_cfun);
-    //     //     auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
-    //     //     return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
-    //     // }
-    // }
-    // else if (m_cgeom.domainDim()<m_cgeom.targetDim())
-    // {
-    //     auto fform = jac(G).tr()*jac(G);
-    //     auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
-    //     if (m_fun==nullptr)
-    //     {
-    //         auto M = 1/detG;
-    //         assembler.assemble()
-    //         return evaluator.integral( M*fform.trace()/pow(meas(G),2)*meas(G));
-    //     }
-    //     else
-    //     {
-    //         // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
-    //         m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
-    //         auto eta = evaluator.getVariable(m_cfun);
-    //         auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
-    //         return evaluator.integral( M*fform.trace()/meas(G)*meas(G));
-    //     }
-    // }
-    // else
-    //     GISMO_ERROR("Domain dimension must be smaller than or equal to the target dimension, but domainDim = "<<m_cgeom.domainDim()<<" and targetDim = "<<m_cgeom.targetDim());
 }
 
 /*

@@ -114,6 +114,19 @@ public:
     /// Returns the control derivative
     virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const override;
 
+    /**
+     * @brief Computes the derivative of det(J_sigma) w.r.t. the free controls
+     *
+     * Given sigma(xi,eta) = sum_k alpha_k * phi_k(xi,eta), the Jacobian is
+     * J_sigma = d(sigma)/d(xi,eta). This method computes d(det(J_sigma))/d(alpha_i)
+     * for each free control alpha_i.
+     *
+     * @param[in]  points  The evaluation points in the parameter domain
+     * @param[out] result  A vector of size nControls x nPoints, where
+     *                     result(i, p) = d(det(J_sigma))/d(alpha_i) at point p
+     */
+    void control_jacobian_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const;
+
     /// Perturb the control points by a \a factor
     void perturb(T factor = 1e-3);
 

@@ -218,6 +218,48 @@ void gsSquareDomain<T>::control_deriv_into(const gsMatrix<T> & points, gsMatrix<
 }
 
 template <class T>
+void gsSquareDomain<T>::control_jacobian_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const
+{
+    const index_t nc = nControls();
+    const index_t dd = domainDim();
+    GISMO_ASSERT(dd == 2, "control_jacobian_deriv_into is currently only implemented for 2D");
+
+    result.resize(nc, points.cols());
+    result.setZero();
+
+    gsMatrix<T> Jsigma_flat;
+    m_domain->deriv_into(points, Jsigma_flat);
+
+    gsMatrix<T> basisDerivs;
+    m_domain->basis().deriv_into(points, basisDerivs);
+
+    for (index_t p = 0; p != points.cols(); ++p)
+    {
+        gsMatrix<T> Jsigma = Jsigma_flat.col(p).reshaped(dd, dd);
+        gsMatrix<T> adjJ(dd, dd);
+        adjJ(0, 0) =  Jsigma(1, 1);
+        adjJ(0, 1) = -Jsigma(0, 1);
+        adjJ(1, 0) = -Jsigma(1, 0);
+        adjJ(1, 1) =  Jsigma(0, 0);
+
+        const index_t nb = m_domain->coefs().rows();
+        for (index_t k = 0; k != nb; ++k)
+        {
+            T dphi_dxi  = basisDerivs(k * dd + 0, p);
+            T dphi_deta = basisDerivs(k * dd + 1, p);
+
+            for (index_t d = 0; d != dd; ++d)
+            {
+                if (!m_mapper.is_free(k, 0, d))
+                    continue;
+                index_t ii = m_mapper.index(k, 0, d);
+                result(ii, p) = adjJ(d, 0) * dphi_dxi + adjJ(d, 1) * dphi_deta;
+            }
+        }
+    }
+}
+
+template <class T>
 void gsSquareDomain<T>::perturb(T factor)
 {
     gsVector<T> controls = getControls();
