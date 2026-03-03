@@ -56,7 +56,7 @@ doc:
   needs:
     - Superbuild-Intel-oneAPI
   only:
-    - stable
+    - dev
   interruptible: false
   script:
     - cd ../build
@@ -85,7 +85,7 @@ build-examples:
   needs:
     - Superbuild-Intel-oneAPI
   only:
-    - stable
+    - dev
   interruptible: true
   script:
     - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=13 -D CTEST_BINARY_DIRECTORY=../build -D CTEST_CONFIGURATION_TYPE=Release -D LABELS_FOR_SUBPROJECTS="examples;doc-snippets" -D CTEST_BUILD_NAME="Superbuild-Intel-oneAPI[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" -D CMAKE_ARGS="-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=ON;-DGISMO_SUBMODULES_HEAD=ON;-DGISMO_WITH_NANOBIND=ON;-DGISMO_WITH_OPENMP=ON" #-VV

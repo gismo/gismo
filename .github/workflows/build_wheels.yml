@@ -2,7 +2,7 @@ name: build_python_wheels
 
 on:
   push:
-    branches: ["stable"]
+    branches: ["dev"]
   pull_request:
 
 concurrency:
@@ -14,18 +14,18 @@ jobs:
   linux_wheel:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: recursive
     - name: build wheels
-      uses: pypa/cibuildwheel@v2.21
+      uses: pypa/cibuildwheel@v3.3.1
       with:
         package-dir: wheel
       env:
         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
         CIBW_ARCHS: "x86_64"
         CIBW_BUILD: "cp*manylinux*"
-        CIBW_SKIP: "cp36-* cp37-*"
+        CIBW_SKIP: "cp3??t-*"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -39,21 +39,25 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64, arm64]
+        cw_build: ["cp*"]
+        exclude:
+          - arch: arm64
+            cw_build: "pp*"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: recursive
     - name: build wheels
-      uses: pypa/cibuildwheel@v2.21
+      uses: pypa/cibuildwheel@v3.3.1
       with:
         package-dir: wheel
       env:
         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
         CIBW_ARCHS: ${{ matrix.arch }}
-        CIBW_BUILD: "cp*"
-        CIBW_SKIP: "cp36-* cp37-*"
+        CIBW_BUILD: ${{ matrix.cw_build }}
         CIBW_TEST_SKIP: "*-macosx_arm64"
+        CIBW_SKIP: "cp3??t-*"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -66,11 +70,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [aarch64]
+        arch: [aarch64, ppc64le]
         cw_build: ["cp38*many*", "cp39*many*", "cp310*many*", "cp311*many*", "cp312*many*", "cp313*many*", "cp314*many*"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: recursive
 
@@ -80,7 +84,7 @@ jobs:
         platforms: arm64
 
     - name: build wheels
-      uses: pypa/cibuildwheel@v2.21
+      uses: pypa/cibuildwheel@v3.3.1
       with:
         package-dir: wheel
       env:
@@ -99,7 +103,7 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: recursive
 
@@ -115,7 +119,10 @@ jobs:
   upload_pypi:
     needs: [macos_wheel, linux_wheel, linux_wheel_qemu, source_dist]
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stable' }}
+    environment: pypi
+    permissions:
+      id-token: write
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -123,7 +130,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - uses: pypa/gh-action-pypi-publish@v1.13.0
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip_existing: true
           user: __token__

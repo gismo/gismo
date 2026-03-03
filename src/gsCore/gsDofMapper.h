@@ -510,31 +510,37 @@ public:
 
     /// \brief For \a gl being a global index, this function returns
     /// true whenever \a gl corresponds to patch \a k
-    bool indexOnPatch(const index_t gl, const index_t k) const;
+    bool indexOnPatch(const index_t gl, const index_t k, index_t & local) const;
+
+    inline bool indexOnPatch(const index_t gl, const index_t k) const
+    {
+        index_t local;
+        return indexOnPatch(gl, k, local);
+    }
 
     /// \brief For \a n being an index which is already offsetted, it
     /// returns the global index where it is mapped to by the dof
     /// mapper.
-    index_t mapIndex(index_t n) const
+    inline index_t mapIndex(index_t n) const
     {
         return m_dofs[n/m_dofs.front().size()]
             [n%m_dofs.front().size()] + m_shift;
     }
 
-      /// \brief Returns all boundary dofs on patch k (local dof indices)
-     gsVector<index_t> findBoundary(const index_t k) const;
+    /// \brief Returns all boundary dofs on patch k (local dof indices)
+    gsVector<index_t> findBoundary(const index_t k) const;
 
-     /// \brief Returns all free dofs on patch k (local dof indices)
-     gsVector<index_t> findFree(const index_t k) const;
+    /// \brief Returns all free dofs on patch k (local dof indices)
+    gsVector<index_t> findFree(const index_t k) const;
 
-     /// \brief Returns all coupled dofs on patch k (local dof indices)
-     gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
+    /// \brief Returns all coupled dofs on patch k (local dof indices)
+    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
 
-     /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
-     gsVector<index_t> findFreeUncoupled(const index_t k) const;
+    /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
+    gsVector<index_t> findFreeUncoupled(const index_t k) const;
 
-     /// \brief Returns all tagged dofs on patch k (local dof indices)
-     gsVector<index_t> findTagged(const index_t k) const;
+    /// \brief Returns all tagged dofs on patch k (local dof indices)
+    gsVector<index_t> findTagged(const index_t k) const;
 
 private:
 

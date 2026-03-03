@@ -166,18 +166,72 @@ NB_MODULE(gsCore, m) {
 
     nb::class_<gsDofMapper>(m, "gsDofMapper")
         .def(nb::init<>())
+        .def(nb::init<const gsMultiBasis<real_t> &, index_t>(),
+             nb::arg("bases"), nb::arg("nComp") = 1)
+        .def(nb::init<const gsBasis<real_t> &, index_t>(),
+             nb::arg("basis"), nb::arg("nComp") = 1)
+        .def("asVector", &gsDofMapper::asVector, nb::arg("comp") = 0)
+        .def("inverseAsVector", &gsDofMapper::inverseAsVector, nb::arg("comp") = 0)
+        .def("colapseDofs", &gsDofMapper::colapseDofs,
+             nb::arg("k"), nb::arg("b"), nb::arg("comp") = 0)
+        .def("matchDof", &gsDofMapper::matchDof,
+             nb::arg("u"), nb::arg("i"), nb::arg("v"), nb::arg("j"), nb::arg("comp") = 0)
+        .def("matchDofs", &gsDofMapper::matchDofs,
+             nb::arg("u"), nb::arg("b1"), nb::arg("v"), nb::arg("b2"), nb::arg("comp") = 0)
+        .def("markCoupled", &gsDofMapper::markCoupled,
+             nb::arg("i"), nb::arg("k"), nb::arg("comp") = 0)
+        .def("markTagged", &gsDofMapper::markTagged,
+             nb::arg("i"), nb::arg("k"), nb::arg("comp") = 0)
+        .def("markCoupledAsTagged", &gsDofMapper::markCoupledAsTagged)
+        .def("markBoundary", &gsDofMapper::markBoundary,
+             nb::arg("k"), nb::arg("boundaryDofs"), nb::arg("comp") = 0)
+        .def("eliminateDof", &gsDofMapper::eliminateDof,
+             nb::arg("i"), nb::arg("k"), nb::arg("comp") = 0)
         .def("finalize", &gsDofMapper::finalize)
         .def("isFinalized", &gsDofMapper::isFinalized)
-        .def("freeSize", static_cast<index_t (gsDofMapper::*)() const>(&gsDofMapper::freeSize))
-        .def("boundarySize", static_cast<index_t (gsDofMapper::*)() const>(&gsDofMapper::boundarySize))
-        .def("coupledSize", &gsDofMapper::coupledSize)
-        .def("taggedSize", &gsDofMapper::taggedSize)
-        .def("size", static_cast<index_t (gsDofMapper::*)() const>(&gsDofMapper::size))
-        .def("mapSize", &gsDofMapper::mapSize)
+        .def("isPermutation", &gsDofMapper::isPermutation)
+        .def("setIdentity", &gsDofMapper::setIdentity,
+             nb::arg("nPatches"), nb::arg("nDofs"), nb::arg("nComp") = 1)
+        .def("setShift", &gsDofMapper::setShift, nb::arg("shift"))
+        .def("addShift", &gsDofMapper::addShift, nb::arg("shift"))
         .def("index", static_cast<index_t (gsDofMapper::*)(index_t, index_t, index_t) const>(&gsDofMapper::index),
              nb::arg("i"), nb::arg("k") = 0, nb::arg("c") = 0)
+        .def("bindex", &gsDofMapper::bindex,
+             nb::arg("i"), nb::arg("k") = 0, nb::arg("c") = 0)
+        .def("cindex", &gsDofMapper::cindex,
+             nb::arg("i"), nb::arg("k") = 0, nb::arg("c") = 0)
+        .def("tindex", &gsDofMapper::tindex,
+             nb::arg("i"), nb::arg("k") = 0, nb::arg("c") = 0)
+        .def("global_to_bindex", &gsDofMapper::global_to_bindex, nb::arg("gl"))
+        .def("is_free_index", &gsDofMapper::is_free_index, nb::arg("gl"))
         .def("is_free", static_cast<bool (gsDofMapper::*)(index_t, index_t, index_t) const>(&gsDofMapper::is_free),
              nb::arg("i"), nb::arg("k") = 0, nb::arg("c") = 0)
+        .def("is_boundary_index", &gsDofMapper::is_boundary_index, nb::arg("gl"))
+        .def("is_boundary", &gsDofMapper::is_boundary,
+             nb::arg("i"), nb::arg("k") = 0, nb::arg("c") = 0)
+        .def("is_coupled", &gsDofMapper::is_coupled,
+             nb::arg("i"), nb::arg("k") = 0, nb::arg("c") = 0)
+        .def("is_coupled_index", &gsDofMapper::is_coupled_index, nb::arg("gl"))
+        .def("is_tagged", &gsDofMapper::is_tagged,
+             nb::arg("i"), nb::arg("k") = 0, nb::arg("c") = 0)
+        .def("is_tagged_index", &gsDofMapper::is_tagged_index, nb::arg("gl"))
+        .def("numComponents", &gsDofMapper::numComponents)
+        .def("size", static_cast<index_t (gsDofMapper::*)() const>(&gsDofMapper::size))
+        .def("size", static_cast<index_t (gsDofMapper::*)(index_t) const>(&gsDofMapper::size), nb::arg("comp"))
+        .def("freeSize", static_cast<index_t (gsDofMapper::*)() const>(&gsDofMapper::freeSize))
+        .def("freeSize", static_cast<index_t (gsDofMapper::*)(index_t) const>(&gsDofMapper::freeSize), nb::arg("comp"))
+        .def("coupledSize", &gsDofMapper::coupledSize)
+        .def("taggedSize", &gsDofMapper::taggedSize)
+        .def("boundarySize", static_cast<index_t (gsDofMapper::*)() const>(&gsDofMapper::boundarySize))
+        .def("offset", &gsDofMapper::offset, nb::arg("k"))
+        .def("numPatches", &gsDofMapper::numPatches)
+        .def("mapSize", &gsDofMapper::mapSize)
+        .def("componentsSize", &gsDofMapper::componentsSize)
+        .def("patchSize", &gsDofMapper::patchSize,
+             nb::arg("k"), nb::arg("c") = 0)
+        .def("totalSize", &gsDofMapper::totalSize, nb::arg("c") = 0)
+        .def("indexOnPatch", static_cast<bool (gsDofMapper::*)(index_t, index_t) const>(&gsDofMapper::indexOnPatch),
+             nb::arg("gl"), nb::arg("k"))
         .def("__repr__", [](const gsDofMapper& d) {
             std::ostringstream os;
             if (d.isFinalized())
