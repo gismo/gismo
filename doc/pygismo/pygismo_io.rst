@@ -1,7 +1,7 @@
 I/O module
 **********
 
-.. automodule:: pygismo.gsIO
+.. automodule:: pygismo.io
     :members:
     :undoc-members:
     :show-inheritance:

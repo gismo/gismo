@@ -1,0 +1,64 @@
+[build-system]
+requires = [
+    "scikit-build-core >=0.4.3",
+    "nanobind >=1.3.2",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pygismo"
+dynamic = ["version"]
+description = "G+Smo (Geometry + Simulation Modules) — nanobind Python bindings"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MPL-2.0"}
+authors = [
+    { name = "Angelos Mantzaflaris", email = "angelos.mantzaflaris@inria.fr" },
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy",
+]
+
+[project.urls]
+Homepage = "https://github.com/gismo/gismo"
+Documentation = "https://gismo.github.io"
+
+[tool.scikit-build]
+minimum-version = "0.10"
+build-dir = "build/{wheel_tag}"
+
+cmake.source-dir = "."
+cmake.build-type = "Release"
+cmake.define = {GISMO_WITH_NANOBIND = "ON", GISMO_BUILD_EXAMPLES = "OFF", NOSNIPPETS = "ON", CMAKE_CXX_STANDARD = "17"}
+
+build.targets = ["pygismo_full", "gismo"]
+
+wheel.packages = []
+wheel.install-dir = ""
+wheel.exclude = ["include/**", "share/**", "lib/**"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "CMakeLists.txt"
+regex = '''(?sx)
+set\(gismo_VERSION_MAJOR \s+ (?P<major>\d+)\) .*?
+set\(gismo_VERSION_MINOR \s+ (?P<minor>\d+)\) .*?
+set\(gismo_VERSION_PATCH \s+ (?P<patch>\d+) \s*\)
+'''
+result = "{major}.{minor}.{patch}"
+
+[tool.cibuildwheel]
+repair-wheel-command = "TAG=$(basename {wheel} .whl | cut -d- -f3-) && LD_LIBRARY_PATH=/project/build/$TAG/lib auditwheel repair -w {dest_dir} {wheel}"
+test-command = "python3 -c \"import pygismo; print(pygismo.__version__)\""

@@ -76,7 +76,7 @@ pip install pygismo-gsmodule
 
 <b>Prerequisites</b>:
 - CMake 3.17+
-- Python 3.8+ with development headers
+- Python 3.9+ with development headers
 - nanobind (\c apt \c install \c nanobind-dev or \c pip \c install \c nanobind)
 
 ~~~~{.sh}
@@ -357,7 +357,7 @@ This section documents the CMake machinery that makes the nanobind integration w
 <h3>cmake/gsConfig.cmake (lines 227-255)</h3>
 
 Responsible for:
-- Finding Python 3.8+ and nanobind (apt package or pip fallback)
+- Finding Python 3.9+ and nanobind (apt package or pip fallback)
 - Setting \c PYGISMO_PKG_DIR (build-tree output directory)
 - Creating the \c nanobind-gismo shared runtime via \c nanobind_build_library()
 - Resetting \c PYGISMO_TARGETS cache on first configure

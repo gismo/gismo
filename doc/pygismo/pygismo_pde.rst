@@ -1,7 +1,7 @@
 PDE module
 **********
 
-.. automodule:: pygismo.gsPde
+.. automodule:: pygismo.pde
     :members:
     :undoc-members:
     :show-inheritance:

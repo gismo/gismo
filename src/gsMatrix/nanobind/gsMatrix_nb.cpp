@@ -144,7 +144,7 @@ void bind_gsSparseMatrix(nb::module_& m, const char* name)
         ;
 }
 
-NB_MODULE(gsMatrix, m) {
+NB_MODULE(matrix, m) {
     m.doc() = "G+Smo Matrix module";
 
     bind_gsVector<real_t>(m, "gsVector");

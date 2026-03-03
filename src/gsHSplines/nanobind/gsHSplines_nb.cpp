@@ -21,7 +21,7 @@
 namespace nb = nanobind;
 using namespace gismo;
 
-NB_MODULE(gsHSplines, m) {
+NB_MODULE(hsplines, m) {
     m.doc() = "G+Smo Hierarchical Splines module";
 
     nb::class_<gsHTensorBasis<2, real_t>, gsBasis<real_t>>(m, "gsHTensorBasis2")

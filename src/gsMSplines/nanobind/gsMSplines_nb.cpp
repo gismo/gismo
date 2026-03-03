@@ -21,7 +21,7 @@
 namespace nb = nanobind;
 using namespace gismo;
 
-NB_MODULE(gsMSplines, m) {
+NB_MODULE(msplines, m) {
     m.doc() = "G+Smo MSplines module";
 
     using MBasis2 = gsMappedBasis<2, real_t>;

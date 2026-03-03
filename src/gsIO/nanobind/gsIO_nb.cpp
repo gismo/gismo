@@ -22,7 +22,7 @@
 namespace nb = nanobind;
 using namespace gismo;
 
-NB_MODULE(gsIO, m) {
+NB_MODULE(io, m) {
     m.doc() = "G+Smo IO module";
 
     nb::class_<gsOptionList>(m, "gsOptionList")

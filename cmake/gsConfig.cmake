@@ -212,7 +212,7 @@ if (GISMO_WITH_NANOBIND)
      set(CMAKE_CXX_STANDARD 17)
    endif()
    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-   find_package(Python 3.8 COMPONENTS Interpreter Development.Module REQUIRED)
+   find_package(Python 3.9 COMPONENTS Interpreter Development.Module REQUIRED)
    find_package(nanobind CONFIG QUIET)
    if (NOT nanobind_FOUND)
      execute_process(
@@ -227,12 +227,15 @@ if (GISMO_WITH_NANOBIND)
         set(PYGISMO_TARGETS "" CACHE INTERNAL "nanobind module targets")
         file(MAKE_DIRECTORY "${PYGISMO_PKG_DIR}")
         file(WRITE "${PYGISMO_PKG_DIR}/__init__.py"
-         "from . import core\n"
-         "from .core import *\n"
-         "__version__ = core.__version__\n")
+         "from . import _core\n"
+         "from ._core import *\n"
+         "__version__ = _core.__version__\n")
       nanobind_build_library(nanobind-gismo)
       set_target_properties(nanobind-gismo PROPERTIES EXCLUDE_FROM_ALL OFF)
-      find_package(Python 3.8 COMPONENTS Development QUIET)
+      if(NOT MSVC)
+        target_link_options(nanobind-gismo PRIVATE "-Wl,--allow-shlib-undefined" "-Wl,-z,undefs")
+      endif()
+      find_package(Python 3.9 COMPONENTS Development QUIET)
       if (TARGET Python::Python)
         target_link_libraries(nanobind-gismo PUBLIC Python::Python)
       elseif(Python_LIBRARIES)

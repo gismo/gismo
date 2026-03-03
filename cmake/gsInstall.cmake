@@ -189,14 +189,36 @@ if(GISMO_WITH_NANOBIND)
       LIBRARY DESTINATION "${_nb_pkg_dest}" COMPONENT shared)
   endforeach()
 
-  set(_install_init "from . import core\nfrom .core import *\n__version__ = core.__version__\n")
+  set(_install_init "from . import _core\nfrom ._core import *\n__version__ = _core.__version__\n")
   list(REMOVE_DUPLICATES PYGISMO_TARGETS)
   foreach(_nbt ${PYGISMO_TARGETS})
-    if(NOT _nbt STREQUAL "pygismo_core")
-      get_target_property(_out_name ${_nbt} OUTPUT_NAME)
-      string(APPEND _install_init "from .${_out_name} import *\n")
+    if(_nbt STREQUAL "pygismo__core")
+      continue()
     endif()
+    if(DEFINED SKBUILD)
+      list(FIND PYGISMO_OPTIONAL_TARGETS ${_nbt} _is_optional)
+      if(NOT _is_optional EQUAL -1)
+        continue()
+      endif()
+    endif()
+    get_target_property(_out_name ${_nbt} OUTPUT_NAME)
+    string(APPEND _install_init "from .${_out_name} import *\n")
   endforeach()
+
+  # THIS CODE DEPRECATES THE modelling ALIAS IN FAVOR OF modeling
+  string(APPEND _install_init
+    "import importlib as _importlib, warnings as _warnings\n"
+    "class _DeprecatedAlias:\n"
+    "    _MAP = {'modelling': 'modeling'}\n"
+    "    def __init__(self, mod): self._mod = mod\n"
+    "    def __getattr__(self, name):\n"
+    "        return getattr(_importlib.import_module('.' + self._mod, __package__), name)\n"
+    "def __getattr__(name):\n"
+    "    if name in _DeprecatedAlias._MAP:\n"
+    "        _warnings.warn(f'pygismo.{name} is deprecated, use pygismo.{_DeprecatedAlias._MAP[name]}', DeprecationWarning, stacklevel=2)\n"
+    "        return _DeprecatedAlias(_DeprecatedAlias._MAP[name])\n"
+    "    raise AttributeError(f'module pygismo has no attribute {name!r}')\n"
+  )
   file(WRITE "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/pygismo__init__.py"
     "${_install_init}")
   install(FILES "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/pygismo__init__.py"

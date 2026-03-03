@@ -1,7 +1,7 @@
 Modelling module
 ****************
 
-.. automodule:: pygismo.gsModeling
+.. automodule:: pygismo.modeling
     :members:
     :undoc-members:
     :show-inheritance:

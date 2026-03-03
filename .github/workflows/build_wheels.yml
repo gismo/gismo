@@ -11,21 +11,52 @@ concurrency:
 
 jobs:
 
-  linux_wheel:
+  # Build wheels for pull requests to ensure that the build process works and that the resulting wheels are valid. This is a quick check to catch issues early.
+  linux_test_wheel:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
     - uses: actions/checkout@v6
       with:
         submodules: recursive
     - name: build wheels
       uses: pypa/cibuildwheel@v3.3.1
+      env:
+        CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
+        CIBW_ARCHS: "x86_64"
+        CIBW_BUILD: "cp312-manylinux_x86_64"
+        CIBW_SKIP: "cp3??t-*"
+        # Use a wildcard to capture the build directory for ANY python version
+        # and include BOTH the lib folder (for gismo) and the build root (for nanobind-gismo)
+        CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
+          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(find /project/build -name "*.so*" -exec dirname {} \; | sort -u | tr '\n' ':')
+          auditwheel repair -w {dest_dir} {wheel}
+
+    - uses: actions/upload-artifact@v4
       with:
-        package-dir: wheel
+        name: artifact-linux_wheel_x86_64
+        path: ./wheelhouse/*.whl
+        overwrite: true
+
+  linux_wheel:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+    - name: build wheels
+      uses: pypa/cibuildwheel@v3.3.1
       env:
         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
         CIBW_ARCHS: "x86_64"
         CIBW_BUILD: "cp*manylinux*"
         CIBW_SKIP: "cp3??t-*"
+        # Use a wildcard to capture the build directory for ANY python version
+        # and include BOTH the lib folder (for gismo) and the build root (for nanobind-gismo)
+        CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
+          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(find /project/build -name "*.so*" -exec dirname {} \; | sort -u | tr '\n' ':')
+          auditwheel repair -w {dest_dir} {wheel}
 
     - uses: actions/upload-artifact@v4
       with:
@@ -50,14 +81,12 @@ jobs:
         submodules: recursive
     - name: build wheels
       uses: pypa/cibuildwheel@v3.3.1
-      with:
-        package-dir: wheel
       env:
-        CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
-        CIBW_ARCHS: ${{ matrix.arch }}
-        CIBW_BUILD: ${{ matrix.cw_build }}
-        CIBW_TEST_SKIP: "*-macosx_arm64"
-        CIBW_SKIP: "cp3??t-*"
+         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
+         CIBW_ARCHS: ${{ matrix.arch }}
+         CIBW_BUILD: ${{ matrix.cw_build }}
+         CIBW_TEST_SKIP: "*-macosx_arm64"
+         CIBW_SKIP: "cp3??t-*"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -85,13 +114,11 @@ jobs:
 
     - name: build wheels
       uses: pypa/cibuildwheel@v3.3.1
-      with:
-        package-dir: wheel
       env:
-        CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
-        CIBW_ARCHS: ${{ matrix.arch }}
-        CIBW_BUILD: ${{ matrix.cw_build }}
-        CIBW_TEST_SKIP: "*-*linux_aarch64"
+         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
+         CIBW_ARCHS: ${{ matrix.arch }}
+         CIBW_BUILD: ${{ matrix.cw_build }}
+         CIBW_TEST_SKIP: "*-*linux_aarch64"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -108,13 +135,13 @@ jobs:
         submodules: recursive
 
     - name: Build sdist
-      run: pipx run build --sdist wheel
+      run: pipx run build --sdist .
 
     - uses: actions/upload-artifact@v4
       with:
-        name: artifact-source_dist
-        path: ./wheel/dist/*
-        overwrite: true
+         name: artifact-source_dist
+         path: ./dist/*
+         overwrite: true
 
   upload_pypi:
     needs: [macos_wheel, linux_wheel, linux_wheel_qemu, source_dist]

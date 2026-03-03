@@ -22,7 +22,7 @@
 
 namespace nb = nanobind;
 
-NB_MODULE(gsCore, m) {
+NB_MODULE(core, m) {
     m.doc() = "G+Smo Core module";
 
     using namespace gismo;

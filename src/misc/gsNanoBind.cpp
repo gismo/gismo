@@ -17,7 +17,7 @@
 
 namespace nb = nanobind;
 
-NB_MODULE(core, m) {
+NB_MODULE(_core, m) {
   m.attr("__version__") = GISMO_VERSION;
   m.doc() = "G+Smo (Geometry + Simulation Modules)";
 }

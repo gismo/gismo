@@ -1,7 +1,7 @@
 Assembler module
 ****************
 
-.. automodule:: pygismo.gsAssembler
+.. automodule:: pygismo.assembler
     :members:
     :undoc-members:
     :show-inheritance:

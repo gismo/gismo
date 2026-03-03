@@ -22,7 +22,7 @@
 namespace nb = nanobind;
 using namespace gismo;
 
-NB_MODULE(gsNurbs, m) {
+NB_MODULE(nurbs, m) {
     m.doc() = "G+Smo Nurbs module";
 
     nb::class_<gsKnotVector<real_t>>(m, "gsKnotVector")

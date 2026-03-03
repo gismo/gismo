@@ -21,7 +21,7 @@
 namespace nb = nanobind;
 using namespace gismo;
 
-NB_MODULE(gsPde, m) {
+NB_MODULE(pde, m) {
     m.doc() = "G+Smo PDE module";
 
     nb::enum_<condition_type::type>(m, "bctype")

@@ -55,39 +55,88 @@ OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
 
 if (GISMO_WITH_NANOBIND)
 
-  nanobind_add_module(pygismo_core
+  # Determine the best Python target once
+  set(_py_target "")
+  if(TARGET Python::Module)
+    set(_py_target Python::Module)
+  elseif(TARGET Python::Python)
+    set(_py_target Python::Python)
+  endif()
+
+  # Linker fix for strict CI environments (manlylinux/gcc-toolset)
+  # This tells the linker to allow Python symbols to be resolved at runtime
+  set(_py_linker_fix "")
+  if(NOT MSVC)
+    set(_py_linker_fix "-Wl,--allow-shlib-undefined" "-Wl,-z,undefs")
+  endif()
+
+  set(PYGISMO_NAME_MAP_gsCore        "core")
+  set(PYGISMO_NAME_MAP_gsIO          "io")
+  set(PYGISMO_NAME_MAP_gsNurbs       "nurbs")
+  set(PYGISMO_NAME_MAP_gsModeling    "modeling")
+  set(PYGISMO_NAME_MAP_gsPde         "pde")
+  set(PYGISMO_NAME_MAP_gsMatrix      "matrix")
+  set(PYGISMO_NAME_MAP_gsHSplines    "hsplines")
+  set(PYGISMO_NAME_MAP_gsAssembler   "assembler")
+  set(PYGISMO_NAME_MAP_gsMSplines    "msplines")
+
+  nanobind_add_module(pygismo__core
     NB_SHARED
     NB_DOMAIN gismo
     "${gismo_SOURCE_DIR}/src/misc/gsNanoBind.cpp"
   )
-  target_link_libraries(pygismo_core PRIVATE ${PROJECT_NAME})
-  set_target_properties(pygismo_core PROPERTIES
-    OUTPUT_NAME "core"
+  target_link_libraries(pygismo__core PRIVATE ${PROJECT_NAME} ${_py_target})
+  target_link_options(pygismo__core PRIVATE ${_py_linker_fix})
+
+  set_target_properties(pygismo__core PROPERTIES
+    OUTPUT_NAME "_core"
     LIBRARY_OUTPUT_DIRECTORY "${PYGISMO_PKG_DIR}"
   )
 
-  list(APPEND PYGISMO_TARGETS pygismo_core)
+  list(APPEND PYGISMO_TARGETS pygismo__core)
 
   file(GLOB _nb_binding_files "${gismo_SOURCE_DIR}/src/gs*/nanobind/*_nb.cpp")
   foreach(_nb_file ${_nb_binding_files})
     get_filename_component(_nb_name ${_nb_file} NAME_WE)
-    string(REGEX REPLACE "_nb$" "" _mod_name "${_nb_name}")
+    string(REGEX REPLACE "_nb$" "" _src_name "${_nb_name}")
 
-    nanobind_add_module(pygismo_${_mod_name}
+    if(DEFINED PYGISMO_NAME_MAP_${_src_name})
+      set(_mod_name "${PYGISMO_NAME_MAP_${_src_name}}")
+    else()
+      string(TOLOWER "${_src_name}" _mod_name)
+    endif()
+
+    nanobind_add_module(pygismo_${_src_name}
       NB_SHARED
       NB_DOMAIN gismo
       "${_nb_file}"
     )
-    target_link_libraries(pygismo_${_mod_name} PRIVATE ${PROJECT_NAME})
-    set_target_properties(pygismo_${_mod_name} PROPERTIES
+    target_link_libraries(pygismo_${_src_name} PRIVATE ${PROJECT_NAME} ${_py_target})
+    target_link_options(pygismo_${_src_name} PRIVATE ${_py_linker_fix})
+
+    set_target_properties(pygismo_${_src_name} PROPERTIES
       OUTPUT_NAME "${_mod_name}"
       LIBRARY_OUTPUT_DIRECTORY "${PYGISMO_PKG_DIR}"
     )
     file(APPEND "${PYGISMO_PKG_DIR}/__init__.py"
       "from .${_mod_name} import *\n")
 
-    list(APPEND PYGISMO_TARGETS pygismo_${_mod_name})
+    list(APPEND PYGISMO_TARGETS pygismo_${_src_name})
   endforeach()
+
+  file(APPEND "${PYGISMO_PKG_DIR}/__init__.py"
+    "import importlib as _importlib, warnings as _warnings\n"
+    "class _DeprecatedAlias:\n"
+    "    _MAP = {'modelling': 'modeling'}\n"
+    "    def __init__(self, mod): self._mod = mod\n"
+    "    def __getattr__(self, name):\n"
+    "        return getattr(_importlib.import_module('.' + self._mod, __package__), name)\n"
+    "def __getattr__(name):\n"
+    "    if name in _DeprecatedAlias._MAP:\n"
+    "        _warnings.warn(f'pygismo.{name} is deprecated, use pygismo.{_DeprecatedAlias._MAP[name]}', DeprecationWarning, stacklevel=2)\n"
+    "        return _DeprecatedAlias(_DeprecatedAlias._MAP[name])\n"
+    "    raise AttributeError(f'module pygismo has no attribute {name!r}')\n"
+  )
 
   set(PYGISMO_TARGETS ${PYGISMO_TARGETS} CACHE INTERNAL "nanobind module targets")
 

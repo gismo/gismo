@@ -21,7 +21,7 @@
 namespace nb = nanobind;
 using namespace gismo;
 
-NB_MODULE(gsAssembler, m) {
+NB_MODULE(assembler, m) {
     m.doc() = "G+Smo Assembler module";
 
     using BiHarm = gsExprAssembler<real_t>;

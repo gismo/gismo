@@ -28,7 +28,7 @@
 set(GISMO_WITH_NANOBIND @GISMO_WITH_NANOBIND@)
 if(GISMO_WITH_NANOBIND)
   include(CMakeFindDependencyMacro)
-  find_dependency(Python 3.8 COMPONENTS Development)
+  find_dependency(Python 3.9 COMPONENTS Development)
 endif()
 
 # Our library dependencies (contains definitions for IMPORTED targets)

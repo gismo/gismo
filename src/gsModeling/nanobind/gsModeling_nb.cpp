@@ -21,7 +21,7 @@
 namespace nb = nanobind;
 using namespace gismo;
 
-NB_MODULE(gsModeling, m) {
+NB_MODULE(modeling, m) {
     m.doc() = "G+Smo Modeling module";
 
     using Fitting = gsFitting<real_t>;
