@@ -322,29 +322,4 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 // template<class T> inline
 //     inline T & gsVector3d<T>::z () { return (*this)(2); }
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsVector
-   */
-  template<typename T>
-  void pybind11_init_gsVector(pybind11::module &m, const std::string & typestr)
-  {
-    using Class = gsVector<T>;
-    std::string pyclass_name = std::string("gsVector") + typestr;
-    pybind11::class_<Class>(m, pyclass_name.c_str(), pybind11::buffer_protocol(), pybind11::dynamic_attr())
-    // Constructors
-    .def(pybind11::init<>())
-    .def(pybind11::init<index_t, index_t>())
-    // Member functions
-    .def("size",       &Class::size)
-    .def("rows",       &Class::rows)
-    // .def("transpose",  &Class::transpose)
-    ;
-  }
-
-#endif // GISMO_WITH_PYBIND11
-
-
-
 } // namespace gismo

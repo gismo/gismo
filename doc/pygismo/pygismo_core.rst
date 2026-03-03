@@ -1,7 +1,7 @@
 Core module
 ***********
 
-.. automodule:: pygismo.core
+.. automodule:: pygismo.gsCore
     :members:
     :undoc-members:
     :show-inheritance:

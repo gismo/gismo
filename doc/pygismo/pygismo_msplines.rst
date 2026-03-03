@@ -1,7 +1,7 @@
 Mapped Splines module
 *********************
 
-.. automodule:: pygismo.msplines
+.. automodule:: pygismo.gsMSplines
     :members:
     :undoc-members:
     :show-inheritance:

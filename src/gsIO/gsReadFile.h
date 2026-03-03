@@ -273,16 +273,6 @@ public:
 
 };  // class gsReadFile
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsFileData
-   */
-  void pybind11_init_gsReadFile(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
-
 /// \brief Write an arbitrary Gismo object to an XML file with the given filename.
 template <typename Object>
 void gsWrite(const Object& obj, const std::string& fname, bool verbose = false)

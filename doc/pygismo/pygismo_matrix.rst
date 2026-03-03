@@ -1,7 +1,7 @@
 Matrix module
 *************
 
-.. automodule:: pygismo.matrix
+.. automodule:: pygismo.gsMatrix
     :members:
     :undoc-members:
     :show-inheritance:

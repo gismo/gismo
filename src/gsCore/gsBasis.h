@@ -983,15 +983,6 @@ protected:
 
 }; // class gsBasis
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsGeometry
-   */
-  void pybind11_init_gsBasis(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
 } // namespace gismo
 
 

@@ -12,7 +12,7 @@ set_directory_properties(PROPERTIES EXCLUDE_FROM_ALL TRUE)
 find_program(SPHINX_BUILD NAMES sphinx-build sphinx-build.exe)
 # unchecked: sphinx_rtd_theme is installed
 
-if(SPHINX_BUILD AND GISMO_WITH_PYBIND11)
+if(SPHINX_BUILD AND GISMO_WITH_NANOBIND)
 
     configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/conf.py.in
@@ -27,12 +27,12 @@ if(SPHINX_BUILD AND GISMO_WITH_PYBIND11)
     )
 
   add_dependencies(doc doc-pygismo)
-  add_dependencies(doc-pygismo pygismo)
+  add_dependencies(doc-pygismo pygismo_full)
 
 else (SPHINX_BUILD)
 
   add_custom_target(doc-pygismo
-    ${CMAKE_COMMAND} -E cmake_echo_color --cyan "Documentation for pygismo cannot be compiled! Please install sphinx, sphinx_rtd_theme -- http://sphinx-doc.org , or python3-sphinx in package manager, or sphinx in pip -- and enable GISMO_WITH_PYBIND11 to build the pygismo  documentation."
+    ${CMAKE_COMMAND} -E cmake_echo_color --cyan "Documentation for pygismo cannot be compiled! Please install sphinx, sphinx_rtd_theme -- http://sphinx-doc.org , or python3-sphinx in package manager, or sphinx in pip -- and enable GISMO_WITH_NANOBIND to build the pygismo  documentation."
     )
 
 endif()

@@ -1,7 +1,7 @@
 HSplines module
 ***************
 
-.. automodule:: pygismo.hsplines
+.. automodule:: pygismo.gsHSplines
     :members:
     :undoc-members:
     :show-inheritance:

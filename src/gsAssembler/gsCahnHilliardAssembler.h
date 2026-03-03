@@ -204,15 +204,6 @@ protected:
 
   }; // class gsCahnHilliardAssembler
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsCahnHilliardAssembler
-   */
-  void pybind11_init_gsCahnHilliardAssembler(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
 } // namespace gismo
 
 

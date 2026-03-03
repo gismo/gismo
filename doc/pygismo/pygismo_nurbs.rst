@@ -1,7 +1,7 @@
 NURBS module
 ************
 
-.. automodule:: pygismo.nurbs
+.. automodule:: pygismo.gsNurbs
     :members:
     :undoc-members:
     :show-inheritance:

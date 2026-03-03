@@ -60,15 +60,6 @@ protected:
 }; // gsSpringPatch
 
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsSpringPatch
-   */
-  void pybind11_init_gsSpringPatch(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
 }// namespace gismo
 
 #ifndef GISMO_BUILD_LIB

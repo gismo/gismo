@@ -593,15 +593,6 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsFileData
-   */
-  void pybind11_init_gsFileData(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

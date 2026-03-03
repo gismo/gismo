@@ -53,41 +53,47 @@ OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
 # Pygismo
 ###################################################################
 
-if (GISMO_WITH_PYBIND11)
+if (GISMO_WITH_NANOBIND)
 
-  pybind11_add_module(py${PROJECT_NAME} MODULE
-    "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
+  nanobind_add_module(pygismo_core
+    NB_SHARED
+    NB_DOMAIN gismo
+    "${gismo_SOURCE_DIR}/src/misc/gsNanoBind.cpp"
+  )
+  target_link_libraries(pygismo_core PRIVATE ${PROJECT_NAME})
+  set_target_properties(pygismo_core PROPERTIES
+    OUTPUT_NAME "core"
+    LIBRARY_OUTPUT_DIRECTORY "${PYGISMO_PKG_DIR}"
+  )
+
+  list(APPEND PYGISMO_TARGETS pygismo_core)
+
+  file(GLOB _nb_binding_files "${gismo_SOURCE_DIR}/src/gs*/nanobind/*_nb.cpp")
+  foreach(_nb_file ${_nb_binding_files})
+    get_filename_component(_nb_name ${_nb_file} NAME_WE)
+    string(REGEX REPLACE "_nb$" "" _mod_name "${_nb_name}")
+
+    nanobind_add_module(pygismo_${_mod_name}
+      NB_SHARED
+      NB_DOMAIN gismo
+      "${_nb_file}"
     )
-
-  set_target_properties(py${PROJECT_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS
-    POSITION_INDEPENDENT_CODE ON
-    LINKER_LANGUAGE CXX
-    CXX_VISIBILITY_PRESET "hidden"
-    CUDA_VISIBILITY_PRESET "hidden"
+    target_link_libraries(pygismo_${_mod_name} PRIVATE ${PROJECT_NAME})
+    set_target_properties(pygismo_${_mod_name} PROPERTIES
+      OUTPUT_NAME "${_mod_name}"
+      LIBRARY_OUTPUT_DIRECTORY "${PYGISMO_PKG_DIR}"
     )
+    file(APPEND "${PYGISMO_PKG_DIR}/__init__.py"
+      "from .${_mod_name} import *\n")
 
-  # since gismo (${PROJECT_NAME}) target includes bindings, it needs
-  # pybind/python info. Those are automatically managed in
-  # `pybind11_add_module`. Since we aren't using it, setup gismo target
-  # in similar fashion manually. 
-  target_link_libraries(${PROJECT_NAME}_static pybind11::module)
+    list(APPEND PYGISMO_TARGETS pygismo_${_mod_name})
+  endforeach()
 
-  if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-    target_link_libraries(${PROJECT_NAME}_static pybind11::lto)
-  endif()
+  set(PYGISMO_TARGETS ${PYGISMO_TARGETS} CACHE INTERNAL "nanobind module targets")
 
-  # link gismo to pygismo
-  target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static)
+  add_custom_target(pygismo_full DEPENDS ${PYGISMO_TARGETS})
 
-  pybind11_strip(py${PROJECT_NAME})
-  pybind11_extension(py${PROJECT_NAME})
-
-  if (GISMO_KLSHELL)
-    target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
-  endif()# To fix
-
-endif(GISMO_WITH_PYBIND11)
+endif(GISMO_WITH_NANOBIND)
 
 ###################################################################
 # Shared library
@@ -136,9 +142,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   )
   #generate_export_header(${PROJECT_NAME})
 
-  if (GISMO_WITH_PYBIND11)
-    target_link_libraries(${PROJECT_NAME} pybind11::embed)
-  endif()
+
 
   #if(gsMpfr_ENABLED OR gsGmp_ENABLED)
   #    find_package(GMP)
