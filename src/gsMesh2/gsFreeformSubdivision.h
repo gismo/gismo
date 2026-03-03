@@ -136,7 +136,7 @@ public:
     /// of the first D-1 coordinates.
     ///
     /// \param function A real-valued function in D-1 real variables.
-    void replace_last_coordinate_with_function(gsFunctionExpr<> function);
+    void fit_last_coordinate_to_function(gsFunctionExpr<> function);
 
     /// \brief Initializes the targeted mesh from an xml file.
     ///

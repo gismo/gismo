@@ -36,6 +36,7 @@ int main(int argc, char** argv)
                 std::to_string(valence) + "Fct" + std::to_string(function) +
                 ".xml");
 
+            subdiv.subdivide();
             auto res = subdiv.smooth(1);
 
             coeffs.row(function - 1) = res[0].transpose().row(2);

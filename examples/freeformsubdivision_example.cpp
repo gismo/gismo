@@ -68,7 +68,7 @@ int main(int argc, char** argv)
 
     // Take care of function
     if(function.length() > 0){
-        subdiv.replace_last_coordinate_with_function(gsFunctionExpr<real_t>(function, 2));
+        subdiv.fit_last_coordinate_to_function(gsFunctionExpr<real_t>(function, 2));
     }
 
     gsWriteParaview(subdiv.multipatch(), "results/initial_data", 1000, false,

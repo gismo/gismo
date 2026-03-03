@@ -459,7 +459,7 @@ gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
     gsInfo << "\nSolution:\n";
     for (index_t i = 0; i < (solution + K * w).rows(); ++i)
     {
-        gsInfo << (solution + K * w)(i,2) << ", ";
+        gsInfo << (solution + K * w)(i, 2) << ", ";
     }
     gsInfo << "\n";
 
@@ -708,6 +708,9 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
             gsMatrix<real_t> A_control(point_count, function_count);
             gsMatrix<real_t> target(sample_count, D);
 
+            gsMatrix<real_t> outer_values(D * D * patches - sample_count,
+                                          function_count);
+
             {
                 // the sampling index - this is incremented whenever we sample a
                 // point
@@ -734,7 +737,10 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                                 fitting_functions[0][p]->coef(ux * N + vx, 2);
 
                             if (cp == 0.0)
+                            {
+
                                 continue;
+                            }
 
                             // First, log the z-coordinate of the control points
                             // into A_control.
@@ -1066,7 +1072,7 @@ void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
 }
 
 template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::replace_last_coordinate_with_function(
+void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
     gsFunctionExpr<real_t> function)
 {
     auto& mesh = *m_mesh;
@@ -1075,12 +1081,64 @@ void gsFreeformSubdivision<N, D>::replace_last_coordinate_with_function(
 
     for (auto f : mesh.faces())
     {
+        // read out the control points
         auto& data = face_data_vec[f.idx()].control_points;
 
-        for (gsVector<real_t, D>& v : data.asVector())
+        // Convert the first D-1 coordinates into a patch
+
+        // Create a spline basis for a normal bezier patch.
+        gsKnotVector<> kv1(0, 1, 0, N);
+        gsKnotVector<> kv2(0, 1, 0, N);
+        gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
+
+        // Create a coefficient matrix out of the control points.
+        gsMatrix<> coeffs(N * N, D - 1);
+        for (size_t i = 0; i < N; ++i)
         {
-            real_t a = function.eval(gsVector<real_t, 2>(v.topRows(D - 1)))(0);
-            v(D - 1) = a;
+            for (size_t j = 0; j < N; ++j)
+            {
+                int total_index = i * N + j;
+                coeffs.row(total_index) = data(i, j).topRows(D - 1);
+            }
+        }
+
+        // The final patch for all but the last coordinate.
+        gsTensorBSpline<2> input_patch(basis, coeffs);
+
+        // We now sample this patch at N*N points
+        gsMatrix<> samples(1, N * N);
+        gsMatrix<> params(2, N * N);
+
+        for (size_t i = 0; i < N * N; ++i)
+        {
+            // Get the parameters at the sample point.
+            params.col(i) = gsVector<real_t, 2>::vec(
+                real_t(std::floor(i % N)) / real_t(N - 1),
+                real_t(std::floor(i / N)) / real_t(N - 1));
+
+            // Get the value of the first D-1 coordinates at these parameters
+            gsVector<real_t, D - 1> point = input_patch.eval(params.col(i));
+
+            // Use the function to find the desired z-value here.
+            samples.col(i) = function.eval(point);
+        }
+
+        // fit a patch to this
+        gsFitting<> fitter(params, samples, basis);
+        fitter.compute(0.0);
+        gsGeometry<>* result = fitter.result();
+
+        // The final coefficient matrix, should be N*N x 1
+        const gsMatrix<>& new_coeffs = result->coefs();
+
+        // Write the new control values back into the patch data.
+        for (size_t i = 0; i < N; ++i)
+        {
+            for (size_t j = 0; j < N; ++j)
+            {
+                int total_index = i * N + j;
+                data(i, j)(D - 1) = new_coeffs(total_index, 0);
+            }
         }
     }
 }
