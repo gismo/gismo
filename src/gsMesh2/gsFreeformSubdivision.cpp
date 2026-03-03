@@ -708,8 +708,8 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
             gsMatrix<real_t> A_control(point_count, function_count);
             gsMatrix<real_t> target(sample_count, D);
 
-            gsMatrix<real_t> outer_values(D * D * patches - sample_count,
-                                          function_count);
+            gsMatrix<real_t> outer_values(N * N * patches - point_count,
+                                          D);
 
             {
                 // the sampling index - this is incremented whenever we sample a
@@ -718,6 +718,7 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 // The point index - this is incremented whenever we record a
                 // control point
                 size_t i_p(0);
+                size_t i_o(0);
                 // Iterating over patches
                 for (size_t p = 0; p < patches; ++p)
                 {
@@ -738,7 +739,8 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
 
                             if (cp == 0.0)
                             {
-
+                                outer_values.row(i_o) = *control_nets[p](ux, vx);
+                                i_o++;
                                 continue;
                             }
 
@@ -794,6 +796,7 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
 
             // Remember the fitting coefficients and return them later.
             res.emplace_back(solution);
+            res.emplace_back(outer_values);
 
             // Now, the coefficients in `solution` give a linear combination of
             // the fitting functions that approximates the original target
