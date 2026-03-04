@@ -26,17 +26,17 @@ SUITE(gsFixedIssues_test)
         gsTensorBSplineBasis<2, real_t> tensBasis(uKnots, vKnots);
         gsTHBSplineBasis<2> thbBasis(tensBasis);
 
-        unsigned indexLevel = thbBasis.tree().getIndexLevel();
         gsVector<domain_index_type, 2> upp = thbBasis.tree().upperCornerIndex();
         domain_index_type max = std::numeric_limits<domain_index_type>::max();
 
-        // Check upp against under- and overflow
+        // upperCornerIndex() returns the level-0 corner, i.e. m_upperIndex >> m_indexLevel.
+        // uKnots has 127 internal knots → 128 elements; vKnots has 15 → 16 elements.
         CHECK(upp[0] >  0);
         CHECK(upp[0] <= max);
-        CHECK(upp[0] == (128 << indexLevel));
+        CHECK(upp[0] == 128);   
 
         CHECK(upp[1] >  0);
         CHECK(upp[1] <= max);
-        CHECK(upp[1] == (16 << indexLevel));
+        CHECK(upp[1] == 16);
     }
 }

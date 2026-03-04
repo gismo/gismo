@@ -201,6 +201,8 @@ public:
 
     gsDomainIterator<T> & operator*() { return *m_domainIter; }
 
+    virtual short_t sign() const { return -1; }
+
 public:
 
     short_t dim() const

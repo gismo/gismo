@@ -42,6 +42,31 @@ public:
         this->init(tbasis, 3);
     }
 
+    /// Constructor for hierarchical tensor bases
+    gsImplicitTrimmedDomain(const gsFunction<T> & fnc,
+                        const gsHTensorBasis<d,T> & htbasis,
+                        index_t samples = 5) :
+    m_implFunction(memory::make_shared_not_owned(&fnc))
+    {
+        this->init(htbasis, samples);
+    }
+
+    /// Constructor for bounding-box + uniform grid
+    gsImplicitTrimmedDomain(const gsFunction<T>       & fnc,
+                        const gsMatrix<T>            & bbox,
+                        const gsVector<index_t,d>    & numCells,
+                        index_t samples = 5) :
+    m_implFunction(memory::make_shared_not_owned(&fnc))
+    {
+        this->init(bbox, numCells, samples);
+    }
+
+    gsImplicitTrimmedDomain(const gsFunction<T> & fnc)
+    : m_implFunction(memory::make_shared_not_owned(&fnc))
+    {
+        this->init();
+    }
+
     inline gsVector<short_t> sign(const gsMatrix<T> & u)
     {
         gsVector<T> val = m_implFunction->eval(u).row(0);
