@@ -5,6 +5,7 @@
 
 namespace gismo
 {
+  // Instantiate for regular double type
   CLASS_TEMPLATE_INST gsMultiPatch<real_t> ;
 
 #ifdef GISMO_WITH_PYBIND11

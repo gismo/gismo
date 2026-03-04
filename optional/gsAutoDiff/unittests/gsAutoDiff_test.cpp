@@ -86,24 +86,34 @@ TEST(DualArithmeticTest)
     
     CHECK_CLOSE(autodiff::detail::derivative<0>(y), 5.0, 1e-10);
     CHECK_CLOSE(autodiff::detail::derivative<1>(y), 4.0, 1e-10);
+        
+    // Test integration with gsMatrix
+    /* 
+        M = | x  0   |
+            | 0  x^2 |
+
+        M^T = | x  0   |
+              | 0  x^2 |
+
+        M^2 = M^T * M = | x^2       0         |
+                        | 0         x^4     |
+        d(M^2_00)/dx = 2x = 4
+        d(M^2_01)/dx = 0
+        d(M^2_10)/dx = 0
+        d(M^2_11)/dx = 4x^3 = 32
+        d(M^2_11)/dx = x^2*2*x+x^2*2*x = 4*x^3 = 32
+    */
     
-    // Test math functions
-    // auto z = autodiff::sin(x);
-    // CHECK_CLOSE(autodiff::detail::derivative<0>(z), std::sin(2.0), 1e-10);
-    // CHECK_CLOSE(autodiff::detail::derivative<1>(z), std::cos(2.0), 1e-10);
-    
-    // Test integration with G+Smo types
     gsMatrix<autodiff::detail::Dual<double, double>> M(2, 2);
-    M(0,0) = x; M(0,1) = 1.0;
-    M(1,0) = 0.0; M(1,1) = x;
+    M(0,0) = x; M(0,1) = 0.0;
+    M(1,0) = 0.0; M(1,1) = x*x;
+    gsMatrix<autodiff::detail::Dual<double, double>> MT = M.transpose();
     
-    gsMatrix<autodiff::detail::Dual<double, double>> M2 = M * M;
-    
-    CHECK_CLOSE(autodiff::detail::derivative<0>(M2(0,0)), 4.0, 1e-10);
+    gsMatrix<autodiff::detail::Dual<double, double>> M2 = MT * M;
     CHECK_CLOSE(autodiff::detail::derivative<1>(M2(0,0)), 4.0, 1e-10);
-    
-    CHECK_CLOSE(autodiff::detail::derivative<0>(M2(0,1)), 4.0, 1e-10);
-    CHECK_CLOSE(autodiff::detail::derivative<1>(M2(0,1)), 2.0, 1e-10);
+    CHECK_CLOSE(autodiff::detail::derivative<1>(M2(1,0)), 0.0, 1e-10);        
+    CHECK_CLOSE(autodiff::detail::derivative<1>(M2(0,1)), 0.0, 1e-10);
+    CHECK_CLOSE(autodiff::detail::derivative<1>(M2(1,1)), 32.0, 1e-10);
 }
 
 TEST(BSplineSurface_Forward_Dual)
@@ -116,7 +126,6 @@ TEST(BSplineSurface_Forward_Dual)
     index_t n = 5;
     index_t m = 5;
     index_t degree = 2;
-    index_t num_points = 10; // Reduced for unittest
     
     gsKnotVector<T> kv_u(0, 1, n - degree - 1, degree + 1);
     gsKnotVector<T> kv_v(0, 1, m - degree - 1, degree + 1);
@@ -133,18 +142,25 @@ TEST(BSplineSurface_Forward_Dual)
     
     gsTensorBSpline<2, T> surface(basis, coefs);
     
-    gsMatrix<T> eval_points(2, num_points);
-    eval_points.setRandom();
+    gsVector<unsigned> np(2);
+    np << 10, 10;
+    gsVector<double> a(2);
+    a << 0, 0;
+    gsVector<double> b(2);
+    b << 1, 1;
+    gsMatrix<T> eval_points = gsPointGrid<double>(a, b, np).template cast<T>();
+
     
     gsMatrix<T> result;
     surface.eval_into(eval_points, result);
     
     // Validation against exact derivatives
     gsMatrix<T> basis_values = basis.evalSingle(target_coeff, eval_points);
-    
+    gsInfo<<"Derivative\n"<<(basis.derivSingle(target_coeff, eval_points))<<"\n";
+
     for (index_t i = 0; i < result.cols(); ++i) {
         double ad_deriv = autodiff::detail::derivative<1>(result(2, i));
-        double exact_deriv = autodiff::detail::derivative<0>(basis_values(0, i));
+        double exact_deriv = static_cast<double>(basis_values(0, i));
         CHECK_CLOSE(exact_deriv, ad_deriv, 1e-10);
     }
 }

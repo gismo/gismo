@@ -61,7 +61,7 @@ bool read_vtk(gsSurfMesh<Scalar>& mesh,
         // position
         items = sscanf(lp, "%f %f %f%n", (float*)&p[0], (float*)&p[1], (float*)&p[2], &nc);
         assert(items==3);
-        v = mesh.add_vertex(p.template cast<typename gsSurfMesh<Scalar>::Scalar>());
+        v = mesh.add_vertex(p.template cast<Scalar>());
         lp += nc;
 
         // normal

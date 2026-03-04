@@ -102,7 +102,7 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
         //assert(items==3);
 
         is >> p[0] >> p[1] >> p[2];
-        v = mesh.add_vertex(p.template cast<typename gsSurfMesh<Scalar>::Scalar>());
+        v = mesh.add_vertex(p.template cast<Scalar>());
         //lp += nc;
 /*
         // normal
@@ -217,7 +217,7 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
         // position
         items = sscanf(lp, "%f %f %f%n", (float*)&p[0], (float*)&p[1], (float*)&p[2], &nc);
         assert(items==3);
-    v = mesh.add_vertex(p.template cast<typename gsSurfMesh<Scalar>::Scalar>());
+    v = mesh.add_vertex(p.template cast<Scalar>());
         lp += nc;
 
         // normal
@@ -323,7 +323,7 @@ bool read_off_binary(gsSurfMesh<Scalar>& mesh,
     {
         // position
         read(in, p);
-        v = mesh.add_vertex(p.template cast<typename gsSurfMesh<Scalar>::Scalar>());
+        v = mesh.add_vertex(p.template cast<Scalar>());
 
         // normal
         if (has_normals)

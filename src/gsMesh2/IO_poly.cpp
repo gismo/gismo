@@ -2,6 +2,8 @@
 #include <gsMesh2/IO.h>
 
 #include <cstdio>
+#include <vector>
+#include <string>
 
 
 //== NAMESPACES ===============================================================
@@ -14,21 +16,40 @@ namespace gismo {
 
 
 // helper function
-template <typename T> size_t read(FILE* in, T& t)
+static inline size_t io_poly_read_file_binary(FILE* in, void* t, size_t size)
 {
-    return fread((char*)&t, 1, sizeof(t), in);
+    return fread((char*)t, 1, size, in);
 }
 
 
 // helper function
-template <typename T> size_t write(FILE* out, T& t)
+static inline size_t io_poly_write_file_binary(FILE* out, const void* t, size_t size)
+{
+    return fwrite((char*)t, 1, size, out);
+}
+
+// compatibility wrappers for prior 'read'/'write' template names
+namespace {
+template <typename T>
+static inline size_t io_poly_read(FILE* in, T& t)
+{
+    return fread((char*)&t, 1, sizeof(t), in);
+}
+
+template <typename T>
+static inline size_t io_poly_write(FILE* out, const T& t)
 {
     return fwrite((char*)&t, 1, sizeof(t), out);
 }
+} // anonymous namespace
 
-bool read_poly(gsSurfMesh& mesh, const std::string& filename)
+
+//-----------------------------------------------------------------------------
+
+
+template<class Scalar>
+bool read_poly(gsSurfMesh<Scalar>& mesh, const std::string& filename)
 {
-    typedef gsSurfMesh::Point Point;
     // open file (in binary mode)
     FILE* in = fopen(filename.c_str(), "rb");
     if (!in) return false;
@@ -40,9 +61,9 @@ bool read_poly(gsSurfMesh& mesh, const std::string& filename)
 
     // how many elements?
     unsigned int nv, ne, nh, nf;
-    read(in, nv);
-    read(in, ne);
-    read(in, nf);
+    io_poly_read(in, nv);
+    io_poly_read(in, ne);
+    io_poly_read(in, nf);
     nh = 2*ne;
 
 
@@ -54,32 +75,35 @@ bool read_poly(gsSurfMesh& mesh, const std::string& filename)
 
 
     // get properties
-    gsSurfMesh::Vertex_property<gsSurfMesh::Vertex_connectivity>      vconn = mesh.vertex_property<gsSurfMesh::Vertex_connectivity>("v:connectivity");
-    gsSurfMesh::Halfedge_property<gsSurfMesh::Halfedge_connectivity>  hconn = mesh.halfedge_property<gsSurfMesh::Halfedge_connectivity>("h:connectivity");
-    gsSurfMesh::Face_property<gsSurfMesh::Face_connectivity>          fconn = mesh.face_property<gsSurfMesh::Face_connectivity>("f:connectivity");
-    gsSurfMesh::Vertex_property<Point>                                  point = mesh.vertex_property<Point>("v:point",Point(0,0,0));
+    typename gsSurfMesh<Scalar>::Vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>      vconn = mesh.template vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>("v:connectivity");
+    typename gsSurfMesh<Scalar>::Halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>  hconn = mesh.template halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>("h:connectivity");
+    typename gsSurfMesh<Scalar>::Face_property<typename gsSurfMesh<Scalar>::Face_connectivity>          fconn = mesh.template face_property<typename gsSurfMesh<Scalar>::Face_connectivity>("f:connectivity");
+    typename gsSurfMesh<Scalar>::Vertex_property<typename gsSurfMesh<Scalar>::Point>                                  point = mesh.template vertex_property<typename gsSurfMesh<Scalar>::Point>("v:point",typename gsSurfMesh<Scalar>::Point(0,0,0));
 
     // read properties from file
     size_t result;
-    result = fread((char*)vconn.data(), sizeof(gsSurfMesh::Vertex_connectivity),   nv, in);
-    GISMO_ENSURE(result==sizeof(gsSurfMesh::Vertex_connectivity),"Vertex connectivity reading error");
-    result = fread((char*)hconn.data(), sizeof(gsSurfMesh::Halfedge_connectivity), nh, in);
-    GISMO_ENSURE(result==sizeof(gsSurfMesh::Halfedge_connectivity),"Vertex connectivity reading error");
-    result = fread((char*)fconn.data(), sizeof(gsSurfMesh::Face_connectivity),     nf, in);
-    GISMO_ENSURE(result==sizeof(gsSurfMesh::Face_connectivity),"Vertex connectivity reading error");
-    result = fread((char*)point.data(), sizeof(Point),                               nv, in);
-    GISMO_ENSURE(result==sizeof(Point),"Vertex connectivity reading error");
+    result = fread((char*)vconn.data(), sizeof(typename gsSurfMesh<Scalar>::Vertex_connectivity),   nv, in);
+    GISMO_ENSURE(result==sizeof(typename gsSurfMesh<Scalar>::Vertex_connectivity),"Vertex connectivity reading error");
+    result = fread((char*)hconn.data(), sizeof(typename gsSurfMesh<Scalar>::Halfedge_connectivity), nh, in);
+    GISMO_ENSURE(result==sizeof(typename gsSurfMesh<Scalar>::Halfedge_connectivity),"Vertex connectivity reading error");
+    result = fread((char*)fconn.data(), sizeof(typename gsSurfMesh<Scalar>::Face_connectivity),     nf, in);
+    GISMO_ENSURE(result==sizeof(typename gsSurfMesh<Scalar>::Face_connectivity),"Vertex connectivity reading error");
+    result = fread((char*)point.data(), sizeof(typename gsSurfMesh<Scalar>::Point),                               nv, in);
+    GISMO_ENSURE(result==sizeof(typename gsSurfMesh<Scalar>::Point),"Vertex connectivity reading error");
 
     fclose(in);
     return true;
 }
 
 
-bool write_poly(const gsSurfMesh& mesh, const std::string& filename)
+//-----------------------------------------------------------------------------
+
+
+template<class Scalar>
+bool write_poly(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
 {
-    typedef gsSurfMesh::Point Point;
     // check for colors
-    auto color = mesh.get_vertex_property<Point>("v:color");
+    auto color = mesh.template get_vertex_property<typename gsSurfMesh<Scalar>::Point>("v:color");
     bool has_colors = color;
 
 
@@ -95,27 +119,27 @@ bool write_poly(const gsSurfMesh& mesh, const std::string& filename)
     nh = mesh.n_halfedges();
     nf = mesh.n_faces();
 
-    write(out, nv);
-    write(out, ne);
-    write(out, nf);
-    write(out, has_colors);
+    io_poly_write(out, nv);
+    io_poly_write(out, ne);
+    io_poly_write(out, nf);
+    io_poly_write(out, has_colors);
     nh = 2*ne;
 
 
     // get properties
-    gsSurfMesh::Vertex_property<gsSurfMesh::Vertex_connectivity>      vconn = mesh.get_vertex_property<gsSurfMesh::Vertex_connectivity>("v:connectivity");
-    gsSurfMesh::Halfedge_property<gsSurfMesh::Halfedge_connectivity>  hconn = mesh.get_halfedge_property<gsSurfMesh::Halfedge_connectivity>("h:connectivity");
-    gsSurfMesh::Face_property<gsSurfMesh::Face_connectivity>          fconn = mesh.get_face_property<gsSurfMesh::Face_connectivity>("f:connectivity");
-    gsSurfMesh::Vertex_property<Point>                                  point = mesh.get_vertex_property<Point>("v:point");
+    typename gsSurfMesh<Scalar>::Vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>      vconn = mesh.template get_vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>("v:connectivity");
+    typename gsSurfMesh<Scalar>::Halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>  hconn = mesh.template get_halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>("h:connectivity");
+    typename gsSurfMesh<Scalar>::Face_property<typename gsSurfMesh<Scalar>::Face_connectivity>          fconn = mesh.template get_face_property<typename gsSurfMesh<Scalar>::Face_connectivity>("f:connectivity");
+    typename gsSurfMesh<Scalar>::Vertex_property<typename gsSurfMesh<Scalar>::Point>                                  point = mesh.template get_vertex_property<typename gsSurfMesh<Scalar>::Point>("v:point");
 
 
     // write properties to file
-    fwrite((char*)vconn.data(), sizeof(gsSurfMesh::Vertex_connectivity),   nv, out);
-    fwrite((char*)hconn.data(), sizeof(gsSurfMesh::Halfedge_connectivity), nh, out);
-    fwrite((char*)fconn.data(), sizeof(gsSurfMesh::Face_connectivity),     nf, out);
-    fwrite((char*)point.data(), sizeof(Point),                               nv, out);
+    fwrite((char*)vconn.data(), sizeof(typename gsSurfMesh<Scalar>::Vertex_connectivity),   nv, out);
+    fwrite((char*)hconn.data(), sizeof(typename gsSurfMesh<Scalar>::Halfedge_connectivity), nh, out);
+    fwrite((char*)fconn.data(), sizeof(typename gsSurfMesh<Scalar>::Face_connectivity),     nf, out);
+    fwrite((char*)point.data(), sizeof(typename gsSurfMesh<Scalar>::Point),                               nv, out);
 
-    if (has_colors) fwrite((char*)color.data(), sizeof(Point), nv, out);
+    if (has_colors) fwrite((char*)color.data(), sizeof(typename gsSurfMesh<Scalar>::Point), nv, out);
 
     fclose(out);
 

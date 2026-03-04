@@ -30,18 +30,17 @@ namespace gismo
 {
 
 /// A halfedge data structure for polygonal meshes.
-template <class Scalar_ = real_t>
+template <class Scalar>
 class GISMO_EXPORT gsSurfMesh
 {
 public:
-    /// Scalar type
-    typedef Scalar_ Scalar;
     using Self = gsSurfMesh<Scalar>;
+    
+    /// Point type
+    typedef gsVector3d<Scalar> Point;
 
-typedef gsVector3d<Scalar> Point;
-
-/// Normal type
-typedef Point Normal;
+    /// Normal type
+    typedef Point Normal;
 
 public:
 
@@ -1783,10 +1782,10 @@ private:
 public: // Extract spline functions
 
     /// Creates spline representations of mesh in a given degree
-    gsMultiPatch<> asSpline(int deg) const;
+    gsMultiPatch<Scalar> asSpline(int deg) const;
     
     /// Creates a patch of spefic degree from a given halfedge in a mesh
-    memory::unique_ptr<gsGeometry<> > asPatch(Halfedge h, int deg) const;
+    memory::unique_ptr<gsGeometry<Scalar> > asPatch(Halfedge h, int deg) const;
 
 
     
@@ -1808,8 +1807,8 @@ private: //--------------------------------------------------- helper functions
 
 private:
 
-    template <class Scalar>
-    friend bool GISMO_EXPORT read_poly(gsSurfMesh<Scalar>& mesh, const std::string& filename);
+    template <class T>
+    friend bool GISMO_EXPORT read_poly(gsSurfMesh<T>& mesh, const std::string& filename);
 
     gsProperty_container vprops_;
     gsProperty_container hprops_;

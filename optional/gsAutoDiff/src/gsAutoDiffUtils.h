@@ -81,12 +81,6 @@ namespace gismo
             // Handle A if variable (e.g., propagate to l if needed)
         }
 
-        void propagatex(const autodiff::reverse::detail::ExprPtr<T>& wprime) override {
-            // Similar for higher-order, if implemented
-            auto adjoint_b = solver.solve_transpose(wprime);  // Assuming overloaded for ExprPtr
-            r->propagatex(adjoint_b);
-        }
-
         void update() override {
             l->update();
             r->update();
@@ -1059,12 +1053,61 @@ namespace detail {
         return l.ptr->val < static_cast<T>(r);
     }
     
-    template<typename T>
-    inline bool operator>(const ExprPtrWrapper<T>& l, int r) {
-        return l.ptr->val > static_cast<T>(r);
-    }
-    
-    // Comparison: ExprPtr vs ExprPtrWrapper - templated
+     template<typename T>
+     inline bool operator>(const ExprPtrWrapper<T>& l, int r) {
+         return l.ptr->val > static_cast<T>(r);
+     }
+     
+     // Comparison: ExprPtrWrapper vs scalar types - templated for double and other scalars
+     template<typename T, typename U>
+     inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+     operator>=(const ExprPtrWrapper<T>& l, U r) {
+         return l.ptr->val >= static_cast<T>(r);
+     }
+     
+     template<typename T, typename U>
+     inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+     operator<=(const ExprPtrWrapper<T>& l, U r) {
+         return l.ptr->val <= static_cast<T>(r);
+     }
+     
+     template<typename T, typename U>
+     inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+     operator<(const ExprPtrWrapper<T>& l, U r) {
+         return l.ptr->val < static_cast<T>(r);
+     }
+     
+     template<typename T, typename U>
+     inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+     operator>(const ExprPtrWrapper<T>& l, U r) {
+         return l.ptr->val > static_cast<T>(r);
+     }
+
+     template<typename T, typename U>
+     inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+     operator>=(U l, const ExprPtrWrapper<T>& r) {
+         return static_cast<T>(l) >= r.ptr->val;
+     }
+     
+     template<typename T, typename U>
+     inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+     operator<=(U l, const ExprPtrWrapper<T>& r) {
+         return static_cast<T>(l) <= r.ptr->val;
+     }
+     
+     template<typename T, typename U>
+     inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+     operator<(U l, const ExprPtrWrapper<T>& r) {
+         return static_cast<T>(l) < r.ptr->val;
+     }
+     
+     template<typename T, typename U>
+     inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+     operator>(U l, const ExprPtrWrapper<T>& r) {
+         return static_cast<T>(l) > r.ptr->val;
+     }
+     
+     // Comparison: ExprPtr vs ExprPtrWrapper - templated
     template<typename T>
     inline bool operator<(const ExprPtr<T>& l, const ExprPtrWrapper<T>& r) {
         return l->val < r.ptr->val;
@@ -1167,4 +1210,289 @@ namespace math {
         return round(autodiff::val(expr));
     }
 }
+
+} // namespace gismo
+
+// ============================================================================
+// Expression template support for autodiff scalars
+// ============================================================================
+// The expression system uses gismo::util::is_arithmetic (which is std::is_arithmetic
+// in C++11 mode) to determine if a type should be treated as a scalar constant 
+// (_expr<T, true>). We specialize std::is_arithmetic for autodiff types so they work
+// with gismo's expression templates.
+//
+// IMPORTANT: We do NOT specialize autodiff::detail::ArithmeticTraits because that would
+// cause the autodiff library to treat Dual<double, double> as a primitive arithmetic type,
+// leading to circular recursion in operators. The autodiff library already knows how to
+// handle Dual types via its expression template system.
+
+// Mark autodiff types as arithmetic for gismo's expression system only.
+// We use gismo::util::is_arithmetic, NOT std::is_arithmetic, to avoid
+// interfering with autodiff's own traits that rely on std::is_arithmetic.
+// Note: gismo::util::is_arithmetic specializations for autodiff types
+// are defined centrally in src/gsCore/gsTemplateTools.h to avoid duplication.
+
+
+
+// ============================================================================
+// Comparison operators for autodiff types
+// ============================================================================
+// These operators are needed for mesh operations (vertex comparison, sorting)
+// and other algorithms that use relational operators. They compare the values
+// only (derivatives are not compared).
+
+namespace autodiff {
+namespace reverse {
+namespace detail {
+    // Comparison operators for Variable<T> (var_t)
+    // These compare only the scalar values, ignoring derivatives
+    
+    template<typename T>
+    inline bool operator==(const Variable<T>& l, const Variable<T>& r) {
+        return l.expr->val == r.expr->val;
+    }
+    
+    template<typename T>
+    inline bool operator!=(const Variable<T>& l, const Variable<T>& r) {
+        return l.expr->val != r.expr->val;
+    }
+    
+    template<typename T>
+    inline bool operator<(const Variable<T>& l, const Variable<T>& r) {
+        return l.expr->val < r.expr->val;
+    }
+    
+    template<typename T>
+    inline bool operator>(const Variable<T>& l, const Variable<T>& r) {
+        return l.expr->val > r.expr->val;
+    }
+    
+    template<typename T>
+    inline bool operator<=(const Variable<T>& l, const Variable<T>& r) {
+        return l.expr->val <= r.expr->val;
+    }
+    
+    template<typename T>
+    inline bool operator>=(const Variable<T>& l, const Variable<T>& r) {
+        return l.expr->val >= r.expr->val;
+    }
+    
+    // Mixed comparisons: Variable<T> with arithmetic types
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator==(const Variable<T>& l, U r) {
+        return l.expr->val == r;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator==(U l, const Variable<T>& r) {
+        return l == r.expr->val;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator!=(const Variable<T>& l, U r) {
+        return l.expr->val != r;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator!=(U l, const Variable<T>& r) {
+        return l != r.expr->val;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator<(const Variable<T>& l, U r) {
+        return l.expr->val < r;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator<(U l, const Variable<T>& r) {
+        return l < r.expr->val;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator>(const Variable<T>& l, U r) {
+        return l.expr->val > r;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator>(U l, const Variable<T>& r) {
+        return l > r.expr->val;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator<=(const Variable<T>& l, U r) {
+        return l.expr->val <= r;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator<=(U l, const Variable<T>& r) {
+        return l <= r.expr->val;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator>=(const Variable<T>& l, U r) {
+        return l.expr->val >= r;
+    }
+    
+    template<typename T, typename U>
+    inline typename std::enable_if<std::is_arithmetic<U>::value, bool>::type
+    operator>=(U l, const Variable<T>& r) {
+        return l >= r.expr->val;
+    }
+
+} // namespace detail
+} // namespace reverse
+} // namespace autodiff
+
+// ============================================================================
+// Matrix multiplication for reverse mode autodiff (var_t)
+// ============================================================================
+// Eigen's optimized matrix multiplication doesn't preserve reverse AD
+// derivatives. This function performs matrix multiplication that properly
+// tracks derivatives through the computation graph.
+// ============================================================================
+
+namespace gismo {
+
+/**
+ * @brief Matrix multiplication for gsMatrix<var_t> that preserves reverse AD derivatives
+ *
+ * This function performs C = A * B where A and B contain var_t (reverse mode AD) types.
+ * Unlike Eigen's optimized multiplication, this properly tracks dependencies in the
+ * autodiff computation graph.
+ *
+ * @param A Left matrix (m x n)
+ * @param B Right matrix (n x p)
+ * @return Result matrix C (m x p) with proper derivative tracking
+ */
+template<typename T>
+inline gsMatrix<T> autodiffMatMul(const gsMatrix<T>& A, const gsMatrix<T>& B) {
+    static_assert(std::is_same<T, var_t>::value,
+                  "autodiffMatMul is only needed for var_t types");
+
+    GISMO_ASSERT(A.cols() == B.rows(), "Matrix dimensions mismatch in autodiffMatMul");
+
+    gsMatrix<T> C(A.rows(), B.cols());
+
+    // Explicit loop-based multiplication that uses var_t operations
+    // This ensures the autodiff graph is properly built
+    for (index_t i = 0; i < A.rows(); ++i) {
+        for (index_t j = 0; j < B.cols(); ++j) {
+            T sum = T(0.0);
+            for (index_t k = 0; k < A.cols(); ++k) {
+                sum = sum + A(i, k) * B(k, j);
+            }
+            C(i, j) = sum;
+        }
+    }
+
+    return C;
 }
+
+/**
+ * @brief Matrix-vector multiplication for gsMatrix<var_t>
+ */
+template<typename T>
+inline gsMatrix<T> autodiffMatMul(const gsMatrix<T>& A, const gsVector<T>& B) {
+    static_assert(std::is_same<T, var_t>::value,
+                  "autodiffMatMul is only needed for var_t types");
+
+    GISMO_ASSERT(A.cols() == B.rows(), "Matrix dimensions mismatch in autodiffMatMul");
+
+    gsMatrix<T> C(A.rows(), 1);
+
+    for (index_t i = 0; i < A.rows(); ++i) {
+        T sum = T(0.0);
+        for (index_t k = 0; k < A.cols(); ++k) {
+            sum = sum + A(i, k) * B(k);
+        }
+        C(i, 0) = sum;
+    }
+
+    return C;
+}
+
+/**
+ * @brief Vector-matrix multiplication for gsMatrix<var_t>
+ */
+template<typename T>
+inline gsMatrix<T> autodiffMatMul(const gsVector<T>& A, const gsMatrix<T>& B) {
+    static_assert(std::is_same<T, var_t>::value,
+                  "autodiffMatMul is only needed for var_t types");
+
+    GISMO_ASSERT(A.cols() == B.rows(), "Matrix dimensions mismatch in autodiffMatMul");
+
+    gsMatrix<T> C(1, B.cols());
+
+    for (index_t j = 0; j < B.cols(); ++j) {
+        T sum = T(0.0);
+        for (index_t k = 0; k < A.cols(); ++k) {
+            sum = sum + A(k) * B(k, j);
+        }
+        C(0, j) = sum;
+    }
+
+    return C;
+}
+
+/**
+ * @brief Matrix transpose-multiplication for gsMatrix<var_t>: C = A^T * B
+ */
+template<typename T>
+inline gsMatrix<T> autodiffMatMulT(const gsMatrix<T>& A, const gsMatrix<T>& B) {
+    static_assert(std::is_same<T, var_t>::value,
+                  "autodiffMatMulT is only needed for var_t types");
+
+    GISMO_ASSERT(A.rows() == B.rows(), "Matrix dimensions mismatch in autodiffMatMulT");
+
+    gsMatrix<T> C(A.cols(), B.cols());
+
+    for (index_t i = 0; i < A.cols(); ++i) {
+        for (index_t j = 0; j < B.cols(); ++j) {
+            T sum = T(0.0);
+            for (index_t k = 0; k < A.rows(); ++k) {
+                sum = sum + A(k, i) * B(k, j);
+            }
+            C(i, j) = sum;
+        }
+    }
+
+    return C;
+}
+
+/**
+ * @brief Matrix multiplication-transpose for gsMatrix<var_t>: C = A * B^T
+ */
+template<typename T>
+inline gsMatrix<T> autodiffMatMulTT(const gsMatrix<T>& A, const gsMatrix<T>& B) {
+    static_assert(std::is_same<T, var_t>::value,
+                  "autodiffMatMulTT is only needed for var_t types");
+
+    GISMO_ASSERT(A.cols() == B.cols(), "Matrix dimensions mismatch in autodiffMatMulTT");
+
+    gsMatrix<T> C(A.rows(), B.rows());
+
+    for (index_t i = 0; i < A.rows(); ++i) {
+        for (index_t j = 0; j < B.rows(); ++j) {
+            T sum = T(0.0);
+            for (index_t k = 0; k < A.cols(); ++k) {
+                sum = sum + A(i, k) * B(j, k);
+            }
+            C(i, j) = sum;
+        }
+    }
+
+    return C;
+}
+
+} // namespace gismo

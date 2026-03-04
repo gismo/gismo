@@ -14,6 +14,10 @@
 
 #pragma once
 
+#include <string>
+#include <algorithm>
+#include <cctype>
+
 namespace gismo
 {
 namespace expr
@@ -46,23 +50,19 @@ public:
     void print(std::ostream &os) const
     {
         //gsInfo<<"\n Space="<<E::Space<<", ScV="<<E::ScalarValued<<", ColBlocks="<<E::ColBlocks<<"\n";
-        operator<<(os,static_cast<E const&>(*this));
-        os<<"\n";
-        /*
-          std::string tmp(__PRETTY_FUNCTION__);
-          tmp.erase(0,74);
-          tmp.erase(tmp.size()-42,42);
-          size_t pos = 0;
-          while((pos=tmp.find(", false",0))!=std::string::npos) tmp.erase(pos,7);
-          while((pos=tmp.find(", true",0))!=std::string::npos) tmp.erase(pos,6);
-          while((pos=tmp.find("gismo::expr::",0))!=std::string::npos) tmp.erase(pos,13);
-          while((pos=tmp.find("_expr",0))!=std::string::npos) tmp.erase(pos,5);
-          while((pos=tmp.find("<double>",0))!=std::string::npos) tmp.erase(pos,8);
-          // while((pos=tmp.find("<long double>",0))!=std::string::npos) tmp.erase(pos,13);
-          // while((pos=tmp.find("<float>",0))!=std::string::npos) tmp.erase(pos,7);
-          tmp.erase(std::remove_if(tmp.begin(),tmp.end(),::isspace),tmp.end());
-          os<<tmp<<"\n";
-        */
+        std::string tmp(__PRETTY_FUNCTION__);
+        tmp.erase(0,74);
+        tmp.erase(tmp.size()-42,42);
+        size_t pos = 0;
+        while((pos=tmp.find(", false",0))!=std::string::npos) tmp.erase(pos,7);
+        while((pos=tmp.find(", true",0))!=std::string::npos) tmp.erase(pos,6);
+        while((pos=tmp.find("gismo::expr::",0))!=std::string::npos) tmp.erase(pos,13);
+        while((pos=tmp.find("_expr",0))!=std::string::npos) tmp.erase(pos,5);
+        while((pos=tmp.find("<double>",0))!=std::string::npos) tmp.erase(pos,8);
+        // while((pos=tmp.find("<long double>",0))!=std::string::npos) tmp.erase(pos,13);
+        // while((pos=tmp.find("<float>",0))!=std::string::npos) tmp.erase(pos,7);
+        tmp.erase(std::remove_if(tmp.begin(),tmp.end(),::isspace),tmp.end());
+        os<<tmp<<"\n";
     }
 
     std::ostream & printDetail(std::ostream &os) const

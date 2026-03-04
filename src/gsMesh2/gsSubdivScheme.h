@@ -28,15 +28,16 @@ namespace gismo
 {
 
 /// class for subdivision schemes in polygonal meshes.
+template <class Scalar = real_t>
 class GISMO_EXPORT gsSubdivScheme
 {
 
       // type definitions
-    typedef gsSurfMesh::Point Point;
-    typedef gsSurfMesh::Vertex Vertex;
-    typedef gsSurfMesh::Face Face;
+    typedef typename gsSurfMesh<Scalar>::Point Point;
+    typedef typename gsSurfMesh<Scalar>::Vertex Vertex;
+    typedef typename gsSurfMesh<Scalar>::Face Face;
 
-    gsSurfMesh* m_mesh;///<pointer to the input mesh
+    gsSurfMesh<Scalar>* m_mesh;///<pointer to the input mesh
 
     gsOptionList m_options;
 
@@ -44,7 +45,7 @@ class GISMO_EXPORT gsSubdivScheme
 public:
 
     /// Constructor accepting a reference to a mesh
-    explicit gsSubdivScheme(gsSurfMesh& mesh) : m_mesh(&mesh)
+    explicit gsSubdivScheme(gsSurfMesh<Scalar>& mesh) : m_mesh(&mesh)
     {
         m_options.addInt("scheme", "0: CC, 1: DS, 2:  Loop", 0);
         m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
@@ -55,22 +56,22 @@ public:
     gsOptionList& options() { return m_options; }
 
     /// Returns the mesh
-    gsSurfMesh & mesh() { return *m_mesh; }
+    gsSurfMesh<Scalar> & mesh() { return *m_mesh; }
 
     /// Returns the mesh
-    const gsSurfMesh & mesh() const { return *m_mesh; }
+    const gsSurfMesh<Scalar> & mesh() const { return *m_mesh; }
 
     /// Generic method for subdivide
     void subdivide(index_t numSubs = 0);
 
     /// Method for calculating vertex in limit of subdivision scheme
-    gsSurfMesh::Vertex_property<Point> vertex_limits();
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> vertex_limits();
     
     /// Method for calculating tangents on vertices in limit of subdivision scheme
-    gsSurfMesh::Vertex_property<Point> tangent_vertex_limits();
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> tangent_vertex_limits();
     
     /// Method for calculating normals on vertices in limit of subdivision scheme
-    gsSurfMesh::Vertex_property<Point> normals_vertex_limits();
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> normals_vertex_limits();
 
 public: // Catmull-Clark functions
     
@@ -78,14 +79,14 @@ public: // Catmull-Clark functions
     void cc_subdivide();
 
     /// Compute CC vertex limit positions
-    gsSurfMesh::Vertex_property<Point> cc_vertex_limits(std::string label = "v:limit");
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> cc_vertex_limits(std::string label = "v:limit");
 
     /// Compute CC vertex limit normals
-    gsSurfMesh::Vertex_property<Point> cc_normals_vertex_limits(std::string label = "v:normal",
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> cc_normals_vertex_limits(std::string label = "v:normal",
                                             bool normalize = true);
 
     /// Compute CC vertex limit tangent
-    gsSurfMesh::Vertex_property<Point> cc_tangent_vertex_limits(std::string label = "v:tanvec",
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> cc_tangent_vertex_limits(std::string label = "v:tanvec",
                                                 bool normalize = true);
 
 public: // Doo-Sabin functions
@@ -125,3 +126,7 @@ public: // Loop subdivision
 };//namespace internal
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include <gsMesh2/gsSubdivScheme.hpp>
+#endif

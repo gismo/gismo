@@ -839,7 +839,7 @@ gsSurfMesh<Scalar>::compute_vertex_normal(Vertex v) const
 }
 
 template <class Scalar>
-typename gsSurfMesh<Scalar>::Scalar
+Scalar
 gsSurfMesh<Scalar>::
 edge_length(Edge e) const
 {
@@ -1804,13 +1804,13 @@ has_flag(Vertex v, const typename gsSurfMesh<Scalar>::Halfedge_property<bool> & 
 }
 
 template <class Scalar>
-inline memory::unique_ptr<gsGeometry<> > gsSurfMesh<Scalar>::asPatch(typename gsSurfMesh<Scalar>::Halfedge h, int deg) const
+inline memory::unique_ptr<gsGeometry<Scalar> > gsSurfMesh<Scalar>::asPatch(typename gsSurfMesh<Scalar>::Halfedge h, int deg) const
 {
-    static gsKnotVector<> kv;
+    static gsKnotVector<Scalar> kv;
     kv.initUniform(0, 1, 0, 1, 1, deg);
     static gsTensorBSplineBasis<2> bs;
     bs = { kv,kv };
-    static gsMatrix<> coefs;
+    static gsMatrix<Scalar> coefs;
     coefs.resize( (deg+1)*(deg+1), 3);
 
     Halfedge hh;
@@ -1850,9 +1850,9 @@ inline memory::unique_ptr<gsGeometry<> > gsSurfMesh<Scalar>::asPatch(typename gs
 }
 
 template <class Scalar>
-gsMultiPatch<> gsSurfMesh<Scalar>::asSpline(int deg) const
+gsMultiPatch<Scalar> gsSurfMesh<Scalar>::asSpline(int deg) const
 {
-    gsMultiPatch<> res;
+    gsMultiPatch<Scalar> res;
     int n;
     Halfedge he, hh;
     Vertex ve;
@@ -1954,7 +1954,7 @@ gsMultiPatch<Scalar> gsSurfMesh<Scalar>::linear_patches() const
     gsSurfMesh<Scalar> HEmesh(*this);
 
     // Counts for each vertex the number of passes
-    auto vpassed = HEmesh.vertex_property<typename gsSurfMesh<Scalar>::Scalar>("v:passed", 0 );
+    auto vpassed = HEmesh.vertex_property<Scalar>("v:passed", 0 );
     // Index of the curve loop (negative) or of the patch (positive)
     auto hindex = HEmesh.halfedge_property<int>("h:index", 0 );
     // Patch index of each face (seems unused)

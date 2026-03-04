@@ -672,7 +672,7 @@ void gsKnotVector<T>::initUniform( T first,
     m_multSum .clear();
     m_multSum .reserve(interior+2);
 
-    const T h = (last-first) / (T)(interior+1);
+    const T h = (last-first) / T(interior+1);
 
     for(unsigned i = m_deg - mult_ends + 1, j=1; i!= 0; --i, ++j)
     {   // add left ghost knots

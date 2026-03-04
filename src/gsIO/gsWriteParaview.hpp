@@ -2072,7 +2072,7 @@ inline void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
             continue;
         }
 
-        auto vs = sm.template get_vertex_property<typename MeshT::Scalar>(pr);
+        auto vs = sm.template get_vertex_property<Scalar>(pr);
         if (vs)
         {
             file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";

@@ -132,7 +132,7 @@ bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
                 if ((vMapIt=vMap.find(p)) == vMap.end())
                 {
                     // No : add vertex and remember idx/vector mapping
-                    v = mesh.add_vertex(p.template cast<typename gsSurfMesh<Scalar>::Scalar>());
+                    v = mesh.add_vertex(p.template cast<Scalar>());
                     vertices[i] = v;
                     vMap[p] = v;
                 }
@@ -186,7 +186,7 @@ bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
                     if ((vMapIt=vMap.find(p)) == vMap.end())
                     {
                         // No : add vertex and remember idx/vector mapping
-                        v = mesh.add_vertex(p.template cast<typename gsSurfMesh<Scalar>::Scalar>());
+                        v = mesh.add_vertex(p.template cast<Scalar>());
                         vertices[i] = v;
                         vMap[p] = v;
                     }
