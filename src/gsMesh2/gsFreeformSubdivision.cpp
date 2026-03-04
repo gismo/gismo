@@ -487,10 +487,9 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     // (`function_count = 2 * valence + 1`) minus the dimension of the
     // space (`v + 3`), i.e. `v-2`.
     gsMatrix<real_t> constraints;
-    auto _readFile =
-        gsReadFile<>("freeformSubdivision/fitting_functions/Val" +
-                         std::to_string(valence) + "Constraints.xml",
-                     constraints);
+    auto _readFile = gsReadFile<>(
+        this->patch_path + "Val" + std::to_string(valence) + "Constraints.xml",
+        constraints);
     size_t constraint_count = constraints.rows();
 
     // Default threshold is based on machine epsilon
@@ -679,10 +678,9 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 // Construct the filepath for the ith basis function and
                 // load it with gismo utilities
                 fitting_functions.emplace_back(
-                    gsFileData<real_t>(
-                        "freeformSubdivision/fitting_functions/Val" +
-                        std::to_string(valence) + "Fct" + std::to_string(i) +
-                        ".xml")
+                    gsFileData<real_t>(patch_path + "Val" +
+                                       std::to_string(valence) + "Fct" +
+                                       std::to_string(i) + ".xml")
                         .getAll<gsTensorBSpline<2, real_t>>());
             }
 
@@ -708,8 +706,7 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
             gsMatrix<real_t> A_control(point_count, function_count);
             gsMatrix<real_t> target(sample_count, D);
 
-            gsMatrix<real_t> outer_values(N * N * patches - point_count,
-                                          D);
+            gsMatrix<real_t> outer_values(N * N * patches - point_count, D);
 
             {
                 // the sampling index - this is incremented whenever we sample a
@@ -730,16 +727,22 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                         // by index, v dimension.
                         for (size_t vx = 0; vx < N; ++vx)
                         {
-                            // control point of fitting function at this point
-                            // If this is zero, we want to skip it since we only
-                            // fit within the support of the fitting functions.
-                            // TODO: Check all, not just 1.
-                            real_t cp =
-                                fitting_functions[0][p]->coef(ux * N + vx, 2);
-
-                            if (cp == 0.0)
+                            // We check all the control points of the fitting
+                            // functions at this point. If they are all zero, we
+                            // don't want to consider this point for the EV
+                            // fitting.
+                            if (std::any_of(
+                                    fitting_functions.begin(),
+                                    fitting_functions.end(),
+                                    [&](const std::vector<std::unique_ptr<
+                                            gsTensorBSpline<2, real_t>>>& ff)
+                                    {
+                                        return ff[p]->coef(ux * N + vx, 2) !=
+                                               0.0;
+                                    }) == false)
                             {
-                                outer_values.row(i_o) = *control_nets[p](ux, vx);
+                                outer_values.row(i_o) =
+                                    *control_nets[p](ux, vx);
                                 i_o++;
                                 continue;
                             }

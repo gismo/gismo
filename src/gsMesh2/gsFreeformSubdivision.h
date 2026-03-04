@@ -35,13 +35,21 @@ public: // Constructors
     ///
     /// Default constructor. Sets no options and leaves the targeted mesh as a
     /// nullpointer.
-    gsFreeformSubdivision() : gsSubdivisionScheme() {}
+    gsFreeformSubdivision()
+        : gsSubdivisionScheme(),
+          patch_path("freeformSubdivision/fitting_functions/")
+    {
+    }
 
     /// \brief Constructor with a mesh to target.
     ///
     /// Constructor that accepts a mesh to be targeted by this constructor.
     /// Sets no options.
-    gsFreeformSubdivision(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh) {}
+    gsFreeformSubdivision(gsSurfMesh* mesh)
+        : gsSubdivisionScheme(mesh),
+          patch_path("freeformSubdivision/fitting_functions/")
+    {
+    }
 
 private: // Helper functions
     /// \brief Performs deCasteljau algorithm to split a matrix into two.
@@ -112,8 +120,23 @@ private: // Helper functions
         return mesh.valence(v) == 4 || mesh.is_boundary(v);
     }
 
-    gsMatrix<real_t> fit_ev(gsMatrix<real_t> A, gsMatrix<real_t> target,size_t valence);
-    gsMatrix<real_t> fit_ev_opt(gsMatrix<real_t> A, gsMatrix<real_t> target,size_t valence);
+    /// Manages the fit around an EV using functional conditions.
+    gsMatrix<real_t> fit_ev(gsMatrix<real_t> A, gsMatrix<real_t> target,
+                            size_t valence);
+
+    /// Manages the fit around an EV by optimizing for a single functional.
+    gsMatrix<real_t> fit_ev_opt(gsMatrix<real_t> A, gsMatrix<real_t> target,
+                                size_t valence);
+
+    /// Saves the relative location of the folder containing all the model
+    /// patches.
+    std::string patch_path;
+
+public: // Setters
+    void set_patch_path(std::string patch_path)
+    {
+        this->patch_path = patch_path;
+    };
 
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity check_mesh() override;

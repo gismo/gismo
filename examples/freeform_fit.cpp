@@ -17,6 +17,7 @@ int main(int argc, char** argv)
 {
     // Command line
     std::string filepath("off/octtorus.off");
+    std::string patchpath("");
     std::string operations("sd");
     std::string function("");
     bool control_net(false);
@@ -32,6 +33,10 @@ int main(int argc, char** argv)
                   "A function to replace the last coordinate of your loaded "
                   "object. E.g. `x^2 + y`.",
                   function);
+    cmd.addString("p", "patchpath",
+                  "The path to the files containing the model patches for EV "
+                  "subdivision.",
+                  patchpath);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
     try
     {
@@ -45,6 +50,10 @@ int main(int argc, char** argv)
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
 
+    if(patchpath != ""){
+        subdiv.set_patch_path(patchpath);
+    }
+
     std::string xml(".xml");
     std::string off(".off");
     // Check the filetype to be loaded.
@@ -52,7 +61,7 @@ int main(int argc, char** argv)
                    filepath.end(), xml.begin()))
     {
         gsInfo << "Loading xml\n";
-            subdiv.initialize_data_xml(filepath);
+        subdiv.initialize_data_xml(filepath);
     }
     else if (std::equal(filepath.begin() + filepath.size() - off.size(),
                         filepath.end(), off.begin()))
@@ -67,8 +76,10 @@ int main(int argc, char** argv)
     }
 
     // Take care of function
-    if(function.length() > 0){
-        subdiv.fit_last_coordinate_to_function(gsFunctionExpr<real_t>(function, 2));
+    if (function.length() > 0)
+    {
+        subdiv.fit_last_coordinate_to_function(
+            gsFunctionExpr<real_t>(function, 2));
     }
 
     gsWriteParaview(subdiv.multipatch(), "results/initial_data", 1000, false,
