@@ -161,6 +161,9 @@ public:
     /// \param function A real-valued function in D-1 real variables.
     void fit_last_coordinate_to_function(gsFunctionExpr<> function);
 
+    real_t error(gsFunctionExpr<> function, size_t samples_per_face);
+
+
     /// \brief Initializes the targeted mesh from an xml file.
     ///
     /// Loads the `.xml`-File at the given filepath, which is assumed to contain
@@ -177,7 +180,9 @@ public:
     /// $C^s$ at edges and ordinary vertices. No guarantee is made for
     /// extraordinary vertices.
     /// Returs a vector containing the coefficient matrix of the fitting for
-    /// each extraordinary vertex.
+    /// each extraordinary vertex, as well as a larger matrix containing the
+    /// values of the outer control points of patches around that vertex. These
+    /// matrices will alternate.
     ///
     /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
     /// supported.

@@ -13,6 +13,7 @@
 
 #include "gsCore/gsFunctionExpr.h"
 #include <cmath>
+#include <cstdlib>
 #include <gismo.h>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMultiPatch.h>
@@ -433,8 +434,6 @@ gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
     Apv.setThreshold(1e-8);
     gsMatrix<> K = Apv.kernel();
 
-    gsInfo << "Kernel size: " << K.rows() << "x" << K.cols() << "\n";
-
     gsMatrix<> diff(2 * valence, 2 * valence + 1);
     diff.setZero();
     for (size_t i = 0; i < 2 * valence; i++)
@@ -449,19 +448,6 @@ gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
            << "\n";
     gsInfo << "Final fitting error: "
            << (A * (solution + K * w) - target).norm() << "\n";
-
-    // gsInfo << "Solution pre change:\n";
-    // for (index_t i = 0; i < solution.rows(); ++i)
-    // {
-    //     gsInfo << solution.row(i) << "\n";
-    // }
-
-    gsInfo << "\nSolution:\n";
-    for (index_t i = 0; i < (solution + K * w).rows(); ++i)
-    {
-        gsInfo << (solution + K * w)(i, 2) << ", ";
-    }
-    gsInfo << "\n";
 
     return solution + K * w;
 }
@@ -493,17 +479,18 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     size_t constraint_count = constraints.rows();
 
     // Default threshold is based on machine epsilon
-    gsEigen::FullPivLU<gsMatrix<real_t>> lu(A);
-    lu.setThreshold(1e-8);
-    gsInfo << "Rank of A_sample (" << A.rows() << "x" << A.cols()
-           << "): " << lu.rank() << " (should be " << (valence + 3) << ")\n";
+    // gsEigen::FullPivLU<gsMatrix<real_t>> lu(A);
+    // lu.setThreshold(1e-8);
+    // gsInfo << "Rank of A_sample (" << A.rows() << "x" << A.cols()
+    //        << "): " << lu.rank() << " (should be " << (valence + 3) << ")\n";
 
-    gsMatrix<> K = constraints.fullPivLu().kernel();
-    gsEigen::FullPivLU<gsMatrix<real_t>> lu2(A * K);
-    lu2.setThreshold(1e-8);
-    gsInfo << "Rank of constrained A_sample (" << constraint_count
-           << " constraints): " << lu2.rank() << " (should be " << (valence + 3)
-           << ")\n";
+    // gsMatrix<> K = constraints.fullPivLu().kernel();
+    // gsEigen::FullPivLU<gsMatrix<real_t>> lu2(A * K);
+    // lu2.setThreshold(1e-8);
+    // gsInfo << "Rank of constrained A_sample (" << constraint_count
+    //        << " constraints): " << lu2.rank() << " (should be " << (valence +
+    //        3)
+    //        << ")\n";
 
     // Build the matrix & target
     gsMatrix<real_t> augmented_A(function_count + constraint_count,
@@ -1147,6 +1134,73 @@ void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
             }
         }
     }
+}
+
+template <size_t N, size_t D>
+real_t gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
+                                          size_t samples_per_face)
+{
+
+    auto& mesh = *m_mesh;
+    size_t spf = samples_per_face;
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+
+    real_t error_l0(0.);
+    real_t error_l1(0.);
+    real_t error_l2(0.);
+    real_t error_count(0);
+
+    for (auto f : mesh.faces())
+    {
+        // read out the control points
+        auto& data = face_data_vec[f.idx()].control_points;
+
+        // Convert the first D-1 coordinates into a patch
+
+        // Create a spline basis for a normal bezier patch.
+        gsKnotVector<> kv1(0, 1, 0, N);
+        gsKnotVector<> kv2(0, 1, 0, N);
+        gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
+
+        // Create a coefficient matrix out of the control points.
+        gsMatrix<> coeffs(N * N, D);
+        for (size_t i = 0; i < N; ++i)
+        {
+            for (size_t j = 0; j < N; ++j)
+            {
+                int total_index = i * N + j;
+                coeffs.row(total_index) = data(i, j);
+            }
+        }
+
+        // The final patch for all but the last coordinate.
+        gsTensorBSpline<2> input_patch(basis, coeffs);
+
+        for (size_t i = 0; i < spf * spf; ++i)
+        {
+            // Get the value of the patch
+            gsVector<real_t, D> point =
+                input_patch.eval(gsVector<real_t, 2>::vec(
+                    real_t(std::floor(i % spf)) / real_t(spf - 1),
+                    real_t(std::floor(i / spf)) / real_t(spf - 1)));
+            gsVector<real_t, D - 1> point2 = point.topRows(D - 1);
+
+            // Compare it to the value of the function and collate update the
+            // error receptables.
+            real_t err = abs(point(D - 1) - function.eval(point2)(0));
+            error_l0 = std::max(error_l0, err);
+            error_l1 += err;
+            error_l2 += err * err;
+            ++error_count;
+        }
+    }
+
+    gsInfo << "Error L0: " << error_l0 << ".\n";
+    gsInfo << "Error L1: " << error_l1 / real_t(error_count) << ".\n";
+    gsInfo << "Error L2: " << sqrt(error_l2 / real_t(error_count)) << ".\n";
+
+    return sqrt(error_l2 / real_t(error_count));
 }
 
 template <size_t N, size_t D>
