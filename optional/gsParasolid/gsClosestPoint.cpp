@@ -26,12 +26,14 @@ gsPK_VECTOR(const gsVector<real_t, 3>& gsVector);
 TEMPLATE_INST bool
 gsClosestParam(const gsTensorBSpline<2, real_t>& gsBSurf,
                const gsVector<real_t, 3>& gsPoint,
-               gsVector<real_t, 2>& gsResult);
+               gsVector<real_t, 2>& gsResult,
+               bool performance = true);
 
 TEMPLATE_INST bool
 gsClosestParam(const gsTensorBSpline<2, real_t>& gsBSurf,
                const gsMatrix<real_t>& gsPoints,
-               gsMatrix<real_t>& gsResults);
+               gsMatrix<real_t>& gsResults,
+               bool performance = true);
 
 } // namespace extensions
 } // namespace gismo

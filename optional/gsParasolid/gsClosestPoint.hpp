@@ -35,7 +35,8 @@ namespace gismo
         template <class T>
         bool gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
                             const gsVector<T, 3>& gsPoint,
-                            gsVector<T, 2>& gsResult)
+                            gsVector<T, 2>& gsResult,
+                            bool performance)
         {
 			gsPKSession::start();
             PK_BSURF_t               bsurf;
@@ -46,8 +47,11 @@ namespace gismo
 
             PK_GEOM_range_vector_o_t options;
             PK_GEOM_range_vector_o_m(options);
-            options.opt_level =      PK_range_opt_performance_c;
-            //options.opt_level =      PK_range_opt_accuracy_c;
+
+            if(performance)
+                options.opt_level =  PK_range_opt_performance_c;
+            else
+                options.opt_level =  PK_range_opt_accuracy_c;
 
             PK_range_result_t        range_result;
             PK_range_1_r_t           range;
@@ -67,7 +71,8 @@ namespace gismo
         template <class T>
         bool gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
                             const gsMatrix<T>& gsPoints,
-                            gsMatrix<T>& gsResults)
+                            gsMatrix<T>& gsResults,
+                            bool performance)
         {
             GISMO_ASSERT(gsPoints.cols() == 3, "gsClosestParam is implemented for three-dimensional points only.");
             PK_BSURF_t               bsurf;
@@ -84,12 +89,10 @@ namespace gismo
             PK_GEOM_range_vector_many_o_t options;
             PK_GEOM_range_vector_many_o_m(options);
 
-            // Keeping the opt_level at PK_range_opt_performace_c
-            // (default) lead to slightly different results between
-            // the two versions of this function.
-			//gsInfo << "accuracy!" << std::endl;
-            //options.opt_level =      PK_range_opt_performance_c;
-            options.opt_level =      PK_range_opt_accuracy_c;
+            if(performance)
+                options.opt_level =  PK_range_opt_performance_c;
+            else
+                options.opt_level =  PK_range_opt_accuracy_c;
 
             PK_range_result_t        range_result[n_vectors];
             PK_range_1_r_t           ranges[n_vectors];
@@ -99,7 +102,6 @@ namespace gismo
             if(err)
                 gsWarn << "err: " << err << std::endl;
 
-            // gsResults.col(i) = (u[i], v[i])
             gsResults.resize(2, n_vectors);
             for(int j=0; j<n_vectors; j++)
                 for(int i=0; i<2; i++)

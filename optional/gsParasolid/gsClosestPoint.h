@@ -33,25 +33,31 @@ namespace gismo
 
         /**
            Finds the point on \a gsBSurf that is closest to \a point
-           and writes its parameter values into \a result.
-           Returns Parasolid error status.
+           and writes its parameter values into \a result. The
+           optional parameter \a performance decides between
+           performance (true) and precision (false). Returns Parasolid
+           error status.
         */
         template <class T>
         bool gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
                             const gsVector<T, 3>& gsPoint,
-                            gsVector<T, 2>& gsResult);
+                            gsVector<T, 2>& gsResult,
+                            bool performance = true);
 
         /**
            For each three-dimensional point represented as a row of \a
            gsPoints finds the closest point on \a gsBSurf and writes
            its parameters as a column of \a gsResults. (This might
            sound strange but it corresponds to the ordering in
-           gsFitting.  Returns Parasolid error status.
+           gsFitting.  The optional parameter \a performance decides
+           between performance (true) and precision (false).  Returns
+           Parasolid error status.
         */
         template <class T>
         bool gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
                             const gsMatrix<T>& gsPoints,
-                            gsMatrix<T>& gsResults);
+                            gsMatrix<T>& gsResults,
+                            bool performance = true);
 
         /**
            Finds the point on \a gsBSurf that is closest to \a point
