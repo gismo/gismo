@@ -2,8 +2,6 @@
 #include <gsMesh2/IO.h>
 
 #include <cstdio>
-#include <vector>
-#include <string>
 
 
 //== NAMESPACES ===============================================================

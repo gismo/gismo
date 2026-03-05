@@ -2,11 +2,6 @@
 #include <gsMesh2/IO.h>
 
 #include <cstdio>
-#include <cstring>
-#include <cctype>
-#include <cstdlib>
-#include <vector>
-#include <string>
 
 namespace gismo {
 

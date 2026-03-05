@@ -100,7 +100,6 @@ TEST(DualArithmeticTest)
         d(M^2_00)/dx = 2x = 4
         d(M^2_01)/dx = 0
         d(M^2_10)/dx = 0
-        d(M^2_11)/dx = 4x^3 = 32
         d(M^2_11)/dx = x^2*2*x+x^2*2*x = 4*x^3 = 32
     */
     

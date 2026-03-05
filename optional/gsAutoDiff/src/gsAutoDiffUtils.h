@@ -1,22 +1,18 @@
-/**
-   Automatic differentiation data type for C++, depends on the Eigen
-   linear algebra library.
+/** @file gsAutoDiffUtils.h
 
-   Copyright (c) 2012 by Wenzel Jakob. Based on code by Jon Kaldor
-   and Eitan Grinspun.
+    @brief Provides utilities for autodiff types
+    
+    This file provides Eigen support for autodiff types.
+    The Eigen library already provides NumTraits specializations for autodiff types
+    when including the appropriate autodiff headers.
 
-   Modifications for G+Smo, Angelos Mantzaflaris, 2015
-   Additional modifications for multi-mode support, H.M. Verhelst, 2025
+    This file is part of the G+Smo library.
 
-   This library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-   This library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
+    Author(s): H.M. Verhelst
 */
 
 #pragma once

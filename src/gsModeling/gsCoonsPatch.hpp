@@ -112,10 +112,7 @@ void gsCoonsPatch<T>::compute_impl()
                     // fetch Greville point
                     const T x = gr[k](0, grid->at(k));
                     // update weight
-                    if (2 == cf->at(k))
-                        w *= -x;
-                    else
-                        w *= -(T(1.0)-x);
+                    w *= - ( 2 == cf->at(k) ? x : 1.0-x );
                 }
 
                 // Compute index of contributing coefficient

@@ -28,6 +28,9 @@
 #include <gsAutoDiff/gsAutoDiff2.h>
 #endif
 
+// Include autodiff traits (always available, safe to include unconditionally)
+#include <gsAutoDiff/src/gsAutoDiffTraits.h>
+
 /* ExprTk options */
 
 //This define will enable printing of debug information to stdout during
@@ -201,13 +204,6 @@ template<typename T> class gsFunctionExpr<T>::gsFunctionExprPrivate
 {
 public:
 
-// Type trait to check if T is already an autodiff type
-template<typename U> struct is_autodiff_type : std::false_type {};
-#if defined(gsAutoDiff_ENABLED)
-template<typename U, typename V> struct is_autodiff_type<autodiff::detail::Dual<U, V>> : std::true_type {};
-template<typename U> struct is_autodiff_type<autodiff::reverse::detail::Variable<U>> : std::true_type {};
-#endif
-
 // Numeric_t selection:
 // - If gsAutoDiff_ENABLED: use dual2nd_t for computing first AND second derivatives via AD
 // - If GISMO_WITH_ADIFF: use old DScalar
@@ -293,6 +289,19 @@ public:
         //symbol_table.remove_variable("w",vars[3]);
         symbol_table.add_pi();
         //symbol_table.add_constant("C", 1);
+
+#       if defined(gsAutoDiff_ENABLED)
+        // Warn when using backward AD with expression parser
+        if constexpr (std::is_same_v<T, var_t>) {
+            static bool warned = false;
+            if (!warned) {
+                gsWarn << "Warning: gsFunctionExpr instantiated with backward AD type (var_t). "
+                       << "Derivatives will be computed using forward-mode autodiff internally. "
+                       << "Backward AD does not propagate through expression parsing.\n";
+                warned = true;
+            }
+        }
+#       endif
     }
 
 public:

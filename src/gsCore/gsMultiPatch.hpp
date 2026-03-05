@@ -431,12 +431,8 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
                 const index_t s   = static_cast<index_t>(c.parameter());// 0 or 1
 
                 for (index_t i=0; i<m_dim;++i)
-                {
-                    if (dir == i)
-                        coor(i,l) = supp(i,s);
-                    else
-                        coor(i,l) = (supp(i,1)+supp(i,0))/T(2.0);
-                }
+                    coor(i,l) = ( dir==i ?  supp(i,s) :
+                                  (supp(i,1)+supp(i,0))/2.0 );
                 l++;
             }
         }

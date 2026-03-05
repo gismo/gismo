@@ -19,17 +19,6 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsIO/gsXml.h>
-#include <string>
-#include <algorithm>
-#include <vector>
-#include <iostream>
-// Needed by some utilities below
-#include <map>
-#include <list>
-#include <sstream>
-#include <cstring>
-#include <cstdlib>
-#include <limits>
 
 namespace gismo {
 

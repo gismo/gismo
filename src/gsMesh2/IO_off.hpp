@@ -2,13 +2,6 @@
 #include <gsMesh2/IO.h>
 
 #include <cstdio>
-#include <cctype>
-#include <cstring>
-#include <algorithm>
-#include <vector>
-#include <cassert>
-#include <istream>
-#include <streambuf>
 
 
 //== NAMESPACE ================================================================

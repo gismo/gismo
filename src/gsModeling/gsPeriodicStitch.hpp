@@ -143,10 +143,7 @@ void gsPeriodicStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &n
         lambdas = neighbourhood.getLambdas(i);
         for (size_t j = 0; j < N; j++)
         {
-            if (i == j)
-                LHS(i, j) = T(1);
-            else
-                LHS(i, j) = -lambdas[j];
+            LHS(i, j) = ( i==j ? (T)(1) : -lambdas[j] );
 
             // If your neighbour is across the stitch, its contributions appear
             // on the right hand-side multiplied by +1 or -1. Write the equations

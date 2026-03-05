@@ -2,15 +2,10 @@
 //== INCLUDES =================================================================
 
 #include <gsMesh2/IO.h>
-#include <gsCore/gsMath.h>
 
 #include <cstdio>
 #include <cfloat>
-#include <cctype>
-#include <cstring>
-#include <cmath>
 #include <map>
-#include <vector>
 #include <fstream>
 
 
