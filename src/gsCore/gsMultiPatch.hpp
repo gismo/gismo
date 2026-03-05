@@ -668,6 +668,7 @@ gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
     gsSurfMesh<T> mesh;
     auto pid = mesh.template add_vertex_property<index_t>("v:patch");
     auto anchor = mesh.template add_vertex_property<index_t>("v:anchor");
+    auto dof = mesh.template add_vertex_property<index_t>("v:dof");
     typename gsSurfMesh<T>::Vertex v;
     typename gsSurfMesh<T>::Point pt(0,0,0);
     const index_t gd = geoDim();
@@ -682,6 +683,7 @@ gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
         v = mesh.add_vertex( pt );
         pid[v]  = pi[j].first;
         anchor[v] = pi[j].second;
+        dof[v]  = j;
     }
 
     size_t np = nPatches();
@@ -890,9 +892,9 @@ T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
     gsVector<T> tmp;
 
 #ifndef _MSC_VER
-#   pragma omp declare reduction(min : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
+#   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
     struct __closestPointHelper cph;
-#   pragma omp parallel for default(shared) private(tmp) reduction(min:cph) //OpenMP 4.0, will not work on VS2019
+#   pragma omp parallel for default(shared) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
 #else
     struct __closestPointHelper cph;
 #endif
@@ -1033,7 +1035,7 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
 
     gsMatrix<T> quPoints, values;
     gsVector<T> quWeights;
-    gsVector<index_t, 2> numNodes;
+    gsVector<index_t> numNodes(2);
     gsMatrix<T> Bd;
     std::array<size_t, 4> key;
     std::vector<gsKnotVector<T> >  kv(domainDim());

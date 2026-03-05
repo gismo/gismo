@@ -31,16 +31,16 @@ namespace gismo
 template <class Scalar = real_t>
 class GISMO_EXPORT gsSubdivScheme
 {
-
-      // type definitions
-    typedef typename gsSurfMesh<Scalar>::Point Point;
-    typedef typename gsSurfMesh<Scalar>::Vertex Vertex;
-    typedef typename gsSurfMesh<Scalar>::Face Face;
-
+protected:
     gsSurfMesh<Scalar>* m_mesh;///<pointer to the input mesh
 
     gsOptionList m_options;
 
+public:
+    // type definitions
+    typedef typename gsSurfMesh<Scalar>::Point Point;
+    typedef typename gsSurfMesh<Scalar>::Vertex Vertex;
+    typedef typename gsSurfMesh<Scalar>::Face Face;
 
 public:
 
@@ -128,5 +128,5 @@ public: // Loop subdivision
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
-#include <gsMesh2/gsSubdivScheme.hpp>
+#include GISMO_HPP_HEADER(gsSubDivScheme.hpp)
 #endif

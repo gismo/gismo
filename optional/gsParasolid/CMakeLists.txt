@@ -50,14 +50,17 @@ install(FILES   ${CMAKE_CURRENT_SOURCE_DIR}/gsReadParasolid.h
 endif()
 
 # add example files
-aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
-foreach(file ${FILES})
-    add_gismo_executable(${file})
-    get_filename_component(tarname ${file} NAME_WE) # name without extension
-    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
-    set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
-    # install the example executables (optionally)
-    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
-endforeach(file ${FILES})
+if(GISMO_BUILD_EXAMPLES)
+    aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
+    foreach(file ${FILES})
+        add_gismo_executable(${file})
+        get_filename_component(tarname ${file} NAME_WE) # name without extension
+        set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
+        set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
+        # install the example executables (optionally)
+        install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
+    endforeach(file ${FILES})
+endif(GISMO_BUILD_EXAMPLES)
+
 
 #set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})

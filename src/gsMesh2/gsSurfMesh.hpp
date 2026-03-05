@@ -2226,8 +2226,7 @@ typename gsSurfMesh<Scalar>::Point
 gsSurfMesh<Scalar>::face_barycenter(Face f)
 {
     unsigned int f_val{ 0 };
-    gsEigen::Matrix<Scalar, 3, 1, 0, 3, 1> coords;
-    Point tmp;
+    Point coords, tmp;
 
     f_val = valence(f);
     coords.setZero();
