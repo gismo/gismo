@@ -257,59 +257,14 @@ inline bool isfinite(const autodiff::reverse::detail::Variable<T>& v) {
     return std::isfinite(val(v));
 }
 
-} // namespace std - close before ExprPtrWrapper definition
+} // namespace std
 
-// ExprPtrWrapper definition - must be in autodiff namespace, not std
-namespace autodiff {
-namespace reverse {
-namespace detail {
-    
-    // Use the ExprPtr and Variable types that are already defined in var.hpp
-    // ExprPtr<T> = std::shared_ptr<Expr<T>>
-    
-    /// Wrapper for ExprPtr that converts ONLY to Variable (not to ExprPtr)
-    /// This resolves ternary ambiguity and avoids STL assignment issues
-    template<typename T>
-    struct ExprPtrWrapper {
-        ExprPtr<T> ptr;
-        
-        ExprPtrWrapper(const ExprPtr<T>& p) : ptr(p) {}
-        
-        // Implicit conversion to Variable ONLY (for ternary and initialization)
-        operator Variable<T>() const { return Variable<T>(ptr); }
-    };
-    
-} // namespace detail
-} // namespace reverse
-} // namespace autodiff
-
-// Reopen std namespace for ExprPtrWrapper overloads
+// Reopen std namespace for generic autodiff expression overloads
 namespace std {
 
-// Specific overloads for ExprPtrWrapper (must be before generic templates)
-template<typename T>
-inline bool isnan(const autodiff::reverse::detail::ExprPtrWrapper<T>& w) {
-    return std::isnan(w.ptr->val);
-}
-
-template<typename T>
-inline bool isinf(const autodiff::reverse::detail::ExprPtrWrapper<T>& w) {
-    return std::isinf(w.ptr->val);
-}
-
-template<typename T>
-inline bool isfinite(const autodiff::reverse::detail::ExprPtrWrapper<T>& w) {
-    return std::isfinite(w.ptr->val);
-}
-
-// Type trait to detect ExprPtrWrapper
-template<typename T> struct is_expr_ptr_wrapper : std::false_type {};
-template<typename T> struct is_expr_ptr_wrapper<autodiff::reverse::detail::ExprPtrWrapper<T>> : std::true_type {};
-
-// Generic overload for any autodiff expression that can be converted to Dual
+// Generic overload for any autodiff expression that can be converted to a value
 // This handles BinaryExpr and other expression templates
-// SFINAE: disabled for ExprPtrWrapper (has specific overload above)
-template<typename Expr, typename = std::enable_if_t<!is_expr_ptr_wrapper<std::decay_t<Expr>>::value>>
+template<typename Expr>
 inline auto isnan(const Expr& expr)
     -> decltype(std::isnan(autodiff::val(expr)))
 {
@@ -317,7 +272,7 @@ inline auto isnan(const Expr& expr)
     return std::isnan(val(expr));
 }
 
-template<typename Expr, typename = std::enable_if_t<!is_expr_ptr_wrapper<std::decay_t<Expr>>::value>>
+template<typename Expr>
 inline auto isinf(const Expr& expr)
     -> decltype(std::isinf(autodiff::val(expr)))
 {
@@ -325,7 +280,7 @@ inline auto isinf(const Expr& expr)
     return std::isinf(val(expr));
 }
 
-template<typename Expr, typename = std::enable_if_t<!is_expr_ptr_wrapper<std::decay_t<Expr>>::value>>
+template<typename Expr>
 inline auto isfinite(const Expr& expr)
     -> decltype(std::isfinite(autodiff::val(expr)))
 {
@@ -376,72 +331,48 @@ inline autodiff::reverse::detail::ExprPtr<T> log10(const autodiff::reverse::deta
     return log10(v.expr);
 }
 
+// log10 for autodiff forward-mode expression types (forward to autodiff's implementation)
+template<typename E,
+         typename std::enable_if<autodiff::detail::traits::isExpr<E>::value
+                              && !autodiff::detail::traits::isDual<E>::value, int>::type = 0>
+inline auto log10(const E& expr) -> decltype(autodiff::detail::log10(expr)) {
+    using autodiff::detail::log10;
+    return log10(expr);
+}
+
 // Note: floor, ceil, round for autodiff types are defined in gsAutoDiffUtils.h
 
-// log10 for autodiff expression types
-template<typename Op, typename ExprType>
-inline auto log10(const autodiff::detail::UnaryExpr<Op, ExprType>& expr)
-    -> decltype(std::log10(autodiff::val(expr)))
-{
-    using std::log10;
-    return log10(autodiff::val(expr));
+// max/min for mixed Dual + expression types (forward to autodiff's implementations)
+template<typename T, typename G, typename E,
+         typename std::enable_if<autodiff::detail::traits::isExpr<E>::value
+                              && !autodiff::detail::traits::isDual<E>::value, int>::type = 0>
+inline autodiff::detail::Dual<T,G> max(const autodiff::detail::Dual<T,G>& a, const E& b) {
+    using autodiff::detail::max;
+    return max(a, b);
 }
 
-template<typename Op, typename L, typename R>
-inline auto log10(const autodiff::detail::BinaryExpr<Op, L, R>& expr)
-    -> decltype(std::log10(autodiff::val(expr)))
-{
-    using std::log10;
-    return log10(autodiff::val(expr));
+template<typename E, typename T, typename G,
+         typename std::enable_if<autodiff::detail::traits::isExpr<E>::value
+                              && !autodiff::detail::traits::isDual<E>::value, int>::type = 0>
+inline autodiff::detail::Dual<T,G> max(const E& a, const autodiff::detail::Dual<T,G>& b) {
+    using autodiff::detail::max;
+    return max(a, b);
 }
 
-// max/min for mixed autodiff types (Dual with expression types)
-template<typename T, typename G, typename Op, typename ExprType>
-inline autodiff::detail::Dual<T,G> max(const autodiff::detail::Dual<T,G>& a, const autodiff::detail::UnaryExpr<Op, ExprType>& b) {
-    using autodiff::val;
-    return (val(a) > val(b)) ? a : autodiff::detail::Dual<T,G>(val(b));
+template<typename T, typename G, typename E,
+         typename std::enable_if<autodiff::detail::traits::isExpr<E>::value
+                              && !autodiff::detail::traits::isDual<E>::value, int>::type = 0>
+inline autodiff::detail::Dual<T,G> min(const autodiff::detail::Dual<T,G>& a, const E& b) {
+    using autodiff::detail::min;
+    return min(a, b);
 }
 
-template<typename T, typename G, typename Op, typename ExprType>
-inline autodiff::detail::Dual<T,G> max(const autodiff::detail::UnaryExpr<Op, ExprType>& a, const autodiff::detail::Dual<T,G>& b) {
-    using autodiff::val;
-    return (val(a) > val(b)) ? autodiff::detail::Dual<T,G>(val(a)) : b;
-}
-
-template<typename T, typename G, typename Op, typename L, typename R>
-inline autodiff::detail::Dual<T,G> max(const autodiff::detail::Dual<T,G>& a, const autodiff::detail::BinaryExpr<Op, L, R>& b) {
-    using autodiff::val;
-    return (val(a) > val(b)) ? a : autodiff::detail::Dual<T,G>(val(b));
-}
-
-template<typename T, typename G, typename Op, typename L, typename R>
-inline autodiff::detail::Dual<T,G> max(const autodiff::detail::BinaryExpr<Op, L, R>& a, const autodiff::detail::Dual<T,G>& b) {
-    using autodiff::val;
-    return (val(a) > val(b)) ? autodiff::detail::Dual<T,G>(val(a)) : b;
-}
-
-template<typename T, typename G, typename Op, typename ExprType>
-inline autodiff::detail::Dual<T,G> min(const autodiff::detail::Dual<T,G>& a, const autodiff::detail::UnaryExpr<Op, ExprType>& b) {
-    using autodiff::val;
-    return (val(a) < val(b)) ? a : autodiff::detail::Dual<T,G>(val(b));
-}
-
-template<typename T, typename G, typename Op, typename ExprType>
-inline autodiff::detail::Dual<T,G> min(const autodiff::detail::UnaryExpr<Op, ExprType>& a, const autodiff::detail::Dual<T,G>& b) {
-    using autodiff::val;
-    return (val(a) < val(b)) ? autodiff::detail::Dual<T,G>(val(a)) : b;
-}
-
-template<typename T, typename G, typename Op, typename L, typename R>
-inline autodiff::detail::Dual<T,G> min(const autodiff::detail::Dual<T,G>& a, const autodiff::detail::BinaryExpr<Op, L, R>& b) {
-    using autodiff::val;
-    return (val(a) < val(b)) ? a : autodiff::detail::Dual<T,G>(val(b));
-}
-
-template<typename T, typename G, typename Op, typename L, typename R>
-inline autodiff::detail::Dual<T,G> min(const autodiff::detail::BinaryExpr<Op, L, R>& a, const autodiff::detail::Dual<T,G>& b) {
-    using autodiff::val;
-    return (val(a) < val(b)) ? autodiff::detail::Dual<T,G>(val(a)) : b;
+template<typename E, typename T, typename G,
+         typename std::enable_if<autodiff::detail::traits::isExpr<E>::value
+                              && !autodiff::detail::traits::isDual<E>::value, int>::type = 0>
+inline autodiff::detail::Dual<T,G> min(const E& a, const autodiff::detail::Dual<T,G>& b) {
+    using autodiff::detail::min;
+    return min(a, b);
 }
 
 // max/min for Variable and ExprPtr
