@@ -17,10 +17,11 @@ int main(int argc, char** argv)
 {
     // Command line
     std::string filepath("off/octtorus.off");
-    std::string patchpath("");
+    std::string patchpath("freeformSubdivision/fitting_functions/");
     std::string operations("sd");
     std::string function("");
     bool control_net(false);
+    bool optimize_fit(false);
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
@@ -38,6 +39,7 @@ int main(int argc, char** argv)
                   "subdivision.",
                   patchpath);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
+    cmd.addSwitch("opt", "Optimizes the fit via a functional instead of linear constraints.", optimize_fit);
     try
     {
         cmd.getValues(argc, argv);
@@ -50,9 +52,8 @@ int main(int argc, char** argv)
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
 
-    if(patchpath != ""){
-        subdiv.set_patch_path(patchpath);
-    }
+    subdiv.options().setString("model_patch_path", patchpath);
+    subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
     std::string xml(".xml");
     std::string off(".off");

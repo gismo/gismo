@@ -15,13 +15,14 @@ using namespace gismo;
 
 int main(int argc, char** argv)
 {
-    // Command line
-    std::string filepath("off/octtorus.off");
-    std::string patchpath("");
+    // Command line inputs
+    std::string filepath("freeformSubdivision/fitting_functions/Val5Flat.xml");
+    std::string patchpath("freeformSubdivision/fitting_functions/");
     index_t steps(2);
     index_t valence(-1);
     std::string function("x+y");
     bool control_net(false);
+    bool optimize_fit(false);
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
@@ -34,7 +35,6 @@ int main(int argc, char** argv)
                   "The path to the files containing the model patches for EV "
                   "subdivision.",
                   patchpath);
-    cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
     cmd.addInt("s", "steps",
                "The number of steps (subdivide, fit, smooth) to repeat.",
                steps);
@@ -42,6 +42,8 @@ int main(int argc, char** argv)
         "v", "valence",
         "The valence of the patch to fit. Overwrites the file path, if set.",
         valence);
+    cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
+    cmd.addSwitch("opt", "Optimizes the fit via a functional instead of linear constraints.", optimize_fit);
     try
     {
         cmd.getValues(argc, argv);
@@ -59,11 +61,8 @@ int main(int argc, char** argv)
 
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
-
-    if (patchpath != "")
-    {
-        subdiv.set_patch_path(patchpath);
-    }
+    subdiv.options().setString("model_patch_path", patchpath);
+    subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
     std::string xml(".xml");
     std::string off(".off");

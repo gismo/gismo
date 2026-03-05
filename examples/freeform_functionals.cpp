@@ -1,8 +1,11 @@
 /** @file freeform_sdmatrix.cpp
 
-    @brief Goes through all the valences in the 'patchpath' folder of filedata
-   and creates the subdivision matrices for them. Also outputs the coefficient
-   values for the outer points.
+    @brief Goes through all the valences in the 'patchpath' subfolder of
+   filedata optimizes the fit with a target functional to create a legal
+   coefficient space, then takes the kernel of that to generate the appropriate
+   free form functionals and places them in the correct folder. Assumes to be
+   run in the 'build'-folder and to reach 'filedata' from there via
+   '../filedata'.
 
     Author(s): L. Mussmaecher
 */
@@ -37,6 +40,7 @@ int main(int argc, char** argv)
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
     subdiv.options().setString("model_patch_path", patchpath);
+    subdiv.options().setSwitch("optimize_fit", true);
 
     // Iterate all valences
     for (size_t valence = 3; valence < 10; ++valence)
@@ -58,23 +62,25 @@ int main(int argc, char** argv)
                                        std::to_string(valence) + "Fct" +
                                        std::to_string(function) + ".xml");
 
-            // Subdivide once
-            subdiv.subdivide();
-            // Now smooth to get the desired matrices
+            // Now smooth to get the desired linear combinations
             auto res = subdiv.smooth(1);
-            // For the first one, save the outer functions
-            if (function == 1)
-            {
-                gsWrite(res[1], "CoefficientsOuterVal" +
-                                    std::to_string(valence) + ".xml");
-            }
             // Collect all other coefficients in a matrix
             coeffs.row(function - 1) = res[0].transpose().row(2);
             gsInfo << "\n";
         }
 
-        // save all collected coefficients to file
-        gsWrite(coeffs, "CoefficientsInnerVal" + std::to_string(valence) + ".xml");
+        // Now coeffs contains a basis of the legal coefficient space.
+        auto legal_pl = coeffs.fullPivLu();
+        legal_pl.setThreshold(1e-8);
+        gsMatrix<> K = legal_pl.kernel().transpose();
+        gsWrite(K, "../filedata/" + patchpath + "Val" +
+                       std::to_string(valence) + "Constraints.xml");
+
+        gsInfo << "Written functional constraints for valence " << valence
+               << " to `"
+               << (gsFileManager::findInDataDir("") + patchpath + "Val" +
+                   std::to_string(valence) + "Constraints.xml")
+               << "`.\n";
     }
 
     return 0;

@@ -36,8 +36,7 @@ public: // Constructors
     /// Default constructor. Sets no options and leaves the targeted mesh as a
     /// nullpointer.
     gsFreeformSubdivision()
-        : gsSubdivisionScheme(),
-          patch_path("freeformSubdivision/fitting_functions/")
+        : gsFreeformSubdivision(nullptr)
     {
     }
 
@@ -46,9 +45,10 @@ public: // Constructors
     /// Constructor that accepts a mesh to be targeted by this constructor.
     /// Sets no options.
     gsFreeformSubdivision(gsSurfMesh* mesh)
-        : gsSubdivisionScheme(mesh),
-          patch_path("freeformSubdivision/fitting_functions/")
+        : gsSubdivisionScheme(mesh)
     {
+        m_options.addSwitch("optimize_fit", "When active, fits around EVs by optimizing with respect to a functional instead of using linear constraints loaded from a file.", false);
+        m_options.addString("model_patch_path", "Path to the model patches.","freeformSubdivision/fitting_functions/");
     }
 
 private: // Helper functions
@@ -127,16 +127,6 @@ private: // Helper functions
     /// Manages the fit around an EV by optimizing for a single functional.
     gsMatrix<real_t> fit_ev_opt(gsMatrix<real_t> A, gsMatrix<real_t> target,
                                 size_t valence);
-
-    /// Saves the relative location of the folder containing all the model
-    /// patches.
-    std::string patch_path;
-
-public: // Setters
-    void set_patch_path(std::string patch_path)
-    {
-        this->patch_path = patch_path;
-    };
 
 public:
     gsSubdivisionScheme::gsSubdivisionMeshValidity check_mesh() override;

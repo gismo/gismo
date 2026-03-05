@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 25.7.0-->
 <xml>
-  <Matrix rows="1" cols="7" format="ascii">
-    -1. -1. -1. 1. 1. 1. 0.
-  </Matrix>
+ <Matrix rows="1" cols="7" id="0">
+  1 0.9999999999999926 0.9999999999999969 -0.9999999999999541 -0.9999999999999515 -0.9999999999999549 -1.284528039491279e-13 
+ </Matrix>
 </xml>
+

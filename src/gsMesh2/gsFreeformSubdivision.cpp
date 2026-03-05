@@ -473,9 +473,10 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     // (`function_count = 2 * valence + 1`) minus the dimension of the
     // space (`v + 3`), i.e. `v-2`.
     gsMatrix<real_t> constraints;
-    auto _readFile = gsReadFile<>(
-        this->patch_path + "Val" + std::to_string(valence) + "Constraints.xml",
-        constraints);
+    auto _readFile =
+        gsReadFile<>(m_options.getString("model_patch_path") + "Val" +
+                         std::to_string(valence) + "Constraints.xml",
+                     constraints);
     size_t constraint_count = constraints.rows();
 
     // Default threshold is based on machine epsilon
@@ -665,8 +666,8 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 // Construct the filepath for the ith basis function and
                 // load it with gismo utilities
                 fitting_functions.emplace_back(
-                    gsFileData<real_t>(patch_path + "Val" +
-                                       std::to_string(valence) + "Fct" +
+                    gsFileData<real_t>(m_options.getString("model_patch_path") +
+                                       "Val" + std::to_string(valence) + "Fct" +
                                        std::to_string(i) + ".xml")
                         .getAll<gsTensorBSpline<2, real_t>>());
             }
@@ -724,9 +725,9 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                                     [&](const std::vector<std::unique_ptr<
                                             gsTensorBSpline<2, real_t>>>& ff)
                                     {
-                                        return ff[p]->coef(ux * N + vx, 2) !=
+                                        return ff[p]->coef(ux * N + vx, 2) ==
                                                0.0;
-                                    }) == false)
+                                    }))
                             {
                                 outer_values.row(i_o) =
                                     *control_nets[p](ux, vx);
@@ -782,7 +783,15 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                 // gsInfo << "Total points: " << i_p << "\n";
             }
 
-            auto solution = fit_ev(A_sample, target, valence);
+            gsMatrix<real_t> solution;
+            if (m_options.getSwitch("optimize_fit"))
+            {
+                solution = fit_ev_opt(A_sample, target, valence);
+            }
+            else
+            {
+                solution = fit_ev(A_sample, target, valence);
+            }
 
             // Remember the fitting coefficients and return them later.
             res.emplace_back(solution);

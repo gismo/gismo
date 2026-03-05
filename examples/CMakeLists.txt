@@ -43,6 +43,10 @@ foreach(file ${FILES})
   set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
   add_dependencies(${PROJECT_NAME} ${tarname})
 
+  if(TARGET gzstream)
+    target_link_libraries(${tarname} $<TARGET_OBJECTS:gzstream>)
+  endif()
+
   # install the example executables (optionally)
   install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
