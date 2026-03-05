@@ -58,7 +58,7 @@ std::string to_string(C (& value)[N])
 // Prefer printing values using the configured real_t instead of double when
 // possible. Use a SFINAE-friendly overload so that autodiff expression types
 // that are not directly convertible to real_t are handled by other overloads.
-template<typename C, std::enable_if_t<std::is_convertible<C, real_t>::value, int> = 0>
+template<typename C, typename std::enable_if<std::is_convertible<C, real_t>::value, int>::type = 0>
 std::string to_string(const C & value)
 {
     std::ostringstream convert;
@@ -69,7 +69,7 @@ std::string to_string(const C & value)
     return convert.str();
 }
 
-template<typename C, std::enable_if_t<!std::is_convertible<C, real_t>::value, int> = 0>
+template<typename C, typename std::enable_if<!std::is_convertible<C, real_t>::value, int>::type = 0>
 std::string to_string(const C & value)
 {
     std::ostringstream convert;
