@@ -75,7 +75,7 @@ private: // Helper functions
     /// fine_4   fine_3
     /// fine_1   fine_2
     /// ```
-    /// With the u/v-Direction of `coarse` pointing left/up from the bottom left
+    /// With the u/v-Direction of `coarse` pointing right/up from the bottom left
     /// and the u direction of each `fine_v` pointing outward from the central
     /// shared point and having the same orientation (e.g. `fine_1` points u
     /// leftwards and v downwards).
@@ -84,7 +84,7 @@ private: // Helper functions
     /// 6, 7, 8, 9, 10.
     /// \param v The subtype of the patch. Valid values are "coarse", "fine_1",
     /// "fine_2", "fine_3", "fine_4".
-    static gismo::gsTensorBSpline<2, real_t>
+    gismo::gsTensorBSpline<2, real_t>
     load_model_patch(int valence, std::string subtype);
 
     /// \brief Re-orients the faces of the given mesh.
