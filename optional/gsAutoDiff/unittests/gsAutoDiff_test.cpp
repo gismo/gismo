@@ -156,7 +156,6 @@ TEST(BSplineSurface_Forward_Dual)
     
     // Validation against exact derivatives
     gsMatrix<T> basis_values = basis.evalSingle(target_coeff, eval_points);
-    gsInfo<<"Derivative\n"<<(basis.derivSingle(target_coeff, eval_points))<<"\n";
 
     for (index_t i = 0; i < result.cols(); ++i) {
         double ad_deriv = autodiff::detail::derivative<1>(result(2, i));
