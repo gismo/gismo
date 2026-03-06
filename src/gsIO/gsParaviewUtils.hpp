@@ -139,7 +139,6 @@ namespace gismo
                 GISMO_ERROR("toDataArray: Unsupported data type for VTK output.");
                 return std::string("UnknownType");
             }
-            else { GISMO_ERROR("vtk typename error"); }
         }();
 
 

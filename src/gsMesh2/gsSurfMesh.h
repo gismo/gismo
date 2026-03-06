@@ -15,9 +15,6 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsXml.h>
-#include <vector>
-#include <string>
-#include <ostream>
 
 //#define Eigen gsEigen
 //EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Point)

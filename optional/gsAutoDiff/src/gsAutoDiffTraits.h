@@ -30,8 +30,11 @@
 #endif
 
 // Include autodiff headers (Eigen integration is handled elsewhere)
+// Only include if autodiff is enabled in the build
+#ifdef gsAutoDiff_ENABLED
 #include <autodiff/forward/dual.hpp>
 #include <autodiff/reverse/var.hpp>
+#endif
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
@@ -70,6 +73,7 @@ struct is_autodiff_type<autodiff::reverse::detail::Variable<Coeff>> : std::true_
 // ============================================================================
 
 #ifdef GISMO_WITH_EXPRTK
+#ifdef gsAutoDiff_ENABLED
 
 // Include forward declarations
 #include <gsAutoDiff/exprtk_autodiff_forward.h>
@@ -244,11 +248,14 @@ inline autodiff::detail::Dual<T,G> roundn_impl(const autodiff::detail::Dual<T,G>
 } // namespace details
 } // namespace exprtk
 
+#endif // gsAutoDiff_ENABLED
 #endif // GISMO_WITH_EXPRTK
 
 // ============================================================================
 // std::to_string support for autodiff types
 // ============================================================================
+
+#ifdef gsAutoDiff_ENABLED
 
 namespace std {
 
@@ -344,6 +351,8 @@ inline std::ostream& operator<<(std::ostream& os, const autodiff::detail::Binary
 }
 
 } // namespace std
+
+#ifdef gsAutoDiff_ENABLED
 
 // ============================================================================
 // gismo::math::ceil support for autodiff expression types
@@ -445,7 +454,11 @@ inline autodiff::reverse::detail::Variable<T> min(const autodiff::reverse::detai
 } // namespace math
 } // namespace gismo
 
+#endif // gsAutoDiff_ENABLED
+
 // Also add ceil in autodiff::detail namespace for ADL (Argument Dependent Lookup)
+#ifdef gsAutoDiff_ENABLED
+
 namespace autodiff {
 namespace detail {
 
@@ -467,6 +480,8 @@ inline auto ceil(const BinaryExpr<Op, L, R>& expr)
 
 } // namespace detail
 } // namespace autodiff
+
+#endif // gsAutoDiff_ENABLED
 
 // ============================================================================
 // Stream operators for autodiff types
@@ -493,3 +508,5 @@ inline std::istream& operator>>(std::istream& is, autodiff::reverse::detail::Var
 }
 
 } // namespace std
+
+#endif // gsAutoDiff_ENABLED
