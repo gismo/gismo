@@ -1,6 +1,7 @@
-/** @file get_gluing_data.cpp
+/** @file get_gluing_data_least_squares.cpp
 
-    @brief Tutorial on gsBasis class.
+    @brief Compute gluing data via least-squares fitting of linear
+           alpha/beta functions to the AS-G1 condition.
 
     This file is part of the G+Smo library.
 
@@ -60,7 +61,7 @@ int main(int argc, char* argv[])
 
     std::string geometry("domain2d/two_bilinear_patches.xml");
    
-    gsCmdLine cmd("Example for get gluing data.");
+    gsCmdLine cmd("Compute gluing data via least-squares.");
     cmd.addString("f", "file", "G+Smo input multi patch file.", geometry);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -90,7 +91,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    const index_t samplingPoints = 5;
+    const index_t samplingPoints = 20;
     
     for (auto it = mp.iBegin(); it<mp.iEnd(); ++it)
     {
@@ -152,41 +153,43 @@ int main(int argc, char* argv[])
         //          In the second case, flip also the columns of derivatives2
         //DONE ABOVE
         
-        // TODO: D, Compute gluing data
-        // ...
-        
-        
-        // It is always the gluing data for the two corners
-        /*gsMatrix<T> alpha1(1,2); // fillme
-        gsMatrix<T> alpha2(1,2); // fillme
-        gsMatrix<T> beta1(1,2);  // fillme
-        gsMatrix<T> beta2(1,2);  // fillme*/
-
-        
-        // derivatives1 and derivatives2 are 4 x samplingPoints matrices.
-        // For a 2D geometry, deriv_into gives:
-        //   row 0: dF/du (x-component)
-        //   row 1: dF/du (y-component)
-        //   row 2: dF/dv (x-component)
-        //   row 3: dF/dv (y-component)
+        // TODO: D, Compute gluing data via least squares
         //
-        // The normal direction for each patch side is the "u" direction here
-        // (the direction crossing the interface), and "v" is along the interface.
-        // We need to extract dF/du and dF/dv properly based on normDir and ambDir.
+        // We seek linear gluing functions:
+        //   alphaL(t) = aL0*(1-t) + aL1*t
+        //   alphaR(t) = aR0*(1-t) + aR1*t
+        //   beta(t)   = b0*(1-t)  + b1*t
+        //
+        // such that the AS-G1 condition
+        //   alphaR(t) * dFL/dn - alphaL(t) * dFR/dn + beta(t) * dFL/dt = 0
+        // is satisfied as well as possible (in the least-squares sense)
+        // at all sampling points along the interface.
+        //
+        // Unknowns vector: x = [aL0, aL1, aR0, aR1, b0, b1]^T  (6 unknowns)
+        // At each sampling point i with parameter t_i, the condition gives
+        // 2 scalar equations (x- and y-components).
+        //
+        // For a given point i, let:
+        //   n1 = dFL/dn,  n2 = dFR/dn,  tau = dFL/dt   (each a 2-vector)
+        //   phi0 = (1 - t_i),  phi1 = t_i
+        //
+        // The condition becomes (per component k = 0,1):
+        //   (aR0*phi0 + aR1*phi1) * n1[k]
+        // - (aL0*phi0 + aL1*phi1) * n2[k]
+        // + (b0*phi0  + b1*phi1)  * tau[k]  = 0
+        //
+        // Row for component k at point i in the matrix M:
+        //   col 0 (aL0): -phi0 * n2[k]
+        //   col 1 (aL1): -phi1 * n2[k]
+        //   col 2 (aR0):  phi0 * n1[k]
+        //   col 3 (aR1):  phi1 * n1[k]
+        //   col 4 (b0):   phi0 * tau[k]
+        //   col 5 (b1):   phi1 * tau[k]
         
         const index_t normDir1 = firstPS.direction();
         const index_t ambDir1  = 1 - normDir1;
         const index_t normDir2 = secondPS.direction();
-        const index_t ambDir2  = 1 - normDir2;
         
-        // For deriv_into, the layout is:
-        //   row 0: dF/d(xi_0), x-component
-        //   row 1: dF/d(xi_0), y-component
-        //   row 2: dF/d(xi_1), x-component
-        //   row 3: dF/d(xi_1), y-component
-        // So dF/d(xi_k) has x-comp at row 2*k and y-comp at row 2*k+1.
-        
-        // Helper lambda: extract dF/d(xi_dir) at corner idx from a derivatives matrix
         auto getPartial = [](const gsMatrix<T>& derivs, index_t dir, index_t idx) -> gsVector<T> {
             gsVector<T> v(2);
             v(0) = derivs(2*dir,     idx);
@@ -194,81 +197,102 @@ int main(int argc, char* argv[])
             return v;
         };
         
-        // Helper lambda: 2D determinant det([a, b])
-        auto det2D = [](const gsVector<T>& a, const gsVector<T>& b) -> T {
-            return a(0)*b(1) - a(1)*b(0);
-        };
+        // Build the (2*N) x 6 matrix M and the zero right-hand side
+        const index_t N = samplingPoints;
+        gsMatrix<T> M(2*N, 6);
+        M.setZero();
         
-        // Corner indices: first column (idx=0) and last column (idx=samplingPoints-1)
-        const index_t c0 = 0;
-        const index_t c1 = samplingPoints - 1;
-        
-        // --- Compute gluing data by solving the G1 condition at each corner ---
-        //
-        // The AS-G1 condition along the interface is:
-        //   alphaR * dFL/dn - alphaL * dFR/dn + beta * dFL/dt = 0
-        //
-        // where dn = normal direction (across interface), dt = tangential (along interface).
-        // At each corner this is a 2D vector equation. We choose alphaL = det(JacobianL)
-        // (the Jacobian determinant of the left patch) and solve for alphaR and beta.
-        //
-        // Rewriting:  [dFL/dn | dFL/dt] * [alphaR; beta] = alphaL * dFR/dn
-        //
-        // This is a 2x2 linear system for (alphaR, beta) at each corner.
-        
-        gsMatrix<T> alpha1(1, 2), alpha2(1, 2), beta(1, 2);
-        
-        for (index_t ci = 0; ci < 2; ++ci)
+        for (index_t i = 0; i < N; ++i)
         {
-            const index_t idx = (ci == 0) ? c0 : c1;
+            T t_i  = static_cast<T>(i) / (N - 1.);
+            T phi0 = 1. - t_i;
+            T phi1 = t_i;
             
-            gsVector<T> dFLdn = getPartial(derivatives1, normDir1, idx);
-            gsVector<T> dFLdt = getPartial(derivatives1, ambDir1,  idx);
-            gsVector<T> dFRdn = getPartial(derivatives2, normDir2, idx);
+            gsVector<T> n1  = getPartial(derivatives1, normDir1, i);
+            gsVector<T> n2  = getPartial(derivatives2, normDir2, i);
+            gsVector<T> tau = getPartial(derivatives1, ambDir1,  i);
             
-            // alphaL = det(dFL/dn, dFL/dt) = Jacobian determinant of left patch
-            T aL = det2D(dFLdn, dFLdt);
-            alpha1(0, ci) = aL;
-            
-            // Solve: [dFLdn | dFLdt] * [alphaR; beta] = alphaL * dFRdn
-            gsMatrix<T> A(2, 2);
-            A.col(0) = dFLdn;
-            A.col(1) = dFLdt;
-            
-            gsVector<T> rhs = aL * dFRdn;
-            
-            gsVector<T> x = A.fullPivLu().solve(rhs);
-            
-            alpha2(0, ci) = x(0);
-            beta(0, ci)   = x(1);
+            for (index_t k = 0; k < 2; ++k)
+            {
+                index_t row = 2*i + k;
+                M(row, 0) = -phi0 * n2(k);   // aL0
+                M(row, 1) = -phi1 * n2(k);   // aL1
+                M(row, 2) =  phi0 * n1(k);   // aR0
+                M(row, 3) =  phi1 * n1(k);   // aR1
+                M(row, 4) =  phi0 * tau(k);  // b0
+                M(row, 5) =  phi1 * tau(k);  // b1
+            }
         }
         
-        gsInfo << "alpha1 (alphaL): " << alpha1 << "\n";
+        // We want M * x = 0 with x != 0.
+        // This is a homogeneous least-squares problem: find the right
+        // singular vector of M corresponding to the smallest singular value.
+        //
+        // Equivalently, find the eigenvector of M^T M with smallest eigenvalue.
+        
+        gsMatrix<T> MtM = M.transpose() * M;  // 6x6
+        typename gsMatrix<T>::SelfAdjEigenSolver eigSolver(MtM);
+        
+        gsVector<T> eigenvalues = eigSolver.eigenvalues();
+        gsMatrix<T> eigenvectors = eigSolver.eigenvectors();
+        
+        gsInfo << "Eigenvalues of M^T M: " << eigenvalues.transpose() << "\n";
+        
+        // The solution is the eigenvector with the smallest eigenvalue
+        gsVector<T> x = eigenvectors.col(0);  // sorted ascending by Eigen
+        
+        // Extract gluing data
+        gsMatrix<T> alpha1(1, 2), alpha2(1, 2), beta(1, 2);
+        alpha1(0, 0) = x(0);  // aL0
+        alpha1(0, 1) = x(1);  // aL1
+        alpha2(0, 0) = x(2);  // aR0
+        alpha2(0, 1) = x(3);  // aR1
+        beta(0, 0)   = x(4);  // b0
+        beta(0, 1)   = x(5);  // b1
+        
+        // Normalize so that alpha1 has a nice scale (e.g., alpha1(0) = det of left Jacobian at corner 0)
+        {
+            gsVector<T> dFLdn_c0 = getPartial(derivatives1, normDir1, 0);
+            gsVector<T> dFLdt_c0 = getPartial(derivatives1, ambDir1,  0);
+            T detJL0 = dFLdn_c0(0)*dFLdt_c0(1) - dFLdn_c0(1)*dFLdt_c0(0);
+            
+            if (std::abs(alpha1(0, 0)) > 1e-14)
+            {
+                T scale = detJL0 / alpha1(0, 0);
+                alpha1 *= scale;
+                alpha2 *= scale;
+                beta   *= scale;
+            }
+        }
+        
+        gsInfo << "\nalpha1 (alphaL): " << alpha1 << "\n";
         gsInfo << "alpha2 (alphaR): " << alpha2 << "\n";
         gsInfo << "beta:            " << beta   << "\n";
         
         // --- Check AS-G1 condition at all sampling points ---
-        // The condition: alphaR * dFL/dn - alphaL * dFR/dn + beta * dFL/dt == 0
-        // where alpha and beta are linearly interpolated along the interface.
         gsInfo << "\nChecking AS-G1 condition at sampling points:\n";
-        for (index_t i = 0; i < samplingPoints; ++i)
+        T maxResNorm = 0;
+        for (index_t i = 0; i < N; ++i)
         {
-            // Linear interpolation parameter t in [0,1]
-            T t = static_cast<T>(i) / (samplingPoints - 1.);
+            T t = static_cast<T>(i) / (N - 1.);
             
             T aL = alpha1(0, 0) * (1. - t) + alpha1(0, 1) * t;
             T aR = alpha2(0, 0) * (1. - t) + alpha2(0, 1) * t;
-            T bn = beta(0, 0) * (1. - t) + beta(0, 1) * t;
+            T bn = beta(0, 0)   * (1. - t) + beta(0, 1)   * t;
             
-            gsVector<T> dFLdu_i = getPartial(derivatives1, normDir1, i);
-            gsVector<T> dFLdv_i = getPartial(derivatives1, ambDir1,  i);
-            gsVector<T> dFRdu_i = getPartial(derivatives2, normDir2, i);
+            gsVector<T> dFLdn_i = getPartial(derivatives1, normDir1, i);
+            gsVector<T> dFLdt_i = getPartial(derivatives1, ambDir1,  i);
+            gsVector<T> dFRdn_i = getPartial(derivatives2, normDir2, i);
             
-            gsVector<T> residual = aR * dFLdu_i - aL * dFRdu_i + bn * dFLdv_i;
+            gsVector<T> residual = aR * dFLdn_i - aL * dFRdn_i + bn * dFLdt_i;
             
-            gsInfo << "  Point " << i << " (t=" << t << "): residual = ["
-                   << residual.transpose() << "], norm = " << residual.norm() << "\n";
+            maxResNorm = std::max(maxResNorm, residual.norm());
+            
+            if (N <= 20)
+                gsInfo << "  Point " << i << " (t=" << t << "): residual = ["
+                       << residual.transpose() << "], norm = " << residual.norm() << "\n";
         }
+        gsInfo << "  Max residual norm = " << maxResNorm << "\n";
     
     }
     
