@@ -238,9 +238,6 @@ public:
 
         dmeasdxi  = ( cross / meas ).dot( hess.col(0).cross(grad.col(1)) + grad.col(0).cross(hess.col(2)) ); // cross/||cross|| . ( dG/dxixi   x dG/deta + dG/dxi x dG/dxideta  )
         dmeasdeta = ( cross / meas ).dot( hess.col(2).cross(grad.col(1)) + grad.col(0).cross(hess.col(1)) ); // cross/||cross|| . ( dG/detadxi x dG/deta + dG/dxi x dG/detadeta )
-        res(0,0) = dmeasdxi;
-        res(1,0) = dmeasdeta;
-        return res;
 
         E = (grad.transpose()*grad).trace() / meas;
 
@@ -556,164 +553,291 @@ gsOptionList & gsOptMesh<T,MODE>::options()
 // }
 
 
-// NEW CODE
 template<class T, enum MonitorMode MODE>
 T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 {
-    typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
+    const index_t dd = m_comp->domainDim();
+    const index_t td = m_geom->targetDim();
+    GISMO_ASSERT(dd <= td, "domainDim must be <= targetDim");
+
+    m_comp->setControls(u);
+
+    const T theta = m_options.getReal("Smoothing");
+    const bool hasMonitor = (m_fun != nullptr);
+
+    T result = T(0);
+
+    // Not needed, because it just defines the options
     gsExprEvaluator<T> evaluator;
     evaluator.options().setReal("quA",0.0);
     evaluator.options().setInt("quB",1);
-    evaluator.setIntegrationElements(m_mb); // does not work when in constructor
-    m_comp->setControls(u);
+    evaluator.setIntegrationElements(m_mb);
 
-    // Penalty constant
-    gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
-    geometryMap G = evaluator.getMap(m_mp);
-    auto eps = evaluator.getVariable(pen);
-    if (m_cgeom.domainDim()==m_cgeom.targetDim())
+    for (unsigned patchInd = 0; patchInd < m_mb.nBases(); ++patchInd)
     {
-        auto detG = jac(G).det();
-        auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
-        auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
+        gsQuadRule<T> QuRule = gsQuadrature::get(m_mb.basis(patchInd), evaluator.options());
+        typename gsBasis<T>::domainIter domIt = m_mb.piece(patchInd).makeDomainIterator();
 
-        if (m_fun==nullptr)
-        {
-            auto M = 1/detG;
-            return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
-        }
-        else
-        {
-            // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
-            m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
-            auto eta = evaluator.getVariable(m_cfun);
-            auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
-            return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
-        }
-    }
-    else if (m_cgeom.domainDim()<m_cgeom.targetDim())
-    {
-        auto fform = jac(G).tr()*jac(G);
-        if (m_fun==nullptr)
-        {
-//          auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
-//          auto M = 1/detG;
-//          return evaluator.integral( M*fform.trace()/pow(meas(G),2)*meas(G) );
-//            return evaluator.integral( fform.trace()/pow(meas(G),2) );
+        gsMatrix<T> uvPoints, xietaPoints;
+        gsVector<T> tmpWeights;
 
-            typename gsBasis<T>::domainIter domIt;
-            gsQuadRule<T> QuRule;  // Quadrature rule
-            gsMatrix<T> uvPoints; // Quadrature points in (u,v) space
-            gsMatrix<T> xietaPoints; // Quadrature points in (xi,eta) space
-            gsVector<T> tmpWeights;
+        for (; domIt->good(); domIt->next())
+        {
+            // Domain sequence
+            // \hat{\Omega} -> m_comp -> \tilde{\Omega} -> m_geom -> \Omega
+            //              --->             m_cgeom    -----------> 
 
-            T result = 0.0;
-            for (unsigned patchInd=0; patchInd < m_mb.nBases(); ++patchInd)
+            // Integration points in \hat{\Omega}
+            QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(),
+                         uvPoints, tmpWeights);
+
+            // Integration points in \tilde{\Omega}
+            m_comp->eval_into(uvPoints, xietaPoints);
+
+            // dsigma/duv
+            gsMatrix<T> Jsigma_flat;
+            m_comp->deriv_into(uvPoints, Jsigma_flat);
+
+            // dm_geom/dxieta
+            gsMatrix<T> Jgeom_flat;
+            m_geom->deriv_into(xietaPoints, Jgeom_flat);
+
+            // Compute monitor function values
+            gsMatrix<T> monVals;
+            if (hasMonitor)
             {
-                // Quadrature rule
-                evaluator.options().setReal("quA",0.0);
-                evaluator.options().setInt("quB",1);
-                QuRule =  gsQuadrature::get(m_mb.basis(patchInd), evaluator.options());
-
-                // Initialize domain element iterator
-                domIt = m_mb.piece(patchInd).makeDomainIterator();
-                for (; domIt->good(); domIt->next() )
+                if (m_parametric)
+                    m_fun->eval_into(xietaPoints, monVals);
+                else
                 {
-                    // Map the Quadrature rule to the element
-                    QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                                 uvPoints, tmpWeights);
-//                    gsDebugVar(tmpWeights);
-
-                    // Evaluate the geometry map at the quadrature points
-//                    m_comp->eval_into(uvPoints, xietaPoints);
-                    for (index_t p = 0; p!=uvPoints.cols(); ++p)
-                    {
-                      gsDebugVar(evaluator.eval( meas(G), uvPoints.col(p) ).value());
-                      result += evaluator.eval( meas(G), uvPoints.col(p) ).value() * tmpWeights(p);
-//                      result += evaluator.eval( fform.trace()/pow(meas(G),1), uvPoints.col(p) ).value() * tmpWeights(p);
-                    }
+                    gsMatrix<T> physPoints;
+                    m_geom->eval_into(xietaPoints, physPoints);
+                    m_fun->eval_into(physPoints, monVals);
                 }
             }
 
+            // Loop over qPoints
+            for (index_t p = 0; p != uvPoints.cols(); ++p)
+            {
+                // The following code is generic for planar or surface domains
+                gsMatrix<T> Js = Jsigma_flat.col(p).reshaped(dd, dd).transpose();
+                gsMatrix<T> Jg = Jgeom_flat.col(p).reshaped(dd, td).transpose();
+                gsMatrix<T> Jc = Jg * Js;
+                gsMatrix<T> C = Jc.transpose() * Jc;
+                gsMatrix<T> Cinv = C.inverse(); // (J^T * J)^{-1}
+                T detG = math::sqrt(C.determinant());
 
-//          return evaluator.integral( fform.trace()/meas(G) );
-            return result;
-        }
-        else
-        {
-            // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
-            m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
-            auto eta = evaluator.getVariable(m_cfun);
-            auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
-            return evaluator.integral( M*fform.trace()/meas(G)*meas(G));
+                // For dd==td, we can avoid det(J^T*J) and directly use det(J) [since it is square]
+
+                T integrand;
+                if (hasMonitor)
+                {
+                    T eta = monVals(0, p);
+                    // _MODE==ValueBased!!!
+                    T m2 = T(1) / (T(1) + theta * eta * eta);
+                    integrand = m2 * Cinv.trace() * detG; // Trace equal to ||J^{-1}||_2???
+                }
+                else
+                {
+                    integrand = Cinv.trace() / detG;
+                }
+
+                result += tmpWeights[p] * integrand;
+            }
         }
     }
-    else
-        GISMO_ERROR("Domain dimension must be smaller than or equal to the target dimension, but domainDim = "<<m_cgeom.domainDim()<<" and targetDim = "<<m_cgeom.targetDim());
+    return result;
 }
 
 
-// NEW CODE
 template<class T, enum MonitorMode MODE>
 void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
 {
-    result.resize(m_comp->nControls());
-    result.setZero();
+    const index_t nc = m_comp->nControls();
+    const index_t dd = m_comp->domainDim();
+    const index_t td = m_geom->targetDim();
+    GISMO_ASSERT(dd <= td, "domainDim must be <= targetDim");
 
-    typedef typename gsExprHelper<T>::geometryMap geometryMap;
+    result.resize(nc);
+    result.setZero();
     m_comp->setControls(u);
 
-    gsExprEvaluator<T> evaluator_geom;
-    gsMultiBasis<T> mmbasis(*m_geom);
-    evaluator_geom.setIntegrationElements(mmbasis);
-    geometryMap G_geom = evaluator_geom.getMap(*m_geom);
+    const T theta = m_options.getReal("Smoothing");
+    const bool hasMonitor = (m_fun != nullptr);
 
     const gsSquareDomain<T> * sqDomain = static_cast<const gsSquareDomain<T>*>(m_comp);
+    const gsBasis<T> & sigmaBasis = sqDomain->domain().basis();
+    const gsDofMapper & mapper = sqDomain->mapper();
+    const index_t S = dd * (dd + 1) / 2;
 
-    typename gsBasis<T>::domainIter domIt;
-    gsQuadRule<T> QuRule;
-    gsMatrix<T> uvPoints, xietaPoints;
-    gsVector<T> tmpWeights;
-    gsMatrix<T> dSigmadAlpha, dDetJsigmadAlpha;
+    gsExprEvaluator<T> evaluator;
+    evaluator.options().setReal("quA",0.0);
+    evaluator.options().setInt("quB",1);
+    evaluator.setIntegrationElements(m_mb);
 
-    for (unsigned patchInd=0; patchInd < m_mb.nBases(); ++patchInd)
+    for (unsigned patchInd = 0; patchInd < m_mb.nBases(); ++patchInd)
     {
-        gsExprEvaluator<T> evaluator;
-        evaluator.options().setReal("quA",0.0);
-        evaluator.options().setInt("quB",1);
-        evaluator.setIntegrationElements(m_mb);
-        QuRule = gsQuadrature::get(m_mb.basis(patchInd), evaluator.options());
+        gsQuadRule<T> QuRule = gsQuadrature::get(m_mb.basis(patchInd), evaluator.options());
+        typename gsBasis<T>::domainIter domIt = m_mb.piece(patchInd).makeDomainIterator();
 
-        domIt = m_mb.piece(patchInd).makeDomainIterator();
-        for (; domIt->good(); domIt->next() )
+        gsMatrix<T> uvPoints, xietaPoints;
+        gsVector<T> tmpWeights;
+
+        for (; domIt->good(); domIt->next())
         {
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(),
                          uvPoints, tmpWeights);
 
             m_comp->eval_into(uvPoints, xietaPoints);
-            m_comp->control_deriv_into(uvPoints, dSigmadAlpha);
-            sqDomain->control_jacobian_deriv_into(uvPoints, dDetJsigmadAlpha);
 
-            for (index_t p = 0; p!=uvPoints.cols(); ++p)
+            gsMatrix<T> Jsigma_flat;
+            m_comp->deriv_into(uvPoints, Jsigma_flat);
+
+            gsMatrix<T> Jgeom_flat;
+            m_geom->deriv_into(xietaPoints, Jgeom_flat);
+
+            gsMatrix<T> deriv2_geom;
+            m_geom->deriv2_into(xietaPoints, deriv2_geom);
+
+            gsMatrix<index_t> actives;
+            sigmaBasis.active_into(uvPoints, actives);
+
+            gsMatrix<T> basisVals;
+            sigmaBasis.eval_into(uvPoints, basisVals);
+
+            gsMatrix<T> basisDerivs;
+            sigmaBasis.deriv_into(uvPoints, basisDerivs);
+
+            gsMatrix<T> monVals, monDerivs;
+            if (hasMonitor)
             {
-                gsAsMatrix<T> dSigmadAlphaMatrix(dSigmadAlpha.col(p).data(), m_comp->nControls(), 2);
+                if (m_parametric)
+                {
+                    m_fun->eval_into(xietaPoints, monVals);
+                    m_fun->deriv_into(xietaPoints, monDerivs);
+                }
+                else
+                {
+                    gsMatrix<T> physPoints;
+                    m_geom->eval_into(xietaPoints, physPoints);
+                    m_fun->eval_into(physPoints, monVals);
+                    m_fun->deriv_into(physPoints, monDerivs);
+                }
+            }
 
-                gsMatrix<T> jacobianSigma = m_comp->deriv(uvPoints.col(p));
-                T detJsigma = jacobianSigma(0) * jacobianSigma(3) - jacobianSigma(1) * jacobianSigma(2);
-                T absDetJsigma = math::abs(detJsigma);
-                T signDetJsigma = (detJsigma > 0) ? T(1) : T(-1);
+            for (index_t p = 0; p != uvPoints.cols(); ++p)
+            {
+                gsMatrix<T> Js = Jsigma_flat.col(p).reshaped(dd, dd).transpose();
+                gsMatrix<T> Jg = Jgeom_flat.col(p).reshaped(dd, td).transpose();
+                gsMatrix<T> Jc = Jg * Js;
 
-                gsMatrix<T> dEdSigma_val = evaluator_geom.eval(dEdSigma(G_geom), xietaPoints.col(p));
+                gsMatrix<T> C = Jc.transpose() * Jc;
+                gsMatrix<T> Cinv = C.inverse();
+                T detC = C.determinant();
+                T detG = math::sqrt(detC);
+                T trCinv = Cinv.trace();
 
-                T measG_at_sigma = evaluator_geom.eval(meas(G_geom), xietaPoints.col(p))(0);
+                T eta = T(0), m2 = T(0), dm2_deta = T(0);
+                gsMatrix<T> gradMon;
+                if (hasMonitor)
+                {
+                    eta = monVals(0, p);
+                    T denom = T(1) + theta * eta * eta;
+                    m2 = T(1) / denom;
+                    dm2_deta = -T(2) * theta * eta / (denom * denom);
 
-                gsMatrix<T> term1 = dSigmadAlphaMatrix * dEdSigma_val * absDetJsigma;
+                    if (m_parametric)
+                    {
+                        gradMon = monDerivs.col(p);
+                    }
+                    else
+                    {
+                        gsMatrix<T> gradMon_phys = monDerivs.col(p).reshaped(td, 1);
+                        gradMon = Jg.transpose() * gradMon_phys;
+                    }
+                }
 
-                gsVector<T> term2 = measG_at_sigma * signDetJsigma * dDetJsigmadAlpha.col(p);
+                const index_t nActive = actives.rows();
+                for (index_t loc = 0; loc != nActive; ++loc)
+                {
+                    const index_t k = actives(loc, p);
+                    T Nk = basisVals(loc, p);
 
-                result += tmpWeights[p] * (term1 + term2);
+                    gsMatrix<T> gradNk(dd, 1);
+                    for (index_t j = 0; j != dd; ++j)
+                        gradNk(j) = basisDerivs(loc * dd + j, p);
+
+                    for (index_t d = 0; d != dd; ++d)
+                    {
+                        if (!mapper.is_free(k, 0, d))
+                            continue;
+                        index_t ii = mapper.index(k, 0, d);
+
+                        gsMatrix<T> dJs = gsMatrix<T>::Zero(dd, dd);
+                        for (index_t j = 0; j != dd; ++j)
+                            dJs(d, j) = gradNk(j);
+
+                        gsMatrix<T> dJg = gsMatrix<T>::Zero(td, dd);
+                        for (index_t a = 0; a != td; ++a)
+                        {
+                            for (index_t j = 0; j != dd; ++j)
+                            {
+                                index_t lo = math::min(d, j);
+                                index_t hi = math::max(d, j);
+                                index_t hess_idx = (lo == hi) ? lo : dd + lo * (2 * dd - lo - 3) / 2 + hi - 1;
+                                dJg(a, j) = Nk * deriv2_geom(a * S + hess_idx, p);
+                            }
+                        }
+
+                        gsMatrix<T> dJc = dJg * Js + Jg * dJs;
+                        gsMatrix<T> dC = dJc.transpose() * Jc + Jc.transpose() * dJc;
+
+                        T trCinvdC     = (Cinv * dC).trace();
+                        T trCinvdCCinv = (Cinv * dC * Cinv).trace();
+
+                        T dE;
+                        if (hasMonitor)
+                        {
+                            T deta_dalpha = gradMon(d) * Nk;
+                            T dm2_dalpha = dm2_deta * deta_dalpha;
+
+                            dE = m2 * (-trCinvdCCinv * detG
+                                       + trCinv * detG / T(2) * trCinvdC)
+                               + dm2_dalpha * trCinv * detG;
+                        }
+                        else
+                        {
+                            dE = (-trCinvdCCinv
+                                  - trCinv / T(2) * trCinvdC) / detG;
+                        }
+
+                        result(ii) += tmpWeights[p] * dE;
+                    }
+                }
             }
         }
+    }
+}
+
+template<class T, enum MonitorMode MODE>
+void gsOptMesh<T,MODE>::gradObj_FD_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
+{
+    const index_t n = u.rows();
+    const T h = T(1e-7);
+    result.resize(n);
+
+    gsVector<T> uu = u;
+    gsAsVector<T> tmp(uu.data(), n);
+    gsAsConstVector<T> ctmp(uu.data(), n);
+
+    for (index_t i = 0; i < n; ++i)
+    {
+        tmp[i] = u[i] + h;
+        const T fp = this->evalObj(ctmp);
+        tmp[i] = u[i] - h;
+        const T fm = this->evalObj(ctmp);
+        tmp[i] = u[i];
+        result[i] = (fp - fm) / (T(2) * h);
     }
 }
 

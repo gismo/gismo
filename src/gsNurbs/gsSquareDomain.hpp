@@ -222,7 +222,7 @@ void gsSquareDomain<T>::control_jacobian_deriv_into(const gsMatrix<T> & points, 
 {
     const index_t nc = nControls();
     const index_t dd = domainDim();
-    GISMO_ASSERT(dd == 2, "control_jacobian_deriv_into is currently only implemented for 2D");
+    GISMO_ASSERT(dd == targetDim(), "control_jacobian_deriv_into requires a square Jacobian (domainDim == targetDim)");
 
     result.resize(nc, points.cols());
     result.setZero();
@@ -233,27 +233,28 @@ void gsSquareDomain<T>::control_jacobian_deriv_into(const gsMatrix<T> & points, 
     gsMatrix<T> basisDerivs;
     m_domain->basis().deriv_into(points, basisDerivs);
 
+    gsMatrix<index_t> actives;
+    m_domain->basis().active_into(points, actives);
+
     for (index_t p = 0; p != points.cols(); ++p)
     {
         gsMatrix<T> Jsigma = Jsigma_flat.col(p).reshaped(dd, dd);
-        gsMatrix<T> adjJ(dd, dd);
-        adjJ(0, 0) =  Jsigma(1, 1);
-        adjJ(0, 1) = -Jsigma(0, 1);
-        adjJ(1, 0) = -Jsigma(1, 0);
-        adjJ(1, 1) =  Jsigma(0, 0);
+        T detJ = Jsigma.determinant();
+        gsMatrix<T> adjJ = detJ * Jsigma.inverse();
 
-        const index_t nb = m_domain->coefs().rows();
-        for (index_t k = 0; k != nb; ++k)
+        const index_t nActive = actives.rows();
+        for (index_t loc = 0; loc != nActive; ++loc)
         {
-            T dphi_dxi  = basisDerivs(k * dd + 0, p);
-            T dphi_deta = basisDerivs(k * dd + 1, p);
-
+            const index_t k = actives(loc, p);
             for (index_t d = 0; d != dd; ++d)
             {
                 if (!m_mapper.is_free(k, 0, d))
                     continue;
                 index_t ii = m_mapper.index(k, 0, d);
-                result(ii, p) = adjJ(d, 0) * dphi_dxi + adjJ(d, 1) * dphi_deta;
+                T val = T(0);
+                for (index_t j = 0; j != dd; ++j)
+                    val += adjJ(d, j) * basisDerivs(loc * dd + j, p);
+                result(ii, p) = val;
             }
         }
     }

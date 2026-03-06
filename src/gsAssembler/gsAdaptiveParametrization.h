@@ -62,6 +62,9 @@ public:
     /// Gradient evaluation of the objective function at the given point u.
     void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const override;
 
+    /// Finite-difference gradient (central differences) for testing.
+    void gradObj_FD_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const;
+
 protected:
 
       // From gsOptProblem
