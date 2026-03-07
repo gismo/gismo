@@ -48,7 +48,7 @@ public: // Constructors
         : gsSubdivisionScheme(mesh)
     {
         m_options.addSwitch("optimize_fit", "When active, fits around EVs by optimizing with respect to a functional instead of using linear constraints loaded from a file.", false);
-        m_options.addString("model_patch_path", "Path to the model patches.","freeformSubdivision/fitting_functions/");
+        m_options.addString("model_patch_path", "Path to the model patches.","freeform/");
     }
 
 private: // Helper functions

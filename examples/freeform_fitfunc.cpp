@@ -16,8 +16,8 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // Command line inputs
-    std::string filepath("freeformSubdivision/fitting_functions/Val5Flat.xml");
-    std::string patchpath("freeformSubdivision/fitting_functions/");
+    std::string filepath("freeform/Val5Flat.xml");
+    std::string patchpath("freeform/");
     index_t steps(2);
     index_t valence(-1);
     std::string function("x+y");
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 
     if (valence > 0)
     {
-        filepath = "freeformSubdivision/fitting_functions/Val" +
+        filepath = "freeform/Val" +
                    std::to_string(valence) + "Flat.xml";
     }
 

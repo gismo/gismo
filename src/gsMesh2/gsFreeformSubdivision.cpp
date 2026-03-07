@@ -175,57 +175,62 @@ gsFreeformSubdivision<N, D>::load_model_patch(int valence, std::string subtype)
         gsFileData<real_t>(path).getAll<gsTensorBSpline<2, real_t>>();
 
     // Select the correct patch index based on subtype
-    size_t patch_index;
-    if (subtype == "fine1" || subtype == "coarse")
+    size_t patch_index(0);
+    if (subtype == "fine_1" || subtype == "coarse")
         patch_index = 0;
-    else if (subtype == "fine2")
-        patch_index = valence;
-    else if (subtype == "fine3")
-        patch_index = valence + 1;
-    else // fine4
+    else if (subtype == "fine_2")
         patch_index = valence + 2;
+    else if (subtype == "fine_3")
+        patch_index = valence + 1;
+    else if (subtype == "fine_4")
+        patch_index = valence + 0;
 
     // Drop the z-coordinate: keep only the first 2 columns of the coef matrix
+    // Then split into two 1-column matrices
     gsMatrix<real_t> coefsx = patches[patch_index]->coefs().col(0);
     gsMatrix<real_t> coefsy = patches[patch_index]->coefs().col(1);
+    // reshape each to a quadratic matrix
     coefsx = coefsx.reshape(N, N);
     coefsy = coefsy.reshape(N, N);
 
-    gsInfo << "\n\n" << subtype << ":\n";
-    for (int i = 0; i < coefsx.rows(); ++i)
+    // use rotation/scaling based on subtype to rotate correctly
+    // in a way that the (0,0) point for all fine patches is the central point.
+    if (subtype == "coarse")
     {
-        gsInfo << coefsx.row(i) << "\n";
-    }
-
-    if (subtype == "coarse"){
         coefsx *= 2.0;
-    }else if (subtype == "fine1"){
+        coefsy *= 2.0;
+    }
+    else if (subtype == "fine_1")
+    {
         coefsx = coefsx.rotate_ccw().rotate_ccw();
         coefsy = coefsy.rotate_ccw().rotate_ccw();
-    }else if (subtype == "fine2"){
+    }
+    else if (subtype == "fine_2")
+    {
         coefsx = coefsx.rotate_cw();
         coefsy = coefsy.rotate_cw();
-    }else if (subtype == "fine3"){
+    }
+    else if (subtype == "fine_3")
+    {
         coefsx = coefsx;
         coefsy = coefsy;
-    }else{ // fine4
+    }
+    else if (subtype == "fine_4")
+    {
         coefsx = coefsx.rotate_ccw();
         coefsy = coefsy.rotate_ccw();
     }
+
+    // re-reshape back to a 1-column matrix
     coefsx = coefsx.reshape(N * N, 1);
     coefsy = coefsy.reshape(N * N, 1);
 
-    gsMatrix<real_t> coefs(N*N, 2);
+    // recombine into a 2-column matrix
+    gsMatrix<real_t> coefs(N * N, 2);
     coefs.col(0) = coefsx;
     coefs.col(1) = coefsy;
 
-    for (int i = 0; i < coefs.rows(); ++i)
-    {
-        gsInfo << coefs.row(i) << "\n";
-    }
-
-    // For "coarse", scale control points by 2
-
+    // build the tensor spline
     return gsTensorBSpline<2>(patches[patch_index]->basis(), give(coefs));
 }
 

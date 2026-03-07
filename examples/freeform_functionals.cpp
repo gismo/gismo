@@ -21,7 +21,7 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("freeformSubdivision/fitting_functions/");
+    std::string patchpath("freeform/");
     gsCmdLine cmd("Freeform subdivision");
     cmd.addString("p", "patchpath",
                   "The path to the files containing the model patches for EV "
