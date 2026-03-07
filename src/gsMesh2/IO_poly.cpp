@@ -73,10 +73,10 @@ bool read_poly(gsSurfMesh<Scalar>& mesh, const std::string& filename)
 
 
     // get properties
-    typename gsSurfMesh<Scalar>::Vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>      vconn = mesh.template vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>("v:connectivity");
-    typename gsSurfMesh<Scalar>::Halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>  hconn = mesh.template halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>("h:connectivity");
-    typename gsSurfMesh<Scalar>::Face_property<typename gsSurfMesh<Scalar>::Face_connectivity>          fconn = mesh.template face_property<typename gsSurfMesh<Scalar>::Face_connectivity>("f:connectivity");
-    typename gsSurfMesh<Scalar>::Vertex_property<typename gsSurfMesh<Scalar>::Point>                                  point = mesh.template vertex_property<typename gsSurfMesh<Scalar>::Point>("v:point",typename gsSurfMesh<Scalar>::Point(0,0,0));
+    typename gsSurfMesh<Scalar>::template Vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>      vconn = mesh.template vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>("v:connectivity");
+    typename gsSurfMesh<Scalar>::template Halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>  hconn = mesh.template halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>("h:connectivity");
+    typename gsSurfMesh<Scalar>::template Face_property<typename gsSurfMesh<Scalar>::Face_connectivity>          fconn = mesh.template face_property<typename gsSurfMesh<Scalar>::Face_connectivity>("f:connectivity");
+    typename gsSurfMesh<Scalar>::template Vertex_property<typename gsSurfMesh<Scalar>::Point>                                  point = mesh.template vertex_property<typename gsSurfMesh<Scalar>::Point>("v:point",typename gsSurfMesh<Scalar>::Point(0,0,0));
 
     // read properties from file
     size_t result;
@@ -125,10 +125,10 @@ bool write_poly(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
 
 
     // get properties
-    typename gsSurfMesh<Scalar>::Vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>      vconn = mesh.template get_vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>("v:connectivity");
-    typename gsSurfMesh<Scalar>::Halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>  hconn = mesh.template get_halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>("h:connectivity");
-    typename gsSurfMesh<Scalar>::Face_property<typename gsSurfMesh<Scalar>::Face_connectivity>          fconn = mesh.template get_face_property<typename gsSurfMesh<Scalar>::Face_connectivity>("f:connectivity");
-    typename gsSurfMesh<Scalar>::Vertex_property<typename gsSurfMesh<Scalar>::Point>                                  point = mesh.template get_vertex_property<typename gsSurfMesh<Scalar>::Point>("v:point");
+    typename gsSurfMesh<Scalar>::template Vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>      vconn = mesh.template get_vertex_property<typename gsSurfMesh<Scalar>::Vertex_connectivity>("v:connectivity");
+    typename gsSurfMesh<Scalar>::template Halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>  hconn = mesh.template get_halfedge_property<typename gsSurfMesh<Scalar>::Halfedge_connectivity>("h:connectivity");
+    typename gsSurfMesh<Scalar>::template Face_property<typename gsSurfMesh<Scalar>::Face_connectivity>          fconn = mesh.template get_face_property<typename gsSurfMesh<Scalar>::Face_connectivity>("f:connectivity");
+    typename gsSurfMesh<Scalar>::template Vertex_property<typename gsSurfMesh<Scalar>::Point>                                  point = mesh.template get_vertex_property<typename gsSurfMesh<Scalar>::Point>("v:point");
 
 
     // write properties to file

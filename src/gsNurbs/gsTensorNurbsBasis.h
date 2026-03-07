@@ -200,7 +200,15 @@ public:
     }
 
     /// @brief Gives back the boundary basis at boxSide s
-    gsBasis<T> * boundaryBasis_impl(const boxSide & s) const override;
+    gsBasis<T> * boundaryBasis_impl(const boxSide & s) const override
+    {
+        typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(s);
+        const gsMatrix<index_t> ind = m_src->boundary(s);
+        gsMatrix<T> ww( ind.size(),1);
+        for ( index_t i=0; i<ind.size(); ++i)
+            ww(i,0) = m_weights( (ind)(i,0), 0);
+        return new BoundaryBasisType(bb.release(), give(ww));
+    }
 
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const

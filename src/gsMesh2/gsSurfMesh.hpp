@@ -2427,7 +2427,7 @@ void gsXml< gsSurfMesh<Scalar> >::get_into(gsXmlNode * node, gsSurfMesh<Scalar> 
 
     if (0!=ne)
     {
-        typename gsSurfMesh<Scalar>::Halfedge_property<bool> sharp = result.template add_halfedge_property<bool>("h:sharp");
+        typename gsSurfMesh<Scalar>::template Halfedge_property<bool> sharp = result.template add_halfedge_property<bool>("h:sharp");
         face.resize(2);
         typename gsSurfMesh<Scalar>::Halfedge he;
         for(unsigned i = 0; i!=ne; ++i)
