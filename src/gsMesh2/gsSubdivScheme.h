@@ -102,7 +102,15 @@ public: // Doo-Sabin functions
     */
     void ds_subdivide();
 
-private:
+    /// Compute DS vertex limit positions
+    gsSurfMesh::Face_property<Point> ds_vertex_limits(std::string label = "v:limit");
+
+    /// Compute DS vertex limit normals
+    gsSurfMesh::Vertex_property<Point> ds_normals_vertex_limits(std::string label = "v:normal",
+        bool normalize = true);
+
+
+protected:
     
     /// Doo-Sabin Image point calculation per vertex in a face (boundary interpolation)
     Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);
