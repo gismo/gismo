@@ -7,6 +7,8 @@
 
 #include "gsCore/gsFunctionExpr.h"
 #include <gismo.h>
+#include <gsIO/gsFileData.hpp>
+#include <gsIO/gsCsv.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
 #include <gsMesh2/gsSurfMesh.h>
@@ -16,13 +18,15 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // Command line inputs
-    std::string filepath("freeform/Val5Flat.xml");
-    std::string patchpath("freeform/");
+    std::string filepath("freeform/original/Val5Flat.xml");
+    std::string patchpath("freeform/original/");
     index_t steps(2);
     index_t valence(-1);
+    index_t samples(10);
     std::string function("x+y");
     bool control_net(false);
     bool optimize_fit(false);
+    bool paraview(false);
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
@@ -38,12 +42,19 @@ int main(int argc, char** argv)
     cmd.addInt("s", "steps",
                "The number of steps (subdivide, fit, smooth) to repeat.",
                steps);
+    cmd.addInt("a", "samples",
+               "The number of samples on each patch (will be squared).",
+               samples);
     cmd.addInt(
         "v", "valence",
         "The valence of the patch to fit. Overwrites the file path, if set.",
         valence);
+    cmd.addSwitch("paraview", "Outputs the fits to paraview.", paraview);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
-    cmd.addSwitch("opt", "Optimizes the fit via a functional instead of linear constraints.", optimize_fit);
+    cmd.addSwitch(
+        "opt",
+        "Optimizes the fit via a functional instead of linear constraints.",
+        optimize_fit);
     try
     {
         cmd.getValues(argc, argv);
@@ -55,8 +66,8 @@ int main(int argc, char** argv)
 
     if (valence > 0)
     {
-        filepath = "freeform/Val" +
-                   std::to_string(valence) + "Flat.xml";
+        filepath =
+            "freeform/original/Val" + std::to_string(valence) + "Flat.xml";
     }
 
     gsSurfMesh mesh = gsSurfMesh();
@@ -64,28 +75,11 @@ int main(int argc, char** argv)
     subdiv.options().setString("model_patch_path", patchpath);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
-    std::string xml(".xml");
-    std::string off(".off");
-    // Check the filetype to be loaded.
-    if (std::equal(filepath.begin() + filepath.size() - xml.size(),
-                   filepath.end(), xml.begin()))
-    {
-        gsInfo << "Loading xml\n";
-        subdiv.initialize_data_xml(filepath);
-    }
-    else if (std::equal(filepath.begin() + filepath.size() - off.size(),
-                        filepath.end(), off.begin()))
-    {
-        gsInfo << "Loading off\n";
-        subdiv.initialize_data_off(filepath);
-    }
-    else
-    {
-        gsWarn << "Unsupported Filetype!\n";
-        return 1;
-    }
+    subdiv.initialize_data_xml(filepath);
 
     gsFunctionExpr<real_t> func(function, 2);
+
+    gsMatrix<real_t> errors(3, steps);
 
     for (index_t i = 0; i < steps; ++i)
     {
@@ -94,14 +88,20 @@ int main(int argc, char** argv)
 
         subdiv.fit_last_coordinate_to_function(func);
         subdiv.smooth(1);
-        subdiv.error(func, 10);
+        errors.col(i) = subdiv.error(func, samples);
 
-        gsWriteParaview(subdiv.multipatch(),
-                        "results/step" + std::string(i+1, 'I'), 1000, false,
-                        control_net);
+        if (paraview)
+        {
+            gsWriteParaview(subdiv.multipatch(),
+                            "results/step" + std::string(i + 1, 'I'), 1000,
+                            false, control_net);
+        }
 
-        gsInfo << "Finished writing Step " << std::string(i+1, 'I') << ".\n";
+        gsInfo << "Finished writing Step " << std::string(i + 1, 'I') << ".\n";
     }
+
+    // write error matrix
+    gsWriteCsv("errors.csv", errors);
 
     return 0;
 }

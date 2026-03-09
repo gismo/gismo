@@ -17,7 +17,7 @@ int main(int argc, char** argv)
 {
     // Command line
     std::string filepath("off/octtorus.off");
-    std::string patchpath("freeform/");
+    std::string patchpath("freeform/original/");
     std::string operations("sd");
     std::string function("");
     bool control_net(false);

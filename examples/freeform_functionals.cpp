@@ -21,12 +21,14 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("freeform/");
+    std::string patchpath("freeform/original/");
     gsCmdLine cmd("Freeform subdivision");
+    index_t valence_max(9);
     cmd.addString("p", "patchpath",
                   "The path to the files containing the model patches for EV "
                   "subdivision.",
                   patchpath);
+    cmd.addInt("v", "valence", "Maximal valence to calculate.", valence_max);
     try
     {
         cmd.getValues(argc, argv);
@@ -43,7 +45,7 @@ int main(int argc, char** argv)
     subdiv.options().setSwitch("optimize_fit", true);
 
     // Iterate all valences
-    for (size_t valence = 3; valence < 10; ++valence)
+    for (size_t valence = 3; valence < size_t(valence_max); ++valence)
     {
         if (valence == 4)
             continue;

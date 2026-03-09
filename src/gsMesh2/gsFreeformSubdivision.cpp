@@ -1196,8 +1196,9 @@ void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
 }
 
 template <size_t N, size_t D>
-real_t gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
-                                          size_t samples_per_face)
+gsVector<real_t, 3>
+gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
+                                   size_t samples_per_face)
 {
 
     auto& mesh = *m_mesh;
@@ -1255,11 +1256,13 @@ real_t gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
         }
     }
 
-    gsInfo << "Error L0: " << error_l0 << ".\n";
-    gsInfo << "Error L1: " << error_l1 / real_t(error_count) << ".\n";
-    gsInfo << "Error L2: " << sqrt(error_l2 / real_t(error_count)) << ".\n";
+    gsVector<real_t> error = gsVector<real_t>::vec(error_l0, error_l1 / real_t(error_count), sqrt(error_l2 / real_t(error_count)));
 
-    return sqrt(error_l2 / real_t(error_count));
+    gsInfo << "Error L0: " << error(0) << ".\n";
+    gsInfo << "Error L1: " << error(1) << ".\n";
+    gsInfo << "Error L2: " << error(2) << ".\n";
+
+    return error;
 }
 
 template <size_t N, size_t D>

@@ -48,7 +48,7 @@ public: // Constructors
         : gsSubdivisionScheme(mesh)
     {
         m_options.addSwitch("optimize_fit", "When active, fits around EVs by optimizing with respect to a functional instead of using linear constraints loaded from a file.", false);
-        m_options.addString("model_patch_path", "Path to the model patches.","freeform/");
+        m_options.addString("model_patch_path", "Path to the model patches.","freeform/original/");
     }
 
 private: // Helper functions
@@ -151,7 +151,7 @@ public:
     /// \param function A real-valued function in D-1 real variables.
     void fit_last_coordinate_to_function(gsFunctionExpr<> function);
 
-    real_t error(gsFunctionExpr<> function, size_t samples_per_face);
+    gsVector<real_t, 3> error(gsFunctionExpr<> function, size_t samples_per_face);
 
 
     /// \brief Initializes the targeted mesh from an xml file.
