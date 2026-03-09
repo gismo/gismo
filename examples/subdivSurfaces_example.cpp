@@ -44,7 +44,7 @@ int main(int argc, char** argv)
     gsInfo << "Input: " << mesh.n_vertices() << " vertices, "
         << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
 
-    gsSubdivScheme smesh(mesh);
+    gsSubdivScheme<> smesh(mesh);
     smesh.options().setInt("ds.boundaryMask", dsopt);
     smesh.options().setInt("loop.maskType", loopopt);
 

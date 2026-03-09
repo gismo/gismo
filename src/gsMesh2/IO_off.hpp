@@ -185,9 +185,9 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
     typename gsSurfMesh<Scalar>::Vertex v;
 
     // properties
-    typename gsSurfMesh<Scalar>::Vertex_property<Normal>              normals;
-    typename gsSurfMesh<Scalar>::Vertex_property<Point>  texcoords;
-    typename gsSurfMesh<Scalar>::Vertex_property<Point>               colors;
+    typename gsSurfMesh<Scalar>::template Vertex_property<Normal>              normals;
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point>  texcoords;
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point>               colors;
     if (has_normals)   normals   = mesh.template vertex_property<Normal>("v:normal",Point(0,0,0));
     if (has_texcoords) texcoords = mesh.template vertex_property<Point>("v:texcoord",Point(0,0,0));
     if (has_colors)    colors    = mesh.template vertex_property<Point>("v:color",Point(0,0,0));
@@ -297,8 +297,8 @@ bool read_off_binary(gsSurfMesh<Scalar>& mesh,
 
 
     // properties
-    typename gsSurfMesh<Scalar>::Vertex_property<Normal>              normals;
-    typename gsSurfMesh<Scalar>::Vertex_property<Point>  texcoords;
+    typename gsSurfMesh<Scalar>::template Vertex_property<Normal>              normals;
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point>  texcoords;
     if (has_normals)   normals   = mesh.template vertex_property<Normal>("v:normal",Point(0,0,0));
     if (has_texcoords) texcoords = mesh.template vertex_property<Point>("v:texcoord", Point(0,0,0));
 
@@ -424,9 +424,9 @@ bool write_off(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
     bool  has_normals   = false;
     bool  has_texcoords = false;
     bool  has_colors = false;
-    typename gsSurfMesh<Scalar>::Vertex_property<Normal> normals = mesh.template get_vertex_property<Normal>("v:normal");
-    typename gsSurfMesh<Scalar>::Vertex_property<Point>  texcoords = mesh.template get_vertex_property<Point>("v:texcoord");
-    typename gsSurfMesh<Scalar>::Vertex_property<Point> colors = mesh.template get_vertex_property<Point>("v:color");
+    typename gsSurfMesh<Scalar>::template Vertex_property<Normal> normals = mesh.template get_vertex_property<Normal>("v:normal");
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point>  texcoords = mesh.template get_vertex_property<Point>("v:texcoord");
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> colors = mesh.template get_vertex_property<Point>("v:color");
     if (normals)   has_normals = true;
     if (texcoords) has_texcoords = true;
     if (colors) has_colors = true;
@@ -443,7 +443,7 @@ bool write_off(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
 
 
     // vertices, and optionally normals and texture coordinates
-    typename gsSurfMesh<Scalar>::Vertex_property<Point> points = mesh.template get_vertex_property<Point>("v:point");
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> points = mesh.template get_vertex_property<Point>("v:point");
     for (typename gsSurfMesh<Scalar>::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
     {
         const Point& p = points[*vit];

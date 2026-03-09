@@ -1878,6 +1878,7 @@ public:
     static std::string tag () { return "Mesh"; }
     static std::string type() { return "off"; }
 
+    GSXML_GET_POINTER(gsSurfMesh<Scalar>);
     static void get_into(gsXmlNode * node, gsSurfMesh<Scalar> & result);
     static gsXmlNode * put (const gsSurfMesh<Scalar> & obj, gsXmlTree & data);
 };

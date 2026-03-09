@@ -16,7 +16,7 @@ bool read_obj(gsSurfMesh<Scalar>& mesh, const std::string& filename)
     std::vector<typename gsSurfMesh<Scalar>::Vertex>  vertices;
     std::vector<typename gsSurfMesh<Scalar>::Point> all_tex_coords;   //individual texture coordinates
     std::vector<int> halfedge_tex_idx; //texture coordinates sorted for halfedges
-    typename gsSurfMesh<Scalar>::Halfedge_property <typename gsSurfMesh<Scalar>::Point> tex_coords =
+    typename gsSurfMesh<Scalar>::template Halfedge_property <typename gsSurfMesh<Scalar>::Point> tex_coords =
         mesh.template halfedge_property<typename gsSurfMesh<Scalar>::Point>("h:texcoord", typename gsSurfMesh<Scalar>::Point(0,0,0));
     bool with_tex_coord=false;
 
@@ -182,7 +182,7 @@ bool write_obj(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
     fprintf(out, "# OBJ export from gsSurfMesh\n");
 
     //vertices
-    typename gsSurfMesh<Scalar>::Vertex_property<Point> points =
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> points =
         mesh.template get_vertex_property<Point>("v:point");
     for (typename gsSurfMesh<Scalar>::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
     {
@@ -191,7 +191,7 @@ bool write_obj(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
     }
 
     //normals
-    typename gsSurfMesh<Scalar>::Vertex_property<Point> normals = mesh.template get_vertex_property<Point>("v:normal");
+    typename gsSurfMesh<Scalar>::template Vertex_property<Point> normals = mesh.template get_vertex_property<Point>("v:normal");
     if(normals)
     {
         for (typename gsSurfMesh<Scalar>::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
@@ -219,7 +219,7 @@ bool write_obj(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
     //if so then add
     if(with_tex_coord)
     {
-        typename gsSurfMesh<Scalar>::Halfedge_property<Point> tex_coord = mesh.template get_halfedge_property<Point>("h:texcoord");
+        typename gsSurfMesh<Scalar>::template Halfedge_property<Point> tex_coord = mesh.template get_halfedge_property<Point>("h:texcoord");
         for (typename gsSurfMesh<Scalar>::Halfedge_iterator hit=mesh.halfedges_begin(); hit!=mesh.halfedges_end(); ++hit)
         {
             const Point& pt = tex_coord[*hit];
