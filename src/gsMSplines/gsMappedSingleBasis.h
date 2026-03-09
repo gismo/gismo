@@ -73,13 +73,13 @@ public:
 
 public:
 
-    short_t domainDim() const
+    short_t domainDim() const override
     {
         return d;
     }
 
     void connectivity(const gsMatrix<T> & nodes,
-                      gsMesh<T>   & mesh) const
+                      gsMesh<T>   & mesh) const override
     {
         GISMO_UNUSED(nodes); GISMO_UNUSED(mesh);
         GISMO_NO_IMPLEMENTATION;
@@ -87,7 +87,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    size_t numElements(boxSide const & s = 0) const { return m_basis->getBase(m_index).numElements(s); }
+    size_t numElements(boxSide const & s = 0) const override { return m_basis->getBase(m_index).numElements(s); }
 
     /*
       void refine(gsMatrix<T> const & boxes)
@@ -98,26 +98,26 @@ public:
     */
 
     /// Returns the indices of active (non zero) basis functions at points (columns of) u, as a list of indices, in result
-    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override
     {
         m_basis->active_into(m_index,u,result);
     }
 
     /// Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const
+    void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const override
     {
         // Assuming all patches have the same degree
         m_basis->numActive_into(m_index,u,result);
     }
 
     /// Returns a bounding box for the basis' domain
-    gsMatrix<T> support() const
+    gsMatrix<T> support() const override
     {
         return m_basis->getBase(m_index).support();
     }
 
     /// Returns a bounding box for basis function \a kk domain on the domain of *this
-    gsMatrix<T> support(const index_t & kk) const
+    gsMatrix<T> support(const index_t & kk) const override
     {
         typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
         m_basis->getMapper().targetToSource(kk,sourceIndices);
@@ -149,32 +149,32 @@ public:
         // return m_basis->getBase(m_index).support();
     }
     /// Returns the boundary basis on side s
-    gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
+    gsBasis<T>* boundaryBasis_impl(boxSide const & s) const override
     {
         return m_basis->getBase(m_index).boundaryBasis(s).release(); // Wrong, Should return 1-D mappedSingleBasis
     }
 
     /// Evaluates the non-zero basis functions at value u.
-    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const override
     {
         // m_basis->evalGlobal_into(m_index,u,result);
         m_basis->eval_into(m_index,u,result);
     }
 
     /// Evaluates i-th basis functions at value u.
-    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override
     {
         m_basis->evalSingle_into(m_index,i,u,result);
     }
 
     /// Evaluates the (partial) derivatives of non-zero basis functions at (the columns of) u.
-    void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override
     {
         m_basis->deriv_into(m_index,u,result);
     }
 
     /// Evaluates the (partial)derivatives of the i-th basis function at (the columns of) u.
-    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const override
     {
         //GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(result);
         //GISMO_NO_IMPLEMENTATION;
@@ -182,14 +182,14 @@ public:
     }
 
     /// Evaluates the (partial) derivatives of the nonzero basis functions at points \a u into \a result.
-    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override
     {
         m_basis->deriv2_into(m_index,u,result);
     }
 
     /// @brief Evaluate the (partial) derivatives of the \a i-th basis function
     /// at points \a u into \a result.
-    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const override
     {
         GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(result);
         GISMO_NO_IMPLEMENTATION;
@@ -198,7 +198,7 @@ public:
     /// @brief Evaluate the nonzero basis functions and their derivatives up
     /// to order \a n at points \a u into \a result.
     void evalAllDers_into(const gsMatrix<T> & u, int n, std::vector<gsMatrix<T> >& result,
-        bool sameElement = false) const
+        bool sameElement = false) const override
     {
         m_basis->evalAllDers_into(m_index,u,n,result,sameElement);
     }
@@ -214,7 +214,7 @@ public:
 
     /// @brief Evaluate the (partial) derivative(s) of order \a n the \a i-th basis function
     /// at points \a u into \a result.
-    void evalDerSingle_into(index_t i, const gsMatrix<T> & u, int n, gsMatrix<T>& result) const
+    void evalDerSingle_into(index_t i, const gsMatrix<T> & u, int n, gsMatrix<T>& result) const override
     {
         GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(n); GISMO_UNUSED(result);
         GISMO_NO_IMPLEMENTATION;
@@ -222,13 +222,13 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMappedSingleBasis)
 
-    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
+    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const override
     {
         GISMO_UNUSED(coefs);
         GISMO_NO_IMPLEMENTATION;
     }
 
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         GISMO_UNUSED(os);
         os << "Mapped basis function "<< m_index << " / "<< m_basis->size()-1 <<"\n";
@@ -236,7 +236,7 @@ public:
     }
 
     /// Prints the object as a string with extended details.
-    std::string detail() const
+    std::string detail() const override
     {
         // By default just uses print(..)
         std::ostringstream os;
@@ -248,20 +248,20 @@ public:
     // Virtual member that may be implemented or not by the derived class
     //////////////////////////////////////////////////
 
-    index_t size() const
+    index_t size() const override
     {
         return m_basis->size(m_index);
     }
 
     /// Returns the polynomial degree.
-    short_t maxDegree() const
+    short_t maxDegree() const override
     {
         // TODO Not always working: make it more general
         return degree();
     }
 
     /// Returns the polynomial degree.
-    short_t minDegree() const
+    short_t minDegree() const override
     {
         // TODO Not always working: make it more general
         return degree();
@@ -275,7 +275,7 @@ public:
     }
 
     /// Returns the polynomial degree.
-    short_t degree(short_t i) const
+    short_t degree(short_t i) const override
     {
         return m_basis->degree(m_index,i);
     }
@@ -309,33 +309,39 @@ public:
     }
 
     /// Return the 1-d basis of the underlying tensor product basis for the \a i-th parameter component.
-    const gsBasis<T>& component(short_t i) const
+    const gsBasis<T>& component(short_t i) const override
     {
         // TODO Not always working: make it more general
         return m_basis->getBase(m_index).component(i);
     }
 
-    gsBasis<T>& component(short_t i)
+    gsBasis<T>& component(short_t i) override
     {
         // TODO Not always working: make it more general
         // return gsMappedSingleBasisComponent<d-1,T> (this, i);
         return m_basis->getBase(m_index).component(i);
     }
 
-    typename gsBasis<T>::domainIter makeDomainIterator() const
+    virtual memory::shared_ptr<gsDomain<T> > domain() const override
+    {
+        return m_basis->getBase(m_index).domain();
+    }
+
+    GISMO_DEPRECATED
+    typename gsBasis<T>::domainIter makeDomainIterator() const override
     {
         // TODO Not always working: make it more general
         return m_basis->getBase(m_index).makeDomainIterator();
     }
 
-    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
+    GISMO_DEPRECATED
+    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const override
     {
         // TODO Not always working: make it more general
         return m_basis->getBase(m_index).makeDomainIterator(s);
     }
 
-
-    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override
     {
         std::vector<index_t> temp, rtemp;
         m_basis->addLocalIndicesOfPatchSide(patchSide(m_index,s),offset,temp);
@@ -360,7 +366,7 @@ public:
         return makeMatrix<index_t>(rtemp.begin(),rtemp.size(),1 );
     }
 
-    index_t functionAtCorner(boxCorner const & c) const
+    index_t functionAtCorner(boxCorner const & c) const override
     {
         index_t cindex = m_basis->getBase(m_index).functionAtCorner(c);
         cindex = m_basis->_getLocalIndex(m_index,cindex);

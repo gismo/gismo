@@ -34,9 +34,9 @@ class gsComposedBasis : public gsBasis<T>
     // /// Geometry Type
     typedef gsComposedGeometry<T> GeometryType;
 
-    GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedBasis)
+    GISMO_CLONE_FUNCTION(gsComposedBasis)
 
-    GISMO_OVERRIDE_MAKE_GEOMETRY_NEW
+    GISMO_MAKE_GEOMETRY_NEW
 
     typedef typename gsBasis<T>::domainIter domainIter;
 
@@ -95,6 +95,9 @@ public:
     short_t domainDim() const override;
     /// See \ref gsBasis for documentation
     short_t targetDim() const override;
+
+    /// See \ref gsBasis for documentation
+    memory::shared_ptr<gsDomain<T> > domain() const override;
 
     /// See \ref gsBasis for documentation
     short_t maxDegree() const override;

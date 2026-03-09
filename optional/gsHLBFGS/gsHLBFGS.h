@@ -65,12 +65,13 @@ public:
     using Base = gsOptimizer<T>;
 
 public:
-    // gsHLBFGS(gsOptProblem<T> * problem)
-    // :
-    // Base(problem)
-    // {
-    //     this->defaultOptions();
-    // }
+
+    gsHLBFGS()
+    :
+    Base()
+    {
+        this->defaultOptions();
+    }
 
     gsHLBFGS()
     :

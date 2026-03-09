@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsOptionList.h>
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
 #define Eigen gsEigen
@@ -75,6 +74,8 @@ class gsGradientDescent : public gsOptimizer<T>
     typedef typename gdc::GradientDescent<T, gsGradientDescentObjective<T>, StepSize, Callback, FiniteDifferences>::Result Result;
 
 public:
+
+    /// @brief default constructor
     gsGradientDescent()
     :
     Base(),

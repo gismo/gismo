@@ -32,7 +32,7 @@ class gsComposedGeometry : public gsGeometry<T>
 
     using Base = gsGeometry<T>;
 
-    GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedGeometry)
+    GISMO_CLONE_FUNCTION(gsComposedGeometry)
 
 public:
 
@@ -94,12 +94,12 @@ public:
      * @param[in]  points  The points in the parameter domain (of the composition)
      * @param[out] result  The control point derivatives
      */
-    void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const override;
+    void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const;
 
     /// Evaluates the mesh
     void evaluateMesh(gsMesh<T>& mesh) const override;
 
-    GISMO_OVERRIDE_BASIS_ACCESSORS;
+    GISMO_BASIS_ACCESSORS;
 
     const CompositionT & composition() const;
           CompositionT & composition()      ;

@@ -23,7 +23,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsBasis.h>
 
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsAssembler/gsExprAssembler.h>
 
@@ -90,9 +90,9 @@ void setOptimizerOptions(gsHLBFGS<T> &optimizer, const gsOptionList &options) {
   optimizer.options().setInt("MaxIterations",
                              options.askInt("qi_MaxIterations", 1e4));
   optimizer.options().setReal("MinGradLen",
-                              options.askReal("qi_MinGradLen", 1e-4));
+                              options.askReal("qi_MinGradientLength", 1e-4));
   optimizer.options().setReal("MinStepLen",
-                              options.askReal("qi_MinStepLen", 1e-4));
+                              options.askReal("qi_MinStepLength", 1e-4));
   optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
 }
 #endif

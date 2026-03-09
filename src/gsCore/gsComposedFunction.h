@@ -17,6 +17,8 @@
         S. Imperatore
 */
 
+#pragma once
+
 //! [Include namespace]
 #include <gsCore/gsFunction.h>
 
@@ -34,7 +36,7 @@ public:
     typedef gsFunction<T>   CompositionT;
     typedef gsFunction<T>   FunctionT;
 
-    GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedFunction)
+    GISMO_CLONE_FUNCTION(gsComposedFunction)
 
 public:
 
@@ -74,13 +76,13 @@ public:
     const FunctionT & function() const;
 
     /// See \ref gsFunction for more documentation
-    short_t domainDim() const;
+    short_t domainDim() const override;
 
     /// See \ref gsFunction for more documentation
-    short_t targetDim() const;
+    short_t targetDim() const override;
 
     /// See \ref gsFunction for more documentation
-    gsMatrix<T> support() const;
+    gsMatrix<T> support() const override;
 
     // void evalAllDers_into(const gsMatrix<T> & u, int n,
     //                         std::vector<gsMatrix<T> >& result,

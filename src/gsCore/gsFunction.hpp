@@ -248,7 +248,6 @@ void gsFunction<T>::invertPointGrid(gsGridIterator<T,0> & git,
                                     gsMatrix<T> & result, const T accuracy,
                                     const bool useInitialPoint) const
 {
-    GISMO_UNUSED(useInitialPoint);
     result.resize(this->domainDim(), git.numPoints() );
     gsVector<T> arg;
     auto cw = git.numPointsCwise();
@@ -790,8 +789,6 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
             }
         }
     }
-
-
 
     /*
     // Curvature of isoparametric curve

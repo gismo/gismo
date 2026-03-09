@@ -18,7 +18,7 @@
 
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsWeightMapper.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsBasisFun.h>
 
@@ -46,7 +46,7 @@ private:
     typedef typename std::vector<T>::const_iterator ConstWeightIter;
     typedef gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
 
-    typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
+    typedef typename gsBasis<T>::domainIter domainIter;
 
 public:
     /// Shared pointer for gsMappedBasis
@@ -87,7 +87,7 @@ public:
         m_mapper->optimize(gsWeightMapper<T>::optSourceToTarget);
     }
 
-    index_t nPieces() const {return m_topol.nBoxes();}
+    index_t nPieces() const override {return m_topol.nBoxes();}
 
 public:
     //////////////////////////////////////////////////
@@ -136,7 +136,7 @@ public:
     // Prints the object to the stream
     //std::ostream & print(std::ostream & os) const { }
 
-    short_t domainDim() const
+    short_t domainDim() const override
     {
         GISMO_ASSERT(m_bases.size()>0,"there should be at least one basis provided.");
         return m_bases[0]->domainDim();
@@ -146,7 +146,7 @@ public:
     /// all the sizes summed up should give the total number of (global) basis functions
     /// the default argument -1 will give the total number of basis functions for all patches
     index_t size(const index_t index) const;
-    index_t size() const { return m_mapper->getNrOfTargets(); }
+    index_t size() const override { return m_mapper->getNrOfTargets(); }
 
     index_t globalSize() const { return m_mapper->getNrOfTargets(); }
 
@@ -206,12 +206,13 @@ public:
         return m_sb[i];
     }
 
-    const gsMappedSingleBasis<d,T> & piece(const index_t k) const { return getMappedSingleBasis(k); }
+    const gsMappedSingleBasis<d,T> & piece(const index_t k) const override { return getMappedSingleBasis(k); }
     //const gsFunctionSet & piece(const index_t k) const { return m_sb[k]; }
 
     /// gives back the domain iterator of the boundary side \a s of a given \a patch
-    domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
-    { return m_bases[patch]->makeDomainIterator(s); }
+//    GISMO_DEPRECATED
+//    typename gsBasis<T>::domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
+//    { return m_bases[patch]->makeDomainIterator(s); }
 
     /** exports the patch \a i of this geometry (with coefs) to a Geometry object
      *  of the underlying basis. The ownership of this Geometry will go to the
@@ -229,16 +230,16 @@ public:
 
 private:
     // Avoid warnings for hidden overloads w.r.t gsFunctionSet
-    void active_into(const gsMatrix<T> &,gsMatrix<index_t>&) const
+    void active_into(const gsMatrix<T> &,gsMatrix<index_t>&) const override
     { GISMO_NO_IMPLEMENTATION; }
-    void eval_into(const gsMatrix<T> &,gsMatrix<T>&) const
+    void eval_into(const gsMatrix<T> &,gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv_into(const gsMatrix<T> &,gsMatrix<T>&) const
+    void deriv_into(const gsMatrix<T> &,gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION; }
-    void deriv2_into(const gsMatrix<T> &,gsMatrix<T>&) const
+    void deriv2_into(const gsMatrix<T> &,gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION; }
     void evalAllDers_into(const gsMatrix<T> &, int,
-                          std::vector<gsMatrix<T> >&, bool) const
+                          std::vector<gsMatrix<T> >&, bool) const override
     { GISMO_NO_IMPLEMENTATION; }
 
 public:
@@ -344,7 +345,7 @@ public:
     /// @}
 
     /// @brief Prints the object as a string.
-    std::ostream &print(std::ostream &os) const;
+    std::ostream &print(std::ostream &os) const override;
 
 public:
     //////////////////////////////////////////////////

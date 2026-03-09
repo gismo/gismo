@@ -262,7 +262,7 @@ public:
     }
     */
 
-    gsDomain<T> * domain() const { return m_src->domain(); }
+    memory::shared_ptr<gsDomain<T> > domain() const { return m_src->domain(); }
 
     void anchors_into(gsMatrix<T> & result) const
     { return m_src->anchors_into(result); }
@@ -288,8 +288,10 @@ public:
     //                      std::vector<gsMatrix<T> >& result, bool sameElement = false) const;
 
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    // void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     /// Returns the source basis of the rational basis
     const SrcT & source () const
@@ -364,13 +366,14 @@ public:
         // equiv: coefs = pr_coefs.leftCols(n).array() / weights.replicate(1,n).array();
     }
 
-
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
 //        gsWarn<< "rational domain iterator with evaluate the source.\n";
         return m_src->makeDomainIterator();
     }
 
+    GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
 //        gsWarn<< "rational domain boundary iterator with evaluate the source.\n";
@@ -535,6 +538,26 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
 }
 
 template<class SrcT>
+void gsRationalBasis<SrcT>::derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+{ 
+    // Formula:
+    // R_i' = (w_i N_i / W)' = w_i ( N_i'W - N_i W' ) / W^2
+
+    gsMatrix<T> W, dW;
+    m_src->evalFunc_into (u, m_weights,  W);
+    m_src->derivFunc_into(u, m_weights, dW);
+
+    gsMatrix<> N, dN;
+    m_src->evalSingle_into (i, u,  N);  
+    m_src->derivSingle_into(i, u, dN);  
+
+    result.resize(Dim, u.cols());
+    for (index_t j = 0; j < u.cols(); ++j)
+        result.col(j) = m_weights.at(i) * (W(0,j)*dN.col(j) - N(0,j)*dW.col(j)) / (math::pow(W(0,j),2));
+}
+
+
+template<class SrcT>
 void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     // Formula:
@@ -602,7 +625,6 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
     }
 }
 
-
 template<class SrcT>
 void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul, int dir)
 {
@@ -619,7 +641,7 @@ void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numK
 
     // Using uniformRefine_withCoefs
     auto tmp = m_src->clone();
-    coefs *= m_weights.asDiagonal();
+    coefs = m_weights.asDiagonal() * coefs;
     tmp->uniformRefine_withCoefs(coefs, numKnots);
     m_src->uniformRefine_withCoefs(m_weights, numKnots,mul,dir);
 

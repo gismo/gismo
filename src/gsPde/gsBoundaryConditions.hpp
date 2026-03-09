@@ -258,7 +258,8 @@ public:
         typedef typename std::vector<typename gsFunctionSet<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
-            gsXmlNode * ff = putFunctionSetToXml<T>(*fit, data, count);
+            GISMO_ASSERT((dynamic_cast<gsFunction<T> *>(fit->get())),"Function is not of type gsFunction<T>");
+            gsXmlNode * ff = putFunctionToXml<T>(static_cast<gsFunction<T> &>(*(fit->get())), data, count);
             BCs->append_node(ff);
             ++count;
         }

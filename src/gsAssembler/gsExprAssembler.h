@@ -15,7 +15,9 @@
 
 #include <gsUtils/gsPointGrid.h>
 #include <gsAssembler/gsQuadrature.h>
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
+#include <gsExpressions/gsFeSpaceData.h>
+#include <gsDomain/gsDomain.h>
 
 #include <gsAssembler/gsCPPInterface.h>
 
@@ -32,19 +34,21 @@ template<class T>
 class gsExprAssembler
 {
 private:
+    typedef typename gsDomain<T>::iterator elementIterator;
+
     typename gsExprHelper<T>::Ptr m_exprdata;
     const gsMultiPatch<T>* m_gmap;
 
     gsOptionList m_options;
 
     mutable gsSparseMatrix<T> m_matrix;
-    typedef gsFiberMatrix<T,false> FiberMatrix;
+    typedef gsFiberMatrix<T,ColMajor> FiberMatrix;
     FiberMatrix m_fmatrix;
     gsMatrix<T>      m_rhs;
 
-    std::list<gsFeSpaceData<T> > m_sdata;
-    std::vector<gsFeSpaceData<T>*> m_vrow;
-    std::vector<gsFeSpaceData<T>*> m_vcol;
+    std::list<gismo::expr::gsFeSpaceData<T> > m_sdata;
+    std::vector<gismo::expr::gsFeSpaceData<T>*> m_vrow;
+    std::vector<gismo::expr::gsFeSpaceData<T>*> m_vcol;
 
     int m_sparsity;//0:unknown, 1:volume, 2:boundary, 4:interface pre-allocated
     mutable bool m_modified;
@@ -131,7 +135,7 @@ public:
     /// Call this function to fill the sparsematrix with all the assemblies so far
     const gsSparseMatrix<T> & makeMatrix() const
     {
-        m_fmatrix.toSparseMatrix(m_matrix);
+        m_fmatrix.toSparseMatrix_into(m_matrix);
         m_modified = false;
         return m_matrix;
     }
@@ -150,6 +154,11 @@ public:
         return give(m_matrix);
     }
 
+    EIGEN_STRONG_INLINE FiberMatrix giveFiberMatrix()
+    {
+        return give(m_fmatrix);
+    }
+
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
@@ -159,7 +168,13 @@ public:
     /// \brief Sets the domain of integration.
     /// \warning Must be called before any computation is requested
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
-    { m_exprdata->setMultiBasis(mesh); }
+    { m_exprdata->setDomain(mesh.domain()); } // @hverhelst TODO
+
+    /// \brief Sets the domain of integration.
+    /// \warning Must be called before any computation is requested
+    void setIntegrationDomain(typename gsDomain<T>::Ptr domain)
+    { m_exprdata->setDomain(give(domain)); } // @hverhelst TODO
+
 
     /// \brief Set the geometrymap ( used for interface assembly)
     /// \warning Must be called before any computation is requested
@@ -177,8 +192,8 @@ public:
 #endif
 
     /// \brief Returns the domain of integration
-    const gsMultiBasis<T> & integrationElements() const
-    { return m_exprdata->multiBasis(); }
+    const gsDomain<T> & domain() const
+    { return m_exprdata->domain(); }
 
     const typename gsExprHelper<T>::Ptr exprData() const { return m_exprdata; }
 
@@ -326,7 +341,8 @@ public:
         clearMatrix(false);
     }
 
-    void clearRhs() { m_rhs.setZero(); }
+    // @hverhelst: adds explicit size, because if the RHS is moved ('given'), its sizes are lost.
+    void clearRhs(const index_t numRhs = 1) { m_rhs.setZero(numTestDofs(),numRhs); }
 
     /**
      * @brief Re-Init Matrix (set zero by default)
@@ -339,6 +355,7 @@ public:
         if (m_fmatrix.nonZeros() && save_sparsety_pattern)
         {
             m_fmatrix.assignZero();
+            m_modified = true;
         }
         else
         {
@@ -353,10 +370,10 @@ public:
                 const index_t bdB = m_options.getInt("bdB");
                 const T bdO = m_options.getReal("bdO");
                 T nz = 1;
-                const short_t dim = m_exprdata->multiBasis().domainDim();
+                const short_t dim = m_exprdata->domain().dim();
                 for (short_t i = 0; i != dim; ++i)
                     nz *= bdA * static_cast<T>(
-                                    m_exprdata->multiBasis().maxDegree(i)) +
+                                    m_exprdata->domain().degree(i)) +
                           static_cast<T>(bdB);
 
                 m_fmatrix.reservePerColumn(numBlocks() *
@@ -646,7 +663,7 @@ private:
                               "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
 
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
-                              "Invalid values for fixed part");
+                              "Invalid values for fixed part " << colMap.boundarySize() <<" != "<< fixedDofs.size() );
 
                 //GISMO_ASSERT( colMap.boundarySize()==0 || m_rhs.cols()==1,
                 //              "Invalid values for fixed part");
@@ -871,13 +888,13 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
-        if (!m_vcol.front()->valid()) m_vcol.front()->init();
+        if (!m_vcol[i]->valid()) m_vcol[i]->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
                                    m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
 
-        if ( m_vcol[i] != m_vrow[i] )
+        if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
-            if (!m_vrow.front()->valid()) m_vrow.front()->init();
+            if (!m_vrow[i]->valid()) m_vrow[i]->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
                                        m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
         }
@@ -908,42 +925,35 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
         omp_init_lock(&l);
 #endif
 
-#pragma omp parallel
-    {
-#ifdef _OPENMP
-        const int tid = omp_get_thread_num();
-        const int nt  = omp_get_num_threads();
-#endif
-        auto arg_tpl = std::make_tuple(args...);
-        m_exprdata->parsePattern(arg_tpl);
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
 
-        typename gsBasis<T>::domainIter domIt;
-        unsigned patchInd;
-        _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
+#pragma omp parallel
+{
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parsePattern(arg_tpl);
+    unsigned patchInd;
+    _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
-                    , lock
+    , lock
 #endif
-            );
-        const unsigned nP = m_exprdata->multiBasis().nBases();
-#ifdef _OPENMP
-        const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
-        for (unsigned Ind = 0; Ind != nP; ++Ind)
-        {
-            patchInd = (Ind + offset * tid) % nP;
-            domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-            for ( domIt->next(tid); domIt->good(); domIt->next(nt) ) //tid>numElements??? barrier.
-#else
-        for (patchInd = 0; patchInd != nP; ++patchInd)
-        {
-            domIt = m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-            for (; domIt->good(); domIt->next() )
-#endif
-            {
-                m_exprdata->points() = domIt->centerPoint();
-                op_tuple(pp, arg_tpl);
-            }
-        }
-    }//parallel
+          );
+
+    for ( auto & elem : m_exprdata->domain().allElements() )
+    {
+        m_exprdata->points() = elem.centerPoint();
+        patchInd = elem.patch();
+        op_tuple(pp, arg_tpl);
+    }
+
+}//parallel
+
 #ifdef _OPENMP
     for (auto & l : lock)
         omp_destroy_lock(&l);
@@ -964,17 +974,21 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
         omp_init_lock(&l);
 #endif
 
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
 #pragma omp parallel
 {
-/*
-#ifdef _OPENMP
-        const int tid = omp_get_thread_num();
-        const int nt  = omp_get_num_threads();
-#endif
-*/
         auto arg_tpl = std::make_tuple(args...);
         m_exprdata->parsePattern(arg_tpl);
         typename gsBasis<T>::domainIter domIt;
+        typename gsBasis<T>::domainIter domItEnd;
         unsigned patchInd;
         _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
 #ifdef _OPENMP
@@ -987,16 +1001,18 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
             const boundary_condition<T> * it = &iit->get();
 
             patchInd = it->patch();
-            domIt = m_exprdata->multiBasis().basis(it->patch()).
-                makeDomainIterator(it->side());
+
+            // m_exprdata->domain().beginBdr(it->side());
+            domIt = m_exprdata->domain().subdomain(it->patch())->beginBdr(it->side());
+            domItEnd = m_exprdata->domain().subdomain(it->patch())->endBdr(it->side());
 
             // Start iteration over elements
-            //for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-            for (; domIt->good(); domIt->next() )
+            //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
+            for (; domIt<domItEnd; ++domIt )
             {
 #               pragma omp single nowait
                 {
-                    m_exprdata->points() = domIt->centerPoint();
+                    m_exprdata->points() = domIt.centerPoint();
                     op_tuple(pp, arg_tpl);
                 }
             }
@@ -1023,8 +1039,17 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     for (auto & l : lock)
         omp_init_lock(&l);
 #endif
+
+    // Checks if any of the expressions in args is a matrix
+    // If not, then there is no need to compute sparity patterns
+    // and returns
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
     typedef typename gsFunction<T>::uPtr ifacemap;
-    typename gsBasis<T>::domainIter domIt;
     const bool flipSide = m_options.askSwitch("flipSide", false);
 #pragma omp parallel
 {
@@ -1047,23 +1072,25 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         const index_t patch1 = iFace.first() .patch;
         const index_t patch2 = iFace.second().patch;
 
+        const gsBasis<T> & basis1 = this->trialSpace(0).source().basis(patch1);
+        const gsBasis<T> & basis2 = this->trialSpace(0).source().basis(patch2);
         if (iFace.type() == interaction::conforming)
             interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
-                                                      m_exprdata->multiBasis().basis(patch1).support(),
-                                                      m_exprdata->multiBasis().basis(patch2).support() );
+                                                      basis1.support(),
+                                                      basis2.support() );
         else
-            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), m_exprdata->multiBasis(), iFace);
+            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        domIt = m_exprdata->multiBasis().basis(patch1)
-            .makeDomainIterator(iFace.first().side());
+        typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
 
         // Start iteration over elements
-        //for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-        for (; domIt->good(); domIt->next() )
+        //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
+        for (; domIt<domItEnd; ++domIt )
         {
 #           pragma omp single nowait
             {
-                m_exprdata->points() = domIt->centerPoint();
+                m_exprdata->points() = domIt.centerPoint();
                 interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
                 op_tuple(pp, arg_tpl);
             }
@@ -1082,85 +1109,56 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     if ((m_sparsity & 1) == 0)
         this->_computePattern(args...);
 
-    bool failed = false;
+    //bool failed = false;
     const index_t elim = m_options.getInt("DirichletStrategy");
-#pragma omp parallel shared(failed)
+    // Optimization for the case when the quadrature rule is the same for all patches
+    // bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+
+#pragma omp parallel
 {
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
-    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
-    // check if matrix is modified
+    // check if the expression is a matrix, therefore being modified
+#pragma omp single nowait
+{
     _checkMatrix CM(m_modified);
     op_tuple(CM, arg_tpl);
-
+}
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
     ee.setElim(dirichlet::elimination==elim);
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
-    typename gsBasis<T>::domainIter domIt;
 
-    // Note: omp thread will loop over all patches and will work on Ep/nt
-    // elements, where Ep is the elements on the patch.
-    const unsigned nP = m_exprdata->multiBasis().nBases();
-#ifdef _OPENMP
-    const unsigned offset = (nP<(unsigned)(nt)  ?  1  :  nP/nt);
-    for (unsigned Ind = 0; Ind < nP && (!failed); ++Ind)
-     {
-        // Spread the threads on different patches
-        const unsigned patchInd = (Ind + offset * tid) % nP;
-#else
-     for (unsigned patchInd = 0; patchInd < nP && (!failed); ++patchInd)
-     {
-#endif
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
+    typename gsQuadRule<T>::uPtr QuRule;
+    index_t QuPatch = -1;
 
-        // Initialize domain element iterator for current patch
-        domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-
-        // Start iteration over elements of patchInd
-#       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good() && (!failed); domIt->next(nt) )
-#       else
-        for (; domIt->good(); domIt->next() )
-#       endif
+    for ( auto & elem : m_exprdata->domain().allElements() )
+    {
+        if (/*changeQuadrature && */QuPatch!=elem.patch())
         {
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           m_exprdata->points(), m_exprdata->weights());
-
-            if (m_exprdata->points().cols()==0)
-                continue;
-
-// Activate the try-catch only if G+Smo is in DEBUG
-#ifndef NDEBUG
-            // Perform required pre-computations on the quadrature nodes
-            try
-            {
-                m_exprdata->precompute(patchInd);
-                //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
-            }
-            catch (...)
-            {
-                #pragma omp atomic write
-                failed = true;
-                break;
-            }
-#else
-            m_exprdata->precompute(patchInd);
-#endif
-            // Assemble contributions of the element
-            op_tuple(ee, arg_tpl);
+            QuPatch = elem.patch();
+            // get Degree of the domain
+            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
         }
+
+        // Map the Quadrature rule to the element
+        QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
+                       m_exprdata->points(), m_exprdata->weights());
+
+        if (m_exprdata->points().cols()==0)
+            continue;// is this useful?
+
+        m_exprdata->precompute( QuPatch );
+        //m_exprdata->precompute( elem ); //todo
+
+        // Assemble contributions of the element
+        op_tuple(ee, arg_tpl);
     }
+
 }//omp parallel
     // Throw something else?? (floating point exception?)
-    GISMO_ENSURE(!failed,"Assembly failed due to an error");
+//    GISMO_ENSURE(!failed,"Assembly failed due to an error");
 }
 
 template<class T>
@@ -1184,7 +1182,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 // #   endif
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
-    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
@@ -1193,25 +1191,25 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
-//#   pragma omp parallel for
     for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
     {
         const boundary_condition<T> * it = &iit->get();
 
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
+        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch()), m_options, it->side().direction());
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
 
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(it->patch()).
-            makeDomainIterator(it->side());
+            m_exprdata->domain().subdomain(it->patch())->beginBdr(it->side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->domain().subdomain(it->patch())->endBdr(it->side());
 
         // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
+        for (; domIt < domItEnd; ++domIt )
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
 
             if (m_exprdata->points().cols()==0)
@@ -1247,23 +1245,23 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     op_tuple(CM, arg_tpl);
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
-//#   pragma omp parallel for
-
     for (gsBoxTopology::const_biterator it = bnd.begin();
          it != bnd.end(); ++it )
     {
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch),
+        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch),
                                     m_options, it->side().direction());
 
-        typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(it->patch).
-            makeDomainIterator(it->side());
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt =  // add it->patch to domainiter ?
+            m_exprdata->domain().subdomain(it->patch)->beginBdr(it->side());
+        typename gsBasis<T>::domainIter domItEnd =  // add it->patch to domainiter ?
+            m_exprdata->domain().subdomain(it->patch)->endBdr(it->side());
 
         // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt )
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
 
             if (m_exprdata->points().cols()==0)
@@ -1296,7 +1294,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
-    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
 
     typename gsQuadRule<T>::uPtr QuRule;
 
@@ -1320,23 +1318,25 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 
         if (iFace.type() == interaction::conforming)
             interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
-                                                      m_exprdata->multiBasis().basis(patch1).support(),
-                                                      m_exprdata->multiBasis().basis(patch2).support() );
+                                                      this->trialSpace(0).source().basis(patch1).support(),
+                                                      this->trialSpace(0).source().basis(patch2).support() );
         else
-            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), m_exprdata->multiBasis(), iFace);
+            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
+        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(patch1),
                                    m_options, iFace.first().side().direction());
 
+        // TODO [later]: Use beginIfc instead of beginBdr
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(patch1)
-            .makeDomainIterator(iFace.first().side());
+            m_exprdata->domain().subdomain(iFace.first().patch)->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->domain().subdomain(iFace.first().patch)->endBdr(iFace.first().side());
 
         // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt)
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
@@ -1367,54 +1367,43 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     clearMatrix();
     clearRhs();
 
+    bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+
 #pragma omp parallel
 {
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
-
     m_exprdata->parse(residual, u);
-    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
-
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
 
     m_modified = true;
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
 
-    // Note: omp thread will loop over all patches and will work on Ep/nt
-    // elements, where Ep is the elements on the patch.
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    typename gsQuadRule<T>::uPtr QuRule;
+    index_t QuPatch = -1;
+
+    for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
-
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-
-        // Start iteration over elements of patchInd
-#       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#       else
-        for (; domIt->good(); domIt->next() )
-#       endif
+        if (changeQuadrature && QuPatch!=elem.patch())
         {
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           m_exprdata->points(), m_exprdata->weights());
+            QuPatch = elem.patch();
+            // get Degree of the domain
+            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+        }
 
-            if (m_exprdata->points().cols()==0)
-                continue;
+        // Map the Quadrature rule to the element
+        QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
+                        m_exprdata->points(), m_exprdata->weights());
 
-            // Evaluate at quadrature points
-            m_exprdata->precompute(patchInd);
+        if (m_exprdata->points().cols()==0)
+            continue;
 
-#           pragma omp critical (assemble_fdiffs)
-            {
-                // ee(residual); //Computes residual to m_rhs
-                ee.diff(residual, u); //Computes Jacobian
-            }
+        // Evaluate at quadrature points
+        m_exprdata->precompute(QuPatch);
+
+#       pragma omp critical (assemble_fdiffs)
+        {
+            // ee(residual); //Computes residual to m_rhs
+            ee.diff(residual, u); //Computes Jacobian
         }
     }
 
@@ -1432,7 +1421,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
     // clearMatrix();
 
     m_exprdata->parse(residual, u);
-    if (m_options.getSwitch("SameElement")) m_exprdata->activateFlags(SAME_ELEMENT);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
@@ -1452,21 +1441,22 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
         const index_t patch1 = iFace.first() .patch;
         //const index_t patch2 = iFace.second().patch;
 
-        gsCPPInterface<T> interfaceMap(getGeometryMap(), // ! make current geometry
-                                       m_exprdata->multiBasis(), iFace);
+        gsCPPInterface<T> interfaceMap(getGeometryMap(), iFace);
 
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
+        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(patch1),
                                    m_options, iFace.first().side().direction());
 
-        typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(patch1)
-            .makeDomainIterator(iFace.first().side());
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
+            m_exprdata->domain().beginAll(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd =  // add patch1 to domainiter ?
+            m_exprdata->domain().endAll(iFace.first().side());
 
         // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
+        for (; domIt<domItEnd; ++domIt )
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
             interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
@@ -1550,43 +1540,31 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
-#pragma omp parallel
+    //bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+//#pragma omp parallel
 {
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
-
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
-    cPoints.resize( m_exprdata->multiBasis().nBases() );
-    cWeights.resize( m_exprdata->multiBasis().nBases() );
+    cPoints.resize( m_exprdata->domain().nPieces() );
+    cWeights.resize( m_exprdata->domain().nPieces() );
 
-    // Note: omp thread will loop over all patches and will work on Ep/nt
-    // elements, where Ep is the elements on the patch.
     index_t count = 0;
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    for (unsigned patchInd = 0; patchInd < m_exprdata->domain().nPieces(); ++patchInd)
     {
-        auto & bb = m_exprdata->multiBasis().basis(patchInd);
+        auto & bb = this->trialSpace(0).source().basis(patchInd);
 
         QuRule = gsQuadrature::getPtr(bb, m_options);
         const index_t numNodes = QuRule->numNodes();
 
+        // @hverhelst: THIS ASSUMES SAME NUMBER OF QUNODES PER ELEMENT
         const index_t sz = bb.numElements() * numNodes;
         cPoints[patchInd].resize(bb.domainDim(), sz );
         cWeights[patchInd].resize( sz );
 
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt = bb.makeDomainIterator();
-
         // Start iteration over elements of patchInd
-#       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#       else
-        for (; domIt->good(); domIt->next() )
-#       endif
+        for ( auto & elem : bb.domain()->allElements() ) //todo: parallelize
         {
             // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+            QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
 
             cWeights[patchInd].segment(count, numNodes) = m_exprdata->weights();

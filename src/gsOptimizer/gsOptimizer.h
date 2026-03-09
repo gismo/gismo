@@ -46,6 +46,8 @@ public:
 
 public:
 
+    /// @brief Sets the optimization problem
+    /// @param problem optimization problem
     virtual void setProblem(gsOptProblem<T> * problem)
     {
         m_op=problem;
@@ -90,6 +92,7 @@ public:
     virtual void solve (const gsMatrix<T> & initialGuess) = 0;
     virtual void solve ()
     {
+        GISMO_ASSERT(m_op != nullptr, "No optimization problem set");
         m_curDesign.resize(m_op->numDesignVars(),1);
         m_curDesign.setZero();
         this->solve(m_curDesign);

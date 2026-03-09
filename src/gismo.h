@@ -76,7 +76,7 @@ namespace internal
 
 #include <gsCore/gsFieldCreator.h>
 
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 
 #include <gsCore/gsSysInfo.h>
 
@@ -86,8 +86,9 @@ namespace internal
 #include <gsCore/gsComposedGeometry.h>
 
 // Tensors
-#include <gsTensor/gsTensorDomainIterator.h>
-#include <gsTensor/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsTensorDomainIterator.h>
+#include <gsDomain/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsPointDomain.h>
 #include <gsTensor/gsGridIterator.h>
 #include <gsTensor/gsGenericTensorBasis.h>
 
@@ -105,8 +106,8 @@ namespace internal
 #include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
-#include <gsHSplines/gsHBSplineBasis.h>
-#include <gsHSplines/gsHBSpline.h>
+// #include <gsHSplines/gsHBSplineBasis.h>
+// #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSpline.h>
@@ -117,6 +118,9 @@ namespace internal
 
 /* ----------- Mesh ----------- */
 #include <gsMesh2/gsSurfMesh.h>
+
+/* ----------- Subdivision operations ----------- */
+#include <gsMesh2/gsSubdivScheme.h>
 
 /* ----------- MSplines ----------- */
 #include <gsMSplines/gsMappedBasis.h>
@@ -170,12 +174,15 @@ namespace internal
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
-#include <gsAssembler/gsExprHelper.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
 
 #include <gsAssembler/gsAdaptiveMeshing.h>
 #include <gsAssembler/gsAdaptiveMeshingUtils.h>
+
+#include <gsDomain/gsPointDomain.h>
+#include <gsDomain/gsPointDomainIterator.h>
 
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>

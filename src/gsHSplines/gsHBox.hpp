@@ -14,8 +14,8 @@
 #pragma once
 
 #include <gsUtils/gsCombinatorics.h>
-#include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsDomain/gsHDomainIterator.h>
 #include <gsHSplines/gsAABB.h>
 
 #include <gsIO/gsXml.h>
@@ -52,10 +52,8 @@ m_error_crs(0),
 m_index(-1),
 m_marked(false)
 {
-    m_basis = nullptr;
-    m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
-    GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
-
+    GISMO_ASSERT((dynamic_cast<const gsHTensorBasis<d,T> *>(&domHIt->basis())!=nullptr),"basis is not a gsHTensorBasis");
+    m_basis = static_cast<const gsHTensorBasis<d,T> *>(&domHIt->basis());
     m_coords.resize(d,2);
     m_coords.col(0) = domHIt->lowerCorner();
     m_coords.col(1) = domHIt->upperCorner();
@@ -809,7 +807,7 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox(index_t targetLevel) const
         else
         {
             lowerIndex = this->lowerIndex()[i]*std::pow(2,diff);
-            ( lowerIndex < (degree-1)/2 ? lowerIndex=0 : lowerIndex-=(degree-1)/2 );
+            ( lowerIndex < (degree-1)/2 ? lowerIndex=0 : lowerIndex-=(degree-1)/2-1 );
             result[i+1] = lowerIndex;
             upperIndex = this->upperIndex()[i]*std::pow(2,diff);
             // ( upperIndex + (degree)/2 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2);

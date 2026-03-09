@@ -69,6 +69,8 @@ public:
         addBox(boxes);
     }
 
+    void setBoxes(index_t n) { nboxes = n; }
+
     // Default copy constructor does the same as the following:
     //gsBoxTopology(const gsBoxTopology & other) : dim(other.dim), nboxes(other.nboxes), 
     //    m_boundary(other.m_boundary), m_interfaces(other.m_interfaces)
