@@ -56,13 +56,67 @@ public:
 
     gsOptionList & options();
 
-    /// Evaluates the objective function at the given point u.
+    /**
+     * @brief Evaluates the objective function at the given control point \a u.
+     *
+     * The domain chain is \f$ \hat\Omega \xrightarrow{\sigma(\cdot;\alpha)}
+     * \tilde\Omega \xrightarrow{G} \Omega \f$, with composed Jacobian
+     * \f$ J_c = J_g\,J_\sigma \f$ and metric tensor
+     * \f$ C = J_c^\top J_c \f$.
+     *
+     * **Without monitor** (\c m_fun == nullptr):
+     * \f[
+     *   E(\alpha) = \int_{\hat\Omega}
+     *     \frac{\operatorname{tr}(C^{-1})}{\sqrt{\det C}} \; d\hat\Omega
+     * \f]
+     *
+     * **With monitor** (\c m_fun != nullptr), using a weight
+     * \f$ m^2 = 1/(1 + \theta\,\eta^2) \f$:
+     * \f[
+     *   E(\alpha) = \int_{\hat\Omega}
+     *     m^2\;\operatorname{tr}(C^{-1})\,\sqrt{\det C} \; d\hat\Omega
+     * \f]
+     * where \f$\eta^2\f$ depends on the \c MonitorMode:
+     * - **ValueBased**: \f$ \eta = f(\xi(\alpha)) \f$ and
+     *   \f$ m^2 = 1/(1+\theta\,\eta^2) \f$.
+     * - **GradientBased**: \f$ \eta^2 = (\nabla_\xi f)^\top\,
+     *   C_g^{-1}\,(\nabla_\xi f) \f$ with geometry metric
+     *   \f$ C_g = J_g^\top J_g \f$, which equals
+     *   \f$ \|\nabla_x f\|^2 \f$ (the squared physical gradient norm)
+     *   in the planar case.
+     *
+     * @note For GradientBased mode, the derivatives of the monitor
+     *   function \a m_fun must be exact (e.g. via automatic
+     *   differentiation). Finite-difference derivatives introduce
+     *   errors that propagate into the gradient computation.
+     */
     T evalObj(const gsAsConstVector<T> &u) const;
 
-    /// Gradient evaluation of the objective function at the given point u.
+    /**
+     * @brief Analytical gradient of the objective function w.r.t.
+     *   the control variables \a u.
+     *
+     * Differentiates the integrand of evalObj() with respect to each
+     * control variable \f$ \alpha_{k,d} \f$ (the \a d-th coordinate
+     * of the \a k-th basis function coefficient of \f$\sigma\f$).
+     *
+     * The key kinematic derivatives are:
+     * \f{align*}{
+     *   \frac{\partial\xi_i}{\partial\alpha_{k,d}} &= N_k\,\delta_{id}, \\
+     *   \frac{\partial J_\sigma}{\partial\alpha_{k,d}}
+     *     &= e_d\,(\nabla_{\hat u} N_k)^\top, \\
+     *   \frac{\partial J_g}{\partial\alpha_{k,d}}(a,j)
+     *     &= N_k \frac{\partial^2 G_a}{\partial\xi_j\,\partial\xi_d}.
+     * \f}
+     *
+     * See gradObj_into() implementation for the full derivation per mode.
+     */
     void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const override;
 
-    /// Finite-difference gradient (central differences) for testing.
+    /**
+     * @brief Finite-difference gradient (central differences, step \f$h=10^{-7}\f$)
+     *   for validation of gradObj_into().
+     */
     void gradObj_FD_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const;
 
 protected:

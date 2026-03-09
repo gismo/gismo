@@ -553,6 +553,41 @@ gsOptionList & gsOptMesh<T,MODE>::options()
 // }
 
 
+/// @cond
+//
+// Objective function evaluation.
+//
+// Map chain:   hat{Omega} --sigma(u;alpha)--> tilde{Omega} --G--> Omega
+//
+// Jacobians:   J_sigma (dd x dd),  J_g (td x dd),  J_c = J_g * J_sigma (td x dd)
+// Metric:      C = J_c^T J_c  (dd x dd)
+// Geometry metric: C_g = J_g^T J_g  (dd x dd)
+//
+// WITHOUT monitor:
+//   E(alpha) = int  tr(C^{-1}) / sqrt(det C)  d hat{Omega}
+//
+// WITH monitor (weight m^2 = 1/(1 + theta * eta^2)):
+//   E(alpha) = int  m^2 * tr(C^{-1}) * sqrt(det C)  d hat{Omega}
+//
+// where eta^2 depends on MonitorMode:
+//
+// ValueBased:
+//   eta = f(xi(alpha))          (monitor value at moving parametric point)
+//   m^2 = 1 / (1 + theta * eta^2)
+//
+// GradientBased:
+//   eta^2 = (nabla_xi f)^T C_g^{-1} (nabla_xi f)
+//         = || nabla_x f ||^2   (squared physical gradient norm, for td == dd)
+//   m^2 = 1 / (1 + theta * eta^2)
+//
+//   For m_parametric=true:   nabla_xi f = deriv of f w.r.t. xi (direct)
+//   For m_parametric=false:  nabla_xi f = J_g^T * nabla_x f  (chain rule)
+//
+//   The C_g^{-1} metric accounts for the coordinate distortion so that
+//   eta^2 measures the physical gradient norm regardless of the
+//   parametric representation.
+//
+/// @endcond
 template<class T, enum MonitorMode MODE>
 T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 {
@@ -567,7 +602,6 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 
     T result = T(0);
 
-    // Not needed, because it just defines the options
     gsExprEvaluator<T> evaluator;
     evaluator.options().setReal("quA",0.0);
     evaluator.options().setInt("quB",1);
@@ -583,62 +617,82 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 
         for (; domIt->good(); domIt->next())
         {
-            // Domain sequence
-            // \hat{\Omega} -> m_comp -> \tilde{\Omega} -> m_geom -> \Omega
-            //              --->             m_cgeom    -----------> 
-
-            // Integration points in \hat{\Omega}
             QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(),
                          uvPoints, tmpWeights);
 
-            // Integration points in \tilde{\Omega}
             m_comp->eval_into(uvPoints, xietaPoints);
 
-            // dsigma/duv
             gsMatrix<T> Jsigma_flat;
             m_comp->deriv_into(uvPoints, Jsigma_flat);
 
-            // dm_geom/dxieta
             gsMatrix<T> Jgeom_flat;
             m_geom->deriv_into(xietaPoints, Jgeom_flat);
 
-            // Compute monitor function values
-            gsMatrix<T> monVals;
+            gsMatrix<T> monVals, monDerivs_eval;
             if (hasMonitor)
             {
                 if (m_parametric)
+                {
                     m_fun->eval_into(xietaPoints, monVals);
+                    if (MODE == GradientBased)
+                        m_fun->deriv_into(xietaPoints, monDerivs_eval);
+                }
                 else
                 {
                     gsMatrix<T> physPoints;
                     m_geom->eval_into(xietaPoints, physPoints);
                     m_fun->eval_into(physPoints, monVals);
+                    if (MODE == GradientBased)
+                        m_fun->deriv_into(physPoints, monDerivs_eval);
                 }
             }
 
-            // Loop over qPoints
             for (index_t p = 0; p != uvPoints.cols(); ++p)
             {
-                // The following code is generic for planar or surface domains
+                // J_sigma (dd x dd), J_g (td x dd), J_c = J_g J_sigma (td x dd)
                 gsMatrix<T> Js = Jsigma_flat.col(p).reshaped(dd, dd).transpose();
                 gsMatrix<T> Jg = Jgeom_flat.col(p).reshaped(dd, td).transpose();
                 gsMatrix<T> Jc = Jg * Js;
                 gsMatrix<T> C = Jc.transpose() * Jc;
-                gsMatrix<T> Cinv = C.inverse(); // (J^T * J)^{-1}
+                gsMatrix<T> Cinv = C.inverse();
                 T detG = math::sqrt(C.determinant());
-
-                // For dd==td, we can avoid det(J^T*J) and directly use det(J) [since it is square]
 
                 T integrand;
                 if (hasMonitor)
                 {
-                    T eta = monVals(0, p);
-                    // _MODE==ValueBased!!!
-                    T m2 = T(1) / (T(1) + theta * eta * eta);
-                    integrand = m2 * Cinv.trace() * detG; // Trace equal to ||J^{-1}||_2???
+                    T m2;
+                    if (MODE == ValueBased)
+                    {
+                        // m^2 = 1 / (1 + theta * f(xi)^2)
+                        T eta = monVals(0, p);
+                        m2 = T(1) / (T(1) + theta * eta * eta);
+                    }
+                    else // GradientBased
+                    {
+                        // eta^2 = (nabla_xi f)^T C_g^{-1} (nabla_xi f)
+                        gsMatrix<T> Cg = Jg.transpose() * Jg;
+                        gsMatrix<T> Cg_inv = Cg.inverse();
+
+                        gsMatrix<T> grad_xi_f;
+                        if (m_parametric)
+                        {
+                            grad_xi_f = monDerivs_eval.col(p);
+                        }
+                        else
+                        {
+                            gsMatrix<T> grad_x_f = monDerivs_eval.col(p).reshaped(td, 1);
+                            grad_xi_f = Jg.transpose() * grad_x_f;
+                        }
+
+                        T eta2 = (grad_xi_f.transpose() * Cg_inv * grad_xi_f)(0, 0);
+                        m2 = T(1) / (T(1) + theta * eta2);
+                    }
+                    // E += w * m^2 * tr(C^{-1}) * sqrt(det C)
+                    integrand = m2 * Cinv.trace() * detG;
                 }
                 else
                 {
+                    // E += w * tr(C^{-1}) / sqrt(det C)
                     integrand = Cinv.trace() / detG;
                 }
 
@@ -650,6 +704,107 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 }
 
 
+/// @cond
+//
+// Analytical gradient of the objective function w.r.t. the control
+// variables alpha of the composition sigma.
+//
+// ---------------------------------------------------------------------------
+// Notation
+// ---------------------------------------------------------------------------
+//
+// alpha_{k,d}  : d-th coordinate of the k-th basis function coefficient
+// N_k          : k-th basis function of sigma, evaluated at quadrature point
+// nabla_hat N_k: gradient of N_k w.r.t. hat{u} (the reference coordinates)
+// xi = sigma(hat{u}; alpha)  : parametric point in tilde{Omega}
+// G(xi)        : geometry map  tilde{Omega} -> Omega
+// J_sigma      : Jacobian of sigma  (dd x dd)
+// J_g          : Jacobian of G      (td x dd)
+// J_c = J_g J_sigma : composed Jacobian (td x dd)
+// C = J_c^T J_c     : composed metric   (dd x dd)
+// C_g = J_g^T J_g   : geometry metric   (dd x dd)
+//
+// ---------------------------------------------------------------------------
+// Kinematic derivatives  (d(...)/d alpha_{k,d})
+// ---------------------------------------------------------------------------
+//
+// d xi_i / d alpha_{k,d}  =  N_k * delta_{id}
+//
+// d J_sigma / d alpha_{k,d}  =:  dJ_s
+//   (dJ_s)_{ij} = delta_{id} * (nabla_hat N_k)_j
+//   i.e. only row d is nonzero, equal to nabla_hat N_k transposed
+//
+// d J_g / d alpha_{k,d}  =:  dJ_g       (td x dd)
+//   (dJ_g)_{a,j} = N_k * d^2 G_a / (d xi_j d xi_d)
+//   This is the second derivative of the geometry map, contracted with
+//   d xi/d alpha = N_k e_d.
+//
+// d J_c / d alpha_{k,d} = dJ_g * J_s + J_g * dJ_s
+// d C   / d alpha_{k,d} = dJ_c^T J_c + J_c^T dJ_c
+//
+// ---------------------------------------------------------------------------
+// Integrand derivative  (no monitor)
+// ---------------------------------------------------------------------------
+//
+// E = tr(C^{-1}) / sqrt(det C)
+//
+// Using d(tr(C^{-1}))/dalpha = -tr(C^{-1} dC C^{-1})
+//   and d(det C)/dalpha = det(C) tr(C^{-1} dC)
+//   => d(1/sqrt(det C))/dalpha = -1/(2 sqrt(det C)) tr(C^{-1} dC)
+//
+// dE = [ -tr(C^{-1} dC C^{-1}) - tr(C^{-1})/2 * tr(C^{-1} dC) ]
+//      / sqrt(det C)
+//
+// ---------------------------------------------------------------------------
+// Integrand derivative  (with monitor, both ValueBased & GradientBased)
+// ---------------------------------------------------------------------------
+//
+// E = m^2 * tr(C^{-1}) * sqrt(det C)
+//
+// dE = dm^2/dalpha * tr(C^{-1}) * sqrt(det C)
+//    + m^2 * [ -tr(C^{-1} dC C^{-1}) * sqrt(det C)
+//              + tr(C^{-1}) * sqrt(det C)/2 * tr(C^{-1} dC) ]
+//
+// Note the sign change on the detG term compared to the no-monitor
+// case, because the integrand uses sqrt(det C) (not 1/sqrt(det C)).
+//
+// dm^2/dalpha = (dm^2/d eta^2) * (d eta^2 / d alpha):
+//
+// ValueBased:
+//   eta = f(xi(alpha))
+//   m^2 = 1/(1 + theta eta^2)
+//   dm^2/deta = -2 theta eta / (1 + theta eta^2)^2
+//   deta/dalpha_{k,d} = (nabla_xi f)_d * N_k
+//     (chain rule: d f(xi(alpha))/dalpha = nabla_xi f . d xi/dalpha)
+//
+// GradientBased:
+//   eta^2 = (nabla_xi f)^T C_g^{-1} (nabla_xi f)
+//   m^2 = 1/(1 + theta eta^2)
+//   dm^2/d(eta^2) = -theta / (1 + theta eta^2)^2
+//
+//   d(eta^2)/dalpha_{k,d} = term1 + term2, where:
+//
+//   Term 1 (from C_g changing):
+//     Using d(M^{-1}) = -M^{-1} dM M^{-1}, let v = C_g^{-1} nabla_xi f:
+//     term1 = -v^T dC_g v
+//     with dC_g = dJ_g^T J_g + J_g^T dJ_g
+//
+//   Term 2 (from nabla_xi f changing at the moving point):
+//     term2 = 2 v^T d(nabla_xi f)/dalpha
+//
+//     For m_parametric=true:
+//       d(nabla_xi f)/dalpha_{k,d} = N_k * H_f * e_d
+//         (H_f is the dd x dd parametric Hessian of f)
+//
+//     For m_parametric=false:
+//       nabla_xi f = J_g^T nabla_x f,  so differentiating:
+//       d(nabla_xi f)/dalpha_{k,d}
+//         = dJ_g^T * nabla_x f
+//         + N_k * J_g^T * H_f * J_g e_d
+//       where H_f is the td x td physical-space Hessian
+//       and J_g e_d is the d-th column of J_g (= d G/d xi_d).
+//
+/// @endcond
 template<class T, enum MonitorMode MODE>
 void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
 {
@@ -685,20 +840,30 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
 
         for (; domIt->good(); domIt->next())
         {
+            // Domain sequence
+            // \hat{\Omega} -> m_comp -> \tilde{\Omega} -> m_geom -> \Omega
+            //              --->             m_cgeom    -----------> 
+
+            // Integration points in \hat{\Omega}
             QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(),
                          uvPoints, tmpWeights);
 
+            // Integration points in \tilde{\Omega}
             m_comp->eval_into(uvPoints, xietaPoints);
 
+            // dsigma/duv
             gsMatrix<T> Jsigma_flat;
             m_comp->deriv_into(uvPoints, Jsigma_flat);
 
+            // dm_geom/dxieta
             gsMatrix<T> Jgeom_flat;
             m_geom->deriv_into(xietaPoints, Jgeom_flat);
 
+            // d^2m_geom/dxieta^2
             gsMatrix<T> deriv2_geom;
             m_geom->deriv2_into(xietaPoints, deriv2_geom);
 
+            // Data about the basis of sigma
             gsMatrix<index_t> actives;
             sigmaBasis.active_into(uvPoints, actives);
 
@@ -708,52 +873,118 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
             gsMatrix<T> basisDerivs;
             sigmaBasis.deriv_into(uvPoints, basisDerivs);
 
-            gsMatrix<T> monVals, monDerivs;
+            // Monitor function values, gradient, and (for GradientBased) Hessian
+            gsMatrix<T> monVals, monDerivs, monDeriv2;
+            gsMatrix<T> physPoints_grad;
             if (hasMonitor)
             {
                 if (m_parametric)
                 {
                     m_fun->eval_into(xietaPoints, monVals);
                     m_fun->deriv_into(xietaPoints, monDerivs);
+                    if (MODE == GradientBased)
+                        m_fun->deriv2_into(xietaPoints, monDeriv2);
                 }
                 else
                 {
-                    gsMatrix<T> physPoints;
-                    m_geom->eval_into(xietaPoints, physPoints);
-                    m_fun->eval_into(physPoints, monVals);
-                    m_fun->deriv_into(physPoints, monDerivs);
+                    m_geom->eval_into(xietaPoints, physPoints_grad);
+                    m_fun->eval_into(physPoints_grad, monVals);
+                    m_fun->deriv_into(physPoints_grad, monDerivs);
+                    if (MODE == GradientBased)
+                        m_fun->deriv2_into(physPoints_grad, monDeriv2);
                 }
             }
 
             for (index_t p = 0; p != uvPoints.cols(); ++p)
             {
+                // J_sigma (dd x dd), J_g (td x dd), J_c = J_g J_sigma
                 gsMatrix<T> Js = Jsigma_flat.col(p).reshaped(dd, dd).transpose();
                 gsMatrix<T> Jg = Jgeom_flat.col(p).reshaped(dd, td).transpose();
                 gsMatrix<T> Jc = Jg * Js;
 
+                // Composed metric C = J_c^T J_c and related quantities
                 gsMatrix<T> C = Jc.transpose() * Jc;
                 gsMatrix<T> Cinv = C.inverse();
                 T detC = C.determinant();
                 T detG = math::sqrt(detC);
                 T trCinv = Cinv.trace();
 
-                T eta = T(0), m2 = T(0), dm2_deta = T(0);
-                gsMatrix<T> gradMon;
+                // Monitor-related per-quadrature-point quantities
+                T m2 = T(0), dm2_deta2 = T(0);
+                gsMatrix<T> gradMon;   // nabla_xi f  (dd x 1, ValueBased only)
+                gsMatrix<T> Cg, Cg_inv;
+                gsMatrix<T> grad_xi_f; // nabla_xi f  (dd x 1, GradientBased)
+                gsMatrix<T> grad_x_f;  // nabla_x f   (td x 1, physical-space, GradientBased)
+                gsMatrix<T> Hess_f;    // Hessian of f (dd x dd or td x td)
+
                 if (hasMonitor)
                 {
-                    eta = monVals(0, p);
-                    T denom = T(1) + theta * eta * eta;
-                    m2 = T(1) / denom;
-                    dm2_deta = -T(2) * theta * eta / (denom * denom);
+                    if (MODE == ValueBased)
+                    {
+                        // m^2 = 1/(1+theta*eta^2), dm^2/deta = -2 theta eta / denom^2
+                        T eta = monVals(0, p);
+                        T denom = T(1) + theta * eta * eta;
+                        m2 = T(1) / denom;
+                        T dm2_deta = -T(2) * theta * eta / (denom * denom);
 
-                    if (m_parametric)
-                    {
-                        gradMon = monDerivs.col(p);
+                        // nabla_xi f (parametric gradient of the monitor)
+                        if (m_parametric)
+                            gradMon = monDerivs.col(p);
+                        else
+                        {
+                            gsMatrix<T> gradMon_phys = monDerivs.col(p).reshaped(td, 1);
+                            gradMon = Jg.transpose() * gradMon_phys;
+                        }
+                        // Store dm^2/deta in dm2_deta2 for use in the per-DOF loop
+                        dm2_deta2 = dm2_deta;
                     }
-                    else
+                    else // GradientBased
                     {
-                        gsMatrix<T> gradMon_phys = monDerivs.col(p).reshaped(td, 1);
-                        gradMon = Jg.transpose() * gradMon_phys;
+                        // C_g = J_g^T J_g  (geometry metric)
+                        Cg     = Jg.transpose() * Jg;
+                        Cg_inv = Cg.inverse();
+
+                        if (m_parametric)
+                        {
+                            // nabla_xi f from m_fun's parametric derivatives
+                            grad_xi_f = monDerivs.col(p);
+
+                            // Reconstruct dd x dd Hessian from compact storage
+                            // deriv2 layout: [d^2f/dxi_0^2, d^2f/dxi_1^2, ..., d^2f/(dxi_0 dxi_1), ...]
+                            Hess_f.resize(dd, dd);
+                            for (index_t i = 0; i != dd; ++i)
+                                for (index_t j = 0; j != dd; ++j)
+                                {
+                                    index_t lo = math::min(i,j);
+                                    index_t hi = math::max(i,j);
+                                    index_t hidx = (lo==hi) ? lo : dd + lo*(2*dd-lo-3)/2+hi-1;
+                                    Hess_f(i,j) = monDeriv2(hidx, p);
+                                }
+                        }
+                        else
+                        {
+                            // nabla_xi f = J_g^T nabla_x f  (chain rule)
+                            grad_x_f  = monDerivs.col(p).reshaped(td, 1);
+                            grad_xi_f = Jg.transpose() * grad_x_f;
+
+                            // Reconstruct td x td physical-space Hessian
+                            Hess_f.resize(td, td);
+                            for (index_t i = 0; i != td; ++i)
+                                for (index_t j = 0; j != td; ++j)
+                                {
+                                    index_t lo = math::min(i,j);
+                                    index_t hi = math::max(i,j);
+                                    index_t hidx = (lo==hi) ? lo : td + lo*(2*td-lo-3)/2+hi-1;
+                                    Hess_f(i,j) = monDeriv2(hidx, p);
+                                }
+                        }
+
+                        // eta^2 = nabla_xi_f^T C_g^{-1} nabla_xi_f
+                        T eta2 = (grad_xi_f.transpose() * Cg_inv * grad_xi_f)(0,0);
+                        T denom = T(1) + theta * eta2;
+                        m2          = T(1) / denom;
+                        // dm^2/d(eta^2) = -theta / (1 + theta eta^2)^2
+                        dm2_deta2   = -theta / (denom * denom);
                     }
                 }
 
@@ -773,10 +1004,13 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             continue;
                         index_t ii = mapper.index(k, 0, d);
 
+                        // dJ_s / d alpha_{k,d}:  only row d is nonzero
                         gsMatrix<T> dJs = gsMatrix<T>::Zero(dd, dd);
                         for (index_t j = 0; j != dd; ++j)
                             dJs(d, j) = gradNk(j);
 
+                        // dJ_g / d alpha_{k,d}:
+                        //   (dJ_g)_{a,j} = N_k * d^2 G_a / (d xi_j d xi_d)
                         gsMatrix<T> dJg = gsMatrix<T>::Zero(td, dd);
                         for (index_t a = 0; a != td; ++a)
                         {
@@ -789,6 +1023,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             }
                         }
 
+                        // dJ_c = dJ_g J_s + J_g dJ_s,  dC = dJ_c^T J_c + J_c^T dJ_c
                         gsMatrix<T> dJc = dJg * Js + Jg * dJs;
                         gsMatrix<T> dC = dJc.transpose() * Jc + Jc.transpose() * dJc;
 
@@ -798,15 +1033,58 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                         T dE;
                         if (hasMonitor)
                         {
-                            T deta_dalpha = gradMon(d) * Nk;
-                            T dm2_dalpha = dm2_deta * deta_dalpha;
+                            T dm2_dalpha;
 
+                            if (MODE == ValueBased)
+                            {
+                                // deta/dalpha = (nabla_xi f)_d * N_k
+                                T deta_dalpha = gradMon(d) * Nk;
+                                dm2_dalpha = dm2_deta2 * deta_dalpha;
+                            }
+                            else // GradientBased
+                            {
+                                // d(eta^2)/dalpha = term1 + term2
+                                // (see block comment above for full derivation)
+
+                                // dC_g = dJ_g^T J_g + J_g^T dJ_g
+                                gsMatrix<T> dCg = dJg.transpose() * Jg + Jg.transpose() * dJg;
+
+                                // v = C_g^{-1} nabla_xi f
+                                gsMatrix<T> v = Cg_inv * grad_xi_f;
+
+                                // Term 1: -v^T dC_g v  (metric contribution)
+                                T term1 = -(v.transpose() * dCg * v)(0,0);
+
+                                // Term 2: 2 v^T d(nabla_xi f)/dalpha  (gradient-shift contribution)
+                                gsMatrix<T> d_grad_xi_f(dd, 1);
+                                if (m_parametric)
+                                {
+                                    // d(nabla_xi f)/dalpha = N_k * H_f * e_d
+                                    d_grad_xi_f = Nk * Hess_f.col(d);
+                                }
+                                else
+                                {
+                                    // d(nabla_xi f)/dalpha = dJ_g^T nabla_x f
+                                    //                      + N_k J_g^T H_f J_g e_d
+                                    gsMatrix<T> Jg_col_d = Jg.col(d);
+                                    d_grad_xi_f = dJg.transpose() * grad_x_f
+                                                + Nk * Jg.transpose() * (Hess_f * Jg_col_d);
+                                }
+
+                                T term2 = T(2) * (v.transpose() * d_grad_xi_f)(0,0);
+
+                                T deta2_dalpha = term1 + term2;
+                                dm2_dalpha = dm2_deta2 * deta2_dalpha;
+                            }
+
+                            // dE = d(m^2 tr(C^{-1}) sqrt(det C)) / dalpha
                             dE = m2 * (-trCinvdCCinv * detG
                                        + trCinv * detG / T(2) * trCinvdC)
                                + dm2_dalpha * trCinv * detG;
                         }
                         else
                         {
+                            // dE = d(tr(C^{-1}) / sqrt(det C)) / dalpha
                             dE = (-trCinvdCCinv
                                   - trCinv / T(2) * trCinvdC) / detG;
                         }
