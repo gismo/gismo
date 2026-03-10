@@ -325,12 +325,11 @@ namespace gismo
         if (dynamic_cast<const gsTHBSplineBasis<d,T> *>(&m_basis))
         {
             // If the basis is a THBSpline basis, use the TNeighborhood
-            // TODO Restore TNeighborhood
-            return this->getHNeighborhood(element, m);
+            return this->getTNeighborhood(element, m);
         }
         else if (dynamic_cast<const gsHBSplineBasis<d,T> *>(&m_basis))
         {
-            // If the basis is a HBSpline basis, use the TNeighborhood
+            // If the basis is a HBSpline basis, use the HNeighborhood
             return this->getHNeighborhood(element, m);
         }
         else
