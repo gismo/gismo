@@ -16,6 +16,31 @@
 
 using namespace gismo;
 //! [Include namespace]
+// Project control points following  normal direction at the boundaries for square domain (Exact square recovery after refinement)
+void aforcing_c0(gsMultiPatch<>& mp, gsMultiPatch<>& Psi)
+{
+    //TODO correct control points of Psi to be c0 with respect to multipatch interfaces for Psi based on the interfaces of mp (mp only give us connection not points), while Psi is multipatch but only unit-square (0,1)^2 means if interface 1/2 Psi control poitns cpts at interface 1(x=0) should have same as for Psi cpts right (x=1) which leads to correct only in y direction
+    // normal Projection of control points (exact geometry)
+    auto interfaces = mp.interfaces();
+    #pragma omp parallel for
+    for (auto interface : interfaces)
+    {
+        index_t bndIter  = 1;
+        auto leftbox = interface.first();
+        auto secbox = interface.second();
+        auto i_dir = leftbox.direction();
+        // x=0 control points be like (0,:) in this case
+        for (int i_x =0; i_x < Psi.patch(leftbox).basis().boundary(bndIter).size(); ++i_x) 
+        {
+            // moyen
+            auto lval = Psi.patch(leftbox).coef( Psi.patch(leftbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir];
+            lval = lval+ Psi.patch(secbox).coef( Psi.patch(secbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir];
+            // correction 
+            Psi.patch(leftbox).coef( Psi.patch(leftbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir] = lval;
+            Psi.patch(secbox).coef( Psi.patch(secbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir] = lval;
+        }
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -55,6 +80,7 @@ int main(int argc, char *argv[])
     //identity mapping in each direction
     gsFunctionExpr<> sx("x",2);
     gsFunctionExpr<> sy("y",2);
+    gsFunctionExpr<> s0("0.",2);
     // Manufactured identity mapping
     // gsFunctionExpr<> sN("x","y",2);
     // Right-hand side function : Analytical density function (det(H(u))=f= sigma/rho)
@@ -72,18 +98,26 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bc_x;
     bc_x.setGeoMap(mp);
-   for ( gsMultiPatch<>::const_biterator
-            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-   {
-       bc_x.addCondition( *bit, condition_type::dirichlet, &sx );
-   }
+    bc_x.addCondition(0,1, condition_type::dirichlet, &sx,0,false);
+    bc_x.addCondition(0,2, condition_type::dirichlet, &sx,0,false);
+    bc_x.addCondition(0,3, condition_type::neumann, &s0,0,false);
+    bc_x.addCondition(0,4, condition_type::neumann, &s0,0,false);
+//     for ( gsMultiPatch<>::const_biterator
+//             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+//    {
+//        bc_x.addCondition( *bit, condition_type::dirichlet, &sx );
+//    }
     gsBoundaryConditions<> bc_y;
     bc_y.setGeoMap(mp);
-   for ( gsMultiPatch<>::const_biterator
-            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-   {
-       bc_y.addCondition( *bit, condition_type::dirichlet, &sy );
-   }
+    bc_y.addCondition(0,1, condition_type::neumann, &s0,0,false);
+    bc_y.addCondition(0,2, condition_type::neumann, &s0,0,false);
+    bc_y.addCondition(0,3, condition_type::dirichlet, &sy,0,false);
+    bc_y.addCondition(0,4, condition_type::dirichlet, &sy,0,false);
+//     for ( gsMultiPatch<>::const_biterator
+//             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+//    {
+//        bc_y.addCondition( *bit, condition_type::dirichlet, &sy );
+//    }
 
     //! [Refinement]
     gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
@@ -131,6 +165,9 @@ int main(int argc, char *argv[])
     gsMatrix<> solVectorho;
     solution u_solho = A.getSolution(u, solVectorho);
     // Solution vector and solution variable in x direction
+    gsVector<gsMatrix<>> solVectorxMP(mpLeft.nPatches());
+    gsVector<gsMatrix<>> solVectoryMP(mpLeft.nPatches());
+
     gsMatrix<> solVectorx;
     solution u_solx = A.getSolution(u, solVectorx);
     // Solution vector and solution variable in y direction
@@ -141,10 +178,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<> Psix;
     gsMultiPatch<> Psiy;
 
-    gsMultiPatch<> rho, Psi, newLeft;
-    
-    // geometry adaptive map
-    geometryMap PP = A.getMap(Psi);
+    gsMultiPatch<> rho, Psi, newLeft, TargetPsi;
 
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
@@ -157,6 +191,7 @@ int main(int argc, char *argv[])
         }
         numRefine = 0;
     }
+    double CoeffDensity = 20.; // maximum of the density function for normalization
 
     gsVector<>  h1err(numRefine+1); //l2err(numRefine+1).
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n"
@@ -170,14 +205,20 @@ int main(int argc, char *argv[])
         dbasis.uniformRefine();
         mp.uniformRefine();
         newLeft.clear();
+        TargetPsi.clear();
+        rho.clear();
+        // we first build a identity mapping in the parametric domain, then we compose it with the geometry map to get the new geometry map
         for (size_t n_patch = 0; n_patch < mpLeft.nPatches(); ++n_patch){
-            gsInfo << "patch number = "<< n_patch<< "----------------\n";
-
-            // Set the geometry map
+            gsMatrix<> intGrid             = dbasis.basis(0).anchors();
+            // Evaluate f at the Greville points
+            gsGeometry<>::uPtr interpolant = dbasis.basis(0).interpolateData(intGrid, intGrid);
+            // extract the mapping
+            TargetPsi.addPatch(give(interpolant));   
+            //---------------------------------------------
+            // Set density function in computational domain
+            //---------------------------------------------
+            gsMultiPatch<> rhotmp;
             geometryMap GLeft = A.getMap(mpLeft.patch(n_patch));
-            //----------------------------------------------
-            // Set the source term (project the composition)
-            //----------------------------------------------
             auto ff = A.getCoeff(f, GLeft);
             u.setup(bc_x, dirichlet::interpolation, -1);
 
@@ -188,14 +229,18 @@ int main(int argc, char *argv[])
             u * ff.val() *meas(G) //rhs vector
             );        
             solVectorho  = solver.compute(A.matrix()).solve(A.rhs());
-            u_solho.extract(rho);
+            u_solho.extract(rhotmp);
+            rho.addPatch(rhotmp.patch(0));
+        }
+        for (size_t n_patch = 0; n_patch < mpLeft.nPatches(); ++n_patch){
+            gsInfo << "patch number = "<< n_patch<< "----------------\n";
             //----------------------------------------------
             // New density function defined in square
             //----------------------------------------------
-            auto frho = A.getCoeff(rho, G);
+            auto frho = A.getCoeff(rho.patch(n_patch), G);
 
             //... nromalisation of density function
-            auto CoeffDensity = ev.max(frho)+1.;
+            CoeffDensity = std::max(CoeffDensity, ev.max(frho)+1.);
             //----------------------------------------------
             //Start MMPDE refinement
             //----------------------------------------------
@@ -207,9 +252,9 @@ int main(int argc, char *argv[])
             gsInfo<< "DoFs:" << A.numDofs() <<std::flush<< "\n" ;
             timer.restart();
             A.assemble(
-            igrad(u, G) * igrad(u, G).tr() *meas(G) //matrix
+            grad(u) * grad(u).tr() //matrix
             ,
-            (1.- frho.val()/CoeffDensity) * igrad(u, G) * grad(u_x).tr() *meas(G) //rhs vector
+            (1.- frho.val()/CoeffDensity) * grad(u) * grad(u_x).tr() //rhs vector
             );
 
             ma_time += timer.stop();
@@ -222,6 +267,7 @@ int main(int argc, char *argv[])
 
             timer.restart();
             solVectorx  = solver.compute(A.matrix()).solve(A.rhs());
+            solVectorxMP[n_patch] = solVectorx;
 
             u_solx.extract(Psix);
             Psi = Psix;
@@ -235,15 +281,16 @@ int main(int argc, char *argv[])
             gsInfo<< A.numDofs() <<std::flush;
             timer.restart();
             A.assemble(
-            igrad(u, G) * igrad(u, G).tr() *meas(G) //matrix
+            grad(u) * grad(u).tr() //matrix
             ,
-            (1.- frho.val()/CoeffDensity) * igrad(u, G) * grad(u_y).tr() *meas(G) //rhs vector
+            (1.- frho.val()/CoeffDensity) * grad(u) * grad(u_y).tr() //rhs vector
             );
             ma_time += timer.stop();
             gsInfo<< "." <<std::flush;// Assemblying done
 
             timer.restart();
             solVectory  = solver.compute(A.matrix()).solve(A.rhs());
+            solVectoryMP[n_patch] = solVectory;
 
             slv_time += timer.stop();
             gsInfo<< "." <<std::flush; // Linear solving done
@@ -252,18 +299,36 @@ int main(int argc, char *argv[])
                 Psi.patch(Mp).embed(2);
                 Psi.patch(Mp).coefs().col(1) = Psiy.patch(Mp).coefs();
             }
+            // extract the multipatch mampping in computational domain
+            TargetPsi.patch(n_patch).coefs() = Psi.patch(0).coefs(); 
+        }
             // ..===================================================================
-            // Picard loop
-            index_t NiterPicard{0};
-            gsMatrix<> sv0; //
-            solution u_lsol = A.getSolution(u, sv0);
-            gsInfo<< A.numDofs() <<std::flush;
-            for(int ip{0}; ip<=maxIter; ++ip)
-            {
+            // .. correct interfaces to be conforming : C-1-> C0 -> C1
+            // ..===================================================================
+        
+        // Picard loop
+        gsInfo << "Step two in r-refinement" << "\n";
+        index_t NiterPicard{0};
+        gsMatrix<> sv0; //
+        solution u_lsol = A.getSolution(u, sv0);
+        gsInfo<< A.numDofs() <<std::flush;
+        std::vector<int> patch_iter(mpLeft.nPatches());//list of patches
+
+        for (size_t n_patch = 0; n_patch < mpLeft.nPatches(); ++n_patch)
+                patch_iter[n_patch] = n_patch;
+        for(int ip{0}; ip<=maxIter; ++ip)
+        {
+        for (size_t n_patch : patch_iter){
                 gsInfo<<std::flush;
                 sv0        = solVectorx;
+                // Set the geometry map
+                geometryMap PP = A.getMap(TargetPsi.patch(n_patch));
                 // .. computes the composition
-                auto    frho = A.getCoeff(rho, PP);
+                auto    frho = A.getCoeff(rho.patch(n_patch), PP);
+                // update solutions
+                solVectorx = solVectorxMP[n_patch];
+                solVectory = solVectoryMP[n_patch];
+
                 //====================================== Update 
                 u.setup(bc_x, dirichlet::interpolation, 0);
                 // Initialize the system :  identity mapping as initial guess
@@ -272,9 +337,9 @@ int main(int argc, char *argv[])
 
                 timer.restart();
                 A.assemble(
-                igrad(u, G) * igrad(u, G).tr() *meas(G) //matrix
+                grad(u) * grad(u).tr() //matrix
                 ,
-                (1.- frho.val()/CoeffDensity) * igrad(u, G) * grad(u_solx).tr() *meas(G) //rhs vector
+                (1.- frho.val()/CoeffDensity) * grad(u) * grad(u_solx).tr() //rhs vector
                 );
 
                 ma_time += timer.stop();
@@ -287,7 +352,7 @@ int main(int argc, char *argv[])
                 timer.restart();
                 solVectorx  = solver.compute(A.matrix()).solve(A.rhs());
                 u_solx.extract(Psix);
-
+                solVectorxMP[n_patch] = solVectorx;
                 // in y direction 
                 u.setup(bc_y, dirichlet::interpolation, 0);
                 // Initialize the system :  identity mapping as initial guess
@@ -297,41 +362,44 @@ int main(int argc, char *argv[])
                 // gsInfo<< A.numDofs() <<std::flush;
                 timer.restart();
                 A.assemble(
-                igrad(u, G) * igrad(u, G).tr() *meas(G) //matrix
+                grad(u) * grad(u).tr() //matrix
                 ,
-                (1.- frho.val()/CoeffDensity) * igrad(u, G) * grad(u_soly).tr() *meas(G) //rhs vector
+                (1.- frho.val()/CoeffDensity) * grad(u) * grad(u_soly).tr() //rhs vector
                 );
                 ma_time += timer.stop();
                 gsInfo<< "." <<std::flush;// Assemblying done
 
                 timer.restart();
                 solVectory  = solver.compute(A.matrix()).solve(A.rhs());
+                solVectoryMP[n_patch] = solVectory;
 
                 slv_time += timer.stop();
                 gsInfo<< "." <<std::flush; // Linear solving done
                 u_soly.extract(Psiy);
 
                 // Update the mapping
-                for(size_t Mp=0; Mp<mp.nPatches(); ++Mp){
-                    Psi.patch(Mp).coefs().col(0) = Psix.patch(Mp).coefs();
-                    Psi.patch(Mp).coefs().col(1) = Psiy.patch(Mp).coefs();
-                }
-
+                Psi.patch(0).coefs().col(0) = Psix.patch(0).coefs();
+                Psi.patch(0).coefs().col(1) = Psiy.patch(0).coefs();
+                // extract the multipatch mampping in computational domain
+                TargetPsi.patch(n_patch).coefs() = Psi.patch(0).coefs(); 
                 // ..===================================================================
-                // Check convergence
-                
+                // Check convergence                
                 ++NiterPicard;
                 auto l2errRes = math::sqrt(ev.integral( (u_lsol - u_solx).sqNorm() ) );
                 auto Ddet     = ev.min(jac(PP).det());
                 if ( l2errRes < 1e-8 || ip == maxIter ){
                     // ! end Picard loop
+                    // patch_iter.erase(patch_iter.begin() + n_patch);
                     gsInfo<< "\n Niter in Picard : " << ip
                             << ".. L2 MAE residual : "<<std::scientific<<l2errRes
                             << ".. min JAcobian : "<<Ddet<<"..";
                     break;
                     } //
-
             }//for loop
+            // ..===================================================================
+            // .. correct interfaces to be conforming : C-1-> C0 -> C1
+            // ..===================================================================
+
             // omp_set_dynamic(0);     // Explicitly disable dynamic teams
             // omp_set_num_threads(1); // Use these threads for later parallel regions
 
@@ -339,25 +407,25 @@ int main(int argc, char *argv[])
             h1err[r]= math::sqrt(ev.integral( ( u_x- u_solx ).sqNorm() + ( u_y- u_soly ).sqNorm() ));
             err_time += timer.stop();
             gsInfo<< ". " <<std::flush; // Error computations done
-            // ----------------------
-            //.. composition 
-            gsInfo<<"<Col> computes composition";
 
             gsStopwatch timer;
             timer.restart();
-
-            gsMatrix<> intGrid             = dbasis.basis(0).anchors();
-            // Evaluate f at the Greville points
-            gsMatrix<> intfavlues          = Psi.patch(0).eval(intGrid);
-            intfavlues                     = intfavlues.cwiseMax(0).cwiseMin(1);
-            gsMatrix<> fValues             = mpLeft.patch(n_patch).eval(intfavlues);
-            gsGeometry<>::uPtr interpolant = dbasis.basis(0).interpolateData(fValues, intGrid);
-            // extract the mapping
-            newLeft.addPatch(give(interpolant));   
-        }
+        }   
     } //for loop
     //! [Solver loop]    
-
+    // ----------------------
+    //.. composition 
+    gsInfo<<"<Col> computes composition";
+    for(size_t n_patch = 0; n_patch < mpLeft.nPatches(); ++n_patch){
+        gsMatrix<> intGrid             = dbasis.basis(0).anchors();
+        // Evaluate f at the Greville points
+        gsMatrix<> intfavlues          = TargetPsi.patch(n_patch).eval(intGrid);
+        intfavlues                     = intfavlues.cwiseMax(0).cwiseMin(1);
+        gsMatrix<> fValues             = mpLeft.patch(n_patch).eval(intfavlues);
+        gsGeometry<>::uPtr interpolant = dbasis.basis(0).interpolateData(fValues, intGrid);
+        // extract the mapping
+        newLeft.addPatch(give(interpolant));
+    }
 
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
@@ -412,6 +480,5 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
 
     return EXIT_SUCCESS;
-
 
 }// end main

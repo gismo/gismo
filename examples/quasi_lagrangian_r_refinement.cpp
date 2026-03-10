@@ -209,8 +209,6 @@ int main(int argc, char *argv[])
     gsMatrix<> rsolVector;
     solution ru_sol   = A.getSolution(ru, rsolVector);
 
-    // Solution vector and solution variable composed with inverse of Psi
-    gsMultiPatch<> ru_Inv;
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 0: Computes the initial solution of the PDEs in adapted mesh
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -232,28 +230,28 @@ int main(int argc, char *argv[])
     rsolVector = solver.solve(A.rhs());
 
 
-    // // ... We want to work with a mesh with small displacement in each step ----- Quasi Lagrangian
-    // ev.integralElWise( igrad(ru_sol,PP).sqNorm() );
-    // elwise = ev.elementwise();
-    // std::vector<bool> elMarked( elwise.size() );
-    // gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
-    // density        = MAE.buildDensity(dbasis, elMarked);
-    // MAE.buildMultiPatch(density);
-    // Psi  = MAE.MAmapping;
-    // // ....
-    // ru.setup(bc, dirichlet::l2Projection, 0);
-    // // Initialize the system
-    // A.initSystem();
-    // timer.restart();
-    // A.assemble(
-    // ru * ru.tr() * meas(PP) //matrix
-    // ,
-    // ru * u_ex.tr() * meas(PP) //rhs vector
-    // );
-    // gsInfo<< ".+" <<std::flush;// Assemblying done
-    // timer.restart();
-    // solver.compute( A.matrix() );
-    // rsolVector = solver.solve(A.rhs());
+    // ... We want to work with a mesh with small displacement in each step -----
+    ev.integralElWise( igrad(ru_sol,PP).sqNorm() );
+    elwise = ev.elementwise();
+    std::vector<bool> elMarked( elwise.size() );
+    gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
+    density        = MAE.buildDensity(dbasis, elMarked);
+    MAE.buildMultiPatch(density);
+    Psi  = MAE.MAmapping;
+    // ....
+    ru.setup(bc, dirichlet::l2Projection, 0);
+    // Initialize the system
+    A.initSystem();
+    timer.restart();
+    A.assemble(
+    ru * ru.tr() * meas(PP) //matrix
+    ,
+    ru * u_ex.tr() * meas(PP) //rhs vector
+    );
+    gsInfo<< ".+" <<std::flush;// Assemblying done
+    timer.restart();
+    solver.compute( A.matrix() );
+    rsolVector = solver.solve(A.rhs());
 
     gsInfo<<"Plotting in Paraview...\n";
     gsParaviewCollection collection("ParaviewOutput/time_solution", &ev);
@@ -267,7 +265,7 @@ int main(int argc, char *argv[])
         collection.addField(ru_sol, "solution");
         collection.saveTimeStep();
     }
-    gsInfo <<" error Initial l2 : " << ev.integral((ru_sol-u_ex).sqNorm())<< " H1"  << ev.integral((igrad(ru_sol, PP)-grad(u_ex)).sqNorm())<< "\n";
+
 
     gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
     gsVector<int>  DoFPDE(numLRefine+1);
@@ -283,52 +281,27 @@ int main(int argc, char *argv[])
         ###   Step in time : Computes the density function
         ###         and the multipatch adaptove mapping
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        // ev.integralElWise( igrad(ru_sol,PP).sqNorm() );
-        // auto elwise = ev.elementwise();
-        // std::vector<bool> elMarked( elwise.size() );
-        // gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
-        // auto density        = MAE.buildDensity(dbasis, elMarked);
-        // MAE.buildMultiPatch(density);
-        // gsMultiPatch<> Psi  = MAE.MAmapping;
-        // ...
+        ev.integralElWise( igrad(ru_sol,PP).sqNorm() );
+        auto elwise = ev.elementwise();
+        std::vector<bool> elMarked( elwise.size() );
+        gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
+        auto density        = MAE.buildDensity(dbasis, elMarked);
+        MAE.buildMultiPatch(density);
+        gsMultiPatch<> Psi  = MAE.MAmapping;
         
-        /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        // Project solution into new space
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        // project solution with mapping inverse
-        ru_sol.extract(ru_Inv);
-        // Solution vector and solution variable
-        gsMatrix<> rsolVectorInv;
-        solution ru_solInv   = A.getSolution(ru, rsolVectorInv);
-        // mapping inverse
-        Psilast     = MAE.buildInverseMultiPatch(Psilast, true);
-        gsInfo <<" error aftere reversing mappings l2 : " << ev.integral((PPlst-GLeft).sqNorm()) << "\n";
-        // Recover manufactured solution for Poisson equation
-        gsInfo <<".";
-        auto u_Inv  = ev.getVariable(ru_Inv, PPlst);        
-        gsInfo <<".";
-        A.initSystem();
-        gsInfo <<".";
-        A.assemble(
-        ru * ru.tr() //matrix
-        ,
-        ru * u_Inv.val() //rhs vector
-        );        
-        gsInfo <<".";
-        rsolVectorInv  = solver.compute(A.matrix()).solve(A.rhs());
-        gsInfo <<" error aftere reversing mappings l2 : " << ev.integral((ru_solInv-u_ex).sqNorm())<< " H1"  << ev.integral((igrad(ru_solInv, PP)-grad(u_ex)).sqNorm())<< "\n";
         //...............................................................
         // Non linear solver for Allen-Cahn equation
         //...............................................................
         // Initialize the system
-        gsMatrix<> nsolVector = rsolVector;
+        gsMatrix<> nsolVector;
+        nsolVector.swap(rsolVector);
         solution u_sol        = A.getSolution(ru, nsolVector); // for nonlinear unkown
         //! Newton method
         A.options().setInt("DirichletStrategy", 0);// swich off elimination
-        auto residual =  ru * (u_sol -ru_solInv).tr() * meas(PP)
+        auto residual =  ru * (u_sol -ru_sol).tr() * meas(PP)
             +igrad(ru,PP) * igrad(u_sol, PP).tr() *dt * meas(PP)
             + ru * ((u_sol*u_sol*u_sol-u_sol).val()) /(epsilon*epsilon) * dt * meas(PP)
-            // - ru * (igrad(u_sol, PP) * (PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
+            - ru * (igrad(u_sol, PP) * (PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
             ;
 
         for (index_t l = 0; l<100; ++l)
@@ -342,7 +315,7 @@ int main(int argc, char *argv[])
                 + igrad(ru,PP) * igrad(ru, PP).tr() *dt * meas(PP)
                 + ru * ru.tr() * 3.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
                 - ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
-                // - ru * (igrad(ru, PP) *(PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
+                - ru * (igrad(ru, PP) *(PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
                 ,
                 residual );
             // Compute the Neumann terms defined on physical space
@@ -360,7 +333,7 @@ int main(int argc, char *argv[])
             gsInfo<<'.'<<du.norm()<< "." <<std::flush; // Non-linear iteration done
             if ( du.norm() < 1e-10 ) break;
         }
-        rsolVector = nsolVector;
+        rsolVector.swap(nsolVector);
         //... End of Non linear solver for Allen-Cahn equation
 
         slv_time += timer.stop();

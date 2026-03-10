@@ -31,21 +31,36 @@ int main(int argc, char *argv[])
 
    // --------------- specify exact solution and right-hand-side ---------------
 
-   //! [Function data]
-   // Define exact solution (will be used for specifying Dirichlet boundary conditions
-   //gsFunctionExpr<> g("if( y<-x/2-1/2, 1, 0 )", 2);
-   gsFunctionExpr<> g("if( y>=0, if( x <=-1, 1, 0 ), 0 )", 2);
+//    //! [Function data]
+//    // Define exact solution (will be used for specifying Dirichlet boundary conditions
+//    //gsFunctionExpr<> g("if( y<-x/2-1/2, 1, 0 )", 2);
+//    gsFunctionExpr<> g("if( y>=0, if( x <=-1, 1, 0 ), 0 )", 2);
+//    // Define source function
+//    gsFunctionExpr<> rhs("0",2);
+
+//    // diffusion coefficient:
+//    gsFunctionExpr<> coeff_diff("0.000001","0","0","0.000001",2);
+//    // convection coefficient:
+//    gsFunctionExpr<> coeff_conv("3/sqrt(13)","-2/sqrt(13)",2);
+//    // reaction coefficient:
+//    gsFunctionExpr<> coeff_reac("0",2);
+//    //! [Function data]
+
+   //! [Function data] TEST   2------------------------------------------------------------------
+   gsFunctionExpr<> g("sqrt( 4.*y**2 + ( x**2-1.)**2 )", 2);
    // Define source function
    gsFunctionExpr<> rhs("0",2);
 
    // diffusion coefficient:
-   gsFunctionExpr<> coeff_diff("0.000001","0","0","0.000001",2);
+   gsFunctionExpr<> coeff_diff("1e+4*(y**2)/( y**2 + 0.25 * x**2 * (x**2 - 1.0)**2)",
+                    "1e+4*(-0.5 * x * (x**2 - 1.0) * y)/( y**2 + 0.25 * x**2 * (x**2 - 1.0)**2)",
+                    "1e+4*(-0.5 * x * (x**2 - 1.0) * y)/( y**2 + 0.25 * x**2 * (x**2 - 1.0)**2)",
+                    "1e+4*(0.25 * x**2 * (x**2 - 1.0)**2)/( y**2 + 0.25 * x**2 * (x**2 - 1.0)**2)",2);
    // convection coefficient:
-   gsFunctionExpr<> coeff_conv("3/sqrt(13)","-2/sqrt(13)",2);
+   gsFunctionExpr<> coeff_conv("0.","0.",2);
    // reaction coefficient:
    gsFunctionExpr<> coeff_reac("0",2);
    //! [Function data]
-
    // Print out source function and solution
    gsInfo<<"Source function " << rhs << "\n";
    gsInfo<<"Dirichlet boundary conditions "  << g << "\n\n";
@@ -56,16 +71,31 @@ int main(int argc, char *argv[])
    // Read geometry from file
    //! [GetGeometryData]
    // Read xml and create gsMultiPatch
-   string fileSrc( "planar/lshape2d_3patches_thb.xml" );
-   gsMultiPatch<real_t> patches;
-   gsReadFile<real_t>( fileSrc, patches);
-   //! [GetGeometryData]
-   gsInfo << "The domain is a "<< patches <<"\n";
-
+//    string fileSrc( "planar/lshape2d_3patches_thb.xml" );
+//    gsMultiPatch<real_t> patches;
+//    gsReadFile<real_t>( fileSrc, patches);
+// Test 2 
+   string fileSrc( "pde/solovev.xml" );
+    gsFileData<> fd(fileSrc);
+    gsMultiPatch<> Psi, patches;
+    fd.getId(4,Psi);
+    if ( Psi.basis(0).weights().any()){
+        gsInfo<<"Rational mapping \n";
+    for(size_t i =0; i<4; ++i)
+        patches.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(Psi.patch(i)) ));
+    }
+    else{
+        gsInfo<<"nonRational mapping \n";
+    for(size_t i =0; i<4; ++i)
+        patches.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psi.patch(i)) ));            
+    }
    //! [computeTopology]
    // Get all interfaces and boundaries:
    patches.computeTopology();
    //! [computeTopology]
+
+   //! [GetGeometryData]
+   gsInfo << "The domain is a "<< patches <<"\n";
 
    // --------------- add bonudary conditions ---------------
    //! [Boundary conditions]
@@ -90,16 +120,17 @@ int main(int argc, char *argv[])
 
    //! [GetBasisFromTHB]
    // Copy basis from the geometry
-   gsMultiBasis<> bases( patches );
+   gsMultiBasis<> bases( patches , false);
    //! [GetBasisFromTHB]
 
 
    //! [initialRefinements]
    // Number of initial uniform refinement steps:
-   int numInitUniformRefine  = 2;
+   int numInitUniformRefine  = 1;
 
-   for (int i = 0; i < numInitUniformRefine; ++i)
+   for (int i = 0; i < numInitUniformRefine; ++i){
      bases.uniformRefine();
+    }
    //! [initialRefinements]
 
 
@@ -107,7 +138,7 @@ int main(int argc, char *argv[])
 
    //! [adaptRefSettings]
    // Number of refinement loops to be done
-   int numRefinementLoops = 3;
+   int numRefinementLoops = 4;
 
    // Specify cell-marking strategy...
    MarkingStrategy adaptRefCrit = PUCA;
@@ -115,7 +146,7 @@ int main(int argc, char *argv[])
    //MarkingStrategy adaptRefCrit = errorFraction;
 
    // ... and parameter.
-   const real_t adaptRefParam = 0.7;
+   const real_t adaptRefParam = 0.;
 
    //! [adaptRefSettings]
 
@@ -124,7 +155,7 @@ int main(int argc, char *argv[])
    // Construct assembler
    gsCDRAssembler<real_t> cdrAss( cdrPde, bases);
    // Set stabilization flag to 1 = SUPG
-   cdrAss.options().setInt("Stabilization", stabilizerCDR::SUPG);
+   cdrAss.options().setInt("Stabilization", stabilizerCDR::none);
    // Compute Dirichlet values by L2-projection
    // Caution: Interpolation does not work for locally refined (T)HB-splines!
    cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
@@ -144,10 +175,10 @@ int main(int argc, char *argv[])
        //! [solverPart]
        // Generate system matrix and load vector
        cdrAss.assemble();
-
+        gsInfo << "System matrix has " << cdrAss.matrix().nonZeros() << " non-zero entries.\n";
        // Solve the system
        gsMatrix<real_t> solVector =
-           gsSparseSolver<>::BiCGSTABILUT( cdrAss.matrix() ).solve( cdrAss.rhs() );
+           gsSparseSolver<>::CGDiagonal( cdrAss.matrix() ).solve( cdrAss.rhs() );
 
        // Construct the solution as a scalar field
        gsField<> solField;
@@ -167,6 +198,9 @@ int main(int argc, char *argv[])
        auto ms = ev.getVariable(g, Gm);
 
        // Get the element-wise norms.
+       gsInfo << " error L2 norm: "<< sqrt(ev.integral( (is-ms).sqNorm() )) << "\n";
+       gsInfo << " error H1 seminorm: "<< sqrt(ev.integral( ( igrad(is,Gm) - igrad(ms,Gm)).sqNorm() )) << "\n";
+
        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
        const std::vector<real_t> & eltErrs  = ev.elementwise();
        //! [errorComputation]
@@ -181,18 +215,22 @@ int main(int argc, char *argv[])
        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
        // Refine the marked elements with a 1-ring of cells around marked elements
-       gsRefineMarkedElements( cdrAss.multiBasis(), elMarked, 1 );
-       //! [adaptRefinementPart]
+        gsRefineMarkedElements( cdrAss.multiBasis(), elMarked, 1 );
+        gsInfo <<"Refined mesh has degrees of freedom.\n";
+        //! [adaptRefinementPart]
 
 
-       //! [repairInterfaces]
-       // Call repair interfaces to make sure that the new meshes
-       // match along patch interfaces.
-       cdrAss.multiBasis().repairInterfaces( patches.interfaces() );
-       //! [repairInterfaces]
+        //! [repairInterfaces]
+        // Call repair interfaces to make sure that the new meshes
+        // match along patch interfaces.
+        // cdrAss.multiBasis().repairInterfaces( patches.interfaces() );
+        //! [repairInterfaces]
+        // gsInfo <<"Refined mesh has degrees of freedom.\n";
 
-       //! [refreshAssembler]
-       cdrAss.refresh();
+        //! [refreshAssembler]
+        cdrAss.refresh();
+        gsInfo <<"Refined mesh has degrees of freedom.\n";
+
        //! [refreshAssembler]
 
        //! [Export to Paraview]

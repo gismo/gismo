@@ -473,7 +473,6 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     NormalProjectPts(Psi);
     // ...
     }//END for loop
-    Psi.addAutoBoundaries();
     Psi.computeTopology();
     // ....
     this->MAmapping = Psi;
@@ -577,6 +576,70 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     timer.stop();
     gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
     return Psi;
+};
+
+// computes the projection of a the inverse mapping and return a MultiPatch object :: fitting
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildInverseMultiPatch(const gsMultiPatch<> lastMAEmapping, const int numElData, const real_t lambda, const bool UpdateInTime) const 
+{
+
+    gsInfo<<"<Fit> computes composition";
+    gsMultiPatch<> PsiInv;
+    // Copy tensor basis
+    gsTHBSplineBasis<2>  THB ( MAmapping.basis(0));
+
+    double slv_time(0);
+    gsStopwatch timer;
+    timer.restart();
+    //...  just to generate grid
+    gsMultiBasis<> T_tbasis(mp, true);
+
+    while ( T_tbasis.basis(0).numElements() <= MAmapping.basis(0).numElements()*numElData)
+    {
+        T_tbasis.uniformRefine();
+    }
+    gsInfo<<":gridsize="<<T_tbasis.basis(0).numElements()<<"/"<<MAmapping.basis(0).numElements();
+    // Inverse mappinbg first 
+    gsMatrix<> intGrid     = T_tbasis.basis(0).anchors();
+    // Evaluate f at the Greville points
+    gsMatrix<> fValues     = lastMAEmapping.patch(0).eval(intGrid);
+    fValues                = fValues.cwiseMax(0).cwiseMin(1);
+
+    //! [Create  Hfitter]
+    // Create hierarchical refinement object
+    gsFitting<> ref(fValues,  intGrid, THB);
+    //... compute coefs
+    ref.compute(lambda);
+     
+    //! [extract the mapping]
+    PsiInv.addPatch(give(*ref.result()));
+    PsiInv.computeTopology();
+    //...
+    slv_time += timer.stop();
+    timer.stop();
+    if (UpdateInTime){
+        //Computes the composition of Psi_n^{-1} o Psi_{n+1}
+        gsMultiPatch<> PsiComp;
+        // Evaluate f at the Greville points
+        gsMatrix<> IValues     = this->MAmapping.patch(0).eval(intGrid);// Psi_{n+1}
+        IValues                = IValues.cwiseMax(0).cwiseMin(1);
+        gsMatrix<> fValues     = PsiInv.patch(0).eval(IValues);// Psi_n^{-1}
+        fValues                = fValues.cwiseMax(0).cwiseMin(1);
+        //! [Create  Hfitter]
+        // Create hierarchical refinement object
+        gsFitting<> ref(intGrid, fValues, THB);
+        //... compute coefs
+        ref.compute(lambda);
+        
+        //! [extract the mapping]
+        PsiComp.addPatch(give(*ref.result()));
+        PsiComp.computeTopology();        
+        gsInfo<<" CPU-time "<< slv_time   <<"<cmp>\n";
+        return PsiComp;
+    }
+    else{
+        gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
+        return PsiInv;
+    }
 };
 
 // computes the projection of a composition and return a MultiPatch object :: Collocation

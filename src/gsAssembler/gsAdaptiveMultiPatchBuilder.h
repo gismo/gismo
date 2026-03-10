@@ -78,6 +78,9 @@ public:
     //----------------------------------------
     // Useful functions for time moving meshes
     //----------------------------------------
+    // Method to build a inverse multipatch adaptive mapping by projection the composition of geometry maps : fitting
+    gsMultiPatch<> buildInverseMultiPatch(const gsMultiPatch<> lastMAEmapping, const int numElData = 50, const real_t lambda = 0., const bool UpdateInTime = true) const;
+
     // Method to find the span of a knot vector
     index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;
 
