@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+    <!-- 3D volumetric r-adaptivity example
+         Geometry:    slightly deformed unit cube (physical domain, 3D -> 3D)
+         Composition: unit cube (parametric domain, identity sigma)
+         Monitor:     Gaussian blob at (0.5, 0.5, 0.5) in 3D
+    -->
+
+    <!-- Geometry domain (physical, slightly deformed cube) -->
+    <MultiPatch parDim="3" label="geometry">
+        <patches type="id_range">500 500</patches>
+    </MultiPatch>
+
+    <!-- Composition domain (parametric, unit cube) -->
+    <MultiPatch parDim="3" label="composition">
+        <patches type="id_range">600 600</patches>
+    </MultiPatch>
+
+    <!-- Monitor function: Gaussian blob concentrated at the centre of the cube -->
+    <!-- Uncomment one of the options below, or comment all out for no monitor -->
+
+    <!-- Gaussian sphere: concentration at (0.5, 0.5, 0.5) -->
+    <Function type="FunctionExpr" label="function" dim="3">
+    exp(-50*((x-0.5)^2+(y-0.5)^2+(z-0.5)^2))
+    </Function>
+
+    <!-- Layered structure along z -->
+    <!-- <Function type="FunctionExpr" label="function" dim="3">
+    1 + 9*exp(-200*(z-0.5)^2)
+    </Function> -->
+
+    <!-- Diagonal ridge -->
+    <!-- <Function type="FunctionExpr" label="function" dim="3">
+    1 + 9*exp(-200*((x-y)^2+(y-z)^2))
+    </Function> -->
+
+
+    <!-- Optimizer options -->
+    <OptionList label="optimizer_options">
+        <string label="Optimizer"       desc="" value="LBFGS"/>
+        <int    label="MaxIterations"   desc="" value="500"/>
+        <int    label="Verbose"         desc="" value="1"/>
+        <real   label="GradErrTol"      desc="" value="1e-2"/>
+        <real   label="WolfeCons2"      desc="" value="0.1"/>
+    </OptionList>
+
+    <!-- Parametrization options -->
+    <OptionList label="parametrization_options">
+        <bool label="Slide"             desc="" value="1"/>
+        <bool label="Parametric"        desc="" value="0"/>
+        <real label="Smoothing"         desc="" value="1e1"/>
+        <real label="Penalty"           desc="" value="1e-6"/>
+    </OptionList>
+
+
+    <!-- ===== Geometry data (id 500): slightly deformed unit cube =====
+         Degree 1 in each direction, 2x2x2 = 8 corner control points.
+         Small warp: stretch in x, compress in y slightly to make the
+         parametrization non-trivial from the start.
+    -->
+    <Geometry type="TensorBSpline3" id="500">
+        <Basis type="TensorBSplineBasis3">
+            <Basis type="BSplineBasis" index="0">
+                <KnotVector degree="1">0.0  0.0  1.0  1.0</KnotVector>
+            </Basis>
+            <Basis type="BSplineBasis" index="1">
+                <KnotVector degree="1">0.0  0.0  1.0  1.0</KnotVector>
+            </Basis>
+            <Basis type="BSplineBasis" index="2">
+                <KnotVector degree="1">0.0  0.0  1.0  1.0</KnotVector>
+            </Basis>
+        </Basis>
+        <!-- 8 corners: index order (i,j,k) with i=x fastest, then j=y, then k=z -->
+        <!-- Small warp: stretch in x, compress in y slightly -->
+        <coefs geoDim="3">
+          0.00  0.00  0.00
+          1.10  0.00  0.00
+          0.00  0.90  0.00
+          1.10  0.90  0.00
+          0.00  0.00  1.00
+          1.10  0.00  1.00
+          0.00  0.90  1.00
+          1.10  0.90  1.00
+        </coefs>
+    </Geometry>
+
+    <!-- ===== Composition data (id 600): refined unit cube (identity map) =====
+         Degree 1, 2 knot intervals per direction (knot at 0.5).
+         Grid: 3x3x3 = 27 control points.
+         Only the single interior node at (0.5, 0.5, 0.5) is free ->
+         3 optimizer DOFs (x, y, z shift of the centre node).
+    -->
+    <Geometry type="TensorBSpline3" id="600">
+        <Basis type="TensorBSplineBasis3">
+            <Basis type="BSplineBasis" index="0">
+                <KnotVector degree="1">0.0  0.0  0.5  1.0  1.0</KnotVector>
+            </Basis>
+            <Basis type="BSplineBasis" index="1">
+                <KnotVector degree="1">0.0  0.0  0.5  1.0  1.0</KnotVector>
+            </Basis>
+            <Basis type="BSplineBasis" index="2">
+                <KnotVector degree="1">0.0  0.0  0.5  1.0  1.0</KnotVector>
+            </Basis>
+        </Basis>
+        <!-- 27 = 3x3x3 control points; index order: i (x) fastest, then j (y), then k (z) -->
+        <coefs geoDim="3">
+          0.0  0.0  0.0
+          0.5  0.0  0.0
+          1.0  0.0  0.0
+          0.0  0.5  0.0
+          0.5  0.5  0.0
+          1.0  0.5  0.0
+          0.0  1.0  0.0
+          0.5  1.0  0.0
+          1.0  1.0  0.0
+          0.0  0.0  0.5
+          0.5  0.0  0.5
+          1.0  0.0  0.5
+          0.0  0.5  0.5
+          0.5  0.5  0.5
+          1.0  0.5  0.5
+          0.0  1.0  0.5
+          0.5  1.0  0.5
+          1.0  1.0  0.5
+          0.0  0.0  1.0
+          0.5  0.0  1.0
+          1.0  0.0  1.0
+          0.0  0.5  1.0
+          0.5  0.5  1.0
+          1.0  0.5  1.0
+          0.0  1.0  1.0
+          0.5  1.0  1.0
+          1.0  1.0  1.0
+        </coefs>
+    </Geometry>
+
+</xml>

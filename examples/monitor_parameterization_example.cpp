@@ -20,6 +20,10 @@
 #include <gsOptimizer/gsGradientDescent.h>
 #include <gsOptim/gsOptim.h>
 
+#include <gsUtils/gsStopwatch.h>
+
+using namespace gismo;
+
 int main(int arg, char *argv[])
 {
     //! [Parse command line]
@@ -83,7 +87,8 @@ int main(int arg, char *argv[])
     gsInfo<<PARoptions<<"\n";
 
     GISMO_ENSURE(geom.nPatches()==composition.nPatches(),"The number of patches in the geometry and the composition must be the same");
-    GISMO_ENSURE((index_t)geom.nPatches()==function.nPieces(),"The number of patches in the geometry and the function must be the same");
+    if (function.domainDim()!=0)
+        GISMO_ENSURE((index_t)geom.nPatches()==function.nPieces(),"The number of patches in the geometry and the function must be the same");
     GISMO_ENSURE(geom.nPatches()==1,"Only one patch is supported");
 
     // Refine and elevate the geometry and composition if needed
@@ -102,12 +107,11 @@ int main(int arg, char *argv[])
     const gsGeometry<> & gpatch0 = geom.patch(0);
     const gsBasis<> & gbasis0 = gpatch0.basis();
 
-    GISMO_ENSURE(cbasis0.domainDim()==2,"The composition basis must be 2D (for now)");
-    const gsTensorBSplineBasis<2,real_t> * cbasis0_ptr = dynamic_cast<const gsTensorBSplineBasis<2,real_t> *>(&cbasis0);
-    GISMO_ENSURE(cbasis0_ptr,"The composition basis must be a tensor B-spline basis");
+    GISMO_ENSURE(cbasis0.domainDim()==geom.patch(0).domainDim(),
+                 "Composition and geometry must have the same parametric dimension");
 
-    gsInfo<<"Mapper basis:\n"<<*cbasis0_ptr<<"\n";
-    gsSquareDomain<real_t> domain(*cbasis0_ptr);
+    gsInfo<<"Mapper basis:\n"<<cbasis0<<"\n";
+    gsSquareDomain<real_t> domain(cbasis0);
     for (auto ifc = geom.iBegin(); ifc != geom.iEnd(); ++ifc)
         domain.addInterface(*ifc);
 
@@ -162,71 +166,92 @@ int main(int arg, char *argv[])
 
     relocator->options().setReal("Penalty",(penalty==-1) ? PARoptions.askReal("Penalty",1e-2) : penalty);
     relocator->options().setReal("Smoothing",(smoothing==-1) ? PARoptions.askReal("Smoothing",1e-2) : smoothing);
+
+    gsStopwatch watch;
     relocator->solve();
+    real_t elapsed = watch.stop();
 
     gsInfo<<domain.domain().coefs()<<"\n";
+    gsInfo<<"Number of control parameters: "<<domain.nControls()<<"\n";
+    gsInfo<<"Elapsed time: "<<elapsed<<" seconds\n";
+
+    {
+        real_t minJ = relocator->computeMinJacobian();
+        gsInfo << "Min Jacobian (det J_sigma) after optimization: " << minJ;
+        if (minJ < 0)
+            gsInfo << "  [FOLDS PRESENT]\n";
+        else
+            gsInfo << "  [no folds]\n";
+    }
+
+    
 
     // //////////////////////////////////////////////////
     // // PLOTTING
     // //////////////////////////////////////////////////
-    gsComposedGeometry<real_t> cspline(domain.domain(),gpatch0);
-    gsMultiPatch<> mp;
-    mp.addPatch(cspline);
-    // mp.embed(3);
-    gsMultiBasis<> mb(mp);
-
-    gsExprEvaluator<> ev;
-    ev.options().setInt("plot.npts",nSamples);
-    ev.options().setSwitch("SameElement",false);
-    ev.setIntegrationElements(mb);
-    auto Gnew = ev.getMap(mp);
-    auto Gold = ev.getMap(gpatch0);
-
-    gsWriteParaview(mp,output+"cgeom",1000,true,true);
-    gsWriteParaview(domain.domain(),output+"domain",1000,true,true);
-
-    if (function.domainDim()!=0)
+    if (plot)
     {
-        gsComposedFunction<real_t> cfun = (PARoptions.askSwitch("Parametric",true)) ? gsComposedFunction<real_t>(domain,function) : gsComposedFunction<real_t>(cspline,function);
-        gsWriteParaview(mp,cfun,output+"cfun",nSamples);
-        gsField<> fun(mp,function);
-        gsWriteParaview(fun,output+"fun",nSamples);
+        gsComposedGeometry<real_t> cspline(domain.domain(),gpatch0);
+        gsMultiPatch<> mp;
+        mp.addPatch(cspline);
+        // mp.embed(3);
+        gsMultiBasis<> mb(mp);
+
+        gsExprEvaluator<> ev;
+        ev.options().setInt("plot.npts",nSamples);
+        // ev.options().setSwitch("SameElement",false);
+        ev.setIntegrationElements(mb);
+        auto Gnew = ev.getMap(mp);
+        auto Gold = ev.getMap(gpatch0);
+
+        gsWriteParaview(mp,output+"cgeom",1000,true,true);
+        gsWriteParaview(domain.domain(),output+"domain",1000,true,true);
+        
+        if (function.domainDim()!=0)
+        {
+            gsComposedFunction<real_t> cfun = (PARoptions.askSwitch("Parametric",true)) ? gsComposedFunction<real_t>(domain,function) : gsComposedFunction<real_t>(cspline,function);
+            gsWriteParaview(mp,cfun,output+"cfun",nSamples);
+            gsField<> fun(mp,function);
+            gsWriteParaview(fun,output+"fun",nSamples);
+        }
+
+        // Export jacobian determinants
+        if (mp.domainDim()==mp.targetDim())
+        {
+            auto detGnew = jac(Gnew).det();
+            auto detGold = jac(Gold).det();
+            ev.writeParaview(detGnew,Gnew,output+"jacobian_determinant_new");
+            ev.writeParaview(detGold,Gold,output+"jacobian_determinant_old");
+        }
+        else if (mp.domainDim()<mp.targetDim())
+        {
+            auto fform_new = jac(Gnew).tr()*jac(Gnew);
+            auto detGnew = pow(fform_new.det().val(),0.5); //jacobian determinant for a surface, i.e. the measure
+            auto fform_old = jac(Gold).tr()*jac(Gold);
+            auto detGold = pow(fform_old.det().val(),0.5); //jacobian determinant for a surface, i.e. the measure
+
+            ev.writeParaview(detGnew,Gnew,output+"jacobian_determinant_new");
+            ev.writeParaview(detGold,Gold,output+"jacobian_determinant_old");
+        }
+
+        // Plot iso lines (2D only: iso-parameter curves are a 2D concept)
+        if (cbasis0.domainDim() == 2)
+        {
+            gsKnotVector<> kv(0,1,nIsolines-2,1,1,0);
+            gsTensorBSplineBasis<2> meshBasis(kv,kv);
+            gsMesh<> meshnew(meshBasis,2);
+            gsMesh<> meshold(meshnew);
+            cspline.evaluateMesh(meshnew);
+            gsWriteParaview(meshnew,output+"isolines_new");
+            gpatch0.evaluateMesh(meshold);
+            gsWriteParaview(meshold,output+"isolines_old");
+        }
+
+        // Export geometry to file
+        gsFileData<> fdout;
+        fdout.add(cspline);
+        fdout.save(output+"composedGeometry.xml");
     }
-
-    // Export jacobian determinants
-    if (mp.domainDim()==mp.targetDim())
-    {
-        auto detGnew = jac(Gnew).det();
-        auto detGold = jac(Gold).det();
-        ev.writeParaview(detGnew,Gnew,output+"jacobian_determinant_new");
-        ev.writeParaview(detGold,Gold,output+"jacobian_determinant_old");
-    }
-    else if (mp.domainDim()<mp.targetDim())
-    {
-        auto fform_new = jac(Gnew).tr()*jac(Gnew);
-        auto detGnew = pow(fform_new.det().val(),0.5); //jacobian determinant for a surface, i.e. the measure
-        auto fform_old = jac(Gold).tr()*jac(Gold);
-        auto detGold = pow(fform_old.det().val(),0.5); //jacobian determinant for a surface, i.e. the measure
-
-        ev.writeParaview(detGnew,Gnew,output+"jacobian_determinant_new");
-        ev.writeParaview(detGold,Gold,output+"jacobian_determinant_old");
-    }
-
-    // Plot iso lines
-    gsKnotVector<> kv(0,1,nIsolines-2,1,1,0);
-    gsTensorBSplineBasis<2> meshBasis(kv,kv);
-    gsMesh<> meshnew(meshBasis,2);
-    gsMesh<> meshold(meshnew);
-    cspline.evaluateMesh(meshnew);
-    gsWriteParaview(meshnew,output+"isolines_new");
-    gpatch0.evaluateMesh(meshold);
-    gsWriteParaview(meshold,output+"isolines_old");
-
-    // Export geometry to file
-    gsFileData<> fdout;
-    fdout.add(cspline);
-    fdout.save(output+"composedGeometry.xml");
-
 
     // delete fun;
     delete optimizer;

@@ -237,6 +237,91 @@ int main(int argc, char *argv[])
             nFail++;
     }
 
+    // ===========================================================================
+    // 3D volumetric (planar) tests: dd=3, td=3
+    // Composition: unit cube sigma (gsSquareDomain built from BSplineCube(1))
+    // Geometry:    slightly deformed unit cube (td=dd=3)
+    // ===========================================================================
+
+    gsGeometry<>::uPtr composition3d = gsNurbsCreator<real_t>::BSplineCube(2);
+    gsSquareDomain<real_t> domain3d(*composition3d);
+
+    // Free controls for 3D domain (all interior + edge dofs, boundary locked).
+    gsVector<real_t> controls3d = domain3d.getControls();
+
+    // Build a 3D tensor B-spline basis for the geometry (deg 2 in each direction)
+    gsKnotVector<> kv3_1({0,0,0,1,1,1}, 2);
+    gsKnotVector<> kv3_2({0,0,0,0.5,1,1,1}, 2);
+    gsKnotVector<> kv3_3({0,0,0,1,1,1}, 2);
+    gsTensorBSplineBasis<3> tbasis3(kv3_1, kv3_2, kv3_3);
+
+    gsComposedBasis<> cbasis3(*composition3d, tbasis3);
+    gsMatrix<> anchors3 = cbasis3.anchors().transpose(); // nDof x 3
+
+    // Perturb the 3D controls away from the symmetric center to get a non-trivial gradient.
+    // Without perturbation, controls3d = (0.5, 0.5, 0.5) is a symmetry point where the
+    // gradient is exactly zero (fp - fm = O(machine_eps) with h=1e-7 => FD noise only).
+    controls3d(0) += 0.04;
+    controls3d(1) -= 0.03;
+    controls3d(2) += 0.02;
+    domain3d.setControls(controls3d);
+
+    gsInfo << "\n===== D1: Planar (3D->3D), no monitor =====\n";
+    {
+        // Slightly deformed cube geometry (td=dd=3)
+        gsMatrix<> coefs3d(cbasis3.size(), 3);
+        coefs3d = anchors3;
+        for (index_t i = 0; i < coefs3d.rows(); ++i)
+        {
+            coefs3d(i,0) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,1)) * math::sin(2*EIGEN_PI * coefs3d(i,2));
+            coefs3d(i,1) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,2)) * math::sin(2*EIGEN_PI * coefs3d(i,0));
+            coefs3d(i,2) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,0)) * math::sin(2*EIGEN_PI * coefs3d(i,1));
+        }
+        gsGeometry<>::uPtr geom3d = tbasis3.makeGeometry(coefs3d);
+
+        gsOptMesh<real_t,MonitorMode::ValueBased> opt(domain3d, *geom3d, &tbasis3);
+        if (!testGradient("D1: 3D planar no monitor", opt, controls3d))
+            nFail++;
+    }
+
+    gsInfo << "\n===== D2: Planar (3D->3D), sphere monitor (ValueBased) =====\n";
+    {
+        gsMatrix<> coefs3d(cbasis3.size(), 3);
+        coefs3d = anchors3;
+        for (index_t i = 0; i < coefs3d.rows(); ++i)
+        {
+            coefs3d(i,0) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,1)) * math::sin(2*EIGEN_PI * coefs3d(i,2));
+            coefs3d(i,1) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,2)) * math::sin(2*EIGEN_PI * coefs3d(i,0));
+            coefs3d(i,2) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,0)) * math::sin(2*EIGEN_PI * coefs3d(i,1));
+        }
+        gsGeometry<>::uPtr geom3d = tbasis3.makeGeometry(coefs3d);
+
+        // Sphere-shaped monitor: concentrated at (0.5, 0.5, 0.5)
+        gsFunctionExpr<> monFun("exp(-50*((x-0.5)^2+(y-0.5)^2+(z-0.5)^2))", 3);
+        gsOptMesh<real_t,MonitorMode::ValueBased> opt(domain3d, *geom3d, &monFun, &tbasis3, true);
+        if (!testGradient("D2: 3D planar sphere monitor (ValueBased)", opt, controls3d))
+            nFail++;
+    }
+
+    gsInfo << "\n===== D3: Planar (3D->3D), sphere monitor (GradientBased, parametric) =====\n";
+    {
+        gsMatrix<> coefs3d(cbasis3.size(), 3);
+        coefs3d = anchors3;
+        for (index_t i = 0; i < coefs3d.rows(); ++i)
+        {
+            coefs3d(i,0) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,1)) * math::sin(2*EIGEN_PI * coefs3d(i,2));
+            coefs3d(i,1) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,2)) * math::sin(2*EIGEN_PI * coefs3d(i,0));
+            coefs3d(i,2) += 0.03 * math::sin(2*EIGEN_PI * coefs3d(i,0)) * math::sin(2*EIGEN_PI * coefs3d(i,1));
+        }
+        gsGeometry<>::uPtr geom3d = tbasis3.makeGeometry(coefs3d);
+
+        // Sphere-shaped monitor: concentrated at (0.5, 0.5, 0.5), parametric
+        gsFunctionExpr<> monFun("exp(-50*((x-0.5)^2+(y-0.5)^2+(z-0.5)^2))", 3);
+        gsOptMesh<real_t,MonitorMode::GradientBased> opt(domain3d, *geom3d, &monFun, &tbasis3, true);
+        if (!testGradient<MonitorMode::GradientBased>("D3: 3D planar sphere monitor (GradBased, parametric)", opt, controls3d))
+            nFail++;
+    }
+
     gsInfo << "\n===== Summary =====\n";
     if (nFail == 0)
         gsInfo << "All tests passed!\n";

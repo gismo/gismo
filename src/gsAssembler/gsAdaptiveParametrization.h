@@ -42,17 +42,17 @@ public:
 
     gsOptMesh();
 
-    gsOptMesh(        gsFunction<T> & composition,
+    gsOptMesh(        gsSquareDomain<T> & composition,
                 const gsGeometry<T> & geometry,
                 const gsBasis<T>    * integrationBasis);
 
-    gsOptMesh(        gsFunction<T> & composition,
+    gsOptMesh(        gsSquareDomain<T> & composition,
                 const gsGeometry<T> & geometry,
                 const gsFunction<T> * fun,
                 const gsBasis<T>    * integrationBasis,
                 const bool            parametric);
 
-    gsFunction<T> & composition();
+    gsSquareDomain<T> & composition();
 
     gsOptionList & options();
 
@@ -119,13 +119,21 @@ public:
      */
     void gradObj_FD_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const;
 
+    /**
+     * @brief Returns the minimum \f$\det(J_\sigma)\f$ over all quadrature points.
+     *
+     * A negative return value means at least one element is folded.
+     * Useful for post-optimization fold detection.
+     */
+    T computeMinJacobian(const gsAsConstVector<T> & u) const;
+
 protected:
 
       // From gsOptProblem
       using Base::m_curDesign;
       using Base::m_numDesignVars;
 
-      gsFunction<T>             *   m_comp;
+      gsSquareDomain<T>          *   m_comp;
       const gsGeometry<T>       *   m_geom;
       const gsFunction<T>       *   m_fun;
       const gsBasis<T>          *   m_ib;
@@ -165,6 +173,13 @@ public:
 
       virtual void solve() = 0;
 
+      /**
+       * @brief Returns the minimum \f$\det(J_\sigma)\f$ over all quadrature points.
+       *
+       * A negative return value indicates at least one folded element.
+       */
+      virtual T computeMinJacobian() const = 0;
+
 };
 
 
@@ -192,82 +207,6 @@ public:
      * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
      * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
      */
-    gsAdaptiveParametrization(        gsFunction<T>  & composition,
-                                const gsGeometry<T>  & geometry,
-                                const gsBasis<T>     & integrationBasis,
-                                      gsOptimizer<T> & optimizer,
-                                const bool             parametric=true);
-
-    /**
-     * @brief Constructs a gsAdaptiveParametrization object.
-     *
-     * This constructor takes any composition and integration basis among other inputs, and computes integrals based on the integration rule on the integration basis.
-     *
-     * @param composition       a \a gsFunction object representing the composition of the parametrization
-     * @param geometry          a \a gsGeometry object representing the geometry
-     * @param function          a \a gsFunction object representing the indicator function
-     * @param integrationBasis  a \a gsBasis object used to define the integration points
-     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
-     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
-     */
-    gsAdaptiveParametrization(        gsFunction<T>  & composition,
-                                const gsGeometry<T>  & geometry,
-                                const gsFunction<T>  & function,
-                                const gsBasis<T>     & integrationBasis,
-                                      gsOptimizer<T> & optimizer,
-                                const bool             parametric=true);
-
-    /**
-     * @brief Constructs a gsAdaptiveParametrization object.
-     *
-     * This constructor takes any composition among other inputs, and computes integrals based on the integration rule on the integration basis.
-     *
-     * @param composition       a \a gsFunction object representing the composition of the parametrization
-     * @param geometry          a \a gsGeometry object representing the geometry
-     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
-     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
-     */
-    gsAdaptiveParametrization(        gsFunction<T>  & composition,
-                                const gsGeometry<T>  & geometry,
-                                      gsOptimizer<T> & optimizer,
-                                const bool             parametric=true);
-
-    /**
-     * @brief Constructs a gsAdaptiveParametrization object.
-     *
-     * This constructor takes any composition among other inputs, and computes integrals based on the integration rule on the integration basis.
-     *
-     * @param composition       a \a gsFunction object representing the composition of the parametrization
-     * @param geometry          a \a gsGeometry object representing the geometry
-     * @param function          a \a gsFunction object representing the indicator function
-     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
-     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
-     */
-    gsAdaptiveParametrization(        gsFunction<T>  & composition,
-                                const gsGeometry<T>  & geometry,
-                                const gsFunction<T>  & function,
-                                      gsOptimizer<T> & optimizer,
-                                const bool             parametric=true);
-
-    /**
-     * @brief Constructs a gsAdaptiveParametrization object.
-     *
-     * This constructor takes any composition and integration basis among other inputs, and computes integrals based on the integration rule on the integration basis.
-     *
-     * @param composition       a \a gsFunction object representing the composition of the parametrization
-     * @param geometry          a \a gsGeometry object representing the geometry
-     * @param function          a \a gsFunction object representing the indicator function
-     * @param integrationBasis  a \a gsBasis object used to define the integration points
-     * @param optimizer         a \a gsOptimizer object used to solve the optimization problem
-     * @param parametric        a boolean indicating whether the composition \a function is defined in the parametric domain (default = true)
-     */
-    gsAdaptiveParametrization(        gsFunction<T>  & composition,
-                                const gsGeometry<T>  & geometry,
-                                const gsFunction<T>  * function,
-                                const gsBasis<T>     & integrationBasis,
-                                      gsOptimizer<T> & optimizer,
-                                const bool             parametric=true);
-
     /**
      * @brief Constructs a gsAdaptiveParametrization object.
      *
@@ -366,6 +305,8 @@ public:
 
       void solve() override;
 
+      T computeMinJacobian() const override;
+
 public:
 
       template <short_t d>
@@ -374,7 +315,7 @@ public:
 
 protected:
 
-    gsFunction<T>             & m_comp;
+    gsSquareDomain<T>          & m_comp;
     const gsGeometry<T>       & m_geom;
     const gsFunction<T>       * m_fun;
 

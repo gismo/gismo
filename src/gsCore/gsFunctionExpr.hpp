@@ -609,10 +609,10 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
             const DScalar &            ads  = my->expression[c].value();
             const DScalar::Hessian_t & Hmat = ads.getHessian(); // note: can fail
 
+            index_t m = d;
             for ( index_t k=0; k!=d; ++k)
             {
                 result(c*stride + k,p) = Hmat(k,k);
-                index_t m = d;
                 for ( index_t l=k+1; l<d; ++l)
                     result(c*stride + m++,p) = Hmat(k,l);
             }

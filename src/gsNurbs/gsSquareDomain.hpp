@@ -16,8 +16,8 @@
 #include <gsCore/gsDofMapper.h>
 #include <gsIO/gsOptionList.h>
 #include <gsCore/gsBoxTopology.h>
-// #include <gsIO/gsXml.h>
-// #include <gsIO/gsXmlGenericUtils.hpp>
+#include <gsIO/gsXml.h>
+#include <gsIO/gsXmlGenericUtils.hpp>
 
 namespace gismo
 {

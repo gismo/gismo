@@ -187,7 +187,6 @@ SUITE(gsAdaptiveParametrizatin_test)
         gsFunctionExpr<> monFun("1 + 0.3*x + 0.2*y + 0.1*z", 3);
         gsOptMesh<real_t,MonitorMode::GradientBased> opt(f.domain, *geom, &monFun, &f.tbasis, false);
         real_t relErr = gradientRelError<MonitorMode::GradientBased>(opt, f.controls);
-        gsTestInfo << "C3 relErr = " << relErr << "\n";
         CHECK(relErr < GRAD_TOL);
     }
 

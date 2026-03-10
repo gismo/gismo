@@ -73,13 +73,6 @@ public:
         this->defaultOptions();
     }
 
-    gsHLBFGS()
-    :
-    Base()
-    {
-        this->defaultOptions();
-    }
-
     gsHLBFGS(gsOptProblem<T> * problem)
     :
     Base(problem)

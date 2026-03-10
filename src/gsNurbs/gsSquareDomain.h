@@ -94,25 +94,25 @@ public:
     // }
 
     /// Sets the controls of the domain
-    void setControls(const gsVector<T> & controls) override;
+    void setControls(const gsVector<T> & controls);
 
     /// Gets the controls of the domain
     /// NOTE: This makes a copy
-    gsVector<T> getControls() const override;
+    gsVector<T> getControls() const;
 
     /// Returns the \a i th control of the function
-    // const T & control(index_t i) const override;
-    //       T & control(index_t i)       override;
+    // const T & control(index_t i) const;
+    //       T & control(index_t i);
 
 
     // const gsVector<T> & parameters() const { return m_parameters; };
     //       gsVector<T> & parameters()       { return m_parameters; };
 
     /// Returns the number of controls of the function
-    size_t nControls() const override;
+    size_t nControls() const;
 
     /// Returns the control derivative
-    virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const override;
+    virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const;
 
     /**
      * @brief Computes the derivative of det(J_sigma) w.r.t. the free controls
