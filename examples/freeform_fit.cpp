@@ -5,7 +5,6 @@
     Author(s): L. Mussmaecher
 */
 
-#include "gsCore/gsFunctionExpr.h"
 #include <gismo.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
@@ -19,7 +18,6 @@ int main(int argc, char** argv)
     std::string filepath("off/octtorus.off");
     std::string patchpath("freeform/original/");
     std::string operations("sd");
-    std::string function("");
     bool control_net(false);
     bool optimize_fit(false);
 
@@ -30,10 +28,6 @@ int main(int argc, char** argv)
                   "Operations to perform on the mesh. Use d for subdivision "
                   "and s for (c1) smoothing",
                   operations);
-    cmd.addString("f", "function",
-                  "A function to replace the last coordinate of your loaded "
-                  "object. E.g. `x^2 + y`.",
-                  function);
     cmd.addString("p", "patchpath",
                   "The path to the files containing the model patches for EV "
                   "subdivision.",
@@ -74,13 +68,6 @@ int main(int argc, char** argv)
     {
         gsWarn << "Unsupported Filetype!\n";
         return 1;
-    }
-
-    // Take care of function
-    if (function.length() > 0)
-    {
-        subdiv.fit_last_coordinate_to_function(
-            gsFunctionExpr<real_t>(function, 2));
     }
 
     gsWriteParaview(subdiv.multipatch(), "results/initial_data", 1000, false,

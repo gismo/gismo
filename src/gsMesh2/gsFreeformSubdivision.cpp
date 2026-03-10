@@ -1206,8 +1206,7 @@ gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
-    real_t error_l0(0.);
-    real_t error_l1(0.);
+    real_t error_linf(0.);
     real_t error_l2(0.);
     real_t error_count(0);
 
@@ -1249,18 +1248,16 @@ gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
             // Compare it to the value of the function and collate update the
             // error receptables.
             real_t err = abs(point(D - 1) - function.eval(point2)(0));
-            error_l0 = std::max(error_l0, err);
-            error_l1 += err;
+            error_linf = std::max(error_linf, err);
             error_l2 += err * err;
             ++error_count;
         }
     }
 
-    gsVector<real_t> error = gsVector<real_t>::vec(error_l0, error_l1 / real_t(error_count), sqrt(error_l2 / real_t(error_count)));
+    gsVector<real_t> error = gsVector<real_t>::vec(error_linf, sqrt(error_l2 / real_t(error_count)));
 
     gsInfo << "Error L0: " << error(0) << ".\n";
-    gsInfo << "Error L1: " << error(1) << ".\n";
-    gsInfo << "Error L2: " << error(2) << ".\n";
+    gsInfo << "Error L2: " << error(1) << ".\n";
 
     return error;
 }

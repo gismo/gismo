@@ -76,17 +76,33 @@ int main(int argc, char** argv)
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
     subdiv.initialize_data_xml(filepath);
+    // control_net = true;
+    // subdiv.initialize_data_xml("freeform/original/Val5Flat_half.xml");
+    // gsWriteParaview(subdiv.multipatch(),
+    //                 "results/half5", 1000,
+    //                 false, control_net);
+    // subdiv.initialize_data_xml("freeform/original/Val5Flat_quarter.xml");
+    // gsWriteParaview(subdiv.multipatch(),
+    //                 "results/quarter5", 1000,
+    //                 false, control_net);
+    // subdiv.initialize_data_xml("freeform/original/Val5Flat_eighth.xml");
+    // gsWriteParaview(subdiv.multipatch(),
+    //                 "results/eight5", 1000,
+    //                 false, control_net);
 
     gsFunctionExpr<real_t> func(function, 2);
 
-    gsMatrix<real_t> errors(3, steps);
+    gsMatrix<real_t> errors(2, steps);
 
     for (index_t i = 0; i < steps; ++i)
     {
-        if (i > 0)
+        subdiv.initialize_data_xml(filepath);
+        for(index_t j = 0; j < i; ++j){
             subdiv.subdivide();
+        }
 
         subdiv.fit_last_coordinate_to_function(func);
+        errors.col(i) = subdiv.error(func, samples);
         subdiv.smooth(1);
         errors.col(i) = subdiv.error(func, samples);
 
