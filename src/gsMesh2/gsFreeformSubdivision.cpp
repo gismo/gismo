@@ -12,6 +12,7 @@
 */
 
 #include "gsCore/gsFunctionExpr.h"
+#include "gsIO/gsParaviewCollection.h"
 #include <cmath>
 #include <cstdlib>
 #include <gismo.h>
@@ -1365,6 +1366,33 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
 
         // Create gsFreeformFaceData with control points and face back reference
         bezier_points[f] = gsFreeformFaceData<N, D>(faceControlPoints, f);
+    }
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::write_paraview(
+    std::string name, gsParaviewCollection* collection, size_t timestep,
+    bool control_net)
+{
+    auto mp(multipatch());
+    std::string basename(name.substr(name.rfind('/') + 1));
+
+    gsWriteParaview(mp, name, 1000, false, control_net);
+
+    if (collection == nullptr)
+        return;
+    // Register each patch's .vts file in the time series collection
+    for (size_t j = 0; j < mp.nPatches(); ++j)
+    {
+        collection->addPart(basename + "_" + std::to_string(j) + ".vts",
+                            timestep, "", j);
+        if (control_net)
+        {
+            // Also register the control net in the collection
+            collection->addPart(basename + "_" + std::to_string(j) +
+                                    "_cnet.vtp",
+                                timestep, "", j);
+        }
     }
 }
 

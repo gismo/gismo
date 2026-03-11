@@ -33,7 +33,10 @@ int main(int argc, char** argv)
                   "subdivision.",
                   patchpath);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
-    cmd.addSwitch("opt", "Optimizes the fit via a functional instead of linear constraints.", optimize_fit);
+    cmd.addSwitch(
+        "opt",
+        "Optimizes the fit via a functional instead of linear constraints.",
+        optimize_fit);
     try
     {
         cmd.getValues(argc, argv);
@@ -70,8 +73,10 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    gsWriteParaview(subdiv.multipatch(), "results/initial_data", 1000, false,
-                    control_net);
+    // Single .pvd collection for all steps.
+    gsParaviewCollection collection("results/function_fit");
+
+    subdiv.write_paraview("results/initial_data", &collection, 0, control_net);
 
     size_t i(1);
     for (char c : operations)
@@ -79,20 +84,23 @@ int main(int argc, char** argv)
         switch (c)
         {
         case 'd':
-            gsInfo << "Step " << std::string(i, 'I') << ": Subdividing.\n";
+            gsInfo << "Step " << std::to_string(i) << ": Subdividing.\n";
             subdiv.subdivide();
             break;
         case 's':
-            gsInfo << "Step " << std::string(i, 'I') << ": Smoothing.\n";
+            gsInfo << "Step " << std::to_string(i) << ": Smoothing.\n";
             subdiv.smooth(1);
             break;
         default:
             break;
         }
-        gsWriteParaview(subdiv.multipatch(),
-                        "results/step" + std::string(i++, 'I'), 1000, false,
-                        control_net);
+
+        subdiv.write_paraview("results/step" + std::to_string(i),
+                              &collection, i, control_net);
+        ++i;
     }
+
+    collection.save();
 
     return 0;
 }

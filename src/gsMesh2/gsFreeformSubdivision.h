@@ -14,6 +14,7 @@
 #pragma once
 
 #include "gsCore/gsFunctionExpr.h"
+#include "gsIO/gsParaviewCollection.h"
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsNurbs/gsTensorBSpline.h>
@@ -184,7 +185,7 @@ public:
     /// Features return arguments that return the coefficient matrix of the
     /// fitting for each extraordinary vertex, as well as the matrix containing
     /// the values of the outer control points of patches around that vertex.
-    /// 
+    ///
     /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
     /// supported.
     void smooth(size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
@@ -192,10 +193,20 @@ public:
 
     /// \brief Converts to a Gismo multipatch object.
     ///
-    /// Converts a given mesh with freeform data into a multipatch that can be
-    /// easily displayed by e.g. Paraview. Each face and its control net are
+    /// Converts the targeted mesh with freeform data into a multipatch that can
+    /// be easily displayed by e.g. Paraview. Each face and its control net are
     /// converted to one appropriately sized patch.
     gsMultiPatch<> multipatch();
+
+    /// Writes the targeted mesh with freeform data to a paraview file for easy
+    /// viewing. Can also register the file to a given paraview collection at
+    /// the given timestep.
+    ///
+    /// \param control_net When set to true, the control net of the mesh is also
+    /// written to paraview and registered to the collection.
+    void write_paraview(std::string name,
+                        gsParaviewCollection* collection = nullptr,
+                        size_t timestep = 0, bool control_net = false);
 
 }; // namespace internal
 

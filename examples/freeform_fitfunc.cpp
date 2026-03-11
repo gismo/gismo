@@ -27,6 +27,7 @@ int main(int argc, char** argv)
     bool control_net(false);
     bool optimize_fit(false);
     bool paraview(false);
+    bool write_errors(false);
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
@@ -51,6 +52,10 @@ int main(int argc, char** argv)
         valence);
     cmd.addSwitch("paraview", "Outputs the fits to paraview.", paraview);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
+    cmd.addSwitch("errors",
+                  "Writes an error matrix to a file and outputs the error as a "
+                  "paraview patch.",
+                  write_errors);
     cmd.addSwitch(
         "opt",
         "Optimizes the fit via a functional instead of linear constraints.",
@@ -76,23 +81,13 @@ int main(int argc, char** argv)
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
     subdiv.initialize_data_xml(filepath);
-    // control_net = true;
-    // subdiv.initialize_data_xml("freeform/original/Val5Flat_half.xml");
-    // gsWriteParaview(subdiv.multipatch(),
-    //                 "results/half5", 1000,
-    //                 false, control_net);
-    // subdiv.initialize_data_xml("freeform/original/Val5Flat_quarter.xml");
-    // gsWriteParaview(subdiv.multipatch(),
-    //                 "results/quarter5", 1000,
-    //                 false, control_net);
-    // subdiv.initialize_data_xml("freeform/original/Val5Flat_eighth.xml");
-    // gsWriteParaview(subdiv.multipatch(),
-    //                 "results/eighth5", 1000,
-    //                 false, control_net);
 
     gsFunctionExpr<real_t> func(function, 2);
 
     gsMatrix<real_t> errors(2, steps);
+
+    // Single .pvd collection for all steps.
+    gsParaviewCollection collection("results/function_fit");
 
     for (index_t i = 0; i < steps; ++i)
     {
@@ -113,30 +108,41 @@ int main(int argc, char** argv)
 
         if (paraview)
         {
-            gsWriteParaview(subdiv.multipatch(),
-                            "results/step" + std::string(i + 1, 'I'), 1000,
-                            false, control_net);
+            const std::string stepname = "results/step" + std::to_string(i + 1);
 
+            subdiv.write_paraview(stepname, &collection, i + 1, control_net);
+
+            // If the user wants to save the control net, we also want to save
+            // the greville control points for each EV.
             if (control_net)
             {
+                // for each EV
                 for (size_t j = 0; j < ev_coefs.size(); ++j)
                 {
-                    // skip outer coefficients
-                    if (j % 2 == 1)
-                        continue;
                     ev_coefs[j] = ev_coefs[j].transpose();
-                    gsWriteParaviewPoints(
-                        ev_coefs[j],
-                        "results/step" + std::string(i + 1, 'I') + "_greville");
+                    // Create a paraview file containing the control points
+                    gsWriteParaviewPoints(ev_coefs[j], stepname + "_greville" +
+                                                           std::to_string(j));
+                    // Register that file in the time series collection
+                    collection.addPart("step" + std::to_string(i + 1) +
+                                           "_greville" + std::to_string(j) +
+                                           ".vtp",
+                                       i + 1, "Greville");
                 }
             }
         }
 
-        gsInfo << "Finished writing Step " << std::string(i + 1, 'I') << ".\n";
+        gsInfo << "Finished writing Step " << std::to_string(i + 1) << ".\n";
     }
 
-    // write error matrix
-    gsWriteCsv("errors.csv", errors);
+    if (paraview)
+        collection.save();
+
+    if (write_errors)
+    {
+        // write error matrix
+        gsWriteCsv("errors.csv", errors);
+    }
 
     return 0;
 }
