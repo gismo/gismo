@@ -7,8 +7,8 @@
 
 #include "gsCore/gsFunctionExpr.h"
 #include <gismo.h>
-#include <gsIO/gsFileData.hpp>
 #include <gsIO/gsCsv.h>
+#include <gsIO/gsFileData.hpp>
 #include <gsIO/gsWriteParaview.h>
 #include <gsMesh2/gsFreeformSubdivision.h>
 #include <gsMesh2/gsSurfMesh.h>
@@ -87,7 +87,7 @@ int main(int argc, char** argv)
     //                 false, control_net);
     // subdiv.initialize_data_xml("freeform/original/Val5Flat_eighth.xml");
     // gsWriteParaview(subdiv.multipatch(),
-    //                 "results/eight5", 1000,
+    //                 "results/eighth5", 1000,
     //                 false, control_net);
 
     gsFunctionExpr<real_t> func(function, 2);
@@ -97,13 +97,15 @@ int main(int argc, char** argv)
     for (index_t i = 0; i < steps; ++i)
     {
         subdiv.initialize_data_xml(filepath);
-        for(index_t j = 0; j < i; ++j){
+        for (index_t j = 0; j < i; ++j)
+        {
             subdiv.subdivide();
         }
 
         subdiv.fit_last_coordinate_to_function(func);
         errors.col(i) = subdiv.error(func, samples);
-        subdiv.smooth(1);
+
+        auto subdiv_coefficients = subdiv.smooth(1);
         errors.col(i) = subdiv.error(func, samples);
 
         if (paraview)
@@ -111,6 +113,20 @@ int main(int argc, char** argv)
             gsWriteParaview(subdiv.multipatch(),
                             "results/step" + std::string(i + 1, 'I'), 1000,
                             false, control_net);
+
+            if (control_net)
+            {
+                for (size_t j = 0; j < subdiv_coefficients.size(); ++j)
+                {
+                    // skip outer coefficients
+                    if (j % 2 == 1)
+                        continue;
+                    subdiv_coefficients[j] = subdiv_coefficients[j].transpose();
+                    gsWriteParaviewPoints(
+                        subdiv_coefficients[j],
+                        "results/step" + std::string(i + 1, 'I') + "_greville");
+                }
+            }
         }
 
         gsInfo << "Finished writing Step " << std::string(i + 1, 'I') << ".\n";
