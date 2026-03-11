@@ -11,8 +11,10 @@
     Author(s): L. Mussmaecher
 */
 
+#include "gsCore/gsField.h"
 #include "gsCore/gsFunctionExpr.h"
 #include "gsIO/gsParaviewCollection.h"
+#include "gsIO/gsWriteParaview.h"
 #include <cmath>
 #include <cstdlib>
 #include <gismo.h>
@@ -1203,6 +1205,88 @@ void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
                 data(i, j)(D - 1) = new_coeffs(total_index, 0);
             }
         }
+    }
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::write_paraview_error(
+    gsFunctionExpr<real_t> function, real_t max_error, std::string name,
+    gsParaviewCollection* collection, size_t timestep)
+{
+    auto& mesh = *m_mesh;
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+
+    size_t face_counter(0);
+
+    for (auto f : mesh.faces())
+    {
+        // read out the control points
+        auto& data = face_data_vec[f.idx()].control_points;
+
+        // Create a spline basis for a normal bezier patch.
+        gsKnotVector<> kv1(0, 1, 0, N);
+        gsKnotVector<> kv2(0, 1, 0, N);
+        gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
+
+        // Create a full and a 2D coefficient matrix out of the control points.
+        gsMatrix<> coeffs(N * N, D);
+        gsMatrix<> coeffs2D(N * N, 2);
+        for (size_t i = 0; i < N; ++i)
+        {
+            for (size_t j = 0; j < N; ++j)
+            {
+                int total_index = i * N + j;
+                coeffs.row(total_index) = data(i, j);
+                coeffs2D.row(total_index) = data(i, j).topRows(2);
+            }
+        }
+
+        // The final patch.
+        gsTensorBSpline<2> patch(basis, coeffs);
+        gsTensorBSpline<2> patch2D(basis, coeffs2D);
+
+        // We now sample this patch at N*N points
+        gsMatrix<> error_samples(1, N * N);
+        gsMatrix<> params(2, N * N);
+
+        for (size_t i = 0; i < N * N; ++i)
+        {
+            // Get the parameters at the sample point.
+            params.col(i) = gsVector<real_t, 2>::vec(
+                real_t(std::floor(i % N)) / real_t(N - 1),
+                real_t(std::floor(i / N)) / real_t(N - 1));
+
+            // Get the value of the first D-1 coordinates at these parameters
+            gsVector<real_t> point = patch.eval(params.col(i));
+
+            // Use the function to find the error
+            error_samples(0, i) =
+                std::abs(function.eval(point.topRows(D - 1))(0) - point(D - 1));
+        }
+
+        // rescale error to be in [0,1].
+        error_samples /= max_error;
+
+        // fit a patch to this
+        gsFitting<> fitter(params, error_samples, basis);
+        fitter.compute(0.0);
+        gsGeometry<>* result = fitter.result();
+
+        gsField<> field(patch2D, *result);
+
+        gsWriteParaview(field, name + "_" + std::to_string(face_counter), 1000);
+
+        //TODO: Somehow compress this?
+        if (collection != nullptr)
+        {
+            std::string basename(name.substr(name.rfind('/') + 1));
+            collection->addPart(basename + "_" + std::to_string(face_counter) +
+                                    ".pvd",
+                                timestep);
+        }
+
+        ++face_counter;
     }
 }
 

@@ -88,6 +88,7 @@ int main(int argc, char** argv)
 
     // Single .pvd collection for all steps.
     gsParaviewCollection collection("results/function_fit");
+    gsParaviewCollection error_collection("results/function_error");
 
     for (index_t i = 0; i < steps; ++i)
     {
@@ -105,6 +106,9 @@ int main(int argc, char** argv)
 
         subdiv.smooth(1, ev_coefs, ev_coefs_outer);
         errors.col(i) = subdiv.error(func, samples);
+        subdiv.write_paraview_error(func, errors(0, i),
+                                    "results/error" + std::to_string(i + 1),
+                                    &error_collection, i + 1);
 
         if (paraview)
         {
@@ -136,7 +140,10 @@ int main(int argc, char** argv)
     }
 
     if (paraview)
+    {
         collection.save();
+        error_collection.save();
+    }
 
     if (write_errors)
     {

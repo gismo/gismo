@@ -156,6 +156,11 @@ public:
     gsVector<real_t, 3> error(gsFunctionExpr<> function,
                               size_t samples_per_face);
 
+    void write_paraview_error(gsFunctionExpr<real_t> function, real_t max_error,
+                              std::string name,
+                              gsParaviewCollection* collection = nullptr,
+                              size_t timestep = 0);
+
     /// \brief Initializes the targeted mesh from an xml file.
     ///
     /// Loads the `.xml`-File at the given filepath, which is assumed to contain
