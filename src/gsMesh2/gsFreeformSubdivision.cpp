@@ -583,7 +583,17 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
 }
 
 template <size_t N, size_t D>
-std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
+void gsFreeformSubdivision<N, D>::smooth(size_t degree)
+{
+    std::vector<gsMatrix<real_t>> ev_coefs;
+    std::vector<gsMatrix<real_t>> ev_coefs_outer;
+    smooth(degree, ev_coefs, ev_coefs_outer);
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::smooth(
+    size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
+    std::vector<gsMatrix<real_t>>& ev_coefficients_outer)
 {
     auto& mesh = *m_mesh;
 
@@ -593,14 +603,12 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
     {
         gsWarn
             << "Degree of Bezier control net to small for this smoothness.\n";
-        return res;
     }
 
     // Currently, only C^1 is supported.
     if (degree != 1)
     {
         gsWarn << "Currently, only C^1 smoothing is supported.\n";
-        return res;
     }
 
     // Cache face data
@@ -744,7 +752,7 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
             gsMatrix<real_t> A_control(point_count, function_count);
             gsMatrix<real_t> target(sample_count, D);
 
-            gsMatrix<real_t> outer_values(N * N * patches - point_count, D);
+            gsMatrix<real_t> outer_values(20 * valence, D);
 
             {
                 // the sampling index - this is incremented whenever we sample a
@@ -779,9 +787,13 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
                                                0.0;
                                     }))
                             {
-                                outer_values.row(i_o) =
-                                    *control_nets[p](ux, vx);
-                                i_o++;
+                                if (ux > 0 && vx > 0 && ux < N - 1 &&
+                                    vx < N - 1)
+                                {
+                                    outer_values.row(i_o) =
+                                        *control_nets[p](ux, vx);
+                                    i_o++;
+                                }
                                 continue;
                             }
 
@@ -844,8 +856,8 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
             }
 
             // Remember the fitting coefficients and return them later.
-            res.emplace_back(solution);
-            res.emplace_back(outer_values);
+            ev_coefficients.emplace_back(solution);
+            ev_coefficients_outer.emplace_back(outer_values);
 
             // Now, the coefficients in `solution` give a linear combination of
             // the fitting functions that approximates the original target
@@ -1096,8 +1108,6 @@ std::vector<gsMatrix<real_t>> gsFreeformSubdivision<N, D>::smooth(size_t degree)
         } // End of this edge
     }
     // End of edge correction
-
-    return res;
 }
 
 template <size_t N, size_t D>
@@ -1254,7 +1264,8 @@ gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
         }
     }
 
-    gsVector<real_t> error = gsVector<real_t>::vec(error_linf, sqrt(error_l2 / real_t(error_count)));
+    gsVector<real_t> error =
+        gsVector<real_t>::vec(error_linf, sqrt(error_l2 / real_t(error_count)));
 
     gsInfo << "Error L0: " << error(0) << ".\n";
     gsInfo << "Error L2: " << error(1) << ".\n";

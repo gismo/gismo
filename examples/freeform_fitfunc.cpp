@@ -105,7 +105,10 @@ int main(int argc, char** argv)
         subdiv.fit_last_coordinate_to_function(func);
         errors.col(i) = subdiv.error(func, samples);
 
-        auto subdiv_coefficients = subdiv.smooth(1);
+        std::vector<gsMatrix<real_t>> ev_coefs;
+        std::vector<gsMatrix<real_t>> ev_coefs_outer;
+
+        subdiv.smooth(1, ev_coefs, ev_coefs_outer);
         errors.col(i) = subdiv.error(func, samples);
 
         if (paraview)
@@ -116,14 +119,14 @@ int main(int argc, char** argv)
 
             if (control_net)
             {
-                for (size_t j = 0; j < subdiv_coefficients.size(); ++j)
+                for (size_t j = 0; j < ev_coefs.size(); ++j)
                 {
                     // skip outer coefficients
                     if (j % 2 == 1)
                         continue;
-                    subdiv_coefficients[j] = subdiv_coefficients[j].transpose();
+                    ev_coefs[j] = ev_coefs[j].transpose();
                     gsWriteParaviewPoints(
-                        subdiv_coefficients[j],
+                        ev_coefs[j],
                         "results/step" + std::string(i + 1, 'I') + "_greville");
                 }
             }

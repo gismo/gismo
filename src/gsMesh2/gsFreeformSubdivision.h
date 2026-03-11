@@ -35,20 +35,21 @@ public: // Constructors
     ///
     /// Default constructor. Sets no options and leaves the targeted mesh as a
     /// nullpointer.
-    gsFreeformSubdivision()
-        : gsFreeformSubdivision(nullptr)
-    {
-    }
+    gsFreeformSubdivision() : gsFreeformSubdivision(nullptr) {}
 
     /// \brief Constructor with a mesh to target.
     ///
     /// Constructor that accepts a mesh to be targeted by this constructor.
     /// Sets no options.
-    gsFreeformSubdivision(gsSurfMesh* mesh)
-        : gsSubdivisionScheme(mesh)
+    gsFreeformSubdivision(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh)
     {
-        m_options.addSwitch("optimize_fit", "When active, fits around EVs by optimizing with respect to a functional instead of using linear constraints loaded from a file.", false);
-        m_options.addString("model_patch_path", "Path to the model patches.","freeform/original/");
+        m_options.addSwitch("optimize_fit",
+                            "When active, fits around EVs by optimizing with "
+                            "respect to a functional instead of using linear "
+                            "constraints loaded from a file.",
+                            false);
+        m_options.addString("model_patch_path", "Path to the model patches.",
+                            "freeform/original/");
     }
 
 private: // Helper functions
@@ -75,17 +76,17 @@ private: // Helper functions
     /// fine_4   fine_3
     /// fine_1   fine_2
     /// ```
-    /// With the u/v-Direction of `coarse` pointing right/up from the bottom left
-    /// and the u direction of each `fine_v` pointing outward from the central
-    /// shared point and having the same orientation (e.g. `fine_1` points u
-    /// leftwards and v downwards).
+    /// With the u/v-Direction of `coarse` pointing right/up from the bottom
+    /// left and the u direction of each `fine_v` pointing outward from the
+    /// central shared point and having the same orientation (e.g. `fine_1`
+    /// points u leftwards and v downwards).
     ///
     /// \param valence The valence of the desired patch. Valid values are 3, 5,
     /// 6, 7, 8, 9, 10.
     /// \param v The subtype of the patch. Valid values are "coarse", "fine_1",
     /// "fine_2", "fine_3", "fine_4".
-    gismo::gsTensorBSpline<2, real_t>
-    load_model_patch(int valence, std::string subtype);
+    gismo::gsTensorBSpline<2, real_t> load_model_patch(int valence,
+                                                       std::string subtype);
 
     /// \brief Re-orients the faces of the given mesh.
     ///
@@ -151,8 +152,8 @@ public:
     /// \param function A real-valued function in D-1 real variables.
     void fit_last_coordinate_to_function(gsFunctionExpr<> function);
 
-    gsVector<real_t, 3> error(gsFunctionExpr<> function, size_t samples_per_face);
-
+    gsVector<real_t, 3> error(gsFunctionExpr<> function,
+                              size_t samples_per_face);
 
     /// \brief Initializes the targeted mesh from an xml file.
     ///
@@ -169,14 +170,25 @@ public:
     /// the outer layer of control points of each bezier patch. This only causes
     /// $C^s$ at edges and ordinary vertices. No guarantee is made for
     /// extraordinary vertices.
-    /// Returs a vector containing the coefficient matrix of the fitting for
-    /// each extraordinary vertex, as well as a larger matrix containing the
-    /// values of the outer control points of patches around that vertex. These
-    /// matrices will alternate.
-    ///
+
     /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
     /// supported.
-    std::vector<gsMatrix<real_t>> smooth(size_t degree);
+    void smooth(size_t degree);
+
+    /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
+    ///
+    /// Takes a given mesh with freeform data and makes it $C^s$ by adjusting
+    /// the outer layer of control points of each bezier patch. This only causes
+    /// $C^s$ at edges and ordinary vertices. No guarantee is made for
+    /// extraordinary vertices.
+    /// Features return arguments that return the coefficient matrix of the
+    /// fitting for each extraordinary vertex, as well as the matrix containing
+    /// the values of the outer control points of patches around that vertex.
+    /// 
+    /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
+    /// supported.
+    void smooth(size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
+                std::vector<gsMatrix<real_t>>& ev_coefficients_outer);
 
     /// \brief Converts to a Gismo multipatch object.
     ///

@@ -63,20 +63,24 @@ int main(int argc, char** argv)
             // Subdivide once
             subdiv.subdivide();
             // Now smooth to get the desired matrices
-            auto res = subdiv.smooth(1);
+            std::vector<gsMatrix<real_t>> ev_coefs;
+            std::vector<gsMatrix<real_t>> ev_coefs_outer;
+            subdiv.smooth(1, ev_coefs, ev_coefs_outer);
             // For the first one, save the outer functions
             if (function == 1)
             {
-                gsWrite(res[1], "CoefficientsOuterVal" +
-                                    std::to_string(valence) + ".xml");
+                gsWrite(ev_coefs_outer[0], "CoefficientsOuterVal" +
+                                               std::to_string(valence) +
+                                               ".xml");
             }
             // Collect all other coefficients in a matrix
-            coeffs.row(function - 1) = res[0].transpose().row(2);
+            coeffs.row(function - 1) = ev_coefs[0].transpose().row(2);
             gsInfo << "\n";
         }
 
         // save all collected coefficients to file
-        gsWrite(coeffs, "CoefficientsInnerVal" + std::to_string(valence) + ".xml");
+        gsWrite(coeffs,
+                "CoefficientsInnerVal" + std::to_string(valence) + ".xml");
     }
 
     return 0;
