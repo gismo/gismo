@@ -1277,12 +1277,11 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
 
         gsWriteParaview(field, name + "_" + std::to_string(face_counter), 1000);
 
-        //TODO: Somehow compress this?
         if (collection != nullptr)
         {
             std::string basename(name.substr(name.rfind('/') + 1));
             collection->addPart(basename + "_" + std::to_string(face_counter) +
-                                    ".pvd",
+                                    "0.vts",
                                 timestep);
         }
 
