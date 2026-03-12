@@ -523,7 +523,8 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     //  and solving
     size_t function_count(2 * valence + 1);
     // Regularization parameter
-    real_t lambda = 1e-4;
+    // Set to 0 to allow a second smoothing to have 0 error.
+    real_t lambda = 0.0;
     // Load the constraints into a matrix
     // Number of constraints should be the number of fitting functions
     // (`function_count = 2 * valence + 1`) minus the dimension of the
@@ -534,20 +535,6 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
                          std::to_string(valence) + "Constraints.xml",
                      constraints);
     size_t constraint_count = constraints.rows();
-
-    // Default threshold is based on machine epsilon
-    // gsEigen::FullPivLU<gsMatrix<real_t>> lu(A);
-    // lu.setThreshold(1e-8);
-    // gsInfo << "Rank of A_sample (" << A.rows() << "x" << A.cols()
-    //        << "): " << lu.rank() << " (should be " << (valence + 3) << ")\n";
-
-    // gsMatrix<> K = constraints.fullPivLu().kernel();
-    // gsEigen::FullPivLU<gsMatrix<real_t>> lu2(A * K);
-    // lu2.setThreshold(1e-8);
-    // gsInfo << "Rank of constrained A_sample (" << constraint_count
-    //        << " constraints): " << lu2.rank() << " (should be " << (valence +
-    //        3)
-    //        << ")\n";
 
     // Build the matrix & target
     gsMatrix<real_t> augmented_A(function_count + constraint_count,
@@ -562,9 +549,9 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
 
     // Top right & Bottom right: Constraints
     augmented_A.topRightCorner(function_count, constraint_count) =
-        lambda * constraints.transpose();
+        constraints.transpose();
     augmented_A.bottomLeftCorner(constraint_count, function_count) =
-        lambda * constraints;
+        constraints;
 
     // Bottom left: Zero
     augmented_A.bottomRightCorner(constraint_count, constraint_count).setZero();
@@ -602,6 +589,10 @@ void gsFreeformSubdivision<N, D>::smooth(
     std::vector<gsMatrix<real_t>>& ev_coefficients_outer)
 {
     auto& mesh = *m_mesh;
+
+    // clear return vectors
+    ev_coefficients.clear();
+    ev_coefficients_outer.clear();
 
     std::vector<gsMatrix<real_t>> res;
     // Ensure we have a high enough degree
@@ -883,13 +874,18 @@ void gsFreeformSubdivision<N, D>::smooth(
                     {
                         for (size_t vx = 0; vx < N; ++vx)
                         {
-                            real_t cp =
-                                fitting_functions[0][p]->coef(ux * N + vx, 2);
-
-                            // Makre sure to skip all points that we skipped
+                            // Make sure to skip all points that we skipped
                             // when collecting A_control, those that lie outside
                             // of the support of the fitting functions.
-                            if (cp == 0.0)
+                            if (std::any_of(
+                                    fitting_functions.begin(),
+                                    fitting_functions.end(),
+                                    [&](const std::vector<std::unique_ptr<
+                                            gsTensorBSpline<2, real_t>>>& ff)
+                                    {
+                                        return ff[p]->coef(ux * N + vx, 2) ==
+                                               0.0;
+                                    }))
                                 continue;
 
                             *control_nets[p](ux, vx) = new_values.row(i);

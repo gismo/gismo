@@ -54,6 +54,8 @@ int main(int argc, char** argv)
                << "\n=================\n\n";
 
         gsMatrix<real_t> coeffs(2 * valence + 1, 2 * valence + 1);
+        std::vector<gsMatrix<real_t>> ev_coefs;
+        std::vector<gsMatrix<real_t>> ev_coefs_outer;
 
         // Iterate all functions for that valence
         for (size_t function = 1; function <= 2 * valence + 1; ++function)
@@ -65,15 +67,17 @@ int main(int argc, char** argv)
                                        std::to_string(function) + ".xml");
 
             // Now smooth to get the desired linear combinations
-            auto res = subdiv.smooth(1);
+            subdiv.smooth(1, ev_coefs, ev_coefs_outer);
             // Collect all other coefficients in a matrix
-            coeffs.row(function - 1) = res[0].transpose().row(2);
+            coeffs.row(function - 1) = ev_coefs[0].transpose().row(2);
+            for(int i = 0; i < 3; i++)
+                gsInfo << ev_coefs[0].transpose().row(i) << "\n";
             gsInfo << "\n";
         }
 
         // Now coeffs contains a basis of the legal coefficient space.
         auto legal_pl = coeffs.fullPivLu();
-        legal_pl.setThreshold(1e-8);
+        legal_pl.setThreshold(1e-4);
         gsMatrix<> K = legal_pl.kernel().transpose();
         gsWrite(K, "../filedata/" + patchpath + "Val" +
                        std::to_string(valence) + "Constraints.xml");

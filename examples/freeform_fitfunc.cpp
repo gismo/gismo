@@ -89,6 +89,8 @@ int main(int argc, char** argv)
     // Single .pvd collection for all steps.
     gsParaviewCollection collection("results/function_fit");
     gsParaviewCollection error_collection("results/function_error");
+    std::vector<gsMatrix<real_t>> ev_coefs;
+    std::vector<gsMatrix<real_t>> ev_coefs_outer;
 
     for (index_t i = 0; i < steps; ++i)
     {
@@ -97,13 +99,7 @@ int main(int argc, char** argv)
         {
             subdiv.subdivide();
         }
-
         subdiv.fit_last_coordinate_to_function(func);
-        errors.col(i) = subdiv.error(func, samples);
-
-        std::vector<gsMatrix<real_t>> ev_coefs;
-        std::vector<gsMatrix<real_t>> ev_coefs_outer;
-
         subdiv.smooth(1, ev_coefs, ev_coefs_outer);
         errors.col(i) = subdiv.error(func, samples);
 
