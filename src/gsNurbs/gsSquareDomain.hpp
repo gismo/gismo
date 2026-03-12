@@ -238,9 +238,9 @@ void gsSquareDomain<T>::control_jacobian_deriv_into(const gsMatrix<T> & points, 
 
     for (index_t p = 0; p != points.cols(); ++p)
     {
-        gsMatrix<T> Jsigma = Jsigma_flat.col(p).reshaped(dd, dd);
+        gsMatrix<T> Jsigma = Jsigma_flat.col(p).reshaped(dd, dd).transpose();
         T detJ = Jsigma.determinant();
-        gsMatrix<T> adjJ = detJ * Jsigma.inverse();
+        gsMatrix<T> adjJT = detJ * Jsigma.inverse().transpose();
 
         const index_t nActive = actives.rows();
         for (index_t loc = 0; loc != nActive; ++loc)
@@ -253,7 +253,7 @@ void gsSquareDomain<T>::control_jacobian_deriv_into(const gsMatrix<T> & points, 
                 index_t ii = m_mapper.index(k, 0, d);
                 T val = T(0);
                 for (index_t j = 0; j != dd; ++j)
-                    val += adjJ(d, j) * basisDerivs(loc * dd + j, p);
+                    val += adjJT(d, j) * basisDerivs(loc * dd + j, p);
                 result(ii, p) = val;
             }
         }

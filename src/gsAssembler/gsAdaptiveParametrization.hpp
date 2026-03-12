@@ -300,9 +300,9 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                 //
                 // Surface case (td>dd): J_c is rectangular (td x dd), no scalar determinant.
                 //   Use det_s = det(J_s) (sigma Jacobian, dd x dd) as the area element.
-                //   chi_s = det_s (OPTION 3, no regularization — matches old expression evaluator).
-                //   No-monitor:   tr(C^{-1}) / chi_s
-                //   With-monitor: m2 * tr(C^{-1}) * chi_s  (old surface behavior)
+                //   chi_s = 0.5*(det_s + sqrt(penalty^2 + det_s^2))  — fold barrier.
+                //   No-monitor:   tr(C^{-1}) * |det_s|   / chi_s^2   (p=1, mirrors planar)
+                //   With-monitor: m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2  (p=3, mirrors planar)
 
                 T integrand;
                 if (td == dd)
@@ -345,15 +345,19 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                 else
                 {
                     // Surface case (td>dd): J_c is rectangular (td x dd), so no scalar det(J_c).
-                    // Instead use det_s = det(J_s), the sigma Jacobian determinant, as the area
-                    // element in the integral.  Since sigma is a parametrization of the parameter
-                    // domain (a bijective map from hat{Omega} to tilde{Omega}), det(J_s) > 0 is
-                    // a precondition — not something that needs a fold-barrier.  Therefore chi_s
-                    // is just det_s (no regularization, no chi barrier).
-                    // No-monitor:   tr(C^{-1}) / chi_s          (old surface behavior)
-                    // With-monitor: m2 * tr(C^{-1}) * chi_s     (old surface behavior)
-                    T det_s = Js.determinant();
-                    T chi_s = det_s;
+                    // Use det_s = det(J_s) (sigma Jacobian, dd x dd) as the signed area element.
+                    // det_s CAN be negative (fold), so chi_s = 0.5*(det_s + sqrt(pen^2+det_s^2))
+                    // provides a true fold barrier — identical structure to the planar chi_c.
+                    //
+                    // No-monitor:   tr(C^{-1}) * |det_s|   / chi_s^2  (p=1, matches planar)
+                    // With-monitor: m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2  (p=3, matches planar)
+                    //
+                    // For a flat surface (geoDim=3, z=0), J_g = [[1,0],[0,1],[0,0]], so
+                    // det(J_s) = det(J_c projected) = det_c, and the formula is identical to planar.
+                    T det_s     = Js.determinant();
+                    T sqrt_reg_s = math::sqrt(penalty * penalty + det_s * det_s);
+                    T chi_s     = T(0.5) * (det_s + sqrt_reg_s);
+                    T abs_det_s = math::abs(det_s);
 
                     T m2 = T(0);
                     if (hasMonitor)
@@ -376,13 +380,13 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                             T eta2 = (grad_xi_f.transpose() * Cg_inv * grad_xi_f)(0, 0);
                             m2 = T(1) / (T(1) + theta * eta2);
                         }
-                        // Old surface with-monitor behavior
-                        integrand = m2 * Cinv.trace() * chi_s;
+                        // With-monitor (p=3): m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2
+                        integrand = m2 * Cinv.trace() * abs_det_s * abs_det_s * abs_det_s / (chi_s * chi_s);
                     }
                     else
                     {
-                        // Old surface no-monitor behavior
-                        integrand = Cinv.trace() / chi_s;
+                        // No-monitor (p=1): tr(C^{-1}) * |det_s| / chi_s^2
+                        integrand = Cinv.trace() * abs_det_s / (chi_s * chi_s);
                     }
                 }
 
@@ -437,8 +441,12 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 // d C   / d alpha_{k,d} = dJ_c^T J_c + J_c^T dJ_c
 //
 // d(det_c)/d(alpha_{k,d}) = tr(adj(J_c)^T * d(J_c)/d(alpha))
-//                         = adj(J_c)^T.col(d) . gradNk
-//                         = (J_g^T * adj(J_c)).row(d) . gradNk  [td==dd]
+//   Two contributions (since d(J_c) = dJ_g*J_s + J_g*dJ_s):
+//   Term 1 (from dJ_g = N_k * D_d):
+//     N_k * tr(adj(J_c) * D_d * J_s)
+//   Term 2 (from dJ_s = e_d * gradNk^T):
+//     gradNk^T * adj(J_c) * J_g * e_d
+//   Total:  N_k * tr(adj(J_c) * D_d * J_s) + adj(J_c)^T.col(d) . gradNk  [td==dd]
 //
 // ---------------------------------------------------------------------------
 // Objective and integrand
@@ -634,15 +642,15 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                 //   d(phi_p)/d(alpha) uses ddet_c/d(alpha) via adj(J_c)
                 //
                 // Surface (td>dd): J_c is rectangular — no scalar determinant.
-                //   Use det_s = det(J_s) as area element.  Since sigma is a bijective
-                //   parametrization of the parameter domain, det_s > 0 is a precondition
-                //   (no folding possible) — so chi_s = det_s with no regularization/barrier.
+                //   Use det_s = det(J_s) as signed area element.
+                //   chi_s = 0.5*(det_s + sqrt(pen^2 + det_s^2)) — fold barrier.
+                //   phi_noMon_s = |det_s|   / chi_s^2  (p=1, mirrors planar)
+                //   phi_mon_s   = |det_s|^3 / chi_s^2  (p=3, mirrors planar)
                 //   ddet_s/d(alpha) via adj(J_s) and sigma basis derivatives.
                 T det_c = T(0), sqrt_reg = T(0), chi_c = T(0), dchi_ddet_c = T(0);
                 // phi_noMon = |det_c|^1 / chi_c^2  (no-monitor integrand factor, exponent p=1)
                 // phi_mon   = |det_c|^3 / chi_c^2  (with-monitor integrand factor, exponent p=3)
                 T abs_det_c = T(0), phi_noMon = T(0), phi_mon = T(0);
-                T det_s_val = T(0), chi_s = T(0);
                 if (td == dd)
                 {
                     det_c     = Jc.determinant();
@@ -654,11 +662,8 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     phi_noMon = abs_det_c / (chi_c * chi_c);
                     phi_mon   = abs_det_c * abs_det_c * abs_det_c / (chi_c * chi_c);
                 }
-                else
-                {
-                    det_s_val = Js.determinant();
-                    chi_s     = det_s_val;
-                }
+                // Surface case (td>dd): det_s, chi_s, phi_s are computed per-alpha in the
+                // inner loop (same Js for all active functions, just wastefully recomputed).
 
                 T m2 = T(0), dm2_deta2 = T(0);
 
@@ -728,8 +733,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                 // For dd==3 we compute adj(J_c)^T directly via cofactors (18 mults, cheaper than LU).
                 // adj(A)^T(i,j) = (-1)^{i+j} * minor(A,i,j)
                 gsMatrix<T> adjJcT_precomp;
-                // adj(J_s)^T = det_s * J_s^{-T}  [pre-computed once per quad point for dd==3, surface]
-                gsMatrix<T> adjJs_precomp;
+                // adj(J_s)^T -- no longer needed (surface gradient now uses C-based formula)
                 if (td == dd)
                 {
                     trAdjJcDdJs.resize(dd);
@@ -751,21 +755,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     else if (dd > 3)
                         adjJcT_precomp.noalias() = det_c * Jc.inverse().transpose();
                 }
-                else if (dd == 3)
-                {
-                    adjJs_precomp.resize(3, 3);
-                    adjJs_precomp(0,0) =  Js(1,1)*Js(2,2) - Js(1,2)*Js(2,1); // +M(0,0)
-                    adjJs_precomp(0,1) = -(Js(1,0)*Js(2,2) - Js(1,2)*Js(2,0)); // -M(0,1)
-                    adjJs_precomp(0,2) =  Js(1,0)*Js(2,1) - Js(1,1)*Js(2,0); // +M(0,2)
-                    adjJs_precomp(1,0) = -(Js(0,1)*Js(2,2) - Js(0,2)*Js(2,1)); // -M(1,0)
-                    adjJs_precomp(1,1) =  Js(0,0)*Js(2,2) - Js(0,2)*Js(2,0); // +M(1,1)
-                    adjJs_precomp(1,2) = -(Js(0,0)*Js(2,1) - Js(0,1)*Js(2,0)); // -M(1,2)
-                    adjJs_precomp(2,0) =  Js(0,1)*Js(1,2) - Js(0,2)*Js(1,1); // +M(2,0)
-                    adjJs_precomp(2,1) = -(Js(0,0)*Js(1,2) - Js(0,2)*Js(1,0)); // -M(2,1)
-                    adjJs_precomp(2,2) =  Js(0,0)*Js(1,1) - Js(0,1)*Js(1,0); // +M(2,2)
-                }
-                else if (dd > 3)
-                    adjJs_precomp.noalias() = det_s_val * Js.inverse().transpose();
+                // Surface case (td>dd): det_s, chi_s, phi_s computed per-(k,d) in the inner loop.
 
                 for (index_t d = 0; d != dd; ++d)
                 {
@@ -902,36 +892,59 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                         }
                         else
                         {
-                            // Surface case (td>dd): det_s = det(J_s), chi_s = det_s (OPTION 3)
+                            // Surface case (td>dd): use det_s = det(J_s) as the signed area element.
+                            // Mirrors the planar case with det_s playing the role of det_c.
                             //
-                            // d(det_s)/d(alpha_{k,d}): J_s is dd x dd, only row d changes.
-                            //   d(J_s)_{id,j} = (nabla_hat N_k)_j  (row d of dJ_s = gradNk^T)
-                            //   d(det_s)/d(alpha) = adj(J_s)^T.row(d) . gradNk
-                            //                    = (adj(J_s)).col(d) . gradNk
+                            // E_noMon   = tr(C^{-1}) * |det_s|   / chi_s^2   (p=1)
+                            // E_withMon = m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2   (p=3)
+                            //   chi_s = 0.5*(det_s + sqrt(pen^2 + det_s^2))  -- fold barrier
+                            //   When det_s < 0 (fold), chi_s -> 0+ so energy -> +inf.
+                            //
+                            // d(det_s)/d(alpha_{k,d}):  J_s changes as dJ_s/dalpha = e_d * gradNk^T
+                            //   d(det_s)/dalpha = adj(J_s).row(d) . gradNk
+                            //   For dd=2: adj(J_s) = [[Js(1,1),-Js(0,1)],[-Js(1,0),Js(0,0)]]
+                            //
+                            // phi_noMon = |det_s|   / chi_s^2   (p=1)
+                            // phi_mon   = |det_s|^3 / chi_s^2   (p=3)
+                            // d(phi_p)/d(alpha) = phi_p * (p/det_s - 2*dchi_s/chi_s) * ddet_s_dalpha
+
+                            T det_s     = Js.determinant();
+                            T sqrt_reg_s = math::sqrt(penalty * penalty + det_s * det_s);
+                            T chi_s     = T(0.5) * (det_s + sqrt_reg_s);
+                            T dchi_s_ddet_s = T(0.5) * (T(1) + det_s / sqrt_reg_s);
+                            T abs_det_s = math::abs(det_s);
+                            T phi_noMon_s = abs_det_s / (chi_s * chi_s);
+                            T phi_mon_s   = abs_det_s * abs_det_s * abs_det_s / (chi_s * chi_s);
+
+                            // d(det_s)/d(alpha_{k,d}) = adj(Js)^T.row(d) . gradNk
+                            //   adj(Js)^T_{di} = adj(Js)_{id} = cofactor of Js at (i,d)
+                            //   For dd=2: adj(Js)^T = [[Js(1,1), -Js(1,0)], [-Js(0,1), Js(0,0)]]
+                            //   General: adj(Js)^T = det_s * Js^{-T}, so
+                            //     adj(Js)^T.row(d) = det_s * Js^{-T}.row(d) = det_s * Js^{-1}.col(d)
                             T ddet_s_dalpha;
                             if (dd == 2)
                             {
-                                // 2x2 special case: avoids Js.inverse() near singularity.
-                                // adj(J_s) col d for 2x2.
-                                // For dd>2 the general branch below is used instead.
+                                // adj(Js)^T row 0: [ Js(1,1), -Js(1,0)]
+                                // adj(Js)^T row 1: [-Js(0,1),  Js(0,0)]
                                 if (d == 0)
                                     ddet_s_dalpha =  Js(1,1)*gradNk(0) - Js(1,0)*gradNk(1);
                                 else
                                     ddet_s_dalpha = -Js(0,1)*gradNk(0) + Js(0,0)*gradNk(1);
                             }
                             else
-                             {
-                                 // General: adj(J_s)^T = det_s * J_s^{-T}
-                                 // Use adjJs_precomp pre-computed once per quad point (avoids O(nActive*dd) inversions).
-                                 ddet_s_dalpha = adjJs_precomp.col(d).dot(gradNk);
-                             }
+                            {
+                                // General: adj(Js)^T = det_s * Js^{-T}
+                                // d(det_s)/dalpha = det_s * Js^{-T}.row(d) . gradNk
+                                //                 = det_s * Js^{-1}.col(d) . gradNk
+                                ddet_s_dalpha = det_s * Js.inverse().col(d).dot(gradNk);
+                            }
 
-                            // phi_s = 1/chi_s (no-monitor) or chi_s (with-monitor)
-                            // d/d(alpha) [tr(C^{-1}) / chi_s]
-                            //   = -trCinvdCCinv / chi_s - tr(C^{-1}) / chi_s^2 * ddet_s_dalpha
-                            // d/d(alpha) [m2 * tr(C^{-1}) * chi_s]
-                            //   = m2 * (-trCinvdCCinv * chi_s + trCinv * ddet_s_dalpha)
-                            //   + dm2_dalpha * trCinv * chi_s
+                            T inv_det_s   = (det_s != T(0)) ? T(1) / det_s : T(0);
+                            T inv_chi_s   = (chi_s  > T(0)) ? T(1) / chi_s  : T(0);
+                            T common_s    = -T(2) * dchi_s_ddet_s * inv_chi_s;
+                            T dphi_noMon_s_dalpha = phi_noMon_s * (inv_det_s + common_s) * ddet_s_dalpha;
+                            T dphi_mon_s_dalpha   = phi_mon_s   * (T(3)*inv_det_s + common_s) * ddet_s_dalpha;
+
                             if (hasMonitor)
                             {
                                 T dm2_dalpha;
@@ -940,14 +953,15 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                                 else
                                     dm2_dalpha = dm2_deta2 * Nk * mon_scalar_d(d);
 
-                                dE = m2 * (-trCinvdCCinv * chi_s + trCinv * ddet_s_dalpha)
-                                   + dm2_dalpha * trCinv * chi_s;
+                                // d/d(alpha) [m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2]
+                                dE = m2 * (-trCinvdCCinv * phi_mon_s + trCinv * dphi_mon_s_dalpha)
+                                   + dm2_dalpha * trCinv * phi_mon_s;
                             }
                             else
                             {
-                                T inv_chi_s = (chi_s != T(0)) ? T(1) / chi_s : T(0);
-                                dE = -trCinvdCCinv * inv_chi_s
-                                     - trCinv * inv_chi_s * inv_chi_s * ddet_s_dalpha;
+                                // d/d(alpha) [tr(C^{-1}) * |det_s| / chi_s^2]
+                                dE = -trCinvdCCinv * phi_noMon_s
+                                   + trCinv * dphi_noMon_s_dalpha;
                             }
                         }
 
