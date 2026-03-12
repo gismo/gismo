@@ -418,12 +418,15 @@ bool write_off(const gsSurfMesh& mesh, const std::string& filename)
     bool  has_normals   = false;
     bool  has_texcoords = false;
     bool  has_colors = false;
+    bool  has_sharp = false;
     gsSurfMesh::Vertex_property<Normal> normals = mesh.get_vertex_property<Normal>("v:normal");
     gsSurfMesh::Vertex_property<Point>  texcoords = mesh.get_vertex_property<Point>("v:texcoord");
     gsSurfMesh::Vertex_property<Point> colors = mesh.get_vertex_property<Point>("v:color");
+    gsSurfMesh::Halfedge_property<bool> sharp = mesh.get_halfedge_property<bool>("h:sharp");
     if (normals)   has_normals = true;
     if (texcoords) has_texcoords = true;
     if (colors) has_colors = true;
+    if (sharp) has_sharp = true;
 
 
     // header
@@ -479,6 +482,20 @@ bool write_off(const gsSurfMesh& mesh, const std::string& filename)
         fprintf(out, "\n");
     }
 
+    // sharp edges 
+    for (gsSurfMesh::Edge_iterator it = mesh.edges_begin();
+        it != mesh.edges_end();
+        ++it)
+    {
+        auto e = *it;
+        auto v1 = mesh.vertex(e, 0);
+        auto v2 = mesh.vertex(e, 1);
+
+        if (sharp[mesh.halfedge(e, 0)]){
+            fprintf(out, "%d %d\n", v1.idx(), v2.idx());
+        }
+    }
+    
     fclose(out);
     return true;
 }
