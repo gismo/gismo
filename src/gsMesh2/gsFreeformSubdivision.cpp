@@ -1245,16 +1245,17 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
         gsTensorBSpline<2> patch(basis, coeffs);
         gsTensorBSpline<2> patch2D(basis, coeffs2D);
 
-        // We now sample this patch at N*N points
-        gsMatrix<> error_samples(1, N * N);
-        gsMatrix<> params(2, N * N);
+        // Sample at S*S points (S > N) for a fit that can capture errors.
+        const size_t S = 2 * N;
+        gsMatrix<> error_samples(1, S * S);
+        gsMatrix<> params(2, S * S);
 
-        for (size_t i = 0; i < N * N; ++i)
+        for (size_t i = 0; i < S * S; ++i)
         {
             // Get the parameters at the sample point.
             params.col(i) = gsVector<real_t, 2>::vec(
-                real_t(std::floor(i % N)) / real_t(N - 1),
-                real_t(std::floor(i / N)) / real_t(N - 1));
+                real_t(std::floor(i % S)) / real_t(S - 1),
+                real_t(std::floor(i / S)) / real_t(S - 1));
 
             // Get the value of the first D-1 coordinates at these parameters
             gsVector<real_t> point = patch.eval(params.col(i));
@@ -1267,8 +1268,12 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
         // rescale error to be in [0,1].
         error_samples /= max_error;
 
-        // fit a patch to this
-        gsFitting<> fitter(params, error_samples, basis);
+        // Fit with double the degree (2*(N-1)) to better capture error shape.
+        gsKnotVector<> kv_err1(0, 1, 0, S - 1);
+        gsKnotVector<> kv_err2(0, 1, 0, S - 1);
+        gsTensorBSplineBasis<2, real_t> fit_basis(kv_err1, kv_err2);
+
+        gsFitting<> fitter(params, error_samples, fit_basis);
         fitter.compute(0.0);
         gsGeometry<>* result = fitter.result();
 
