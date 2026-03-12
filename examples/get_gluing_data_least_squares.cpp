@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
             
             D1(i) = det2D(dG1dn, dG1dt);  // |partial_1 G^(1), partial_2 G^(1)|
             D2(i) = det2D(dG2dn, dG2dt);  // |partial_1 G^(2), partial_2 G^(2)|
-            D3(i) = det2D(dG1dt, dG2dt);  // |partial_2 G^(1), partial_2 G^(2)|
+            D3(i) = det2D(dG1dn, dG2dn);  // |partial_2 G^(1), partial_2 G^(2)|
         }
         
         gsInfo << "\nStep 0: D1, D2, D3 at quadrature points (first/last 3):\n";
@@ -279,8 +279,11 @@ int main(int argc, char* argv[])
         if (signD2 < 0) { D2 *= -1.0; D3 *= -1.0; }
         
         if (D1.minCoeff() <= 0 || D2.minCoeff() <= 0)
-            gsInfo << "WARNING: D1 or D2 is non-positive -- geometry may be degenerate!\n";
-        
+        {
+            gsInfo << "ERROR: D1 or D2 is non-positive -- geometry is degenerate!\n";
+            return -1;
+        }
+            
         // --- Gauss quadrature integration: int f(t) dt ≈ sum_i w_i * f(t_i) ---
         auto gaussIntegral = [&](const gsVector<T>& f) -> T {
             return w.dot(f);
