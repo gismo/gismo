@@ -483,16 +483,18 @@ bool write_off(const gsSurfMesh& mesh, const std::string& filename)
     }
 
     // sharp edges 
-    for (gsSurfMesh::Edge_iterator it = mesh.edges_begin();
-        it != mesh.edges_end();
-        ++it)
-    {
-        auto e = *it;
-        auto v1 = mesh.vertex(e, 0);
-        auto v2 = mesh.vertex(e, 1);
+    if (has_sharp){
+        for (gsSurfMesh::Edge_iterator it = mesh.edges_begin();
+            it != mesh.edges_end();
+            ++it)
+        {
+            auto e = *it;
+            auto v1 = mesh.vertex(e, 0);
+            auto v2 = mesh.vertex(e, 1);
 
-        if (sharp[mesh.halfedge(e, 0)]){
-            fprintf(out, "%d %d\n", v1.idx(), v2.idx());
+            if (sharp[mesh.halfedge(e, 0)]){
+                fprintf(out, "%d %d\n", v1.idx(), v2.idx());
+            }
         }
     }
     
