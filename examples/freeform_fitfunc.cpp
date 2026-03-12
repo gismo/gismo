@@ -106,12 +106,14 @@ int main(int argc, char** argv)
 
         subdiv.smooth(1, ev_coefs, ev_coefs_outer);
         errors.col(i) = subdiv.error(func, samples);
-        subdiv.write_paraview_error(func, errors(0, i),
-                                    "results/error" + std::to_string(i + 1),
-                                    &error_collection, i + 1);
 
         if (paraview)
         {
+
+            subdiv.write_paraview_error(func, errors(0, i),
+                                        "results/error" + std::to_string(i + 1),
+                                        &error_collection, i + 1);
+
             const std::string stepname = "results/step" + std::to_string(i + 1);
 
             subdiv.write_paraview(stepname, &collection, i + 1, control_net);

@@ -273,7 +273,7 @@ gsFreeformSubdivision<N, D>::order_faces(Vertex first_vertex,
 template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::orient_faces()
 {
     // Get data
-    auto mesh = *m_mesh;
+    auto& mesh = *m_mesh;
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
@@ -311,8 +311,10 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
     auto& mesh = *m_mesh;
     // First, make sure all faces are correctly oriented with the EV as their
     // first vertex.
-    orient_faces();
+    // Remember the number of faces before the subdivision.
+    size_t n(mesh.faces_size());
 
+    orient_faces();
     // Remember the first vertex of each face (this is where the control nets of
     // each face data are oriented on).
     std::vector<Vertex> first_vertices;
@@ -321,8 +323,6 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
         // remember the first vertex
         first_vertices.emplace_back(mesh.to_vertex(mesh.halfedge(f)));
     }
-    // Remember the number of faces before the subdivision.
-    size_t n(first_vertices.size());
 
     // Do the quad split of the (abstract) base faces.
     mesh.quad_split();
@@ -384,18 +384,21 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
                         gsVector<real_t>::vec(0.5, 0.5);
                     // Get the parameters of the same point in the coarse
                     // geometry model via Newton-Raphson. Note that internally,
-                    // the tolerance is squared, so this is a tolerance of 1e-4.
-                    coarse_model.closestPointTo(point, closest_point, 1e-2,
+                    // the tolerance is squared, so this is a tolerance of
+                    // 1e-12.
+                    coarse_model.closestPointTo(point, closest_point, 1e-6,
                                                 true);
 
                     // Sample the old control net.
                     samples.col(i) = coarse_patch.eval(closest_point);
+                    // if(f_idx == 0)
+                    //     gsInfo << i << ": " << closest_point.transpose() <<
+                    //     "\n";
                 }
 
                 // Fit a NxN Bezier patch to these samples
-                gsKnotVector<> kv1(0, 1, 0, N);
-                gsKnotVector<> kv2(0, 1, 0, N);
-                gsTensorBSplineBasis<2> basis(kv1, kv2);
+                gsKnotVector<> kv(0, 1, 0, N);
+                gsTensorBSplineBasis<2> basis(kv, kv);
                 gsFitting<> fitter(params, samples, basis);
                 fitter.compute(0.0);
                 gsGeometry<>* result = fitter.result();
