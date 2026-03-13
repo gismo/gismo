@@ -22,6 +22,7 @@
 
 struct PK_VECTOR_s;
 typedef struct PK_VECTOR_s PK_VECTOR_t;
+typedef int PK_ERROR_code_t;
 
 namespace gismo
 {
@@ -39,10 +40,10 @@ namespace gismo
            error status.
         */
         template <class T>
-        bool gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
-                            const gsVector<T, 3>& gsPoint,
-                            gsVector<T, 2>& gsResult,
-                            bool performance = true);
+        PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
+                                       const gsVector<T, 3>& gsPoint,
+                                       gsVector<T, 2>& gsResult,
+                                       bool performance = true);
 
         /**
            For each three-dimensional point represented as a row of \a
@@ -54,10 +55,10 @@ namespace gismo
            Parasolid error status.
         */
         template <class T>
-        bool gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
-                            const gsMatrix<T>& gsPoints,
-                            gsMatrix<T>& gsResults,
-                            bool performance = true);
+        PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
+                                       const gsMatrix<T>& gsPoints,
+                                       gsMatrix<T>& gsResults,
+                                       bool performance = true);
 
     } // namespace extensions
 

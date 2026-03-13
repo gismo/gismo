@@ -33,10 +33,10 @@ namespace gismo
         }
 
         template <class T>
-        bool gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
-                            const gsVector<T, 3>& gsPoint,
-                            gsVector<T, 2>& gsResult,
-                            bool performance)
+        PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
+                                       const gsVector<T, 3>& gsPoint,
+                                       gsVector<T, 2>& gsResult,
+                                       bool performance)
         {
 			gsPKSession::start();
             PK_BSURF_t               bsurf;
@@ -69,10 +69,10 @@ namespace gismo
         }
 
         template <class T>
-        bool gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
-                            const gsMatrix<T>& gsPoints,
-                            gsMatrix<T>& gsResults,
-                            bool performance)
+        PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
+                                       const gsMatrix<T>& gsPoints,
+                                       gsMatrix<T>& gsResults,
+                                       bool performance)
         {
             GISMO_ASSERT(gsPoints.cols() == 3, "gsClosestParam is implemented for three-dimensional points only.");
             PK_BSURF_t               bsurf;
