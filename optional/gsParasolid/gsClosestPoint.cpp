@@ -27,13 +27,13 @@ TEMPLATE_INST bool
 gsClosestParam(const gsTensorBSpline<2, real_t>& gsBSurf,
                const gsVector<real_t, 3>& gsPoint,
                gsVector<real_t, 2>& gsResult,
-               bool performance = true);
+               bool performance);
 
 TEMPLATE_INST bool
 gsClosestParam(const gsTensorBSpline<2, real_t>& gsBSurf,
                const gsMatrix<real_t>& gsPoints,
                gsMatrix<real_t>& gsResults,
-               bool performance = true);
+               bool performance);
 
 } // namespace extensions
 } // namespace gismo
