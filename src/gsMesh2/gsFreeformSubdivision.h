@@ -281,6 +281,17 @@ public:
     /// \param filepath Path to the \c .off file to load.
     void initialize_data_off(std::string filepath);
 
+    /// \brief Initializes the targeted mesh from a file, dispatching on extension.
+    ///
+    /// Detects the file format from the extension of \c filepath and calls the
+    /// appropriate loader:
+    /// - \c .xml → \ref initialize_data_xml
+    /// - \c .off → \ref initialize_data_off
+    ///
+    /// If the extension is not recognised, a warning is emitted and the mesh
+    /// is left unchanged.
+    ///
+    /// \param filepath Path to the file to load (\c .xml or \c .off).
     void initialize_data(std::string filepath);
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.

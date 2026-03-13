@@ -133,7 +133,7 @@ int main(int argc, char** argv)
 
     for (index_t i = 0; i < steps; ++i)
     {
-        subdiv.initialize_data_xml(mesh_path);
+        subdiv.initialize_data(mesh_path);
         for (index_t j = 0; j < i; ++j)
         {
             subdiv.subdivide();
