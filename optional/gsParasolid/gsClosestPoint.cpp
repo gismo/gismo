@@ -11,8 +11,6 @@
     Author(s): D. Mokris
 */
 
-#include <gsCore/gsTemplateTools.h>
-
 #include <gsParasolid/gsClosestPoint.h>
 #include <gsParasolid/gsClosestPoint.hpp>
 
