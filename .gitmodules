@@ -1,0 +1,3 @@
+[submodule "optional/gsCahnHilliard"]
+	path = optional/gsCahnHilliard
+	url = https://github.com/gismo/gsCahnHilliard.git
