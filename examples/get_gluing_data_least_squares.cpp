@@ -309,6 +309,7 @@ int main(int argc, char* argv[])
         gsVector<T> D1(N), D2(N), D3(N);
         for (index_t i = 0; i < N; ++i)
         {
+<<<<<<< HEAD
             gsVector<T> dG1dn = getPartial(derivs1, normDir, i);
             gsVector<T> dG1dt = getPartial(derivs1, tanDir,  i);
             gsVector<T> dG2dn = getPartial(derivs2, normDir, i);
@@ -317,6 +318,18 @@ int main(int argc, char* argv[])
             D1(i) = det2(dG1dn, dG1dt);
             D2(i) = det2(dG2dn, dG2dt);
             D3(i) = det2(dG1dn, dG2dn);
+=======
+            t_vals(i) = gaussNodes1D(0, i);
+            
+            gsVector<T> dG1dn = getPartial(derivatives1, normDir1, i);
+            gsVector<T> dG1dt = getPartial(derivatives1, ambDir1,  i);
+            gsVector<T> dG2dn = getPartial(derivatives2, normDir2, i);
+            gsVector<T> dG2dt = getPartial(derivatives2, ambDir2,  i);
+            
+            D1(i) = det2D(dG1dn, dG1dt);  // |partial_1 G^(1), partial_2 G^(1)|
+            D2(i) = det2D(dG2dn, dG2dt);  // |partial_1 G^(2), partial_2 G^(2)|
+            D3(i) = det2D(dG1dn, dG2dn);  // |partial_2 G^(1), partial_2 G^(2)|
+>>>>>>> 24c8c02162a66525b224d410789fc314c446959f
         }
 
         // D1, D2 are signed Jacobian determinants.  They may be
@@ -328,6 +341,7 @@ int main(int argc, char* argv[])
             gsInfo << "WARNING: D1 or D2 changes sign — geometry may be degenerate.\n";
             continue;
         }
+<<<<<<< HEAD
 
         gsInfo << "D1 range: [" << D1.minCoeff() << ", " << D1.maxCoeff() << "]\n";
         gsInfo << "D2 range: [" << D2.minCoeff() << ", " << D2.maxCoeff() << "]\n";
@@ -346,6 +360,26 @@ int main(int argc, char* argv[])
         //     ∫(α₁ + α₂) = 1
         //     ∫(α₁ β₁ − α₂ β₂) = 0     (gauge, Step 2b only)
         // ==============================================================
+=======
+        
+        // Ensure D1 > 0 and D2 > 0 (flip orientation if needed)
+        T signD1 = (D1.sum() > 0) ? 1.0 : -1.0;
+        T signD2 = (D2.sum() > 0) ? 1.0 : -1.0;
+        if (signD1 < 0) { D1 *= -1.0; D3 *= -1.0; }
+        if (signD2 < 0) { D2 *= -1.0; D3 *= -1.0; }
+        
+        if (D1.minCoeff() <= 0 || D2.minCoeff() <= 0)
+        {
+            gsInfo << "ERROR: D1 or D2 is non-positive -- geometry is degenerate!\n";
+            return -1;
+        }
+            
+        // --- Gauss quadrature integration: int f(t) dt ≈ sum_i w_i * f(t_i) ---
+        auto gaussIntegral = [&](const gsVector<T>& f) -> T {
+            return w.dot(f);
+        };
+        
+>>>>>>> 24c8c02162a66525b224d410789fc314c446959f
         const T eps = 1e-8;
         T a10, a11, a20, a21;
         T b10, b11, b20, b21;
