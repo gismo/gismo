@@ -1,11 +1,33 @@
-/** @file freeform_sdmatrix.cpp
+/** @file freeform_functionals.cpp
 
-    @brief Goes through all the valences in the 'patchpath' subfolder of
-   filedata optimizes the fit with a target functional to create a legal
-   coefficient space, then takes the kernel of that to generate the appropriate
-   free form functionals and places them in the correct folder. Assumes to be
-   run in the 'build'-folder and to reach 'filedata' from there via
-   '../filedata'.
+    @brief Precomputes the kernel-space constraint matrices used by the
+    \f$C^1\f$ extraordinary-vertex fitting step of the freeform subdivision
+    scheme.
+
+    For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
+    the example loads all \f$2v+1\f$ basis-function patches from the model
+    patch directory (\c Val\<v\>Fct\<f\>.xml), applies one round of \f$C^1\f$
+    smoothing with functional optimisation (\c optimize_fit = \c true), reads
+    the resulting row of extraordinary-vertex (EV) coefficients, assembles the
+    full \f$(2v+1)\times 12\f$ coefficient matrix, and computes its kernel.
+    The kernel is saved as \c Val\<v\>Constraints.xml inside the model patch
+    directory.
+
+    These constraint files are subsequently consumed by \c fit_ev when
+    performing \f$C^1\f$ smooth surface fitting around extraordinary vertices.
+
+    \note The example assumes it is run from the build directory so that
+    \c ../filedata is reachable. The patch-path option must point to a
+    subdirectory of \c filedata.
+
+    \par Command-line arguments
+    - \b -p / \b --patchpath (default: \c freeform/original/): path, relative
+      to \c filedata/, to the directory that contains the model patch files
+      \c Val\<v\>Fct\<f\>.xml.
+    - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
+      valence to process. Constraint matrices are generated for all valences
+      \f$v \in \{3, 5, 6, \ldots, \mathrm{valence\_max}\}\f$ (valence 4 is
+      regular and is skipped).
 
     Author(s): L. Mussmaecher
 */

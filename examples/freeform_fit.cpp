@@ -1,6 +1,32 @@
-/** @file freeformsubdivision_example.cpp
+/** @file freeform_fit.cpp
 
-    @brief Tests the free form subdivision.
+    @brief Loads a quad mesh and performs a user-specified sequence of
+    freeform subdivision and \f$C^1\f$ smoothing steps, writing each
+    intermediate result to Paraview.
+
+    The mesh is loaded from a \c .off or \c .xml file. The operation
+    sequence is given as a string of characters: \c d performs one
+    subdivision step and \c s performs one \f$C^1\f$ smoothing step.
+    Every step (including the initial mesh) is written to a Paraview
+    \c .vts file and registered in a single \c .pvd time-series
+    collection at \c results/function_fit.pvd.
+
+    \par Command-line arguments
+    - \c filepath (positional, default: \c off/octtorus.off): path to the
+      input mesh file. Supported formats: \c .off (3D point data) and
+      \c .xml (collection of \c gsTensorBSpline<2> patches).
+    - \b -o / \b --operations (default: \c "sd"): sequence of operations
+      to perform. Each character is executed in order:
+      - \c d — one subdivision step (\c subdivide()).
+      - \c s — one \f$C^1\f$ smoothing step (\c smooth(1)).
+    - \b -p / \b --patchpath (default: \c freeform/original/): path to the
+      directory containing the model patch \c .xml files used for
+      extraordinary-vertex subdivision.
+    - \b --cnet: if set, also writes the Bézier control net alongside the
+      patch surface at every step.
+    - \b --opt: if set, uses kernel-space functional optimisation
+      (\c fit_ev_opt) instead of file-loaded linear constraints
+      (\c fit_ev) when fitting around extraordinary vertices.
 
     Author(s): L. Mussmaecher
 */

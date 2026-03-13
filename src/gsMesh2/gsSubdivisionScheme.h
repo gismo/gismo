@@ -198,6 +198,8 @@ public: // Validity
     ///
     /// This method also changes the targeted mesh to the given mesh.
     ///
+    /// \return A \c gsSubdivisionMeshValidity value indicating the result.
+    ///
     /// \param mesh The mesh we want to apply this algorithm to.
     gsSubdivisionMeshValidity check_mesh(gsSurfMesh& mesh)
     {
@@ -212,6 +214,8 @@ public: // Validity
     /// `UNDETERMINED` to signify that the scheme cannot decide (yet) if the
     /// given mesh is valid. If one of the other options is returned, the
     /// contained answer must be definitive.
+    ///
+    /// \return A \c gsSubdivisionMeshValidity value indicating the result.
     ///
     /// \param mesh The mesh we want to apply this algorithm to.
     virtual gsSubdivisionMeshValidity check_mesh()

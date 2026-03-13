@@ -1,8 +1,33 @@
 /** @file freeform_sdmatrix.cpp
 
-    @brief Goes through all the valences in the 'patchpath' folder of filedata
-   and creates the subdivision matrices for them. Also outputs the coefficient
-   values for the outer points.
+    @brief Precomputes the inner (and outer) EV coefficient matrices for
+    the freeform subdivision scheme.
+
+    For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
+    the example loads all \f$2v+1\f$ basis-function patches from the model patch
+    directory (\c Val\<v\>Fct\<f\>.xml), subdivides each once, applies one
+    round of \f$C^1\f$ smoothing, and reads out the row of extraordinary-vertex
+    (EV) Bézier coefficients from the resulting patch. These rows are assembled
+    into an inner coefficient matrix (all \f$2v+1\f$ rows) and an outer
+    coefficient vector (coefficients of basis function 1 only).
+
+    The inner matrix is saved as \c CoefficientsInnerVal\<v\>.xml and the outer
+    vector as \c CoefficientsOuterVal\<v\>.xml inside the model patch directory.
+    These files are consumed by \c fit_ev to reconstruct the correct \f$C^1\f$
+    coefficient when fitting around extraordinary vertices.
+
+    \note The example assumes it is run from the build directory so that
+    \c ../filedata is reachable. The patch-path option must point to a
+    subdirectory of \c filedata.
+
+    \par Command-line arguments
+    - \b -p / \b --patchpath (default: \c freeform/original/): path, relative
+      to \c filedata/, to the directory containing the model patch files
+      \c Val\<v\>Fct\<f\>.xml.
+    - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
+      valence to process. Coefficient matrices are generated for all valences
+      \f$v \in \{3, 5, 6, \ldots, \mathrm{valence\_max}\}\f$ (valence 4 is
+      regular and is skipped).
 
     Author(s): L. Mussmaecher
 */

@@ -98,9 +98,8 @@ template <size_t N, size_t D>
 const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
 {
     // Create a spline basis for a normal bezier patch.
-    gsKnotVector<> kv1(0, 1, 0, N);
-    gsKnotVector<> kv2(0, 1, 0, N);
-    gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
+    gsKnotVector<> kv(0, 1, 0, N);
+    gsTensorBSplineBasis<2, real_t> basis(kv, kv);
     // Create a coefficient matrix out of the control points.
     // Technically, you could use just [i] and one loop here since the elements
     // of a matrix are layed out row-wise, but this might be clearer to read.
@@ -1145,29 +1144,9 @@ void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
 
     for (auto f : mesh.faces())
     {
-        // read out the control points
+        // Look at the patch on this face.
         auto& data = face_data_vec[f.idx()].control_points;
-
-        // Convert the first D-1 coordinates into a patch
-
-        // Create a spline basis for a normal bezier patch.
-        gsKnotVector<> kv1(0, 1, 0, N);
-        gsKnotVector<> kv2(0, 1, 0, N);
-        gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
-
-        // Create a coefficient matrix out of the control points.
-        gsMatrix<> coeffs(N * N, D - 1);
-        for (size_t i = 0; i < N; ++i)
-        {
-            for (size_t j = 0; j < N; ++j)
-            {
-                int total_index = i * N + j;
-                coeffs.row(total_index) = data(i, j).topRows(D - 1);
-            }
-        }
-
-        // The final patch for all but the last coordinate.
-        gsTensorBSpline<2> input_patch(basis, coeffs);
+        auto patch = face_data_vec[f.idx()].patch();
 
         // We now sample this patch at N*N points
         gsMatrix<> samples(1, N * N);
@@ -1181,13 +1160,16 @@ void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
                 real_t(std::floor(i / N)) / real_t(N - 1));
 
             // Get the value of the first D-1 coordinates at these parameters
-            gsVector<real_t, D - 1> point = input_patch.eval(params.col(i));
+            gsVector<real_t, D - 1> point =
+                patch.eval(params.col(i)).topRows(D - 1);
 
             // Use the function to find the desired z-value here.
             samples.col(i) = function.eval(point);
         }
 
         // fit a patch to this
+        gsKnotVector<> kv(0, 1, 0, N);
+        gsTensorBSplineBasis<2, real_t> basis(kv, kv);
         gsFitting<> fitter(params, samples, basis);
         fitter.compute(0.0);
         gsGeometry<>* result = fitter.result();
@@ -1212,38 +1194,18 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
     gsFunctionExpr<real_t> function, real_t max_error, std::string name,
     gsParaviewCollection* collection, size_t timestep)
 {
+    // Prepare data
     auto& mesh = *m_mesh;
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
+    // number faces need to be counted for registration in the collection
     size_t face_counter(0);
 
     for (auto f : mesh.faces())
     {
-        // read out the control points
-        auto& data = face_data_vec[f.idx()].control_points;
-
-        // Create a spline basis for a normal bezier patch.
-        gsKnotVector<> kv1(0, 1, 0, N);
-        gsKnotVector<> kv2(0, 1, 0, N);
-        gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
-
-        // Create a full and a 2D coefficient matrix out of the control points.
-        gsMatrix<> coeffs(N * N, D);
-        gsMatrix<> coeffs2D(N * N, 2);
-        for (size_t i = 0; i < N; ++i)
-        {
-            for (size_t j = 0; j < N; ++j)
-            {
-                int total_index = i * N + j;
-                coeffs.row(total_index) = data(i, j);
-                coeffs2D.row(total_index) = data(i, j).topRows(2);
-            }
-        }
-
-        // The final patch.
-        gsTensorBSpline<2> patch(basis, coeffs);
-        gsTensorBSpline<2> patch2D(basis, coeffs2D);
+        // read out the control points and create a patch
+        auto patch = face_data_vec[f.idx()].patch();
 
         // Sample at S*S points (S > N) for a fit that can capture errors.
         const size_t S = 2 * N;
@@ -1257,7 +1219,7 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
                 real_t(std::floor(i % S)) / real_t(S - 1),
                 real_t(std::floor(i / S)) / real_t(S - 1));
 
-            // Get the value of the first D-1 coordinates at these parameters
+            // Get the value of the patch
             gsVector<real_t> point = patch.eval(params.col(i));
 
             // Use the function to find the error
@@ -1268,19 +1230,27 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
         // rescale error to be in [0,1].
         error_samples /= max_error;
 
+        // Fit a 1D b-spline patch to this error
         // Fit with double the degree (2*(N-1)) to better capture error shape.
-        gsKnotVector<> kv_err1(0, 1, 0, S - 1);
-        gsKnotVector<> kv_err2(0, 1, 0, S - 1);
-        gsTensorBSplineBasis<2, real_t> fit_basis(kv_err1, kv_err2);
-
+        gsKnotVector<> kv_err(0, 1, 0, S - 1);
+        gsTensorBSplineBasis<2, real_t> fit_basis(kv_err, kv_err);
         gsFitting<> fitter(params, error_samples, fit_basis);
         fitter.compute(0.0);
         gsGeometry<>* result = fitter.result();
 
+        // Now create a 2D b-spline patch by taking the first two coordinates of
+        // the original patch.
+        gsTensorBSpline<2, real_t> patch2D(patch.basis(),
+                                           patch.coefs().leftCols(2).eval());
+
+        // Combine the two objects into an error field.
         gsField<> field(patch2D, *result);
 
+        // Write this to a file.
         gsWriteParaview(field, name + "_" + std::to_string(face_counter), 1000);
 
+        // If requested, also register it in the given collection at the given
+        // time step.
         if (collection != nullptr)
         {
             std::string basename(name.substr(name.rfind('/') + 1));
@@ -1310,42 +1280,22 @@ gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
 
     for (auto f : mesh.faces())
     {
-        // read out the control points
-        auto& data = face_data_vec[f.idx()].control_points;
+        // Look at the patch for this face.
+        auto patch = face_data_vec[f.idx()].patch();
 
-        // Convert the first D-1 coordinates into a patch
-
-        // Create a spline basis for a normal bezier patch.
-        gsKnotVector<> kv1(0, 1, 0, N);
-        gsKnotVector<> kv2(0, 1, 0, N);
-        gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
-
-        // Create a coefficient matrix out of the control points.
-        gsMatrix<> coeffs(N * N, D);
-        for (size_t i = 0; i < N; ++i)
-        {
-            for (size_t j = 0; j < N; ++j)
-            {
-                int total_index = i * N + j;
-                coeffs.row(total_index) = data(i, j);
-            }
-        }
-
-        // The final patch for all but the last coordinate.
-        gsTensorBSpline<2> input_patch(basis, coeffs);
-
+        // Now sample this patch
         for (size_t i = 0; i < spf * spf; ++i)
         {
             // Get the value of the patch
-            gsVector<real_t, D> point =
-                input_patch.eval(gsVector<real_t, 2>::vec(
-                    real_t(std::floor(i % spf)) / real_t(spf - 1),
-                    real_t(std::floor(i / spf)) / real_t(spf - 1)));
-            gsVector<real_t, D - 1> point2 = point.topRows(D - 1);
+            gsVector<real_t, D> point = patch.eval(gsVector<real_t, 2>::vec(
+                real_t(std::floor(i % spf)) / real_t(spf - 1),
+                real_t(std::floor(i / spf)) / real_t(spf - 1)));
 
-            // Compare it to the value of the function and collate update the
-            // error receptables.
-            real_t err = abs(point(D - 1) - function.eval(point2)(0));
+            // Compare its last coordinate to the value of the function applied
+            // to the first coordinates and collate update the error
+            // receptables.
+            real_t err =
+                abs(point(D - 1) - function.eval(point.topRows(D - 1))(0));
             error_linf = std::max(error_linf, err);
             error_l2 += err * err;
             ++error_count;

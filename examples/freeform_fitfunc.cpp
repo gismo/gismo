@@ -1,6 +1,44 @@
-/** @file freeformsubdivision_example.cpp
+/** @file freeform_fitfunc.cpp
 
-    @brief Tests the free form subdivision.
+    @brief Convergence study for fitting a scalar function to the last
+    coordinate of a freeform subdivision surface.
+
+    For each refinement level \f$i = 0, 1, \ldots, \mathrm{steps}-1\f$, the
+    example loads the input mesh, subdivides it \f$i\f$ times, replaces the
+    last coordinate of each patch by the best-fit Bézier approximation of a
+    user-supplied function of the first two coordinates, smooths the result to
+    \f$C^1\f$, and evaluates the \f$L^\infty\f$ and \f$L^2\f$ approximation
+    errors.  Error values for every refinement level are printed to \c stdout
+    and optionally written as a matrix to \c errors.csv.
+
+    Optionally, each refinement level can also be exported to Paraview (\c .vts
+    surface patches, \c .pvd collection, point-wise error field, and Greville
+    control points for extraordinary vertices).
+
+    \par Command-line arguments
+    - \c filepath (positional, default: \c xml/freeform_flat5.xml): path to the
+      input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches).
+    - \b -f / \b --function (default: \c "x+y"): analytic expression of the
+      target function \f$f(x,y)\f$ to be fitted to the last coordinate.
+    - \b -p / \b --patchpath (default: \c freeform/original/): path, relative
+      to \c filedata/, to the directory containing the model patch files for
+      extraordinary-vertex subdivision.
+    - \b -s / \b --steps (default: \c 5): number of refinement levels to test
+      (i.e. maximum number of subdivision steps).
+    - \b -a / \b --samples (default: \c 10): number of sample points per
+      parameter direction per patch face used when computing the error norms.
+    - \b -v / \b --valence (default: \c 0): if non-zero, \c filepath is
+      ignored and the flat model patch for the given extraordinary valence is
+      loaded directly from the patch directory.
+    - \b --paraview: if set, writes Paraview output (\c results/fitfunc_*.vts
+      and \c results/fitfunc.pvd) for every refinement level.
+    - \b --cnet: if set (together with \b --paraview), also writes the Bézier
+      control net and the EV Greville control points.
+    - \b --errors: if set, writes the \f$L^\infty\f$ and \f$L^2\f$ error
+      column vectors to \c errors.csv.
+    - \b --opt: if set, uses kernel-space functional optimisation (\c fit_ev_opt)
+      instead of file-loaded linear constraints (\c fit_ev) when fitting around
+      extraordinary vertices.
 
     Author(s): L. Mussmaecher
 */

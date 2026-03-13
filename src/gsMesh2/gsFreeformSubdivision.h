@@ -40,8 +40,15 @@ public: // Constructors
 
     /// \brief Constructor with a mesh to target.
     ///
-    /// Constructor that accepts a mesh to be targeted by this constructor.
-    /// Sets no options.
+    /// Constructs the object targeting the given mesh and registers the
+    /// following options:
+    /// - \c optimize_fit (switch, default \c false): when active, fits around
+    ///   extraordinary vertices by optimising a functional instead of using
+    ///   linear constraints loaded from file.
+    /// - \c model_patch_path (string, default \c "freeform/original/"): path
+    ///   to the directory containing the model patch \c .xml files.
+    ///
+    /// \param mesh Pointer to the \c gsSurfMesh to be targeted by this object.
     gsFreeformSubdivision(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh)
     {
         m_options.addSwitch("optimize_fit",
@@ -63,29 +70,35 @@ private: // Helper functions
     /// split horizontally, in the 'row' direction of the matrix.
     ///
     /// \param control_net The original matrix to be split.
+    /// \return An array of two control nets representing the left and right
+    /// halves of the split patch.
     static std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 2>
     deCasteljau(
         const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& control_net);
 
     /// \brief Loads a model patch of the given valence and type.
     ///
-    /// Looks in the `filedata/freeformsubdivision` folder for model patches for
-    /// the EV subdivision and loads them to a gismo Bezier patch. The patches
-    /// will combine in such a way that the patches `fine_1` to `fine_4` form a
-    /// perfect partition of patch `coarse` as follows:
+    /// Reads the file \c Val<valence>Fct1.xml from the directory given by the
+    /// \c model_patch_path option, selects the patch corresponding to
+    /// \c subtype, drops the third coordinate (returns a 2D patch), and
+    /// applies the rotation or scaling needed so that the \f$(0,0)\f$
+    /// parameter point of every \c fine_* patch coincides with the central
+    /// shared point of the four fine patches. The patches combine as follows:
     /// ```
     /// fine_4   fine_3
     /// fine_1   fine_2
     /// ```
-    /// With the u/v-Direction of `coarse` pointing right/up from the bottom
-    /// left and the u direction of each `fine_v` pointing outward from the
-    /// central shared point and having the same orientation (e.g. `fine_1`
-    /// points u leftwards and v downwards).
+    /// With the u/v-direction of \c coarse pointing right/up from the bottom
+    /// left and the u-direction of each \c fine_* pointing outward from the
+    /// central shared point with the same orientation (e.g. \c fine_1 points
+    /// u leftwards and v downwards). The \c coarse patch is additionally
+    /// scaled by a factor of 2.
     ///
     /// \param valence The valence of the desired patch. Valid values are 3, 5,
     /// 6, 7, 8, 9, 10.
-    /// \param v The subtype of the patch. Valid values are "coarse", "fine_1",
-    /// "fine_2", "fine_3", "fine_4".
+    /// \param subtype The subtype of the patch. Valid values are \c "coarse",
+    /// \c "fine_1", \c "fine_2", \c "fine_3", \c "fine_4".
+    /// \return The loaded 2D Bézier patch as a \c gsTensorBSpline<2>.
     gismo::gsTensorBSpline<2, real_t> load_model_patch(int valence,
                                                        std::string subtype);
 
@@ -97,9 +110,9 @@ private: // Helper functions
     /// cause the first vertex of that face to be the EV. If any faces in the
     /// mesh have multiple EVs, there is no guarantee on which one will be
     /// chosen and it is suggested you change your mesh so that EVs have a
-    /// larger distance between them.
-    ///
-    /// \param mesh The mesh to be re-oriented.
+    /// larger distance between them. The control points of each affected face
+    /// are rotated in lockstep with its halfedge so that their orientation
+    /// remains consistent.
     void orient_faces();
 
     /// \brief Orders a vector of 4 faces such that the face with a given vertex
@@ -113,49 +126,137 @@ private: // Helper functions
     /// Should be contained in at least one of the faces.
     /// \param faces The faces to be ordered. Should have exactly 4 elements or
     /// unexpected results may occur.
+    /// \return The reordered array of faces, with the face containing
+    /// \c first_vertex rotated to index 0.
     std::array<Face, 4> order_faces(Vertex first_vertex,
                                     std::array<Face, 4> faces);
 
-    /// returns whether \c v is ordinary (valence 4 or on boundary)
+    /// \brief Returns whether \c v is an ordinary vertex.
+    ///
+    /// A vertex is ordinary if it has valence 4 or lies on the boundary.
+    ///
+    /// \param mesh The surface mesh the vertex belongs to.
+    /// \param v    The vertex to test.
+    /// \return \c true if \c v is ordinary, \c false otherwise.
     inline bool is_ordinary(const gsSurfMesh& mesh, const Vertex& v) const
     {
         return mesh.valence(v) == 4 || mesh.is_boundary(v);
     }
 
-    /// Manages the fit around an EV using functional conditions.
+    /// \brief Fits control points around an EV using linear constraints.
+    ///
+    /// Solves the regularised least-squares system \f$A x \approx \text{target}\f$
+    /// subject to linear constraints loaded from file, using a Tikhonov-augmented
+    /// block system.
+    ///
+    /// \param A       Coefficient matrix of the fitting system.
+    /// \param target  Right-hand side of the fitting system (D columns, one per
+    ///                coordinate).
+    /// \param valence Valence of the extraordinary vertex being fitted.
+    /// \return Solution matrix \f$x\f$ satisfying the constraints.
     gsMatrix<real_t> fit_ev(gsMatrix<real_t> A, gsMatrix<real_t> target,
                             size_t valence);
 
-    /// Manages the fit around an EV by optimizing for a single functional.
+    /// \brief Fits control points around an EV by kernel-space optimisation.
+    ///
+    /// Solves \f$A x = \text{target}\f$ via least squares and then optimises
+    /// within the null space of \f$A\f$ to equalise the solution coefficients,
+    /// minimising variation around the extraordinary vertex.
+    ///
+    /// \param A       Coefficient matrix of the fitting system.
+    /// \param target  Right-hand side of the fitting system (D columns, one per
+    ///                coordinate).
+    /// \param valence Valence of the extraordinary vertex being fitted.
+    /// \return Optimised solution matrix \f$x\f$.
     gsMatrix<real_t> fit_ev_opt(gsMatrix<real_t> A, gsMatrix<real_t> target,
                                 size_t valence);
 
 public:
+    /// \brief Validates the mesh and returns its validity status.
+    ///
+    /// Checks whether every face of the targeted mesh has exactly 4 vertices
+    /// (quad-only requirement). Returns \c UNDETERMINED (not \c VALID) when
+    /// the mesh passes, since further geometric checks are not performed.
+    /// Returns \c INVALID and emits a warning on the first non-quad face found.
+    ///
+    /// \return \c gsSubdivisionMeshValidity::UNDETERMINED if all faces are
+    /// quads, \c gsSubdivisionMeshValidity::INVALID otherwise.
     gsSubdivisionScheme::gsSubdivisionMeshValidity check_mesh() override;
 
+    /// \brief Performs one step of freeform subdivision on the mesh.
+    ///
+    /// Calls \c orient_faces(), then applies \c quad_split() to the underlying
+    /// \c gsSurfMesh. For each original face the four child faces receive new
+    /// \f$N \times N\f$ control nets according to one of two rules:
+    /// - **Ordinary vertices** (all four corner valences equal 4, or on the
+    ///   boundary): the de Casteljau algorithm is applied twice — once in each
+    ///   parameter direction — to split the parent control net into four child
+    ///   nets exactly.
+    /// - **Extraordinary vertex** (one corner has valence \f$\neq 4\f$ and is
+    ///   not on the boundary): model patches for the given valence are loaded
+    ///   via \c load_model_patch(), the child control nets are obtained by
+    ///   sampling the parent patch at model-patch parameter locations found
+    ///   via Newton–Raphson, and fitting an \f$N \times N\f$ Bézier patch to
+    ///   those samples.
     void subdivide() override;
 
     /// \brief Initializes the targeted mesh from an off file.
     ///
-    /// Loads the `.off`-File at the given filepath and saves it in the targeted
-    /// mesh, which is assumed to contain D-dimensional point data. Then adds
-    /// the `bezier_points` face property, initializing it with an equally
-    /// distributed control net of `NxN` points.
+    /// Clears the targeted mesh, loads the \c .off file at \c filepath
+    /// (assumed to contain \c D-dimensional point data), adds the
+    /// \c bezier_points face property, and initializes each face's control
+    /// net as a bilinear interpolation of its four corner positions, producing
+    /// a $C^0$ control net of \f$N \times N\f$ points per face.
+    ///
+    /// \param filepath Path to the \c .off file to load.
     void initialize_data_off(std::string filepath);
 
-    /// \brief Replaces the value of the last coordinate with a function of the
-    /// first few.
+    /// \brief Replaces the last coordinate with a least-squares fit to a
+    /// function of the first D-1 coordinates.
     ///
-    /// Goes through all data points in the FreeformFaceData of the targeted
-    /// mesh and replaces the value of the last (Dth) coordinate with a function
-    /// of the first D-1 coordinates.
+    /// For each face, samples the first \f$D-1\f$ coordinates of the Bézier
+    /// patch at \f$N^2\f$ parameter points, evaluates \c function at those
+    /// positions, fits a new \f$N \times N\f$ Bézier patch to the function
+    /// values by least squares, and writes the resulting control coefficients
+    /// back as the last coordinate of each control point.
     ///
-    /// \param function A real-valued function in D-1 real variables.
+    /// \param function A real-valued function in \f$D-1\f$ real variables.
     void fit_last_coordinate_to_function(gsFunctionExpr<> function);
 
+    /// \brief Computes the approximation error of the freeform patches against
+    /// a reference function.
+    ///
+    /// For each face, samples the Bézier patch at \c samples_per_face squared
+    /// parameter points. At each sample the last coordinate of the patch is
+    /// compared to the value of \c function evaluated at the first \f$D-1\f$
+    /// coordinates. Returns a vector whose first entry is the \f$L^\infty\f$
+    /// error and whose second entry is the root-mean-square \f$L^2\f$ error
+    /// over all samples.
+    ///
+    /// \param function       A real-valued reference function in \f$D-1\f$ variables.
+    /// \param samples_per_face Number of sample points per parameter direction
+    /// per face.
+    /// \return A vector containing the \f$L^\infty\f$ and rms-\f$L^2\f$ errors.
     gsVector<real_t, 3> error(gsFunctionExpr<> function,
                               size_t samples_per_face);
 
+    /// \brief Writes a per-face approximation-error field to Paraview.
+    ///
+    /// For each face, evaluates the pointwise absolute error between the last
+    /// coordinate of the Bézier patch and \c function evaluated at the first
+    /// \f$D-1\f$ coordinates. The error is rescaled to [0, 1] using \c max_error
+    /// (which can be obtained via \c error()) fitted by a spline of
+    /// degree \f$2(N-1)\f$, and written as a Paraview \c .vts file. If
+    /// \c collection is non-null the generated file is registered in it at the
+    /// given \c timestep.
+    ///
+    /// \param function    A real-valued reference function in \f$D-1\f$ variables.
+    /// \param max_error   Value used to normalise the error to [0, 1].
+    /// \param name        Base path/name for the output \c .vts files.
+    /// \param collection  Optional Paraview collection to register the files
+    /// in.
+    /// \param timestep    Timestep index used when registering in \c
+    /// collection.
     void write_paraview_error(gsFunctionExpr<real_t> function, real_t max_error,
                               std::string name,
                               gsParaviewCollection* collection = nullptr,
@@ -163,11 +264,16 @@ public:
 
     /// \brief Initializes the targeted mesh from an xml file.
     ///
-    /// Loads the `.xml`-File at the given filepath, which is assumed to contain
-    /// a number of gsGeometry objects of type `TensorBSpline2` which have
-    /// control nets of `NxN` vectors of dimension `D`. For each such
-    /// TensorBSpline2, a face is created in the targeted mesh. Then adds the
-    /// `bezier_points` face property, initializing it with that control net.
+    /// Clears the targeted mesh, then loads all \c gsTensorBSpline<2> objects
+    /// from the \c .xml file at \c filepath. Each patch must have an
+    /// \f$N \times N\f$ control net of \f$D\f$-dimensional vectors. For each
+    /// patch a quad face is added to the mesh, with shared corner vertices
+    /// detected by coordinate comparison using a tolerance of \f$10^{-10}\f$.
+    /// The control net is stored in the \c bezier_points face property with
+    /// the BSpline index transposition \f$(i,j) \to (j,i)\f$ applied to match
+    /// the internal face layout convention.
+    ///
+    /// \param filepath Path to the \c .xml file to load.
     void initialize_data_xml(std::string filepath);
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
@@ -176,7 +282,7 @@ public:
     /// the outer layer of control points of each bezier patch. This only causes
     /// $C^s$ at edges and ordinary vertices. No guarantee is made for
     /// extraordinary vertices.
-
+    ///
     /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
     /// supported.
     void smooth(size_t degree);
@@ -193,6 +299,10 @@ public:
     ///
     /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
     /// supported.
+    /// \param ev_coefficients      Output: coefficient matrices of the EV fit,
+    ///                             one entry per extraordinary vertex.
+    /// \param ev_coefficients_outer Output: matrices of the outer control point
+    ///                              values around each extraordinary vertex.
     void smooth(size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
                 std::vector<gsMatrix<real_t>>& ev_coefficients_outer);
 
@@ -201,12 +311,19 @@ public:
     /// Converts the targeted mesh with freeform data into a multipatch that can
     /// be easily displayed by e.g. Paraview. Each face and its control net are
     /// converted to one appropriately sized patch.
+    ///
+    /// \return A \c gsMultiPatch<> containing one patch per face.
     gsMultiPatch<> multipatch();
 
+    /// \brief Writes the targeted mesh with freeform data to a Paraview file.
+    ///
     /// Writes the targeted mesh with freeform data to a paraview file for easy
     /// viewing. Can also register the file to a given paraview collection at
     /// the given timestep.
     ///
+    /// \param name        Base path/name for the output \c .vts files.
+    /// \param collection  Optional Paraview collection to register the files in.
+    /// \param timestep    Timestep index used when registering in \c collection.
     /// \param control_net When set to true, the control net of the mesh is also
     /// written to paraview and registered to the collection.
     void write_paraview(std::string name,
@@ -218,8 +335,9 @@ public:
 /// \brief Manages a control net on a face of a surf mesh.
 ///
 /// Data class that contains the additional information per face needed to
-/// perform freeform subdivision. Represents a 5x5 grid of Bezier control points
-/// on the face. The grid is supposed to be laid out as follows:
+/// perform freeform subdivision. Represents an \f$N \times N\f$ grid of
+/// Bézier control points on the face. The grid is supposed to be laid out
+/// as follows:
 ///
 /// ```
 ///    V0        E1         V1
@@ -237,8 +355,8 @@ public:
 ///    V3         E3        V2
 /// ```
 ///
-/// where `C0`-`C3` are the vertices in the order `mesh.vertices(face)`
-/// traverses them and `E0`-`E3` are the (half)edges in the order
+/// where `V0`–`V3` are the vertices in the order `mesh.vertices(face)`
+/// traverses them and `E0`–`E3` are the (half)edges in the order
 /// `mesh.halfedges(face)` traverses them. In particular, the position of
 /// control points `00`, `04`, `40`, `44` should correspond to the position of
 /// the vertices (if present).
@@ -253,9 +371,10 @@ template <size_t N, size_t D> class GISMO_EXPORT gsFreeformFaceData
     using Edge = gsSurfMesh::Edge;
 
 private: // members
-    // The 25 bezier control points.
+    /// The \f$N \times N\f$ matrix of \f$D\f$-dimensional Bézier control
+    /// points of this face patch.
     gsMatrix<gismo::gsVector<real_t, D>, N, N> control_points;
-    // A back reference to the face this data belongs to.
+    /// A back-reference to the face of the mesh this data belongs to.
     Face face;
 
 private: // helpers
@@ -274,8 +393,10 @@ public:  // Contructors
 
     /// \brief Zero constructor with a back reference.
     ///
-    /// Basic constructor. All control points are the zero vector, and the
-    /// back reference points to the given face.
+    /// All control points are set to the zero vector, and the back reference
+    /// points to the given face.
+    ///
+    /// \param face The face this data is associated with.
     gsFreeformFaceData(Face face) : control_points(), face(face)
     {
         for (size_t i = 0; i < N * N; ++i)
@@ -286,18 +407,24 @@ public:  // Contructors
 
     /// \brief Full constructor with back reference and control net.
     ///
-    /// Basic constructor. All control points are the zero vector, and the
-    /// back reference points to the given face.
+    /// Constructs the face data with the given control net and face reference.
+    ///
+    /// \param control_points The \f$N \times N\f$ matrix of \f$D\f$-dimensional
+    ///                       Bézier control points for this face.
+    /// \param face           The face this data is associated with.
     gsFreeformFaceData(
         gsMatrix<gismo::gsVector<real_t, D>, N, N> control_points, Face face)
         : control_points(control_points), face(face)
     {
     }
 
-    /// \brief Basic constructor that creates a C0 mesh.
+    /// \brief Basic constructor that creates a $C^0$ control net.
     ///
-    /// Constructor that takes a mesh and chooses the control points of this
-    /// evenly distributed over the the given face, creating a C0 mesh.
+    /// Constructs the face data with control points distributed evenly over
+    /// the given face of the mesh, creating a $C^0$ initial control net.
+    ///
+    /// \param mesh The surface mesh containing the face.
+    /// \param face The face over which to distribute the control points.
     gsFreeformFaceData(const gsSurfMesh& mesh, gsSurfMesh::Face face);
 
 public: // Control point accessors
@@ -311,11 +438,17 @@ public: // Control point accessors
     ///
     /// \param mesh The mesh this control net lives in.
     /// \param hedge The halfedge we orient this net on.
+    /// \return An \f$N \times N\f$ matrix of pointers into the control net,
+    /// oriented so that
+    /// row 0 runs from the from-vertex to the to-vertex of \c hedge.
     gsMatrix<gsVector<real_t, D>*> control_points_oriented(gsSurfMesh& mesh,
                                                            Halfedge hedge);
 
 public: // Conversions
-    /// Returns a Bezier patch corresponding to these control points.
+    /// \brief Returns a Bézier patch corresponding to these control points.
+    ///
+    /// \return A \c gsTensorBSpline<2> of degree N-1 in each direction,
+    /// built from the stored N×N control net.
     const gismo::gsTensorBSpline<2, real_t> patch() const;
 
 }; // namespace internal
