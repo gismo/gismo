@@ -59,22 +59,6 @@ namespace gismo
                             gsMatrix<T>& gsResults,
                             bool performance = true);
 
-        /**
-           Finds the point on \a gsBSurf that is closest to \a point
-           and writes it into \a result.
-           Returns Parasolid error status.
-
-           TODO: Not implemented, yet.
-        */
-        template <class T>
-        bool gsClosestPoint(const gsTensorBSpline<2, T>& gsBSurf,
-                            const gsVector<T, 3>& gsPoint,
-                            gsVector<T, 3>& gsResult)
-        {
-            gsWarn << "This function is not implemented, yet." << std::endl;
-            return false;
-        }
-
     } // namespace extensions
 
 } // namespace gismo
