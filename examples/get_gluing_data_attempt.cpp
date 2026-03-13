@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
     }
     gsMultiPatch<>& mp = *mpPtr;
     
-    mp.computeTopology(); // if the xml file does not have a topolgoy, we need to compute it first
+    mp.computeTopology(); // if the xml file does not have a topology, we need to compute it first
     
     if (mp.nPatches() != 2)
     {
