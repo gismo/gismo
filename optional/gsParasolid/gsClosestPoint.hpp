@@ -15,7 +15,9 @@
 
 #include <gsParasolid/gsFrustrum.h>
 #include <gsParasolid/gsClosestPoint.h>
-#include <gsParasolid/gsWriteParasolid.h>
+#include <gsParasolid/gsPKUtils.h>
+
+#include <gsMatrix/gsVector.h>
 
 namespace gismo
 {

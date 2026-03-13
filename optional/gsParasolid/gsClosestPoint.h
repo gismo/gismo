@@ -16,6 +16,8 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsCore/gsLinearAlgebra.h>
+
 #include <gsParasolid/gsPKSession.h>
 
 // TODO: Why can't I include gsFrustrum.h already here?
