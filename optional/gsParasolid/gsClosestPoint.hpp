@@ -36,7 +36,7 @@ namespace gismo
         PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
                                        const gsVector<T, 3>& gsPoint,
                                        gsVector<T, 2>& gsResult,
-                                       bool performance)
+                                       range::opt optimise)
         {
 			gsPKSession::start();
             PK_BSURF_t               bsurf;
@@ -48,7 +48,7 @@ namespace gismo
             PK_GEOM_range_vector_o_t options;
             PK_GEOM_range_vector_o_m(options);
 
-            if(performance)
+            if(optimise == range::opt::performance)
                 options.opt_level =  PK_range_opt_performance_c;
             else
                 options.opt_level =  PK_range_opt_accuracy_c;
@@ -72,7 +72,7 @@ namespace gismo
         PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
                                        const gsMatrix<T>& gsPoints,
                                        gsMatrix<T>& gsResults,
-                                       bool performance)
+                                       range::opt optimise)
         {
             GISMO_ASSERT(gsPoints.cols() == 3, "gsClosestParam is implemented for three-dimensional points only.");
             PK_BSURF_t               bsurf;
@@ -89,7 +89,7 @@ namespace gismo
             PK_GEOM_range_vector_many_o_t options;
             PK_GEOM_range_vector_many_o_m(options);
 
-            if(performance)
+            if(optimise == range::opt::performance)
                 options.opt_level =  PK_range_opt_performance_c;
             else
                 options.opt_level =  PK_range_opt_accuracy_c;

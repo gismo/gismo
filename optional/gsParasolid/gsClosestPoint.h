@@ -32,6 +32,15 @@ namespace gismo
         template <class T>
         PK_VECTOR_t gsPK_VECTOR(const gsVector<T, 3>& gsVector);
 
+        struct range
+        {
+            enum opt
+            {
+                performance = 23760,
+                accuracy    = 23761
+            };
+        };
+
         /**
            Finds the point on \a gsBSurf that is closest to \a gsPoint
            and writes its parameter values into \a gsResult. The
@@ -43,7 +52,7 @@ namespace gismo
         PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
                                        const gsVector<T, 3>& gsPoint,
                                        gsVector<T, 2>& gsResult,
-                                       bool performance = true);
+                                       range::opt optimise = range::opt::performance);
 
         /**
            For each three-dimensional point represented as a row of \a
@@ -58,7 +67,7 @@ namespace gismo
         PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
                                        const gsMatrix<T>& gsPoints,
                                        gsMatrix<T>& gsResults,
-                                       bool performance = true);
+                                       range::opt optimise = range::opt::performance);
 
     } // namespace extensions
 

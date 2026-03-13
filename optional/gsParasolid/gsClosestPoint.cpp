@@ -25,13 +25,13 @@ TEMPLATE_INST PK_ERROR_code_t
 gsClosestParam(const gsTensorBSpline<2, real_t>& gsBSurf,
                const gsVector<real_t, 3>& gsPoint,
                gsVector<real_t, 2>& gsResult,
-               bool performance);
+               range::opt optimise);
 
 TEMPLATE_INST PK_ERROR_code_t
 gsClosestParam(const gsTensorBSpline<2, real_t>& gsBSurf,
                const gsMatrix<real_t>& gsPoints,
                gsMatrix<real_t>& gsResults,
-               bool performance);
+               range::opt optimise);
 
 } // namespace extensions
 } // namespace gismo
