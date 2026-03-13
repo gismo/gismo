@@ -102,7 +102,7 @@ const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
     gsTensorBSplineBasis<2, real_t> basis(kv, kv);
     // Create a coefficient matrix out of the control points.
     // Technically, you could use just [i] and one loop here since the elements
-    // of a matrix are layed out row-wise, but this might be clearer to read.
+    // of a matrix are laid out row-wise, but this might be clearer to read.
     gsMatrix<> coeffs(N * N, D);
     for (size_t i = 0; i < N; ++i)
     {
@@ -482,7 +482,7 @@ gsMatrix<real_t>
 gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
                                         gsMatrix<real_t> target, size_t valence)
 {
-    // Just a straight up solution, no regularization.
+    // Just a direct least-squares solve with no regularisation.
     gsMatrix<real_t> solution = A.colPivHouseholderQr().solve(target);
 
     auto Apv = A.fullPivLu();
@@ -516,8 +516,8 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     // with Tikhonov regularization and additional constraints by
     // building the augmented system:
     //```
-    //`  [ A^T*A + lambda*I     C^T ] [ x ] = [ A^T*target ]
-    //`  [     C                0   ] [ y ]   [     0      ]
+    //    [ A^T*A + lambda*I     C^T ] [ x ] = [ A^T*target ]
+    //    [     C                0   ] [ y ]   [     0      ]
     //```
     //  and solving
     size_t function_count(2 * valence + 1);
@@ -552,7 +552,7 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     augmented_A.bottomLeftCorner(constraint_count, function_count) =
         constraints;
 
-    // Bottom left: Zero
+    // Bottom right: Zero (Lagrange multiplier block)
     augmented_A.bottomRightCorner(constraint_count, constraint_count).setZero();
 
     // Top of augmented target: target via Tikhonov
@@ -561,7 +561,7 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     // fulfilled
     augmented_target.bottomRows(constraint_count).setZero();
 
-    // Acutally solve the system
+    // Actually solve the system
     gsMatrix<real_t> augmented_solution =
         augmented_A.fullPivHouseholderQr().solve(augmented_target);
 
@@ -740,8 +740,8 @@ void gsFreeformSubdivision<N, D>::smooth(
             // fit_functions`, in which the entry A(i,j) is the z-value of the
             // ith control point of the j-th fitting function.
             // - The matrix `A_control` of dimension `point_count x
-            // fit_functions`, in which the entry A(i,j) is the z-value of the
-            // ith control point of meshes from the jth fitting function.
+            // fit_functions`, in which the entry A(i,j) is the z-coordinate of the
+            // ith control point of the jth fitting function.
             // - The matrix `target` of dimension `sample_count x D`, in which
             // the row b(i,-) is the ith control point of the target patch.
             gsMatrix<real_t> A_sample(sample_count, function_count);
@@ -803,7 +803,7 @@ void gsFreeformSubdivision<N, D>::smooth(
                             }
                             i_p++;
 
-                            // Then, check if this is a sample point
+                            // Skip this control point if it is not a sample point.
                             if (!((p == 0 && vx == 0 && ux == 0) // center point
                                   || (p < valence &&
                                       vx > 0) // points on inner patches
@@ -943,7 +943,7 @@ void gsFreeformSubdivision<N, D>::smooth(
 
             // Now create a matrix that represents these C1 equations, i.e. each
             // point on a boundary is colinear with the ones on either side.
-            // This results one row for each point, writing it as a linear
+            // This results in one row for each point, writing it as a linear
             // combination of the 4 free points in the top left patch. The
             // indices of the points above in the matrix are as follows:
             // ```
@@ -973,7 +973,7 @@ void gsFreeformSubdivision<N, D>::smooth(
                     matrix.row(i) = 2. * matrix.row(0) - matrix.row(i - 4);
             }
 
-            // Now, for each of these 9 points, we want to find its desired
+            // Now, for each of these `rows` points, we want to find its desired
             // value by looking at the respective value of the old (non-smooth)
             // control net.
             // TODO: Does this overvalue the 0/9 point?
@@ -992,8 +992,8 @@ void gsFreeformSubdivision<N, D>::smooth(
 
             // Now do a least squares fit.
             // I.e. we are searching for values for the 4 free points
-            // (transformed into 9 points via `matrix` that are thus C1 smooth)
-            // such that the squared distance of all 9 points to their previous
+            // (transformed into `rows` points via `matrix` that are thus C1 smooth)
+            // such that the squared distance of all `rows` points to their previous
             // values (given in `target_matrix`) is minimal.
             gsMatrix<real_t> solution =
                 matrix.colPivHouseholderQr().solve(target_matrix);
@@ -1096,12 +1096,12 @@ void gsFreeformSubdivision<N, D>::smooth(
             target_matrix.row(2) = i1->transpose();
 
             // We now do a least squares fit, i.e. search for two free points
-            // such that the three generated ( and thus colinear) points wil lbe
+            // such that the three generated (and thus colinear) points will be
             // as close as possible to the original three.
             gsMatrix<real_t> solution =
                 matrix.colPivHouseholderQr().solve(target_matrix);
 
-            // And finally re-assign all four values.
+            // Reassign all four control-point values using the fitted solution.
             *i0 = solution.row(0);
             *m0 = (solution.row(0) + solution.row(1)) * 0.5;
             *m1 = (solution.row(0) + solution.row(1)) * 0.5;
@@ -1199,7 +1199,7 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
 
-    // number faces need to be counted for registration in the collection
+    // Number of faces needs to be counted for registration in the collection.
     size_t face_counter(0);
 
     for (auto f : mesh.faces())
@@ -1230,8 +1230,8 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
         // rescale error to be in [0,1].
         error_samples /= max_error;
 
-        // Fit a 1D b-spline patch to this error
-        // Fit with double the degree (2*(N-1)) to better capture error shape.
+        // Fit a 1D B-spline patch to the sampled error field.
+        // Use degree 2*(N-1) to better capture the error shape.
         gsKnotVector<> kv_err(0, 1, 0, S - 1);
         gsTensorBSplineBasis<2, real_t> fit_basis(kv_err, kv_err);
         gsFitting<> fitter(params, error_samples, fit_basis);
@@ -1326,8 +1326,8 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
     auto bezier_points = mesh.add_face_property(std::string("bezier_points"),
                                                 gsFreeformFaceData<N, D>());
 
-    // Map from corner positions to vertex indices for detecting shared vertices
-    // We use a tolerance-based comparison for floating point coordinates
+    // Map from corner positions to vertex indices for detecting shared vertices.
+    // We use a tolerance-based comparison for floating-point coordinates.
     std::map<std::array<real_t, D>, gsSurfMesh::Vertex> cornerMap;
     const real_t tolerance = 1e-10;
 
@@ -1362,9 +1362,9 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
         // Get control points and dimensions
         const gsMatrix<real_t>& coefs = patch->coefs();
 
-        // Extract corner control points (lexicographic indexing: i + j*n_u)
+        // Extract corner control points (lexicographic indexing: i + j*n_u).
         // BSpline corners: (0,0), (N-1,0), (N-1,N-1), (0,N-1) in (u,v)
-        // coordinates Map to mesh vertices based on their physical positions
+        // coordinates. Map to mesh vertices based on their physical positions.
         std::vector<gsSurfMesh::Vertex> corners(4);
         corners[0] =
             findOrCreateVertex(coefs.row(0 + 0 * N)); // BSpline (0,0) → v0
@@ -1393,9 +1393,9 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
         {
             for (size_t j = 0; j < N; ++j)
             {
-                // Map face matrix (i,j) to BSpline (u,v) = (j,i)
+                // Map face matrix (i,j) to B-spline (u,v) = (j,i).
                 index_t linearIdx = j + i * N;
-                // Extract the row as a 3D point and assign it
+                // Extract the D-dimensional control point and assign it.
                 auto point = coefs.row(linearIdx);
                 faceControlPoints(i, j) = point;
             }

@@ -80,7 +80,7 @@ int main(int argc, char** argv)
         for (size_t function = 1; function <= 2 * valence + 1; ++function)
         {
             gsInfo << "Function " << function << "\n";
-            // Load the coefficients
+            // Load the basis function patch file.
             subdiv.initialize_data_xml(patchpath + "Val" +
                                        std::to_string(valence) + "Fct" +
                                        std::to_string(function) + ".xml");
@@ -91,7 +91,7 @@ int main(int argc, char** argv)
             std::vector<gsMatrix<real_t>> ev_coefs;
             std::vector<gsMatrix<real_t>> ev_coefs_outer;
             subdiv.smooth(1, ev_coefs, ev_coefs_outer);
-            // For the first one, save the outer functions
+            // For the first basis function (f=1), also record the outer EV control-point values.
             if (function == 1)
             {
                 gsWrite(ev_coefs_outer[0], "CoefficientsOuterVal" +

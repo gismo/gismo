@@ -153,14 +153,14 @@ int main(int argc, char** argv)
             subdiv.write_paraview(stepname, &collection, i + 1, control_net);
 
             // If the user wants to save the control net, we also want to save
-            // the greville control points for each EV.
+            // the Greville control points for each EV.
             if (control_net)
             {
                 // for each EV
                 for (size_t j = 0; j < ev_coefs.size(); ++j)
                 {
                     ev_coefs[j] = ev_coefs[j].transpose();
-                    // Create a paraview file containing the control points
+                    // Create a Paraview file containing the Greville control points.
                     gsWriteParaviewPoints(ev_coefs[j], stepname + "_greville" +
                                                            std::to_string(j));
                     // Register that file in the time series collection
@@ -183,7 +183,7 @@ int main(int argc, char** argv)
 
     if (write_errors)
     {
-        // write error matrix
+        // Write error matrix to errors.csv.
         gsWriteCsv("errors.csv", errors);
     }
 

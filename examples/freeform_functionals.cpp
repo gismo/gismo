@@ -83,12 +83,12 @@ int main(int argc, char** argv)
         for (size_t function = 1; function <= 2 * valence + 1; ++function)
         {
             gsInfo << "Function " << function << "\n";
-            // Load the coefficients
+            // Load the basis function patch file.
             subdiv.initialize_data_xml(patchpath + "Val" +
                                        std::to_string(valence) + "Fct" +
                                        std::to_string(function) + ".xml");
 
-            // Now smooth to get the desired linear combinations
+            // Apply functional-optimised smoothing to obtain the C1-constrained EV coefficients.
             subdiv.smooth(1, ev_coefs, ev_coefs_outer);
             // Collect all other coefficients in a matrix
             coeffs.row(function - 1) = ev_coefs[0].transpose().row(2);
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
             gsInfo << "\n";
         }
 
-        // Now coeffs contains a basis of the legal coefficient space.
+        // Now `coeffs` contains a basis for the space of C1-compatible EV coefficient vectors.
         auto legal_pl = coeffs.fullPivLu();
         legal_pl.setThreshold(1e-4);
         gsMatrix<> K = legal_pl.kernel().transpose();
