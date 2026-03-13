@@ -779,7 +779,7 @@ int main(int argc, char *argv[])
     if (mlluPreconder)
     {
 
-        gsLinearOperator<>::Ptr preconder = mkTimeMultiLevelPreconder(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, cmd, mkSparseLUSolver /** TODO Cholesky **/);
+        gsLinearOperator<>::Ptr preconder = mkTimeMultiLevelPreconder(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, cmd.getGroup("ML"), mkSparseLUSolver /** TODO Cholesky **/);
 
         gsInfo << "done: " << preconder->rows() << " dofs.\n";
 
