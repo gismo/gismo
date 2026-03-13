@@ -45,7 +45,7 @@ namespace gismo
            Finds the point on \a gsBSurf that is closest to \a gsPoint
            and writes its parameter values into \a gsResult. The
            optional parameter \a performance decides between
-           performance (true) and precision (false). Returns Parasolid
+           performance and accuracy. Returns Parasolid
            error status.
         */
         template <class T>
@@ -60,7 +60,7 @@ namespace gismo
            its parameters as a column of \a gsResults. (This might
            sound strange but it corresponds to the ordering in
            gsFitting.) The optional parameter \a performance decides
-           between performance (true) and precision (false). Returns
+           between performance and accuracy. Returns
            Parasolid error status.
         */
         template <class T>
