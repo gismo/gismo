@@ -16,29 +16,30 @@
     control points for extraordinary vertices).
 
     \par Command-line arguments
-    - \c filepath (positional, default: \c xml/freeform_flat5.xml): path to the
-      input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches).
+    - \b -m / \b --mesh (default: \c freeform/original/Val5Flat.xml): path to the
+      input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches),
+      relative to \c filedata/.
     - \b -f / \b --function (default: \c "x+y"): analytic expression of the
       target function \f$f(x,y)\f$ to be fitted to the last coordinate.
-    - \b -p / \b --patchpath (default: \c freeform/original/): path, relative
+    - \b -p / \b --patches (default: \c freeform/original/): path, relative
       to \c filedata/, to the directory containing the model patch files for
       extraordinary-vertex subdivision.
-    - \b -s / \b --steps (default: \c 5): number of refinement levels to test
+    - \b -s / \b --steps (default: \c 2): number of refinement levels to test
       (i.e. maximum number of subdivision steps).
     - \b -a / \b --samples (default: \c 10): number of sample points per
       parameter direction per patch face used when computing the error norms.
-    - \b -v / \b --valence (default: \c 0): if non-zero, \c filepath is
-      ignored and the flat model patch for the given extraordinary valence is
-      loaded directly from the patch directory.
+    - \b -v / \b --valence (default: \c -1, disabled): if set to a positive
+      value, \b --mesh is ignored and the flat model patch for the given
+      extraordinary valence is loaded directly from the patch directory.
     - \b --paraview: if set, writes Paraview output (\c results/fitfunc_*.vts
       and \c results/fitfunc.pvd) for every refinement level.
     - \b --cnet: if set (together with \b --paraview), also writes the Bézier
       control net and the EV Greville control points.
     - \b --errors: if set, writes the \f$L^\infty\f$ and \f$L^2\f$ error
       column vectors to \c errors.csv.
-    - \b --opt: if set, uses kernel-space functional optimisation (\c fit_ev_opt)
-      instead of file-loaded linear constraints (\c fit_ev) when fitting around
-      extraordinary vertices.
+    - \b --opt: if set, uses kernel-space functional optimisation (\c
+   fit_ev_opt) instead of file-loaded linear constraints (\c fit_ev) when
+   fitting around extraordinary vertices.
 
     Author(s): L. Mussmaecher
 */
@@ -56,8 +57,8 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // Command line inputs
-    std::string filepath("freeform/original/Val5Flat.xml");
-    std::string patchpath("freeform/original/");
+    std::string mesh_path("freeform/original/Val5Flat.xml");
+    std::string model_patch_path("freeform/original/");
     index_t steps(2);
     index_t valence(-1);
     index_t samples(10);
@@ -69,15 +70,15 @@ int main(int argc, char** argv)
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
-    cmd.addPlainString("filepath", "File containing mesh.", filepath);
+    cmd.addString("m", "mesh", "File containing the mesh.", mesh_path);
     cmd.addString("f", "function",
                   "A function to replace the last coordinate of your loaded "
                   "object. E.g. `x^2 + y`. Defaults to `x+y`",
                   function);
-    cmd.addString("p", "patchpath",
-                  "The path to the files containing the model patches for EV "
+    cmd.addString("p", "patches",
+                  "The path to the folder containing the model patches for EV "
                   "subdivision.",
-                  patchpath);
+                  model_patch_path);
     cmd.addInt("s", "steps",
                "The number of steps (subdivide, fit, smooth) to repeat.",
                steps);
@@ -109,16 +110,16 @@ int main(int argc, char** argv)
 
     if (valence > 0)
     {
-        filepath =
+        mesh_path =
             "freeform/original/Val" + std::to_string(valence) + "Flat.xml";
     }
 
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
-    subdiv.options().setString("model_patch_path", patchpath);
+    subdiv.options().setString("model_patch_path", model_patch_path);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
-    subdiv.initialize_data_xml(filepath);
+    subdiv.initialize_data(mesh_path);
 
     gsFunctionExpr<real_t> func(function, 2);
 
@@ -132,7 +133,7 @@ int main(int argc, char** argv)
 
     for (index_t i = 0; i < steps; ++i)
     {
-        subdiv.initialize_data_xml(filepath);
+        subdiv.initialize_data_xml(mesh_path);
         for (index_t j = 0; j < i; ++j)
         {
             subdiv.subdivide();
@@ -160,7 +161,8 @@ int main(int argc, char** argv)
                 for (size_t j = 0; j < ev_coefs.size(); ++j)
                 {
                     ev_coefs[j] = ev_coefs[j].transpose();
-                    // Create a Paraview file containing the Greville control points.
+                    // Create a Paraview file containing the Greville control
+                    // points.
                     gsWriteParaviewPoints(ev_coefs[j], stepname + "_greville" +
                                                            std::to_string(j));
                     // Register that file in the time series collection

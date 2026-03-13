@@ -39,14 +39,20 @@ gsFreeformFaceData<N, D>::gsFreeformFaceData(const gsSurfMesh& mesh,
                                              gsSurfMesh::Face face)
     : control_points(), face(face)
 {
-    // Create a vector of the 4 corners.
-    std::vector<gismo::gsVector3d<>> corners;
+    // Create a vector of the 4 corners, copying the 3D mesh vertex positions
+    // into D-dimensional vectors. The first min(D,3) coordinates are taken
+    // from the mesh; any remaining coordinates beyond index 2 are zeroed.
+    std::vector<gsVector<real_t, D>> corners;
     corners.reserve(4);
     for (auto const& v : mesh.vertices(face))
     {
-        corners.emplace_back(mesh.position(v));
+        gsVector<real_t, D> corner = gsVector<real_t, D>::Zero();
+        const gsSurfMesh::Point& p = mesh.position(v);
+        for (size_t k = 0; k < std::min<size_t>(D, 3); ++k)
+            corner(k) = p[k];
+        corners.emplace_back(corner);
     }
-    assert(points.size() == 4);
+    assert(corners.size() == 4);
 
     // Choose the control points (N*N total) as appropriate linear combinations
     // of the corners.
@@ -730,25 +736,23 @@ void gsFreeformSubdivision<N, D>::smooth(
             size_t point_count(valence * (N * N + 2 * N + 2 * 2 + N * 2));
             // This is the number of total points we are fitting to, excluding
             // doubles.
-            // size_t sample_count(1 + valence * (N-1) * (N-1) + valence * 2 *
-            // (N-1) + valence * 2 + valence * (N-1));
-            size_t sample_count(1 + 20 * valence + 4 * valence + 4 * valence +
-                                2 * valence);
+            size_t sample_count(1 + valence * (N - 1) * N + valence * (N - 1) +
+                                valence * 2 + valence * (N - 1));
 
             // For the least-squares fit we now build:
             // - The matrix `A_sample` of dimension `sample_count x
             // fit_functions`, in which the entry A(i,j) is the z-value of the
             // ith control point of the j-th fitting function.
             // - The matrix `A_control` of dimension `point_count x
-            // fit_functions`, in which the entry A(i,j) is the z-coordinate of the
-            // ith control point of the jth fitting function.
+            // fit_functions`, in which the entry A(i,j) is the z-coordinate of
+            // the ith control point of the jth fitting function.
             // - The matrix `target` of dimension `sample_count x D`, in which
             // the row b(i,-) is the ith control point of the target patch.
             gsMatrix<real_t> A_sample(sample_count, function_count);
             gsMatrix<real_t> A_control(point_count, function_count);
             gsMatrix<real_t> target(sample_count, D);
 
-            gsMatrix<real_t> outer_values(20 * valence, D);
+            gsMatrix<real_t> outer_values(N * (N - 1) * valence, D);
 
             {
                 // the sampling index - this is incremented whenever we sample a
@@ -803,7 +807,8 @@ void gsFreeformSubdivision<N, D>::smooth(
                             }
                             i_p++;
 
-                            // Skip this control point if it is not a sample point.
+                            // Skip this control point if it is not a sample
+                            // point.
                             if (!((p == 0 && vx == 0 && ux == 0) // center point
                                   || (p < valence &&
                                       vx > 0) // points on inner patches
@@ -992,9 +997,9 @@ void gsFreeformSubdivision<N, D>::smooth(
 
             // Now do a least squares fit.
             // I.e. we are searching for values for the 4 free points
-            // (transformed into `rows` points via `matrix` that are thus C1 smooth)
-            // such that the squared distance of all `rows` points to their previous
-            // values (given in `target_matrix`) is minimal.
+            // (transformed into `rows` points via `matrix` that are thus C1
+            // smooth) such that the squared distance of all `rows` points to
+            // their previous values (given in `target_matrix`) is minimal.
             gsMatrix<real_t> solution =
                 matrix.colPivHouseholderQr().solve(target_matrix);
 
@@ -1083,7 +1088,7 @@ void gsFreeformSubdivision<N, D>::smooth(
             // Now, of these three points, two will be 'free' and the last will
             // be determined. The following matrix generates all three points
             // from the free ones.
-            gsMatrix<real_t, D, 2> matrix;
+            gsMatrix<real_t, 3, 2> matrix;
             matrix.row(0) << 1., 0.;
             matrix.row(1) << 0.5, 0.5;
             matrix.row(2) << 0., 1.;
@@ -1109,29 +1114,6 @@ void gsFreeformSubdivision<N, D>::smooth(
         } // End of this edge
     }
     // End of edge correction
-}
-
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
-{
-    auto& mesh = *m_mesh;
-    // Clear the mesh
-    mesh = gsSurfMesh();
-
-    auto _readFile = gsReadFile<>(filepath, mesh);
-    // Initialize the property.
-    mesh.add_face_property(std::string("bezier_points"),
-                           gsFreeformFaceData<N, D>());
-
-    // Get the data. It will be empty and non-valid at this point.
-    gsProperty<gsFreeformFaceData<N, D>> patch_data =
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
-
-    // Each patch is now initalized with basic face data.
-    for (auto f : mesh.faces())
-    {
-        patch_data.vector()[f.idx()] = gsFreeformFaceData<N, D>(mesh, f);
-    }
 }
 
 template <size_t N, size_t D>
@@ -1163,7 +1145,7 @@ void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
             gsVector<real_t, D - 1> point =
                 patch.eval(params.col(i)).topRows(D - 1);
 
-            // Use the function to find the desired z-value here.
+            // Use the function to find the desired function value here.
             samples.col(i) = function.eval(point);
         }
 
@@ -1238,13 +1220,15 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
         fitter.compute(0.0);
         gsGeometry<>* result = fitter.result();
 
-        // Now create a 2D b-spline patch by taking the first two coordinates of
-        // the original patch.
-        gsTensorBSpline<2, real_t> patch2D(patch.basis(),
-                                           patch.coefs().leftCols(2).eval());
+        // Now create a B-spline patch using the first min(3, D-1) coordinates
+        // of the original patch. For D == 3 this gives a 2D geometry; for D > 3
+        // this gives a full 3D geometry. gsWriteParaview supports both.
+        constexpr size_t geo_dim = (D - 1 < 3) ? D - 1 : 3;
+        gsTensorBSpline<2, real_t> patchGeo(patch.basis(),
+                                           patch.coefs().leftCols(geo_dim).eval());
 
         // Combine the two objects into an error field.
-        gsField<> field(patch2D, *result);
+        gsField<> field(patchGeo, *result);
 
         // Write this to a file.
         gsWriteParaview(field, name + "_" + std::to_string(face_counter), 1000);
@@ -1264,7 +1248,7 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
 }
 
 template <size_t N, size_t D>
-gsVector<real_t, 3>
+gsVector<real_t, 2>
 gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
                                    size_t samples_per_face)
 {
@@ -1326,8 +1310,9 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
     auto bezier_points = mesh.add_face_property(std::string("bezier_points"),
                                                 gsFreeformFaceData<N, D>());
 
-    // Map from corner positions to vertex indices for detecting shared vertices.
-    // We use a tolerance-based comparison for floating-point coordinates.
+    // Map from corner positions to vertex indices for detecting shared
+    // vertices. We use a tolerance-based comparison for floating-point
+    // coordinates.
     std::map<std::array<real_t, D>, gsSurfMesh::Vertex> cornerMap;
     const real_t tolerance = 1e-10;
 
@@ -1403,6 +1388,54 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
 
         // Create gsFreeformFaceData with control points and face back reference
         bezier_points[f] = gsFreeformFaceData<N, D>(faceControlPoints, f);
+    }
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
+{
+    auto& mesh = *m_mesh;
+    // Clear the mesh
+    mesh = gsSurfMesh();
+
+    auto _readFile = gsReadFile<>(filepath, mesh);
+    // Initialize the property.
+    mesh.add_face_property(std::string("bezier_points"),
+                           gsFreeformFaceData<N, D>());
+
+    // Get the data. It will be empty and non-valid at this point.
+    gsProperty<gsFreeformFaceData<N, D>> patch_data =
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
+
+    // Each patch is now initalized with basic face data.
+    for (auto f : mesh.faces())
+    {
+        patch_data.vector()[f.idx()] = gsFreeformFaceData<N, D>(mesh, f);
+    }
+}
+
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::initialize_data(std::string filepath)
+{
+    std::string xml(".xml");
+    std::string off(".off");
+    // Check the filetype to be loaded.
+    if (std::equal(filepath.begin() + filepath.size() - xml.size(),
+                   filepath.end(), xml.begin()))
+    {
+        gsInfo << "Loading xml\n";
+        initialize_data_xml(filepath);
+    }
+    else if (std::equal(filepath.begin() + filepath.size() - off.size(),
+                        filepath.end(), off.begin()))
+    {
+        gsInfo << "Loading off\n";
+        initialize_data_off(filepath);
+    }
+    else
+    {
+        gsWarn << "Unsupported Filetype! Mesh not initialized.\n";
     }
 }
 

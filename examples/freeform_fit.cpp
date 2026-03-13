@@ -12,14 +12,14 @@
     collection at \c results/function_fit.pvd.
 
     \par Command-line arguments
-    - \c filepath (positional, default: \c off/octtorus.off): path to the
+    - \c mesh (positional, default: \c off/octtorus.off): path to the
       input mesh file. Supported formats: \c .off (3D point data) and
       \c .xml (collection of \c gsTensorBSpline<2> patches).
     - \b -o / \b --operations (default: \c "sd"): sequence of operations
       to perform. Each character is executed in order:
       - \c d — one subdivision step (\c subdivide()).
       - \c s — one \f$C^1\f$ smoothing step (\c smooth(1)).
-    - \b -p / \b --patchpath (default: \c freeform/original/): path to the
+    - \b -p / \b --patches (default: \c freeform/original/): path to the
       directory containing the model patch \c .xml files used for
       extraordinary-vertex subdivision.
     - \b --cnet: if set, also writes the Bézier control net alongside the
@@ -49,12 +49,12 @@ int main(int argc, char** argv)
 
     // Inputs
     gsCmdLine cmd("Freeform subdivision");
-    cmd.addPlainString("filepath", "File containing mesh.", filepath);
+    cmd.addPlainString("mesh", "Path to the file containing the mesh.", filepath);
     cmd.addString("o", "operations",
                   "Operations to perform on the mesh. Use d for subdivision "
                   "and s for (c1) smoothing",
                   operations);
-    cmd.addString("p", "patchpath",
+    cmd.addString("p", "patches",
                   "The path to the files containing the model patches for EV "
                   "subdivision.",
                   patchpath);
@@ -78,26 +78,7 @@ int main(int argc, char** argv)
     subdiv.options().setString("model_patch_path", patchpath);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
-    std::string xml(".xml");
-    std::string off(".off");
-    // Check the filetype to be loaded.
-    if (std::equal(filepath.begin() + filepath.size() - xml.size(),
-                   filepath.end(), xml.begin()))
-    {
-        gsInfo << "Loading xml\n";
-        subdiv.initialize_data_xml(filepath);
-    }
-    else if (std::equal(filepath.begin() + filepath.size() - off.size(),
-                        filepath.end(), off.begin()))
-    {
-        gsInfo << "Loading off\n";
-        subdiv.initialize_data_off(filepath);
-    }
-    else
-    {
-        gsWarn << "Unsupported Filetype!\n";
-        return 1;
-    }
+    subdiv.initialize_data(filepath);
 
     // Single .pvd collection for all steps.
     gsParaviewCollection collection("results/function_fit");

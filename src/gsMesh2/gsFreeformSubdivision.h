@@ -200,17 +200,6 @@ public:
     ///   those samples.
     void subdivide() override;
 
-    /// \brief Initializes the targeted mesh from an off file.
-    ///
-    /// Clears the targeted mesh, loads the \c .off file at \c filepath
-    /// (assumed to contain \c D-dimensional point data), adds the
-    /// \c bezier_points face property, and initializes each face's control
-    /// net as a bilinear interpolation of its four corner positions, producing
-    /// a $C^0$ control net of \f$N \times N\f$ points per face.
-    ///
-    /// \param filepath Path to the \c .off file to load.
-    void initialize_data_off(std::string filepath);
-
     /// \brief Replaces the last coordinate with a least-squares fit to a
     /// function of the first D-1 coordinates.
     ///
@@ -237,7 +226,7 @@ public:
     /// \param samples_per_face Number of sample points per parameter direction
     /// per face.
     /// \return A vector containing the \f$L^\infty\f$ and rms-\f$L^2\f$ errors.
-    gsVector<real_t, 3> error(gsFunctionExpr<> function,
+    gsVector<real_t, 2> error(gsFunctionExpr<> function,
                               size_t samples_per_face);
 
     /// \brief Writes a per-face approximation-error field to Paraview.
@@ -250,6 +239,10 @@ public:
     /// \c collection is non-null the generated file is registered in it at the
     /// given \c timestep.
     ///
+    /// \note Only available when \c D >= 3. The spatial geometry shown in
+    /// Paraview uses the first \f$\min(3, D-1)\f$ coordinates; for \c D > 4
+    /// coordinates 4 and beyond are not visualised.
+    ///
     /// \param function    A real-valued reference function in \f$D-1\f$ variables.
     /// \param max_error   Value used to normalise the error to [0, 1].
     /// \param name        Base path/name for the output \c .vts files.
@@ -258,9 +251,9 @@ public:
     /// \param timestep    Timestep index used when registering in \c
     /// collection.
     void write_paraview_error(gsFunctionExpr<real_t> function, real_t max_error,
-                              std::string name,
-                              gsParaviewCollection* collection = nullptr,
-                              size_t timestep = 0);
+                         std::string name,
+                         gsParaviewCollection* collection = nullptr,
+                         size_t timestep = 0);
 
     /// \brief Initializes the targeted mesh from an xml file.
     ///
@@ -275,6 +268,20 @@ public:
     ///
     /// \param filepath Path to the \c .xml file to load.
     void initialize_data_xml(std::string filepath);
+
+    /// \brief Initializes the targeted mesh from an off file.
+    ///
+    /// Clears the targeted mesh, loads the \c .off file at \c filepath
+    /// (which contains 3-dimensional point data), adds the
+    /// \c bezier_points face property, and initializes each face's control
+    /// net via bilinear interpolation of its four corner positions. The first
+    /// \f$\min(D,3)\f$ coordinates are taken from the mesh; any coordinates
+    /// beyond index 2 are initialised to zero.
+    ///
+    /// \param filepath Path to the \c .off file to load.
+    void initialize_data_off(std::string filepath);
+
+    void initialize_data(std::string filepath);
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
     ///
@@ -420,8 +427,11 @@ public:  // Contructors
 
     /// \brief Basic constructor that creates a $C^0$ control net.
     ///
-    /// Constructs the face data with control points distributed evenly over
-    /// the given face of the mesh, creating a $C^0$ initial control net.
+    /// Constructs the face data with control points distributed by bilinear
+    /// interpolation over the four corners of the given mesh face. The first
+    /// \f$\min(D,3)\f$ coordinates of each control point are taken from the
+    /// 3-dimensional mesh vertex positions; any coordinates beyond index 2
+    /// are initialised to zero.
     ///
     /// \param mesh The surface mesh containing the face.
     /// \param face The face over which to distribute the control points.
