@@ -389,7 +389,7 @@ namespace gismo {
         Halfedge he,hh;
         int i;
         Point t1, t2;
-#   pragma omp parallel for default(shared) private(n)
+#   pragma omp parallel for default(shared) private(n,he,hh,i,t1,t2)
         for (auto fit = m_mesh->faces_begin(); fit < m_mesh->faces_end(); ++fit)
         {
             n = m_mesh->valence(*fit);
@@ -407,8 +407,8 @@ namespace gismo {
             i = 0;
             do
             {
-                t1 = math::cos(2 * i * EIGEN_PI / n) * points[m_mesh->from_vertex(hh)];
-                t2 = math::sin(2 * i * EIGEN_PI / n) * points[m_mesh->from_vertex(hh)];
+                t1 += math::cos(2 * i * EIGEN_PI / n) * points[m_mesh->from_vertex(hh)];
+                t2 += math::sin(2 * i * EIGEN_PI / n) * points[m_mesh->from_vertex(hh)];
                 hh = m_mesh->next_halfedge(hh);
                 i++;
             } while (hh != he);
