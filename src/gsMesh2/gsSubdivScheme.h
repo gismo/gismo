@@ -105,8 +105,8 @@ public: // Doo-Sabin functions
     /// Compute DS vertex limit positions
     gsSurfMesh::Face_property<Point> ds_vertex_limits(std::string label = "v:limit");
 
-    /// Compute DS vertex limit normals
-    gsSurfMesh::Vertex_property<Point> ds_normals_vertex_limits(std::string label = "v:normal",
+    /// Compute DS vertex limit normals (see Halsted 1993, EDSS-Huang 2010).
+    gsSurfMesh::Face_property<Point> ds_normals_vertex_limits(std::string label = "v:normal",
         bool normalize = true);
 
 

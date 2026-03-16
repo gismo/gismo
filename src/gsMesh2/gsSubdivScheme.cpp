@@ -368,11 +368,6 @@ namespace gismo {
             if (m_mesh->is_boundary(*fit)) // TODO: Deprecate this feature by using middle edge point
             {
                 gsWarn << "Boundary face is ignored.\n";
-
-                if (2 > n)
-                {
-
-                }
                 continue;
             }
 
@@ -383,6 +378,51 @@ namespace gismo {
 
         return limits;
     }
+
+    gsSurfMesh::Face_property<Point>
+        gsSubdivScheme::ds_normals_vertex_limits(std::string label,
+            bool normalize)
+    {
+        auto points = m_mesh->get_vertex_property<Point>("v:point");
+        auto limits = m_mesh->add_face_property<Point>((label), Point(0, 0, 0));
+        real_t n;
+        Halfedge he,hh;
+        int i;
+        Point t1, t2;
+#   pragma omp parallel for default(shared) private(n)
+        for (auto fit = m_mesh->faces_begin(); fit < m_mesh->faces_end(); ++fit)
+        {
+            n = m_mesh->valence(*fit);
+            if (m_mesh->is_boundary(*fit)) // TODO: Deprecate this feature by using middle edge point
+            {
+                gsWarn << "Boundary face is ignored.\n";
+                continue;
+            }
+
+            auto& pt = limits[*fit];
+            he = m_mesh->halfedge(*fit);
+            hh = he;
+            t1.setZero();
+            t2.setZero();
+            i = 0;
+            do
+            {
+                t1 = math::cos(2 * i * EIGEN_PI / n) * points[m_mesh->from_vertex(hh)];
+                t2 = math::sin(2 * i * EIGEN_PI / n) * points[m_mesh->from_vertex(hh)];
+                hh = m_mesh->next_halfedge(hh);
+                i++;
+            } while (hh != he);
+            pt = t1.cross(t2);
+
+            if (normalize)
+                pt = pt.normalized();
+
+
+        }
+        
+        return limits;
+    }
+
     void gsSubdivScheme::chaikin_scheme()
     {
 
