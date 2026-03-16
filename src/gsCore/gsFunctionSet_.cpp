@@ -48,7 +48,6 @@ void pybind11_init_gsFunctionSet(py::module &m)
             return os.str();
         },
         "Returns a string with information about the object.")
-
   ;
 }
 #endif
