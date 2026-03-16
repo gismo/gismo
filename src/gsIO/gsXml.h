@@ -115,7 +115,7 @@ template<class T>
 inline bool gsGetReal(std::istream & is, T & var)
 {
     GISMO_STATIC_ASSERT(!std::numeric_limits<T>::is_integer,
-        "The second parameter needs to be an integer type.");
+        "The second parameter needs to be a real type.");
     std::string dn;
     if ( !(is >> dn) ) return false;
     const std::string::size_type slh( dn.find("/") );
