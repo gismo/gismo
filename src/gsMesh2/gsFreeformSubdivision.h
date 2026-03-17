@@ -45,6 +45,10 @@ public: // Constructors
     /// - \c optimize_fit (switch, default \c false): when active, fits around
     ///   extraordinary vertices by optimising a functional instead of using
     ///   linear constraints loaded from file.
+    /// - \c weighted_fit (switch, default \c false): when active, weights the
+    ///   least-squares fit around extraordinary vertices using a per-sample
+    ///   weight vector loaded from
+    ///   \c filedata/freeform/val\<v\>_weights.xml.
     /// - \c model_patch_path (string, default \c "freeform/original/"): path
     ///   to the directory containing the model patch \c .xml files.
     ///
@@ -55,6 +59,11 @@ public: // Constructors
                             "When active, fits around EVs by optimizing with "
                             "respect to a functional instead of using linear "
                             "constraints loaded from a file.",
+                            false);
+        m_options.addSwitch("weighted_fit",
+                            "When active, weights the least-squares EV fit "
+                            "using a per-sample weight vector loaded from "
+                            "`filedata/freeform/val<v>_weights.xml`.",
                             false);
         m_options.addString("model_patch_path", "Path to the model patches.",
                             "freeform/original/");
@@ -336,14 +345,21 @@ public:
     /// \brief Writes the targeted mesh with freeform data to a Paraview file.
     ///
     /// Writes the targeted mesh with freeform data to a paraview file for easy
-    /// viewing. Can also register the file to a given paraview collection at
+    /// viewing. Can also register the files to given paraview collections at
     /// the given timestep.
     ///
-    /// \param name        Base path/name for the output \c .vts files.
-    /// \param collection  Optional Paraview collection to register the files in.
-    /// \param timestep    Timestep index used when registering in \c collection.
-    /// \param control_net When set to true, the control net of the mesh is also
-    /// written to paraview and registered to the collection.
+    /// \param name             Base path/name for the output \c .vts files.
+    /// \param collection       Optional Paraview collection to register the
+    ///                         surface patch files in.
+    /// \param cnet_collection  Optional Paraview collection to register the
+    ///                         control net files in. Only used when
+    ///                         \c control_net is true.
+    /// \param timestep         Timestep index used when registering in
+    ///                         \c collection and \c cnet_collection.
+    /// \param control_net      When set to true, the control net of the mesh is
+    ///                         also written to paraview and, if
+    ///                         \c cnet_collection is provided, registered
+    ///                         there.
     void write_paraview(std::string name,
                         gsParaviewCollection* collection = nullptr,
                          gsParaviewCollection* cnet_collection = nullptr,

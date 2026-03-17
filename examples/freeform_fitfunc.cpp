@@ -40,6 +40,9 @@
     - \b --opt: if set, uses kernel-space functional optimisation (\c
    fit_ev_opt) instead of file-loaded linear constraints (\c fit_ev) when
    fitting around extraordinary vertices.
+    - \b --weighted: if set, weights the least-squares fit around
+      extraordinary vertices using a per-sample weight vector loaded from \c
+      filedata/freeform/val\<v\>_weights.xml.
 
     Author(s): L. Mussmaecher
 */
@@ -65,6 +68,7 @@ int main(int argc, char** argv)
     std::string function("x+y");
     bool control_net(false);
     bool optimize_fit(false);
+    bool weighted_fit(false);
     bool paraview(false);
     bool write_errors(false);
 
@@ -97,8 +101,12 @@ int main(int argc, char** argv)
                   write_errors);
     cmd.addSwitch(
         "opt",
-        "Optimizes the fit via a functional instead of linear constraints.",
+        "Optimizes the EV fit via a functional instead of linear constraints.",
         optimize_fit);
+    cmd.addSwitch(
+        "weighted",
+        "Uses a weighting for the EV fit, loaded from a weights vector at `filedata/freeform/val<v>_weights.xml`.",
+        weighted_fit);
     try
     {
         cmd.getValues(argc, argv);
@@ -118,6 +126,7 @@ int main(int argc, char** argv)
     auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
     subdiv.options().setString("model_patch_path", model_patch_path);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
+    subdiv.options().setSwitch("weighted_fit", weighted_fit);
 
     subdiv.initialize_data(mesh_path);
 

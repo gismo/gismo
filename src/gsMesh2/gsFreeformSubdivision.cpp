@@ -15,6 +15,7 @@
 #include "gsCore/gsFunctionExpr.h"
 #include "gsIO/gsParaviewCollection.h"
 #include "gsIO/gsWriteParaview.h"
+#include "gsMatrix/gsVector.h"
 #include <cmath>
 #include <cstdlib>
 #include <gismo.h>
@@ -518,12 +519,25 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
                                                      gsMatrix<real_t> target,
                                                      size_t valence)
 {
+    gsMatrix<real_t> weights;
+    if (m_options.getSwitch("weighted_fit"))
+    {
+        auto _readFile =
+            gsReadFile<>("freeform/val" +
+                             std::to_string(valence) + "_weights.xml",
+                         weights);
+    }
+    else
+    {
+        weights = gsVector<real_t>::Ones(A.rows());
+    }
+    auto W = weights.col(0).asDiagonal();
     // Solve the least-squares system A * solution = target
     // with Tikhonov regularization and additional constraints by
     // building the augmented system:
     //```
-    //    [ A^T*A + lambda*I     C^T ] [ x ] = [ A^T*target ]
-    //    [     C                0   ] [ y ]   [     0      ]
+    //    [ A^T*W*A + lambda*I     C^T ] [ x ] = [ A^T*W*target ]
+    //    [     C                  0   ] [ y ]   [     0        ]
     //```
     //  and solving
     size_t function_count(2 * valence + 1);
@@ -549,7 +563,7 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     augmented_A.setZero();
     // Top left: Tikhonov system
     augmented_A.topLeftCorner(function_count, function_count) =
-        A.transpose() * A +
+        A.transpose() * W * A +
         lambda * gsMatrix<real_t>::Identity(function_count, function_count);
 
     // Top right & Bottom right: Constraints
@@ -562,7 +576,7 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     augmented_A.bottomRightCorner(constraint_count, constraint_count).setZero();
 
     // Top of augmented target: target via Tikhonov
-    augmented_target.topRows(function_count) = A.transpose() * target;
+    augmented_target.topRows(function_count) = A.transpose() * W * target;
     // Bottom of augmented target: zero, to ensure constraints are
     // fulfilled
     augmented_target.bottomRows(constraint_count).setZero();
@@ -1224,8 +1238,8 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
         // of the original patch. For D == 3 this gives a 2D geometry; for D > 3
         // this gives a full 3D geometry. gsWriteParaview supports both.
         constexpr size_t geo_dim = (D - 1 < 3) ? D - 1 : 3;
-        gsTensorBSpline<2, real_t> patchGeo(patch.basis(),
-                                           patch.coefs().leftCols(geo_dim).eval());
+        gsTensorBSpline<2, real_t> patchGeo(
+            patch.basis(), patch.coefs().leftCols(geo_dim).eval());
 
         // Combine the two objects into an error field.
         gsField<> field(patchGeo, *result);
@@ -1414,7 +1428,6 @@ void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
     }
 }
 
-
 template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::initialize_data(std::string filepath)
 {
@@ -1441,8 +1454,8 @@ void gsFreeformSubdivision<N, D>::initialize_data(std::string filepath)
 
 template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::write_paraview(
-    std::string name, gsParaviewCollection* collection, gsParaviewCollection* cnet_collection, size_t timestep,
-    bool control_net)
+    std::string name, gsParaviewCollection* collection,
+    gsParaviewCollection* cnet_collection, size_t timestep, bool control_net)
 {
     auto mp(multipatch());
     std::string basename(name.substr(name.rfind('/') + 1));
@@ -1460,8 +1473,8 @@ void gsFreeformSubdivision<N, D>::write_paraview(
         {
             // Also register the control net in the collection
             cnet_collection->addPart(basename + "_" + std::to_string(j) +
-                                    "_cnet.vtp",
-                                timestep, "", j);
+                                         "_cnet.vtp",
+                                     timestep, "", j);
         }
     }
 }
