@@ -81,9 +81,10 @@ int main(int argc, char** argv)
     subdiv.initialize_data(filepath);
 
     // Single .pvd collection for all steps.
-    gsParaviewCollection collection("results/function_fit");
+    gsParaviewCollection collection("results/fit");
+    gsParaviewCollection cnet_collection("results/cnet");
 
-    subdiv.write_paraview("results/initial_data", &collection, 0, control_net);
+    subdiv.write_paraview("results/initial_data", &collection, &cnet_collection, 0, control_net);
 
     size_t i(1);
     for (char c : operations)
@@ -103,11 +104,13 @@ int main(int argc, char** argv)
         }
 
         subdiv.write_paraview("results/step" + std::to_string(i),
-                              &collection, i, control_net);
+                              &collection,&cnet_collection,  i, control_net);
         ++i;
     }
 
     collection.save();
+    if(control_net)
+        cnet_collection.save();
 
     return 0;
 }

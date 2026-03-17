@@ -346,6 +346,7 @@ public:
     /// written to paraview and registered to the collection.
     void write_paraview(std::string name,
                         gsParaviewCollection* collection = nullptr,
+                         gsParaviewCollection* cnet_collection = nullptr,
                         size_t timestep = 0, bool control_net = false);
 
 }; // namespace internal

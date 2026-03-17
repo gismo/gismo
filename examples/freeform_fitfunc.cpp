@@ -16,8 +16,8 @@
     control points for extraordinary vertices).
 
     \par Command-line arguments
-    - \b -m / \b --mesh (default: \c freeform/original/Val5Flat.xml): path to the
-      input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches),
+    - \b -m / \b --mesh (default: \c freeform/original/Val5Flat.xml): path to
+   the input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches),
       relative to \c filedata/.
     - \b -f / \b --function (default: \c "x+y"): analytic expression of the
       target function \f$f(x,y)\f$ to be fitted to the last coordinate.
@@ -127,6 +127,7 @@ int main(int argc, char** argv)
 
     // Single .pvd collection for all steps.
     gsParaviewCollection collection("results/function_fit");
+    gsParaviewCollection cnet_collection("results/function_cnet");
     gsParaviewCollection error_collection("results/function_error");
     std::vector<gsMatrix<real_t>> ev_coefs;
     std::vector<gsMatrix<real_t>> ev_coefs_outer;
@@ -151,7 +152,8 @@ int main(int argc, char** argv)
 
             const std::string stepname = "results/step" + std::to_string(i + 1);
 
-            subdiv.write_paraview(stepname, &collection, i + 1, control_net);
+            subdiv.write_paraview(stepname, &collection, &cnet_collection,
+                                  i + 1, control_net);
 
             // If the user wants to save the control net, we also want to save
             // the Greville control points for each EV.
@@ -166,10 +168,10 @@ int main(int argc, char** argv)
                     gsWriteParaviewPoints(ev_coefs[j], stepname + "_greville" +
                                                            std::to_string(j));
                     // Register that file in the time series collection
-                    collection.addPart("step" + std::to_string(i + 1) +
-                                           "_greville" + std::to_string(j) +
-                                           ".vtp",
-                                       i + 1, "Greville");
+                    cnet_collection.addPart("step" + std::to_string(i + 1) +
+                                                "_greville" +
+                                                std::to_string(j) + ".vtp",
+                                            i + 1, "Greville");
                 }
             }
         }
@@ -181,6 +183,8 @@ int main(int argc, char** argv)
     {
         collection.save();
         error_collection.save();
+        if (control_net)
+            cnet_collection.save();
     }
 
     if (write_errors)

@@ -1441,7 +1441,7 @@ void gsFreeformSubdivision<N, D>::initialize_data(std::string filepath)
 
 template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::write_paraview(
-    std::string name, gsParaviewCollection* collection, size_t timestep,
+    std::string name, gsParaviewCollection* collection, gsParaviewCollection* cnet_collection, size_t timestep,
     bool control_net)
 {
     auto mp(multipatch());
@@ -1456,10 +1456,10 @@ void gsFreeformSubdivision<N, D>::write_paraview(
     {
         collection->addPart(basename + "_" + std::to_string(j) + ".vts",
                             timestep, "", j);
-        if (control_net)
+        if (control_net && cnet_collection != nullptr)
         {
             // Also register the control net in the collection
-            collection->addPart(basename + "_" + std::to_string(j) +
+            cnet_collection->addPart(basename + "_" + std::to_string(j) +
                                     "_cnet.vtp",
                                 timestep, "", j);
         }
