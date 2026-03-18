@@ -199,7 +199,7 @@ int main(int argc, char** argv)
     if (write_errors)
     {
         // Write error matrix to errors.csv.
-        gsWriteCsv("errors.csv", errors);
+        gsWriteCsv("results/errors.csv", errors);
     }
 
     return 0;
