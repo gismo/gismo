@@ -858,6 +858,76 @@ split(Face f, Vertex v)
     set_halfedge(v, hold);
 }
 
+void
+gsSurfMesh::
+split(std::vector<Vertex> vv, Face f, Vertex v)
+{
+    /*
+      Split an arbitrary face into triangles by connecting specif vertex of f vector to vh.
+      - fh will remain valid (it will become one of the triangles)
+      - the halfedge handles of the new triangles will point to the old halfeges
+    */
+
+    Halfedge hend = halfedge(f);
+    do 
+    {
+        hend = next_halfedge(hend);
+    } while (from_vertex(hend) != vv[0]);
+
+
+    Halfedge h = next_halfedge(hend);
+
+    Halfedge hold = new_edge(from_vertex(hend), v);
+
+    index_t sz = vv.size();
+    hold = opposite_halfedge(hold);
+    int cnt, count=0;
+    Face fnew;
+    Halfedge hnew, holdinit=hold;
+
+    while (h != hend)
+    {
+        cnt = std::count(vv.begin(), vv.end(), to_vertex(h));
+        
+        if (cnt == 0)
+        {
+            h = next_halfedge(h);
+            continue;
+        }
+
+        Halfedge hnext = next_halfedge(h);
+        Halfedge hprev = prev_halfedge(h);
+
+
+        if (count==0)
+            fnew = f;
+        else
+            fnew = new_face();
+        
+        set_halfedge(fnew, h);
+        if (count == sz - 1)
+            hnew = opposite_halfedge(holdinit);
+        else
+            hnew = new_edge(to_vertex(h), v );
+
+
+        set_next_halfedge(hold, hprev);
+        set_next_halfedge(hprev, h);
+        set_next_halfedge(h, hnew);
+        set_next_halfedge(hnew, hold);
+
+        set_face(hnew, fnew);
+        set_face(hold, fnew);
+        set_face(h, fnew);
+        set_face(hprev, fnew);
+        
+        hold = opposite_halfedge(hnew);
+        count++;
+        h = hnext;
+    }
+
+    set_halfedge(v, hold);
+}
 
 void
 gsSurfMesh::
@@ -2301,6 +2371,46 @@ void gsSurfMesh::dual_mesh()
     
                 
     *this = std::move(dm);
+
+}
+
+
+gsSurfMesh gsSurfMesh::dual_meshed()
+{
+    // Dual-mesh instance
+    gsSurfMesh dm;
+
+    //Instances of the original mesh
+    gsSurfMesh::Vertex v;
+    gsSurfMesh::Face f;
+    gsSurfMesh::Face fop;
+    gsSurfMesh::Edge e;
+
+
+    // Calculate the dual vertices (from barycenter of original faces)
+
+    std::map<Face, Vertex> FVMap;
+
+    for (auto fit : faces()) {
+        v = dm.add_vertex(face_barycenter(fit));
+        FVMap[fit] = v;
+    }
+
+    std::vector<Vertex> df;
+    for (auto vit : vertices()) {
+        if (is_boundary(vit)) { continue; }
+        df.clear();
+        for (auto fit : faces(vit)) {
+            df.push_back(FVMap[fit]);
+        }
+        dm.add_face(df);
+
+
+    }
+
+
+
+    return dm;
 
 }
 

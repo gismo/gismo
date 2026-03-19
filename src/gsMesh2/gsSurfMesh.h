@@ -1544,6 +1544,15 @@ public:
      */
     void split(Face f, Vertex v);
 
+
+    /*
+      Split an arbitrary face into triangles by connecting each vertex of fh to vh.
+      - fh will remain valid (it will become one of the triangles)
+      - the halfedge handles of the new triangles will point to the old halfeges
+    */
+    void split(std::vector<Vertex> vv, Face f, Vertex v);
+
+
     /// Quad-split face connecting vertex \a v, starting from corner
     /// \a s of the face
     /// \a f is assumed to have 8 vertices, and contains halfedge \a s
@@ -1687,6 +1696,9 @@ public:
 
     /// creates dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
     void dual_mesh();
+
+    /// returns dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
+    gsSurfMesh dual_meshed();
 
     /// calculate barycenter of a face
     Point face_barycenter(Face f);
