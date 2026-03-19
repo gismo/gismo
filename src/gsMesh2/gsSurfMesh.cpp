@@ -2335,47 +2335,17 @@ gsMultiPatch<real_t> gsSurfMesh::linear_patches() const
 }
 
 
-void gsSurfMesh::dual_mesh()
+void gsSurfMesh::dual_mesh_inplace()
 {
     // Dual-mesh instance
-    gsSurfMesh dm;
-
-    //Instances of the original mesh
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Face f;
-    gsSurfMesh::Face fop;
-    gsSurfMesh::Edge e;
-
-
-    // Calculate the dual vertices (from barycenter of original faces)
-
-    std::map<Face, Vertex> FVMap;
-
-    for (auto fit : faces()) {
-        v = dm.add_vertex(face_barycenter(fit));
-        FVMap[fit] = v;
-    }
-
-    std::vector<Vertex> df;
-    for (auto vit : vertices()) {
-        if (is_boundary(vit)) { continue; }
-        df.clear();
-        for (auto fit : faces(vit)) {
-            df.push_back(FVMap[fit]);
-        }
-        dm.add_face(df);
-
-
-    }
-
-    
+    gsSurfMesh dm = dual_mesh();   
                 
     *this = std::move(dm);
 
 }
 
 
-gsSurfMesh gsSurfMesh::dual_meshed()
+gsSurfMesh gsSurfMesh::dual_mesh()
 {
     // Dual-mesh instance
     gsSurfMesh dm;

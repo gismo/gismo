@@ -1695,10 +1695,10 @@ public:
     void delete_face(Face f);
 
     /// creates dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
-    void dual_mesh();
+    void dual_mesh_inplace();
 
     /// returns dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
-    gsSurfMesh dual_meshed();
+    gsSurfMesh dual_mesh();
 
     /// calculate barycenter of a face
     Point face_barycenter(Face f);
