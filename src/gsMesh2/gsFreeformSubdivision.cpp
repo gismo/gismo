@@ -495,6 +495,8 @@ gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
     auto Apv = A.fullPivLu();
     Apv.setThreshold(1e-8);
     gsMatrix<> K = Apv.kernel();
+    // gsWrite(K, "../filedata/" + m_options.getString("model_patch_path") +
+    //                "Val" + std::to_string(valence) + "Kernel.xml");
 
     gsMatrix<> diff(2 * valence, 2 * valence + 1);
     diff.setZero();
@@ -522,10 +524,8 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     gsMatrix<real_t> weights;
     if (m_options.getSwitch("weighted_fit"))
     {
-        auto _readFile =
-            gsReadFile<>("freeform/val" +
-                             std::to_string(valence) + "_weights.xml",
-                         weights);
+        auto _readFile = gsReadFile<>(
+            "freeform/val" + std::to_string(valence) + "_weights.xml", weights);
     }
     else
     {

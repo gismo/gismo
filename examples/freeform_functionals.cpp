@@ -45,7 +45,7 @@ int main(int argc, char** argv)
     // CMD arguments
     std::string patchpath("freeform/original/");
     gsCmdLine cmd("Freeform subdivision");
-    index_t valence_max(9);
+    index_t valence_max(6);
     cmd.addString("p", "patchpath",
                   "The path to the files containing the model patches for EV "
                   "subdivision.",
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
     subdiv.options().setSwitch("optimize_fit", true);
 
     // Iterate all valences
-    for (size_t valence = 3; valence < size_t(valence_max); ++valence)
+    for (size_t valence = 3; valence <= size_t(valence_max); ++valence)
     {
         if (valence == 4)
             continue;
@@ -88,16 +88,18 @@ int main(int argc, char** argv)
                                        std::to_string(valence) + "Fct" +
                                        std::to_string(function) + ".xml");
 
-            // Apply functional-optimised smoothing to obtain the C1-constrained EV coefficients.
+            // Apply functional-optimised smoothing to obtain the C1-constrained
+            // EV coefficients.
             subdiv.smooth(1, ev_coefs, ev_coefs_outer);
             // Collect all other coefficients in a matrix
             coeffs.row(function - 1) = ev_coefs[0].transpose().row(2);
-            for(int i = 0; i < 3; i++)
+            for (int i = 0; i < 3; i++)
                 gsInfo << ev_coefs[0].transpose().row(i) << "\n";
             gsInfo << "\n";
         }
 
-        // Now `coeffs` contains a basis for the space of C1-compatible EV coefficient vectors.
+        // Now `coeffs` contains a basis for the space of C1-compatible EV
+        // coefficient vectors.
         auto legal_pl = coeffs.fullPivLu();
         legal_pl.setThreshold(1e-4);
         gsMatrix<> K = legal_pl.kernel().transpose();
