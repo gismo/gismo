@@ -18,6 +18,9 @@ namespace gismo
 {
 namespace expr
 {
+    
+template<class T> class onormal_expr;
+template<class T> EIGEN_STRONG_INLINE onormal_expr<T> nv(const gsGeometryMap<T>&);
 
 // Shortcuts for common quantities, for instance function
 // transformations by the geometry map \a G
