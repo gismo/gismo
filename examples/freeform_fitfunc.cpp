@@ -16,12 +16,12 @@
     control points for extraordinary vertices).
 
     \par Command-line arguments
-    - \b -m / \b --mesh (default: \c freeform/original/Val5Flat.xml): path to
+    - \b -m / \b --mesh (default: \c freeform/flat/Val5Flat.xml): path to
    the input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches),
       relative to \c filedata/.
     - \b -f / \b --function (default: \c "x+y"): analytic expression of the
       target function \f$f(x,y)\f$ to be fitted to the last coordinate.
-    - \b -p / \b --patches (default: \c freeform/original/): path, relative
+    - \b -p / \b --patches (default: \c freeform/bubble/): path, relative
       to \c filedata/, to the directory containing the model patch files for
       extraordinary-vertex subdivision.
     - \b -s / \b --steps (default: \c 2): number of refinement levels to test
@@ -60,8 +60,8 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // Command line inputs
-    std::string mesh_path("freeform/original/Val5Flat.xml");
-    std::string model_patch_path("freeform/original/");
+    std::string mesh_path("freeform/flat/Val5Flat.xml");
+    std::string model_patch_path("freeform/bubble/");
     index_t steps(2);
     index_t valence(-1);
     index_t samples(10);
@@ -119,7 +119,7 @@ int main(int argc, char** argv)
     if (valence > 0)
     {
         mesh_path =
-            "freeform/original/Val" + std::to_string(valence) + "Flat.xml";
+            "freeform/flat/Val" + std::to_string(valence) + "Flat.xml";
     }
 
     gsSurfMesh mesh = gsSurfMesh();

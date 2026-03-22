@@ -19,7 +19,7 @@
       to perform. Each character is executed in order:
       - \c d — one subdivision step (\c subdivide()).
       - \c s — one \f$C^1\f$ smoothing step (\c smooth(1)).
-    - \b -p / \b --patches (default: \c freeform/original/): path to the
+    - \b -p / \b --patches (default: \c freeform/bubble/): path to the
       directory containing the model patch \c .xml files used for
       extraordinary-vertex subdivision.
     - \b --cnet: if set, also writes the Bézier control net alongside the
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 {
     // Command line
     std::string filepath("off/octtorus.off");
-    std::string patchpath("freeform/original/");
+    std::string patchpath("freeform/bubble/");
     std::string operations("sd");
     bool control_net(false);
     bool optimize_fit(false);

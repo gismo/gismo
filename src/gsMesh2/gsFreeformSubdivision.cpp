@@ -502,8 +502,8 @@ gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
     diff.setZero();
     for (size_t i = 0; i < 2 * valence; i++)
     {
-        diff(i, 2 * valence) = 1.0;
-        diff(i, i) = -1.0;
+        diff(i,0) = 1.0;
+        diff(i, i+1) = -1.0;
     }
 
     gsMatrix<> w = (diff * K).colPivHouseholderQr().solve(-diff * solution);
@@ -735,7 +735,7 @@ void gsFreeformSubdivision<N, D>::smooth(
                 fitting_functions;
             fitting_functions.reserve(function_count);
 
-            for (size_t i = 1; i <= function_count; ++i)
+            for (size_t i = 0; i < function_count; ++i)
             {
                 // Construct the filepath for the ith basis function and
                 // load it with gismo utilities

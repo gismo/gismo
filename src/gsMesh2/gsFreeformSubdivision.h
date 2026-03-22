@@ -49,7 +49,7 @@ public: // Constructors
     ///   least-squares fit around extraordinary vertices using a per-sample
     ///   weight vector loaded from
     ///   \c filedata/freeform/val\<v\>_weights.xml.
-    /// - \c model_patch_path (string, default \c "freeform/original/"): path
+    /// - \c model_patch_path (string, default \c "freeform/bubble/"): path
     ///   to the directory containing the model patch \c .xml files.
     ///
     /// \param mesh Pointer to the \c gsSurfMesh to be targeted by this object.
@@ -66,7 +66,7 @@ public: // Constructors
                             "`filedata/freeform/val<v>_weights.xml`.",
                             false);
         m_options.addString("model_patch_path", "Path to the model patches.",
-                            "freeform/original/");
+                            "freeform/bubble/");
     }
 
 private: // Helper functions

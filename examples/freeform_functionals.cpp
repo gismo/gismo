@@ -21,7 +21,7 @@
     subdirectory of \c filedata.
 
     \par Command-line arguments
-    - \b -p / \b --patchpath (default: \c freeform/original/): path, relative
+    - \b -p / \b --patchpath (default: \c freeform/bubble/): path, relative
       to \c filedata/, to the directory that contains the model patch files
       \c Val\<v\>Fct\<f\>.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
@@ -43,7 +43,7 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("freeform/original/");
+    std::string patchpath("freeform/bubble/");
     gsCmdLine cmd("Freeform subdivision");
     index_t valence_max(6);
     cmd.addString("p", "patchpath",
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
         std::vector<gsMatrix<real_t>> ev_coefs_outer;
 
         // Iterate all functions for that valence
-        for (size_t function = 1; function <= 2 * valence + 1; ++function)
+        for (size_t function = 0; function < 2 * valence + 1; ++function)
         {
             gsInfo << "Function " << function << "\n";
             // Load the basis function patch file.
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
             // EV coefficients.
             subdiv.smooth(1, ev_coefs, ev_coefs_outer);
             // Collect all other coefficients in a matrix
-            coeffs.row(function - 1) = ev_coefs[0].transpose().row(2);
+            coeffs.row(function) = ev_coefs[0].transpose().row(2);
             for (int i = 0; i < 3; i++)
                 gsInfo << ev_coefs[0].transpose().row(i) << "\n";
             gsInfo << "\n";
