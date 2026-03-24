@@ -1086,7 +1086,7 @@ void gsSurfMesh::quad_split(index_t w)
 
 
         if (!nm.vprops_.has("v:neighval"))
-            Vertex_property<int> neighbor_valence_verts = nm.add_vertex_property<int>("v:neighval", 4);
+            nm.add_vertex_property<int>("v:neighval", 4);
 
         for (auto eit : edges())
         {
@@ -2561,7 +2561,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         result.add_vertex(gsSurfMesh::Point(x,y,z));
     }
 
-    /* //Alternative for reading quads only (with complex topolog)
+    // /* //Alternative for reading quads only (with complex topolog)
    unsigned k, c = 0;
     std::vector<gsSurfMesh::Vertex> face(4);
     std::vector<gsSurfMesh::Edge> e(4);
@@ -2580,6 +2580,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
     }
     //*/
 
+    /*
     unsigned k, c = 0;
     std::vector<gsSurfMesh::Vertex> face;
     for (unsigned i=0; i<nf; ++i)
@@ -2593,6 +2594,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         }
         result.add_face(face);
     }
+    //*/
 
     if (0!=ne)
     {
