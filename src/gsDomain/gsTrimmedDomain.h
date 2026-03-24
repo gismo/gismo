@@ -59,6 +59,8 @@ protected:
     /// for their respective level L, making the domain self-contained and independent of any basis.
     std::vector< std::vector< std::vector<T> > > m_breaks;
 
+    short_t m_deg; // For now: the degree is here: we need somehow to get the quadrature order needed for integrals...
+
 public: // virtual interface
 
     virtual gsMatrix<T> boundingBox() const override
@@ -173,6 +175,9 @@ public: // non-virtual interface
     }
 
     short_t dim() const override { return d; }
+
+    short_t degree(short_t i = 0) const
+    {GISMO_UNUSED(i); return m_deg;}
 
     const Tree_t & tree() const { return m_tree; }
 
@@ -410,6 +415,7 @@ protected:
     /// Initializes from a tensor B-spline basis (uses its knot vectors as the level-0 grid).
     void init(const gsTensorBSplineBasis<d,T> & tbasis, index_t samples = 5)
     {
+        m_deg = tbasis.maxDegree();
         m_breaks.clear();
         m_breaks.resize(1);
         m_breaks[0].resize(d);
