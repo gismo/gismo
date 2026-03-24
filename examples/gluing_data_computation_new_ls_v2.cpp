@@ -358,8 +358,8 @@ int main(int argc, char* argv[])
         if (D1.minCoeff() * D1.maxCoeff() < 0 ||
             D2.minCoeff() * D2.maxCoeff() < 0)
         {
-            gsInfo << "WARNING: D1 or D2 changes sign -- geometry may be degenerate.\n";
-            continue;
+            gsInfo << "WARNING: D1 or D2 changes sign -- geometry is degenerate.\n";
+            return -1;
         }
 
         gsInfo << "D1 range: [" << D1.minCoeff() << ", " << D1.maxCoeff() << "]\n";
@@ -533,7 +533,8 @@ int main(int argc, char* argv[])
                     gv(i,1) =  p1*D2(i);
                     gv(i,2) = -p0*D1(i);
                     gv(i,3) = -p1*D1(i);
-                }
+                }//this is redundant, we could just reuse the fv matrix 
+                //from before with some sign changes
 
                 gsMatrix<T> H(4,4); H.setZero();
                 gsVector<T> d_vec(4); d_vec.setZero();
