@@ -78,6 +78,7 @@ public:
     gsOptionList defaultOptions()
     {
         gsOptionList opt;
+        opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
         opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );

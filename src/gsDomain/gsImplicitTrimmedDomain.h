@@ -67,6 +67,8 @@ public:
         this->init();
     }
 
+    const gsFunction<T> & implicitFunction() const { return *m_implFunction; };
+
     inline gsVector<short_t> sign(const gsMatrix<T> & u)
     {
         gsVector<T> val = m_implFunction->eval(u).row(0);

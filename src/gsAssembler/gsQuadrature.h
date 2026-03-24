@@ -23,6 +23,10 @@
 
 #include <gsDomain/gsDomainIterator.h>
 
+#ifdef gsAlgoim_ENABLED
+#include <gsAlgoim/gsAlgoimRule.h>
+#endif
+
 namespace gismo
 {
 
@@ -91,8 +95,9 @@ struct gsQuadrature
     {
         GaussLegendre = 1, ///< Gauss-Legendre quadrature
         GaussLobatto  = 2, ///< Gauss-Lobatto quadrature
-        PatchRule     = 3  ///< Patch-wise quadrature rule  (Johannessen 2017)
-
+        PatchRule     = 3, ///< Patch-wise quadrature rule  (Johannessen 2017)
+        CutCellRule   = 11,
+        AlgoimRule    = 12
     };
     /*
     Reference:
@@ -183,6 +188,10 @@ struct gsQuadrature
             // quA: Order of the target space
             // quB: Regularity of the target space
             return gsPatchRule<T>::make(domain,cast<T,index_t>(quA),quB,over,fixDir);
+        }
+        else if (qu==AlgoimRule)
+        {
+            return gsAlgoimGenericRule<T>::make(domain);
         }
         else
         {
