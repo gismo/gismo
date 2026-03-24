@@ -358,22 +358,16 @@ namespace gismo {
     gsSurfMesh::Face_property<Point>
         gsSubdivScheme::ds_vertex_limits(std::string label)
     {
-        auto points = m_mesh->get_vertex_property<Point>("v:point");
         auto limits = m_mesh->add_face_property<Point>((label), Point(0, 0, 0));
-        real_t n;
-#   pragma omp parallel for default(shared) private(n)
+#   pragma omp parallel for default(shared)
         for (auto fit = m_mesh->faces_begin(); fit < m_mesh->faces_end(); ++fit)
         {
-            n = m_mesh->valence(*fit);
             if (m_mesh->is_boundary(*fit)) // TODO: Deprecate this feature by using middle edge point
             {
                 gsWarn << "Boundary face is ignored.\n";
                 continue;
             }
-
-            auto& pt = limits[*fit];
-            pt = m_mesh->face_barycenter(*fit);
-            
+            limits[*fit] = m_mesh->face_barycenter(*fit);
         }
 
         return limits;
@@ -385,7 +379,7 @@ namespace gismo {
     {
         auto points = m_mesh->get_vertex_property<Point>("v:point");
         auto limits = m_mesh->add_face_property<Point>((label), Point(0, 0, 0));
-        real_t n;
+        unsigned int n;
         Halfedge he,hh;
         int i;
         Point t1, t2;
@@ -416,8 +410,6 @@ namespace gismo {
 
             if (normalize)
                 pt = pt.normalized();
-
-
         }
         
         return limits;
