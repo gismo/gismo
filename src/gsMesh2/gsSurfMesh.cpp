@@ -2561,22 +2561,29 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         result.add_vertex(gsSurfMesh::Point(x,y,z));
     }
 
-    // /* //Alternative for reading quads only (with complex topolog)
+   // /* //Alternative for reading quads only (with complex topolog)
    unsigned k, c = 0;
     std::vector<gsSurfMesh::Vertex> face(4);
     std::vector<gsSurfMesh::Edge> e(4);
     for (unsigned i=0; i<nf; ++i)
     {
         gsGetInt(str, c);
-        GISMO_ASSERT(4==c, "quads?");
+        face.resize(c);
+        //GISMO_ASSERT(4==c, "quads?");
         for (unsigned j=0; j<c; ++j)
         {
             gsGetInt(str, k);
             face[j] = gsSurfMesh::Vertex(k);
         }
-        for (unsigned j=0; j<c; ++j)
-            e[j] = result.find_or_add_edge(face[j],face[(j+1)%c]);
-        result.add_quad(e[0], e[1], e[2], e[3]);
+        if (c == 4)
+        {
+            for (unsigned j = 0; j < c; ++j)
+                e[j] = result.find_or_add_edge(face[j], face[(j + 1) % c]);
+            result.add_quad(e[0], e[1], e[2], e[3]);
+        }
+        else
+            result.add_face(face);
+
     }
     //*/
 
