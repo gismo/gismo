@@ -1,4 +1,14 @@
 
+class gsModule
+{
+public:
+    virtual ~gsModule()   { }
+    virtual bool load()   { }
+    virtual bool unload() { }
+};
+
+
+
 class gsModules
 {
     template <typename T>
@@ -22,7 +32,6 @@ class gsModules
 protected:
     std::map<std::string, void*> m_optimizers; // registered optimizers
 }
-
 
 
 
