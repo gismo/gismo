@@ -17,11 +17,17 @@
 
 class gsFileIo : public gsModule
 {
+    const std::string m_ext;
 public:
-    virtual std::string extension() = 0;
+    typedef gsFileData<> FileData;
 
-    virtual void read(std::string fname) {GISMO_NO_IMPLEMENTATION }
+public:
+    
+    gsFileIo(std::string _ext) : m_ext(give(_ext)) { }
 
-    virtual void write(std::string fname) {GISMO_NO_IMPLEMENTATION }
+    const std::string & extension() {return m_ext;}
+
+    virtual bool read (std::string fname, FileData & data) { GISMO_NO_IMPLEMENTATION }
+
+    virtual bool write(std::string fname, FileData & data) { GISMO_NO_IMPLEMENTATION }
 };
-

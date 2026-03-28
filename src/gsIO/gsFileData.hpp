@@ -177,12 +177,15 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
 
     // Identify filetype by extension
     String ext = gsFileManager::getExtension(fn);
-
+    
     if (ext== "xml")
         return readXmlFile(m_lastPath, recursive);
     else if (ext== "gz" && util::ends_with(m_lastPath, ".xml.gz") )
         return readXmlGzFile(m_lastPath, recursive);
-    else if (ext== "txt")
+
+    // Search for a reader for this file
+
+    if (ext== "txt")
         return readGeompFile(m_lastPath);
     else if (ext== "g2")
         return readGoToolsFile(m_lastPath);

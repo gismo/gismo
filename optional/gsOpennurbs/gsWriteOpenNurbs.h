@@ -30,12 +30,9 @@ namespace gismo {
 
 namespace extensions {
 
-/// \todo Complete writing to onurbs
-/*
-template <typename T>
-void gsWriteOpenNurbs(const gsGeometry<T>& geom,
-                      const std::string& fileName);
-*/
+
+/// Writes a 3dm file using OpenNurbs
+bool gsWriteOpenNurbs( const char * arg, const gsFileData<> & data );
 
 /// Writes a planar domain to OpenNurbs file
 template<class T>

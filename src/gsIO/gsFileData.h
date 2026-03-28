@@ -112,6 +112,8 @@ private:
 
 protected:
 
+    FileData & xmltree() {return *data;}
+    const FileData & xmltree() const {return *data;}
 /*
  * File readers
  */

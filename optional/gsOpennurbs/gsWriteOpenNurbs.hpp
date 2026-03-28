@@ -23,6 +23,8 @@
 #include <gsNurbs/gsKnotVector.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 
+#include <gsIO/gsFileData.h>
+
 #include <onurbs/opennurbs.h>
 
 #include <sstream>
@@ -117,7 +119,6 @@ bool writeON_Write3dm(ONX_Model & model, const std::string & fname)
     return true;
 }
 
-    
 /// Writes a Curve to OpenNurbs file
 template<class T>
 bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std::string & name)
@@ -333,6 +334,26 @@ bool writeON_Mesh(const gsMesh<T> & msh, const std::string & name)
           delete mesh;
 
     return writeON_Write3dm(model,name+".3dm");
+}
+
+/// Writes a 3dm file using OpenNurbs
+bool gsWriteOpenNurbs(const std::string & name, const gsFileData<> & data)
+{
+    ONX_Model model;
+    writeON_Init(model);
+
+    //These are composite data, no need to write
+    //gsPlanarDomain<>
+    //gsMultiPatch<>
+        
+    for( auto & v : data.getAll<gsCurve<> >() )
+        writeON_NurbsCurve(*v, model, "curve" );
+    for( auto & v : data.getAll<gsSurface<> >() )
+        writeON_NurbsSurface(*v, model, "surface" );
+    // for( auto & v : data.getAll<gsMesh<>() > )
+        //writeON_Mesh(*v, model /*id_string*/ );
+
+    return writeON_Write3dm(model, name+".3dm");
 }
 
 }// namespace extensions

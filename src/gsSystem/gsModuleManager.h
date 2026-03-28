@@ -13,9 +13,6 @@
 
 #pragma once
 
-#include <gsSystem/gsModule.h>
-#include <gsSystem/gsDyLib.h>
-
 #define ___YPLUGS_BOOTSTRAP_PROC_NAME __y_plugs_gsModule_entry_point
 #define ___YPLUGS_BOOTSTRAP_XSTR(s) ___YPLUGS_BOOTSTRAP_STR(s)
 #define ___YPLUGS_BOOTSTRAP_STR(s) #s
@@ -41,10 +38,24 @@
 #include <dlfcn.h>
 #endif
 
+#include<vector>
+
+#include <gsCore/gsConfig.h>
+#include <gsCore/gsDebug.h>
+#include <gsCore/gsExport.h>
+#include <gsCore/gsMemory.h>
+#include <gsSystem/gsModule.h>
+#include <gsSystem/gsDyLib.h>
+
+#include<unordered_map>
+#include <cassert>
+
 namespace gismo
 {
+
+class gsModuleManager;
 /// Singleton function returning the gsMpi helper object
-GISMO_EXPORT gsMpi & gsMpiSingleton(const int& argc, char** argv);
+GISMO_EXPORT gsModuleManager & gsModuleManagerSingleton();
 
 /** 
     @brief 
@@ -52,7 +63,7 @@ GISMO_EXPORT gsMpi & gsMpiSingleton(const int& argc, char** argv);
 */
 class gsModuleManager
 {
-    friend GISMO_EXPORT gsMpi & gsMpiSingleton(const int& argc, char** argv);
+    friend GISMO_EXPORT gsModuleManager & gsModuleManagerSingleton();
 public:
     gsModule* load_plugin(const std::string& library_name)
     {
@@ -65,12 +76,12 @@ public:
         }
         gsDyLib& library = library_iterator->second;
 
-        gsModule* plugin_instance_ptr = library.getPluginInstance();
+        gsModule* plugin_instance_ptr = library.getInstance();
         m_modules.emplace_back(plugin_instance_ptr);
 
         assert((uintptr_t)plugin_instance_ptr
                == (uintptr_t)m_modules.back().get());
-        plugin_instance_ptr->init();
+        plugin_instance_ptr->load();
 
         return plugin_instance_ptr;
     }
@@ -82,8 +93,8 @@ public:
     }
 
 private:
-    gsModuleManager();
-    gsModuleManager();
+    gsModuleManager() { }
+    gsModuleManager(const gsModuleManager&);
     std::unordered_map<std::string, gsDyLib> m_libraries;
     std::vector<std::unique_ptr<gsModule>> m_modules;
 };

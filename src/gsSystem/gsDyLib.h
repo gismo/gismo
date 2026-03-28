@@ -1,4 +1,6 @@
+#pragma once
 
+#include <string>
 
 namespace gismo
 {
@@ -37,9 +39,9 @@ public:
         if(handle != nullptr)
         {
 #ifdef _WIN32
-            FreeLibrary(HMODULE(lib_handle));
+            FreeLibrary(HMODULE(handle));
 #else
-            dlclose(lib_handle);
+            dlclose(handle);
 #endif
             handle = nullptr;
         }
@@ -62,11 +64,11 @@ public:
         *this = std::move(other);
     }
 
-    plugin* getPluginInstance()
+    gsModule* getInstance()
     {
-        using boostrap_function = plugin* (*)();
+        using boostrap_function = gsModule* (*)();
 
-        std::string& function_name =  ___YPLUGS_BOOTSTRAP_PROC_NAME_STR;
+        const std::string function_name =  ___YPLUGS_BOOTSTRAP_PROC_NAME_STR;
         auto fptr = reinterpret_cast<boostrap_function>(
 #ifdef _WIN32
 			GetProcAddress(HMODULE(handle), LPCSTR(function_name.c_str()));

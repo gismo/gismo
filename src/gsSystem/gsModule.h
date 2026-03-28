@@ -1,14 +1,17 @@
 
+#pragma once
+
+#include <gsCore/gsConfig.h>
+
 class gsModule
 {
 public:
-    virtual ~gsModule()   { }
-    virtual bool load()   { }
-    virtual bool unload() { }
+    virtual ~gsModule()   { GISMO_NO_IMPLEMENTATION }
+    virtual bool load()   { GISMO_NO_IMPLEMENTATION }
+    virtual bool unload() { GISMO_NO_IMPLEMENTATION }
 };
 
-
-
+/*
 class gsModules
 {
     template <typename T>
@@ -32,7 +35,7 @@ class gsModules
 protected:
     std::map<std::string, void*> m_optimizers; // registered optimizers
 }
-
+*/
 
 
 
