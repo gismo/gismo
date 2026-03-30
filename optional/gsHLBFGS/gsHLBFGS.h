@@ -6,6 +6,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsOptimizer/gsOptimizer.h>
+#include <gsOptimizer/gsOptimizerRegistry.h>
 
 #include <gsOptimizer/gsOptProblem.h>
 
@@ -356,6 +357,19 @@ const std::function<void(int N, T* x, T* prev_x, T* f, T* g)> * gsHLBFGS<T>::loc
 template<typename T>
 const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> * gsHLBFGS<T>::local_newiter_callback = nullptr;
 
+namespace
+{
+    struct gsHLBFGSRegistrar
+    {
+        gsHLBFGSRegistrar()
+        {
+            gismo::gsOptimizerRegistry::register_("gsHLBFGS", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsHLBFGS<real_t>());
+            });
+        }
+    };
+    static gsHLBFGSRegistrar gsHLBFGS_registrar_;
+}
 
 // using gsHLBFGS = gdc::GradientDescent<T, Objective, StepSize, Callback, FiniteDifferences>;
 

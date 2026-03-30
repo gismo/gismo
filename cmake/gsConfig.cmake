@@ -81,6 +81,12 @@ foreach(config ${CMAKE_CONFIGURATION_TYPES}) # For Visual studio
     set(${PROJECT_NAME}_LIBRARY_OUTPUT_DIRECTORY_${CONFIG} lib)
 endforeach()
 
+# Module install directory (default: build lib dir for development)
+if(NOT DEFINED GISMO_MODULE_INSTALL_DIR)
+  set(GISMO_MODULE_INSTALL_DIR "${CMAKE_BINARY_DIR}/lib" CACHE PATH
+    "Install directory for gismo MODULE .so files (searched by gsModuleLoader)")
+endif()
+
 #Configure Valgrind
 #find_program( MEMORYCHECK_COMMAND valgrind )
 #--gen-suppressions=all --trace-children=yes --track-origins=yes

@@ -28,6 +28,8 @@ class gsOptimizer
 {
 public:
 
+    typedef memory::unique_ptr<gsOptimizer> uPtr;
+
     /** default constructor */
     gsOptimizer()
     :

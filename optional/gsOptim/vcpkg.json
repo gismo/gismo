@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "gismo-gsoptim",
+  "version": "1.0.0",
+  "description": "gsOptim: OptimLib optimizer bindings for G+Smo",
+  "homepage": "https://github.com/gismo/gsOptim",
+  "license": "MPL-2.0",
+  "dependencies": [
+    {
+      "name": "gismo",
+      "version>=": "25.07.0"
+    }
+  ]
+}

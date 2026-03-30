@@ -1,0 +1,33 @@
+/** @file gsModuleVersion.h.in
+
+    @brief Template for the per-module ABI version header.
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): H.M. Verhelst
+
+    DO NOT include this file directly.
+    Each module's CMakeLists.txt calls configure_file() on this template,
+    producing e.g. "gsOptimModuleVersion.h" in the module's binary directory.
+    That generated file is then included by the module's entry point .cpp.
+*/
+
+#pragma once
+
+// ABI version of the gismo host this module was compiled against.
+// The patch level is intentionally omitted: patch changes must be ABI-compatible.
+#define GISMO_MODULE_ABI_VERSION_MAJOR @gismo_VERSION_MAJOR@
+#define GISMO_MODULE_ABI_VERSION_MINOR @gismo_VERSION_MINOR@
+
+// Module identity (filled by CMake per-module)
+#define GISMO_MODULE_NAME    "@GISMO_MODULE_NAME@"
+#define GISMO_MODULE_VERSION "@GISMO_MODULE_VERSION@"
+
+// Scalar types the module was compiled with.
+// These must exactly match the host's real_t / index_t.
+#define GISMO_MODULE_COEFF_TYPE "@GISMO_COEFF_TYPE@"
+#define GISMO_MODULE_INDEX_TYPE "@GISMO_INDEX_TYPE@"

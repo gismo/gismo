@@ -14,6 +14,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsOptimizer.h>
+#include <gsOptimizer/gsOptimizerRegistry.h>
 
 #   define Eigen gsEigen
 #define OPTIM_ENABLE_EIGEN_WRAPPERS
@@ -297,6 +298,12 @@ public:
 public:
 
     /// See \ref gsOptim
+    gsOptimBFGS() : Base()
+    {
+        this->defaultOptions();
+    }
+
+    /// See \ref gsOptim
     gsOptimBFGS(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
@@ -342,6 +349,12 @@ public:
     using Base = gsOptim<T>;
 
 public:
+
+    /// See \ref gsOptim
+    gsOptimLBFGS() : Base()
+    {
+        this->defaultOptions();
+    }
 
     /// See \ref gsOptim
     gsOptimLBFGS(gsOptProblem<T> * problem) : Base(problem)
@@ -391,6 +404,12 @@ public:
     using Base = gsOptim<T>;
 
 public:
+
+    /// See \ref gsOptim
+    gsOptimCG() : Base()
+    {
+        this->defaultOptions();
+    }
 
     /// See \ref gsOptim
     gsOptimCG(gsOptProblem<T> * problem) : Base(problem)
@@ -444,6 +463,12 @@ public:
     using Base = gsOptim<T>;
 
 public:
+
+    /// See \ref gsOptim
+    gsOptimGD() : Base()
+    {
+        this->defaultOptions();
+    }
 
     /// See \ref gsOptim
     gsOptimGD(gsOptProblem<T> * problem) : Base(problem)
@@ -561,6 +586,12 @@ public:
 public:
 
     /// See \ref gsOptim
+    gsOptimNM() : Base()
+    {
+        this->defaultOptions();
+    }
+
+    /// See \ref gsOptim
     gsOptimNM(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
@@ -624,6 +655,12 @@ public:
     using Base = gsOptim<T>;
 
 public:
+
+    /// See \ref gsOptim
+    gsOptimDE() : Base()
+    {
+        this->defaultOptions();
+    }
 
     /// See \ref gsOptim
     gsOptimDE(gsOptProblem<T> * problem) : Base(problem)
@@ -723,6 +760,14 @@ class gsOptimDEPRMM : public gsOptimDE<T>
 {
     using Base = gsOptimDE<T>;
 public:
+
+    /// See \ref gsOptim
+    gsOptimDEPRMM() : Base()
+    {
+        this->defaultOptions();
+    }
+
+    /// See \ref gsOptim
     gsOptimDEPRMM(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
@@ -747,6 +792,12 @@ public:
     using Base = gsOptim<T>;
 
 public:
+
+    /// See \ref gsOptim
+    gsOptimPSO() : Base()
+    {
+        this->defaultOptions();
+    }
 
     /// See \ref gsOptim
     gsOptimPSO(gsOptProblem<T> * problem) : Base(problem)
@@ -846,6 +897,12 @@ class gsOptimPSODV : public gsOptimPSO<T>
 public:
 
     /// See \ref gsOptim
+    gsOptimPSODV() : Base()
+    {
+        this->defaultOptions();
+    }
+
+    /// See \ref gsOptim
     gsOptimPSODV(gsOptProblem<T> * problem) : Base(problem)
     {
         this->defaultOptions();
@@ -870,6 +927,12 @@ public:
     using Base = gsOptim<T>;
 
 public:
+
+    /// See \ref gsOptim
+    gsOptimSUMT() : Base()
+    {
+        this->defaultOptions();
+    }
 
     /// See \ref gsOptim
     gsOptimSUMT(gsOptProblem<T> * problem) : Base(problem)
@@ -922,6 +985,47 @@ protected:
     using Base::m_numIterations;
     using Base::m_finalObjective;
 };
+
+namespace
+{
+    struct gsOptimRegistrar
+    {
+        gsOptimRegistrar()
+        {
+            gismo::gsOptimizerRegistry::register_("gsOptim-BFGS", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimBFGS<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-LBFGS", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimLBFGS<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-CG", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimCG<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-GD", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimGD<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-NM", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimNM<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-DE", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimDE<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-DEPRMM", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimDEPRMM<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-PSO", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimPSO<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-PSODV", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimPSODV<real_t>());
+            });
+            gismo::gsOptimizerRegistry::register_("gsOptim-SUMT", []() {
+                return gismo::gsOptimizer<real_t>::uPtr(new gsOptimSUMT<real_t>());
+            });
+        }
+    };
+    static gsOptimRegistrar gsOptim_registrar_;
+}
 
 } // end namespace gismo
 

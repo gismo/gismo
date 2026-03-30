@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "gismo",
+  "version": "25.07.0",
+  "description": "G+Smo: Geometry + Simulation Modules — a C++ library for isogeometric analysis",
+  "homepage": "https://github.com/gismo/gismo",
+  "license": "MPL-2.0",
+  "dependencies": [
+    {
+      "name": "eigen3",
+      "version>=": "3.4.0"
+    }
+  ],
+  "features": {
+    "gsoptim": {
+      "description": "OptimLib-based optimizer module (gsOptim)",
+      "dependencies": []
+    },
+    "gshlbfgs": {
+      "description": "HLBFGS optimizer module (gsHLBFGS)",
+      "dependencies": []
+    },
+    "superlu": {
+      "description": "SuperLU sparse direct solver",
+      "dependencies": [
+        { "name": "superlu", "version>=": "5.3.0" }
+      ]
+    },
+    "openmp": {
+      "description": "OpenMP parallelization support",
+      "dependencies": []
+    },
+    "mpi": {
+      "description": "MPI distributed-memory parallelization",
+      "dependencies": [
+        { "name": "mpi" }
+      ]
+    }
+  }
+}

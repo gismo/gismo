@@ -191,6 +191,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY})
   endif()
 
+  # Link dl for gsModuleLoader (dlopen/dlsym); CMAKE_DL_LIBS is empty on
+  # macOS/Windows where these symbols are in the system library.
+  if(CMAKE_DL_LIBS)
+    target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS})
+  endif()
+
   if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
     if(CMAKE_CONFIGURATION_TYPES)
       add_custom_command(

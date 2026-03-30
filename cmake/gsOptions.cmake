@@ -50,6 +50,13 @@ endif()
 option(GISMO_BUILD_LIB           "Build shared library"      true   )
 message ("  GISMO_BUILD_LIB         ${GISMO_BUILD_LIB}")
 
+option(GISMO_BUILD_MODULE_LIB    "Build optional modules as runtime-loadable MODULE .so files (requires GISMO_BUILD_LIB=ON)" false )
+if(GISMO_BUILD_MODULE_LIB AND NOT GISMO_BUILD_LIB)
+  message(WARNING "GISMO_BUILD_MODULE_LIB=ON requires GISMO_BUILD_LIB=ON — forcing GISMO_BUILD_LIB=ON")
+  set(GISMO_BUILD_LIB ON CACHE BOOL "Build shared library" FORCE)
+endif()
+message ("  GISMO_BUILD_MODULE_LIB  ${GISMO_BUILD_MODULE_LIB}")
+
 option(GISMO_BUILD_MEX           "Build Mex files"           false  )
 if  (${GISMO_BUILD_MEX})
 message ("  GISMO_BUILD_MEX         ${GISMO_BUILD_MEX}")

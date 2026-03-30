@@ -134,12 +134,22 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfigExt.h
   DESTINATION include/${PROJECT_NAME}/gsCore/)
 
+# Install gsModules headers (for external module authors)
+install(FILES
+  "${PROJECT_SOURCE_DIR}/src/gsModules/gsModuleInfo.h"
+  "${PROJECT_SOURCE_DIR}/src/gsModules/gsModuleLoader.h"
+  "${PROJECT_SOURCE_DIR}/src/gsModules/gsModuleVersion.h.in"
+  "${PROJECT_SOURCE_DIR}/src/gsModules/README.md"
+  DESTINATION "include/${PROJECT_NAME}/gsModules"
+  COMPONENT devel)
+
 # Install cmake files
 install(FILES
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
   "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/gsConfig.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsModule.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/gsDebugExtra.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/AddCompilerFlag.cmake"

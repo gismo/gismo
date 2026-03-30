@@ -15,17 +15,11 @@
 
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsGradientDescent.h>
-
-#ifdef gsHLBFGS_ENABLED
-#include <gsHLBFGS/gsHLBFGS.h>
-#endif
+#include <gsOptimizer/gsOptimizerRegistry.h>
+#include <gsModules/gsModuleLoader.h>
 
 #ifdef gsIpOpt_ENABLED
 #include <gsIpOpt/gsIpOpt.h>
-#endif
-
-#ifdef gsOptim_ENABLED
-#include <gsOptim/gsOptim.h>
 #endif
 
 using namespace gismo;
@@ -186,11 +180,14 @@ private:
 
 int main(int argc, char* argv[])
 {
+    // Load optimizer modules at runtime (NEEDED)
+    gsModuleLoader::loadAll();
+
     //! [Parse command line]
     index_t solver  = 0;
 
     gsCmdLine cmd("Demonstrates the use of optimizers.");
-    cmd.addInt( "s", "solver", "Solver used. 0:gsGradientDescent, 1:gsHLBFGS, 2:IpOpt", solver);
+    cmd.addInt( "s", "solver", "Solver used. 0:gsGradientDescent, 1:gsHLBFGS, 2:IpOpt, 3:gsOptim-LBFGS", solver);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -206,40 +203,46 @@ int main(int argc, char* argv[])
     //! [Optimizer selection]
     gsOptProblemExample<real_t> problem;
 
-    gsOptimizer<real_t> * optimizer;
+    gsOptimizer<real_t>::uPtr optPtr;
     switch (solver)
     {
         case 0 :
-        optimizer = new gsGradientDescent<>(&problem);
+        optPtr = gsOptimizer<real_t>::uPtr(new gsGradientDescent<>(&problem));
         // Set the minimum length of the gradient.
         // The optimizer stops minimizing if the gradient length falls below this
         // value (default is 1e-9).
-        optimizer->options().setReal("MinGradientLength",1e-9);
+        optPtr->options().setReal("MinGradientLength",1e-9);
 
         // Set the minimum length of the step.
         // The optimizer stops minimizing if the step length falls below this
         // value (default is 1e-9).
-        optimizer->options().setReal("MinStepLength",1e-9);
+        optPtr->options().setReal("MinStepLength",1e-9);
         break;
 
-#ifdef gsHLBFGS_ENABLED
         case 1 :
-        optimizer = new gsHLBFGS<real_t>(&problem);
+        if (!gsOptimizerRegistry::has("gsHLBFGS"))
+            GISMO_ERROR("gsHLBFGS optimizer not available");
+        optPtr = gsOptimizerRegistry::get("gsHLBFGS");
+        optPtr->setProblem(&problem);
         break;
-#endif
+
 #ifdef gsIpOpt_ENABLED
         case 2:
-        optimizer = new gsIpOpt<real_t>(&problem);
+        optPtr = gsOptimizer<real_t>::uPtr(new gsIpOpt<real_t>(&problem));
         break;
 #endif
-#ifdef gsOptim_ENABLED
+
         case 3 :
-        optimizer = new gsOptim<real_t>::LBFGS(&problem);
+        if (!gsOptimizerRegistry::has("gsOptim-LBFGS"))
+            GISMO_ERROR("gsOptim-LBFGS optimizer not available");
+        optPtr = gsOptimizerRegistry::get("gsOptim-LBFGS");
+        optPtr->setProblem(&problem);
         break;
-#endif
+
         default:
         GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");
     }
+    gsOptimizer<real_t>* optimizer = optPtr.get();
     //! [Optimizer selection]
 
     //! [Optimizer options]
@@ -267,6 +270,5 @@ int main(int argc, char* argv[])
     gsInfo << "Final design: " << optimizer->currentDesign().transpose() <<"\n";
     //! [Output]
 
-    delete optimizer;
     return EXIT_SUCCESS;
 }

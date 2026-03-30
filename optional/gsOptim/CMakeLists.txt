@@ -48,36 +48,57 @@ set(GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OPTIM_INCLUDE_DIR}
 
 include_directories(${GISMO_INCLUDE_DIRS})
 
-add_library(${PROJECT_NAME} INTERFACE)
-target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
-add_dependencies(${PROJECT_NAME} optim)
+# -----------------------------------------------------------------------
+# Branch 1: Build as a runtime-loadable MODULE .so
+# -----------------------------------------------------------------------
+if(GISMO_BUILD_LIB AND GISMO_BUILD_MODULE_LIB)
 
-# Set standard properties for all G+Smo extensions
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  COMPILE_DEFINITIONS gismo_EXPORTS
-  POSITION_INDEPENDENT_CODE ON
-  LINKER_LANGUAGE CXX
-  #START Export all symbols from this extension
-  CXX_VISIBILITY_PRESET default
-  C_VISIBILITY_PRESET default
-  VISIBILITY_INLINES_HIDDEN 0
-  #END Export all symbols from this extension
-  FOLDER "G+Smo extensions"
+  include(gsModule)
+  gismo_add_module(${PROJECT_NAME} "1.0.0"
+    ${CMAKE_CURRENT_SOURCE_DIR}/gsOptimModuleEntry.cpp)
+
+  install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/optim/header_only_version
+    DESTINATION include/gismo
+    PATTERN "*/.svn" EXCLUDE)
+
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}
+    DESTINATION include/gismo
+    FILES_MATCHING PATTERN "gsOptim/*.h")
+
+# -----------------------------------------------------------------------
+# Branch 2: Compiled into libgismo (legacy) or header-only
+# -----------------------------------------------------------------------
+else()
+
+  add_library(${PROJECT_NAME} INTERFACE)
+  target_sources(${PROJECT_NAME} INTERFACE
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gsOptim.h>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gsOptimInit.cpp>
   )
+  target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/gsOptimInit.cpp)
 
-# For gsXmlUtils.h
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/optim/header_only_version
-  DESTINATION include/gismo
-  PATTERN "*/.svn" EXCLUDE
-  )
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+    COMPILE_DEFINITIONS gismo_EXPORTS
+    POSITION_INDEPENDENT_CODE ON
+    LINKER_LANGUAGE CXX
+    CXX_VISIBILITY_PRESET default
+    C_VISIBILITY_PRESET default
+    VISIBILITY_INLINES_HIDDEN 0
+    FOLDER "G+Smo extensions")
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}
-        DESTINATION include/gismo
-        FILES_MATCHING PATTERN "gsOptim/*.h")
+  install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/optim/header_only_version
+    DESTINATION include/gismo
+    PATTERN "*/.svn" EXCLUDE)
 
-# # Add gsXBraid extension to the list of G+Smo extensions
-# set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-#   CACHE INTERNAL "gismo extensions to be included")
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}
+    DESTINATION include/gismo
+    FILES_MATCHING PATTERN "gsOptim/*.h")
+
+  # Add gsOptim sources to gismo extensions
+  set(gismo_EXTENSIONS ${gismo_EXTENSIONS} ${CMAKE_CURRENT_SOURCE_DIR}/gsOptimInit.cpp
+      CACHE INTERNAL "Gismo extensions to be included")
+
+endif()
 
 # add example files
 #include_directories(${OPTIM_INCLUDE_DIR})
