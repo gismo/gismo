@@ -21,7 +21,7 @@
     subdirectory of \c filedata.
 
     \par Command-line arguments
-    - \b -p / \b --patchpath (default: \c freeform/bubble/): path, relative
+    - \b -p / \b --patches (default: \c freeform/bubble/): path, relative
       to \c filedata/, to the directory containing the model patch files
       \c Val\<v\>Fct\<f\>.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
@@ -43,13 +43,13 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("freeform/bubble/");
+    std::string patches("freeform/bubble/");
     index_t valence_max(6);
     gsCmdLine cmd("Freeform subdivision");
-    cmd.addString("p", "patchpath",
+    cmd.addString("p", "patches",
                   "The path to the files containing the model patches for EV "
                   "subdivision.",
-                  patchpath);
+                  patches);
     cmd.addInt("v", "valence", "Maximal valence to calculate.", valence_max);
     try
     {
@@ -63,10 +63,10 @@ int main(int argc, char** argv)
     // Basic objects
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
-    subdiv.options().setString("model_patch_path", patchpath);
+    subdiv.options().setString("model_patch_path", patches);
 
     // Iterate all valences
-    for (size_t valence = 3; valence < size_t(valence_max); ++valence)
+    for (size_t valence = 3; valence <= size_t(valence_max); ++valence)
     {
         if (valence == 4)
             continue;
@@ -81,7 +81,7 @@ int main(int argc, char** argv)
         {
             gsInfo << "Function " << function << "\n";
             // Load the basis function patch file.
-            subdiv.initialize_data_xml(patchpath + "Val" +
+            subdiv.initialize_data_xml(patches + "Val" +
                                        std::to_string(valence) + "Fct" +
                                        std::to_string(function) + ".xml");
 
