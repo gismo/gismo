@@ -42,3 +42,5 @@ CMakeFiles/
 
 #Symbolic link Eigen library
 external/Eigen
+
+*:Zone.Identifier
