@@ -6,7 +6,7 @@
 class gsModule
 {
 public:
-    virtual ~gsModule()   { GISMO_NO_IMPLEMENTATION }
+    virtual ~gsModule()   { }
     virtual bool load()   { GISMO_NO_IMPLEMENTATION }
     virtual bool unload() { GISMO_NO_IMPLEMENTATION }
 };

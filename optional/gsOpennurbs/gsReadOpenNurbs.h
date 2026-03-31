@@ -32,6 +32,7 @@ namespace extensions {
 
   /// Reads a 3dm file using OpenNurbs
   bool gsReadOpenNurbs( const char * arg, internal::gsXmlTree & data  );
+bool gsReadOpenNurbs( const std::string & fname, gsFileData<> & fdata);
   
   /// Extracts a surface from OpenNurbs
   bool readON_Surface     ( const ON_Surface * pusrface, internal::gsXmlTree & data  );

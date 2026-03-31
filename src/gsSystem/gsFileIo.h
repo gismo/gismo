@@ -13,7 +13,12 @@
 
 #pragma once
 
+#include <gsCore/gsForwardDeclarations.h>
+
 #include <gsSystem/gsModule.h>
+
+namespace gismo
+{
 
 class gsFileIo : public gsModule
 {
@@ -31,3 +36,5 @@ public:
 
     virtual bool write(std::string fname, FileData & data) { GISMO_NO_IMPLEMENTATION }
 };
+
+}

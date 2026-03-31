@@ -28,8 +28,6 @@
 	extern "C" ___YPLUGS_BOOTSTRAP_EXPORT_SYMBOL yba::gsModule*               \
 		___YPLUGS_BOOTSTRAP_PROC_NAME
 
-#include <string>
-
 #ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -38,6 +36,7 @@
 #include <dlfcn.h>
 #endif
 
+#include <string>
 #include<vector>
 
 #include <gsCore/gsConfig.h>
@@ -65,6 +64,9 @@ class gsModuleManager
 {
     friend GISMO_EXPORT gsModuleManager & gsModuleManagerSingleton();
 public:
+
+    static gsModuleManager & get() { return gsModuleManagerSingleton(); }
+
     gsModule* load_plugin(const std::string& library_name)
     {
         auto library_iterator = m_libraries.find(library_name);

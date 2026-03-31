@@ -32,7 +32,7 @@ namespace extensions {
 
 
 /// Writes a 3dm file using OpenNurbs
-bool gsWriteOpenNurbs( const char * arg, const gsFileData<> & data );
+bool gsWriteOpenNurbs(const std::string & name, const gsFileData<> & data );
 
 /// Writes a planar domain to OpenNurbs file
 template<class T>

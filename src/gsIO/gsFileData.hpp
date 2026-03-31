@@ -24,8 +24,11 @@
 #include <rapidxml/rapidxml.hpp>       // External file
 #include <rapidxml/rapidxml_print.hpp> // External file
 
+#include <gsSystem/gsModuleManager.h>
+
 #ifdef gsOpennurbs_ENABLED
 #include <gsOpennurbs/gsReadOpenNurbs.h>
+#include <gsOpennurbs/gsOpenNurbsIo.h>
 #endif
 
 #ifdef gsOpenCascade_ENABLED
@@ -184,6 +187,7 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
         return readXmlGzFile(m_lastPath, recursive);
 
     // Search for a reader for this file
+    //auto & mm = gsModuleManager::get();
 
     if (ext== "txt")
         return readGeompFile(m_lastPath);
@@ -195,7 +199,13 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
         return readOffFile(m_lastPath);
 #ifdef gsOpennurbs_ENABLED
     else if (ext== "3dm")
-        return read3dmFile(m_lastPath);
+    {
+        gsOpenNurbsFile * io = new gsOpenNurbsFile();
+        bool ok = io->read(m_lastPath, *this);
+        delete io;
+        return ok;
+
+    }
 #endif
 #ifdef gsOpenCascade_ENABLED
     else if (ext== "brep")

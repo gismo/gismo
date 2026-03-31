@@ -14,6 +14,8 @@
 #include <gsOpennurbs/gsReadOpenNurbs.h>
 #include <gsOpennurbs/gsWriteOpenNurbs.h>
 
+#include <gsSystem/gsFileIo.h>
+
 #pragma once
 
 namespace gismo {
@@ -24,11 +26,12 @@ public:
     gsOpenNurbsFile() : gsFileIo("3dm") { }
 
     virtual bool read(std::string fname, FileData & data)
-    { return gsReadOpenNurbs(fname.c_str(),data.xmltree()); }
-
+    { return extensions::gsReadOpenNurbs(fname,data); }
+    
     virtual bool write(std::string fname, FileData & data)
-    { return gsWriteOpenNurbs(fname.c_str(),data); }
+    { return extensions::gsWriteOpenNurbs(fname,data); }
 };
 
 
 } // namespace gismo
+

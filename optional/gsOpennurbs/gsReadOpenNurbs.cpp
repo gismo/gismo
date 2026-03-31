@@ -25,6 +25,8 @@
 #include <iomanip>
 
 
+#include <gsIO/gsFileData.h>
+
 namespace gismo {
 
 namespace extensions {
@@ -33,7 +35,10 @@ namespace extensions {
 Returns:
   True if .3dm file was successfully read into an ONX_Model class.
 */
-  bool gsReadOpenNurbs( const char * arg, internal::gsXmlTree & data )
+bool gsReadOpenNurbs( const std::string & fname, gsFileData<> & fdata )
+{ return gsReadOpenNurbs(fname.c_str(),fdata.xmltree()); }
+    
+bool gsReadOpenNurbs( const char * arg, internal::gsXmlTree & data )
 {
   ON_wString ws_arg = arg;
   const wchar_t* sFileName = ws_arg;

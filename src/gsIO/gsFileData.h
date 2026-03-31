@@ -100,6 +100,9 @@ public:
     /// to a 64-bit double.
     unsigned getFloatPrecision() const { return data->getFloatPrecision(); }
 
+    FileData & xmltree() {return *data;}
+    const FileData & xmltree() const {return *data;}
+
 private:
     /// File data as an xml tree
     FileData * data;
