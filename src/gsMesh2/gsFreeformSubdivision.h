@@ -154,9 +154,9 @@ private: // Helper functions
 
     /// \brief Fits control points around an EV using linear constraints.
     ///
-    /// Solves the regularised least-squares system \f$A x \approx \text{target}\f$
-    /// subject to linear constraints loaded from file, using a Tikhonov-augmented
-    /// block system.
+    /// Solves the regularised least-squares system \f$A x \approx
+    /// \text{target}\f$ subject to linear constraints loaded from file, using a
+    /// Tikhonov-augmented block system.
     ///
     /// \param A       Coefficient matrix of the fitting system.
     /// \param target  Right-hand side of the fitting system (D columns, one per
@@ -209,14 +209,22 @@ public:
     ///   those samples.
     void subdivide() override;
 
+    /// \brief Solves the Laplace-Beltrami problem on the mesh.
+    ///
+    /// Replaces the last coordinate of this patch with an approximate solution
+    /// to the Laplace-Beltrami problem.
+    ///
+    /// \param rhs The right hand side function.
+    void laplace_beltrami(gsFunctionExpr<> rhs);
+
     /// \brief Replaces the last coordinate with a least-squares fit to a
     /// function of the first D-1 coordinates.
     ///
     /// For each face, samples the first \f$D-1\f$ coordinates of the Bézier
     /// patch at \f$N^2\f$ parameter points, evaluates \c function at those
     /// positions, fits a new \f$N \times N\f$ Bézier patch to the function
-    /// values by least squares, and writes the resulting control coefficients
-    /// back as the last coordinate of each control point.
+    /// values by least squares, and writes the resulting control
+    /// coefficients back as the last coordinate of each control point.
     ///
     /// \param function A real-valued function in \f$D-1\f$ real variables.
     void fit_last_coordinate_to_function(gsFunctionExpr<> function);
@@ -231,7 +239,8 @@ public:
     /// error and whose second entry is the root-mean-square \f$L^2\f$ error
     /// over all samples.
     ///
-    /// \param function       A real-valued reference function in \f$D-1\f$ variables.
+    /// \param function       A real-valued reference function in \f$D-1\f$
+    /// variables.
     /// \param samples_per_face Number of sample points per parameter direction
     /// per face.
     /// \return A vector containing the \f$L^\infty\f$ and rms-\f$L^2\f$ errors.
@@ -242,8 +251,8 @@ public:
     ///
     /// For each face, evaluates the pointwise absolute error between the last
     /// coordinate of the Bézier patch and \c function evaluated at the first
-    /// \f$D-1\f$ coordinates. The error is rescaled to [0, 1] using \c max_error
-    /// (which can be obtained via \c error()) fitted by a spline of
+    /// \f$D-1\f$ coordinates. The error is rescaled to [0, 1] using \c
+    /// max_error (which can be obtained via \c error()) fitted by a spline of
     /// degree \f$2(N-1)\f$, and written as a Paraview \c .vts file. If
     /// \c collection is non-null the generated file is registered in it at the
     /// given \c timestep.
@@ -252,7 +261,8 @@ public:
     /// Paraview uses the first \f$\min(3, D-1)\f$ coordinates; for \c D > 4
     /// coordinates 4 and beyond are not visualised.
     ///
-    /// \param function    A real-valued reference function in \f$D-1\f$ variables.
+    /// \param function    A real-valued reference function in \f$D-1\f$
+    /// variables.
     /// \param max_error   Value used to normalise the error to [0, 1].
     /// \param name        Base path/name for the output \c .vts files.
     /// \param collection  Optional Paraview collection to register the files
@@ -260,9 +270,9 @@ public:
     /// \param timestep    Timestep index used when registering in \c
     /// collection.
     void write_paraview_error(gsFunctionExpr<real_t> function, real_t max_error,
-                         std::string name,
-                         gsParaviewCollection* collection = nullptr,
-                         size_t timestep = 0);
+                              std::string name,
+                              gsParaviewCollection* collection = nullptr,
+                              size_t timestep = 0);
 
     /// \brief Initializes the targeted mesh from an xml file.
     ///
@@ -290,7 +300,8 @@ public:
     /// \param filepath Path to the \c .off file to load.
     void initialize_data_off(std::string filepath);
 
-    /// \brief Initializes the targeted mesh from a file, dispatching on extension.
+    /// \brief Initializes the targeted mesh from a file, dispatching on
+    /// extension.
     ///
     /// Detects the file format from the extension of \c filepath and calls the
     /// appropriate loader:
@@ -362,7 +373,7 @@ public:
     ///                         there.
     void write_paraview(std::string name,
                         gsParaviewCollection* collection = nullptr,
-                         gsParaviewCollection* cnet_collection = nullptr,
+                        gsParaviewCollection* cnet_collection = nullptr,
                         size_t timestep = 0, bool control_net = false);
 
 }; // namespace internal

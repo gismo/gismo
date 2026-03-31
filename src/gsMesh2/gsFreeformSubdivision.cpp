@@ -11,11 +11,16 @@
     Author(s): L. Mussmaecher
 */
 
+#include "gsAssembler/gsAssemblerOptions.h"
+#include "gsAssembler/gsExprAssembler.h"
 #include "gsCore/gsField.h"
 #include "gsCore/gsFunctionExpr.h"
+#include "gsCore/gsMultiBasis.h"
 #include "gsIO/gsParaviewCollection.h"
 #include "gsIO/gsWriteParaview.h"
+#include "gsMatrix/gsSparseSolver.h"
 #include "gsMatrix/gsVector.h"
+#include "gsPde/gsBoundaryConditions.h"
 #include <cmath>
 #include <cstdlib>
 #include <gismo.h>
@@ -502,8 +507,8 @@ gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
     diff.setZero();
     for (size_t i = 0; i < 2 * valence; i++)
     {
-        diff(i,0) = 1.0;
-        diff(i, i+1) = -1.0;
+        diff(i, 0) = 1.0;
+        diff(i, i + 1) = -1.0;
     }
 
     gsMatrix<> w = (diff * K).colPivHouseholderQr().solve(-diff * solution);
@@ -1128,6 +1133,67 @@ void gsFreeformSubdivision<N, D>::smooth(
         } // End of this edge
     }
     // End of edge correction
+}
+
+template <size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
+{
+    // Set up the basis.
+    auto mp = this->multipatch();
+    // perhaps use 3 here? read what dimensions are possible
+    mp.embed(D-1);
+    gsMultiBasis<> mbasis(mp);
+    // no refinement or degree setting here.
+    // todo: change basis to only use model functions.
+
+    // Set up the expression assembler.
+    gsExprAssembler<> A(1, 1);
+    // The geometry map that parametrizes the surface over the patches $\Omega$.
+    auto G = A.getMap(mp);
+    auto u = A.getSpace(mbasis);
+    // Pull back the right hand side function $f$ to $\Omega$.
+    auto ff = A.getCoeff(rhs, G);
+
+    // Set up boundary conditions
+    gsBoundaryConditions<> bc;
+    bc.setGeoMap(mp);
+    // todo: this necessary?
+    bc.addCornerValue(boundary::corner(0), 0.0, 0);
+    u.setup(bc, dirichlet::l2Projection, 0);
+
+    A.initSystem();
+
+    // Weak form stiffness matrix and RHS
+    A.assemble(                                   // expressions:
+        igrad(u, G) * igrad(u, G).tr() * meas(G), // stiffness
+        u * ff * meas(G)                          // $\int f \cdot v d\Gamma$
+    );
+
+    // Solver and stuff
+    gsSparseSolver<>::CGDiagonal solver;
+    solver.compute(A.matrix());
+    gsMatrix<> solVector = solver.solve(A.rhs());
+    auto solution = A.getSolution(u, solVector);
+
+    // Get back a multipatch
+    gsMultiPatch<> solField;
+    solution.extract(solField);
+
+    // Write the solution back into the last entry.
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        m_mesh->get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    for (index_t k = 0; k < face_data_vec.vector().size(); ++k)
+    {
+        for (size_t i = 0; i < N; ++i)
+        {
+
+            for (size_t j = 0; j < N; ++j)
+            {
+                face_data_vec[i].control_points(i, j)(D-1) =
+                    solField.patch(i).coefs()(i * N + j, 0);
+            }
+        }
+    }
 }
 
 template <size_t N, size_t D>
