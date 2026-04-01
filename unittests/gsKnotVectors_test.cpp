@@ -231,8 +231,8 @@ SUITE(gsKnotVectors_test)
         CHECK_CLOSE( *u_knots.domainEnd(),    1.25, 1e-10 );
 
         gsBSplineBasis<real_t> u_basis(u_knots);
-        typename gsBasis<real_t>::domainIter domIt    = u_basis.domain()->beginAll();
-        typename gsBasis<real_t>::domainIter domItEnd = u_basis.domain()->endAll();
+        gsBasis<real_t>::domainIter domIt    = u_basis.domain()->beginAll();
+        gsBasis<real_t>::domainIter domItEnd = u_basis.domain()->endAll();
 
         size_t count = 0;
         std::vector<real_t> domBreaks = u_knots.breaks();
@@ -256,8 +256,8 @@ SUITE(gsKnotVectors_test)
         size_t expectedElements = u_knots.numElements() * v_knots.numElements();
         CHECK( basis.domain()->numElements() == expectedElements );
 
-        typename gsBasis<real_t>::domainIter domIt    = basis.domain()->beginAll();
-        typename gsBasis<real_t>::domainIter domItEnd = basis.domain()->endAll();
+        gsBasis<real_t>::domainIter domIt    = basis.domain()->beginAll();
+        gsBasis<real_t>::domainIter domItEnd = basis.domain()->endAll();
 
         real_t domStartU = *u_knots.domainBegin();
         real_t domEndU   = *u_knots.domainEnd();
