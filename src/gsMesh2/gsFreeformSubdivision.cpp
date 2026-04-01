@@ -1140,25 +1140,31 @@ void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 {
     // Set up the basis.
     auto mp = this->multipatch();
-    // perhaps use 3 here? read what dimensions are possible
-    mp.embed(D-1);
+    // Compute interfaces and boundaries so that the assembler can couple
+    // patches correctly and identify which sides carry Dirichlet data.
+    mp.computeTopology();
+    // Embed into D-1 dimensions so the last coordinate (the solution) is
+    // dropped from the geometry map; the surface lives in R^{D-1}.
+    mp.embed(D - 1);
     gsMultiBasis<> mbasis(mp);
-    // no refinement or degree setting here.
-    // todo: change basis to only use model functions.
 
     // Set up the expression assembler.
     gsExprAssembler<> A(1, 1);
+    // Must be called before any computation; sets the integration domain.
+    A.setIntegrationElements(mbasis);
     // The geometry map that parametrizes the surface over the patches $\Omega$.
     auto G = A.getMap(mp);
     auto u = A.getSpace(mbasis);
     // Pull back the right hand side function $f$ to $\Omega$.
     auto ff = A.getCoeff(rhs, G);
 
-    // Set up boundary conditions
+    // Set homogeneous Dirichlet BCs on every boundary side.  Without
+    // computeTopology() above, bBegin()==bEnd() and the system would have an
+    // unconstrained constant null space on every patch, causing CG divergence.
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
-    // todo: this necessary?
-    bc.addCornerValue(boundary::corner(0), 0.0, 0);
+    for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
+        bc.addCondition(*it, condition_type::dirichlet, nullptr);
     u.setup(bc, dirichlet::l2Projection, 0);
 
     A.initSystem();
@@ -1189,8 +1195,8 @@ void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 
             for (size_t j = 0; j < N; ++j)
             {
-                face_data_vec[i].control_points(i, j)(D-1) =
-                    solField.patch(i).coefs()(i * N + j, 0);
+                face_data_vec[k].control_points(i, j)(D - 1) =
+                    solField.patch(k).coefs()(i * N + j, 0);
             }
         }
     }

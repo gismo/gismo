@@ -103,10 +103,10 @@ int main(int argc, char** argv)
         "opt",
         "Optimizes the EV fit via a functional instead of linear constraints.",
         optimize_fit);
-    cmd.addSwitch(
-        "weighted",
-        "Uses a weighting for the EV fit, loaded from a weights vector at `filedata/freeform/val<v>_weights.xml`.",
-        weighted_fit);
+    cmd.addSwitch("weighted",
+                  "Uses a weighting for the EV fit, loaded from a weights "
+                  "vector at `filedata/freeform/val<v>_weights.xml`.",
+                  weighted_fit);
     try
     {
         cmd.getValues(argc, argv);
@@ -118,8 +118,7 @@ int main(int argc, char** argv)
 
     if (valence > 0)
     {
-        mesh_path =
-            "freeform/flat/Val" + std::to_string(valence) + "Flat.xml";
+        mesh_path = "freeform/flat/Val" + std::to_string(valence) + "Flat.xml";
     }
 
     gsSurfMesh mesh = gsSurfMesh();
@@ -150,19 +149,24 @@ int main(int argc, char** argv)
         }
         subdiv.fit_last_coordinate_to_function(func);
         subdiv.smooth(1, ev_coefs, ev_coefs_outer);
-        errors.col(i) = subdiv.error(func, samples);
+
+        if (write_errors)
+            errors.col(i) = subdiv.error(func, samples);
 
         if (paraview)
         {
-
-            subdiv.write_paraview_error(func, errors(0, i),
-                                        "results/error" + std::to_string(i + 1),
-                                        &error_collection, i + 1);
 
             const std::string stepname = "results/step" + std::to_string(i + 1);
 
             subdiv.write_paraview(stepname, &collection, &cnet_collection,
                                   i + 1, control_net);
+
+            if (write_errors)
+            {
+                subdiv.write_paraview_error(
+                    func, errors(0, i), "results/error" + std::to_string(i + 1),
+                    &error_collection, i + 1);
+            }
 
             // If the user wants to save the control net, we also want to save
             // the Greville control points for each EV.
@@ -185,22 +189,21 @@ int main(int argc, char** argv)
             }
         }
 
-        gsInfo << "Finished writing Step " << std::to_string(i + 1) << ".\n";
+        gsInfo << "Finished Step " << std::to_string(i + 1) << ".\n";
     }
 
     if (paraview)
     {
         collection.save();
-        error_collection.save();
+        if (write_errors)
+            error_collection.save();
         if (control_net)
             cnet_collection.save();
     }
 
+    // Write error matrix to errors.csv.
     if (write_errors)
-    {
-        // Write error matrix to errors.csv.
         gsWriteCsv("results/errors.csv", errors);
-    }
 
     return 0;
 }
