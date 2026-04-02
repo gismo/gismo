@@ -248,9 +248,20 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
                            std::string const & fn)
 {
     const int d = Geo.parDim();
+    const unsigned n = Geo.geoDim();
+
+    // If the dimension of the geometry is too high, fall back to writing
+    // the control points as an unstructured point cloud instead.
+    if (n > 3)
+    {
+        gsDebug<<"Writing 4th coordinate\n";
+        const gsMatrix<T> & cp = Geo.coefs();
+        gsWriteParaviewPoints<T>(cp.transpose(), fn );
+        return;
+    }
+
     gsMesh<T> msh;
     Geo.controlNet(msh);
-    const unsigned n = Geo.geoDim();
     if ( n == 1 )
     {
         gsMatrix<T> anch = Geo.basis().anchors();
@@ -260,13 +271,6 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
             msh.vertex(i)[d] = msh.vertex(i)[0];
             msh.vertex(i).topRows(d) = anch.col(i);
         }
-    }
-    else if (n>3)
-    {
-        gsDebug<<"Writing 4th coordinate\n";
-        const gsMatrix<T> & cp = Geo.coefs();
-        gsWriteParaviewPoints<T>(cp.transpose(), fn );
-        return;
     }
 
     gsWriteParaview(msh, fn, false);
