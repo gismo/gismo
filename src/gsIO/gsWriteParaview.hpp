@@ -1667,7 +1667,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn)
         gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), points.row(3), fn);
         break;
     default:
-        GISMO_ERROR("Point plotting is implemented just for 2D and 3D (rows== 1, 2 or 3).");
+        GISMO_ERROR("Point plotting is implemented just for 2D, 3D and 4D (rows== 1, 2, 3 or 4).");
     }
 }
 
