@@ -622,7 +622,196 @@ is_quad_mesh() const
 
     return true;
 }
+void 
+gsSurfMesh::
+mesh_statistics(bool eoc_verbose)
+{
+    index_t maxvalEV = 0, minvalEV = 0, maxvalEF = 0, minvalEF = 0, maxvalBoundEV = 0,
+        minvalBoundEV = 0, maxvalBoundEF = 0, minvalBoundEF = 0;
+    int cnt = 0, cntB = 0;
+    int cntf = 0, cntBf = 0;
 
+
+    std::map<index_t, index_t> evInterNum;
+    std::map<index_t, index_t> efInterNum;
+    std::map<index_t, index_t> evBoundNum;
+    std::map<index_t, index_t> efBoundNum;
+    gsInfo << "Mesh statistics..." << "\n";
+    gsInfo << "\n";
+
+    gsInfo << "# of vertices: " << n_vertices() << "\n";
+    gsInfo << "# of faces: " << n_faces() << "\n";
+    gsInfo << "# of edges: " << n_edges() << "\n";
+
+    gsInfo << "\n";
+
+
+    // Checking EVs
+    for (auto vit : vertices())
+    {
+        if (!is_boundary(vit)) // internal vertex
+        {
+            if (valence(vit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (evInterNum.find(valence(vit)) == evInterNum.end())
+                        evInterNum[valence(vit)] = 0;
+                    evInterNum[valence(vit)] += 1;
+                } 
+                if (cnt == 0)
+                {
+                    minvalEV = valence(vit);
+                    maxvalEV = valence(vit);
+                }
+                else
+                {
+                    if (valence(vit) > maxvalEV)
+                        maxvalEV = valence(vit);
+                    else if (valence(vit) < minvalEV)
+                        minvalEV = valence(vit);
+                }
+                cnt++;
+            }
+        }
+        else // boundary vertex
+        {
+            if (valence(vit) != 3)
+            {
+                if (eoc_verbose)
+                {
+                    if (evBoundNum.find(valence(vit)) == evBoundNum.end())
+                        evBoundNum[valence(vit)] = 0;
+                    evBoundNum[valence(vit)] += 1;
+                }
+                if (cntB == 0)
+                {
+                    minvalBoundEV = valence(vit);
+                    maxvalBoundEV = valence(vit);
+                }
+                else
+                {
+                    if (valence(vit) > maxvalBoundEV)
+                        maxvalBoundEV = valence(vit);
+                    else if (valence(vit) < minvalBoundEV)
+                        minvalBoundEV = valence(vit);
+                }
+                cntB++;
+            }
+        }
+
+    }
+
+
+    // Checking EFs
+    for (auto fit : faces())
+    {
+        if (!is_boundary(fit)) // internal faces
+        {
+            if (valence(fit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (efInterNum.find(valence(fit)) == efInterNum.end())
+                        efInterNum[valence(fit)] = 0;
+                    efInterNum[valence(fit)] += 1;
+                }
+                
+                if (cntf == 0)
+                {
+                    minvalEF = valence(fit);
+                    maxvalEF = valence(fit);
+                }
+                else
+                {
+                    if (valence(fit) > maxvalEF)
+                        maxvalEF = valence(fit);
+                    else if (valence(fit) < minvalEF)
+                        minvalEF = valence(fit);
+                }
+                cntf++;
+            }
+        }
+        else // boundary faces
+        {
+            if (valence(fit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (efBoundNum.find(valence(fit)) == efBoundNum.end())
+                        efBoundNum[valence(fit)] = 0;
+                    efBoundNum[valence(fit)] += 1;
+                }
+                if (cntBf == 0)
+                {
+                    minvalBoundEF = valence(fit);
+                    maxvalBoundEF = valence(fit);
+                }
+                else
+                {
+                    if (valence(fit) > maxvalBoundEF)
+                        maxvalBoundEF = valence(fit);
+                    else if (valence(fit) < minvalBoundEF)
+                        minvalBoundEF = valence(fit);
+                }
+                cntBf++;
+            }
+        }
+    }
+
+
+    gsInfo << "Interior: " << "\n";
+    if (cnt != 0)
+        gsInfo << "# of EVs: " << cnt << "\n";
+    if (cntf != 0)
+        gsInfo << "# of EFs: " << cntf << "\n";
+    gsInfo << "Maximum valence in EVs: " << maxvalEV << "\n";
+    gsInfo << "Mimimum valence in EVs: " << minvalEV << "\n";
+    gsInfo << "Maximum valence in EFs: " << maxvalEF << "\n";
+    gsInfo << "Minimum valence in EFs: " << minvalEF << "\n";
+
+    if (eoc_verbose)
+    {
+        for (const auto& evkey : evInterNum)
+        {
+            gsInfo << "# of EV with valence " <<evkey.first<<": " << evkey.second << "\n";
+        }
+        for (const auto& evkey : efInterNum)
+        {
+            gsInfo << "# of EF with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+
+    }
+
+
+    gsInfo << "Boundary: " << "\n";
+    if (cntB != 0)
+        gsInfo << "# of EVs: " << cntB << "\n";
+    if (cntBf != 0)
+        gsInfo << "# of EFs: " << cntBf << "\n";
+    gsInfo << "Maximum valence in EVs: " << maxvalBoundEV << "\n";
+    gsInfo << "Mimimum valence in EVs: " << minvalBoundEV << "\n";
+    gsInfo << "Maximum valence in EFs: " << maxvalBoundEF << "\n";
+    gsInfo << "Minimum valence in EFs: " << minvalBoundEF << "\n";
+
+    if (eoc_verbose)
+    {
+        for (const auto& evkey : evBoundNum)
+        {
+            gsInfo << "# of EV with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+        for (const auto& evkey : efBoundNum)
+        {
+            gsInfo << "# of EF with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+
+    }
+
+
+    gsInfo << "Done statistics..." << "\n";
+
+
+}
 void
 gsSurfMesh::
 triangulate()

@@ -1636,6 +1636,17 @@ public:
      */
     void flip(Edge e);
 
+
+    /// Mesh statistics
+    ///
+    /// Print info on mesh as:
+    ///    * Number of vertices, faces and edges.
+    ///    * Number of extraordinary vertices, with minimum and maximum valence for interior and boundary.
+    ///    * Number of extraordinary faces, with minimum and maximum valence for interior and boundary.
+    ///
+    /// \param eoc_verbose: If true, returns the number of each extraordinary case (EV,EF)
+    void mesh_statistics(bool eoc_verbose = false);
+
 public:
 
     /** returns the valence (number of incident edges or neighboring vertices)
