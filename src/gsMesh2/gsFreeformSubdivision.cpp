@@ -18,6 +18,7 @@
 #include "gsCore/gsMultiBasis.h"
 #include "gsIO/gsParaviewCollection.h"
 #include "gsIO/gsWriteParaview.h"
+#include "gsMSplines/gsMappedBasis.h"
 #include "gsMatrix/gsSparseSolver.h"
 #include "gsMatrix/gsVector.h"
 #include "gsPde/gsBoundaryConditions.h"
@@ -1135,26 +1136,45 @@ void gsFreeformSubdivision<N, D>::smooth(
     // End of edge correction
 }
 
+template<size_t N, size_t D>
+void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMultiBasis<> & multi_basis, gsMappedBasis<2> & mapped_basis){
+    // Set up the basis.
+    multi_patch = this->multipatch();
+    // Compute interfaces and boundaries so that the assembler can couple
+    // patches correctly and identify which sides carry Dirichlet data.
+    multi_patch.computeTopology();
+    // Embed into D-1 dimensions so the last coordinate (the solution) is
+    // dropped from the geometry map; the surface lives in R^{D-1}.
+    // TODO think about this
+    multi_patch.embed(D - 1);
+    // Build an identity mapping over the local DOFs so that the gsMappedBasis
+    // coincides with the standard multi-basis for now.  The mapping matrix has
+    // size nLocalDofs x nLocalDofs (rows = source/local DOFs, cols = target/global DOFs).
+    multi_basis = gsMultiBasis<>(multi_patch);
+    size_t nLocalDofs = multi_basis.totalSize();
+    gsSparseMatrix<> identity_map(nLocalDofs, nLocalDofs);
+    identity_map.reserve(nLocalDofs);
+    for (index_t i = 0; i < nLocalDofs; ++i)
+        identity_map.insert(i, i) = real_t(1);
+    identity_map.makeCompressed();
+    mapped_basis.init(multi_basis, identity_map);
+}
+
 template <size_t N, size_t D>
 void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 {
-    // Set up the basis.
-    auto mp = this->multipatch();
-    // Compute interfaces and boundaries so that the assembler can couple
-    // patches correctly and identify which sides carry Dirichlet data.
-    mp.computeTopology();
-    // Embed into D-1 dimensions so the last coordinate (the solution) is
-    // dropped from the geometry map; the surface lives in R^{D-1}.
-    mp.embed(D - 1);
-    gsMultiBasis<> mbasis(mp);
+    gsMultiPatch<> multi_patch;
+    gsMultiBasis<> multi_basis;
+    gsMappedBasis<2> mapped_basis;
+    this->basis_data(multi_patch, multi_basis, mapped_basis);
 
     // Set up the expression assembler.
     gsExprAssembler<> A(1, 1);
     // Must be called before any computation; sets the integration domain.
-    A.setIntegrationElements(mbasis);
+    A.setIntegrationElements(multi_basis);
     // The geometry map that parametrizes the surface over the patches $\Omega$.
-    auto G = A.getMap(mp);
-    auto u = A.getSpace(mbasis);
+    auto G = A.getMap(multi_patch);
+    auto u = A.getSpace(mapped_basis);
     // Pull back the right hand side function $f$ to $\Omega$.
     auto ff = A.getCoeff(rhs, G);
 
@@ -1162,8 +1182,8 @@ void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     // computeTopology() above, bBegin()==bEnd() and the system would have an
     // unconstrained constant null space on every patch, causing CG divergence.
     gsBoundaryConditions<> bc;
-    bc.setGeoMap(mp);
-    for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
+    bc.setGeoMap(multi_patch);
+    for (auto it = multi_patch.bBegin(); it != multi_patch.bEnd(); ++it)
         bc.addCondition(*it, condition_type::dirichlet, nullptr);
     u.setup(bc, dirichlet::l2Projection, 0);
 
@@ -1181,14 +1201,15 @@ void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     gsMatrix<> solVector = solver.solve(A.rhs());
     auto solution = A.getSolution(u, solVector);
 
-    // Get back a multipatch
-    gsMultiPatch<> solField;
-    solution.extract(solField);
+    // Extract the solution into a gsMappedSpline, then export to patches.
+    gsMappedSpline<2, real_t> solSpline;
+    solution.extract(solSpline);
+    gsMultiPatch<> solField = solSpline.exportToPatches();
 
     // Write the solution back into the last entry.
     gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
         m_mesh->get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
-    for (index_t k = 0; k < face_data_vec.vector().size(); ++k)
+    for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
     {
         for (size_t i = 0; i < N; ++i)
         {

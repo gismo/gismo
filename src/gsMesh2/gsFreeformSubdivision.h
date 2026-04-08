@@ -209,10 +209,15 @@ public:
     ///   those samples.
     void subdivide() override;
 
+    void basis_data(gsMultiPatch<> & multi_patch, gsMultiBasis<> & multi_basis, gsMappedBasis<2> & mapped_basis);
+
     /// \brief Solves the Laplace-Beltrami problem on the mesh.
     ///
     /// Replaces the last coordinate of this patch with an approximate solution
-    /// to the Laplace-Beltrami problem.
+    /// to the Laplace-Beltrami problem.  The discrete space is built using a
+    /// \c gsMappedBasis with an identity mapping matrix, which is equivalent
+    /// to the standard multi-basis and can later be replaced by a non-trivial
+    /// mapping to impose patch-coupling or smoothness constraints.
     ///
     /// \param rhs The right hand side function.
     void laplace_beltrami(gsFunctionExpr<> rhs);
