@@ -1137,27 +1137,403 @@ void gsFreeformSubdivision<N, D>::smooth(
 }
 
 template<size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMultiBasis<> & multi_basis, gsMappedBasis<2> & mapped_basis){
-    // Set up the basis.
+void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMultiBasis<> & multi_basis, gsMappedBasis<2> & mapped_basis)
+{
+    auto& mesh = *m_mesh;
+
     multi_patch = this->multipatch();
-    // Compute interfaces and boundaries so that the assembler can couple
-    // patches correctly and identify which sides carry Dirichlet data.
     multi_patch.computeTopology();
-    // Embed into D-1 dimensions so the last coordinate (the solution) is
-    // dropped from the geometry map; the surface lives in R^{D-1}.
-    // TODO think about this
     multi_patch.embed(D - 1);
-    // Build an identity mapping over the local DOFs so that the gsMappedBasis
-    // coincides with the standard multi-basis for now.  The mapping matrix has
-    // size nLocalDofs x nLocalDofs (rows = source/local DOFs, cols = target/global DOFs).
     multi_basis = gsMultiBasis<>(multi_patch);
-    size_t nLocalDofs = multi_basis.totalSize();
-    gsSparseMatrix<> identity_map(nLocalDofs, nLocalDofs);
-    identity_map.reserve(nLocalDofs);
+
+    const size_t  nPatches   = multi_patch.nPatches();
+    const index_t nLocalDofs = (index_t)(nPatches * N * N);
+    GISMO_ASSERT(nLocalDofs == (index_t)multi_basis.totalSize(),
+                 "Local DOF count mismatch");
+
+    // faces[p] is the mesh face corresponding to patch index p.
+    std::vector<Face> faces;
+    faces.reserve(nPatches);
+    for (Face f : mesh.faces())
+        faces.push_back(f);
+
+    // Map mesh face index -> patch index.
+    std::vector<int> face_to_patch(mesh.faces_size(), -1);
+    for (size_t p = 0; p < nPatches; ++p)
+        face_to_patch[faces[p].idx()] = (int)p;
+
+    // ---- Helpers ------------------------------------------------
+
+    // Convert oriented (r,c) to absolute (i,j) given halfedge position k
+    // in the face's CCW halfedge list.  Derived from the sequence
+    // rotate_ccw then rotate_cw k times applied to the control-point array.
+    auto apply_rotation = [](int k, int r, int c) -> std::pair<int, int>
+    {
+        const int n = (int)N - 1;
+        switch (((k % 4) + 4) % 4)
+        {
+        case 0:  return {n - c,     r    };
+        case 1:  return {r,         c    };
+        case 2:  return {c,         n - r};
+        default: return {n - r,     n - c};
+        }
+    };
+
+    // Position of halfedge h in face f's CCW halfedge list (0-based).
+    auto get_k = [&](Face f, Halfedge h) -> int
+    {
+        int k = 0;
+        for (Halfedge he : mesh.halfedges(f))
+        {
+            if (he == h) return k;
+            ++k;
+        }
+        GISMO_ERROR("Halfedge not found in face");
+    };
+
+    // Flat local DOF index for patch p at absolute position (i,j).
+    auto local_dof = [&](int p, int i, int j) -> index_t
+    { return (index_t)p * (index_t)(N * N) + (index_t)i * (index_t)N + (index_t)j; };
+
+    // ---- Working state ------------------------------------------
+
+    // pre_mapper[ldof] is the sparse row of the mapper matrix
+    // represented as a map from global DOF index to coefficient.
+    std::vector<std::map<index_t, real_t>> pre_mapper(nLocalDofs);
+    index_t global_dof_count = 0;
+
+    // handled[ldof] becomes true once a mapping has been assigned.
+    std::vector<bool> handled(nLocalDofs, false);
+
+    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+
+    // ================================================================
+    // Phase 1 — EV vertices
+    //
+    // For each extraordinary vertex v (valence != 4, interior):
+    //   • Assign 2*v+1 EV global DOFs.
+    //   • For every control point in the 4v-patch ring that lies
+    //     inside the EV support (all fitting functions non-zero),
+    //     set its mapper row to the corresponding row of A_control
+    //     (i.e. the fitting-function coefficient vector).
+    //   • For inner control points outside the EV support ("outer
+    //     inner" points) assign a free global DOF.
+    //   Boundary points that are outside the EV support are left for
+    //   the C1 constraint pass below.
+    // ================================================================
+    for (Vertex v : mesh.vertices())
+    {
+        if (is_ordinary(mesh, v)) continue;
+
+        const size_t valence        = mesh.valence(v);
+        const size_t patches_count  = 4 * valence;
+        const size_t function_count = 2 * valence + 1;
+
+        // Collect the 4*valence (face, orienting-halfedge) pairs in
+        // the same order as smooth(): valence inner patches first,
+        // then 3*valence outer patches (three per inner halfedge).
+        std::vector<Face>     ev_faces;
+        std::vector<Halfedge> ev_halfedges;
+        ev_faces.reserve(patches_count);
+        ev_halfedges.reserve(patches_count);
+
+        for (Halfedge h : mesh.halfedges(v))
+        {
+            ev_faces.push_back(mesh.face(h));
+            ev_halfedges.push_back(h);
+        }
+
+        for (Halfedge h_orig : mesh.halfedges(v))
+        {
+            Halfedge h = mesh.next_halfedge(h_orig);
+            h = mesh.opposite_halfedge(h);
+            h = mesh.next_halfedge(h);
+            GISMO_ASSERT(mesh.face(h).is_valid(),
+                "EV outer-patch traversal: outer patch 1 face is invalid (boundary halfedge). "
+                "Mesh may not contain the full 4*valence neighborhood.");
+            ev_faces.push_back(mesh.face(h));
+            ev_halfedges.push_back(h);
+
+            h = mesh.next_halfedge(h);
+            h = mesh.next_halfedge(h);
+            h = mesh.opposite_halfedge(h);
+            GISMO_ASSERT(mesh.face(h).is_valid(),
+                "EV outer-patch traversal: outer patch 2 face is invalid (boundary halfedge). "
+                "Mesh may not contain the full 4*valence neighborhood.");
+            ev_faces.push_back(mesh.face(h));
+            ev_halfedges.push_back(h);
+
+            h = mesh.prev_halfedge(h);
+            h = mesh.opposite_halfedge(h);
+            h = mesh.prev_halfedge(h);
+            GISMO_ASSERT(mesh.face(h).is_valid(),
+                "EV outer-patch traversal: outer patch 3 face is invalid (boundary halfedge). "
+                "Mesh may not contain the full 4*valence neighborhood.");
+            ev_faces.push_back(mesh.face(h));
+            ev_halfedges.push_back(h);
+        }
+
+        // Load the 2v+1 model-patch fitting functions.
+        std::vector<std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>>>
+            fitting_functions;
+        fitting_functions.reserve(function_count);
+        for (size_t i = 0; i < function_count; ++i)
+        {
+            fitting_functions.emplace_back(
+                gsFileData<real_t>(
+                    m_options.getString("model_patch_path") + "Val" +
+                    std::to_string(valence) + "Fct" + std::to_string(i) + ".xml")
+                    .getAll<gsTensorBSpline<2, real_t>>());
+        }
+
+        // Reserve 2v+1 contiguous global DOFs for this EV.
+        const index_t ev_dof_start = global_dof_count;
+        global_dof_count += (index_t)function_count;
+
+        for (size_t p = 0; p < patches_count; ++p)
+        {
+            GISMO_ASSERT(ev_faces[p].is_valid() && ev_faces[p].idx() < (int)face_to_patch.size(),
+                "EV face index out of range: " << ev_faces[p].idx() << " vs " << face_to_patch.size());
+            const int patch_idx = face_to_patch[ev_faces[p].idx()];
+            GISMO_ASSERT(patch_idx >= 0,
+                "EV patch not found in face_to_patch at face index " << ev_faces[p].idx());
+            const int k         = get_k(ev_faces[p], ev_halfedges[p]);
+
+            for (size_t ux = 0; ux < N; ++ux)
+            {
+                for (size_t vx = 0; vx < N; ++vx)
+                {
+                    // Inside EV support = all fitting functions non-zero here.
+                    const bool in_support =
+                        std::all_of(fitting_functions.begin(),
+                                    fitting_functions.end(),
+                                    [&](const auto& ff) {
+                                        return ff[p]->coef(
+                                                   (index_t)(ux * N + vx), 2) !=
+                                               real_t(0);
+                                    });
+
+                    // control_nets[p] = control_points_oriented(f,h).transpose()
+                    // so  control_nets[p](ux,vx) = oriented(vx,ux)
+                    //   → absolute (i,j) = apply_rotation(k, vx, ux)
+                    const auto [abs_i, abs_j] =
+                        apply_rotation(k, (int)vx, (int)ux);
+                    const index_t ldof = local_dof(patch_idx, abs_i, abs_j);
+
+                    if (in_support && !handled[ldof])
+                    {
+                        // Map this point via the fitting-function coefficients
+                        // (the A_control row) to the EV global DOFs.
+                        for (size_t j = 0; j < function_count; ++j)
+                        {
+                            const real_t coeff = fitting_functions[j][p]->coef(
+                                (index_t)(ux * N + vx), 2);
+                            if (coeff != real_t(0))
+                                pre_mapper[ldof][ev_dof_start + j] = coeff;
+                        }
+                        handled[ldof] = true;
+                    }
+                    else if (!in_support && ux > 0 && vx > 0 &&
+                             ux < N - 1 && vx < N - 1 && !handled[ldof])
+                    {
+                        // Outer inner point: free global DOF.
+                        pre_mapper[ldof][global_dof_count] = real_t(1);
+                        ++global_dof_count;
+                        handled[ldof] = true;
+                    }
+                    // Boundary non-support points: handled in Phase 3/4.
+                }
+            }
+        }
+    } // end EV loop
+
+    // ================================================================
+    // Phase 2 — Ordinary inner points
+    //
+    // Every interior control point (1 <= i,j <= N-2) not yet handled
+    // (i.e. not in any EV support or outer-inner position) gets its
+    // own free global DOF.  These are the 9 independent DOFs per
+    // ordinary patch.
+    // ================================================================
+    for (int p = 0; p < (int)nPatches; ++p)
+    {
+        for (int i = 1; i < (int)N - 1; ++i)
+        {
+            for (int j = 1; j < (int)N - 1; ++j)
+            {
+                const index_t ldof = local_dof(p, i, j);
+                if (!handled[ldof])
+                {
+                    pre_mapper[ldof][global_dof_count] = real_t(1);
+                    ++global_dof_count;
+                    handled[ldof] = true;
+                }
+            }
+        }
+    }
+
+    // ================================================================
+    // Phase 3 — Interior edge points (boundary rows/columns, not
+    //           corners, i.e. oriented (0,j) for j=1..N-2).
+    //
+    // For each interior mesh edge the C1 condition is
+    //   edge_pt = 0.5 * inner_this + 0.5 * inner_adj
+    // where inner_this is oriented (1,j) in the current patch and
+    // inner_adj is oriented (1,N-1-j) in the adjacent patch.
+    //
+    // The boundary points of the EV block that are inside the EV
+    // support are already handled (Phase 1); the !handled guard skips
+    // them.  Edges on the mesh boundary get a free global DOF because
+    // there is no adjacent patch to couple to.
+    // ================================================================
+    for (int p = 0; p < (int)nPatches; ++p)
+    {
+        Face f = faces[p];
+        int k = 0;
+        for (Halfedge h : mesh.halfedges(f))
+        {
+            for (int j = 1; j < (int)N - 1; ++j)
+            {
+                const auto [edge_i, edge_j] = apply_rotation(k, 0, j);
+                const index_t ldof          = local_dof(p, edge_i, edge_j);
+
+                if (handled[ldof]) continue;
+
+                if (mesh.is_boundary(mesh.opposite_halfedge(h)))
+                {
+                    // Mesh boundary: unconstrained free DOF.
+                    pre_mapper[ldof][global_dof_count] = real_t(1);
+                    ++global_dof_count;
+                }
+                else
+                {
+                    // C1 constraint: average of the two adjacent inner pts.
+                    const auto [inner_i, inner_j] = apply_rotation(k, 1, j);
+                    const index_t inner_ldof = local_dof(p, inner_i, inner_j);
+
+                    const Halfedge h_opp = mesh.opposite_halfedge(h);
+                    const Face     f_adj = mesh.face(h_opp);
+                    const int      p_adj = face_to_patch[f_adj.idx()];
+                    const int      k_adj = get_k(f_adj, h_opp);
+
+                    const auto [ia_i, ia_j] =
+                        apply_rotation(k_adj, 1, (int)N - 1 - j);
+                    const index_t inner_adj_ldof = local_dof(p_adj, ia_i, ia_j);
+
+                    for (auto& [gd, coeff] : pre_mapper[inner_ldof])
+                        pre_mapper[ldof][gd] += real_t(0.5) * coeff;
+                    for (auto& [gd, coeff] : pre_mapper[inner_adj_ldof])
+                        pre_mapper[ldof][gd] += real_t(0.5) * coeff;
+                }
+                handled[ldof] = true;
+            }
+            ++k;
+        }
+    }
+
+    // ================================================================
+    // Phase 4 — Corner points (oriented (0,0) of each halfedge).
+    //
+    // The corner at vertex v_corner is constrained as the average of
+    // the oriented (1,1) inner points of all non-boundary faces
+    // surrounding that vertex:
+    //   corner = (1/count) * sum_f  P_f(apply_rotation(k_f, 1, 1))
+    //
+    // If the vertex has no interior faces (fully on mesh boundary)
+    // it gets a free global DOF.
+    //
+    // Points already handled by the EV support (Phase 1) are skipped.
+    // ================================================================
+    for (int p = 0; p < (int)nPatches; ++p)
+    {
+        Face f = faces[p];
+        int k = 0;
+        for (Halfedge h : mesh.halfedges(f))
+        {
+            const auto [corner_i, corner_j] = apply_rotation(k, 0, 0);
+            const index_t ldof = local_dof(p, corner_i, corner_j);
+
+            if (!handled[ldof])
+            {
+                const Vertex v_corner = mesh.from_vertex(h);
+
+                // Mesh-boundary corners always get a free DOF so that
+                // gsDofMapper can eliminate them directly via markBoundary
+                // without touching interior global DOFs.
+                if (mesh.is_boundary(v_corner))
+                {
+                    pre_mapper[ldof][global_dof_count] = real_t(1);
+                    ++global_dof_count;
+                    handled[ldof] = true;
+                    ++k;
+                    continue;
+                }
+
+                std::map<index_t, real_t> row;
+                int face_count = 0;
+
+                for (Halfedge h_out : mesh.halfedges(v_corner))
+                {
+                    if (mesh.is_boundary(h_out)) continue;
+
+                    const int p_adj = face_to_patch[mesh.face(h_out).idx()];
+                    const int k_adj = get_k(mesh.face(h_out), h_out);
+
+                    // The (1,1) inner point in the frame oriented at v_corner.
+                    const auto [inner_i, inner_j] = apply_rotation(k_adj, 1, 1);
+                    const index_t inner_ldof =
+                        local_dof(p_adj, inner_i, inner_j);
+
+                    for (auto& [gd, coeff] : pre_mapper[inner_ldof])
+                        row[gd] += coeff;
+                    ++face_count;
+                }
+
+                if (face_count > 0)
+                {
+                    for (auto& [gd, coeff] : row)
+                        pre_mapper[ldof][gd] = coeff / (real_t)face_count;
+                }
+                else
+                {
+                    // Fully boundary vertex: free DOF.
+                    pre_mapper[ldof][global_dof_count] = real_t(1);
+                    ++global_dof_count;
+                }
+                handled[ldof] = true;
+            }
+            ++k;
+        }
+    }
+
+    // Sanity check.
     for (index_t i = 0; i < nLocalDofs; ++i)
-        identity_map.insert(i, i) = real_t(1);
-    identity_map.makeCompressed();
-    mapped_basis.init(multi_basis, identity_map);
+    {
+        if (!handled[i])
+        {
+            gsWarn << "basis_data: local DOF " << i
+                   << " was not handled — assigning free DOF.\n";
+            pre_mapper[i][global_dof_count] = real_t(1);
+            ++global_dof_count;
+        }
+    }
+
+    // ================================================================
+    // Assemble the sparse mapper matrix  (nLocalDofs x nGlobalDofs).
+    // ================================================================
+    gsSparseMatrix<> mapper_mat(nLocalDofs, global_dof_count);
+    {
+        gsSparseEntries<real_t> triplets;
+        triplets.reserve(nLocalDofs * 4);
+        for (index_t row = 0; row < nLocalDofs; ++row)
+            for (auto& [col, val] : pre_mapper[row])
+                if (std::abs(val) > real_t(1e-15))
+                    triplets.add(row, col, val);
+        mapper_mat.setFrom(triplets);
+    }
+    mapper_mat.makeCompressed();
+    mapped_basis.init(multi_basis, mapper_mat);
 }
 
 template <size_t N, size_t D>
@@ -1176,7 +1552,9 @@ void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     auto G = A.getMap(multi_patch);
     auto u = A.getSpace(mapped_basis);
     // Pull back the right hand side function $f$ to $\Omega$.
-    auto ff = A.getCoeff(rhs, G);
+    // rhs is defined in the 2-D parametric domain, so evaluate it there
+    // (not at physical points via G).
+    auto ff = A.getCoeff(rhs);
 
     // Set homogeneous Dirichlet BCs on every boundary side.  Without
     // computeTopology() above, bBegin()==bEnd() and the system would have an
@@ -1185,8 +1563,7 @@ void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     bc.setGeoMap(multi_patch);
     for (auto it = multi_patch.bBegin(); it != multi_patch.bEnd(); ++it)
         bc.addCondition(*it, condition_type::dirichlet, nullptr);
-    u.setup(bc, dirichlet::l2Projection, 0);
-
+    u.setup(bc, dirichlet::l2Projection, -1);
     A.initSystem();
 
     // Weak form stiffness matrix and RHS
