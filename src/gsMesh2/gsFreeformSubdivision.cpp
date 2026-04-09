@@ -1141,9 +1141,9 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
 {
     auto& mesh = *m_mesh;
 
+    // normal multi patch and multi basis
     multi_patch = this->multipatch();
     multi_patch.computeTopology();
-    multi_patch.embed(D - 1);
     multi_basis = gsMultiBasis<>(multi_patch);
 
     const size_t  nPatches   = multi_patch.nPatches();
@@ -1151,16 +1151,6 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
     GISMO_ASSERT(nLocalDofs == (index_t)multi_basis.totalSize(),
                  "Local DOF count mismatch");
 
-    // faces[p] is the mesh face corresponding to patch index p.
-    std::vector<Face> faces;
-    faces.reserve(nPatches);
-    for (Face f : mesh.faces())
-        faces.push_back(f);
-
-    // Map mesh face index -> patch index.
-    std::vector<int> face_to_patch(mesh.faces_size(), -1);
-    for (size_t p = 0; p < nPatches; ++p)
-        face_to_patch[faces[p].idx()] = (int)p;
 
     // ---- Helpers ------------------------------------------------
 
@@ -1293,9 +1283,9 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
 
         for (size_t p = 0; p < patches_count; ++p)
         {
-            GISMO_ASSERT(ev_faces[p].is_valid() && ev_faces[p].idx() < (int)face_to_patch.size(),
-                "EV face index out of range: " << ev_faces[p].idx() << " vs " << face_to_patch.size());
-            const int patch_idx = face_to_patch[ev_faces[p].idx()];
+            GISMO_ASSERT(ev_faces[p].is_valid() && ev_faces[p].idx() < nPatches,
+                "EV face index out of range: " << ev_faces[p].idx() << " vs " << nPatches);
+            const int patch_idx = ev_faces[p].idx();
             GISMO_ASSERT(patch_idx >= 0,
                 "EV patch not found in face_to_patch at face index " << ev_faces[p].idx());
             const int k         = get_k(ev_faces[p], ev_halfedges[p]);
@@ -1317,8 +1307,9 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
                     // control_nets[p] = control_points_oriented(f,h).transpose()
                     // so  control_nets[p](ux,vx) = oriented(vx,ux)
                     //   → absolute (i,j) = apply_rotation(k, vx, ux)
-                    const auto [abs_i, abs_j] =
+                    const std::pair<int,int> abs_ij =
                         apply_rotation(k, (int)vx, (int)ux);
+                    const int abs_i = abs_ij.first, abs_j = abs_ij.second;
                     const index_t ldof = local_dof(patch_idx, abs_i, abs_j);
 
                     if (in_support && !handled[ldof])
@@ -1389,13 +1380,14 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
     // ================================================================
     for (int p = 0; p < (int)nPatches; ++p)
     {
-        Face f = faces[p];
+        Face f(p);
         int k = 0;
         for (Halfedge h : mesh.halfedges(f))
         {
             for (int j = 1; j < (int)N - 1; ++j)
             {
-                const auto [edge_i, edge_j] = apply_rotation(k, 0, j);
+                const std::pair<int,int> edge_ij = apply_rotation(k, 0, j);
+                const int edge_i = edge_ij.first, edge_j = edge_ij.second;
                 const index_t ldof          = local_dof(p, edge_i, edge_j);
 
                 if (handled[ldof]) continue;
@@ -1409,22 +1401,24 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
                 else
                 {
                     // C1 constraint: average of the two adjacent inner pts.
-                    const auto [inner_i, inner_j] = apply_rotation(k, 1, j);
+                    const std::pair<int,int> inner_ij = apply_rotation(k, 1, j);
+                    const int inner_i = inner_ij.first, inner_j = inner_ij.second;
                     const index_t inner_ldof = local_dof(p, inner_i, inner_j);
 
                     const Halfedge h_opp = mesh.opposite_halfedge(h);
                     const Face     f_adj = mesh.face(h_opp);
-                    const int      p_adj = face_to_patch[f_adj.idx()];
+                    const int      p_adj = f_adj.idx();
                     const int      k_adj = get_k(f_adj, h_opp);
 
-                    const auto [ia_i, ia_j] =
+                    const std::pair<int,int> ia_ij =
                         apply_rotation(k_adj, 1, (int)N - 1 - j);
+                    const int ia_i = ia_ij.first, ia_j = ia_ij.second;
                     const index_t inner_adj_ldof = local_dof(p_adj, ia_i, ia_j);
 
-                    for (auto& [gd, coeff] : pre_mapper[inner_ldof])
-                        pre_mapper[ldof][gd] += real_t(0.5) * coeff;
-                    for (auto& [gd, coeff] : pre_mapper[inner_adj_ldof])
-                        pre_mapper[ldof][gd] += real_t(0.5) * coeff;
+                    for (auto& kv1 : pre_mapper[inner_ldof])
+                        pre_mapper[ldof][kv1.first] += real_t(0.5) * kv1.second;
+                    for (auto& kv2 : pre_mapper[inner_adj_ldof])
+                        pre_mapper[ldof][kv2.first] += real_t(0.5) * kv2.second;
                 }
                 handled[ldof] = true;
             }
@@ -1447,11 +1441,12 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
     // ================================================================
     for (int p = 0; p < (int)nPatches; ++p)
     {
-        Face f = faces[p];
+        Face f(p);
         int k = 0;
         for (Halfedge h : mesh.halfedges(f))
         {
-            const auto [corner_i, corner_j] = apply_rotation(k, 0, 0);
+            const std::pair<int,int> corner_ij = apply_rotation(k, 0, 0);
+            const int corner_i = corner_ij.first, corner_j = corner_ij.second;
             const index_t ldof = local_dof(p, corner_i, corner_j);
 
             if (!handled[ldof])
@@ -1477,23 +1472,24 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
                 {
                     if (mesh.is_boundary(h_out)) continue;
 
-                    const int p_adj = face_to_patch[mesh.face(h_out).idx()];
+                    const int p_adj = mesh.face(h_out).idx();
                     const int k_adj = get_k(mesh.face(h_out), h_out);
 
                     // The (1,1) inner point in the frame oriented at v_corner.
-                    const auto [inner_i, inner_j] = apply_rotation(k_adj, 1, 1);
+                    const std::pair<int,int> inner_ij = apply_rotation(k_adj, 1, 1);
+                    const int inner_i = inner_ij.first, inner_j = inner_ij.second;
                     const index_t inner_ldof =
                         local_dof(p_adj, inner_i, inner_j);
 
-                    for (auto& [gd, coeff] : pre_mapper[inner_ldof])
-                        row[gd] += coeff;
+                    for (auto& kv : pre_mapper[inner_ldof])
+                        row[kv.first] += kv.second;
                     ++face_count;
                 }
 
                 if (face_count > 0)
                 {
-                    for (auto& [gd, coeff] : row)
-                        pre_mapper[ldof][gd] = coeff / (real_t)face_count;
+                    for (auto& kv : row)
+                        pre_mapper[ldof][kv.first] = kv.second / (real_t)face_count;
                 }
                 else
                 {
@@ -1527,9 +1523,9 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
         gsSparseEntries<real_t> triplets;
         triplets.reserve(nLocalDofs * 4);
         for (index_t row = 0; row < nLocalDofs; ++row)
-            for (auto& [col, val] : pre_mapper[row])
-                if (std::abs(val) > real_t(1e-15))
-                    triplets.add(row, col, val);
+            for (auto& kv : pre_mapper[row])
+                if (std::abs(kv.second) > real_t(1e-15))
+                    triplets.add(row, kv.first, kv.second);
         mapper_mat.setFrom(triplets);
     }
     mapper_mat.makeCompressed();
@@ -1920,6 +1916,7 @@ void gsFreeformSubdivision<N, D>::initialize_data(std::string filepath)
     {
         gsWarn << "Unsupported Filetype! Mesh not initialized.\n";
     }
+    m_mesh->garbage_collection();
 }
 
 template <size_t N, size_t D>

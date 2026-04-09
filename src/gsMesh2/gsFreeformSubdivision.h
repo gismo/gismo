@@ -209,6 +209,7 @@ public:
     ///   those samples.
     void subdivide() override;
 
+    /// Use only garbage-collected meshes with contiguous indices!
     void basis_data(gsMultiPatch<> & multi_patch, gsMultiBasis<> & multi_basis, gsMappedBasis<2> & mapped_basis);
 
     /// \brief Solves the Laplace-Beltrami problem on the mesh.
