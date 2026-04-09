@@ -18,6 +18,143 @@
 
 using namespace gismo;
 //! [Include namespace]
+// computes the projection of a composition and return a MultiPatch object :: fitting
+void ComputesErrorGeometry(const gsMultiPatch<> &FF,
+                           const gsMultiPatch<> &MAmapping,
+                           const gsMultiPatch<> &Apmapping,
+                           const int numElData,
+                           double &maxDist,
+                           double &Binf)
+{
+    gsInfo << "<Error> Compute geometric error: ";
+    assert(MAmapping.dim() == 2 && "Only single-patch 2D fitting is implemented so far.");
+
+    gsStopwatch timer;
+    timer.restart();
+
+    // --- Generate a refined sampling grid ------------------------------------
+    auto corners         = MAmapping.basis(0).support();
+    gsMultiPatch<> mptmp;
+    mptmp.addPatch(gsNurbsCreator<>::BSplineRectangle(corners.at(0), corners.at(1), corners.at(2), corners.at(3)));
+    gsMultiBasis<> Tbasis(mptmp, true);
+    while (Tbasis.basis(0).size() <= mptmp.basis(0).size() * numElData)
+        Tbasis.uniformRefine();
+    const gsMatrix<> intGrid = Tbasis.basis(0).anchors();
+    gsInfo << ": gridsize from= " << Tbasis.basis(0).size()<< " ./. ";
+
+    // --- Evaluate mappings ---------------------------------------------------
+    gsMatrix<> intVals = MAmapping.patch(0).eval(intGrid);
+    gsMatrix<> JVals = MAmapping.patch(0).jacobian(intGrid);// Jacobain of square to square mapping
+    intVals = intVals.cwiseMax(0).cwiseMin(1);
+
+    const gsMatrix<> XF = FF.patch(0).eval(intVals);     // reference geometry
+    const gsMatrix<> JF = FF.patch(0).jacobian(intVals);     // Jacobian of reference geometry in adapted grids by  MA mapping
+    const gsMatrix<> XG = Apmapping.patch(0).eval(intGrid); // approximate geometry
+    const gsMatrix<> JG = Apmapping.patch(0).jacobian(intGrid); // Jacobain of approximate geometry
+    const index_t Nf = XF.cols(), Ng = XG.cols();
+
+    // --- Initialize outputs --------------------------------------------------
+    maxDist = 0.0;   // Hausdorff distance
+    Binf    = 0.0;   // boundary max distance
+    index_t ngrids = sqrt(intGrid.cols()); // number of grid points in one direction, assuming a square grid.
+    const index_t lookAround = 50; // look around 20 points to find the closest point on the other geometry for boundary error estimation
+
+    // --- Compute symmetric Hausdorff distance -------------------------------
+    #pragma omp parallel for reduction(max:maxDist)
+    for (index_t ix = 0; ix < ngrids; ++ix)
+    {
+    for (index_t jx = 0; jx < ngrids; ++jx)
+    {
+        index_t i  = ix * ngrids + jx;
+        real_t minDist = std::numeric_limits<real_t>::max();
+        for (index_t iy = std::max(ix-lookAround, 0); iy < std::min(ix+lookAround,ngrids); ++iy)
+        {
+        for (index_t jy = std::max(jx-lookAround, 0); jy < std::min(jx+lookAround,ngrids); ++jy)
+        {
+            index_t j  = iy * ngrids + jy;
+            const real_t d = (XF.col(i) - XG.col(j)).norm();
+            if (d < minDist) minDist = d;
+        }
+        }
+        if (minDist > maxDist) maxDist = minDist;
+    }
+    }
+
+    #pragma omp parallel for reduction(max:maxDist)
+    for (index_t j = 0; j < Ng; ++j)
+    {
+        real_t minDist = std::numeric_limits<real_t>::max();
+        for (index_t i = 0; i < Nf; ++i)
+        {
+            const real_t d = (XG.col(j) - XF.col(i)).norm();
+            if (d < minDist) minDist = d;
+        }
+        if (minDist > maxDist) maxDist = minDist;
+    }
+
+    // --- Compute boundary only error ----------------------------------------
+    #pragma omp parallel for reduction(max:Binf)
+    for (index_t i = 0; i < ngrids; ++i)
+    {
+        // y = 0
+        index_t k  = i * ngrids + 0;
+        real_t minDist = std::numeric_limits<real_t>::max();
+        for (index_t ii = std::max(i-lookAround, 0); ii < std::min(i+lookAround,ngrids); ++ii)
+        {
+        for (index_t ij = 0; ij < std::min(lookAround,ngrids); ++ij)
+        {
+            index_t kk  = ii * ngrids + ij;
+            const real_t d = (XG.col(k) - XF.col(kk)).norm();
+            if (d < minDist) minDist = d;
+        }
+        }
+        if (minDist > Binf) Binf = minDist;
+        // y = 1
+        k  = i * ngrids + ngrids - 1;
+        minDist = std::numeric_limits<real_t>::max();
+        for (index_t ii = std::max(i-lookAround, 0); ii < std::min(i+lookAround,ngrids); ++ii)
+        {
+        for (index_t ij = std::max(ngrids-1-lookAround, 0); ij < ngrids; ++ij)
+        {
+            index_t kk  = ii * ngrids + ij;
+            const real_t d = (XG.col(k) - XF.col(kk)).norm();
+            if (d < minDist) minDist = d;
+        }
+        }
+        if (minDist > Binf) Binf = minDist;
+        // x = 0
+        k  = 0 * ngrids + i;
+        minDist = std::numeric_limits<real_t>::max();
+        for (index_t ii = 0; ii < std::min(lookAround,ngrids); ++ii)
+        {
+        for (index_t ij = std::max(i-lookAround, 0); ij < std::min(i+lookAround,ngrids); ++ij)
+        {
+            index_t kk  = ii * ngrids + ij;
+            const real_t d = (XG.col(k) - XF.col(kk)).norm();
+            if (d < minDist) minDist = d;
+        }
+        }
+        if (minDist > Binf) Binf = minDist;
+        // x = 1
+        k  = (ngrids - 1) * ngrids + i;
+        minDist = std::numeric_limits<real_t>::max();
+        for (index_t ii = std::max(ngrids-1-lookAround, 0); ii < ngrids; ++ii)
+        {
+        for (index_t ij = std::max(i-lookAround, 0); ij < std::min(i+lookAround,ngrids); ++ij)
+        {
+            index_t kk  = ii * ngrids + ij;
+            const real_t d = (XG.col(k) - XF.col(kk)).norm();
+            if (d < minDist) minDist = d;
+        }
+        }
+        if (minDist > Binf) Binf = minDist;
+    }
+
+    double cpu = timer.stop();
+    gsInfo << "Hausdorff = " << maxDist
+           << ", Boundary = " << Binf
+           << ", CPU time = " << cpu << " s\n";
+};
 
 int main(int argc, char *argv[])
 {
@@ -156,10 +293,10 @@ int main(int argc, char *argv[])
         numRefine = 0;
     }
     // ... 
-    gsVector<>  Bdrerr(numRefine+1), Volerr(numRefine+1)// L2 projection errors
-                , CVolerr(numRefine+1)
-                , IBdrerr(numRefine+1), IVolerr(numRefine+1)// Interpolation errors
-                , FBdrerr(numRefine+1), FVolerr(numRefine+1);// Fitting errors
+    gsVector<>  Bdrerr(numRefine+1), Hdferror(numRefine+1), L2Jerror(numRefine+1)// L2 projection errors
+                , CHdferror(numRefine+1)
+                , IBdrerr(numRefine+1), IHdferror(numRefine+1), IL2Jerror(numRefine+1)// Interpolation errors
+                , FBdrerr(numRefine+1), FHdferror(numRefine+1), FL2Jerror(numRefine+1);// Fitting errors
     gsVector<int>  DoFPDE(numRefine+1);
     for (int r=0; r<= numRefine; ++r)
     {
@@ -171,7 +308,7 @@ int main(int argc, char *argv[])
             <<"}------------------------------------------------------\n";
 
     DoFPDE[r]               = dbasis.basis(0).size();
-    CVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral( jac(Cmp).det()*jac(PP).det() ) ));
+    CHdferror[r]              = abs(ev.integral( jac(G).det() - jac(Cmp).det()*jac(PP).det() ) );
 
     //----------------------------------------------------------------------
     // ... computes the composition of geometry maps L^2-projection method !
@@ -181,8 +318,12 @@ int main(int argc, char *argv[])
     mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue);
     geometryMap GPi = A.getMap(mpPsi);
     // ... Error analysis
-    Volerr[r]               = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));
-    Bdrerr[r]               = math::sqrt(ev.integral((GPi-Cmp).sqNorm()));
+    double maxDist = 0.;
+    double Binf = 0.;
+    ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf);
+    L2Jerror[r]             = abs(ev.integral( meas(G) - meas(GPi)) );
+    Hdferror[r]             = maxDist;// std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));
+    Bdrerr[r]               = Binf;//math::sqrt(ev.integral((GPi-Cmp).sqNorm()));
     }
 
     if (colloc){
@@ -192,19 +333,27 @@ int main(int argc, char *argv[])
     mpPsi                   = MAE.buildColCompMultiPatch(dbasis);
     geometryMap PGI         = A.getMap(mpPsi);
     // ... Error using Interpolation method
-    IVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
-    IBdrerr[r]              = math::sqrt(ev.integral((PGI-Cmp).sqNorm())); 
+    double maxDist = 0.;
+    double Binf = 0.;
+    ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf);
+    IL2Jerror[r]            = abs(ev.integral( meas(G) - meas(PGI)) );
+    IHdferror[r]            = maxDist;//std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
+    IBdrerr[r]              = Binf;// math::sqrt(ev.integral((PGI-Cmp).sqNorm())); 
     }
 
     if(fit){
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by fit method !
     //----------------------------------------------------------
-    mpPsi                   = MAE.buildFitCompMultiPatch(dbasis,50);
+    mpPsi                   = MAE.buildFitCompMultiPatch(dbasis, 50, 0e-6);
     geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
-    FVolerr[r]              = std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
-    FBdrerr[r]              = math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
+    double maxDist = 0.;
+    double Binf = 0.;
+    ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf);
+    IL2Jerror[r]            = abs(ev.integral( meas(G) - meas(PGF)) );
+    IHdferror[r]            = maxDist;//std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
+    IBdrerr[r]              = Binf;// math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
     }
     }
 
@@ -215,18 +364,21 @@ int main(int argc, char *argv[])
         outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduceMAE <<"\n"
                 << std::scientific << DoFPDE.transpose() << "\n";
         if (L2proj){
-        outFile << "#V_error: \n" << std::scientific << std::setprecision(3) << Volerr.transpose() << "\n";
-        outFile << "#L_error: \n" << std::scientific << std::setprecision(3) << Bdrerr.transpose() << "\n";
+        outFile << "#Hausdorff_error: \n" << std::scientific << std::setprecision(3) << Hdferror.transpose() << "\n";
+        outFile << "#Boundary_error: \n" << std::scientific << std::setprecision(3) << Bdrerr.transpose() << "\n";
+        outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << L2Jerror.transpose() << "\n";
         }
         if (colloc){
-        outFile << "#INTERPOL V_error: \n" << std::scientific << std::setprecision(3) << IVolerr.transpose() << "\n";
-        outFile << "#INTERPOL L_error: \n" << std::scientific << std::setprecision(3) << IBdrerr.transpose() << "\n";
+        outFile << "#INTERPOL Hausdorff_error: \n" << std::scientific << std::setprecision(3) << IHdferror.transpose() << "\n";
+        outFile << "#INTERPOL Boundary_error: \n" << std::scientific << std::setprecision(3) << IBdrerr.transpose() << "\n";
+        outFile << "#INTERPOL L2_error: \n" << std::scientific << std::setprecision(3) << IL2Jerror.transpose() << "\n";
         }
         if (fit){
-        outFile << "#FITTING V_error: \n" << std::scientific << std::setprecision(3) << FVolerr.transpose() << "\n";
-        outFile << "#FITTING L_error: \n" << std::scientific << std::setprecision(3) << FBdrerr.transpose() << "\n";
+        outFile << "#FITTING Hausdorff_error: \n" << std::scientific << std::setprecision(3) << FHdferror.transpose() << "\n";
+        outFile << "#FITTING Boundary_error: \n" << std::scientific << std::setprecision(3) << FBdrerr.transpose() << "\n";
+        outFile << "#FITTING L2_error: \n" << std::scientific << std::setprecision(3) << FL2Jerror.transpose() << "\n";
         }
-        outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << CVolerr.transpose() << "\n";
+        outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << CHdferror.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
         gsInfo << "Error analysis results appended to errorGeometry_analysis.txt.\n";
@@ -240,60 +392,80 @@ int main(int argc, char *argv[])
     //--------------------------------------------------------------------------------------------------    
     // --- Print header ---
     gsInfo << std::setw(12) << "DoFs" << " & "
-         << std::setw(13) << "V(F∘Ψ)"     << " & "
-         << std::setw(13) << "V(Πp(F∘Ψ))"  << " & "
-         << std::setw(13) << "L2(Πp(F∘Ψ))" << " & "
+         << std::setw(13) << "Quad-error"     << " & "
+         << std::setw(13) << "Boundary"  << " & "
+         << std::setw(13) << "Hausdorff"     << " & "
+         << std::setw(6)  << "EOcH"      << " & "
+         << std::setw(13) << "L2" << " & "
          << std::setw(6)  << "EOcL2"      << "\n";
     // --- Print table row by row ---
     if (L2proj){
     gsInfo << std::string(50, '-') << "L2Proj\n";
-        auto orderofConv = ( Bdrerr.head(numRefine).array() /
-                  Bdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+        auto orderofConv = ( Hdferror.head(numRefine).array() /
+                  Hdferror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+        auto orderofConvL2 = ( L2Jerror.head(numRefine).array() /
+                  L2Jerror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
     gsInfo << std::setw(12) << DoFPDE[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< Volerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[0] << "&"
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< Hdferror[0] << " & "
+            << std::setw(12) << "--" << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< L2Jerror[0] << "&"
             << std::setw(12) << "--" << "\n";
     for (int i = 1; i <= numRefine; i++) {
         gsInfo << std::setw(12) << DoFPDE[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Volerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[i] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[i] << "&"
-             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << "\n";
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Hdferror[i] << " & "
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< L2Jerror[i] << " & "
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\n";
             }
     }
     if (colloc){
     gsInfo << std::string(50, '-') << "Colloc\n";
-    auto orderofConv = ( IBdrerr.head(numRefine).array() /
-                  IBdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+    auto orderofConv = ( IHdferror.head(numRefine).array() /
+                  IHdferror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+    auto orderofConvL2 = ( IL2Jerror.head(numRefine).array() /
+                    IL2Jerror.tail(numRefine).array() ).log().transpose() / std::log(2.0);  
     gsInfo << std::setw(12) << DoFPDE[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< IVolerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IBdrerr[0] << "&"
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< IHdferror[0] << " & "
+            << std::setw(12) << "--" << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< IL2Jerror[0] << "&"
             << std::setw(12) << "--" << "\n";
     for (int i = 1; i <= numRefine; i++) {
         gsInfo << std::setw(12) << DoFPDE[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IVolerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[i] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< IBdrerr[i] << "&"
-             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << "\n";
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IHdferror[i] << " & "
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IL2Jerror[i] << " & "
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\n";
             }
     }
     if (fit){
     gsInfo << std::string(50, '-') << "Fit\n";
     auto orderofConv = ( FBdrerr.head(numRefine).array() /
                   FBdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+    auto orderofConvL2 = ( FL2Jerror.head(numRefine).array() /
+                    FL2Jerror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
     gsInfo << std::setw(12) << DoFPDE[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< FVolerr[0] << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FBdrerr[0] << "&"
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< FHdferror[0] << " & "
+            << std::setw(12) << "--" << " & "
+            << std::setw(12) <<std::setprecision(3)<<std::scientific<< FL2Jerror[0] << "&" 
             << std::setw(12) << "--" << "\n";
     for (int i = 1; i <= numRefine; i++) {
         gsInfo << std::setw(12) << DoFPDE[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CVolerr[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FVolerr[i] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[i] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< FBdrerr[i] << "&"
-             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << "\n";
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FHdferror[i] << " & "
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << " & "
+             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FL2Jerror[i] << "&"
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\n";
             }
     }
     //! [Export visualization in ParaView] 

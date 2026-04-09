@@ -17,30 +17,30 @@
 using namespace gismo;
 //! [Include namespace]
 // Project control points following  normal direction at the boundaries for square domain (Exact square recovery after refinement)
-void aforcing_c0(gsMultiPatch<>& mp, gsMultiPatch<>& Psi)
-{
-    //TODO correct control points of Psi to be c0 with respect to multipatch interfaces for Psi based on the interfaces of mp (mp only give us connection not points), while Psi is multipatch but only unit-square (0,1)^2 means if interface 1/2 Psi control poitns cpts at interface 1(x=0) should have same as for Psi cpts right (x=1) which leads to correct only in y direction
-    // normal Projection of control points (exact geometry)
-    auto interfaces = mp.interfaces();
-    #pragma omp parallel for
-    for (auto interface : interfaces)
-    {
-        index_t bndIter  = 1;
-        auto leftbox = interface.first();
-        auto secbox = interface.second();
-        auto i_dir = leftbox.direction();
-        // x=0 control points be like (0,:) in this case
-        for (int i_x =0; i_x < Psi.patch(leftbox).basis().boundary(bndIter).size(); ++i_x) 
-        {
-            // moyen
-            auto lval = Psi.patch(leftbox).coef( Psi.patch(leftbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir];
-            lval = lval+ Psi.patch(secbox).coef( Psi.patch(secbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir];
-            // correction 
-            Psi.patch(leftbox).coef( Psi.patch(leftbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir] = lval;
-            Psi.patch(secbox).coef( Psi.patch(secbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir] = lval;
-        }
-    }
-}
+// void aforcing_c0(gsMultiPatch<>& mp, gsMultiPatch<>& Psi)
+// {
+//     //TODO correct control points of Psi to be c0 with respect to multipatch interfaces for Psi based on the interfaces of mp (mp only give us connection not points), while Psi is multipatch but only unit-square (0,1)^2 means if interface 1/2 Psi control poitns cpts at interface 1(x=0) should have same as for Psi cpts right (x=1) which leads to correct only in y direction
+//     // normal Projection of control points (exact geometry)
+//     auto interfaces = mp.interfaces();
+//     #pragma omp parallel for
+//     for (auto interface : interfaces)
+//     {
+//         index_t bndIter  = 1;
+//         auto leftbox = interface.first();
+//         auto secbox = interface.second();
+//         auto i_dir = leftbox.direction();
+//         // x=0 control points be like (0,:) in this case
+//         for (int i_x =0; i_x < Psi.patch(leftbox).basis().boundary(bndIter).size(); ++i_x) 
+//         {
+//             // moyen
+//             auto lval = Psi.patch(leftbox).coef( Psi.patch(leftbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir];
+//             lval = lval+ Psi.patch(secbox).coef( Psi.patch(secbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir];
+//             // correction 
+//             Psi.patch(leftbox).coef( Psi.patch(leftbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir] = lval;
+//             Psi.patch(secbox).coef( Psi.patch(secbox).basis().boundary(bndIter).at(i_x) ).array()[i_dir] = lval;
+//         }
+//     }
+// }
 
 int main(int argc, char *argv[])
 {
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     // Specify the file path
     //std::string fn("pde/circle.xml");
     // std::string fn("surfaces/cylinder.xml"); 
-    std::string fn( "pde/solovev.xml" );
+    std::string fn( "pde/solovev_relaxed.xml" );
     // load the file
     gsFileData<> fd(fn);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";

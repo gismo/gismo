@@ -550,24 +550,54 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     //...  just to generate grid
     gsMultiBasis<> T_tbasis(mp, true);
 
-    while ( T_tbasis.basis(0).numElements() <= Cbasis.basis(0).numElements()*numElData)
+    while ( T_tbasis.basis(0).size() <= std::max(Cbasis.basis(0).size()*30, mp.basis(0).size()*numElData))
     {
         T_tbasis.uniformRefine();
     }
-    gsInfo<<":gridsize="<<T_tbasis.basis(0).numElements()<<"/"<<Cbasis.basis(0).numElements();
-
-    gsMatrix<> intGrid     = T_tbasis.basis(0).anchors();
+    gsInfo<<":gridsize="<<T_tbasis.basis(0).size()<<"/"<<Cbasis.basis(0).size();
+    gsMatrix<> intGrid    = T_tbasis.basis(0).anchors();
+    index_t ngrids        = sqrt(intGrid.cols()); // number of grid points in one direction, assuming a square grid.
     // Evaluate f at the Greville points
-    gsMatrix<> intfavlues  = this->MAmapping.patch(0).eval(intGrid);
-    intfavlues             = intfavlues.cwiseMax(0).cwiseMin(1);
-    gsMatrix<> fValues     = this->m_mapping.patch(0).eval(intfavlues);
+    gsMatrix<> intValues  = this->MAmapping.patch(0).eval(intGrid);
+    intValues             = intValues.cwiseMax(0).cwiseMin(1);
+    gsMatrix<> fValues    = this->m_mapping.patch(0).eval(intValues);
 
     //! [Create  Hfitter]
+    std::vector<index_t> boundaryIdx;
+    for (index_t i = 0; i < ngrids; ++i)
+    {
+        // y = 0 (bottom)
+        boundaryIdx.push_back(i * ngrids + 0);
+        // y = 1 (top)
+        boundaryIdx.push_back(i * ngrids + (ngrids - 1));
+        // x = 0 (left)
+        boundaryIdx.push_back(0 * ngrids + i);
+        // x = 1 (right)
+        boundaryIdx.push_back((ngrids - 1) * ngrids + i);
+    }
+    // Remove duplicates from boundary indices
+    std::sort(boundaryIdx.begin(), boundaryIdx.end());
+    boundaryIdx.erase(std::unique(boundaryIdx.begin(), boundaryIdx.end()),
+                    boundaryIdx.end());
+    // Number of interior points
+    index_t totalPts = ngrids * ngrids;
+    index_t nbInterior = totalPts - boundaryIdx.size();
+    // Combine interior and boundary indices for fitting
+    std::vector<index_t> interpIdx;
+    interpIdx.push_back(nbInterior);
+    for (auto b : boundaryIdx)
+        interpIdx.push_back(b);
     // Create hierarchical refinement object
-    gsFitting<> ref( intGrid, fValues, THB);
+    gsFitting<> ref( intGrid, intGrid, THB);
     //... compute coefs
+    ref.parameterProjectionSepBoundary(1e-8, interpIdx);
     ref.compute(lambda);
-     
+
+    const std::vector<real_t> & errors = ref.pointWiseErrors();
+    gsInfo<<"Fitted with "<< ref.result()->basis() <<".-.";
+    gsInfo<<"Min distance : "<< ref.minPointError() <<".-. ";
+    gsInfo<<"Max distance : "<< ref.maxPointError() <<".-.";
+    gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(1e-10)/errors.size()<<"%.-.";
     //! [extract the mapping]
     Psi.addPatch(give(*ref.result()));
     Psi.computeTopology();
