@@ -31,6 +31,7 @@ namespace gismo
 class GISMO_EXPORT gsSubdivScheme
 {
 protected:
+
     gsSurfMesh* m_mesh;///<pointer to the input mesh
 
     gsOptionList m_options;
@@ -101,7 +102,15 @@ public: // Doo-Sabin functions
     */
     void ds_subdivide();
 
-private:
+    /// Compute DS vertex limit positions
+    gsSurfMesh::Face_property<Point> ds_vertex_limits(std::string label = "v:limit");
+
+    /// Compute DS vertex limit normals (see Halsted 1993, EDSS-Huang 2010).
+    gsSurfMesh::Face_property<Point> ds_normals_vertex_limits(std::string label = "v:normal",
+        bool normalize = true);
+
+
+protected:
     
     /// Doo-Sabin Image point calculation per vertex in a face (boundary interpolation)
     Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);
@@ -120,7 +129,14 @@ public: // Loop subdivision
      *
     */
     void loop_subdivide();
-    
+
+public: // curve subdivision schemes
+
+    // Chaikin scheme
+    void chaikin_scheme();
+
+
+
 
 
 };//namespace internal

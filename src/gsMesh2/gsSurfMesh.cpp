@@ -622,7 +622,196 @@ is_quad_mesh() const
 
     return true;
 }
+void 
+gsSurfMesh::
+mesh_statistics(bool eoc_verbose)
+{
+    index_t maxvalEV = 0, minvalEV = 0, maxvalEF = 0, minvalEF = 0, maxvalBoundEV = 0,
+        minvalBoundEV = 0, maxvalBoundEF = 0, minvalBoundEF = 0;
+    int cnt = 0, cntB = 0;
+    int cntf = 0, cntBf = 0;
 
+
+    std::map<index_t, index_t> evInterNum;
+    std::map<index_t, index_t> efInterNum;
+    std::map<index_t, index_t> evBoundNum;
+    std::map<index_t, index_t> efBoundNum;
+    gsInfo << "Mesh statistics..." << "\n";
+    gsInfo << "\n";
+
+    gsInfo << "# of vertices: " << n_vertices() << "\n";
+    gsInfo << "# of faces: " << n_faces() << "\n";
+    gsInfo << "# of edges: " << n_edges() << "\n";
+
+    gsInfo << "\n";
+
+
+    // Checking EVs
+    for (auto vit : vertices())
+    {
+        if (!is_boundary(vit)) // internal vertex
+        {
+            if (valence(vit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (evInterNum.find(valence(vit)) == evInterNum.end())
+                        evInterNum[valence(vit)] = 0;
+                    evInterNum[valence(vit)] += 1;
+                } 
+                if (cnt == 0)
+                {
+                    minvalEV = valence(vit);
+                    maxvalEV = valence(vit);
+                }
+                else
+                {
+                    if (valence(vit) > maxvalEV)
+                        maxvalEV = valence(vit);
+                    else if (valence(vit) < minvalEV)
+                        minvalEV = valence(vit);
+                }
+                cnt++;
+            }
+        }
+        else // boundary vertex
+        {
+            if (valence(vit) != 3)
+            {
+                if (eoc_verbose)
+                {
+                    if (evBoundNum.find(valence(vit)) == evBoundNum.end())
+                        evBoundNum[valence(vit)] = 0;
+                    evBoundNum[valence(vit)] += 1;
+                }
+                if (cntB == 0)
+                {
+                    minvalBoundEV = valence(vit);
+                    maxvalBoundEV = valence(vit);
+                }
+                else
+                {
+                    if (valence(vit) > maxvalBoundEV)
+                        maxvalBoundEV = valence(vit);
+                    else if (valence(vit) < minvalBoundEV)
+                        minvalBoundEV = valence(vit);
+                }
+                cntB++;
+            }
+        }
+
+    }
+
+
+    // Checking EFs
+    for (auto fit : faces())
+    {
+        if (!is_boundary(fit)) // internal faces
+        {
+            if (valence(fit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (efInterNum.find(valence(fit)) == efInterNum.end())
+                        efInterNum[valence(fit)] = 0;
+                    efInterNum[valence(fit)] += 1;
+                }
+                
+                if (cntf == 0)
+                {
+                    minvalEF = valence(fit);
+                    maxvalEF = valence(fit);
+                }
+                else
+                {
+                    if (valence(fit) > maxvalEF)
+                        maxvalEF = valence(fit);
+                    else if (valence(fit) < minvalEF)
+                        minvalEF = valence(fit);
+                }
+                cntf++;
+            }
+        }
+        else // boundary faces
+        {
+            if (valence(fit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (efBoundNum.find(valence(fit)) == efBoundNum.end())
+                        efBoundNum[valence(fit)] = 0;
+                    efBoundNum[valence(fit)] += 1;
+                }
+                if (cntBf == 0)
+                {
+                    minvalBoundEF = valence(fit);
+                    maxvalBoundEF = valence(fit);
+                }
+                else
+                {
+                    if (valence(fit) > maxvalBoundEF)
+                        maxvalBoundEF = valence(fit);
+                    else if (valence(fit) < minvalBoundEF)
+                        minvalBoundEF = valence(fit);
+                }
+                cntBf++;
+            }
+        }
+    }
+
+
+    gsInfo << "Interior: " << "\n";
+    if (cnt != 0)
+        gsInfo << "# of EVs: " << cnt << "\n";
+    if (cntf != 0)
+        gsInfo << "# of EFs: " << cntf << "\n";
+    gsInfo << "Maximum valence in EVs: " << maxvalEV << "\n";
+    gsInfo << "Mimimum valence in EVs: " << minvalEV << "\n";
+    gsInfo << "Maximum valence in EFs: " << maxvalEF << "\n";
+    gsInfo << "Minimum valence in EFs: " << minvalEF << "\n";
+
+    if (eoc_verbose)
+    {
+        for (const auto& evkey : evInterNum)
+        {
+            gsInfo << "# of EV with valence " <<evkey.first<<": " << evkey.second << "\n";
+        }
+        for (const auto& evkey : efInterNum)
+        {
+            gsInfo << "# of EF with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+
+    }
+
+
+    gsInfo << "Boundary: " << "\n";
+    if (cntB != 0)
+        gsInfo << "# of EVs: " << cntB << "\n";
+    if (cntBf != 0)
+        gsInfo << "# of EFs: " << cntBf << "\n";
+    gsInfo << "Maximum valence in EVs: " << maxvalBoundEV << "\n";
+    gsInfo << "Mimimum valence in EVs: " << minvalBoundEV << "\n";
+    gsInfo << "Maximum valence in EFs: " << maxvalBoundEF << "\n";
+    gsInfo << "Minimum valence in EFs: " << minvalBoundEF << "\n";
+
+    if (eoc_verbose)
+    {
+        for (const auto& evkey : evBoundNum)
+        {
+            gsInfo << "# of EV with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+        for (const auto& evkey : efBoundNum)
+        {
+            gsInfo << "# of EF with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+
+    }
+
+
+    gsInfo << "Done statistics..." << "\n";
+
+
+}
 void
 gsSurfMesh::
 triangulate()
@@ -858,6 +1047,76 @@ split(Face f, Vertex v)
     set_halfedge(v, hold);
 }
 
+void
+gsSurfMesh::
+split(std::vector<Vertex> vv, Face f, Vertex v)
+{
+    /*
+      Split an arbitrary face into triangles by connecting specif vertex of f vector to vh.
+      - fh will remain valid (it will become one of the triangles)
+      - the halfedge handles of the new triangles will point to the old halfeges
+    */
+
+    Halfedge hend = halfedge(f);
+    do 
+    {
+        hend = next_halfedge(hend);
+    } while (from_vertex(hend) != vv[0]);
+
+
+    Halfedge h = next_halfedge(hend);
+
+    Halfedge hold = new_edge(from_vertex(hend), v);
+
+    index_t sz = vv.size();
+    hold = opposite_halfedge(hold);
+    int cnt, count=0;
+    Face fnew;
+    Halfedge hnew, holdinit=hold;
+
+    while (h != hend)
+    {
+        cnt = std::count(vv.begin(), vv.end(), to_vertex(h));
+        
+        if (cnt == 0)
+        {
+            h = next_halfedge(h);
+            continue;
+        }
+
+        Halfedge hnext = next_halfedge(h);
+        Halfedge hprev = prev_halfedge(h);
+
+
+        if (count==0)
+            fnew = f;
+        else
+            fnew = new_face();
+        
+        set_halfedge(fnew, h);
+        if (count == sz - 1)
+            hnew = opposite_halfedge(holdinit);
+        else
+            hnew = new_edge(to_vertex(h), v );
+
+
+        set_next_halfedge(hold, hprev);
+        set_next_halfedge(hprev, h);
+        set_next_halfedge(h, hnew);
+        set_next_halfedge(hnew, hold);
+
+        set_face(hnew, fnew);
+        set_face(hold, fnew);
+        set_face(h, fnew);
+        set_face(hprev, fnew);
+        
+        hold = opposite_halfedge(hnew);
+        count++;
+        h = hnext;
+    }
+
+    set_halfedge(v, hold);
+}
 
 void
 gsSurfMesh::
@@ -972,6 +1231,148 @@ void gsSurfMesh::quad_split()
         quad_split(fit, v, fv.he());
     }
 
+}
+
+void gsSurfMesh::quad_split(index_t w)
+{
+
+    
+    if (w==0)
+    {
+        return;
+    }
+    else if (w == 1)
+    {
+        quad_split();
+        return;
+    }
+    else 
+    {
+
+        GISMO_ASSERT(w < 3, "NOT TESTED!");
+
+        gsSurfMesh::Vertex v, vs, ve;
+        gsSurfMesh::Halfedge he, hh, hb;
+        // reserve vertices, edges, faces
+        reserve(n_vertices() + n_edges() + n_faces(),
+            2 * n_edges(), 4 * n_faces());
+
+
+        gsSurfMesh nm;
+
+        // loop over all edges, add edge points
+        Point tmp, dx, tmpA, tmpB, tmpC;
+
+        Vertex_property<bool> master_verts;
+
+        for (auto vit : vertices())
+            nm.add_vertex(position(vit));
+
+        if (!vprops_.has("v:master"))
+            master_verts = nm.add_vertex_property<bool>("v:master", false);
+        else
+            master_verts = nm.get_vertex_property<bool>("v:master");
+
+
+        if (!nm.vprops_.has("v:neighval"))
+            nm.add_vertex_property<int>("v:neighval", 4);
+
+        for (auto eit : edges())
+        {
+
+            he = halfedge(eit, 0);
+            dx = (position(to_vertex(he)) - position(from_vertex(he))) / (real_t)(w + 1);
+            tmp = position(from_vertex(he));
+            master_verts[from_vertex(he)] = true;
+
+            hh = he;
+            for (index_t i = 0; i < w; i++)
+            {
+                tmp += dx;
+                nm.add_vertex(tmp);
+                hh = prev_halfedge(opposite_halfedge(insert_vertex(hh, add_vertex(tmp))));
+                hh = next_halfedge(hh);
+            }
+
+
+        }
+
+        auto points = get_vertex_property<Point>("v:point");
+        std::vector<Vertex> intverts;
+        index_t n = 0, count = 0;
+        for (auto fit : faces())
+        {
+
+
+            // Find one master vertex in the face
+            for (auto hit : halfedges(fit))
+                if (master_verts[from_vertex(hit)])
+                {
+                    he = hit;
+                    break;
+                }
+
+            // Count the number of initial edges
+            hh = he;
+            count = 0;
+            do
+            {
+                count++;
+                hh = next_halfedge(hh);
+            } while (he != hh);
+
+            // Create corner subfaces
+
+            n = count / (w + 1); // # of master edges (initial ones)
+            count = 0;
+            hh = he;
+            hb = prev_halfedge(prev_halfedge(he));
+            intverts.clear();
+            do
+            {
+                count++;
+                tmpA = points[from_vertex(hh)];
+                tmpB = points[to_vertex(hh)];
+                tmpC = points[from_vertex(prev_halfedge(hh))];
+                tmp = (tmpB - tmpA) + (tmpC - tmpA) + tmpA;
+                v = nm.add_vertex(tmp);
+                intverts.push_back(v);
+                nm.add_quad(Vertex(to_vertex(hh)), Vertex(from_vertex(hh)), Vertex(from_vertex(prev_halfedge(hh))), v);
+                hh = next_halfedge(hh);
+                if (count < n)
+                {
+                    hh = next_halfedge(hh);
+                    hh = next_halfedge(hh);
+
+                }
+            } while (hb != hh);
+
+            // Create interior face(s)
+            hh = he;
+            count = 0;
+            do
+            {
+
+                hh = next_halfedge(hh);
+                vs = intverts[count];
+                if (count == n - 1)
+                    ve = intverts[0];
+                else
+                    ve = intverts[count + 1];
+                nm.add_quad(Vertex(from_vertex(hh)), vs, ve, Vertex(to_vertex(hh)));
+                hh = next_halfedge(hh);
+                hh = next_halfedge(hh);
+                count++;
+            } while (count != n);
+
+
+
+            nm.add_quad(intverts[0], intverts[3], intverts[2], intverts[1]);
+        }
+
+        *this = std::move(nm);
+
+    }
 }
 
 gsSurfMesh::Halfedge
@@ -2123,7 +2524,17 @@ gsMultiPatch<real_t> gsSurfMesh::linear_patches() const
 }
 
 
-void gsSurfMesh::dual_mesh()
+void gsSurfMesh::dual_mesh_inplace()
+{
+    // Dual-mesh instance
+    gsSurfMesh dm = dual_mesh();   
+                
+    *this = std::move(dm);
+
+}
+
+
+gsSurfMesh gsSurfMesh::dual_mesh()
 {
     // Dual-mesh instance
     gsSurfMesh dm;
@@ -2156,9 +2567,9 @@ void gsSurfMesh::dual_mesh()
 
     }
 
-    
-                
-    *this = std::move(dm);
+
+
+    return dm;
 
 }
 
@@ -2339,25 +2750,33 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         result.add_vertex(gsSurfMesh::Point(x,y,z));
     }
 
-    /* //Alternative for reading quads only (with complex topolog)
+   // /* //Alternative for reading quads only (with complex topolog)
    unsigned k, c = 0;
     std::vector<gsSurfMesh::Vertex> face(4);
     std::vector<gsSurfMesh::Edge> e(4);
     for (unsigned i=0; i<nf; ++i)
     {
         gsGetInt(str, c);
-        GISMO_ASSERT(4==c, "quads?");
+        face.resize(c);
+        //GISMO_ASSERT(4==c, "quads?");
         for (unsigned j=0; j<c; ++j)
         {
             gsGetInt(str, k);
             face[j] = gsSurfMesh::Vertex(k);
         }
-        for (unsigned j=0; j<c; ++j)
-            e[j] = result.find_or_add_edge(face[j],face[(j+1)%c]);
-        result.add_quad(e[0], e[1], e[2], e[3]);
+        if (c == 4)
+        {
+            for (unsigned j = 0; j < c; ++j)
+                e[j] = result.find_or_add_edge(face[j], face[(j + 1) % c]);
+            result.add_quad(e[0], e[1], e[2], e[3]);
+        }
+        else
+            result.add_face(face);
+
     }
     //*/
 
+    /*
     unsigned k, c = 0;
     std::vector<gsSurfMesh::Vertex> face;
     for (unsigned i=0; i<nf; ++i)
@@ -2371,6 +2790,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         }
         result.add_face(face);
     }
+    //*/
 
     if (0!=ne)
     {

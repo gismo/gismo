@@ -1544,12 +1544,25 @@ public:
      */
     void split(Face f, Vertex v);
 
+
+    /*
+      Split an arbitrary face into triangles by connecting each vertex of fh to vh.
+      - fh will remain valid (it will become one of the triangles)
+      - the halfedge handles of the new triangles will point to the old halfeges
+    */
+    void split(std::vector<Vertex> vv, Face f, Vertex v);
+
+
     /// Quad-split face connecting vertex \a v, starting from corner
     /// \a s of the face
     /// \a f is assumed to have 8 vertices, and contains halfedge \a s
     void quad_split(Face f, Vertex v, Halfedge s);
     void quad_split();
     
+
+    ///  Quad-split at uniform positions on each edge respectively
+    void quad_split(index_t w);
+
     /** Split the edge \c e by first adding point \c p to the mesh and then
      connecting it to the two vertices of the adjacent triangles that are
      opposite to edge \c e. Returns the halfedge pointing to \c p that is
@@ -1623,6 +1636,17 @@ public:
      */
     void flip(Edge e);
 
+
+    /// Mesh statistics
+    ///
+    /// Print info on mesh as:
+    ///    * Number of vertices, faces and edges.
+    ///    * Number of extraordinary vertices, with minimum and maximum valence for interior and boundary.
+    ///    * Number of extraordinary faces, with minimum and maximum valence for interior and boundary.
+    ///
+    /// \param eoc_verbose: If true, returns the number of each extraordinary case (EV,EF)
+    void mesh_statistics(bool eoc_verbose = false);
+
 public:
 
     /** returns the valence (number of incident edges or neighboring vertices)
@@ -1682,7 +1706,10 @@ public:
     void delete_face(Face f);
 
     /// creates dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
-    void dual_mesh();
+    void dual_mesh_inplace();
+
+    /// returns dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
+    gsSurfMesh dual_mesh();
 
     /// calculate barycenter of a face
     Point face_barycenter(Face f);
