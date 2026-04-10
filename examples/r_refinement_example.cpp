@@ -188,6 +188,7 @@ int main(int argc, char *argv[])
     // std::string fn("pde/circle.xml");
     // std::string fn("surfaces/egg.xml"); 
     // std::string fn("domain2d/lake.xml");
+    // std::string fn("surfaces/cylinder.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", 
@@ -346,14 +347,15 @@ int main(int argc, char *argv[])
     //...Interpolation of the mapping by fit method !
     //----------------------------------------------------------
     mpPsi                   = MAE.buildFitCompMultiPatch(dbasis, 50, 0e-6);
+    gsWrite(mpPsi, "akhniss.xml");
     geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
     double Binf = 0.;
     ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf);
-    IL2Jerror[r]            = abs(ev.integral( meas(G) - meas(PGF)) );
-    IHdferror[r]            = maxDist;//std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
-    IBdrerr[r]              = Binf;// math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
+    FL2Jerror[r]            = abs(ev.integral( meas(G) - meas(PGF)) );
+    FHdferror[r]            = maxDist;//std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
+    FBdrerr[r]              = Binf;// math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
     }
     }
 
@@ -392,8 +394,8 @@ int main(int argc, char *argv[])
     //--------------------------------------------------------------------------------------------------    
     // --- Print header ---
     gsInfo << std::setw(12) << "DoFs" << " & "
-         << std::setw(13) << "Quad-error"     << " & "
          << std::setw(13) << "Boundary"  << " & "
+         << std::setw(6)  << "EOcB"      << " & "
          << std::setw(13) << "Hausdorff"     << " & "
          << std::setw(6)  << "EOcH"      << " & "
          << std::setw(13) << "L2" << " & "
@@ -401,77 +403,87 @@ int main(int argc, char *argv[])
     // --- Print table row by row ---
     if (L2proj){
     gsInfo << std::string(50, '-') << "L2Proj\n";
+        auto orderofConvBndr = ( Bdrerr.head(numRefine).array() /
+                  Bdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
         auto orderofConv = ( Hdferror.head(numRefine).array() /
                   Hdferror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
         auto orderofConvL2 = ( L2Jerror.head(numRefine).array() /
                   L2Jerror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
     gsInfo << std::setw(12) << DoFPDE[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[0] << "&"
+            << std::setw(12) << "--" << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< Hdferror[0] << " & "
             << std::setw(12) << "--" << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< L2Jerror[0] << "&"
-            << std::setw(12) << "--" << "\n";
+            << std::setw(12) << "--" << "\\\\ \n";
     for (int i = 1; i <= numRefine; i++) {
         gsInfo << std::setw(12) << DoFPDE[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[i] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< Bdrerr[i] << "&"
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvBndr[i-1] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< Hdferror[i] << " & "
              << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< L2Jerror[i] << " & "
-             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\n";
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\\\\ \n";
             }
     }
     if (colloc){
     gsInfo << std::string(50, '-') << "Colloc\n";
-    auto orderofConv = ( IHdferror.head(numRefine).array() /
+        auto orderofConvBndr = ( IBdrerr.head(numRefine).array() /
+                  IBdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+        auto orderofConv = ( IHdferror.head(numRefine).array() /
                   IHdferror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
-    auto orderofConvL2 = ( IL2Jerror.head(numRefine).array() /
-                    IL2Jerror.tail(numRefine).array() ).log().transpose() / std::log(2.0);  
+        auto orderofConvL2 = ( IL2Jerror.head(numRefine).array() /
+                  IL2Jerror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
     gsInfo << std::setw(12) << DoFPDE[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IBdrerr[0] << "&"
+            << std::setw(12) << "--" << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IHdferror[0] << " & "
             << std::setw(12) << "--" << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< IL2Jerror[0] << "&"
-            << std::setw(12) << "--" << "\n";
+            << std::setw(12) << "--" << "\\\\ \n";
     for (int i = 1; i <= numRefine; i++) {
         gsInfo << std::setw(12) << DoFPDE[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[i] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< IBdrerr[i] << "&"
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvBndr[i-1] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< IHdferror[i] << " & "
              << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< IL2Jerror[i] << " & "
-             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\n";
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\\\\ \n";
             }
     }
     if (fit){
     gsInfo << std::string(50, '-') << "Fit\n";
-    auto orderofConv = ( FBdrerr.head(numRefine).array() /
+        auto orderofConvBndr = ( FBdrerr.head(numRefine).array() /
                   FBdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
-    auto orderofConvL2 = ( FL2Jerror.head(numRefine).array() /
-                    FL2Jerror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+        auto orderofConv = ( FHdferror.head(numRefine).array() /
+                  FHdferror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
+        auto orderofConvL2 = ( FL2Jerror.head(numRefine).array() /
+                  FL2Jerror.tail(numRefine).array() ).log().transpose() / std::log(2.0);
     gsInfo << std::setw(12) << DoFPDE[0] << " & "
-            << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[0] << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FBdrerr[0] << "&"
+            << std::setw(12) << "--" << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FHdferror[0] << " & "
             << std::setw(12) << "--" << " & "
             << std::setw(12) <<std::setprecision(3)<<std::scientific<< FL2Jerror[0] << "&" 
-            << std::setw(12) << "--" << "\n";
+            << std::setw(12) << "--" << "\\\\ \n";
     for (int i = 1; i <= numRefine; i++) {
         gsInfo << std::setw(12) << DoFPDE[i] << " & "
-             << std::setw(12) <<std::setprecision(3)<<std::scientific<< CHdferror[i] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< FBdrerr[i] << "&"
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvBndr[i-1] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< FHdferror[i] << " & "
              << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConv[i-1] << " & "
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< FL2Jerror[i] << "&"
-             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\n";
+             << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\\\\ \n";
             }
     }
     //! [Export visualization in ParaView] 
     if (plot)
     {
         gsMultiPatch<> Psi;
+        if (fit){ // already in THB format
+            Psi = mpPsi;
+        }
+        else{
         if ( mpPsi.basis(0).weights().any()){
             gsInfo<<"Rational mapping \n";
         if (mpLeft.dim()== 3){
@@ -492,6 +504,7 @@ int main(int argc, char *argv[])
         else{
         for(size_t i =0; i<mpPsi.nPatches(); ++i)
             Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpPsi.patch(i)) ));            
+        }
         }
         }
         Psi.addAutoBoundaries();

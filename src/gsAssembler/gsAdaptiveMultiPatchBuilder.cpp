@@ -533,6 +533,33 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     return Psi;
 };
 
+// computes the projection of a composition and return a MultiPatch object :: Collocation
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const 
+{
+
+    gsInfo<<"<Col> computes composition";
+
+    gsMultiPatch<> Psi; 
+    double slv_time(0);
+    gsStopwatch timer;
+    timer.restart();
+
+    gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
+    // Evaluate f at the Greville points
+    gsMatrix<> intfavlues          = this->MAmapping.patch(0).eval(intGrid);
+    intfavlues                     = intfavlues.cwiseMax(0).cwiseMin(1);
+    gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
+    gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateData(fValues, intGrid);
+    // extract the mapping
+    Psi.addPatch(give(interpolant));
+    Psi.computeTopology();
+    //...
+    slv_time += timer.stop();
+    timer.stop();
+    gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
+    return Psi;
+};
+
 // computes the projection of a composition and return a MultiPatch object :: fitting
 gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData, const real_t lambda) const 
 {
@@ -556,13 +583,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     }
     gsInfo<<":gridsize="<<T_tbasis.basis(0).size()<<"/"<<Cbasis.basis(0).size();
     gsMatrix<> intGrid    = T_tbasis.basis(0).anchors();
-    index_t ngrids        = sqrt(intGrid.cols()); // number of grid points in one direction, assuming a square grid.
+    // gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<> intValues  = this->MAmapping.patch(0).eval(intGrid);
-    intValues             = intValues.cwiseMax(0).cwiseMin(1);
-    gsMatrix<> fValues    = this->m_mapping.patch(0).eval(intValues);
-
+    gsMatrix<> intfavlues          = this->MAmapping.patch(0).eval(intGrid);
+    intfavlues                     = intfavlues.cwiseMax(0).cwiseMin(1);
+    gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
     //! [Create  Hfitter]
+    index_t ngrids        = sqrt(intGrid.cols()); // number of grid points in one direction, assuming a square grid.
     std::vector<index_t> boundaryIdx;
     for (index_t i = 0; i < ngrids; ++i)
     {
@@ -587,17 +614,14 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     interpIdx.push_back(nbInterior);
     for (auto b : boundaryIdx)
         interpIdx.push_back(b);
+    // Create hierarchical refinement object ***************
     // Create hierarchical refinement object
-    gsFitting<> ref( intGrid, intGrid, THB);
+    gsFitting<> ref(intGrid, fValues, THB);
     //... compute coefs
-    ref.parameterProjectionSepBoundary(1e-8, interpIdx);
-    ref.compute(lambda);
+    ref.parameterProjectionSepBoundary(1e-18, interpIdx);
 
-    const std::vector<real_t> & errors = ref.pointWiseErrors();
-    gsInfo<<"Fitted with "<< ref.result()->basis() <<".-.";
-    gsInfo<<"Min distance : "<< ref.minPointError() <<".-. ";
-    gsInfo<<"Max distance : "<< ref.maxPointError() <<".-.";
-    gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(1e-10)/errors.size()<<"%.-.";
+    // ref.compute(lambda);
+
     //! [extract the mapping]
     Psi.addPatch(give(*ref.result()));
     Psi.computeTopology();
@@ -672,32 +696,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildInverseMultiPatch(const gsMulti
     }
 };
 
-// computes the projection of a composition and return a MultiPatch object :: Collocation
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const 
-{
-
-    gsInfo<<"<Col> computes composition";
-
-    gsMultiPatch<> Psi; 
-    double slv_time(0);
-    gsStopwatch timer;
-    timer.restart();
-
-    gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
-    // Evaluate f at the Greville points
-    gsMatrix<> intfavlues          = this->MAmapping.patch(0).eval(intGrid);
-    intfavlues                     = intfavlues.cwiseMax(0).cwiseMin(1);
-    gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
-    gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateData(fValues, intGrid);
-    // extract the mapping
-    Psi.addPatch(give(interpolant));
-    Psi.computeTopology();
-    //...
-    slv_time += timer.stop();
-    timer.stop();
-    gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
-    return Psi;
-};
 
 //........................................................................
 //........... useful functions for moving meshes B-spline basis ..........
