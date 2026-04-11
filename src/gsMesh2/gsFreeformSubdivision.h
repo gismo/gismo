@@ -236,8 +236,11 @@ public:
     /// values by least squares, and writes the resulting control
     /// coefficients back as the new last coordinate of each control point.
     ///
-    /// \param function A real-valued function in \f$D-1\f$ real variables.
-    void fit_last_coordinate_to_function(gsFunctionExpr<> function);
+    /// Increases D by one.
+    ///
+    /// \param function A real-valued function in \f$D\f$ real variables.
+    void fit_function(gsFunctionExpr<> function);
+    void fit_function_b(gsFunctionExpr<> function);
 
     /// \brief Computes the approximation error of the freeform patches against
     /// a reference function.
@@ -350,6 +353,7 @@ public:
     /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
     /// supported.
     void smooth(size_t degree);
+    void smooth_b(size_t degree);
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
     ///

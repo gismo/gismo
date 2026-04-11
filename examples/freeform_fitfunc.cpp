@@ -134,20 +134,19 @@ int main(int argc, char** argv)
     gsMatrix<real_t> errors(2, steps);
 
     // Single .pvd collection for all steps.
-    gsParaviewCollection collection("results/function_fit");
-    gsParaviewCollection cnet_collection("results/function_cnet");
-    gsParaviewCollection error_collection("results/function_error");
+    gsParaviewCollection collection("resultsb/function_fit");
+    gsParaviewCollection cnet_collection("resultsb/function_cnet");
+    gsParaviewCollection error_collection("resultsb/function_error");
     std::vector<gsMatrix<real_t>> ev_coefs;
     std::vector<gsMatrix<real_t>> ev_coefs_outer;
 
     for (index_t i = 0; i < steps; ++i)
     {
         subdiv.initialize_data(mesh_path, 2);
-        for (index_t j = 0; j < i; ++j) {
+        for (index_t j = 0; j < i; ++j)
+        {
             subdiv.subdivide();
         }
-        // subdiv.fit_function(func);
-        // subdiv.smooth(1, ev_coefs, ev_coefs_outer);
         subdiv.fit_function_b(func);
 
         if (write_errors)
@@ -156,16 +155,18 @@ int main(int argc, char** argv)
         if (paraview)
         {
 
-            const std::string stepname = "results/step" + std::to_string(i + 1);
+            const std::string stepname =
+                "resultsb/step" + std::to_string(i + 1);
 
             subdiv.write_paraview(stepname, &collection, &cnet_collection,
                                   i + 1, control_net);
 
             if (write_errors)
             {
-                subdiv.write_paraview_error(
-                    func, errors(0, i), "results/error" + std::to_string(i + 1),
-                    &error_collection, i + 1);
+                subdiv.write_paraview_error(func, errors(0, i),
+                                            "resultsb/error" +
+                                                std::to_string(i + 1),
+                                            &error_collection, i + 1);
             }
 
             // If the user wants to save the control net, we also want to save
@@ -203,7 +204,7 @@ int main(int argc, char** argv)
 
     // Write error matrix to errors.csv.
     if (write_errors)
-        gsWriteCsv("results/errors.csv", errors);
+        gsWriteCsv("resultsb/errors.csv", errors);
 
     return 0;
 }

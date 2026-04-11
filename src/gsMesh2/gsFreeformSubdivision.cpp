@@ -1137,6 +1137,35 @@ void gsFreeformSubdivision<N>::smooth(
     // End of edge correction
 }
 
+template <size_t N> void gsFreeformSubdivision<N>::smooth_b(size_t degree)
+{
+    gsMultiPatch<> multi_patch;
+    gsMultiBasis<> multi_basis;
+    gsMappedBasis<2> mapped_basis;
+    this->basis_data(multi_patch, multi_basis, mapped_basis);
+
+    gsMatrix<real_t> coefficients;
+    gsL2Projection<real_t>::project(multi_basis, mapped_basis, multi_patch,
+                                    coefficients);
+    gsMappedSpline<2, real_t> solSpline(mapped_basis, coefficients);
+    gsMultiPatch<> solField = solSpline.exportToPatches();
+
+    // Write the solution back.
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        m_mesh->get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
+    {
+        for (size_t i = 0; i < N; ++i)
+        {
+
+            for (size_t j = 0; j < N; ++j)
+            {
+                face_data_vec[k].control_points(i, j) =
+                    solField.patch(k).coefs().row(i * N + j);
+            }
+        }
+    }
+}
 
 template <size_t N>
 void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
@@ -1647,7 +1676,7 @@ void gsFreeformSubdivision<N>::fit_function_b(gsFunctionExpr<real_t> function)
     // gsMappedSpline<2, real_t> solSpline(mapped_basis, coefficients);
     // gsMultiPatch<> solField = solSpline.exportToPatches();
 
-    gsExprAssembler<real_t> A(1,1);
+    gsExprAssembler<real_t> A(1, 1);
     A.setIntegrationElements(multi_basis);
 
     auto G = A.getMap(multi_patch);
@@ -1656,10 +1685,7 @@ void gsFreeformSubdivision<N>::fit_function_b(gsFunctionExpr<real_t> function)
 
     u.setup();
     A.initSystem();
-    A.assemble(
-        u * u.tr(),
-        u * ff
-    );
+    A.assemble(u * u.tr(), u * ff);
 
     gsSparseSolver<real_t>::LU solver;
     solver.compute(A.matrix());
