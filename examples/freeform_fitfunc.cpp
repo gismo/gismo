@@ -122,7 +122,7 @@ int main(int argc, char** argv)
     }
 
     gsSurfMesh mesh = gsSurfMesh();
-    auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
+    auto subdiv = gsFreeformSubdivision<5>(&mesh, 2);
     subdiv.options().setString("model_patch_path", model_patch_path);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
     subdiv.options().setSwitch("weighted_fit", weighted_fit);
@@ -142,13 +142,13 @@ int main(int argc, char** argv)
 
     for (index_t i = 0; i < steps; ++i)
     {
-        subdiv.initialize_data(mesh_path);
-        for (index_t j = 0; j < i; ++j)
-        {
+        subdiv.initialize_data(mesh_path, 2);
+        for (index_t j = 0; j < i; ++j) {
             subdiv.subdivide();
         }
-        subdiv.fit_last_coordinate_to_function(func);
-        subdiv.smooth(1, ev_coefs, ev_coefs_outer);
+        // subdiv.fit_function(func);
+        // subdiv.smooth(1, ev_coefs, ev_coefs_outer);
+        subdiv.fit_function_b(func);
 
         if (write_errors)
             errors.col(i) = subdiv.error(func, samples);

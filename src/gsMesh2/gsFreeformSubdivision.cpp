@@ -19,9 +19,12 @@
 #include "gsIO/gsParaviewCollection.h"
 #include "gsIO/gsWriteParaview.h"
 #include "gsMSplines/gsMappedBasis.h"
+#include "gsMSplines/gsMappedSpline.h"
+#include "gsMatrix/gsMatrix.h"
 #include "gsMatrix/gsSparseSolver.h"
 #include "gsMatrix/gsVector.h"
 #include "gsPde/gsBoundaryConditions.h"
+#include "gsUtils/gsL2Projection.h"
 #include <cmath>
 #include <cstdlib>
 #include <gismo.h>
@@ -41,19 +44,19 @@
 namespace gismo
 {
 
-template <size_t N, size_t D>
-gsFreeformFaceData<N, D>::gsFreeformFaceData(const gsSurfMesh& mesh,
-                                             gsSurfMesh::Face face)
+template <size_t N>
+gsFreeformFaceData<N>::gsFreeformFaceData(const gsSurfMesh& mesh,
+                                          gsSurfMesh::Face face)
     : control_points(), face(face)
 {
     // Create a vector of the 4 corners, copying the 3D mesh vertex positions
     // into D-dimensional vectors. The first min(D,3) coordinates are taken
     // from the mesh; any remaining coordinates beyond index 2 are zeroed.
-    std::vector<gsVector<real_t, D>> corners;
+    std::vector<gsVector<real_t>> corners;
     corners.reserve(4);
     for (auto const& v : mesh.vertices(face))
     {
-        gsVector<real_t, D> corner = gsVector<real_t, D>::Zero();
+        gsVector<real_t> corner = gsVector<real_t>::Zero(D);
         const gsSurfMesh::Point& p = mesh.position(v);
         for (size_t k = 0; k < std::min<size_t>(D, 3); ++k)
             corner(k) = p[k];
@@ -80,13 +83,12 @@ gsFreeformFaceData<N, D>::gsFreeformFaceData(const gsSurfMesh& mesh,
     }
 }
 
-template <size_t N, size_t D>
-gsMatrix<gsVector<real_t, D>*>
-gsFreeformFaceData<N, D>::control_points_oriented(gsSurfMesh& mesh,
-                                                  Halfedge hedge)
+template <size_t N>
+gsMatrix<gsVector<real_t>*>
+gsFreeformFaceData<N>::control_points_oriented(gsSurfMesh& mesh, Halfedge hedge)
 {
 
-    gsMatrix<gsVector<real_t, D>*> result;
+    gsMatrix<gsVector<real_t>*> result;
     result.resize(control_points.rows(), control_points.cols());
     for (int i = 0; i < control_points.rows(); ++i)
     {
@@ -107,8 +109,8 @@ gsFreeformFaceData<N, D>::control_points_oriented(gsSurfMesh& mesh,
     return result;
 }
 
-template <size_t N, size_t D>
-const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
+template <size_t N>
+const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N>::patch() const
 {
     // Create a spline basis for a normal bezier patch.
     gsKnotVector<> kv(0, 1, 0, N);
@@ -129,14 +131,14 @@ const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N, D>::patch() const
     return gsTensorBSpline<2>(basis, coeffs);
 }
 
-template <size_t N, size_t D>
-std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 2>
-gsFreeformSubdivision<N, D>::deCasteljau(
-    const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& control_net)
+template <size_t N>
+std::array<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>, 2>
+gsFreeformSubdivision<N>::deCasteljau(
+    const gsMatrix<gsVector<real_t>, Dynamic, Dynamic>& control_net)
 {
 
     // Create the 3d data vector and ensure it has the right size.
-    std::vector<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>> points;
+    std::vector<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>> points;
     points.resize(N);
     // The first layer is just the starting points
     points[0] = control_net;
@@ -162,8 +164,8 @@ gsFreeformSubdivision<N, D>::deCasteljau(
 
     // finally collect the first vertical layer and last-in-each-row diagonal
     // layer into two result matrices.
-    gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> result1;
-    gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> result2;
+    gsMatrix<gsVector<real_t>, Dynamic, Dynamic> result1;
+    gsMatrix<gsVector<real_t>, Dynamic, Dynamic> result2;
     result1.resize(N, N);
     result2.resize(N, N);
 
@@ -179,9 +181,9 @@ gsFreeformSubdivision<N, D>::deCasteljau(
     return {result1, result2};
 }
 
-template <size_t N, size_t D>
+template <size_t N>
 gismo::gsTensorBSpline<2, real_t>
-gsFreeformSubdivision<N, D>::load_model_patch(int valence, std::string subtype)
+gsFreeformSubdivision<N>::load_model_patch(int valence, std::string subtype)
 {
     // Load all patches from Val<valence>Fct1.xml
     auto path = m_options.getString("model_patch_path") + "Val" +
@@ -249,10 +251,10 @@ gsFreeformSubdivision<N, D>::load_model_patch(int valence, std::string subtype)
     return gsTensorBSpline<2>(patches[patch_index]->basis(), give(coefs));
 }
 
-template <size_t N, size_t D>
+template <size_t N>
 std::array<gsSurfMesh::Face, 4>
-gsFreeformSubdivision<N, D>::order_faces(Vertex first_vertex,
-                                         std::array<gsSurfMesh::Face, 4> faces)
+gsFreeformSubdivision<N>::order_faces(Vertex first_vertex,
+                                      std::array<gsSurfMesh::Face, 4> faces)
 {
     auto& mesh = *m_mesh;
     size_t first_face(0);
@@ -282,12 +284,12 @@ gsFreeformSubdivision<N, D>::order_faces(Vertex first_vertex,
     return children_faces_ordered;
 }
 
-template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::orient_faces()
+template <size_t N> void gsFreeformSubdivision<N>::orient_faces()
 {
     // Get data
     auto& mesh = *m_mesh;
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     // As a pre-step, we make sure that for each face, if it has an
     // extraordinary vertex, that vertex is the top left one
@@ -309,7 +311,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::orient_faces()
                 // rotate the edge
                 mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
                 // also rotate the control points
-                gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> old_points(
+                gsMatrix<gsVector<real_t>, Dynamic, Dynamic> old_points(
                     face_data_vec.vector()[f.idx()].control_points);
                 face_data_vec.vector()[f.idx()].control_points =
                     old_points.rotate_cw();
@@ -318,7 +320,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::orient_faces()
     }
 }
 
-template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
+template <size_t N> void gsFreeformSubdivision<N>::subdivide()
 {
     auto& mesh = *m_mesh;
     // First, make sure all faces are correctly oriented with the EV as their
@@ -340,8 +342,8 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
     mesh.quad_split();
 
     // Get face data
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     // Now fix the data on each face.
     for (size_t initial_face = 0; initial_face < n; ++initial_face)
@@ -419,7 +421,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
                 const gsMatrix<>& coeffs = result->coefs();
 
                 // Reshape the control points
-                gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> control_points;
+                gsMatrix<gsVector<real_t>, Dynamic, Dynamic> control_points;
                 control_points.resize(N, N);
                 for (size_t i = 0; i < N * N; ++i)
                 {
@@ -446,7 +448,7 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
             // via deCasteljau
 
             // Get the face data and store it in a temporary dynamic 2d array.
-            gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic> control_net(
+            gsMatrix<gsVector<real_t>, Dynamic, Dynamic> control_net(
                 face_data_vec.vector()[initial_face].control_points);
 
             // now control_net is a (n+1)*(n+1) matrix of control points (degree
@@ -472,8 +474,8 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
             top_split[0] = top_split[0].rotate_ccw();
 
             // Collate all these matrices in the correct order into an array.
-            std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 4> arr =
-                {top_split[0], top_split[1], bot_split[1], bot_split[0]};
+            std::array<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>, 4> arr = {
+                top_split[0], top_split[1], bot_split[1], bot_split[0]};
 
             // Collate the faces into a correctly ordered array.
             auto children_ordered =
@@ -490,10 +492,10 @@ template <size_t N, size_t D> void gsFreeformSubdivision<N, D>::subdivide()
         }
     }
 };
-template <size_t N, size_t D>
-gsMatrix<real_t>
-gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
-                                        gsMatrix<real_t> target, size_t valence)
+template <size_t N>
+gsMatrix<real_t> gsFreeformSubdivision<N>::fit_ev_opt(gsMatrix<real_t> A,
+                                                      gsMatrix<real_t> target,
+                                                      size_t valence)
 {
     // Just a direct least-squares solve with no regularisation.
     gsMatrix<real_t> solution = A.colPivHouseholderQr().solve(target);
@@ -522,10 +524,10 @@ gsFreeformSubdivision<N, D>::fit_ev_opt(gsMatrix<real_t> A,
     return solution + K * w;
 }
 
-template <size_t N, size_t D>
-gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
-                                                     gsMatrix<real_t> target,
-                                                     size_t valence)
+template <size_t N>
+gsMatrix<real_t> gsFreeformSubdivision<N>::fit_ev(gsMatrix<real_t> A,
+                                                  gsMatrix<real_t> target,
+                                                  size_t valence)
 {
     gsMatrix<real_t> weights;
     if (m_options.getSwitch("weighted_fit"))
@@ -600,16 +602,15 @@ gsMatrix<real_t> gsFreeformSubdivision<N, D>::fit_ev(gsMatrix<real_t> A,
     return solution;
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::smooth(size_t degree)
+template <size_t N> void gsFreeformSubdivision<N>::smooth(size_t degree)
 {
     std::vector<gsMatrix<real_t>> ev_coefs;
     std::vector<gsMatrix<real_t>> ev_coefs_outer;
     smooth(degree, ev_coefs, ev_coefs_outer);
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::smooth(
+template <size_t N>
+void gsFreeformSubdivision<N>::smooth(
     size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
     std::vector<gsMatrix<real_t>>& ev_coefficients_outer)
 {
@@ -634,8 +635,8 @@ void gsFreeformSubdivision<N, D>::smooth(
     }
 
     // Cache face data
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     // First, correct each vertex
     for (const Vertex& v : mesh.vertices())
@@ -683,12 +684,12 @@ void gsFreeformSubdivision<N, D>::smooth(
             //
             // ```
             // TODO: And then we transpose
-            std::vector<gsMatrix<gsVector<real_t, D>*>> control_nets;
+            std::vector<gsMatrix<gsVector<real_t>*>> control_nets;
 
             // First, collect the inner nets.
             for (Halfedge h : mesh.halfedges(v))
             {
-                gsMatrix<gsVector<real_t, D>*> cp =
+                gsMatrix<gsVector<real_t>*> cp =
                     face_data_vec[mesh.face(h).idx()]
                         .control_points_oriented(mesh, h)
                         .transpose();
@@ -703,7 +704,7 @@ void gsFreeformSubdivision<N, D>::smooth(
                 h = mesh.opposite_halfedge(h);
                 h = mesh.next_halfedge(h);
                 // Get its oriented control net
-                gsMatrix<gsVector<real_t, D>*> cp1 =
+                gsMatrix<gsVector<real_t>*> cp1 =
                     face_data_vec[mesh.face(h).idx()]
                         .control_points_oriented(mesh, h)
                         .transpose();
@@ -714,7 +715,7 @@ void gsFreeformSubdivision<N, D>::smooth(
                 h = mesh.next_halfedge(h);
                 h = mesh.next_halfedge(h);
                 h = mesh.opposite_halfedge(h);
-                gsMatrix<gsVector<real_t, D>*> cp2 =
+                gsMatrix<gsVector<real_t>*> cp2 =
                     face_data_vec[mesh.face(h).idx()]
                         .control_points_oriented(mesh, h)
                         .transpose();
@@ -723,7 +724,7 @@ void gsFreeformSubdivision<N, D>::smooth(
                 h = mesh.prev_halfedge(h);
                 h = mesh.opposite_halfedge(h);
                 h = mesh.prev_halfedge(h);
-                gsMatrix<gsVector<real_t, D>*> cp3 =
+                gsMatrix<gsVector<real_t>*> cp3 =
                     face_data_vec[mesh.face(h).idx()]
                         .control_points_oriented(mesh, h)
                         .transpose();
@@ -855,7 +856,7 @@ void gsFreeformSubdivision<N, D>::smooth(
 
                             // Lastly, save the control point of the target
                             // patch
-                            gsVector<real_t, D> val = *control_nets[p](ux, vx);
+                            gsVector<real_t> val = *control_nets[p](ux, vx);
                             target.row(i_s) = val;
 
                             i_s++;
@@ -940,7 +941,7 @@ void gsFreeformSubdivision<N, D>::smooth(
             // The points directly neighboring another across different patches
             // should be equal (e.g. top left (1,0) and bottom left (0,1)) as
             // the C0 condition.
-            std::vector<gsMatrix<gsVector<real_t, D>*>> control_points_faces;
+            std::vector<gsMatrix<gsVector<real_t>*>> control_points_faces;
             size_t insert_index(0);
             for (Halfedge h : mesh.halfedges(v))
             {
@@ -1090,10 +1091,10 @@ void gsFreeformSubdivision<N, D>::smooth(
         for (size_t i = 2; i < N - 2; ++i)
         {
             // Extract the column.
-            gsVector<real_t, D>* i0 = cp0(1, i);
-            gsVector<real_t, D>* m0 = cp0(0, i);
-            gsVector<real_t, D>* m1 = cp1(0, N - 1 - i);
-            gsVector<real_t, D>* i1 = cp1(1, N - 1 - i);
+            gsVector<real_t>* i0 = cp0(1, i);
+            gsVector<real_t>* m0 = cp0(0, i);
+            gsVector<real_t>* m1 = cp1(0, N - 1 - i);
+            gsVector<real_t>* i1 = cp1(1, N - 1 - i);
 
             // Ensure the mesh was at least C0 and warn the user if it is not.
             if ((*m0 - *m1).squaredNorm() > 1e-5)
@@ -1136,8 +1137,11 @@ void gsFreeformSubdivision<N, D>::smooth(
     // End of edge correction
 }
 
-template<size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMultiBasis<> & multi_basis, gsMappedBasis<2> & mapped_basis)
+
+template <size_t N>
+void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
+                                          gsMultiBasis<>& multi_basis,
+                                          gsMappedBasis<2>& mapped_basis)
 {
     auto& mesh = *m_mesh;
 
@@ -1146,11 +1150,10 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
     multi_patch.computeTopology();
     multi_basis = gsMultiBasis<>(multi_patch);
 
-    const size_t  nPatches   = multi_patch.nPatches();
+    const size_t nPatches = multi_patch.nPatches();
     const index_t nLocalDofs = (index_t)(nPatches * N * N);
     GISMO_ASSERT(nLocalDofs == (index_t)multi_basis.totalSize(),
                  "Local DOF count mismatch");
-
 
     // ---- Helpers ------------------------------------------------
 
@@ -1162,10 +1165,14 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
         const int n = (int)N - 1;
         switch (((k % 4) + 4) % 4)
         {
-        case 0:  return {n - c,     r    };
-        case 1:  return {r,         c    };
-        case 2:  return {c,         n - r};
-        default: return {n - r,     n - c};
+        case 0:
+            return {n - c, r};
+        case 1:
+            return {r, c};
+        case 2:
+            return {c, n - r};
+        default:
+            return {n - r, n - c};
         }
     };
 
@@ -1175,7 +1182,8 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
         int k = 0;
         for (Halfedge he : mesh.halfedges(f))
         {
-            if (he == h) return k;
+            if (he == h)
+                return k;
             ++k;
         }
         GISMO_ERROR("Halfedge not found in face");
@@ -1183,7 +1191,10 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
 
     // Flat local DOF index for patch p at absolute position (i,j).
     auto local_dof = [&](int p, int i, int j) -> index_t
-    { return (index_t)p * (index_t)(N * N) + (index_t)i * (index_t)N + (index_t)j; };
+    {
+        return (index_t)p * (index_t)(N * N) + (index_t)i * (index_t)N +
+               (index_t)j;
+    };
 
     // ---- Working state ------------------------------------------
 
@@ -1195,8 +1206,8 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
     // handled[ldof] becomes true once a mapping has been assigned.
     std::vector<bool> handled(nLocalDofs, false);
 
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     // ================================================================
     // Phase 1 — EV vertices
@@ -1214,16 +1225,17 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
     // ================================================================
     for (Vertex v : mesh.vertices())
     {
-        if (is_ordinary(mesh, v)) continue;
+        if (is_ordinary(mesh, v))
+            continue;
 
-        const size_t valence        = mesh.valence(v);
-        const size_t patches_count  = 4 * valence;
+        const size_t valence = mesh.valence(v);
+        const size_t patches_count = 4 * valence;
         const size_t function_count = 2 * valence + 1;
 
         // Collect the 4*valence (face, orienting-halfedge) pairs in
         // the same order as smooth(): valence inner patches first,
         // then 3*valence outer patches (three per inner halfedge).
-        std::vector<Face>     ev_faces;
+        std::vector<Face> ev_faces;
         std::vector<Halfedge> ev_halfedges;
         ev_faces.reserve(patches_count);
         ev_halfedges.reserve(patches_count);
@@ -1239,8 +1251,10 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
             Halfedge h = mesh.next_halfedge(h_orig);
             h = mesh.opposite_halfedge(h);
             h = mesh.next_halfedge(h);
-            GISMO_ASSERT(mesh.face(h).is_valid(),
-                "EV outer-patch traversal: outer patch 1 face is invalid (boundary halfedge). "
+            GISMO_ASSERT(
+                mesh.face(h).is_valid(),
+                "EV outer-patch traversal: outer patch 1 face is invalid "
+                "(boundary halfedge). "
                 "Mesh may not contain the full 4*valence neighborhood.");
             ev_faces.push_back(mesh.face(h));
             ev_halfedges.push_back(h);
@@ -1248,8 +1262,10 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
             h = mesh.next_halfedge(h);
             h = mesh.next_halfedge(h);
             h = mesh.opposite_halfedge(h);
-            GISMO_ASSERT(mesh.face(h).is_valid(),
-                "EV outer-patch traversal: outer patch 2 face is invalid (boundary halfedge). "
+            GISMO_ASSERT(
+                mesh.face(h).is_valid(),
+                "EV outer-patch traversal: outer patch 2 face is invalid "
+                "(boundary halfedge). "
                 "Mesh may not contain the full 4*valence neighborhood.");
             ev_faces.push_back(mesh.face(h));
             ev_halfedges.push_back(h);
@@ -1257,8 +1273,10 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
             h = mesh.prev_halfedge(h);
             h = mesh.opposite_halfedge(h);
             h = mesh.prev_halfedge(h);
-            GISMO_ASSERT(mesh.face(h).is_valid(),
-                "EV outer-patch traversal: outer patch 3 face is invalid (boundary halfedge). "
+            GISMO_ASSERT(
+                mesh.face(h).is_valid(),
+                "EV outer-patch traversal: outer patch 3 face is invalid "
+                "(boundary halfedge). "
                 "Mesh may not contain the full 4*valence neighborhood.");
             ev_faces.push_back(mesh.face(h));
             ev_halfedges.push_back(h);
@@ -1271,9 +1289,9 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
         for (size_t i = 0; i < function_count; ++i)
         {
             fitting_functions.emplace_back(
-                gsFileData<real_t>(
-                    m_options.getString("model_patch_path") + "Val" +
-                    std::to_string(valence) + "Fct" + std::to_string(i) + ".xml")
+                gsFileData<real_t>(m_options.getString("model_patch_path") +
+                                   "Val" + std::to_string(valence) + "Fct" +
+                                   std::to_string(i) + ".xml")
                     .getAll<gsTensorBSpline<2, real_t>>());
         }
 
@@ -1284,30 +1302,32 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
         for (size_t p = 0; p < patches_count; ++p)
         {
             GISMO_ASSERT(ev_faces[p].is_valid() && ev_faces[p].idx() < nPatches,
-                "EV face index out of range: " << ev_faces[p].idx() << " vs " << nPatches);
+                         "EV face index out of range: " << ev_faces[p].idx()
+                                                        << " vs " << nPatches);
             const int patch_idx = ev_faces[p].idx();
             GISMO_ASSERT(patch_idx >= 0,
-                "EV patch not found in face_to_patch at face index " << ev_faces[p].idx());
-            const int k         = get_k(ev_faces[p], ev_halfedges[p]);
+                         "EV patch not found in face_to_patch at face index "
+                             << ev_faces[p].idx());
+            const int k = get_k(ev_faces[p], ev_halfedges[p]);
 
             for (size_t ux = 0; ux < N; ++ux)
             {
                 for (size_t vx = 0; vx < N; ++vx)
                 {
                     // Inside EV support = all fitting functions non-zero here.
-                    const bool in_support =
-                        std::all_of(fitting_functions.begin(),
-                                    fitting_functions.end(),
-                                    [&](const auto& ff) {
-                                        return ff[p]->coef(
-                                                   (index_t)(ux * N + vx), 2) !=
-                                               real_t(0);
-                                    });
+                    const bool in_support = std::all_of(
+                        fitting_functions.begin(), fitting_functions.end(),
+                        [&](const auto& ff)
+                        {
+                            return ff[p]->coef((index_t)(ux * N + vx), 2) !=
+                                   real_t(0);
+                        });
 
-                    // control_nets[p] = control_points_oriented(f,h).transpose()
-                    // so  control_nets[p](ux,vx) = oriented(vx,ux)
+                    // control_nets[p] =
+                    // control_points_oriented(f,h).transpose() so
+                    // control_nets[p](ux,vx) = oriented(vx,ux)
                     //   → absolute (i,j) = apply_rotation(k, vx, ux)
-                    const std::pair<int,int> abs_ij =
+                    const std::pair<int, int> abs_ij =
                         apply_rotation(k, (int)vx, (int)ux);
                     const int abs_i = abs_ij.first, abs_j = abs_ij.second;
                     const index_t ldof = local_dof(patch_idx, abs_i, abs_j);
@@ -1325,8 +1345,8 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
                         }
                         handled[ldof] = true;
                     }
-                    else if (!in_support && ux > 0 && vx > 0 &&
-                             ux < N - 1 && vx < N - 1 && !handled[ldof])
+                    else if (!in_support && ux > 0 && vx > 0 && ux < N - 1 &&
+                             vx < N - 1 && !handled[ldof])
                     {
                         // Outer inner point: free global DOF.
                         pre_mapper[ldof][global_dof_count] = real_t(1);
@@ -1386,11 +1406,12 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
         {
             for (int j = 1; j < (int)N - 1; ++j)
             {
-                const std::pair<int,int> edge_ij = apply_rotation(k, 0, j);
+                const std::pair<int, int> edge_ij = apply_rotation(k, 0, j);
                 const int edge_i = edge_ij.first, edge_j = edge_ij.second;
-                const index_t ldof          = local_dof(p, edge_i, edge_j);
+                const index_t ldof = local_dof(p, edge_i, edge_j);
 
-                if (handled[ldof]) continue;
+                if (handled[ldof])
+                    continue;
 
                 if (mesh.is_boundary(mesh.opposite_halfedge(h)))
                 {
@@ -1401,16 +1422,18 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
                 else
                 {
                     // C1 constraint: average of the two adjacent inner pts.
-                    const std::pair<int,int> inner_ij = apply_rotation(k, 1, j);
-                    const int inner_i = inner_ij.first, inner_j = inner_ij.second;
+                    const std::pair<int, int> inner_ij =
+                        apply_rotation(k, 1, j);
+                    const int inner_i = inner_ij.first,
+                              inner_j = inner_ij.second;
                     const index_t inner_ldof = local_dof(p, inner_i, inner_j);
 
                     const Halfedge h_opp = mesh.opposite_halfedge(h);
-                    const Face     f_adj = mesh.face(h_opp);
-                    const int      p_adj = f_adj.idx();
-                    const int      k_adj = get_k(f_adj, h_opp);
+                    const Face f_adj = mesh.face(h_opp);
+                    const int p_adj = f_adj.idx();
+                    const int k_adj = get_k(f_adj, h_opp);
 
-                    const std::pair<int,int> ia_ij =
+                    const std::pair<int, int> ia_ij =
                         apply_rotation(k_adj, 1, (int)N - 1 - j);
                     const int ia_i = ia_ij.first, ia_j = ia_ij.second;
                     const index_t inner_adj_ldof = local_dof(p_adj, ia_i, ia_j);
@@ -1445,7 +1468,7 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
         int k = 0;
         for (Halfedge h : mesh.halfedges(f))
         {
-            const std::pair<int,int> corner_ij = apply_rotation(k, 0, 0);
+            const std::pair<int, int> corner_ij = apply_rotation(k, 0, 0);
             const int corner_i = corner_ij.first, corner_j = corner_ij.second;
             const index_t ldof = local_dof(p, corner_i, corner_j);
 
@@ -1470,14 +1493,17 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
 
                 for (Halfedge h_out : mesh.halfedges(v_corner))
                 {
-                    if (mesh.is_boundary(h_out)) continue;
+                    if (mesh.is_boundary(h_out))
+                        continue;
 
                     const int p_adj = mesh.face(h_out).idx();
                     const int k_adj = get_k(mesh.face(h_out), h_out);
 
                     // The (1,1) inner point in the frame oriented at v_corner.
-                    const std::pair<int,int> inner_ij = apply_rotation(k_adj, 1, 1);
-                    const int inner_i = inner_ij.first, inner_j = inner_ij.second;
+                    const std::pair<int, int> inner_ij =
+                        apply_rotation(k_adj, 1, 1);
+                    const int inner_i = inner_ij.first,
+                              inner_j = inner_ij.second;
                     const index_t inner_ldof =
                         local_dof(p_adj, inner_i, inner_j);
 
@@ -1489,7 +1515,8 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
                 if (face_count > 0)
                 {
                     for (auto& kv : row)
-                        pre_mapper[ldof][kv.first] = kv.second / (real_t)face_count;
+                        pre_mapper[ldof][kv.first] =
+                            kv.second / (real_t)face_count;
                 }
                 else
                 {
@@ -1532,8 +1559,8 @@ void gsFreeformSubdivision<N, D>::basis_data(gsMultiPatch<> & multi_patch, gsMul
     mapped_basis.init(multi_basis, mapper_mat);
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
+template <size_t N>
+void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 {
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
@@ -1580,8 +1607,8 @@ void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     gsMultiPatch<> solField = solSpline.exportToPatches();
 
     // Write the solution back into the last entry.
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        m_mesh->get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        m_mesh->get_face_property<gsFreeformFaceData<N>>("bezier_points"));
     for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
     {
         for (size_t i = 0; i < N; ++i)
@@ -1589,20 +1616,88 @@ void gsFreeformSubdivision<N, D>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 
             for (size_t j = 0; j < N; ++j)
             {
-                face_data_vec[k].control_points(i, j)(D - 1) =
+                face_data_vec[k].control_points(i, j).conservativeResize(D + 1);
+                face_data_vec[k].control_points(i, j)(D) =
                     solField.patch(k).coefs()(i * N + j, 0);
             }
         }
+        face_data_vec[k].D++;
     }
+
+    D++;
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
-    gsFunctionExpr<real_t> function)
+template <size_t N>
+void gsFreeformSubdivision<N>::fit_function_b(gsFunctionExpr<real_t> function)
+{
+
+    gsMultiPatch<> multi_patch;
+    gsMultiBasis<> multi_basis;
+    gsMappedBasis<2> mapped_basis;
+    this->basis_data(multi_patch, multi_basis, mapped_basis);
+
+    // gsMatrix<real_t> coefficients;
+    // real_t err = gsL2Projection<real_t>::project(
+    //     mapped_basis,
+    //     multi_basis,
+    //     multi_patch,
+    //     function,
+    //     coefficients
+    // );
+    // gsMappedSpline<2, real_t> solSpline(mapped_basis, coefficients);
+    // gsMultiPatch<> solField = solSpline.exportToPatches();
+
+    gsExprAssembler<real_t> A(1,1);
+    A.setIntegrationElements(multi_basis);
+
+    auto G = A.getMap(multi_patch);
+    auto u = A.getSpace(mapped_basis, 1);
+    auto ff = A.getCoeff(function, G);
+
+    u.setup();
+    A.initSystem();
+    A.assemble(
+        u * u.tr(),
+        u * ff
+    );
+
+    gsSparseSolver<real_t>::LU solver;
+    solver.compute(A.matrix());
+    gsMatrix<> coefficients = solver.solve(A.rhs());
+    auto solution = A.getSolution(u, coefficients);
+
+    // Extract the solution into a gsMappedSpline, then export to patches.
+    gsMappedSpline<2, real_t> solSpline;
+    solution.extract(solSpline);
+    gsMultiPatch<> solField = solSpline.exportToPatches();
+
+    // Write the solution back into the last entry.
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        m_mesh->get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
+    {
+        for (size_t i = 0; i < N; ++i)
+        {
+
+            for (size_t j = 0; j < N; ++j)
+            {
+                face_data_vec[k].control_points(i, j).conservativeResize(D + 1);
+                face_data_vec[k].control_points(i, j)(D) =
+                    solField.patch(k).coefs()(i * N + j, 0);
+            }
+        }
+        face_data_vec[k].D++;
+    }
+
+    D++;
+}
+
+template <size_t N>
+void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
 {
     auto& mesh = *m_mesh;
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     for (auto f : mesh.faces())
     {
@@ -1621,9 +1716,8 @@ void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
                 real_t(std::floor(i % N)) / real_t(N - 1),
                 real_t(std::floor(i / N)) / real_t(N - 1));
 
-            // Get the value of the first D-1 coordinates at these parameters
-            gsVector<real_t, D - 1> point =
-                patch.eval(params.col(i)).topRows(D - 1);
+            // Get the value of the current coordinates at these parameters
+            gsVector<real_t> point = patch.eval(params.col(i));
 
             // Use the function to find the desired function value here.
             samples.col(i) = function.eval(point);
@@ -1645,21 +1739,26 @@ void gsFreeformSubdivision<N, D>::fit_last_coordinate_to_function(
             for (size_t j = 0; j < N; ++j)
             {
                 int total_index = i * N + j;
-                data(i, j)(D - 1) = new_coeffs(total_index, 0);
+                data(i, j).conservativeResize(D + 1);
+                data(i, j)(D) = new_coeffs(total_index, 0);
             }
         }
+        // Increase D of this patch
+        face_data_vec[f.idx()].D++;
     }
+    // Increase D
+    D++;
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::write_paraview_error(
+template <size_t N>
+void gsFreeformSubdivision<N>::write_paraview_error(
     gsFunctionExpr<real_t> function, real_t max_error, std::string name,
     gsParaviewCollection* collection, size_t timestep)
 {
     // Prepare data
     auto& mesh = *m_mesh;
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     // Number of faces needs to be counted for registration in the collection.
     size_t face_counter(0);
@@ -1703,7 +1802,7 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
         // Now create a B-spline patch using the first min(3, D-1) coordinates
         // of the original patch. For D == 3 this gives a 2D geometry; for D > 3
         // this gives a full 3D geometry. gsWriteParaview supports both.
-        constexpr size_t geo_dim = (D - 1 < 3) ? D - 1 : 3;
+        size_t geo_dim = (D - 1 < 3) ? D - 1 : 3;
         gsTensorBSpline<2, real_t> patchGeo(
             patch.basis(), patch.coefs().leftCols(geo_dim).eval());
 
@@ -1727,16 +1826,16 @@ void gsFreeformSubdivision<N, D>::write_paraview_error(
     }
 }
 
-template <size_t N, size_t D>
+template <size_t N>
 gsVector<real_t, 2>
-gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
-                                   size_t samples_per_face)
+gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
+                                size_t samples_per_face)
 {
 
     auto& mesh = *m_mesh;
     size_t spf = samples_per_face;
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points"));
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     real_t error_linf(0.);
     real_t error_l2(0.);
@@ -1751,7 +1850,7 @@ gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
         for (size_t i = 0; i < spf * spf; ++i)
         {
             // Get the value of the patch
-            gsVector<real_t, D> point = patch.eval(gsVector<real_t, 2>::vec(
+            gsVector<real_t> point = patch.eval(gsVector<real_t, 2>::vec(
                 real_t(std::floor(i % spf)) / real_t(spf - 1),
                 real_t(std::floor(i / spf)) / real_t(spf - 1)));
 
@@ -1775,8 +1874,8 @@ gsFreeformSubdivision<N, D>::error(gsFunctionExpr<real_t> function,
     return error;
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
+template <size_t N>
+void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
 {
     auto& mesh = *m_mesh;
     // Clear the mesh
@@ -1788,20 +1887,30 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
 
     // Initialize the property.
     auto bezier_points = mesh.add_face_property(std::string("bezier_points"),
-                                                gsFreeformFaceData<N, D>());
+                                                gsFreeformFaceData<N>(D));
 
     // Map from corner positions to vertex indices for detecting shared
     // vertices. We use a tolerance-based comparison for floating-point
     // coordinates.
-    std::map<std::array<real_t, D>, gsSurfMesh::Vertex> cornerMap;
+    struct VecLess
+    {
+        bool operator()(const gsVector<>& a, const gsVector<>& b) const
+        {
+            GISMO_ASSERT(a.size() == b.size(), "Size mismatch in VecLess");
+            return std::lexicographical_compare(a.data(), a.data() + a.size(),
+                                                b.data(), b.data() + b.size());
+        }
+    };
+    std::map<gsVector<>, gsSurfMesh::Vertex, VecLess> cornerMap;
     const real_t tolerance = 1e-10;
 
     auto findOrCreateVertex =
         [&](const gsMatrix<real_t>& point) -> gsSurfMesh::Vertex
     {
-        // Round coordinates for map lookup
-        std::array<real_t, D> key;
-        for (size_t i = 0; i < D; ++i)
+        // Round coordinates for map lookup, ensure there are at least 3
+        // dimensions
+        gsVector<> key(point.size());
+        for (size_t i = 0; i < point.size(); ++i)
         {
             key[i] = std::round(point(i) / tolerance) * tolerance;
         }
@@ -1813,7 +1922,12 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
         }
         else
         {
-            gsSurfMesh::Vertex v = mesh.add_vertex(gsSurfMesh::Point(point));
+            // Mesh vertices are always 3D; pad with zeros if the file has
+            // fewer than 3 dimensions.
+            gsSurfMesh::Point pt(0, 0, 0);
+            for (size_t k = 0; k < std::min(point.size(), (index_t)3); ++k)
+                pt[k] = point(k);
+            gsSurfMesh::Vertex v = mesh.add_vertex(pt);
             cornerMap[key] = v;
             return v;
         }
@@ -1852,27 +1966,32 @@ void gsFreeformSubdivision<N, D>::initialize_data_xml(std::string filepath)
         //   faceControlPoints(N-1,0) near v3 = BSpline (0,N-1)
         //   faceControlPoints(N-1,N-1) near v2 = BSpline (N-1,N-1)
         // So the mapping is: faceControlPoints(i,j) = BSpline(j, i)
-        gsMatrix<gsVector<real_t, D>, N, N> faceControlPoints;
+        gsMatrix<gsVector<real_t>, N, N> faceControlPoints;
 
+        const size_t fileDim = (size_t)coefs.cols();
+        const size_t copyDim = std::min(fileDim, D);
         for (size_t i = 0; i < N; ++i)
         {
             for (size_t j = 0; j < N; ++j)
             {
                 // Map face matrix (i,j) to B-spline (u,v) = (j,i).
                 index_t linearIdx = j + i * N;
-                // Extract the D-dimensional control point and assign it.
-                auto point = coefs.row(linearIdx);
+                // Copy the first copyDim coordinates; zero-fill any remainder
+                // up to D if the file dimension is smaller than D.
+                gsVector<real_t> point = gsVector<real_t>::Zero(D);
+                for (size_t k = 0; k < copyDim; ++k)
+                    point(k) = coefs(linearIdx, k);
                 faceControlPoints(i, j) = point;
             }
         }
 
         // Create gsFreeformFaceData with control points and face back reference
-        bezier_points[f] = gsFreeformFaceData<N, D>(faceControlPoints, f);
+        bezier_points[f] = gsFreeformFaceData<N>(faceControlPoints, f);
     }
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
+template <size_t N>
+void gsFreeformSubdivision<N>::initialize_data_off(std::string filepath)
 {
     auto& mesh = *m_mesh;
     // Clear the mesh
@@ -1881,21 +2000,21 @@ void gsFreeformSubdivision<N, D>::initialize_data_off(std::string filepath)
     auto _readFile = gsReadFile<>(filepath, mesh);
     // Initialize the property.
     mesh.add_face_property(std::string("bezier_points"),
-                           gsFreeformFaceData<N, D>());
+                           gsFreeformFaceData<N>(D));
 
     // Get the data. It will be empty and non-valid at this point.
-    gsProperty<gsFreeformFaceData<N, D>> patch_data =
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
+    gsProperty<gsFreeformFaceData<N>> patch_data =
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points");
 
     // Each patch is now initalized with basic face data.
     for (auto f : mesh.faces())
     {
-        patch_data.vector()[f.idx()] = gsFreeformFaceData<N, D>(mesh, f);
+        patch_data.vector()[f.idx()] = gsFreeformFaceData<N>(mesh, f);
     }
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::initialize_data(std::string filepath)
+template <size_t N>
+void gsFreeformSubdivision<N>::initialize_data(std::string filepath)
 {
     std::string xml(".xml");
     std::string off(".off");
@@ -1919,8 +2038,15 @@ void gsFreeformSubdivision<N, D>::initialize_data(std::string filepath)
     m_mesh->garbage_collection();
 }
 
-template <size_t N, size_t D>
-void gsFreeformSubdivision<N, D>::write_paraview(
+template <size_t N>
+void gsFreeformSubdivision<N>::initialize_data(std::string filepath, size_t D)
+{
+    this->D = D;
+    initialize_data(filepath);
+}
+
+template <size_t N>
+void gsFreeformSubdivision<N>::write_paraview(
     std::string name, gsParaviewCollection* collection,
     gsParaviewCollection* cnet_collection, size_t timestep, bool control_net)
 {
@@ -1946,15 +2072,14 @@ void gsFreeformSubdivision<N, D>::write_paraview(
     }
 }
 
-template <size_t N, size_t D>
-gsMultiPatch<> gsFreeformSubdivision<N, D>::multipatch()
+template <size_t N> gsMultiPatch<> gsFreeformSubdivision<N>::multipatch()
 {
     auto& mesh = *m_mesh;
     gsMultiPatch<> patch;
 
     // Get the vector containing all the face data.
-    gsProperty<gsFreeformFaceData<N, D>> face_data_vec =
-        mesh.get_face_property<gsFreeformFaceData<N, D>>("bezier_points");
+    gsProperty<gsFreeformFaceData<N>> face_data_vec =
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points");
 
     // For each face, convert its control net to a patch and add it to the
     // multipatch. Order doesn't matter.
@@ -1966,9 +2091,9 @@ gsMultiPatch<> gsFreeformSubdivision<N, D>::multipatch()
     return patch;
 }
 
-template <size_t N, size_t D>
+template <size_t N>
 gsSubdivisionScheme::gsSubdivisionMeshValidity
-gsFreeformSubdivision<N, D>::check_mesh()
+gsFreeformSubdivision<N>::check_mesh()
 {
     auto& mesh = *m_mesh;
     for (Face f : mesh.faces())
@@ -1989,13 +2114,11 @@ gsFreeformSubdivision<N, D>::check_mesh()
     return gsSubdivisionScheme::gsSubdivisionMeshValidity::UNDETERMINED;
 }
 
-template class gsFreeformSubdivision<5, 3>;
-template class gsFreeformFaceData<5, 3>;
-template class gsFreeformSubdivision<5, 4>;
-template class gsFreeformFaceData<5, 4>;
-template class gsFreeformSubdivision<6, 3>;
-template class gsFreeformFaceData<6, 3>;
-template class gsFreeformSubdivision<9, 3>;
-template class gsFreeformFaceData<9, 3>;
+template class gsFreeformSubdivision<5>;
+template class gsFreeformFaceData<5>;
+template class gsFreeformSubdivision<6>;
+template class gsFreeformFaceData<6>;
+template class gsFreeformSubdivision<9>;
+template class gsFreeformFaceData<9>;
 
 } // namespace gismo

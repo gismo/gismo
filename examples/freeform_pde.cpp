@@ -117,8 +117,9 @@ int main(int argc, char** argv)
         mesh_path = "freeform/flat/Val" + std::to_string(valence) + "Flat.xml";
     }
 
+    size_t MESH_DIM = 2;
     gsSurfMesh mesh = gsSurfMesh();
-    auto subdiv = gsFreeformSubdivision<5, 4>(&mesh);
+    auto subdiv = gsFreeformSubdivision<5>(&mesh, MESH_DIM);
     subdiv.options().setString("model_patch_path", model_patch_path);
 
     subdiv.initialize_data(mesh_path);
@@ -128,7 +129,7 @@ int main(int argc, char** argv)
     const bool has_exact = !exact_str.empty();
     // When no exact solution is given, initialise with a placeholder; the
     // object is never evaluated in that case.
-    gsFunctionExpr<real_t> exact(has_exact ? exact_str : "0", 2);
+    gsFunctionExpr<real_t> exact(has_exact ? exact_str : "0", 3);
 
     gsMatrix<real_t> errors(2, steps);
 
@@ -138,11 +139,13 @@ int main(int argc, char** argv)
 
     for (index_t i = 0; i < steps; ++i)
     {
-        subdiv.initialize_data(mesh_path);
+        subdiv.initialize_data(mesh_path, MESH_DIM);
         for (index_t j = 0; j < i; ++j)
         {
             subdiv.subdivide();
         }
+        // this is necessary if the loaded data is not smoothed already, e.g. in case of an OFF file.
+        subdiv.smooth(1);
         subdiv.laplace_beltrami(rhs);
 
         if (has_exact)

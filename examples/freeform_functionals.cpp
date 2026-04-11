@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 
     // Basic objects
     gsSurfMesh mesh = gsSurfMesh();
-    auto subdiv = gsFreeformSubdivision<5, 3>(&mesh);
+    auto subdiv = gsFreeformSubdivision<5>(&mesh, 3);
     subdiv.options().setString("model_patch_path", patchpath);
     subdiv.options().setSwitch("optimize_fit", true);
 

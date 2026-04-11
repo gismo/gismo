@@ -27,16 +27,18 @@ namespace gismo
 /// Class for subdivision schemes based on freeform spline control nets on
 /// quadrangular meshes. Also provides other support functions for working with
 /// such meshes.
-template <size_t N, size_t D>
+template <size_t N>
 class GISMO_EXPORT gsFreeformSubdivision : public gsSubdivisionScheme
 {
+private: // Space Dimension
+    size_t D;
 
 public: // Constructors
     /// \brief Default constructor.
     ///
     /// Default constructor. Sets no options and leaves the targeted mesh as a
     /// nullpointer.
-    gsFreeformSubdivision() : gsFreeformSubdivision(nullptr) {}
+    gsFreeformSubdivision(size_t D) : gsFreeformSubdivision(nullptr, D) {}
 
     /// \brief Constructor with a mesh to target.
     ///
@@ -53,7 +55,8 @@ public: // Constructors
     ///   to the directory containing the model patch \c .xml files.
     ///
     /// \param mesh Pointer to the \c gsSurfMesh to be targeted by this object.
-    gsFreeformSubdivision(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh)
+    gsFreeformSubdivision(gsSurfMesh* mesh, size_t D)
+        : gsSubdivisionScheme(mesh), D(D)
     {
         m_options.addSwitch("optimize_fit",
                             "When active, fits around EVs by optimizing with "
@@ -81,9 +84,9 @@ private: // Helper functions
     /// \param control_net The original matrix to be split.
     /// \return An array of two control nets representing the left and right
     /// halves of the split patch.
-    static std::array<gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>, 2>
+    static std::array<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>, 2>
     deCasteljau(
-        const gsMatrix<gsVector<real_t, D>, Dynamic, Dynamic>& control_net);
+        const gsMatrix<gsVector<real_t>, Dynamic, Dynamic>& control_net);
 
     /// \brief Loads a model patch of the given valence and type.
     ///
@@ -210,7 +213,8 @@ public:
     void subdivide() override;
 
     /// Use only garbage-collected meshes with contiguous indices!
-    void basis_data(gsMultiPatch<> & multi_patch, gsMultiBasis<> & multi_basis, gsMappedBasis<2> & mapped_basis);
+    void basis_data(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
+                    gsMappedBasis<2>& mapped_basis);
 
     /// \brief Solves the Laplace-Beltrami problem on the mesh.
     ///
@@ -223,14 +227,14 @@ public:
     /// \param rhs The right hand side function.
     void laplace_beltrami(gsFunctionExpr<> rhs);
 
-    /// \brief Replaces the last coordinate with a least-squares fit to a
-    /// function of the first D-1 coordinates.
+    /// \brief Adds another dimension to the control point vecs using with a
+    /// least-squares fit to a function of the existing coordinates.
     ///
-    /// For each face, samples the first \f$D-1\f$ coordinates of the Bézier
+    /// For each face, samples the existing coordinates of the Bézier
     /// patch at \f$N^2\f$ parameter points, evaluates \c function at those
     /// positions, fits a new \f$N \times N\f$ Bézier patch to the function
     /// values by least squares, and writes the resulting control
-    /// coefficients back as the last coordinate of each control point.
+    /// coefficients back as the new last coordinate of each control point.
     ///
     /// \param function A real-valued function in \f$D-1\f$ real variables.
     void fit_last_coordinate_to_function(gsFunctionExpr<> function);
@@ -319,6 +323,22 @@ public:
     ///
     /// \param filepath Path to the file to load (\c .xml or \c .off).
     void initialize_data(std::string filepath);
+
+    /// \brief Initializes the targeted mesh from a file, dispatching on
+    /// extension, and sets the dimension of the mesh.
+    ///
+    /// First sets the dimension of this freeform subdivision to D.
+    /// Then detects the file format from the extension of \c filepath and calls
+    /// the appropriate loader:
+    /// - \c .xml → \ref initialize_data_xml
+    /// - \c .off → \ref initialize_data_off
+    ///
+    /// If the extension is not recognised, a warning is emitted and the mesh
+    /// is left unchanged.
+    ///
+    /// \param filepath Path to the file to load (\c .xml or \c .off).
+    /// \param D The dimension of the mesh.
+    void initialize_data(std::string filepath, size_t D);
 
     /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
     ///
@@ -412,9 +432,9 @@ public:
 /// `mesh.halfedges(face)` traverses them. In particular, the position of
 /// control points `00`, `04`, `40`, `44` should correspond to the position of
 /// the vertices (if present).
-template <size_t N, size_t D> class GISMO_EXPORT gsFreeformFaceData
+template <size_t N> class GISMO_EXPORT gsFreeformFaceData
 {
-    template <size_t M, size_t E> friend class gsFreeformSubdivision;
+    template <size_t M> friend class gsFreeformSubdivision;
 
     using Point = gsSurfMesh::Point;
     using Vertex = gsSurfMesh::Vertex;
@@ -425,21 +445,22 @@ template <size_t N, size_t D> class GISMO_EXPORT gsFreeformFaceData
 private: // members
     /// The \f$N \times N\f$ matrix of \f$D\f$-dimensional Bézier control
     /// points of this face patch.
-    gsMatrix<gismo::gsVector<real_t, D>, N, N> control_points;
+    gsMatrix<gismo::gsVector<real_t>, N, N> control_points;
     /// A back-reference to the face of the mesh this data belongs to.
     Face face;
+    /// Dimension of the space
+    size_t D;
 
-private: // helpers
-public:  // Contructors
+public: // Contructors
     /// \brief Default constructor with everything empty.
     ///
     /// Default constructor. All control points are the zero vector, and the
     /// back reference to the face is empty.
-    gsFreeformFaceData() : control_points(), face(0)
+    gsFreeformFaceData(size_t D) : control_points(), face(0), D(D)
     {
         for (size_t i = 0; i < N * N; ++i)
         {
-            control_points(i) = gsVector<real_t, D>::Zero(D);
+            control_points(i) = gsVector<real_t>::Zero(D);
         }
     }
 
@@ -449,11 +470,11 @@ public:  // Contructors
     /// points to the given face.
     ///
     /// \param face The face this data is associated with.
-    gsFreeformFaceData(Face face) : control_points(), face(face)
+    gsFreeformFaceData(Face face, size_t D) : control_points(), face(face), D(D)
     {
         for (size_t i = 0; i < N * N; ++i)
         {
-            control_points(i) = gsVector<real_t, D>::Zero(D);
+            control_points(i) = gsVector<real_t>::Zero(D);
         }
     }
 
@@ -464,10 +485,11 @@ public:  // Contructors
     /// \param control_points The \f$N \times N\f$ matrix of \f$D\f$-dimensional
     ///                       Bézier control points for this face.
     /// \param face           The face this data is associated with.
-    gsFreeformFaceData(
-        gsMatrix<gismo::gsVector<real_t, D>, N, N> control_points, Face face)
+    gsFreeformFaceData(gsMatrix<gismo::gsVector<real_t>, N, N> control_points,
+                       Face face)
         : control_points(control_points), face(face)
     {
+        this->D = control_points(0, 0).size();
     }
 
     /// \brief Basic constructor that creates a $C^0$ control net.
@@ -496,8 +518,8 @@ public: // Control point accessors
     /// \return An \f$N \times N\f$ matrix of pointers into the control net,
     /// oriented so that
     /// row 0 runs from the from-vertex to the to-vertex of \c hedge.
-    gsMatrix<gsVector<real_t, D>*> control_points_oriented(gsSurfMesh& mesh,
-                                                           Halfedge hedge);
+    gsMatrix<gsVector<real_t>*> control_points_oriented(gsSurfMesh& mesh,
+                                                        Halfedge hedge);
 
 public: // Conversions
     /// \brief Returns a Bézier patch corresponding to these control points.
