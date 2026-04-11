@@ -117,7 +117,7 @@ int main(int argc, char** argv)
         mesh_path = "freeform/flat/Val" + std::to_string(valence) + "Flat.xml";
     }
 
-    size_t MESH_DIM = 2;
+    size_t MESH_DIM = 3;
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFreeformSubdivision<5>(&mesh, MESH_DIM);
     subdiv.options().setString("model_patch_path", model_patch_path);

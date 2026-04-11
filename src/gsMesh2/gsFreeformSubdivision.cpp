@@ -1486,8 +1486,16 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
     // surrounding that vertex:
     //   corner = (1/count) * sum_f  P_f(apply_rotation(k_f, 1, 1))
     //
-    // If the vertex has no interior faces (fully on mesh boundary)
-    // it gets a free global DOF.
+    // This applies uniformly to both ordinary interior vertices
+    // (face_count == 4) and to interior corners on the mesh boundary,
+    // i.e. vertices where multiple patches meet but one or more
+    // neighbouring faces are absent (face_count >= 2).  Because every
+    // patch sharing such a vertex maps its corner to the SAME linear
+    // combination of inner-point DOFs, C0 continuity is enforced.
+    //
+    // A true boundary corner (face_count <= 1) gets a free global DOF
+    // so that gsDofMapper can eliminate it via markBoundary without
+    // perturbing interior global DOFs.
     //
     // Points already handled by the EV support (Phase 1) are skipped.
     // ================================================================
@@ -1504,18 +1512,6 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
             if (!handled[ldof])
             {
                 const Vertex v_corner = mesh.from_vertex(h);
-
-                // Mesh-boundary corners always get a free DOF so that
-                // gsDofMapper can eliminate them directly via markBoundary
-                // without touching interior global DOFs.
-                if (mesh.is_boundary(v_corner))
-                {
-                    pre_mapper[ldof][global_dof_count] = real_t(1);
-                    ++global_dof_count;
-                    handled[ldof] = true;
-                    ++k;
-                    continue;
-                }
 
                 std::map<index_t, real_t> row;
                 int face_count = 0;
@@ -1541,7 +1537,13 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
                     ++face_count;
                 }
 
-                if (face_count > 0)
+                // Two or more incident faces: enforce C0 by mapping all
+                // patches' corners at this vertex to the same averaged
+                // combination of inner-point DOFs.  This covers ordinary
+                // interior vertices (face_count == 4) as well as interior
+                // corners on the mesh boundary (face_count >= 2, e.g. three
+                // patches meeting with a gap where the fourth would be).
+                if (face_count >= 2)
                 {
                     for (auto& kv : row)
                         pre_mapper[ldof][kv.first] =
@@ -1549,7 +1551,9 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
                 }
                 else
                 {
-                    // Fully boundary vertex: free DOF.
+                    // True boundary corner (face_count <= 1): free DOF so
+                    // that gsDofMapper can eliminate it via markBoundary
+                    // without touching interior global DOFs.
                     pre_mapper[ldof][global_dof_count] = real_t(1);
                     ++global_dof_count;
                 }
