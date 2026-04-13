@@ -213,8 +213,8 @@ public:
     void subdivide() override;
 
     /// Use only garbage-collected meshes with contiguous indices!
-    void basis_data(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
-                    gsMappedBasis<2>& mapped_basis);
+    void c1_basis(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
+                  gsMappedBasis<2>& mapped_basis);
 
     /// \brief Solves the Laplace-Beltrami problem on the mesh.
     ///
@@ -227,20 +227,16 @@ public:
     /// \param rhs The right hand side function.
     void laplace_beltrami(gsFunctionExpr<> rhs);
 
-    /// \brief Adds another dimension to the control point vecs using with a
-    /// least-squares fit to a function of the existing coordinates.
+    /// \brief Appends a scalar field as a new control-point coordinate.
     ///
-    /// For each face, samples the existing coordinates of the Bézier
-    /// patch at \f$N^2\f$ parameter points, evaluates \c function at those
-    /// positions, fits a new \f$N \times N\f$ Bézier patch to the function
-    /// values by least squares, and writes the resulting control
-    /// coefficients back as the new last coordinate of each control point.
+    /// Evaluates \c function on the current geometry and fits the resulting
+    /// scalar values with the freeform patch representation. The fitted values
+    /// are written into a new last coordinate of every control point, and the
+    /// ambient dimension \c D is increased by one.
     ///
-    /// Increases D by one.
-    ///
-    /// \param function A real-valued function in \f$D\f$ real variables.
+    /// \param function A real-valued function of the current geometric
+    ///                 coordinates.
     void fit_function(gsFunctionExpr<> function);
-    void fit_function_b(gsFunctionExpr<> function);
 
     /// \brief Computes the approximation error of the freeform patches against
     /// a reference function.
@@ -343,34 +339,27 @@ public:
     /// \param D The dimension of the mesh.
     void initialize_data(std::string filepath, size_t D);
 
-    /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
+    /// \brief Smooths the geometry by L2-projecting it onto the mapped basis.
     ///
-    /// Takes a given mesh with freeform data and makes it $C^s$ by adjusting
-    /// the outer layer of control points of each bezier patch. This only causes
-    /// $C^s$ at edges and ordinary vertices. No guarantee is made for
-    /// extraordinary vertices.
+    /// Builds the mapped basis via \c basis_data(), projects the current
+    /// multipatch geometry onto that space in the \f$L^2\f$ sense, and writes
+    /// the projected control points back to the per-face control nets.
     ///
-    /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
-    /// supported.
+    /// \param degree Requested smoothness degree. Currently only implemented for C1.
     void smooth(size_t degree);
-    void smooth_b(size_t degree);
 
-    /// \brief Turns a $C^0$ set of control nets into a $C^s$ set.
+    /// \brief Placeholder overload of \ref smooth(size_t) with EV outputs.
     ///
-    /// Takes a given mesh with freeform data and makes it $C^s$ by adjusting
-    /// the outer layer of control points of each bezier patch. This only causes
-    /// $C^s$ at edges and ordinary vertices. No guarantee is made for
-    /// extraordinary vertices.
-    /// Features return arguments that return the coefficient matrix of the
-    /// fitting for each extraordinary vertex, as well as the matrix containing
-    /// the values of the outer control points of patches around that vertex.
+    /// This overload is intended to expose additional matrices associated with
+    /// extraordinary-vertex fitting, but it is currently not implemented.
+    /// The present implementation performs no smoothing and leaves the output
+    /// vectors unchanged.
     ///
-    /// \param degree The degree of smoothness desired. As of now, only $C^1$ is
-    /// supported.
-    /// \param ev_coefficients      Output: coefficient matrices of the EV fit,
-    ///                             one entry per extraordinary vertex.
-    /// \param ev_coefficients_outer Output: matrices of the outer control point
-    ///                              values around each extraordinary vertex.
+    /// \param degree Requested smoothness degree.
+    /// \param ev_coefficients Placeholder output for extraordinary-vertex
+    ///                        coefficient matrices.
+    /// \param ev_coefficients_outer Placeholder output for outer control-point
+    ///                              data around extraordinary vertices.
     void smooth(size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
                 std::vector<gsMatrix<real_t>>& ev_coefficients_outer);
 

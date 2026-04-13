@@ -147,7 +147,7 @@ int main(int argc, char** argv)
         {
             subdiv.subdivide();
         }
-        subdiv.fit_function_b(func);
+        subdiv.fit_function(func);
 
         if (write_errors)
             errors.col(i) = subdiv.error(func, samples);

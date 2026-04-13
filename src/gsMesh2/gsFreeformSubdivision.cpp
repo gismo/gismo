@@ -602,551 +602,32 @@ gsMatrix<real_t> gsFreeformSubdivision<N>::fit_ev(gsMatrix<real_t> A,
     return solution;
 }
 
-template <size_t N> void gsFreeformSubdivision<N>::smooth(size_t degree)
-{
-    std::vector<gsMatrix<real_t>> ev_coefs;
-    std::vector<gsMatrix<real_t>> ev_coefs_outer;
-    smooth(degree, ev_coefs, ev_coefs_outer);
-}
-
 template <size_t N>
 void gsFreeformSubdivision<N>::smooth(
     size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
     std::vector<gsMatrix<real_t>>& ev_coefficients_outer)
 {
-    auto& mesh = *m_mesh;
-
-    // clear return vectors
-    ev_coefficients.clear();
-    ev_coefficients_outer.clear();
-
-    std::vector<gsMatrix<real_t>> res;
-    // Ensure we have a high enough degree
-    if (degree + 1 > N / 2)
-    {
-        gsWarn
-            << "Degree of Bezier control net to small for this smoothness.\n";
-    }
-
-    // Currently, only C^1 is supported.
-    if (degree != 1)
-    {
-        gsWarn << "Currently, only C^1 smoothing is supported.\n";
-    }
-
-    // Cache face data
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
-
-    // First, correct each vertex
-    for (const Vertex& v : mesh.vertices())
-    {
-        // Check for EVs on any face adjacent to this vertex.
-        bool has_ev(false);
-        for (Face f : mesh.faces(v))
-        {
-            for (Vertex v_face : mesh.vertices(f))
-            {
-                has_ev |= !is_ordinary(mesh, v_face);
-            }
-        }
-
-        if (!is_ordinary(mesh, v))
-        {
-            size_t valence = mesh.valence(v);
-            size_t patches = 4 * valence;
-
-            // Collect all the control points.
-            // The `4 * valence` faces will be ordered as follows, with the `o`
-            // indicating its (0,0) control point and the arrow its primary
-            // u-direction towards the (0,N-1) control point:
-            // ```
-            //    +-----+  +-----+  +-----+  +-----+
-            //    |    ^|  |    ^|  |     |  |     |
-            //    |  5 ||  |  4 ||  |  15 |  |  14 |
-            //    |    o|  |    o|  |o--> |  |o--> |
-            //    +-----+  +-----+  +-----+  +-----+
-            //    +-----+  +-----+  +-----+  +-----+
-            //    |    ^|  |    ^|  |     |  |     |
-            //    |  6 ||  |  0 ||  |  3  |  |  13 |
-            //    |    o|  |    o|  |o--> |  |o--> |
-            //    +-----+  +-----+  +-----+  +-----+
-            //    +-----+  +-----+  +-----+  +-----+
-            //    | <--o|  | <--o|  |o    |  |o    |
-            //    |  7  |  |  1  |  || 2  |  || 12 |
-            //    |     |  |     |  |v    |  |v    |
-            //    +-----+  +-----+  +-----+  +-----+
-            //    +-----+  +-----+  +-----+  +-----+
-            //    | <--o|  | <--o|  |o    |  |o    |
-            //    |  8  |  |  9  |  || 10 |  || 11 |
-            //    |     |  |     |  |v    |  |v    |
-            //    +-----+  +-----+  +-----+  +-----+
-            //
-            // ```
-            // TODO: And then we transpose
-            std::vector<gsMatrix<gsVector<real_t>*>> control_nets;
-
-            // First, collect the inner nets.
-            for (Halfedge h : mesh.halfedges(v))
-            {
-                gsMatrix<gsVector<real_t>*> cp =
-                    face_data_vec[mesh.face(h).idx()]
-                        .control_points_oriented(mesh, h)
-                        .transpose();
-                control_nets.emplace_back(cp);
-            }
-
-            // Then, go through the halfedges again to get the outer nets.
-            for (Halfedge h : mesh.halfedges(v))
-            {
-                // Follow halfedges to the next patch
-                h = mesh.next_halfedge(h);
-                h = mesh.opposite_halfedge(h);
-                h = mesh.next_halfedge(h);
-                // Get its oriented control net
-                gsMatrix<gsVector<real_t>*> cp1 =
-                    face_data_vec[mesh.face(h).idx()]
-                        .control_points_oriented(mesh, h)
-                        .transpose();
-                // Place it in the matrix.
-                control_nets.emplace_back(cp1);
-
-                // Repeat two more times.
-                h = mesh.next_halfedge(h);
-                h = mesh.next_halfedge(h);
-                h = mesh.opposite_halfedge(h);
-                gsMatrix<gsVector<real_t>*> cp2 =
-                    face_data_vec[mesh.face(h).idx()]
-                        .control_points_oriented(mesh, h)
-                        .transpose();
-                control_nets.emplace_back(cp2);
-
-                h = mesh.prev_halfedge(h);
-                h = mesh.opposite_halfedge(h);
-                h = mesh.prev_halfedge(h);
-                gsMatrix<gsVector<real_t>*> cp3 =
-                    face_data_vec[mesh.face(h).idx()]
-                        .control_points_oriented(mesh, h)
-                        .transpose();
-                control_nets.emplace_back(cp3);
-            }
-
-            // The number of fitting functions.
-            // Note these are linearly dependent and actually the dimension of
-            // this space is only valence + 3.
-            size_t function_count(2 * valence + 1);
-
-            // We now load the patches of these fitting functions.
-            std::vector<
-                std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>>>
-                fitting_functions;
-            fitting_functions.reserve(function_count);
-
-            for (size_t i = 0; i < function_count; ++i)
-            {
-                // Construct the filepath for the ith basis function and
-                // load it with gismo utilities
-                fitting_functions.emplace_back(
-                    gsFileData<real_t>(m_options.getString("model_patch_path") +
-                                       "Val" + std::to_string(valence) + "Fct" +
-                                       std::to_string(i) + ".xml")
-                        .getAll<gsTensorBSpline<2, real_t>>());
-            }
-
-            // This is the number of total points that need to be moved.
-            size_t point_count(valence * (N * N + 2 * N + 2 * 2 + N * 2));
-            // This is the number of total points we are fitting to, excluding
-            // doubles.
-            size_t sample_count(1 + valence * (N - 1) * N + valence * (N - 1) +
-                                valence * 2 + valence * (N - 1));
-
-            // For the least-squares fit we now build:
-            // - The matrix `A_sample` of dimension `sample_count x
-            // fit_functions`, in which the entry A(i,j) is the z-value of the
-            // ith control point of the j-th fitting function.
-            // - The matrix `A_control` of dimension `point_count x
-            // fit_functions`, in which the entry A(i,j) is the z-coordinate of
-            // the ith control point of the jth fitting function.
-            // - The matrix `target` of dimension `sample_count x D`, in which
-            // the row b(i,-) is the ith control point of the target patch.
-            gsMatrix<real_t> A_sample(sample_count, function_count);
-            gsMatrix<real_t> A_control(point_count, function_count);
-            gsMatrix<real_t> target(sample_count, D);
-
-            gsMatrix<real_t> outer_values(N * (N - 1) * valence, D);
-
-            {
-                // the sampling index - this is incremented whenever we sample a
-                // point
-                size_t i_s(0);
-                // The point index - this is incremented whenever we record a
-                // control point
-                size_t i_p(0);
-                size_t i_o(0);
-                // Iterating over patches
-                for (size_t p = 0; p < patches; ++p)
-                {
-                    // Iterating over the N * N sample points on that patch by
-                    // index, u dimension.
-                    for (size_t ux = 0; ux < N; ++ux)
-                    {
-                        // Iterating over the N * N sample points on that patch
-                        // by index, v dimension.
-                        for (size_t vx = 0; vx < N; ++vx)
-                        {
-                            // We check all the control points of the fitting
-                            // functions at this point. If they are all zero, we
-                            // don't want to consider this point for the EV
-                            // fitting.
-                            if (std::any_of(
-                                    fitting_functions.begin(),
-                                    fitting_functions.end(),
-                                    [&](const std::vector<std::unique_ptr<
-                                            gsTensorBSpline<2, real_t>>>& ff)
-                                    {
-                                        return ff[p]->coef(ux * N + vx, 2) ==
-                                               0.0;
-                                    }))
-                            {
-                                if (ux > 0 && vx > 0 && ux < N - 1 &&
-                                    vx < N - 1)
-                                {
-                                    outer_values.row(i_o) =
-                                        *control_nets[p](ux, vx);
-                                    i_o++;
-                                }
-                                continue;
-                            }
-
-                            // First, log the z-coordinate of the control points
-                            // into A_control.
-                            for (size_t j = 0; j < function_count; ++j)
-                            {
-                                A_control(i_p, j) =
-                                    fitting_functions[j][p]->coef(ux * N + vx,
-                                                                  2);
-                            }
-                            i_p++;
-
-                            // Skip this control point if it is not a sample
-                            // point.
-                            if (!((p == 0 && vx == 0 && ux == 0) // center point
-                                  || (p < valence &&
-                                      vx > 0) // points on inner patches
-                                  || (p >= valence && (p - valence) % 3 == 0 &&
-                                      ux == 1 && vx > 0) // outer patches first
-                                  || (p >= valence && (p - valence) % 3 == 1 &&
-                                      ux < 2 && ux == 1) // outer patches middle
-                                  ||
-                                  (p >= valence && (p - valence) % 3 == 2 &&
-                                   ux < N - 1 && vx == 1) // outer patches end
-                                  ))
-                            {
-                                continue;
-                            }
-
-                            // If this was a sample point, also log its control
-                            // point into A_sample
-                            for (size_t j = 0; j < function_count; ++j)
-                            {
-                                A_sample(i_s, j) =
-                                    fitting_functions[j][p]->coef(ux * N + vx,
-                                                                  2);
-                            }
-
-                            // Lastly, save the control point of the target
-                            // patch
-                            gsVector<real_t> val = *control_nets[p](ux, vx);
-                            target.row(i_s) = val;
-
-                            i_s++;
-                        }
-                    }
-                }
-                // gsInfo << "Total samples: " << i_s << "\n";
-                // gsInfo << "Total points: " << i_p << "\n";
-            }
-
-            gsMatrix<real_t> solution;
-            if (m_options.getSwitch("optimize_fit"))
-            {
-                solution = fit_ev_opt(A_sample, target, valence);
-            }
-            else
-            {
-                solution = fit_ev(A_sample, target, valence);
-            }
-
-            // Remember the fitting coefficients and return them later.
-            ev_coefficients.emplace_back(solution);
-            ev_coefficients_outer.emplace_back(outer_values);
-
-            // Now, the coefficients in `solution` give a linear combination of
-            // the fitting functions that approximates the original target
-            // patches. By multiplying with A_control, we get the same linear
-            // combination of the control points of the fitting functions,
-            // resulting in a collection of control points that we can write
-            // back into the control nets.
-            auto new_values = A_control * solution;
-
-            // We need to make sure to use the same ordering as we did when
-            // sampling.
-            {
-                size_t i(0);
-                for (size_t p = 0; p < patches; ++p)
-                {
-                    for (size_t ux = 0; ux < N; ++ux)
-                    {
-                        for (size_t vx = 0; vx < N; ++vx)
-                        {
-                            // Make sure to skip all points that we skipped
-                            // when collecting A_control, those that lie outside
-                            // of the support of the fitting functions.
-                            if (std::any_of(
-                                    fitting_functions.begin(),
-                                    fitting_functions.end(),
-                                    [&](const std::vector<std::unique_ptr<
-                                            gsTensorBSpline<2, real_t>>>& ff)
-                                    {
-                                        return ff[p]->coef(ux * N + vx, 2) ==
-                                               0.0;
-                                    }))
-                                continue;
-
-                            *control_nets[p](ux, vx) = new_values.row(i);
-
-                            i++;
-                        }
-                    }
-                }
-            }
-        } // end of EV vertex correction
-        else
-        {
-
-            if (has_ev)
-                continue;
-
-            // first, collect all the control points around this vertex. They
-            // will be arrayed like this:
-            // ```
-            //      ...   ...     ...   ...
-            // ... (1,1) (1,0)   (0,1) (1,1) ...
-            // ... (0,1) (0,0)   (0,0) (1,0) ...
-            // ...             V
-            // ... (1,0) (0,0)   (0,0) (0,1) ...
-            // ... (1,1) (0,1)   (1,0) (1,1) ...
-            //      ...   ...     ...   ...
-            // ```
-            // The points directly neighboring another across different patches
-            // should be equal (e.g. top left (1,0) and bottom left (0,1)) as
-            // the C0 condition.
-            std::vector<gsMatrix<gsVector<real_t>*>> control_points_faces;
-            size_t insert_index(0);
-            for (Halfedge h : mesh.halfedges(v))
-            {
-                // we do skip non-existent faces
-                if (mesh.is_boundary(h))
-                {
-                    // When a boundary is found, reset the insert-index.
-                    // This ensures that, if we are on the boundary we still
-                    // have a continuous series of faces.
-                    insert_index = 0;
-                    continue;
-                }
-                // Insert the face into our list at the appropriate position.
-                control_points_faces.insert(
-                    control_points_faces.begin() + insert_index++,
-                    face_data_vec[mesh.face(h).idx()].control_points_oriented(
-                        mesh, h));
-            }
-            // Now, each different point needs a row in the matrix. We have 4
-            // base points with one patch in the top left. Each additional patch
-            // adds another 2 points. Technically, the last patch (if connected)
-            // adds only 1, but we can simply overdetermine the system a bit
-            // since we use least squares anyways.
-            size_t rows(2 + 2 * control_points_faces.size());
-
-            // Now create a matrix that represents these C1 equations, i.e. each
-            // point on a boundary is colinear with the ones on either side.
-            // This results in one row for each point, writing it as a linear
-            // combination of the 4 free points in the top left patch. The
-            // indices of the points above in the matrix are as follows:
-            // ```
-            // 2 3 3 4
-            // 1 0 0 5
-            // 9 0 0 5
-            // 8 7 7 6
-            // ```
-            // where 9 has to be equal to 1, but this will happen automatically.
-            auto matrix = gsMatrix<real_t>(rows, 4);
-            // The first four equations just say that the first four points are
-            // equal to themselves.
-            matrix.row(0) << 1., 0., 0., 0.;
-            matrix.row(1) << 0., 1., 0., 0.;
-            matrix.row(2) << 0., 0., 1., 0.;
-            matrix.row(3) << 0., 0., 0., 1.;
-
-            // For each new face, its first vertex (with an even index e.g. 4 or
-            // 8 above) depends on the two previous vertices and its second
-            // vertex (with an odd index, e.g. 5 or 7 above) depends on the
-            // center 0 and the second vertex of the preprevious face.
-            for (size_t i = 4; i < rows; ++i)
-            {
-                if (i % 2 == 0)
-                    matrix.row(i) = 2. * matrix.row(i - 1) - matrix.row(i - 2);
-                else
-                    matrix.row(i) = 2. * matrix.row(0) - matrix.row(i - 4);
-            }
-
-            // Now, for each of these `rows` points, we want to find its desired
-            // value by looking at the respective value of the old (non-smooth)
-            // control net.
-            // TODO: Does this overvalue the 0/9 point?
-            gsMatrix<real_t> target_matrix(rows, D);
-            target_matrix.setZero();
-            target_matrix.row(0) = control_points_faces[0](0, 0)->transpose();
-            target_matrix.row(1) = control_points_faces[0](0, 1)->transpose();
-
-            for (size_t i = 0; i < control_points_faces.size(); ++i)
-            {
-                target_matrix.row(2 * i + 2) =
-                    control_points_faces[i](1, 1)->transpose();
-                target_matrix.row(2 * i + 3) =
-                    control_points_faces[i](1, 0)->transpose();
-            }
-
-            // Now do a least squares fit.
-            // I.e. we are searching for values for the 4 free points
-            // (transformed into `rows` points via `matrix` that are thus C1
-            // smooth) such that the squared distance of all `rows` points to
-            // their previous values (given in `target_matrix`) is minimal.
-            gsMatrix<real_t> solution =
-                matrix.colPivHouseholderQr().solve(target_matrix);
-
-            auto new_points = matrix * solution;
-
-            // Now re-assign the correct solution rows back to the points.
-            // The linear combinations are the same as above, so the result will
-            // be C1 smooth.
-            for (size_t i = 0; i < control_points_faces.size(); ++i)
-            {
-                *(control_points_faces[i](0, 0)) = new_points.row(0);
-                *(control_points_faces[i](0, 1)) = new_points.row(2 * i + 1);
-                *(control_points_faces[i](1, 1)) = new_points.row(2 * i + 2);
-                *(control_points_faces[i](1, 0)) = new_points.row(2 * i + 3);
-            }
-        } // End of OV vertex correction
-    }
-    // End of vertex correction
-
-    // Now, correct the remaining part of each edge that isn't surrounding a
-    // vertex.
-    for (const Edge& e : mesh.edges())
-    {
-        Halfedge halfedge0 = mesh.halfedge(e, 0);
-        Halfedge halfedge1 = mesh.halfedge(e, 1);
-
-        // If we are on the boundary of the mesh, nothing needs to be done.
-        if (mesh.is_boundary(halfedge0) || mesh.is_boundary(halfedge1))
-            continue;
-
-        // Get the faces. These must be valid by the checks above.
-        Face face0 = mesh.face(halfedge0);
-        Face face1 = mesh.face(halfedge1);
-
-        // Skip this edge if either of these faces has an EV.
-        bool has_ev(false);
-        for (Vertex v : mesh.vertices(face0))
-        {
-            has_ev |= !is_ordinary(mesh, v);
-        }
-        for (Vertex v : mesh.vertices(face1))
-        {
-            has_ev |= !is_ordinary(mesh, v);
-        }
-
-        if (has_ev)
-            continue;
-
-        // Get the control points. They will be arrayed like this:
-        // ```
-        // (1,0) (1,1) ... (1,i)... (1,N-2) (1,N-1)
-        // (0,0) (0,1) ... (0,i)... (0,N-2) (0,N-1)
-        // -------------- halfedge0 -------------->
-        // <------------- halfedge1 ---------------
-        // (0,N-1) (0,N-2) ... (0,i) ... (0,1) (0,0)
-        // (1,N-1) (1,N-2) ... (1,i) ... (1,1) (1,0)
-        //
-        // ```
-        // Note that in each column, the middle points should be equal by C0
-        // conditions.
-        auto cp0 =
-            face_data_vec[face0.idx()].control_points_oriented(mesh, halfedge0);
-        auto cp1 =
-            face_data_vec[face1.idx()].control_points_oriented(mesh, halfedge1);
-
-        // Now, for each column above, we need to ensure the three points are
-        // colinear.
-        for (size_t i = 2; i < N - 2; ++i)
-        {
-            // Extract the column.
-            gsVector<real_t>* i0 = cp0(1, i);
-            gsVector<real_t>* m0 = cp0(0, i);
-            gsVector<real_t>* m1 = cp1(0, N - 1 - i);
-            gsVector<real_t>* i1 = cp1(1, N - 1 - i);
-
-            // Ensure the mesh was at least C0 and warn the user if it is not.
-            if ((*m0 - *m1).squaredNorm() > 1e-5)
-            {
-                gsWarn << face0 << " and " << face1 << " along edges "
-                       << halfedge0 << " and " << halfedge1 << " have values ("
-                       << m0->transpose() << ") and (" << m1->transpose()
-                       << ").\n";
-                continue;
-            }
-
-            // Now, of these three points, two will be 'free' and the last will
-            // be determined. The following matrix generates all three points
-            // from the free ones.
-            gsMatrix<real_t, 3, 2> matrix;
-            matrix.row(0) << 1., 0.;
-            matrix.row(1) << 0.5, 0.5;
-            matrix.row(2) << 0., 1.;
-
-            // As a target matrix, use the old values of the points.
-            gsMatrix<real_t> target_matrix(3, D);
-            target_matrix.setZero();
-            target_matrix.row(0) = i0->transpose();
-            target_matrix.row(1) = m0->transpose();
-            target_matrix.row(2) = i1->transpose();
-
-            // We now do a least squares fit, i.e. search for two free points
-            // such that the three generated (and thus colinear) points will be
-            // as close as possible to the original three.
-            gsMatrix<real_t> solution =
-                matrix.colPivHouseholderQr().solve(target_matrix);
-
-            // Reassign all four control-point values using the fitted solution.
-            *i0 = solution.row(0);
-            *m0 = (solution.row(0) + solution.row(1)) * 0.5;
-            *m1 = (solution.row(0) + solution.row(1)) * 0.5;
-            *i1 = solution.row(1);
-        } // End of this edge
-    }
-    // End of edge correction
+    // TODO: Retrieve coefficients
 }
 
-template <size_t N> void gsFreeformSubdivision<N>::smooth_b(size_t degree)
+template <size_t N> void gsFreeformSubdivision<N>::smooth(size_t degree)
 {
+    GISMO_ASSERT(degree == 1, "Only C1 smoothing supported.");
+    // TODO: Maybe work with the same Assember/Solver as in fit_function and
+    // laplace_beltrami here?
+
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    this->basis_data(multi_patch, multi_basis, mapped_basis);
+    this->c1_basis(multi_patch, multi_basis, mapped_basis);
 
     gsMatrix<real_t> coefficients;
     gsL2Projection<real_t>::project(multi_basis, mapped_basis, multi_patch,
                                     coefficients);
+
+    // The L2 projection returns a flattened vector with one block per
+    // coordinate direction; gsMappedSpline expects one row per mapped DoF.
+    coefficients = coefficients.reshape(mapped_basis.size(), D);
     gsMappedSpline<2, real_t> solSpline(mapped_basis, coefficients);
     gsMultiPatch<> solField = solSpline.exportToPatches();
 
@@ -1168,9 +649,9 @@ template <size_t N> void gsFreeformSubdivision<N>::smooth_b(size_t degree)
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
-                                          gsMultiBasis<>& multi_basis,
-                                          gsMappedBasis<2>& mapped_basis)
+void gsFreeformSubdivision<N>::c1_basis(gsMultiPatch<>& multi_patch,
+                                        gsMultiBasis<>& multi_basis,
+                                        gsMappedBasis<2>& mapped_basis)
 {
     auto& mesh = *m_mesh;
 
@@ -1186,29 +667,10 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
 
     // ---- Helpers ------------------------------------------------
 
-    // Convert oriented (r,c) to absolute (i,j) given halfedge position k
-    // in the face's CCW halfedge list.  Derived from the sequence
-    // rotate_ccw then rotate_cw k times applied to the control-point array.
-    auto apply_rotation = [](int k, int r, int c) -> std::pair<int, int>
-    {
-        const int n = (int)N - 1;
-        switch (((k % 4) + 4) % 4)
-        {
-        case 0:
-            return {n - c, r};
-        case 1:
-            return {r, c};
-        case 2:
-            return {c, n - r};
-        default:
-            return {n - r, n - c};
-        }
-    };
-
     // Position of halfedge h in face f's CCW halfedge list (0-based).
-    auto get_k = [&](Face f, Halfedge h) -> int
+    auto get_k = [&](Face f, Halfedge h) -> index_t
     {
-        int k = 0;
+        index_t k = 0;
         for (Halfedge he : mesh.halfedges(f))
         {
             if (he == h)
@@ -1218,11 +680,31 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
         GISMO_ERROR("Halfedge not found in face");
     };
 
-    // Flat local DOF index for patch p at absolute position (i,j).
-    auto local_dof = [&](int p, int i, int j) -> index_t
+    // Flat local DOF index for patch p at oriented position (i,j).
+    auto local_dof_rotated = [&](index_t p, index_t k, index_t i,
+                                 index_t j) -> index_t
     {
-        return (index_t)p * (index_t)(N * N) + (index_t)i * (index_t)N +
-               (index_t)j;
+        index_t rot_i = i;
+        index_t rot_j = j;
+        switch (k % 4)
+        {
+        case 0:
+            rot_i = N - 1 - j;
+            rot_j = i;
+            break;
+        case 1:
+            break;
+        case 2:
+            rot_i = j;
+            rot_j = N - 1 - i;
+            break;
+        default:
+            rot_i = N - 1 - i;
+            rot_j = N - 1 - j;
+            break;
+        }
+
+        return p * (index_t)(N * N) + rot_i * (index_t)N + rot_j;
     };
 
     // ---- Working state ------------------------------------------
@@ -1234,9 +716,6 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
 
     // handled[ldof] becomes true once a mapping has been assigned.
     std::vector<bool> handled(nLocalDofs, false);
-
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     // ================================================================
     // Phase 1 — EV vertices
@@ -1280,33 +759,18 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
             Halfedge h = mesh.next_halfedge(h_orig);
             h = mesh.opposite_halfedge(h);
             h = mesh.next_halfedge(h);
-            GISMO_ASSERT(
-                mesh.face(h).is_valid(),
-                "EV outer-patch traversal: outer patch 1 face is invalid "
-                "(boundary halfedge). "
-                "Mesh may not contain the full 4*valence neighborhood.");
             ev_faces.push_back(mesh.face(h));
             ev_halfedges.push_back(h);
 
             h = mesh.next_halfedge(h);
             h = mesh.next_halfedge(h);
             h = mesh.opposite_halfedge(h);
-            GISMO_ASSERT(
-                mesh.face(h).is_valid(),
-                "EV outer-patch traversal: outer patch 2 face is invalid "
-                "(boundary halfedge). "
-                "Mesh may not contain the full 4*valence neighborhood.");
             ev_faces.push_back(mesh.face(h));
             ev_halfedges.push_back(h);
 
             h = mesh.prev_halfedge(h);
             h = mesh.opposite_halfedge(h);
             h = mesh.prev_halfedge(h);
-            GISMO_ASSERT(
-                mesh.face(h).is_valid(),
-                "EV outer-patch traversal: outer patch 3 face is invalid "
-                "(boundary halfedge). "
-                "Mesh may not contain the full 4*valence neighborhood.");
             ev_faces.push_back(mesh.face(h));
             ev_halfedges.push_back(h);
         }
@@ -1330,14 +794,9 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
 
         for (size_t p = 0; p < patches_count; ++p)
         {
-            GISMO_ASSERT(ev_faces[p].is_valid() && ev_faces[p].idx() < nPatches,
-                         "EV face index out of range: " << ev_faces[p].idx()
-                                                        << " vs " << nPatches);
-            const int patch_idx = ev_faces[p].idx();
-            GISMO_ASSERT(patch_idx >= 0,
-                         "EV patch not found in face_to_patch at face index "
-                             << ev_faces[p].idx());
-            const int k = get_k(ev_faces[p], ev_halfedges[p]);
+            const index_t patch_idx = ev_faces[p].idx();
+
+            const index_t k = get_k(ev_faces[p], ev_halfedges[p]);
 
             for (size_t ux = 0; ux < N; ++ux)
             {
@@ -1352,14 +811,10 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
                                    real_t(0);
                         });
 
-                    // control_nets[p] =
-                    // control_points_oriented(f,h).transpose() so
-                    // control_nets[p](ux,vx) = oriented(vx,ux)
-                    //   → absolute (i,j) = apply_rotation(k, vx, ux)
-                    const std::pair<int, int> abs_ij =
-                        apply_rotation(k, (int)vx, (int)ux);
-                    const int abs_i = abs_ij.first, abs_j = abs_ij.second;
-                    const index_t ldof = local_dof(patch_idx, abs_i, abs_j);
+                    // The values vx and ux are rotated to fit the EV, so we
+                    // rotate them back to get the correct local DOF
+                    const index_t ldof =
+                        local_dof_rotated(patch_idx, k, vx, ux);
 
                     if (in_support && !handled[ldof])
                     {
@@ -1374,15 +829,21 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
                         }
                         handled[ldof] = true;
                     }
-                    else if (!in_support && ux > 0 && vx > 0 && ux < N - 1 &&
-                             vx < N - 1 && !handled[ldof])
+                    else if (
+                        // not in support of ev basis functions
+                        !in_support &&
+                        // but also not on the edge of a patch
+                        ux > 0 && vx > 0 && ux < N - 1 && vx < N - 1 &&
+                        // and not already handled
+                        !handled[ldof])
                     {
                         // Outer inner point: free global DOF.
                         pre_mapper[ldof][global_dof_count] = real_t(1);
                         ++global_dof_count;
                         handled[ldof] = true;
                     }
-                    // Boundary non-support points: handled in Phase 3/4.
+                    // All other points are boundary non-support points and are
+                    // handled in Phase 3/4.
                 }
             }
         }
@@ -1396,13 +857,13 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
     // own free global DOF.  These are the 9 independent DOFs per
     // ordinary patch.
     // ================================================================
-    for (int p = 0; p < (int)nPatches; ++p)
+    for (size_t p = 0; p < nPatches; ++p)
     {
-        for (int i = 1; i < (int)N - 1; ++i)
+        for (size_t i = 1; i < N - 1; ++i)
         {
-            for (int j = 1; j < (int)N - 1; ++j)
+            for (size_t j = 1; j < N - 1; ++j)
             {
-                const index_t ldof = local_dof(p, i, j);
+                const index_t ldof = local_dof_rotated(p, 1, i, j);
                 if (!handled[ldof])
                 {
                     pre_mapper[ldof][global_dof_count] = real_t(1);
@@ -1427,17 +888,15 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
     // them.  Edges on the mesh boundary get a free global DOF because
     // there is no adjacent patch to couple to.
     // ================================================================
-    for (int p = 0; p < (int)nPatches; ++p)
+    for (index_t p = 0; p < (index_t)nPatches; ++p)
     {
         Face f(p);
-        int k = 0;
+        index_t k = 0;
         for (Halfedge h : mesh.halfedges(f))
         {
-            for (int j = 1; j < (int)N - 1; ++j)
+            for (index_t j = 1; j < (index_t)N - 1; ++j)
             {
-                const std::pair<int, int> edge_ij = apply_rotation(k, 0, j);
-                const int edge_i = edge_ij.first, edge_j = edge_ij.second;
-                const index_t ldof = local_dof(p, edge_i, edge_j);
+                const index_t ldof = local_dof_rotated(p, k, 0, j);
 
                 if (handled[ldof])
                     continue;
@@ -1451,21 +910,15 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
                 else
                 {
                     // C1 constraint: average of the two adjacent inner pts.
-                    const std::pair<int, int> inner_ij =
-                        apply_rotation(k, 1, j);
-                    const int inner_i = inner_ij.first,
-                              inner_j = inner_ij.second;
-                    const index_t inner_ldof = local_dof(p, inner_i, inner_j);
+                    const index_t inner_ldof = local_dof_rotated(p, k, 1, j);
 
                     const Halfedge h_opp = mesh.opposite_halfedge(h);
                     const Face f_adj = mesh.face(h_opp);
-                    const int p_adj = f_adj.idx();
-                    const int k_adj = get_k(f_adj, h_opp);
+                    const index_t p_adj = f_adj.idx();
+                    const index_t k_adj = get_k(f_adj, h_opp);
 
-                    const std::pair<int, int> ia_ij =
-                        apply_rotation(k_adj, 1, (int)N - 1 - j);
-                    const int ia_i = ia_ij.first, ia_j = ia_ij.second;
-                    const index_t inner_adj_ldof = local_dof(p_adj, ia_i, ia_j);
+                    const index_t inner_adj_ldof =
+                        local_dof_rotated(p_adj, k_adj, 1, N - 1 - j);
 
                     for (auto& kv1 : pre_mapper[inner_ldof])
                         pre_mapper[ldof][kv1.first] += real_t(0.5) * kv1.second;
@@ -1485,9 +938,7 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
     // mesh boundary:
     //
     // Interior vertex (not mesh-boundary):
-    //   corner = (1/count) * sum_f  P_f(apply_rotation(k_f, 1, 1))
-    //   All four surrounding patches converge to the same linear
-    //   combination, so the corner is implicitly C0.
+    //   Set to the average of (1,1) points of adjacent patches.
     //
     // Mesh-boundary vertex (including interior corners, i.e. vertices
     // where N >= 2 patches meet but a gap is present on the boundary):
@@ -1508,15 +959,12 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
     // patches whose corner lands on that vertex.
     std::map<Vertex, index_t> boundary_corner_dof;
 
-    for (int p = 0; p < (int)nPatches; ++p)
+    for (Face f : mesh.faces())
     {
-        Face f(p);
-        int k = 0;
+        index_t k = 0;
         for (Halfedge h : mesh.halfedges(f))
         {
-            const std::pair<int, int> corner_ij = apply_rotation(k, 0, 0);
-            const int corner_i = corner_ij.first, corner_j = corner_ij.second;
-            const index_t ldof = local_dof(p, corner_i, corner_j);
+            const index_t ldof = local_dof_rotated(f.idx(), k, 0, 0);
 
             if (!handled[ldof])
             {
@@ -1527,54 +975,44 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
                     // Boundary vertex: all patches at this vertex share
                     // one free global DOF so their corners are C0-coupled
                     // without constraining any inner-point DOFs.
-                    auto res = boundary_corner_dof.emplace(
-                        v_corner, global_dof_count);
+                    auto res =
+                        boundary_corner_dof.emplace(v_corner, global_dof_count);
                     if (res.second) // newly inserted → allocate the DOF
                         ++global_dof_count;
                     pre_mapper[ldof][res.first->second] = real_t(1);
-                    handled[ldof] = true;
-                    ++k;
-                    continue;
                 }
-
-                // Interior vertex: average of (1,1) inner points of all
-                // surrounding faces.
-                std::map<index_t, real_t> row;
-                int face_count = 0;
-
-                for (Halfedge h_out : mesh.halfedges(v_corner))
+                else
                 {
-                    if (mesh.is_boundary(h_out))
-                        continue;
 
-                    const int p_adj = mesh.face(h_out).idx();
-                    const int k_adj = get_k(mesh.face(h_out), h_out);
+                    // Interior vertex: average of (1,1) inner points of all
+                    // surrounding faces.
+                    std::map<index_t, real_t> row;
+                    index_t face_count = 0;
 
-                    // The (1,1) inner point in the frame oriented at v_corner.
-                    const std::pair<int, int> inner_ij =
-                        apply_rotation(k_adj, 1, 1);
-                    const int inner_i = inner_ij.first,
-                              inner_j = inner_ij.second;
-                    const index_t inner_ldof =
-                        local_dof(p_adj, inner_i, inner_j);
+                    for (Halfedge h_out : mesh.halfedges(v_corner))
+                    {
+                        if (mesh.is_boundary(h_out))
+                            continue;
 
-                    for (auto& kv : pre_mapper[inner_ldof])
-                        row[kv.first] += kv.second;
-                    ++face_count;
-                }
+                        const index_t p_adj = mesh.face(h_out).idx();
+                        const index_t k_adj = get_k(mesh.face(h_out), h_out);
 
-                if (face_count > 0)
-                {
+                        // The (1,1) inner point in the frame oriented at
+                        // v_corner.
+                        const index_t inner_ldof =
+                            local_dof_rotated(p_adj, k_adj, 1, 1);
+
+                        for (auto& kv : pre_mapper[inner_ldof])
+                            row[kv.first] += kv.second;
+                        ++face_count;
+                    }
+
                     for (auto& kv : row)
                         pre_mapper[ldof][kv.first] =
                             kv.second / (real_t)face_count;
                 }
-                else
-                {
-                    // Fully boundary vertex: free DOF.
-                    pre_mapper[ldof][global_dof_count] = real_t(1);
-                    ++global_dof_count;
-                }
+
+                // this has now been handled
                 handled[ldof] = true;
             }
             ++k;
@@ -1592,6 +1030,8 @@ void gsFreeformSubdivision<N>::basis_data(gsMultiPatch<>& multi_patch,
             ++global_dof_count;
         }
     }
+
+    gsInfo << "Total degrees of freedom: " << global_dof_count << "\n";
 
     // ================================================================
     // Assemble the sparse mapper matrix  (nLocalDofs x nGlobalDofs).
@@ -1616,7 +1056,7 @@ void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    this->basis_data(multi_patch, multi_basis, mapped_basis);
+    this->c1_basis(multi_patch, multi_basis, mapped_basis);
 
     // Set up the expression assembler.
     gsExprAssembler<> A(1, 1);
@@ -1679,13 +1119,14 @@ void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::fit_function_b(gsFunctionExpr<real_t> function)
+void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
 {
+    // TODO: Output coefficients again
 
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    this->basis_data(multi_patch, multi_basis, mapped_basis);
+    this->c1_basis(multi_patch, multi_basis, mapped_basis);
 
     // gsMatrix<real_t> coefficients;
     // real_t err = gsL2Projection<real_t>::project(
@@ -1737,64 +1178,6 @@ void gsFreeformSubdivision<N>::fit_function_b(gsFunctionExpr<real_t> function)
         face_data_vec[k].D++;
     }
 
-    D++;
-}
-
-template <size_t N>
-void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
-{
-    auto& mesh = *m_mesh;
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
-
-    for (auto f : mesh.faces())
-    {
-        // Look at the patch on this face.
-        auto& data = face_data_vec[f.idx()].control_points;
-        auto patch = face_data_vec[f.idx()].patch();
-
-        // We now sample this patch at N*N points
-        gsMatrix<> samples(1, N * N);
-        gsMatrix<> params(2, N * N);
-
-        for (size_t i = 0; i < N * N; ++i)
-        {
-            // Get the parameters at the sample point.
-            params.col(i) = gsVector<real_t, 2>::vec(
-                real_t(std::floor(i % N)) / real_t(N - 1),
-                real_t(std::floor(i / N)) / real_t(N - 1));
-
-            // Get the value of the current coordinates at these parameters
-            gsVector<real_t> point = patch.eval(params.col(i));
-
-            // Use the function to find the desired function value here.
-            samples.col(i) = function.eval(point);
-        }
-
-        // fit a patch to this
-        gsKnotVector<> kv(0, 1, 0, N);
-        gsTensorBSplineBasis<2, real_t> basis(kv, kv);
-        gsFitting<> fitter(params, samples, basis);
-        fitter.compute(0.0);
-        gsGeometry<>* result = fitter.result();
-
-        // The final coefficient matrix, should be N*N x 1
-        const gsMatrix<>& new_coeffs = result->coefs();
-
-        // Write the new control values back into the patch data.
-        for (size_t i = 0; i < N; ++i)
-        {
-            for (size_t j = 0; j < N; ++j)
-            {
-                int total_index = i * N + j;
-                data(i, j).conservativeResize(D + 1);
-                data(i, j)(D) = new_coeffs(total_index, 0);
-            }
-        }
-        // Increase D of this patch
-        face_data_vec[f.idx()].D++;
-    }
-    // Increase D
     D++;
 }
 
@@ -1958,7 +1341,7 @@ void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
         // Round coordinates for map lookup, ensure there are at least 3
         // dimensions
         gsVector<> key(point.size());
-        for (size_t i = 0; i < point.size(); ++i)
+        for (index_t i = 0; i < point.size(); ++i)
         {
             key[i] = std::round(point(i) / tolerance) * tolerance;
         }
@@ -1973,7 +1356,7 @@ void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
             // Mesh vertices are always 3D; pad with zeros if the file has
             // fewer than 3 dimensions.
             gsSurfMesh::Point pt(0, 0, 0);
-            for (size_t k = 0; k < std::min(point.size(), (index_t)3); ++k)
+            for (index_t k = 0; k < std::min(point.size(), (index_t)3); ++k)
                 pt[k] = point(k);
             gsSurfMesh::Vertex v = mesh.add_vertex(pt);
             cornerMap[key] = v;

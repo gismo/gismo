@@ -97,6 +97,7 @@ int main(int argc, char** argv)
             break;
         case 's':
             gsInfo << "Step " << std::to_string(i) << ": Smoothing.\n";
+            // subdiv.smooth(1);
             subdiv.smooth(1);
             break;
         default:
