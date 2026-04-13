@@ -134,9 +134,9 @@ int main(int argc, char** argv)
     gsMatrix<real_t> errors(2, steps);
 
     // Single .pvd collection for all steps.
-    gsParaviewCollection collection("resultsb/function_fit");
-    gsParaviewCollection cnet_collection("resultsb/function_cnet");
-    gsParaviewCollection error_collection("resultsb/function_error");
+    gsParaviewCollection collection("results/function_fit");
+    gsParaviewCollection cnet_collection("results/function_cnet");
+    gsParaviewCollection error_collection("results/function_error");
     std::vector<gsMatrix<real_t>> ev_coefs;
     std::vector<gsMatrix<real_t>> ev_coefs_outer;
 
@@ -156,7 +156,7 @@ int main(int argc, char** argv)
         {
 
             const std::string stepname =
-                "resultsb/step" + std::to_string(i + 1);
+                "results/step" + std::to_string(i + 1);
 
             subdiv.write_paraview(stepname, &collection, &cnet_collection,
                                   i + 1, control_net);
@@ -164,7 +164,7 @@ int main(int argc, char** argv)
             if (write_errors)
             {
                 subdiv.write_paraview_error(func, errors(0, i),
-                                            "resultsb/error" +
+                                            "results/error" +
                                                 std::to_string(i + 1),
                                             &error_collection, i + 1);
             }
@@ -204,7 +204,7 @@ int main(int argc, char** argv)
 
     // Write error matrix to errors.csv.
     if (write_errors)
-        gsWriteCsv("resultsb/errors.csv", errors);
+        gsWriteCsv("results/errors.csv", errors);
 
     return 0;
 }
