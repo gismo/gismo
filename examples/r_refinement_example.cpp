@@ -286,10 +286,12 @@ int main(int argc, char *argv[])
     auto Cmp            = A.getCoeff(mpLeft, PP);
 
     // h-refine each basis
+    index_t numLevels = 0;
     if (last)
     {
         for (int r =0; r < numRefine; ++r){
             dbasis.uniformRefine();
+            numLevels += 1;
         }
         numRefine = 0;
     }
@@ -302,6 +304,7 @@ int main(int argc, char *argv[])
     for (int r=0; r<= numRefine; ++r)
     {
     dbasis.uniformRefine();
+    numLevels += 1;
 
     //... some infos on the computational domain
     gsInfo << r <<"th iter:{ numElement " << dbasis.basis(0).numElements() << " degree " << dbasis.degree() 
@@ -309,20 +312,20 @@ int main(int argc, char *argv[])
             <<"}------------------------------------------------------\n";
 
     DoFPDE[r]               = dbasis.basis(0).size();
-    CHdferror[r]              = abs(ev.integral( jac(G).det() - jac(Cmp).det()*jac(PP).det() ) );
+    CHdferror[r]            = abs(ev.integral( jac(G).det() - jac(Cmp).det()*jac(PP).det() ) );
 
     //----------------------------------------------------------------------
     // ... computes the composition of geometry maps L^2-projection method !
     //----------------------------------------------------------------------
     if(L2proj)
     {
-    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue);
+    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue, true);
     geometryMap GPi = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
     double Binf = 0.;
     ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf);
-    L2Jerror[r]             = abs(ev.integral( meas(G) - meas(GPi)) );
+    L2Jerror[r]             = abs(ev.integral( jac(GPi).det() - jac(Cmp).det()*jac(PP).det() ) );
     Hdferror[r]             = maxDist;// std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));
     Bdrerr[r]               = Binf;//math::sqrt(ev.integral((GPi-Cmp).sqNorm()));
     }
@@ -337,7 +340,7 @@ int main(int argc, char *argv[])
     double maxDist = 0.;
     double Binf = 0.;
     ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf);
-    IL2Jerror[r]            = abs(ev.integral( meas(G) - meas(PGI)) );
+    IL2Jerror[r]            = abs(ev.integral( jac(PGI).det() - jac(Cmp).det()*jac(PP).det() ) );
     IHdferror[r]            = maxDist;//std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGI)) ));
     IBdrerr[r]              = Binf;// math::sqrt(ev.integral((PGI-Cmp).sqNorm())); 
     }
@@ -346,14 +349,15 @@ int main(int argc, char *argv[])
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by fit method !
     //----------------------------------------------------------
-    mpPsi                   = MAE.buildFitCompMultiPatch(dbasis, 50, 0e-6);
+    gsInfo<<"Fitting the mapping ++++++" <<numLevels<<"\n";
+    mpPsi                   = MAE.buildFitCompMultiPatch(dbasis, 50, 1e-5);
     gsWrite(mpPsi, "akhniss.xml");
     geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
     double Binf = 0.;
     ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf);
-    FL2Jerror[r]            = abs(ev.integral( meas(G) - meas(PGF)) );
+    FL2Jerror[r]            = abs(ev.integral( jac(PGF).det() - jac(Cmp).det()*jac(PP).det() ) );
     FHdferror[r]            = maxDist;//std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
     FBdrerr[r]              = Binf;// math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
     }

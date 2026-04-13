@@ -59,7 +59,12 @@ public:
 
     // Build and return a density as a MultiPatch object from marked elements using local h-refinement strategies
     gsMultiPatch<> buildDensity(const gsMultiBasis<> Hbasis, const  std::vector<bool> elMarked, const index_t setRhogrid = 0, const  index_t setRhoZero = 0) const;
-    
+ 
+    // ... assemble the mass matrix for a given basis, this is used in the projection of the composition of geometry maps
+    gsSparseMatrix<> assembleMass(const gsBasis<>& basis) const;
+    // ... correct the boundary constrol points only in two dimensions
+    void CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly) const;
+
     //-----------------------------------------
     //  functions to build mapping from density
     //-----------------------------------------
@@ -67,7 +72,7 @@ public:
     void buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE = 1e-5) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : L2-projection
-    gsMultiPatch<> buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue = 1) const;
+    gsMultiPatch<> buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue = 1, const bool& sepBoundary = false) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : fitting
     gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 50, const real_t lambda = 0.) const;
@@ -88,6 +93,10 @@ public:
     void basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
                      gsVector<double>& d0,
                      gsVector<double>& d1) const;
+
+    // Method to compute the right-hand side vector for composition of mpLeft and MAE mapping assembly in 1D
+    void assemble_rhsvector_1d(const index_t& p1, const gsKnotVector<double>& knots_1, const double& valpt, const index_t& dir_valpt,  const index_t& comp_nb,
+                           gsVector<double>& rhs) const;
     // Method to compute the right-hand side vector for adaptive multi-patch assembly in 2D
     void assemble_rhsvector_2d(const index_t& p1, const index_t& p2,
                            const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
