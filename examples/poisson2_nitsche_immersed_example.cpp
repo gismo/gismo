@@ -55,194 +55,138 @@ int main(int argc, char *argv[])
 
     gsMultiBasis<> dbasis(mp, true);
     dbasis.setDegree(dbasis.maxCwiseDegree() + numElevate);
-    for (index_t i = 0; i < numRefine; ++i)
-        dbasis.uniformRefine();
-
-    gsTensorBSplineBasis<2,real_t> * tbsPtr =
-        dynamic_cast<gsTensorBSplineBasis<2,real_t>*>(&dbasis.basis(0));
-    GISMO_ENSURE(tbsPtr, "Basis is not a tensor B-spline basis");
-
-    gsImplicitTrimmedDomain<2,real_t> tr_domain(impl_fun, *tbsPtr);
-
-    // Debug export of trimmed-domain element classification:
-    // sign < 0 : interior cell, sign == 0 : cut/boundary cell.
-    gsMatrix<> boxesInterior(2,0), boxesBoundary(2,0), boxesAll(2,0);
-    std::vector<real_t> classValues;
-    classValues.reserve(tr_domain.numElements());
-
-    auto appendBox = [](gsMatrix<> & boxes,
-                        const gsVector<> & lo,
-                        const gsVector<> & hi)
-    {
-        const index_t c = boxes.cols();
-        boxes.conservativeResize(2, c + 2);
-        boxes.col(c)     = lo;
-        boxes.col(c + 1) = hi;
-    };
-
-    // internal elmnts
-    for (auto it = tr_domain.beginInterior(); it != tr_domain.end<InteriorSign>(); ++it)
-    {
-        appendBox(boxesInterior, it.lowerCorner(), it.upperCorner());
-        appendBox(boxesAll,      it.lowerCorner(), it.upperCorner());
-        classValues.push_back(real_t(1));
-    }
-    // cutelements
-    for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it)
-    {
-        appendBox(boxesBoundary, it.lowerCorner(), it.upperCorner());
-        appendBox(boxesAll,      it.lowerCorner(), it.upperCorner());
-        classValues.push_back(real_t(2));
-    }
-
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
-    gsExprAssembler<> A(1, 1);
-    A.options().setInt("quRule", gsQuadrature::AlgoimRule);
-    A.setIntegrationDomain(memory::make_shared_not_owned(&tr_domain));
-    gsExprEvaluator<> ev(A);
-
-    // auto begin = tr_domain.begin<BoundarySign>();
-    // auto end = tr_domain.end<BoundarySign>();
-    // auto begin = tr_domain.beginBdr(boundary::none);
-    // auto end = tr_domain.endBdr(boundary::none);
-
-
-    std::vector<patchSide> bdr_immersed(1); // vector of size 1
-    bdr_immersed[0]= patchSide(0,boundary::none); // assign the first and only element
-    // std::vector<patchSide> bdr_immersed = { patchSide(0, boundary::none) };
-
-    // for (;begin!=end;begin++)
-    // {
-    //     gsInfo<< "upper corner of boundary element iterator: "<< begin.upperCorner() <<"\n";
-    // }
-
-    // for (gsBoxTopology::const_biterator it = bdr_immersed.begin();
-    //      it != bdr_immersed.end(); ++it )
-    // {
-    //     auto begin = tr_domain.beginBdr(it->side());
-    //     auto end = tr_domain.endBdr(it->side());
-        
-    //     for (;begin!=end;begin++)
-    //     {
-    //         gsInfo<< "upper corner of boundary element iterator: "<< begin.upperCorner() <<"\n";
-    //     }
-    // }
-
-    // A.assembleBdr(bdr_immersed,expr);
     
-    // Plot elements in the boundary (with container)
-    // Verify that elements are correct! (!!)
-    // Dont know the normal vector (normals known in the straight 
+    const index_t deg = dbasis.maxCwiseDegree();
+    // const real_t gamma = (penalty < 0)? real_t(2.5) * (deg + 2) * (deg + 1): penalty;
+    const real_t gamma = 1e+8;
 
-    // A.assembleBdr(bdr_immersed, expr);
-    // Immerse a full circle 
 
-    // Partially immersed partially non immersed
+    #ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLDLT solver;
+    #else
+        gsSparseSolver<>::CGDiagonal solver;
+    #endif
 
-    // Problems 
-    // gsFunctionExpr (normnal expression of hte circle)
-    // Normal computation and boundary iteration 
-
-    // Meshing library could give you the normal (CGAL)
-
-    geometryMap G = A.getMap(mp);
-    space u = A.getSpace(dbasis);
-
-    auto ff    = A.getCoeff(f_rhs, G);
-    auto n_imm = A.getCoeff(normal_immersed_unit, G); // grad(phi) — normalized?
-    auto u_ex = ev.getVariable(u_exact, G);
-    auto impl = A.getCoeff(impl_fun,G);
-    gsMatrix<> solVector;
-    solution u_sol = A.getSolution(u, solVector);
-
-#ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLDLT solver;
-#else
-    gsSparseSolver<>::CGDiagonal solver;
-#endif
-
+    gsVector<> l2err(numRefine + 1), h1err(numRefine + 1);
+    gsInfo<< "Degree of the basis: " << dbasis.maxCwiseDegree() << "\n";
     gsInfo << "(dot1=assembled, dot2=solved, dot3=error)\n\nDoFs: ";
 
-    // Determine maximum mesh size
-    real_t hmax = 0;
-    for (size_t p=0; p!=dbasis.nBases(); p++)
-    {
-        hmax = math::max(hmax, dbasis.basis(p).getMaxCellLength());
+    for(int r = 0; r <= numRefine; ++r)
+    {        
+        dbasis.uniformRefine();
+
+        // Determine maximum mesh size
+        real_t hmax = 0;
+        for (size_t p=0; p!=dbasis.nBases(); p++)
+        {
+            hmax = math::max(hmax, dbasis.basis(p).getMaxCellLength());
+        }
+
+        gsTensorBSplineBasis<2,real_t> * tbsPtr =
+            dynamic_cast<gsTensorBSplineBasis<2,real_t>*>(&dbasis.basis(0));
+        GISMO_ENSURE(tbsPtr, "Basis is not a tensor B-spline basis");
+
+        gsImplicitTrimmedDomain<2,real_t> tr_domain(impl_fun, *tbsPtr);
+
+        typedef gsExprAssembler<>::geometryMap geometryMap;
+        typedef gsExprAssembler<>::space       space;
+        typedef gsExprAssembler<>::solution    solution;
+
+        gsExprAssembler<> A(1, 1);
+        A.options().setInt("quRule", gsQuadrature::AlgoimRule);
+        A.setIntegrationDomain(memory::make_shared_not_owned(&tr_domain));
+        gsExprEvaluator<> ev(A);
+
+        std::vector<patchSide> bdr_immersed(1); // vector of size 1
+        bdr_immersed[0]= patchSide(0,boundary::none); // assign the first and only element
+
+        geometryMap G = A.getMap(mp);
+        space u = A.getSpace(dbasis);
+
+        auto ff    = A.getCoeff(f_rhs, G);
+        auto n_imm = A.getCoeff(normal_immersed_unit, G); // grad(phi) — normalized?
+        auto u_ex = ev.getVariable(u_exact, G);
+        auto impl = A.getCoeff(impl_fun,G);
+        gsMatrix<> solVector;
+        solution u_sol = A.getSolution(u, solVector);
+
+        u.setup(bc, dirichlet::none, 0);
+        A.initSystem();
+        A.computePattern(igrad(u) * igrad(u).tr());
+        // A.getCoeff()
+
+        A.assemble(
+            igrad(u, G) * igrad(u, G).tr() * meas(G),
+            u * ff * meas(G)
+        );
+
+        auto g_D = A.getCoeff(u_exact, G); // prescribe solution at the immersed boundary!
+
+        // Symmetric Nitsche terms (matrix part)
+        // A.assembleBdr(
+        //     bdr_immersed,
+        //     - (igrad(u, G) * igrad(impl,G)) * u.tr()
+        //     - u * (igrad(u, G) * igrad(impl,G)).tr()
+        //     + gamma / hmax * u * u.tr() * meas(G)
+        // );
+
+        A.assembleBdr(
+            bdr_immersed,
+            - (igrad(u, G) * n_imm) * u.tr()
+            - u * (igrad(u, G) * n_imm).tr()
+            + gamma / hmax * u * u.tr() * meas(G)
+        );
+
+        // Symmetric Nitsche terms (rhs part)
+        // unit outward normal: n_imm.normalized()
+        // A.assembleBdr(
+        //     bdr_immersed,
+        //     - (igrad(u, G) * igrad(impl,G)) * g_D * meas(G)
+        //     + gamma / hmax * u * g_D * meas(G)
+        // );
+
+        // if i use igrad(impl,G), I get some issues in the computation! 
+
+        A.assembleBdr(
+            bdr_immersed,
+            - (igrad(u, G) * n_imm) * g_D * meas(G)
+            + gamma / hmax * u * g_D * meas(G)
+        );
+
+        gsInfo << A.numDofs() << "." << std::flush;
+
+        solver.compute(A.matrix());
+        solVector = solver.solve(A.rhs());
+        gsInfo << "." << std::flush;
+
+        l2err[r] = math::sqrt(ev.integral((u_ex - u_sol).sqNorm() * meas(G)));
+        h1err[r] = l2err[r] + math::sqrt(ev.integral((igrad(u_ex) - igrad(u_sol, G)).sqNorm() * meas(G)));
+        gsInfo << ". " << std::flush;
+    
+        if (plot && r == numRefine)
+        {
+            ev.options().setSwitch("plot.elements", true);
+            ev.options().setInt("plot.npts", 100000);
+            ev.writeParaview(u_sol, G, "poisson2_immersed_circle");
+        }
+
+        gsInfo << "Penalty: " << gamma/hmax << "\n";
+
     }
+    
+    gsInfo << "\n\nL2 error: " << std::scientific << std::setprecision(3)
+           << l2err.transpose() << "\n";
+    gsInfo << "H1 error: " << std::scientific << h1err.transpose() << "\n";
 
-    const index_t deg = dbasis.maxCwiseDegree();
-    const real_t gamma = (penalty < 0)? real_t(2.5) * (deg + 2) * (deg + 1): penalty;
-
-    u.setup(bc, dirichlet::none, 0);
-    A.initSystem();
-    A.computePattern(igrad(u) * igrad(u).tr());
-    // A.getCoeff()
-
-    A.assemble(
-        igrad(u, G) * igrad(u, G).tr() * meas(G),
-        u * ff * meas(G)
-    );
-
-    // auto g_D = A.getBdrFunction(G); //???? is it the immersed boundary? value? 0?
-    auto g_D = A.getCoeff(u_exact, G); // prescribe solution at the immersed boundary!
-
-    // A.assembleBdr(
-    //     bc.get("Weak Dirichlet"),
-    //     penalty * u * u.tr(),
-    //     penalty * u * g_D
-    // );
-
-    // Symmetric Nitsche terms (matrix part)
-    A.assembleBdr(
-        bdr_immersed,
-        - (igrad(u, G) * igrad(impl,G)) * u.tr()
-        - u * (igrad(u, G) * igrad(impl,G)).tr()
-        + gamma / hmax * u * u.tr() * meas(G)
-    );
-
-    // Symmetric Nitsche terms (rhs part)
-    // unit outward normal: n_imm.normalized()
-    A.assembleBdr(
-        bdr_immersed,
-        - (igrad(u, G) * igrad(impl,G)) * g_D * meas(G)
-        + gamma / hmax * u * g_D * meas(G)
-    );
-
-
-    gsInfo << A.numDofs() << "." << std::flush;
-    gsInfo<< "Matrix norm after assembly: " << A.matrix().norm() <<"\n";
-
-    solver.compute(A.matrix());
-    solVector = solver.solve(A.rhs());
-    gsInfo << "." << std::flush;
-
-    const real_t l2err = math::sqrt(ev.integral((u_ex - u_sol).sqNorm() * meas(G)));
-    const real_t h1err = l2err +
-        math::sqrt(ev.integral((igrad(u_ex) - igrad(u_sol, G)).sqNorm() * meas(G)));
-
-    gsInfo << ".\n\nL2 error: " << std::scientific << std::setprecision(3) << l2err << "\n";
-    gsInfo << "H1 error: " << std::scientific << h1err << "\n";
-
-    if (plot)
+    if (numRefine > 0)
     {
-        const std::string debugDir = "ParaviewOutput/trimmed_domain_debug";
-        gsFileManager::mkdir(debugDir);
-        const std::string base = debugDir + "/poisson2_quarter_circle_immersed_circle0_mesh";
-
-        if (boxesInterior.cols() > 0)
-            gsWriteParaview(boxesInterior, base + "_inside", real_t(1));
-
-        if (boxesBoundary.cols() > 0)
-            gsWriteParaview(boxesBoundary, base + "_boundarysign", real_t(2));
-
-        A.setIntegrationDomain(dbasis.domain());
-        ev.options().setSwitch("plot.elements", true);
-        ev.options().setInt("plot.npts", 100000);
-        ev.writeParaview(u_sol, G, "poisson2_quarter_circle_immersed_circle");
+        gsInfo << "\nEoC (L2): " << std::fixed << std::setprecision(2)
+               << (l2err.head(numRefine).array() / l2err.tail(numRefine).array()).log().transpose() / std::log(2.0)
+               << "\n";
+        gsInfo << "EoC (H1): " << std::fixed << std::setprecision(2)
+               << (h1err.head(numRefine).array() / h1err.tail(numRefine).array()).log().transpose() / std::log(2.0)
+               << "\n";
     }
-
+    
     return EXIT_SUCCESS;
 }
