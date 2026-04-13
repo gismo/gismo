@@ -131,6 +131,12 @@ public:
         const gsTensorBSplineBasis<d,T> & basis = *dynamic_cast<const gsTensorBSplineBasis<d,T>*>(m_basis);
         const gsVector<int> & ranks  = tf.ranks(); // Ranks of stiffness
 
+        GISMO_ASSERT(ranks.size() == d*d || ranks.size() == d*(d+1)/2,
+            "Invalid tf.ranks() for stiffness assembly: d = " << d
+            << ", ranks.size() = " << ranks.size()
+            << ", ranks = " << ranks.transpose()
+            );
+
         std::vector<gsMatrix<T> > ev_b;
         gsMatrix<T>  qNodes, ev_gf, localMat;
         gsVector<T> qWeights;

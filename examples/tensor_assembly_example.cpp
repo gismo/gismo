@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
     
-    gsTensorFunction<> RR(2); // creates a constant function = 1
+    gsTensorFunction<> RR(2,1); // creates a constant function = 1
 
     std::vector<gsKnotVector<> > knot_vector(D, gsKnotVector<>(0, 1, knots, degree + 1));
     gsBasis<>::uPtr basis = gsBSplineBasis<>::create(knot_vector);
