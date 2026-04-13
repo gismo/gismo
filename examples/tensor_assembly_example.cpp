@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     index_t numRefine = 0,
         numElevate = 0,
         degree = 2,
-        knots = 1;
+        knots = 0;
     
     gsCmdLine cmd("Tutorial on assemblying a Poisson problem.");
     cmd.addInt("d", "dimension", "Dimension 2d/3d", D);
@@ -38,11 +38,12 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     
     gsTensorFunction<> RR(2,1); // creates a constant function = 1
+    // gsDebugVar(RR);
 
     std::vector<gsKnotVector<> > knot_vector(D, gsKnotVector<>(0, 1, knots, degree + 1));
     gsBasis<>::uPtr basis = gsBSplineBasis<>::create(knot_vector);
 
-    if ( numElevate > 0)
+    if (numElevate > 0)
         basis->degreeElevate(numElevate);
     for (int i = 0; i < numRefine; ++i)
         basis->uniformRefine();
@@ -55,5 +56,27 @@ int main(int argc, char *argv[])
     gsInfo << "Matrix size: \n" << mat.rows() <<"\n";
     gsInfo << "Matrix : \n" << mat.toSparseMatrix().toDense() <<"\n";
 
+
+    // comparison with standard assembly
+    gsExprAssembler<> A(1, 1);
+    std::string fn = "planar/unitsquare.xml";
+    gsFileData<> fd(fn);
+    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+
+    gsMultiPatch<real_t>::uPtr mp = gsReadFile<>(fn);
+    gsInfo << " Got" << *mp << " \n";
+    gsExprAssembler<>::geometryMap G = A.getMap(*mp);
+    A.setIntegrationDomain(basis->domain());
+    auto u = A.getSpace(*basis);
+    auto v = A.getTestSpace(*basis, 1);
+    auto w = A.getCoeff(RR);
+    A.initMatrix();
+    A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G) );
+
+    gsMatrix<> mat_std = A.giveMatrix().toDense();
+    gsInfo << "Standard assembly matrix: \n" << mat_std <<"\n";
+    gsInfo << "Difference: \n" << (mat.toSparseMatrix().toDense() - mat_std).cwiseAbs().maxCoeff() <<"\n";
+
     return 0;
 }
+
