@@ -7,9 +7,10 @@
     example loads the input mesh, subdivides it \f$i\f$ times, replaces the
     last coordinate of each patch by the best-fit Bézier approximation of a
     user-supplied function of the first two coordinates, smooths the result to
-    \f$C^1\f$, and evaluates the \f$L^\infty\f$ and \f$L^2\f$ approximation
-    errors.  Error values for every refinement level are printed to \c stdout
-    and optionally written as a matrix to \c errors.csv.
+    \f$C^1\f$ using the precomputed extraordinary-vertex kernel data, and
+    evaluates the \f$L^\infty\f$ and \f$L^2\f$ approximation errors. Error
+    values for every refinement level are printed to \c stdout and optionally
+    written as a matrix to \c errors.csv.
 
     Optionally, each refinement level can also be exported to Paraview (\c .vts
     surface patches, \c .pvd collection, point-wise error field, and Greville
@@ -23,7 +24,9 @@
       target function \f$f(x,y)\f$ to be fitted to the last coordinate.
     - \b -p / \b --patches (default: \c freeform/bubble/): path, relative
       to \c filedata/, to the directory containing the model patch files for
-      extraordinary-vertex subdivision.
+      extraordinary-vertex subdivision together with the auxiliary
+      \c Val\<v\>Kernel.xml files and, unless \b --opt is set, the
+      \c Val\<v\>Constraints.xml files.
     - \b -s / \b --steps (default: \c 2): number of refinement levels to test
       (i.e. maximum number of subdivision steps).
     - \b -a / \b --samples (default: \c 10): number of sample points per
@@ -37,12 +40,13 @@
       control net and the EV Greville control points.
     - \b --errors: if set, writes the \f$L^\infty\f$ and \f$L^2\f$ error
       column vectors to \c errors.csv.
-    - \b --opt: if set, uses kernel-space functional optimisation (\c
-   fit_ev_opt) instead of file-loaded linear constraints (\c fit_ev) when
-   fitting around extraordinary vertices.
     - \b --weighted: if set, weights the least-squares fit around
       extraordinary vertices using a per-sample weight vector loaded from \c
       filedata/freeform/val\<v\>_weights.xml.
+    - \b --opt: if set, \c smooth() selects extraordinary-vertex coefficient
+      representatives by minimising the diff functional used by
+      \c fit_ev_opt(); otherwise it uses the linear functionals stored in
+      \c Val\<v\>Constraints.xml.
 
     Author(s): L. Mussmaecher
 */
@@ -101,7 +105,9 @@ int main(int argc, char** argv)
                   write_errors);
     cmd.addSwitch(
         "opt",
-        "Optimizes the EV fit via a functional instead of linear constraints.",
+        "During smoothing, selects EV coefficient representatives by "
+        "minimizing the diff functional instead of using "
+        "`Val<v>Constraints.xml`.",
         optimize_fit);
     cmd.addSwitch("weighted",
                   "Uses a weighting for the EV fit, loaded from a weights "
@@ -137,8 +143,6 @@ int main(int argc, char** argv)
     gsParaviewCollection collection("results/function_fit");
     gsParaviewCollection cnet_collection("results/function_cnet");
     gsParaviewCollection error_collection("results/function_error");
-    std::vector<gsMatrix<real_t>> ev_coefs;
-    std::vector<gsMatrix<real_t>> ev_coefs_outer;
 
     for (index_t i = 0; i < steps; ++i)
     {
@@ -155,38 +159,35 @@ int main(int argc, char** argv)
         if (paraview)
         {
 
-            const std::string stepname =
-                "results/step" + std::to_string(i + 1);
+            const std::string stepname = "results/step" + std::to_string(i + 1);
 
             subdiv.write_paraview(stepname, &collection, &cnet_collection,
                                   i + 1, control_net);
 
             if (write_errors)
             {
-                subdiv.write_paraview_error(func, errors(0, i),
-                                            "results/error" +
-                                                std::to_string(i + 1),
-                                            &error_collection, i + 1);
+                subdiv.write_paraview_error(
+                    func, errors(0, i), "results/error" + std::to_string(i + 1),
+                    &error_collection, i + 1);
             }
 
             // If the user wants to save the control net, we also want to save
-            // the Greville control points for each EV.
-            if (control_net)
+            // the Greville control points for the first EV. Only works with set valence currently.
+            if (control_net && valence > 0)
             {
+                auto all_coefs = subdiv.smooth(1);
+                // Here is also the spot to see more control points if wanted.
+                gsMatrix<real_t> ev_coefs = all_coefs.topRows(2 * valence + 1).transpose();
                 // for each EV
-                for (size_t j = 0; j < ev_coefs.size(); ++j)
-                {
-                    ev_coefs[j] = ev_coefs[j].transpose();
-                    // Create a Paraview file containing the Greville control
-                    // points.
-                    gsWriteParaviewPoints(ev_coefs[j], stepname + "_greville" +
-                                                           std::to_string(j));
-                    // Register that file in the time series collection
-                    cnet_collection.addPart("step" + std::to_string(i + 1) +
-                                                "_greville" +
-                                                std::to_string(j) + ".vtp",
-                                            i + 1, "Greville");
-                }
+                gsInfo << "all_coefs: " << all_coefs.rows() << "x" << all_coefs.cols() << "\n";
+                gsInfo << "ev_coefs: " << ev_coefs.rows() << "x" << ev_coefs.cols() << "\n";
+
+                gsWriteParaviewPoints(ev_coefs, stepname + "_greville");
+                // Register that file in the time series collection
+                cnet_collection.addPart("step" + std::to_string(i + 1) +
+                                            "_greville"
+                                            ".vtp",
+                                        i + 1, "Greville");
             }
         }
 

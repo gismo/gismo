@@ -44,9 +44,10 @@ public: // Constructors
     ///
     /// Constructs the object targeting the given mesh and registers the
     /// following options:
-    /// - \c optimize_fit (switch, default \c false): when active, fits around
-    ///   extraordinary vertices by optimising a functional instead of using
-    ///   linear constraints loaded from file.
+    /// - \c optimize_fit (switch, default \c false): when active, chooses
+    ///   extraordinary-vertex coefficient representatives by minimising the
+    ///   smoothing functional used by \c fit_ev_opt(); otherwise it drives the
+    ///   linear functionals loaded from \c Val<v>Constraints.xml to zero.
     /// - \c weighted_fit (switch, default \c false): when active, weights the
     ///   least-squares fit around extraordinary vertices using a per-sample
     ///   weight vector loaded from
@@ -59,9 +60,10 @@ public: // Constructors
         : gsSubdivisionScheme(mesh), D(D)
     {
         m_options.addSwitch("optimize_fit",
-                            "When active, fits around EVs by optimizing with "
-                            "respect to a functional instead of using linear "
-                            "constraints loaded from a file.",
+                            "When active, chooses EV coefficient "
+                            "representatives by minimizing the functional "
+                            "used by fit_ev_opt(); otherwise it drives the "
+                            "linear functionals loaded from file to zero.",
                             false);
         m_options.addSwitch("weighted_fit",
                             "When active, weights the least-squares EV fit "
@@ -155,34 +157,6 @@ private: // Helper functions
         return mesh.valence(v) == 4 || mesh.is_boundary(v);
     }
 
-    /// \brief Fits control points around an EV using linear constraints.
-    ///
-    /// Solves the regularised least-squares system \f$A x \approx
-    /// \text{target}\f$ subject to linear constraints loaded from file, using a
-    /// Tikhonov-augmented block system.
-    ///
-    /// \param A       Coefficient matrix of the fitting system.
-    /// \param target  Right-hand side of the fitting system (D columns, one per
-    ///                coordinate).
-    /// \param valence Valence of the extraordinary vertex being fitted.
-    /// \return Solution matrix \f$x\f$ satisfying the constraints.
-    gsMatrix<real_t> fit_ev(gsMatrix<real_t> A, gsMatrix<real_t> target,
-                            size_t valence);
-
-    /// \brief Fits control points around an EV by kernel-space optimisation.
-    ///
-    /// Solves \f$A x = \text{target}\f$ via least squares and then optimises
-    /// within the null space of \f$A\f$ to equalise the solution coefficients,
-    /// minimising variation around the extraordinary vertex.
-    ///
-    /// \param A       Coefficient matrix of the fitting system.
-    /// \param target  Right-hand side of the fitting system (D columns, one per
-    ///                coordinate).
-    /// \param valence Valence of the extraordinary vertex being fitted.
-    /// \return Optimised solution matrix \f$x\f$.
-    gsMatrix<real_t> fit_ev_opt(gsMatrix<real_t> A, gsMatrix<real_t> target,
-                                size_t valence);
-
 public:
     /// \brief Validates the mesh and returns its validity status.
     ///
@@ -212,7 +186,41 @@ public:
     ///   those samples.
     void subdivide() override;
 
-    /// Use only garbage-collected meshes with contiguous indices!
+    /// \brief Builds the mapped \f$C^1\f$ basis used by smoothing and PDE solves.
+    ///
+    /// Converts the current freeform control-net mesh into a \c gsMultiPatch and
+    /// its underlying \c gsMultiBasis, then assembles a sparse local-to-global
+    /// mapper whose image defines the \f$C^1\f$ spline space. The construction
+    /// proceeds in four stages:
+    /// - interior extraordinary vertices reserve \f$2v+1\f$ EV blending-function
+    ///   degrees of freedom and map all local control points inside the EV
+    ///   support through the corresponding model-patch coefficient rows,
+    /// - ordinary interior control points receive free global degrees of
+    ///   freedom,
+    /// - interior edge points are expressed by the \f$C^1\f$ averaging relation
+    ///   between the two adjacent inner rows, while boundary edge points remain
+    ///   free,
+    /// - corner points are either averaged from surrounding inner points
+    ///   (interior corners) or shared as one common free degree of freedom per
+    ///   boundary vertex.
+    ///
+    /// The resulting global degrees of freedom are ordered as follows:
+    /// - for each extraordinary vertex in mesh-vertex iteration order:
+    ///   - the central freeform blending function,
+    ///   - the remaining freeform blending functions around that vertex,
+    ///   - the additional free control-point degrees of freedom around that EV,
+    /// - ordinary inner points in face order,
+    /// - edge points in face/halfedge order,
+    /// - corner points.
+    ///
+    /// \warning Use only garbage-collected meshes with contiguous face and
+    /// vertex indices.
+    ///
+    /// \param multi_patch Output multipatch containing one Bézier patch per mesh
+    /// face.
+    /// \param multi_basis Output tensor-product basis underlying \p multi_patch.
+    /// \param mapped_basis Output mapped basis that encodes the \f$C^1\f$
+    /// coupling relations.
     void c1_basis(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
                   gsMappedBasis<2>& mapped_basis);
 
@@ -341,27 +349,20 @@ public:
 
     /// \brief Smooths the geometry by L2-projecting it onto the mapped basis.
     ///
-    /// Builds the mapped basis via \c basis_data(), projects the current
-    /// multipatch geometry onto that space in the \f$L^2\f$ sense, and writes
-    /// the projected control points back to the per-face control nets.
+    /// Builds the mapped basis via \c c1_basis(), projects the current
+    /// multipatch geometry onto that space in the \f$L^2\f$ sense, and then
+    /// post-processes each extraordinary-vertex coefficient block in the kernel
+    /// of the corresponding \f$2v+1\f$ blending functions. When
+    /// \c optimize_fit is enabled, the post-processing minimises the
+    /// equalisation functional used by \c fit_ev_opt(); otherwise it enforces
+    /// the linear functionals loaded from \c Val<v>Constraints.xml. In both
+    /// cases the kernel basis is loaded from \c Val<v>Kernel.xml. The final
+    /// projected control points are written back to the per-face control nets.
     ///
     /// \param degree Requested smoothness degree. Currently only implemented for C1.
-    void smooth(size_t degree);
-
-    /// \brief Placeholder overload of \ref smooth(size_t) with EV outputs.
-    ///
-    /// This overload is intended to expose additional matrices associated with
-    /// extraordinary-vertex fitting, but it is currently not implemented.
-    /// The present implementation performs no smoothing and leaves the output
-    /// vectors unchanged.
-    ///
-    /// \param degree Requested smoothness degree.
-    /// \param ev_coefficients Placeholder output for extraordinary-vertex
-    ///                        coefficient matrices.
-    /// \param ev_coefficients_outer Placeholder output for outer control-point
-    ///                              data around extraordinary vertices.
-    void smooth(size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
-                std::vector<gsMatrix<real_t>>& ev_coefficients_outer);
+    /// \return Matrix of mapped coefficients with one row per global mapped
+    /// degree of freedom and one column per geometric coordinate.
+    gsMatrix<real_t> smooth(size_t degree);
 
     /// \brief Converts to a Gismo multipatch object.
     ///
@@ -495,7 +496,7 @@ public: // Contructors
     ///
     /// \param mesh The surface mesh containing the face.
     /// \param face The face over which to distribute the control points.
-    gsFreeformFaceData(const gsSurfMesh& mesh, gsSurfMesh::Face face);
+    gsFreeformFaceData(const gsSurfMesh& mesh, gsSurfMesh::Face face, size_t D);
 
 public: // Control point accessors
     /// \brief Returns control points along the edge of the face.

@@ -1,9 +1,19 @@
 
-/** @file freeform_kernel.cpp
+/** @file freeform_kernels.cpp
 
-    @brief Precomputes the kernel matrices used by the freeform subdivision
-   scheme.
+    @brief Precomputes kernel bases for the extraordinary-vertex blending
+    functions of the freeform subdivision scheme.
 
+    For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
+    the example loads all \f$2v+1\f$ extraordinary-vertex blending functions
+    \c Val\<v\>Fct\<f\>.xml, stacks the third control-net coordinate of every
+    patch into one common coefficient matrix, and computes the kernel of that
+    matrix. The resulting kernel basis spans all coefficient vectors that do
+    not change the represented EV function and is written to
+    \c Val\<v\>Kernel.xml in the same patch directory.
+
+    These kernel files are consumed by \c gsFreeformSubdivision::smooth() and
+    by \c freeform_functionals.cpp.
 
     \note The example assumes it is run from the build directory so that
     \c ../filedata is reachable. The patch-path option must point to a
@@ -14,7 +24,7 @@
       to \c filedata/, to the directory that contains the model patch files
       \c Val\<v\>Fct\<f\>.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
-      valence to process. Kernels are generated for all valences
+      valence to process. Kernel bases are generated for all valences
       \f$v \in \{3, 5, 6, \ldots, \mathrm{valence\_max}\}\f$ (valence 4 is
       regular and is skipped).
 
@@ -84,10 +94,10 @@ int main(int argc, char** argv)
         gsWrite(K, "../filedata/" + patchpath + "Val" +
                        std::to_string(valence) + "Kernel.xml");
 
-        gsInfo << "Written functional constraints for valence " << valence
+        gsInfo << "Written kernel basis for valence " << valence
                << " to `"
-               << (gsFileManager::findInDataDir("") + patchpath + "Val" +
-                   std::to_string(valence) + "Kernel.xml")
+                << (gsFileManager::findInDataDir("") + patchpath + "Val" +
+                    std::to_string(valence) + "Kernel.xml")
                << "`.\n";
     }
 

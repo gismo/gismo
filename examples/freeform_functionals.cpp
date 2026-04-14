@@ -1,20 +1,25 @@
 /** @file freeform_functionals.cpp
 
-    @brief Precomputes the kernel-space constraint matrices used by the
-    \f$C^1\f$ extraordinary-vertex fitting step of the freeform subdivision
-    scheme.
+    @brief Precomputes the linear functionals that select constrained
+    extraordinary-vertex coefficient representatives.
 
     For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
     the example loads all \f$2v+1\f$ basis-function patches from the model
     patch directory (\c Val\<v\>Fct\<f\>.xml), applies one round of \f$C^1\f$
     smoothing with functional optimisation (\c optimize_fit = \c true), reads
-    the resulting row of extraordinary-vertex (EV) coefficients, assembles the
-    full \f$(2v+1)\times 12\f$ coefficient matrix, and computes its kernel.
-    The kernel is saved as \c Val\<v\>Constraints.xml inside the model patch
-    directory.
+    back the resulting extraordinary-vertex (EV) coefficient representatives,
+    and assembles the space of coefficient vectors selected by that functional.
+    The kernel of this space consists of the linear functionals that vanish on
+    all legal representatives and is written to \c Val\<v\>Constraints.xml in
+    the model patch directory.
 
-    These constraint files are subsequently consumed by \c fit_ev when
-    performing \f$C^1\f$ smooth surface fitting around extraordinary vertices.
+    The example assumes that \c Val\<v\>Kernel.xml has already been generated,
+    e.g. by running \c freeform_kernels.cpp first, because
+    \c gsFreeformSubdivision::smooth() uses those kernel bases internally.
+
+    These functional files are subsequently consumed by
+    \c gsFreeformSubdivision::smooth() when \c optimize_fit is disabled and by
+    \c fit_ev() during constrained EV fitting.
 
     \note The example assumes it is run from the build directory so that
     \c ../filedata is reachable. The patch-path option must point to a
@@ -25,7 +30,7 @@
       to \c filedata/, to the directory that contains the model patch files
       \c Val\<v\>Fct\<f\>.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
-      valence to process. Constraint matrices are generated for all valences
+      valence to process. Functional matrices are generated for all valences
       \f$v \in \{3, 5, 6, \ldots, \mathrm{valence\_max}\}\f$ (valence 4 is
       regular and is skipped).
 
@@ -76,8 +81,6 @@ int main(int argc, char** argv)
                << "\n=================\n\n";
 
         gsMatrix<real_t> coeffs(2 * valence + 1, 2 * valence + 1);
-        std::vector<gsMatrix<real_t>> ev_coefs;
-        std::vector<gsMatrix<real_t>> ev_coefs_outer;
 
         // Iterate all functions for that valence
         for (size_t function = 0; function < 2 * valence + 1; ++function)
@@ -88,28 +91,29 @@ int main(int argc, char** argv)
                                        std::to_string(valence) + "Fct" +
                                        std::to_string(function) + ".xml");
 
-            // Apply functional-optimised smoothing to obtain the C1-constrained
-            // EV coefficients.
-            subdiv.smooth(1, ev_coefs, ev_coefs_outer);
-            // Collect all other coefficients in a matrix
-            coeffs.row(function) = ev_coefs[0].transpose().row(2);
-            for (int i = 0; i < 3; i++)
-                gsInfo << ev_coefs[0].transpose().row(i) << "\n";
-            gsInfo << "\n";
+            // Apply functional-optimised smoothing to obtain the preferred EV
+            // coefficient representative in the precomputed kernel family.
+            gsMatrix<real_t> ev_coefs = subdiv.smooth(1);
+            gsInfo << "ev_coefs: " << ev_coefs.rows() << "x" << ev_coefs.cols() << "\n";
+            // Collect the selected EV coefficient representative for this
+            // blending function.
+            coeffs.row(function) = ev_coefs.topRows(2 * valence + 1).transpose().row(2);
+            gsInfo << ev_coefs.topRows(2 * valence + 1).transpose().row(2) << "\n";
         }
 
-        // Now `coeffs` contains a basis for the space of C1-compatible EV
-        // coefficient vectors.
+        // Now `coeffs` spans the representative EV coefficient space selected
+        // by the diff functional.
         auto legal_pl = coeffs.fullPivLu();
         legal_pl.setThreshold(1e-4);
         gsMatrix<> K = legal_pl.kernel().transpose();
         gsWrite(K, "../filedata/" + patchpath + "Val" +
                        std::to_string(valence) + "Constraints.xml");
 
-        gsInfo << "Written functional constraints for valence " << valence
+        gsInfo << "Written representative-selection functionals for valence "
+               << valence
                << " to `"
-               << (gsFileManager::findInDataDir("") + patchpath + "Val" +
-                   std::to_string(valence) + "Constraints.xml")
+                << (gsFileManager::findInDataDir("") + patchpath + "Val" +
+                    std::to_string(valence) + "Constraints.xml")
                << "`.\n";
     }
 

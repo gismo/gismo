@@ -74,7 +74,8 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        gsMatrix<real_t> coeffs(2 * valence + 1, 2 * valence + 1);
+        size_t point_count(2 * valence + 1 + 20 * valence);
+        gsMatrix<real_t> coeffs(2 * valence + 1, point_count);
 
         // Iterate all functions for that valence
         for (size_t function = 0; function < 2 * valence + 1; ++function)
@@ -88,24 +89,20 @@ int main(int argc, char** argv)
             // Subdivide once
             subdiv.subdivide();
             // Now smooth to get the desired matrices
-            std::vector<gsMatrix<real_t>> ev_coefs;
-            std::vector<gsMatrix<real_t>> ev_coefs_outer;
-            subdiv.smooth(1, ev_coefs, ev_coefs_outer);
-            // For the first basis function (f=1), also record the outer EV control-point values.
-            if (function == 1)
-            {
-                gsWrite(ev_coefs_outer[0], "CoefficientsOuterVal" +
-                                               std::to_string(valence) +
-                                               ".xml");
-            }
-            // Collect all other coefficients in a matrix
-            coeffs.row(function) = ev_coefs[0].transpose().row(2);
+            gsMatrix<real_t> coefs = subdiv.smooth(1);
+            // Collect all coefficients in a matrix row
+            coeffs.row(function) = coefs.topRows(point_count).transpose().row(2);
             gsInfo << "\n";
         }
 
         // save all collected coefficients to file
         gsWrite(coeffs,
-                "CoefficientsInnerVal" + std::to_string(valence) + ".xml");
+                "SubdivisionFullVal" + std::to_string(valence) + ".xml");
+
+        gsInfo << "Written functional constraints for valence " << valence
+               << " to `"
+               << "SubdivisionFullVal" + std::to_string(valence) + ".xml"
+               << "`.\n";
     }
 
     return 0;

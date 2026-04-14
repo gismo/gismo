@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     subdiv.options().setString("model_patch_path", patchpath);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
-    subdiv.initialize_data(filepath);
+    subdiv.initialize_data(filepath, 3);
 
     // Single .pvd collection for all steps.
     gsParaviewCollection collection("results/fit");

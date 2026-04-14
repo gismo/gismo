@@ -46,9 +46,10 @@ namespace gismo
 
 template <size_t N>
 gsFreeformFaceData<N>::gsFreeformFaceData(const gsSurfMesh& mesh,
-                                          gsSurfMesh::Face face)
+                                          gsSurfMesh::Face face, size_t D)
     : control_points(), face(face)
 {
+    this->D = D;
     // Create a vector of the 4 corners, copying the 3D mesh vertex positions
     // into D-dimensional vectors. The first min(D,3) coordinates are taken
     // from the mesh; any remaining coordinates beyond index 2 are zeroed.
@@ -492,125 +493,10 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide()
         }
     }
 };
-template <size_t N>
-gsMatrix<real_t> gsFreeformSubdivision<N>::fit_ev_opt(gsMatrix<real_t> A,
-                                                      gsMatrix<real_t> target,
-                                                      size_t valence)
-{
-    // Just a direct least-squares solve with no regularisation.
-    gsMatrix<real_t> solution = A.colPivHouseholderQr().solve(target);
 
-    auto Apv = A.fullPivLu();
-    Apv.setThreshold(1e-8);
-    gsMatrix<> K = Apv.kernel();
-    // gsWrite(K, "../filedata/" + m_options.getString("model_patch_path") +
-    //                "Val" + std::to_string(valence) + "Kernel.xml");
-
-    gsMatrix<> diff(2 * valence, 2 * valence + 1);
-    diff.setZero();
-    for (size_t i = 0; i < 2 * valence; i++)
-    {
-        diff(i, 0) = 1.0;
-        diff(i, i + 1) = -1.0;
-    }
-
-    gsMatrix<> w = (diff * K).colPivHouseholderQr().solve(-diff * solution);
-
-    gsInfo << "Initial fitting error: " << (A * solution - target).norm()
-           << "\n";
-    gsInfo << "Final fitting error: "
-           << (A * (solution + K * w) - target).norm() << "\n";
-
-    return solution + K * w;
-}
 
 template <size_t N>
-gsMatrix<real_t> gsFreeformSubdivision<N>::fit_ev(gsMatrix<real_t> A,
-                                                  gsMatrix<real_t> target,
-                                                  size_t valence)
-{
-    gsMatrix<real_t> weights;
-    if (m_options.getSwitch("weighted_fit"))
-    {
-        auto _readFile = gsReadFile<>(
-            "freeform/val" + std::to_string(valence) + "_weights.xml", weights);
-    }
-    else
-    {
-        weights = gsVector<real_t>::Ones(A.rows());
-    }
-    auto W = weights.col(0).asDiagonal();
-    // Solve the least-squares system A * solution = target
-    // with Tikhonov regularization and additional constraints by
-    // building the augmented system:
-    //```
-    //    [ A^T*W*A + lambda*I     C^T ] [ x ] = [ A^T*W*target ]
-    //    [     C                  0   ] [ y ]   [     0        ]
-    //```
-    //  and solving
-    size_t function_count(2 * valence + 1);
-    // Regularization parameter
-    // Set to 0 to allow a second smoothing to have 0 error.
-    real_t lambda = 0.0;
-    // Load the constraints into a matrix
-    // Number of constraints should be the number of fitting functions
-    // (`function_count = 2 * valence + 1`) minus the dimension of the
-    // space (`v + 3`), i.e. `v-2`.
-    gsMatrix<real_t> constraints;
-    auto _readFile =
-        gsReadFile<>(m_options.getString("model_patch_path") + "Val" +
-                         std::to_string(valence) + "Constraints.xml",
-                     constraints);
-    size_t constraint_count = constraints.rows();
-
-    // Build the matrix & target
-    gsMatrix<real_t> augmented_A(function_count + constraint_count,
-                                 function_count + constraint_count);
-    gsMatrix<real_t> augmented_target(function_count + constraint_count, D);
-    // Zero it first
-    augmented_A.setZero();
-    // Top left: Tikhonov system
-    augmented_A.topLeftCorner(function_count, function_count) =
-        A.transpose() * W * A +
-        lambda * gsMatrix<real_t>::Identity(function_count, function_count);
-
-    // Top right & Bottom right: Constraints
-    augmented_A.topRightCorner(function_count, constraint_count) =
-        constraints.transpose();
-    augmented_A.bottomLeftCorner(constraint_count, function_count) =
-        constraints;
-
-    // Bottom right: Zero (Lagrange multiplier block)
-    augmented_A.bottomRightCorner(constraint_count, constraint_count).setZero();
-
-    // Top of augmented target: target via Tikhonov
-    augmented_target.topRows(function_count) = A.transpose() * W * target;
-    // Bottom of augmented target: zero, to ensure constraints are
-    // fulfilled
-    augmented_target.bottomRows(constraint_count).setZero();
-
-    // Actually solve the system
-    gsMatrix<real_t> augmented_solution =
-        augmented_A.fullPivHouseholderQr().solve(augmented_target);
-
-    // Extract the solution without the zeroes from the augmented system
-    gsMatrix<real_t> solution = augmented_solution.topRows(function_count);
-
-    gsInfo << "Total fitting error: " << (A * solution - target).norm() << "\n";
-    gsInfo << "Constraint error: " << (constraints * solution).norm() << "\n";
-
-    return solution;
-}
-
-template <size_t N>
-void gsFreeformSubdivision<N>::smooth(
-    size_t degree, std::vector<gsMatrix<real_t>>& ev_coefficients,
-    std::vector<gsMatrix<real_t>>& ev_coefficients_outer)
-{
-    // TODO: Retrieve coefficients
-}
-
-template <size_t N> void gsFreeformSubdivision<N>::smooth(size_t degree)
+gsMatrix<real_t> gsFreeformSubdivision<N>::smooth(size_t degree)
 {
     GISMO_ASSERT(degree == 1, "Only C1 smoothing supported.");
     // TODO: Maybe work with the same Assember/Solver as in fit_function and
@@ -628,6 +514,79 @@ template <size_t N> void gsFreeformSubdivision<N>::smooth(size_t degree)
     // The L2 projection returns a flattened vector with one block per
     // coordinate direction; gsMappedSpline expects one row per mapped DoF.
     coefficients = coefficients.reshape(mapped_basis.size(), D);
+
+    // ===============================
+    // Phase 2: Optimize Coefficients
+    // ===============================
+
+    auto& mesh = *m_mesh;
+    const bool optimize_fit = m_options.getSwitch("optimize_fit");
+    const std::string model_patch_path =
+        m_options.getString("model_patch_path");
+
+    std::vector<index_t> ev_coef_starts;
+    std::vector<index_t> ev_coef_ends;
+    ev_coef_starts.push_back(0);
+
+    for (Vertex v : mesh.vertices())
+    {
+        if (is_ordinary(mesh, v))
+            continue;
+
+        ev_coef_ends.push_back(ev_coef_starts[ev_coef_starts.size() - 1] +
+                               mesh.valence(v) * 2 + 1);
+        ev_coef_starts.push_back(ev_coef_ends[ev_coef_ends.size() - 1] +
+                                 20 * mesh.valence(v));
+    }
+    ev_coef_starts.pop_back();
+
+    size_t ev_index = 0;
+    for (Vertex v : mesh.vertices())
+    {
+        if (is_ordinary(mesh, v))
+            continue;
+
+        const size_t valence = mesh.valence(v);
+        const index_t function_count = 2 * valence + 1;
+        const index_t ev_coef_start = ev_coef_starts[ev_index];
+        const index_t ev_coef_end = ev_coef_ends[ev_index];
+
+        gsMatrix<real_t> kernel;
+        auto _file = gsReadFile<>(model_patch_path + "Val" +
+                                      std::to_string(valence) + "Kernel.xml",
+                                  kernel);
+
+        gsMatrix<real_t> functional;
+        if (optimize_fit)
+        {
+            functional.resize(2 * valence, function_count);
+            functional.setZero();
+            for (size_t i = 0; i < 2 * valence; ++i)
+            {
+                functional(i, 0) = real_t(1);
+                functional(i, static_cast<index_t>(i) + 1) = real_t(-1);
+            }
+        }
+        else
+        {
+            gsReadFile<>(model_patch_path + "Val" + std::to_string(valence) +
+                             "Constraints.xml",
+                         functional);
+        }
+
+        const gsMatrix<real_t> ev_coefficients =
+            coefficients.block(ev_coef_start, 0, function_count, D);
+        const gsMatrix<real_t> kernel_weights =
+            (functional * kernel)
+                .colPivHouseholderQr()
+                .solve(-functional * ev_coefficients);
+
+        coefficients.block(ev_coef_start, 0, function_count, D) =
+            ev_coefficients + kernel * kernel_weights;
+
+        ++ev_index;
+    }
+
     gsMappedSpline<2, real_t> solSpline(mapped_basis, coefficients);
     gsMultiPatch<> solField = solSpline.exportToPatches();
 
@@ -638,7 +597,6 @@ template <size_t N> void gsFreeformSubdivision<N>::smooth(size_t degree)
     {
         for (size_t i = 0; i < N; ++i)
         {
-
             for (size_t j = 0; j < N; ++j)
             {
                 face_data_vec[k].control_points(i, j) =
@@ -646,6 +604,8 @@ template <size_t N> void gsFreeformSubdivision<N>::smooth(size_t degree)
             }
         }
     }
+
+    return coefficients;
 }
 
 template <size_t N>
@@ -1440,7 +1400,7 @@ void gsFreeformSubdivision<N>::initialize_data_off(std::string filepath)
     // Each patch is now initalized with basic face data.
     for (auto f : mesh.faces())
     {
-        patch_data.vector()[f.idx()] = gsFreeformFaceData<N>(mesh, f);
+        patch_data.vector()[f.idx()] = gsFreeformFaceData<N>(mesh, f, D);
     }
 }
 
