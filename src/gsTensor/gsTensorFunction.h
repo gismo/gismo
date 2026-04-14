@@ -116,21 +116,44 @@ public:
     }
     */
 
+    // gsTensorFunction(const gsBasis<T> & basis, const std::vector<gsMatrix<T> > & skeleton)
+    // : // Assumes single scalar function
+    // m_ranks(1)
+    // {
+    //     const index_t d = skeleton.size();
+    //     GISMO_ASSERT( basis.dim() == d, "Inconsistent skeleton");
+    //
+    //     m_ranks[0] = skeleton.front().cols();
+    //
+    //     m_skeleton.resize(d);
+    //     for (index_t i=0; i!= d; ++i)
+    //         m_skeleton[i] = basis.component(i).makeGeometry( skeleton[i] );
+    //
+    //
+    // }
+
     gsTensorFunction(const gsBasis<T> & basis, const std::vector<gsMatrix<T> > & skeleton)
-    : // Assumes single scalar function
-    m_ranks(1)
-    {
-        const index_t d = skeleton.size();
-        GISMO_ASSERT( basis.dim() == d, "Inconsistent skeleton");
+    : m_ranks(1)
+        {
+            const index_t d = skeleton.size();
+            GISMO_ASSERT(basis.dim() == d, "Inconsistent skeleton");
+            GISMO_ASSERT(d > 0, "Skeleton must not be empty.");
 
-        m_ranks[0] = skeleton.front().cols();
+            const index_t R = skeleton.front().cols();
+            GISMO_ASSERT(R > 0, "Skeleton rank must be positive.");
 
-        m_skeleton.resize(d);
-        for (index_t i=0; i!= d; ++i)
-            m_skeleton[i] = basis.component(i).makeGeometry( skeleton[i] );
+            for (index_t i = 0; i != d; ++i)
+            {
+                GISMO_ASSERT(skeleton[i].cols() == R,
+                    "All skeleton components must have the same number of columns.");
+            }
 
+            m_ranks[0] = R;
 
-    }
+            m_skeleton.resize(d);
+            for (index_t i = 0; i != d; ++i)
+                m_skeleton[i] = basis.component(i).makeGeometry(skeleton[i]).release();
+        }
 
     gsTensorFunction(const gsBasis<T> & basis,
                      const std::vector<gsMatrix<T> > & skeleton,

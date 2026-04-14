@@ -80,9 +80,25 @@ int main(int argc, char *argv[])
 
 
     // diffusion assembly test
-    gsTensorFunction<> density_field(2,0); // creates a constant function = 1
+    // gsTensorFunction<> density_field(2,0); // creates a constant function = 1
+
+    // rank-1 density
+    std::vector<gsMatrix<real_t>> skeleton(2);
+
+    index_t n1 = basis->component(0).size();
+    index_t n2 = basis->component(1).size();
+
+    skeleton[0].resize(n1,1);
+    skeleton[1].resize(n2,1);
+
+    // simple: rho = 1 + ξ
+    skeleton[0].col(0).setLinSpaced(n1, 1.0, 2.0);
+    skeleton[1].col(0).setOnes();
+
+    gsTensorFunction<> rho(*basis, skeleton);
+
     gsTensorAssembler<> ta_diffusion;
-    ta_diffusion.compute(*basis, DIFFUSION, density_field); // DIFFUSION
+    ta_diffusion.compute(*basis, DIFFUSION, rho);
 
     gsFiberMatrix<real_t> mat_diffusion = ta_diffusion.kronecker().toFiberMatrix();
 
