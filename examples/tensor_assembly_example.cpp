@@ -79,9 +79,9 @@ int main(int argc, char *argv[])
     real_t assembly_time_standard = timer_standard.stop();
     gsInfo << "Standard assembly time: " << assembly_time_standard << " seconds\n";
 
-    gsMatrix<> mat_std = A.giveMatrix().toDense();
+    // gsMatrix<> mat_std = A.giveMatrix().toDense();
     // gsInfo << "Standard assembly matrix: \n" << mat_std <<"\n";
-    gsInfo << "Difference: \n" << (mat.toSparseMatrix().toDense() - mat_std).cwiseAbs().maxCoeff() <<"\n";
+    // gsInfo << "Difference: \n" << (mat.toSparseMatrix().toDense() - mat_std).cwiseAbs().maxCoeff() <<"\n";
 
     // rank-1 density with sinusoidal variation
     std::vector<gsMatrix<real_t>> skeleton(2);
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
     gsTensorAssembler<> ta_diffusion;
     ta_diffusion.compute(*basis, DIFFUSION, rho);
     real_t assembly_time_tensor = timer_diffusion.stop();
-    gsInfo << "Diffusion assembly time: " << assembly_time_tensor << " seconds\n";
+    gsInfo << "Tensor assembly time: " << assembly_time_tensor << " seconds\n";
     gsInfo << "Speedup: " << assembly_time_standard / assembly_time_tensor << "x\n";
 
     gsFiberMatrix<real_t> mat_diffusion = ta_diffusion.kronecker().toFiberMatrix();
@@ -203,39 +203,139 @@ int main(int argc, char *argv[])
         add_bc(i, 0);
         add_bc(i, n2 - 1);
     }
+    //
+    // auto applyDirichletDense = [&](gsMatrix<real_t>& A,
+    //                            gsMatrix<real_t>& rhs,
+    //                            const std::vector<index_t>& dofs,
+    //                            const std::vector<real_t>& vals)
+    // {
+    //     GISMO_ASSERT(dofs.size() == vals.size(), "Dirichlet size mismatch.");
+    //
+    //     for (size_t k = 0; k < dofs.size(); ++k)
+    //     {
+    //         index_t c = dofs[k];
+    //         real_t g  = vals[k];
+    //
+    //         // rhs <- rhs - A(:,c) * g
+    //         rhs -= A.col(c) * g;
+    //
+    //         // zero row and column
+    //         A.row(c).setZero();
+    //         A.col(c).setZero();
+    //
+    //         A(c,c) = 1.0;
+    //         rhs(c,0) = g;
+    //     }
+    // };
+    //
+    // gsMatrix<real_t> Kx_dense = gsMatrix<real_t>(K);
+    // gsMatrix<real_t> Ky_dense = gsMatrix<real_t>(K);
+    //
+    // applyDirichletDense(Kx_dense, rhs_x, bdofs, vals_x);
+    // applyDirichletDense(Ky_dense, rhs_y, bdofs, vals_y);
+    //
+    // gsMatrix<real_t> sol_x = Kx_dense.fullPivLu().solve(rhs_x);
+    // gsMatrix<real_t> sol_y = Ky_dense.fullPivLu().solve(rhs_y);
 
-    auto applyDirichletDense = [&](gsMatrix<real_t>& A,
-                               gsMatrix<real_t>& rhs,
-                               const std::vector<index_t>& dofs,
-                               const std::vector<real_t>& vals)
+        auto solveWithDirichletSparse =
+        [&](const gsSparseMatrix<real_t>& Kfull,
+            const gsMatrix<real_t>& rhs_full,
+            const std::vector<index_t>& bdofs,
+            const std::vector<real_t>& vals) -> gsMatrix<real_t>
     {
-        GISMO_ASSERT(dofs.size() == vals.size(), "Dirichlet size mismatch.");
+        GISMO_ASSERT(bdofs.size() == vals.size(), "Dirichlet size mismatch.");
 
-        for (size_t k = 0; k < dofs.size(); ++k)
+        const index_t N = Kfull.rows();
+        GISMO_ASSERT(Kfull.cols() == N, "Matrix must be square.");
+        GISMO_ASSERT(rhs_full.rows() == N && rhs_full.cols() == 1,
+                     "rhs must be N x 1.");
+
+        // Mark boundary dofs
+        std::vector<bool> isBoundary(N, false);
+        for (size_t k = 0; k < bdofs.size(); ++k)
         {
-            index_t c = dofs[k];
-            real_t g  = vals[k];
-
-            // rhs <- rhs - A(:,c) * g
-            rhs -= A.col(c) * g;
-
-            // zero row and column
-            A.row(c).setZero();
-            A.col(c).setZero();
-
-            A(c,c) = 1.0;
-            rhs(c,0) = g;
+            GISMO_ASSERT(bdofs[k] >= 0 && bdofs[k] < N, "Boundary dof out of range.");
+            isBoundary[bdofs[k]] = true;
         }
+
+        // Build free dof list and old->new index map
+        std::vector<index_t> freeDofs;
+        freeDofs.reserve(N - bdofs.size());
+
+        std::vector<index_t> oldToFree(N, -1);
+        for (index_t i = 0; i < N; ++i)
+        {
+            if (!isBoundary[i])
+            {
+                oldToFree[i] = static_cast<index_t>(freeDofs.size());
+                freeDofs.push_back(i);
+            }
+        }
+
+        const index_t Nf = static_cast<index_t>(freeDofs.size());
+
+        // Full prescribed vector ub
+        gsMatrix<real_t> u = gsMatrix<real_t>::Zero(N, 1);
+        for (size_t k = 0; k < bdofs.size(); ++k)
+            u(bdofs[k], 0) = vals[k];
+
+        // Reduced rhs: rf = f_f - K_fb * u_b
+        gsMatrix<real_t> rhs_reduced(Nf, 1);
+        rhs_reduced.setZero();
+
+        for (index_t ii = 0; ii < Nf; ++ii)
+        {
+            const index_t iOld = freeDofs[ii];
+            rhs_reduced(ii, 0) = rhs_full(iOld, 0);
+        }
+
+        rhs_reduced.noalias() -= (Kfull * u)(freeDofs, gsEigen::all);
+
+        // Build Kff
+        std::vector<gsEigen::Triplet<real_t>> trips;
+        trips.reserve(Kfull.nonZeros());
+
+        for (index_t col = 0; col < Kfull.outerSize(); ++col)
+        {
+            for (gsSparseMatrix<real_t>::InnerIterator it(Kfull, col); it; ++it)
+            {
+                const index_t iOld = it.row();
+                const index_t jOld = it.col();
+
+                if (!isBoundary[iOld] && !isBoundary[jOld])
+                {
+                    const index_t iNew = oldToFree[iOld];
+                    const index_t jNew = oldToFree[jOld];
+                    trips.emplace_back(iNew, jNew, it.value());
+                }
+            }
+        }
+
+        gsSparseMatrix<real_t> Kff(Nf, Nf);
+        Kff.setFromTriplets(trips.begin(), trips.end());
+        Kff.makeCompressed();
+
+        // Solve reduced system
+        gsEigen::SimplicialLDLT<gsSparseMatrix<real_t>> solver;
+        solver.compute(Kff);
+        GISMO_ASSERT(solver.info() == gsEigen::Success,
+                     "Factorization failed for reduced sparse system.");
+
+        gsMatrix<real_t> uf = solver.solve(rhs_reduced);
+        GISMO_ASSERT(solver.info() == gsEigen::Success,
+                     "Solve failed for reduced sparse system.");
+
+        // Scatter back to full vector
+        for (index_t ii = 0; ii < Nf; ++ii)
+            u(freeDofs[ii], 0) = uf(ii, 0);
+
+        return u;
     };
 
-    gsMatrix<real_t> Kx_dense = gsMatrix<real_t>(K);
-    gsMatrix<real_t> Ky_dense = gsMatrix<real_t>(K);
+    gsMatrix<real_t> rhs0 = gsMatrix<real_t>::Zero(K.rows(), 1);
 
-    applyDirichletDense(Kx_dense, rhs_x, bdofs, vals_x);
-    applyDirichletDense(Ky_dense, rhs_y, bdofs, vals_y);
-
-    gsMatrix<real_t> sol_x = Kx_dense.fullPivLu().solve(rhs_x);
-    gsMatrix<real_t> sol_y = Ky_dense.fullPivLu().solve(rhs_y);
+    gsMatrix<real_t> sol_x = solveWithDirichletSparse(K, rhs0, bdofs, vals_x);
+    gsMatrix<real_t> sol_y = solveWithDirichletSparse(K, rhs0, bdofs, vals_y);
 
     // for (size_t k = 0; k < bdofs.size(); ++k)
     // {
