@@ -87,7 +87,7 @@ public:
         if (mode==DIFFUSION)
             assembleWeightedLaplace<d>(kernel, skeleton_mat);
 
-        const index_t rank = kernel.totalRank();
+        //const index_t rank = kernel.totalRank();
         m_kprod.reset( new gsKroneckerMatrix<T,d>(give(skeleton_mat)) );
     }
 

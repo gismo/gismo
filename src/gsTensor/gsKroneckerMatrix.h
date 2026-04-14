@@ -180,7 +180,7 @@ template<class T, short_t d = -1> class gsKroneckerMatrix;
 
  */
 template<class T, short_t d>
-class gsKroneckerMatrix : public gsLinearOperator<T>, public gsKroneckerMatrix<T,-1>
+class gsKroneckerMatrix : public gsKroneckerMatrix<T,-1>
 {
 public:
     typedef gsFiberMatrix<T, ColMajor> FiberMatrix;
@@ -199,6 +199,9 @@ public:
         for (size_t i = 0; i != m_cwise.size(); ++i)
             m_sz(i) = m_cwise[i].rows();
         m_rank = m_cwise.front().cols() / m_sz[0];// assuming square blocks
+
+        m_dbd.resize(1);
+        m_dbd(0) = 0;
     }
 
     gsKroneckerMatrix()
@@ -235,50 +238,55 @@ public:
     /// Computes the matrix-vector product M*in and writes the result in \out
     void apply(const gsMatrix <T> &in, gsMatrix <T> &out) const
     {
-        // static const index_t n = 1; // in.rows();
-        // GISMO_ASSERT(in.cols() == 1, "single rhs for now, got " << in.cols());
+        static const index_t n = 1; // in.rows();
+        GISMO_ASSERT(in.cols() == 1, "single rhs for now, got " << in.cols());
 
-        // const index_t sz = m_sz.prod();
+        const index_t sz = m_sz.prod();
 
-        // out.setZero(sz, n);
-        // for (index_t r = 0; r != m_rank; ++r)
-        // {
-        //     q0 = in;
+        out.setZero(sz, n);
+        for (index_t r = 0; r != m_rank; ++r)
+        {
+            q0 = in;
 
-        //     for (unsigned i = 0; i != m_cwise.size(); ++i)
-        //     {
-        //         const index_t sz_i = m_cwise[i].rows();//cols
-        //         const index_t r_i = sz / sz_i;
-        //         const index_t rsz_i = r * sz_i;
+            for (unsigned i = 0; i != m_cwise.size(); ++i)
+            {
+                const index_t sz_i = m_cwise[i].rows();//cols
+                const index_t r_i = sz / sz_i;
+                const index_t rsz_i = r * sz_i;
 
-        //         q0.resize(sz_i, n * r_i);
-        //         q1.resize(r_i, n * sz_i);
+                q0.resize(sz_i, n * r_i);
+                q1.resize(r_i, n * sz_i);
 
-        //         /*// Multiple rhs
-        //           for ( index_t k = 0; k!=n; ++k)
-        //           q1.middleCols(k*sz_i, sz_i).noalias() =
-        //           (  m_cwise[i].block(0, rsz_i, sz_i, sz_i)
-        //           * q0.middleCols(k*r_i, r_i) ).transpose();
-        //           */
+                /*// Multiple rhs
+                  for ( index_t k = 0; k!=n; ++k)
+                  q1.middleCols(k*sz_i, sz_i).noalias() =
+                  (  m_cwise[i].block(0, rsz_i, sz_i, sz_i)
+                  * q0.middleCols(k*r_i, r_i) ).transpose();
+                  */
+                //TODO Add block to fiberMatrix
+                //q1.noalias() = (m_cwise[i].block(0, rsz_i, sz_i, sz_i) * q0).transpose();
 
-        //         //TODO Add block to fiberMatrix
-        //         q1.noalias() = (m_cwise[i].block(0, rsz_i, sz_i, sz_i) * q0).transpose();
-        //         // complexity: (2p+1) sz_i^d
+                q1.noalias() = (m_cwise[i].toSparseMatrix() // HIGHLY INEFFICIENT
+                                .block(0, rsz_i, sz_i, sz_i) * q0).transpose();
+                // complexity: (2p+1) sz_i^d
 
-        //         q1.swap(q0);
-        //     }
-        //     q0.resize(sz, n);
-        //     out += q0;
-        // }
+                q1.swap(q0);
+            }
+            q0.resize(sz, n);
+            out += q0;
+        }
 
-        // ///*
-        // // Hardcode all-Dirichlet boundaries as diagonal ones
-        // for (index_t i = 0; i != m_dbd.rows(); ++i)
-        // {
-        //     const index_t k = m_dbd.at(i);
-        //     out.row(k) = in.row(k);
-        // }
-        //*/
+        ///*
+        // Hardcode all-Dirichlet boundaries as diagonal ones
+        // destroys symmetry:
+        for (index_t i = 0; i != m_dbd.rows(); ++i)
+        {
+            const index_t k = m_dbd.at(i);
+            out.row(k) = in.row(k);
+            // to regain symmetry:
+            // add: for all non-dirichet entries j, substruct the matrix entry: out(j) -= Mat(m_dbd.at(i),j);
+        }
+
     }
 
     //----------------
@@ -419,7 +427,7 @@ public:
             {
                 tmp = 1;
                 for (unsigned i = 0; i != m_cwise.size(); ++i)
-                    tmp *= m_cwise[i](it->at(i), r * m_sz[i] + it->at(i));
+                    tmp *= m_cwise[i].coeff(it->at(i), r * m_sz[i] + it->at(i));
                 result[c] += tmp;
             }
         }
@@ -676,7 +684,7 @@ private:
 
 
 template<class T>
-class gsKroneckerMatrix<T,-1>
+class gsKroneckerMatrix<T,-1> : public gsLinearOperator<T>
 {
 protected:
     index_t m_rank; ///< Hadamard rank of the matrix
@@ -689,10 +697,17 @@ public:
 
     virtual ~gsKroneckerMatrix() = default;
 
+    virtual void apply(const gsMatrix <T> &in, gsMatrix <T> &out) const = 0;
+
+    virtual void diagonal_into(gsVector <T> &result) const = 0;
+            
     virtual short_t dim() const = 0;
 
     index_t rank() const { return m_rank;}
 
+    virtual index_t cols() const = 0;
+    virtual index_t rows() const = 0;
+            
     gsSparseMatrix<T> toSparseMatrix() const
     { return toFiberMatrix().toSparseMatrix(); }
 

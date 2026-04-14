@@ -54,6 +54,29 @@ int main(int argc, char *argv[])
 
     gsFiberMatrix<real_t> mat = ta.kronecker().toFiberMatrix();
 
+    //-------- START TEST
+    auto & kp = ta.kronecker();
+    auto kpop = memory::make_shared_not_owned( (gsLinearOperator<>*)(&kp)); 
+    gsMatrix<> vec(kp.cols(),1);
+    vec.setRandom();
+    gsInfo << "Random vector :"<< vec.transpose() <<"\n";
+    gsMatrix<> prod;
+    kp.apply(vec, prod); // computes product kp*vec;
+    gsInfo << ( prod.transpose() ) <<"\n";
+    gsInfo << ( (mat.toSparseMatrix() * vec).transpose() ) <<"\n";
+    
+    gsVector<> diag;
+    kp.diagonal_into(diag);
+    gsDiagonalOp<real_t> dop(diag);
+
+    //gsConjugateGradient<> PCG( kpop /*, dop*/ ); // setup CG
+    gsBiCgStab<> PCG( kpop /*, dop*/ ); // this works for non-symmetric
+    gsMatrix<> x(kp.rows(),1);
+    x.setZero();
+    PCG.solve(prod, x);
+    gsInfo << "Solution :"<< x.transpose() <<"\n";
+    //------------ END TEST
+    
     // gsInfo << "Matrix size: \n" << mat.rows() <<"\n";
     // gsInfo << "Matrix : \n" << mat.toSparseMatrix().toDense() <<"\n";
 
@@ -71,8 +94,8 @@ int main(int argc, char *argv[])
     gsExprAssembler<>::geometryMap G = A.getMap(*mp);
     A.setIntegrationDomain(basis->domain());
     auto u = A.getSpace(*basis);
-    auto v = A.getTestSpace(*basis, 1);
-    auto w = A.getCoeff(RR);
+    //auto v = A.getTestSpace(*basis, 1);
+    //auto w = A.getCoeff(RR);
     A.initMatrix();
     A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G) );
     // gsInfo << "Standard assembly time: " << timer_standard.stop() << " seconds\n";
