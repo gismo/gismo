@@ -527,40 +527,52 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     }
     //...
     if (Psi.dim() == 2 && sepBoundary){
-    // If a given density is defined on an adaptive mesh, it must first be projected to a uniform mesh
-    // since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
+    // Correction step
+    // since the initial mapping will be used in the composition.  (F o Psi)
     const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(0);
     const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
     const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(0);
     const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(1);
     //...
-    gsSparseMatrix<> Mx  = assembleMass(Cbasis.basis(0).component(0));
-    gsSparseMatrix<> My  = assembleMass(Cbasis.basis(0).component(1));
-    gsVector<> rhsx(Mx.rows());
-    gsVector<> rhsy(My.rows());
-
+    // gsFunctionExpr<> sDir = gsFunctionExpr<>("0",2);
+    // Initialize boundary conditions for Monge-Ampere solver
+    // gsBoundaryConditions<> bc;
+    // bc.setGeoMap(m_mapping);
+    // for ( gsMultiPatch<>::const_biterator
+    //         bit = m_mapping.bBegin(); bit != m_mapping.bEnd(); ++bit)
+    // {
+    //     bc.addCondition( *bit, condition_type::dirichlet, &sDir );
+    // }    
+    gsSparseMatrix<> Mx  = assembleMass(Psi.basis(0).component(0));
+    // eliminateDirichlet1D(boundaryConditionsForDirection(bc,0), A.options(), Mx);
+    gsSparseMatrix<> My  = assembleMass(Psi.basis(0).component(1));
+    // eliminateDirichlet1D(boundaryConditionsForDirection(bc,1), A.options(), My);
     for(index_t comp_nb = 0; comp_nb < Psi.geoDim(); ++comp_nb){
         // y = 0 
-        rhsx.setZero();
-        assemble_rhsvector_1d(degree1, kv1, 0., 1, comp_nb, rhsx);
+        gsVector<> rhsxy0(Mx.rows());
+        assemble_rhsvector_1d(Psi.basis(0).component(0), degree1, kv1, 0., 1, comp_nb, rhsxy0);
         solver.compute( Mx );
-        auto xsoly0 = solver.solve(rhsx);
+        solver.setTolerance(1e-30);
+        auto xsoly0 = solver.solve(rhsxy0);
         // y = 1
-        rhsx.setZero();
-        assemble_rhsvector_1d(degree1, kv1, 1., 1, comp_nb, rhsx);
+        gsVector<> rhsxy1(Mx.rows());
+        assemble_rhsvector_1d(Psi.basis(0).component(0), degree1, kv1, 1., 1, comp_nb, rhsxy1);
         solver.compute( Mx );
-        auto xsoly1 = solver.solve(rhsx);    
+        solver.setTolerance(1e-30);
+        auto xsoly1 = solver.solve(rhsxy1);    
         // x = 0 
-        rhsy.setZero();
-        assemble_rhsvector_1d(degree2, kv2, 0., 0, comp_nb, rhsy);
+        gsVector<> rhsx0y(My.rows());
+        assemble_rhsvector_1d(Psi.basis(0).component(1), degree2, kv2, 0., 0, comp_nb, rhsx0y);
         solver.compute( My );
-        auto x0soly = solver.solve(rhsy);
+        solver.setTolerance(1e-30);
+        auto x0soly = solver.solve(rhsx0y);
         // x = 1 
-        rhsy.setZero();
-        assemble_rhsvector_1d(degree2, kv2, 1., 0, comp_nb, rhsy);
+        gsVector<> rhsx1y(My.rows());
+        assemble_rhsvector_1d(Psi.basis(0).component(1), degree2, kv2, 1., 0, comp_nb, rhsx1y);
         solver.compute( My );
-        auto x1soly = solver.solve(rhsy);
-        CorrecBoundary(Psi, 0, comp_nb, xsoly0, xsoly1, x0soly, x1soly);
+        solver.setTolerance(1e-30);
+        auto x1soly = solver.solve(rhsx1y);
+        CorrecBoundary(Psi, 0, comp_nb, xsoly0, xsoly1, x0soly, x1soly, true);
     }
     gsInfo << ".";
     }
@@ -754,9 +766,49 @@ gsSparseMatrix<> gsAdaptiveMultiPatchBuilder::assembleMass(const gsBasis<>& basi
     return result;
 }
 
-void gsAdaptiveMultiPatchBuilder::CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly) const
+gsBoundaryConditions<> gsAdaptiveMultiPatchBuilder::boundaryConditionsForDirection( const gsBoundaryConditions<>& bc, index_t direction ) const
+{
+    gsBoundaryConditions<> result;
+
+    for ( index_t i = 1; i <= 2; ++i)
+    {
+        patchSide global(0,i+2*direction), local(0,i);
+        const boundary_condition<double>* cond = bc.getConditionFromSide(global);
+        if (cond)
+            result.addCondition(local,cond->type(),cond->function());
+    }
+    return result;
+}
+
+void gsAdaptiveMultiPatchBuilder::eliminateDirichlet1D(const gsBoundaryConditions<>& bc,
+                          const gsOptionList& opt, gsSparseMatrix<> & result) const
+{
+    dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
+    if (ds == dirichlet::elimination)
+    {
+        patchSide west(0,boundary::west), east(0,boundary::east);
+        index_t i = 0;
+        if (bc.getConditionFromSide( west ) && bc.getConditionFromSide( west )->type() == condition_type::dirichlet ) i += 1;
+        if (bc.getConditionFromSide( east ) && bc.getConditionFromSide( east )->type() == condition_type::dirichlet ) i += 2;
+        if (i%2 + i/2 >= result.rows() || i%2 + i/2 >= result.cols())
+            result.resize(0,0);
+        else switch ( i )
+             {
+             case 0: break;
+             case 1: result = result.block( 1, 1, result.rows()-1, result.cols()-1 ); break;
+             case 2: result = result.block( 0, 0, result.rows()-1, result.cols()-1 ); break;
+             case 3: result = result.block( 1, 1, result.rows()-2, result.cols()-2 ); break;
+             }
+    }
+    else
+        GISMO_ERROR("Unknown Dirichlet strategy.");
+}
+
+void gsAdaptiveMultiPatchBuilder::CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners) const
 {
     // ...
+    if (corners){
+    // update corners
     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(1).size(); ++i_x)
     {
     // x=0 control points be like (0,:) in this case
@@ -771,6 +823,24 @@ void gsAdaptiveMultiPatchBuilder::CorrecBoundary(gsMultiPatch<>& Psi, const inde
     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(3).at(i_x) ).array()[patch_cmp] = xsoly0(i_x);
     // y=1 control points be like (:,1) in this case
     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(4).at(i_x) ).array()[patch_cmp] = xsoly1(i_x);
+    }
+    }
+    else{
+    for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(1).size()-1; ++i_x)
+    {
+    // x=0 control points be like (0,:) in this case
+    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(1).at(i_x+1) ).array()[patch_cmp] = x0soly(i_x);
+    // x=1 control points be like (1,:) in this case
+    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(2).at(i_x+1) ).array()[patch_cmp] = x1soly(i_x);
+    }
+
+    for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size()-1; ++i_x) 
+    {
+    // y=0 control points be like (:,0) in this case
+    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(3).at(i_x+1) ).array()[patch_cmp] = xsoly0(i_x);
+    // y=1 control points be like (:,1) in this case
+    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(4).at(i_x+1) ).array()[patch_cmp] = xsoly1(i_x);
+    }        
     }
 }
 
@@ -807,7 +877,7 @@ void gsAdaptiveMultiPatchBuilder::basis_functions(const gsKnotVector<double>& kn
 
     ndu(0,0)        = 1.0;
     // computes basis functions
-    #pragma omp parallel for
+    // #pragma omp parallel for
     for (index_t j = 0; j < degree; ++j) {
         left(j)      = x - knots[span - j];
         right(j)     = knots[span + j + 1] - x;
@@ -823,7 +893,7 @@ void gsAdaptiveMultiPatchBuilder::basis_functions(const gsKnotVector<double>& kn
         ndu(j + 1, j + 1) = saved;
     }
     // compute the derivatives of the basis functions
-    #pragma omp parallel for
+    // #pragma omp parallel for
     for (index_t r = 0; r <= degree; ++r) {
         ders(0,r) = ndu(r, degree);
 
@@ -858,77 +928,105 @@ void gsAdaptiveMultiPatchBuilder::basis_functions(const gsKnotVector<double>& kn
 };
 
 // compute the right-hand side vector for the composition of Left mapping and Monge-Ampere mapping
-void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_1d(const index_t& p1, const gsKnotVector<double>& knots_1,
-                           const double& valpt, const index_t& dir_valpt,  const index_t& comp_nb,
-                           gsVector<double>& rhs) const {
-    
+void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_1d(
+    const gsBasis<>& basis,
+    const index_t& p1,
+    const gsKnotVector<double>& knots_1,
+    const double& valpt,
+    const index_t& dir_valpt,
+    const index_t& comp_nb,
+    gsVector<double>& rhs) const 
+{
     rhs.setZero();
+
     const double pi = 3.141592653589793;
-    index_t m       = p1+p1 + 1;
-    index_t nRoots  = (m + 1) / 2;
+    index_t m = p1*p1 + 1;
+    index_t nRoots = (m + 1) / 2;
 
-    gsVector<double> w(m);
-    gsVector<double> u(m);
+    static gsVector<double> u, w;
+    static bool initialized = false;
 
-    #pragma omp parallel for
-    for (index_t i = 0; i < nRoots; ++i) {
-        double t = std::cos(pi* (i + 0.75) / (m + 0.5));
-        for (index_t j = 0; j < 30; ++j) {
-            double p_0   = 1.0;
-            double p_1   = t;
-            for (index_t k = 1; k < m; ++k) {
-                double pn = ((2.0 * k + 1.0) * t * p_1 - k * p_0) / (1.0 + k);
-                p_0       = p_1;
-                p_1       = pn;
-            }
-            double dp = m * (p_0 - t * p_1) / (1.0 - t * t);
-            double dt = -p_1 / dp;
-            t += dt;
-            if (std::abs(dt) < 1e-14) {
-                u(i) = t;
-                u(m - i - 1) = -t;
-                w(i) = 2.0 / ((1.0 - t * t) * dp * dp);
-                w(m - i - 1) = w(i);
-                break;
+    if (!initialized)
+    {
+        u.resize(m);
+        w.resize(m);
+
+        for (index_t i = 0; i < nRoots; ++i)
+        {
+            double t = std::cos(pi*(i + 0.75)/(m + 0.5));
+
+            for (index_t j = 0; j < 30; ++j)
+            {
+                double p0 = 1.0, p1_ = t;
+
+                for (index_t k = 1; k < m; ++k)
+                {
+                    double pn = ((2.0*k+1.0)*t*p1_ - k*p0)/(k+1.0);
+                    p0 = p1_;
+                    p1_ = pn;
+                }
+
+                double denom = (1.0 - t*t);
+                if (std::abs(denom) < 1e-14) break;
+
+                double dp = m*(p0 - t*p1_)/denom;
+                double dt = -p1_/dp;
+
+                t += dt;
+
+                if (std::abs(dt) < 1e-14)
+                {
+                    u(i) = t;
+                    u(m-i-1) = -t;
+                    w(i) = 2.0/((1.0 - t*t)*dp*dp);
+                    w(m-i-1) = w(i);
+                    break;
+                }
             }
         }
+        initialized = true;
     }
-    // Compute the number of basis functions in each direction
-    index_t nb1   = knots_1.size() - p1 - 1;
 
-    // Compute the number of elements in each direction
+    index_t nb1 = knots_1.size() - p1 - 1;
     index_t ne1 = nb1 - p1;
 
     gsVector<double> points_cmp(2);
     points_cmp(dir_valpt) = valpt;
-    index_t dir_op{1-dir_valpt};// only one point in the other direction, which means the basis functions in the other direction are all 1
+    index_t dir_op = 1 - dir_valpt;
 
-    #pragma omp parallel for
-    for (index_t ie1 = 0; ie1 < ne1; ++ie1) {
+    for (index_t ie1 = 0; ie1 < ne1; ++ie1)
+    {
+        double a1 = knots_1[ie1 + p1];
+        double b1 = knots_1[ie1 + p1 + 1];
 
-        // coefs of the element for quadrature points
-        double a1   = knots_1[ie1 + p1];
-        double b1   = knots_1[ie1 + p1 + 1];
-        double c0_1 = 0.5 * (a1 + b1);
-        double c1_1 = 0.5 * (b1 - a1);
-        for (index_t g1 = 0; g1 < m; ++g1) {
-            // map the quadrature points to the element
-            double x1 = c1_1 * u(g1) + c0_1;
-            double w1 = c1_1 * w(g1);
-            // Compute the basis functions in the first direction
+        if (std::abs(b1 - a1) < 1e-14)
+            continue;
+
+        double c0 = 0.5*(a1 + b1);
+        double c1 = 0.5*(b1 - a1);
+
+        for (index_t g1 = 0; g1 < m; ++g1)
+        {
+            double x1 = c1*u(g1) + c0;
+            double w1 = c1*w(g1);
+
             index_t span1;
-            gsVector<double> xbasis_0(p1 + 1);
-            gsVector<double> xbasis_1(p1 + 1);                
-            basis_functions(knots_1, p1, x1, span1, xbasis_0, xbasis_1);
+            gsVector<double> N(p1+1), dN(p1+1);
 
-            // Assembles solution in uniform mesh
+            basis_functions(knots_1, p1, x1, span1, N, dN);
+
             points_cmp(dir_op) = x1;
+            // gsInfo << "before :" << points_cmp;
             gsMatrix<> val_i = MAmapping.patch(0).eval(points_cmp);
-            double val_f     = m_mapping.patch(0).eval(val_i)[comp_nb];
+            val_i(dir_valpt) = valpt;
+            val_i.cwiseMax(0).cwiseMin(1);
+            // gsInfo << "after :" << val_i << "---\n";
+            double val_f = m_mapping.patch(0).eval(val_i)[comp_nb];
 
-            for (index_t i = 0; i <= p1; ++i) {
-                index_t gi   = (span1 - p1+i );
-                rhs[gi] +=  val_f * xbasis_0[i] * w1;
+            for (index_t i = 0; i <= p1; ++i)
+            {
+                index_t gi = span1 - p1 + i;
+                rhs[gi] += val_f * N(i) * w1;
             }
         }
     }

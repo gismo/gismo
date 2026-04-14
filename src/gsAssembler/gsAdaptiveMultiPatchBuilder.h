@@ -62,8 +62,11 @@ public:
  
     // ... assemble the mass matrix for a given basis, this is used in the projection of the composition of geometry maps
     gsSparseMatrix<> assembleMass(const gsBasis<>& basis) const;
+
+    gsBoundaryConditions<> boundaryConditionsForDirection( const gsBoundaryConditions<>& bc, index_t direction ) const;
+    void eliminateDirichlet1D(const gsBoundaryConditions<>& bc, const gsOptionList& opt, gsSparseMatrix<> & result) const;
     // ... correct the boundary constrol points only in two dimensions
-    void CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly) const;
+    void CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners = false) const;
 
     //-----------------------------------------
     //  functions to build mapping from density
@@ -95,7 +98,7 @@ public:
                      gsVector<double>& d1) const;
 
     // Method to compute the right-hand side vector for composition of mpLeft and MAE mapping assembly in 1D
-    void assemble_rhsvector_1d(const index_t& p1, const gsKnotVector<double>& knots_1, const double& valpt, const index_t& dir_valpt,  const index_t& comp_nb,
+    void assemble_rhsvector_1d(const gsBasis<>& basis, const index_t& p1, const gsKnotVector<double>& knots_1, const double& valpt, const index_t& dir_valpt,  const index_t& comp_nb,
                            gsVector<double>& rhs) const;
     // Method to compute the right-hand side vector for adaptive multi-patch assembly in 2D
     void assemble_rhsvector_2d(const index_t& p1, const index_t& p2,
