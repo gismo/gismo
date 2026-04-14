@@ -54,28 +54,28 @@ int main(int argc, char *argv[])
 
     gsFiberMatrix<real_t> mat = ta.kronecker().toFiberMatrix();
 
-    //-------- START TEST
-    auto & kp = ta.kronecker();
-    auto kpop = memory::make_shared_not_owned( (gsLinearOperator<>*)(&kp)); 
-    gsMatrix<> vec(kp.cols(),1);
-    vec.setRandom();
-    gsInfo << "Random vector :"<< vec.transpose() <<"\n";
-    gsMatrix<> prod;
-    kp.apply(vec, prod); // computes product kp*vec;
-    gsInfo << ( prod.transpose() ) <<"\n";
-    gsInfo << ( (mat.toSparseMatrix() * vec).transpose() ) <<"\n";
-    
-    gsVector<> diag;
-    kp.diagonal_into(diag);
-    gsDiagonalOp<real_t> dop(diag);
-
-    //gsConjugateGradient<> PCG( kpop /*, dop*/ ); // setup CG
-    gsBiCgStab<> PCG( kpop /*, dop*/ ); // this works for non-symmetric
-    gsMatrix<> x(kp.rows(),1);
-    x.setZero();
-    PCG.solve(prod, x);
-    gsInfo << "Solution :"<< x.transpose() <<"\n";
-    //------------ END TEST
+    // //-------- START TEST MATRIX-FREE SOLVER
+    // auto & kp = ta.kronecker();
+    // auto kpop = memory::make_shared_not_owned( (gsLinearOperator<>*)(&kp));
+    // gsMatrix<> vec(kp.cols(),1);
+    // vec.setRandom();
+    // gsInfo << "Random vector :"<< vec.transpose() <<"\n";
+    // gsMatrix<> prod;
+    // kp.apply(vec, prod); // computes product kp*vec;
+    // gsInfo << ( prod.transpose() ) <<"\n";
+    // gsInfo << ( (mat.toSparseMatrix() * vec).transpose() ) <<"\n";
+    //
+    // gsVector<> diag;
+    // kp.diagonal_into(diag);
+    // gsDiagonalOp<real_t> dop(diag);
+    //
+    // //gsConjugateGradient<> PCG( kpop /*, dop*/ ); // setup CG
+    // gsBiCgStab<> PCG( kpop /*, dop*/ ); // this works for non-symmetric
+    // gsMatrix<> x(kp.rows(),1);
+    // x.setZero();
+    // PCG.solve(prod, x);
+    // gsInfo << "Solution :"<< x.transpose() <<"\n";
+    // //------------ END TEST MATRIX-FREE SOLVER
     
     // gsInfo << "Matrix size: \n" << mat.rows() <<"\n";
     // gsInfo << "Matrix : \n" << mat.toSparseMatrix().toDense() <<"\n";
