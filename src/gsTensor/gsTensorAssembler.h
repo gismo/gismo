@@ -27,7 +27,8 @@ namespace gismo
 enum GalerkinMatrix
 {
     MASS      = 1U << 1,
-    STIFFNESS = 1U << 2
+    STIFFNESS = 1U << 2,
+    DIFFUSION = 1U << 3
 };
 
 
@@ -83,6 +84,8 @@ public:
             assembleMass<d>(kernel, skeleton_mat);
         if (mode==STIFFNESS)
             assembleStiffness<d>(kernel, skeleton_mat);
+        if (mode==DIFFUSION)
+            assembleWeightedLaplace<d>(kernel, skeleton_mat);
 
         const index_t rank = kernel.totalRank();
         m_kprod.reset( new gsKroneckerMatrix<T,d>(give(skeleton_mat)) );
@@ -220,6 +223,118 @@ public:
 #ifdef DO_TIMING
         assembly += timer.stop();
 #endif
+    }
+
+    template<short_t d>
+    void assembleWeightedLaplace(const gsTensorFunction<T>& rho,
+                             cwiseMat& skeleton)
+    {
+    #ifdef DO_TIMING
+        timer.restart();
+    #endif
+
+        const gsTensorBSplineBasis<d,T> & basis =
+            *dynamic_cast<const gsTensorBSplineBasis<d,T>*>(m_basis);
+
+        const gsVector<int> & ranks = rho.ranks();
+
+        GISMO_ASSERT(ranks.size() == 1,
+            "assembleWeightedLaplace expects a scalar tensor function rho; "
+            "rho.ranks() must contain exactly one entry, got size = "
+            << ranks.size() << ", ranks = " << ranks.transpose());
+
+        const index_t Rrho = ranks[0];
+        GISMO_ASSERT(Rrho > 0, "rho rank must be positive.");
+
+        std::vector<gsMatrix<T> > ev_b;
+        gsMatrix<T> qNodes, ev_rho, localMat;
+        gsVector<T> qWeights;
+        gsMatrix<index_t> actives;
+
+        skeleton.resize(d);
+
+        for (int k = 0; k < d; ++k) // assemble 1D factors in direction k
+        {
+            const gsBSplineBasis<T> & b = basis.component(k);
+            const gsFunction<T> & rho_k = rho.component(k);
+
+            const index_t sz  = b.size();
+            const index_t msz = d * Rrho * sz; // one block for each (r,t)
+
+            gsFiberMatrix<T> & mat_k = skeleton[k];
+            mat_k.resize(sz, msz);
+            mat_k.setZero();
+            mat_k.reserve(gsVector<size_t>::Constant(msz, 2 * b.degree(0) + 1));
+
+            const index_t numNodes = b.degree(0) + 1;
+            gsGaussRule<T> QuRule(numNodes);
+
+            typename gsBasis<T>::domainIter domIt    = b.domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = b.domain()->endAll();
+
+            for (; domIt != domItEnd; ++domIt)
+            {
+                b.active_into(domIt.centerPoint(), actives);
+                const index_t numActive = actives.rows();
+
+                QuRule.mapTo(domIt.lowerCorner().value(),
+                             domIt.upperCorner().value(),
+                             qNodes, qWeights);
+
+                b.evalAllDers_into(qNodes, 1, ev_b);
+                const gsMatrix<T> & ev   = ev_b[0];
+                const gsMatrix<T> & grad = ev_b[1];
+
+                rho_k.eval_into(qNodes, ev_rho);
+
+                GISMO_ASSERT(ev_rho.rows() == Rrho,
+                    "rho.component(" << k << ") evaluated to " << ev_rho.rows()
+                    << " rows, expected Rrho = " << Rrho);
+
+                // optional precomputation of the two possible kernels
+                std::vector<gsMatrix<T> > EE(numNodes), GG(numNodes);
+                for (index_t j = 0; j < numNodes; ++j)
+                {
+                    EE[j].noalias() = ev.col(j)   * ev.col(j).transpose();
+                    GG[j].noalias() = grad.col(j) * grad.col(j).transpose();
+                }
+
+                index_t pos = 0;
+                for (int r = 0; r < d; ++r)      // derivative direction
+                {
+                    const bool useGrad = (r == k);
+
+                    for (index_t t = 0; t < Rrho; ++t) // rank-1 term of rho
+                    {
+                        localMat.setZero(numActive, numActive);
+
+                        for (index_t j = 0; j < numNodes; ++j)
+                        {
+                            const gsMatrix<T> & kernel = useGrad ? GG[j] : EE[j];
+                            localMat.noalias() += qWeights[j] * ev_rho(t, j) * kernel;
+                        }
+
+                        const index_t qq = sz * pos;
+
+                        for (index_t i = 0; i < numActive; ++i)
+                        {
+                            const index_t ii = actives(i,0);
+                            for (index_t j = 0; j < numActive; ++j)
+                            {
+                                const index_t jj = actives(j,0);
+                                mat_k.coeffRef(ii, qq + jj) += localMat(i,j);
+                            }
+                        }
+
+                        ++pos;
+                    }
+                }
+            }
+        }
+
+    #ifdef DO_TIMING
+        assembly += timer.stop();
+    #endif
     }
 
 /*

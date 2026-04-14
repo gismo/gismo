@@ -78,6 +78,17 @@ int main(int argc, char *argv[])
     gsInfo << "Standard assembly matrix: \n" << mat_std <<"\n";
     gsInfo << "Difference: \n" << (mat.toSparseMatrix().toDense() - mat_std).cwiseAbs().maxCoeff() <<"\n";
 
+
+    // diffusion assembly test
+    gsTensorFunction<> density_field(2,0); // creates a constant function = 1
+    gsTensorAssembler<> ta_diffusion;
+    ta_diffusion.compute(*basis, DIFFUSION, density_field); // DIFFUSION
+
+    gsFiberMatrix<real_t> mat_diffusion = ta_diffusion.kronecker().toFiberMatrix();
+
+    gsInfo << "Matrix size: \n" << mat_diffusion.rows() <<"\n";
+    gsInfo << "Matrix : \n" << mat_diffusion.toSparseMatrix().toDense() <<"\n";
+
     return 0;
 }
 
