@@ -85,32 +85,6 @@ gsFreeformFaceData<N>::gsFreeformFaceData(const gsSurfMesh& mesh,
 }
 
 template <size_t N>
-gsMatrix<gsVector<real_t>*>
-gsFreeformFaceData<N>::control_points_oriented(gsSurfMesh& mesh, Halfedge hedge)
-{
-
-    gsMatrix<gsVector<real_t>*> result;
-    result.resize(control_points.rows(), control_points.cols());
-    for (int i = 0; i < control_points.rows(); ++i)
-    {
-        for (int j = 0; j < control_points.cols(); ++j)
-        {
-            result(i, j) = &control_points(i, j);
-        }
-    }
-    result = result.rotate_ccw();
-    // find the edge on the face
-    for (auto const& he : mesh.halfedges(face))
-    {
-        if (he == hedge)
-            break;
-
-        result = result.rotate_cw();
-    }
-    return result;
-}
-
-template <size_t N>
 const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N>::patch() const
 {
     // Create a spline basis for a normal bezier patch.
