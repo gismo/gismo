@@ -54,28 +54,28 @@ int main(int argc, char *argv[])
 
     gsFiberMatrix<real_t> mat = ta.kronecker().toFiberMatrix();
 
-    //-------- START TEST
-    auto & kp = ta.kronecker();
-    auto kpop = memory::make_shared_not_owned( (gsLinearOperator<>*)(&kp)); 
-    gsMatrix<> vec(kp.cols(),1);
-    vec.setRandom();
-    gsInfo << "Random vector :"<< vec.transpose() <<"\n";
-    gsMatrix<> prod;
-    kp.apply(vec, prod); // computes product kp*vec;
-    gsInfo << ( prod.transpose() ) <<"\n";
-    gsInfo << ( (mat.toSparseMatrix() * vec).transpose() ) <<"\n";
-    
-    gsVector<> diag;
-    kp.diagonal_into(diag);
-    gsDiagonalOp<real_t> dop(diag);
-
-    //gsConjugateGradient<> PCG( kpop /*, dop*/ ); // setup CG
-    gsBiCgStab<> PCG( kpop /*, dop*/ ); // this works for non-symmetric
-    gsMatrix<> x(kp.rows(),1);
-    x.setZero();
-    PCG.solve(prod, x);
-    gsInfo << "Solution :"<< x.transpose() <<"\n";
-    //------------ END TEST
+    // //-------- START TEST MATRIX-FREE SOLVER
+    // auto & kp = ta.kronecker();
+    // auto kpop = memory::make_shared_not_owned( (gsLinearOperator<>*)(&kp));
+    // gsMatrix<> vec(kp.cols(),1);
+    // vec.setRandom();
+    // gsInfo << "Random vector :"<< vec.transpose() <<"\n";
+    // gsMatrix<> prod;
+    // kp.apply(vec, prod); // computes product kp*vec;
+    // gsInfo << ( prod.transpose() ) <<"\n";
+    // gsInfo << ( (mat.toSparseMatrix() * vec).transpose() ) <<"\n";
+    //
+    // gsVector<> diag;
+    // kp.diagonal_into(diag);
+    // gsDiagonalOp<real_t> dop(diag);
+    //
+    // //gsConjugateGradient<> PCG( kpop /*, dop*/ ); // setup CG
+    // gsBiCgStab<> PCG( kpop /*, dop*/ ); // this works for non-symmetric
+    // gsMatrix<> x(kp.rows(),1);
+    // x.setZero();
+    // PCG.solve(prod, x);
+    // gsInfo << "Solution :"<< x.transpose() <<"\n";
+    // //------------ END TEST MATRIX-FREE SOLVER
     
     // gsInfo << "Matrix size: \n" << mat.rows() <<"\n";
     // gsInfo << "Matrix : \n" << mat.toSparseMatrix().toDense() <<"\n";
@@ -106,15 +106,15 @@ int main(int argc, char *argv[])
     // gsInfo << "Standard assembly matrix: \n" << mat_std <<"\n";
     // gsInfo << "Difference: \n" << (mat.toSparseMatrix().toDense() - mat_std).cwiseAbs().maxCoeff() <<"\n";
 
-    // rank-1 density with sinusoidal variation
-    std::vector<gsMatrix<real_t>> skeleton(2);
-
+    // // rank-1 density with sinusoidal variation
+    // std::vector<gsMatrix<real_t>> skeleton(2);
+    //
     index_t n1 = basis->component(0).size();
     index_t n2 = basis->component(1).size();
-
-    skeleton[0].resize(n1,1);
-    skeleton[1].resize(n2,1);
-
+    //
+    // skeleton[0].resize(n1,1);
+    // skeleton[1].resize(n2,1);
+    //
     // --- compute Greville points ---
     auto grevillePoints = [](const gsBSplineBasis<real_t>& b)
     {
@@ -141,19 +141,49 @@ int main(int argc, char *argv[])
 
     gsVector<real_t> gx = grevillePoints(b1);
     gsVector<real_t> gy = grevillePoints(b2);
+    //
+    // // --- build rho ---
+    // for (index_t i = 0; i < n1; ++i)
+    // {
+    //     skeleton[0](i,0) = 1.0 + 0.8 * std::sin(6.0 * M_PI * gx[i]);
+    // }
+    // for (index_t j = 0; j < n2; ++j)
+    // {
+    //    skeleton[1](j,0) = 1.0 + 0.8 * std::cos(6.0 * M_PI * gy[j]);
+    // }
+    // // skeleton[1].col(0).setOnes();
+    //
+    // gsTensorFunction<> rho(*basis, skeleton);
 
-    // --- build rho ---
-    for (index_t i = 0; i < n1; ++i)
-    {
-        skeleton[0](i,0) = 1.0 + 0.8 * std::sin(6.0 * M_PI * gx[i]);
-    }
-    for (index_t j = 0; j < n2; ++j)
-    {
-       skeleton[1](j,0) = 1.0 + 0.8 * std::cos(6.0 * M_PI * gy[j]);
-    }
-    // skeleton[1].col(0).setOnes();
+    ////////////// test tensor approximation //////////////
+    // gsTensorBSplineBasis<2,real_t> prBasis(dynamic_cast<gsTensorBSplineBasis<2,real_t>>(*basis));
+    const gsTensorBSplineBasis<2,real_t>& prBasis = dynamic_cast<const gsTensorBSplineBasis<2,real_t>&>(*basis);
 
-    gsTensorFunction<> rho(*basis, skeleton);
+    gsInfo << "Interpolation basis: " << prBasis << "\n";
+
+    const gsMatrix<real_t> pts = prBasis.anchors();
+
+    // rho(x,y) = 1 + 0.3 sin(2 pi x) cos(2 pi y)
+    gsFunctionExpr<real_t> rho_density(
+        "1.0 + 0.8*sin(6*pi*x)*cos(8*pi*y)",
+        2
+    );
+
+    gsMatrix<real_t> vals = rho_density.eval(pts);
+
+    auto Afap = prBasis.interpolateAtAnchors(vals);
+
+    real_t eps = 1e-3;
+    index_t maxrank = 10;
+
+    gsTensorFunction<real_t> rho(*Afap, eps, maxrank);
+    ////////////////////////////////////
+
+
+
+
+
+
 
     gsStopwatch timer_diffusion;
     timer_diffusion.restart();
