@@ -36,37 +36,27 @@ public:
                                 double IntensityMAE = 9.0,
                                 index_t numReduce   = 0,
                                 index_t numElevate  = 0);
-    //... Identity mapping in square to itself
-    gsMultiPatch<> mp; 
-    // ... optimal Monge-Ampere mapping in square to itself
+    
+    // ... optimal Monge-Ampere (or moving mesh) mapping in square to itself
     mutable gsMultiPatch<> MAmapping;
-    // ... density coefs
+
+    // ... containes error values ovr elements, which considered piecewise density function vector
     mutable gismo::gsMatrix<> errorVector;    
+
     // m_maxIter: max iterations, in moving mesh we want to change max iteration since we start with adaptive mapping
     index_t m_maxIter;
+
     // degees of freedom used in the computation
     int DoFs;
 public:
 
-    //... uniform refinement
     void uniformRefine(const index_t numRefine = 1);
-
-    // Project control points following  normal direction at the boundaries for square domain 
-    void NormalProjectPts(gsMultiPatch<>& Psi) const;
 
     // Method to build a density function from analytic form: we project first f o F into a spline space (avoid composing three functions)
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
     // Build and return a density as a MultiPatch object from marked elements using local h-refinement strategies
     gsMultiPatch<> buildDensity(const gsMultiBasis<> Hbasis, const  std::vector<bool> elMarked, const index_t setRhogrid = 0, const  index_t setRhoZero = 0) const;
- 
-    // ... assemble the mass matrix for a given basis, this is used in the projection of the composition of geometry maps
-    gsSparseMatrix<> assembleMass(const gsBasis<>& basis) const;
-
-    gsBoundaryConditions<> boundaryConditionsForDirection( const gsBoundaryConditions<>& bc, index_t direction ) const;
-    void eliminateDirichlet1D(const gsBoundaryConditions<>& bc, const gsOptionList& opt, gsSparseMatrix<> & result) const;
-    // ... correct the boundary constrol points only in two dimensions
-    void CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners = false) const;
 
     //-----------------------------------------
     //  functions to build mapping from density
@@ -74,18 +64,36 @@ public:
     // Method to build a multipatch Monge-Ampere mapping: tolMAE is tolerance in Picard iterations
     void buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE = 1e-5) const;
 
+    //---------------------------------------------------------------------------------
+    //  functions to project the composition of Initial mapping and moving mesh mapping
+    //---------------------------------------------------------------------------------
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : L2-projection
     gsMultiPatch<> buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue = 1, const bool& sepBoundary = false) const;
 
-    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : fitting
-    gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 50, const real_t lambda = 0.) const;
+    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : fitting (penalized least sqaure)
+    gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 50, const real_t lambda = 0, const bool& sepboundary = false) const;
 
     // computes the projection of a composition and return a MultiPatch object :: Collocation
     gsMultiPatch<> buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const;
     
     //----------------------------------------
-    // Useful functions for time moving meshes
+    // Useful functions for moving mesh
     //----------------------------------------
+    // ... assemble the mass matrix for a given basis in one dimension
+    gsSparseMatrix<> assembleMass(const gsBasis<>& basis) const;
+    
+    // ... extract boundary condition for each direction 
+    gsBoundaryConditions<> boundaryConditionsForDirection( const gsBoundaryConditions<>& bc, index_t direction ) const;
+
+    // ... apply dirichlet by elimination
+    void eliminateDirichlet1D(const gsBoundaryConditions<>& bc, const gsOptionList& opt, gsSparseMatrix<> & result) const;
+
+    // ... correct the boundary constrol points only in two dimensions
+    void CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners = false) const;
+
+    // Project control points following normal direction at the boundaries for square domain for moving mesh mapping
+    void NormalProjectPts(gsMultiPatch<>& Psi) const;
+
     // Method to build a inverse multipatch adaptive mapping by projection the composition of geometry maps : fitting
     gsMultiPatch<> buildInverseMultiPatch(const gsMultiPatch<> lastMAEmapping, const int numElData = 50, const real_t lambda = 0., const bool UpdateInTime = true) const;
 
@@ -113,9 +121,12 @@ public:
 
 private:
     gsMultiBasis<double> m_basis;
-    gsMultiPatch<double> m_mapping;
+    //... Identity mapping in square to itself
+    gsMultiPatch<double> identity_mp; 
+    gsMultiPatch<double> initial_mapping;
     double m_IntensityMAE;
-    gsBoundaryConditions<> bc_mae;
+    gsFunctionExpr<double> neumann_id;
+    gsBoundaryConditions<double> bc_mae;
 public:
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson;
 };

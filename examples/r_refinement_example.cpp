@@ -319,11 +319,11 @@ int main(int argc, char *argv[])
     //----------------------------------------------------------------------
     if(L2proj)
     {
-    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue, true);
+    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue);
     geometryMap GPi = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
-    double Binf = 0.;
+    double Binf    = 0.;
     ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf);
     L2Jerror[r]             = abs(ev.integral( jac(GPi).det() - jac(Cmp).det()*jac(PP).det() ) );
     Hdferror[r]             = maxDist;// std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));

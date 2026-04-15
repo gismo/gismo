@@ -20,6 +20,8 @@ typedef gsExprAssembler<>::space       space;
 typedef gsExprAssembler<>::solution    solution;
 gsSparseSolver<>::CGDiagonal solver; // ... for the composition
 
+
+//+++++++++++++++++++++++++++
 // Constructor implementation
 gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,
                             index_t numRefine,
@@ -29,7 +31,8 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
                             index_t numElevate)
 {
     gsInfo<<"\n <>r-refinement ";
-    // Build a (B-spline) multi-basis from the geometry mapping for the Monge–Ampère solver
+    //-------------------------------------------------------------------------------------
+    // Build a (B-spline) multi-basis for the Monge–Ampère solver
     gsMultiBasis<> dbasis(mapping, true);
     //... refine basis for convergence 
     for (int r=0; r<numRefine; ++r)
@@ -43,69 +46,65 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
         // Elevate degree if possible
         dbasis.degreeElevate(numElevate);
     }
+    // Store input parameters
+    this->m_basis        = dbasis;
+    this->m_maxIter      = maxIter;
+    this->m_IntensityMAE = IntensityMAE;
+    this->DoFs           = m_basis.size();
+    this->initial_mapping= mapping; 
 
-    gsInfo << "Using B-splines of degree " << dbasis.degree() << " DoFs ";
-    // Create parametric domain matching initial mapping
+    gsInfo << "nb patches" << mapping.nPatches() << "Using B-splines of degree " << dbasis.degree() << " DoFs ";
+
+    //--------------------------------------------------
+    // Create parametric identity mapping
     auto corners         = dbasis.basis(0).support();
+    gsMultiPatch<> mp;
     mp.addPatch(gsNurbsCreator<>::BSplineRectangle(corners.at(0), corners.at(1), corners.at(2), corners.at(3)));
     // BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
-    gsFunctionExpr<> sN("x","y",2);
+    neumann_id = gsFunctionExpr<>("x","y",2);
     if (dbasis.dim() == 3){
         mp  = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,corners.at(3),corners.at(0)-0.5,corners.at(1)-0.5,corners.at(2)-0.5);
         // Manufactured identity mapping
-         sN = gsFunctionExpr<>("x","y","z",3);
+        neumann_id = gsFunctionExpr<>("x","y","z",3);
     }
     // Compute topology for interfaces and boundaries
     mp.computeTopology();
+    this->identity_mp    = mp;
 
+    //--------------------------------------------------
     // Initialize boundary conditions for Monge-Ampere solver
-    gsBoundaryConditions<> bc_mae;
-    bc_mae.setGeoMap(mp);
+    this->bc_mae.setGeoMap(identity_mp);
     for ( gsMultiPatch<>::const_biterator
-            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+            bit = identity_mp.bBegin(); bit != identity_mp.bEnd(); ++bit)
     {
-        bc_mae.addCondition( *bit, condition_type::neumann, &sN );
+        this->bc_mae.addCondition( *bit, condition_type::neumann, &neumann_id );
     }
-     
-    //... Poisson fast diagonalization solver
-    //! [Problem setup]
+
+    //::::::::::::::::::::      Poisson fast diagonalization solver         :::::::::::::::::::::::::
     gsExprAssembler<> A(1,1);
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), bc_mae, A.options(), 1e-6);  
+    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), this->bc_mae, A.options(), 1e-6);  
 
     // Store input parameters
-    this->m_basis        = dbasis;
-    this->m_mapping      = mapping; 
-    this->m_maxIter      = maxIter;
-    this->m_IntensityMAE = IntensityMAE;
     this->Poisson        = Poisson;
-    this->mp             = mp;
-    this->DoFs           = m_basis.size();
     gsInfo<<this->DoFs <<"<> \n";
 }
 
-// Uniform refinement 
+
+/** \brief Refine every basis uniformly.
+ * \param bnumRefine Number of Uniform h-refinement times.
+ */
 void gsAdaptiveMultiPatchBuilder::uniformRefine(const index_t numRefine)
 {
-    // ... refine basis and mapping
+    //--------------------------------------------------
+    //refine basis and mapping (as we update mapping coefs/the basis)
     for( index_t i=0; i< numRefine; ++i){
     this->m_basis.uniformRefine();
     this->MAmapping.uniformRefine();
     }
 
+    //------------
+    // update DoFs
     this->DoFs      = m_basis.size();
-
-    // Initialize boundary conditions for Monge-Ampere solver
-    gsFunctionExpr<> sN("x","y",2);
-    if (this->m_basis.dim() == 3){
-        sN = gsFunctionExpr<>("x","y","z",3);
-    }
-    gsBoundaryConditions<> bc_mae;
-    bc_mae.setGeoMap(this->mp);
-    for ( gsMultiPatch<>::const_biterator
-            bit = this->mp.bBegin(); bit != mp.bEnd(); ++bit)
-    {
-        bc_mae.addCondition( *bit, condition_type::neumann, &sN );
-    }
     
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -116,57 +115,44 @@ void gsAdaptiveMultiPatchBuilder::uniformRefine(const index_t numRefine)
     gsInfo << "<>"<< this->DoFs <<" DoFs after uniRefine <>\n";
 }
 
-// Project control points following  normal direction at the boundaries for square domain (Exact square recovery after refinement)
-void gsAdaptiveMultiPatchBuilder::NormalProjectPts(gsMultiPatch<>& Psi) const
-{
-    // normal Projection of control points (exact geometry)
-    for (size_t boxNumber = 0; boxNumber < mp.nPatches(); ++boxNumber)
-    {
-        index_t bndIter  = 1;
-        #pragma omp parallel for
-        for (index_t dim = 0; dim < Psi.dim(); ++dim){
-            float_t lVal    = this->mp.patch(boxNumber).coef( this->mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
-            // x=0 control points be like (0,:) in this case
-            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x) 
-            {
-                Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(bndIter).at(i_x) ).array()[dim] = lVal;
-            }
-            bndIter ++;
-            float_t hVal    = this->mp.patch(boxNumber).coef( this->mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
-            // x=1 control points be like (1,:) in this case
-            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x)
-            {
-            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(bndIter).at(i_x) ).array()[dim] = hVal;
-            }
-            bndIter ++;
-        }
-    }
-}
 
-// Build and return a density as a MultiPatch object from analytical function (we avoid three compositions (r o F o Psi) here to be r o Psi)
+/** \brief Build and return a density as a MultiPatch object from analytical function 
+ * \remark (we avoid three compositions (r o F o Psi) here to be r o Psi)
+ * \param f density function defined on the physical domaine.
+ */
 gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctionExpr<>   &f) const 
 {
     gsInfo<<"<>density function: ";
-    //! [Problem setup]
+
+    //! Assemnbler
     gsExprAssembler<> A(1,1);
+
     // Elements used for numerical integration
     A.setIntegrationElements(this->m_basis);
+
+    //.. Evaluator
     gsExprEvaluator<> ev(A);
 
     // Set the discretization space
     space u             = A.getSpace(this->m_basis);
+
     // Set the Target geometry map
-    geometryMap GLeft   = A.getMap(this->m_mapping);
+    geometryMap GLeft   = A.getMap(this->initial_mapping);
+
     // Set the source term with respect to target geometry
     auto ff             = A.getCoeff(f, GLeft);
+
     // Solution vector and solution variable
     gsMatrix<> densityVector;
 
     //u.setup(bc_mae, dirichlet::l2Projection, 0);
     A.initSystem();
     A.assemble(u* ff.val()); //rhs vector
+
+    // prjection L2 of the composition
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
-    //...
+    
+    // save density funcrtion as multipatch
     solution density_sol = A.getSolution(u, densityVector);
     gsMultiPatch<> density;
     density_sol.extract(density);
@@ -174,19 +160,30 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
     return  density;
 }
 
-// Build and return a density as a MultiPatch object from solution vector using local h-refinement strategies
+
+/**
+ * \brief Build and return a density as a MultiPatch object from a solution vector using local h-refinement strategies.
+ *
+ * \remark We construct a new basis for the density function in order to control the mesh distribution over the computational domain.
+ * If a given density is defined on an adaptive mesh, it must first be projected to a uniform mesh 
+ * since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
+ * \param Hbasis Basis functions where the PDE solution is defined.
+ * \param elMarked Vector containing the marked elements.
+ * \param setRhogrid If 0, the density is reset to zero before adding the error distribution; otherwise, the error is accumulated.
+ * \param setRhoZero Density initialization flag: if 0, the density is set to zero; otherwise, it is set to a user-defined value (fixed here to 0.75).
+ */
 gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hbasis, const  std::vector<bool> elMarked, const index_t setRhogrid, const index_t setRhoZero) const 
 {   
-    //.. setRhoLevel: if 0 set the density to zero before adding the error distribution
     gsInfo<<"<>density function";
-    // ... error as a piecewise constant function
-    gsMultiBasis<> basis_0 (mp, true); // make a copy of basis before adaptive refinement
+
+    // ... basis_0 of degree 0 to represent error as a piecewise constant function
+    gsMultiBasis<> basis_0 (identity_mp, true); // make a copy of basis before adaptive refinement
     basis_0.uniformRefine(setRhogrid);
     while (basis_0.size() <= std::min( this->m_basis.size(), Hbasis.size())) // refine until having enough resolution for error representation
         basis_0.uniformRefine(); // refine to have enough resolution for error representation
 
     // ... We want each element to be reprensted by one basis for all patches
-    for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn ) 
+    for (size_t pn=0; pn < this->initial_mapping.nPatches(); ++pn ) 
     {
     for( index_t i_dir=0; i_dir<basis_0.dim(); ++i_dir){
        basis_0.basis(pn).degreeDecrease(basis_0.basis(pn).degree(i_dir),i_dir);
@@ -221,7 +218,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     // globalCount: counter for the current global element index
     int globalCount = 0;
     #pragma omp parallel for
-    for (size_t pn=0; pn < this->m_mapping.nPatches(); ++pn )// for all patches
+    for (size_t pn=0; pn < this->initial_mapping.nPatches(); ++pn )// for all patches
     {
         // for all elements in patch pn
         typename gsBasis<>::domainIter domIt =  // add patchInd to domainiter ?
@@ -250,6 +247,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     gsMultiPatch<> error_ml;
     error_sol.extract(error_ml);
 
+    //------------------------------------------------------------------------
+    // smoothing part of the error: we project density into more regular space
+    //------------------------------------------------------------------------
+
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     // Elements used for numerical integration
@@ -273,8 +274,11 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     gsInfo << ".";
 
     if (!MAmapping.empty()){
+    //-------------------------------------------------------------------------------------------------
     // If a given density is defined on an adaptive mesh, it must first be projected to a uniform mesh
     // since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
+    //-------------------------------------------------------------------------------------------------
+
     const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).knots(0);
     const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).knots(1);
     const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).degree(0);
@@ -306,32 +310,30 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     return  density;
 }
 
-// Build and return a MultiPatch object
+/**
+ * \brief Build and return a Monge–Ampère mapping as a MultiPatch object from a density function.
+ *
+ * \remark We solve iteratively the regularized Monge–Ampère equation
+ * \f[ -\Delta \psi + 10^{-6}\psi = \left( \det(\nabla^2 \psi) - \rho(\psi) \right)^{1/d},  \f]
+ * using a Picard iterative scheme.
+ *
+ * \param density Density function defined on the computational domain
+ *                (otherwise the composition must be projected).
+ * \param tolMAE Tolerance for the Picard iterative solver.
+ */
 void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE) const
 {
-    // Neumann Boundary conditions object to define and manage boundary conditions for the problem
-    gsBoundaryConditions<> bc_mae;
-    // Manufactured identity mapping
-    gsFunctionExpr<> sN("x","y",2);
-    if (this->m_basis.dim() == 3){
-        sN = gsFunctionExpr<>("x","y","z",3);
-    }
 
-    bc_mae.setGeoMap(this->mp);
-    // For simplicity, set Neumann boundary conditions
-    for ( gsMultiPatch<>::const_biterator
-                bit = this->mp.bBegin(); bit != this->mp.bEnd(); ++bit)
-    {
-            bc_mae.addCondition( *bit, condition_type::neumann, &sN );
-    }
-    
     // Target mapping
     gsMultiPatch<> Psi;
     gsInfo<<"<> Picard iterations";
+
+    // initialize timing
     double slv_time(0);
     gsStopwatch timer;
     timer.restart();
-    //! [Problem setup]
+
+    //! [Problem setup] Assembler
     gsExprAssembler<> A(1,1);
     A.options().setSwitch("SameElement",false);
 
@@ -340,16 +342,21 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
-    geometryMap G    = A.getMap(this->mp);
+    geometryMap G    = A.getMap(identity_mp);
+
     // Set the discretization space
     space u          = A.getSpace(this->m_basis);
+
     // Set pow for BFO method dim in parameteric domain
     auto IGdim       = G.domainDim();
+
     // Set factor for BFO method
     auto gammaMAE    = factorial(G.domainDim());
+
     // Solution vector and solution variable
     gsMatrix<> solVector;
     solution u_sol   = A.getSolution(u, solVector);
+
     // Solution vector and solution for projecting each direction of mapping
     gsMatrix<> vsolVector;
     solution v_sol   = A.getSolution(u, vsolVector);
@@ -359,6 +366,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
     double  int_uh_0 = 0.;
     double  int_uh_1 = 1.;
+
     if (empldensity < 1e-5|| this->m_IntensityMAE <= 1. )
     {
         gsInfo << " rho = 1.~~";
@@ -375,41 +383,49 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
 
     // Compute the Neumann terms defined on physical space
     auto g_N         = A.getBdrFunction(G);
+    
+    //.. for compatibility: induced from laplace with pure Neumann boundary conditions
     auto Neumann_Int = ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) );
+
     //... nromalisation of density function
     auto CoeffDensity= ev.integral((int_uh_0*abs(rho.val()) + int_uh_1));
+
     //... Compute the system matrix and right-hand side Monge-Ampere eqaution
     auto ExprMAE     = pow(pow(IGdim,IGdim)-gammaMAE+gammaMAE * CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1), 1./IGdim);
+
     // compute conductivity coefficient : related to pure numann bd conditions
     auto CoeffCond   = Neumann_Int/ev.integral(ExprMAE);
 
-    A.assemble(u*  CoeffCond * (-1.)*ExprMAE); //rhs vector
+    //Assemble rhs vector pof MAE-BFO method
+    A.assemble(u*  CoeffCond * (-1.)*ExprMAE);
 
     // Compute the Neumann terms defined on physical space
     A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
+
     gsInfo<< "." <<std::flush;// Assemblying done
     solVector        = A.rhs();
     solVector        = this->Poisson.solve(A.rhs());
     gsInfo<< "." <<std::flush; // Linear solving done
 
     if(MAmapping.empty()){
-    // Initial guess for the gradient of potential function
-    A.initSystem(IGdim);
-    // Obtain control points for the gradient of Psi
-    A.assemble(u * grad(u_sol));
-    timer.restart();
-    vsolVector       = Poisson.L2ProjectScalar(A.rhs().col(0));
-    slv_time        += timer.stop();
-    v_sol.extract(Psi);
-    for(index_t Mp=0; Mp<mp.dim(); ++Mp){
-    gsMultiPatch<> PsiPsitp_temp;
-    timer.restart();
-    vsolVector       = Poisson.L2ProjectScalar(A.rhs().col(Mp));
-    slv_time        += timer.stop();
-    v_sol.extract(PsiPsitp_temp);
-    Psi.embed(Mp+1);
-    Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
-    }
+
+        // Initial guess for the gradient of potential function
+        A.initSystem(IGdim);
+        // Obtain control points for the gradient of Psi
+        A.assemble(u * grad(u_sol));
+        timer.restart();
+        vsolVector       = Poisson.L2ProjectScalar(A.rhs().col(0));
+        slv_time        += timer.stop();
+        v_sol.extract(Psi);
+        for(index_t Mp=0; Mp<identity_mp.dim(); ++Mp){
+            gsMultiPatch<> PsiPsitp_temp;
+            timer.restart();
+            vsolVector       = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+            slv_time        += timer.stop();
+            v_sol.extract(PsiPsitp_temp);
+            Psi.embed(Mp+1);
+            Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+        }
     // // ... correct boundary
     NormalProjectPts(Psi);
     }
@@ -423,10 +439,12 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     {
         std::cout << "\r" << std::string(20,' ') << "\r<> Picard Iteration: " << ip << std::flush;
         
-        //.. geometry map
+        //.. geometry map under update
         geometryMap PP    = A.getMap(Psi);
+
         //... density in new optimized mesh
         auto rho          = A.getCoeff(density, PP);
+
         // ... update residual
         solution u_sol    = A.getSolution(u, solVector);
 
@@ -435,15 +453,20 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
 
         // Compute the system matrix and right-hand side Monge-Ampere eqaution
         auto  ExprMAE     = pow( abs(pow(div(PP).val(),IGdim) - gammaMAE*jac(PP).det()+ gammaMAE*CoeffDensity/(int_uh_0*abs(rho.val()) + int_uh_1)), 1./IGdim);
+
         // .. update Coeffeicient of conductivity
         auto IntegDensity = ev.integral(ExprMAE);
         CoeffCond         = Neumann_Int/IntegDensity;
-        // MAE system
+
+        // Update rhs of MAE-BFO method
         A.assemble(u * CoeffCond * (-1.) * ExprMAE);//rhs vector
+
         // Compute the Neumann terms defined on physical space
         A.assembleBdr(bc_mae.get("Neumann"), u * g_N.tr() * nv(G) );
+
         // gsInfo<< " ." <<std::flush;// Assemblying done
         solVector         = this->Poisson.solve(A.rhs());
+
         // ... compute error and residual
         auto l2Res        = math::sqrt(ev.integral( ( grad(u_sol)-grad(u_lsol)).sqNorm()  ));
         sv0               = solVector;
@@ -461,15 +484,16 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     A.initSystem(IGdim);
     // Obtain control points for the gradient of Psi
     A.assemble(u * grad(u_sol));
-    for(index_t Mp=0; Mp<mp.dim(); ++Mp){
-    gsMultiPatch<> PsiPsitp_temp;
-    timer.restart();
-    vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
-    slv_time  += timer.stop();
-    v_sol.extract(PsiPsitp_temp);
-    Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+    for(index_t Mp=0; Mp<identity_mp.dim(); ++Mp){
+        gsMultiPatch<> PsiPsitp_temp;
+        timer.restart();
+        vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+        slv_time  += timer.stop();
+        v_sol.extract(PsiPsitp_temp);
+        Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
     }
-    //... correct the boundary
+    //--------------------
+    //correct the boundary
     NormalProjectPts(Psi);
     // ...
     }//END for loop
@@ -480,17 +504,32 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     gsInfo<<" CPU-time : "<<std::scientific<< slv_time   <<"<>\n";
 };
 
-// computes the projection L^2 of a composition and return a MultiPatch object
+/**
+ * \brief Compute the L^2-projection of a composition and return it as a MultiPatch object.
+ *
+ * \remark The composition is projected onto a B-spline space using an L^2 projection.
+ *         In 2D, a boundary correction can be applied if the approximation near the
+ *         boundary is not sufficiently accurate (currently supported only in the tensor-product case).
+ *
+ * \param Cbasis Basis functions onto which the composition is projected.
+ * \param quadValue Number of quadrature points used to evaluate the composition.
+ *                  A recommended choice is degree(initial) * degree(MA mapping) + 1.
+ * \param sepBoundary If true, an additional correction is applied at the boundary.
+ */
 gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue, const bool& sepBoundary) const 
 {
 
     gsInfo<<"<L2> computes composition";
+
+    // target mapping
     gsMultiPatch<> Psi;
     
+    /// start timing
     double slv_time(0);
     gsStopwatch timer;
     timer.restart();
-    //! [Problem setup]
+
+    //! [Problem setup] assembler 
     gsExprAssembler<> A(1,1);
     A.options().setReal("quA", quadValue);
     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
@@ -506,18 +545,18 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     geometryMap PP = A.getMap(this->MAmapping);
     //...
     A.initSystem();
-    A.assemble(v*v.tr());//Matrix in one direction
+    A.assemble(v*v.tr());//Matrix for one component
     solver.compute( A.matrix() );
     // ...
-    auto comp      = A.getCoeff(this->m_mapping, PP);
+    auto comp      = A.getCoeff(this->initial_mapping, PP);
 
-    A.initSystem(this->m_mapping.geoDim());
+    A.initSystem(this->initial_mapping.geoDim());
     A.assemble(v * comp.tr() );// blocked by this one
     vsolVector     = solver.solve(A.rhs().col(0));
     v_sol.extract(Psi);
 
     #pragma omp for
-    for(index_t i=1; i<this->m_mapping.geoDim(); ++i)
+    for(index_t i=1; i<this->initial_mapping.geoDim(); ++i)
     {
         gsMultiPatch<> PsiVec;
         vsolVector = solver.solve(A.rhs().col(i));
@@ -525,9 +564,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
         Psi.embed(i+1);
         Psi.patch(0).coefs().col(i) = PsiVec.patch(0).coefs();
     }
-    //...
-    if (Psi.dim() == 2 && sepBoundary){
+
     // Correction step
+    if (Psi.dim() == 2 && sepBoundary){
     // since the initial mapping will be used in the composition.  (F o Psi)
     const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(0);
     const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
@@ -537,9 +576,9 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     // gsFunctionExpr<> sDir = gsFunctionExpr<>("0",2);
     // Initialize boundary conditions for Monge-Ampere solver
     // gsBoundaryConditions<> bc;
-    // bc.setGeoMap(m_mapping);
+    // bc.setGeoMap(initial_mapping);
     // for ( gsMultiPatch<>::const_biterator
-    //         bit = m_mapping.bBegin(); bit != m_mapping.bEnd(); ++bit)
+    //         bit = initial_mapping.bBegin(); bit != initial_mapping.bEnd(); ++bit)
     // {
     //     bc.addCondition( *bit, condition_type::dirichlet, &sDir );
     // }    
@@ -547,6 +586,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     // eliminateDirichlet1D(boundaryConditionsForDirection(bc,0), A.options(), Mx);
     gsSparseMatrix<> My  = assembleMass(Psi.basis(0).component(1));
     // eliminateDirichlet1D(boundaryConditionsForDirection(bc,1), A.options(), My);
+    // componenet by component
+    #pragma omp parallel for
     for(index_t comp_nb = 0; comp_nb < Psi.geoDim(); ++comp_nb){
         // y = 0 
         gsVector<> rhsxy0(Mx.rows());
@@ -584,7 +625,11 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     return Psi;
 };
 
-// computes the projection of a composition and return a MultiPatch object :: Collocation
+/**
+ * \brief computes the projection of a composition and return a MultiPatch object :: Collocation
+ *
+ * \param Cbasis Basis functions onto which the composition is projected.
+ */
 gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const 
 {
 
@@ -595,12 +640,12 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMulti
     gsStopwatch timer;
     timer.restart();
 
-    gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
+    gsMatrix<> initialGrid         = Cbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<> intfavlues          = this->MAmapping.patch(0).eval(intGrid);
-    intfavlues                     = intfavlues.cwiseMax(0).cwiseMin(1);
-    gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
-    gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateData(fValues, intGrid);
+    gsMatrix<> intervalues         = this->MAmapping.patch(0).eval(initialGrid);
+    intervalues                    = intervalues.cwiseMax(0).cwiseMin(1);
+    gsMatrix<> finalValues         = this->initial_mapping.patch(0).eval(intervalues);
+    gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateData(finalValues, initialGrid);
     // extract the mapping
     Psi.addPatch(give(interpolant));
     Psi.computeTopology();
@@ -611,8 +656,21 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMulti
     return Psi;
 };
 
-// computes the projection of a composition and return a MultiPatch object :: fitting
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData, const real_t lambda) const 
+/**
+ * \brief Compute the projection (fitting) of a composition and return it as a MultiPatch object.
+ *
+ * \remark The composition is approximated in a B-spline space using a least-squares (L^2) fitting approach.
+ *         In 2D, a boundary correction can be applied if the approximation near the boundary
+ *         is not sufficiently accurate (currently supported only in the tensor-product case).
+ *
+ * \param Cbasis Basis functions onto which the composition is projected.
+ * \param numElData Refinement level of the sampling grid used for the least-squares fitting,
+ *                  relative to the identity mapping.
+ * \param lambda Regularization (preconditioning) parameter; recommended value is 10^{-6},
+ *               or at least smaller than 10^{-3}.
+ * \param sepboundary if one want to separate boundary from inner  points in fitting procedure (based on Newton iteration( solve optimization pr))
+ */
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData, const real_t lambda, const bool& sepboundary) const 
 {
 
     gsInfo<<"<Fit> computes composition";
@@ -625,22 +683,37 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     double slv_time(0);
     gsStopwatch timer;
     timer.restart();
-    //...  just to generate grid
-    gsMultiBasis<> T_tbasis(mp, true);
+    //...  just to generate grid in the computational domain  (we start from identity as we want tensor grid)
+    gsMultiBasis<> T_tbasis(identity_mp, true);
 
-    while ( T_tbasis.basis(0).size() <= std::max(Cbasis.basis(0).size()*30, mp.basis(0).size()*numElData))
+    while ( T_tbasis.basis(0).size() <= std::max(Cbasis.basis(0).size()*30, identity_mp.basis(0).size()*numElData))
     {
         T_tbasis.uniformRefine();
     }
     gsInfo<<":gridsize="<<T_tbasis.basis(0).size()<<"/"<<Cbasis.basis(0).size();
-    gsMatrix<> intGrid    = T_tbasis.basis(0).anchors();
-    // gsMatrix<> intGrid             = Cbasis.basis(0).anchors();
+    gsMatrix<> initialGrid    = T_tbasis.basis(0).anchors();
+
+    // ------------------------------
+    // ... generate data for fitting
+    // gsMatrix<> initialGrid             = Cbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<> intfavlues          = this->MAmapping.patch(0).eval(intGrid);
-    intfavlues                     = intfavlues.cwiseMax(0).cwiseMin(1);
-    gsMatrix<> fValues             = this->m_mapping.patch(0).eval(intfavlues);
-    //! [Create  Hfitter]
-    index_t ngrids        = sqrt(intGrid.cols()); // number of grid points in one direction, assuming a square grid.
+    gsMatrix<> intervalues          = this->MAmapping.patch(0).eval(initialGrid);
+    intervalues                     = intervalues.cwiseMax(0).cwiseMin(1);
+    gsMatrix<> finalValues           = this->initial_mapping.patch(0).eval(intervalues);
+
+
+    //-----------------------
+    // start fitting
+    //-----------------------
+
+    // Create hierarchical refinement object
+    gsFitting<> ref(initialGrid, finalValues, THB);
+    //... compute coefs
+    ref.compute(lambda);
+
+    if(sepboundary){
+    // number of grid points in one direction, assuming a square grid.
+    index_t ngrids        = sqrt(initialGrid.cols()); 
     std::vector<index_t> boundaryIdx;
     for (index_t i = 0; i < ngrids; ++i)
     {
@@ -665,15 +738,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     interpIdx.push_back(nbInterior);
     for (auto b : boundaryIdx)
         interpIdx.push_back(b);
-    // Create hierarchical refinement object ***************
-    gsFitting<> ref(intGrid, fValues, THB);
     //... initialization of geometry for fitting
-    // gsMultiPatch<> PsiCol = m_mapping;
+    // gsMultiPatch<> PsiCol = initial_mapping;
     // while( PsiCol.basis(0).numElements() < Cbasis.basis(0).numElements())   
     //     PsiCol.uniformRefine();
-    // ref.initializeGeometry(PsiCol.patch(0).coefs(), intGrid);
-    //... compute coefs
-    ref.compute(lambda);
+    // ref.initializeGeometry(PsiCol.patch(0).coefs(), initialGrid);
+    ref.parameterProjectionSepBoundary(1e-4, interpIdx);
+    }
 
     //! [extract the mapping]
     Psi.addPatch(give(*ref.result()));
@@ -685,7 +756,20 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     return Psi;
 };
 
-// computes the projection of a the inverse mapping and return a MultiPatch object :: fitting
+/**
+ * \brief  computes the projection of a the inverse mapping and return a MultiPatch object :: fitting
+ * 
+ * \remark The solution is approximated in a B-spline space using a least-squares (L^2) fitting approach.
+ *         solution(tn) = soFo\Psi^[n} -->  solution(tn) = soFo\Psi^{n+1}
+ *
+ * \param lastMAEmapping mapping at time step tn
+ * \param numElData Refinement level of the sampling grid used for the least-squares fitting,
+ *                  relative to the identity mapping.
+ * \param lambda Regularization (preconditioning) parameter; recommended value is 10^{-6},
+ *               or at least smaller than 10^{-3}.
+ * \param UpdateInTime Computes the composition of Psi_n^{-1} o Psi_{n+1}
+ * \todo not working yet 
+ */
 gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildInverseMultiPatch(const gsMultiPatch<> lastMAEmapping, const int numElData, const real_t lambda, const bool UpdateInTime) const 
 {
 
@@ -698,7 +782,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildInverseMultiPatch(const gsMulti
     gsStopwatch timer;
     timer.restart();
     //...  just to generate grid
-    gsMultiBasis<> T_tbasis(mp, true);
+    gsMultiBasis<> T_tbasis(identity_mp, true);
 
     while ( T_tbasis.basis(0).numElements() <= MAmapping.basis(0).numElements()*numElData)
     {
@@ -706,14 +790,14 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildInverseMultiPatch(const gsMulti
     }
     gsInfo<<":gridsize="<<T_tbasis.basis(0).numElements()<<"/"<<MAmapping.basis(0).numElements();
     // Inverse mappinbg first 
-    gsMatrix<> intGrid     = T_tbasis.basis(0).anchors();
+    gsMatrix<> initialGrid     = T_tbasis.basis(0).anchors();
     // Evaluate f at the Greville points
-    gsMatrix<> fValues     = lastMAEmapping.patch(0).eval(intGrid);
-    fValues                = fValues.cwiseMax(0).cwiseMin(1);
+    gsMatrix<> finalValues     = lastMAEmapping.patch(0).eval(initialGrid);
+    finalValues                = finalValues.cwiseMax(0).cwiseMin(1);
 
     //! [Create  Hfitter]
     // Create hierarchical refinement object
-    gsFitting<> ref(fValues,  intGrid, THB);
+    gsFitting<> ref(finalValues,  initialGrid, THB);
     //... compute coefs
     ref.compute(lambda);
      
@@ -727,13 +811,13 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildInverseMultiPatch(const gsMulti
         //Computes the composition of Psi_n^{-1} o Psi_{n+1}
         gsMultiPatch<> PsiComp;
         // Evaluate f at the Greville points
-        gsMatrix<> IValues     = this->MAmapping.patch(0).eval(intGrid);// Psi_{n+1}
+        gsMatrix<> IValues     = this->MAmapping.patch(0).eval(initialGrid);// Psi_{n+1}
         IValues                = IValues.cwiseMax(0).cwiseMin(1);
-        gsMatrix<> fValues     = PsiInv.patch(0).eval(IValues);// Psi_n^{-1}
-        fValues                = fValues.cwiseMax(0).cwiseMin(1);
+        gsMatrix<> finalValues = PsiInv.patch(0).eval(IValues);// Psi_n^{-1}
+        finalValues            = finalValues.cwiseMax(0).cwiseMin(1);
         //! [Create  Hfitter]
         // Create hierarchical refinement object
-        gsFitting<> ref(intGrid, fValues, THB);
+        gsFitting<> ref(initialGrid, finalValues, THB);
         //... compute coefs
         ref.compute(lambda);
         
@@ -804,6 +888,34 @@ void gsAdaptiveMultiPatchBuilder::eliminateDirichlet1D(const gsBoundaryCondition
         GISMO_ERROR("Unknown Dirichlet strategy.");
 }
 
+// Project control points following  normal direction at the boundaries for square domain (Exact square recovery after refinement)
+void gsAdaptiveMultiPatchBuilder::NormalProjectPts(gsMultiPatch<>& Psi) const
+{
+    // normal Projection of control points (exact geometry)
+    for (size_t boxNumber = 0; boxNumber < identity_mp.nPatches(); ++boxNumber)
+    {
+        index_t bndIter  = 1;
+        #pragma omp parallel for
+        for (index_t dim = 0; dim < Psi.dim(); ++dim){
+            float_t lVal    = identity_mp.patch(boxNumber).coef( identity_mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
+            // x=0 control points be like (0,:) in this case
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x) 
+            {
+                Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(bndIter).at(i_x) ).array()[dim] = lVal;
+            }
+            bndIter ++;
+            float_t hVal    = identity_mp.patch(boxNumber).coef( identity_mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
+            // x=1 control points be like (1,:) in this case
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x)
+            {
+            Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(bndIter).at(i_x) ).array()[dim] = hVal;
+            }
+            bndIter ++;
+        }
+    }
+}
+
+// Correct the control point at the boundary of a final mapping 
 void gsAdaptiveMultiPatchBuilder::CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners) const
 {
     // ...
@@ -940,7 +1052,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_1d(
     rhs.setZero();
 
     const double pi = 3.141592653589793;
-    index_t m = p1*p1 + 1;
+    index_t m = 8*p1 + 1;
     index_t nRoots = (m + 1) / 2;
 
     static gsVector<double> u, w;
@@ -1021,7 +1133,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_1d(
             val_i(dir_valpt) = valpt;
             val_i.cwiseMax(0).cwiseMin(1);
             // gsInfo << "after :" << val_i << "---\n";
-            double val_f = m_mapping.patch(0).eval(val_i)[comp_nb];
+            double val_f = initial_mapping.patch(0).eval(val_i)[comp_nb];
 
             for (index_t i = 0; i <= p1; ++i)
             {
