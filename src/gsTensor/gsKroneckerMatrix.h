@@ -676,7 +676,7 @@ template<class T>
 class gsKroneckerMatrix<T,-1> : public gsLinearOperator<T>
 {
 protected:
-    index_t m_rank; ///< Hadamard rank of the matrix
+    index_t m_rank; ///< Kronecker rank of the matrix
 public:
     typedef gsFiberMatrix<T> FiberMatrix;
     typedef std::vector<FiberMatrix> cwiseMat;
@@ -775,26 +775,27 @@ public:
    Mostly used for Jacobi (diagonal) preconditionners
  */
 template< class T>
-class gsDiagonalOp : public gsLinearOperator<T>
+class gsInvDiagonalOp : public gsLinearOperator<T>
 {
+    const gsVector<T> & m_diag;
+    T m_tau; //damping parameter
 public:
 
     typedef memory::shared_ptr<gsDiagonalOp> Ptr;
     typedef memory::unique_ptr<gsDiagonalOp> uPtr;
 
     /// Constructor by a vector (the diagonal entries
-    gsDiagonalOp(const gsVector<T> & diag)
-    : m_diag(diag)
+    gsInvDiagonalOp(const gsVector<T> & diag)
+    : m_diag(diag), m_tau(1)
     { }
 
     /// Make function returning a smart pointer
     static uPtr make(const gsVector<T> & diag)
-    { return uPtr( new gsDiagonalOp(diag) ); }
-
+    { return uPtr( new gsInvDiagonalOp(diag) ); }
 
     void apply(const gsMatrix<T> & in, gsMatrix<T> & out) const
     {
-        out = m_diag.array() * in.array() ;
+        out.array() =  m_tau * in.array() / m_diag.array();
     }
 
     const gsVector<T> & vector() {return m_diag; }
@@ -802,11 +803,7 @@ public:
     index_t rows() const {return m_diag.rows();}
 
     index_t cols() const {return m_diag.rows();}
-
-private:
-    const gsVector<T> & m_diag;
 };
-
 
 
 } // namespace gismo
