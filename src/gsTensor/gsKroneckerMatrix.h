@@ -192,21 +192,18 @@ public:
 public:
 
     /// Initialize a low rank matrix by coordinate matrices
-    gsKroneckerMatrix(cwiseMat cwise)
-            : m_sz(cwise.size())
+    gsKroneckerMatrix(cwiseMat cwise) : m_sz(cwise.size())
     {
         m_cwise.swap(cwise);
         for (size_t i = 0; i != m_cwise.size(); ++i)
             m_sz(i) = m_cwise[i].rows();
         m_rank = m_cwise.front().cols() / m_sz[0];// assuming square blocks
 
-        m_dbd.resize(1);
+        m_dbd.resize(1); // FOR TESTING
         m_dbd(0) = 0;
     }
 
-    gsKroneckerMatrix()
-            : m_sz(0), m_rank(0)
-    {}
+    gsKroneckerMatrix() : m_sz(0), m_rank(0) {}
 
     short_t dim() const { return d; }
 
@@ -219,20 +216,17 @@ public:
     { return m_rank; }
 
     /// Rows of the global matrix
-    index_t rows() const
-    { return m_sz.prod(); }
+    index_t rows() const { return m_sz.prod(); }
 
     /// Columns of the global matrix
-    index_t cols() const
-    { return m_sz.prod(); }
+    index_t cols() const { return m_sz.prod(); }
 
     /// Size (rows or columns) of Kronecker factor matrices
     /// NOTE: the class assumes that the matrices are square
-    const gsVector<index_t, d> &dimensions() const
-    { return m_sz; }
+    const gsVector<index_t, d> &dimensions() const { return m_sz; }
 
 private:// temporary memory for matrix-vector product
-    mutable gsMatrix<T, -1, -1, ColMajor> q0, q1;
+    mutable gsMatrix<T, -1, -1, ColMajor> q0, q1; // todo: thread-safe
 public:
 
     /// Computes the matrix-vector product M*in and writes the result in \out
@@ -242,11 +236,11 @@ public:
         GISMO_ASSERT(in.cols() == 1, "single rhs for now, got " << in.cols());
 
         const index_t sz = m_sz.prod();
-
         out.setZero(sz, n);
         for (index_t r = 0; r != m_rank; ++r)
         {
             q0 = in;
+            q0(m_dbd).setZero(); // Mocking such that the columns \a dbd are set to zero
 
             for (unsigned i = 0; i != m_cwise.size(); ++i)
             {
@@ -276,17 +270,8 @@ public:
             out += q0;
         }
 
-        ///*
-        // Hardcode all-Dirichlet boundaries as diagonal ones
-        // destroys symmetry:
-        for (index_t i = 0; i != m_dbd.rows(); ++i)
-        {
-            const index_t k = m_dbd.at(i);
-            out.row(k) = in.row(k);
-            // to regain symmetry:
-            // add: for all non-dirichet entries j, substruct the matrix entry: out(j) -= Mat(m_dbd.at(i),j);
-        }
-
+        // Mock again to get the rows \a dbd to be zero, except for diagonal entry where we get 1.
+        out(m_dbd) = in(m_dbd);
     }
 
     //----------------
@@ -298,6 +283,8 @@ public:
     /// Retuns the \a rowId, \a colId coefficient of the global matrix
     inline const T coeff(index_t rowId, index_t colId) const
     {
+        // TODO Mock dbd
+
         gsVector<index_t, d> u(m_sz.size()), v(m_sz.size());
         for (size_t i = 0; i != m_cwise.size(); ++i)
         {
@@ -333,6 +320,8 @@ public:
     inline const T coeff(const gsVector<index_t, d> &rowId,
                          const gsVector<index_t, d> &colId) const
     {
+        // TODO Mock dbd
+
         T result = 0;
         for (index_t r = 0; r != m_rank; ++r)
         {
@@ -349,6 +338,8 @@ public:
     void col_into(index_t rowId, gsSparseVector <T> &result) const
     {
         typedef typename gsSparseMatrix<T>::iterator cIter;
+
+        // TODO Mock dbd
 
         const index_t n = (d == -1 ? m_sz.size() : d);// how to do static??
         gsVector<index_t, d> u(n), rstr(n);
@@ -432,12 +423,8 @@ public:
             }
         }
 
-        ///*
-        // Hardcode all-Dirichlet boundaries
-        for (index_t i = 0; i != m_dbd.rows(); ++i)
-            result[m_dbd.at(i)] = 1;
-        //*/
-
+        // Mocking diagonal entries in \a dbd
+        result(m_dbd).setOnes();
     }
 
     FiberMatrix toFiberMatrix() const
@@ -537,6 +524,8 @@ private:
     ///*
         // idea 1: make specific versions for 2D, 3D using for loops --> loop unrolling
         // idea 2: cache nested multiplications within the computation
+
+        // TODO Mock dbd
 
         typedef typename gsFiberMatrix<T>::iterator cIter;
         const index_t n = (d==-1 ? m_cwise.size() : d);// how to do static??
