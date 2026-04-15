@@ -200,9 +200,15 @@ public:
     /// - interior edge points are expressed by the \f$C^1\f$ averaging relation
     ///   between the two adjacent inner rows, while boundary edge points remain
     ///   free,
-    /// - corner points are either averaged from surrounding inner points
-    ///   (interior corners) or shared as one common free degree of freedom per
-    ///   boundary vertex.
+    /// - corner points are handled as follows:
+    ///   - non-boundary vertices are averaged from the surrounding
+    ///     \f$(1,1)\f$ inner points,
+    ///   - a boundary corner with one adjacent patch remains free,
+    ///   - a boundary corner with two adjacent patches is averaged from the
+    ///     two neighboring control points on the boundary edges,
+    ///   - boundary corners with more than two adjacent patches are averaged
+    ///     from one neighboring edge control point per outgoing edge
+    ///     (equivalently \f$\#\mathrm{patches}+1\f$ points).
     ///
     /// The resulting global degrees of freedom are ordered as follows:
     /// - for each extraordinary vertex in mesh-vertex iteration order:

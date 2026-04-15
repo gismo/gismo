@@ -494,7 +494,6 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide()
     }
 };
 
-
 template <size_t N>
 gsMatrix<real_t> gsFreeformSubdivision<N>::smooth(size_t degree)
 {
@@ -894,29 +893,25 @@ void gsFreeformSubdivision<N>::c1_basis(gsMultiPatch<>& multi_patch,
     // ================================================================
     // Phase 4 — Corner points (oriented (0,0) of each halfedge).
     //
-    // Two rules depending on whether v_corner is interior or on the
-    // mesh boundary:
+    // Corner rules:
     //
-    // Interior vertex (not mesh-boundary):
-    //   Set to the average of (1,1) points of adjacent patches.
+    // Non-boundary vertex:
+    //   Set to the average of the adjacent (1,1) inner points.
     //
-    // Mesh-boundary vertex (including interior corners, i.e. vertices
-    // where N >= 2 patches meet but a gap is present on the boundary):
-    //   All patches sharing this vertex receive the SAME single free
-    //   global DOF for their corner, enforcing C0 without involving
-    //   any inner-point DOFs.  The DOF remains free so that
-    //   gsDofMapper can eliminate it via markBoundary.
-    //   Using a shared DOF (rather than the (1,1)-average) is
-    //   essential: the average would only constrain the SUM of the
-    //   inner DOFs, leaving their difference unconstrained and causing
-    //   the second row of control points to escape when Dirichlet BCs
-    //   fix the combined value.
+    // Boundary vertex with 1 adjacent patch:
+    //   The corner remains a free DOF.
+    //
+    // Boundary vertex with 2 adjacent patches:
+    //   Set to the average of the two neighboring control points on the
+    //   boundary edges.
+    //
+    // Boundary vertex with more than 2 adjacent patches:
+    //   Set to the average of one neighboring edge point per outgoing edge
+    //   (thus adjacent_patch_count + 1 contributors).
     //
     // Points already handled by the EV support (Phase 1) are skipped.
     // ================================================================
 
-    // One global DOF per distinct boundary vertex, shared across all
-    // patches whose corner lands on that vertex.
     std::map<Vertex, index_t> boundary_corner_dof;
 
     for (Face f : mesh.faces())
@@ -929,21 +924,10 @@ void gsFreeformSubdivision<N>::c1_basis(gsMultiPatch<>& multi_patch,
             if (!handled[ldof])
             {
                 const Vertex v_corner = mesh.from_vertex(h);
+                const size_t adjacent_patch_count = mesh.num_faces(v_corner);
 
-                if (mesh.is_boundary(v_corner))
+                if (!mesh.is_boundary(v_corner))
                 {
-                    // Boundary vertex: all patches at this vertex share
-                    // one free global DOF so their corners are C0-coupled
-                    // without constraining any inner-point DOFs.
-                    auto res =
-                        boundary_corner_dof.emplace(v_corner, global_dof_count);
-                    if (res.second) // newly inserted → allocate the DOF
-                        ++global_dof_count;
-                    pre_mapper[ldof][res.first->second] = real_t(1);
-                }
-                else
-                {
-
                     // Interior vertex: average of (1,1) inner points of all
                     // surrounding faces.
                     std::map<index_t, real_t> row;
@@ -970,6 +954,74 @@ void gsFreeformSubdivision<N>::c1_basis(gsMultiPatch<>& multi_patch,
                     for (auto& kv : row)
                         pre_mapper[ldof][kv.first] =
                             kv.second / (real_t)face_count;
+                }
+                else if (adjacent_patch_count == 1)
+                {
+                    // This is a vertex on an outer corner
+                    // It is thus completely free.
+                    pre_mapper[ldof][global_dof_count] = real_t(1);
+                    ++global_dof_count;
+                }
+                else if (adjacent_patch_count == 2)
+                {
+                    // This is a vertex on a corner of a patch that lies along
+                    // the edge of the boundary.
+                    // It is the average of the just-adjacent control points
+                    // along the two edges that lie on the boundary.
+                    for (Halfedge h_out : mesh.halfedges(v_corner))
+                    {
+                        auto h_in = mesh.opposite_halfedge(h_out);
+                        if (!mesh.is_boundary(h_out) && mesh.is_boundary(h_in))
+                        {
+                            auto edge_ldof = local_dof_rotated(
+                                mesh.face(h_out).idx(),
+                                get_k(mesh.face(h_out), h_out), 0, 1);
+                            for (auto& kv2 : pre_mapper[edge_ldof])
+                                pre_mapper[ldof][kv2.first] +=
+                                    real_t(0.5) * kv2.second;
+                        }
+
+                        if (mesh.is_boundary(h_out) && !mesh.is_boundary(h_in))
+                        {
+                            auto edge_ldof = local_dof_rotated(
+                                mesh.face(h_in).idx(),
+                                get_k(mesh.face(h_in), h_in), 0, N - 2);
+                            for (auto& kv2 : pre_mapper[edge_ldof])
+                                pre_mapper[ldof][kv2.first] +=
+                                    real_t(0.5) * kv2.second;
+                        }
+                    }
+                }
+                else
+                {
+                    // All others are non-free vertices on patch corners that
+                    // touch the boundary but are only interior corners of the
+                    // boundary.
+
+                    real_t factor = 1. / ((real_t)adjacent_patch_count + 1);
+
+                    for (Halfedge h_out : mesh.halfedges(v_corner))
+                    {
+                        auto h_in = mesh.opposite_halfedge(h_out);
+                        if (!mesh.is_boundary(h_out))
+                        {
+                            auto edge_ldof = local_dof_rotated(
+                                mesh.face(h_out).idx(),
+                                get_k(mesh.face(h_out), h_out), 0, 1);
+                            for (auto& kv2 : pre_mapper[edge_ldof])
+                                pre_mapper[ldof][kv2.first] +=
+                                    factor * kv2.second;
+                        }
+                        else if (!mesh.is_boundary(h_in))
+                        {
+                            auto edge_ldof = local_dof_rotated(
+                                mesh.face(h_in).idx(),
+                                get_k(mesh.face(h_in), h_in), 0, N - 2);
+                            for (auto& kv2 : pre_mapper[edge_ldof])
+                                pre_mapper[ldof][kv2.first] +=
+                                    factor * kv2.second;
+                        }
+                    }
                 }
 
                 // this has now been handled

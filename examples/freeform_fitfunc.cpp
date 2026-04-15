@@ -104,12 +104,11 @@ int main(int argc, char** argv)
                   "Writes an error matrix to a file and outputs the error as a "
                   "paraview patch.",
                   write_errors);
-    cmd.addSwitch(
-        "opt",
-        "During smoothing, selects EV coefficient representatives by "
-        "minimizing the diff functional instead of using "
-        "`Val<v>Constraints.xml`.",
-        optimize_fit);
+    cmd.addSwitch("opt",
+                  "During smoothing, selects EV coefficient representatives by "
+                  "minimizing the diff functional instead of using "
+                  "`Val<v>Constraints.xml`.",
+                  optimize_fit);
     cmd.addSwitch("weighted",
                   "Uses a weighting for the EV fit, loaded from a weights "
                   "vector at `filedata/freeform/val<v>_weights.xml`.",
@@ -173,16 +172,21 @@ int main(int argc, char** argv)
             }
 
             // If the user wants to save the control net, we also want to save
-            // the Greville control points for the first EV. Only works with set valence currently.
+            // the Greville control points for the first EV. Only works with set
+            // valence currently.
             if (control_net && valence > 0)
             {
                 auto all_coefs = subdiv.smooth(1);
                 // Here is also the spot to see more control points if wanted.
-                gsMatrix<real_t> ev_coefs = all_coefs.topRows(2 * valence + 1).transpose();
+                gsMatrix<real_t> ev_coefs = all_coefs
+                                                //.topRows(2 * valence + 1)
+                                                .transpose();
                 gsMatrix<real_t> indexed_ev_coefs(4, ev_coefs.cols());
                 // for each EV
-                gsInfo << "all_coefs: " << all_coefs.rows() << "x" << all_coefs.cols() << "\n";
-                gsInfo << "ev_coefs: " << ev_coefs.rows() << "x" << ev_coefs.cols() << "\n";
+                gsInfo << "all_coefs: " << all_coefs.rows() << "x"
+                       << all_coefs.cols() << "\n";
+                gsInfo << "ev_coefs: " << ev_coefs.rows() << "x"
+                       << ev_coefs.cols() << "\n";
 
                 indexed_ev_coefs.topRows(3) = ev_coefs;
                 for (index_t k = 0; k < ev_coefs.cols(); ++k)
