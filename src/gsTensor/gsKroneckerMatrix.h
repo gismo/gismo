@@ -781,8 +781,10 @@ class gsInvDiagonalOp : public gsLinearOperator<T>
     T m_tau; //damping parameter
 public:
 
-    typedef memory::shared_ptr<gsDiagonalOp> Ptr;
-    typedef memory::unique_ptr<gsDiagonalOp> uPtr;
+    // typedef memory::shared_ptr<gsDiagonalOp> Ptr;
+    // typedef memory::unique_ptr<gsDiagonalOp> uPtr;
+    typedef memory::shared_ptr<gsInvDiagonalOp> Ptr;
+    typedef memory::unique_ptr<gsInvDiagonalOp> uPtr;
 
     /// Constructor by a vector (the diagonal entries
     gsInvDiagonalOp(const gsVector<T> & diag)
