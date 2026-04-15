@@ -164,8 +164,17 @@ int main(int argc, char *argv[])
     const gsMatrix<real_t> pts = prBasis.anchors();
 
     // rho(x,y) = 1 + 0.3 sin(2 pi x) cos(2 pi y)
+    // gsFunctionExpr<real_t> rho_density(
+    //     "1.0 + 0.8*sin(6*pi*x)*cos(8*pi*y)",
+    //     2
+    // );
+    // gsFunctionExpr<real_t> rho_density(
+    //     "1.0 + 0.9*(1.0 + tanh(50*(0.4 - sqrt((x-0.5)^2 + (y-0.5)^2))))",
+    //     2
+    // );
+    // example circle interface
     gsFunctionExpr<real_t> rho_density(
-        "1.0 + 0.8*sin(6*pi*x)*cos(8*pi*y)",
+        "1.0 + 50.0*exp(-100*pow(sqrt((x-0.5)^2 + (y-0.5)^2) - 0.3, 2))",
         2
     );
 
