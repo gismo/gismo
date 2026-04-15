@@ -14,7 +14,8 @@
 
     Optionally, each refinement level can also be exported to Paraview (\c .vts
     surface patches, \c .pvd collection, point-wise error field, and Greville
-    control points for extraordinary vertices).
+    control points for extraordinary vertices together with their point indices
+    as scalar point data).
 
     \par Command-line arguments
     - \b -m / \b --mesh (default: \c freeform/flat/Val5Flat.xml): path to
@@ -37,7 +38,7 @@
     - \b --paraview: if set, writes Paraview output (\c results/fitfunc_*.vts
       and \c results/fitfunc.pvd) for every refinement level.
     - \b --cnet: if set (together with \b --paraview), also writes the Bézier
-      control net and the EV Greville control points.
+      control net and the EV Greville control points with their point indices.
     - \b --errors: if set, writes the \f$L^\infty\f$ and \f$L^2\f$ error
       column vectors to \c errors.csv.
     - \b --weighted: if set, weights the least-squares fit around
@@ -178,11 +179,16 @@ int main(int argc, char** argv)
                 auto all_coefs = subdiv.smooth(1);
                 // Here is also the spot to see more control points if wanted.
                 gsMatrix<real_t> ev_coefs = all_coefs.topRows(2 * valence + 1).transpose();
+                gsMatrix<real_t> indexed_ev_coefs(4, ev_coefs.cols());
                 // for each EV
                 gsInfo << "all_coefs: " << all_coefs.rows() << "x" << all_coefs.cols() << "\n";
                 gsInfo << "ev_coefs: " << ev_coefs.rows() << "x" << ev_coefs.cols() << "\n";
 
-                gsWriteParaviewPoints(ev_coefs, stepname + "_greville");
+                indexed_ev_coefs.topRows(3) = ev_coefs;
+                for (index_t k = 0; k < ev_coefs.cols(); ++k)
+                    indexed_ev_coefs(3, k) = (real_t)k;
+
+                gsWriteParaviewPoints(indexed_ev_coefs, stepname + "_greville");
                 // Register that file in the time series collection
                 cnet_collection.addPart("step" + std::to_string(i + 1) +
                                             "_greville"
