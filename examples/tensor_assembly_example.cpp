@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     // );
     // example circle interface
     gsFunctionExpr<real_t> rho_density(
-        "1.0 + 50.0*exp(-100*pow(sqrt((x-0.5)^2 + (y-0.5)^2) - 0.3, 2))",
+        "1.0 + 50.0*exp(-100.0*pow(sqrt((x-0.5)^2 + (y-0.5)^2) - 0.3, 2))",
         2
     );
 
