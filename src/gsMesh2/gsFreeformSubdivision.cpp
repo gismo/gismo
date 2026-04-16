@@ -522,7 +522,6 @@ gsMatrix<real_t> gsFreeformSubdivision<N>::smooth(size_t degree)
         const size_t valence = mesh.valence(v);
         const index_t function_count = 2 * valence + 1;
         const index_t ev_coef_start = ev_coef_starts[ev_index];
-        const index_t ev_coef_end = ev_coef_ends[ev_index];
 
         gsMatrix<real_t> kernel;
         auto _file = gsReadFile<>(model_patch_path + "Val" +
@@ -1051,10 +1050,11 @@ void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     // The geometry map that parametrizes the surface over the patches $\Omega$.
     auto G = A.getMap(multi_patch);
     auto u = A.getSpace(mapped_basis);
-    // Pull back the right hand side function $f$ to $\Omega$.
-    // rhs is defined in the 2-D parametric domain, so evaluate it there
-    // (not at physical points via G).
-    auto ff = A.getCoeff(rhs);
+    // Evaluate the right hand side function $f$ at physical points on the
+    // surface (mapped through G).  Using getCoeff(rhs) without G would
+    // evaluate rhs at parametric (u,v) coordinates, which are identical for
+    // every patch and would force a rotationally symmetric solution.
+    auto ff = A.getCoeff(rhs, G);
 
     // Set homogeneous Dirichlet BCs on every boundary side.  Without
     // computeTopology() above, bBegin()==bEnd() and the system would have an
@@ -1276,6 +1276,7 @@ gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
             // receptables.
             real_t err =
                 abs(point(D - 1) - function.eval(point.topRows(D - 1))(0));
+            
             error_linf = std::max(error_linf, err);
             error_l2 += err * err;
             ++error_count;
@@ -1285,7 +1286,7 @@ gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
     gsVector<real_t> error =
         gsVector<real_t>::vec(error_linf, sqrt(error_l2 / real_t(error_count)));
 
-    gsInfo << "Error L0: " << error(0) << ".\n";
+    gsInfo << "Error LI: " << error(0) << ".\n";
     gsInfo << "Error L2: " << error(1) << ".\n";
 
     return error;

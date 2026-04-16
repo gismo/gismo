@@ -129,7 +129,7 @@ int main(int argc, char** argv)
     const bool has_exact = !exact_str.empty();
     // When no exact solution is given, initialise with a placeholder; the
     // object is never evaluated in that case.
-    gsFunctionExpr<real_t> exact(has_exact ? exact_str : "0", 3);
+    gsFunctionExpr<real_t> exact(has_exact ? exact_str : "0", 2);
 
     gsMatrix<real_t> errors(2, steps);
 
