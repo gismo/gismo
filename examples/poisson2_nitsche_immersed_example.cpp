@@ -10,6 +10,8 @@
 */
 
 #include <gismo.h>
+#include <fstream>
+#include <string>
 
 using namespace gismo;
 
@@ -19,12 +21,14 @@ int main(int argc, char *argv[])
     index_t numRefine  = 5;
     index_t numElevate = 0;
     real_t penalty = 1e3;
+    real_t gamma = 1e3;
 
     gsCmdLine cmd("Poisson immersed quarter-circle in [0,1]^2.");
     cmd.addInt("e", "degreeElevation", "Number of degree elevation steps", numElevate);
     cmd.addInt("r", "uniformRefine", "Number of uniform refinement steps (before solve)", numRefine);
     cmd.addReal("p", "penalty", "Weak Dirichlet penalty", penalty);
     cmd.addSwitch("plot", "Create a ParaView file", plot);
+    cmd.addReal("g","gamma","penalty parameter", gamma);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
     // Embedding box [0,1]^2
@@ -32,6 +36,8 @@ int main(int argc, char *argv[])
 
     gsFunctionExpr<> u_exact("sin(pi*x)*sin(pi*y)", 2);
     gsFunctionExpr<> f_rhs("2*pi^2*sin(pi*x)*sin(pi*y)", 2);
+    // gsFunctionExpr<> u_exact("if(-0.16 + (x-0.5)^2 + (y-0.5)^2<0,sin(pi*x)*sin(pi*y), 0)",2);
+
 
     // Quarter-circle level-set: inside when max(-x,-y,x^2+y^2-1) < 0
     // gsFunctionExpr<> impl_fun("max(max(-x,-y),x^2+y^2-1)", 2);
@@ -58,7 +64,7 @@ int main(int argc, char *argv[])
     
     const index_t deg = dbasis.maxCwiseDegree();
     // const real_t gamma = (penalty < 0)? real_t(2.5) * (deg + 2) * (deg + 1): penalty;
-    const real_t gamma = 1e+8;
+    // const real_t gamma = 1e+8;
 
 
     #ifdef GISMO_WITH_PARDISO
@@ -70,6 +76,45 @@ int main(int argc, char *argv[])
     gsVector<> l2err(numRefine + 1), h1err(numRefine + 1);
     gsInfo<< "Degree of the basis: " << dbasis.maxCwiseDegree() << "\n";
     gsInfo << "(dot1=assembled, dot2=solved, dot3=error)\n\nDoFs: ";
+
+    std::string out = "output_immersed";
+    gsFileManager::mkdir(out);
+    const std::string debugDir = out + "/trimmed_domain_debug";
+    const std::string insideDir = debugDir + "/inside";
+    const std::string boundaryDir = debugDir + "/boundarysign";
+    if (plot)
+    {
+        gsFileManager::mkdir(debugDir);
+        gsFileManager::mkdir(insideDir);
+        gsFileManager::mkdir(boundaryDir);
+    }
+
+    auto makeRootPvd = [](const std::string & sourcePvd,
+                          const std::string & targetPvd,
+                          const std::string & prefix)
+    {
+        std::ifstream in(sourcePvd.c_str());
+        if (!in.is_open())
+            return;
+
+        std::ofstream outFile(targetPvd.c_str());
+        if (!outFile.is_open())
+            return;
+
+        std::string line;
+        const std::string tag = "file=\"";
+        while (std::getline(in, line))
+        {
+            size_t pos = line.find(tag);
+            while (pos != std::string::npos)
+            {
+                pos += tag.size();
+                line.insert(pos, prefix);
+                pos = line.find(tag, pos + prefix.size());
+            }
+            outFile << line << "\n";
+        }
+    };
 
     for(int r = 0; r <= numRefine; ++r)
     {        
@@ -86,7 +131,7 @@ int main(int argc, char *argv[])
             dynamic_cast<gsTensorBSplineBasis<2,real_t>*>(&dbasis.basis(0));
         GISMO_ENSURE(tbsPtr, "Basis is not a tensor B-spline basis");
 
-        gsImplicitTrimmedDomain<2,real_t> tr_domain(impl_fun, *tbsPtr);
+        // gsImplicitTrimmedDomain<2,real_t> tr_domain(impl_fun, *tbsPtr);  // DANGLING POINTER - COMMENTED OUT!
 
         typedef gsExprAssembler<>::geometryMap geometryMap;
         typedef gsExprAssembler<>::space       space;
@@ -94,7 +139,11 @@ int main(int argc, char *argv[])
 
         gsExprAssembler<> A(1, 1);
         A.options().setInt("quRule", gsQuadrature::AlgoimRule);
-        A.setIntegrationDomain(memory::make_shared_not_owned(&tr_domain));
+        // A.setIntegrationDomain(memory::make_shared_not_owned(&tr_domain));  // BAD - COMMENTED OUT!
+        // Create and set the trimmed domain - let the assembler own it
+        A.setIntegrationDomain(
+            memory::make_shared(new gsImplicitTrimmedDomain<2,real_t>(impl_fun, *tbsPtr))
+        );  
         gsExprEvaluator<> ev(A);
 
         std::vector<patchSide> bdr_immersed(1); // vector of size 1
@@ -167,13 +216,74 @@ int main(int argc, char *argv[])
         {
             ev.options().setSwitch("plot.elements", true);
             ev.options().setInt("plot.npts", 100000);
-            ev.writeParaview(u_sol, G, "poisson2_immersed_circle");
+            ev.writeParaview(u_sol, G, out+"/poisson2_immersed_circle");
+            ev.writeParaview(u_ex, G, out+"/poisson2_exact_solution");
+
+            // gsMultiPatch<> mp_sol;
+            // u_sol.extract(mp_sol);
+            // for domain iterator ?
+            // loop over elements and plot solution in every element
+            
+            // L2 error
+            auto l2_error_field = (u_ex - u_sol).norm();
+            ev.writeParaview(l2_error_field, G, out+"/poisson2_immersed_L2_error");
+            
+            // Compute H1 seminorm error
+            auto h1_error_field = (igrad(u_ex, G) - igrad(u_sol, G)).sqNorm();
+            ev.writeParaview(h1_error_field, G, out+"/poisson2_immersed_H1_error");
+
+            // Plot background mesh
+            gsMesh<> mesh(dbasis.basis(0));
+            gsWriteParaview(mesh,out+"/background_mesh");
+        }
+
+        if (plot && r == numRefine)
+        {
+            // Debug export of trimmed-domain element classification per refinement level:
+            // sign < 0 : interior cell, sign == 0 : cut/boundary cell.
+            gsMatrix<> boxesInterior(2,0), boxesBoundary(2,0);
+
+            auto appendBox = [](gsMatrix<> & boxes,
+                                const gsVector<> & lo,
+                                const gsVector<> & hi)
+            {
+                const index_t c = boxes.cols();
+                boxes.conservativeResize(2, c + 2);
+                boxes.col(c)     = lo;
+                boxes.col(c + 1) = hi;
+            };
+
+            const gsImplicitTrimmedDomain<2,real_t> * tr_domain =
+                dynamic_cast<const gsImplicitTrimmedDomain<2,real_t>*>(&A.domain());
+            GISMO_ENSURE(tr_domain, "Expected gsImplicitTrimmedDomain for trimmed-domain export.");
+
+            // Interior elements only (sign < 0)
+            for (auto it = tr_domain->beginInterior(); it != tr_domain->end<InteriorSign>(); ++it)
+                appendBox(boxesInterior, it.lowerCorner(), it.upperCorner());
+
+            // Cut elements on immersed boundary (sign == 0)
+            for (auto it = tr_domain->beginBdr(boundary::none); it != tr_domain->endBdr(boundary::none); ++it)
+                appendBox(boxesBoundary, it.lowerCorner(), it.upperCorner());
+
+            if (boxesInterior.cols() > 0)
+            {
+                const std::string insideBase = insideDir + "/mesh_inside";
+                gsWriteParaview(boxesInterior, insideBase, real_t(1));
+                makeRootPvd(insideBase + ".pvd", debugDir + "/inside_collection.pvd", "inside/");
+            }
+
+            if (boxesBoundary.cols() > 0)
+            {
+                const std::string boundaryBase = boundaryDir + "/mesh_cut";
+                gsWriteParaview(boxesBoundary, boundaryBase, real_t(2));
+                makeRootPvd(boundaryBase + ".pvd", debugDir + "/boundarysign_collection.pvd", "boundarysign/");
+            }
         }
 
         gsInfo << "Penalty: " << gamma/hmax << "\n";
 
     }
-    
+
     gsInfo << "\n\nL2 error: " << std::scientific << std::setprecision(3)
            << l2err.transpose() << "\n";
     gsInfo << "H1 error: " << std::scientific << h1err.transpose() << "\n";
