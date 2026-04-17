@@ -186,13 +186,15 @@ public:
     ///   those samples.
     void subdivide() override;
 
-    /// \brief Builds the mapped \f$C^1\f$ basis used by smoothing and PDE solves.
+    /// \brief Builds the mapped \f$C^1\f$ basis used by smoothing and PDE
+    /// solves.
     ///
-    /// Converts the current freeform control-net mesh into a \c gsMultiPatch and
-    /// its underlying \c gsMultiBasis, then assembles a sparse local-to-global
-    /// mapper whose image defines the \f$C^1\f$ spline space. The construction
-    /// proceeds in four stages:
-    /// - interior extraordinary vertices reserve \f$2v+1\f$ EV blending-function
+    /// Converts the current freeform control-net mesh into a \c gsMultiPatch
+    /// and its underlying \c gsMultiBasis, then assembles a sparse
+    /// local-to-global mapper whose image defines the \f$C^1\f$ spline space.
+    /// The construction proceeds in four stages:
+    /// - interior extraordinary vertices reserve \f$2v+1\f$ EV
+    /// blending-function
     ///   degrees of freedom and map all local control points inside the EV
     ///   support through the corresponding model-patch coefficient rows,
     /// - ordinary interior control points receive free global degrees of
@@ -222,9 +224,10 @@ public:
     /// \warning Use only garbage-collected meshes with contiguous face and
     /// vertex indices.
     ///
-    /// \param multi_patch Output multipatch containing one Bézier patch per mesh
-    /// face.
-    /// \param multi_basis Output tensor-product basis underlying \p multi_patch.
+    /// \param multi_patch Output multipatch containing one Bézier patch per
+    /// mesh face.
+    /// \param multi_basis Output tensor-product basis underlying \p
+    /// multi_patch.
     /// \param mapped_basis Output mapped basis that encodes the \f$C^1\f$
     /// coupling relations.
     void c1_basis(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
@@ -365,7 +368,8 @@ public:
     /// cases the kernel basis is loaded from \c Val<v>Kernel.xml. The final
     /// projected control points are written back to the per-face control nets.
     ///
-    /// \param degree Requested smoothness degree. Currently only implemented for C1.
+    /// \param degree Requested smoothness degree. Currently only implemented
+    /// for C1.
     /// \return Matrix of mapped coefficients with one row per global mapped
     /// degree of freedom and one column per geometric coordinate.
     gsMatrix<real_t> smooth(size_t degree);
