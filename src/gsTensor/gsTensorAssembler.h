@@ -54,6 +54,8 @@ public:
 
     const Kronecker_t & kronecker() const { return *m_kprod; }
 
+    Kronecker_t & kronecker_ref() { return *m_kprod; }
+
     static gsOptionList defaultOptions();
 
     gsOptionList & options() { return m_option; }

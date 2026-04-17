@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
         numElevate = 0,
         degree = 2,
         knots = 0;
+    bool matrixfree(false);
     
     gsCmdLine cmd("Tutorial on assemblying a Poisson problem.");
     cmd.addInt("d", "dimension", "Dimension 2d/3d", D);
@@ -33,13 +34,13 @@ int main(int argc, char *argv[])
     cmd.addInt("k", "knots", "Number of knots of the initial tensor product basis", knots);
     cmd.addInt("u", "uniform", "Number of uniform refinement", numRefine);
     cmd.addInt("e", "elevate", "Number of degree elevation steps", numElevate);
+    cmd.addSwitch("matrixfree", "Use matrix-free version", matrixfree);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
     
-    gsTensorFunction<> RR(2,1); // creates a constant function = 1
+    //gsTensorFunction<> RR(2,1); // creates a constant function = 1
     // gsDebugVar(RR);
-
     std::vector<gsKnotVector<> > knot_vector(D, gsKnotVector<>(0, 1, knots, degree + 1));
     gsBasis<>::uPtr basis = gsBSplineBasis<>::create(knot_vector);
 
@@ -48,12 +49,10 @@ int main(int argc, char *argv[])
     for (int i = 0; i < numRefine; ++i)
         basis->uniformRefine();
 
-    gsTensorAssembler<> ta;
-    ta.compute(*basis, STIFFNESS, RR); // DIFFUSION ?
+    //gsTensorAssembler<> ta;
+    //ta.compute(*basis, STIFFNESS, RR); // DIFFUSION ?
     // ta.compute(*basis, MASS, RR); // DIFFUSION ? bug for this line?
-
-    gsFiberMatrix<real_t> mat = ta.kronecker().toFiberMatrix();
-
+    
     // //-------- START TEST MATRIX-FREE SOLVER
     // auto & kp = ta.kronecker();
     // auto kpop = memory::make_shared_not_owned( (gsLinearOperator<>*)(&kp));
@@ -193,16 +192,16 @@ int main(int argc, char *argv[])
 
 
 
-
+    gsFiberMatrix<real_t> mat_diffusion;
     gsStopwatch timer_diffusion;
     timer_diffusion.restart();
     gsTensorAssembler<> ta_diffusion;
     ta_diffusion.compute(*basis, DIFFUSION, rho);
+    if (!matrixfree)
+        mat_diffusion = ta_diffusion.kronecker().toFiberMatrix();
     real_t assembly_time_tensor = timer_diffusion.stop();
     gsInfo << "Tensor assembly time: " << assembly_time_tensor << " seconds\n";
     gsInfo << "Speedup: " << assembly_time_standard / assembly_time_tensor << "x\n";
-
-    gsFiberMatrix<real_t> mat_diffusion = ta_diffusion.kronecker().toFiberMatrix();
 
     // gsInfo << "Diffusion matrix size:\n" << mat_diffusion.rows() << "\n";
     // gsInfo << "Diffusion matrix:\n" << mat_diffusion.toSparseMatrix().toDense() << "\n";
@@ -212,8 +211,10 @@ int main(int argc, char *argv[])
     // Apply Dirichlet BC directly on mat_diffusion and solve
     // ------------------------------------------------------------
 
-    gsSparseMatrix<real_t> K = mat_diffusion.toSparseMatrix();
-    const index_t N = K.rows();
+    gsSparseMatrix<real_t> K;
+    if (!matrixfree)
+        K = mat_diffusion.toSparseMatrix();
+    const index_t N = ta_diffusion.kronecker().rows();
 
     gsMatrix<real_t> rhs_x = gsMatrix<real_t>::Zero(N,1);
     gsMatrix<real_t> rhs_y = gsMatrix<real_t>::Zero(N,1);
@@ -221,8 +222,7 @@ int main(int argc, char *argv[])
     // tensor-product basis sizes
     // index_t n1 = basis->component(0).size();
     // index_t n2 = basis->component(1).size();
-
-    GISMO_ASSERT(n1 * n2 == N, "Unexpected tensor-product size mismatch.");
+    //GISMO_ASSERT(n1 * n2 == N, "Unexpected tensor-product size mismatch.");
 
     // ------------------------------------------------------------
     // Build Greville abscissae in each direction
@@ -394,10 +394,97 @@ int main(int argc, char *argv[])
         return u;
     };
 
-    gsMatrix<real_t> rhs0 = gsMatrix<real_t>::Zero(K.rows(), 1);
 
-    gsMatrix<real_t> sol_x = solveWithDirichletSparse(K, rhs0, bdofs, vals_x);
-    gsMatrix<real_t> sol_y = solveWithDirichletSparse(K, rhs0, bdofs, vals_y);
+        auto solveWithDirichletSparseMatrixFree =
+            [&](gsKroneckerMatrix<real_t,-1>& Kfull,
+                const gsMatrix<real_t>& rhs_full,
+            const std::vector<index_t>& bdofs,
+            const std::vector<real_t>& vals) -> gsMatrix<real_t>
+    {
+        GISMO_ASSERT(bdofs.size() == vals.size(), "Dirichlet size mismatch.");
+
+        const index_t N = Kfull.rows();
+        GISMO_ASSERT(Kfull.cols() == N, "Matrix must be square.");
+        GISMO_ASSERT(rhs_full.rows() == N && rhs_full.cols() == 1,
+                     "rhs must be N x 1.");
+
+        // Mark boundary dofs
+        std::vector<bool> isBoundary(N, false);
+        for (size_t k = 0; k < bdofs.size(); ++k)
+        {
+            GISMO_ASSERT(bdofs[k] >= 0 && bdofs[k] < N, "Boundary dof out of range.");
+            isBoundary[bdofs[k]] = true;
+        }
+
+        // Build free dof list and old->new index map
+        std::vector<index_t> freeDofs;
+        freeDofs.reserve(N - bdofs.size());
+
+        std::vector<index_t> oldToFree(N, -1);
+        for (index_t i = 0; i < N; ++i)
+        {
+            if (!isBoundary[i])
+            {
+                oldToFree[i] = static_cast<index_t>(freeDofs.size());
+                freeDofs.push_back(i);
+            }
+        }
+
+        const index_t Nf = static_cast<index_t>(freeDofs.size());
+
+        // Full prescribed vector ub
+        gsMatrix<real_t> u = gsMatrix<real_t>::Zero(N, 1);
+        for (size_t k = 0; k < bdofs.size(); ++k)
+            u(bdofs[k], 0) = vals[k];
+
+        // Reduced rhs: rf = f_f - K_fb * u_b
+        gsMatrix<real_t> rhs_reduced(rhs_full.size(), 1);
+        rhs_reduced.setZero();
+
+        gsMatrix<real_t> rhs_correction;
+        Kfull.apply(u, rhs_correction);
+        rhs_reduced.noalias() = rhs_full - rhs_correction;
+        for (size_t ii = 0; ii < bdofs.size(); ++ii)
+            rhs_reduced(bdofs[ii], 0) = vals[ii];
+
+        // Mark boundary dofs in Kfull
+        Kfull.setUnitDiagonals( gsAsConstVector<index_t>(bdofs) );
+        
+        // Solve reduced system
+        gsVector<> diag;
+        Kfull.diagonal_into(diag);
+        auto dop = gsInvDiagonalOp<real_t>::make(diag);
+        auto kpop = memory::make_shared_not_owned( (gsLinearOperator<>*)(&Kfull));
+        //gsConjugateGradient<> solver(kpop, dop);
+        gsBiCgStab<> solver(kpop, dop);
+        u.setZero(); // Initial guess for CG solver set to zero
+        solver.solve(rhs_reduced, u);
+
+        /*
+        GISMO_ASSERT(solver.info() == gsEigen::Success,
+                     "Factorization failed for reduced sparse system.");
+        GISMO_ASSERT(solver.info() == gsEigen::Success,
+                     "Solve failed for reduced sparse system.");
+        */
+
+        return u;
+    };
+
+    gsMatrix<real_t> rhs0 = gsMatrix<real_t>::Zero(N, 1);
+    gsMatrix<real_t> sol_x, sol_y;
+    if (matrixfree)
+    {
+        gsKroneckerMatrix<real_t,-1> & kp = ta_diffusion.kronecker_ref();
+            
+        // to do: timing
+        sol_x = solveWithDirichletSparseMatrixFree(kp, rhs0, bdofs, vals_x);
+        sol_y = solveWithDirichletSparseMatrixFree(kp, rhs0, bdofs, vals_y);
+    }
+    else
+    {
+         sol_x = solveWithDirichletSparse(K, rhs0, bdofs, vals_x);
+         sol_y = solveWithDirichletSparse(K, rhs0, bdofs, vals_y);
+    }
 
     // for (size_t k = 0; k < bdofs.size(); ++k)
     // {

@@ -198,9 +198,6 @@ public:
         for (size_t i = 0; i != m_cwise.size(); ++i)
             m_sz(i) = m_cwise[i].rows();
         m_rank = m_cwise.front().cols() / m_sz[0];// assuming square blocks
-
-        m_dbd.resize(1); // FOR TESTING
-        m_dbd(0) = 0;
     }
 
     gsKroneckerMatrix() : m_sz(0), m_rank(0) {}
@@ -240,7 +237,7 @@ public:
         for (index_t r = 0; r != m_rank; ++r)
         {
             q0 = in;
-            q0(m_dbd).setZero(); // Mocking such that the columns \a dbd are set to zero
+            q0(m_dbd, gsEigen::all).setZero(); // Mocking such that the columns \a dbd are set to zero
 
             for (unsigned i = 0; i != m_cwise.size(); ++i)
             {
@@ -257,8 +254,9 @@ public:
                   (  m_cwise[i].block(0, rsz_i, sz_i, sz_i)
                   * q0.middleCols(k*r_i, r_i) ).transpose();
                   */
+
                 //TODO Add block to fiberMatrix
-                //q1.noalias() = (m_cwise[i].block(0, rsz_i, sz_i, sz_i) * q0).transpose();
+                //q1.noalias() = (m_cwise[i].middleCols(rsz_i, sz_i) * q0).transpose();
 
                 q1.noalias() = (m_cwise[i].toSparseMatrix() // HIGHLY INEFFICIENT
                                 .block(0, rsz_i, sz_i, sz_i) * q0).transpose();
@@ -271,11 +269,13 @@ public:
         }
 
         // Mock again to get the rows \a dbd to be zero, except for diagonal entry where we get 1.
-        out(m_dbd) = in(m_dbd);
+        out(m_dbd, gsEigen::all) = in(m_dbd, gsEigen::all);
     }
 
     //----------------
-    gsMatrix<unsigned> m_dbd;
+    gsVector<index_t> m_dbd;
+    void setUnitDiagonals(gsVector<index_t> dbd) { m_dbd = give(dbd); }
+    
     //T penalty;
     //----------------
 
@@ -424,7 +424,8 @@ public:
         }
 
         // Mocking diagonal entries in \a dbd
-        result(m_dbd).setOnes();
+        for (index_t c = 0; c!=m_dbd.size(); ++c)
+            result[m_dbd.at(c)] = 1;
     }
 
     FiberMatrix toFiberMatrix() const
@@ -688,6 +689,8 @@ public:
 
     virtual void apply(const gsMatrix <T> &in, gsMatrix <T> &out) const = 0;
 
+    virtual void setUnitDiagonals(gsVector<index_t> dbd) = 0;
+    
     virtual void diagonal_into(gsVector <T> &result) const = 0;
             
     virtual short_t dim() const = 0;
@@ -783,6 +786,7 @@ public:
 
     typedef memory::shared_ptr<gsInvDiagonalOp> Ptr;
     typedef memory::unique_ptr<gsInvDiagonalOp> uPtr;
+    typedef typename gsLinearOperator<T>::Ptr    LinOpPtr;
 
     /// Constructor by a vector (the diagonal entries
     gsInvDiagonalOp(const gsVector<T> & diag)
@@ -790,8 +794,8 @@ public:
     { }
 
     /// Make function returning a smart pointer
-    static uPtr make(const gsVector<T> & diag)
-    { return uPtr( new gsInvDiagonalOp(diag) ); }
+    static LinOpPtr make(const gsVector<T> & diag)
+    { return LinOpPtr( new gsInvDiagonalOp(diag) ); }
 
     void apply(const gsMatrix<T> & in, gsMatrix<T> & out) const
     {
