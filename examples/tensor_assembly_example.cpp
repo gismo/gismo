@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     //
     // gsVector<> diag;
     // kp.diagonal_into(diag);
-    // gsDiagonalOp<real_t> dop(diag);
+    // gsInvDiagonalOp<real_t> dop(diag);
     //
     // //gsConjugateGradient<> PCG( kpop /*, dop*/ ); // setup CG
     // gsBiCgStab<> PCG( kpop /*, dop*/ ); // this works for non-symmetric
