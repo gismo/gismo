@@ -10,6 +10,7 @@
 */
 
 #include <gismo.h>
+#include <gsAlgoim/gsAlgoimRule.h>
 #include <fstream>
 #include <string>
 
@@ -77,7 +78,9 @@ int main(int argc, char *argv[])
     gsInfo<< "Degree of the basis: " << dbasis.maxCwiseDegree() << "\n";
     gsInfo << "(dot1=assembled, dot2=solved, dot3=error)\n\nDoFs: ";
 
-    std::string out = "output_immersed";
+    std::string out = gsFileManager::getCanonicRepresentation(
+        gsFileManager::getPath(std::string(__FILE__), true) + "../output_immersed"
+    );
     gsFileManager::mkdir(out);
     const std::string debugDir = out + "/trimmed_domain_debug";
     const std::string insideDir = debugDir + "/inside";
@@ -219,10 +222,11 @@ int main(int argc, char *argv[])
             ev.writeParaview(u_sol, G, out+"/poisson2_immersed_circle");
             ev.writeParaview(u_ex, G, out+"/poisson2_exact_solution");
 
+            // Alternative approach: evaluate solution at quadrature point representation instead of element-wise output
             // gsMultiPatch<> mp_sol;
             // u_sol.extract(mp_sol);
-            // for domain iterator ?
-            // loop over elements and plot solution in every element
+            // for domain iterator: loop over elements and collect quadrature point values
+            // then plot error at quadrature point representation using gsWriteParaviewPoints
             
             // L2 error
             auto l2_error_field = (u_ex - u_sol).norm();
@@ -278,6 +282,38 @@ int main(int argc, char *argv[])
                 gsWriteParaview(boxesBoundary, boundaryBase, real_t(2));
                 makeRootPvd(boundaryBase + ".pvd", debugDir + "/boundarysign_collection.pvd", "boundarysign/");
             }
+
+            // ===== QUADRATURE POINT VISUALIZATION (ALGOIM) =====
+            {
+                gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr);
+                gsMatrix<real_t> quad_points(3, 0);
+                gsMatrix<real_t> pts;
+                gsVector<real_t> wts;
+
+                for (auto elem_it = tr_domain->beginBdr(boundary::none);
+                     elem_it != tr_domain->endBdr(boundary::none); ++elem_it)
+                {
+                    algoimRule.mapTo(elem_it.lowerCorner(), elem_it.upperCorner(), pts, wts);
+                    if (pts.cols() == 0) continue;
+
+                    gsMatrix<real_t> phys;
+                    mp.patch(0).eval_into(pts, phys);
+
+                    const index_t c = quad_points.cols();
+                    quad_points.conservativeResize(3, c + pts.cols());
+                    quad_points.block(0, c, 2, pts.cols()) = phys;
+                    quad_points.row(2).segment(c, pts.cols()).setZero();
+                }
+
+                if (quad_points.cols() > 0)
+                {
+                    const std::string base = out + "/quadrature_points_algoim";
+                    gsInfo << "Exporting " << quad_points.cols()
+                           << " Algoim quadrature points to " << base << ".vtp\n";
+                    gsWriteParaviewPoints(quad_points, base);
+                }
+            }
+            // ========================================================
         }
 
         gsInfo << "Penalty: " << gamma/hmax << "\n";
