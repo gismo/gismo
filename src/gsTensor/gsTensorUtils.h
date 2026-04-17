@@ -2622,6 +2622,11 @@ void gsSvdDecomposition(const gsMatrix<T> & tensor2, const gsVector<index_t> & s
         //gsDebug<< "Low-rank Approx. error (rank "<<rank
         //       <<", out of "<<svd.singularValues().size()<<"): "
         //<< ( skeleton[0].rightCols(rank) * skeleton[1].rightCols(rank).transpose() - Amat ).norm() <<"\n";
+
+        gsInfo << "Tolerance:"<< tol <<"\n";
+        gsInfo << "Low-rank Approx. error (rank "<<rank
+               <<", out of "<<svd.singularValues().size()<<"): "
+        << ( skeleton[0].rightCols(rank) * skeleton[1].rightCols(rank).transpose() - Amat ).norm() <<"\n";
     }
 }
 

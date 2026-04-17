@@ -474,11 +474,13 @@ int main(int argc, char *argv[])
     gsMatrix<real_t> sol_x, sol_y;
     if (matrixfree)
     {
-        gsKroneckerMatrix<real_t,-1> & kp = ta_diffusion.kronecker_ref();
-            
+        // gsKroneckerMatrix<real_t,-1> & kp = ta_diffusion.kronecker_ref();
+        auto kp_x = ta_diffusion.kronecker_clone();
+        auto kp_y = ta_diffusion.kronecker_clone();
+
         // to do: timing
-        sol_x = solveWithDirichletSparseMatrixFree(kp, rhs0, bdofs, vals_x);
-        sol_y = solveWithDirichletSparseMatrixFree(kp, rhs0, bdofs, vals_y);
+        sol_x = solveWithDirichletSparseMatrixFree(*kp_x, rhs0, bdofs, vals_x);
+        sol_y = solveWithDirichletSparseMatrixFree(*kp_y, rhs0, bdofs, vals_y);
     }
     else
     {

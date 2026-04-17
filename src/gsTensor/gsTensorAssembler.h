@@ -56,6 +56,12 @@ public:
 
     Kronecker_t & kronecker_ref() { return *m_kprod; }
 
+    Kronecker_ptr kronecker_clone() const
+    {
+        GISMO_ASSERT(m_kprod, "Kronecker operator not initialized.");
+        return m_kprod->clone();
+    }
+
     static gsOptionList defaultOptions();
 
     gsOptionList & options() { return m_option; }

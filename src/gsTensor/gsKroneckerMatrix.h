@@ -222,6 +222,13 @@ public:
     /// NOTE: the class assumes that the matrices are square
     const gsVector<index_t, d> &dimensions() const { return m_sz; }
 
+    typename gsKroneckerMatrix<T,-1>::uPtr clone() const override
+    {
+        return typename gsKroneckerMatrix<T,-1>::uPtr(
+            new gsKroneckerMatrix<T,d>(*this)
+        );
+    }
+
 private:// temporary memory for matrix-vector product
     mutable gsMatrix<T, -1, -1, ColMajor> q0, q1; // todo: thread-safe
 public:
@@ -699,6 +706,8 @@ public:
 
     virtual index_t cols() const = 0;
     virtual index_t rows() const = 0;
+
+    virtual uPtr clone() const = 0;
             
     gsSparseMatrix<T> toSparseMatrix() const
     { return toFiberMatrix().toSparseMatrix(); }
