@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         basis->uniformRefine();
 
     gsTensorAssembler<> ta;
-    ta.compute(*basis, STIFFNESS, RR); // DIFFUSION ?
+    ta.compute(*basis, DIFFUSION, RR); // DIFFUSION ?
     // ta.compute(*basis, MASS, RR); // DIFFUSION ? bug for this line?
 
     gsFiberMatrix<real_t> mat = ta.kronecker().toFiberMatrix();
