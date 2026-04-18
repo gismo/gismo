@@ -119,7 +119,7 @@ int main(int argc, char** argv)
 
     if (valence > 0)
     {
-        mesh_path = "freeform/flat/Val" + std::to_string(valence) + "Flat.xml";
+        mesh_path = "freeform/flat/Val" + std::to_string(valence) + "FlatStraight.xml";
     }
 
     gsSurfMesh mesh = gsSurfMesh();

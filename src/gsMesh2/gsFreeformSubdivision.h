@@ -15,6 +15,7 @@
 
 #include "gsCore/gsFunctionExpr.h"
 #include "gsIO/gsParaviewCollection.h"
+#include "gsMatrix/gsVector.h"
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsNurbs/gsTensorBSpline.h>
@@ -406,6 +407,9 @@ public:
                         gsParaviewCollection* cnet_collection = nullptr,
                         size_t timestep = 0, bool control_net = false);
 
+    
+    void scale(gsVector3d<> factors);
+
 }; // namespace internal
 
 /// \brief Manages a control net on a face of a surf mesh.
@@ -514,6 +518,8 @@ public: // Conversions
     /// \return A \c gsTensorBSpline<2> of degree N-1 in each direction,
     /// built from the stored N×N control net.
     const gismo::gsTensorBSpline<2, real_t> patch() const;
+
+    void scale(gsVector3d<> factors);
 
 }; // namespace internal
 

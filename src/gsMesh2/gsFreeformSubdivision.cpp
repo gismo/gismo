@@ -106,6 +106,33 @@ const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N>::patch() const
     return gsTensorBSpline<2>(basis, coeffs);
 }
 
+template <size_t N> void gsFreeformFaceData<N>::scale(gsVector3d<> factors)
+{
+    for (size_t i = 0; i < N; ++i)
+    {
+        for (size_t j = 0; j < N; ++j)
+        {
+            control_points(i, j) = control_points(i, j).cwiseProduct(factors);
+        }
+    }
+}
+
+template <size_t N> void gsFreeformSubdivision<N>::scale(gsVector3d<> factors)
+{
+    auto& mesh = *m_mesh;
+    gsProperty<gsFreeformFaceData<N>> face_data_vec(
+        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+
+    size_t n = std::min(factors.size(), 3);
+    for(auto v : mesh.vertices()){
+        mesh.position(v).head(n).array() *= factors.array().head(n);
+    }
+
+    for(auto& data : face_data_vec.vector()){
+        data.scale(factors);
+    }
+}
+
 template <size_t N>
 std::array<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>, 2>
 gsFreeformSubdivision<N>::deCasteljau(
@@ -1276,7 +1303,7 @@ gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
             // receptables.
             real_t err =
                 abs(point(D - 1) - function.eval(point.topRows(D - 1))(0));
-            
+
             error_linf = std::max(error_linf, err);
             error_l2 += err * err;
             ++error_count;
