@@ -1,7 +1,0 @@
-<xml>
-   <!-- The target Laplacian -->
-   <Function type="FunctionExpr" dim="2" id="0">
-       1
-   </Function>
-   <!-- The exact solution -->
- </xml>

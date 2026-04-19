@@ -12,8 +12,8 @@
     on the surface \f$\Gamma\f$ using the \c laplace_beltrami method. The
     solution replaces the last coordinate of each patch.
 
-    If the exact solution \f$u^*\f$ is known and supplied at ID 1 of the
-    functions XML file, the \f$L^\infty\f$ and \f$L^2\f$ approximation errors
+    If the exact solution \f$u^*\f$ is known and supplied at ID 2 of the
+    input XML file, the \f$L^\infty\f$ and \f$L^2\f$ approximation errors
     between the computed solution and \f$u^*\f$ are printed for every
     refinement level and written as a matrix to \c errors.csv.
 
@@ -24,37 +24,49 @@
     \par Command-line arguments
     - \b -m / \b --mesh (default: \c freeform/flat/Val5Flat.xml): path to
       the input mesh \c .xml file (collection of \c gsTensorBSpline<2>
-      patches), relative to \c filedata/.
-    - \b -f / \b --functions (default: \c input_functions.xml): path to an
-      XML file containing the functions used in the PDE:
-      - ID 0: the right-hand side function \f$f(x,y)\f$ of the Laplace-Beltrami
-        PDE (e.g. \c "1" or \c "x^2+y"). Defaults to \c "1" if absent.
-      - ID 1 (optional): the exact (analytical) solution \f$u^*(x,y)\f$. If
-        present, \f$L^\infty\f$ and \f$L^2\f$ errors between the computed
-        solution and \f$u^*\f$ are computed and printed at every refinement
-        level.
+      patches), relative to \c filedata/. Ignored if \c valence is set in
+      the input options (ID 0).
+    - \b -d / \b --mesh-dim (default: \c 3): spatial dimension of the mesh
+      (number of coordinates per vertex). Automatically set to \c 2 when
+      loading a flat mesh via the \c valence option.
+    - \b -f / \b --function: right-hand side function string (e.g. \c "x+y").
+      Used as the RHS when \b --input is not provided. At least one of
+      \b --input or \b --function must be supplied.
+    - \b -i / \b --input: path to an XML file containing PDE inputs. If not
+      provided, \b --function is used as the RHS instead. Contents:
+      - ID 0 (\c OptionList, optional): solver options:
+        - \c valence (\c index_t): if positive, overrides \b --mesh with
+          the flat \c ValNFlatStraight.xml model for the given extraordinary
+          valence and sets \b --mesh-dim to \c 2.
+        - \c x_scale (\c real_t): multiplicative scaling applied in
+          \f$x\f$.
+        - \c y_scale (\c real_t): multiplicative scaling applied in
+          \f$y\f$.
+      - ID 1 (\c Function, optional): the right-hand side \f$f(x,y)\f$ of
+        the Laplace-Beltrami PDE. Defaults to \c "1" if absent.
+      - ID 2 (\c Function, optional): the exact solution \f$u^*(x,y)\f$.
+        If present, \f$L^\infty\f$ and \f$L^2\f$ errors are printed and
+        written to \c errors.csv.
     - \b -p / \b --patches (default: \c freeform/bubble/): path, relative to
       \c filedata/, to the directory containing the model patch files for
       extraordinary-vertex subdivision.
-    - \b -s / \b --steps (default: \c 2): number of refinement levels to test
-      (i.e. maximum number of subdivision steps).
-    - \b -a / \b --samples (default: \c 10): number of sample points per
-      parameter direction per patch face used when computing the error norms.
-    - \b -v / \b --valence (default: \c -1, disabled): if set to a positive
-      value, \b --mesh is ignored and the flat model patch for the given
-      extraordinary valence is loaded directly from the patch directory.
+    - \b -s / \b --steps (default: \c 2): number of refinement levels
+      (subdivide-then-solve iterations).
     - \b --paraview: if set, writes Paraview output (\c results/pde_*.vts
       and \c results/pde.pvd) for every refinement level. If an exact solution
-      is provided in the functions file, a per-face error field is written as well.
+      is provided, a per-face error field is written as well.
     - \b --cnet: if set (together with \b --paraview), also writes the Bézier
       control net.
-      WARNING: Currently unsuable due to a gismo bug.
+      WARNING: Currently unusable due to a gismo bug.
 
     Author(s): L. Mussmaecher
 */
 
+#include "gsCore/gsDebug.h"
 #include "gsCore/gsFunctionExpr.h"
 #include "gsIO/gsFileData.h"
+#include "gsIO/gsOptionList.h"
+#include "gsMatrix/gsVector.h"
 #include <gismo.h>
 #include <gsIO/gsCsv.h>
 #include <gsIO/gsFileData.hpp>
@@ -68,43 +80,41 @@ int main(int argc, char** argv)
 {
     // Command line inputs
     std::string mesh_path("freeform/flat/Val5Flat.xml");
-    std::string model_patch_path("freeform/bubble/");
-    index_t steps(2);
-    index_t samples(10);
     index_t valence(-1);
     index_t mesh_dim(3);
-    std::string functions_path("input_functions.xml");
+    std::string function_str("");
+    std::string input_path("");
+    std::string model_patch_path("freeform/bubble/");
+    index_t steps(2);
     bool control_net(false);
     bool paraview(false);
 
     gsCmdLine cmd("Freeform subdivision: Laplace-Beltrami PDE solver");
+
+    // Function/Mesh Input
     cmd.addString("m", "mesh", "File containing the mesh.", mesh_path);
-    cmd.addString(
-        "f", "functions",
-        "Path to an XML file containing the functions used in the PDE. "
-        "ID 0: right-hand side function f(x,y) of the Laplace-Beltrami PDE "
-        "(e.g. `1` or `x^2 + y`); defaults to `1` if absent. "
-        "ID 1 (optional): exact (analytical) solution u*(x,y); if present, "
-        "L-inf and L2 errors between the computed solution and u* are "
-        "printed at each refinement level.",
-        functions_path);
+    cmd.addInt("d", "mesh-dim", "Dimension of the mesh. 3 is the default.",
+               mesh_dim);
+    cmd.addString("f", "function", "Right-hand side of the Laplace PDE.",
+                  function_str);
+
+    // Alternative: Input file
+    cmd.addString("i", "input",
+                  "Path to an XML file containing PDE inputs (OptionList at "
+                  "ID 0, RHS function at ID 1, exact solution at ID 2).",
+                  input_path);
     cmd.addString("p", "patches",
                   "The path to the folder containing the model patches for EV "
                   "subdivision.",
                   model_patch_path);
+
+    // Process modification
     cmd.addInt("s", "steps",
                "The number of refinement levels (subdivide, solve PDE) to "
                "repeat.",
                steps);
-    cmd.addInt("a", "samples",
-               "The number of samples per patch direction (will be squared).",
-               samples);
-    cmd.addInt("v", "valence",
-               "The valence of the patch. Overwrites the file path, if set.",
-               valence);
-    cmd.addInt("d", "mesh-dim",
-               "Dimension of the mesh. 3 is the default.",
-               mesh_dim);
+
+    // Output modification
     cmd.addSwitch("paraview", "Outputs the results to Paraview.", paraview);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
 
@@ -117,33 +127,56 @@ int main(int argc, char** argv)
         return errorcode;
     }
 
+    // Load input data
+    gsFunctionExpr<real_t> rhs, exact;
+    bool has_exact(false);
+    real_t x_scale(1.0), y_scale(1.0);
+    // First, try to get the data from the file
+    if (!input_path.empty())
+    {
+        // The target function
+        gsFileData<> fd(input_path);
+        if (fd.hasId(1))
+        {
+            fd.getId(1, rhs);
+        }
+
+        // The exact known solution
+        if (fd.hasId(2))
+        {
+            has_exact = true;
+            fd.getId(2, exact);
+        }
+
+        // The options
+        if (fd.hasId(0))
+        {
+            gsOptionList opts;
+            fd.getId(0, opts);
+            valence = opts.getInt("valence");
+            x_scale = opts.getReal("x_scale");
+            y_scale = opts.getReal("y_scale");
+        }
+    }
+    else
+    {
+        rhs = gsFunctionExpr<>(function_str, mesh_dim);
+    }
+
+    // if the valence is set, mesh_dim and mesh_path are overwritten.
     if (valence > 0)
     {
-        mesh_path = "freeform/flat/Val" + std::to_string(valence) + "FlatStraight.xml";
+        mesh_path =
+            "freeform/flat/Val" + std::to_string(valence) + "FlatStraight.xml";
+        mesh_dim = 2;
     }
+
+    gsVector<> scale(2);
+    scale << x_scale, y_scale;
 
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFreeformSubdivision<5>(&mesh, mesh_dim);
     subdiv.options().setString("model_patch_path", model_patch_path);
-
-    subdiv.initialize_data(mesh_path);
-
-    gsFileData<> fd(functions_path);
-    gsFunctionExpr<real_t> rhs, exact;
-    if(fd.hasId(0)){
-        fd.getId(0, rhs);
-    } else {
-        rhs = gsFunctionExpr<>("1", mesh_dim);
-    }
-
-    const bool has_exact = fd.hasId(1);
-    if(has_exact){
-        fd.getId(1, exact);
-    }
-    
-
-    // When no exact solution is given, initialise with a placeholder; the
-    // object is never evaluated in that case.
 
     gsMatrix<real_t> errors(2, steps);
 
@@ -160,12 +193,13 @@ int main(int argc, char** argv)
         }
         // this is necessary if the loaded data is not smoothed already, e.g. in
         // case of an OFF file.
+        subdiv.scale(scale);
         subdiv.smooth(1);
         subdiv.laplace_beltrami(rhs);
 
         if (has_exact)
         {
-            errors.col(i) = subdiv.error(exact, samples);
+            errors.col(i) = subdiv.error(exact, 10);
 
             if (paraview)
             {
@@ -197,7 +231,9 @@ int main(int argc, char** argv)
     }
 
     if (has_exact)
-        gsWriteCsv("results/errors.csv", errors);
+        gsWriteCsv("errors/" + input_path.substr(input_path.find_last_of("/\\") + 1) +
+                       "_errors.csv",
+                   errors);
 
     return 0;
 }

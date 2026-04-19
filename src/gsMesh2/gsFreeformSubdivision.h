@@ -407,7 +407,14 @@ public:
                         gsParaviewCollection* cnet_collection = nullptr,
                         size_t timestep = 0, bool control_net = false);
 
-    
+    /// \brief Scales all vertex positions and Bézier control points.
+    ///
+    /// Applies a per-axis scaling to every vertex position in the mesh and to
+    /// every Bézier control point stored in the face data. Each coordinate
+    /// \f$x_i\f$ is multiplied by the corresponding entry \c factors[i].
+    ///
+    /// \param factors A 3-vector whose components are the scale factors for
+    ///                the x, y, and z axes respectively.
     void scale(gsVector3d<> factors);
 
 }; // namespace internal
@@ -519,6 +526,14 @@ public: // Conversions
     /// built from the stored N×N control net.
     const gismo::gsTensorBSpline<2, real_t> patch() const;
 
+    /// \brief Scales all Bézier control points component-wise.
+    ///
+    /// Multiplies every control point in the \f$N \times N\f$ grid by
+    /// \c factors component-wise, i.e.\ each coordinate \f$x_i\f$ is
+    /// replaced by \c factors[i] * \f$x_i\f$.
+    ///
+    /// \param factors A 3-vector whose components are the scale factors for
+    ///                the x, y, and z axes respectively.
     void scale(gsVector3d<> factors);
 
 }; // namespace internal

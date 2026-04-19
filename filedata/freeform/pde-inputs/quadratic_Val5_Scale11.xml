@@ -1,0 +1,19 @@
+<xml>
+   <!-- The target Laplacian -->
+   <OptionList id="0">
+     <int label="valence" desc="Patch valence" value="5"/>
+     <real label="x_scale" desc="Patch scale in x direction" value="1"/>
+     <real label="y_scale" desc="Patch scale in y direction" value="1"/>
+   </OptionList>
+   <Function type="FunctionExpr" dim="2" id="1">
+		(16 - x*(-80 + x*(20 + x*(60 + (-10 + x)*x))) - 140*y**2 + 10*x*(-6 + x*(6 + 5*x))*y**2 - 45*(-2 + x)*y**4)/8.
+	</Function>
+   <!-- The exact solution -->
+   <Function type="FunctionExpr" dim="2" id="2">
+		-0.0625*((-1 + x)*(x - y**2)*((-4 + (-2 + x)*x)**2 - 10*(2 + x*(2 + x))*y**2 + 5*y**4))
+	</Function>
+    <!-- The original function -->
+   <Function type="FunctionExpr" dim="2" id="3">
+		-x + y**2
+	</Function>
+ </xml>

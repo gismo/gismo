@@ -1,0 +1,19 @@
+<xml>
+   <!-- The target Laplacian -->
+   <OptionList id="0">
+     <int label="valence" desc="Patch valence" value="6"/>
+     <real label="x_scale" desc="Patch scale in x direction" value="1"/>
+     <real label="y_scale" desc="Patch scale in y direction" value="1"/>
+   </OptionList>
+   <Function type="FunctionExpr" dim="2" id="1">
+		(x*(-96 + x*(24 + x*(108 + x*(-9 + (-15 + x)*x)))) + 3*x*(36 + x*(-54 + (2 - 7*x)*x))*y**2 + 9*(-17 + x*(-3 + 11*x))*y**4 + 9*y**6 + 8*(-2 + 21*y**2))/8.
+	</Function>
+   <!-- The exact solution -->
+   <Function type="FunctionExpr" dim="2" id="2">
+		((-1 + x)*(1 + x)*(-2 + x - Sqrt(3)*y)*(2 + x - Sqrt(3)*y)*(-2 + x + Sqrt(3)*y)*(2 + x + Sqrt(3)*y)*(x - y**2))/16.
+	</Function>
+    <!-- The original function -->
+   <Function type="FunctionExpr" dim="2" id="3">
+		-x + y**2
+	</Function>
+ </xml>

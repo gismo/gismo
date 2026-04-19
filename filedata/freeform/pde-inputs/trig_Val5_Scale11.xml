@@ -1,0 +1,19 @@
+<xml>
+   <!-- The target Laplacian -->
+   <OptionList id="0">
+     <int label="valence" desc="Patch valence" value="5"/>
+     <real label="x_scale" desc="Patch scale in x direction" value="1"/>
+     <real label="y_scale" desc="Patch scale in y direction" value="1"/>
+   </OptionList>
+   <Function type="FunctionExpr" dim="2" id="1">
+		(-5*(8*x + (-4 + x)*x**3 - 2*x*(2 + 3*x)*y**2 + y**4)*Cos(x)*Cos(y) + Sin(x)*((-56 + 60*x**2 - 5*x**4 + x**5 - 10*(-6 + x**2 + x**3)*y**2 + 5*(-1 + x)*y**4)*Cos(y) - 20*(-1 + x)*y*(2 + x*(2 + x) - y**2)*Sin(y)))/8.
+	</Function>
+   <!-- The exact solution -->
+   <Function type="FunctionExpr" dim="2" id="2">
+		((-1 + x)*((-4 + (-2 + x)*x)**2 - 10*(2 + x*(2 + x))*y**2 + 5*y**4)*Cos(y)*Sin(x))/16.
+	</Function>
+    <!-- The original function -->
+   <Function type="FunctionExpr" dim="2" id="3">
+		Cos(y)*Sin(x)
+	</Function>
+ </xml>

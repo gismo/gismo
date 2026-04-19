@@ -1,0 +1,19 @@
+<xml>
+   <!-- The target Laplacian -->
+   <OptionList id="0">
+     <int label="valence" desc="Patch valence" value="5"/>
+     <real label="x_scale" desc="Patch scale in x direction" value="3"/>
+     <real label="y_scale" desc="Patch scale in y direction" value="5"/>
+   </OptionList>
+   <Function type="FunctionExpr" dim="2" id="1">
+		((-625*x*(216 + (-12 + x)*x**2) + 1350*x*(2 + x)*y**2 - 81*y**4)*Cos(x)*Cos(y) + Sin(x)*((25*(-23112 + x**2*(3204 + x*(-32 + 5*(-15 + x)*x))) - 18*(-1506 + x*(-48 + 25*x*(3 + x)))*y**2 + 81*(-3 + x)*y**4)*Cos(y) - 36*(-3 + x)*y*(450 + 25*x*(6 + x) - 9*y**2)*Sin(y)))/243000.
+	</Function>
+   <!-- The exact solution -->
+   <Function type="FunctionExpr" dim="2" id="2">
+		((-3 + x)*(125*(-36 + (-6 + x)*x)**2 - 450*(18 + x*(6 + x))*y**2 + 81*y**4)*Cos(y)*Sin(x))/486000.
+	</Function>
+    <!-- The original function -->
+   <Function type="FunctionExpr" dim="2" id="3">
+		Cos(y)*Sin(x)
+	</Function>
+ </xml>

@@ -1,0 +1,19 @@
+<xml>
+   <!-- The target Laplacian -->
+   <OptionList id="0">
+     <int label="valence" desc="Patch valence" value="3"/>
+     <real label="x_scale" desc="Patch scale in x direction" value="1"/>
+     <real label="y_scale" desc="Patch scale in y direction" value="1"/>
+   </OptionList>
+   <Function type="FunctionExpr" dim="2" id="1">
+		2 - x**3/2. - 12*y**2 + (3*x*(4 + 5*y**2))/2.
+	</Function>
+   <!-- The exact solution -->
+   <Function type="FunctionExpr" dim="2" id="2">
+		-0.25*((-1 + x)*(2 + x - Sqrt(3)*y)*(2 + x + Sqrt(3)*y)*(x - y**2))
+	</Function>
+    <!-- The original function -->
+   <Function type="FunctionExpr" dim="2" id="3">
+		-x + y**2
+	</Function>
+ </xml>

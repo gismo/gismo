@@ -1,0 +1,19 @@
+<xml>
+   <!-- The target Laplacian -->
+   <OptionList id="0">
+     <int label="valence" desc="Patch valence" value="5"/>
+     <real label="x_scale" desc="Patch scale in x direction" value="3"/>
+     <real label="y_scale" desc="Patch scale in y direction" value="5"/>
+   </OptionList>
+   <Function type="FunctionExpr" dim="2" id="1">
+		(486000 - 25*x*(-9072 + x*(2700 + x*(804 + x*(-132 + 5*x)))) + 2*(-106650 + x*(-2754 + x*(8568 + 725*x)))*y**2 + 27*(188 + 5*x)*y**4)/243000.
+	</Function>
+   <!-- The exact solution -->
+   <Function type="FunctionExpr" dim="2" id="2">
+		-2.05761316872428e-6*((-3 + x)*(x - y**2)*(125*(-36 + (-6 + x)*x)**2 - 450*(18 + x*(6 + x))*y**2 + 81*y**4))
+	</Function>
+    <!-- The original function -->
+   <Function type="FunctionExpr" dim="2" id="3">
+		-x + y**2
+	</Function>
+ </xml>
