@@ -499,8 +499,10 @@ template <size_t N>
 gsMatrix<real_t> gsFreeformSubdivision<N>::smooth(size_t degree)
 {
     GISMO_ASSERT(degree == 1, "Only C1 smoothing supported.");
-    // TODO: Maybe work with the same Assember/Solver as in fit_function and
-    // laplace_beltrami here?
+
+    // ===============================
+    // Phase 1: Project to smooth
+    // ===============================
 
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
@@ -1134,24 +1136,12 @@ void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 template <size_t N>
 void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
 {
-    // TODO: Output coefficients again
-
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
     this->c1_basis(multi_patch, multi_basis, mapped_basis);
 
-    // gsMatrix<real_t> coefficients;
-    // real_t err = gsL2Projection<real_t>::project(
-    //     mapped_basis,
-    //     multi_basis,
-    //     multi_patch,
-    //     function,
-    //     coefficients
-    // );
-    // gsMappedSpline<2, real_t> solSpline(mapped_basis, coefficients);
-    // gsMultiPatch<> solField = solSpline.exportToPatches();
-
+    // Use the expression assembler to build a system
     gsExprAssembler<real_t> A(1, 1);
     A.setIntegrationElements(multi_basis);
 
@@ -1161,8 +1151,10 @@ void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
 
     u.setup();
     A.initSystem();
+    // Equation: Int(v * u) = Int(v * f) e.g. u = f
     A.assemble(u * u.tr(), u * ff);
 
+    // Solve this system
     gsSparseSolver<real_t>::LU solver;
     solver.compute(A.matrix());
     gsMatrix<> coefficients = solver.solve(A.rhs());
