@@ -6,14 +6,14 @@
      <real label="y_scale" desc="Patch scale in y direction" value="5"/>
    </OptionList>
    <Function type="FunctionExpr" dim="2" id="1">
-		(91800*xy + 25*x*(58320 + 1629*x**4 - 122*x**5 - 504*x*xy + 4*x**2*(-6993 + 8*xy)) - 375*(-3 + x)*(-36 + (-6 + x)*x)**2*y + 54*(x**3*(277 + 116*x) - 52*xy - 2*x*(675 + 8*xy))*y**2 + 250*(-1242 + x**2*(99 + 13*x))*y**3 + 243*(3 - 2*x)*x*y**4 + 27*(239 - 13*x)*y**5)/243000.
+		(-25*x*(-58320 + 27972*x**2 - 1629*x**4 + 122*x**5) - 75*(-19440 + x*(-3672 + x*(2700 + x*(304 + x*(-82 + 5*x)))))*y + 54*x*(-1350 + x**2*(277 + 116*x))*y**2 + 10*(-31050 + x*(-648 + x*(2286 + 325*x)))*y**3 + 243*(3 - 2*x)*x*y**4 + 27*(242 - 13*x)*y**5)/243000.
 	</Function>
    <!-- The exact solution -->
    <Function type="FunctionExpr" dim="2" id="2">
-		((-3 + x)*(x**3 - xy + y**3)*(125*(-36 + (-6 + x)*x)**2 - 450*(18 + x*(6 + x))*y**2 + 81*y**4))/486000.
+		((-3 + x)*(60 + 5*(1 + Sqrt(5))*x - 3*Sqrt(10 - 2*Sqrt(5))*y)*(60 + 5*(1 + Sqrt(5))*x + 3*Sqrt(10 - 2*Sqrt(5))*y)*(-60 + 5*(-1 + Sqrt(5))*x + 3*Sqrt(2*(5 + Sqrt(5)))*y)*(x**3 - x*y + y**3)*(5*(-1 + Sqrt(5))*x - 3*(20 + Sqrt(2*(5 + Sqrt(5)))*y)))/3.888e7
 	</Function>
     <!-- The original function -->
    <Function type="FunctionExpr" dim="2" id="3">
-		x**3 - xy + y**3
+		x**3 - x*y + y**3
 	</Function>
  </xml>
