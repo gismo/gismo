@@ -267,7 +267,7 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
 
             gsMatrix<T> rhs(nPts, 1);
             for (index_t pt = 0; pt < nPts; ++pt)
-                rhs(pt, 0) = -(dBdry * Vm(pt) + betaVals(pt) * dVm(pt)) / dNeigh;
+                rhs(pt, 0) = -(dBdry * Vm(pt) + signN * betaVals(pt) * dVm(pt)) / dNeigh;
 
             gsMatrix<T> gamma;
             makeSparseLUSolver(sideColloc)->apply(rhs, gamma);
@@ -519,6 +519,13 @@ gsVector<T> computeGluingDataForInterface(
 
     if (!success) return result;
 
+    // Sign correction: the fitting computes beta such that
+    //   beta_0*D2 - beta_1*D1 ≈ D3  (or beta*(D2-D1) ≈ D3 in constant case)
+    // but the C1 condition requires
+    //   -D2*beta_0 + D1*beta_1 = D3  i.e. beta_0*D2 - beta_1*D1 = -D3
+    // So negate all beta values.
+    b10 = -b10; b11 = -b11; b20 = -b20; b21 = -b21;
+
     result(0) = a10; result(1) = a11;
     result(2) = b10; result(3) = b11;
     if (flipped)
@@ -537,7 +544,7 @@ int main(int argc, char* argv[])
 {
     using T = double;
 
-    std::string geometry("domain2d/two_bicubic_patches.xml");
+    std::string geometry("domain2d/2patch/two_bilinear_patches.xml");
     std::string outDir("");
     index_t numGaussPerSpan = 0;
     index_t refinements = 0;
@@ -732,6 +739,15 @@ int main(int argc, char* argv[])
     const index_t nSharedBdry = nSm1;    // shared trace DOFs
     const index_t nSharedL2   = nLD1;    // shared second-layer DOFs
 
+    // Check interface orientation: if the tangential directions
+    // run in opposite directions, we need to reverse the DOF mapping
+    // for patch 2's shared columns.
+    const short_t tanDir1 = 1 - ps1.direction();
+    const bool flipped = !ifc.dirOrientation(ps1, tanDir1);
+
+    gsInfo << "Interface orientation: "
+           << (flipped ? "FLIPPED" : "aligned") << "\n";
+
     const index_t nGlobal = nInt1 + nInt2 + nSharedBdry + nSharedL2;
 
     gsInfo << "\nGlobal DOFs: " << nGlobal
@@ -793,17 +809,23 @@ int main(int argc, char* argv[])
                 G2.insert(it.row(), gOff_int2 + j) = it.value();
 
         // Second-layer columns of E2 → global shared L2 cols
+        // NEGATED: AS-G1 requires alpha_1*d_1 + alpha_2*d_2 = 0,
+        // so patch 2's second-layer contribution must be negated.
+        // If flipped, DOF j on patch 1 corresponds to DOF (nLD2-1-j) on patch 2.
         for (index_t j = 0; j < nLD2; ++j)
         {
-            const index_t e2col = nInt2 + j;
+            const index_t j2 = flipped ? (nLD2 - 1 - j) : j;
+            const index_t e2col = nInt2 + j2;
             for (typename gsSparseMatrix<T>::InnerIterator it(E2, e2col); it; ++it)
-                G2.insert(it.row(), gOff_L2 + j) = it.value();
+                G2.insert(it.row(), gOff_L2 + j) = -it.value();
         }
 
         // Boundary columns of E2 → global shared boundary cols
+        // If flipped, DOF j on patch 1 corresponds to DOF (nSm2-1-j) on patch 2.
         for (index_t j = 0; j < nSm2; ++j)
         {
-            const index_t e2col = nInt2 + nLD2 + j;
+            const index_t j2 = flipped ? (nSm2 - 1 - j) : j;
+            const index_t e2col = nInt2 + nLD2 + j2;
             for (typename gsSparseMatrix<T>::InnerIterator it(E2, e2col); it; ++it)
                 G2.insert(it.row(), gOff_bdry + j) = it.value();
         }
@@ -813,6 +835,104 @@ int main(int argc, char* argv[])
     gsInfo << "\nGlobal-to-patch matrices:\n"
            << "  G1: " << G1.rows() << " x " << G1.cols() << "\n"
            << "  G2: " << G2.rows() << " x " << G2.cols() << "\n";
+
+    // ====================================================================
+    // Numerical G1 smoothness verification
+    // ====================================================================
+    {
+        const short_t normDir1 = ps1.direction(), tanDir1_ = 1 - normDir1;
+        const short_t normDir2 = ps2.direction(), tanDir2_ = 1 - normDir2;
+        const bool par1_ = ps1.parameter(), par2_ = ps2.parameter();
+        const bool ifcFlipped = !ifc.dirOrientation(ps1, tanDir1_);
+
+        gsMatrix<T> sup1 = mp.patch(ps1.patch).support();
+        gsMatrix<T> sup2 = mp.patch(ps2.patch).support();
+        const T ifcCoord1 = sup1(normDir1, par1_ ? 1 : 0);
+        const T ifcCoord2 = sup2(normDir2, par2_ ? 1 : 0);
+        const T t1a = sup1(tanDir1_, 0), t1b = sup1(tanDir1_, 1);
+        const T t2a = sup2(tanDir2_, 0), t2b = sup2(tanDir2_, 1);
+
+        const index_t nCheck = 21;
+        T maxValErr = 0, maxGradErr = 0;
+
+        T maxErrInt = 0, maxErrTrace = 0, maxErrL2 = 0;
+
+        for (index_t idx = 0; idx < nGlobal; ++idx)
+        {
+            gsVector<T> globalVec = gsVector<T>::Zero(nGlobal);
+            globalVec(idx) = T(1);
+            gsVector<T> c1 = G1 * globalVec;
+            gsVector<T> c2 = G2 * globalVec;
+
+            auto func1 = tb1.makeGeometry(c1);
+            auto func2 = tb2.makeGeometry(c2);
+
+            T thisMaxGrad = 0;
+
+            for (index_t i = 0; i < nCheck; ++i)
+            {
+                T s = T(i) / T(nCheck - 1);
+                T t1 = t1a + s * (t1b - t1a);
+                T s2 = ifcFlipped ? (1.0 - s) : s;
+                T t2 = t2a + s2 * (t2b - t2a);
+
+                gsMatrix<T> pt1(2, 1), pt2(2, 1);
+                pt1(normDir1, 0) = ifcCoord1; pt1(tanDir1_, 0) = t1;
+                pt2(normDir2, 0) = ifcCoord2; pt2(tanDir2_, 0) = t2;
+
+                // Check C0: values must match
+                gsMatrix<T> v1 = func1->eval(pt1);
+                gsMatrix<T> v2 = func2->eval(pt2);
+                T valErr = std::abs(v1(0, 0) - v2(0, 0));
+                maxValErr = std::max(maxValErr, valErr);
+
+                // Check G1: physical gradients must match
+                gsMatrix<T> df1, df2, dG1, dG2;
+                func1->deriv_into(pt1, df1);
+                func2->deriv_into(pt2, df2);
+                mp.patch(ps1.patch).deriv_into(pt1, dG1);
+                mp.patch(ps2.patch).deriv_into(pt2, dG2);
+
+                gsMatrix<T> J1(2,2), J2(2,2);
+                J1(0,0) = dG1(0,0); J1(0,1) = dG1(1,0);
+                J1(1,0) = dG1(2,0); J1(1,1) = dG1(3,0);
+                J2(0,0) = dG2(0,0); J2(0,1) = dG2(1,0);
+                J2(1,0) = dG2(2,0); J2(1,1) = dG2(3,0);
+
+                gsVector<T> paramGrad1(2), paramGrad2(2);
+                paramGrad1(0) = df1(0,0); paramGrad1(1) = df1(1,0);
+                paramGrad2(0) = df2(0,0); paramGrad2(1) = df2(1,0);
+
+                gsVector<T> physGrad1 = J1.inverse().transpose() * paramGrad1;
+                gsVector<T> physGrad2 = J2.inverse().transpose() * paramGrad2;
+
+                T gradErr = (physGrad1 - physGrad2).norm();
+                maxGradErr = std::max(maxGradErr, gradErr);
+                thisMaxGrad = std::max(thisMaxGrad, gradErr);
+            }
+
+            // Classify DOF
+            if (idx < gOff_bdry)
+                maxErrInt = std::max(maxErrInt, thisMaxGrad);
+            else if (idx < gOff_L2)
+                maxErrTrace = std::max(maxErrTrace, thisMaxGrad);
+            else
+                maxErrL2 = std::max(maxErrL2, thisMaxGrad);
+        }
+
+        gsInfo << "\n=== G1 Smoothness Check (physical gradient) ===\n"
+               << "  Max C0 (value) error:      " << maxValErr << "\n"
+               << "  Max grad (physical) error:  " << maxGradErr << "\n"
+               << "    Interior DOFs:    " << maxErrInt << "\n"
+               << "    Trace DOFs:       " << maxErrTrace << "\n"
+               << "    D-deriv DOFs:     " << maxErrL2 << "\n";
+        if (maxValErr < 1e-8 && maxGradErr < 1e-3)
+            gsInfo << "  STATUS: PASS\n";
+        else if (maxValErr < 1e-8 && maxGradErr < 1e-1)
+            gsInfo << "  STATUS: APPROX (AS-G1 approximation error)\n";
+        else
+            gsInfo << "  STATUS: FAIL (check coupling)\n";
+    }
 
     // ====================================================================
     // Plot global basis functions on both patches

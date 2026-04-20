@@ -23,7 +23,6 @@
 
 #include <iostream>
 #include <set>
-#include <map>
 #include <algorithm>
 #include <numeric>
 #include <gismo.h>
@@ -31,31 +30,23 @@
 using namespace gismo;
 
 
+/// Check whether the coarse B-spline basis is nested inside the fine one.
 template<typename T>
 bool isNested(const gsBSplineBasis<T>& coarseBasis, const gsBSplineBasis<T>& fineBasis)
 {
-
-    if(coarseBasis.dim()!=1 || fineBasis.dim()!=1){
-      //  gsInfo << "only implemented for univariate basis functions\n";
-
+    if (coarseBasis.dim() != 1 || fineBasis.dim() != 1)
         return false;
-    }
-
 
     const int coarseDegree = coarseBasis.degree();
-    const int fineDegree = fineBasis.degree();
+    const int fineDegree   = fineBasis.degree();
 
-    if(coarseDegree > fineDegree){
-       // gsInfo << "the coarse basis degree is bigger than fine basis degree\n";
-
+    if (coarseDegree > fineDegree)
         return false;
-    }
 
-    const gsKnotVector <T>& coarseKnots = coarseBasis.knots();
-    const gsKnotVector <T>& fineKnots = fineBasis.knots();
+    const gsKnotVector<T>& coarseKnots = coarseBasis.knots();
+    const gsKnotVector<T>& fineKnots   = fineBasis.knots();
 
-
-    gsKnotVector <T> coarseKnotsWithIncreasedMultiplicity = coarseKnots;
+    gsKnotVector<T> coarseKnotsWithIncreasedMultiplicity = coarseKnots;
     coarseKnotsWithIncreasedMultiplicity.degreeElevate(fineDegree-coarseDegree);
 
 
@@ -67,8 +58,11 @@ bool isNested(const gsBSplineBasis<T>& coarseBasis, const gsBSplineBasis<T>& fin
 }
 
 
+/// Build a collocation matrix: row i = evaluation of all basis functions
+/// at collocation point i.
 template<typename T>
-gsSparseMatrix<T> collocationMatrix(const gsBSplineBasis<T>& basis, const gsMatrix<T>& collocationPoints)
+gsSparseMatrix<T> collocationMatrix(const gsBSplineBasis<T>& basis,
+                                    const gsMatrix<T>& collocationPoints)
 {
     gsMatrix<T> values = basis.eval(collocationPoints);
     gsMatrix<index_t> indices = basis.active(collocationPoints);
@@ -86,10 +80,12 @@ gsSparseMatrix<T> collocationMatrix(const gsBSplineBasis<T>& basis, const gsMatr
     return collocation;
 }
 
+/// Compute the embedding (refinement) matrix from a coarse basis into
+/// a fine basis via Greville collocation.
 template<typename T>
-gsSparseMatrix<T> embeddingMatrix(const gsBSplineBasis<T>& coarseBasis,const gsBSplineBasis<T>& fineBasis)
+gsSparseMatrix<T> embeddingMatrix(const gsBSplineBasis<T>& coarseBasis,
+                                  const gsBSplineBasis<T>& fineBasis)
 {
-
     gsMatrix<T> greville = fineBasis.anchors();
     gsSparseMatrix<T> coarseCollocation = collocationMatrix(coarseBasis, greville);
     gsSparseMatrix<T> fineCollocation = collocationMatrix(fineBasis, greville);
@@ -101,21 +97,25 @@ gsSparseMatrix<T> embeddingMatrix(const gsBSplineBasis<T>& coarseBasis,const gsB
 }
 
 
-std::vector<index_t> getInteriorDofs(const index_t tbSize, const gsMatrix<index_t>& firstLayerDOFs, const gsMatrix<index_t>& secondLayerDOFs)
+/// Return the sorted indices of all DOFs that are neither in the
+/// first-layer (boundary) nor in the second-layer set.
+std::vector<index_t> getInteriorDofs(const index_t tbSize,
+                                     const gsMatrix<index_t>& firstLayerDOFs,
+                                     const gsMatrix<index_t>& secondLayerDOFs)
 {
-    // all dofs on the boundary
+    // Merge and sort both boundary DOF sets
     std::vector<index_t> removedSet;
     removedSet.reserve(firstLayerDOFs.rows() + secondLayerDOFs.rows());
     std::merge(firstLayerDOFs.data(), firstLayerDOFs.data() + firstLayerDOFs.rows(),
                secondLayerDOFs.data(), secondLayerDOFs.data() + secondLayerDOFs.rows(),
                std::back_inserter(removedSet));
     std::sort(removedSet.begin(), removedSet.end());
-    
-    // Truly interior DOFs = allDOFs \ (bdrySet ∪ secondLayerSet)
+
+    // All DOF indices
     std::vector<index_t> allDOFs(tbSize);
     std::iota(allDOFs.begin(), allDOFs.end(), 0);
 
-    // Now determine the rest
+    // Interior = all \ removed
     std::vector<index_t> trueInteriorDOFs;
     trueInteriorDOFs.reserve(allDOFs.size() - removedSet.size());
     std::set_difference(allDOFs.begin(), allDOFs.end(),
@@ -258,24 +258,23 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
         ++col0;
     }
 
-    // ----- Block 2: second-layer columns -----
-    // These columns have zero value at the boundary (only second-layer
-    // DOFs are nonzero, and N_{neighIdx}(n_0) = 0).
-    // Since the value is zero, the tangential derivative at the boundary
-    // is also zero.  Therefore the d_i derivative simplifies to:
+    // ----- Block 2: second-layer columns (d_i spans lower-degree basis) -----
+    // These columns have zero value at the boundary (the second-layer
+    // basis function N_{neighIdx} vanishes there).  Since the value is
+    // zero, the tangential derivative is also zero, and d_i reduces to:
     //
-    //   (1/alpha) * partial_n u  =  phi_j(t)
+    //   d_i u = (1/alpha) * partial_n u  =  phi_j(t)
     //
-    // i.e.  partial_n u = alpha(t) * phi_j(t).
+    // The outward normal derivative is partial_n = signN * partial_param,
+    // and the parametric normal derivative of a second-layer function is:
+    //   partial_param u(t) = dNeigh * sum_k c_k M_k(t)
     //
-    // For the second-layer DOF at tangential index k:
-    //   partial_n B_{neigh,k} |_{bdry} = dNeigh * M_k(t)
+    // So we need:
+    //   signN * dNeigh * sum_k c_k M_k(t) = alpha(t) * phi_j(t)
     //
-    // So we need coefficients c_k such that:
-    //   dNeigh * sum_k c_k M_k(t) = alpha(t) * phi_j(t)
-    //
-    // We solve this by collocation: find the side-basis representation
-    // of alpha(t)*phi_j(t), then scale by signN/dNeigh.
+    // i.e.  c_k coefficients are found by collocation on
+    //   alpha(t) * phi_j(t), then scaled by signN / dNeigh
+    //   (since signN^2 = 1, this equals 1 / (signN * dNeigh)).
 
     const index_t colOffsetL2 = nInterior;
     {
@@ -322,25 +321,24 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
     // Since alpha != 0 this is:
     //   partial_n u + beta(t) * partial_t u = 0      (*)
     //
+    // The outward normal derivative relates to the parametric derivative:
+    //   partial_n = signN * partial_param
+    //
     // A boundary column m has:
     //   boundary row k:       E_{k,m}   (from embFirstLayer)
     //   second-layer row k:   gamma_{k,m}  (to be determined)
     //
-    // At the boundary, the assembled function's derivatives are:
-    //   partial_n u(t) = dBdry  * sum_k E_{k,m} M_k(t)
-    //                  + dNeigh * sum_k gamma_{k,m} M_k(t)
-    //   partial_t u(t) = 1 * sum_k E_{k,m} M_k'(t)
-    //                      (second-layer value is zero)
+    // At the boundary, the parametric derivatives are:
+    //   partial_param u(t) = dBdry  * sum_k E_{k,m} M_k(t)
+    //                      + dNeigh * sum_k gamma_{k,m} M_k(t)
+    //   partial_t u(t)     = sum_k E_{k,m} M_k'(t)
+    //                        (second-layer value is zero at boundary)
     //
-    // Substituting into (*) and evaluating at Greville points t_i:
-    //   dBdry * V_m(t_i) + dNeigh * G_m(t_i) + beta(t_i) * V'_m(t_i) = 0
-    //
-    // where V_m(t) = sum_k E_{k,m} M_k(t) is the boundary value function
-    //       V'_m(t) = sum_k E_{k,m} M_k'(t) is its tangential derivative
-    //       G_m(t) = sum_k gamma_{k,m} M_k(t) is the second-layer function
+    // Substituting partial_n = signN * partial_param into (*):
+    //   signN * (dBdry * V_m + dNeigh * G_m) + beta * V'_m = 0
     //
     // Solving for G_m at collocation points:
-    //   G_m(t_i) = -(1/dNeigh) * [dBdry * V_m(t_i) + beta(t_i) * V'_m(t_i)]
+    //   G_m(t_i) = -(1/dNeigh) * [dBdry * V_m(t_i) + signN * beta(t_i) * V'_m(t_i)]
     //
     // Then we recover gamma_{k,m} by solving the collocation system.
 
@@ -367,10 +365,11 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
             }
 
             // RHS for gamma collocation:
-            //   G_m(t_i) = -(1/dNeigh) * [dBdry * V_m(t_i) + beta(t_i) * V'_m(t_i)]
+            //   signN * (dBdry * V_m + dNeigh * G_m) + beta * V'_m = 0
+            //   => G_m = -(1/dNeigh) * [dBdry * V_m + signN * beta * V'_m]
             gsMatrix<T> rhs(nPts, 1);
             for (index_t pt = 0; pt < nPts; ++pt)
-                rhs(pt, 0) = -(dBdry * Vm(pt) + betaVals(pt) * dVm(pt)) / dNeigh;
+                rhs(pt, 0) = -(dBdry * Vm(pt) + signN * betaVals(pt) * dVm(pt)) / dNeigh;
 
             // Solve for gamma coefficients in the side basis
             gsMatrix<T> gamma;
@@ -400,9 +399,9 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
 }
 
 
-
 // ====================================================================
-// Gluing-data helpers (copied from gluing_data_v2.cpp)
+// Gluing-data computation
+// (computes alpha, beta functions for each interface)
 // ====================================================================
 
 /// 2D cross-determinant  det([a | b])
@@ -637,6 +636,11 @@ gsVector<T> computeGluingDataForInterface(
 
     if (!success) return result;
 
+    // Sign correction for beta: the fitting solves beta*(D2-D1) ≈ D3,
+    // but the C1 condition requires -D2*beta_0 + D1*beta_1 = D3,
+    // i.e., beta*(D1-D2) = D3. So negate all beta values.
+    b10 = -b10; b11 = -b11; b20 = -b20; b21 = -b21;
+
     result(0) = a10; result(1) = a11;
     result(2) = b10; result(3) = b11;
     if (flipped)
@@ -701,7 +705,7 @@ int main(int argc, char* argv[])
 {
     using T = double;
 
-    std::string geometry("domain2d/two_bicubic_patches.xml");
+    std::string geometry("domain2d/2patch/two_bilinear_patches.xml");
     index_t numGaussPerSpan = 0;
     index_t refinements = 0;
     index_t plot = -1;
@@ -728,6 +732,12 @@ int main(int argc, char* argv[])
 
     for (index_t i = 0; i < refinements; ++i)
         mp.uniformRefine(1, 2);
+
+    // Check that refinement produced the required multiplicity
+    if (refinements == 0)
+        gsInfo << "WARNING: without refinements (-r), the basis may lack\n"
+               << "  the required interior knot multiplicity > 1.\n"
+               << "  Use -r 1 (or higher) to refine first.\n\n";
 
     // ---- Compute gluing data ----
     gsMatrix<T> gluingData = computeGluingDataMatrix(mp, T(1e-8), numGaussPerSpan);
@@ -780,19 +790,25 @@ int main(int argc, char* argv[])
         gsInfo << "\n";
     }
 
-    // ---- Single-side demo (for debugging / plotting) ----
+    // ---- Single-side demo (patch 0, west) for debugging / plotting ----
     if (mp.nPatches() > 0)
     {
-        gsInfo << "========== Single-side demo (patch 0, west) ==========\n";
+        const index_t demoPatch = 0;
+        const index_t demoSideIdx = 0; // west
+        gsInfo << "========== Single-side demo (patch " << demoPatch
+               << ", " << sideNames[demoSideIdx] << ") ==========\n";
 
         const gsTensorBSplineBasis<2, T>& tb0 =
-            dynamic_cast<const gsTensorBSplineBasis<2, T>&>(mp.patch(0).basis());
+            dynamic_cast<const gsTensorBSplineBasis<2, T>&>(
+                mp.patch(demoPatch).basis());
 
-        const T a0 = gluingData(0, 0), a1 = gluingData(0, 1);
-        const T b0 = gluingData(0, 2), b1 = gluingData(0, 3);
+        const T a0 = gluingData(demoPatch, 4 * demoSideIdx + 0);
+        const T a1 = gluingData(demoPatch, 4 * demoSideIdx + 1);
+        const T b0 = gluingData(demoPatch, 4 * demoSideIdx + 2);
+        const T b1 = gluingData(demoPatch, 4 * demoSideIdx + 3);
 
         gsSparseMatrix<T> E = createGluingDataArgyrisBasis(
-            tb0, boxSide(1), a0, a1, b0, b1);
+            tb0, allSides[demoSideIdx], a0, a1, b0, b1);
 
         gsInfo << "Embedding matrix size: " << E.rows() << " x " << E.cols() << "\n";
         gsInfo << "Embedding matrix:\n" << E << "\n";
@@ -803,7 +819,8 @@ int main(int argc, char* argv[])
             mpViz.addPatch(*gsNurbsCreator<T>::BSplineRectangle());
             mpsol.addPatch(tb0.makeGeometry(E.col(plot)));
             gsWriteParaview<>(gsField<T>(mpViz, mpsol), "basis_result", 1000);
-            gsInfo << "Wrote basis_result.pvd for column " << plot << "\n";
+            gsInfo << "Wrote basis_result.pvd for column " << plot
+                   << " — open in ParaView to inspect.\n";
         }
     }
 

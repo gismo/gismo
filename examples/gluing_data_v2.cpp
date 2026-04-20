@@ -4,7 +4,7 @@
 
     ## Overview
     This file computes the gluing data (alpha and beta functions) needed
-    for AS (Approximate Smooth) G1 constructions on multi-patch spline
+    for AS (Analysis-Suitable) G1 constructions on multi-patch spline
     geometries.  In a G1 construction, two patches sharing an interface
     must satisfy compatibility conditions that involve linear functions
     alpha and beta along each interface edge.
@@ -583,7 +583,7 @@ int main(int argc, char* argv[])
 {
     using T = double;
 
-    std::string geometry("domain2d/two_bicubic_patches.xml");
+    std::string geometry("domain2d/2patch/two_bicubic_patches.xml");
     index_t numGaussPerSpan = 0;
 
     gsCmdLine cmd("Compute gluing data (generic, no reparametrisation).");
