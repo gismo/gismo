@@ -34,6 +34,8 @@ class GISMO_EXPORT gsFreeformSubdivision : public gsSubdivisionScheme
 private: // Space Dimension
     size_t D;
 
+    using gsPatch = gsTensorBSpline<2>;
+
 public: // Constructors
     /// \brief Default constructor.
     ///
@@ -76,20 +78,38 @@ public: // Constructors
     }
 
 private: // Helper functions
-    /// \brief Performs deCasteljau algorithm to split a matrix into two.
+    /// \brief Rotates a control net clockwise (equivalent to a counter-clockwise
+    ///        geometric rotation of the surface patch).
     ///
-    /// Splits the given matrix, interpreted as a control net of a Bezier patch,
-    /// into two control nets of Bezier patches of equal degree that in their
-    /// union again form the original net. This is done using the algorithm of
-    /// deCasteljau. The net is assumed to be quadratic in size. The net is
-    /// split horizontally, in the 'row' direction of the matrix.
+    /// The control net is stored as a flat \f$(n^2 \times D)\f$ coefficient
+    /// matrix in row-major order (flat index \f$i \cdot n + j\f$ for grid
+    /// position \f$(i,j)\f$). The grid position \f$(i,j)\f$ is mapped to
+    /// \f$(n-1-j,\, i)\f$.
     ///
-    /// \param control_net The original matrix to be split.
-    /// \return An array of two control nets representing the left and right
-    /// halves of the split patch.
-    static std::array<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>, 2>
-    deCasteljau(
-        const gsMatrix<gsVector<real_t>, Dynamic, Dynamic>& control_net);
+    /// \note Follows the same naming convention as \c gsMatrix::rotate_cw(),
+    ///       where "cw" refers to the rotation of the index grid, not the
+    ///       resulting geometric orientation.
+    ///
+    /// \param coefs The flat coefficient matrix to rotate.
+    /// \param n     Side length of the square grid.
+    /// \return A new coefficient matrix with the rotated layout.
+    static gsMatrix<> rotate_coefs_cw(const gsMatrix<>& coefs, size_t n);
+
+    /// \brief Rotates a control net counter-clockwise (equivalent to a clockwise
+    ///        geometric rotation of the surface patch).
+    ///
+    /// The control net is stored as a flat \f$(n^2 \times D)\f$ coefficient
+    /// matrix in row-major order. The grid position \f$(i,j)\f$ is mapped to
+    /// \f$(j,\, n-1-i)\f$.
+    ///
+    /// \note Follows the same naming convention as \c gsMatrix::rotate_ccw(),
+    ///       where "ccw" refers to the rotation of the index grid, not the
+    ///       resulting geometric orientation.
+    ///
+    /// \param coefs The flat coefficient matrix to rotate.
+    /// \param n     Side length of the square grid.
+    /// \return A new coefficient matrix with the rotated layout.
+    static gsMatrix<> rotate_coefs_ccw(const gsMatrix<>& coefs, size_t n);
 
     /// \brief Loads a model patch of the given valence and type.
     ///
@@ -308,9 +328,9 @@ public:
     /// \f$N \times N\f$ control net of \f$D\f$-dimensional vectors. For each
     /// patch a quad face is added to the mesh, with shared corner vertices
     /// detected by coordinate comparison using a tolerance of \f$10^{-10}\f$.
-    /// The control net is stored in the \c bezier_points face property with
-    /// the BSpline index transposition \f$(i,j) \to (j,i)\f$ applied to match
-    /// the internal face layout convention.
+    /// The patch is stored directly in the \c bezier_points face property as
+    /// a \c gsTensorBSpline<2>, using a canonical Bézier basis \c kv(0,1,0,N)
+    /// and the first \f$D\f$ coefficient columns from the loaded patch.
     ///
     /// \param filepath Path to the \c .xml file to load.
     void initialize_data_xml(std::string filepath);
@@ -417,125 +437,6 @@ public:
     ///                the x, y, and z axes respectively.
     void scale(gsVector3d<> factors);
 
-}; // namespace internal
-
-/// \brief Manages a control net on a face of a surf mesh.
-///
-/// Data class that contains the additional information per face needed to
-/// perform freeform subdivision. Represents an \f$N \times N\f$ grid of
-/// Bézier control points on the face. The grid is supposed to be laid out
-/// as follows:
-///
-/// ```
-///    V0        E1         V1
-///      +-----------------+
-///      | 00 01 02 03 04  |
-///      |                 |
-///      | 10 11 12 13 14  |
-///  E0  |                 |  E2
-///      | 20 21 22 23 24  |
-///      |                 |
-///      | 30 31 32 33 34  |
-///      |                 |
-///      | 40 41 42 43 44  |
-///      +-----------------+
-///    V3         E3        V2
-/// ```
-///
-/// where `V0`–`V3` are the vertices in the order `mesh.vertices(face)`
-/// traverses them and `E0`–`E3` are the (half)edges in the order
-/// `mesh.halfedges(face)` traverses them. In particular, the position of
-/// control points `00`, `04`, `40`, `44` should correspond to the position of
-/// the vertices (if present).
-template <size_t N> class GISMO_EXPORT gsFreeformFaceData
-{
-    template <size_t M> friend class gsFreeformSubdivision;
-
-    using Point = gsSurfMesh::Point;
-    using Vertex = gsSurfMesh::Vertex;
-    using Face = gsSurfMesh::Face;
-    using Halfedge = gsSurfMesh::Halfedge;
-    using Edge = gsSurfMesh::Edge;
-
-private: // members
-    /// The \f$N \times N\f$ matrix of \f$D\f$-dimensional Bézier control
-    /// points of this face patch.
-    gsMatrix<gismo::gsVector<real_t>, N, N> control_points;
-    /// A back-reference to the face of the mesh this data belongs to.
-    Face face;
-    /// Dimension of the space
-    size_t D;
-
-public: // Contructors
-    /// \brief Default constructor with everything empty.
-    ///
-    /// Default constructor. All control points are the zero vector, and the
-    /// back reference to the face is empty.
-    gsFreeformFaceData(size_t D) : control_points(), face(0), D(D)
-    {
-        for (size_t i = 0; i < N * N; ++i)
-        {
-            control_points(i) = gsVector<real_t>::Zero(D);
-        }
-    }
-
-    /// \brief Zero constructor with a back reference.
-    ///
-    /// All control points are set to the zero vector, and the back reference
-    /// points to the given face.
-    ///
-    /// \param face The face this data is associated with.
-    gsFreeformFaceData(Face face, size_t D) : control_points(), face(face), D(D)
-    {
-        for (size_t i = 0; i < N * N; ++i)
-        {
-            control_points(i) = gsVector<real_t>::Zero(D);
-        }
-    }
-
-    /// \brief Full constructor with back reference and control net.
-    ///
-    /// Constructs the face data with the given control net and face reference.
-    ///
-    /// \param control_points The \f$N \times N\f$ matrix of \f$D\f$-dimensional
-    ///                       Bézier control points for this face.
-    /// \param face           The face this data is associated with.
-    gsFreeformFaceData(gsMatrix<gismo::gsVector<real_t>, N, N> control_points,
-                       Face face)
-        : control_points(control_points), face(face)
-    {
-        this->D = control_points(0, 0).size();
-    }
-
-    /// \brief Basic constructor that creates a $C^0$ control net.
-    ///
-    /// Constructs the face data with control points distributed by bilinear
-    /// interpolation over the four corners of the given mesh face. The first
-    /// \f$\min(D,3)\f$ coordinates of each control point are taken from the
-    /// 3-dimensional mesh vertex positions; any coordinates beyond index 2
-    /// are initialised to zero.
-    ///
-    /// \param mesh The surface mesh containing the face.
-    /// \param face The face over which to distribute the control points.
-    gsFreeformFaceData(const gsSurfMesh& mesh, gsSurfMesh::Face face, size_t D);
-
-public: // Conversions
-    /// \brief Returns a Bézier patch corresponding to these control points.
-    ///
-    /// \return A \c gsTensorBSpline<2> of degree N-1 in each direction,
-    /// built from the stored N×N control net.
-    const gismo::gsTensorBSpline<2, real_t> patch() const;
-
-    /// \brief Scales all Bézier control points component-wise.
-    ///
-    /// Multiplies every control point in the \f$N \times N\f$ grid by
-    /// \c factors component-wise, i.e.\ each coordinate \f$x_i\f$ is
-    /// replaced by \c factors[i] * \f$x_i\f$.
-    ///
-    /// \param factors A 3-vector whose components are the scale factors for
-    ///                the x, y, and z axes respectively.
-    void scale(gsVector3d<> factors);
-
-}; // namespace internal
+}; // class gsFreeformSubdivision
 
 } // namespace gismo

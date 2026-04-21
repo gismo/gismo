@@ -44,145 +44,51 @@
 namespace gismo
 {
 
-template <size_t N>
-gsFreeformFaceData<N>::gsFreeformFaceData(const gsSurfMesh& mesh,
-                                          gsSurfMesh::Face face, size_t D)
-    : control_points(), face(face)
-{
-    this->D = D;
-    // Create a vector of the 4 corners, copying the 3D mesh vertex positions
-    // into D-dimensional vectors. The first min(D,3) coordinates are taken
-    // from the mesh; any remaining coordinates beyond index 2 are zeroed.
-    std::vector<gsVector<real_t>> corners;
-    corners.reserve(4);
-    for (auto const& v : mesh.vertices(face))
-    {
-        gsVector<real_t> corner = gsVector<real_t>::Zero(D);
-        const gsSurfMesh::Point& p = mesh.position(v);
-        for (size_t k = 0; k < std::min<size_t>(D, 3); ++k)
-            corner(k) = p[k];
-        corners.emplace_back(corner);
-    }
-    assert(corners.size() == 4);
-
-    // Choose the control points (N*N total) as appropriate linear combinations
-    // of the corners.
-    real_t denom = real_t((N - 1) * (N - 1));
-    for (size_t i = 0; i < N; i++)
-    {
-        for (size_t j = 0; j < N; j++)
-        {
-            real_t n_r = real_t(N);
-            real_t i_r = real_t(i);
-            real_t j_r = real_t(j);
-            this->control_points(i, j) =
-                corners[0] * ((n_r - 1) - j_r) * ((n_r - 1) - i_r) / denom +
-                corners[1] * j_r * ((n_r - 1) - i_r) / denom +
-                corners[3] * ((n_r - 1) - j_r) * i_r / denom +
-                corners[2] * j_r * i_r / denom;
-        }
-    }
-}
-
-template <size_t N>
-const gismo::gsTensorBSpline<2, real_t> gsFreeformFaceData<N>::patch() const
-{
-    // Create a spline basis for a normal bezier patch.
-    gsKnotVector<> kv(0, 1, 0, N);
-    gsTensorBSplineBasis<2, real_t> basis(kv, kv);
-    // Create a coefficient matrix out of the control points.
-    // Technically, you could use just [i] and one loop here since the elements
-    // of a matrix are laid out row-wise, but this might be clearer to read.
-    gsMatrix<> coeffs(N * N, D);
-    for (size_t i = 0; i < N; ++i)
-    {
-        for (size_t j = 0; j < N; ++j)
-        {
-            int total_index = i * N + j;
-            coeffs.row(total_index) = control_points(i, j);
-        }
-    }
-
-    return gsTensorBSpline<2>(basis, coeffs);
-}
-
-template <size_t N> void gsFreeformFaceData<N>::scale(gsVector3d<> factors)
-{
-    for (size_t i = 0; i < N; ++i)
-    {
-        for (size_t j = 0; j < N; ++j)
-        {
-            control_points(i, j) = control_points(i, j).cwiseProduct(factors);
-        }
-    }
-}
-
 template <size_t N> void gsFreeformSubdivision<N>::scale(gsVector3d<> factors)
 {
     auto& mesh = *m_mesh;
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsPatch> face_data_vec(
+        mesh.get_face_property<gsPatch>("bezier_points"));
 
-    size_t n = std::min(factors.size(), 3);
+    size_t n = std::min((size_t)factors.size(), (size_t)3);
     for (auto v : mesh.vertices())
     {
         mesh.position(v).head(n).array() *= factors.array().head(n);
     }
 
-    for (auto& data : face_data_vec.vector())
+    for (auto& patch : face_data_vec.vector())
     {
-        data.scale(factors);
+        for (index_t c = 0;
+             c < std::min<index_t>((index_t)factors.size(), patch.coefs().cols());
+             ++c)
+            patch.coefs().col(c) *= factors[c];
     }
 }
 
 template <size_t N>
-std::array<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>, 2>
-gsFreeformSubdivision<N>::deCasteljau(
-    const gsMatrix<gsVector<real_t>, Dynamic, Dynamic>& control_net)
+gsMatrix<> gsFreeformSubdivision<N>::rotate_coefs_cw(const gsMatrix<>& coefs,
+                                                      size_t n)
 {
+    // CCW rotation: grid position (i,j) maps to (n-1-j, i).
+    // Flat index i*n+j maps to (n-1-j)*n+i.
+    gsMatrix<> result(coefs.rows(), coefs.cols());
+    for (size_t i = 0; i < n; ++i)
+        for (size_t j = 0; j < n; ++j)
+            result.row((n - 1 - j) * n + i) = coefs.row(i * n + j);
+    return result;
+}
 
-    // Create the 3d data vector and ensure it has the right size.
-    std::vector<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>> points;
-    points.resize(N);
-    // The first layer is just the starting points
-    points[0] = control_net;
-    // each further layer is one shorter than the previous, but just as wide.
-    for (size_t k = 1; k < N; ++k)
-    {
-        points[k].resize(N - k, N);
-    }
-
-    // now construct each layer from the previous one by linear combination of
-    // adjacent points into the next layer.
-    for (size_t k = 1; k < N; ++k)
-    {
-        for (size_t i = 0; i < N - k; ++i)
-        {
-            for (size_t j = 0; j < N; ++j)
-            {
-                points[k](i, j) =
-                    (points[k - 1](i, j) + points[k - 1](i + 1, j)) * 0.5;
-            }
-        }
-    }
-
-    // finally collect the first vertical layer and last-in-each-row diagonal
-    // layer into two result matrices.
-    gsMatrix<gsVector<real_t>, Dynamic, Dynamic> result1;
-    gsMatrix<gsVector<real_t>, Dynamic, Dynamic> result2;
-    result1.resize(N, N);
-    result2.resize(N, N);
-
-    for (size_t i = 0; i < N; ++i)
-    {
-        for (size_t j = 0; j < N; ++j)
-        {
-            result1(i, j) = points[i](0, j);
-            result2(i, j) = points[(N - 1) - i](i, j);
-        }
-    }
-
-    return {result1, result2};
+template <size_t N>
+gsMatrix<> gsFreeformSubdivision<N>::rotate_coefs_ccw(const gsMatrix<>& coefs,
+                                                       size_t n)
+{
+    // CW rotation: grid position (i,j) maps to (j, n-1-i).
+    // Flat index i*n+j maps to j*n+(n-1-i).
+    gsMatrix<> result(coefs.rows(), coefs.cols());
+    for (size_t i = 0; i < n; ++i)
+        for (size_t j = 0; j < n; ++j)
+            result.row(j * n + (n - 1 - i)) = coefs.row(i * n + j);
+    return result;
 }
 
 template <size_t N>
@@ -292,8 +198,8 @@ template <size_t N> void gsFreeformSubdivision<N>::orient_faces()
 {
     // Get data
     auto& mesh = *m_mesh;
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsPatch> face_data_vec(
+        mesh.get_face_property<gsPatch>("bezier_points"));
 
     // As a pre-step, we make sure that for each face, if it has an
     // extraordinary vertex, that vertex is the top left one
@@ -314,11 +220,9 @@ template <size_t N> void gsFreeformSubdivision<N>::orient_faces()
             {
                 // rotate the edge
                 mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
-                // also rotate the control points
-                gsMatrix<gsVector<real_t>, Dynamic, Dynamic> old_points(
-                    face_data_vec.vector()[f.idx()].control_points);
-                face_data_vec.vector()[f.idx()].control_points =
-                    old_points.rotate_cw();
+                // also rotate the control points (CCW to match next_halfedge)
+                gsPatch& p = face_data_vec.vector()[f.idx()];
+                p.coefs() = rotate_coefs_cw(p.coefs(), N);
             }
         }
     }
@@ -346,8 +250,8 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide()
     mesh.quad_split();
 
     // Get face data
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsPatch> face_data_vec(
+        mesh.get_face_property<gsPatch>("bezier_points"));
 
     // Now fix the data on each face.
     for (size_t initial_face = 0; initial_face < n; ++initial_face)
@@ -370,8 +274,10 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide()
             // load coarse matrix
             auto valence = mesh.valence(fv);
             auto coarse_model = load_model_patch(valence, "coarse");
-            // and remember the associated face data
-            auto coarse_patch = face_data_vec.vector()[initial_face].patch();
+            // and remember the associated face data as a copy (not a
+            // reference) to guard against aliasing when a child face
+            // overwrites the parent's property slot.
+            gsPatch coarse_patch = face_data_vec.vector()[initial_face];
 
             // Collate the faces into a correctly ordered array.
             auto children_ordered =
@@ -409,9 +315,6 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide()
 
                     // Sample the old control net.
                     samples.col(i) = coarse_patch.eval(closest_point);
-                    // if(f_idx == 0)
-                    //     gsInfo << i << ": " << closest_point.transpose() <<
-                    //     "\n";
                 }
 
                 // Fit a NxN Bezier patch to these samples
@@ -421,78 +324,43 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide()
                 fitter.compute(0.0);
                 gsGeometry<>* result = fitter.result();
 
-                // Extract control points
-                const gsMatrix<>& coeffs = result->coefs();
-
-                // Reshape the control points
-                gsMatrix<gsVector<real_t>, Dynamic, Dynamic> control_points;
-                control_points.resize(N, N);
-                for (size_t i = 0; i < N * N; ++i)
-                {
-                    control_points(i / N, i % N) = coeffs.row(i);
-                }
-
                 // The fine patches have their u direction pointing outwards
                 // (first point is the center) while our system has the first
                 // halfedge pointing outwards, so the first point is on the
-                // edge. So we do a rotation here.
-                control_points = control_points.rotate_cw();
-
-                // Now that we have the new control net, update the face data
-                // with the correct face and that net.
+                // edge. So we do a CCW rotation here.
                 auto& data =
                     face_data_vec.vector()[children_ordered[f_idx].idx()];
-                data.face = children_ordered[f_idx];
-                data.control_points = control_points;
+                data.coefs() = rotate_coefs_cw(result->coefs(), N);
             }
         }
         else
         {
             // === ORDINARY VERTICES ===
-            // via deCasteljau
+            // Subdivide using gsPatch::splitAt to perform Bezier knot insertion
 
-            // Get the face data and store it in a temporary dynamic 2d array.
-            gsMatrix<gsVector<real_t>, Dynamic, Dynamic> control_net(
-                face_data_vec.vector()[initial_face].control_points);
+            // Copy the parent patch to avoid aliasing.
+            const gsPatch src = face_data_vec.vector()[initial_face];
 
-            // now control_net is a (n+1)*(n+1) matrix of control points (degree
-            // n) Perform deCasteljau once to divide into two (n+1)*(n+1)
-            // matrices of control points.
-            auto const first_split = deCasteljau(control_net);
-
-            // Perform deCasteljau again on both of them, to get 4 (n+1)*(n+1)
-            // matrices of control points In between, we need to transpose so we
-            // now divide in the other direction.
-            auto top_split = deCasteljau(first_split[0].transpose());
-            auto bot_split = deCasteljau(first_split[1].transpose());
-
-            // Re-transpose
-            top_split[0] = top_split[0].transpose().eval();
-            top_split[1] = top_split[1].transpose().eval();
-            bot_split[0] = bot_split[0].transpose().eval();
-            bot_split[1] = bot_split[1].transpose().eval();
-
-            // Rotate based on position 0, 1, 2, and 3 times.
-            bot_split[1] = bot_split[1].rotate_cw();
-            bot_split[0] = bot_split[0].rotate_cw().rotate_cw();
-            top_split[0] = top_split[0].rotate_ccw();
-
-            // Collate all these matrices in the correct order into an array.
-            std::array<gsMatrix<gsVector<real_t>, Dynamic, Dynamic>, 4> arr = {
-                top_split[0], top_split[1], bot_split[1], bot_split[0]};
+            // Split in direction 1 (i/row) then direction 0 (j/col) at 0.5
+            // to obtain the four quadrant sub-patches.
+            gsPatch top, bot, tl, tr, bl, br;
+            src.splitAt(1, real_t(0.5), top, bot);
+            top.splitAt(0, real_t(0.5), tl, tr);
+            bot.splitAt(0, real_t(0.5), bl, br);
 
             // Collate the faces into a correctly ordered array.
             auto children_ordered =
                 order_faces(first_vertices[initial_face], child_faces);
 
-            // Correct back references of face data and give them the correct
-            // control points.
-            for (size_t f = 0; f < 4; ++f)
-            {
-                auto& data = face_data_vec.vector()[children_ordered[f].idx()];
-                data.face = children_ordered[f];
-                data.control_points = arr[f];
-            }
+            // Write quadrant coefficients with the appropriate rotations.
+            face_data_vec.vector()[children_ordered[0].idx()].coefs() =
+                rotate_coefs_ccw(tl.coefs(), N);
+            face_data_vec.vector()[children_ordered[1].idx()].coefs() =
+                tr.coefs();
+            face_data_vec.vector()[children_ordered[2].idx()].coefs() =
+                rotate_coefs_cw(br.coefs(), N);
+            face_data_vec.vector()[children_ordered[3].idx()].coefs() =
+                rotate_coefs_ccw(rotate_coefs_ccw(bl.coefs(), N), N);
         }
     }
 };
@@ -594,19 +462,10 @@ gsMatrix<real_t> gsFreeformSubdivision<N>::smooth(size_t degree)
     gsMultiPatch<> solField = solSpline.exportToPatches();
 
     // Write the solution back.
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        m_mesh->get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsPatch> face_data_vec(
+        m_mesh->get_face_property<gsPatch>("bezier_points"));
     for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
-    {
-        for (size_t i = 0; i < N; ++i)
-        {
-            for (size_t j = 0; j < N; ++j)
-            {
-                face_data_vec[k].control_points(i, j) =
-                    solField.patch(k).coefs().row(i * N + j);
-            }
-        }
-    }
+        face_data_vec[k].coefs() = solField.patch(k).coefs();
 
     return coefficients;
 }
@@ -1115,21 +974,13 @@ void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     gsMultiPatch<> solField = solSpline.exportToPatches();
 
     // Write the solution back into the last entry.
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        m_mesh->get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsPatch> face_data_vec(
+        m_mesh->get_face_property<gsPatch>("bezier_points"));
     for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
     {
-        for (size_t i = 0; i < N; ++i)
-        {
-
-            for (size_t j = 0; j < N; ++j)
-            {
-                face_data_vec[k].control_points(i, j).conservativeResize(D + 1);
-                face_data_vec[k].control_points(i, j)(D) =
-                    solField.patch(k).coefs()(i * N + j, 0);
-            }
-        }
-        face_data_vec[k].D++;
+        gsPatch& p = face_data_vec[k];
+        p.coefs().conservativeResize(p.coefs().rows(), D + 1);
+        p.coefs().col(D) = solField.patch(k).coefs().col(0);
     }
 
     D++;
@@ -1168,21 +1019,13 @@ void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
     gsMultiPatch<> solField = solSpline.exportToPatches();
 
     // Write the solution back into the last entry.
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        m_mesh->get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsPatch> face_data_vec(
+        m_mesh->get_face_property<gsPatch>("bezier_points"));
     for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
     {
-        for (size_t i = 0; i < N; ++i)
-        {
-
-            for (size_t j = 0; j < N; ++j)
-            {
-                face_data_vec[k].control_points(i, j).conservativeResize(D + 1);
-                face_data_vec[k].control_points(i, j)(D) =
-                    solField.patch(k).coefs()(i * N + j, 0);
-            }
-        }
-        face_data_vec[k].D++;
+        gsPatch& p = face_data_vec[k];
+        p.coefs().conservativeResize(p.coefs().rows(), D + 1);
+        p.coefs().col(D) = solField.patch(k).coefs().col(0);
     }
 
     D++;
@@ -1195,8 +1038,8 @@ void gsFreeformSubdivision<N>::write_paraview_error(
 {
     // Prepare data
     auto& mesh = *m_mesh;
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsPatch> face_data_vec(
+        mesh.get_face_property<gsPatch>("bezier_points"));
 
     // Number of faces needs to be counted for registration in the collection.
     size_t face_counter(0);
@@ -1204,7 +1047,7 @@ void gsFreeformSubdivision<N>::write_paraview_error(
     for (auto f : mesh.faces())
     {
         // read out the control points and create a patch
-        auto patch = face_data_vec[f.idx()].patch();
+        const gsPatch& patch = face_data_vec[f.idx()];
 
         // Sample at S*S points (S > N) for a fit that can capture errors.
         const size_t S = 2 * N;
@@ -1272,8 +1115,8 @@ gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
 
     auto& mesh = *m_mesh;
     size_t spf = samples_per_face;
-    gsProperty<gsFreeformFaceData<N>> face_data_vec(
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
+    gsProperty<gsPatch> face_data_vec(
+        mesh.get_face_property<gsPatch>("bezier_points"));
 
     real_t error_linf(0.);
     real_t error_l2(0.);
@@ -1282,7 +1125,7 @@ gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
     for (auto f : mesh.faces())
     {
         // Look at the patch for this face.
-        auto patch = face_data_vec[f.idx()].patch();
+        const gsPatch& patch = face_data_vec[f.idx()];
 
         // Now sample this patch
         for (size_t i = 0; i < spf * spf; ++i)
@@ -1347,25 +1190,24 @@ void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
     // This overrides the old mesh if present.
     mesh = corner_mp.toMesh();
 
+
+    // Prepare the basis 
+    gsKnotVector<real_t> kv_default(0.0, 1.0, 0, N);
+    gsTensorBSplineBasis<2, real_t> basis_default(kv_default, kv_default);
+
     // Initialize the property on the mesh.
-    auto face_data_vec = mesh.add_face_property(std::string("bezier_points"),
-                                                gsFreeformFaceData<N>(D));
+    auto face_data_vec = mesh.add_face_property(
+        std::string("bezier_points"),
+        gsPatch(basis_default, gsMatrix<>::Zero(N * N, D)));
 
     // Now associate each face with its patch.
     for (Face f : mesh.faces())
     {
         auto coefs = patch.patch(f.idx()).coefs();
 
-        gsMatrix<gsVector<real_t>, N, N> coefs_reshaped;
-        for (index_t i = 0; i < (index_t)N; ++i)
-        {
-            for (index_t j = 0; j < (index_t)N; ++j)
-            {
-                coefs_reshaped(i, j) = coefs.row(i * N + j).leftCols(D);
-            }
-        }
-
-        face_data_vec[f] = gsFreeformFaceData<N>(coefs_reshaped, f);
+        gsMatrix<> full_coefs = gsMatrix<>::Zero(N * N, D);
+        full_coefs.leftCols(coefs.cols()) = coefs.leftCols(std::min((index_t)D, coefs.cols()));
+        face_data_vec[f] = gsPatch(basis_default, full_coefs);
     }
 }
 
@@ -1378,17 +1220,41 @@ void gsFreeformSubdivision<N>::initialize_data_off(std::string filepath)
 
     auto _readFile = gsReadFile<>(filepath, mesh);
     // Initialize the property.
+    gsKnotVector<real_t> kv_default(0.0, 1.0, 0, N);
+    gsTensorBSplineBasis<2, real_t> basis_default(kv_default, kv_default);
     mesh.add_face_property(std::string("bezier_points"),
-                           gsFreeformFaceData<N>(D));
+                           gsPatch(basis_default, gsMatrix<>::Zero(N * N, D)));
 
-    // Get the data. It will be empty and non-valid at this point.
-    gsProperty<gsFreeformFaceData<N>> patch_data =
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points");
+    // Get the data.
+    gsProperty<gsPatch> patch_data =
+        mesh.get_face_property<gsPatch>("bezier_points");
 
-    // Each patch is now initalized with basic face data.
+    // Each patch is now initialized with a bilinear interpolation of its
+    // corner vertices.
     for (auto f : mesh.faces())
     {
-        patch_data.vector()[f.idx()] = gsFreeformFaceData<N>(mesh, f, D);
+        // Collect the 4 corner positions in CCW order.
+        std::vector<gsVector<real_t>> corners;
+        for (Vertex v : mesh.vertices(f))
+            corners.push_back(mesh.position(v));
+
+        // Bilinear interpolation over an N×N grid.
+        gsMatrix<real_t> coefs(N * N, D);
+        for (size_t i = 0; i < N; ++i)
+        {
+            for (size_t j = 0; j < N; ++j)
+            {
+                real_t u = real_t(j) / real_t(N - 1);
+                real_t v = real_t(i) / real_t(N - 1);
+                gsVector<real_t> pt = (1 - u) * (1 - v) * corners[0] +
+                                      u * (1 - v) * corners[1] +
+                                      (1 - u) * v * corners[3] +
+                                      u * v * corners[2];
+                coefs.row(i * N + j) = pt.transpose().leftCols(D);
+            }
+        }
+
+        patch_data.vector()[f.idx()] = gsPatch(basis_default, coefs);
     }
 }
 
@@ -1457,14 +1323,14 @@ template <size_t N> gsMultiPatch<> gsFreeformSubdivision<N>::multipatch()
     gsMultiPatch<> patch;
 
     // Get the vector containing all the face data.
-    gsProperty<gsFreeformFaceData<N>> face_data_vec =
-        mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points");
+    gsProperty<gsPatch> face_data_vec =
+        mesh.get_face_property<gsPatch>("bezier_points");
 
     // For each face, convert its control net to a patch and add it to the
     // multipatch. Order doesn't matter.
     for (auto face : mesh.faces())
     {
-        patch.addPatch(face_data_vec.vector()[face.idx()].patch());
+        patch.addPatch(face_data_vec.vector()[face.idx()]);
     }
 
     return patch;
@@ -1494,10 +1360,7 @@ gsFreeformSubdivision<N>::check_mesh()
 }
 
 template class gsFreeformSubdivision<5>;
-template class gsFreeformFaceData<5>;
 template class gsFreeformSubdivision<6>;
-template class gsFreeformFaceData<6>;
 template class gsFreeformSubdivision<9>;
-template class gsFreeformFaceData<9>;
 
 } // namespace gismo
