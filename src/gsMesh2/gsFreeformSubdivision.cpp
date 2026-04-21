@@ -124,11 +124,13 @@ template <size_t N> void gsFreeformSubdivision<N>::scale(gsVector3d<> factors)
         mesh.get_face_property<gsFreeformFaceData<N>>("bezier_points"));
 
     size_t n = std::min(factors.size(), 3);
-    for(auto v : mesh.vertices()){
+    for (auto v : mesh.vertices())
+    {
         mesh.position(v).head(n).array() *= factors.array().head(n);
     }
 
-    for(auto& data : face_data_vec.vector()){
+    for (auto& data : face_data_vec.vector())
+    {
         data.scale(factors);
     }
 }
@@ -1315,115 +1317,55 @@ template <size_t N>
 void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
 {
     auto& mesh = *m_mesh;
-    // Clear the mesh
-    mesh = gsSurfMesh();
 
-    // Load the TensorBSplinePatches
-    std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>> patches =
-        gsFileData<real_t>(filepath).getAll<gsTensorBSpline<2, real_t>>();
+    gsMultiPatch<> patch;
 
-    // Initialize the property.
-    auto bezier_points = mesh.add_face_property(std::string("bezier_points"),
+    // Load the patches
+    auto _file = gsReadFile<>(filepath, patch);
+
+    // Convert each patch into a degree 1 (2x2) patch for mesh calculation
+    gsMultiPatch<> corner_mp;
+    for (size_t p = 0; p < patch.nPatches(); ++p)
+    {
+        auto& geo = patch.patch(p);
+        auto& coefs = geo.coefs();
+
+        // Extract 4 corners (coef index = i + j*n1)
+        gsMatrix<real_t> cc(4, D);
+        cc.row(0) = coefs.row(0);             // (0,    0   )
+        cc.row(1) = coefs.row(N - 1);        // (N-1, 0   )
+        cc.row(2) = coefs.row(N * (N - 1)); // (0,    N-1)
+        cc.row(3) = coefs.row(N * N - 1);   // (N-1, N-1)
+
+        // Clamped linear knot vector: {0,0,1,1}
+        gsKnotVector<real_t> kv(0.0, 1.0, 0, 2);
+        corner_mp.addPatch(gsTensorBSpline<2, real_t>(kv, kv, cc));
+    }
+    // Calculate the topology and the mesh
+    corner_mp.computeTopology();
+    // This mesh turn each patch into (n-1)^2 many patches, so by reducing n to 2 first we get one face per patch with correct connectivity.
+    // This overrides the old mesh if present.
+    mesh = corner_mp.toMesh();
+
+    // Initialize the property on the mesh.
+    auto face_data_vec = mesh.add_face_property(std::string("bezier_points"),
                                                 gsFreeformFaceData<N>(D));
 
-    // Map from corner positions to vertex indices for detecting shared
-    // vertices. We use a tolerance-based comparison for floating-point
-    // coordinates.
-    struct VecLess
+    // Now associate each face with its patch.
+    for (Face f : mesh.faces())
     {
-        bool operator()(const gsVector<>& a, const gsVector<>& b) const
+        auto coefs = patch.patch(f.idx()).coefs();
+
+        gsMatrix<gsVector<real_t>, N, N> coefs_reshaped;
+        for (index_t i = 0; i < (index_t)N; ++i)
         {
-            GISMO_ASSERT(a.size() == b.size(), "Size mismatch in VecLess");
-            return std::lexicographical_compare(a.data(), a.data() + a.size(),
-                                                b.data(), b.data() + b.size());
-        }
-    };
-    std::map<gsVector<>, gsSurfMesh::Vertex, VecLess> cornerMap;
-    const real_t tolerance = 1e-10;
-
-    auto findOrCreateVertex =
-        [&](const gsMatrix<real_t>& point) -> gsSurfMesh::Vertex
-    {
-        // Round coordinates for map lookup, ensure there are at least 3
-        // dimensions
-        gsVector<> key(point.size());
-        for (index_t i = 0; i < point.size(); ++i)
-        {
-            key[i] = std::round(point(i) / tolerance) * tolerance;
-        }
-
-        auto it = cornerMap.find(key);
-        if (it != cornerMap.end())
-        {
-            return it->second;
-        }
-        else
-        {
-            // Mesh vertices are always 3D; pad with zeros if the file has
-            // fewer than 3 dimensions.
-            gsSurfMesh::Point pt(0, 0, 0);
-            for (index_t k = 0; k < std::min(point.size(), (index_t)3); ++k)
-                pt[k] = point(k);
-            gsSurfMesh::Vertex v = mesh.add_vertex(pt);
-            cornerMap[key] = v;
-            return v;
-        }
-    };
-
-    // Process each patch
-    for (size_t patchIdx = 0; patchIdx < patches.size(); ++patchIdx)
-    {
-        const auto& patch = patches[patchIdx];
-
-        // Get control points and dimensions
-        const gsMatrix<real_t>& coefs = patch->coefs();
-
-        // Extract corner control points (lexicographic indexing: i + j*n_u).
-        // BSpline corners: (0,0), (N-1,0), (N-1,N-1), (0,N-1) in (u,v)
-        // coordinates. Map to mesh vertices based on their physical positions.
-        std::vector<gsSurfMesh::Vertex> corners(4);
-        corners[0] =
-            findOrCreateVertex(coefs.row(0 + 0 * N)); // BSpline (0,0) → v0
-        corners[1] = findOrCreateVertex(
-            coefs.row((N - 1) + 0 * N)); // BSpline (N-1,0) → v1
-        corners[2] = findOrCreateVertex(
-            coefs.row((N - 1) + (N - 1) * N)); // BSpline (N-1,N-1) → v2
-        corners[3] = findOrCreateVertex(
-            coefs.row(0 + (N - 1) * N)); // BSpline (0,N-1) → v3
-
-        // Add face
-        gsSurfMesh::Face f =
-            mesh.add_quad(corners[0], corners[1], corners[2], corners[3]);
-
-        // Build control points matrix for gsFreeformFaceData
-        // The first halfedge goes from v3→v0 (corners[3]→corners[0])
-        // Control point layout should be:
-        //   faceControlPoints(0,0) near v0 = BSpline (0,0)
-        //   faceControlPoints(0,N-1) near v1 = BSpline (N-1,0)
-        //   faceControlPoints(N-1,0) near v3 = BSpline (0,N-1)
-        //   faceControlPoints(N-1,N-1) near v2 = BSpline (N-1,N-1)
-        // So the mapping is: faceControlPoints(i,j) = BSpline(j, i)
-        gsMatrix<gsVector<real_t>, N, N> faceControlPoints;
-
-        const size_t fileDim = (size_t)coefs.cols();
-        const size_t copyDim = std::min(fileDim, D);
-        for (size_t i = 0; i < N; ++i)
-        {
-            for (size_t j = 0; j < N; ++j)
+            for (index_t j = 0; j < (index_t)N; ++j)
             {
-                // Map face matrix (i,j) to B-spline (u,v) = (j,i).
-                index_t linearIdx = j + i * N;
-                // Copy the first copyDim coordinates; zero-fill any remainder
-                // up to D if the file dimension is smaller than D.
-                gsVector<real_t> point = gsVector<real_t>::Zero(D);
-                for (size_t k = 0; k < copyDim; ++k)
-                    point(k) = coefs(linearIdx, k);
-                faceControlPoints(i, j) = point;
+                coefs_reshaped(i, j) = coefs.row(i * N + j).leftCols(D);
             }
         }
 
-        // Create gsFreeformFaceData with control points and face back reference
-        bezier_points[f] = gsFreeformFaceData<N>(faceControlPoints, f);
+        face_data_vec[f] = gsFreeformFaceData<N>(coefs_reshaped, f);
     }
 }
 
