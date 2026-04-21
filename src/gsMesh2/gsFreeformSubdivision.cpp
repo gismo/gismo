@@ -44,6 +44,141 @@
 namespace gismo
 {
 
+template <size_t N>
+void gsFreeformSubdivision<N>::initialize_data(std::string filepath, size_t D)
+{
+    this->D = D;
+    initialize_data(filepath);
+}
+
+template <size_t N>
+void gsFreeformSubdivision<N>::initialize_data(std::string filepath)
+{
+    std::string xml(".xml");
+    std::string off(".off");
+    // Check the filetype to be loaded.
+    if (std::equal(filepath.begin() + filepath.size() - xml.size(),
+                   filepath.end(), xml.begin()))
+    {
+        gsInfo << "Loading xml\n";
+        initialize_data_xml(filepath);
+    }
+    else if (std::equal(filepath.begin() + filepath.size() - off.size(),
+                        filepath.end(), off.begin()))
+    {
+        gsInfo << "Loading off\n";
+        initialize_data_off(filepath);
+    }
+    else
+    {
+        gsWarn << "Unsupported Filetype! Mesh not initialized.\n";
+    }
+    m_mesh->garbage_collection();
+}
+
+template <size_t N>
+void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
+{
+    auto& mesh = *m_mesh;
+
+    gsMultiPatch<> patch;
+
+    // Load the patches
+    auto _file = gsReadFile<>(filepath, patch);
+
+    // Convert each patch into a degree 1 (2x2) patch for mesh calculation
+    gsMultiPatch<> corner_mp;
+    for (size_t p = 0; p < patch.nPatches(); ++p)
+    {
+        auto& geo = patch.patch(p);
+        auto& coefs = geo.coefs();
+
+        // Extract 4 corners (coef index = i + j*n1)
+        gsMatrix<real_t> cc(4, D);
+        cc.row(0) = coefs.row(0);             // (0,    0   )
+        cc.row(1) = coefs.row(N - 1);        // (N-1, 0   )
+        cc.row(2) = coefs.row(N * (N - 1)); // (0,    N-1)
+        cc.row(3) = coefs.row(N * N - 1);   // (N-1, N-1)
+
+        // Clamped linear knot vector: {0,0,1,1}
+        gsKnotVector<real_t> kv(0.0, 1.0, 0, 2);
+        corner_mp.addPatch(gsTensorBSpline<2, real_t>(kv, kv, cc));
+    }
+    // Calculate the topology and the mesh
+    corner_mp.computeTopology();
+    // This mesh turn each patch into (n-1)^2 many patches, so by reducing n to 2 first we get one face per patch with correct connectivity.
+    // This overrides the old mesh if present.
+    mesh = corner_mp.toMesh();
+
+
+    // Prepare the basis 
+    gsKnotVector<real_t> kv_default(0.0, 1.0, 0, N);
+    gsTensorBSplineBasis<2, real_t> basis_default(kv_default, kv_default);
+
+    // Initialize the property on the mesh.
+    auto face_data_vec = mesh.add_face_property(
+        std::string("bezier_points"),
+        gsPatch(basis_default, gsMatrix<>::Zero(N * N, D)));
+
+    // Now associate each face with its patch.
+    for (Face f : mesh.faces())
+    {
+        auto coefs = patch.patch(f.idx()).coefs();
+
+        gsMatrix<> full_coefs = gsMatrix<>::Zero(N * N, D);
+        const index_t n_cols = std::min((index_t)D, coefs.cols());
+        full_coefs.leftCols(n_cols) = coefs.leftCols(n_cols);
+        face_data_vec[f] = gsPatch(basis_default, full_coefs);
+    }
+}
+
+template <size_t N>
+void gsFreeformSubdivision<N>::initialize_data_off(std::string filepath)
+{
+    auto& mesh = *m_mesh;
+    // Clear the mesh
+    mesh = gsSurfMesh();
+
+    auto _readFile = gsReadFile<>(filepath, mesh);
+    // Initialize the property.
+    gsKnotVector<real_t> kv_default(0.0, 1.0, 0, N);
+    gsTensorBSplineBasis<2, real_t> basis_default(kv_default, kv_default);
+    mesh.add_face_property(std::string("bezier_points"),
+                           gsPatch(basis_default, gsMatrix<>::Zero(N * N, D)));
+
+    // Get the data.
+    gsProperty<gsPatch> patch_data =
+        mesh.get_face_property<gsPatch>("bezier_points");
+
+    // Each patch is now initialized with a bilinear interpolation of its
+    // corner vertices.
+    for (auto f : mesh.faces())
+    {
+        // Collect the 4 corner positions in CCW order.
+        std::vector<gsVector<real_t>> corners;
+        for (Vertex v : mesh.vertices(f))
+            corners.push_back(mesh.position(v));
+
+        // Bilinear interpolation over an N×N grid.
+        gsMatrix<real_t> coefs(N * N, D);
+        for (size_t i = 0; i < N; ++i)
+        {
+            for (size_t j = 0; j < N; ++j)
+            {
+                real_t u = real_t(j) / real_t(N - 1);
+                real_t v = real_t(i) / real_t(N - 1);
+                gsVector<real_t> pt = (1 - u) * (1 - v) * corners[0] +
+                                      u * (1 - v) * corners[1] +
+                                      (1 - u) * v * corners[3] +
+                                      u * v * corners[2];
+                coefs.row(i * N + j) = pt.transpose().leftCols(D);
+            }
+        }
+
+        patch_data.vector()[f.idx()] = gsPatch(basis_default, coefs);
+    }
+}
+
 template <size_t N> void gsFreeformSubdivision<N>::scale(gsVector3d<> factors)
 {
     auto& mesh = *m_mesh;
@@ -161,6 +296,59 @@ gsFreeformSubdivision<N>::load_model_patch(int valence, std::string subtype)
     return gsTensorBSpline<2>(patches[patch_index]->basis(), give(coefs));
 }
 
+template <size_t N> void gsFreeformSubdivision<N>::orient_faces()
+{
+    // Get data
+    auto& mesh = *m_mesh;
+    gsProperty<gsPatch> face_data_vec(
+        mesh.get_face_property<gsPatch>("bezier_points"));
+
+    // As a pre-step, we make sure that for each face, if it has an
+    // extraordinary vertex, that vertex is the top left one
+    for (Face f : mesh.faces())
+    {
+        // first, check if this face has an EV at all
+        bool has_ev(false);
+        for (Vertex v : mesh.vertices(f))
+        {
+            has_ev |= !is_ordinary(mesh, v);
+        }
+
+        // if it does, rotate its first halfedge around until it points to the
+        // EV
+        if (has_ev)
+        {
+            while (is_ordinary(mesh, mesh.to_vertex(mesh.halfedge(f))))
+            {
+                // rotate the edge
+                mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
+                // also rotate the control points (CCW to match next_halfedge)
+                gsPatch& p = face_data_vec.vector()[f.idx()];
+                p.coefs() = rotate_coefs_cw(p.coefs(), N);
+            }
+        }
+    }
+}
+
+template <size_t N> gsMultiPatch<> gsFreeformSubdivision<N>::multipatch()
+{
+    auto& mesh = *m_mesh;
+    gsMultiPatch<> patch;
+
+    // Get the vector containing all the face data.
+    gsProperty<gsPatch> face_data_vec =
+        mesh.get_face_property<gsPatch>("bezier_points");
+
+    // For each face, convert its control net to a patch and add it to the
+    // multipatch. Order doesn't matter.
+    for (auto face : mesh.faces())
+    {
+        patch.addPatch(face_data_vec.vector()[face.idx()]);
+    }
+
+    return patch;
+}
+
 template <size_t N>
 std::array<gsSurfMesh::Face, 4>
 gsFreeformSubdivision<N>::order_faces(Vertex first_vertex,
@@ -194,38 +382,27 @@ gsFreeformSubdivision<N>::order_faces(Vertex first_vertex,
     return children_faces_ordered;
 }
 
-template <size_t N> void gsFreeformSubdivision<N>::orient_faces()
+template <size_t N>
+gsSubdivisionScheme::gsSubdivisionMeshValidity
+gsFreeformSubdivision<N>::check_mesh()
 {
-    // Get data
     auto& mesh = *m_mesh;
-    gsProperty<gsPatch> face_data_vec(
-        mesh.get_face_property<gsPatch>("bezier_points"));
-
-    // As a pre-step, we make sure that for each face, if it has an
-    // extraordinary vertex, that vertex is the top left one
     for (Face f : mesh.faces())
     {
-        // first, check if this face has an EV at all
-        bool has_ev(false);
-        for (Vertex v : mesh.vertices(f))
+        size_t count(0);
+        for ([[maybe_unused]] Vertex v : mesh.vertices(f))
         {
-            has_ev |= !is_ordinary(mesh, v);
+            ++count;
         }
-
-        // if it does, rotate its first halfedge around until it points to the
-        // EV
-        if (has_ev)
+        if (count != 4)
         {
-            while (is_ordinary(mesh, mesh.to_vertex(mesh.halfedge(f))))
-            {
-                // rotate the edge
-                mesh.set_halfedge(f, mesh.next_halfedge(mesh.halfedge(f)));
-                // also rotate the control points (CCW to match next_halfedge)
-                gsPatch& p = face_data_vec.vector()[f.idx()];
-                p.coefs() = rotate_coefs_cw(p.coefs(), N);
-            }
+            gsWarn << "This mesh has at least one non-quadrangular face "
+                      "(Vertex count "
+                   << count << ").";
+            return gsSubdivisionScheme::gsSubdivisionMeshValidity::INVALID;
         }
     }
+    return gsSubdivisionScheme::gsSubdivisionMeshValidity::UNDETERMINED;
 }
 
 template <size_t N> void gsFreeformSubdivision<N>::subdivide()
@@ -468,6 +645,112 @@ gsMatrix<real_t> gsFreeformSubdivision<N>::smooth(size_t degree)
         face_data_vec[k].coefs() = solField.patch(k).coefs();
 
     return coefficients;
+}
+
+template <size_t N>
+void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
+{
+    gsMultiPatch<> multi_patch;
+    gsMultiBasis<> multi_basis;
+    gsMappedBasis<2> mapped_basis;
+    this->c1_basis(multi_patch, multi_basis, mapped_basis);
+
+    // Use the expression assembler to build a system
+    gsExprAssembler<real_t> A(1, 1);
+    A.setIntegrationElements(multi_basis);
+
+    auto G = A.getMap(multi_patch);
+    auto u = A.getSpace(mapped_basis, 1);
+    auto ff = A.getCoeff(function, G);
+
+    u.setup();
+    A.initSystem();
+    // Equation: Int(v * u) = Int(v * f) e.g. u = f
+    A.assemble(u * u.tr(), u * ff);
+
+    // Solve this system
+    gsSparseSolver<real_t>::LU solver;
+    solver.compute(A.matrix());
+    gsMatrix<> coefficients = solver.solve(A.rhs());
+    auto solution = A.getSolution(u, coefficients);
+
+    // Extract the solution into a gsMappedSpline, then export to patches.
+    gsMappedSpline<2, real_t> solSpline;
+    solution.extract(solSpline);
+    gsMultiPatch<> solField = solSpline.exportToPatches();
+
+    // Write the solution back into the last entry.
+    gsProperty<gsPatch> face_data_vec(
+        m_mesh->get_face_property<gsPatch>("bezier_points"));
+    for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
+    {
+        gsPatch& p = face_data_vec[k];
+        p.coefs().conservativeResize(p.coefs().rows(), D + 1);
+        p.coefs().col(D) = solField.patch(k).coefs().col(0);
+    }
+
+    D++;
+}
+
+template <size_t N>
+void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
+{
+    gsMultiPatch<> multi_patch;
+    gsMultiBasis<> multi_basis;
+    gsMappedBasis<2> mapped_basis;
+    this->c1_basis(multi_patch, multi_basis, mapped_basis);
+
+    // Set up the expression assembler.
+    gsExprAssembler<> A(1, 1);
+    // Must be called before any computation; sets the integration domain.
+    A.setIntegrationElements(multi_basis);
+    // The geometry map that parametrizes the surface over the patches $\Omega$.
+    auto G = A.getMap(multi_patch);
+    auto u = A.getSpace(mapped_basis);
+    // Evaluate the right hand side function $f$ at physical points on the
+    // surface (mapped through G).  Using getCoeff(rhs) without G would
+    // evaluate rhs at parametric (u,v) coordinates, which are identical for
+    // every patch and would force a rotationally symmetric solution.
+    auto ff = A.getCoeff(rhs, G);
+
+    // Set homogeneous Dirichlet BCs on every boundary side.  Without
+    // computeTopology() above, bBegin()==bEnd() and the system would have an
+    // unconstrained constant null space on every patch, causing CG divergence.
+    gsBoundaryConditions<> bc;
+    bc.setGeoMap(multi_patch);
+    for (auto it = multi_patch.bBegin(); it != multi_patch.bEnd(); ++it)
+        bc.addCondition(*it, condition_type::dirichlet, nullptr);
+    u.setup(bc, dirichlet::l2Projection, -1);
+    A.initSystem();
+
+    // Weak form stiffness matrix and RHS
+    A.assemble(                                   // expressions:
+        igrad(u, G) * igrad(u, G).tr() * meas(G), // stiffness
+        u * ff * meas(G)                          // $\int f \cdot v d\Gamma$
+    );
+
+    // Solver and stuff
+    gsSparseSolver<>::CGDiagonal solver;
+    solver.compute(A.matrix());
+    gsMatrix<> solVector = solver.solve(A.rhs());
+    auto solution = A.getSolution(u, solVector);
+
+    // Extract the solution into a gsMappedSpline, then export to patches.
+    gsMappedSpline<2, real_t> solSpline;
+    solution.extract(solSpline);
+    gsMultiPatch<> solField = solSpline.exportToPatches();
+
+    // Write the solution back into the last entry.
+    gsProperty<gsPatch> face_data_vec(
+        m_mesh->get_face_property<gsPatch>("bezier_points"));
+    for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
+    {
+        gsPatch& p = face_data_vec[k];
+        p.coefs().conservativeResize(p.coefs().rows(), D + 1);
+        p.coefs().col(D) = solField.patch(k).coefs().col(0);
+    }
+
+    D++;
 }
 
 template <size_t N>
@@ -926,109 +1209,52 @@ void gsFreeformSubdivision<N>::c1_basis(gsMultiPatch<>& multi_patch,
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
+gsVector<real_t, 2>
+gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
+                                size_t samples_per_face)
 {
-    gsMultiPatch<> multi_patch;
-    gsMultiBasis<> multi_basis;
-    gsMappedBasis<2> mapped_basis;
-    this->c1_basis(multi_patch, multi_basis, mapped_basis);
 
-    // Set up the expression assembler.
-    gsExprAssembler<> A(1, 1);
-    // Must be called before any computation; sets the integration domain.
-    A.setIntegrationElements(multi_basis);
-    // The geometry map that parametrizes the surface over the patches $\Omega$.
-    auto G = A.getMap(multi_patch);
-    auto u = A.getSpace(mapped_basis);
-    // Evaluate the right hand side function $f$ at physical points on the
-    // surface (mapped through G).  Using getCoeff(rhs) without G would
-    // evaluate rhs at parametric (u,v) coordinates, which are identical for
-    // every patch and would force a rotationally symmetric solution.
-    auto ff = A.getCoeff(rhs, G);
-
-    // Set homogeneous Dirichlet BCs on every boundary side.  Without
-    // computeTopology() above, bBegin()==bEnd() and the system would have an
-    // unconstrained constant null space on every patch, causing CG divergence.
-    gsBoundaryConditions<> bc;
-    bc.setGeoMap(multi_patch);
-    for (auto it = multi_patch.bBegin(); it != multi_patch.bEnd(); ++it)
-        bc.addCondition(*it, condition_type::dirichlet, nullptr);
-    u.setup(bc, dirichlet::l2Projection, -1);
-    A.initSystem();
-
-    // Weak form stiffness matrix and RHS
-    A.assemble(                                   // expressions:
-        igrad(u, G) * igrad(u, G).tr() * meas(G), // stiffness
-        u * ff * meas(G)                          // $\int f \cdot v d\Gamma$
-    );
-
-    // Solver and stuff
-    gsSparseSolver<>::CGDiagonal solver;
-    solver.compute(A.matrix());
-    gsMatrix<> solVector = solver.solve(A.rhs());
-    auto solution = A.getSolution(u, solVector);
-
-    // Extract the solution into a gsMappedSpline, then export to patches.
-    gsMappedSpline<2, real_t> solSpline;
-    solution.extract(solSpline);
-    gsMultiPatch<> solField = solSpline.exportToPatches();
-
-    // Write the solution back into the last entry.
+    auto& mesh = *m_mesh;
+    size_t spf = samples_per_face;
     gsProperty<gsPatch> face_data_vec(
-        m_mesh->get_face_property<gsPatch>("bezier_points"));
-    for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
+        mesh.get_face_property<gsPatch>("bezier_points"));
+
+    real_t error_linf(0.);
+    real_t error_l2(0.);
+    real_t error_count(0);
+
+    for (auto f : mesh.faces())
     {
-        gsPatch& p = face_data_vec[k];
-        p.coefs().conservativeResize(p.coefs().rows(), D + 1);
-        p.coefs().col(D) = solField.patch(k).coefs().col(0);
+        // Look at the patch for this face.
+        const gsPatch& patch = face_data_vec[f.idx()];
+
+        // Now sample this patch
+        for (size_t i = 0; i < spf * spf; ++i)
+        {
+            // Get the value of the patch
+            gsVector<real_t> point = patch.eval(gsVector<real_t, 2>::vec(
+                real_t(std::floor(i % spf)) / real_t(spf - 1),
+                real_t(std::floor(i / spf)) / real_t(spf - 1)));
+
+            // Compare its last coordinate to the value of the function applied
+            // to the first coordinates and collate update the error
+            // receptables.
+            real_t err =
+                abs(point(D - 1) - function.eval(point.topRows(D - 1))(0));
+
+            error_linf = std::max(error_linf, err);
+            error_l2 += err * err;
+            ++error_count;
+        }
     }
 
-    D++;
-}
+    gsVector<real_t> error =
+        gsVector<real_t>::vec(error_linf, sqrt(error_l2 / real_t(error_count)));
 
-template <size_t N>
-void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
-{
-    gsMultiPatch<> multi_patch;
-    gsMultiBasis<> multi_basis;
-    gsMappedBasis<2> mapped_basis;
-    this->c1_basis(multi_patch, multi_basis, mapped_basis);
+    gsInfo << "Error LI: " << error(0) << ".\n";
+    gsInfo << "Error L2: " << error(1) << ".\n";
 
-    // Use the expression assembler to build a system
-    gsExprAssembler<real_t> A(1, 1);
-    A.setIntegrationElements(multi_basis);
-
-    auto G = A.getMap(multi_patch);
-    auto u = A.getSpace(mapped_basis, 1);
-    auto ff = A.getCoeff(function, G);
-
-    u.setup();
-    A.initSystem();
-    // Equation: Int(v * u) = Int(v * f) e.g. u = f
-    A.assemble(u * u.tr(), u * ff);
-
-    // Solve this system
-    gsSparseSolver<real_t>::LU solver;
-    solver.compute(A.matrix());
-    gsMatrix<> coefficients = solver.solve(A.rhs());
-    auto solution = A.getSolution(u, coefficients);
-
-    // Extract the solution into a gsMappedSpline, then export to patches.
-    gsMappedSpline<2, real_t> solSpline;
-    solution.extract(solSpline);
-    gsMultiPatch<> solField = solSpline.exportToPatches();
-
-    // Write the solution back into the last entry.
-    gsProperty<gsPatch> face_data_vec(
-        m_mesh->get_face_property<gsPatch>("bezier_points"));
-    for (size_t k = 0; k < face_data_vec.vector().size(); ++k)
-    {
-        gsPatch& p = face_data_vec[k];
-        p.coefs().conservativeResize(p.coefs().rows(), D + 1);
-        p.coefs().col(D) = solField.patch(k).coefs().col(0);
-    }
-
-    D++;
+    return error;
 }
 
 template <size_t N>
@@ -1108,189 +1334,6 @@ void gsFreeformSubdivision<N>::write_paraview_error(
 }
 
 template <size_t N>
-gsVector<real_t, 2>
-gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
-                                size_t samples_per_face)
-{
-
-    auto& mesh = *m_mesh;
-    size_t spf = samples_per_face;
-    gsProperty<gsPatch> face_data_vec(
-        mesh.get_face_property<gsPatch>("bezier_points"));
-
-    real_t error_linf(0.);
-    real_t error_l2(0.);
-    real_t error_count(0);
-
-    for (auto f : mesh.faces())
-    {
-        // Look at the patch for this face.
-        const gsPatch& patch = face_data_vec[f.idx()];
-
-        // Now sample this patch
-        for (size_t i = 0; i < spf * spf; ++i)
-        {
-            // Get the value of the patch
-            gsVector<real_t> point = patch.eval(gsVector<real_t, 2>::vec(
-                real_t(std::floor(i % spf)) / real_t(spf - 1),
-                real_t(std::floor(i / spf)) / real_t(spf - 1)));
-
-            // Compare its last coordinate to the value of the function applied
-            // to the first coordinates and collate update the error
-            // receptables.
-            real_t err =
-                abs(point(D - 1) - function.eval(point.topRows(D - 1))(0));
-
-            error_linf = std::max(error_linf, err);
-            error_l2 += err * err;
-            ++error_count;
-        }
-    }
-
-    gsVector<real_t> error =
-        gsVector<real_t>::vec(error_linf, sqrt(error_l2 / real_t(error_count)));
-
-    gsInfo << "Error LI: " << error(0) << ".\n";
-    gsInfo << "Error L2: " << error(1) << ".\n";
-
-    return error;
-}
-
-template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
-{
-    auto& mesh = *m_mesh;
-
-    gsMultiPatch<> patch;
-
-    // Load the patches
-    auto _file = gsReadFile<>(filepath, patch);
-
-    // Convert each patch into a degree 1 (2x2) patch for mesh calculation
-    gsMultiPatch<> corner_mp;
-    for (size_t p = 0; p < patch.nPatches(); ++p)
-    {
-        auto& geo = patch.patch(p);
-        auto& coefs = geo.coefs();
-
-        // Extract 4 corners (coef index = i + j*n1)
-        gsMatrix<real_t> cc(4, D);
-        cc.row(0) = coefs.row(0);             // (0,    0   )
-        cc.row(1) = coefs.row(N - 1);        // (N-1, 0   )
-        cc.row(2) = coefs.row(N * (N - 1)); // (0,    N-1)
-        cc.row(3) = coefs.row(N * N - 1);   // (N-1, N-1)
-
-        // Clamped linear knot vector: {0,0,1,1}
-        gsKnotVector<real_t> kv(0.0, 1.0, 0, 2);
-        corner_mp.addPatch(gsTensorBSpline<2, real_t>(kv, kv, cc));
-    }
-    // Calculate the topology and the mesh
-    corner_mp.computeTopology();
-    // This mesh turn each patch into (n-1)^2 many patches, so by reducing n to 2 first we get one face per patch with correct connectivity.
-    // This overrides the old mesh if present.
-    mesh = corner_mp.toMesh();
-
-
-    // Prepare the basis 
-    gsKnotVector<real_t> kv_default(0.0, 1.0, 0, N);
-    gsTensorBSplineBasis<2, real_t> basis_default(kv_default, kv_default);
-
-    // Initialize the property on the mesh.
-    auto face_data_vec = mesh.add_face_property(
-        std::string("bezier_points"),
-        gsPatch(basis_default, gsMatrix<>::Zero(N * N, D)));
-
-    // Now associate each face with its patch.
-    for (Face f : mesh.faces())
-    {
-        auto coefs = patch.patch(f.idx()).coefs();
-
-        gsMatrix<> full_coefs = gsMatrix<>::Zero(N * N, D);
-        full_coefs.leftCols(coefs.cols()) = coefs.leftCols(std::min((index_t)D, coefs.cols()));
-        face_data_vec[f] = gsPatch(basis_default, full_coefs);
-    }
-}
-
-template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data_off(std::string filepath)
-{
-    auto& mesh = *m_mesh;
-    // Clear the mesh
-    mesh = gsSurfMesh();
-
-    auto _readFile = gsReadFile<>(filepath, mesh);
-    // Initialize the property.
-    gsKnotVector<real_t> kv_default(0.0, 1.0, 0, N);
-    gsTensorBSplineBasis<2, real_t> basis_default(kv_default, kv_default);
-    mesh.add_face_property(std::string("bezier_points"),
-                           gsPatch(basis_default, gsMatrix<>::Zero(N * N, D)));
-
-    // Get the data.
-    gsProperty<gsPatch> patch_data =
-        mesh.get_face_property<gsPatch>("bezier_points");
-
-    // Each patch is now initialized with a bilinear interpolation of its
-    // corner vertices.
-    for (auto f : mesh.faces())
-    {
-        // Collect the 4 corner positions in CCW order.
-        std::vector<gsVector<real_t>> corners;
-        for (Vertex v : mesh.vertices(f))
-            corners.push_back(mesh.position(v));
-
-        // Bilinear interpolation over an N×N grid.
-        gsMatrix<real_t> coefs(N * N, D);
-        for (size_t i = 0; i < N; ++i)
-        {
-            for (size_t j = 0; j < N; ++j)
-            {
-                real_t u = real_t(j) / real_t(N - 1);
-                real_t v = real_t(i) / real_t(N - 1);
-                gsVector<real_t> pt = (1 - u) * (1 - v) * corners[0] +
-                                      u * (1 - v) * corners[1] +
-                                      (1 - u) * v * corners[3] +
-                                      u * v * corners[2];
-                coefs.row(i * N + j) = pt.transpose().leftCols(D);
-            }
-        }
-
-        patch_data.vector()[f.idx()] = gsPatch(basis_default, coefs);
-    }
-}
-
-template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data(std::string filepath)
-{
-    std::string xml(".xml");
-    std::string off(".off");
-    // Check the filetype to be loaded.
-    if (std::equal(filepath.begin() + filepath.size() - xml.size(),
-                   filepath.end(), xml.begin()))
-    {
-        gsInfo << "Loading xml\n";
-        initialize_data_xml(filepath);
-    }
-    else if (std::equal(filepath.begin() + filepath.size() - off.size(),
-                        filepath.end(), off.begin()))
-    {
-        gsInfo << "Loading off\n";
-        initialize_data_off(filepath);
-    }
-    else
-    {
-        gsWarn << "Unsupported Filetype! Mesh not initialized.\n";
-    }
-    m_mesh->garbage_collection();
-}
-
-template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data(std::string filepath, size_t D)
-{
-    this->D = D;
-    initialize_data(filepath);
-}
-
-template <size_t N>
 void gsFreeformSubdivision<N>::write_paraview(
     std::string name, gsParaviewCollection* collection,
     gsParaviewCollection* cnet_collection, size_t timestep, bool control_net)
@@ -1317,47 +1360,7 @@ void gsFreeformSubdivision<N>::write_paraview(
     }
 }
 
-template <size_t N> gsMultiPatch<> gsFreeformSubdivision<N>::multipatch()
-{
-    auto& mesh = *m_mesh;
-    gsMultiPatch<> patch;
 
-    // Get the vector containing all the face data.
-    gsProperty<gsPatch> face_data_vec =
-        mesh.get_face_property<gsPatch>("bezier_points");
-
-    // For each face, convert its control net to a patch and add it to the
-    // multipatch. Order doesn't matter.
-    for (auto face : mesh.faces())
-    {
-        patch.addPatch(face_data_vec.vector()[face.idx()]);
-    }
-
-    return patch;
-}
-
-template <size_t N>
-gsSubdivisionScheme::gsSubdivisionMeshValidity
-gsFreeformSubdivision<N>::check_mesh()
-{
-    auto& mesh = *m_mesh;
-    for (Face f : mesh.faces())
-    {
-        size_t count(0);
-        for ([[maybe_unused]] Vertex v : mesh.vertices(f))
-        {
-            ++count;
-        }
-        if (count != 4)
-        {
-            gsWarn << "This mesh has at least one non-quadrangular face "
-                      "(Vertex count "
-                   << count << ").";
-            return gsSubdivisionScheme::gsSubdivisionMeshValidity::INVALID;
-        }
-    }
-    return gsSubdivisionScheme::gsSubdivisionMeshValidity::UNDETERMINED;
-}
 
 template class gsFreeformSubdivision<5>;
 template class gsFreeformSubdivision<6>;

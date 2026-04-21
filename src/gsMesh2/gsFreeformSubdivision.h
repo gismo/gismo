@@ -76,6 +76,72 @@ public: // Constructors
         m_options.addString("model_patch_path", "Path to the model patches.",
                             "freeform/bubble/");
     }
+public: // Data initialization
+    /// \brief Initializes the targeted mesh from a file, dispatching on
+    /// extension.
+    ///
+    /// Detects the file format from the extension of \c filepath and calls the
+    /// appropriate loader:
+    /// - \c .xml → \ref initialize_data_xml
+    /// - \c .off → \ref initialize_data_off
+    ///
+    /// If the extension is not recognised, a warning is emitted and the mesh
+    /// is left unchanged.
+    ///
+    /// \param filepath Path to the file to load (\c .xml or \c .off).
+    void initialize_data(std::string filepath);
+
+    /// \brief Initializes the targeted mesh from a file, dispatching on
+    /// extension, and sets the dimension of the mesh.
+    ///
+    /// First sets the dimension of this freeform subdivision to D.
+    /// Then detects the file format from the extension of \c filepath and calls
+    /// the appropriate loader:
+    /// - \c .xml → \ref initialize_data_xml
+    /// - \c .off → \ref initialize_data_off
+    ///
+    /// If the extension is not recognised, a warning is emitted and the mesh
+    /// is left unchanged.
+    ///
+    /// \param filepath Path to the file to load (\c .xml or \c .off).
+    /// \param D The dimension of the mesh.
+    void initialize_data(std::string filepath, size_t D);
+
+    /// \brief Initializes the targeted mesh from an xml file.
+    ///
+    /// Clears the targeted mesh, then loads all \c gsTensorBSpline<2> objects
+    /// from the \c .xml file at \c filepath. Each patch must have an
+    /// \f$N \times N\f$ control net of \f$D\f$-dimensional vectors. For each
+    /// patch a quad face is added to the mesh, with shared corner vertices
+    /// detected by coordinate comparison using a tolerance of \f$10^{-10}\f$.
+    /// The patch is stored directly in the \c bezier_points face property as
+    /// a \c gsTensorBSpline<2>, using a canonical Bézier basis \c kv(0,1,0,N)
+    /// and the first \f$D\f$ coefficient columns from the loaded patch.
+    ///
+    /// \param filepath Path to the \c .xml file to load.
+    void initialize_data_xml(std::string filepath);
+
+    /// \brief Initializes the targeted mesh from an off file.
+    ///
+    /// Clears the targeted mesh, loads the \c .off file at \c filepath
+    /// (which contains 3-dimensional point data), adds the
+    /// \c bezier_points face property, and initializes each face's control
+    /// net via bilinear interpolation of its four corner positions. The first
+    /// \f$\min(D,3)\f$ coordinates are taken from the mesh; any coordinates
+    /// beyond index 2 are initialised to zero.
+    ///
+    /// \param filepath Path to the \c .off file to load.
+    void initialize_data_off(std::string filepath);
+
+    /// \brief Scales all vertex positions and Bézier control points.
+    ///
+    /// Applies a per-axis scaling to every vertex position in the mesh and to
+    /// every Bézier control point stored in the face data. Each coordinate
+    /// \f$x_i\f$ is multiplied by the corresponding entry \c factors[i].
+    ///
+    /// \param factors A 3-vector whose components are the scale factors for
+    ///                the x, y, and z axes respectively.
+    void scale(gsVector3d<> factors);
 
 private: // Helper functions
     /// \brief Rotates a control net clockwise (equivalent to a counter-clockwise
@@ -150,6 +216,15 @@ private: // Helper functions
     /// remains consistent.
     void orient_faces();
 
+    /// \brief Converts to a Gismo multipatch object.
+    ///
+    /// Converts the targeted mesh with freeform data into a multipatch that can
+    /// be easily displayed by e.g. Paraview. Each face and its control net are
+    /// converted to one appropriately sized patch.
+    ///
+    /// \return A \c gsMultiPatch<> containing one patch per face.
+    gsMultiPatch<> multipatch();
+
     /// \brief Orders a vector of 4 faces such that the face with a given vertex
     /// is first.
     ///
@@ -178,7 +253,7 @@ private: // Helper functions
         return mesh.valence(v) == 4 || mesh.is_boundary(v);
     }
 
-public:
+public: // Subdivision
     /// \brief Validates the mesh and returns its validity status.
     ///
     /// Checks whether every face of the targeted mesh has exactly 4 vertices
@@ -207,6 +282,48 @@ public:
     ///   those samples.
     void subdivide() override;
 
+public: // Fitters
+    /// \brief Smooths the geometry by L2-projecting it onto the mapped basis.
+    ///
+    /// Builds the mapped basis via \c c1_basis(), projects the current
+    /// multipatch geometry onto that space in the \f$L^2\f$ sense, and then
+    /// post-processes each extraordinary-vertex coefficient block in the kernel
+    /// of the corresponding \f$2v+1\f$ blending functions. When
+    /// \c optimize_fit is enabled, the post-processing minimises the
+    /// equalisation functional used by \c fit_ev_opt(); otherwise it enforces
+    /// the linear functionals loaded from \c Val<v>Constraints.xml. In both
+    /// cases the kernel basis is loaded from \c Val<v>Kernel.xml. The final
+    /// projected control points are written back to the per-face control nets.
+    ///
+    /// \param degree Requested smoothness degree. Currently only implemented
+    /// for C1.
+    /// \return Matrix of mapped coefficients with one row per global mapped
+    /// degree of freedom and one column per geometric coordinate.
+    gsMatrix<real_t> smooth(size_t degree);
+
+    /// \brief Appends a scalar field as a new control-point coordinate.
+    ///
+    /// Evaluates \c function on the current geometry and fits the resulting
+    /// scalar values with the freeform patch representation. The fitted values
+    /// are written into a new last coordinate of every control point, and the
+    /// ambient dimension \c D is increased by one.
+    ///
+    /// \param function A real-valued function of the current geometric
+    ///                 coordinates.
+    void fit_function(gsFunctionExpr<> function);
+
+    /// \brief Solves the Laplace-Beltrami problem on the mesh.
+    ///
+    /// Replaces the last coordinate of this patch with an approximate solution
+    /// to the Laplace-Beltrami problem.  The discrete space is built using a
+    /// \c gsMappedBasis with an identity mapping matrix, which is equivalent
+    /// to the standard multi-basis and can later be replaced by a non-trivial
+    /// mapping to impose patch-coupling or smoothness constraints.
+    ///
+    /// \param rhs The right hand side function.
+    void laplace_beltrami(gsFunctionExpr<> rhs);
+
+public: // Basises
     /// \brief Builds the mapped \f$C^1\f$ basis used by smoothing and PDE
     /// solves.
     ///
@@ -254,28 +371,7 @@ public:
     void c1_basis(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
                   gsMappedBasis<2>& mapped_basis);
 
-    /// \brief Solves the Laplace-Beltrami problem on the mesh.
-    ///
-    /// Replaces the last coordinate of this patch with an approximate solution
-    /// to the Laplace-Beltrami problem.  The discrete space is built using a
-    /// \c gsMappedBasis with an identity mapping matrix, which is equivalent
-    /// to the standard multi-basis and can later be replaced by a non-trivial
-    /// mapping to impose patch-coupling or smoothness constraints.
-    ///
-    /// \param rhs The right hand side function.
-    void laplace_beltrami(gsFunctionExpr<> rhs);
-
-    /// \brief Appends a scalar field as a new control-point coordinate.
-    ///
-    /// Evaluates \c function on the current geometry and fits the resulting
-    /// scalar values with the freeform patch representation. The fitted values
-    /// are written into a new last coordinate of every control point, and the
-    /// ambient dimension \c D is increased by one.
-    ///
-    /// \param function A real-valued function of the current geometric
-    ///                 coordinates.
-    void fit_function(gsFunctionExpr<> function);
-
+public: //errors & output
     /// \brief Computes the approximation error of the freeform patches against
     /// a reference function.
     ///
@@ -321,89 +417,6 @@ public:
                               gsParaviewCollection* collection = nullptr,
                               size_t timestep = 0);
 
-    /// \brief Initializes the targeted mesh from an xml file.
-    ///
-    /// Clears the targeted mesh, then loads all \c gsTensorBSpline<2> objects
-    /// from the \c .xml file at \c filepath. Each patch must have an
-    /// \f$N \times N\f$ control net of \f$D\f$-dimensional vectors. For each
-    /// patch a quad face is added to the mesh, with shared corner vertices
-    /// detected by coordinate comparison using a tolerance of \f$10^{-10}\f$.
-    /// The patch is stored directly in the \c bezier_points face property as
-    /// a \c gsTensorBSpline<2>, using a canonical Bézier basis \c kv(0,1,0,N)
-    /// and the first \f$D\f$ coefficient columns from the loaded patch.
-    ///
-    /// \param filepath Path to the \c .xml file to load.
-    void initialize_data_xml(std::string filepath);
-
-    /// \brief Initializes the targeted mesh from an off file.
-    ///
-    /// Clears the targeted mesh, loads the \c .off file at \c filepath
-    /// (which contains 3-dimensional point data), adds the
-    /// \c bezier_points face property, and initializes each face's control
-    /// net via bilinear interpolation of its four corner positions. The first
-    /// \f$\min(D,3)\f$ coordinates are taken from the mesh; any coordinates
-    /// beyond index 2 are initialised to zero.
-    ///
-    /// \param filepath Path to the \c .off file to load.
-    void initialize_data_off(std::string filepath);
-
-    /// \brief Initializes the targeted mesh from a file, dispatching on
-    /// extension.
-    ///
-    /// Detects the file format from the extension of \c filepath and calls the
-    /// appropriate loader:
-    /// - \c .xml → \ref initialize_data_xml
-    /// - \c .off → \ref initialize_data_off
-    ///
-    /// If the extension is not recognised, a warning is emitted and the mesh
-    /// is left unchanged.
-    ///
-    /// \param filepath Path to the file to load (\c .xml or \c .off).
-    void initialize_data(std::string filepath);
-
-    /// \brief Initializes the targeted mesh from a file, dispatching on
-    /// extension, and sets the dimension of the mesh.
-    ///
-    /// First sets the dimension of this freeform subdivision to D.
-    /// Then detects the file format from the extension of \c filepath and calls
-    /// the appropriate loader:
-    /// - \c .xml → \ref initialize_data_xml
-    /// - \c .off → \ref initialize_data_off
-    ///
-    /// If the extension is not recognised, a warning is emitted and the mesh
-    /// is left unchanged.
-    ///
-    /// \param filepath Path to the file to load (\c .xml or \c .off).
-    /// \param D The dimension of the mesh.
-    void initialize_data(std::string filepath, size_t D);
-
-    /// \brief Smooths the geometry by L2-projecting it onto the mapped basis.
-    ///
-    /// Builds the mapped basis via \c c1_basis(), projects the current
-    /// multipatch geometry onto that space in the \f$L^2\f$ sense, and then
-    /// post-processes each extraordinary-vertex coefficient block in the kernel
-    /// of the corresponding \f$2v+1\f$ blending functions. When
-    /// \c optimize_fit is enabled, the post-processing minimises the
-    /// equalisation functional used by \c fit_ev_opt(); otherwise it enforces
-    /// the linear functionals loaded from \c Val<v>Constraints.xml. In both
-    /// cases the kernel basis is loaded from \c Val<v>Kernel.xml. The final
-    /// projected control points are written back to the per-face control nets.
-    ///
-    /// \param degree Requested smoothness degree. Currently only implemented
-    /// for C1.
-    /// \return Matrix of mapped coefficients with one row per global mapped
-    /// degree of freedom and one column per geometric coordinate.
-    gsMatrix<real_t> smooth(size_t degree);
-
-    /// \brief Converts to a Gismo multipatch object.
-    ///
-    /// Converts the targeted mesh with freeform data into a multipatch that can
-    /// be easily displayed by e.g. Paraview. Each face and its control net are
-    /// converted to one appropriately sized patch.
-    ///
-    /// \return A \c gsMultiPatch<> containing one patch per face.
-    gsMultiPatch<> multipatch();
-
     /// \brief Writes the targeted mesh with freeform data to a Paraview file.
     ///
     /// Writes the targeted mesh with freeform data to a paraview file for easy
@@ -427,15 +440,6 @@ public:
                         gsParaviewCollection* cnet_collection = nullptr,
                         size_t timestep = 0, bool control_net = false);
 
-    /// \brief Scales all vertex positions and Bézier control points.
-    ///
-    /// Applies a per-axis scaling to every vertex position in the mesh and to
-    /// every Bézier control point stored in the face data. Each coordinate
-    /// \f$x_i\f$ is multiplied by the corresponding entry \c factors[i].
-    ///
-    /// \param factors A 3-vector whose components are the scale factors for
-    ///                the x, y, and z axes respectively.
-    void scale(gsVector3d<> factors);
 
 }; // class gsFreeformSubdivision
 
