@@ -1,7 +1,7 @@
-/** @file freeform_sdmatrix.cpp
+/** @file frog_sdmatrix.cpp
 
     @brief Precomputes the inner (and outer) EV coefficient matrices for
-    the freeform subdivision scheme.
+    the frog subdivision scheme.
 
     For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
     the example loads all \f$2v+1\f$ basis-function patches from the model patch
@@ -21,7 +21,7 @@
     subdirectory of \c filedata.
 
     \par Command-line arguments
-    - \b -p / \b --patches (default: \c freeform/bubble/): path, relative
+    - \b -p / \b --patches (default: \c frog/bubble/): path, relative
       to \c filedata/, to the directory containing the model patch files
       \c Val\<v\>Fct\<f\>.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
@@ -34,7 +34,7 @@
 
 #include <gismo.h>
 #include <gsIO/gsFileData.hpp>
-#include <gsMesh2/gsFreeformSubdivision.h>
+#include <gsMesh2/gsFrogSplines.h>
 #include <gsMesh2/gsSurfMesh.h>
 #include <string>
 
@@ -43,9 +43,9 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patches("freeform/bubble/");
+    std::string patches("frog/bubble/");
     index_t valence_max(6);
-    gsCmdLine cmd("Freeform subdivision");
+    gsCmdLine cmd("frog subdivision");
     cmd.addString("p", "patches",
                   "The path to the files containing the model patches for EV "
                   "subdivision.",
@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 
     // Basic objects
     gsSurfMesh mesh = gsSurfMesh();
-    auto subdiv = gsFreeformSubdivision<5>(&mesh, 3);
+    auto subdiv = gsFrogSplines<5>(&mesh, 3);
     subdiv.options().setString("model_patch_path", patches);
 
     // Iterate all valences

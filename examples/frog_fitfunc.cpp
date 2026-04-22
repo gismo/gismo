@@ -1,7 +1,7 @@
-/** @file freeform_fitfunc.cpp
+/** @file frog_fitfunc.cpp
 
     @brief Convergence study for fitting a scalar function to the last
-    coordinate of a freeform subdivision surface.
+    coordinate of a frog subdivision surface.
 
     For each refinement level \f$i = 0, 1, \ldots, \mathrm{steps}-1\f$, the
     example loads the input mesh, subdivides it \f$i\f$ times, replaces the
@@ -18,12 +18,12 @@
     as scalar point data).
 
     \par Command-line arguments
-    - \b -m / \b --mesh (default: \c freeform/flat/Val5Flat.xml): path to
+    - \b -m / \b --mesh (default: \c frog/flat/Val5Flat.xml): path to
    the input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches),
       relative to \c filedata/.
     - \b -f / \b --function (default: \c "x+y"): analytic expression of the
       target function \f$f(x,y)\f$ to be fitted to the last coordinate.
-    - \b -p / \b --patches (default: \c freeform/bubble/): path, relative
+    - \b -p / \b --patches (default: \c frog/bubble/): path, relative
       to \c filedata/, to the directory containing the model patch files for
       extraordinary-vertex subdivision together with the auxiliary
       \c Val\<v\>Kernel.xml files and, unless \b --opt is set, the
@@ -43,7 +43,7 @@
       column vectors to \c errors.csv.
     - \b --weighted: if set, weights the least-squares fit around
       extraordinary vertices using a per-sample weight vector loaded from \c
-      filedata/freeform/val\<v\>_weights.xml.
+      filedata/frog/val\<v\>_weights.xml.
     - \b --opt: if set, \c smooth() selects extraordinary-vertex coefficient
       representatives by minimising the diff functional used by
       \c fit_ev_opt(); otherwise it uses the linear functionals stored in
@@ -57,7 +57,7 @@
 #include <gsIO/gsCsv.h>
 #include <gsIO/gsFileData.hpp>
 #include <gsIO/gsWriteParaview.h>
-#include <gsMesh2/gsFreeformSubdivision.h>
+#include <gsMesh2/gsFrogSplines.h>
 #include <gsMesh2/gsSurfMesh.h>
 
 using namespace gismo;
@@ -65,8 +65,8 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // Command line inputs
-    std::string mesh_path("freeform/flat/Val5Flat.xml");
-    std::string model_patch_path("freeform/bubble/");
+    std::string mesh_path("frog/flat/Val5Flat.xml");
+    std::string model_patch_path("frog/bubble/");
     index_t steps(2);
     index_t valence(-1);
     index_t samples(10);
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     bool write_errors(false);
 
     // Inputs
-    gsCmdLine cmd("Freeform subdivision");
+    gsCmdLine cmd("Frog subdivision");
     cmd.addString("m", "mesh", "File containing the mesh.", mesh_path);
     cmd.addString("f", "function",
                   "A function to replace the last coordinate of your loaded "
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
                   optimize_fit);
     cmd.addSwitch("weighted",
                   "Uses a weighting for the EV fit, loaded from a weights "
-                  "vector at `filedata/freeform/val<v>_weights.xml`.",
+                  "vector at `filedata/frog/val<v>_weights.xml`.",
                   weighted_fit);
     try
     {
@@ -124,11 +124,11 @@ int main(int argc, char** argv)
 
     if (valence > 0)
     {
-        mesh_path = "freeform/flat/Val" + std::to_string(valence) + "Flat.xml";
+        mesh_path = "frog/flat/Val" + std::to_string(valence) + "Flat.xml";
     }
 
     gsSurfMesh mesh = gsSurfMesh();
-    auto subdiv = gsFreeformSubdivision<5>(&mesh, 2);
+    auto subdiv = gsFrogSplines<5>(&mesh, 2);
     subdiv.options().setString("model_patch_path", model_patch_path);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
     subdiv.options().setSwitch("weighted_fit", weighted_fit);

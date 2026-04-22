@@ -1,6 +1,6 @@
-/** @file gsFreeformSubdivision.cpp
+/** @file gsFrogSplines.cpp
 
-    @brief Classes for Freeform Subdivision on a quadrangular mesh.
+    @brief Classes for FROG Splines on a quadrangular mesh.
 
     This file is part of the G+Smo library.
 
@@ -32,7 +32,7 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileData.hpp>
-#include <gsMesh2/gsFreeformSubdivision.h>
+#include <gsMesh2/gsFrogSplines.h>
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsModeling/gsFitting.h>
@@ -45,14 +45,14 @@ namespace gismo
 {
 
 template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data(std::string filepath, size_t D)
+void gsFrogSplines<N>::initialize_data(std::string filepath, size_t D)
 {
     this->D = D;
     initialize_data(filepath);
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data(std::string filepath)
+void gsFrogSplines<N>::initialize_data(std::string filepath)
 {
     std::string xml(".xml");
     std::string off(".off");
@@ -77,7 +77,7 @@ void gsFreeformSubdivision<N>::initialize_data(std::string filepath)
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
+void gsFrogSplines<N>::initialize_data_xml(std::string filepath)
 {
     auto& mesh = *m_mesh;
 
@@ -133,7 +133,7 @@ void gsFreeformSubdivision<N>::initialize_data_xml(std::string filepath)
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::initialize_data_off(std::string filepath)
+void gsFrogSplines<N>::initialize_data_off(std::string filepath)
 {
     auto& mesh = *m_mesh;
     // Clear the mesh
@@ -179,7 +179,7 @@ void gsFreeformSubdivision<N>::initialize_data_off(std::string filepath)
     }
 }
 
-template <size_t N> void gsFreeformSubdivision<N>::scale(gsVector3d<> factors)
+template <size_t N> void gsFrogSplines<N>::scale(gsVector3d<> factors)
 {
     auto& mesh = *m_mesh;
     gsProperty<gsPatch> face_data_vec(
@@ -201,7 +201,7 @@ template <size_t N> void gsFreeformSubdivision<N>::scale(gsVector3d<> factors)
 }
 
 template <size_t N>
-gsMatrix<> gsFreeformSubdivision<N>::rotate_coefs_cw(const gsMatrix<>& coefs,
+gsMatrix<> gsFrogSplines<N>::rotate_coefs_cw(const gsMatrix<>& coefs,
                                                       size_t n)
 {
     // CCW rotation: grid position (i,j) maps to (n-1-j, i).
@@ -214,7 +214,7 @@ gsMatrix<> gsFreeformSubdivision<N>::rotate_coefs_cw(const gsMatrix<>& coefs,
 }
 
 template <size_t N>
-gsMatrix<> gsFreeformSubdivision<N>::rotate_coefs_ccw(const gsMatrix<>& coefs,
+gsMatrix<> gsFrogSplines<N>::rotate_coefs_ccw(const gsMatrix<>& coefs,
                                                        size_t n)
 {
     // CW rotation: grid position (i,j) maps to (j, n-1-i).
@@ -228,7 +228,7 @@ gsMatrix<> gsFreeformSubdivision<N>::rotate_coefs_ccw(const gsMatrix<>& coefs,
 
 template <size_t N>
 gismo::gsTensorBSpline<2, real_t>
-gsFreeformSubdivision<N>::load_model_patch(int valence, std::string subtype)
+gsFrogSplines<N>::load_model_patch(int valence, std::string subtype)
 {
     // Load all patches from Val<valence>Fct1.xml
     auto path = m_options.getString("model_patch_path") + "Val" +
@@ -296,7 +296,7 @@ gsFreeformSubdivision<N>::load_model_patch(int valence, std::string subtype)
     return gsTensorBSpline<2>(patches[patch_index]->basis(), give(coefs));
 }
 
-template <size_t N> void gsFreeformSubdivision<N>::orient_faces()
+template <size_t N> void gsFrogSplines<N>::orient_faces()
 {
     // Get data
     auto& mesh = *m_mesh;
@@ -330,7 +330,7 @@ template <size_t N> void gsFreeformSubdivision<N>::orient_faces()
     }
 }
 
-template <size_t N> gsMultiPatch<> gsFreeformSubdivision<N>::multipatch()
+template <size_t N> gsMultiPatch<> gsFrogSplines<N>::multipatch()
 {
     auto& mesh = *m_mesh;
     gsMultiPatch<> patch;
@@ -351,7 +351,7 @@ template <size_t N> gsMultiPatch<> gsFreeformSubdivision<N>::multipatch()
 
 template <size_t N>
 std::array<gsSurfMesh::Face, 4>
-gsFreeformSubdivision<N>::order_faces(Vertex first_vertex,
+gsFrogSplines<N>::order_faces(Vertex first_vertex,
                                       std::array<gsSurfMesh::Face, 4> faces)
 {
     auto& mesh = *m_mesh;
@@ -384,7 +384,7 @@ gsFreeformSubdivision<N>::order_faces(Vertex first_vertex,
 
 template <size_t N>
 gsSubdivisionScheme::gsSubdivisionMeshValidity
-gsFreeformSubdivision<N>::check_mesh()
+gsFrogSplines<N>::check_mesh()
 {
     auto& mesh = *m_mesh;
     for (Face f : mesh.faces())
@@ -405,7 +405,7 @@ gsFreeformSubdivision<N>::check_mesh()
     return gsSubdivisionScheme::gsSubdivisionMeshValidity::UNDETERMINED;
 }
 
-template <size_t N> void gsFreeformSubdivision<N>::subdivide()
+template <size_t N> void gsFrogSplines<N>::subdivide()
 {
     auto& mesh = *m_mesh;
     // First, make sure all faces are correctly oriented with the EV as their
@@ -543,7 +543,7 @@ template <size_t N> void gsFreeformSubdivision<N>::subdivide()
 };
 
 template <size_t N>
-gsMatrix<real_t> gsFreeformSubdivision<N>::smooth(size_t degree)
+gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
 {
     GISMO_ASSERT(degree == 1, "Only C1 smoothing supported.");
 
@@ -648,7 +648,7 @@ gsMatrix<real_t> gsFreeformSubdivision<N>::smooth(size_t degree)
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
+void gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
 {
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
@@ -693,7 +693,7 @@ void gsFreeformSubdivision<N>::fit_function(gsFunctionExpr<real_t> function)
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
+void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 {
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
@@ -754,7 +754,7 @@ void gsFreeformSubdivision<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::c1_basis(gsMultiPatch<>& multi_patch,
+void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
                                         gsMultiBasis<>& multi_basis,
                                         gsMappedBasis<2>& mapped_basis)
 {
@@ -1210,7 +1210,7 @@ void gsFreeformSubdivision<N>::c1_basis(gsMultiPatch<>& multi_patch,
 
 template <size_t N>
 gsVector<real_t, 2>
-gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
+gsFrogSplines<N>::error(gsFunctionExpr<real_t> function,
                                 size_t samples_per_face)
 {
 
@@ -1258,7 +1258,7 @@ gsFreeformSubdivision<N>::error(gsFunctionExpr<real_t> function,
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::write_paraview_error(
+void gsFrogSplines<N>::write_paraview_error(
     gsFunctionExpr<real_t> function, real_t max_error, std::string name,
     gsParaviewCollection* collection, size_t timestep)
 {
@@ -1334,7 +1334,7 @@ void gsFreeformSubdivision<N>::write_paraview_error(
 }
 
 template <size_t N>
-void gsFreeformSubdivision<N>::write_paraview(
+void gsFrogSplines<N>::write_paraview(
     std::string name, gsParaviewCollection* collection,
     gsParaviewCollection* cnet_collection, size_t timestep, bool control_net)
 {
@@ -1362,8 +1362,8 @@ void gsFreeformSubdivision<N>::write_paraview(
 
 
 
-template class gsFreeformSubdivision<5>;
-template class gsFreeformSubdivision<6>;
-template class gsFreeformSubdivision<9>;
+template class gsFrogSplines<5>;
+template class gsFrogSplines<6>;
+template class gsFrogSplines<9>;
 
 } // namespace gismo

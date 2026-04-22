@@ -1,8 +1,8 @@
 
-/** @file freeform_kernels.cpp
+/** @file frog_kernels.cpp
 
     @brief Precomputes kernel bases for the extraordinary-vertex blending
-    functions of the freeform subdivision scheme.
+    functions of the frog subdivision scheme.
 
     For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
     the example loads all \f$2v+1\f$ extraordinary-vertex blending functions
@@ -12,15 +12,15 @@
     not change the represented EV function and is written to
     \c Val\<v\>Kernel.xml in the same patch directory.
 
-    These kernel files are consumed by \c gsFreeformSubdivision::smooth() and
-    by \c freeform_functionals.cpp.
+    These kernel files are consumed by \c gsFrogSplines::smooth() and
+    by \c frog_functionals.cpp.
 
     \note The example assumes it is run from the build directory so that
     \c ../filedata is reachable. The patch-path option must point to a
     subdirectory of \c filedata.
 
     \par Command-line arguments
-    - \b -p / \b --patchpath (default: \c freeform/bubble/): path, relative
+    - \b -p / \b --patchpath (default: \c frog/bubble/): path, relative
       to \c filedata/, to the directory that contains the model patch files
       \c Val\<v\>Fct\<f\>.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
@@ -40,8 +40,8 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("freeform/bubble/");
-    gsCmdLine cmd("Freeform subdivision");
+    std::string patchpath("frog/bubble/");
+    gsCmdLine cmd("Frog subdivision");
     index_t valence_max(6);
     cmd.addString("p", "patchpath",
                   "The path to the files containing the model patches for EV "

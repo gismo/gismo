@@ -1,7 +1,7 @@
-/** @file freeform_fit.cpp
+/** @file frog_fit.cpp
 
     @brief Loads a quad mesh and performs a user-specified sequence of
-    freeform subdivision and \f$C^1\f$ smoothing steps, writing each
+    frog subdivision and \f$C^1\f$ smoothing steps, writing each
     intermediate result to Paraview.
 
     The mesh is loaded from a \c .off or \c .xml file. The operation
@@ -19,7 +19,7 @@
       to perform. Each character is executed in order:
       - \c d — one subdivision step (\c subdivide()).
       - \c s — one \f$C^1\f$ smoothing step (\c smooth(1)).
-    - \b -p / \b --patches (default: \c freeform/bubble/): path to the
+    - \b -p / \b --patches (default: \c frog/bubble/): path to the
       directory containing the model patch \c .xml files used for
       extraordinary-vertex subdivision.
     - \b --cnet: if set, also writes the Bézier control net alongside the
@@ -33,7 +33,7 @@
 
 #include <gismo.h>
 #include <gsIO/gsWriteParaview.h>
-#include <gsMesh2/gsFreeformSubdivision.h>
+#include <gsMesh2/gsFrogSplines.h>
 #include <gsMesh2/gsSurfMesh.h>
 
 using namespace gismo;
@@ -42,13 +42,13 @@ int main(int argc, char** argv)
 {
     // Command line
     std::string filepath("off/octtorus.off");
-    std::string patchpath("freeform/bubble/");
+    std::string patchpath("frog/bubble/");
     std::string operations("sd");
     bool control_net(false);
     bool optimize_fit(false);
 
     // Inputs
-    gsCmdLine cmd("Freeform subdivision");
+    gsCmdLine cmd("frog subdivision");
     cmd.addPlainString("mesh", "Path to the file containing the mesh.", filepath);
     cmd.addString("o", "operations",
                   "Operations to perform on the mesh. Use d for subdivision "
@@ -73,7 +73,7 @@ int main(int argc, char** argv)
     }
 
     gsSurfMesh mesh = gsSurfMesh();
-    auto subdiv = gsFreeformSubdivision<5>(&mesh, 3);
+    auto subdiv = gsFrogSplines<5>(&mesh, 3);
 
     subdiv.options().setString("model_patch_path", patchpath);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);

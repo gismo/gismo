@@ -1,4 +1,4 @@
-/** @file freeform_functionals.cpp
+/** @file frog_functionals.cpp
 
     @brief Precomputes the linear functionals that select constrained
     extraordinary-vertex coefficient representatives.
@@ -14,11 +14,11 @@
     the model patch directory.
 
     The example assumes that \c Val\<v\>Kernel.xml has already been generated,
-    e.g. by running \c freeform_kernels.cpp first, because
-    \c gsFreeformSubdivision::smooth() uses those kernel bases internally.
+    e.g. by running \c frog_kernels.cpp first, because
+    \c gsFrogSplines::smooth() uses those kernel bases internally.
 
     These functional files are subsequently consumed by
-    \c gsFreeformSubdivision::smooth() when \c optimize_fit is disabled and by
+    \c gsFrogSplines::smooth() when \c optimize_fit is disabled and by
     \c fit_ev() during constrained EV fitting.
 
     \note The example assumes it is run from the build directory so that
@@ -26,7 +26,7 @@
     subdirectory of \c filedata.
 
     \par Command-line arguments
-    - \b -p / \b --patchpath (default: \c freeform/bubble/): path, relative
+    - \b -p / \b --patchpath (default: \c frog/bubble/): path, relative
       to \c filedata/, to the directory that contains the model patch files
       \c Val\<v\>Fct\<f\>.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
@@ -39,7 +39,7 @@
 
 #include <gismo.h>
 #include <gsIO/gsFileData.hpp>
-#include <gsMesh2/gsFreeformSubdivision.h>
+#include <gsMesh2/gsFrogSplines.h>
 #include <gsMesh2/gsSurfMesh.h>
 #include <string>
 
@@ -48,8 +48,8 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("freeform/bubble/");
-    gsCmdLine cmd("Freeform subdivision");
+    std::string patchpath("frog/bubble/");
+    gsCmdLine cmd("Frog subdivision");
     index_t valence_max(6);
     cmd.addString("p", "patchpath",
                   "The path to the files containing the model patches for EV "
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
 
     // Basic objects
     gsSurfMesh mesh = gsSurfMesh();
-    auto subdiv = gsFreeformSubdivision<5>(&mesh, 3);
+    auto subdiv = gsFrogSplines<5>(&mesh, 3);
     subdiv.options().setString("model_patch_path", patchpath);
     subdiv.options().setSwitch("optimize_fit", true);
 

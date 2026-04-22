@@ -1,6 +1,6 @@
-/** @file gsFreeformSubdivision.h
+/** @file gsFrogSplines.h
 
-    @brief Classes for Freeform Subdivision on a quadrangular mesh.
+    @brief Classes for FROG Splines on a quadrangular mesh.
 
     This file is part of the G+Smo library.
 
@@ -23,13 +23,12 @@
 namespace gismo
 {
 
-/// \brief Subdivision algorithm based on freeform splines.
+/// \brief Manager class for FROG splines.
 ///
-/// Class for subdivision schemes based on freeform spline control nets on
-/// quadrangular meshes. Also provides other support functions for working with
-/// such meshes.
+/// This class manages a quadrangular mesh and basises of FROG splines, allowing
+/// for subdivision or fitting operations.
 template <size_t N>
-class GISMO_EXPORT gsFreeformSubdivision : public gsSubdivisionScheme
+class GISMO_EXPORT gsFrogSplines : public gsSubdivisionScheme
 {
 private: // Space Dimension
     size_t D;
@@ -41,7 +40,7 @@ public: // Constructors
     ///
     /// Default constructor. Sets no options and leaves the targeted mesh as a
     /// nullpointer.
-    gsFreeformSubdivision(size_t D) : gsFreeformSubdivision(nullptr, D) {}
+    gsFrogSplines(size_t D) : gsFrogSplines(nullptr, D) {}
 
     /// \brief Constructor with a mesh to target.
     ///
@@ -54,12 +53,12 @@ public: // Constructors
     /// - \c weighted_fit (switch, default \c false): when active, weights the
     ///   least-squares fit around extraordinary vertices using a per-sample
     ///   weight vector loaded from
-    ///   \c filedata/freeform/val\<v\>_weights.xml.
-    /// - \c model_patch_path (string, default \c "freeform/bubble/"): path
+    ///   \c filedata/frog/val\<v\>_weights.xml.
+    /// - \c model_patch_path (string, default \c "frog/bubble/"): path
     ///   to the directory containing the model patch \c .xml files.
     ///
     /// \param mesh Pointer to the \c gsSurfMesh to be targeted by this object.
-    gsFreeformSubdivision(gsSurfMesh* mesh, size_t D)
+    gsFrogSplines(gsSurfMesh* mesh, size_t D)
         : gsSubdivisionScheme(mesh), D(D)
     {
         m_options.addSwitch("optimize_fit",
@@ -71,10 +70,10 @@ public: // Constructors
         m_options.addSwitch("weighted_fit",
                             "When active, weights the least-squares EV fit "
                             "using a per-sample weight vector loaded from "
-                            "`filedata/freeform/val<v>_weights.xml`.",
+                            "`filedata/frog/val<v>_weights.xml`.",
                             false);
         m_options.addString("model_patch_path", "Path to the model patches.",
-                            "freeform/bubble/");
+                            "frog/bubble/");
     }
 public: // Data initialization
     /// \brief Initializes the targeted mesh from a file, dispatching on
@@ -94,7 +93,7 @@ public: // Data initialization
     /// \brief Initializes the targeted mesh from a file, dispatching on
     /// extension, and sets the dimension of the mesh.
     ///
-    /// First sets the dimension of this freeform subdivision to D.
+    /// First sets the dimension of this frog spline subdivision to D.
     /// Then detects the file format from the extension of \c filepath and calls
     /// the appropriate loader:
     /// - \c .xml → \ref initialize_data_xml
@@ -218,7 +217,7 @@ private: // Helper functions
 
     /// \brief Converts to a Gismo multipatch object.
     ///
-    /// Converts the targeted mesh with freeform data into a multipatch that can
+    /// Converts the targeted mesh with patch data into a multipatch that can
     /// be easily displayed by e.g. Paraview. Each face and its control net are
     /// converted to one appropriately sized patch.
     ///
@@ -265,7 +264,7 @@ public: // Subdivision
     /// quads, \c gsSubdivisionMeshValidity::INVALID otherwise.
     gsSubdivisionScheme::gsSubdivisionMeshValidity check_mesh() override;
 
-    /// \brief Performs one step of freeform subdivision on the mesh.
+    /// \brief Performs one step of frog-based subdivision on the mesh.
     ///
     /// Calls \c orient_faces(), then applies \c quad_split() to the underlying
     /// \c gsSurfMesh. For each original face the four child faces receive new
@@ -304,7 +303,7 @@ public: // Fitters
     /// \brief Appends a scalar field as a new control-point coordinate.
     ///
     /// Evaluates \c function on the current geometry and fits the resulting
-    /// scalar values with the freeform patch representation. The fitted values
+    /// scalar values with the frog patch representation. The fitted values
     /// are written into a new last coordinate of every control point, and the
     /// ambient dimension \c D is increased by one.
     ///
@@ -327,7 +326,7 @@ public: // Basises
     /// \brief Builds the mapped \f$C^1\f$ basis used by smoothing and PDE
     /// solves.
     ///
-    /// Converts the current freeform control-net mesh into a \c gsMultiPatch
+    /// Converts the current frog control-net mesh into a \c gsMultiPatch
     /// and its underlying \c gsMultiBasis, then assembles a sparse
     /// local-to-global mapper whose image defines the \f$C^1\f$ spline space.
     /// The construction proceeds in four stages:
@@ -352,8 +351,8 @@ public: // Basises
     ///
     /// The resulting global degrees of freedom are ordered as follows:
     /// - for each extraordinary vertex in mesh-vertex iteration order:
-    ///   - the central freeform blending function,
-    ///   - the remaining freeform blending functions around that vertex,
+    ///   - the central frog blending function,
+    ///   - the remaining frog blending functions around that vertex,
     ///   - the additional free control-point degrees of freedom around that EV,
     /// - ordinary inner points in face order,
     /// - edge points in face/halfedge order,
@@ -372,7 +371,7 @@ public: // Basises
                   gsMappedBasis<2>& mapped_basis);
 
 public: //errors & output
-    /// \brief Computes the approximation error of the freeform patches against
+    /// \brief Computes the approximation error of the patch patches against
     /// a reference function.
     ///
     /// For each face, samples the Bézier patch at \c samples_per_face squared
@@ -417,9 +416,9 @@ public: //errors & output
                               gsParaviewCollection* collection = nullptr,
                               size_t timestep = 0);
 
-    /// \brief Writes the targeted mesh with freeform data to a Paraview file.
+    /// \brief Writes the targeted mesh with patch data to a Paraview file.
     ///
-    /// Writes the targeted mesh with freeform data to a paraview file for easy
+    /// Writes the targeted mesh with patch data to a paraview file for easy
     /// viewing. Can also register the files to given paraview collections at
     /// the given timestep.
     ///
@@ -441,6 +440,6 @@ public: //errors & output
                         size_t timestep = 0, bool control_net = false);
 
 
-}; // class gsFreeformSubdivision
+}; // class gsFrogSplines
 
 } // namespace gismo

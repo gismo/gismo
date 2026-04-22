@@ -1,7 +1,7 @@
-/** @file freeform_pde.cpp
+/** @file frog_pde.cpp
 
     @brief Convergence study for solving the Laplace-Beltrami PDE on a
-    freeform subdivision surface.
+    frog subdivision surface.
 
     For each refinement level \f$i = 0, 1, \ldots, \mathrm{steps}-1\f$, the
     example loads the input mesh, subdivides it \f$i\f$ times, and solves the
@@ -22,7 +22,7 @@
     a point-wise error field, and Bézier control net).
 
     \par Command-line arguments
-    - \b -m / \b --mesh (default: \c freeform/flat/Val5Flat.xml): path to
+    - \b -m / \b --mesh (default: \c frog/flat/Val5Flat.xml): path to
       the input mesh \c .xml file (collection of \c gsTensorBSpline<2>
       patches), relative to \c filedata/. Ignored if \c valence is set in
       the input options (ID 0).
@@ -47,7 +47,7 @@
       - ID 2 (\c Function, optional): the exact solution \f$u^*(x,y)\f$.
         If present, \f$L^\infty\f$ and \f$L^2\f$ errors are printed and
         written to \c errors.csv.
-    - \b -p / \b --patches (default: \c freeform/bubble/): path, relative to
+    - \b -p / \b --patches (default: \c frog/bubble/): path, relative to
       \c filedata/, to the directory containing the model patch files for
       extraordinary-vertex subdivision.
     - \b -s / \b --steps (default: \c 2): number of refinement levels
@@ -71,7 +71,7 @@
 #include <gsIO/gsCsv.h>
 #include <gsIO/gsFileData.hpp>
 #include <gsIO/gsWriteParaview.h>
-#include <gsMesh2/gsFreeformSubdivision.h>
+#include <gsMesh2/gsFrogSplines.h>
 #include <gsMesh2/gsSurfMesh.h>
 
 using namespace gismo;
@@ -79,17 +79,17 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // Command line inputs
-    std::string mesh_path("freeform/flat/Val5Flat.xml");
+    std::string mesh_path("frog/flat/Val5Flat.xml");
     index_t valence(-1);
     index_t mesh_dim(3);
     std::string function_str("");
     std::string input_path("");
-    std::string model_patch_path("freeform/bubble/");
+    std::string model_patch_path("frog/bubble/");
     index_t steps(2);
     bool control_net(false);
     bool paraview(false);
 
-    gsCmdLine cmd("Freeform subdivision: Laplace-Beltrami PDE solver");
+    gsCmdLine cmd("Frog subdivision: Laplace-Beltrami PDE solver");
 
     // Function/Mesh Input
     cmd.addString("m", "mesh", "File containing the mesh.", mesh_path);
@@ -167,7 +167,7 @@ int main(int argc, char** argv)
     if (valence > 0)
     {
         mesh_path =
-            "freeform/flat/Val" + std::to_string(valence) + "FlatStraight.xml";
+            "frog/flat/Val" + std::to_string(valence) + "FlatStraight.xml";
         mesh_dim = 2;
     }
 
@@ -175,7 +175,7 @@ int main(int argc, char** argv)
     scale << x_scale, y_scale;
 
     gsSurfMesh mesh = gsSurfMesh();
-    auto subdiv = gsFreeformSubdivision<5>(&mesh, mesh_dim);
+    auto subdiv = gsFrogSplines<5>(&mesh, mesh_dim);
     subdiv.options().setString("model_patch_path", model_patch_path);
 
     gsMatrix<real_t> errors(2, steps);
