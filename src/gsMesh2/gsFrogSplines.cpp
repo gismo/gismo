@@ -25,6 +25,7 @@
 #include "gsMatrix/gsVector.h"
 #include "gsPde/gsBoundaryConditions.h"
 #include "gsUtils/gsL2Projection.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <gismo.h>
@@ -583,7 +584,7 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
             continue;
 
         ev_coef_ends.push_back(ev_coef_starts[ev_coef_starts.size() - 1] +
-                               mesh.valence(v) * 2 + 1);
+                               mesh.valence(v) * 15 + 1);
         ev_coef_starts.push_back(ev_coef_ends[ev_coef_ends.size() - 1] +
                                  20 * mesh.valence(v));
     }
@@ -596,7 +597,7 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
             continue;
 
         const size_t valence = mesh.valence(v);
-        const index_t function_count = 2 * valence + 1;
+        const index_t function_count = 15 * valence + 1;
         const index_t ev_coef_start = ev_coef_starts[ev_index];
 
         gsMatrix<real_t> kernel;
@@ -607,9 +608,9 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
         gsMatrix<real_t> functional;
         if (optimize_fit)
         {
-            functional.resize(2 * valence, function_count);
+            functional.resize(15 * valence, function_count);
             functional.setZero();
-            for (size_t i = 0; i < 2 * valence; ++i)
+            for (size_t i = 0; i < function_count-1; ++i)
             {
                 functional(i, 0) = real_t(1);
                 functional(i, static_cast<index_t>(i) + 1) = real_t(-1);
@@ -843,7 +844,7 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
 
         const size_t valence = mesh.valence(v);
         const size_t patches_count = 4 * valence;
-        const size_t function_count = 2 * valence + 1;
+        const size_t function_count = 15 * valence + 1;
 
         // Collect the 4*valence (face, orienting-halfedge) pairs in
         // the same order as smooth(): valence inner patches first,
@@ -907,8 +908,8 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
             {
                 for (size_t vx = 0; vx < N; ++vx)
                 {
-                    // Inside EV support = all fitting functions non-zero here.
-                    const bool in_support = std::all_of(
+                    // Inside EV support = any fitting functions non-zero here.
+                    const bool in_support = std::any_of(
                         fitting_functions.begin(), fitting_functions.end(),
                         [&](const auto& ff)
                         {
