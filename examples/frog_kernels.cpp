@@ -66,10 +66,10 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        gsMatrix<real_t> coefs(4 * 25 * valence, 2 * valence + 1);
+        gsMatrix<real_t> coefs(4 * 25 * valence, 2 * valence + 1); // TODO
 
         // Iterate all functions for that valence
-        for (size_t function = 0; function < 2 * valence + 1; ++function)
+        for (size_t function = 0; function < 2 * valence + 1; ++function) // TODO
         {
             gsInfo << "Function " << function << "\n";
             // Load the basis function patch file.
@@ -89,7 +89,7 @@ int main(int argc, char** argv)
         auto legal_pl = coefs.fullPivLu();
         legal_pl.setThreshold(1e-8);
         gsInfo << "Function Rank: " << legal_pl.rank() << "\n";
-        gsInfo << "Kernel size:   " << (2 * valence + 1 - legal_pl.rank()) << "\n";
+        gsInfo << "Kernel size:   " << (2 * valence + 1 - legal_pl.rank()) << "\n"; // TODO
         gsMatrix<> K = legal_pl.kernel();
         gsWrite(K, "../filedata/" + patchpath + "Val" +
                        std::to_string(valence) + "Kernel.xml");

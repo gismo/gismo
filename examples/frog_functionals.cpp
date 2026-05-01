@@ -80,10 +80,10 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        gsMatrix<real_t> coeffs(2 * valence + 1, 2 * valence + 1);
+        gsMatrix<real_t> coeffs(2 * valence + 1, 2 * valence + 1); // TODO
 
         // Iterate all functions for that valence
-        for (size_t function = 0; function < 2 * valence + 1; ++function)
+        for (size_t function = 0; function < 2 * valence + 1; ++function) // TODO
         {
             gsInfo << "Function " << function << "\n";
             // Load the basis function patch file.
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
             // Collect the selected EV coefficient representative for this
             // blending function.
             coeffs.row(function) = ev_coefs.topRows(2 * valence + 1).transpose().row(2);
-            gsInfo << ev_coefs.topRows(2 * valence + 1).transpose().row(2) << "\n";
+            gsInfo << ev_coefs.topRows(2 * valence + 1).transpose().row(2) << "\n"; // TODO
         }
 
         // Now `coeffs` spans the representative EV coefficient space selected

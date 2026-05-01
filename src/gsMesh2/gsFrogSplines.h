@@ -33,6 +33,8 @@ class GISMO_EXPORT gsFrogSplines : public gsSubdivisionScheme
 private: // Space Dimension
     size_t D;
 
+    size_t frog_functions;
+
     using gsPatch = gsTensorBSpline<2>;
 
 public: // Constructors
@@ -58,8 +60,7 @@ public: // Constructors
     ///   to the directory containing the model patch \c .xml files.
     ///
     /// \param mesh Pointer to the \c gsSurfMesh to be targeted by this object.
-    gsFrogSplines(gsSurfMesh* mesh, size_t D)
-        : gsSubdivisionScheme(mesh), D(D)
+    gsFrogSplines(gsSurfMesh* mesh, size_t D) : gsSubdivisionScheme(mesh), D(D)
     {
         m_options.addSwitch("optimize_fit",
                             "When active, chooses EV coefficient "
@@ -75,6 +76,7 @@ public: // Constructors
         m_options.addString("model_patch_path", "Path to the model patches.",
                             "frog/bubble/");
     }
+
 public: // Data initialization
     /// \brief Initializes the targeted mesh from a file, dispatching on
     /// extension.
@@ -143,7 +145,8 @@ public: // Data initialization
     void scale(gsVector3d<> factors);
 
 private: // Helper functions
-    /// \brief Rotates a control net clockwise (equivalent to a counter-clockwise
+    /// \brief Rotates a control net clockwise (equivalent to a
+    /// counter-clockwise
     ///        geometric rotation of the surface patch).
     ///
     /// The control net is stored as a flat \f$(n^2 \times D)\f$ coefficient
@@ -160,7 +163,8 @@ private: // Helper functions
     /// \return A new coefficient matrix with the rotated layout.
     static gsMatrix<> rotate_coefs_cw(const gsMatrix<>& coefs, size_t n);
 
-    /// \brief Rotates a control net counter-clockwise (equivalent to a clockwise
+    /// \brief Rotates a control net counter-clockwise (equivalent to a
+    /// clockwise
     ///        geometric rotation of the surface patch).
     ///
     /// The control net is stored as a flat \f$(n^2 \times D)\f$ coefficient
@@ -287,12 +291,12 @@ public: // Fitters
     /// Builds the mapped basis via \c c1_basis(), projects the current
     /// multipatch geometry onto that space in the \f$L^2\f$ sense, and then
     /// post-processes each extraordinary-vertex coefficient block in the kernel
-    /// of the corresponding \f$2v+1\f$ blending functions. When
-    /// \c optimize_fit is enabled, the post-processing minimises the
-    /// equalisation functional used by \c fit_ev_opt(); otherwise it enforces
-    /// the linear functionals loaded from \c Val<v>Constraints.xml. In both
-    /// cases the kernel basis is loaded from \c Val<v>Kernel.xml. The final
-    /// projected control points are written back to the per-face control nets.
+    /// of the corresponding blending functions. When \c optimize_fit is
+    /// enabled, the post-processing minimises the equalisation functional used
+    /// by \c fit_ev_opt(); otherwise it enforces the linear functionals loaded
+    /// from \c Val<v>Constraints.xml. In both cases the kernel basis is loaded
+    /// from \c Val<v>Kernel.xml. The final projected control points are written
+    /// back to the per-face control nets.
     ///
     /// \param degree Requested smoothness degree. Currently only implemented
     /// for C1.
@@ -330,9 +334,8 @@ public: // Basises
     /// and its underlying \c gsMultiBasis, then assembles a sparse
     /// local-to-global mapper whose image defines the \f$C^1\f$ spline space.
     /// The construction proceeds in four stages:
-    /// - interior extraordinary vertices reserve \f$2v+1\f$ EV
-    /// blending-function
-    ///   degrees of freedom and map all local control points inside the EV
+    /// - interior extraordinary vertices reserve degrees of freedom for the EV
+    ///   blending-function and map all local control points inside the EV
     ///   support through the corresponding model-patch coefficient rows,
     /// - ordinary interior control points receive free global degrees of
     ///   freedom,
@@ -370,7 +373,7 @@ public: // Basises
     void c1_basis(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
                   gsMappedBasis<2>& mapped_basis);
 
-public: //errors & output
+public: // errors & output
     /// \brief Computes the approximation error of the patch patches against
     /// a reference function.
     ///
@@ -438,7 +441,6 @@ public: //errors & output
                         gsParaviewCollection* collection = nullptr,
                         gsParaviewCollection* cnet_collection = nullptr,
                         size_t timestep = 0, bool control_net = false);
-
 
 }; // class gsFrogSplines
 

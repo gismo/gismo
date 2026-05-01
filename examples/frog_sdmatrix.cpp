@@ -74,11 +74,11 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        size_t point_count(2 * valence + 1 + 20 * valence);
-        gsMatrix<real_t> coeffs(2 * valence + 1, point_count);
+        size_t point_count(2 * valence + 1 + 20 * valence); // TODO
+        gsMatrix<real_t> coeffs(2 * valence + 1, point_count); // TODO
 
         // Iterate all functions for that valence
-        for (size_t function = 0; function < 2 * valence + 1; ++function)
+        for (size_t function = 0; function < 2 * valence + 1; ++function) // TODO
         {
             gsInfo << "Function " << function << "\n";
             // Load the basis function patch file.

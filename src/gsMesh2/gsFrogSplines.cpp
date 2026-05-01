@@ -584,9 +584,9 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
             continue;
 
         ev_coef_ends.push_back(ev_coef_starts[ev_coef_starts.size() - 1] +
-                               mesh.valence(v) * 15 + 1);
+                               mesh.valence(v) * 15 + 1); // TODO
         ev_coef_starts.push_back(ev_coef_ends[ev_coef_ends.size() - 1] +
-                                 20 * mesh.valence(v));
+                                 20 * mesh.valence(v)); // Maybe TODO
     }
     ev_coef_starts.pop_back();
 
@@ -597,7 +597,7 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
             continue;
 
         const size_t valence = mesh.valence(v);
-        const index_t function_count = 15 * valence + 1;
+        const index_t function_count = 15 * valence + 1; // TODO
         const index_t ev_coef_start = ev_coef_starts[ev_index];
 
         gsMatrix<real_t> kernel;
@@ -608,9 +608,9 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
         gsMatrix<real_t> functional;
         if (optimize_fit)
         {
-            functional.resize(15 * valence, function_count);
+            functional.resize(15 * valence, function_count); // TODO
             functional.setZero();
-            for (size_t i = 0; i < function_count-1; ++i)
+            for (size_t i = 0; i < function_count-1; ++i) // TODO
             {
                 functional(i, 0) = real_t(1);
                 functional(i, static_cast<index_t>(i) + 1) = real_t(-1);
@@ -844,7 +844,7 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
 
         const size_t valence = mesh.valence(v);
         const size_t patches_count = 4 * valence;
-        const size_t function_count = 15 * valence + 1;
+        const size_t function_count = 15 * valence + 1; // TODO
 
         // Collect the 4*valence (face, orienting-halfedge) pairs in
         // the same order as smooth(): valence inner patches first,
@@ -881,7 +881,7 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
             ev_halfedges.push_back(h);
         }
 
-        // Load the 2v+1 model-patch fitting functions.
+        // Load the model-patch fitting functions.
         std::vector<std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>>>
             fitting_functions;
         fitting_functions.reserve(function_count);
@@ -894,7 +894,7 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
                     .getAll<gsTensorBSpline<2, real_t>>());
         }
 
-        // Reserve 2v+1 contiguous global DOFs for this EV.
+        // Reserve contiguous global DOFs for this EV according to the number of frog functions.
         const index_t ev_dof_start = global_dof_count;
         global_dof_count += (index_t)function_count;
 
