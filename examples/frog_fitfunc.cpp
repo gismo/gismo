@@ -208,8 +208,9 @@ int main(int argc, char** argv)
     }
 
     // Write error matrix to errors.csv.
+    // The `build/errors/` directory needs to be manually created for this to work!
     if (write_errors)
-        gsWriteCsv("results/errors.csv", errors);
+        gsWriteCsv("errors/fit_errors.csv", errors);
 
     return 0;
 }

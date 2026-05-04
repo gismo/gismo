@@ -34,8 +34,6 @@ class GISMO_EXPORT gsFrogSplines : public gsSubdivisionScheme
 private: // Space Dimension
     size_t D;
 
-    size_t frog_functions;
-
     using gsPatch = gsTensorBSpline<2>;
 
 public: // Constructors

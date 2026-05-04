@@ -230,6 +230,7 @@ int main(int argc, char** argv)
             cnet_collection.save();
     }
 
+    // The `build/errors/` directory needs to be manually created for this to work!
     if (has_exact)
         gsWriteCsv("errors/" + input_path.substr(input_path.find_last_of("/\\") + 1) +
                        "_errors.csv",
