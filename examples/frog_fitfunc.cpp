@@ -177,14 +177,8 @@ int main(int argc, char** argv)
             if (control_net && valence > 0)
             {
                 auto all_coefs = subdiv.smooth(1);
-                // Here is also the spot to see more control points if wanted.
-                gsMatrix<real_t> ev_coefs = all_coefs
-                                                //.topRows(2 * valence + 1)
-                                                .transpose();
+                gsMatrix<real_t> ev_coefs = all_coefs.transpose();
                 gsMatrix<real_t> indexed_ev_coefs(4, ev_coefs.cols());
-                // for each EV
-                gsInfo << "all_coefs: " << all_coefs.rows() << "x"
-                       << all_coefs.cols() << "\n";
                 gsInfo << "ev_coefs: " << ev_coefs.rows() << "x"
                        << ev_coefs.cols() << "\n";
 

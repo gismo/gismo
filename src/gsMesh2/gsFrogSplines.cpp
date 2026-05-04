@@ -26,6 +26,7 @@
 #include "gsPde/gsBoundaryConditions.h"
 #include "gsUtils/gsL2Projection.h"
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <gismo.h>
@@ -52,8 +53,7 @@ void gsFrogSplines<N>::initialize_data(std::string filepath, size_t D)
     initialize_data(filepath);
 }
 
-template <size_t N>
-void gsFrogSplines<N>::initialize_data(std::string filepath)
+template <size_t N> void gsFrogSplines<N>::initialize_data(std::string filepath)
 {
     std::string xml(".xml");
     std::string off(".off");
@@ -80,12 +80,17 @@ void gsFrogSplines<N>::initialize_data(std::string filepath)
 template <size_t N>
 void gsFrogSplines<N>::initialize_data_xml(std::string filepath)
 {
-    auto& mesh = *m_mesh;
-
-    gsMultiPatch<> patch;
-
     // Load the patches
+    gsMultiPatch<> patch;
     auto _file = gsReadFile<>(filepath, patch);
+
+    this->initialize_data_multipatch(patch);
+}
+
+template <size_t N>
+void gsFrogSplines<N>::initialize_data_multipatch(gsMultiPatch<> patch)
+{
+    auto& mesh = *m_mesh;
 
     // Convert each patch into a degree 1 (2x2) patch for mesh calculation
     gsMultiPatch<> corner_mp;
@@ -96,8 +101,8 @@ void gsFrogSplines<N>::initialize_data_xml(std::string filepath)
 
         // Extract 4 corners (coef index = i + j*n1)
         gsMatrix<real_t> cc(4, D);
-        cc.row(0) = coefs.row(0);             // (0,    0   )
-        cc.row(1) = coefs.row(N - 1);        // (N-1, 0   )
+        cc.row(0) = coefs.row(0);           // (0,    0   )
+        cc.row(1) = coefs.row(N - 1);       // (N-1, 0   )
         cc.row(2) = coefs.row(N * (N - 1)); // (0,    N-1)
         cc.row(3) = coefs.row(N * N - 1);   // (N-1, N-1)
 
@@ -107,12 +112,12 @@ void gsFrogSplines<N>::initialize_data_xml(std::string filepath)
     }
     // Calculate the topology and the mesh
     corner_mp.computeTopology();
-    // This mesh turn each patch into (n-1)^2 many patches, so by reducing n to 2 first we get one face per patch with correct connectivity.
-    // This overrides the old mesh if present.
+    // This mesh turn each patch into (n-1)^2 many patches, so by reducing n to
+    // 2 first we get one face per patch with correct connectivity. This
+    // overrides the old mesh if present.
     mesh = corner_mp.toMesh();
 
-
-    // Prepare the basis 
+    // Prepare the basis
     gsKnotVector<real_t> kv_default(0.0, 1.0, 0, N);
     gsTensorBSplineBasis<2, real_t> basis_default(kv_default, kv_default);
 
@@ -168,10 +173,9 @@ void gsFrogSplines<N>::initialize_data_off(std::string filepath)
             {
                 real_t u = real_t(j) / real_t(N - 1);
                 real_t v = real_t(i) / real_t(N - 1);
-                gsVector<real_t> pt = (1 - u) * (1 - v) * corners[0] +
-                                      u * (1 - v) * corners[1] +
-                                      (1 - u) * v * corners[3] +
-                                      u * v * corners[2];
+                gsVector<real_t> pt =
+                    (1 - u) * (1 - v) * corners[0] + u * (1 - v) * corners[1] +
+                    (1 - u) * v * corners[3] + u * v * corners[2];
                 coefs.row(i * N + j) = pt.transpose().leftCols(D);
             }
         }
@@ -194,16 +198,15 @@ template <size_t N> void gsFrogSplines<N>::scale(gsVector3d<> factors)
 
     for (auto& patch : face_data_vec.vector())
     {
-        for (index_t c = 0;
-             c < std::min<index_t>((index_t)factors.size(), patch.coefs().cols());
+        for (index_t c = 0; c < std::min<index_t>((index_t)factors.size(),
+                                                  patch.coefs().cols());
              ++c)
             patch.coefs().col(c) *= factors[c];
     }
 }
 
 template <size_t N>
-gsMatrix<> gsFrogSplines<N>::rotate_coefs_cw(const gsMatrix<>& coefs,
-                                                      size_t n)
+gsMatrix<> gsFrogSplines<N>::rotate_coefs_cw(const gsMatrix<>& coefs, size_t n)
 {
     // CCW rotation: grid position (i,j) maps to (n-1-j, i).
     // Flat index i*n+j maps to (n-1-j)*n+i.
@@ -215,8 +218,7 @@ gsMatrix<> gsFrogSplines<N>::rotate_coefs_cw(const gsMatrix<>& coefs,
 }
 
 template <size_t N>
-gsMatrix<> gsFrogSplines<N>::rotate_coefs_ccw(const gsMatrix<>& coefs,
-                                                       size_t n)
+gsMatrix<> gsFrogSplines<N>::rotate_coefs_ccw(const gsMatrix<>& coefs, size_t n)
 {
     // CW rotation: grid position (i,j) maps to (j, n-1-i).
     // Flat index i*n+j maps to j*n+(n-1-i).
@@ -231,11 +233,11 @@ template <size_t N>
 gismo::gsTensorBSpline<2, real_t>
 gsFrogSplines<N>::load_model_patch(int valence, std::string subtype)
 {
-    // Load all patches from Val<valence>Fct1.xml
-    auto path = m_options.getString("model_patch_path") + "Val" +
-                std::to_string(valence) + "Fct1.xml";
-    auto patches =
-        gsFileData<real_t>(path).getAll<gsTensorBSpline<2, real_t>>();
+
+    gsFileData<real_t> fd(m_options.getString("model_patch_path") + "Val" +
+                          std::to_string(valence) + "Fcts.xml");
+    auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
+    auto patches = fitting_fcts[0]->patches();
 
     // Select the correct patch index based on subtype
     size_t patch_index(0);
@@ -294,7 +296,9 @@ gsFrogSplines<N>::load_model_patch(int valence, std::string subtype)
     coefs.col(1) = coefsy;
 
     // build the tensor spline
-    return gsTensorBSpline<2>(patches[patch_index]->basis(), give(coefs));
+    gsKnotVector<real_t> kv(0.0, 1.0, 0, N);
+    return gsTensorBSpline<2>(gsTensorBSplineBasis<2, real_t>(kv, kv),
+                              give(coefs));
 }
 
 template <size_t N> void gsFrogSplines<N>::orient_faces()
@@ -353,7 +357,7 @@ template <size_t N> gsMultiPatch<> gsFrogSplines<N>::multipatch()
 template <size_t N>
 std::array<gsSurfMesh::Face, 4>
 gsFrogSplines<N>::order_faces(Vertex first_vertex,
-                                      std::array<gsSurfMesh::Face, 4> faces)
+                              std::array<gsSurfMesh::Face, 4> faces)
 {
     auto& mesh = *m_mesh;
     size_t first_face(0);
@@ -384,8 +388,7 @@ gsFrogSplines<N>::order_faces(Vertex first_vertex,
 }
 
 template <size_t N>
-gsSubdivisionScheme::gsSubdivisionMeshValidity
-gsFrogSplines<N>::check_mesh()
+gsSubdivisionScheme::gsSubdivisionMeshValidity gsFrogSplines<N>::check_mesh()
 {
     auto& mesh = *m_mesh;
     for (Face f : mesh.faces())
@@ -487,8 +490,8 @@ template <size_t N> void gsFrogSplines<N>::subdivide()
                     // Get the parameters of the same point in the coarse
                     // geometry model via Newton-Raphson. Note that internally,
                     // the tolerance is squared, so this is a tolerance of
-                    // 1e-12.
-                    coarse_model.closestPointTo(point, closest_point, 1e-6,
+                    // 1e-6.
+                    coarse_model.closestPointTo(point, closest_point, 1e-3,
                                                 true);
 
                     // Sample the old control net.
@@ -543,8 +546,7 @@ template <size_t N> void gsFrogSplines<N>::subdivide()
     }
 };
 
-template <size_t N>
-gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
+template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
 {
     GISMO_ASSERT(degree == 1, "Only C1 smoothing supported.");
 
@@ -583,10 +585,19 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
         if (is_ordinary(mesh, v))
             continue;
 
+        // Load the model-patch fitting functions.
+        gsFileData<real_t> fd(m_options.getString("model_patch_path") + "Val" +
+                              std::to_string(mesh.valence(v)) + "Fcts.xml");
+        auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
+        const size_t function_count = fitting_fcts.size();
+
+        // between the start and the end, there are function_count many spots
         ev_coef_ends.push_back(ev_coef_starts[ev_coef_starts.size() - 1] +
-                               mesh.valence(v) * 15 + 1); // TODO
+                               function_count);
+        // between the end and the start, there are (6 + 6 + 8) * valence many
+        // spots
         ev_coef_starts.push_back(ev_coef_ends[ev_coef_ends.size() - 1] +
-                                 20 * mesh.valence(v)); // Maybe TODO
+                                 20 * mesh.valence(v));
     }
     ev_coef_starts.pop_back();
 
@@ -597,8 +608,13 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
             continue;
 
         const size_t valence = mesh.valence(v);
-        const index_t function_count = 15 * valence + 1; // TODO
         const index_t ev_coef_start = ev_coef_starts[ev_index];
+
+        // Load the model-patch fitting functions.
+        gsFileData<real_t> fd(m_options.getString("model_patch_path") + "Val" +
+                              std::to_string(valence) + "Fcts.xml");
+        auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
+        const size_t function_count = fitting_fcts.size();
 
         gsMatrix<real_t> kernel;
         auto _file = gsReadFile<>(model_patch_path + "Val" +
@@ -608,12 +624,12 @@ gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
         gsMatrix<real_t> functional;
         if (optimize_fit)
         {
-            functional.resize(15 * valence, function_count); // TODO
+            functional.resize(function_count - 1, function_count);
             functional.setZero();
-            for (size_t i = 0; i < function_count-1; ++i) // TODO
+            for (size_t i = 0; i < function_count - 1; ++i)
             {
                 functional(i, 0) = real_t(1);
-                functional(i, static_cast<index_t>(i) + 1) = real_t(-1);
+                functional(i, i + 1) = real_t(-1);
             }
         }
         else
@@ -756,8 +772,8 @@ void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 
 template <size_t N>
 void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
-                                        gsMultiBasis<>& multi_basis,
-                                        gsMappedBasis<2>& mapped_basis)
+                                gsMultiBasis<>& multi_basis,
+                                gsMappedBasis<2>& mapped_basis)
 {
     auto& mesh = *m_mesh;
 
@@ -827,7 +843,7 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
     // Phase 1 — EV vertices
     //
     // For each extraordinary vertex v (valence != 4, interior):
-    //   • Assign 2*v+1 EV global DOFs.
+    //   • Assign global DOFs for each fitting function around the EV.
     //   • For every control point in the 4v-patch ring that lies
     //     inside the EV support (all fitting functions non-zero),
     //     set its mapper row to the corresponding row of A_control
@@ -844,7 +860,6 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
 
         const size_t valence = mesh.valence(v);
         const size_t patches_count = 4 * valence;
-        const size_t function_count = 15 * valence + 1; // TODO
 
         // Collect the 4*valence (face, orienting-halfedge) pairs in
         // the same order as smooth(): valence inner patches first,
@@ -882,19 +897,13 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
         }
 
         // Load the model-patch fitting functions.
-        std::vector<std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>>>
-            fitting_functions;
-        fitting_functions.reserve(function_count);
-        for (size_t i = 0; i < function_count; ++i)
-        {
-            fitting_functions.emplace_back(
-                gsFileData<real_t>(m_options.getString("model_patch_path") +
-                                   "Val" + std::to_string(valence) + "Fct" +
-                                   std::to_string(i) + ".xml")
-                    .getAll<gsTensorBSpline<2, real_t>>());
-        }
+        gsFileData<real_t> fd(m_options.getString("model_patch_path") + "Val" +
+                              std::to_string(valence) + "Fcts.xml");
+        auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
+        const size_t function_count = fitting_fcts.size();
 
-        // Reserve contiguous global DOFs for this EV according to the number of frog functions.
+        // Reserve contiguous global DOFs for this EV according to the number of
+        // frog functions.
         const index_t ev_dof_start = global_dof_count;
         global_dof_count += (index_t)function_count;
 
@@ -910,11 +919,11 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
                 {
                     // Inside EV support = any fitting functions non-zero here.
                     const bool in_support = std::any_of(
-                        fitting_functions.begin(), fitting_functions.end(),
+                        fitting_fcts.begin(), fitting_fcts.end(),
                         [&](const auto& ff)
                         {
-                            return ff[p]->coef((index_t)(ux * N + vx), 2) !=
-                                   real_t(0);
+                            return ff->patch(p).coef((index_t)(ux * N + vx),
+                                                     2) != real_t(0);
                         });
 
                     // The values vx and ux are rotated to fit the EV, so we
@@ -928,7 +937,7 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
                         // (the A_control row) to the EV global DOFs.
                         for (size_t j = 0; j < function_count; ++j)
                         {
-                            const real_t coeff = fitting_functions[j][p]->coef(
+                            const real_t coeff = fitting_fcts[j]->patch(p).coef(
                                 (index_t)(ux * N + vx), 2);
                             if (coeff != real_t(0))
                                 pre_mapper[ldof][ev_dof_start + j] = coeff;
@@ -1210,9 +1219,8 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
 }
 
 template <size_t N>
-gsVector<real_t, 2>
-gsFrogSplines<N>::error(gsFunctionExpr<real_t> function,
-                                size_t samples_per_face)
+gsVector<real_t, 2> gsFrogSplines<N>::error(gsFunctionExpr<real_t> function,
+                                            size_t samples_per_face)
 {
 
     auto& mesh = *m_mesh;
@@ -1259,9 +1267,10 @@ gsFrogSplines<N>::error(gsFunctionExpr<real_t> function,
 }
 
 template <size_t N>
-void gsFrogSplines<N>::write_paraview_error(
-    gsFunctionExpr<real_t> function, real_t max_error, std::string name,
-    gsParaviewCollection* collection, size_t timestep)
+void gsFrogSplines<N>::write_paraview_error(gsFunctionExpr<real_t> function,
+                                            real_t max_error, std::string name,
+                                            gsParaviewCollection* collection,
+                                            size_t timestep)
 {
     // Prepare data
     auto& mesh = *m_mesh;
@@ -1335,9 +1344,10 @@ void gsFrogSplines<N>::write_paraview_error(
 }
 
 template <size_t N>
-void gsFrogSplines<N>::write_paraview(
-    std::string name, gsParaviewCollection* collection,
-    gsParaviewCollection* cnet_collection, size_t timestep, bool control_net)
+void gsFrogSplines<N>::write_paraview(std::string name,
+                                      gsParaviewCollection* collection,
+                                      gsParaviewCollection* cnet_collection,
+                                      size_t timestep, bool control_net)
 {
     auto mp(multipatch());
     std::string basename(name.substr(name.rfind('/') + 1));
@@ -1360,8 +1370,6 @@ void gsFrogSplines<N>::write_paraview(
         }
     }
 }
-
-
 
 template class gsFrogSplines<5>;
 template class gsFrogSplines<6>;

@@ -14,6 +14,7 @@
 #pragma once
 
 #include "gsCore/gsFunctionExpr.h"
+#include "gsCore/gsMultiPatch.h"
 #include "gsIO/gsParaviewCollection.h"
 #include "gsMatrix/gsVector.h"
 #include <gsMesh2/gsSubdivisionScheme.h>
@@ -110,17 +111,38 @@ public: // Data initialization
 
     /// \brief Initializes the targeted mesh from an xml file.
     ///
-    /// Clears the targeted mesh, then loads all \c gsTensorBSpline<2> objects
-    /// from the \c .xml file at \c filepath. Each patch must have an
-    /// \f$N \times N\f$ control net of \f$D\f$-dimensional vectors. For each
-    /// patch a quad face is added to the mesh, with shared corner vertices
-    /// detected by coordinate comparison using a tolerance of \f$10^{-10}\f$.
-    /// The patch is stored directly in the \c bezier_points face property as
-    /// a \c gsTensorBSpline<2>, using a canonical Bézier basis \c kv(0,1,0,N)
-    /// and the first \f$D\f$ coefficient columns from the loaded patch.
+    /// Reads a \c gsMultiPatch from the \c .xml file at \c filepath and
+    /// delegates all mesh and face-data construction to
+    /// \ref initialize_data_multipatch.
     ///
     /// \param filepath Path to the \c .xml file to load.
     void initialize_data_xml(std::string filepath);
+
+    /// \brief Initializes the targeted mesh from a gsMultiPatch.
+    ///
+    /// Builds the combinatorial mesh and Bézier face data from \c mpatch.
+    /// The method proceeds in two steps:
+    ///
+    /// **Topology construction.**
+    /// For each patch, only the four corner coefficients (indices \c 0,
+    /// \c N-1, \c N*(N-1), \c N*N-1) are extracted to form a bilinear proxy
+    /// patch. All proxies are collected into a temporary \c gsMultiPatch,
+    /// whose topology is computed and then converted to the internal
+    /// \c gsSurfMesh via \c toMesh(). This yields one quad face per input
+    /// patch with correct vertex-sharing between adjacent patches.
+    ///
+    /// **Face data initialisation.**
+    /// A \c bezier_points face property is added to the mesh, typed as
+    /// \c gsPatch with an \f$N \times N\f$ Bézier basis and a zero
+    /// \f$D\f$-column coefficient matrix as default. Each face is then
+    /// assigned the corresponding patch from \c mpatch: the first
+    /// \f$\min(D, \mathrm{geoDim})\f$ coefficient columns are copied and
+    /// any remaining columns are left as zero.
+    ///
+    /// \param mpatch A \c gsMultiPatch whose patch ordering matches the
+    ///               desired face ordering of the mesh. Each patch must have
+    ///               at least \f$N \times N\f$ control points.
+    void initialize_data_multipatch(gsMultiPatch<> mpatch);
 
     /// \brief Initializes the targeted mesh from an off file.
     ///

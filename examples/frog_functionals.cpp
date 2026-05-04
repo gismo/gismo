@@ -4,14 +4,20 @@
     extraordinary-vertex coefficient representatives.
 
     For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
-    the example loads all \f$2v+1\f$ basis-function patches from the model
-    patch directory (\c Val\<v\>Fct\<f\>.xml), applies one round of \f$C^1\f$
-    smoothing with functional optimisation (\c optimize_fit = \c true), reads
-    back the resulting extraordinary-vertex (EV) coefficient representatives,
-    and assembles the space of coefficient vectors selected by that functional.
+    the example loads all extraordinary-vertex blending functions from the
+    collated file \c Val\<v\>Fcts.xml (one \c gsMultiPatch per function),
+    initialises the frog-spline mesh for each function via
+    \c initialize_data_multipatch, applies one round of \f$C^1\f$ smoothing
+    with functional optimisation (\c optimize_fit = \c true), reads back the
+    resulting extraordinary-vertex (EV) coefficient representatives, and
+    assembles the space of coefficient vectors selected by that functional.
     The kernel of this space consists of the linear functionals that vanish on
     all legal representatives and is written to \c Val\<v\>Constraints.xml in
     the model patch directory.
+
+    The number of blending functions is determined at runtime from the number
+    of \c gsMultiPatch entries in \c Val\<v\>Fcts.xml and is not assumed to
+    equal \f$2v+1\f$.
 
     The example assumes that \c Val\<v\>Kernel.xml has already been generated,
     e.g. by running \c frog_kernels.cpp first, because
@@ -27,8 +33,8 @@
 
     \par Command-line arguments
     - \b -p / \b --patchpath (default: \c frog/bubble/): path, relative
-      to \c filedata/, to the directory that contains the model patch files
-      \c Val\<v\>Fct\<f\>.xml.
+      to \c filedata/, to the directory that contains the collated model patch
+      file \c Val\<v\>Fcts.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
       valence to process. Functional matrices are generated for all valences
       \f$v \in \{3, 5, 6, \ldots, \mathrm{valence\_max}\}\f$ (valence 4 is
@@ -80,16 +86,18 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        gsMatrix<real_t> coeffs(2 * valence + 1, 2 * valence + 1); // TODO
+        gsFileData<real_t> fd(patchpath + "Val" + std::to_string(valence) +
+                              "Fcts.xml");
+        auto fcts = fd.getAll<gsMultiPatch<real_t>>();
+
+        gsMatrix<real_t> coeffs(fcts.size(), fcts.size());
 
         // Iterate all functions for that valence
-        for (size_t function = 0; function < 2 * valence + 1; ++function) // TODO
+        for (size_t function = 0; function < fcts.size(); ++function) 
         {
             gsInfo << "Function " << function << "\n";
             // Load the basis function patch file.
-            subdiv.initialize_data_xml(patchpath + "Val" +
-                                       std::to_string(valence) + "Fct" +
-                                       std::to_string(function) + ".xml");
+            subdiv.initialize_data_multipatch(*fcts[function]);
 
             // Apply functional-optimised smoothing to obtain the preferred EV
             // coefficient representative in the precomputed kernel family.
@@ -97,8 +105,8 @@ int main(int argc, char** argv)
             gsInfo << "ev_coefs: " << ev_coefs.rows() << "x" << ev_coefs.cols() << "\n";
             // Collect the selected EV coefficient representative for this
             // blending function.
-            coeffs.row(function) = ev_coefs.topRows(2 * valence + 1).transpose().row(2);
-            gsInfo << ev_coefs.topRows(2 * valence + 1).transpose().row(2) << "\n"; // TODO
+            coeffs.row(function) = ev_coefs.topRows(fcts.size()).transpose().row(2);
+            gsInfo << ev_coefs.topRows(fcts.size()).transpose().row(2) << "\n";
         }
 
         // Now `coeffs` spans the representative EV coefficient space selected

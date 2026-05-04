@@ -4,15 +4,20 @@
     the frog subdivision scheme.
 
     For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
-    the example loads all \f$2v+1\f$ basis-function patches from the model patch
-    directory (\c Val\<v\>Fct\<f\>.xml), subdivides each once, applies one
-    round of \f$C^1\f$ smoothing, and reads out the row of extraordinary-vertex
-    (EV) Bézier coefficients from the resulting patch. These rows are assembled
-    into an inner coefficient matrix (all \f$2v+1\f$ rows) and an outer
-    coefficient vector (coefficients of basis function 1 only).
+    the example determines the number of blending functions from the collated
+    file \c Val\<v\>Fcts.xml, then for each function loads the corresponding
+    per-function patch file \c Val\<v\>Fct\<f\>.xml, subdivides once, applies
+    one round of \f$C^1\f$ smoothing, and reads out the row of
+    extraordinary-vertex (EV) Bézier coefficients from the resulting patch.
+    These rows are assembled into a coefficient matrix with one row per
+    blending function.
 
-    The inner matrix is saved as \c CoefficientsInnerVal\<v\>.xml and the outer
-    vector as \c CoefficientsOuterVal\<v\>.xml inside the model patch directory.
+    The number of blending functions is determined at runtime from the number
+    of \c gsMultiPatch entries in \c Val\<v\>Fcts.xml and is not assumed to
+    equal \f$2v+1\f$.
+
+    The full coefficient matrix is saved as
+    \c SubdivisionFullVal\<v\>.xml in the current working directory.
     These files are consumed by \c fit_ev to reconstruct the correct \f$C^1\f$
     coefficient when fitting around extraordinary vertices.
 
@@ -21,9 +26,10 @@
     subdirectory of \c filedata.
 
     \par Command-line arguments
-    - \b -p / \b --patches (default: \c frog/bubble/): path, relative
-      to \c filedata/, to the directory containing the model patch files
-      \c Val\<v\>Fct\<f\>.xml.
+    - \b -p / \b --patchpath (default: \c frog/bubble/): path, relative
+      to \c filedata/, to the directory containing both the collated file
+      \c Val\<v\>Fcts.xml (used to determine the function count) and the
+      per-function files \c Val\<v\>Fct\<f\>.xml (used for subdivision).
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
       valence to process. Coefficient matrices are generated for all valences
       \f$v \in \{3, 5, 6, \ldots, \mathrm{valence\_max}\}\f$ (valence 4 is
@@ -43,13 +49,13 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patches("frog/bubble/");
+    std::string patchpath("frog/bubble/");
     index_t valence_max(6);
     gsCmdLine cmd("frog subdivision");
-    cmd.addString("p", "patches",
+    cmd.addString("p", "patchpath",
                   "The path to the files containing the model patches for EV "
                   "subdivision.",
-                  patches);
+                  patchpath);
     cmd.addInt("v", "valence", "Maximal valence to calculate.", valence_max);
     try
     {
@@ -63,7 +69,7 @@ int main(int argc, char** argv)
     // Basic objects
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, 3);
-    subdiv.options().setString("model_patch_path", patches);
+    subdiv.options().setString("model_patch_path", patchpath);
 
     // Iterate all valences
     for (size_t valence = 3; valence <= size_t(valence_max); ++valence)
@@ -74,15 +80,19 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        size_t point_count(2 * valence + 1 + 20 * valence); // TODO
-        gsMatrix<real_t> coeffs(2 * valence + 1, point_count); // TODO
+        gsFileData<real_t> fd(patchpath + "Val" + std::to_string(valence) +
+                              "Fcts.xml");
+        auto fcts = fd.getAll<gsMultiPatch<real_t>>();
+
+        size_t point_count(fcts.size() + 20 * valence);
+        gsMatrix<real_t> coeffs(fcts.size(), point_count);
 
         // Iterate all functions for that valence
-        for (size_t function = 0; function < 2 * valence + 1; ++function) // TODO
+        for (size_t function = 0; function < fcts.size(); ++function)
         {
             gsInfo << "Function " << function << "\n";
             // Load the basis function patch file.
-            subdiv.initialize_data_xml(patches + "Val" +
+            subdiv.initialize_data_xml(patchpath + "Val" +
                                        std::to_string(valence) + "Fct" +
                                        std::to_string(function) + ".xml");
 

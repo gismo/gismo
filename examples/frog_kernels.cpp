@@ -5,12 +5,17 @@
     functions of the frog subdivision scheme.
 
     For each valence \f$v\f$ from 3 up to \c valence_max (skipping \f$v=4\f$),
-    the example loads all \f$2v+1\f$ extraordinary-vertex blending functions
-    \c Val\<v\>Fct\<f\>.xml, stacks the third control-net coordinate of every
-    patch into one common coefficient matrix, and computes the kernel of that
-    matrix. The resulting kernel basis spans all coefficient vectors that do
-    not change the represented EV function and is written to
-    \c Val\<v\>Kernel.xml in the same patch directory.
+    the example loads all extraordinary-vertex blending functions from the
+    collated file \c Val\<v\>Fcts.xml (one \c gsMultiPatch per function),
+    stacks the third control-net coordinate of every patch of every function
+    into one common coefficient matrix, and computes the kernel of that matrix.
+    The resulting kernel basis spans all coefficient vectors that do not change
+    the represented EV function and is written to \c Val\<v\>Kernel.xml in the
+    same patch directory.
+
+    The number of blending functions is determined at runtime from the number
+    of \c gsMultiPatch entries in \c Val\<v\>Fcts.xml and is not assumed to
+    equal \f$2v+1\f$.
 
     These kernel files are consumed by \c gsFrogSplines::smooth() and
     by \c frog_functionals.cpp.
@@ -21,8 +26,8 @@
 
     \par Command-line arguments
     - \b -p / \b --patchpath (default: \c frog/bubble/): path, relative
-      to \c filedata/, to the directory that contains the model patch files
-      \c Val\<v\>Fct\<f\>.xml.
+      to \c filedata/, to the directory that contains the collated model patch
+      file \c Val\<v\>Fcts.xml.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
       valence to process. Kernel bases are generated for all valences
       \f$v \in \{3, 5, 6, \ldots, \mathrm{valence\_max}\}\f$ (valence 4 is
@@ -57,6 +62,8 @@ int main(int argc, char** argv)
         return errorcode;
     }
 
+    const size_t D = 4;
+
     // Iterate all valences
     for (size_t valence = 3; valence <= size_t(valence_max); ++valence)
     {
@@ -66,18 +73,20 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        gsMatrix<real_t> coefs(4 * 25 * valence, 2 * valence + 1); // TODO
+        gsFileData<real_t> fd(patchpath + "Val" + std::to_string(valence) +
+                              "Fcts.xml");
+        auto fcts = fd.getAll<gsMultiPatch<real_t>>();
+
+        gsMatrix<real_t> coefs(4 * (D + 1) * (D + 1) * valence,
+                               fcts.size()); 
 
         // Iterate all functions for that valence
-        for (size_t function = 0; function < 2 * valence + 1; ++function) // TODO
+        for (size_t function = 0; function < fcts.size();
+             ++function)
         {
             gsInfo << "Function " << function << "\n";
-            // Load the basis function patch file.
-            auto filepath = patchpath + "Val" + std::to_string(valence) +
-                            "Fct" + std::to_string(function) + ".xml";
-            std::vector<std::unique_ptr<gsTensorBSpline<2, real_t>>> patches =
-                gsFileData<real_t>(filepath)
-                    .getAll<gsTensorBSpline<2, real_t>>();
+
+            auto patches = fcts[function]->patches();
             for (index_t p = 0; p < (index_t)patches.size(); ++p)
             {
                 coefs.block(25 * p, function, 25, 1) =
@@ -87,17 +96,17 @@ int main(int argc, char** argv)
 
         // Now `coefs` contains the z control values of all functions.
         auto legal_pl = coefs.fullPivLu();
-        legal_pl.setThreshold(1e-8);
+        legal_pl.setThreshold(1e-4);
         gsInfo << "Function Rank: " << legal_pl.rank() << "\n";
-        gsInfo << "Kernel size:   " << (2 * valence + 1 - legal_pl.rank()) << "\n"; // TODO
+        gsInfo << "Kernel size:   " << (fcts.size() - legal_pl.rank())
+               << "\n";
         gsMatrix<> K = legal_pl.kernel();
         gsWrite(K, "../filedata/" + patchpath + "Val" +
                        std::to_string(valence) + "Kernel.xml");
 
-        gsInfo << "Written kernel basis for valence " << valence
-               << " to `"
-                << (gsFileManager::findInDataDir("") + patchpath + "Val" +
-                    std::to_string(valence) + "Kernel.xml")
+        gsInfo << "Written kernel basis for valence " << valence << " to `"
+               << (gsFileManager::findInDataDir("") + patchpath + "Val" +
+                   std::to_string(valence) + "Kernel.xml")
                << "`.\n";
     }
 

@@ -171,8 +171,8 @@ int main(int argc, char** argv)
         mesh_dim = 2;
     }
 
-    gsVector<> scale(2);
-    scale << x_scale, y_scale;
+    gsVector<> scale(3);
+    scale << x_scale, y_scale, 1.0;
 
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, mesh_dim);
