@@ -236,8 +236,16 @@ protected:
 
 }; //struct
 
-} // gismo
+#ifdef GISMO_WITH_PYBIND11
 
+    /**
+     * @brief Initializes the Python wrapper for the class: gsQuasiInterpolate
+     */
+    void pybind11_init_gsQuasiInterpolate(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
+} // gismo
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsQuasiInterpolate.hpp)
 #endif

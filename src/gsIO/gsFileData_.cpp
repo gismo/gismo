@@ -14,6 +14,7 @@
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsCore/gsFunctionExpr.h>
 #include <gsIO/gsOptionList.h>
+#include <gsIO/gsOptionListXml.h>
 #include <gsMatrix/gsSparseMatrix.h>
 #endif
 
@@ -43,7 +44,7 @@ namespace py = pybind11;
     fd.def(py::init<>())
       .def(py::init<const std::string&>())
       
-      .def("read", &Class::read)
+      .def("read", &Class::read, py::arg("filename"), py::arg("recursive")=false)
       .def("clear", &Class::clear)
       .def("numData", &Class::numData)
       .def("save",           &Class::save,           py::arg("fname")="dump", py::arg("compress")=false)
@@ -91,11 +92,70 @@ namespace py = pybind11;
 
       //.def("addSparse", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
       
-      .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Get gsMultiPatch to the filedata.")
-      .def("getAll", static_cast<std::vector< memory::unique_ptr<gsGeometry<real_t>> > (Class::*)() const > (&Class::getAll<gsGeometry<real_t>>), "Get gsGeometry to the filedata.")
+       .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Get gsMultiPatch to the filedata.")
+       .def("getAll", static_cast<std::vector< memory::unique_ptr<gsGeometry<real_t>> > (Class::*)() const > (&Class::getAll<gsGeometry<real_t>>), "Get gsGeometry to the filedata.")
 
-      // Work around to obtain the matrix from Filedata. Standard way is not working!
-      .def("getMatrix", &getMatrix, "Get any first gsMatrix.")
+        // getLabel overloads (Phase 0a: read labeled sections from XML)
+        // Single-arg form: auto-dispatches based on XML tag
+        .def("getLabel",
+            [](const Class& self, const std::string& label) -> py::object {
+                std::string tag = self.getLabelTag(label);
+                if (tag.empty())
+                    throw py::value_error("No object with label '" + label + "' found.");
+                if (tag == internal::gsXml<gsOptionList>::tag()) {
+                    auto obj = self.getLabel<gsOptionList>(label);
+                    return py::cast(obj.get(), py::return_value_policy::move);
+                }
+                if (tag == internal::gsXml<gsMultiPatch<real_t>>::tag()) {
+                    auto obj = self.getLabel<gsMultiPatch<real_t>>(label);
+                    return py::cast(obj.get(), py::return_value_policy::move);
+                }
+                if (tag == internal::gsXml<gsBoundaryConditions<real_t>>::tag()) {
+                    auto obj = self.getLabel<gsBoundaryConditions<real_t>>(label);
+                    return py::cast(obj.get(), py::return_value_policy::move);
+                }
+                if (tag == internal::gsXml<gsMatrix<real_t>>::tag()) {
+                    auto obj = self.getLabel<gsMatrix<real_t>>(label);
+                    return py::cast(obj.get(), py::return_value_policy::move);
+                }
+                if (tag == internal::gsXml<gsSparseMatrix<real_t>>::tag()) {
+                    auto obj = self.getLabel<gsSparseMatrix<real_t>>(label);
+                    return py::cast(obj.get(), py::return_value_policy::move);
+                }
+                throw py::value_error(
+                    "getLabel: unrecognized tag '" + tag + "' for label '" + label + "'. "
+                    "Use the two-argument form fd.getLabel(label, result) to load this type explicitly.");
+            },
+            py::arg("label"),
+            "Get object by label, auto-detecting type "
+            "(OptionList, MultiPatch, boundaryConditions, Matrix, SparseMatrix). "
+            "Raises ValueError if the label is not found or the type is not supported by the single-argument form.")
+
+        .def("getLabel", static_cast<void (Class::*)(const std::string &, gsMultiPatch<real_t> &) const > (&Class::getLabel<gsMultiPatch<real_t>>), py::arg("label"), py::arg("result"), "Get gsMultiPatch by label (output param)")
+       .def("getLabel", static_cast<void (Class::*)(const std::string &, gsOptionList &) const > (&Class::getLabel<gsOptionList>), py::arg("label"), py::arg("result"), "Get gsOptionList by label (output param)")
+       .def("getLabel", static_cast<void (Class::*)(const std::string &, gsBoundaryConditions<real_t> &) const > (&Class::getLabel<gsBoundaryConditions<real_t>>), py::arg("label"), py::arg("result"), "Get gsBoundaryConditions by label (output param)")
+       .def("getLabel", static_cast<void (Class::*)(const std::string &, gsMatrix<real_t> &) const > (&Class::getLabel<gsMatrix<real_t>>), py::arg("label"), py::arg("result"), "Get gsMatrix by label (output param)")
+       .def("getLabel", static_cast<void (Class::*)(const std::string &, gsSparseMatrix<real_t> &) const > (&Class::getLabel<gsSparseMatrix<real_t>>), py::arg("label"), py::arg("result"), "Get gsSparseMatrix by label (output param)")
+       
+       // hasLabel (Phase 0a: check if a label exists)
+       .def("hasLabel", &Class::hasLabel, py::arg("label"), "Check if label exists")
+       
+       // addWithLabel overloads (Phase 0a: write labeled sections to XML)
+       .def("addWithLabel", static_cast<void (Class::*)(const gsMultiPatch<real_t> &, std::string) > (&Class::addWithLabel<gsMultiPatch<real_t>>), py::arg("object"), py::arg("label"), "Add gsMultiPatch with label")
+       .def("addWithLabel", static_cast<void (Class::*)(const gsOptionList &, std::string) > (&Class::addWithLabel<gsOptionList>), py::arg("object"), py::arg("label"), "Add gsOptionList with label")
+       .def("addWithLabel", static_cast<void (Class::*)(const gsMatrix<real_t> &, std::string) > (&Class::addWithLabel<gsMatrix<real_t>>), py::arg("object"), py::arg("label"), "Add gsMatrix with label")
+       .def("addWithLabel", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &, std::string) > (&Class::addWithLabel<gsSparseMatrix<real_t>>), py::arg("object"), py::arg("label"), "Add gsSparseMatrix with label")
+       .def("addWithLabel", static_cast<void (Class::*)(const gsBoundaryConditions<real_t> &, std::string) > (&Class::addWithLabel<gsBoundaryConditions<real_t>>), py::arg("object"), py::arg("label"), "Add gsBoundaryConditions with label")
+       
+       // getId for additional types (Phase 0a)
+       .def("getId", static_cast<void (Class::*)(const int &, gsBoundaryConditions<real_t> &) const > (&Class::getId<gsBoundaryConditions<real_t>>), py::arg("id"), py::arg("result"), "Gets gsBoundaryConditions by id")
+       .def("getId", static_cast<void (Class::*)(const int &, gsOptionList &) const > (&Class::getId<gsOptionList>), py::arg("id"), py::arg("result"), "Gets gsOptionList by id")
+       
+       // getFirst for gsMultiPatch (Phase 0a: alias for getAnyFirst)
+       .def("getFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getFirst<gsMultiPatch<real_t>>), py::arg("result"), "Get first gsMultiPatch")
+
+       // Work around to obtain the matrix from Filedata. Standard way is not working!
+       .def("getMatrix", &getMatrix, "Get any first gsMatrix.")
 
       .def("bufferSize", &Class::bufferSize)
       .def("print", &Class::print)

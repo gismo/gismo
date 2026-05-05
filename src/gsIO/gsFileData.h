@@ -239,6 +239,14 @@ public:
       return (bool)nd;
     }
 
+    /// Returns the XML tag name of the node with the given label,
+    /// or an empty string if no such label exists.
+    inline std::string getLabelTag(const std::string & label) const {
+      gsXmlNode* root = getXmlRoot();
+      gsXmlNode* nd = internal::searchLabel(label, root, NULL, false);
+      return nd ? std::string(nd->name()) : std::string();
+    }
+
     /// Returns true if an entry of \em tag exists in the xml file
     inline bool hasTag(std::string tag) const
     {
